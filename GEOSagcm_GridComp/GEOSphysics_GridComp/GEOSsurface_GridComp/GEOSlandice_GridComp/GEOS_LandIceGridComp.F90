@@ -198,7 +198,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
+        LONG_NAME          = 'surface_reflectivity_for_visible_beam',   &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -207,7 +207,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
+        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse',&
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -216,7 +216,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -225,7 +225,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -235,7 +235,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TST',                               &
-        LONG_NAME          = 'surface_skin_temperature',          &
+        LONG_NAME          = 'surface_temperature',          &
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -397,7 +397,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'fractional_area_of_glaciated_surface_snowcover',&
+    LONG_NAME          = 'fractional_snow_covered_area_of_glaciated_surface',&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'ASNOW_GL'                  ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -485,7 +485,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'top_snow_layer_mass_change_due_to_sub_con',   &
+    LONG_NAME          = 'top_snow_layer_mass_change_due_to_sublimation_and_condensation',   &
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'WESNSC'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -569,7 +569,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'contribution_to_smb_from_refreezed_rain_over_bare_ice',   &
+    LONG_NAME          = 'contribution_to_surface_mass_balance_from_rain_frozen_onto_bare_ice',   &
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'RAINRFZ'                   ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -578,7 +578,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snowmelt_flux'             ,&
+    LONG_NAME          = 'snow_melt_flux'             ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'SMELT'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -587,7 +587,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'icemelt_flux'             ,&
+    LONG_NAME          = 'ice_melt_flux'             ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'IMELT'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -596,7 +596,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_broadband_albedo',   &
+    LONG_NAME          = 'snow_broadband_reflectivity',   &
     UNITS              = '1'                ,&
     SHORT_NAME         = 'SNOWALB'                   ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -605,7 +605,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'aggregated_snow_ice_broadband_albedo',   &
+    LONG_NAME          = 'aggregated_snow_ice_broadband_reflectivity',   &
     UNITS              = '1'                ,&
     SHORT_NAME         = 'SNICEALB'                   ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -623,7 +623,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'melt_water_content',   &
+    LONG_NAME          = 'snowpack_meltwater_content',   &
     UNITS              = 'kg m-2'                ,&
     SHORT_NAME         = 'MELTWTRCONT'               ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -641,7 +641,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'runoff_flux'               ,&
+    LONG_NAME          = 'runoff_total_flux'         ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'RUNOFF'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -848,7 +848,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'Ground_heating_for_tskin'  ,&
+        LONG_NAME          = 'glacier_ice_heating_flux'  ,&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'GHTSKIN'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -2154,6 +2154,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   !integer, pointer                    :: TILETYPES(:)
   type(MAPL_SunOrbit)                 :: ORBIT
 
+  integer                             :: LANDICE_OFFLINE
 !=============================================================================
 
 ! Begin... 
@@ -2197,6 +2198,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if ( ESMF_AlarmIsRinging(ALARM, RC=STATUS) ) then
        VERIFY_(STATUS)
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
+       VERIFY_(STATUS)
+       ! borrow CATCHMENT_OFFLINE
+       call MAPL_GetResource ( MAPL, LANDICE_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
        VERIFY_(STATUS)
        call LANDICECORE(RC=STATUS )
        VERIFY_(STATUS)
@@ -2333,6 +2337,7 @@ contains
    real, pointer, dimension(:)    :: DRUVR
    real, pointer, dimension(:)    :: DFUVR
    real, pointer, dimension(:)    :: TA
+   real, pointer, dimension(:)    :: QA
    real, pointer, dimension(:)    :: UU
    real, pointer, dimension(:,:)  :: DUDP
    real, pointer, dimension(:,:)  :: DUSV
@@ -2367,6 +2372,8 @@ contains
    real,    allocatable           :: SWN(:)
    real,    allocatable           :: DIF(:)
    real,    allocatable           :: ULW(:)
+   real,    allocatable           :: ALWN(:)
+   real,    allocatable           :: BLWN(:)
 
    real                           :: DT
    real                           :: LANDICECAP
@@ -2484,6 +2491,7 @@ contains
    call MAPL_GetPointer(IMPORT,DRUVR  , 'DRUVR'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DFUVR  , 'DFUVR'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,TA     , 'TA'     , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,QA     , 'QA'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,UU     , 'UU'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DUDP   , 'DUDP'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DUSV   , 'DUSV'   , RC=STATUS); VERIFY_(STATUS)
@@ -2762,10 +2770,12 @@ contains
     if(associated(TICE0   ))  TICE0    = 0.0
     if(associated(ACCUM   ))  ACCUM    = 0.0 
     if(associated(MELTWTR ))  MELTWTR  = 0.0
-    
-    TOTDEPOS  = 0.0
-    RCONSTIT  = 0.0
-    RMELT     = 0.0
+
+    if (N_constit>0) then
+       TOTDEPOS  = 0.0
+       RCONSTIT  = 0.0
+       RMELT     = 0.0
+    end if
 
     ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
     
@@ -2804,6 +2814,9 @@ contains
        
     end select
 
+
+    if (N_CONST_LANDICE4SNWALB /=0) then
+    
 ! Convert the dimentions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
 ! Note: Explanations of each variable
 ! TOTDEPOS(:,1): Combined dust deposition from size bin 1 (dry, conv-scav, ls-scav, sed)
@@ -2862,7 +2875,6 @@ contains
 ! RCONSTIT(NT,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NT,N,15): Sea salt mass from size bin 5 in layer N
 
-    if (N_CONST_LANDICE4SNWALB /=0) then
         RCONSTIT(:,:,1) = IRDU001(:,:)
         RCONSTIT(:,:,2) = IRDU002(:,:)
         RCONSTIT(:,:,3) = IRDU003(:,:)
@@ -2942,155 +2954,169 @@ contains
 !! The next sequence is to make sure that the albedo here and in solar are in sync
 !!
 ! Need to know when Solar was called last, so first get the solar alarm
-        call ESMF_ClockGetAlarm ( CLOCK, alarmname="SOLAR_Alarm", ALARM=SOLALARM, RC=STATUS )
-        VERIFY_(STATUS)
+    call ESMF_ClockGetAlarm ( CLOCK, alarmname="SOLAR_Alarm", ALARM=SOLALARM, RC=STATUS )
+    VERIFY_(STATUS)
 ! Get the interval of the solar alarm - first get it in seconds
-        call ESMF_ConfigGetAttribute ( CF, DT_SOLAR, Label="SOLAR_DT:", DEFAULT=DT, RC=STATUS )
-        VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute ( CF, DT_SOLAR, Label="SOLAR_DT:", DEFAULT=DT, RC=STATUS )
+    VERIFY_(STATUS)
 ! Now make an ESMF interval from the increment in seconds
-        CALL ESMF_TimeIntervalSet ( TINT, S=NINT(DT_SOLAR), RC=STATUS )
-        VERIFY_(STATUS)
+    CALL ESMF_TimeIntervalSet ( TINT, S=NINT(DT_SOLAR), RC=STATUS )
+    VERIFY_(STATUS)
 ! Now print out the solar alarm interval
-        if (MAPL_AM_I_Root(VM).and.debugzth) CALL ESMF_TimeIntervalPrint ( TINT, OPTIONS="string", RC=STATUS )
+    if (MAPL_AM_I_Root(VM).and.debugzth) CALL ESMF_TimeIntervalPrint ( TINT, OPTIONS="string", RC=STATUS )
 ! Now find out if it is ringing now: if so, set "BEFORE" to last time it rang before now
-         solalarmison = ESMF_AlarmIsRinging(SOLALARM,RC=STATUS)
-         VERIFY_(STATUS)
-         if (MAPL_AM_I_Root(VM).and.debugzth)print *,' logical for solar alarm ',solalarmison
+    solalarmison = ESMF_AlarmIsRinging(SOLALARM,RC=STATUS)
+    VERIFY_(STATUS)
+    if (MAPL_AM_I_Root(VM).and.debugzth)print *,' logical for solar alarm ',solalarmison
 !     if so, set "BEFORE" to last time it rang before now
-        if(solalarmison) then
-         if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is ringing '
-         NOW = CURRENT_TIME
-         BEFORE = NOW - TINT
+    if(solalarmison) then
+       if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is ringing '
+       NOW = CURRENT_TIME
+       BEFORE = NOW - TINT
 ! Now print out the last time solar alarm rang
-         if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
+       if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
 !     If alarm is not ringing now, find out when it rang last
-        else
-         if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is not ringing '
-         call ESMF_AlarmGet ( SOLALARM, prevRingTime=BEFORE, RC=STATUS )
-         VERIFY_(STATUS)
+    else
+       if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is not ringing '
+       call ESMF_AlarmGet ( SOLALARM, prevRingTime=BEFORE, RC=STATUS )
+       VERIFY_(STATUS)
 ! PrevRingTime can lie: if alarm never went off yet it gives next alarm time, not prev.
-         if(BEFORE > CURRENT_TIME) then
+       if(BEFORE > CURRENT_TIME) then
           BEFORE = BEFORE-TINT
           if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm not ringing, prev time lied '
           if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
-         else
+       else
           if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm not ringing, prev time okay '
           if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
-         endif
+       endif
 ! Now print out the last time solar alarm rang
-        endif
+    endif
 
 ! Get the zenith angle at the center of the time between the last solar call and the next one
-        call MAPL_SunGetInsolation(LONS, LATS,      &
+    call MAPL_SunGetInsolation(LONS, LATS,      &
             ORBIT, ZTH, SLR, &
             INTV = TINT,     &
             currTime=BEFORE+DELT,  &
             RC=STATUS )
-        VERIFY_(STATUS)
+    VERIFY_(STATUS)
 
-        ZTH = max(0.0,ZTH)
-
+    ZTH = max(0.0,ZTH)
+    
     do N=1,NUM_SUBTILES  
-
-    CFT = (CH(:,N)/CTATM)
-    CFQ = (CQ(:,N)/CQATM)
-    SHF = CFT*(SH   + DSH*(TS(:,N)-THATM))
-    LHF = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))*MAPL_ALHS
-    SHD = CFT*DSH
-    LHD = CFQ*DEV*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
-    SWN = ((DRUVR+DRPAR+DRNIR) + (DFUVR+DFPAR+DFNIR))*(1.0-LANDICEALB)
-    DIF = 0.0
-    ULW = ALW + BLW*TS(:,N)
-
-    LANDICECAP= (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
-
-    EVAPI   = LHF / MAPL_ALHS 
-    DEVAPDT = LHD / MAPL_ALHS
-    RADDN   = LWDNSRF + SWN 
-
-    PERC  = 0.0 
-    MELTI = 0.0 
-
-
-    if(N==SNOW) then
-
-       ITYPE = 9
-       LAI   = 0.0
-       GRN   = 0.0 
-       MODISFAC = 1.0
-
-       !*** have to do a transpose of these internals since their dimensions in SNOW_ALBEDO
-       !*** are reversed
-       WESNN = transpose(WESN)
-       HTSNN = transpose(HTSN)
-       SNDZN = transpose(SNDZ)
-       !*** call new/shared routine to compute albedo 
-
-       call    SNOW_ALBEDO(NT, NUM_SNOW_LAYERS, N_CONST_LANDICE4SNWALB, ITYPE, LAI, ZTH, & 
-                   RHOFRESH, VISMAX, NIRMAX, SLOPE, &     !0.96, 0.68, 1.0,  & !
-                   WESNN, HTSNN, SNDZN,        & ! snow stuff
-                   LNDVR, LNDNR, LNDVF, LNDNF, & ! instantaneous snow-free albedos on tiles
-                   SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
-                   RCONSTIT, UU, TS(:,SNOW), DRPAR, DFPAR & ! When only N_constit > 0 (oprional)
-                   )
-
-       VSUVR     = DRPAR + DRUVR
-       VSUVF     = DFPAR + DFUVR
-       SWNETSNOW = (1.-SNOVR)*VSUVR + (1.-SNOVF)*VSUVF + (1.-SNONR)*DRNIR + (1.-SNONF)*DFNIR
-       RADDN     = LWDNSRF + SWNETSNOW 
-       SWN       = SWNETSNOW
-       if(associated(SNOWALB)) then
-           where(FR(:,N) > 0.0)
-               SNOWALB = SNOVR*AWTVDR + SNOVF*AWTVDF + SNONR*AWTIDR + SNONF*AWTIDF
-           elsewhere
-               SNOWALB  = MAPL_UNDEF
-           endwhere
-           where(ZTH < 1.e-6)
-               SNOWALB = MAPL_UNDEF
-           endwhere
+       if (LANDICE_OFFLINE == 0 ) then
+          CFT   = (CH(:,N)/CTATM)
+          CFQ   = (CQ(:,N)/CQATM)
+          SHF   = CFT*(SH   + DSH*(TS(:,N)-THATM))
+          LHF   = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))*MAPL_ALHS
+          SHD   = CFT*DSH
+          LHD   = CFQ*DEV*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
+          ALWN  = ALW
+          BLWN  = BLW
+       else
+          CFT    = 1.0
+          CFQ    = 1.0
+          SHF    = MAPL_CP*CH(:,N)*(TS(:,N)-TA)
+          LHF    = CQ(:,N)*(QS(:,N)-QA) * MAPL_ALHS
+          SHD    = MAPL_CP*CH(:,N)
+          LHD    = CQ(:,N)*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
+          BLWN   = LANDICEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
+          ALWN   = -3.0*BLWN*TS(:,N)
+          BLWN   =  4.0*BLWN 
        endif
-    endif
 
-    if(N==ICE) then
-       do k=1,NT
-          if(FR(k,N) > MINFRACSNO) then     
-             call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 0,   &
-                              MELTI(k), DTSS=DTS(k),  RUNOFF=PERC(k),                 &
-                              lhturb=LHF(k),hlwtc=ULW(k),hsturb=SHF(k),raddn=RADDN(k),        &
-                              dlhdtc=LHD(k),dhsdtc=SHD(k),dhlwtc=BLW(k),rain=RAIN(k),    &
-                              rainrf=RAINRF(k),                                          & 
-                              lhflux=LHFO(k),shflux=SHFO(k),hlwout=HLWO(k),evapout=EVAPO(k), &
-                              ghflxice=ghflxice(k))
-          else
-             TICE(k,N,:) =  TICE(k,SNOW,:)
+       SWN = ((DRUVR+DRPAR+DRNIR) + (DFUVR+DFPAR+DFNIR))*(1.0-LANDICEALB)
+       DIF = 0.0
+       ULW = ALWN + BLWN*TS(:,N)
+
+       LANDICECAP= (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
+
+       EVAPI   = LHF / MAPL_ALHS 
+       DEVAPDT = LHD / MAPL_ALHS
+       RADDN   = LWDNSRF + SWN 
+
+       PERC  = 0.0 
+       MELTI = 0.0 
+
+
+       if(N==SNOW) then
+
+          ITYPE = 9
+          LAI   = 0.0
+          GRN   = 0.0 
+          MODISFAC = 1.0
+
+          !*** have to do a transpose of these internals since their dimensions in SNOW_ALBEDO
+          !*** are reversed
+          WESNN = transpose(WESN)
+          HTSNN = transpose(HTSN)
+          SNDZN = transpose(SNDZ)
+          !*** call new/shared routine to compute albedo 
+
+          call    SNOW_ALBEDO(NT, NUM_SNOW_LAYERS, N_CONST_LANDICE4SNWALB, ITYPE, LAI, ZTH, & 
+                      RHOFRESH, VISMAX, NIRMAX, SLOPE, &     !0.96, 0.68, 1.0,  & !
+                      WESNN, HTSNN, SNDZN,        & ! snow stuff
+                      LNDVR, LNDNR, LNDVF, LNDNF, & ! instantaneous snow-free albedos on tiles
+                      SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
+                      RCONSTIT, UU, TS(:,SNOW), DRPAR, DFPAR & ! When only N_constit > 0 (oprional)
+                      )
+
+          VSUVR     = DRPAR + DRUVR
+          VSUVF     = DFPAR + DFUVR
+          SWNETSNOW = (1.-SNOVR)*VSUVR + (1.-SNOVF)*VSUVF + (1.-SNONR)*DRNIR + (1.-SNONF)*DFNIR
+          RADDN     = LWDNSRF + SWNETSNOW 
+          SWN       = SWNETSNOW
+          if(associated(SNOWALB)) then
+              where(FR(:,N) > 0.0)
+                  SNOWALB = SNOVR*AWTVDR + SNOVF*AWTVDF + SNONR*AWTIDR + SNONF*AWTIDF
+              elsewhere
+                  SNOWALB  = MAPL_UNDEF
+              endwhere
+              where(ZTH < 1.e-6)
+                  SNOWALB = MAPL_UNDEF
+              endwhere
           endif
-       enddo 
-       TS(:,N)   =  TICE(:,N,1)
-       if(associated(RUNOFF))   RUNOFF   = RUNOFF + FR(:,N) * PERC
-    endif
+       endif
 
-    if(N==SNOW) then 
-       LANDICELT  =  TICE(:,N,1) - MAPL_TICE
-       do k=1,NT
+       if(N==ICE) then
+          do k=1,NT
+             if(FR(k,N) > MINFRACSNO) then     
+                call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 0,   &
+                                 MELTI(k), DTSS=DTS(k),  RUNOFF=PERC(k),                 &
+                                 lhturb=LHF(k),hlwtc=ULW(k),hsturb=SHF(k),raddn=RADDN(k),        &
+                                 dlhdtc=LHD(k),dhsdtc=SHD(k),dhlwtc=BLWN(k),rain=RAIN(k),    &
+                                 rainrf=RAINRF(k),                                          & 
+                                 lhflux=LHFO(k),shflux=SHFO(k),hlwout=HLWO(k),evapout=EVAPO(k), &
+                                 ghflxice=ghflxice(k))
+             else
+                TICE(k,N,:) =  TICE(k,SNOW,:)
+             endif
+          enddo 
+          TS(:,N)   =  TICE(:,N,1)
+          if(associated(RUNOFF))   RUNOFF   = RUNOFF + FR(:,N) * PERC
+       endif
+
+       if(N==SNOW) then 
+          LANDICELT  =  TICE(:,N,1) - MAPL_TICE
+          do k=1,NT
 #if 0 
-          LATSD=LATS(K)*rad_to_deg
-          LONSD=LONS(K)*rad_to_deg
-          !if(abs(LATSD-0.700003698112E+02) < 1.e-3 .and. &
-          !   abs(LONSD-(-0.539905136947E+02)) < 1.e-3 ) then
-          !if(abs(LATSD-0.605467530483E+02) < 1.e-3 .and. &
-          !   abs(LONSD-(-0.433431029954E+02)) < 1.e-3 ) then
-          if(abs(LATSD-0.807870232172E+02) < 1.e-3 .and. &
-             abs(LONSD-(-0.154247429558E+02)) < 1.e-3 ) then
-            print*, 'PE = ', mype, ' tile = ',k 
-          endif  
+             LATSD=LATS(K)*rad_to_deg
+             LONSD=LONS(K)*rad_to_deg
+             !if(abs(LATSD-0.700003698112E+02) < 1.e-3 .and. &
+             !   abs(LONSD-(-0.539905136947E+02)) < 1.e-3 ) then
+             !if(abs(LATSD-0.605467530483E+02) < 1.e-3 .and. &
+             !   abs(LONSD-(-0.433431029954E+02)) < 1.e-3 ) then
+             if(abs(LATSD-0.807870232172E+02) < 1.e-3 .and. &
+                abs(LONSD-(-0.154247429558E+02)) < 1.e-3 ) then
+               print*, 'PE = ', mype, ' tile = ',k 
+             endif  
 #endif
-          TKSNO = condice 
+             TKSNO = condice 
 
           call SNOWRT( LONS(k), LATS(k),                                       &  ! in     [radians]  !!!
                    1,NUM_SNOW_LAYERS,MAPL_LANDICE,                             &  ! in    
                    MAXSNDZ, RHOFRESH, DZMAX,                                   &  ! in    
                    LANDICELT(k),ZONEAREA,TKGND,PRECIP(k),SNO(k),TA(k),DT,      &  ! in    
-                   EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLW(k),            &  ! in    
+                   EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLWN(k),           &  ! in    
                    RADDN(k),ZC1,TOTDEPOS(k,:),                                 &  ! in    
                    WESN(k,:),HTSN(k,:),SNDZ(k,:), RCONSTIT(k,:,:),             &  ! inout    
                    HLWO(k), FROZFRAC(k,:),TPSN(k,:), RMELT(k,:),               &  ! out    
@@ -3099,108 +3125,109 @@ contains
                    SNDZSC(k), WESNPREC(k), SNDZPREC(k),SNDZ1PERC(k),           &  ! out    
                    WESNPERC(k,:), WESNDENS(k,:), WESNREPAR(k,:), MLT(k),       &  ! out      
                    EXCS(k,:), DRHO0(k,:), WESNBOT(k), TKSNO, DTS(k)       )       ! out   
-                                                                                 
 
-          ! Snow impurities update
-           if (N_CONST_LANDICE4SNWALB /= 0) then
-              if(associated(IRDU001)) IRDU001(k,:) = RCONSTIT(k,:,1) 
-              if(associated(IRDU002)) IRDU002(k,:) = RCONSTIT(k,:,2) 
-              if(associated(IRDU003)) IRDU003(k,:) = RCONSTIT(k,:,3) 
-              if(associated(IRDU004)) IRDU004(k,:) = RCONSTIT(k,:,4) 
-              if(associated(IRDU005)) IRDU005(k,:) = RCONSTIT(k,:,5) 
-              if(associated(IRBC001)) IRBC001(k,:) = RCONSTIT(k,:,6) 
-              if(associated(IRBC002)) IRBC002(k,:) = RCONSTIT(k,:,7) 
-              if(associated(IROC001)) IROC001(k,:) = RCONSTIT(k,:,8) 
-              if(associated(IROC002)) IROC002(k,:) = RCONSTIT(k,:,9) 
+             ! Snow impurities update
+              if (N_CONST_LANDICE4SNWALB /= 0) then
+                 if(associated(IRDU001)) IRDU001(k,:) = RCONSTIT(k,:,1) 
+                 if(associated(IRDU002)) IRDU002(k,:) = RCONSTIT(k,:,2) 
+                 if(associated(IRDU003)) IRDU003(k,:) = RCONSTIT(k,:,3) 
+                 if(associated(IRDU004)) IRDU004(k,:) = RCONSTIT(k,:,4) 
+                 if(associated(IRDU005)) IRDU005(k,:) = RCONSTIT(k,:,5) 
+                 if(associated(IRBC001)) IRBC001(k,:) = RCONSTIT(k,:,6) 
+                 if(associated(IRBC002)) IRBC002(k,:) = RCONSTIT(k,:,7) 
+                 if(associated(IROC001)) IROC001(k,:) = RCONSTIT(k,:,8) 
+                 if(associated(IROC002)) IROC002(k,:) = RCONSTIT(k,:,9) 
+              end if
+           if (N_constit>0) then
+              if(associated(RMELTDU001)) RMELTDU001(k) = RMELT(k,1) 
+              if(associated(RMELTDU002)) RMELTDU002(k) = RMELT(k,2) 
+              if(associated(RMELTDU003)) RMELTDU003(k) = RMELT(k,3) 
+              if(associated(RMELTDU004)) RMELTDU004(k) = RMELT(k,4) 
+              if(associated(RMELTDU005)) RMELTDU005(k) = RMELT(k,5) 
+              if(associated(RMELTBC001)) RMELTBC001(k) = RMELT(k,6) 
+              if(associated(RMELTBC002)) RMELTBC002(k) = RMELT(k,7) 
+              if(associated(RMELTOC001)) RMELTOC001(k) = RMELT(k,8) 
+              if(associated(RMELTOC002)) RMELTOC002(k) = RMELT(k,9)
            end if
-           if(associated(RMELTDU001)) RMELTDU001(k) = RMELT(k,1) 
-           if(associated(RMELTDU002)) RMELTDU002(k) = RMELT(k,2) 
-           if(associated(RMELTDU003)) RMELTDU003(k) = RMELT(k,3) 
-           if(associated(RMELTDU004)) RMELTDU004(k) = RMELT(k,4) 
-           if(associated(RMELTDU005)) RMELTDU005(k) = RMELT(k,5) 
-           if(associated(RMELTBC001)) RMELTBC001(k) = RMELT(k,6) 
-           if(associated(RMELTBC002)) RMELTBC002(k) = RMELT(k,7) 
-           if(associated(RMELTOC001)) RMELTOC001(k) = RMELT(k,8) 
-           if(associated(RMELTOC002)) RMELTOC002(k) = RMELT(k,9) 
 
-          if(associated(LWC ))then
-               ZDEP = sum(SNDZ(k,:))
-               if(sum(WESN(k,:)) > MINSWE) then
-                   if(ZDEP <= LWCTOP) then
-                      LWC(k) = sum(WESN(k,:)*(1.-FROZFRAC(k,:)))/sum(WESN(k,:))
-                   else
-                      KL  = 0
-                      ZKL = 0.0 
-                      do l=1,NUM_SNOW_LAYERS
-                         ZKL = ZKL + SNDZ(k,l) 
-                         if(ZKL > LWCTOP) then
-                           KL = l
-                           exit
-                         endif
-                      enddo 
-                      ALPHA = 1.0 - (ZKL-LWCTOP)/SNDZ(k,KL)
-                      LWC(k) = (sum(WESN(k,1:KL-1)*(1.-FROZFRAC(k,1:KL-1)))+ &
-                                ALPHA*WESN(k,KL)*(1.-FROZFRAC(k,KL))) / &
-                               (sum(WESN(k,1:KL-1))+ALPHA*WESN(k,KL))  
-                   endif
-               else
-                   LWC(k) = 0.0
-               endif            
-          endif
-          if(FR(K,N) < MINFRACSNO) then
-             TICE(k,N,:) =  TICE(k,ICE,:)
-          else
-              call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 1,   &
-                              MELTI(k),                    &
-                              condsno=TKSNO(NUM_SNOW_LAYERS),       & 
-                              !tsn=TPSN(k,NUM_SNOW_LAYERS),          & 
-                              fhgnd=FHGND(k),          & 
-                              sndz=SNDZ(k,NUM_SNOW_LAYERS)          &
-                              )
-              if(associated(RUNOFF)) RUNOFF(K)   = RUNOFF(K) + FR(K,N) * MELTI(K)
-          endif   
-       enddo   
-       WESNSC = EVAPO
-       !PERC = PERC + MELTI
-       if(associated(RUNOFF))   RUNOFF   = RUNOFF + PERC
-       TS(:,N) = TPSN(:,1)+MAPL_TICE
-       if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
-    endif
+             if(associated(LWC ))then
+                  ZDEP = sum(SNDZ(k,:))
+                  if(sum(WESN(k,:)) > MINSWE) then
+                      if(ZDEP <= LWCTOP) then
+                         LWC(k) = sum(WESN(k,:)*(1.-FROZFRAC(k,:)))/sum(WESN(k,:))
+                      else
+                         KL  = 0
+                         ZKL = 0.0 
+                         do l=1,NUM_SNOW_LAYERS
+                            ZKL = ZKL + SNDZ(k,l) 
+                            if(ZKL > LWCTOP) then
+                              KL = l
+                              exit
+                            endif
+                         enddo 
+                         ALPHA = 1.0 - (ZKL-LWCTOP)/SNDZ(k,KL)
+                         LWC(k) = (sum(WESN(k,1:KL-1)*(1.-FROZFRAC(k,1:KL-1)))+ &
+                                   ALPHA*WESN(k,KL)*(1.-FROZFRAC(k,KL))) / &
+                                  (sum(WESN(k,1:KL-1))+ALPHA*WESN(k,KL))  
+                      endif
+                  else
+                      LWC(k) = 0.0
+                  endif            
+             endif
+             if(FR(K,N) < MINFRACSNO) then
+                TICE(k,N,:) =  TICE(k,ICE,:)
+             else
+                 call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 1,   &
+                                 MELTI(k),                    &
+                                 condsno=TKSNO(NUM_SNOW_LAYERS),       & 
+                                 !tsn=TPSN(k,NUM_SNOW_LAYERS),          & 
+                                 fhgnd=FHGND(k),          & 
+                                 sndz=SNDZ(k,NUM_SNOW_LAYERS)          &
+                                 )
+                 if(associated(RUNOFF)) RUNOFF(K)   = RUNOFF(K) + FR(K,N) * MELTI(K)
+             endif   
+          enddo   
+          WESNSC = EVAPO
+          !PERC = PERC + MELTI
+          if(associated(RUNOFF))   RUNOFF   = RUNOFF + PERC
+          TS(:,N) = TPSN(:,1)+MAPL_TICE
+          if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
+       endif
 
-    DQS       = GEOS_QSAT(TS(:,N), PS, PASCALS=.TRUE.,RAMP=0.0) - QS(:,N)
-    QS(:,N)   = QS(:,N) + DQS  
+       DQS       = GEOS_QSAT(TS(:,N), PS, PASCALS=.TRUE.,RAMP=0.0) - QS(:,N)
+       QS(:,N)   = QS(:,N) + DQS  
 
-    LHF = LHFO
-    SHF = SHFO
-    ULW = HLWO 
+       LHF = LHFO
+       SHF = SHFO
+       ULW = HLWO 
 
-    if(associated(EVAPOUT)) EVAPOUT = EVAPOUT + FR(:,N)*EVAPO
-    if(associated(SUBLIM )) SUBLIM  = SUBLIM  + FR(:,N)*EVAPO
-    if(associated(SHOUT  )) SHOUT   = SHOUT   + FR(:,N)*SHF
-    if(associated(HLATN  )) HLATN   = HLATN   + FR(:,N)*LHF
+       if(associated(EVAPOUT)) EVAPOUT = EVAPOUT + FR(:,N)*EVAPO
+       if(associated(SUBLIM )) SUBLIM  = SUBLIM  + FR(:,N)*EVAPO
+       if(associated(SHOUT  )) SHOUT   = SHOUT   + FR(:,N)*SHF
+       if(associated(HLATN  )) HLATN   = HLATN   + FR(:,N)*LHF
 
-    if(associated(DELTS )) DELTS = DELTS + DTS*CFT*FR(:,N)
-    if(associated(DELQS )) DELQS = DELQS + DQS*CFQ*FR(:,N)
-    if(associated(EVPICE)) EVPICE = EVPICE + FR(:,N)*LHF
+       if(associated(DELTS )) DELTS = DELTS + DTS*CFT*FR(:,N)
+       if(associated(DELQS )) DELQS = DELQS + DQS*CFQ*FR(:,N)
+       if(associated(EVPICE)) EVPICE = EVPICE + FR(:,N)*LHF
 
-    !if(associated(RUNOFF))   RUNOFF   = RUNOFF + FR(:,N) * PERC
-    if(associated(IMELT ))   IMELT    = IMELT  + FR(:,N) * MELTI
+       !if(associated(RUNOFF))   RUNOFF   = RUNOFF + FR(:,N) * PERC
+       if(associated(IMELT ))   IMELT    = IMELT  + FR(:,N) * MELTI
 
-    if(associated(SWNDSRF )) SWNDSRF = SWNDSRF + SWN * FR(:,N)
-    if(associated(LWNDSRF )) LWNDSRF = LWNDSRF + (LWDNSRF - ULW) * FR(:,N)
-    if(associated(HLWUP   )) HLWUP   = HLWUP +   ULW * FR(:,N)
-    if(associated(DNICFLX )) DNICFLX = DNICFLX + DIF * FR(:,N)
-    if(associated(GHSNOW  )) GHSNOW  = ghflxsno
-    if(associated(ACCUM   )) ACCUM   = ACCUM - FR(:,N) * EVAPO  
-    if(associated(MELTWTR )) MELTWTR = MELTWTR + FR(:,N) * MELTI  
+       if(associated(SWNDSRF )) SWNDSRF = SWNDSRF + SWN * FR(:,N)
+       if(associated(LWNDSRF )) LWNDSRF = LWNDSRF + (LWDNSRF - ULW) * FR(:,N)
+       if(associated(HLWUP   )) HLWUP   = HLWUP +   ULW * FR(:,N)
+       if(associated(DNICFLX )) DNICFLX = DNICFLX + DIF * FR(:,N)
+       if(associated(GHSNOW  )) GHSNOW  = ghflxsno
+       if(associated(ACCUM   )) ACCUM   = ACCUM - FR(:,N) * EVAPO  
+       if(associated(MELTWTR )) MELTWTR = MELTWTR + FR(:,N) * MELTI  
 
-    if(associated(TICE0   )) then
-       do k=1,NT
-         TICE0(k,:) =  TICE0(k,:)  + TICE(k,N,:) * FR(k,N)
-       enddo
-    endif 
+       if(associated(TICE0   )) then
+          do k=1,NT
+            TICE0(k,:) =  TICE0(k,:)  + TICE(k,N,:) * FR(k,N)
+          enddo
+       endif 
 
-    enddo  
+    enddo ! NUM_SUBTILES 
 
     FR(:,ICE) = max(1.0-FR(:,SNOW), 0.0)
 

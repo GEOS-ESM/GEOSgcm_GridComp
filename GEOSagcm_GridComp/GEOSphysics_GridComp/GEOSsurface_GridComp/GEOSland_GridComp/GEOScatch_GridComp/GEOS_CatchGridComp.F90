@@ -321,7 +321,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'surface_downwelling_par_beam_flux',&
+         LONG_NAME          = 'surface_downwelling_PAR_beam_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'DRPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -330,7 +330,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'surface_downwelling_par_diffuse_flux',&
+         LONG_NAME          = 'surface_downwelling_PAR_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'DFPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -411,7 +411,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'greeness_fraction'           ,&
+         LONG_NAME          = 'vegetation_greenness_fraction',&
          UNITS              = '1'                           ,&
          SHORT_NAME         = 'GRN'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -1112,7 +1112,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'interception_reservoir_capac',&
+    LONG_NAME          = 'vegetation_interception_water_storage',&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CAPAC'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -1332,7 +1332,7 @@ subroutine SetServices ( GC, RC )
 
   if (CATCH_INTERNAL_STATE%SNOW_ALBEDO_INFO == 1) then
     call MAPL_AddInternalSpec(GC                        ,&
-       LONG_NAME          = 'effective_snow_albedo'     ,&
+       LONG_NAME          = 'effective_snow_reflectivity'     ,&
        UNITS              = '1'                         ,&
        SHORT_NAME         = 'SNOWALB'                   ,&
        FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -1564,7 +1564,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'runoff_flux'               ,&
+    LONG_NAME          = 'runoff_total_flux'         ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'RUNOFF'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1619,7 +1619,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'totoal soil moisture'      ,&
+    LONG_NAME          = 'total_soil_moisture'       ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'WATSOI'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1645,7 +1645,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'baseflow_flux'             ,&
+    LONG_NAME          = 'baseflow_flux_land'        ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'BASEFLOW'                  ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1780,7 +1780,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'ave_catchment_temp_incl_snw',& 
+    LONG_NAME          = 'surface_temperature_of_land_incl_snow',& 
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TPSURF'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1789,7 +1789,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'temperature_top_snow_layer',&
+    LONG_NAME          = 'surface_temperature_of_snow_on_land',&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TPSNOW'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1798,7 +1798,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'temperature_unsaturated_zone',&
+    LONG_NAME          = 'surface_temperature_of_unsaturated_zone',&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TPUNST'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1807,7 +1807,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'temperature_saturated_zone',&
+    LONG_NAME          = 'surface_temperature_of_saturated_zone',&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TPSAT'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1816,7 +1816,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'temperature_wilted_zone'   ,&
+    LONG_NAME          = 'surface_temperature_of_wilting_zone'   ,&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TPWLT'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1825,7 +1825,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'fractional_area_of_land_snowcover',&
+    LONG_NAME          = 'fractional_area_of_snow_on_land',&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'ASNOW'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1888,7 +1888,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_depth_within_snow_covered_area_fraction'   ,&
+    LONG_NAME          = 'snow_depth_within_snow_covered_area_fraction_on_land'   ,&
     UNITS              = 'm'                         ,&
     SHORT_NAME         = 'SNOWDP'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1897,7 +1897,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_soil_wetness'      ,&
+    LONG_NAME          = 'soil_wetness_surface'      ,&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'WET1'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1906,7 +1906,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'root_zone_soil_wetness'    ,&
+    LONG_NAME          = 'soil_wetness_rootzone'     ,&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'WET2'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1915,7 +1915,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'ave_prof_soil__moisture'   ,&
+    LONG_NAME          = 'soil_wetness_profile'      ,&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'WET3'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1924,7 +1924,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'water_surface_layer'       ,&
+    LONG_NAME          = 'soil_moisture_surface'     ,&
     UNITS              = 'm3 m-3'                    ,&
     SHORT_NAME         = 'WCSF'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1933,7 +1933,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'water_root_zone'           ,&
+    LONG_NAME          = 'soil_moisture_rootzone'    ,&
     UNITS              = 'm3 m-3'                    ,&
     SHORT_NAME         = 'WCRZ'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1942,8 +1942,8 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'water_ave_prof'            ,&
-    UNITS              = 'm3 m-3'                   ,&
+    LONG_NAME          = 'soil_moisture_profile'     ,&
+    UNITS              = 'm3 m-3'                    ,&
     SHORT_NAME         = 'WCPR'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1951,7 +1951,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'soil_temperatures_layer_1' ,&
+    LONG_NAME          = 'soil_temperature_layer_1'  ,&
     UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP1'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1960,7 +1960,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'soil_temperatures_layer_2' ,&
+    LONG_NAME          = 'soil_temperature_layer_2'  ,&
     UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP2'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1969,7 +1969,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'soil_temperatures_layer_3' ,&
+    LONG_NAME          = 'soil_temperature_layer_3'  ,&
     UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP3'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1978,7 +1978,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'soil_temperatures_layer_4' ,&
+    LONG_NAME          = 'soil_temperature_layer_4'  ,&
     UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP4'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1987,7 +1987,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'soil_temperatures_layer_5' ,&
+    LONG_NAME          = 'soil_temperature_layer_5'  ,&
     UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP5'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1996,7 +1996,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'soil_temperatures_layer_6' ,&
+    LONG_NAME          = 'soil_temperature_layer_6'  ,&
     UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP6'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2014,7 +2014,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_albedo_visible_beam',&
+    LONG_NAME          = 'surface_reflectivity_visible_beam',&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'ALBVR'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2023,7 +2023,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_albedo_visible_diffuse',&
+    LONG_NAME          = 'surface_reflectivity_visible_diffuse',&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'ALBVF'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2032,7 +2032,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_albedo_near_infrared_beam',&
+    LONG_NAME          = 'surface_reflectivity_near_infrared_beam',&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'ALBNR'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2041,7 +2041,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_albedo_near_infrared_diffuse',&
+    LONG_NAME          = 'surface_reflectivity_near_infrared_diffuse',&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'ALBNF'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2323,7 +2323,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'EVLAND',                    &
-    LONG_NAME          = 'Total_evapotranspiration_land',          &
+    LONG_NAME          = 'total_evapotranspiration_land',          &
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2350,7 +2350,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'DRPARLAND',                 &
-    LONG_NAME          = 'surface_downwelling_par_beam_flux', &
+    LONG_NAME          = 'surface_downwelling_PAR_beam_flux', &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2359,7 +2359,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'DFPARLAND',                 &
-    LONG_NAME          = 'surface_downwelling_par_diffuse_flux', &
+    LONG_NAME          = 'surface_downwelling_PAR_diffuse_flux', &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2378,7 +2378,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SWNETSNOW',                    &
-    LONG_NAME          = 'Net_shortwave_snow',        &
+    LONG_NAME          = 'Net_shortwave_flux_snow',        &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2462,7 +2462,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SWLAND',                    &
-    LONG_NAME          = 'Net_shortwave_land',        &
+    LONG_NAME          = 'Net_shortwave_flux_land',   &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2471,7 +2471,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SWDOWNLAND',                &
-    LONG_NAME          = 'Incident_shortwave_land',   &
+    LONG_NAME          = 'Incident_shortwave_flux_land',   &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2481,7 +2481,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LWLAND',                    &
-    LONG_NAME          = 'Net_longwave_land',         &
+    LONG_NAME          = 'Net_longwave_flux_land',    &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2491,7 +2491,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'GHLAND',                    &
-    LONG_NAME          = 'Ground_heating_land',       &
+    LONG_NAME          = 'Ground_heating_flux_land',  &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2500,7 +2500,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'GHTSKIN',                   &
-    LONG_NAME          = 'Ground_heating_skin_temp',  &
+    LONG_NAME          = 'Ground_heating_flux_for_skin_temp_land',  &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2519,7 +2519,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'TWLAND',                    &
-    LONG_NAME          = 'Avail_water_storage_land',  &
+    LONG_NAME          = 'total_water_storage_land',  &
     UNITS              = 'kg m-2',                    &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2921,7 +2921,7 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_TimerOn(MAPL,"INITIALIZE")
 
 
-    ! retrieve interal state
+    ! retrieve internal state
 
     call ESMF_UserCompGetInternalState ( GC, 'CatchInternal',wrap,status )
     VERIFY_(STATUS)
@@ -4904,9 +4904,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      !--------------- GOSWIM IMPORTS FROM GOCART ---------------
      ! Initialization 
-     RCONSTIT(:,:,:)  = 0.0
-     TOTDEPOS(:,:) = 0.0
-     RMELT(:,:)  = 0.0
+     if (N_constit>0) then
+        RCONSTIT(:,:,:)  = 0.0
+        TOTDEPOS(:,:) = 0.0
+        RMELT(:,:)  = 0.0
+     end if
      !------------------------------------------------------------------
 
      ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
@@ -4946,6 +4948,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      end select
 
+     if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
+     
 ! Convert the dimentions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
 ! Note: Explanations of each variable
 ! TOTDEPOS(:,1): Combined dust deposition from size bin 1 (dry, conv-scav, ls-scav, sed)
@@ -5005,7 +5009,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! RCONSTIT(NTILES,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NTILES,N,15): Sea salt mass from size bin 5 in layer N
 
-        if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            RCONSTIT(:,:,1) = RDU001(:,:)
            RCONSTIT(:,:,2) = RDU002(:,:)
            RCONSTIT(:,:,3) = RDU003(:,:)
@@ -5159,15 +5162,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         QC(:,FSNW) = QSAT(:,FSNW)
         
-! --------------------------------------------------------------------------
+	! --------------------------------------------------------------------------
         ! get total solid precip
         ! --------------------------------------------------------------------------
 
         SLDTOT = SNO+ICE+FRZR
         
-! protect the forcing from unsavory values, as per practice in offline
-! driver
-! --------------------------------------------------------------------------
+	! protect the forcing from unsavory values, as per practice in offline
+	! driver
+	! --------------------------------------------------------------------------
 
         _ASSERT(count(PLS<0.)==0,'needs informative message')
         _ASSERT(count(PCU<0.)==0,'needs informative message')
@@ -5933,15 +5936,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(FICE2 )) FICE2  = max( min( FICESOUT(2,:),1.0 ), 0.0 )
         if(associated(FICE3 )) FICE3  = max( min( FICESOUT(3,:),1.0 ), 0.0 )
 
-        if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
-        if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
-        if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
-        if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
-        if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
-        if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
-        if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
-        if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
-        if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+
+        if (N_constit>0) then
+           if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
+           if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
+           if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
+           if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
+           if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
+           if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
+           if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
+           if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
+           if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        end if
 
         if(associated(DZGT1 )) DZGT1  = DZGT(1)                               ! [m]
         if(associated(DZGT2 )) DZGT2  = DZGT(2)                               ! [m]
