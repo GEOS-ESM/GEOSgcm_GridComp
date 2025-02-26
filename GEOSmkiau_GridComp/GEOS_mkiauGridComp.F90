@@ -237,7 +237,7 @@ contains
 
 #ifdef HAS_PYMLINC
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QL',                                        &
+         SHORT_NAME = 'QLTOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -246,7 +246,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QI',                                        &
+         SHORT_NAME = 'QITOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -255,7 +255,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QR',                                        &
+         SHORT_NAME = 'QRTOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -264,7 +264,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QS',                                        &
+         SHORT_NAME = 'QSTOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -273,7 +273,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QG',                                        &
+         SHORT_NAME = 'QGTOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
