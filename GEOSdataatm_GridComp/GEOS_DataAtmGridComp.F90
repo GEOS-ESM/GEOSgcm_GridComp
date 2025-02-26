@@ -202,6 +202,7 @@ module GEOS_DataAtmGridCompMod
       LONG_NAME = 'surface_temperature', &
       UNITS = 'K',                           &
       DIMS = MAPL_DimsHorzOnly,              &
+      DEFAULT = -1000.0,                     &
       VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddInternalSpec(GC,              &
@@ -270,7 +271,12 @@ module GEOS_DataAtmGridCompMod
 
     ! This call is needed only when we use ReadForcing.
     ! If we switch to use ExtData, next line has be commented out
-    call MAPL_TerminateImport    ( GC, ALL=.true., __RC__ )
+    if (DO_CICE_THERMO == 2) then
+       call MAPL_TerminateImport    ( GC, SHORT_NAMES=['SURFSTATE'],    &
+                                      CHILD_IDS=[SURF],  __RC__  )
+    else
+       call MAPL_TerminateImport    ( GC, ALL=.true., __RC__ )
+    endif
 
     call MAPL_GenericSetServices    ( GC, __RC__)
 
@@ -419,6 +425,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, dimension(:,:), pointer             :: ALW, BLW, SPEED, DISCHARGE, rPCU, rPLS, sSNO
   real, dimension(:,:), pointer             :: CT, CQ, CM, SH, EVAP, TAUX, TAUY, Tskin, lwdnsrf
   real, dimension(:,:), pointer             :: DRPARN, DFPARN, DRNIRN, DFNIRN, DRUVRN, DFUVRN
+  real, dimension(:,:), pointer             :: DSH, DEVAP
   real, dimension(:,:), pointer             :: EMISSRF
 
   real, allocatable, dimension(:,:) :: ZTH
@@ -474,7 +481,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  real LATSO, LONSO
 
    real, parameter :: HW_hack = 2.
-   logical :: firsttime = .true.
+   logical :: firsttime = .false.
 
    real :: TAU_TS
    real :: DT
@@ -590,7 +597,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     SPEED = SQRT(Uair**2 + Vair**2)
 
     IM = size(Uair, 1)
-    JM = size(Uair, 1)
+    JM = size(Uair, 2)
     allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), __STAT__)
 
     call MAPL_GetPointer(SurfImport, DZ, 'DZ', __RC__)
@@ -609,11 +616,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call SetVarToZero('DEWL', __RC__)
     call SetVarToZero('FRSL', __RC__)
 
+    call MAPL_GetPointer(SurfImport, DSH, 'DSH', __RC__)
+    call MAPL_GetPointer(SurfImport, DEVAP, 'DEVAP', __RC__)
 ! these should be set to 0 (for now)
-    call SetVarToZero('DSH', __RC__)
+    !call SetVarToZero('DSH', __RC__)
     call SetVarToZero('DFU', __RC__)
     call SetVarToZero('DFV', __RC__)
-    call SetVarToZero('DEVAP', __RC__)
+    !call SetVarToZero('DEVAP', __RC__)
     call SetVarToZero('DDEWL', __RC__)
     call SetVarToZero('DFRSL', __RC__)
 
@@ -653,7 +662,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !------------------------------------------------------
 
     call ESMF_ClockGet(CLOCK,     TIMESTEP=DELT, __RC__)
-    DELT = DELT * NINT((86400./DT)) ! emulate daily Solar
+    ! the line below only works for daily forcing e..g. CORE I
+    ! for JRA55-DO or any dataset at higher frequency, this line makes SW much
+    ! higher than what data prescribed
+    !DELT = DELT * NINT((86400./DT)) ! emulate daily Solar
 
     call MAPL_SunGetInsolation(LONS, LATS,      &
               ORBIT, ZTH, SLR, &
@@ -711,6 +723,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(SurfImport, ALW, 'ALW', __RC__)
     call MAPL_GetPointer(SurfImport, BLW, 'BLW', __RC__)
 
+    if(any(Tskin<0.0)) then !only when DATAATM restart is bootstrapped
+       firsttime = .true.
+    end if
+
     if (firsttime) then
        firsttime = .false.
        Tskin = TA
@@ -767,6 +783,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     EVAP = CQ * (Qskin - Qair) 
     TAUX = CM * (Uskin - Uair)
     TAUY = CM * (Vskin - Vair)
+
+    ! these derivatives are important for sea ice
+    DSH = CT !* MAPL_CP (MAPL_CP got multiplied in Surf)
+    DEVAP = CQ
 
 101 format (A, e20.12, 3I3.2)
 
@@ -1070,7 +1090,7 @@ end subroutine RUN
     call MAPL_TimerOn(MAPL,"TOTAL"   )
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
-    if (DO_CICE_THERMO /= 0) call dealloc_column_physics( MAPL_AM_I_Root(), Iam )
+    if (DO_CICE_THERMO == 1) call dealloc_column_physics( MAPL_AM_I_Root(), Iam )
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )

@@ -29,6 +29,7 @@ program mk_runofftbl
   use mapl_sortmod
   use rmTinyCatchParaMod, only : init_bcs_config, OUTLETV
   use netcdf
+  use, intrinsic :: iso_fortran_env, only: REAL64
   
   implicit none
   include 'netcdf.inc'
@@ -168,8 +169,8 @@ program mk_runofftbl
      if(lnd<0) in(l) = 1.
   end do
   
-  print *, "area of sphere = ", sum(real(area,kind=8))
-  print *, "area of land   = ", sum(real(area*in,kind=8))
+  print *, "area of sphere = ", sum(real(area,REAL64))
+  print *, "area of land   = ", sum(real(area*in,REAL64))
   
   close(10)
 
@@ -330,7 +331,7 @@ program mk_runofftbl
   do j=1,NumTrans
      Out(DstTile(j)) = Out(DstTile(j)) + In(SrcTile(J))*SrcFraction(J)
   enddo
-  print *, "area of land   = ",    sum(real(area*out,kind=8))
+  print *, "area of land   = ",    sum(real(area*out,REAL64))
   
   print *, "Completed successfully"
   

@@ -4778,7 +4778,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME='QCVAR_EXP',                                   &
+         SHORT_NAME='QCVAR',                                   &
          LONG_NAME ='inverse relative variance of cloud water',        &
          UNITS      = '1',                                    &
          DIMS      = MAPL_DimsHorzOnly,                            &
@@ -5222,7 +5222,7 @@ contains
     real, allocatable, dimension(:,:)   :: TMP2D
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
-    real, pointer, dimension(:,:,:) :: NACTL, NACTI
+    real, pointer, dimension(:,:,:) :: NACTL, NACTI, NCPL, NCPI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W
     real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
@@ -5295,6 +5295,8 @@ contains
        call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, NACTL,   'NACTL'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, NACTI,   'NACTI'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NCPL,   'NACTL'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NCPI,   'NACTI'    , RC=STATUS); VERIFY_(STATUS)
 
        ! Import State
        call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
@@ -5319,12 +5321,17 @@ contains
        call MAPL_GetPointer(IMPORT, FRACI,     'FRACI'     , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, SNOMAS,    'SNOMAS'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SRF_TYPE,  'SRF_TYPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       SRF_TYPE = 0.0 ! Ocean
-       where (FRLAND > 0.1)
-         SRF_TYPE = 1.0 ! Land
-       end where
-       where ( (SNOMAS > 0.1) .OR. (FRLANDICE > 0.5) .OR. (FRACI > 0.5) )
-         SRF_TYPE = 2.0 ! Ice/Snow
+
+       where ( (FRLANDICE > 0.5) .OR. (FRACI > 0.5) )
+          SRF_TYPE = 3.0 ! Ice
+       elsewhere ( SNOMAS > 0.1 .AND. SNOMAS /= MAPL_UNDEF )
+          ! NOTE: SNOMAS has UNDEFs so we need to make sure we don't
+          !       allow that to infect this comparison
+          SRF_TYPE = 2.0 ! Snow
+       elsewhere (FRLAND > 0.1)
+          SRF_TYPE = 1.0 ! Land
+       elsewhere
+          SRF_TYPE = 0.0 ! Ocean
        end where
 
        ! Allocatables
@@ -5559,7 +5566,7 @@ contains
            end where
          endif
 
-         if (.FALSE.) then
+         if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
           QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
          else
           DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
