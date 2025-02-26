@@ -577,7 +577,7 @@ contains
        VERIFY_(STATUS)
     endif
 
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     call MAPL_AddConnectivity ( GC,                                 &
          SHORT_NAME  = (/'QL    ', 'QI    ', 'QR    ', 'QS    ', 'QG    '/), &
          DST_ID = AIAU,                                             &

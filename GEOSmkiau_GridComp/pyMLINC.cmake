@@ -1,7 +1,5 @@
 message(STATUS "Building pyMLINC interface")
 
-add_definitions(-DPYMLINC_INTEGRATION)
-
 # The Python library creation requires mpiexec/mpirun to run on a
 # compute node. Probably a weird SLURM thing?
 find_package(Python3 COMPONENTS Interpreter REQUIRED)

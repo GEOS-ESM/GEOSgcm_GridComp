@@ -16,6 +16,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_PhysicsGridComp.F90)
     SRCS GEOS_PhysicsGridComp.F90 MBundle_IncrementMod.F90
     SUBCOMPONENTS ${alldirs}
     DEPENDENCIES MAPL GMAO_mpeu GMAO_stoch ESMF::ESMF)
+  target_compile_definitions (${this} PRIVATE $<$<BOOL:${BUILD_WITH_PYMLINC}>:HAS_PYMLINC>)
 
 else ()
 

@@ -1058,7 +1058,7 @@ contains
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'QL',                                        &
          CHILD_ID = MOIST,                                         &

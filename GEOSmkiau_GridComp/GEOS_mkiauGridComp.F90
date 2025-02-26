@@ -19,7 +19,7 @@ module GEOS_mkiauGridCompMod
   use GEOS_UtilsMod
 ! use GEOS_RemapMod, only: myremap => remap
   use m_set_eta, only: set_eta
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
   use pyMLINC_interface_mod
   use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
 #endif
@@ -95,7 +95,7 @@ contains
     type (ESMF_Config)                      :: CF
 
     logical                                 :: BLEND_AT_PBL
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     ! IEEE trapping see below
     logical                                 :: halting_mode(5)
 #endif
@@ -235,7 +235,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'QL',                                        &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
@@ -513,7 +513,7 @@ contains
     call MAPL_GenericSetServices    ( gc, RC=STATUS)
     VERIFY_(STATUS)
 
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     ! Spin the interface - we have to deactivate the ieee fpe error
     ! to be able to load numpy, scipy and other numpy packages
     ! that generate NaN as an init mechanism for numerical solving
@@ -763,7 +763,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer nsecf
           nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
 
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     ! BOGUS DATA TO SHOW USAGE
     type(a_pod_struct_type) :: options
     real, allocatable, dimension(:,:,:) :: in_buffer
@@ -1226,7 +1226,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        call handleANA_
     endif
 
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     if ( IHAVEMLINC/=0 ) then
        ! BOGUS CODE TO SHOW USAGE
        options%npx = 10
