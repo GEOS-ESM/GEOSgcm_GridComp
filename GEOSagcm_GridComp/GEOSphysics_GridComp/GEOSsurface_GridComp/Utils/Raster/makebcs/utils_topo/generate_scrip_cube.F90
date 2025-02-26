@@ -242,8 +242,10 @@
     _VERIFY(status)
     status = nf90_put_att(UNIT, NF90_GLOBAL, 'GridDescriptionFormat', 'SCRIP')
     _VERIFY(status)
-    status = nf90_put_att(UNIT, NF90_GLOBAL, 'rrfac_max', rrfac_max)
-    _VERIFY(status)
+    if (do_schmidt) then
+       status = nf90_put_att(UNIT, NF90_GLOBAL, 'rrfac_max', rrfac_max)
+       _VERIFY(status)
+    endif
 
     status = NF90_DEF_DIM(UNIT, 'grid_size'  , SCRIP_size, gridsize)
     _VERIFY(status)
@@ -298,10 +300,12 @@
     _VERIFY(status)
     status = nf90_put_att(UNIT, cellarea, "units"    ,"radians^2")
     _VERIFY(status)
-    status = nf90_def_var(UNIT, "rrfac", NF90_DOUBLE, [gridsize], cellrrfac)
-    _VERIFY(status)
-    status = nf90_put_att(UNIT, cellrrfac, "units"    ,"unitless")
-    _VERIFY(status)
+    if (do_schmidt) then
+       status = nf90_def_var(UNIT, "rrfac", NF90_DOUBLE, [gridsize], cellrrfac)
+       _VERIFY(status)
+       status = nf90_put_att(UNIT, cellrrfac, "units"    ,"unitless")
+       _VERIFY(status)
+    endif
 
     status = nf90_enddef(UNIT)
     _VERIFY(status)
@@ -336,8 +340,10 @@
     status = NF90_PUT_VAR(UNIT, cellarea, SCRIP_Area,start, cnt)
     _VERIFY(status)
 
-    status = NF90_PUT_VAR(UNIT, cellrrfac, SCRIP_rrfac,start, cnt)
-    _VERIFY(status)
+    if (do_schmidt) then
+       status = NF90_PUT_VAR(UNIT, cellrrfac, SCRIP_rrfac,start, cnt)
+       _VERIFY(status)
+    endif
 !! Grid mask
 !! ---------
     allocate(grid_imask(tmp), stat=status)
