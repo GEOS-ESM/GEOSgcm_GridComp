@@ -64,7 +64,7 @@ RHOR = Float(1.0e3)  # density of rain water, lin83
 
 RC = (Float(4.0) / Float(3.0)) * PI * RHOR
 
-# cloud microphysics switchers
+# cloud microphysics switches
 
 DO_SETUP = True  # setup constants and parameters
 P_NONHYDRO = False  # perform hydrosatic adjustment on air density
