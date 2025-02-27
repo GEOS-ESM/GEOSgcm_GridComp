@@ -3,7 +3,7 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.driver.config import config
-from pyMoist.GFDL_1M.driver.driver import driver
+from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 
 
 class TranslateGFDL_1M_driver(TranslateFortranData2Py):
@@ -404,7 +404,7 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
             mp_print,
         )
 
-        stencil = driver(
+        stencil = MicrophysicsDriver(
             self.stencil_factory,
             self.quantity_factory,
             namelist,

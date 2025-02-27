@@ -8,7 +8,7 @@ from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.masks import Masks
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
-from pyMoist.GFDL_1M.driver.driver import driver
+from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from ndsl.stencils.testing.grid import Grid
 
 
@@ -62,6 +62,18 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         ]
 
         self.out_vars = self.in_vars["data_vars"].copy()
+        self.out_vars.update(
+            {
+                "REV_LS": {},
+                "RSU_LS": {},
+                "PRCP_RAIN": {},
+                "PRCP_SNOW": {},
+                "PRCP_ICE": {},
+                "PRCP_GRAUPEL": {},
+                "PFL_LS": {},
+                "PFI_LS": {},
+            }
+        )
         del (
             self.out_vars["qv"],
             self.out_vars["ql"],
@@ -174,7 +186,7 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         )
 
         # Initalize object to be tested
-        self.driver = driver(
+        self.driver = MicrophysicsDriver(
             self.stencil_factory,
             self.quantity_factory,
             self.GFDL_1M_config,
@@ -187,21 +199,28 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
             **inputs,
         )
 
-        self.out_vars.update(
+        extra_outputs = {
+            "REV_LS": self.driver.outputs.revap.view[:],
+            "RSU_LS": self.driver.outputs.isubl.view[:],
+            "PRCP_RAIN": self.driver.outputs.rain.view[:],
+            "PRCP_SNOW": self.driver.outputs.snow.view[:],
+            "PRCP_ICE": self.driver.outputs.ice.view[:],
+            "PRCP_GRAUPEL": self.driver.outputs.graupel.view[:],
+            "PFL_LS": self.driver.outputs.m2_rain.view[:],
+            "PFI_LS": self.driver.outputs.m2_sol.view[:],
+        }
+        # breakpoint()
+        inputs.update(
             {
-                "revap": self.driver.outputs.revap.view[:] | {"serialname": "REV_LS"},
-                "isubl": self.driver.outputs.isubl.view[:] | {"serialname": "RSU_LS"},
-                "precip_rain": self.driver.outputs.rain.view[:]
-                | {"serialname": "PRCP_RAIN"},
-                "precip_snow": self.driver.outputs.snow.view[:]
-                | {"serialname": "PRCP_SNOW"},
-                "precip_ice": self.driver.outputs.ice.view[:]
-                | {"serialname": "PRCP_ICE"},
-                "precip_graupel": self.driver.outputs.graupel.view[:]
-                | {"serialname": "PRCP_GRAUPEL"},
-                "m2_rain": self.driver.outputs.m2_rain.view[:]
-                | {"serialname": "PFL_LS"},
-                "m2_sol": self.driver.outputs.m2_sol.view[:] | {"serialname": "PFI_LS"},
+                "REV_LS": self.driver.outputs.revap.view[:],
+                "RSU_LS": self.driver.outputs.isubl.view[:],
+                "PRCP_RAIN": self.driver.outputs.rain.view[:],
+                "PRCP_SNOW": self.driver.outputs.snow.view[:],
+                "PRCP_ICE": self.driver.outputs.ice.view[:],
+                "PRCP_GRAUPEL": self.driver.outputs.graupel.view[:],
+                "PFL_LS": self.driver.outputs.m2_rain.view[:],
+                "PFI_LS": self.driver.outputs.m2_sol.view[:],
             }
         )
+
         return inputs

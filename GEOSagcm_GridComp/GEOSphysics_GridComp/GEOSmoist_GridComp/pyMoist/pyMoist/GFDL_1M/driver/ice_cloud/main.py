@@ -1,11 +1,13 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.typing import FloatFieldIJ, FloatField
 from pyMoist.GFDL_1M.driver.config import config
 from pyMoist.GFDL_1M.driver.ice_cloud.stencils import (
     icloud_core,
-    update_output,
+    update_precip_total,
 )
 from pyMoist.GFDL_1M.driver.support import ConfigConstants
+from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 
 class IceCloud:
@@ -88,41 +90,37 @@ class IceCloud:
         )
 
         self._update_output = stencil_factory.from_dims_halo(
-            func=update_output,
+            func=update_precip_total,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
     def __call__(
         self,
-        t1,
-        p_dry,
-        dp1,
-        qv1,
-        ql1,
-        qr1,
-        qi1,
-        qs1,
-        qg1,
-        qa1,
-        den1,
-        denfac,
-        vts,
-        vtg,
-        vtr,
-        subl1,
-        isubl,
-        rh_limited,
-        ccn,
-        cnv_frc,
-        srf_type,
-        table1,
-        table2,
-        table3,
-        table4,
-        des1,
-        des2,
-        des3,
-        des4,
+        t1: FloatField,
+        p_dry: FloatField,
+        dp1: FloatField,
+        qv1: FloatField,
+        ql1: FloatField,
+        qr1: FloatField,
+        qi1: FloatField,
+        qs1: FloatField,
+        qg1: FloatField,
+        qa1: FloatField,
+        den1: FloatField,
+        denfac: FloatField,
+        vts: FloatField,
+        vtg: FloatField,
+        vtr: FloatField,
+        subl1: FloatField,
+        isubl: FloatField,
+        rh_limited: FloatField,
+        ccn: FloatField,
+        cnv_frc: FloatFieldIJ,
+        srf_type: FloatFieldIJ,
+        table2: GlobalTable_driver_qsat,
+        table3: GlobalTable_driver_qsat,
+        des2: GlobalTable_driver_qsat,
+        des3: GlobalTable_driver_qsat,
     ):
         self._icloud_core(
             t1,
@@ -145,14 +143,10 @@ class IceCloud:
             ccn,
             cnv_frc,
             srf_type,
-            table1,
             table2,
             table3,
-            table4,
-            des1,
             des2,
             des3,
-            des4,
         )
 
         self._update_output(

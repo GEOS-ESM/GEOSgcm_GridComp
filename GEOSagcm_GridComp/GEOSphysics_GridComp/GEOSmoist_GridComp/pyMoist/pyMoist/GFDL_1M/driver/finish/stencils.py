@@ -24,8 +24,6 @@ def update_tendencies(
     qi1: FloatField,
     qs1: FloatField,
     qg1: FloatField,
-    qa1: FloatField,
-    qn: FloatField,  # NACTL + NACTI
     qv_dt: FloatField,
     ql_dt: FloatField,
     qr_dt: FloatField,
@@ -44,29 +42,13 @@ def update_tendencies(
     vin: FloatField,
     v1: FloatField,
     vdt: FloatField,
-    dz: FloatField,
     dp: FloatField,
     dp1: FloatField,
-    den: FloatField,
-    p_dry: FloatField,
-    area: FloatFieldIJ,
-    dt_moist: Float,
-    fr_land: FloatFieldIJ,
-    cnv_frc: FloatFieldIJ,
-    srf_type: FloatFieldIJ,
-    eis: FloatFieldIJ,
-    rh_limited: FloatField,
     m1: FloatField,
-    anv_icefall: Float,
-    lsc_icefall: Float,
-    revap: FloatField,  # strict output
-    isubl: FloatField,  # strict output
     rain: FloatFieldIJ,  # strict output
     snow: FloatFieldIJ,  # strict output
     ice: FloatFieldIJ,  # strict output
     graupel: FloatFieldIJ,  # strict output
-    m2_rain: FloatField,  # strict output
-    m2_sol: FloatField,  # strict output
 ):
     """
     compute output tendencies of the microphysics driver

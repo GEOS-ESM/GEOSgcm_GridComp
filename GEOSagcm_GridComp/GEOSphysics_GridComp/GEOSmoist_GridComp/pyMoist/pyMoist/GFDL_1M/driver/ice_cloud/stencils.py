@@ -896,14 +896,10 @@ def subgrid_z_proc(
     ccn: Float,
     cnv_frc: Float,
     srf_type: Float,
-    table1: GlobalTable_driver_qsat,
     table2: GlobalTable_driver_qsat,
     table3: GlobalTable_driver_qsat,
-    table4: GlobalTable_driver_qsat,
-    des1: GlobalTable_driver_qsat,
     des2: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
-    des4: GlobalTable_driver_qsat,
 ):
     from __externals__ import (
         c_air,
@@ -1392,14 +1388,10 @@ def icloud_core(
     ccn: FloatField,
     cnv_frc: FloatFieldIJ,
     srf_type: FloatFieldIJ,
-    table1: GlobalTable_driver_qsat,
     table2: GlobalTable_driver_qsat,
     table3: GlobalTable_driver_qsat,
-    table4: GlobalTable_driver_qsat,
-    des1: GlobalTable_driver_qsat,
     des2: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
-    des4: GlobalTable_driver_qsat,
 ):
     # reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
     # Fortran author: Shian-Jiann lin, gfdl
@@ -1571,19 +1563,15 @@ def icloud_core(
             ccn,
             cnv_frc,
             srf_type,
-            table1,
             table2,
             table3,
-            table4,
-            des1,
             des2,
             des3,
-            des4,
         )
         # end reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
 
 
-def update_output(
+def update_precip_total(
     isubl: FloatField,
     subl1: FloatField,
 ):

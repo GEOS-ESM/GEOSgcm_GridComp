@@ -89,7 +89,7 @@ DZ_MIN = Float(1.0e-2)
 SFCRHO = Float(1.2)
 "surface air density"
 RHOR = Float(1.0e3)
-"density of rain water, lin83"
+"density of rain water, Lin et al 83"
 
 RC = (Float(4.0) / Float(3.0)) * PI * RHOR
 
@@ -164,14 +164,17 @@ GAM680 = Float(496.604067)
 
 # intercept parameters
 
-RNZR = Float(8.0e6)  # lin83
-RNZS = Float(3.0e6)  # lin83
-RNZG = Float(4.0e6)  # rh84
+RNZR = Float(8.0e6)  
+"Lin et al 83"
+RNZS = Float(3.0e6)  
+"Lin et al 83"
+RNZG = Float(4.0e6)  
+"rh84"
 
 # density parameters
 
 RHOS = Float(0.1e3)
-"lin83 (snow density; 1 / 10 of water)"
+"Lin et al 83 (snow density; 1 / 10 of water)"
 RHOG = Float(0.4e3)
 "rh84 (graupel density)"
 ACC = [Float(5.0), Float(2.0), Float(0.5)]
@@ -241,9 +244,6 @@ ACCO_23 = ACCO[2, 3]
 
 
 GCON = Float(40.74) * np.sqrt(SFCRHO, dtype=Float)  # 44.628
-
-# subl and revp: five constants for three separate processes
-
 
 ES0 = Float(6.107799961e2)
 "~6.1 mb"

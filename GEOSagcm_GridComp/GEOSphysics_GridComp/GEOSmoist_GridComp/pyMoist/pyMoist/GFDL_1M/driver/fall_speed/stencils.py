@@ -1,6 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import (
-    FORWARD,
     PARALLEL,
     computation,
     exp,
@@ -12,7 +11,6 @@ from gt4py.cartesian.gtscript import (
 
 import pyMoist.GFDL_1M.driver.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
-from pyMoist.shared_generic_math import sigma
 
 
 @gtscript.function

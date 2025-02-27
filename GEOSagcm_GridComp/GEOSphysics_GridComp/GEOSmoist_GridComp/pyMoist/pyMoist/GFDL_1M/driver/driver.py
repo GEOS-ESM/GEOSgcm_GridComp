@@ -1,7 +1,6 @@
 """GFDL_1M driver"""
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.config import config
 from pyMoist.GFDL_1M.driver.ice_cloud.main import IceCloud
@@ -20,7 +19,7 @@ from pyMoist.GFDL_1M.driver.setup.main import Setup
 from pyMoist.GFDL_1M.driver.finish.main import Finish
 
 
-class driver:
+class MicrophysicsDriver:
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -73,35 +72,35 @@ class driver:
             self.config_dependent_constants,
         )
 
-        self._FallSpeed = FallSpeed(
+        self._fall_speed = FallSpeed(
             stencil_factory,
             quantity_factory,
             GFDL_1M_config,
             self.config_dependent_constants,
         )
 
-        self._TerminalFall = TerminalFall(
+        self._terminal_fall = TerminalFall(
             stencil_factory,
             quantity_factory,
             GFDL_1M_config,
             self.config_dependent_constants,
         )
 
-        self._WarmRain = WarmRain(
+        self._warm_rain = WarmRain(
             stencil_factory,
             quantity_factory,
             GFDL_1M_config,
             self.config_dependent_constants,
         )
 
-        self._IceCloud = IceCloud(
+        self._ice_cloud = IceCloud(
             stencil_factory,
             quantity_factory,
             GFDL_1M_config,
             self.config_dependent_constants,
         )
 
-        self._Finish = Finish(
+        self._finish = Finish(
             stencil_factory,
             quantity_factory,
             GFDL_1M_config,
@@ -144,9 +143,6 @@ class driver:
         anv_icefall: Float,
         ls_icefall: Float,
     ):
-        # The driver modifies a number of variables (t, p, qX) but does not pass
-        # the changes back to the rest of the model. To replicate this behavior,
-        # temporary copies of these variables are used throughout the driver.
         self._setup(
             t,
             dp,
@@ -202,7 +198,7 @@ class driver:
         )
 
         for n in range(self.config_dependent_constants.NTIMES):
-            self._FallSpeed(
+            self._fall_speed(
                 self.temporaries.ql1,
                 self.temporaries.qi1,
                 self.temporaries.qs1,
@@ -223,7 +219,7 @@ class driver:
                 ls_icefall,
             )
 
-            self._TerminalFall(
+            self._terminal_fall(
                 self.temporaries.t1,
                 self.temporaries.qv1,
                 self.temporaries.ql1,
@@ -233,7 +229,6 @@ class driver:
                 self.temporaries.qi1,
                 self.temporaries.dz1,
                 self.temporaries.dp1,
-                self.temporaries.den1,
                 self.temporaries.vtg,
                 self.temporaries.vts,
                 self.temporaries.vti,
@@ -253,7 +248,7 @@ class driver:
                 self.masks.precip_fall,
             )
 
-            self._WarmRain(
+            self._warm_rain(
                 self.temporaries.dz1,
                 self.temporaries.t1,
                 self.temporaries.qv1,
@@ -295,7 +290,7 @@ class driver:
                 self.sat_tables.des4,
             )
 
-            self._IceCloud(
+            self._ice_cloud(
                 self.temporaries.t1,
                 self.temporaries.p_dry,
                 self.temporaries.dp1,
@@ -317,17 +312,13 @@ class driver:
                 self.temporaries.ccn,
                 cnv_frc,
                 srf_type,
-                self.sat_tables.table1,
                 self.sat_tables.table2,
                 self.sat_tables.table3,
-                self.sat_tables.table4,
-                self.sat_tables.des1,
                 self.sat_tables.des2,
                 self.sat_tables.des3,
-                self.sat_tables.des4,
             )
 
-        self._Finish(
+        self._finish(
             self.temporaries.qv0,
             self.temporaries.ql0,
             self.temporaries.qr0,
@@ -341,8 +332,6 @@ class driver:
             self.temporaries.qi1,
             self.temporaries.qs1,
             self.temporaries.qg1,
-            self.temporaries.qa1,
-            self.temporaries.ccn,
             qv_dt,
             ql_dt,
             qr_dt,
@@ -361,27 +350,11 @@ class driver:
             v,
             self.temporaries.v1,
             v_dt,
-            dz,
             dp,
             self.temporaries.dp1,
-            self.temporaries.den,
-            self.temporaries.p_dry,
-            area,
-            GFDL_1M_config.DT_MOIST,
-            fr_land,
-            cnv_frc,
-            srf_type,
-            eis,
-            self.temporaries.rh_limited,
             self.temporaries.m1,
-            anv_icefall,
-            ls_icefall,
-            self.outputs.revap,
-            self.outputs.isubl,
             self.outputs.rain,
             self.outputs.snow,
             self.outputs.ice,
             self.outputs.graupel,
-            self.outputs.m2_rain,
-            self.outputs.m2_sol,
         )

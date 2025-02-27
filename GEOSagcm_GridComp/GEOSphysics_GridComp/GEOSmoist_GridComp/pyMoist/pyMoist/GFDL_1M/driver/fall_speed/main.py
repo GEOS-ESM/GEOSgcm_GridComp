@@ -1,5 +1,6 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.config import config
 from pyMoist.GFDL_1M.driver.fall_speed.stencils import (
     fall_speed_core,
@@ -9,7 +10,7 @@ from pyMoist.GFDL_1M.driver.support import ConfigConstants
 
 class FallSpeed:
     """
-    ice cloud microphysics processes
+    Ice cloud microphysics processes
     bulk cloud micro - physics; processes splitting
     with some un - split sub - grouping
     time implicit (when possible) accretion and autoconversion
@@ -23,9 +24,9 @@ class FallSpeed:
         config_dependent_constants: ConfigConstants,
     ):
 
-        # Initalize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
+        # Initalize stencils
         self._fall_speed_core = stencil_factory.from_dims_halo(
             func=fall_speed_core,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -45,24 +46,24 @@ class FallSpeed:
 
     def __call__(
         self,
-        ql1,
-        qi1,
-        qs1,
-        qg1,
-        t,
-        t1,
-        dz,
-        dz1,
-        den,
-        den1,
-        denfac,
-        p_dry,
-        vti,
-        vts,
-        vtg,
-        cnv_frc,
-        anv_icefall,
-        ls_icefall,
+        ql1: FloatField,
+        qi1: FloatField,
+        qs1: FloatField,
+        qg1: FloatField,
+        t: FloatField,
+        t1: FloatField,
+        dz: FloatField,
+        dz1: FloatField,
+        den: FloatField,
+        den1: FloatField,
+        denfac: FloatField,
+        p_dry: FloatField,
+        vti: FloatField,
+        vts: FloatField,
+        vtg: FloatField,
+        cnv_frc: FloatFieldIJ,
+        anv_icefall: Float,
+        ls_icefall: Float,
     ):
         self._fall_speed_core(
             ql1,
