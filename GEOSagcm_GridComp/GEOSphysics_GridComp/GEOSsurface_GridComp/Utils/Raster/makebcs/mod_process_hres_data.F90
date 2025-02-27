@@ -30,10 +30,6 @@ MODULE process_hres_data
   use rmTinyCatchParaMod
   use lsm_routines,           ONLY: sibalb
 
-#if defined USE_EXTERNAL_FINDLOC
-  use findloc_mod,            only: findloc
-#endif
-
   implicit none
 
   include 'netcdf.inc'	
