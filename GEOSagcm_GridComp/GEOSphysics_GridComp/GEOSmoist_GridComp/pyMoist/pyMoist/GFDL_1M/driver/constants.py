@@ -12,87 +12,121 @@ from ndsl.dsl.typing import Float, Int
 
 # constants from driver module
 
-GRAV = Float(9.80665)  # gfs: acceleration due to gravity
-RDGAS = Float(287.05)  # gfs: gas constant for dry air
-RVGAS = Float(461.50)  # gfs: gas constant for water vapor
-CP_AIR = Float(1004.6)  # gfs: heat capacity of dry air at constant pressure
-HLV = Float(2.5e6)  # gfs: latent heat of evaporation
-HLF = Float(3.3358e5)  # gfs: latent heat of fusion
-PI = Float(3.1415926535897931)  # gfs: ratio of circle circumference to diameter
-CP_VAP = (
-    Float(4.0) * RVGAS
-)  # 1846.0, heat capacity of water vapore at constnat pressure
-CV_AIR = CP_AIR - RDGAS  # 717.55, heat capacity of dry air at constant volume
-CV_VAP = Float(3.0) * RVGAS  # 1384.5, heat capacity of water vapor at constant volume
+GRAV = Float(9.80665)
+"gfs: acceleration due to gravity"
+RDGAS = Float(287.05)
+"gfs: gas constant for dry air"
+RVGAS = Float(461.50)
+"gfs: gas constant for water vapor"
+CP_AIR = Float(1004.6)
+"gfs: heat capacity of dry air at constant pressure"
+HLV = Float(2.5e6)
+"gfs: latent heat of evaporation"
+HLF = Float(3.3358e5)
+"gfs: latent heat of fusion"
+PI = Float(3.1415926535897931)
+"gfs: ratio of circle circumference to diameter"
+CP_VAP = Float(4.0) * RVGAS
+"1846.0, heat capacity of water vapore at constnat pressure"
+CV_AIR = CP_AIR - RDGAS
+"717.55, heat capacity of dry air at constant volume"
+CV_VAP = Float(3.0) * RVGAS
+"1384.5, heat capacity of water vapor at constant volume"
 
-C_ICE = Float(1972.0)  # gfdl: heat capacity of ice at - 15 deg c
-C_LIQ = Float(4185.5)  # gfdl: heat capacity of water at 15 deg c
+C_ICE = Float(1972.0)
+"gfdl: heat capacity of ice at - 15 deg c"
+C_LIQ = Float(4185.5)
+"gfdl: heat capacity of water at 15 deg c"
 
-EPS = RDGAS / RVGAS  # 0.6219934995
-ZVIR = RVGAS / RDGAS - Float(1.0)  # 0.6077338443
+EPS = RDGAS / RVGAS
+"0.6219934995"
+ZVIR = RVGAS / RDGAS - Float(1.0)
+"0.6077338443"
 
-T_ICE = Float(273.16)  # freezing temperature
-TABLE_ICE = Float(273.16)  # freezing point for qs table
+T_ICE = Float(273.16)
+"freezing temperature"
+TABLE_ICE = Float(273.16)
+"freezing point for qs table"
 
-E_00 = Float(611.21)  # ifs: saturation vapor pressure at 0 deg c
+E_00 = Float(611.21)
+"ifs: saturation vapor pressure at 0 deg c"
 
-DC_VAP = CP_VAP - C_LIQ  # - 2339.5, isobaric heating / cooling
-DC_ICE = C_LIQ - C_ICE  # 2213.5, isobaric heating / colling
+DC_VAP = CP_VAP - C_LIQ
+"- 2339.5, isobaric heating / cooling"
+DC_ICE = C_LIQ - C_ICE
+"2213.5, isobaric heating / colling"
 
-HLV0 = HLV  # gfs: evaporation latent heat coefficient at 0 deg c
-HLF0 = HLF  # gfs: fussion latent heat coefficient at 0 deg c
+HLV0 = HLV
+"gfs: evaporation latent heat coefficient at 0 deg c"
+HLF0 = HLF
+"gfs: fussion latent heat coefficient at 0 deg c"
 
-LV0 = (
-    HLV0 - DC_VAP * T_ICE
-)  # 3.13905782e6, evaporation latent heat coefficient at 0 deg k
-LI00 = HLF0 - DC_ICE * T_ICE  # - 2.7105966e5, fusion latent heat coefficient at 0 deg k
+LV0 = HLV0 - DC_VAP * T_ICE
+"3.13905782e6, evaporation latent heat coefficient at 0 deg k"
+LI00 = HLF0 - DC_ICE * T_ICE
+"- 2.7105966e5, fusion latent heat coefficient at 0 deg k"
 
-D2ICE = DC_VAP + DC_ICE  # - 126, isobaric heating / cooling
-LI2 = LV0 + LI00  # 2.86799816e6, sublimation latent heat coefficient at 0 deg k
+D2ICE = DC_VAP + DC_ICE
+"- 126, isobaric heating / cooling"
+LI2 = LV0 + LI00
+"2.86799816e6, sublimation latent heat coefficient at 0 deg k"
 
-QPMIN = Float(1.0e-8)  # min value for suspended rain/snow/liquid/ice precip
-QVMIN = Float(1.0e-20)  # min value for water vapor (treated as zero)
-QCMIN = Float(1.0e-12)  # min value for cloud condensates
+QPMIN = Float(1.0e-8)
+"min value for suspended rain/snow/liquid/ice precip"
+QVMIN = Float(1.0e-20)
+"min value for water vapor (treated as zero)"
+QCMIN = Float(1.0e-12)
+"min value for cloud condensates"
 
-VR_MIN = Float(1.0e-3)  # min fall speed for rain
-VF_MIN = Float(1.0e-5)  # min fall speed for cloud ice, snow, graupel
+VR_MIN = Float(1.0e-3)
+"min fall speed for rain"
+VF_MIN = Float(1.0e-5)
+"min fall speed for cloud ice, snow, graupel"
 
-DZ_MIN = Float(1.0e-2)  # use for correcting flipped height
+DZ_MIN = Float(1.0e-2)
+"use for correcting flipped height"
 
-SFCRHO = Float(1.2)  # surface air density
-RHOR = Float(1.0e3)  # density of rain water, lin83
+SFCRHO = Float(1.2)
+"surface air density"
+RHOR = Float(1.0e3)
+"density of rain water, lin83"
 
 RC = (Float(4.0) / Float(3.0)) * PI * RHOR
 
 # cloud microphysics switchers
 
-DO_SETUP = True  # setup constants and parameters
-P_NONHYDRO = False  # perform hydrosatic adjustment on air density
+DO_SETUP = True
+"setup constants and parameters"
+P_NONHYDRO = False
+"perform hydrosatic adjustment on air density"
 
-DT_FR = Float(8.0)  # epsilon on homogeneous freezing of cloud water at t_wfr + dt_fr
-# minimum temperature water can exist (moore & molinero nov. 2011, nature)
-# dt_fr can be considered as the error bar
+DT_FR = Float(8.0)
+"""epsilon on homogeneous freezing of cloud water at t_wfr + dt_fr.
+minimum temperature water can exist (moore & molinero nov. 2011, nature).
+dt_fr can be considered as the error bar"""
 
-P_MIN = Float(100.0)  # minimum pressure (pascal) for mp to operate
+P_MIN = Float(100.0)
+"minimum pressure (pascal) for mp to operate"
 
 # -----------------------------------------------------------------------
 # namelist parameters
 # -----------------------------------------------------------------------
 
-TICE = Float(273.16)  # set tice = 165. to trun off ice - phase phys (kessler emulator)
+TICE = Float(273.16)
+"set tice = 165. to trun off ice - phase phys (kessler emulator)"
 
 LOG_10 = np.log(10.0, dtype=Float)
 TICE0 = Float(273.16) - Float(0.01)
-T_WFR = Float(273.16) - Float(
-    40.0
-)  # supercooled water can exist down to - 40 c, which is the "absolute"
+T_WFR = Float(273.16) - Float(40.0)
+"supercooled water can exist down to - 40 c, which is the 'absolute'"
 
 # Constants moved from setup functions
 RGRAV = Float(1.0) / GRAV
 
 # fall velocity constants:
 
-THI = Float(1.0e-8)  # cloud ice threshold for terminal fall
+THI = Float(1.0e-8)
+"cloud ice threshold for terminal fall"
 THG = Float(1.0e-8)
 THS = Float(1.0e-8)
 AAC = Float(-4.18334e-5)
@@ -136,8 +170,10 @@ RNZG = Float(4.0e6)  # rh84
 
 # density parameters
 
-RHOS = Float(0.1e3)  # lin83 (snow density; 1 / 10 of water)
-RHOG = Float(0.4e3)  # rh84 (graupel density)
+RHOS = Float(0.1e3)
+"lin83 (snow density; 1 / 10 of water)"
+RHOG = Float(0.4e3)
+"rh84 (graupel density)"
 ACC = [Float(5.0), Float(2.0), Float(0.5)]
 
 # computed constants
@@ -209,7 +245,8 @@ GCON = Float(40.74) * np.sqrt(SFCRHO, dtype=Float)  # 44.628
 # subl and revp: five constants for three separate processes
 
 
-ES0 = Float(6.107799961e2)  # ~6.1 mb
+ES0 = Float(6.107799961e2)
+"~6.1 mb"
 CES0 = EPS * ES0
 
 
