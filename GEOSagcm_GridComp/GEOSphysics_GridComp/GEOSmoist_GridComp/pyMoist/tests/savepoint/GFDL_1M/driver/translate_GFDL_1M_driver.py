@@ -3,10 +3,6 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.driver.config import config
 from ndsl.stencils.testing.savepoint import DataLoader
 from pyMoist.GFDL_1M.driver.config import config
-from pyMoist.GFDL_1M.driver.support import ConfigConstants
-from pyMoist.GFDL_1M.driver.temporaries import Temporaries
-from pyMoist.GFDL_1M.driver.outputs import Outputs
-from pyMoist.GFDL_1M.driver.masks import Masks
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from ndsl.stencils.testing.grid import Grid

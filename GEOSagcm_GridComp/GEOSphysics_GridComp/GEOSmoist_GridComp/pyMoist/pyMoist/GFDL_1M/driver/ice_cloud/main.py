@@ -6,7 +6,7 @@ from pyMoist.GFDL_1M.driver.ice_cloud.stencils import (
     icloud_core,
     update_precip_total,
 )
-from pyMoist.GFDL_1M.driver.support import ConfigConstants
+from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 

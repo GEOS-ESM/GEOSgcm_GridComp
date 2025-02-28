@@ -13,7 +13,7 @@ from pyMoist.GFDL_1M.driver.terminal_fall.stencils import (
 )
 from pyMoist.GFDL_1M.driver.stencils import implicit_fall
 from pyMoist.GFDL_1M.driver.terminal_fall.temporaries import Temporaries
-from pyMoist.GFDL_1M.driver.support import ConfigConstants
+from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 
 
 class TerminalFall:

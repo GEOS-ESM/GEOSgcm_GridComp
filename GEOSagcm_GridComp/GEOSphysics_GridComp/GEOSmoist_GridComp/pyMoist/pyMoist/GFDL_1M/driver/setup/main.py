@@ -6,7 +6,7 @@ from pyMoist.GFDL_1M.driver.setup.stencils import (
     init_temporaries,
     fix_negative_values,
 )
-from pyMoist.GFDL_1M.driver.support import ConfigConstants
+from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 
 
 class Setup:

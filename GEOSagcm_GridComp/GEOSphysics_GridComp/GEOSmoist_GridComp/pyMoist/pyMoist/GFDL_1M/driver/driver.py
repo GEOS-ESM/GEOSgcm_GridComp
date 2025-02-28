@@ -5,10 +5,8 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.config import config
 from pyMoist.GFDL_1M.driver.ice_cloud.main import IceCloud
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
-from pyMoist.GFDL_1M.driver.support import (
-    check_flags,
-    ConfigConstants,
-)
+from pyMoist.GFDL_1M.driver.support import check_flags
+from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.masks import Masks

@@ -5,7 +5,7 @@ from pyMoist.GFDL_1M.driver.config import config
 from pyMoist.GFDL_1M.driver.fall_speed.stencils import (
     fall_speed_core,
 )
-from pyMoist.GFDL_1M.driver.support import ConfigConstants
+from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 
 
 class FallSpeed:

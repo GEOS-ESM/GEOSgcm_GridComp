@@ -9,7 +9,7 @@ from pyMoist.GFDL_1M.driver.warm_rain.stencils import (
 )
 from pyMoist.GFDL_1M.driver.stencils import implicit_fall
 from pyMoist.GFDL_1M.driver.warm_rain.temporaries import Temporaries
-from pyMoist.GFDL_1M.driver.support import ConfigConstants
+from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 

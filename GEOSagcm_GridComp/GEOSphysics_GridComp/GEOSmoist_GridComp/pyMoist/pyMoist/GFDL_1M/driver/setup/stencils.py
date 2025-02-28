@@ -3,10 +3,7 @@ from gt4py.cartesian.gtscript import (
     FORWARD,
     PARALLEL,
     computation,
-    exp,
     interval,
-    log,
-    log10,
     sqrt,
 )
 
