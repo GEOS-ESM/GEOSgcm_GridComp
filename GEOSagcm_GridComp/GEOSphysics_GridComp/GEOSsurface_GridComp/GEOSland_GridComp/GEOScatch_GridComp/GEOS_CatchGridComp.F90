@@ -4132,12 +4132,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer, save :: CURR_YY, CURR_MM
         integer, save :: FIRST_MM_OLD = 1000
         character(len=ESMF_MAXSTR) :: FIRST_YY_str, FIRST_MM_str
-        character(len=400) :: cn_rcuns_file, cn_rcuns_path
+        character(len=400) :: cn_rcsat_file, cn_rcsat_path
         logical :: s2s_forecast_mode = .false.
         real, allocatable, dimension(:), save  :: cn_cond_scale_factor
         real, allocatable, dimension(:)  :: cn_cond_scale_factor_tmp
-        integer :: cn_rcuns_fid, rcuns_varid
-        logical, save  :: first_rcuns = .true.
+        integer :: cn_rcsat_fid, rcsat_varid
+        logical, save  :: first_rcsat = .true.
 
 !#---
 
@@ -4589,16 +4589,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         !----------------------------------------------------------------------------------
         ! Read Catchment-CN unstressed stomatal conductance from file
-        !----------------------------------------------------------------------------------
+        !-------------gg---------------------------------------------------------------------
 
         call ESMF_TimeGet ( CURRENT_TIME, YY = CURR_YY, MM = CURR_MM, rc=status )
         VERIFY_(STATUS)
 
         if (CURR_MM .ne. FIRST_MM_OLD) then
-           first_rcuns = .true.
+           first_rcsat = .true.
         end if
 
-        if ((first_rcuns))  then
+        if ((first_rcsat))  then
 
            call ESMF_TimeGet ( CURRENT_TIME, YY = FIRST_YY, MM = FIRST_MM, rc=status )
            VERIFY_(STATUS)
@@ -4628,29 +4628,29 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            write (FIRST_YY_str,'(i4.4)') FIRST_YY
            write (FIRST_MM_str,'(i2.2)') FIRST_MM
 
-           cn_rcuns_path = '/discover/nobackup/projects/geoscm/fzeng/Catchment-CN40_9km/GEOSldas_1981_present/GEOSldas_CNCLM40_9km/output/SMAP_EASEv2_M09_GLOBAL/cat/ens0000/'
-           cn_rcuns_file = trim(cn_rcuns_path) // 'Y' // trim(FIRST_YY_str) // '/M' // trim(FIRST_MM_str) // '/GEOSldas_CNCLM40_9km.SCUNS_scaled.monthly.' // trim(FIRST_YY_str) // trim(FIRST_MM_str) // '.nc4'
+           cn_rcsat_path = '/discover/nobackup/projects/geoscm/fzeng/Catchment-CN40_9km/GEOSldas_1981_present/GEOSldas_CNCLM40_9km/output/SMAP_EASEv2_M09_GLOBAL/cat/ens0000/'
+           cn_rcsat_file = trim(cn_rcsat_path) // 'Y' // trim(FIRST_YY_str) // '/M' // trim(FIRST_MM_str) // '/GEOSldas_CNCLM40_9km.SCSAT_scaled.monthly.' // trim(FIRST_YY_str) // trim(FIRST_MM_str) // '.nc4'
 
-           STATUS = NF_OPEN (trim(cn_rcuns_file), NF_NOWRITE, cn_rcuns_fid)
+           STATUS = NF_OPEN (trim(cn_rcsat_file), NF_NOWRITE, cn_rcsat_fid)
            VERIFY_(status)
 
-           STATUS = NF_INQ_VARID (cn_rcuns_fid, trim('SCUNS_sc'), rcuns_varid)
+           STATUS = NF_INQ_VARID (cn_rcsat_fid, trim('SCSAT_sc'), rcsat_varid)
            VERIFY_(status)
 
            allocate(cn_cond_scale_factor (NTILES))
            allocate(cn_cond_scale_factor_tmp (NT_GLOBAL))
 
            if (MAPL_AM_I_Root(VM)) then
-              STATUS = NF_GET_VARA_REAL(cn_rcuns_fid, rcuns_varid, (/1, 1/), (/NT_GLOBAL, 1/), cn_cond_scale_factor_tmp)
+              STATUS = NF_GET_VARA_REAL(cn_rcsat_fid, rcsat_varid, (/1, 1/), (/NT_GLOBAL, 1/), cn_cond_scale_factor_tmp)
               VERIFY_(STATUS)
            endif  
 
            call ArrayScatter(cn_cond_scale_factor, cn_cond_scale_factor_tmp, tilegrid, mask=mask, rc=status)
            VERIFY_(STATUS)
 
-           status = NF_CLOSE (cn_rcuns_fid)
+           status = NF_CLOSE (cn_rcsat_fid)
            VERIFY_(status)
-           first_rcuns = .false.
+           first_rcsat = .false.
            deallocate(cn_cond_scale_factor_tmp)
 
         endif ! first_rcuns
