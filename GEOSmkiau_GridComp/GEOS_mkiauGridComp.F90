@@ -20,7 +20,7 @@ module GEOS_mkiauGridCompMod
 ! use GEOS_RemapMod, only: myremap => remap
   use m_set_eta, only: set_eta
 #ifdef HAS_PYMLINC
-  use pyMLINC_interface_mod
+  use pyMLINC_interface_mod, only: pyMLINC_interface_init_f, pyMLINC_interface_run_f
   use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
 #endif
   implicit none
@@ -98,6 +98,7 @@ contains
 #ifdef HAS_PYMLINC
     ! IEEE trapping see below
     logical                                 :: halting_mode(5)
+    integer, parameter                      :: magic_number = 123456789
 #endif
   !=============================================================================
 
@@ -519,7 +520,7 @@ contains
     ! that generate NaN as an init mechanism for numerical solving
     call ieee_get_halting_mode(ieee_all, halting_mode)
     call ieee_set_halting_mode(ieee_all, .false.)
-    call pyMLINC_interface_init_f()
+    call pyMLINC_interface_init_f(magic_number)
     call ieee_set_halting_mode(ieee_all, halting_mode)
 #endif
 
@@ -764,10 +765,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
 
 #ifdef HAS_PYMLINC
-    ! BOGUS DATA TO SHOW USAGE
-    type(a_pod_struct_type) :: options
-    real, allocatable, dimension(:,:,:) :: in_buffer
-    real, allocatable, dimension(:,:,:) :: out_buffer
+  integer :: qshape(3)
+  real, allocatable :: out_buffer(:, :, :)
 #endif
 
 !=============================================================================
@@ -1228,14 +1227,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef HAS_PYMLINC
     if ( IHAVEMLINC/=0 ) then
-       ! BOGUS CODE TO SHOW USAGE
-       options%npx = 10
-       options%npy = 11
-       options%npz = 12
-       allocate (in_buffer(10, 11, 12), source = 42.42 )
-       allocate (out_buffer(10, 11, 12), source = 0.0 )
-       call pyMLINC_interface_run_f(options, in_buffer, out_buffer)
-       write(*,*) "[pyMLINC] From fortran OUT[5, 5, 5] is ", out_buffer(5, 5, 5)
+       call MAPL_GetPointer(IMPORT, ptr3d, "QV", __RC__)
+       qshape = shape(ptr3d)
+       allocate(out_buffer(qshape(1), qshape(2), qshape(3)), source = 0.0 )
+       if (MAPL_AM_I_ROOT()) then
+          print *, "[pyMLINC] Fortran - qv: ", sum(ptr3d), minval(ptr3d), maxval(ptr3d)
+       end if
+       call pyMLINC_interface_run_f(qshape(1), qshape(2), qshape(3), ptr3d, out_buffer)
+       nullify(ptr3d)
+       if (MAPL_AM_I_ROOT()) then
+          write(*,*) "[pyMLINC] Fortran - dtdt", sum(out_buffer), minval(out_buffer), maxval(out_buffer)
+       end if
     end if
 #endif
 
