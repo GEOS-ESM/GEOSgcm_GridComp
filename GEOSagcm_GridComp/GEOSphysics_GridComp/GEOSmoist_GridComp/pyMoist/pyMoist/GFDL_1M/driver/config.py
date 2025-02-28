@@ -1,7 +1,7 @@
 from ndsl.dsl.typing import Float
 
 
-class config:
+class MicrophysicsConfiguration:
     def __init__(
         self,
         PHYS_HYDROSTATIC: bool,
