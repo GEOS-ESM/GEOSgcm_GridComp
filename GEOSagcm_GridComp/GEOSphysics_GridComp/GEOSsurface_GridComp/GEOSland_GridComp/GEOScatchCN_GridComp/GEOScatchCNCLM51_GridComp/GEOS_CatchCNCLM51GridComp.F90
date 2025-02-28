@@ -3964,7 +3964,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer :: nv, nz, ib
     real    :: bare
     logical, save :: first = .true.
-    integer*8, save :: istep_cn = 1 ! gkw: legacy variable from offline
+    integer*8, save :: istep_cn = 0 ! gkw: legacy variable from offline
     real :: ndt
     integer :: nstep_cn
 
@@ -7105,7 +7105,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        sndzm   = sndzm   / cnsum
        asnowm  = asnowm  / cnsum
 
-       call CN_Driver(ntiles,ityp,fveg,ndep,tpm,tairm,psis,bee,dayl,btran_fire,ar1m,&
+       call CN_Driver(istep_cn,ntiles,ityp,fveg,ndep,tpm,tairm,psis,bee,dayl,btran_fire,ar1m,&
                       rzmm,sfmm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,ET365D,gdp,&
                       abm,peatf,hdm,lnfm,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
                       asnowm,TG10D,T2MMIN5D,SNDZM5D,water_inst, first_cn, &

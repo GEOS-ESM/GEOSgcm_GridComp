@@ -102,7 +102,6 @@ integer function get_nstep(istep)
  if(istep_default < 0) stop 'CN: istep_default < 0'
  get_nstep = istep_default  ! for FireMod
 
- get_nstep = get_nstep - 1  
 end function get_nstep
 
 !=========================================================================================

@@ -61,7 +61,7 @@ module CNCLM_DriverMod
 contains
 
 !---------------------------------
- subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
+ subroutine CN_Driver(istep,nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
                       rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,et365d,gdp,&
                       abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
                       fsnow,tg10d,t2m5d,sndzn5d,water_inst,first, &
@@ -78,6 +78,7 @@ contains
  implicit none
  
  !INPUT
+ integer,              intent(in) :: istep ! number of CN time steps run
  integer,              intent(in) :: nch     ! number of tiles 
  integer, dimension(nch,num_veg,num_zon),      intent(in) :: ityp ! PFT index
  real, dimension(nch,num_veg,num_zon),         intent(in) :: fveg    ! PFT fraction
@@ -220,8 +221,12 @@ contains
  real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  integer  :: n, p, nc, nz, np, nv
+ integer :: nstep_cn   ! number of CN model steps run
 
  !-------------------------------
+
+  ! update time step 
+  nstep_cn = get_nstep(istep)
 
   ! update CLM types with current states
 
