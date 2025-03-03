@@ -5,7 +5,7 @@ module CNCLM_DriverMod
  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
                                 var_col, var_pft, nlevgrnd, numpft, ndecomp_pools
  use clm_varcon       , only : grav, denh2o
- use clm_time_manager , only : is_first_step
+ use clm_time_manager , only : is_first_step, get_nstep
  use decompMod
  use filterMod
  use SoilBiogeochemCarbonFluxType  
