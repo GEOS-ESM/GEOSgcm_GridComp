@@ -239,7 +239,21 @@ contains
              SHORT_NAME    = 'EDF',                                  &
              CHILD_ID      = WW3GC,                  __RC__)
 
- 
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME    = 'WCC',                                  &
+             CHILD_ID      = WW3GC,                  __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME    = 'WCF',                                  &
+             CHILD_ID      = WW3GC,                  __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME    = 'WCH',                                  &
+             CHILD_ID      = WW3GC,                  __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME    = 'WCM',                                  &
+             CHILD_ID      = WW3GC,                  __RC__)
  
 
 ! Set the Profiling timers
