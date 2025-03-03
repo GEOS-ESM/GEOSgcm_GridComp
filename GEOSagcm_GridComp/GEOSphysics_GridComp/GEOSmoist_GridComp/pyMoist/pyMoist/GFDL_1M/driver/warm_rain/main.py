@@ -1,7 +1,7 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatFieldIJ, FloatField, BoolFieldIJ
-from pyMoist.GFDL_1M.driver.config import config
+from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
 from pyMoist.GFDL_1M.driver.warm_rain.stencils import (
     warm_rain_step_1,
     warm_rain_step_2,
@@ -22,7 +22,7 @@ class WarmRain:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        GFDL_1M_config: config,
+        GFDL_1M_config: MicrophysicsConfiguration,
         config_dependent_constants: ConfigConstants,
     ):
 

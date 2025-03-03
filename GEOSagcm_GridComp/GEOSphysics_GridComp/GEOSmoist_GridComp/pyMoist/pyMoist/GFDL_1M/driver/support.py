@@ -1,9 +1,9 @@
 from ndsl.dsl.typing import Float
-from pyMoist.GFDL_1M.driver.config import config
+from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
 
 
 def check_flags(
-    GFDL_1M_config: config,
+    GFDL_1M_config: MicrophysicsConfiguration,
     dts: Float,
 ):
     failed_keywords = []

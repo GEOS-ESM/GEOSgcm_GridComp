@@ -1,9 +1,7 @@
 from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.driver.config import config
+from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
 from ndsl.stencils.testing.savepoint import DataLoader
-from pyMoist.GFDL_1M.driver.config import config
-from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from ndsl.stencils.testing.grid import Grid
 
@@ -95,7 +93,7 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M_driver-constants")
 
     def compute_from_storage(self, inputs):
-        self.GFDL_1M_config = config(
+        self.GFDL_1M_config = MicrophysicsConfiguration(
             self.constants["PHYS_HYDROSTATIC"],
             self.constants["HYDROSTATIC"],
             self.constants["DT_MOIST"],

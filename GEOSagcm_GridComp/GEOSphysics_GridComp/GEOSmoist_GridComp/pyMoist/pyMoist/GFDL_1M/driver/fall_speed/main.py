@@ -1,7 +1,7 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
-from pyMoist.GFDL_1M.driver.config import config
+from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
 from pyMoist.GFDL_1M.driver.fall_speed.stencils import (
     fall_speed_core,
 )
@@ -20,7 +20,7 @@ class FallSpeed:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        GFDL_1M_config: config,
+        GFDL_1M_config: MicrophysicsConfiguration,
         config_dependent_constants: ConfigConstants,
     ):
 

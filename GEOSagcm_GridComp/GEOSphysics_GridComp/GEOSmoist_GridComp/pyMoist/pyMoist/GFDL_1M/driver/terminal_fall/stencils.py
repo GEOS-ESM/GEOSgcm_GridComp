@@ -8,7 +8,7 @@ from gt4py.cartesian.gtscript import (
     interval,
 )
 
-import pyMoist.GFDL_1M.driver.constants as constants
+from pyMoist.GFDL_1M.driver.constants import constants
 from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ
 
 

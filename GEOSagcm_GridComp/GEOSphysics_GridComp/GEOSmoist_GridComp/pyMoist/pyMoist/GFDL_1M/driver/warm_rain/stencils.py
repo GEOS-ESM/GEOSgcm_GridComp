@@ -11,7 +11,7 @@ from gt4py.cartesian.gtscript import (
     sqrt,
 )
 
-import pyMoist.GFDL_1M.driver.constants as constants
+from pyMoist.GFDL_1M.driver.constants import constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 from pyMoist.GFDL_1M.driver.stencils import wqs2
