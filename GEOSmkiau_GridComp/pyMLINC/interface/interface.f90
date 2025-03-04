@@ -19,19 +19,20 @@ module pyMLINC_interface_mod
       subroutine pyMLINC_interface_run_f( &
            ! Input
            xdim, ydim, zdim, &
-           u, &
+           u, v, t, &
            qv, &
            ! Output
            dtdt, &
            ! LAST ARGUMENT - input
-           magic_number &
-           ) bind(c, name="pyMLINC_interface_run_c")
+           magic_number) bind(c, name="pyMLINC_interface_run_c")
          import c_int, c_float
          implicit none
          ! This is an interface to a C function, the intent is NOT enforced
          ! by the compiler. Consider them developer hints
          integer(kind=c_int), value, intent(in) :: xdim, ydim, zdim
          real(kind=c_float), dimension(*), intent(in) :: u
+         real(kind=c_float), dimension(*), intent(in) :: v
+         real(kind=c_float), dimension(*), intent(in) :: t
          real(kind=c_float), dimension(*), intent(in) :: qv
          real(kind=c_float), dimension(*), intent(out) :: dtdt
          integer(kind=c_int), value, intent(in) :: magic_number
