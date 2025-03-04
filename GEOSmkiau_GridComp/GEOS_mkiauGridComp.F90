@@ -767,7 +767,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 #ifdef HAS_PYMLINC
   integer :: ushape(3)
   real, pointer, dimension(:,:,:)     ::  u_local, v_local, t_local
-  real, pointer, dimension(:,:,:)     ::  qv_local
+  real, pointer, dimension(:,:,:)     ::  qv_local, ql, qi, qr, qs, qg
   real, allocatable, dimension(:,:,:) :: out_buffer(:, :, :)
   integer, parameter                  :: magic_number = 123456789
 #endif
@@ -1239,17 +1239,27 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        call MAPL_GetPointer(IMPORT, v_local, "V", __RC__)
        call MAPL_GetPointer(IMPORT, t_local, "TV", __RC__)
        call MAPL_GetPointer(IMPORT, qv_local, "QV", __RC__)
+       call MAPL_GetPointer(IMPORT, ql, "QLTOT", __RC__)
+       call MAPL_GetPointer(IMPORT, qi, "QITOT", __RC__)
+       call MAPL_GetPointer(IMPORT, qr, "QRTOT", __RC__)
+       call MAPL_GetPointer(IMPORT, qs, "QSTOT", __RC__)
+       call MAPL_GetPointer(IMPORT, qg, "QGTOT", __RC__)
        if (MAPL_AM_I_ROOT()) then
           print *, "[pyMLINC] Fortran - u: ", ushape
           print *, "[pyMLINC] Fortran - u: ", sum(u_local), minval(u_local), maxval(u_local)
           print *, "[pyMLINC] Fortran - v: ", sum(v_local), minval(v_local), maxval(v_local)
           print *, "[pyMLINC] Fortran - t: ", sum(t_local), minval(t_local), maxval(t_local)
           print *, "[pyMLINC] Fortran - qv: ", sum(qv_local), minval(qv_local), maxval(qv_local)
+          print *, "[pyMLINC] Fortran - qi: ", sum(ql), minval(ql), maxval(ql)
+          print *, "[pyMLINC] Fortran - qr: ", sum(qi), minval(qi), maxval(qi)
+          print *, "[pyMLINC] Fortran - qs: ", sum(qr), minval(qr), maxval(qr)
+          print *, "[pyMLINC] Fortran - qg: ", sum(qs), minval(qs), maxval(qs)
+          print *, "[pyMLINC] Fortran - qg: ", sum(qg), minval(qg), maxval(qg)
        end if
        call pyMLINC_interface_run_f( &
             ushape(1), ushape(2), ushape(3), &
             u_local, v_local, t_local, &
-            qv_local, &
+            qv_local, ql, qi, qr, qs, qg, &
             out_buffer, &
             magic_number)
        nullify(qv_local)

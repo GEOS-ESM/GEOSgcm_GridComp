@@ -22,6 +22,11 @@ extern int pyMLINC_interface_run_c(
     const float *v,
     const float *t,
     const float *qv,
+    const float *ql,
+    const float *qi,
+    const float *qr,
+    const float *qs,
+    const float *qg,
     // output
     float *dtdt,
     // LAST ARGUMENT
@@ -35,7 +40,7 @@ extern int pyMLINC_interface_run_c(
     int rc = pyMLINC_interface_run_py(
         xdim, ydim, zdim,
         u, v, t,
-        qv,
+        qv, ql, qi, qr, qs, qg,
         dtdt,
         magic_number);
     if (rc != 0)

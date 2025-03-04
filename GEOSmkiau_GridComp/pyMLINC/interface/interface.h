@@ -29,5 +29,10 @@ extern int pyMLINC_interface_run_py(
     const float *v,
     const float *t,
     const float *qv,
+    const float *ql,
+    const float *qi,
+    const float *qr,
+    const float *qs,
+    const float *qg,
     float *dtdt,
     int magic_number);

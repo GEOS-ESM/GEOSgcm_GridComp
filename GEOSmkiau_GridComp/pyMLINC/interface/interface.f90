@@ -20,7 +20,7 @@ module pyMLINC_interface_mod
            ! Input
            xdim, ydim, zdim, &
            u, v, t, &
-           qv, &
+           qv, ql, qi, qr, qs, qg, &
            ! Output
            dtdt, &
            ! LAST ARGUMENT - input
@@ -34,6 +34,11 @@ module pyMLINC_interface_mod
          real(kind=c_float), dimension(*), intent(in) :: v
          real(kind=c_float), dimension(*), intent(in) :: t
          real(kind=c_float), dimension(*), intent(in) :: qv
+         real(kind=c_float), dimension(*), intent(in) :: ql
+         real(kind=c_float), dimension(*), intent(in) :: qi
+         real(kind=c_float), dimension(*), intent(in) :: qr
+         real(kind=c_float), dimension(*), intent(in) :: qs
+         real(kind=c_float), dimension(*), intent(in) :: qg
          real(kind=c_float), dimension(*), intent(out) :: dtdt
          integer(kind=c_int), value, intent(in) :: magic_number
       end subroutine pyMLINC_interface_run_f
