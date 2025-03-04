@@ -34,6 +34,7 @@ def pyMLINC_run(
         qr_f: CFFIObj,
         qs_f: CFFIObj,
         qg_f: CFFIObj,
+        ps_f: CFFIObj,
         # output
         dtdt_f: CFFIObj,
         # LAST ARGUMENT - input
@@ -54,6 +55,7 @@ def pyMLINC_run(
     qr = F_PY_MEMORY_CONV.fortran_to_python(qr_f)
     qs = F_PY_MEMORY_CONV.fortran_to_python(qs_f)
     qg = F_PY_MEMORY_CONV.fortran_to_python(qg_f)
+    ps = F_PY_MEMORY_CONV.fortran_to_python(ps_f, dim=[xdim, ydim])
     print("[pyMLINC] run - u:", numpy.sum(u), numpy.min(u), numpy.max(u))
     print("[pyMLINC] run - v:", numpy.sum(v), numpy.min(v), numpy.max(v))
     print("[pyMLINC] run - t:", numpy.sum(t), numpy.min(t), numpy.max(t))
@@ -63,6 +65,7 @@ def pyMLINC_run(
     print("[pyMLINC] run - qr:", numpy.sum(qr), numpy.min(qr), numpy.max(qr))
     print("[pyMLINC] run - qs:", numpy.sum(qs), numpy.min(qs), numpy.max(qs))
     print("[pyMLINC] run - qg:", numpy.sum(qg), numpy.min(qg), numpy.max(qg))
+    print("[pyMLINC] run - ps:", numpy.sum(ps), numpy.min(ps), numpy.max(ps))
     dtdt = F_PY_MEMORY_CONV.fortran_to_python(dtdt_f)
 
     # Here goes math and dragons

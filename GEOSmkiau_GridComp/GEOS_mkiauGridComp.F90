@@ -766,8 +766,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef HAS_PYMLINC
   integer :: ushape(3)
-  real, pointer, dimension(:,:,:)     ::  u_local, v_local, t_local
-  real, pointer, dimension(:,:,:)     ::  qv_local, ql, qi, qr, qs, qg
+  real, pointer, dimension(:,:,:)     :: u_local, v_local, t_local
+  real, pointer, dimension(:,:,:)     :: qv_local, ql, qi, qr, qs, qg
+  real, pointer, dimension(:,:)       :: ps_local
   real, allocatable, dimension(:,:,:) :: out_buffer(:, :, :)
   integer, parameter                  :: magic_number = 123456789
 #endif
@@ -1230,22 +1231,24 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef HAS_PYMLINC
     if ( IHAVEMLINC/=0 ) then
-       nullify(u_local, v_local, t_local)
-       nullify(qv_local)
+       nullify(u_local, v_local, t_local, ps_local)
+       nullify(qv_local, ql, qi, qr, qs, qg)
        ! NOTE: ASSUME all arrays (except PS, which is 2D) have the same shape
-       call MAPL_GetPointer(IMPORT, u_local, "U", __RC__)
+       call MAPL_GetPointer(import, u_local, "U", __RC__)
        ushape = shape(u_local)
        allocate(out_buffer(ushape(1), ushape(2), ushape(3)), source = 0.0 )
-       call MAPL_GetPointer(IMPORT, v_local, "V", __RC__)
-       call MAPL_GetPointer(IMPORT, t_local, "TV", __RC__)
-       call MAPL_GetPointer(IMPORT, qv_local, "QV", __RC__)
-       call MAPL_GetPointer(IMPORT, ql, "QLTOT", __RC__)
-       call MAPL_GetPointer(IMPORT, qi, "QITOT", __RC__)
-       call MAPL_GetPointer(IMPORT, qr, "QRTOT", __RC__)
-       call MAPL_GetPointer(IMPORT, qs, "QSTOT", __RC__)
-       call MAPL_GetPointer(IMPORT, qg, "QGTOT", __RC__)
+       call MAPL_GetPointer(import, v_local, "V", __RC__)
+       call MAPL_GetPointer(import, t_local, "TV", __RC__)
+       call MAPL_GetPointer(import, qv_local, "QV", __RC__)
+       call MAPL_GetPointer(import, ql, "QLTOT", __RC__)
+       call MAPL_GetPointer(import, qi, "QITOT", __RC__)
+       call MAPL_GetPointer(import, qr, "QRTOT", __RC__)
+       call MAPL_GetPointer(import, qs, "QSTOT", __RC__)
+       call MAPL_GetPointer(import, qg, "QGTOT", __RC__)
+       call MAPL_GetPointer(import, ps_local, "PS", __RC__)
        if (MAPL_AM_I_ROOT()) then
           print *, "[pyMLINC] Fortran - u: ", ushape
+          print *, "[pyMLINC] Fortran - ps: ", shape(ps_local)
           print *, "[pyMLINC] Fortran - u: ", sum(u_local), minval(u_local), maxval(u_local)
           print *, "[pyMLINC] Fortran - v: ", sum(v_local), minval(v_local), maxval(v_local)
           print *, "[pyMLINC] Fortran - t: ", sum(t_local), minval(t_local), maxval(t_local)
@@ -1255,14 +1258,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           print *, "[pyMLINC] Fortran - qs: ", sum(qr), minval(qr), maxval(qr)
           print *, "[pyMLINC] Fortran - qg: ", sum(qs), minval(qs), maxval(qs)
           print *, "[pyMLINC] Fortran - qg: ", sum(qg), minval(qg), maxval(qg)
+          print *, "[pyMLINC] Fortran - ps: ", sum(ps_local), minval(ps_local), maxval(ps_local)
        end if
        call pyMLINC_interface_run_f( &
+            ! input
             ushape(1), ushape(2), ushape(3), &
             u_local, v_local, t_local, &
             qv_local, ql, qi, qr, qs, qg, &
+            ps_local, &
+            ! output
             out_buffer, &
+            ! LAST ARGUMENT - input
             magic_number)
-       nullify(qv_local)
+       nullify(u_local, v_local, t_local, ps_local)
+       nullify(qv_local, ql, qi, qr, qs, qg)
        if (MAPL_AM_I_ROOT()) then
           write(*,*) "[pyMLINC] Fortran - dtdt", sum(out_buffer), minval(out_buffer), maxval(out_buffer)
        end if
