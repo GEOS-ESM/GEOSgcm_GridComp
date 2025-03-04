@@ -197,7 +197,7 @@ def prefall_melting(
     tau_imlt: Float,
 ):
     """
-    melt cloud ice before fall
+    Melt cloud ice before fall
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
     """
@@ -258,7 +258,7 @@ def setup(
     is_frozen: BoolField,
 ):
     """
-    calculate terminal fall speed, accounting for
+    Calculate terminal fall speed, accounting for
     melting of ice, snow, and graupel during fall
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
@@ -341,7 +341,7 @@ def update_outputs(
     precip_ice: FloatFieldIJ,
 ):
     """
-    update precipitation totals with results of terminal_fall stencil
+    Update precipitation totals with results of terminal_fall stencil
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
     """

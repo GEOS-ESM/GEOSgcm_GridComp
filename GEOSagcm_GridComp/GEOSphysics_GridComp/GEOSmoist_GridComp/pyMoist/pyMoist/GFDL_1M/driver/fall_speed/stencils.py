@@ -27,7 +27,7 @@ def get_top_speed(
     t: Float,
 ):
     """
-    calculate the vertical fall speed of precipitation
+    Calculate the vertical fall speed of precipitation
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine fall_speed
     """
@@ -138,7 +138,7 @@ def fall_speed_core(
     lsc_icefall: Float,
 ):
     """
-    stencil wrapper for fall_speed_core
+    Stencil wrapper for fall_speed_core
 
     calculate the vertical fall speed of precipitation
 

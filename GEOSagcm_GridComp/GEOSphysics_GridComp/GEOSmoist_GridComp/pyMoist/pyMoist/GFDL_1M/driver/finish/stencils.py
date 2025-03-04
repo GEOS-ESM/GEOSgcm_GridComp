@@ -51,7 +51,7 @@ def update_tendencies(
     graupel: FloatFieldIJ,  # strict output
 ):
     """
-    compute output tendencies of the microphysics driver
+    Compute output tendencies of the microphysics driver
 
     reference Fortran: gfdl_cloud_microphys.F90:
     subroutine mpdrv, subroutine gfdl_cloud_microphys_driver

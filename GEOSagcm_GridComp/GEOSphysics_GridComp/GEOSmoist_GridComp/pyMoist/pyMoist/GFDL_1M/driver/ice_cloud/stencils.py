@@ -16,12 +16,13 @@ from pyMoist.GFDL_1M.driver.constants import constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.shared_incloud_processes import ice_fraction
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
+from pyMoist.GFDL_1M.driver.stencils import wqs2
 
 
 @gtscript.function
 def new_ice_condensate(t, ql, qi, cnv_frc, srf_type):
     """
-    calculate amount of new ice to be frozen at a given point
+    Calculate amount of new ice to be frozen at a given point
 
     reference Fortran: gfdl_cloud_microphys.F90: function new_ice_condensate
     """
@@ -46,7 +47,7 @@ def icloud_melt_freeze(
     srf_type: Float,
 ):
     """
-    melting and freezing of cloud ice/water within the icloud subroutine
+    Melting and freezing of cloud ice/water within the icloud subroutine
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
     """
@@ -139,7 +140,7 @@ def acr3d(
     rho: Float,
 ):
     """
-    compute accretion according to Lin et al. 1983
+    Compute accretion according to Lin et al. 1983
 
     reference Fortran: gfdl_cloud_microphys.F90: function acr3d
     """
@@ -169,7 +170,7 @@ def smow_melt(
     rhofac: Float,
 ):
     """
-    melting of snow function (lin et al. 1983)
+    Melting of snow function (lin et al. 1983)
     note: psacw and psacr must be calc before smlt is called
 
     reference Fortran: gfdl_cloud_microphys.F90: function smlt
@@ -196,7 +197,7 @@ def graupel_melt(
     rho: Float,
 ):
     """
-    melting of graupel function (lin et al. 1983)
+    Melting of graupel function (lin et al. 1983)
     note: pgacw and pgacr must be calc before gmlt is called
 
     reference Fortran: gfdl_cloud_microphys.F90: function gmlt
@@ -237,7 +238,7 @@ def snow_graupel_coldrain(
     srf_type: Float,
 ):
     """
-    snow, graupel, cold rain microphysics
+    Snow, graupel, cold rain microphysics
     melting, freezing, accretion
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
@@ -755,7 +756,7 @@ def iqs1(
     des3: GlobalTable_driver_qsat,
 ):
     """
-    compute saturation specific humidity from table3
+    Compute saturation specific humidity from table3
 
     water - ice phase; universal dry / moist formular using air density
     input "den" can be either dry or moist air density
@@ -784,7 +785,7 @@ def iqs2(
     des3: GlobalTable_driver_qsat,
 ):
     """
-    compute saturation specific humidity from table3
+    Compute saturation specific humidity from table3
     with additional calculation of gradient (dq/dt)
 
     water - ice phase; universal dry / moist formular using air density
@@ -820,7 +821,7 @@ def wqs1(
     des2: GlobalTable_driver_qsat,
 ):
     """
-    compute the saturated specific humidity for table2
+    Compute the saturated specific humidity for table2
 
     pure water phase; universal dry / moist formular using air density
     input "den" can be either dry or moist air density
@@ -839,44 +840,6 @@ def wqs1(
     wqs1 = es / (constants.RVGAS * ta * den)
 
     return wqs1
-
-
-@gtscript.function
-def wqs2(
-    ta: Float,
-    den: Float,
-    table2: GlobalTable_driver_qsat,
-    des2: GlobalTable_driver_qsat,
-):
-    """
-    compute the saturated specific humidity for table2
-    with additional calculation of gradient (dq/dt)
-
-    pure water phase; universal dry / moist formular using air density
-    input "den" can be either dry or moist air density
-
-    reference Fortran: gfdl_cloud_microphys.F90: function wqs2
-    """
-    tmin = constants.TABLE_ICE - 160.0
-
-    if ta - tmin > 0:
-        ans = ta - tmin
-    else:
-        ans = 0
-    ap1 = 10.0 * ans + 1.0
-    ap1 = min(2621.0, ap1)
-    it = i32(trunc(ap1))
-    es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
-    qsat = es / (constants.RVGAS * ta * den)
-    it = i32(trunc(ap1 - 0.5))
-    # finite diff, del_t = 0.1:
-    dqdt = (
-        10.0
-        * (des2.A[it - 1] + (ap1 - it) * (des2.A[it] - des2.A[it - 1]))
-        / (constants.RVGAS * ta * den)
-    )
-
-    return qsat, dqdt
 
 
 @gtscript.function
@@ -933,7 +896,7 @@ def subgrid_z_proc(
     )
 
     """
-    temperature sensitive high vertical resolution processes
+    Temperature sensitive high vertical resolution processes
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine subgrid_z_proc
     """
@@ -1393,8 +1356,11 @@ def icloud_core(
     des2: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
 ):
-    # reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
-    # Fortran author: Shian-Jiann lin, gfdl
+    """
+    Ice cloud processes
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
+    Fortran author: Shian-Jiann lin, gfdl
+    """
 
     from __externals__ import d0_vap, lv00, z_slope_ice
 
@@ -1576,7 +1542,7 @@ def update_precip_total(
     subl1: FloatField,
 ):
     """
-    update precipitation totals with results of icloud stencil
+    Update precipitation totals with results of icloud stencil
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
     """

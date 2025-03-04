@@ -6,6 +6,11 @@ def check_flags(
     GFDL_1M_config: MicrophysicsConfiguration,
     dts: Float,
 ):
+    """
+    Checks for any flags that are no meeting the expected value.
+    Failing flags are likely not implemetned,
+    or at the very least not fully implemented
+    """
     failed_keywords = []
     if not GFDL_1M_config.PHYS_HYDROSTATIC:
         failed_keywords.append("phys_hydrostatic")

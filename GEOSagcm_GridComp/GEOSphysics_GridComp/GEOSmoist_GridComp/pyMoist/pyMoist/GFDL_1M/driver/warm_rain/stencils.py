@@ -52,7 +52,7 @@ def revap_racc(
     dts: Float,
 ):
     """
-    evaporate rain
+    Evaporate rain
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
     """
@@ -177,7 +177,7 @@ def warm_rain_step_1(
     des4: GlobalTable_driver_qsat,
 ):
     """
-    warm rain cloud microphysics: evaporation, accretion
+    Warm rain cloud microphysics: evaporation, accretion
 
     first half of the timestep
     """
@@ -445,7 +445,7 @@ def warm_rain_step_2(
     des4: GlobalTable_driver_qsat,
 ):
     """
-    warm rain cloud microphysics: evaporation, accretion
+    Warm rain cloud microphysics: evaporation, accretion
 
     first half of the timestep
     """
@@ -547,7 +547,7 @@ def update_outputs(
     rain: FloatFieldIJ,
 ):
     """
-    update precipitation totals with results of warm_rain stencil
+    Update precipitation totals with results of warm_rain stencil
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
     """

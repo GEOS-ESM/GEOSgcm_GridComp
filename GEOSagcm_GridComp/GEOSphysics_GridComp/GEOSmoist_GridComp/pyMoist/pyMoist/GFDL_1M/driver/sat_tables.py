@@ -23,7 +23,7 @@ GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(constants.LENGTH)))]
 
 def qs_table_1(length: Int, table1: FloatField, esupc: FloatField):
     """
-    compute saturation water vapor pressure table 1
+    Compute saturation water vapor pressure table 1
     three phase table
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine qs_table
@@ -67,7 +67,7 @@ def qs_table_1(length: Int, table1: FloatField, esupc: FloatField):
 
 def qs_table_2(length: Int, table2: FloatField):
     """
-    compute saturation water vapor pressure table 2
+    Compute saturation water vapor pressure table 2
     one phase table
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine qs_tablew
@@ -82,7 +82,7 @@ def qs_table_2(length: Int, table2: FloatField):
 
 def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
     """
-    compute saturation water vapor pressure table 3
+    Compute saturation water vapor pressure table 3
     two phase table
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine qs_table2
@@ -122,7 +122,7 @@ def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
 
 def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
     """
-    compute saturation water vapor pressure table 4
+    Compute saturation water vapor pressure table 4
     two phase table with " - 2 c" as the transition point
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine qs_table3

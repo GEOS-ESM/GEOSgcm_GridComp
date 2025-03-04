@@ -11,11 +11,12 @@ class Finish:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
         GFDL_1M_config: MicrophysicsConfiguration,
         config_dependent_constants: ConfigConstants,
     ):
-
+        """
+        Save driver outputs: tentencies & precipitation
+        """
         # Initalize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
 

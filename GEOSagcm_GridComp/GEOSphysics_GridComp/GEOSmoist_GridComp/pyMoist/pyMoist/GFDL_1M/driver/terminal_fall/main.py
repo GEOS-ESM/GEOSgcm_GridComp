@@ -18,7 +18,7 @@ from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 
 class TerminalFall:
     """
-    calculate terminal fall speed, accounting for
+    Calculate terminal fall speed, accounting for
     melting of ice, snow, and graupel during fall
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall

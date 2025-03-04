@@ -14,7 +14,6 @@ class Setup:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
         GFDL_1M_config: MicrophysicsConfiguration,
         config_dependent_constants: ConfigConstants,
     ):

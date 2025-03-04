@@ -21,7 +21,7 @@ def wqs2(
     des2: GlobalTable_driver_qsat,
 ):
     """
-    compute the saturated specific humidity for table2
+    Compute the saturated specific humidity for table2
     with additional calculation of gradient (dq/dt)
 
     pure water phase; universal dry / moist formular using air density
@@ -64,8 +64,9 @@ def implicit_fall(
     precip_fall: FloatFieldIJ,
 ):
     """
+    Compute the time-implicit monotonic scheme
+
     reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
-    this code computes the time-implicit monotonic scheme
     Fortran author: Shian-Jiann Lin, 2016
     """
     from __externals__ import dts, use_ppm

@@ -12,7 +12,7 @@ from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 class IceCloud:
     """
-    ice cloud microphysics processes
+    Ice cloud microphysics processes
     bulk cloud micro - physics; processes splitting
     with some un - split sub - grouping
     time implicit (when possible) accretion and autoconversion
@@ -21,7 +21,6 @@ class IceCloud:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
         GFDL_1M_config: MicrophysicsConfiguration,
         config_dependent_constants: ConfigConstants,
     ):

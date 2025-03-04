@@ -15,7 +15,7 @@ from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 class WarmRain:
     """
-    warm rain cloud microphysics: evaporation, accretion
+    Warm rain cloud microphysics: evaporation, accretion
     """
 
     def __init__(

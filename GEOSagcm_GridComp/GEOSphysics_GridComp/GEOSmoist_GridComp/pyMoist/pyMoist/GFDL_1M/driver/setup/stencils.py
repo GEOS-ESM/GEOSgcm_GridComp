@@ -66,7 +66,7 @@ def init_temporaries(
     isubl: FloatField,
 ):
     """
-    initalize temporary copies of many quantities
+    Initalize temporary copies of many quantities
 
     modification to quantities (t, p, q, etc.) made inside of the driver
     are not returned outside of the driver. these copies are necessary
@@ -160,7 +160,7 @@ def fix_negative_core(
     d0_vap: Float,
 ):
     """
-    adjusts/removes negative mixing ratios
+    Adjusts/removes negative mixing ratios
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine neg_adj
     """
@@ -223,7 +223,7 @@ def fix_negative_values(
     dp: FloatField,
 ):
     """
-    stencil wrapper for fix_negative_core
+    Stencil wrapper for fix_negative_core
 
     adjusts/removes negative mixing ratios
     updates qv based on new values

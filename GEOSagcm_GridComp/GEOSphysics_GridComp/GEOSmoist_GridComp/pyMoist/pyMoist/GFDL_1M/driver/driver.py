@@ -5,7 +5,7 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
 from pyMoist.GFDL_1M.driver.ice_cloud.main import IceCloud
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
-from pyMoist.GFDL_1M.driver.support import check_flags
+from pyMoist.GFDL_1M.driver.check_flags import check_flags
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.outputs import Outputs
@@ -65,7 +65,6 @@ class MicrophysicsDriver:
 
         self._setup = Setup(
             stencil_factory,
-            quantity_factory,
             GFDL_1M_config,
             self.config_dependent_constants,
         )
@@ -93,14 +92,12 @@ class MicrophysicsDriver:
 
         self._ice_cloud = IceCloud(
             stencil_factory,
-            quantity_factory,
             GFDL_1M_config,
             self.config_dependent_constants,
         )
 
         self._finish = Finish(
             stencil_factory,
-            quantity_factory,
             GFDL_1M_config,
             self.config_dependent_constants,
         )
