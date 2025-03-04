@@ -75,7 +75,7 @@ contains
     endif
     call MAPL_GetResource( SCF, statePtr%FWETC,               label='FWETC:',               DEFAULT=FWETC_default, __RC__ )
     call MAPL_GetResource( SCF, statePtr%FWETL,               label='FWETL:',               DEFAULT=FWETL_default, __RC__ )
-    call MAPL_GetResource( SCF, statePtr%SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0,             __RC__ )
+    call MAPL_GetResource( SCF, statePtr%SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=1,             __RC__ )
     call MAPL_GetResource( SCF, statePtr%N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0,             __RC__ )
     call MAPL_GetResource( SCF, statePtr%AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0,             __RC__ )
     call MAPL_GetResource( SCF, statePtr%RUN_IRRIG,           label='RUN_IRRIG:',           DEFAULT=0,             __RC__ )

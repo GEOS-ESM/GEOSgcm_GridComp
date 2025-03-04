@@ -122,8 +122,8 @@
 #           - NOTE: bcs v06, v08, and v09 used approximate averaging of MODIS-based snow albedo to tile space;
 #                   bcs v11, v12 and v13  employ more accurate, raster-based averaging.
 #
-# GEOSagcm=>SNOW_ALBEDO_INFO: 0
-# GEOSldas=>SNOW_ALBEDO_INFO: 0
+# GEOSagcm=>SNOW_ALBEDO_INFO: 1
+# GEOSldas=>SNOW_ALBEDO_INFO: 1
 
 #--------------------------------------------------------#
 #    GOSWIM aerosol deposition on surface snow           #
