@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from math import prod
 from types import ModuleType
 from typing import List, Optional, Tuple, TypeAlias
@@ -76,7 +78,7 @@ class FortranPythonConversion:
 
     def _fortran_to_numpy(
         self,
-        fptr: "cffi.FFI.CData",
+        fptr: cffi.FFI.CData,
         dim: Optional[List[int]] = None,
     ) -> np.ndarray:
         """
@@ -133,7 +135,7 @@ class FortranPythonConversion:
 
     def fortran_to_python(
         self,
-        fptr: "cffi.FFI.CData",
+        fptr: cffi.FFI.CData,
         dim: Optional[List[int]] = None,
         swap_axes: Optional[Tuple[int, int]] = None,
     ) -> PythonArray:
@@ -194,7 +196,7 @@ class FortranPythonConversion:
     def python_to_fortran(
         self,
         array: PythonArray,
-        fptr: "cffi.FFI.CData",
+        fptr: cffi.FFI.CData,
         ptr_offset: int = 0,
         swap_axes: Optional[Tuple[int, int]] = None,
     ) -> np.ndarray:
