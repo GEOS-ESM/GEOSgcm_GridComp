@@ -1,19 +1,19 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatFieldIJ, FloatField, BoolFieldIJ, BoolField
+from ndsl.dsl.typing import BoolField, BoolFieldIJ, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
+from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
+from pyMoist.GFDL_1M.driver.stencils import implicit_fall
 from pyMoist.GFDL_1M.driver.terminal_fall.stencils import (
     check_precip_get_zt,
     melting_loop,
     reset,
     setup,
     update_dm,
-    update_w1,
     update_outputs,
+    update_w1,
 )
-from pyMoist.GFDL_1M.driver.stencils import implicit_fall
 from pyMoist.GFDL_1M.driver.terminal_fall.temporaries import Temporaries
-from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 
 
 class TerminalFall:

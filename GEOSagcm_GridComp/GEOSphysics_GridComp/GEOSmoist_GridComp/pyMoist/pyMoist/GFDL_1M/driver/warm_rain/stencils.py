@@ -11,8 +11,8 @@ from gt4py.cartesian.gtscript import (
     sqrt,
 )
 
-from pyMoist.GFDL_1M.driver.constants import constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 from pyMoist.GFDL_1M.driver.stencils import wqs2
 
@@ -182,19 +182,9 @@ def warm_rain_step_1(
     first half of the timestep
     """
     from __externals__ import (
-        const_vr,
-        do_qa,
-        do_sedi_w,
-        dts,
-        irain_f,
-        ql0_max,
-        rthreshs,
-        rthreshu,
-        vr_fac,
-        vr_max,
-        z_slope_liq,
         c_air,
         c_vap,
+        const_vr,
         cracw,
         crevp_0,
         crevp_1,
@@ -202,8 +192,18 @@ def warm_rain_step_1(
         crevp_3,
         crevp_4,
         d0_vap,
+        do_qa,
+        do_sedi_w,
+        dts,
+        irain_f,
         lv00,
+        ql0_max,
+        rthreshs,
+        rthreshu,
         tau_revp,
+        vr_fac,
+        vr_max,
+        z_slope_liq,
     )
 
     # reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
@@ -367,17 +367,7 @@ def warm_rain_step_1(
     # evaporation and accretion of rain for the first 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (
-            t1,
-            qv1,
-            qr1,
-            ql1,
-            qi1,
-            qs1,
-            qg1,
-            qa1,
-            revap,
-        ) = revap_racc(
+        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
             t1,
             qv1,
             ql1,
@@ -450,8 +440,6 @@ def warm_rain_step_2(
     first half of the timestep
     """
     from __externals__ import (
-        do_sedi_w,
-        dts,
         c_air,
         c_vap,
         cracw,
@@ -461,6 +449,8 @@ def warm_rain_step_2(
         crevp_3,
         crevp_4,
         d0_vap,
+        do_sedi_w,
+        dts,
         lv00,
         tau_revp,
     )
@@ -488,17 +478,7 @@ def warm_rain_step_2(
     # evaporation and accretion of rain for the remaing 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (
-            t1,
-            qv1,
-            qr1,
-            ql1,
-            qi1,
-            qs1,
-            qg1,
-            qa1,
-            revap,
-        ) = revap_racc(
+        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
             t1,
             qv1,
             ql1,

@@ -34,8 +34,8 @@ from ndsl.dsl.typing import floating_point_precision
 from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
-from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
+from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
 from pyMoist.interface.flags import gfdl_1m_flags, moist_flags
 
 
@@ -92,7 +92,8 @@ class StencilBackendCompilerOverride:
             ndsl_log.info(f"Stencil backend read cache on {self.comm.Get_rank()}")
         else:
             ndsl_log.info(
-                f"Stencil backend was compiled on {self.comm.Get_rank()} now waiting for other ranks"
+                f"Stencil backend was compiled on {self.comm.Get_rank()} \
+                    now waiting for other ranks"
             )
             self.comm.Barrier()
         ndsl_log.info(f"Rank {self.comm.Get_rank()} ready for execution")

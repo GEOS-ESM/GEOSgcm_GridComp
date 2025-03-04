@@ -1,14 +1,14 @@
 from ndsl import Namelist, StencilFactory
+from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
-from ndsl.stencils.testing.savepoint import DataLoader
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
-from pyMoist.GFDL_1M.driver.temporaries import Temporaries
-from pyMoist.GFDL_1M.driver.outputs import Outputs
-from pyMoist.GFDL_1M.driver.masks import Masks
-from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.driver.ice_cloud.main import IceCloud
-from ndsl.stencils.testing.grid import Grid
+from pyMoist.GFDL_1M.driver.masks import Masks
+from pyMoist.GFDL_1M.driver.outputs import Outputs
+from pyMoist.GFDL_1M.driver.sat_tables import get_tables
+from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 
 
 class Translateice_cloud(TranslateFortranData2Py):
@@ -66,7 +66,7 @@ class Translateice_cloud(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M_driver-constants")
 
     def compute_from_storage(self, inputs):
-        self.GFDL_1M_config = config(
+        self.GFDL_1M_config = MicrophysicsConfiguration(
             self.constants["PHYS_HYDROSTATIC"],
             self.constants["HYDROSTATIC"],
             self.constants["DT_MOIST"],
@@ -165,20 +165,15 @@ class Translateice_cloud(TranslateFortranData2Py):
         # Initalize object to be tested
         self.ice_cloud = IceCloud(
             self.stencil_factory,
-            self.quantity_factory,
             self.GFDL_1M_config,
             self.config_dependent_constants,
         )
 
         self.ice_cloud(
-            table1=self.sat_tables.table1,
             table2=self.sat_tables.table2,
             table3=self.sat_tables.table3,
-            table4=self.sat_tables.table4,
-            des1=self.sat_tables.des1,
             des2=self.sat_tables.des2,
             des3=self.sat_tables.des3,
-            des4=self.sat_tables.des4,
             **inputs,
         )
         return inputs

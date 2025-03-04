@@ -1,9 +1,9 @@
 import numpy as np
 from gt4py.cartesian.gtscript import i32
 
-from pyMoist.GFDL_1M.driver.constants import constants
 from ndsl.dsl.typing import Float
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
+from pyMoist.GFDL_1M.driver.constants import constants
 
 
 class ConfigConstants:

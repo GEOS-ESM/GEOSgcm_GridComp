@@ -1,16 +1,16 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatFieldIJ, FloatField, BoolFieldIJ
+from ndsl.dsl.typing import BoolFieldIJ, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
-from pyMoist.GFDL_1M.driver.warm_rain.stencils import (
-    warm_rain_step_1,
-    warm_rain_step_2,
-    update_outputs,
-)
-from pyMoist.GFDL_1M.driver.stencils import implicit_fall
-from pyMoist.GFDL_1M.driver.warm_rain.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
+from pyMoist.GFDL_1M.driver.stencils import implicit_fall
+from pyMoist.GFDL_1M.driver.warm_rain.stencils import (
+    update_outputs,
+    warm_rain_step_1,
+    warm_rain_step_2,
+)
+from pyMoist.GFDL_1M.driver.warm_rain.temporaries import Temporaries
 
 
 class WarmRain:

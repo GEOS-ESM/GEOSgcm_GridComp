@@ -8,7 +8,7 @@ import numpy as np
 
 
 @dataclass
-class Moist_Flags:
+class MoistFlags:
     # Grid layout
     npx: int = 0
     npy: int = 0
@@ -23,7 +23,7 @@ class Moist_Flags:
 
 
 @dataclass
-class GFDL_1M_Flags:
+class GFDL1MFlags:
     # GFDL_1M driver configuration. Initial values are not true defaults.
     phys_hydrostatic: bool = False
     hydrostatic: bool = False
@@ -124,25 +124,25 @@ def _generic_config_bridge(
 
 def moist_flags_f_to_python(
     f_flags: cffi.FFI.CData,
-) -> moist_flags:
+) -> MoistFlags:
     if f_flags.mn_123456789 != 123456789:
         raise RuntimeError(
             "Magic number failed, pyMoist interface is broken on the python side"
         )
 
-    py_flags = moist_flags()
+    py_flags = MoistFlags()
     _generic_config_bridge(py_flags, f_flags)
     return py_flags
 
 
 def gfdl_1m_flags_f_to_python(
     f_flags: cffi.FFI.CData,
-) -> gfdl_1m_flags:
+) -> GFDL1MFlags:
     if f_flags.mn_123456789 != 123456789:
         raise RuntimeError(
             "Magic number failed, pyMoist interface is broken on the python side"
         )
 
-    py_flags = gfdl_1m_flags()
+    py_flags = GFDL1MFlags()
     _generic_config_bridge(py_flags, f_flags)
     return py_flags

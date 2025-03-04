@@ -1,13 +1,12 @@
-from ndsl import QuantityFactory, StencilFactory, orchestrate
+from ndsl import StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
-from pyMoist.GFDL_1M.driver.finish.stencils import update_tendencies
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
+from pyMoist.GFDL_1M.driver.finish.stencils import update_tendencies
 
 
 class Finish:
-
     def __init__(
         self,
         stencil_factory: StencilFactory,

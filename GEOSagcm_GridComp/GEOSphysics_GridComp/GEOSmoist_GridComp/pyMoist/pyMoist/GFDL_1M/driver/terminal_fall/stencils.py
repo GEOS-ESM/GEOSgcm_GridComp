@@ -8,8 +8,8 @@ from gt4py.cartesian.gtscript import (
     interval,
 )
 
-from pyMoist.GFDL_1M.driver.constants import constants
 from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ
+from pyMoist.GFDL_1M.driver.constants import constants
 
 
 def check_precip_get_zt(

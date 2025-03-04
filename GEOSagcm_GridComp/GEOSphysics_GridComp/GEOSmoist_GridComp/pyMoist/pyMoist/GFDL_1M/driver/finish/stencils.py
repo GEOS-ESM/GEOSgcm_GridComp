@@ -1,13 +1,7 @@
-from gt4py.cartesian.gtscript import (
-    FORWARD,
-    PARALLEL,
-    computation,
-    interval,
-    sqrt,
-)
+from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, interval, sqrt
 
+from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
 
 def update_tendencies(

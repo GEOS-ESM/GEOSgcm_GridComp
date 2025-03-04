@@ -1,14 +1,14 @@
 from ndsl import Namelist, StencilFactory
+from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
-from ndsl.stencils.testing.savepoint import DataLoader
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
-from pyMoist.GFDL_1M.driver.temporaries import Temporaries
-from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.masks import Masks
+from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
+from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.terminal_fall.main import TerminalFall
-from ndsl.stencils.testing.grid import Grid
 
 
 class Translateterminal_fall(TranslateFortranData2Py):
@@ -35,7 +35,6 @@ class Translateterminal_fall(TranslateFortranData2Py):
             "w1": grid.compute_dict() | {"serialname": "w1_terminal_fall"},
             "dz1": grid.compute_dict() | {"serialname": "dz1_terminal_fall"},
             "dp1": grid.compute_dict() | {"serialname": "dp1_terminal_fall"},
-            "den1": grid.compute_dict() | {"serialname": "den1_terminal_fall"},
             "vtg": grid.compute_dict() | {"serialname": "vtg_terminal_fall"},
             "vts": grid.compute_dict() | {"serialname": "vts_terminal_fall"},
             "vti": grid.compute_dict() | {"serialname": "vti_terminal_fall"},
@@ -54,7 +53,6 @@ class Translateterminal_fall(TranslateFortranData2Py):
         del (
             self.out_vars["dz1"],
             self.out_vars["dp1"],
-            self.out_vars["den1"],
             self.out_vars["vtg"],
             self.out_vars["vts"],
             self.out_vars["vti"],

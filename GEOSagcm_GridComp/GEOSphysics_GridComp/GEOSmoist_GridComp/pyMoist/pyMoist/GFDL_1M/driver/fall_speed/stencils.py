@@ -9,8 +9,8 @@ from gt4py.cartesian.gtscript import (
     sqrt,
 )
 
-from pyMoist.GFDL_1M.driver.constants import constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from pyMoist.GFDL_1M.driver.constants import constants
 
 
 @gtscript.function

@@ -1,9 +1,9 @@
 from ndsl import Namelist, StencilFactory
+from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
-from ndsl.stencils.testing.savepoint import DataLoader
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
-from ndsl.stencils.testing.grid import Grid
 
 
 class TranslateGFDL_1M_driver(TranslateFortranData2Py):

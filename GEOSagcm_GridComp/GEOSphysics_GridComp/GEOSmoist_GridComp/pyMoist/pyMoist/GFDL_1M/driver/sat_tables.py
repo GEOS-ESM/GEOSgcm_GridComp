@@ -1,21 +1,21 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import (
-    PARALLEL,
     FORWARD,
+    PARALLEL,
+    THIS_K,
     computation,
     exp,
-    i32,
     interval,
     log,
     log10,
-    THIS_K,
 )
 
-from pyMoist.GFDL_1M.driver.constants import constants
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, Int
+from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.shared_incloud_processes import ice_fraction
+
 
 # Workaround to create a 1d off-grid axis that can be written to
 GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(constants.LENGTH)))]
@@ -117,7 +117,7 @@ def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
             t1 = 0.25 * (table3 + 2.0 * table1[0, 0, 1] + table3[0, 0, 2])
             table3 = t0
         elif THIS_K == 1600:
-            table3 = t1
+            table3 = t1  # type: ignore
 
 
 def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
@@ -160,7 +160,7 @@ def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
             t1 = 0.25 * (table4 + 2.0 * table1[0, 0, 1] + table4[0, 0, 2])
             table4 = t0
         elif THIS_K == 1580:
-            table4 = t1
+            table4 = t1  # type: ignore
 
 
 def des_tables(

@@ -5,9 +5,11 @@ others are duplicated. Both of these need a proper solution
 Commented comments are defined in namelist and set at stencil init.
 """
 
-import numpy as np
-from ndsl.dsl.typing import Float, Int
 from dataclasses import dataclass
+
+import numpy as np
+
+from ndsl.dsl.typing import Float, Int
 
 
 @dataclass
