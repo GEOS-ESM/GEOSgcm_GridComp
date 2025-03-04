@@ -25,6 +25,7 @@ extern int pyMLINC_interface_run_py(
     int xdim,
     int ydim,
     int zdim,
+    const float *u,
     const float *qv,
     float *dtdt,
     int magic_number);

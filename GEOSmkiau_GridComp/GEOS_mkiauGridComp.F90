@@ -765,7 +765,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
 
 #ifdef HAS_PYMLINC
-  integer :: qshape(3)
+  integer :: ushape(3)
   real, pointer, dimension(:,:,:)     ::  u_local, v_local, t_local
   real, pointer, dimension(:,:,:)     ::  qv_local
   real, allocatable, dimension(:,:,:) :: out_buffer(:, :, :)
@@ -1230,21 +1230,25 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef HAS_PYMLINC
     if ( IHAVEMLINC/=0 ) then
-       nullify(u_local)
+       nullify(u_local, v_local, t_local)
        nullify(qv_local)
+       ! NOTE: ASSUME all arrays (except PS, which is 2D) have the same shape
        call MAPL_GetPointer(IMPORT, u_local, "U", __RC__)
+       ushape = shape(u_local)
+       allocate(out_buffer(ushape(1), ushape(2), ushape(3)), source = 0.0 )
        if (MAPL_AM_I_ROOT()) then
-          print *, "[pyMLINC] Fortran - u: ", shape(u_local)
+          print *, "[pyMLINC] Fortran - u: ", ushape
        end if
+       call MAPL_GetPointer(IMPORT, v_local, "U", __RC__)
+       call MAPL_GetPointer(IMPORT, t_local, "U", __RC__)
        call MAPL_GetPointer(IMPORT, qv_local, "QV", __RC__)
-       qshape = shape(qv_local)
-       allocate(out_buffer(qshape(1), qshape(2), qshape(3)), source = 0.0 )
        if (MAPL_AM_I_ROOT()) then
           print *, "[pyMLINC] Fortran - qv: ", shape(qv_local)
           print *, "[pyMLINC] Fortran - qv: ", sum(qv_local), minval(qv_local), maxval(qv_local)
        end if
        call pyMLINC_interface_run_f( &
-            qshape(1), qshape(2), qshape(3), &
+            ushape(1), ushape(2), ushape(3), &
+            u_local, &
             qv_local, &
             out_buffer, &
             magic_number)

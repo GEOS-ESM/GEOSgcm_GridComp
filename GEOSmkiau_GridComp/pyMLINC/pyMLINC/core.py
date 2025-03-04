@@ -25,6 +25,7 @@ def pyMLINC_run(
         xdim: int,
         ydim: int,
         zdim: int,
+        u_f: CFFIObj,
         qv_f: CFFIObj,
         # output
         dtdt_f: CFFIObj,
@@ -37,6 +38,7 @@ def pyMLINC_run(
         F_PY_MEMORY_CONV = FortranPythonConversion(xdim, ydim, zdim, numpy)
 
     # Move memory into a manipulable numpy array
+    u = F_PY_MEMORY_CONV.fortran_to_python(u_f)
     qv = F_PY_MEMORY_CONV.fortran_to_python(qv_f)
     print("[pyMLINC] run - qv:", numpy.sum(qv), numpy.min(qv), numpy.max(qv))
     dtdt = F_PY_MEMORY_CONV.fortran_to_python(dtdt_f)

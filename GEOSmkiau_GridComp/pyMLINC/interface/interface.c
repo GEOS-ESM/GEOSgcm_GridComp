@@ -18,6 +18,7 @@ extern int pyMLINC_interface_init_c(int magic_number)
 extern int pyMLINC_interface_run_c(
     // input
     int xdim, int ydim, int zdim,
+    const float *u,
     const float *qv,
     // output
     float *dtdt,
@@ -31,6 +32,7 @@ extern int pyMLINC_interface_run_c(
     }
     int rc = pyMLINC_interface_run_py(
         xdim, ydim, zdim,
+        u,
         qv,
         dtdt,
         magic_number);
