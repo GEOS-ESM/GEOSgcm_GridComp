@@ -6,7 +6,7 @@ extern int pyMLINC_interface_init_c(int magic_number)
 {
     // Check magic number
     if (magic_number != 123456789) {
-        printf("Magic number failed on the C side\n");
+        printf("[pyMLINC_interface_init_c] Magic number failed\n");
         exit(-1);
     }
     int rc = pyMLINC_interface_init_py(magic_number);
@@ -20,9 +20,20 @@ extern int pyMLINC_interface_run_c(
     int xdim, int ydim, int zdim,
     const float *qv,
     // output
-    float *dtdt)
+    float *dtdt,
+    // LAST ARGUMENT
+    int magic_number)
 {
-    int rc = pyMLINC_interface_run_py(xdim, ydim, zdim, qv, dtdt);
+    // Check magic number
+    if (magic_number != 123456789) {
+        printf("[pyMLINC_interface_run_c] Magic number failed\n");
+        exit(-1);
+    }
+    int rc = pyMLINC_interface_run_py(
+        xdim, ydim, zdim,
+        qv,
+        dtdt,
+        magic_number);
     if (rc != 0)
         exit(rc);
     return 0;

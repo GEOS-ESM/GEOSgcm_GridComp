@@ -10,21 +10,28 @@ from pyMLINC.cuda_profiler import TimedCUDAProfiler
 F_PY_MEMORY_CONV = None
 
 
-def pyMLINC_init(magic_number: int):
+def check_magic_number(magic_number: int):
     if magic_number != 123456789:  # type:ignore
         raise RuntimeError("Magic number failed on the Python side")
-    print(f"[pyMLINC] init - magic number: {magic_number}", flush=True)
+
+
+def pyMLINC_init(magic_number: int):
+    check_magic_number(magic_number)
+    print(f"[pyMLINC] init", flush=True)
 
 
 def pyMLINC_run(
         # input
         xdim: int,
-        ydim: int, 
+        ydim: int,
         zdim: int,
         qv_f: CFFIObj,
         # output
         dtdt_f: CFFIObj,
+        # LAST ARGUMENT - input
+        magic_number: int
 ):
+    check_magic_number(magic_number)
     global F_PY_MEMORY_CONV
     if F_PY_MEMORY_CONV is None:
         F_PY_MEMORY_CONV = FortranPythonConversion(xdim, ydim, zdim, numpy)

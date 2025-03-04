@@ -766,7 +766,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef HAS_PYMLINC
   integer :: qshape(3)
-  real, allocatable :: out_buffer(:, :, :)
+  real, pointer, dimension(:,:,:)     ::  u_local, v_local, t_local
+  real, pointer, dimension(:,:,:)     ::  qv_local
+  real, allocatable, dimension(:,:,:) :: out_buffer(:, :, :)
+  integer, parameter                  :: magic_number = 123456789
 #endif
 
 !=============================================================================
@@ -1227,14 +1230,25 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef HAS_PYMLINC
     if ( IHAVEMLINC/=0 ) then
-       call MAPL_GetPointer(IMPORT, ptr3d, "QV", __RC__)
-       qshape = shape(ptr3d)
+       nullify(u_local)
+       nullify(qv_local)
+       call MAPL_GetPointer(IMPORT, u_local, "U", __RC__)
+       if (MAPL_AM_I_ROOT()) then
+          print *, "[pyMLINC] Fortran - u: ", shape(u_local)
+       end if
+       call MAPL_GetPointer(IMPORT, qv_local, "QV", __RC__)
+       qshape = shape(qv_local)
        allocate(out_buffer(qshape(1), qshape(2), qshape(3)), source = 0.0 )
        if (MAPL_AM_I_ROOT()) then
-          print *, "[pyMLINC] Fortran - qv: ", sum(ptr3d), minval(ptr3d), maxval(ptr3d)
+          print *, "[pyMLINC] Fortran - qv: ", shape(qv_local)
+          print *, "[pyMLINC] Fortran - qv: ", sum(qv_local), minval(qv_local), maxval(qv_local)
        end if
-       call pyMLINC_interface_run_f(qshape(1), qshape(2), qshape(3), ptr3d, out_buffer)
-       nullify(ptr3d)
+       call pyMLINC_interface_run_f( &
+            qshape(1), qshape(2), qshape(3), &
+            qv_local, &
+            out_buffer, &
+            magic_number)
+       nullify(qv_local)
        if (MAPL_AM_I_ROOT()) then
           write(*,*) "[pyMLINC] Fortran - dtdt", sum(out_buffer), minval(out_buffer), maxval(out_buffer)
        end if

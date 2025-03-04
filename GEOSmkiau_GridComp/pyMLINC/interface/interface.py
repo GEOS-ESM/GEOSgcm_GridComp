@@ -21,10 +21,10 @@ def pyMLINC_interface_init_py(magic_number) -> int:
     return 0
 
 @ffi.def_extern()
-def pyMLINC_interface_run_py(xdim, ydim, zdim, qv, dtdt) -> int:
+def pyMLINC_interface_run_py(xdim, ydim, zdim, qv, dtdt, magic_number) -> int:
     try:
         # Calling out off the bridge into the python
-        pyMLINC_run(xdim, ydim, zdim, qv, dtdt)
+        pyMLINC_run(xdim, ydim, zdim, qv, dtdt, magic_number)
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())

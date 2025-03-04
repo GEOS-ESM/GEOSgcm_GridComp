@@ -21,7 +21,9 @@ module pyMLINC_interface_mod
            xdim, ydim, zdim, &
            qv, &
            ! Output
-           dtdt &
+           dtdt, &
+           ! LAST ARGUMENT - input
+           magic_number &
            ) bind(c, name="pyMLINC_interface_run_c")
          import c_int, c_float
          implicit none
@@ -30,6 +32,7 @@ module pyMLINC_interface_mod
          integer(kind=c_int), value, intent(in) :: xdim, ydim, zdim
          real(kind=c_float), dimension(*), intent(in) :: qv
          real(kind=c_float), dimension(*), intent(out) :: dtdt
+         integer(kind=c_int), value, intent(in) :: magic_number
       end subroutine pyMLINC_interface_run_f
    
    end interface
