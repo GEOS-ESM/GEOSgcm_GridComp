@@ -16,7 +16,7 @@ MODULE Aer_Actv_Single_Moment
        integer,public,parameter :: AER_PR = AER_R8
 
        real        , parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
-       real(AER_PR), parameter :: zero_par  =  1.e-6   ! small non-zero value
+       real(AER_PR), parameter :: zero_par  =  tiny(1.0)   ! small non-zero value
        real(AER_PR), parameter :: ai        =  0.0000594
        real(AER_PR), parameter :: bi        =  3.33
        real(AER_PR), parameter :: ci        =  0.0264
@@ -27,7 +27,7 @@ MODULE Aer_Actv_Single_Moment
        real(AER_PR), parameter :: deltai    =  2.809e+3
        real(AER_PR), parameter :: densic    =  917.0   !Ice crystal density in kgm-3
 
-       real, parameter :: NN_MIN      =  100.0e6
+       real, parameter :: NN_MIN      =    1.0e6
        real, parameter :: NN_MAX      = 1000.0e6
 
        LOGICAL  :: USE_BERGERON = .TRUE.
@@ -37,45 +37,29 @@ MODULE Aer_Actv_Single_Moment
 !>----------------------------------------------------------------------------------------------------------------------
 !>----------------------------------------------------------------------------------------------------------------------
 
-      SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
-                                       sh, evap, kpbl, tke, vvel, FRLAND, USE_AERO_BUFFER, &
-                                       AeroPropsNew, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN)
+      SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, tke, vvel, FRLAND, &
+                                AeroPropsNew, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN)
       IMPLICIT NONE
       integer, intent(in)::IM,JM,LM
       TYPE(AerPropsNew), dimension (:), intent(inout) :: AeroPropsNew
       type(ESMF_State)            ,intent(inout) :: aero_aci
       real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! Pa
       real, dimension (IM,JM,0:LM),intent(in ) :: ple ! Pa
-      real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,tke,vvel,zlo, qlcn, qicn, qlls, qils
-      real, dimension (IM,JM,0:LM),intent(in ) :: zle
+      real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,tke,vvel
       real, dimension (IM,JM)     ,intent(in ) :: FRLAND
-      real, dimension (IM,JM)     ,intent(in ) :: sh, evap, kpbl
       real                        ,intent(in ) :: NN_LAND, NN_OCEAN     
-      logical                     ,intent(in ) :: USE_AERO_BUFFER
       
  
       real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI, NWFA
       
       real(AER_PR), allocatable, dimension (:) :: sig0,rg,ni,bibar,nact 
-      real(AER_PR), dimension (IM,JM,LM) :: zws
-      real(AER_PR)                       :: wupdraft,tk,press,air_den,QI,QL,WC,BB,RAUX
-
-      integer, dimension (IM,JM) :: kpbli
+      real(AER_PR)                             :: wupdraft,tk,press,air_den
 
       character(len=ESMF_MAXSTR)      :: aci_field_name
       real, pointer, dimension(:,:)   :: aci_ptr_2d
       real, pointer, dimension(:,:,:) :: aci_ptr_3d
-      real, pointer, dimension(:,:,:) :: aci_num
-      real, pointer, dimension(:,:,:) :: aci_dgn
-      real, pointer, dimension(:,:,:) :: aci_sigma
-      real, pointer, dimension(:,:,:) :: aci_density
-      real, pointer, dimension(:,:,:) :: aci_hygroscopicity
-      real, pointer, dimension(:,:,:) :: aci_f_dust
-      real, pointer, dimension(:,:,:) :: aci_f_soot
-      real, pointer, dimension(:,:,:) :: aci_f_organic
       character(len=ESMF_MAXSTR), allocatable, dimension(:) :: aero_aci_modes
       integer                         :: ACI_STATUS
-      REAL                            :: aux1,aux2,aux3,hfs,hfl, nfaux
 
       integer :: n_modes
       REAL :: numbinit
@@ -84,8 +68,8 @@ MODULE Aer_Actv_Single_Moment
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
       integer                                 :: STATUS
 
-      kpbli = MAX(MIN(NINT(kpbl),LM-1),1)
-      
+      NWFA = 0.0
+
       if (USE_AEROSOL_NN) then
 
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
@@ -121,7 +105,8 @@ MODULE Aer_Actv_Single_Moment
      
               ACTIVATION_PROPERTIES: do n = 1, n_modes
                  call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
-                 
+               ! call WRITE_PARALLEL (trim(aero_aci_modes(n)))  
+                  
                  ! execute the aerosol activation properties method 
                  call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
                  VERIFY_(ACI_STATUS)
@@ -129,129 +114,112 @@ MODULE Aer_Actv_Single_Moment
 
                  ! copy out aerosol activation properties
                  call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%num, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%num = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%dpg, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%dpg = aci_ptr_3d
+               ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%dpg(1,1,1)
 
                  call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%sig, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%sig = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%den, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%den = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%kap, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%kap = aci_ptr_3d
+               ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%kap(1,1,1)
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%fdust, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%fdust = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%fsoot, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%fsoot = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%forg, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%forg = aci_ptr_3d
 
                  AeroPropsNew(n)%nmods = n_modes
 
+                 where (AeroPropsNew(n)%kap > 0.4)
+                    NWFA = NWFA + AeroPropsNew(n)%num
+                 end where
+
               end do ACTIVATION_PROPERTIES
 
-              do k = 1, LM
-               do j = 1, JM
-                do i = 1, IM
-                nfaux =  0.0
-                 do n = 1, n_modes
-                   if (AeroPropsNew(n)%kap(i,j,k) .gt. 0.4) then 
-                            nfaux =  nfaux + AeroPropsNew(n)%num(i,j,k)
-                   end if                           
-                 end do !modes
-                 NWFA(I, J, K)  =  nfaux
-                end do
-               end do 
-              end do 
+            ! if (MAPL_am_I_root()) then
+            !    do n = 1, n_modes
+            !      print *, n, AeroPropsNew(n)%num(1,1,1)
+            !      print *, n, AeroPropsNew(n)%dpg(1,1,1)
+            !      print *, n, AeroPropsNew(n)%sig(1,1,1)
+            !      print *, n, AeroPropsNew(n)%den(1,1,1)
+            !      print *, n, AeroPropsNew(n)%kap(1,1,1)
+            !      print *, n, AeroPropsNew(n)%fdust(1,1,1)
+            !      print *, n, AeroPropsNew(n)%fsoot(1,1,1)
+            !      print *, n, AeroPropsNew(n)%forg(1,1,1)
+            !    end do !modes
+            ! end if 
              
-
               deallocate(aero_aci_modes, __STAT__)
 
       !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
-      numbinit = 0.
-      WC       = 0.
-      BB       = 0.
-      RAUX     = 0.
-           
-      !--- determing aerosol number concentration at cloud base
-      DO j=1,JM
-        Do i=1,IM 
-             k            = kpbli(i,j)
-             tk           = T(i,j,k)              ! K
-             press        = plo(i,j,k)            ! Pa     
-             air_den      = press*28.8e-3/8.31/tk ! kg/m3
-      ENDDO;ENDDO
-    
       DO k=LM,1,-1
-       NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
-       NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
        DO j=1,JM
         DO i=1,IM
               
             tk                 = T(i,j,k)                         ! K
             press              = plo(i,j,k)                       ! Pa   
-            air_den            = press*28.8e-3/8.31/tk            ! kg/m3
-            qi                 = (qicn(i,j,k)+qils(i,j,k))*1.e+3  ! g/kg
-            ql                 = (qlcn(i,j,k)+qlls(i,j,k))*1.e+3  ! g/kg
+            air_den            = press/(MAPL_RGAS*tk)             ! kg/m3
             wupdraft           = vvel(i,j,k) + SQRT(tke(i,j,k))
- 
+
             ! Liquid Clouds
-            IF( (tk >= MAPL_TICE-40.0) .and. (plo(i,j,k) > 10000.0) .and. &
-                (wupdraft > 0.1 .and. wupdraft < 100.) ) then
-
-                DO n=1,n_modes
-                  ni   (n)    =   max(AeroPropsNew(n)%num(i,j,k)*air_den,  zero_par)  ! unit: [m-3]
-                  rg   (n)    =   max(AeroPropsNew(n)%dpg(i,j,k)*0.5*1.e6, zero_par)  ! unit: [um]
-                  bibar(n)    =   max(AeroPropsNew(n)%kap(i,j,k),          zero_par)                 
-                  sig0 (n)    =       AeroPropsNew(n)%sig(i,j,k)                      ! unit: [um]
-                ENDDO
-
-                call GetActFrac(           n_modes    &
-                               ,      ni(1:n_modes)   &
-                               ,      rg(1:n_modes)   &
-                               ,    sig0(1:n_modes)   &
-                               ,      tk              &
-                               ,   press              &
-                               ,wupdraft              &
-                               ,    nact(1:n_modes)   &
-                               ,   bibar(1:n_modes)   &
-                               )
-
-                numbinit = 0.
-                NACTL(i,j,k) = 0.
-                DO n=1,n_modes
-                   numbinit = numbinit + AeroPropsNew(n)%num(i,j,k)*air_den
-                   NACTL(i,j,k)= NACTL(i,j,k) + nact(n) !#/m3
-                ENDDO
-                NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
-
-            ENDIF ! Liquid Clouds
+            DO n=1,n_modes
+               ni   (n)    =   max(AeroPropsNew(n)%num(i,j,k)*air_den,  zero_par)  ! unit: [m-3]
+               rg   (n)    =   max(AeroPropsNew(n)%dpg(i,j,k)*0.5*1.e6, zero_par)  ! unit: [um]
+               bibar(n)    =   max(AeroPropsNew(n)%kap(i,j,k),          zero_par)                 
+               sig0 (n)    =       AeroPropsNew(n)%sig(i,j,k)
+            ENDDO
+            call GetActFrac(           n_modes    &
+                           ,      ni(1:n_modes)   &
+                           ,      rg(1:n_modes)   &
+                           ,    sig0(1:n_modes)   &
+                           ,      tk              &
+                           ,   press              &
+                           ,wupdraft              &
+                           ,    nact(1:n_modes)   &
+                           ,   bibar(1:n_modes)   &
+                           )
+            numbinit = 0.
+            NACTL(i,j,k) = 0.
+            DO n=1,n_modes
+               numbinit = numbinit + AeroPropsNew(n)%num(i,j,k)
+               NACTL(i,j,k)= NACTL(i,j,k) + nact(n) !#/m3
+            ENDDO
+            numbinit = numbinit * air_den ! #/m3
+            NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
+            NACTL(i,j,k) = MAX(MIN(NACTL(i,j,k),NN_MAX),NN_MIN)
 
             ! Ice Clouds
-            IF( (tk <= MAPL_TICE) .and. ((QI > tiny(1.)) .or. (QL > tiny(1.))) ) then
-                numbinit = 0.
-                DO n=1,n_modes
-                   if (AeroPropsNew(n)%dpg(i,j,k) .ge. 0.5e-6) & ! diameters > 0.5 microns
-                   numbinit = numbinit + AeroPropsNew(n)%num(i,j,k)
-                ENDDO
-                numbinit = numbinit * air_den ! #/m3
-                ! Number of activated IN following deMott (2010) [#/m3]
-                NACTI(i,j,k) = ai*((MAPL_TICE-tk)**bi) * numbinit**(ci*(MAPL_TICE-tk)+di) !#/m3
-            ENDIF
-
-            !-- apply limits for NACTL/NACTI
-            IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = NN_MIN
-            IF(NACTL(i,j,k) > NN_MAX) NACTL(i,j,k) = NN_MAX
-            IF(NACTI(i,j,k) < NN_MIN) NACTI(i,j,k) = NN_MIN
-            IF(NACTI(i,j,k) > NN_MAX) NACTI(i,j,k) = NN_MAX
+            numbinit = 0.
+            DO n=1,n_modes
+               if (AeroPropsNew(n)%dpg(i,j,k) .ge. 0.5e-6) & ! diameters > 0.5 microns
+               numbinit = numbinit + AeroPropsNew(n)%num(i,j,k)
+            ENDDO
+            numbinit = numbinit * air_den ! #/m3
+            ! Number of activated IN following deMott (2010) [#/m3]
+            NACTI(i,j,k) = (ai*(max(0.0,(MAPL_TICE-tk))**bi)) * (numbinit**(ci*max((MAPL_TICE-tk),0.0)+di)) !#/m3
+            NACTI(i,j,k) = MAX(MIN(NACTI(i,j,k),NN_MAX),NN_MIN)
 
         ENDDO;ENDDO;ENDDO
+
 
         deallocate(   rg, __STAT__)
         deallocate(   ni, __STAT__)
@@ -425,7 +393,6 @@ MODULE Aer_Actv_Single_Moment
       real(AER_PR)            :: erf                            ! error function [1], but not declared in an f90 module 
       real(AER_PR)            :: smax                           ! maximum supersaturation [1]
 
-      real(AER_PR)            :: aux1,aux2                           ! aux
 !----------------------------------------------------------------------------------------------------------------------
 !     rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
 !     values close to those given in a-z et al. 1998 figure 5. 
@@ -476,24 +443,20 @@ MODULE Aer_Actv_Single_Moment
       enddo 
       smax = 1.0d+00 / sqrt(smax)                                                     ! [1]
       
-      
-      !aux1=0.0D0; aux2=0.0D0
       do i=1, nmodes
 
         ac(i)       = rg(i) * ( sm(i) / smax )**0.66666666666666667d+00               ! [um]
 
         u           = log(ac(i)/rg(i)) / ( sqrt2 * xlogsigm(i) )                      ! [1]
         fracactn(i) = 0.5d+00 * (1.0d+00 - erf(u))                                    ! [1]
-        nact(i)     = fracactn(i) * xnap(i)                                           ! [#/m^3]
-        !--------------------------------------------------------------------------------------------------------------
-        !aux1=aux1+ xnap(i); aux2=aux2+ nact(i) 
+        nact(i)     = min(fracactn(i),0.99d+00) * xnap(i)                             ! [#/m^3]
         
         !if(fracactn(i) .gt. 0.9999999d+00 ) then
         !   write(*,*)i,ac(i),u,fracactn(i),xnap(i)
-        !  print*,' xxx',i,ac(i),u,fracactn(i),xnap(i)
-        ! stop
-        ! endif
-        !--------------------------------------------------------------------------------------------------------------
+        !   print*,' xxx',i,ac(i),u,fracactn(i),xnap(i)
+        !   stop
+        !endif
+
       enddo 
 
       return
@@ -512,7 +475,6 @@ MODULE Aer_Actv_Single_Moment
       real(AER_PR) :: a,gammcf,gln,x
       integer :: i
       real(AER_PR) :: an,b,c,d,del,h
-      !real(AER_PR) :: gammln   ! function names not declared in an f90 module 
       gln=gammln(a)
       b=x+1.0d+00-a
       c=1.0d+00/fpmin
@@ -547,7 +509,6 @@ MODULE Aer_Actv_Single_Moment
       real(AER_PR) :: a,gamser,gln,x
       integer :: n
       real(AER_PR) :: ap,del,sum
-      !real(AER_PR) :: gammln   ! function names not declared in an f90 module 
       gln=gammln(a)
       if(x.le.0.d+00)then
         if(x.lt.0.)stop 'aero_actv: subroutine gser: x < 0 in gser'
@@ -602,8 +563,6 @@ MODULE Aer_Actv_Single_Moment
       double precision function Erf(x)
       implicit none
       real(AER_PR) :: x
-!u    uses gammp
-      !LFR  real(AER_PR) :: gammp   ! function names not declared in an f90 module 
       erf = 0.d0
       if(x.lt.0.0d+00)then
         erf=-gammp(0.5d0,x**2)

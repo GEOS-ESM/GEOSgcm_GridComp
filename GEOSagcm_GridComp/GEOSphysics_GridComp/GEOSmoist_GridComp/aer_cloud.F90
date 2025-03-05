@@ -31,14 +31,14 @@
     
       type :: AerPropsNew
       sequence 
-      real, dimension(:,:,:), pointer :: num !Num conc m-3
-      real, dimension(:,:,:), pointer :: dpg !dry Geometric size, m
-      real, dimension(:,:,:), pointer :: sig  !logarithm (base e) of the dry geometric disp
-      real, dimension(:,:,:), pointer :: den  !dry density , Kg m-3
-      real, dimension(:,:,:), pointer :: kap !Hygroscopicity parameter 
-      real, dimension(:,:,:), pointer :: fdust! mass fraction of dust 
-      real, dimension(:,:,:), pointer :: fsoot ! mass fraction of soot
-      real, dimension(:,:,:), pointer :: forg ! mass fraction of organics
+      real, dimension(:,:,:), allocatable :: num !Num conc m-3
+      real, dimension(:,:,:), allocatable :: dpg !dry Geometric size, m
+      real, dimension(:,:,:), allocatable :: sig  !logarithm (base e) of the dry geometric disp
+      real, dimension(:,:,:), allocatable :: den  !dry density , Kg m-3
+      real, dimension(:,:,:), allocatable :: kap !Hygroscopicity parameter 
+      real, dimension(:,:,:), allocatable :: fdust! mass fraction of dust 
+      real, dimension(:,:,:), allocatable :: fsoot ! mass fraction of soot
+      real, dimension(:,:,:), allocatable :: forg ! mass fraction of organics
       integer :: nmods  ! total number of modes (nmods<nmodmax)
       end type AerPropsNew
    

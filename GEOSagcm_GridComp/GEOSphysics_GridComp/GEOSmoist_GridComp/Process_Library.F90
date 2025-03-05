@@ -1027,16 +1027,24 @@ module GEOSmoist_Process_Library
       RAD_QG = MIN( RAD_QG, 0.01 )
 
      ! LIQUID RADII
-      !-BRAMS formulation
-      RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NL,NI,1)
-     ! apply limits
-      RAD_RL = MAX( MIN_RL, MIN(RAD_RL*FAC_RL, MAX_RL) )
+      if (RAD_QL > 1.e-8) then
+        !-BRAMS formulation
+        RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NL,NI,1)
+        ! apply limits
+        RAD_RL = MAX( MIN_RL, MIN(RAD_RL*FAC_RL, MAX_RL) )
+      else
+        RAD_RL = MAPL_UNDEF
+      end if
 
     ! ICE RADII
-     !-BRAMS formulation
-      RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2)
-    ! apply limits
-      RAD_RI = MAX( MIN_RI, MIN(RAD_RI*FAC_RI, MAX_RI) )
+      if (RAD_QI > 1.e-8) then
+        !-BRAMS formulation
+        RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2)
+        ! apply limits
+        RAD_RI = MAX( MIN_RI, MIN(RAD_RI*FAC_RI, MAX_RI) )
+      else
+        RAD_RI = MAPL_UNDEF
+      end if
 
    end subroutine RADCOUPLE
 

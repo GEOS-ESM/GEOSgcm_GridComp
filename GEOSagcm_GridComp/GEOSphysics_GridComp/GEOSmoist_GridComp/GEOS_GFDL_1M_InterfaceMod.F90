@@ -858,12 +858,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
          RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
          RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
-         where (QILS+QICN .le. 0.0)
-            CLDREFFI = 36.0e-6
-         end where
-         where (QLLS+QLCN .le. 0.0)
-            CLDREFFL = 14.0e-6
-         end where
 
          ! Update microphysics tendencies
          DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
