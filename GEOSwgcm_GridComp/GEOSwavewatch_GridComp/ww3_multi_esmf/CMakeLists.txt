@@ -91,43 +91,16 @@ set_property (SOURCE ${WW3_path}/model/src/w3initmd.F90
   "__WW3_SWITCHES__=\'${switch_strings}\'"
   )
 
+# We are duplicating info here. The switch_strings above is used below for defs
+# but with W3_ prefix. We can use CMake to prevent this duplication.
 
-list (APPEND defs 
-    W3_NOGRB
-    W3_DIST
-    W3_MPI
-    W3_SCRIP
-    W3_PR3
-    W3_UQ
-    W3_FLX0
-    W3_LN1
-    W3_FLD2
-    W3_ST4
-    W3_STAB0
-    W3_NL1
-    W3_BT1
-    W3_DB1
-    W3_MLIM
-    W3_TR0
-    W3_BS0
-    W3_XX0
-    W3_WNX0
-    W3_WNT0
-    W3_CRX0
-    W3_CRT0
-    W3_O0
-    W3_O1
-    W3_O2
-    W3_O3
-    W3_O4
-    W3_O5
-    W3_O6
-    W3_O7
-    W3_IC0
-    W3_IS0
-    W3_REF0
-)
+# 1. Create a list from the switch_strings space-separated string
+string(REPLACE " " ";" switch_list ${switch_strings})
+
+# 2. Add W3_ prefix to each element in the list
+foreach(switch ${switch_list})
+  list(APPEND defs W3_${switch})
+endforeach()
 
 target_compile_definitions(${this} PRIVATE ${defs})
-
 
