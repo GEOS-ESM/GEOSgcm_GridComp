@@ -25,7 +25,7 @@ class MicrophysicsDriver:
         GFDL_1M_config: MicrophysicsConfiguration,
     ):
 
-        self.config_dependent_constants = ConfigConstants(GFDL_1M_config)
+        self.config_dependent_constants = ConfigConstants.make(GFDL_1M_config)
 
         # Check values for untested code paths
         check_flags(
@@ -37,19 +37,19 @@ class MicrophysicsDriver:
         # initialize precipitation outputs
         # -----------------------------------------------------------------------
 
-        self.outputs = Outputs(quantity_factory)
+        self.outputs = Outputs.make(quantity_factory)
 
         # -----------------------------------------------------------------------
         # initialize temporaries
         # -----------------------------------------------------------------------
 
-        self.temporaries = Temporaries(quantity_factory)
+        self.temporaries = Temporaries.make(quantity_factory)
 
         # -----------------------------------------------------------------------
         # initialize masks
         # -----------------------------------------------------------------------
 
-        self.masks = Masks(quantity_factory)
+        self.masks = Masks.make(quantity_factory)
 
         # -----------------------------------------------------------------------
         # generate saturation specific humidity tables

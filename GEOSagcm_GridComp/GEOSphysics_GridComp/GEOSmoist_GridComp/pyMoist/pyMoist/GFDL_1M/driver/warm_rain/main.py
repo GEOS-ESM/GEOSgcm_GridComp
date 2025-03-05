@@ -27,7 +27,7 @@ class WarmRain:
     ):
 
         # Initalize temporaries
-        self.temporaries = Temporaries(quantity_factory)
+        self.temporaries = Temporaries.make(quantity_factory)
 
         # Initalize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)

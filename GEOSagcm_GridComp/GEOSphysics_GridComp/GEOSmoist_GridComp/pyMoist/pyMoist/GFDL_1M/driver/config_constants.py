@@ -1,107 +1,154 @@
 import numpy as np
 from gt4py.cartesian.gtscript import i32
-
+from ndsl import Quantity, QuantityFactory
 from ndsl.dsl.typing import Float
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
 from pyMoist.GFDL_1M.driver.constants import constants
+from dataclasses import dataclass
 
 
+@dataclass
 class ConfigConstants:
-    def __init__(self, GFDL_1M_config: MicrophysicsConfiguration):
+    C_AIR: Float
+    C_VAP: Float
+    P_NONHYDRO: bool
+    D0_VAP: Float
+    LV00: Float
+    DO_SEDI_W: bool
+    LATV: Float
+    LATI: Float
+    LATS: Float
+    LAT2: Float
+    LCP: Float
+    ICP: Float
+    TCP: Float
+    MPDT: Float
+    RDT: Float
+    NTIMES: Float
+    DTS: Float
+    CPAUT: Float
+    RDTS: Float
+    FAC_IMLT: Float
+    FAC_I2S: Float
+    FAC_V2L: Float
+    FAC_L2V: Float
+    FAC_I2V: Float
+    FAC_S2V: Float
+    FAC_V2S: Float
+    FAC_G2V: Float
+    FAC_V2G: Float
+    FAC_FRZ: Float
+    CGACS: Float
+    CSACW: Float
+    CRACI: Float
+    CSACI: Float
+    CGACW: Float
+    CGACI: Float
+    CRACW: Float
+    CGFR_0: Float
+    CGFR_1: Float
+    CSSUB_0: Float
+    CSSUB_1: Float
+    CSSUB_2: Float
+    CSSUB_3: Float
+    CSSUB_4: Float
+    CGSUB_0: Float
+    CGSUB_1: Float
+    CGSUB_2: Float
+    CGSUB_3: Float
+    CGSUB_4: Float
+    CREVP_0: Float
+    CREVP_1: Float
+    CREVP_2: Float
+    CREVP_3: Float
+    CREVP_4: Float
+    CSMLT_0: Float
+    CSMLT_1: Float
+    CSMLT_2: Float
+    CSMLT_3: Float
+    CSMLT_4: Float
+    CGMLT_0: Float
+    CGMLT_1: Float
+    CGMLT_2: Float
+    CGMLT_3: Float
+    CGMLT_4: Float
+
+    @classmethod
+    def make(cls, GFDL_1M_config: MicrophysicsConfiguration):
         # -----------------------------------------------------------------------
         # define heat capacity of dry air and water vap based on hydrostatical property
         # -----------------------------------------------------------------------
 
         if GFDL_1M_config.PHYS_HYDROSTATIC or GFDL_1M_config.HYDROSTATIC:
-            self.C_AIR = constants.CP_AIR
-            self.C_VAP = constants.CP_VAP
-            self.P_NONHYDRO = False
+            C_AIR = constants.CP_AIR
+            C_VAP = constants.CP_VAP
+            P_NONHYDRO = False
         else:
-            self.C_AIR = constants.CV_AIR
-            self.C_VAP = constants.CV_VAP
-            self.P_NONHYDRO = True
-        self.D0_VAP = self.C_VAP - constants.C_LIQ
-        self.LV00 = constants.HLV0 - self.D0_VAP * constants.T_ICE
+            C_AIR = constants.CV_AIR
+            C_VAP = constants.CV_VAP
+            P_NONHYDRO = True
+        D0_VAP = C_VAP - constants.C_LIQ
+        LV00 = constants.HLV0 - D0_VAP * constants.T_ICE
 
         if GFDL_1M_config.HYDROSTATIC:
-            self.DO_SEDI_W = False
+            DO_SEDI_W = False
+        else:
+            DO_SEDI_W = True
 
         # -----------------------------------------------------------------------
         # define latent heat coefficient used in wet bulb and bigg mechanism
         # -----------------------------------------------------------------------
 
-        self.LATV = constants.HLV
-        self.LATI = constants.HLF
-        self.LATS = self.LATV + self.LATI
-        self.LAT2 = self.LATS * self.LATS
+        LATV = constants.HLV
+        LATI = constants.HLF
+        LATS = LATV + LATI
+        LAT2 = LATS * LATS
 
-        self.LCP = self.LATV / constants.CP_AIR
-        self.ICP = self.LATI / constants.CP_AIR
-        self.TCP = (self.LATV + self.LATI) / constants.CP_AIR
+        LCP = LATV / constants.CP_AIR
+        ICP = LATI / constants.CP_AIR
+        TCP = (LATV + LATI) / constants.CP_AIR
 
         # -----------------------------------------------------------------------
         # define cloud microphysics sub time step
         # -----------------------------------------------------------------------
 
-        self.MPDT = min(GFDL_1M_config.DT_MOIST, GFDL_1M_config.MP_TIME)
-        self.RDT = Float(1.0) / GFDL_1M_config.DT_MOIST
-        self.NTIMES = i32(np.round(GFDL_1M_config.DT_MOIST / self.MPDT))
+        MPDT = min(GFDL_1M_config.DT_MOIST, GFDL_1M_config.MP_TIME)
+        RDT = Float(1.0) / GFDL_1M_config.DT_MOIST
+        NTIMES = i32(np.round(GFDL_1M_config.DT_MOIST / MPDT))
 
         # small time step:
-        self.DTS = GFDL_1M_config.DT_MOIST / Float(self.NTIMES)
+        DTS = GFDL_1M_config.DT_MOIST / Float(NTIMES)
 
         # -----------------------------------------------------------------------
         # calculate cloud condensation nuclei (ccn)
         # the following is based on klein eq. 15
         # -----------------------------------------------------------------------
 
-        self.CPAUT = (
-            GFDL_1M_config.C_PAUT * Float(0.104) * constants.GRAV / Float(1.717e-5)
-        )
+        CPAUT = GFDL_1M_config.C_PAUT * Float(0.104) * constants.GRAV / Float(1.717e-5)
 
         # -----------------------------------------------------------------------
         # define conversion scalar / factor for icloud
         # -----------------------------------------------------------------------
-        self.RDTS = Float(1.0) / self.DTS
-        self.FAC_IMLT = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_IMLT, dtype=Float
-        )
-        self.FAC_I2S = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_I2S, dtype=Float
-        )
-        self.FAC_V2L = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_V2L, dtype=Float
-        )
-        self.FAC_L2V = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_L2V, dtype=Float
-        )
-        self.FAC_I2V = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_I2V, dtype=Float
-        )
-        self.FAC_S2V = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_S2V, dtype=Float
-        )
-        self.FAC_V2S = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_V2S, dtype=Float
-        )
-        self.FAC_G2V = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_G2V, dtype=Float
-        )
-        self.FAC_V2G = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_V2G, dtype=Float
-        )
-        self.FAC_FRZ = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.TAU_FRZ, dtype=Float
-        )
+        RDTS = Float(1.0) / DTS
+        FAC_IMLT = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_IMLT, dtype=Float)
+        FAC_I2S = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_I2S, dtype=Float)
+        FAC_V2L = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_V2L, dtype=Float)
+        FAC_L2V = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_L2V, dtype=Float)
+        FAC_I2V = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_I2V, dtype=Float)
+        FAC_S2V = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_S2V, dtype=Float)
+        FAC_V2S = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_V2S, dtype=Float)
+        FAC_G2V = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_G2V, dtype=Float)
+        FAC_V2G = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_V2G, dtype=Float)
+        FAC_FRZ = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_FRZ, dtype=Float)
 
         # -----------------------------------------------------------------------
         # constatns from setupm
         # -----------------------------------------------------------------------
 
-        self.CGACS = constants.PISQ * constants.RNZG * constants.RNZS * constants.RHOS
-        self.CGACS = self.CGACS * GFDL_1M_config.C_PGACS
+        CGACS = constants.PISQ * constants.RNZG * constants.RNZS * constants.RHOS
+        CGACS = CGACS * GFDL_1M_config.C_PGACS
 
-        self.CSACW = (
+        CSACW = (
             constants.PIE
             * constants.RNZS
             * GFDL_1M_config.CLIN
@@ -110,16 +157,16 @@ class ConfigConstants:
         )
         # decreasing csacw to reduce cloud water --- > snow
 
-        self.CRACI = (
+        CRACI = (
             constants.PIE
             * constants.RNZR
             * GFDL_1M_config.ALIN
             * constants.GAM380
             / (Float(4.0) * np.power(constants.ACT[1], 0.95, dtype=Float))
         )
-        self.CSACI = self.CSACW * GFDL_1M_config.C_PSACI
+        CSACI = CSACW * GFDL_1M_config.C_PSACI
 
-        self.CGACW = (
+        CGACW = (
             constants.PIE
             * constants.RNZG
             * constants.GAM350
@@ -127,16 +174,16 @@ class ConfigConstants:
             / (Float(4.0) * np.power(constants.ACT[5], 0.875, dtype=Float))
         )
 
-        self.CGACI = self.CGACW * GFDL_1M_config.C_PGACI
+        CGACI = CGACW * GFDL_1M_config.C_PGACI
 
-        self.CRACW = self.CRACI  # cracw = 3.27206196043822
-        self.CRACW = GFDL_1M_config.C_CRACW * self.CRACW
+        CRACW = CRACI  # cracw = 3.27206196043822
+        CRACW = GFDL_1M_config.C_CRACW * CRACW
 
-        self.CSSUB = np.zeros(5)
-        self.CGSUB = np.zeros(5)
-        self.CREVP = np.zeros(5)
+        CSSUB = np.zeros(5)
+        CGSUB = np.zeros(5)
+        CREVP = np.zeros(5)
 
-        self.CSSUB[0] = (
+        CSSUB[0] = (
             Float(2.0)
             * constants.PIE
             * constants.VDIFU
@@ -144,7 +191,7 @@ class ConfigConstants:
             * constants.RVGAS
             * constants.RNZS
         )
-        self.CGSUB[0] = (
+        CGSUB[0] = (
             Float(2.0)
             * constants.PIE
             * constants.VDIFU
@@ -152,7 +199,7 @@ class ConfigConstants:
             * constants.RVGAS
             * constants.RNZG
         )
-        self.CREVP[0] = (
+        CREVP[0] = (
             Float(2.0)
             * constants.PIE
             * constants.VDIFU
@@ -160,75 +207,75 @@ class ConfigConstants:
             * constants.RVGAS
             * constants.RNZR
         )
-        self.CSSUB[1] = Float(0.78) / np.sqrt(constants.ACT[0], dtype=Float)
-        self.CGSUB[1] = Float(0.78) / np.sqrt(constants.ACT[5], dtype=Float)
-        self.CREVP[1] = Float(0.78) / np.sqrt(constants.ACT[1], dtype=Float)
-        self.CSSUB[2] = (
+        CSSUB[1] = Float(0.78) / np.sqrt(constants.ACT[0], dtype=Float)
+        CGSUB[1] = Float(0.78) / np.sqrt(constants.ACT[5], dtype=Float)
+        CREVP[1] = Float(0.78) / np.sqrt(constants.ACT[1], dtype=Float)
+        CSSUB[2] = (
             Float(0.31)
             * constants.SCM3
             * constants.GAM263
             * np.sqrt(GFDL_1M_config.CLIN / constants.VISK, dtype=Float)
             / np.power(constants.ACT[0], Float(0.65625), dtype=Float)
         )
-        self.CGSUB[2] = (
+        CGSUB[2] = (
             Float(0.31)
             * constants.SCM3
             * constants.GAM275
             * np.sqrt(constants.GCON / constants.VISK, dtype=Float)
             / np.power(constants.ACT[5], Float(0.6875), dtype=Float)
         )
-        self.CREVP[2] = (
+        CREVP[2] = (
             Float(0.31)
             * constants.SCM3
             * constants.GAM209
             * np.sqrt(GFDL_1M_config.ALIN / constants.VISK, dtype=Float)
             / np.power(constants.ACT[1], Float(0.725), dtype=Float)
         )
-        self.CSSUB[3] = constants.TCOND * constants.RVGAS
-        self.CSSUB[4] = np.power(constants.HLTS, 2, dtype=Float) * constants.VDIFU
-        self.CGSUB[3] = self.CSSUB[3]
-        self.CREVP[3] = self.CSSUB[3]
-        self.CGSUB[4] = self.CSSUB[4]
-        self.CREVP[4] = np.power(constants.HLTC, 2, dtype=Float) * constants.VDIFU
+        CSSUB[3] = constants.TCOND * constants.RVGAS
+        CSSUB[4] = np.power(constants.HLTS, 2, dtype=Float) * constants.VDIFU
+        CGSUB[3] = CSSUB[3]
+        CREVP[3] = CSSUB[3]
+        CGSUB[4] = CSSUB[4]
+        CREVP[4] = np.power(constants.HLTC, 2, dtype=Float) * constants.VDIFU
 
-        self.CGFR_0 = (
+        CGFR_0 = (
             Float(20.0e2)
             * constants.PISQ
             * constants.RNZR
             * constants.RHOR
             / np.power(constants.ACT[1], Float(1.75), dtype=Float)
         )
-        self.CGFR_1 = Float(0.66)
+        CGFR_1 = Float(0.66)
 
-        self.CSSUB_0 = self.CSSUB[0]
-        self.CSSUB_1 = self.CSSUB[1]
-        self.CSSUB_2 = self.CSSUB[2]
-        self.CSSUB_3 = self.CSSUB[3]
-        self.CSSUB_4 = self.CSSUB[4]
+        CSSUB_0 = CSSUB[0]
+        CSSUB_1 = CSSUB[1]
+        CSSUB_2 = CSSUB[2]
+        CSSUB_3 = CSSUB[3]
+        CSSUB_4 = CSSUB[4]
 
-        self.CGSUB_0 = self.CGSUB[0]
-        self.CGSUB_1 = self.CGSUB[1]
-        self.CGSUB_2 = self.CGSUB[2]
-        self.CGSUB_3 = self.CGSUB[3]
-        self.CGSUB_4 = self.CGSUB[4]
+        CGSUB_0 = CGSUB[0]
+        CGSUB_1 = CGSUB[1]
+        CGSUB_2 = CGSUB[2]
+        CGSUB_3 = CGSUB[3]
+        CGSUB_4 = CGSUB[4]
 
-        self.CREVP_0 = self.CREVP[0]
-        self.CREVP_1 = self.CREVP[1]
-        self.CREVP_2 = self.CREVP[2]
-        self.CREVP_3 = self.CREVP[3]
-        self.CREVP_4 = self.CREVP[4]
+        CREVP_0 = CREVP[0]
+        CREVP_1 = CREVP[1]
+        CREVP_2 = CREVP[2]
+        CREVP_3 = CREVP[3]
+        CREVP_4 = CREVP[4]
 
         # smlt: five constants (lin et al. 1983)
 
-        self.CSMLT = np.zeros(5)
-        self.CSMLT[0] = (
+        CSMLT = np.zeros(5)
+        CSMLT[0] = (
             Float(2.0)
             * constants.PIE
             * constants.TCOND
             * constants.RNZS
             / constants.HLTF
         )
-        self.CSMLT[1] = (
+        CSMLT[1] = (
             Float(2.0)
             * constants.PIE
             * constants.VDIFU
@@ -236,27 +283,27 @@ class ConfigConstants:
             * constants.HLTC
             / constants.HLTF
         )
-        self.CSMLT[2] = self.CSSUB[1]
-        self.CSMLT[3] = self.CSSUB[2]
-        self.CSMLT[4] = constants.CH2O / constants.HLTF
+        CSMLT[2] = CSSUB[1]
+        CSMLT[3] = CSSUB[2]
+        CSMLT[4] = constants.CH2O / constants.HLTF
 
-        self.CSMLT_0 = self.CSMLT[0]
-        self.CSMLT_1 = self.CSMLT[1]
-        self.CSMLT_2 = self.CSMLT[2]
-        self.CSMLT_3 = self.CSMLT[3]
-        self.CSMLT_4 = self.CSMLT[4]
+        CSMLT_0 = CSMLT[0]
+        CSMLT_1 = CSMLT[1]
+        CSMLT_2 = CSMLT[2]
+        CSMLT_3 = CSMLT[3]
+        CSMLT_4 = CSMLT[4]
 
         # gmlt: five constants
 
-        self.CGMLT = np.zeros(5)
-        self.CGMLT[0] = (
+        CGMLT = np.zeros(5)
+        CGMLT[0] = (
             Float(2.0)
             * constants.PIE
             * constants.TCOND
             * constants.RNZG
             / constants.HLTF
         )
-        self.CGMLT[1] = (
+        CGMLT[1] = (
             Float(2.0)
             * constants.PIE
             * constants.VDIFU
@@ -264,12 +311,78 @@ class ConfigConstants:
             * constants.HLTC
             / constants.HLTF
         )
-        self.CGMLT[2] = self.CGSUB[1]
-        self.CGMLT[3] = self.CGSUB[2]
-        self.CGMLT[4] = constants.CH2O / constants.HLTF
+        CGMLT[2] = CGSUB[1]
+        CGMLT[3] = CGSUB[2]
+        CGMLT[4] = constants.CH2O / constants.HLTF
 
-        self.CGMLT_0 = self.CGMLT[0]
-        self.CGMLT_1 = self.CGMLT[1]
-        self.CGMLT_2 = self.CGMLT[2]
-        self.CGMLT_3 = self.CGMLT[3]
-        self.CGMLT_4 = self.CGMLT[4]
+        CGMLT_0 = CGMLT[0]
+        CGMLT_1 = CGMLT[1]
+        CGMLT_2 = CGMLT[2]
+        CGMLT_3 = CGMLT[3]
+        CGMLT_4 = CGMLT[4]
+
+        return cls(
+            C_AIR,
+            C_VAP,
+            P_NONHYDRO,
+            D0_VAP,
+            LV00,
+            DO_SEDI_W,
+            LATV,
+            LATI,
+            LATS,
+            LAT2,
+            LCP,
+            ICP,
+            TCP,
+            MPDT,
+            RDT,
+            NTIMES,
+            DTS,
+            CPAUT,
+            RDTS,
+            FAC_IMLT,
+            FAC_I2S,
+            FAC_V2L,
+            FAC_L2V,
+            FAC_I2V,
+            FAC_S2V,
+            FAC_V2S,
+            FAC_G2V,
+            FAC_V2G,
+            FAC_FRZ,
+            CGACS,
+            CSACW,
+            CRACI,
+            CSACI,
+            CGACW,
+            CGACI,
+            CRACW,
+            CGFR_0,
+            CGFR_1,
+            CSSUB_0,
+            CSSUB_1,
+            CSSUB_2,
+            CSSUB_3,
+            CSSUB_4,
+            CGSUB_0,
+            CGSUB_1,
+            CGSUB_2,
+            CGSUB_3,
+            CGSUB_4,
+            CREVP_0,
+            CREVP_1,
+            CREVP_2,
+            CREVP_3,
+            CREVP_4,
+            CSMLT_0,
+            CSMLT_1,
+            CSMLT_2,
+            CSMLT_3,
+            CSMLT_4,
+            CGMLT_0,
+            CGMLT_1,
+            CGMLT_2,
+            CGMLT_3,
+            CGMLT_4,
+        )
