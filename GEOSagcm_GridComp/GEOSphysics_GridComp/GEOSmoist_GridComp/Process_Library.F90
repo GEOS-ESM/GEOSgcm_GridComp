@@ -94,7 +94,8 @@ module GEOSmoist_Process_Library
   logical :: SH_MD_DP = .FALSE.
 
   ! Radar parameter
-  integer :: DBZ_LIQUID_SKIN=1
+  integer :: DBZ_VAR_INTERCP=1 ! use variable intercept parameters 
+  integer :: DBZ_LIQUID_SKIN=1 ! use liquid skin on snow/ice in warm environments
 
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
@@ -146,7 +147,7 @@ module GEOSmoist_Process_Library
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: SIGMA_DX, SIGMA_EXP
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
-  public :: SH_MD_DP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
+  public :: SH_MD_DP, DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: FIND_KLID
