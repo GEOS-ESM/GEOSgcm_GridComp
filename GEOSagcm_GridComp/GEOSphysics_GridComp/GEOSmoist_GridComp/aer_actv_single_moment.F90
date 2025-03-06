@@ -181,9 +181,11 @@ MODULE Aer_Actv_Single_Moment
             wupdraft           = vvel(i,j,k) + SQRT(tke(i,j,k))
 
             ! Liquid Clouds
+            ni = 0.0
             DO n=1,n_modes
+               if (AeroPropsNew(n)%kap(i,j,k) > 0.4) &
                ni   (n)    =   max(AeroPropsNew(n)%num(i,j,k)*air_den,  zero_par)  ! unit: [m-3]
-               rg   (n)    =   max(AeroPropsNew(n)%dpg(i,j,k)*0.5*1.e6, zero_par)  ! unit: [um]
+               rg   (n)    =   max(AeroPropsNew(n)%dpg(i,j,k)*0.5e6,    zero_par)  ! unit: [um]
                bibar(n)    =   max(AeroPropsNew(n)%kap(i,j,k),          zero_par)                 
                sig0 (n)    =       AeroPropsNew(n)%sig(i,j,k)
             ENDDO
@@ -210,7 +212,8 @@ MODULE Aer_Actv_Single_Moment
             ! Ice Clouds
             numbinit = 0.
             DO n=1,n_modes
-               if (AeroPropsNew(n)%dpg(i,j,k) .ge. 0.5e-6) & ! diameters > 0.5 microns
+               if ( (AeroPropsNew(n)%dpg(i,j,k) .ge. 0.5e-6) .and. & ! diameters > 0.5 microns
+                    (AeroPropsNew(n)%kap(i,j,k) .gt. 0.4) ) &
                numbinit = numbinit + AeroPropsNew(n)%num(i,j,k)
             ENDDO
             numbinit = numbinit * air_den ! #/m3
