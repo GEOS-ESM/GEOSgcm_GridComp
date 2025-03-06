@@ -1,10 +1,11 @@
+from dataclasses import dataclass
+
 import numpy as np
 from gt4py.cartesian.gtscript import i32
-from ndsl import Quantity, QuantityFactory
+
 from ndsl.dsl.typing import Float
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
 from pyMoist.GFDL_1M.driver.constants import constants
-from dataclasses import dataclass
 
 
 @dataclass

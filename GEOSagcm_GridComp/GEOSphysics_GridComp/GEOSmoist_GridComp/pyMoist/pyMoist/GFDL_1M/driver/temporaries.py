@@ -1,6 +1,7 @@
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl import Quantity, QuantityFactory
 from dataclasses import dataclass
+
+from ndsl import Quantity, QuantityFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
 
 @dataclass

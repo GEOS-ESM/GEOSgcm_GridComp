@@ -1,7 +1,8 @@
+from dataclasses import dataclass
+
+from ndsl import Quantity, QuantityFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Int
-from ndsl import Quantity, QuantityFactory
-from dataclasses import dataclass
 
 
 @dataclass
