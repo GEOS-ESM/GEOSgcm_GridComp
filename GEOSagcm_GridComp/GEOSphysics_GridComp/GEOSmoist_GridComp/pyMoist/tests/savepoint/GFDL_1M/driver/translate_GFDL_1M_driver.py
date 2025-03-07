@@ -93,7 +93,7 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M_driver-constants")
 
     def compute_from_storage(self, inputs):
-        self.GFDL_1M_config = MicrophysicsConfiguration(
+        self.GFDL_1M_config = MicrophysicsConfiguration.make(
             self.constants["PHYS_HYDROSTATIC"],
             self.constants["HYDROSTATIC"],
             self.constants["DT_MOIST"],
