@@ -5,7 +5,9 @@ Wraps pyMoist for GEOS interface use.
 import enum
 import logging
 import os
+from typing import Callable, Optional
 
+import numpy as np
 from gt4py.cartesian.config import build_settings as gt_build_settings
 from mpi4py import MPI
 
@@ -16,6 +18,7 @@ from ndsl import (
     DaceConfig,
     DaCeOrchestration,
     GridIndexing,
+    MPIComm,
     NullComm,
     PerformanceCollector,
     QuantityFactory,
@@ -31,8 +34,9 @@ from ndsl.dsl.typing import floating_point_precision
 from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
+from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
-from pyMoist.interface.flags import MoistFlags
+from pyMoist.interface.flags import gfdl_1m_flags, moist_flags
 
 
 class MemorySpace(enum.Enum):
@@ -79,6 +83,7 @@ class StencilBackendCompilerOverride:
         else:
             ndsl_log.info(f"Stencil backend waits on {self.comm.Get_rank()}")
             self.comm.Barrier()
+            ndsl_log.info(f"Stencil backend released on {self.comm.Get_rank()}")
 
     def __exit__(self, type, value, traceback):
         if self.no_op:
@@ -86,20 +91,24 @@ class StencilBackendCompilerOverride:
         if not self.config.do_compile:
             ndsl_log.info(f"Stencil backend read cache on {self.comm.Get_rank()}")
         else:
-            ndsl_log.info(f"Stencil backend compiled on {self.comm.Get_rank()}")
+            ndsl_log.info(
+                f"Stencil backend was compiled on {self.comm.Get_rank()} \
+                    now waiting for other ranks"
+            )
             self.comm.Barrier()
+        ndsl_log.info(f"Rank {self.comm.Get_rank()} ready for execution")
 
 
 class GEOSPyMoistWrapper:
     def __init__(
         self,
-        flags: MoistFlags,
+        flags: moist_flags,
         backend="numpy",
         fortran_mem_space: MemorySpace = MemorySpace.HOST,
     ) -> None:
         # Look for an override to run on a single node
         single_rank_override = int(os.getenv("GEOS_PYFV3_SINGLE_RANK_OVERRIDE", -1))
-        comm = MPI.COMM_WORLD
+        comm = MPIComm()
         if single_rank_override >= 0:
             comm = NullComm(single_rank_override, 6, 42)
 
@@ -125,12 +134,14 @@ class GEOSPyMoistWrapper:
             tile_partitioner=partitioner.tile,
             tile_rank=self.communicator.tile.rank,
         )
-        quantity_factory = QuantityFactory.from_backend(sizer=sizer, backend=backend)
+        self.quantity_factory = QuantityFactory.from_backend(
+            sizer=sizer, backend=backend
+        )
         self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
-            quantity_factory
+            self.quantity_factory
         )
 
-        stencil_config = StencilConfig(
+        self.stencil_config = StencilConfig(
             compilation_config=CompilationConfig(
                 backend=backend, rebuild=False, validate_args=True
             ),
@@ -139,41 +150,22 @@ class GEOSPyMoistWrapper:
         # Build a DaCeConfig for orchestration.
         # This and all orchestration code are transparent when outside
         # configuration deactivate orchestration
-        stencil_config.dace_config = DaceConfig(
+        self.stencil_config.dace_config = DaceConfig(
             communicator=self.communicator,
-            backend=stencil_config.backend,
+            backend=self.stencil_config.backend,
             tile_nx=self.flags.npx * self.flags.layout_x,
             tile_nz=self.flags.npz,
         )
-        self._is_orchestrated = stencil_config.dace_config.is_dace_orchestrated()
+        self._is_orchestrated = self.stencil_config.dace_config.is_dace_orchestrated()
 
         # TODO: Orchestrate all code called from this function
 
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
             sizer=sizer, comm=self.communicator
         )
-        stencil_factory = StencilFactory(
-            config=stencil_config, grid_indexing=self._grid_indexing
+        self.stencil_factory = StencilFactory(
+            config=self.stencil_config, grid_indexing=self._grid_indexing
         )
-
-        with StencilBackendCompilerOverride(
-            MPI.COMM_WORLD,
-            stencil_config.dace_config,
-        ):
-            self.aer_activation = AerActivation(
-                stencil_factory=stencil_factory,
-                quantity_factory=quantity_factory,
-                n_modes=flags.n_modes,
-                USE_AERSOL_NN=True,
-            )
-            print(
-                "[PYMOIST] Defaulted to SaturationFormulation.Staars"
-                "for QSat in GFDL_1M"
-            )
-            self.gfdl_1M = GFDL_1M(
-                stencil_factory=stencil_factory,
-                quantity_factory=quantity_factory,
-            )
 
         self._fortran_mem_space = fortran_mem_space
         self._pace_mem_space = (
@@ -204,6 +196,147 @@ class GEOSPyMoistWrapper:
             f"     Device ord : {device_ordinal_info}\n"
             f"     Nvidia MPS : {MPS_is_on}"
         )
+
+        # JIT system for the component of Moist
+        self._aer_activation: Optional[AerActivation] = None
+        self._GFDL_1M_evap: Optional[GFDL_1M] = None
+        self._GFDL_1M_driver: Optional[MicrophysicsDriver] = None
+
+        # Initalize flags later
+        self.gfdl_1m_flags: Optional[gfdl_1m_flags] = None
+
+    @property
+    def driver(self) -> Callable:
+        if not self._GFDL_1M_driver:
+            if self.gfdl_1m_flags is None:
+                raise RuntimeError("GFDL_1M flags not initalized")
+            with StencilBackendCompilerOverride(
+                MPI.COMM_WORLD,
+                self.stencil_config.dace_config,
+            ):
+                self._GFDL_1M_driver = MicrophysicsDriver(
+                    self.stencil_factory,
+                    self.quantity_factory,
+                    self.gfdl_1m_flags.phys_hydrostatic,
+                    self.gfdl_1m_flags.hydrostatic,
+                    self.gfdl_1m_flags.dt_moist,
+                    # Namelist options
+                    self.gfdl_1m_flags.mp_time,
+                    self.gfdl_1m_flags.t_min,
+                    self.gfdl_1m_flags.t_sub,
+                    self.gfdl_1m_flags.tau_r2g,
+                    self.gfdl_1m_flags.tau_smlt,
+                    self.gfdl_1m_flags.tau_g2r,
+                    self.gfdl_1m_flags.dw_land,
+                    self.gfdl_1m_flags.dw_ocean,
+                    self.gfdl_1m_flags.vi_fac,
+                    self.gfdl_1m_flags.vr_fac,
+                    self.gfdl_1m_flags.vs_fac,
+                    self.gfdl_1m_flags.vg_fac,
+                    self.gfdl_1m_flags.ql_mlt,
+                    self.gfdl_1m_flags.do_qa,
+                    self.gfdl_1m_flags.fix_negative,
+                    self.gfdl_1m_flags.vi_max,
+                    self.gfdl_1m_flags.vs_max,
+                    self.gfdl_1m_flags.vg_max,
+                    self.gfdl_1m_flags.vr_max,
+                    self.gfdl_1m_flags.qs_mlt,
+                    self.gfdl_1m_flags.qs0_crt,
+                    self.gfdl_1m_flags.qi_gen,
+                    self.gfdl_1m_flags.ql0_max,
+                    self.gfdl_1m_flags.qi0_max,
+                    self.gfdl_1m_flags.qi0_crt,
+                    self.gfdl_1m_flags.qr0_crt,
+                    self.gfdl_1m_flags.fast_sat_adj,
+                    self.gfdl_1m_flags.rh_inc,
+                    self.gfdl_1m_flags.rh_ins,
+                    self.gfdl_1m_flags.rh_inr,
+                    self.gfdl_1m_flags.const_vi,
+                    self.gfdl_1m_flags.const_vs,
+                    self.gfdl_1m_flags.const_vg,
+                    self.gfdl_1m_flags.const_vr,
+                    self.gfdl_1m_flags.use_ccn,
+                    self.gfdl_1m_flags.rthreshu,
+                    self.gfdl_1m_flags.rthreshs,
+                    self.gfdl_1m_flags.ccn_l,
+                    self.gfdl_1m_flags.ccn_o,
+                    self.gfdl_1m_flags.qc_crt,
+                    self.gfdl_1m_flags.tau_g2v,
+                    self.gfdl_1m_flags.tau_v2g,
+                    self.gfdl_1m_flags.tau_s2v,
+                    self.gfdl_1m_flags.tau_v2s,
+                    self.gfdl_1m_flags.tau_revp,
+                    self.gfdl_1m_flags.tau_frz,
+                    self.gfdl_1m_flags.do_bigg,
+                    self.gfdl_1m_flags.do_evap,
+                    self.gfdl_1m_flags.do_subl,
+                    self.gfdl_1m_flags.sat_adj0,
+                    self.gfdl_1m_flags.c_piacr,
+                    self.gfdl_1m_flags.tau_imlt,
+                    self.gfdl_1m_flags.tau_v2l,
+                    self.gfdl_1m_flags.tau_l2v,
+                    self.gfdl_1m_flags.tau_i2v,
+                    self.gfdl_1m_flags.tau_i2s,
+                    self.gfdl_1m_flags.tau_l2r,
+                    self.gfdl_1m_flags.qi_lim,
+                    self.gfdl_1m_flags.ql_gen,
+                    self.gfdl_1m_flags.c_paut,
+                    self.gfdl_1m_flags.c_psaci,
+                    self.gfdl_1m_flags.c_pgacs,
+                    self.gfdl_1m_flags.c_pgaci,
+                    self.gfdl_1m_flags.z_slope_liq,
+                    self.gfdl_1m_flags.z_slope_ice,
+                    self.gfdl_1m_flags.prog_ccn,
+                    self.gfdl_1m_flags.c_cracw,
+                    self.gfdl_1m_flags.alin,
+                    self.gfdl_1m_flags.clin,
+                    self.gfdl_1m_flags.preciprad,
+                    self.gfdl_1m_flags.cld_min,
+                    self.gfdl_1m_flags.use_ppm,
+                    self.gfdl_1m_flags.mono_prof,
+                    self.gfdl_1m_flags.do_sedi_heat,
+                    self.gfdl_1m_flags.sedi_transport,
+                    self.gfdl_1m_flags.do_sedi_w,
+                    self.gfdl_1m_flags.de_ice,
+                    np.int32(self.gfdl_1m_flags.icloud_f),
+                    np.int32(self.gfdl_1m_flags.irain_f),
+                    self.gfdl_1m_flags.mp_print,
+                )
+        return self._GFDL_1M_driver
+
+    def init_gfdl_1m_flags(
+        self,
+        flags,
+    ):
+        self.gfdl_1m_flags = flags
+
+    @property
+    def aer_activation(self) -> Callable:
+        if not self._aer_activation:
+            with StencilBackendCompilerOverride(
+                MPI.COMM_WORLD,
+                self.stencil_config.dace_config,
+            ):
+                self._aer_activation = AerActivation(
+                    stencil_factory=self.stencil_factory,
+                    quantity_factory=self.quantity_factory,
+                    n_modes=self.flags.n_modes,
+                    USE_AERSOL_NN=True,
+                )
+        return self._aer_activation
+
+    @property
+    def GFDL_1M_evap(self) -> Callable:
+        if not self._GFDL_1M_evap:
+            with StencilBackendCompilerOverride(
+                MPI.COMM_WORLD,
+                self.stencil_config.dace_config,
+            ):
+                self._GFDL_1M_evap = GFDL_1M(
+                    stencil_factory=self.stencil_factory,
+                    quantity_factory=self.quantity_factory,
+                )
+        return self._GFDL_1M_evap
 
     def make_nmmodes_quantity(self, data):
         qty = self.nmodes_quantity_factory.empty(
