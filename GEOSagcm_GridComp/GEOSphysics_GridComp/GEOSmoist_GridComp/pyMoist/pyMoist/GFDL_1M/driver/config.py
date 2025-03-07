@@ -1,5 +1,6 @@
-from ndsl.dsl.typing import Float
 from dataclasses import dataclass
+
+from ndsl.dsl.typing import Float
 
 
 @dataclass
