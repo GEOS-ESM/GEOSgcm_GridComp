@@ -1,3 +1,4 @@
+from distutils.sysconfig import get_config_var
 import cffi
 from mpi4py import MPI
 
@@ -153,7 +154,7 @@ with open("moist.h") as f:
 ffi.set_source(
     TMPFILEBASE,
     '#include "moist.h"',
-    library_dirs=["/Library/Frameworks/Python.framework/Versions/3.11/lib"],
+    library_dirs=[get_config_var("LIBDIR")],
 )
 
 ffi.embedding_init_code(source)
