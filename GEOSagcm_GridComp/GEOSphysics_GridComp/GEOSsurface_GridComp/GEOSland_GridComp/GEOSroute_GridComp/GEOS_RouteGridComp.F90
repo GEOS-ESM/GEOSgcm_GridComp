@@ -26,6 +26,7 @@ module GEOS_RouteGridCompMod
   use MAPL_ConstantsMod
   use ROUTING_MODEL,          ONLY:     &
        river_routing_lin, river_routing_hyd, ROUTE_DT
+  use reservoir
 #if 0
   USE catch_constants, ONLY:          &
        N_CatG => N_Pfaf_Catchs  
@@ -36,14 +37,29 @@ module GEOS_RouteGridCompMod
   integer, parameter :: N_CatG = 291284
   integer,parameter :: upmax=34
   character(len=500) :: inputdir="/discover/nobackup/yzeng3/data/river_input/"
+  logical,parameter :: use_res = .True.
   integer,save :: nmax 
 
   private
+
+  type RES_STATE
+    integer, pointer :: active_res(:)
+    integer, pointer :: active_up(:,:)
+    real,    pointer :: Wr_res(:) !m3
+    integer, pointer :: type_res(:)
+    real,    pointer :: cap_res(:) !m3
+    real,    pointer :: wid_res(:) !m
+    integer, pointer :: fld_res(:) 
+    real,    pointer :: Qfld_thres(:) !m3/s
+    integer, pointer :: cat2res(:)
+    real,    pointer :: qres_acc(:)  
+  end type RES_STATE
 
   type T_RROUTE_STATE
      private
      type (ESMF_RouteHandle) :: routeHandle
      type (ESMF_Field)       :: field
+     type (RES_STATE)        :: reservoir
      integer :: nTiles
      integer :: nt_global
      integer :: nt_local
@@ -344,10 +360,11 @@ contains
     integer,pointer :: downid_global(:)=>NULL(), downid(:)=>NULL()
     integer,pointer :: upid_global(:,:)=>NULL(), upid(:,:)=>NULL()    
 
-    real,pointer :: wstream(:)=>NULL(),wriver(:)=>NULL()
-    real,pointer :: wstream_global(:)=>NULL(),wriver_global(:)=>NULL()    
+    real,pointer :: wstream(:)=>NULL(),wriver(:)=>NULL(),wres(:)=>NULL()
+    real,pointer :: wstream_global(:)=>NULL(),wriver_global(:)=>NULL(),wres_global(:)=>NULL()    
     
     type (T_RROUTE_STATE), pointer         :: route => null()
+    type (RES_STATE), pointer :: res => NULL()
     type (RROUTE_wrap)                     :: wrap
 
     type(ESMF_Time) :: CurrentTime
@@ -519,8 +536,8 @@ contains
     write(mon_s,'(I2.2)')MM
     write(day_s,'(I2.2)')DD    
     if(mapl_am_I_root())print *, "init time is ", YY, "/", MM, "/", DD, " ", HH, ":", MMM, ":", SS    
-    allocate(wriver(ntiles),wstream(ntiles))
-    allocate(wriver_global(n_catg),wstream_global(n_catg))
+    allocate(wriver(ntiles),wstream(ntiles),wres(ntiles))
+    allocate(wriver_global(n_catg),wstream_global(n_catg),wres_global(n_catg))
     open(77,file="../input/restart/river_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
     if(status==0)then
       read(77,*)wriver_global;close(77)
@@ -559,19 +576,42 @@ contains
         endif
       endif
     endif
+    open(77,file="../input/restart/res_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
+    if(status==0)then
+      read(77,*)wres_global;close(77)
+    else
+      close(77)
+      open(78,file=trim(inputdir)//"/res_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
+      if(status==0)then   
+        read(78,*)wres_global;close(78)  
+      else
+        close(78)      
+        open(79,file=trim(inputdir)//"/res_storage_rs.txt",status="old",action="read",iostat=status)      
+        if(status==0)then 
+          read(79,*)wres_global;close(79) 
+        else
+          close(79)    
+          wres_global=0.
+        endif
+      endif
+    endif    
     if(mapl_am_I_root())print *, "init river storage is: ",sum(wriver_global)/1.e9
-    if(mapl_am_I_root())print *, "init stream storage is: ",sum(wstream_global)/1.e9        
+    if(mapl_am_I_root())print *, "init stream storage is: ",sum(wstream_global)/1.e9  
+    if(mapl_am_I_root())print *, "init reservoir storage is: ",sum(wres_global)/1.e9           
     wriver=wriver_global(minCatch:maxCatch)
     wstream=wstream_global(minCatch:maxCatch)
-    deallocate(wriver_global,wstream_global)
+    wres=wres_global(minCatch:maxCatch)
+    deallocate(wriver_global,wstream_global,wres_global)
     route%wstream=>wstream
     route%wriver=>wriver
+    route%reservoir%Wr_res=>wres
 
-    allocate(route%wriver_acc(ntiles),route%wstream_acc(ntiles),route%qoutflow_acc(ntiles),route%qsflow_acc(ntiles))
+    allocate(route%wriver_acc(ntiles),route%wstream_acc(ntiles),route%qoutflow_acc(ntiles),route%qsflow_acc(ntiles),route%reservoir%qres_acc(ntiles))
     route%wriver_acc=0.
     route%wstream_acc=0.
     route%qoutflow_acc=0.
     route%qsflow_acc=0.
+    route%reservoir%qres_acc=0.
 
    !input for geometry hydraulic
     allocate(buff_global(n_catg),route%lstr(ntiles))   
@@ -603,6 +643,10 @@ contains
     open(77,file=trim(inputdir)//"/Pfaf_qstr.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%qstr_clmt=buff_global(minCatch:maxCatch) !m3/s
     deallocate(buff_global) 
+
+    res => route%reservoir
+    call res_init(inputdir,n_catg,ntiles,minCatch,maxCatch,use_res,res%active_res,res%type_res,res%cap_res,res%fld_res,res%Qfld_thres,res%cat2res,res%wid_res)
+    if(mapl_am_I_root()) print *,"reservoir init success" 
 
     !if (mapl_am_I_root())then
     !  open(88,file="nsub.txt",action="write")
@@ -721,7 +765,7 @@ contains
     integer                                  :: K, N, I, req
     REAL                                     :: mm2m3, rbuff, HEARTBEAT 
     REAL, ALLOCATABLE, DIMENSION(:)          :: RUNOFF_CATCH, RUNOFF_ACT,AREACAT_ACT,& 
-         LENGSC_ACT, QSFLOW_ACT,QOUTFLOW_ACT
+         LENGSC_ACT, QSFLOW_ACT,QOUTFLOW_ACT,QRES_ACT,QOUT_CAT
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: tmp_index
     type(ESMF_Field) :: runoff_src
 
@@ -742,10 +786,11 @@ contains
     real,pointer :: runoff_save(:)=>NULL()
     real,pointer :: WSTREAM_ACT(:)=>NULL()
     real,pointer :: WRIVER_ACT(:)=>NULL()
-    real,allocatable :: runoff_save_m3(:),runoff_global_m3(:),QOUTFLOW_GLOBAL(:)
+    type (RES_STATE), pointer :: res => NULL()    
+    real,allocatable :: runoff_save_m3(:),runoff_global_m3(:),QOUTFLOW_GLOBAL(:),Qres_global(:)
     real,allocatable :: WTOT_BEFORE(:),WTOT_AFTER(:),QINFLOW_LOCAL(:),UNBALANCE(:),UNBALANCE_GLOBAL(:),ERROR(:),ERROR_GLOBAL(:)
     real,allocatable :: QFLOW_SINK(:),QFLOW_SINK_GLOBAL(:),WTOT_BEFORE_GLOBAL(:),WTOT_AFTER_GLOBAL(:)
-    real,allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:)
+    real,allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:),wres_global(:)
     
     ! ------------------
     ! begin    
@@ -786,6 +831,7 @@ contains
     nt_global = route%nt_global  
     runoff_save => route%runoff_save
     nt_local = route%nt_local
+    res => route%reservoir
 
     ! get the field from IMPORT
     call ESMF_StateGet(IMPORT, 'RUNOFF', field=runoff_src, RC=STATUS)
@@ -836,11 +882,12 @@ contains
        deallocate(runoff_global) 
 
 
-       allocate (AREACAT_ACT (1:ntiles))       
-       allocate (LENGSC_ACT  (1:ntiles))
-       allocate (QSFLOW_ACT  (1:ntiles))
-       allocate (QOUTFLOW_ACT(1:ntiles))     
+       allocate (AREACAT_ACT (ntiles))       
+       allocate (LENGSC_ACT  (ntiles))
+       allocate (QSFLOW_ACT  (ntiles))
+       allocate (QOUTFLOW_ACT(ntiles),QRES_ACT(ntiles),QOUT_CAT(ntiles))  
 
+       QRES_ACT=0.
        LENGSC_ACT=route%lengsc/1.e3 !m->km
        AREACAT_ACT=route%areacat/1.e6 !m2->km2
 
@@ -849,7 +896,7 @@ contains
 
       
        allocate(WTOT_BEFORE(ntiles))
-       WTOT_BEFORE=WSTREAM_ACT+WRIVER_ACT
+       WTOT_BEFORE=WSTREAM_ACT+WRIVER_ACT+res%Wr_res
 
        ! Call river_routing_model
        ! ------------------------     
@@ -861,13 +908,20 @@ contains
             route%qstr_clmt, route%qri_clmt, route%qin_clmt, &
             route%K, route%Kstr, &
             WSTREAM_ACT,WRIVER_ACT, &
-            QSFLOW_ACT,QOUTFLOW_ACT)        
+            QSFLOW_ACT,QOUTFLOW_ACT)     
+       do i=1,ntiles
+         call res_cal(res%active_res(i),QOUTFLOW_ACT(i),res%type_res(i),res%cat2res(i),&
+              QRES_ACT(i),res%wid_res(i),res%fld_res(i),res%Wr_res(i),res%Qfld_thres(i),res%cap_res(i),real(route_dt))
+       enddo
+       QOUT_CAT = QOUTFLOW_ACT              
+       where(res%active_res==1) QOUT_CAT=QRES_ACT
+
 
        allocate(QOUTFLOW_GLOBAL(n_catg))
        call MPI_allgatherv  (                          &
-            QOUTFLOW_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+            QOUT_CAT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
             QOUTFLOW_GLOBAL, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-            MPI_COMM_WORLD, mpierr) 
+            MPI_COMM_WORLD, mpierr)      
 
        allocate(QINFLOW_LOCAL(ntiles))
        QINFLOW_LOCAL=0.
@@ -883,15 +937,16 @@ contains
          enddo
        enddo
 
-       !call check_balance(route,ntiles,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUTFLOW_ACT,FirstTime,yr_s,mon_s)
+       call check_balance(route,ntiles,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
 
        if(FirstTime) nstep_per_day = 86400/route_dt
        route%wriver_acc = route%wriver_acc + WRIVER_ACT/real(nstep_per_day)
        route%wstream_acc = route%wstream_acc + WSTREAM_ACT/real(nstep_per_day)
        route%qoutflow_acc = route%qoutflow_acc + QOUTFLOW_ACT/real(nstep_per_day)
        route%qsflow_acc = route%qsflow_acc + QSFLOW_ACT/real(nstep_per_day)
+       res%qres_acc = res%qres_acc + QRES_ACT/real(nstep_per_day)       
 
-       deallocate(RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_ACT,QINFLOW_LOCAL,QOUTFLOW_GLOBAL,QSFLOW_ACT,WTOT_BEFORE)
+       deallocate(RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_ACT,QINFLOW_LOCAL,QOUTFLOW_GLOBAL,QSFLOW_ACT,WTOT_BEFORE,QRES_ACT,QOUT_CAT)
       !initialize the cycle counter and sum (runoff_tile)       
        WSTREAM_ACT=>NULL()
        WRIVER_ACT=>NULL()      
@@ -922,28 +977,48 @@ contains
          !call MPI_allgatherv  (                          &
          !     route%qsflow_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
          !     qsflow_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-         !     MPI_COMM_WORLD, mpierr)                              
+         !     MPI_COMM_WORLD, mpierr)      
          if(mapl_am_I_root())then   
               !open(88,file="../river/river_storage_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
               !open(89,file="../river/stream_storage_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
-              open(90,file="../river/river_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")              
-              !open(91,file="../river/stream_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
+              open(90,file="../river/river_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")             
+              !open(91,file="../river/stream_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write") 
               do i=1,n_catg
                 !write(88,*)wriver_global(i)
                 !write(89,*)wstream_global(i)
                 write(90,*)qoutflow_global(i)
                 !write(91,*)qsflow_global(i)
               enddo
+              !close(88)
+              !close(89)
               close(90)
-              !close(88);close(89);close(90)!;close(91)
+              !close(91)
               !print *, "output river storage is: ",sum(wriver_global)/1.e9
-              !print *, "output stream storage is: ",sum(wstream_global)/1.e9                
-         endif           
+              !print *, "output stream storage is: ",sum(wstream_global)/1.e9             
+         endif  
+
+         if(use_res==.True.)then
+           allocate(qres_global(n_catg))
+           call MPI_allgatherv  (                          &
+                res%qres_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+                qres_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+                MPI_COMM_WORLD, mpierr) 
+           if(mapl_am_I_root())then                 
+             open(92,file="../river/res_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
+             do i=1,n_catg
+               write(92,*)qres_global(i)
+             enddo
+             close(92)
+           endif    
+           deallocate(qres_global)
+         endif    
+
          deallocate(wriver_global,wstream_global,qoutflow_global,qsflow_global)
          route%wriver_acc = 0.
          route%wstream_acc = 0.
          route%qoutflow_acc = 0.
          route%qsflow_acc = 0.
+         res%qres_acc = 0.
        endif
  
        !restart
@@ -962,15 +1037,33 @@ contains
               write(mon_s,'(I2.2)')MM_next
               write(day_s,'(I2.2)')DD_next
               open(88,file="../input/restart/river_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
-              open(89,file="../input/restart/stream_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")   
+              open(89,file="../input/restart/stream_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")                 
               do i=1,n_catg
                 write(88,*)wriver_global(i)
                 write(89,*)wstream_global(i)
               enddo   
               close(88);close(89) 
               print *, "saved river storage is: ",sum(wriver_global)/1.e9
-              print *, "saved stream storage is: ",sum(wstream_global)/1.e9                                  
+              print *, "saved stream storage is: ",sum(wstream_global)/1.e9                                 
          endif
+
+         if(use_res==.True.)then
+           allocate(wres_global(n_catg))
+           call MPI_allgatherv  (                          &
+                res%Wr_res,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+                wres_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+                MPI_COMM_WORLD, mpierr)  
+           if(mapl_am_I_root())then
+             open(90,file="../input/restart/res_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write") 
+             do i=1,n_catg
+                write(90,*)wres_global(i)              
+             enddo
+             close(90)
+             print *, "saved reservoir storage is: ",sum(wres_global)/1.e9 
+           endif
+           deallocate(wres_global)
+         endif
+
          deallocate(wriver_global,wstream_global)
        endif
 
@@ -1023,16 +1116,13 @@ contains
          allocate(QFLOW_SINK(ntiles),QFLOW_SINK_GLOBAL(n_catg),WTOT_BEFORE_GLOBAL(n_catg),WTOT_AFTER_GLOBAL(n_catg))
          allocate(runoff_save_m3(nt_local),runoff_global_m3(nt_global),ERROR(ntiles),ERROR_GLOBAL(n_catg))
 
-    
-
-         WTOT_AFTER=WRIVER_ACT+WSTREAM_ACT
+         WTOT_AFTER=WRIVER_ACT+WSTREAM_ACT+route%reservoir%Wr_res
          ERROR = WTOT_AFTER - (WTOT_BEFORE + RUNOFF_ACT*route_dt + QINFLOW_LOCAL*route_dt - QOUTFLOW_ACT*route_dt)
-         where(QOUTFLOW_ACT>0.) UNBALANCE = abs(ERROR)/(QOUTFLOW_ACT*route_dt)
-         where(QOUTFLOW_ACT<=0.) UNBALANCE = 0.
-         call MPI_allgatherv  (                          &
-              UNBALANCE,  route%scounts_cat(mype+1)      ,MPI_REAL, &
-              UNBALANCE_GLOBAL, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-              MPI_COMM_WORLD, mpierr)           
+         !UNBALANCE = abs(ERROR)
+         !call MPI_allgatherv  (                          &
+         !     UNBALANCE,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+         !     UNBALANCE_GLOBAL, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+         !     MPI_COMM_WORLD, mpierr)           
          QFLOW_SINK=0.
          do i=1,ntiles
            if(route%downid(i)==-1)then

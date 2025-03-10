@@ -157,7 +157,7 @@ MODULE routing_model
 
 
     real, parameter :: small = 1.e-20 
-    real, parameter :: fac_kstr = 0.025      ! Factor for local stream scaling
+    real, parameter :: fac_kstr = 0.01      ! Factor for local stream scaling
     real, parameter :: M = 0.45               ! Parameter in hydraulic geometry formula
     real, parameter :: mm = 0.35              ! Parameter in hydraulic geometry formula
     real, parameter :: rho = 1000.
@@ -213,6 +213,7 @@ MODULE routing_model
     Wr0 = Wr/rho !kg -> m3
     Qs = Qs/rho  !kg/s -> m3/s
     Qout = Qout/rho !kg/s -> m3/s
+
    
     RETURN
     
