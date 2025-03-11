@@ -17,6 +17,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 
   option(AQUAPLANET "Build for aquaplanet runs" OFF)
   if (AQUAPLANET)
+    message(STATUS "Building for aquaplanet runs")
     target_compile_definitions (${this} PRIVATE AQUA_PLANET)
   endif ()
 
