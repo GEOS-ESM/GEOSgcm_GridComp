@@ -15,6 +15,11 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
     SUBDIRS Shared
     DEPENDENCIES GEOS_SurfaceShared MAPL GMAO_mpeu ESMF::ESMF)
 
+  option(AQUAPLANET "Build for aquaplanet runs" OFF)
+  if (AQUAPLANET)
+    target_compile_definitions (${this} PRIVATE AQUA_PLANET)
+  endif ()
+
 else ()
 
    esma_add_subdirectories (${alldirs} Shared)

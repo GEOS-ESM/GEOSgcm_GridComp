@@ -583,7 +583,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        if (ocean_extData) then
          FR = data_ice ! netcdf variable
        else ! binary
+#ifndef AQUA_PLANET
          call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
+#else
+         FR = 0.0
+#endif
        end if
 
        call MAPL_GetResource ( MAPL, STRICT_ICE_FRACTION, Label="STRICT_ICE_FRACTION:", DEFAULT=.TRUE., __RC__)
