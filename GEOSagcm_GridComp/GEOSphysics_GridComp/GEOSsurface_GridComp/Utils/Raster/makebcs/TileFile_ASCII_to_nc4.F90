@@ -47,7 +47,7 @@ program TileFile_ASCII_to_nc4
 
   open (newunit=unit, file=trim(tile_file), form='formatted', action='read')
 
-  read (unit,*) tmpline            ! header line 1: N_tile [maxcat]  nx  ny             (see below)
+  read (unit,"(A)") tmpline            ! header line 1: N_tile [maxcat]  nx  ny             (see below)
   read (unit,*) N_grid             ! header line 2: N_grid [=1 for EASE, =2 otherwise]
   read (unit,*) gName1             ! header line 3: name  of atm grid
   read (unit,*) n_lon1             ! header line 4: N_lon of atm grid
@@ -76,11 +76,11 @@ program TileFile_ASCII_to_nc4
      ! in some legacy bcs, dummy ocean grid info is included in header (despite N_grid=1);
      ! read next line and decide if it is dummy header or info for first tile
      
-     read (unit,*) tmpline
+     read (unit,"(A)") tmpline
      if (index(tmpline,'OCEAN')/=0) then
         read (unit,*) 
         read (unit,*) 
-        read (unit,*) tmpline
+        read (unit,"(A)") tmpline
      endif
 
   else
@@ -90,7 +90,7 @@ program TileFile_ASCII_to_nc4
      read (unit,*) gName2
      read (unit,*) n_lon2
      read (unit,*) n_lat2
-     read (unit,*) tmpline     ! read info for first tile (to accommodate legacy EASE grid issues above)
+     read (unit,"(A)") tmpline     ! read info for first tile (to accommodate legacy EASE grid issues above)
 
   endif
 

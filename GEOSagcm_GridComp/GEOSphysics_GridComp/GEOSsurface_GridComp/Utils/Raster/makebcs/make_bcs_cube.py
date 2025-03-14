@@ -33,14 +33,26 @@ endif
 
 if( {TRIPOL_OCEAN} == True ) then
     bin/mkMOMAquaRaster.x -x {NX} -y {NY} -w {OCEAN_VERSION} data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
+    # create tile file without changing raster
+    bin/CombineRasters.x -f 0 -t {NT} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+    
+    /bin/mv til/CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til til/CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter-ORIG.til
+
     /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
+
     bin/FillMomGrid.x -f 0 -g Pfafstetter-M {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
-    /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
-    /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
+    /bin/cp til/Pfafstetter-M.til til/Pfafstetter.til
+    /bin/cp rst/Pfafstetter-M.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t {NT} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
     bin/mk_runofftbl.x -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
+
+    /bin/mv til/CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter.til til/CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter-M.til
+
+    bin/AdjustTileFile_MOM.x CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter-ORIG CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter-M CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+
     setenv OMP_NUM_THREADS {NCPUS}
     if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
     setenv OMP_NUM_THREADS 1
