@@ -3216,8 +3216,8 @@ end if
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
-       LAMBDAM = MIN(1.0,300.0/DT)*150.0
-       LAMBDAH = MIN(1.0,300.0/DT)*450.0
+       LAMBDAM = (MIN(1.0,300.0/DT)**2)*150.0
+       LAMBDAH = (MIN(1.0,300.0/DT)**2)*450.0
        call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=LAMBDAM,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=LAMBDAH,  RC=STATUS); VERIFY_(STATUS)
