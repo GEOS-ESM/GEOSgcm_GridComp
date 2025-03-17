@@ -68,3 +68,23 @@ install(TARGETS pyMLINC_interface_py
   EXPORT ${PROJECT_NAME}-targets
   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
   )
+
+# Driver for the Fortran interface
+ecbuild_add_executable(
+  TARGET pymlinc-driver
+  SOURCES pyMLINC/driver/driver.F90 ${pymlinc_srcs}
+  LIBS ${PYMLINC_INTERFACE_LIBRARY})
+
+install(
+  DIRECTORY pyMLINC/pyMLINC
+  DESTINATION lib/Python
+  USE_SOURCE_PERMISSIONS)
+find_path(GEOS_STATE_BIAS_DIR processor.py HINTS ${CMAKE_CURRENT_SOURCE_DIR}/pyMLINC/*)
+message(STATUS "GEOS STATE BIAS dir: ${GEOS_STATE_BIAS_DIR}")
+install(
+  FILES ${GEOS_STATE_BIAS_DIR}/processor.py
+  DESTINATION lib/Python/geos_state_bias)
+install(
+  DIRECTORY ${GEOS_STATE_BIAS_DIR}/models ${GEOS_STATE_BIAS_DIR}/utils
+  DESTINATION lib/Python/geos_state_bias
+  USE_SOURCE_PERMISSIONS)

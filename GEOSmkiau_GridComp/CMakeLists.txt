@@ -15,10 +15,6 @@ if (BUILD_WITH_PYMLINC)
   list(APPEND srcs ${pymlinc_srcs})
   include(pyMLINC.cmake)
   set(dependencies pyMLINC_interface_py)
-  ecbuild_add_executable(
-    TARGET pymlinc-driver
-    SOURCES pyMLINC/driver/driver.F90 ${pymlinc_srcs}
-    LIBS ${PYMLINC_INTERFACE_LIBRARY})
 endif ()
 
 set(dependencies
@@ -30,11 +26,6 @@ set(dependencies
   MAPL
   FVdycoreCubed_GridComp
   ESMF::ESMF
-  NetCDF::NetCDF_Fortran)  
+  NetCDF::NetCDF_Fortran)
 
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES ${dependencies})
-
-# install(
-#   DIRECTORY pyMLINC/pyMLINC pyMLINC/geos_state_bias
-#   DESTINATION lib/Python
-#   USE_SOURCE_PERMISSIONS)
