@@ -1,6 +1,6 @@
 module reservoir
 
-use rwncfile
+use river_read
 
 implicit none
 private
@@ -85,9 +85,9 @@ subroutine res_init(input_dir,nres,nc,use_res,active_res,Wr_res,Q_res,type_res,c
   open(77,file=trim(input_dir)//"/fldmainsec_grand.txt")
   read(77,*)fld_grand
   write(fld_thres,'(I2.2)')fac_fld
-  open(77,file=trim(input_dir)//"/Pfaf_flood_qr_thres"//trim(fld_thres)//".txt")
-  read(77,*)Qfld_thres ! Read flood thresholds in cubic meters per second (m3/s)
-  Qfld_thres=Qfld_thres*rho ! Convert threshold from cubic meters per second to kilograms per second (kg/s)
+  !open(77,file=trim(input_dir)//"/Pfaf_flood_qr_thres"//trim(fld_thres)//".txt")
+  !read(77,*)Qfld_thres ! Read flood thresholds in cubic meters per second (m3/s)
+  Qfld_thres=0.D0!Qfld_thres*rho ! Convert threshold from cubic meters per second to kilograms per second (kg/s)
   open(77,file=trim(input_dir)//"/watersupply_grand.txt")
   read(77,*)supply_grand
   open(77,file=trim(input_dir)//"/irr_grand.txt")
@@ -295,7 +295,7 @@ subroutine res_cal(active_res,active_lake,Qout,Q_lake,type_res,cat2res,Q_res,wid
     ! Ensure outflow is within reasonable bounds
     Q_res = max(0.D0, Q_res)  ! Ensure non-negative outflow
     Q_res = min(Q_res, Wr_res / dt + Qin_res)  ! Limit outflow to prevent exceeding inflow and storage
-    if (fld_res == 1) Q_res = min(Q_res, Qfld_thres)  ! Limit outflow for flood control
+    !if (fld_res == 1) Q_res = min(Q_res, Qfld_thres)  ! Limit outflow for flood control
     Wr_res = Wr_res + dt * (Qin_res - Q_res)  ! Update water storage in the reservoir
     Wr_res = max(0.D0, Wr_res)  ! Ensure non-negative storage
 

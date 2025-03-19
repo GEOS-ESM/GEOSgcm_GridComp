@@ -106,8 +106,8 @@ subroutine res_init(input_dir,nall,nc,minCatch,maxCatch,use_res,active_res,type_
   area_grand=area_grand*1.e6 ! Convert area from square kilometers (km2) to square meters (m2)
 
   allocate(buff_global(nall))
-  open(77,file=trim(input_dir)//"/Pfaf_flood_qr_thres"//trim(fld_thres)//".txt");read(77,*)buff_global;close(77)
-  Qfld_thres=buff_global(minCatch:maxCatch)
+  !open(77,file=trim(input_dir)//"/Pfaf_flood_qr_thres"//trim(fld_thres)//".txt");read(77,*)buff_global;close(77)
+  Qfld_thres=0.!buff_global(minCatch:maxCatch)
   deallocate(buff_global) 
 
   !lake input
@@ -314,7 +314,7 @@ subroutine res_cal(active_res,Qout,type_res,cat2res,Q_res,wid_res,fld_res,Wr_res
     ! Ensure outflow is within reasonable bounds
     Q_res = max(0.0, Q_res)  ! Ensure non-negative outflow
     Q_res = min(Q_res, Wr_res / dt + Qin_res)  ! Limit outflow to prevent exceeding inflow and storage
-    if (fld_res == 1) Q_res = min(Q_res, Qfld_thres)  ! Limit outflow for flood control
+    !if (fld_res == 1) Q_res = min(Q_res, Qfld_thres)  ! Limit outflow for flood control
     Wr_res = Wr_res + dt * (Qin_res - Q_res)  ! Update water storage in the reservoir
     Wr_res = max(0.0, Wr_res)  ! Ensure non-negative storage
 

@@ -1,7 +1,7 @@
 module river_io
 
 use interp
-use rwncfile
+use river_read
 
 implicit none
 private
@@ -9,7 +9,8 @@ private
 public :: read_input,read_restart,read_runoff,write_output
 
 real*8, parameter :: rho = 1.D3      ! Water density in kg/m^3
-character(len=500) :: input_dir="/discover/nobackup/yzeng3/work/river_routing_model_offline/input/" ! Directory for input files
+character(len=500) :: input_dir="/discover/nobackup/yzeng3/data/river_input/" ! Directory for input files
+character(len=500) :: restart_dir="/discover/nobackup/yzeng3/data/river_restart/"
 character(len=500) :: output_dir="/discover/nobackup/yzeng3/river_output/" ! Directory for output files
 character(len=500) :: runoff_dir="/discover/nobackup/yzeng3/GEOldas_output/" ! Directory for runoff files
 
@@ -109,18 +110,18 @@ subroutine read_restart(iter,is_coldstart,ny,nc,days_acc_year,days_acc_noleap,da
   ! If first iteration or cold start, read initial data
   if(iter==1.or.is_coldstart)then
     ! Read initial water storage data from files for cold start
-    open(77,file=trim(input_dir)//"/Pfaf_Ws_Kv_M0.10_mm0.40_20170330_OL7000.txt")
+    open(77,file=trim(restart_dir)//"/Pfaf_Ws_Kv_M0.10_mm0.40_20170330_OL7000.txt")
     read(77,*)Ws  ! Read soil water storage (Ws)
     
-    open(77,file=trim(input_dir)//"/Pfaf_Wr_Kv_M0.10_mm0.40_20170330_OL7000.txt")
+    open(77,file=trim(restart_dir)//"/Pfaf_Wr_Kv_M0.10_mm0.40_20170330_OL7000.txt")
     read(77,*)Wr  ! Read routing water storage (Wr)
     
     !----reservoir module-------
-    open(77,file=trim(input_dir)//"/Pfaf_Wr_res_Kv_M0.10_mm0.40_20170330_OL7000.txt")
+    open(77,file=trim(restart_dir)//"/Pfaf_Wr_res_Kv_M0.10_mm0.40_20170330_OL7000.txt")
     read(77,*)Wr_res  ! Read reservoir water storage (Wr_res)
     
     !----lake module------------
-    open(77,file=trim(input_dir)//"/Pfaf_Wr_lake_Kv_M0.10_mm0.40_20170330_OL7000.txt")
+    open(77,file=trim(restart_dir)//"/Pfaf_Wr_lake_Kv_M0.10_mm0.40_20170330_OL7000.txt")
     read(77,*)Wr_lake  ! Read lake water storage (Wr_lake)
 
     ! Set cold start flag to False after initialization

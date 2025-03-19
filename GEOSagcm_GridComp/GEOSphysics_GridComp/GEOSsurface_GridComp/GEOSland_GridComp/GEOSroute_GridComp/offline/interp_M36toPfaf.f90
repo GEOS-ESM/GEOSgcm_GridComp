@@ -1,7 +1,7 @@
 module interp
 
 use omp_lib          ! Use OpenMP library for parallel processing
-use rwncfile         ! Use custom module for reading NetCDF files
+use river_read       ! Use custom module for reading NetCDF files
 implicit none
 
 private
