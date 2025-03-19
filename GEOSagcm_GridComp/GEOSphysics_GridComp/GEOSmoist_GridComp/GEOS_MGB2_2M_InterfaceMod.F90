@@ -259,19 +259,20 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          LONG_NAME  ='particle_number_for_snow',                   &
          UNITS      ='kg-1',                                       &
          FRIENDLYTO = trim(FRIENDLIES%NSNOW),                      &
+         DEFAULT    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         DEFAULT = 0.0,                                 __RC__  )  
-                                                       
+         VLOCATION  = MAPL_VLocationCenter, RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME ='NGRAUPEL',                                   &
          LONG_NAME  ='particle_number_for_graupel',                &
          UNITS      ='kg-1',                                       &
          FRIENDLYTO = trim(FRIENDLIES%NGRAUPEL),                   &
+         DEFAULT    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         DEFAULT = 0.0,                                 __RC__  )  
+         VLOCATION  = MAPL_VLocationCenter,    RC=STATUS  )
+    VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC,                               &
          SHORT_NAME = 'NACTL',                                  &
@@ -304,7 +305,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
     integer, optional                   :: RC  ! return code
 
-    
     type (ESMF_State)                   :: INTERNAL
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, CLLS, CLCN
@@ -414,7 +414,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 1.0,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
     call MAPL_GetResource(MAPL, SECOND_HYSTPDF, 'SECOND_HYSTPDF:', DEFAULT= .TRUE. ,RC=STATUS) !drop vol radius in cnv
 
-
     mui_cnstr8 =  MUI_CST
     ncnstr8 = NC_CST
     if  (NC_CST .gt. 0.0)  nccons =.true.
@@ -446,7 +445,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
-
     call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine MGB2_2M_Initialize
@@ -636,7 +634,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     allocate(ficer8(1,LM), __STAT__)
     allocate(qilsr8(1,LM), __STAT__)
     allocate(uwind_gw(1,LM), __STAT__)
-  
     allocate(ter8(1,LM), __STAT__)
     allocate(qvr8(1,LM), __STAT__)
     allocate(qcr8(1,LM), __STAT__)
@@ -829,7 +826,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     allocate(NCPI_TOP_X(IM,JM ), __STAT__)
     allocate(NCPL_CLDBASEX(IM,JM ), __STAT__)
     !allocate(TH(IM,JM,LM ), __STAT__)
-
 
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
@@ -1294,7 +1290,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, PTR2D,  'AN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
     call MAPL_GetPointer(EXPORT, PTR2D,  'SC_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
     
-
     call MAPL_TimerOn(MAPL,"---CLDMACRO")
     call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_macro, 'DQIDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -1703,7 +1698,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                liqcldfr8  =  cldfr8!*(qcr8/(qir8 + qcr8 + 1.e-12)) 
                icecldfr8  = cldfr8! max(cldfr8- liqcldfr8, 0.)                   
   
-
                ! Nucleation  tendencies 
                naair8(1,1:LM)     = max(( INC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - nir8(1,1:LM))/DT_MOIST, 0.0) 
                npccninr8(1,1:LM)  = max((CDNC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - ncr8(1,1:LM))/DT_MOIST, 0.0)
@@ -1881,7 +1875,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
     end if 
 
-
         IF (MGVERSION > 1) then 
 
                    RAD_QR(I,J,1:LM)  = max(RAD_QR(I,J,1:LM) + REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
@@ -1971,13 +1964,11 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                DNCAUTICE (I,J,1:LM)    = REAL(nprcior8(1,1:LM))  !ice number tendency from autoconversion
                DNCHMSPLIT(I,J,1:LM)    = REAL(nsacwior8(1,1:LM)) !ice number tendency from H-M process
     
-            
             enddo !I
          enddo !J
          !============================================Finish 2-moment micro implementation===========================
 
          !update water tracers
-       
        
           ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
@@ -2334,7 +2325,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
              PTR3D = MAPL_UNDEF 	  
            END WHERE          
          endif  
-        
         
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro

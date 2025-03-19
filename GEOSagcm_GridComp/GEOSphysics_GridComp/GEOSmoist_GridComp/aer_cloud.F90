@@ -278,6 +278,7 @@
       real,           intent(in) :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
                                     npre_in, dpre_in, fd_soot, fd_dust,  &
                                     frachet_dust, frachet_bc, frachet_org, frachet_ss
+                       
       integer,        intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
      
       real(r8), dimension(:), intent(inout) :: ccn_diagr8
@@ -1959,7 +1960,7 @@ END
                 gln=gammln(a)
                 b=x+1.-a
                ! Set up for evaluating continued fraction by modified
-               ! Lentz\u2019s method (§5.2) with b0 = 0.
+               ! Lentz 2019 method (5.2) with b0 = 0.
                 c=1./FPMIN
                 d=1./b
                 h=d
@@ -4023,7 +4024,6 @@ subroutine make_cnv_ice_drop_number(Nd, Ni, Nimm, Nad, z, zcb, T, cnvfice, g_sca
     real, parameter :: gamma =  1.0e-4
    
      
-      
   !make it simple
   
   Nd = b_scale*Nad*exp(-z/g_scale) 

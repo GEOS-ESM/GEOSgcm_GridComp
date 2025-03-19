@@ -27,8 +27,8 @@ MODULE Aer_Actv_Single_Moment
        real(AER_PR), parameter :: deltai    =  2.809e+3
        real(AER_PR), parameter :: densic    =  917.0   !Ice crystal density in kgm-3
 
-       real, parameter :: NN_MIN      =    1.0e6
-       real, parameter :: NN_MAX      = 1000.0e6
+       real, parameter :: NN_MIN      =   90.0e6
+       real, parameter :: NN_MAX      =  400.0e6
 
        LOGICAL  :: USE_BERGERON = .TRUE.
        LOGICAL  :: USE_AEROSOL_NN = .TRUE.
@@ -202,8 +202,10 @@ MODULE Aer_Actv_Single_Moment
             numbinit = 0.
             NACTL(i,j,k) = 0.
             DO n=1,n_modes
-               numbinit = numbinit + AeroPropsNew(n)%num(i,j,k)
-               NACTL(i,j,k)= NACTL(i,j,k) + nact(n) !#/m3
+               if (AeroPropsNew(n)%kap(i,j,k) > 0.4) then
+                 numbinit = numbinit + AeroPropsNew(n)%num(i,j,k)
+                 NACTL(i,j,k)= NACTL(i,j,k) + nact(n) !#/m3
+               endif
             ENDDO
             numbinit = numbinit * air_den ! #/m3
             NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)

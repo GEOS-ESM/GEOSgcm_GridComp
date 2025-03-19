@@ -778,7 +778,9 @@ contains
 ! AMM fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
 ! deep ones. Linear from 0 to 1600m
-            wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
+            if (pertopt_sfc == 0) then
+              wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
+            endif
 !-----------------------------------------
 
             k_entr_tmp = wentr_tmp*(zfull(i,j,ipbl-1)-zfull(i,j,ipbl))  
@@ -1041,11 +1043,13 @@ contains
 ! AAM107 fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
 ! deep ones: piecewise linear function 500-800m & 800-2400m 
-        if ( zradtop .le. 800. ) then
+        if (pertopt_sfc == 0) then
+         if ( zradtop .le. 800. ) then
             wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
          else
             wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
          endif
+        endif
 !-----------------------------------------
 
          k_entr_tmp = min ( akmax, wentr_rad*(zfull(i,j,kcldtop-1)-zfull(i,j,kcldtop)) )
@@ -1227,13 +1231,11 @@ contains
 
 !calculate surface parcel properties
 
-    if (pertopt < 0) then
+    if (pertopt == 1) then
       zrho = p(i,j,nlev)/(287.04*(t(i,j,nlev)*(1.+0.608*q(i,j,nlev))))
-
       buoyflx = (sh(i,j)/MAPL_CP+0.608*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1                                                                                                  
       delzg = (50.0)*MAPL_GRAV   ! assume 50m surface scale                                                                                                               
       wstar = max(0.,0.001+0.41*buoyflx*delzg/t(i,j,nlev)) ! m3 s-3      
-
       if (wstar > 0.001) then
         wstar = 1.0*wstar**.3333
         tep  = t(i,j,nlev) + 0.4 + 2.*sh(i,j)/(zrho*wstar*MAPL_CP)
@@ -1242,14 +1244,9 @@ contains
         tep  = t(i,j,nlev) + 0.4
         qp   = q(i,j,nlev)
       end if
-
     else   ! tpfac scales up bstar by inv. ratio of
            ! heat-bubble area to stagnant area
-      if (pertopt == 1) then
-        tep  = (t(i,j,nlev) + 0.4) * (1.+ tpfac * b_star(i,j)/MAPL_GRAV)
-      else
-        tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
-      end if
+      tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
       qp   = q(i,j,nlev)
     end if
 
@@ -1266,16 +1263,14 @@ contains
 !search for level where this is exceeded              
 
       lts =  0.0
-      if (pertopt == 0) then
-        ! LTS using TH at 3km abve surface
-         do k = nlev-1,2,-1
-            if (z(i,j,k).gt.3000.0) then
-              lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
-              exit
-            end if
-         end do
-         lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
-      end if
+     ! LTS using TH at 3km abve surface
+      do k = nlev-1,2,-1
+         if (z(i,j,k).gt.3000.0) then
+           lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
+           exit
+         end if
+      end do
+      lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
 
       t1   = t(i,j,nlev)
       v1   = v(i,j,nlev)
