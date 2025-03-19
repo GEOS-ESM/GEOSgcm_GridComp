@@ -149,11 +149,8 @@ contains
       ! Set the Run entry point
       ! -----------------------
 
-      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
-      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, _RC)
-
-      ! call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize,  _RC)
-      ! call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  _RC)
+      call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize,  _RC)
+      call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  _RC)
 
       call MAPL_GetObjectFromGC ( GC, MAPL, _RC )
 
