@@ -31,7 +31,7 @@ module GEOS_GwdGridCompMod
 
    use ESMF
    use MAPL, only: MAPL_MetaComp, MAPL_Interval
-   use MAPL, only: MAPL_GridCompSetEntryPoint
+   use mapl3g_generic, only: MAPL_GridCompSetEntryPoint
    use MAPL, only: MAPL_GetObjectFromGC
    use MAPL, only: MAPL_GenericSetServices, MAPL_GenericInitialize
    use MAPL, only: MAPL_Get, MAPL_GetResource, MAPL_GridGet
@@ -209,11 +209,11 @@ contains
 
       ! !ARGUMENTS:
 
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
-      type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-      type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-      type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-      integer, optional,   intent(  out) :: RC     ! Error code
+      type(ESMF_GridComp) :: GC     ! Gridded component
+      type(ESMF_State) :: IMPORT ! Import state
+      type(ESMF_State) :: EXPORT ! Export state
+      type(ESMF_Clock) :: CLOCK  ! The clock
+      integer, intent(out) :: RC     ! Error code
 
       ! !DESCRIPTION: The Initialize method of the GWD Physics Gridded Component first
       !   calls the Initialize method of the children.  Then, if using the NCAR GWD
@@ -440,11 +440,11 @@ contains
    subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       ! !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
-      type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-      type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-      type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-      integer, optional,   intent(  out) :: RC     ! Error code:
+      type(ESMF_GridComp) :: GC     ! Gridded component
+      type(ESMF_State) :: IMPORT ! Import state
+      type(ESMF_State) :: EXPORT ! Export state
+      type(ESMF_Clock) :: CLOCK  ! The clock
+      integer, intent(out) :: RC     ! Error code:
 
       ! !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
       !                the Initialize and Finalize services, as well as allocating
