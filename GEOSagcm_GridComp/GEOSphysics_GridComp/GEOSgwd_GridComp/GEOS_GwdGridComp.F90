@@ -30,7 +30,20 @@ module GEOS_GwdGridCompMod
    ! !USES:
 
    use ESMF
-   use MAPL
+   use MAPL, only: MAPL_MetaComp, MAPL_Interval
+   use MAPL, only: MAPL_GridCompSetEntryPoint
+   use MAPL, only: MAPL_GetObjectFromGC
+   use MAPL, only: MAPL_GenericSetServices, MAPL_GenericInitialize
+   use MAPL, only: MAPL_Get, MAPL_GetResource, MAPL_GridGet
+   use MAPL, only: MAPL_get_num_threads, MAPL_get_current_thread
+   use MAPL, only: MAPL_find_bounds, MAPL_AM_I_ROOT
+   use MAPL, only: MAPL_GetPointer, MAPL_Verify, MAPL_RTRN
+   use MAPL, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
+   use MAPL, only: MAPL_AddImportSpec, MAPL_AddExportSpec, MAPL_AddInternalSpec
+   use MAPL, only: MAPL_DimsHorzOnly, MAPL_DimsHorzVert, MAPL_DimsVertOnly
+   use MAPL, only: MAPL_VlocationNone, MAPL_VlocationEdge, MAPL_VlocationCenter, MAPL_RestartSkip
+   use MAPL, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
+   use MAPL, only: ArrayGather
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
@@ -136,8 +149,11 @@ contains
       ! Set the Run entry point
       ! -----------------------
 
-      call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize,  _RC)
-      call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, _RC)
+
+      ! call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize,  _RC)
+      ! call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  _RC)
 
       call MAPL_GetObjectFromGC ( GC, MAPL, _RC )
 
@@ -1176,3 +1192,11 @@ contains
    End Subroutine Write_Profile
 
 end module GEOS_GwdGridCompMod
+
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_GwdGridCompMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine SetServices
