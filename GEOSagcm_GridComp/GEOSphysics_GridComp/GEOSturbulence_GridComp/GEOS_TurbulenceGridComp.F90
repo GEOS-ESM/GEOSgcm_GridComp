@@ -329,15 +329,15 @@ contains
       VERIFY_(STATUS)
 
 
-!      call MAPL_AddImportSpec(GC,                                 &
-!         SHORT_NAME = 'CNV_MFC',                                        &
-!         LONG_NAME  = 'mass_flux',                          &
-!         UNITS      = 'K',                                        &
-!         DIMS       = MAPL_DimsHorzVert,                          &
-!         VLOCATION  = MAPL_VLocationEdge,                         &
-!         RESTART    = MAPL_RestartSkip,                           &
-!                                                        RC=STATUS  )
-!      VERIFY_(STATUS)
+      call MAPL_AddImportSpec(GC,                                 &
+         SHORT_NAME = 'CNV_MFC',                                        &
+         LONG_NAME  = 'mass_flux',                          &
+         UNITS      = 'K',                                        &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationEdge,                         &
+         RESTART    = MAPL_RestartSkip,                           &
+                                                        RC=STATUS  )
+      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'TH',                                        &
@@ -2964,7 +2964,7 @@ end if
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: AREA, VARFLT
      real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, FCLD
-     real, dimension(:,:,:), pointer     :: ALH!, CNV_MFC
+     real, dimension(:,:,:), pointer     :: ALH, CNV_MFC
      real, dimension(:    ), pointer     :: PREF
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
@@ -3153,8 +3153,8 @@ end if
 
 ! Get Sounding from the import state
 !-----------------------------------
-!     call MAPL_GetPointer(IMPORT,  CNV_MFC,   'CNV_MFC',     RC=STATUS)
-!     VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,  CNV_MFC,   'CNV_MFC',     RC=STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_GetPointer(IMPORT,     T,       'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     Q,      'QV', RC=STATUS); VERIFY_(STATUS)
@@ -3247,18 +3247,18 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=8.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=1.,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=1.,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.3,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
      end if
 
      call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOPROGQT2,  'DOPROGQT2:',  DEFAULT = 1     , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 4.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 9.0   , RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 1600.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 1800.0, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOCANUTO,   'DOCANUTO:',   DEFAULT = 0,      RC=STATUS); VERIFY_(STATUS)
 
@@ -3395,12 +3395,8 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_buoyf, 'EDMF_BUOYF',  RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  edmf_sl2,  'EDMF_SL2', RC=STATUS)
-!     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_slqt, 'EDMF_SLQT', RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  edmf_qt2,  'EDMF_QT2', RC=STATUS)
-!     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_w2,   'EDMF_W2', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_w3,   'EDMF_W3', RC=STATUS)
@@ -3667,8 +3663,8 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   RC=STATUS)
       ! coefficients for surface forcing, appropriate for L137
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=1.0,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=1.0,   RC=STATUS) 
+      call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=1.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=1.5,   RC=STATUS) 
       ! Entrainment rate options
       call MAPL_GetResource (MAPL, MFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
       ! constant entrainment rate   
@@ -3684,7 +3680,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%DOCLASP,   "EDMF_DOCLASP:",       default=0,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%ICE_RAMP,  "EDMF_ICE_RAMP:",      default=-40.0, RC=STATUS )
       call MAPL_GetResource (MAPL, MFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.4,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   RC=STATUS)
@@ -3888,6 +3884,7 @@ end if
             k = k-1
           end do
           drycblh(i,j) = ZL0(i,j,k)
+!          if (maxval(cnv_mfc(i,j,:)).gt.0.01) drycblh(i,j) = 1.4*drycblh(i,j)
         end do
       end do
 
@@ -3904,7 +3901,7 @@ end if
 
       if (associated(edmf_dry_a))     edmf_dry_a    = 0.0
       if (associated(edmf_moist_a))   edmf_moist_a  = 0.0
-!      if (associated(edmf_dry_w))     edmf_dry_w    = MAPL_UNDEF
+      if (associated(edmf_dry_w))     edmf_dry_w    = MAPL_UNDEF
       if (associated(edmf_moist_w))   edmf_moist_w  = MAPL_UNDEF 
       if (associated(edmf_dry_qt))    edmf_dry_qt   = MAPL_UNDEF
       if (associated(edmf_moist_qt))  edmf_moist_qt = MAPL_UNDEF 
@@ -4486,17 +4483,13 @@ end if
                           ZLE,            &
                           KH,             &
                           THV,            &
-!                          BRUNTSHOC,      &
                           TKESHOC,        &
                           ISOTROPY,       &
                           QT,             &
                           SL,             &
                           EDMF_FRC,       &
-!                          CNV_MFC,        &
-!                          edmf_mf(:,:,1:LM)/rhoe(:,:,1:LM),   &
-!                          MFQT2,          &
+                          CNV_MFC,        &
                           MFQT3,          &
-!                          MFHL2,          &
                           MFSL3,          &
                           MFW2,           &
                           MFW3,           &
@@ -4775,7 +4768,7 @@ end if
 
      end if ! SBITOP, SBIFRQ
 
-     if (associated(W_DIAG).or.associated(W_ENTR)) W_DIAG = OMEGA*(ZLE(:,:,1:LM)-ZLE(:,:,0:LM-1))/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
+     if (associated(W_DIAG).or.associated(W_ENTR)) W_DIAG = -OMEGA/(MAPL_GRAV*PLO/(MAPL_RGAS*T)) 
 
      ! Trade inversion base height
      if (associated(TRINVBS)) then
@@ -6379,7 +6372,7 @@ end subroutine RUN1
          tmp3d(:,:,0) = 0.0
          if (associated(SLFLXMF).and.MFPARAMS%IMPLICIT.eq.1) then
             SLFLXMF(:,:,1:LM-1) = SLFLXMF(:,:,1:LM-1)-MFAW(:,:,1:LM-1)*SL(:,:,1:LM-1)/MAPL_CP
-            SLFLXMF(:,:,LM) = SLFLXMF(:,:,LM-1)
+            SLFLXMF(:,:,LM) = 0. !SLFLXMF(:,:,LM-1)
             SLFLXMF(:,:,0) = 0.
          end if
          if (associated(SLFLXTRB)) SLFLXTRB = tmp3d/MAPL_CP + SLFLXMF
