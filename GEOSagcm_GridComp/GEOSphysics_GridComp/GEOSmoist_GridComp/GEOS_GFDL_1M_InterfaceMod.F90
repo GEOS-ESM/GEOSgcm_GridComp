@@ -17,8 +17,6 @@ module GEOS_GFDL_1M_InterfaceMod
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
 
-  use module_mp_thompson, only: thompson_init, calc_refl10cm  
-
   implicit none
 
   private
@@ -267,6 +265,11 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= DBZ_LIQUID_SKIN, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, DBZ_VAR_INTERCP , 'DBZ_VAR_INTERCP:' , DEFAULT= DBZ_VAR_INTERCP, RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource( MAPL, refl10cm_allow_wet_graupel , 'refl10cm_allow_wet_graupel:' , &
+                        DEFAULT= refl10cm_allow_wet_graupel, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, refl10cm_allow_wet_snow    , 'refl10cm_allow_wet_snow:'    , &
+                        DEFAULT= refl10cm_allow_wet_snow, RC=STATUS); VERIFY_(STATUS)
+
     call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9125, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.9125, RC=STATUS); VERIFY_(STATUS)
@@ -291,13 +294,12 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 3000.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    2.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, GFDL_MP_PLID    , 'GFDL_MP_PLID:'    , DEFAULT= 1.0     , RC=STATUS); VERIFY_(STATUS)
 
-  ! call thompson_init(.false., USE_AEROSOL_NN, MAPL_am_I_root() , 1, errmsg, STATUS)
-  ! _ASSERT( STATUS==0, errmsg )
+    call init_refl10cm()
 
 end subroutine GFDL_1M_Initialize
 
@@ -359,8 +361,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: RHCRIT3D
     real, pointer, dimension(:,:,:) :: CNV_PRC3 
     real, pointer, dimension(:,:)   :: EIS, LTS
-    real, pointer, dimension(:,:)   :: DBZ_10CM_MAX
+    real, pointer, dimension(:,:)   :: DBZ_WRF_MAX
     real, pointer, dimension(:,:)   :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
+    real, pointer, dimension(:,:)   :: DBZ_MAX_R, DBZ_MAX_S, DBZ_MAX_G
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -891,20 +894,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(EXPORT, CNV_PRC3, 'CNV_PRC3', RC=STATUS); VERIFY_(STATUS)
         if (associated(CNV_PRC3)) QRAIN=QRAIN+CNV_PRC3
 
-        call MAPL_GetPointer(EXPORT, PTR3D       , 'DBZ_10CM'    , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_10CM_MAX, 'DBZ_10CM_MAX', RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, PTR3D      , 'DBZ_WRF'    , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_WRF_MAX, 'DBZ_WRF_MAX', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D) .OR. &
-            associated(DBZ_10CM_MAX)) then
-            rand1 = 0.0
-            DO J=1,JM ; DO I=1,IM
-              call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTL(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
-                 T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J, .true., ktopin=1, kbotin=LM)
-            END DO ; END DO
+            associated(DBZ_WRF_MAX)) then
+            TMP3D = 0.0
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
             if (associated(PTR3D)) PTR3D = TMP3D
-            if (associated(DBZ_10CM_MAX)) then
-               DBZ_10CM_MAX=-9999.0
+            if (associated(DBZ_WRF_MAX)) then
+               DBZ_WRF_MAX=-9999.0
                DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                  DBZ_10CM_MAX(I,J) = MAX(DBZ_10CM_MAX(I,J),TMP3D(I,J,L))
+                  DBZ_WRF_MAX(I,J) = MAX(DBZ_WRF_MAX(I,J),TMP3D(I,J,L))
                END DO ; END DO ; END DO
             endif
         end if
@@ -917,7 +917,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D) .OR. &
             associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
 
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
+            rand1 = 0.0
+            TMP3D = 0.0
+            DO J=1,JM ; DO I=1,IM
+              call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTL(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                 T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
+            END DO ; END DO
             if (associated(PTR3D)) PTR3D = TMP3D
 
             if (associated(DBZ_MAX)) then
@@ -959,31 +964,47 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         endif
 
-        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,0.0*QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
-             PTR2D=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO
-        endif
-        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_S' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
-             PTR2D=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO 
-        endif
-        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_G' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,0.0*QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
-             PTR2D=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO  
+        call MAPL_GetPointer(EXPORT, DBZ_MAX_R , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_MAX_S , 'DBZ_MAX_S' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_MAX_G , 'DBZ_MAX_G' , RC=STATUS); VERIFY_(STATUS)
+        if (associated(DBZ_MAX_R) .OR. associated(DBZ_MAX_S) .OR. associated(DBZ_MAX_G)) then
+            rand1 = 0.0
+            if (associated(DBZ_MAX_R)) then
+               TMP3D = 0.0
+               DO J=1,JM ; DO I=1,IM
+                 call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTL(I,J,:), 0*QSNOW(I,J,:), 0*QGRAUPEL(I,J,:), &
+                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
+               END DO ; END DO
+               DBZ_MAX_R=-9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                  DBZ_MAX_R(I,J) = MAX(DBZ_MAX_R(I,J),TMP3D(I,J,L))
+               END DO ; END DO ; END DO
+            endif
+            if (associated(DBZ_MAX_S)) then
+               TMP3D = 0.0
+               DO J=1,JM ; DO I=1,IM
+                 call calc_refl10cm(Q(I,J,:), 0*QRAIN(I,J,:), NACTL(I,J,:), QSNOW(I,J,:), 0*QGRAUPEL(I,J,:), &
+                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
+               END DO ; END DO
+               DBZ_MAX_S=-9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                  DBZ_MAX_S(I,J) = MAX(DBZ_MAX_S(I,J),TMP3D(I,J,L))
+               END DO ; END DO ; END DO
+            endif
+            if (associated(DBZ_MAX_G)) then
+               TMP3D = 0.0
+               DO J=1,JM ; DO I=1,IM
+                 call calc_refl10cm(Q(I,J,:), 0*QRAIN(I,J,:), NACTL(I,J,:), 0*QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
+               END DO ; END DO
+               DBZ_MAX_G=-9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                  DBZ_MAX_G(I,J) = MAX(DBZ_MAX_G(I,J),TMP3D(I,J,L))
+               END DO ; END DO ; END DO
+            endif
         endif
 
+        ! remove convective precip after reflectivity calculations
         if (associated(CNV_PRC3)) QRAIN=QRAIN-CNV_PRC3
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)

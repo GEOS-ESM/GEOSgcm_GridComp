@@ -2034,22 +2034,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_10CM',                                          &
-         LONG_NAME = '10cm_wavelength_radar_reflectivity',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)          
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_10CM_MAX',                                          &
-         LONG_NAME = 'Maximum_10cm_wavelength_radar_reflectivity',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ_MAX_S',                                          &
          LONG_NAME = 'Maximum_composite_radar_reflectivity_snow',                  &
          UNITS     = 'dBZ',                                     &
@@ -2068,6 +2052,22 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ_MAX_G',                                          &
          LONG_NAME = 'Maximum_composite_radar_reflectivity_graupel',                  &
+         UNITS     = 'dBZ',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DBZ_WRF',                                          &
+         LONG_NAME = 'wrf_radar_reflectivity',                  &
+         UNITS     = 'dBZ',                                     &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)          
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DBZ_WRF_MAX',                                          &
+         LONG_NAME = 'wrf_wavelength_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,              RC=STATUS  )

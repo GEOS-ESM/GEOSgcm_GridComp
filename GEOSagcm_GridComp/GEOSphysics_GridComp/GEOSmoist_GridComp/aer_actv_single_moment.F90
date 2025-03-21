@@ -27,8 +27,8 @@ MODULE Aer_Actv_Single_Moment
        real(AER_PR), parameter :: deltai    =  2.809e+3
        real(AER_PR), parameter :: densic    =  917.0   !Ice crystal density in kgm-3
 
-       real, parameter :: NN_MIN      =   90.0e6
-       real, parameter :: NN_MAX      =  400.0e6
+       real, parameter :: NN_MIN      =  100.0e6
+       real, parameter :: NN_MAX      =  500.0e6
 
        LOGICAL  :: USE_BERGERON = .TRUE.
        LOGICAL  :: USE_AEROSOL_NN = .TRUE.

@@ -71,13 +71,14 @@ module GEOSmoist_Process_Library
   real, parameter :: bx = 100.* (3./(4.*MAPL_PI))**(1./3.)
   ! Liquid  based on DOI 10.1088/1748-9326/3/4/045021
   real, parameter :: RHO_W   = 1000.0  ! Density of liquid water in kg/m^3
+  real, parameter :: rho_s   = 100.0
+  real, parameter :: rho_g   = 500.0
+  real, parameter :: rho_i   = 890.0
   real, parameter :: Ldiss   = 0.07    ! tunable dispersion effect
   real, parameter :: Lk      = 0.75    ! tunable shape effect (0.5:1)
   real, parameter :: Lbe     = 1./3. - 0.14
   real, parameter :: Lbx     = Ldiss*1.e3*(3./(4.*MAPL_PI*Lk*RHO_W*1.e-3))**(1./3.)
                              ! LDRADIUS eqs are in cgs units
-  ! Ice
-  real, parameter :: RHO_I   =  916.8  ! Density of ice crystal in kg/m^3
 
   ! combined constants
   real, parameter :: cpbgrav = MAPL_CP/MAPL_GRAV
@@ -96,6 +97,77 @@ module GEOSmoist_Process_Library
   ! Radar parameter
   integer :: DBZ_VAR_INTERCP=1 ! use variable intercept parameters 
   integer :: DBZ_LIQUID_SKIN=1 ! use liquid skin on snow/ice in warm environments
+  LOGICAL :: refl10cm_allow_wet_graupel = .false.
+  LOGICAL :: refl10cm_allow_wet_snow = .true.
+
+  ! Thompson radar constants
+  LOGICAL, PARAMETER:: iiwarm = .false.
+!..Rho_not used in fallspeed relations (rho_not/rho)**.5 adjustment.
+  REAL, PARAMETER:: rho_not = 101325.0/(287.05*298.0)
+!..Mass power law relations:  mass = am*D**bm
+!.. Snow from Field et al. (2005), others assume spherical form.
+  REAL, PARAMETER:: am_r = MAPL_PI*RHO_W/6.0
+  REAL, PARAMETER:: bm_r = 3.0
+  REAL, PARAMETER:: am_s = 0.069
+  REAL, PARAMETER:: bm_s = 2.0
+  REAL, PARAMETER:: am_g = MAPL_PI*rho_g/6.0
+  REAL, PARAMETER:: bm_g = 3.0
+  REAL, PARAMETER:: am_i = MAPL_PI*rho_i/6.0
+  REAL, PARAMETER:: bm_i = 3.0
+!..Fallspeed power laws relations:  v = (av*D**bv)*exp(-fv*D)
+!.. Rain from Ferrier (1994), ice, snow, and graupel from
+!.. Thompson et al (2008). Coefficient fv is zero for graupel/ice.
+  REAL, PARAMETER:: av_r = 4854.0
+  REAL, PARAMETER:: bv_r = 1.0
+  REAL, PARAMETER:: fv_r = 195.0
+  REAL, PARAMETER:: av_s = 40.0
+  REAL, PARAMETER:: bv_s = 0.55
+  REAL, PARAMETER:: fv_s = 100.0
+  REAL, PARAMETER:: av_g = 442.0
+  REAL, PARAMETER:: bv_g = 0.89
+  REAL, PARAMETER:: bv_i = 1.0
+  REAL, PARAMETER:: av_c = 0.316946E8
+  REAL, PARAMETER:: bv_c = 2.0
+!..Variables holding a bunch of exponents and gamma values (cloud water,
+!.. cloud ice, rain, snow, then graupel).
+  REAL, DIMENSION(5,15), PRIVATE:: cce, ccg
+  REAL, DIMENSION(15), PRIVATE::  ocg1, ocg2
+  REAL, DIMENSION(7), PRIVATE:: cie, cig
+  REAL, PRIVATE:: oig1, oig2, obmi
+  REAL, DIMENSION(13), PRIVATE:: cre, crg
+  REAL, PRIVATE:: ore1, org1, org2, org3, obmr
+  REAL, DIMENSION(18), PRIVATE:: cse, csg
+  REAL, PRIVATE:: oams, obms, ocms
+  REAL, DIMENSION(12), PRIVATE:: cge, cgg
+  REAL, PRIVATE:: oge1, ogg1, ogg2, ogg3, oamg, obmg, ocmg
+!..Generalized gamma distributions for rain, graupel and cloud ice.
+!.. N(D) = N_0 * D**mu * exp(-lamda*D);  mu=0 is exponential.
+  REAL, PARAMETER:: mu_r = 0.0 
+  REAL, PARAMETER:: mu_g = 0.0
+  REAL, PARAMETER:: mu_i = 0.0
+!..Sum of two gamma distrib for snow (Field et al. 2005).
+!.. N(D) = M2**4/M3**3 * [Kap0*exp(-M2*Lam0*D/M3)
+!..    + Kap1*(M2/M3)**mu_s * D**mu_s * exp(-M2*Lam1*D/M3)]
+!.. M2 and M3 are the (bm_s)th and (bm_s+1)th moments respectively
+!.. calculated as function of ice water content and temperature.
+  REAL, PARAMETER:: mu_s = 0.6357
+  REAL, PARAMETER:: Kap0 = 490.6
+  REAL, PARAMETER:: Kap1 = 17.46
+  REAL, PARAMETER:: Lam0 = 20.78
+  REAL, PARAMETER:: Lam1 = 3.29
+!..Y-intercept parameter for graupel is not constant and depends on
+!.. mixing ratio.  Also, when mu_g is non-zero, these become equiv
+!.. y-intercept for an exponential distrib and proper values are
+!.. computed based on same mixing ratio and total number concentration.
+  REAL, PARAMETER:: gonv_min = 1.E2
+  REAL, PARAMETER:: gonv_max = 1.E6
+!> For snow moments conversions (from Field et al. 2005)
+  REAL, DIMENSION(10), PARAMETER, PRIVATE:: &
+  sa = (/ 5.065339, -0.062659, -3.032362, 0.029469, -0.000285, &
+          0.31255,   0.000204,  0.003199, 0.0,      -0.015952/)
+  REAL, DIMENSION(10), PARAMETER, PRIVATE:: &
+  sb = (/ 0.476221, -0.015896,  0.165977, 0.007468, -0.000141, &
+          0.060366,  0.000079,  0.000594, 0.0,      -0.003577/)
 
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
@@ -148,11 +220,13 @@ module GEOSmoist_Process_Library
   public :: SIGMA_DX, SIGMA_EXP
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
   public :: SH_MD_DP, DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
+  public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: FIND_KLID
   public :: sigma
   public :: pdf_alpha
+  public :: init_refl10cm, calc_refl10cm
 
   contains
 
@@ -3738,8 +3812,131 @@ subroutine update_cld( &
 
    end function FIND_KLID
 
+!  (C) Copr. 1986-92 Numerical Recipes Software 2.02
+!+---+-----------------------------------------------------------------+
+      REAL FUNCTION WGAMMA(y)
+      IMPLICIT NONE
+      REAL, INTENT(IN):: y
+      WGAMMA = EXP(GAMMLN(y))
+      END FUNCTION WGAMMA
 
-#ifdef THOM_REF
+!! Returns the value ln(gamma(xx)) for xx > 0.
+      REAL FUNCTION GAMMLN(XX)
+!     --- RETURNS THE VALUE LN(GAMMA(XX)) FOR XX > 0.
+      IMPLICIT NONE
+      REAL, INTENT(IN):: XX
+      DOUBLE PRECISION, PARAMETER:: STP = 2.5066282746310005D0
+      DOUBLE PRECISION, DIMENSION(6), PARAMETER:: &
+               COF = (/76.18009172947146D0, -86.50532032941677D0, &
+                       24.01409824083091D0, -1.231739572450155D0, &
+                      .1208650973866179D-2, -.5395239384953D-5/)
+      DOUBLE PRECISION:: SER,TMP,X,Y
+      INTEGER:: J
+      X=XX
+      Y=X
+      TMP=X+5.5D0
+      TMP=(X+0.5D0)*LOG(TMP)-TMP
+      SER=1.000000000190015D0
+      DO 11 J=1,6
+        Y=Y+1.D0
+        SER=SER+COF(J)/Y
+11    CONTINUE
+      GAMMLN=TMP+LOG(STP*SER/X)
+      END FUNCTION GAMMLN
+!  (C) Copr. 1986-92 Numerical Recipes Software 2.02
+
+   subroutine init_refl10cm ()
+
+      USE module_mp_radar
+
+      IMPLICIT NONE
+
+      integer :: n
+
+      cre(1) = bm_r + 1.
+      cre(2) = mu_r + 1.
+      cre(3) = bm_r + mu_r + 1.
+      cre(4) = bm_r*2. + mu_r + 1.
+      cre(5) = mu_r + bv_r + 1.
+      cre(6) = bm_r + mu_r + bv_r + 1.
+      cre(7) = bm_r*0.5 + mu_r + bv_r + 1.
+      cre(8) = bm_r + mu_r + bv_r + 3.
+      cre(9) = mu_r + bv_r + 3.
+      cre(10) = mu_r + 2.
+      cre(11) = 0.5*(bv_r + 5. + 2.*mu_r)
+      cre(12) = bm_r*0.5 + mu_r + 1.
+      cre(13) = bm_r*2. + mu_r + bv_r + 1.
+      do n = 1, 13
+         crg(n) = WGAMMA(cre(n))
+      enddo
+      obmr = 1./bm_r
+      ore1 = 1./cre(1)
+      org1 = 1./crg(1)
+      org2 = 1./crg(2)
+      org3 = 1./crg(3)
+
+      cse(1) = bm_s + 1.
+      cse(2) = bm_s + 2.
+      cse(3) = bm_s*2.
+      cse(4) = bm_s + bv_s + 1.
+      cse(5) = bm_s*2. + bv_s + 1.
+      cse(6) = bm_s*2. + 1.
+      cse(7) = bm_s + mu_s + 1.
+      cse(8) = bm_s + mu_s + 2.
+      cse(9) = bm_s + mu_s + 3.
+      cse(10) = bm_s + mu_s + bv_s + 1.
+      cse(11) = bm_s*2. + mu_s + bv_s + 1.
+      cse(12) = bm_s*2. + mu_s + 1.
+      cse(13) = bv_s + 2.
+      cse(14) = bm_s + bv_s
+      cse(15) = mu_s + 1.
+      cse(16) = 1.0 + (1.0 + bv_s)/2.
+      cse(17) = cse(16) + mu_s + 1.
+      cse(18) = bv_s + mu_s + 3.
+      do n = 1, 18
+         csg(n) = WGAMMA(cse(n))
+      enddo
+      oams = 1./am_s
+      obms = 1./bm_s
+      ocms = oams**obms
+
+      cge(1) = bm_g + 1.
+      cge(2) = mu_g + 1.
+      cge(3) = bm_g + mu_g + 1.
+      cge(4) = bm_g*2. + mu_g + 1.
+      cge(5) = bm_g*2. + mu_g + bv_g + 1.
+      cge(6) = bm_g + mu_g + bv_g + 1.
+      cge(7) = bm_g + mu_g + bv_g + 2.
+      cge(8) = bm_g + mu_g + bv_g + 3.
+      cge(9) = mu_g + bv_g + 3.
+      cge(10) = mu_g + 2.
+      cge(11) = 0.5*(bv_g + 5. + 2.*mu_g)
+      cge(12) = 0.5*(bv_g + 5.) + mu_g
+      do n = 1, 12
+         cgg(n) = WGAMMA(cge(n))
+      enddo
+      oamg = 1./am_g
+      obmg = 1./bm_g
+      ocmg = oamg**obmg
+      oge1 = 1./cge(1)
+      ogg1 = 1./cgg(1)
+      ogg2 = 1./cgg(2)
+      ogg3 = 1./cgg(3)
+
+!>  - Call radar_init() to initialize various constants for computing radar reflectivity
+      xam_r = am_r
+      xbm_r = bm_r
+      xmu_r = mu_r
+      xam_s = am_s
+      xbm_s = bm_s
+      xmu_s = mu_s
+      xam_g = am_g
+      xbm_g = bm_g
+      xmu_g = mu_g
+      call radar_init
+
+   end subroutine init_refl10cm
+
 !+---+-----------------------------------------------------------------+
 !>\ingroup aathompson
 !! Compute radar reflectivity assuming 10 cm wavelength radar and using
@@ -3750,9 +3947,11 @@ subroutine update_cld( &
 !! melting level interface.
 
       subroutine calc_refl10cm (qv1d, qr1d, nr1d, qs1d, qg1d, &
-               t1d, p1d, dBZ, rand1, kts, kte, ii, jj, melti,       &
+               t1d, p1d, dBZ, rand1, kts, kte, ii, jj, &
                vt_dBZ, first_time_step, ktopin, kbotin)
 
+      USE module_mp_radar
+ 
       IMPLICIT NONE
 
 !..Sub arguments
@@ -3767,8 +3966,6 @@ subroutine update_cld( &
 
 !..Local variables
       LOGICAL :: do_vt_dBZ
-      LOGICAL :: allow_wet_graupel
-      LOGICAL :: allow_wet_snow
       REAL, DIMENSION(kts:kte):: temp, pres, qv, rho, rhof
       REAL, DIMENSION(kts:kte):: rr, nr, rs, rg
 
@@ -3786,16 +3983,20 @@ subroutine update_cld( &
       DOUBLE PRECISION:: fmelt_s, fmelt_g
 
       INTEGER:: i, k, k_0, ktop, kbot, kdwn, n
-      LOGICAL, INTENT(IN):: melti
+      LOGICAL:: melti
+      REAL:: frland
       LOGICAL, DIMENSION(kts:kte):: L_qr, L_qs, L_qg
 
       DOUBLE PRECISION:: cback, x, eta, f_d
       REAL:: xslw1, ygra1, zans1
 
-      REAL, PARAMETER, PRIVATE :: R1 = 1.E-12
-      REAL, PARAMETER, PRIVATE :: R2 = 1.E-6
-!..Rho_not used in fallspeed relations (rho_not/rho)**.5 adjustment.
-      REAL, PARAMETER, PRIVATE:: rho_not = 101325.0/(287.05*298.0)
+      REAL, PARAMETER:: R  = MAPL_RGAS
+      REAL, PARAMETER:: PI = MAPL_PI
+      REAL, PARAMETER:: R1 = 1.E-12
+      REAL, PARAMETER:: R2 = 1.E-6
+
+      LOGICAL:: allow_wet_snow
+      LOGICAL:: allow_wet_graupel
 
 !+---+
       if (present(ktopin) .and. present(kbotin)) then
@@ -3818,14 +4019,15 @@ subroutine update_cld( &
 !           no bright banding, to be consistent with hydrometeor retrieval in GSI
             allow_wet_snow = .false.
          else
-            allow_wet_snow = .true.
+            allow_wet_snow = refl10cm_allow_wet_snow 
          endif
-         allow_wet_graupel = .false.
+         allow_wet_graupel = refl10cm_allow_wet_graupel
       else
          do_vt_dBZ = .false.
-         allow_wet_snow = .true.
-         allow_wet_graupel = .false.
+         allow_wet_snow = refl10cm_allow_wet_snow
+         allow_wet_graupel = refl10cm_allow_wet_graupel
       endif
+      melti = (allow_wet_snow .or. allow_wet_graupel)
 
       do k = kts, kte
          dBZ(k) = -35.0
@@ -4092,6 +4294,5 @@ subroutine update_cld( &
       endif
 
       end subroutine calc_refl10cm
-#endif
 
 end module GEOSmoist_Process_Library

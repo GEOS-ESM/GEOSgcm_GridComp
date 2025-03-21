@@ -100,6 +100,8 @@ module LockEntrain
 #ifndef _CUDA
    private
 
+   logical :: use_kludges = .false.
+
 !-----------------------------------------------------------------------
 !
 !  public interfaces
@@ -350,7 +352,6 @@ contains
          entrate_sfc,    &
          pceff_sfc,      &
          vscale_sfc,     &
-         pertopt_sfc,    &
          khradfac,       &
          khsfcfac_lnd,   &
          khsfcfac_ocn    )
@@ -470,7 +471,7 @@ contains
       integer, value,  intent(in) :: icol,jcol,nlev
 
       real,    value,  intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    value,  intent(in) :: khradfac,tpfac_sfc,entrate_sfc,vscale_sfc,pertopt_sfc
+      real,    value,  intent(in) :: khradfac,tpfac_sfc,entrate_sfc,vscale_sfc
       real,    value,  intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
@@ -502,7 +503,7 @@ contains
       real,    intent(out),   dimension(icol,jcol)           :: zsml,zradml,zcloud,zradbase
 
       real,    intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    intent(in) :: khradfac,tpfac_sfc,entrate_sfc, vscale_sfc, pertopt_sfc
+      real,    intent(in) :: khradfac,tpfac_sfc,entrate_sfc, vscale_sfc
       real,    intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real, pointer, dimension(:,:) :: wentr_rad_diag, wentr_sfc_diag ,del_buoy_diag
@@ -709,7 +710,6 @@ contains
                   entrate_sfc,      &
                   pceff_sfc,        &
                   vscale_sfc,       & 
-                  pertopt_sfc,      &
                   t,                &
                   qv,               &
                   u,                &
@@ -778,8 +778,8 @@ contains
 ! AMM fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
 ! deep ones. Linear from 0 to 1600m
-            if (pertopt_sfc == 0) then
-              wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
+            if (use_kludges) then
+            wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
             endif
 !-----------------------------------------
 
@@ -1040,16 +1040,16 @@ contains
          wentr_brv = beta_rad*vbr3/zradml(i,j)/(tmp1+tmp2)
 
 !----------------------------------------
-! AAM107 fudgey adjustment of entrainment to reduce it
+! AMM107 fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
 ! deep ones: piecewise linear function 500-800m & 800-2400m 
-        if (pertopt_sfc == 0) then
+         if (use_kludges) then
          if ( zradtop .le. 800. ) then
             wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
          else
             wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
          endif
-        endif
+         endif
 !-----------------------------------------
 
          k_entr_tmp = min ( akmax, wentr_rad*(zfull(i,j,kcldtop-1)-zfull(i,j,kcldtop)) )
@@ -1187,7 +1187,7 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine mpbl_depth(i,j,icol,jcol,nlev,tpfac, entrate, pceff, vscale, pertopt, t, q, u, v, z, p, b_star, u_star , evap, sh, ipbl, ztop )
+   subroutine mpbl_depth(i,j,icol,jcol,nlev,tpfac, entrate, pceff, vscale, t, q, u, v, z, p, b_star, u_star , evap, sh, ipbl, ztop )
 
 !
 !  -----
@@ -1216,7 +1216,7 @@ contains
       integer, intent(in   )                            :: i, j, nlev, icol, jcol
       real,    intent(in   ), dimension(icol,jcol,nlev) :: t, z, q, p, u, v
       real,    intent(in   ), dimension(icol,jcol)      :: b_star, u_star, evap, sh
-      real,    intent(in   )                            :: tpfac, entrate, pceff, vscale, pertopt
+      real,    intent(in   )                            :: tpfac, entrate, pceff, vscale
       integer, intent(  out)                            :: ipbl
       real,    intent(  out),dimension(icol,jcol)       :: ztop
 
@@ -1231,7 +1231,7 @@ contains
 
 !calculate surface parcel properties
 
-    if (pertopt == 1) then
+    if (tpfac == 0) then
       zrho = p(i,j,nlev)/(287.04*(t(i,j,nlev)*(1.+0.608*q(i,j,nlev))))
       buoyflx = (sh(i,j)/MAPL_CP+0.608*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1                                                                                                  
       delzg = (50.0)*MAPL_GRAV   ! assume 50m surface scale                                                                                                               
