@@ -2026,6 +2026,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'NACTR',                                          &
+         LONG_NAME = 'rain_number_concentration',                  &
+         UNITS     = '# m-3',                                     &  
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS) 
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ',                                          &
          LONG_NAME = 'Simulated_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &
@@ -5588,7 +5596,8 @@ contains
          endif
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
-                             AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+                             AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
+                             (adjustl(CLDMICR_OPTION)=="MGB2_2M"))
 ! Temporary
 !        call MAPL_MaxMin('MST: NWFA     ', NWFA *1.e-6)
 !        call MAPL_MaxMin('MST: NACTL    ', NACTL*1.e-6)

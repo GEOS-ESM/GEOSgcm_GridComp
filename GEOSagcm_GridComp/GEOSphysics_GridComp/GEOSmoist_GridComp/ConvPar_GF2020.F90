@@ -3099,9 +3099,9 @@ loop0:       do k=kts,ktf
             !- time-scale cape removal from Bechtold et al. 2008
             dz = max(z_cup(i,ktop(i)+1)-z_cup(i,kbcon(i)),1.e-16) ! cloud depth (H)
             ! resolution dependent scale factor
-            tau_ecmwf(i)=(dz/vvel1d(i))*( (1.0+sig(i))*real(SGS_W_TIMESCALE) + & ! from Bechtold
-                                          (1.0-cnvfrc(i))*(1.0-sig(i))*3.0     ) ! needed for convective scale resolutions
-            tau_ecmwf(i)= max(dtime,min(tau_ecmwf(i),10800.0))
+            tau_ecmwf(i)=(dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)*(    sig(i)) + & ! from Bechtold
+                                                   21600.0*(1.0-cnvfrc(i))*(1.0-sig(i))     ! needed for convective scale resolutions
+            tau_ecmwf(i)= max(dtime,min(tau_ecmwf(i),21600.0))
          ENDDO
       ENDIF
       DO i=its,itf

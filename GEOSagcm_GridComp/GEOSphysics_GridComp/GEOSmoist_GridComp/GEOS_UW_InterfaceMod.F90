@@ -329,7 +329,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         do I=1,IM
           !! option to vary RKFRE by resolution
            SIG   = sigma(SQRT(PTR2D(i,j)))                      ! Param -> Resolved
-           RKFRE(i,j) = SHLWPARAMS%RKFRE*SIG
+           RKFRE(i,j) = SHLWPARAMS%RKFRE
            ! support for varying rkm/mix if needed
            RKM2D(i,j) = SHLWPARAMS%RKM  *SIG + 8.0*(1.0-SIG)    ! Param -> Resolved
            MIX2D(i,j) = SHLWPARAMS%MIXSCALE

@@ -38,7 +38,8 @@ MODULE Aer_Actv_Single_Moment
 !>----------------------------------------------------------------------------------------------------------------------
 
       SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, tke, vvel, FRLAND, &
-                                AeroPropsNew, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN)
+                                AeroPropsNew, aero_aci, NACTL, NACTI, NWFA,  &
+                                NN_LAND, NN_OCEAN, need_extra_fields)
       IMPLICIT NONE
       integer, intent(in)::IM,JM,LM
       TYPE(AerPropsNew), dimension (:), intent(inout) :: AeroPropsNew
@@ -48,7 +49,7 @@ MODULE Aer_Actv_Single_Moment
       real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,tke,vvel
       real, dimension (IM,JM)     ,intent(in ) :: FRLAND
       real                        ,intent(in ) :: NN_LAND, NN_OCEAN     
-      
+      logical                     ,intent(in ) :: need_extra_fields 
  
       real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI, NWFA
       
@@ -126,14 +127,16 @@ MODULE Aer_Actv_Single_Moment
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
                  AeroPropsNew(n)%sig = aci_ptr_3d
 
-                 call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%den = aci_ptr_3d
-
                  call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
                  AeroPropsNew(n)%kap = aci_ptr_3d
                ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%kap(1,1,1)
+
+                 if (need_extra_fields) then
+
+                 call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%den = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
@@ -146,6 +149,8 @@ MODULE Aer_Actv_Single_Moment
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
                  AeroPropsNew(n)%forg = aci_ptr_3d
+
+                 endif
 
                  AeroPropsNew(n)%nmods = n_modes
 
@@ -160,8 +165,8 @@ MODULE Aer_Actv_Single_Moment
             !      print *, n, AeroPropsNew(n)%num(1,1,1)
             !      print *, n, AeroPropsNew(n)%dpg(1,1,1)
             !      print *, n, AeroPropsNew(n)%sig(1,1,1)
-            !      print *, n, AeroPropsNew(n)%den(1,1,1)
             !      print *, n, AeroPropsNew(n)%kap(1,1,1)
+            !      print *, n, AeroPropsNew(n)%den(1,1,1)
             !      print *, n, AeroPropsNew(n)%fdust(1,1,1)
             !      print *, n, AeroPropsNew(n)%fsoot(1,1,1)
             !      print *, n, AeroPropsNew(n)%forg(1,1,1)

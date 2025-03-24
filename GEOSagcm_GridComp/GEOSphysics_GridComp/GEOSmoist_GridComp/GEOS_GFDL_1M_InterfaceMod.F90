@@ -344,6 +344,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: TMP2D
     real, allocatable, dimension(:)     :: TMP1D
     ! Exports
+    real, pointer, dimension(:,:,:) :: NACTR
     real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
     real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, ICE, FRZR, CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: DQVDT_macro, DQIDT_macro, DQLDT_macro, DQADT_macro, DQRDT_macro, DQSDT_macro, DQGDT_macro
@@ -890,9 +891,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         ! Compute DBZ radar reflectivity
 
-        ! include convective precip in reflectivity calculations
-        call MAPL_GetPointer(EXPORT, CNV_PRC3, 'CNV_PRC3', RC=STATUS); VERIFY_(STATUS)
-        if (associated(CNV_PRC3)) QRAIN=QRAIN+CNV_PRC3
+        ! diagnosed Marshall Palmer rain number concentration
+        call MAPL_GetPointer(EXPORT,  NACTR,  'NACTR', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        NACTR = 1.e8*QRAIN**0.8   
 
         call MAPL_GetPointer(EXPORT, PTR3D      , 'DBZ_WRF'    , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_WRF_MAX, 'DBZ_WRF_MAX', RC=STATUS); VERIFY_(STATUS)
@@ -917,10 +918,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D) .OR. &
             associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
 
+          ! call MAPL_MaxMin('refl10cm: QRAIN    ', QRAIN)
+          ! call MAPL_MaxMin('refl10cm: NACTR    ', NACTR)
+          ! call MAPL_MaxMin('refl10cm: QSNOW    ', QSNOW)
+          ! call MAPL_MaxMin('refl10cm: QGRAUPEL ', QGRAUPEL)
+
             rand1 = 0.0
             TMP3D = 0.0
             DO J=1,JM ; DO I=1,IM
-              call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTL(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+              rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
+              rand1= max( rand1/1000000., 1e-6 )
+              call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
                  T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
             END DO ; END DO
             if (associated(PTR3D)) PTR3D = TMP3D
@@ -972,7 +980,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             if (associated(DBZ_MAX_R)) then
                TMP3D = 0.0
                DO J=1,JM ; DO I=1,IM
-                 call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTL(I,J,:), 0*QSNOW(I,J,:), 0*QGRAUPEL(I,J,:), &
+                 call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), 0*QSNOW(I,J,:), 0*QGRAUPEL(I,J,:), &
                     T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
                END DO ; END DO
                DBZ_MAX_R=-9999.0
@@ -983,7 +991,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             if (associated(DBZ_MAX_S)) then
                TMP3D = 0.0
                DO J=1,JM ; DO I=1,IM
-                 call calc_refl10cm(Q(I,J,:), 0*QRAIN(I,J,:), NACTL(I,J,:), QSNOW(I,J,:), 0*QGRAUPEL(I,J,:), &
+                 call calc_refl10cm(Q(I,J,:), 0*QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), 0*QGRAUPEL(I,J,:), &
                     T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
                END DO ; END DO
                DBZ_MAX_S=-9999.0
@@ -994,7 +1002,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             if (associated(DBZ_MAX_G)) then
                TMP3D = 0.0
                DO J=1,JM ; DO I=1,IM
-                 call calc_refl10cm(Q(I,J,:), 0*QRAIN(I,J,:), NACTL(I,J,:), 0*QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                 call calc_refl10cm(Q(I,J,:), 0*QRAIN(I,J,:), NACTR(I,J,:), 0*QSNOW(I,J,:), QGRAUPEL(I,J,:), &
                     T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
                END DO ; END DO
                DBZ_MAX_G=-9999.0
@@ -1003,9 +1011,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                END DO ; END DO ; END DO
             endif
         endif
-
-        ! remove convective precip after reflectivity calculations
-        if (associated(CNV_PRC3)) QRAIN=QRAIN-CNV_PRC3
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QRAIN

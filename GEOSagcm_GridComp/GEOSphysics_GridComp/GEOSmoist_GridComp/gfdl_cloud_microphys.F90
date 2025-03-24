@@ -198,8 +198,8 @@ module gfdl2_cloud_microphys_mod
     real :: tau_smlt =   900. !< snow melting
     real :: tau_gmlt =  1200. !< graupel melting to rain
 
-    real :: rthreshu =  3.0e-6 !< critical cloud drop radius (micro m)
-    real :: rthreshs = 10.0e-6 !< critical cloud drop radius (micro m)
+    real :: rthreshu =  3.0e-6 !< unstable critical cloud drop radius (micro m)
+    real :: rthreshs = 10.0e-6 !<   stable critical cloud drop radius (micro m)
 
     real :: sat_adj0 = 0.90 !< adjustment factor (0: no, 1: full) during fast_sat_adj
 
@@ -258,8 +258,6 @@ module gfdl2_cloud_microphys_mod
     real :: vg_max =  6.0 !< max fall speed for graupel
     real :: vr_max =  9.0 !< max fall speed for rain
     real :: vh_max = 19.0 !< max fall speed for hail
-
-    real :: vf_min = 1.e-5 !< min fall speed
 
     ! cloud microphysics switchers
 
@@ -969,7 +967,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
 
     ! Use In-Cloud condensates
     if (in_cloud) then
-      qadum = max(qa,qcmin)
+      qadum = max(qa,qcmin) !max(qcmin,onemsig))
     else
       qadum = 1.0
     endif
@@ -1045,7 +1043,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     ! -----------------------------------------------------------------------
 
         if (no_fall) then
-            vtr (:) = vf_min
+            vtr (:) = vr_min
         elseif (const_vr) then
             vtr (:) = 0.5*(vr_min+vr_max)
         else
@@ -1056,7 +1054,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                 else
                     vtr (k) = vr_min * vconr * sqrt (min (10., sfcrho / den (k))) * &
                         exp (0.2 * log (qden / normr))
-                    vtr (k) = min (vr_max, max (vf_min, vtr (k)))
+                    vtr (k) = min (vr_max, max (vr_min, vtr (k)))
                 endif
             enddo
         endif
@@ -1383,7 +1381,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
         ! Use In-Cloud condensates
         if (in_cloud) then
-          qadum = max(qak (k),qcmin)
+          qadum = max(qak (k), qcmin) !max(qcmin,onemsig))
         else
           qadum = 1.0
         endif
@@ -1493,7 +1491,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
                 if (ql > qcmin) then
                     factor = dts * denfac (k) * csacw * exp (0.8125 * log (qs * den (k)))
-                    psacw = factor / (1. + factor) * ql ! rate
+                    psacw = ql * factor / (1. + factor) ! rate
                 else
                     psacw = 0.
                 endif
@@ -1562,10 +1560,9 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! pgacw: accretion of cloud water by graupel
                 ! -----------------------------------------------------------------------
 
-                qden = qg * den (k)
                 if (ql > qcmin) then
-                    factor = dts * cgacw * qden / sqrt (den (k) * sqrt (sqrt (qden)))
-                    pgacw = factor / (1. + factor) * ql ! rate
+                    factor = dts * denfac (k) * cgacw * exp (0.8125 * log (qg * den (k)))
+                    pgacw = ql * factor / (1. + factor) ! rate
                 endif
 
                 ! -----------------------------------------------------------------------
@@ -1656,12 +1653,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! -----------------------------------------------------------------------
 
                 if (qg > qpmin) then
-                    ! -----------------------------------------------------------------------
-                    ! factor = dts * cgaci / sqrt (den (k)) * exp (0.05 * tc + 0.875 * log (qg * den (k)))
-                    ! simplified form: remove temp dependency & set the exponent "0.875" -- > 1
-                    ! -----------------------------------------------------------------------
-                    factor = dts * cgaci * sqrt (den (k)) * qg
-                    pgaci = factor / (1. + factor) * qi
+                    factor = dts * denfac (k) * cgaci * exp (0.09 * tc + 0.8125 * log (qg * den (k)))
+                    pgaci = qi * factor / (1. + factor)
 
                     ! new total condensate / old condensate
                     qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-pgaci,0.0  ) / &
@@ -1774,9 +1767,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! -----------------------------------------------------------------------
 
                 if (ql > qcmin) then
-                    qden = qg * den (k)
-                    factor = dts * cgacw * qden / sqrt (den (k) * sqrt (sqrt (qden)))
-                    pgacw = factor / (1. + factor) * ql
+                    factor = dts * denfac (k) * cgacw * exp (0.8125 * log (qg * den (k)))
+                    pgacw = ql * factor / (1. + factor)
                 else
                     pgacw = 0.
                 endif
@@ -2384,7 +2376,7 @@ subroutine terminal_fall (dtm, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
                     do m = k + 1, kbot
                         if (zt (k + 1) >= ze (m)) exit
                         if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
-                            dtime = min (1.0, (ze (m) - ze (m + 1)) / (max (vf_min, vti (k)) * tau_imlt))
+                            dtime = min (1.0, (ze (m) - ze (m + 1)) / (max (vi_min, vti (k)) * tau_imlt))
                             sink = min (qi (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
                             tmp = min (sink, dim (ql_mlt, ql (m)))
                             ql (m) = ql (m) + tmp
@@ -2445,7 +2437,7 @@ subroutine terminal_fall (dtm, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
                 if (qs (k) > qpmin) then
                     do m = k + 1, kbot
                         if (zt (k + 1) >= ze (m)) exit
-                        dtime = min (dtm, (ze (m) - ze (m + 1)) / (vf_min + vts (k)))
+                        dtime = min (dtm, (ze (m) - ze (m + 1)) / (vs_min + vts (k)))
                         if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
                             dtime = min (1.0, dtime / tau_smlt)
                             sink = min (qs (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
@@ -3046,7 +3038,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
     else
         do k = ktop, kbot
             if (qi (k) < thi) then
-                vti (k) = vf_min
+                vti (k) = vi_min
             else
                 tc     = tk (k) - tice ! deg C
                 IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
@@ -3096,7 +3088,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 vti (k) = 0.01 * vti (k)
 
                ! Limits
-                vti (k) = min (vi_max, max (vf_min, vti (k)))
+                vti (k) = min (vi_max, max (vi_min, vti (k)))
             endif
         enddo
     endif
@@ -3113,7 +3105,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 vts (k) = vs_min
             else
                 vts (k) = vs_min * vcons * rhof (k) * exp (0.0625 * log (qs (k) * den (k) / norms))
-                vts (k) = min (vs_max, max (vf_min, vts (k)))
+                vts (k) = min (vs_max, max (vs_min, vts (k)))
             endif
         enddo
     endif
@@ -3130,7 +3122,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 vtg (k) = vg_min
             else
                 vtg (k) = vg_min * vcong * rhof (k) * sqrt (sqrt (sqrt (qg (k) * den (k) / normg)))
-                vtg (k) = min (vg_max, max (vf_min, vtg (k)))
+                vtg (k) = min (vg_max, max (vg_min, vtg (k)))
             endif
         enddo
     endif

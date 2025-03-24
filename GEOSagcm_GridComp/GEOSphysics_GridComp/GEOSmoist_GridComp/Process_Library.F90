@@ -97,7 +97,7 @@ module GEOSmoist_Process_Library
   ! Radar parameter
   integer :: DBZ_VAR_INTERCP=1 ! use variable intercept parameters 
   integer :: DBZ_LIQUID_SKIN=1 ! use liquid skin on snow/ice in warm environments
-  LOGICAL :: refl10cm_allow_wet_graupel = .false.
+  LOGICAL :: refl10cm_allow_wet_graupel = .true.
   LOGICAL :: refl10cm_allow_wet_snow = .true.
 
   ! Thompson radar constants
@@ -4042,7 +4042,7 @@ subroutine update_cld( &
          pres(k) = p1d(k)
          rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
          rhof(k) = SQRT(RHO_NOT/rho(k))
-         if (qr1d(k) .gt. R1) then
+         if (qr1d(k) .gt. R2) then
             rr(k) = qr1d(k)*rho(k)
             nr(k) = MAX(R2, nr1d(k)*rho(k))
             lamr = (am_r*crg(3)*org2*nr(k)/rr(k))**obmr
