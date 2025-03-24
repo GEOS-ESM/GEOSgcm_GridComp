@@ -30,21 +30,22 @@ module GEOS_GwdGridCompMod
    ! !USES:
 
    use ESMF
-   use mapl_ErrorHandling, only: MAPL_Verify, MAPL_RTRN
-   use mapl_OpenMP_Support, only : MAPL_get_current_thread => get_current_thread
-   use mapl_OpenMP_Support, only : MAPL_get_num_threads => get_num_threads
-   use mapl_OpenMP_Support, only : MAPL_find_bounds => find_bounds
-   use mapl_OpenMP_Support, only : MAPL_Interval => Interval
-   use mapl3g_generic, only: MAPL_GridCompSetEntryPoint, MAPL_GridCompResourceGet
-   use mapl3g_generic, only: MAPL_GetInternalState
-   use MAPL, only: MAPL_GridGet, MAPL_GetPointer
-   use MAPL, only: MAPL_AM_I_ROOT
-   use MAPL, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
-   use MAPL, only: MAPL_AddImportSpec, MAPL_AddExportSpec, MAPL_AddInternalSpec
-   use MAPL, only: MAPL_DimsHorzOnly, MAPL_DimsHorzVert, MAPL_DimsVertOnly
-   use MAPL, only: MAPL_VlocationNone, MAPL_VlocationEdge, MAPL_VlocationCenter, MAPL_RestartSkip
+   use MAPL_ErrorHandling, only: MAPL_Verify, MAPL_RTRN
+   use MAPL_OpenMP_Support, only : MAPL_get_current_thread => get_current_thread
+   use MAPL_OpenMP_Support, only : MAPL_get_num_threads => get_num_threads
+   use MAPL_OpenMP_Support, only : MAPL_find_bounds => find_bounds
+   use MAPL_OpenMP_Support, only : MAPL_Interval => Interval
+   use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
+   use MAPL_CommsMod, only: MAPL_AM_I_ROOT, ArrayGather
+   use MAPL_MaplGrid, only: MAPL_GridGet
+   use MAPL_GenericMod, only: MAPL_AddImportSpec, MAPL_AddExportSpec, MAPL_AddInternalSpec
+   use MAPL_Constants, only: MAPL_DimsHorzOnly, MAPL_DimsHorzVert, MAPL_DimsVertOnly
+   use MAPL_Constants, only: MAPL_VlocationNone, MAPL_VlocationEdge, MAPL_VlocationCenter, MAPL_RestartSkip
+   use MAPL, only: MAPL_GetPointer
    use MAPL, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
-   use MAPL, only: ArrayGather
+   use mapl3g_generic, only: MAPL_GridCompSetEntryPoint, MAPL_GridCompGetResource
+   use mapl3g_generic, only: MAPL_GridCompGetInternalState
+   use mapl3g_VerticalDimSpec, only: VERTICAL_DIM_NONE, VERTICAL_DIM_CENTER, VERTICAL_DIM_EDGE
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
@@ -279,71 +280,71 @@ contains
       IM = dims_(1); JM = dims_(2); LM = dims_(3)
 
       ! Get grid name to determine IMSIZE
-      call MAPL_GridCompResourceGet(gc, 'AGCM.GRIDNAME:', GRIDNAME, _RC)
+      call MAPL_GridCompGetResource(gc, 'AGCM.GRIDNAME:', GRIDNAME, _RC)
       GRIDNAME =  AdjustL(GRIDNAME)
       nn = len_trim(GRIDNAME)
       dateline = GRIDNAME(nn-1:nn)
       imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
       read(imchar,*) imsize
       if(dateline.eq.'CF') imsize = imsize*4
-      call MAPL_GridCompResourceGet(gc, 'AGCM.STRETCH_FACTOR:', STRETCH_FACTOR, default=1.0, _RC)
+      call MAPL_GridCompGetResource(gc, 'AGCM.STRETCH_FACTOR:', STRETCH_FACTOR, default=1.0, _RC)
       imsize = imsize*CEILING(STRETCH_FACTOR)
       sigma = 1.0-0.9839*exp(-0.09835*4.e7*0.9/imsize/1000.) ! Based on Arakawa 2011 sigma used in GF2020
 
       ! Background Gravity wave drag
       ! ----------------------------
-      call MAPL_GridCompResourceGet(gc, 'JASON_BKG:', JASON_BKG, default=(LM==72), _RC)
+      call MAPL_GridCompGetResource(gc, 'JASON_BKG:', JASON_BKG, default=(LM==72), _RC)
       if (JASON_BKG) then
          GEOS_PGWV = 4
-         call MAPL_GridCompResourceGet(gc, "GEOS_PGWV:",     self%GEOS_PGWV,     default=GEOS_PGWV, _RC)
-         call MAPL_GridCompResourceGet(gc, "GEOS_BGSTRESS:", self%GEOS_BGSTRESS, default=0.900, _RC)
-         call MAPL_GridCompResourceGet(gc, "GEOS_EFFGWBKG:", self%GEOS_EFFGWBKG, default=0.125, _RC)
-         call MAPL_GridCompResourceGet(gc, "NCAR_EFFGWBKG:", self%NCAR_EFFGWBKG, default=0.000, _RC)
-         call MAPL_GridCompResourceGet(gc, "RAYLEIGH_TAU1:", self%TAU1,          default=172800., _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_PGWV:",     self%GEOS_PGWV,     default=GEOS_PGWV, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_BGSTRESS:", self%GEOS_BGSTRESS, default=0.900, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_EFFGWBKG:", self%GEOS_EFFGWBKG, default=0.125, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_EFFGWBKG:", self%NCAR_EFFGWBKG, default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_TAU1:", self%TAU1,          default=172800., _RC)
       else
          GEOS_PGWV = NINT(32*LM/181.0)
-         call MAPL_GridCompResourceGet(gc, "GEOS_PGWV:",     self%GEOS_PGWV,     default=GEOS_PGWV, _RC)
-         call MAPL_GridCompResourceGet(gc, "GEOS_BGSTRESS:", self%GEOS_BGSTRESS, default=0.000, _RC)
-         call MAPL_GridCompResourceGet(gc, "GEOS_EFFGWBKG:", self%GEOS_EFFGWBKG, default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_PGWV:",     self%GEOS_PGWV,     default=GEOS_PGWV, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_BGSTRESS:", self%GEOS_BGSTRESS, default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_EFFGWBKG:", self%GEOS_EFFGWBKG, default=0.000, _RC)
          self%NCAR_EFFGWBKG = 1.0 !(1.0 - 0.5*sigma)
-         call MAPL_GridCompResourceGet(gc, "NCAR_EFFGWBKG:", self%NCAR_EFFGWBKG, default=self%NCAR_EFFGWBKG, _RC)
-         call MAPL_GridCompResourceGet(gc, "RAYLEIGH_TAU1:", self%TAU1,          default=0.00, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_EFFGWBKG:", self%NCAR_EFFGWBKG, default=self%NCAR_EFFGWBKG, _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_TAU1:", self%TAU1,          default=0.00, _RC)
       endif
 
       ! Orographic Gravity wave drag
       ! ----------------------------
-      call MAPL_GridCompResourceGet(gc, 'JASON_ORO:', JASON_ORO, default=(LM==72), _RC)
+      call MAPL_GridCompGetResource(gc, 'JASON_ORO:', JASON_ORO, default=(LM==72), _RC)
       if (JASON_ORO) then
-         call MAPL_GridCompResourceGet(gc, "GEOS_EFFGWORO:", self%GEOS_EFFGWORO, default=0.250, _RC)
-         call MAPL_GridCompResourceGet(gc, "NCAR_EFFGWORO:", self%NCAR_EFFGWORO, default=0.000, _RC)
-         call MAPL_GridCompResourceGet(gc, "NCAR_NRDG:",     self%NCAR_NRDG,     default=0, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_EFFGWORO:", self%GEOS_EFFGWORO, default=0.250, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_EFFGWORO:", self%NCAR_EFFGWORO, default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_NRDG:",     self%NCAR_NRDG,     default=0, _RC)
       else  
-         call MAPL_GridCompResourceGet(gc, "GEOS_EFFGWORO:", self%GEOS_EFFGWORO, default=0.000, _RC)
-         call MAPL_GridCompResourceGet(gc, "NCAR_EFFGWORO:", self%NCAR_EFFGWORO, default=1.000, _RC)
-         call MAPL_GridCompResourceGet(gc, "NCAR_NRDG:",     self%NCAR_NRDG,     default=16, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_EFFGWORO:", self%GEOS_EFFGWORO, default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_EFFGWORO:", self%NCAR_EFFGWORO, default=1.000, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_NRDG:",     self%NCAR_NRDG,     default=16, _RC)
       endif
 
       ! Rayleigh friction
       ! -----------------
       if (self%TAU1 > 0.0) then
-         call MAPL_GridCompResourceGet(gc, "RAYLEIGH_Z1:",   self%Z1,   default=75000.,  _RC)
-         call MAPL_GridCompResourceGet(gc, "RAYLEIGH_H0:",   self%H0,   default=7000.,   _RC)
-         call MAPL_GridCompResourceGet(gc, "RAYLEIGH_HH:",   self%HH,   default=7500.,   _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_Z1:",   self%Z1,   default=75000.,  _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_H0:",   self%H0,   default=7000.,   _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_HH:",   self%HH,   default=7500.,   _RC)
       endif
 
       ! NCAR GWD settings
       ! -----------------
-      call MAPL_GridCompResourceGet(gc, "NCAR_TAU_TOP_ZERO:", NCAR_TAU_TOP_ZERO, default=.true., _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_PRNDL:", NCAR_PRNDL, default=0.50, _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_TAU_TOP_ZERO:", NCAR_TAU_TOP_ZERO, default=.true., _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_PRNDL:", NCAR_PRNDL, default=0.50, _RC)
       NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.25*sigma
-      call MAPL_GridCompResourceGet( &
+      call MAPL_GridCompGetResource( &
            gc, &
            "NCAR_QBO_HDEPTH_SCALING:", &
            NCAR_QBO_HDEPTH_SCALING, &
            default=NCAR_QBO_HDEPTH_SCALING, &
            _RC)
       NCAR_HR_CF = CEILING(30.0*sigma)
-      call MAPL_GridCompResourceGet(gc, "NCAR_HR_CF:", NCAR_HR_CF, default=NCAR_HR_CF, _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_HR_CF:", NCAR_HR_CF, default=NCAR_HR_CF, _RC)
 
       call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
            MAPL_GRAV , &
@@ -352,23 +353,23 @@ contains
            NCAR_PRNDL, NCAR_QBO_HDEPTH_SCALING, NCAR_HR_CF, ERRstring )
 
       ! Beres Scheme File
-      call MAPL_GridCompResourceGet( &
+      call MAPL_GridCompGetResource( &
            gc, &
            "BERES_FILE_NAME:", &
            BERES_FILE_NAME, &
            default='ExtData/g5gcm/gwd/newmfspectra40_dc25.nc', &
            _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_BKG_PGWV:",       NCAR_BKG_PGWV,       default=32,     _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_BKG_GW_DC:",      NCAR_BKG_GW_DC,      default=2.5,    _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_BKG_FCRIT2:",     NCAR_BKG_FCRIT2,     default=1.0,    _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_BKG_WAVELENGTH:", NCAR_BKG_WAVELENGTH, default=1.e5,   _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_ET_TAUBGND:",     NCAR_ET_TAUBGND,     default=3.2,    _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_ET_USELATS:",     NCAR_ET_USELATS,     default=.TRUE., _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_BKG_TNDMAX:",     NCAR_BKG_TNDMAX,     default=800.0,  _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_PGWV:",       NCAR_BKG_PGWV,       default=32,     _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_GW_DC:",      NCAR_BKG_GW_DC,      default=2.5,    _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_FCRIT2:",     NCAR_BKG_FCRIT2,     default=1.0,    _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_WAVELENGTH:", NCAR_BKG_WAVELENGTH, default=1.e5,   _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ET_TAUBGND:",     NCAR_ET_TAUBGND,     default=3.2,    _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ET_USELATS:",     NCAR_ET_USELATS,     default=.TRUE., _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_TNDMAX:",     NCAR_BKG_TNDMAX,     default=800.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
       ! Beres DeepCu
-      call MAPL_GridCompResourceGet(gc, "NCAR_DC_BERES_SRC_LEVEL:", NCAR_DC_BERES_SRC_LEVEL, DEFAULT=70000.0, _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_DC_BERES:", NCAR_DC_BERES, DEFAULT=.TRUE., _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_DC_BERES_SRC_LEVEL:", NCAR_DC_BERES_SRC_LEVEL, DEFAULT=70000.0, _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_DC_BERES:", NCAR_DC_BERES, DEFAULT=.TRUE., _RC)
       num_threads = MAPL_get_num_threads()
       bounds = MAPL_find_bounds(JM, num_threads)
       do thread = 0, num_threads-1
@@ -383,21 +384,21 @@ contains
       end do
 
       ! Orographic Scheme
-      call MAPL_GridCompResourceGet(gc, "NCAR_ORO_PGWV:",       NCAR_ORO_PGWV,       default=0,    _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_ORO_GW_DC:",      NCAR_ORO_GW_DC,      default=2.5,  _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_ORO_FCRIT2:",     NCAR_ORO_FCRIT2,     default=1.0,  _RC)
-      call MAPL_GridCompResourceGet(gc, "NCAR_ORO_WAVELENGTH:", NCAR_ORO_WAVELENGTH, default=1.e5, _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ORO_PGWV:",       NCAR_ORO_PGWV,       default=0,    _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ORO_GW_DC:",      NCAR_ORO_GW_DC,      default=2.5,  _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ORO_FCRIT2:",     NCAR_ORO_FCRIT2,     default=1.0,  _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ORO_WAVELENGTH:", NCAR_ORO_WAVELENGTH, default=1.e5, _RC)
 
       if (self%NCAR_NRDG > 0) then
          ! Ridge Scheme
-         call MAPL_GridCompResourceGet(gc, "NCAR_ORO_TNDMAX:",    NCAR_ORO_TNDMAX,    default=400.0, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_ORO_TNDMAX:",    NCAR_ORO_TNDMAX,    default=400.0, _RC)
          NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
          do thread = 0, num_threads-1
             call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
          end do
       else
          ! Old Scheme
-         call MAPL_GridCompResourceGet(gc, "NCAR_ORO_SOUTH_FAC:", NCAR_ORO_SOUTH_FAC, default=2.0,  _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_ORO_SOUTH_FAC:", NCAR_ORO_SOUTH_FAC, default=2.0,  _RC)
          do thread = 0, num_threads-1
             call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
                  NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
@@ -581,7 +582,7 @@ contains
          DT = DT_R8
 
          ! Pointers to import, export and internal variables
-         call MAPL_GetInternalState(gc, internal)
+         call MAPL_GridCompGetInternalState(gc, internal)
 #include "GWD_GetPointer___.h"
 
          CALL PREGEO(IM*JM,   LM,   &
