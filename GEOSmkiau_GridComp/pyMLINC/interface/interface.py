@@ -10,10 +10,10 @@ from pyMLINC.core import pyMLINC_init, pyMLINC_run # <-- User code starts here
 import traceback
 
 @ffi.def_extern()
-def pyMLINC_interface_init_py() -> int:
+def pyMLINC_interface_init_py(magic_number) -> int:
     try:
         # Calling out off the bridge into the python
-        pyMLINC_init()
+        pyMLINC_init(magic_number)
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())
@@ -21,10 +21,10 @@ def pyMLINC_interface_init_py() -> int:
     return 0
 
 @ffi.def_extern()
-def pyMLINC_interface_run_py(options, in_buffer, out_buffer) -> int:
+def pyMLINC_interface_run_py(xdim, ydim, zdim, u, v, t, qv, ql, qi, qr, qs, qg, ps, dtdt, magic_number) -> int:
     try:
         # Calling out off the bridge into the python
-        pyMLINC_run(options, in_buffer, out_buffer)
+        pyMLINC_run(xdim, ydim, zdim, u, v, t, qv, ql, qi, qr, qs, qg, ps, dtdt, magic_number)
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())

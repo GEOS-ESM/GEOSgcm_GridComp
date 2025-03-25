@@ -1,73 +1,89 @@
-from _cffi_backend import _CDataBase as CFFIObj  # type: ignore
+import numpy
+import typing
 import dataclasses
+from _cffi_backend import _CDataBase as CFFIObj  # type: ignore
+
 from pyMLINC.f_py_conversion import FortranPythonConversion
 from pyMLINC.cuda_profiler import TimedCUDAProfiler
-import numpy as np
-from typing import Dict, List
-
-
-@dataclasses.dataclass
-class FPYOptions:
-    npx: int = 0
-    npy: int = 0
-    npz: int = 0
-    mn_123456789: int = 0
-
-
-def options_fortran_to_python(
-    f_options: CFFIObj,
-) -> FPYOptions:
-    if f_options.mn_123456789 != 123456789:  # type:ignore
-        raise RuntimeError(
-            "Magic number failed, pyMLINC interface is broken on the python side"
-        )
-
-    py_flags = FPYOptions()
-    keys = list(filter(lambda k: not k.startswith("__"), dir(type(py_flags))))
-    for k in keys:
-        if hasattr(f_options, k):
-            setattr(py_flags, k, getattr(f_options, k))
-    return py_flags
+from geos_state_bias.processor import Processor
 
 
 F_PY_MEMORY_CONV = None
 
 
-def pyMLINC_init():
-    print("[pyMLINC] Init called", flush=True)
+def check_magic_number(magic_number: int):
+    if magic_number != 123456789:  # type:ignore
+        raise RuntimeError("Magic number failed on the Python side")
+
+
+def pyMLINC_init(magic_number: int):
+    check_magic_number(magic_number)
+    print(f"[pyMLINC] init", flush=True)
 
 
 def pyMLINC_run(
-    f_options: CFFIObj,
-    f_in_buffer: CFFIObj,
-    f_out_buffer: CFFIObj,
+        # input
+        xdim: int,
+        ydim: int,
+        zdim: int,
+        u_f: CFFIObj,
+        v_f: CFFIObj,
+        t_f: CFFIObj,
+        qv_f: CFFIObj,
+        ql_f: CFFIObj,
+        qi_f: CFFIObj,
+        qr_f: CFFIObj,
+        qs_f: CFFIObj,
+        qg_f: CFFIObj,
+        ps_f: CFFIObj,
+        # output
+        dtdt_f: CFFIObj,
+        # LAST ARGUMENT - input
+        magic_number: int
 ):
-    options = options_fortran_to_python(f_options)
-    print(f"[pyMLINC] Options: {options}", flush=True)
-
-    # Dev Note: this should be doen better in it's own class
-    #           and the `np` should be driven by the user code requirements
-    #           for GPU or CPU memory
+    check_magic_number(magic_number)
     global F_PY_MEMORY_CONV
     if F_PY_MEMORY_CONV is None:
-        F_PY_MEMORY_CONV = FortranPythonConversion(
-            options.npx,
-            options.npy,
-            options.npz,
-            np,
-        )
+        F_PY_MEMORY_CONV = FortranPythonConversion(xdim, ydim, zdim, numpy)
 
-    # Move memory into a manipulable numpy array
-    in_buffer = F_PY_MEMORY_CONV.fortran_to_python(f_in_buffer)
-    out_buffer = F_PY_MEMORY_CONV.fortran_to_python(f_out_buffer)
+    # Move memory into a manipulatable numpy array
+    u = F_PY_MEMORY_CONV.fortran_to_python(u_f).transpose()
+    v = F_PY_MEMORY_CONV.fortran_to_python(v_f).transpose()
+    t = F_PY_MEMORY_CONV.fortran_to_python(t_f).transpose()
+    qv = F_PY_MEMORY_CONV.fortran_to_python(qv_f).transpose()
+    ql = F_PY_MEMORY_CONV.fortran_to_python(ql_f).transpose()
+    qi = F_PY_MEMORY_CONV.fortran_to_python(qi_f).transpose()
+    qr = F_PY_MEMORY_CONV.fortran_to_python(qr_f).transpose()
+    qs = F_PY_MEMORY_CONV.fortran_to_python(qs_f).transpose()
+    qg = F_PY_MEMORY_CONV.fortran_to_python(qg_f).transpose()
+    ps = F_PY_MEMORY_CONV.fortran_to_python(ps_f, dim=[xdim, ydim]).transpose()
+    print("[pyMLINC] Python - u:", u.shape)
+    print("[pyMLINC] Python - u:", numpy.sum(u), numpy.min(u), numpy.max(u))
+    print("[pyMLINC] Python - v:", numpy.sum(v), numpy.min(v), numpy.max(v))
+    print("[pyMLINC] Python - t:", numpy.sum(t), numpy.min(t), numpy.max(t))
+    print("[pyMLINC] Python - qv:", numpy.sum(qv), numpy.min(qv), numpy.max(qv))
+    print("[pyMLINC] Python - ql:", numpy.sum(ql), numpy.min(ql), numpy.max(ql))
+    print("[pyMLINC] Python - qi:", numpy.sum(qi), numpy.min(qi), numpy.max(qi))
+    print("[pyMLINC] Python - qr:", numpy.sum(qr), numpy.min(qr), numpy.max(qr))
+    print("[pyMLINC] Python - qs:", numpy.sum(qs), numpy.min(qs), numpy.max(qs))
+    print("[pyMLINC] Python - qg:", numpy.sum(qg), numpy.min(qg), numpy.max(qg))
+    print("[pyMLINC] Python - ps:", numpy.sum(ps), numpy.min(ps), numpy.max(ps))
+    print("[pyMLINC] Python - flushing buffer.", flush=True)
+    
+
+    # Order of vvariables as defined in processor::__init__
+    # U, V, T, QV, QI, QL, QG, QR, QS, PS
+    arrays = [u, v, t, qv, qi, ql, qg, qr, qs, ps]
+    ckpt_root_path = "/discover/nobackup/jli30/geos_state/SmaAt-UNet/geos_state_bias/checkpoints/batch_2"
 
     # Here goes math and dragons
-    timings: Dict[str, List[float]] = {}
+    timings: typing.Dict[str, typing.List[float]] = {}
     with TimedCUDAProfiler("pyMLINC bogus math", timings):
-        out_buffer[:, :, :] = in_buffer[:, :, :] * 2
+        processor = Processor(ckpt_root_path, *arrays)
+        dtdt = processor.predict()
 
-    print(f"[pyMLINC] At 5,5,5 in python OUT is: {out_buffer[5,5,5]}", flush=True)
-    print(f"[pyMLINC] Timers: {timings}", flush=True)
+    print(f"[pyMLINC] run - dtdt:", numpy.sum(dtdt), numpy.min(dtdt), numpy.max(dtdt))
+    print(f"[pyMLINC] run - timers: {timings}", flush=True)
 
-    # Go back to fortran
-    F_PY_MEMORY_CONV.python_to_fortran(out_buffer, f_out_buffer)
+    # Output goes back to fortran
+    F_PY_MEMORY_CONV.python_to_fortran(dtdt.transpose(), dtdt_f)
