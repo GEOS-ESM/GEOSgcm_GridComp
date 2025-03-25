@@ -45,7 +45,6 @@ module GEOS_MoistGridCompMod
   logical :: DEBUG_MST
   logical :: LDIAGNOSE_PRECIP_TYPE
   logical :: LUPDATE_PRECIP_TYPE
-  logical :: USE_AERO_BUFFER
   real    :: CCN_OCN
   real    :: CCN_LND
   logical :: MOVE_CN_TO_LS 
@@ -2027,6 +2026,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'NACTR',                                          &
+         LONG_NAME = 'rain_number_concentration',                  &
+         UNITS     = '# m-3',                                     &  
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS) 
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ',                                          &
          LONG_NAME = 'Simulated_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &
@@ -2053,6 +2060,22 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ_MAX_G',                                          &
          LONG_NAME = 'Maximum_composite_radar_reflectivity_graupel',                  &
+         UNITS     = 'dBZ',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DBZ_WRF',                                          &
+         LONG_NAME = 'wrf_radar_reflectivity',                  &
+         UNITS     = 'dBZ',                                     &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)          
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DBZ_WRF_MAX',                                          &
+         LONG_NAME = 'wrf_wavelength_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
@@ -5207,7 +5230,6 @@ contains
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE.        , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
     if (USE_AEROSOL_NN) then
-      call MAPL_GetResource( MAPL, USE_AERO_BUFFER , 'USE_AERO_BUFFER:' , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
       call aer_cloud_init()
       call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
     endif
@@ -5424,9 +5446,9 @@ contains
 
        ! pre-fill default condensate radii
        call MAPL_GetPointer(EXPORT, PTR3D, 'RL', RC=STATUS); VERIFY_(STATUS)
-       if(associated(PTR3D)) PTR3D = 14.e-6
+       if(associated(PTR3D)) PTR3D = MAPL_UNDEF
        call MAPL_GetPointer(EXPORT, PTR3D, 'RI', RC=STATUS); VERIFY_(STATUS)
-       if(associated(PTR3D)) PTR3D = 36.e-6
+       if(associated(PTR3D)) PTR3D = MAPL_UNDEF
        call MAPL_GetPointer(EXPORT, PTR3D, 'RR', RC=STATUS); VERIFY_(STATUS)
        if(associated(PTR3D)) PTR3D = 50.e-6
        call MAPL_GetPointer(EXPORT, PTR3D, 'RS', RC=STATUS); VERIFY_(STATUS)
@@ -5573,9 +5595,14 @@ contains
            TMP3D = W
          endif
          ! Pressures in Pa
-         call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-                             SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-                             AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+         call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
+                             AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
+                             (adjustl(CLDMICR_OPTION)=="MGB2_2M"))
+! Temporary
+!        call MAPL_MaxMin('MST: NWFA     ', NWFA *1.e-6)
+!        call MAPL_MaxMin('MST: NACTL    ', NACTL*1.e-6)
+!        call MAPL_MaxMin('MST: NACTI    ', NACTI*1.e-6)
+! Temporary
          if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
             call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, RC=STATUS); VERIFY_(STATUS)
             allocate ( AeroProps(IM,JM,LM) )

@@ -27,7 +27,7 @@ module GEOS_UW_InterfaceMod
   integer                                 :: STATUS
 
   public :: UW_Setup, UW_Initialize, UW_Run
-
+   
 contains
 
 subroutine UW_Setup (GC, CF, RC)
@@ -119,7 +119,6 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 10.0,  RC=STATUS) ; VERIFY_(STATUS)
-     ! light reflectivity gets excessive when FRC_RASN is not 0.0 due to increased QR not being rained out enough by Macro/Micro Physics
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
@@ -148,7 +147,7 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
 end subroutine UW_Initialize
 
 subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -235,14 +234,14 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
-
+    
     if (alarm_is_ringing) then
-
+    
 !!! call WRITE_PARALLEL('UW is Running')
     call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
     call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
-    UW_DT = DT_R8
+    UW_DT = DT_R8                   
 
     ! Get my internal MAPL_Generic state
     !-----------------------------------
@@ -268,7 +267,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, TKE       ,'TKE'       ,RC=STATUS); VERIFY_(STATUS)
 
     ! Allocatables
-     ! Edge variables
+     ! Edge variables 
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PKE  (IM,JM,0:LM) )
      ! Layer variables
@@ -328,23 +327,22 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
       do J=1,JM
         do I=1,IM
-           ! option to vary RKFRE by resolution
-          !SIG   = sigma(SQRT(PTR2D(i,j)))                         ! Param -> Resolved
-          !RKFRE(i,j) = SHLWPARAMS%RKFRE*(0.75*SIG + (1.0-SIG))    ! 0.75  -> 1.0
+          !! option to vary RKFRE by resolution
+           SIG   = sigma(SQRT(PTR2D(i,j)))                      ! Param -> Resolved
            RKFRE(i,j) = SHLWPARAMS%RKFRE
            ! support for varying rkm/mix if needed
-           RKM2D(i,j) = SHLWPARAMS%RKM
+           RKM2D(i,j) = SHLWPARAMS%RKM  *SIG + 8.0*(1.0-SIG)    ! Param -> Resolved
            MIX2D(i,j) = SHLWPARAMS%MIXSCALE
         enddo
-      enddo
+      enddo 
     endif
 
-    ! combine condensates for input (not updated within UW)
+    ! combine condensates for input (not updated within UW) 
     call MAPL_GetPointer(EXPORT, QLTOT, 'QLTOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     QLTOT = QLLS+QLCN
     QITOT = QILS+QICN
-
+ 
       !  Call UW shallow convection
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
@@ -358,15 +356,15 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
             SC_NDROP, SC_NICE, TPERT_SC, QPERT_SC,        &
             QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC,         &
-#ifdef UWDIAG
-            QCU_SC, QLU_SC,                               & ! DIAG ONLY
+#ifdef UWDIAG 
+            QCU_SC, QLU_SC,                               & ! DIAG ONLY 
             QIU_SC, CBMF_SC, SHL_DQCDT, CNT_SC, CNB_SC,   &
             CIN_SC, PLCL_SC, PLFC_SC, PINV_SC, PREL_SC,   &
             PBUP_SC, WLCL_SC, QTSRC_SC, THLSRC_SC,        &
             THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, WUP_SC,     &
             QTUP_SC, THLUP_SC, THVUP_SC, UUP_SC, VUP_SC,  &
             XC_SC,                                        &
-#endif
+#endif 
             USE_TRACER_TRANSP_UW)
 
       !  Calculate detrained mass flux
@@ -380,7 +378,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         else
           MFD_SC = DCM_SC
         endif
-        DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
+        DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS   
       !  Convert detrained water units before passing to cloud
       !---------------------------------------------------------------
         call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -409,15 +407,15 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(EXPORT, PTR2D, 'SC_QT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) then
         ! column integral of UW total water tendency, for checking conservation
-        PTR2D = 0.
-        DO L = 1,LM
+        PTR2D = 0.  
+        DO L = 1,LM 
            PTR2D = PTR2D + ( DQSDT_SC(:,:,L)+DQRDT_SC(:,:,L)+DQVDT_SC(:,:,L) &
                          +   QLENT_SC(:,:,L)+QLSUB_SC(:,:,L)+QIENT_SC(:,:,L) &
                          +   QISUB_SC(:,:,L) )*MASS(:,:,L) &
                          +   QLDET_SC(:,:,L)+QIDET_SC(:,:,L)
         END DO
-        end if
-
+        end if 
+    
         call MAPL_GetPointer(EXPORT, PTR2D, 'SC_MSE', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) then
         ! column integral of UW moist static energy tendency
@@ -427,7 +425,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                          +  MAPL_ALHL*DQVDT_SC(:,:,L) &
                          -  MAPL_ALHF*DQIDT_SC(:,:,L))*MASS(:,:,L)
         END DO
-        end if
+        end if 
 
         call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = CUSH
@@ -451,16 +449,16 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   ALLOCATE ( DP   (IM,JM,LM  ) )
   ALLOCATE ( MASS (IM,JM,LM  ) )
   call MAPL_GetPointer(IMPORT, PLE, 'PLE', RC=STATUS); VERIFY_(STATUS)
-  DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
-  MASS     = DP/MAPL_GRAV
+  DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) ) 
+  MASS     = DP/MAPL_GRAV            
   call MAPL_GetPointer(EXPORT, QLDET_SC, 'QLDET_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   QLCN = QLCN + QLDET_SC*MOIST_DT/MASS
   call MAPL_GetPointer(EXPORT, QIDET_SC, 'QIDET_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   QICN = QICN + QIDET_SC*MOIST_DT/MASS
-  DEALLOCATE( DP   )
+  DEALLOCATE( DP   ) 
   DEALLOCATE( MASS )
   ! Apply condensate tendency from subsidence, and sink from
-  ! condensate entrained into shallow updraft.
+  ! condensate entrained into shallow updraft. 
   call MAPL_GetPointer(EXPORT, QLSUB_SC, 'QLSUB_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   QLLS = QLLS + (QLSUB_SC+QLENT_SC)*MOIST_DT

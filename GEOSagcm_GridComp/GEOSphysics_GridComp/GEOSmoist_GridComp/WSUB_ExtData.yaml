@@ -1,7 +1,7 @@
 Collections:
   WSUB_SWclim_2005%m2.nc4:
     template: /discover/nobackup/dbarahon/DEV/SWclim/L72/SWclim_2005%m2.nc4
-    valid_range: "2005-01-01/2005-12-01"
+    valid_range: "2005-01-01/2005-12-31"
 
 Samplings:
   WSUB_sample_0:
