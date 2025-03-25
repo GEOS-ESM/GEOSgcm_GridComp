@@ -35,17 +35,17 @@ module GEOS_GwdGridCompMod
    use MAPL_OpenMP_Support, only : MAPL_get_num_threads => get_num_threads
    use MAPL_OpenMP_Support, only : MAPL_find_bounds => find_bounds
    use MAPL_OpenMP_Support, only : MAPL_Interval => Interval
-   use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
    use MAPL_CommsMod, only: MAPL_AM_I_ROOT, ArrayGather
    use MAPL_MaplGrid, only: MAPL_GridGet
-   use MAPL_GenericMod, only: MAPL_AddImportSpec, MAPL_AddExportSpec, MAPL_AddInternalSpec
-   use MAPL_Constants, only: MAPL_DimsHorzOnly, MAPL_DimsHorzVert, MAPL_DimsVertOnly
-   use MAPL_Constants, only: MAPL_VlocationNone, MAPL_VlocationEdge, MAPL_VlocationCenter, MAPL_RestartSkip
+   use MAPL_GenericMod, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
+   use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
    use MAPL, only: MAPL_GetPointer
-   use MAPL, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
-   use mapl3g_generic, only: MAPL_GridCompSetEntryPoint, MAPL_GridCompGetResource
+
+   use mapl3g_generic, only: MAPL_GridCompSetEntryPoint
+   use mapl3g_generic, only: MAPL_GridCompGetResource
    use mapl3g_generic, only: MAPL_GridCompGetInternalState
-   use mapl3g_VerticalDimSpec, only: VERTICAL_DIM_NONE, VERTICAL_DIM_CENTER, VERTICAL_DIM_EDGE
+   use mapl3g_generic, only: MAPL_GridCompAddFieldSpec
+   use mapl3g_VerticalStaggerLoc, only: VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
@@ -92,6 +92,7 @@ module GEOS_GwdGridCompMod
    end type wrap_
 
    !logical, save      :: FIRST_RUN = .true.
+   logical, parameter :: MAPL_RestartSkip = .true.
 
 contains
 
