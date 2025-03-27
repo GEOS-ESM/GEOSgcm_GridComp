@@ -28,10 +28,12 @@ jobs:
       #credentials:
         #username: ${{ secrets.DOCKERHUB_USERNAME }}
         #password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     env:
       OMPI_ALLOW_RUN_AS_ROOT: 1
       OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
       OMPI_MCA_btl_vader_single_copy_mechanism: none
+
     steps:
       # https://github.com/orgs/community/discussions/25678#discussioncomment-5242449
       - name: Delete huge unnecessary tools folder
