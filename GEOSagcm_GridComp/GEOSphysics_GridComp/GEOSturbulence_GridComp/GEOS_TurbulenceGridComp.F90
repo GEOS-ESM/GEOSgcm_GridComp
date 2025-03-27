@@ -6691,7 +6691,7 @@ end subroutine RUN1
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
       integer :: I,J,L
-      real    :: wspMX, CBl, wsp0, wsp, FKV_temp
+      real    :: CBl, wsp, FKV_temp
       real, parameter :: C_TOFD = 9.031E-09 * 12.0
 
       if (C_B > 0.0) then
@@ -6715,8 +6715,7 @@ end subroutine RUN1
       else
     ! C_TOFD is the end product of all coeficients in eq 16 of Beljaars, 2003 (doi: 10.1256/qj.03.73)
     ! C_B is a factor used to amplify the variance of the filtered topography
-      wspMX = 12.5
-      CBl = C_B**2
+      CBl = C_TOFD * C_B**2
       do L = LM, 1, -1
         do J = 1, JM
           do I = 1, IM
@@ -6724,16 +6723,20 @@ end subroutine RUN1
             if (VARFLT(i,j) > 0.0 .AND. Z(I,J,L) < 4.0*LAMBDA_B) then
                 wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
                 FKV_temp = exp(-1*(Z(I,J,L)/LAMBDA_B)**1.5) * Z(I,J,L)**(-1.2)
-                FKV_temp = C_TOFD * VARFLT(i,j) * FKV_temp * &
-                           (MIN(wsp/wspMX,1.0)**(1.0/CBl))*MAX(wsp,wspMX) ! Beljaars WSP amplification/limits for NWP tuning
-
+                FKV_temp = CBl * VARFLT(i,j) * FKV_temp * wsp
+                FKV(I,J,L)  = MIN(20.0,FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))) ! include limit on this forcing for stability
+                FKV_temp = FKV(I,J,L)/(PLE(I,J,L)-PLE(I,J,L-1))
                 BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
                 BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
-                FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
             end if
           end do
         end do
       end do
+
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: BKV ', BKV)
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKV ', FKV*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1)))
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKVP', FKV)
+
       endif
 
    end subroutine BELJAARS
