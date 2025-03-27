@@ -76,6 +76,5 @@ jobs:
 
       - name: Build
         run: |
-          cd build
           cmake --build build -j 4
           cmake --install build
