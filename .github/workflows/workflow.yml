@@ -13,6 +13,10 @@ on:
       - ".codebuild/**"
       - ".circleci/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build_gcm:
     name: Build GEOSgcm
@@ -34,39 +38,42 @@ jobs:
       # https://github.com/orgs/community/discussions/25678#discussioncomment-5242449
       - name: Delete huge unnecessary tools folder
         run: rm -rf /opt/hostedtoolcache
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.12.1
-        with:
-          access_token: ${{ github.token }}
+
       - name: Checkout GCM
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           filter: blob:none
           repository: GEOS-ESM/GEOSgcm
+
       - name: Set all directories as git safe
         run: |
           git config --global --add safe.directory '*'
+
       - name: Versions etc.
         run: |
           ifort --version
           mpirun --version
           echo $BASEDIR
+
       - name: Mepo clone external repos
         run: |
           mepo clone
           mepo status
           mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared GEOS_Util
           mepo status
+
       - name: Update other branches
         if:
           "!contains('refs/heads/main,refs/heads/develop', github.ref)"
         run: |
           mepo checkout-if-exists ${GITHUB_HEAD_REF}
           mepo status
+
       - name: CMake
         run: |
           cmake -B build -S . --install-prefix=${pwd}/install -DCMAKE_Fortran_COMPILER=ifort -DCMAKE_BUILD_TYPE=Debug -DMPIEXEC_PREFLAGS='--oversubscribe' -DUSE_F2PY=OFF
+
       - name: Build
         run: |
           cd build
