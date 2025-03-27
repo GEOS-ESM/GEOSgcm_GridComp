@@ -3,18 +3,25 @@ name: Spack CI GCC Build
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    # Do not run if the only files changed cannot affect the build
+    paths-ignore:
+      - "**.md"
+      - "**.pro"
+      - "**.sh"
+      - "**.perl"
+      - ".github/CODEOWNERS"
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build:
-    runs-on: ubuntu-24.04
+  build_gcm:
+    runs-on: ubuntu-latest
     steps:
 
-      - name: Checkout repository
+      - name: Checkout GCM
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -31,14 +38,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install mepo
 
-      - name: Mepo clone
+      - name: Mepo clone external repos
         run: |
+          ls
           mepo clone
           mepo status
           mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared GEOS_Util
           mepo status
 
-      - name: Update GEOSgcm_GridComp branch
+      - name: Update other branches
         if:
           "!contains('refs/heads/main,refs/heads/develop', github.ref)"
         run: |
