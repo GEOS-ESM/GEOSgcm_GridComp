@@ -46,7 +46,7 @@ jobs:
       - name: Mepo clone external repos
         run: |
           ls
-          mepo clone
+          mepo clone --partial blobless
           mepo status
 
       - name: Mepo develop usual suspects
