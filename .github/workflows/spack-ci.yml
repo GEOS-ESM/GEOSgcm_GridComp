@@ -16,6 +16,10 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          repository: GEOS-ESM/GEOSgcm
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -30,6 +34,16 @@ jobs:
       - name: Mepo clone
         run: |
           mepo clone
+          mepo status
+          mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared GEOS_Util
+          mepo status
+
+      - name: Update GEOSgcm_GridComp branch
+        if:
+          "!contains('refs/heads/main,refs/heads/develop', github.ref)"
+        run: |
+          mepo checkout-if-exists ${GITHUB_HEAD_REF}
+          mepo status
 
       - name: Set up Spack
         uses: spack/setup-spack@v2
