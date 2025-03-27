@@ -28,6 +28,10 @@ jobs:
           filter: blob:none
           repository: GEOS-ESM/GEOSgcm
 
+      - name: Set all directories as git safe
+        run: |
+          git config --global --add safe.directory '*'
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -37,12 +41,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install mepo
+          mepo --version
 
       - name: Mepo clone external repos
         run: |
           ls
           mepo clone
           mepo status
+
+      - name: Mepo develop usual suspects
+        run: |
+          ls
           mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared GEOS_Util
           mepo status
 

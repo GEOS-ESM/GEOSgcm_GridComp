@@ -60,6 +60,9 @@ jobs:
         run: |
           mepo clone
           mepo status
+
+      - name: Mepo develop usual suspects
+        run: |
           mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared GEOS_Util
           mepo status
 
