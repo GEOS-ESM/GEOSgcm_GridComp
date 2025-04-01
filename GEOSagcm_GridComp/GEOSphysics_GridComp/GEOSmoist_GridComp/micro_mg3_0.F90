@@ -171,11 +171,6 @@ logical  :: nccons  ! nccons = .true. to specify constant cloud droplet number
 logical  :: nicons  ! nicons = .true. to specify constant cloud ice number
 logical  :: ngcons  ! ngcons = .true. to specify constant graupel number
 
-! specified ice and droplet number concentrations
-! note: these are local in-cloud values, not grid-mean
-real(r8)  :: ncnst  ! droplet num concentration when nccons=.true. (m-3)
-real(r8)  :: ninst  ! ice num concentration when nicons=.true. (m-3)
-real(r8)  :: ngnst  ! graupel num concentration when ngcons=.true. (m-3)
 
 !=========================================================
 ! Private module parameters
@@ -266,8 +261,7 @@ logical  :: do_sb_physics ! do SB 2001 autoconversion or accretion physics
 !===============================================================================
 contains
 !===============================================================================
-subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_eff_factor_in, &
-                         nccons_in, nicons_in, ncnst_in, ninst_in, ngcons_in, ngnst_in, muicst_in)
+subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_eff_factor_in,  muicst_in)
 
 !subroutine micro_mg_init( &
 !     kind, gravit, rair, rh2o, cpair,    &
@@ -318,12 +312,8 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   !logical,  intent(in)  ::  allow_sed_supersat_in ! allow supersaturated conditions after sedimentation loop
   !logical,  intent(in)  ::  do_sb_physics_in ! do SB autoconversion and accretion physics
 
-  logical, intent(in)   :: nccons_in
-  logical, intent(in)   :: nicons_in
-  real(r8), intent(in)  :: ncnst_in
-  real(r8), intent(in)  :: ninst_in
-  logical, intent(in)   :: ngcons_in
-  real(r8), intent(in)  :: ngnst_in, muicst_in
+
+  real(r8), intent(in)  :: muicst_in
 
   character(128)  :: errstring    ! Output status (non-blank for error return)
 
@@ -357,13 +347,6 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   micro_mg_berg_eff_factor    = micro_mg_berg_eff_factor_in
   allow_sed_supersat          = .true.
   do_sb_physics               = .false.
-
-  nccons = nccons_in
-  nicons = nicons_in
-  ncnst  = ncnst_in
-  ninst  = ninst_in
-  ngcons = ngcons_in
-  ngnst  = ngnst_in
 
   ! latent heats
 
@@ -413,9 +396,8 @@ end subroutine micro_mg_init
 ! Written by Donifan Barahona
 
 
-subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_tmp,  &
+subroutine micro_mg_tend_interface ( DT_MICRO, &
                              ncol,             LM,               dt_moist,       & 
-                             cnvfrc, srftype, &
                              ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
@@ -483,7 +465,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              nsootr8, rnsootr8,  & ! soot for contact IN
                              npccnor8, npsacwsor8,npraor8,nsubcor8, nprc1or8, &  ! Number tendencies for liquid
                              npraior8, nnucctor8, nnucccor8, nnuccdor8, nsubior8, nprcior8, nsacwior8,  &  ! Number tendencies for ice
-                             ts_auticex,  ui_scalex, dcritx, disp_liux, nbincontactdustx, urscalex) ! tuning paramaters
+                             ts_auticex,  ui_scalex, dcritx, disp_liux, nbincontactdustx, urscalex, nsteps_sed_scale, &
+                             nccons_in, nicons_in, ngcons_in, ncnst, ninst, ngnst) ! tuning paramaters
 
 
 ! definitions
@@ -491,10 +474,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
 
    REAL, intent(in)     :: DT_MICRO
    real(r8), intent(in) :: DT_MOIST
-   REAL, dimension(1,1:LM) :: SCICE_tmp, FQA_tmp, ALPH_tmp
-   INTEGER, intent(in) :: LM, shape, ncol
-  
-   real                         :: cnvfrc, srftype
+   INTEGER, intent(in) :: LM, ncol  
    real(r8), dimension(1,1:LM)  ::                                                     &  
                              ter8,                          qvr8,                              &
                              qcr8,                          qir8,                          &
@@ -565,9 +545,22 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
       real(r8), dimension(1,LM+1)  :: rflxr8, sflxr8, lflxr8, iflxr8, gflxr8
                 
       real(r8), dimension(1)       :: prectr8, precir8
-      real(r8)                     :: ts_auticex, ui_scalex, dcritx, disp_liux, urscalex
+      real                     :: ts_auticex, ui_scalex, dcritx, disp_liux, urscalex, nsteps_sed_scale
       
       integer :: num_steps_micro, N_MICRO, K, nbincontactdustx   
+
+       
+       
+       ! specified ice and droplet number concentrations      
+       ! note: these are local in-cloud values, not grid-mean
+       logical, intent(in)   :: nccons_in
+       logical, intent(in)   :: nicons_in
+       logical, intent(in)   :: ngcons_in
+       real(r8), dimension(1,1:LM)  :: ncnst  ! droplet num concentration when nccons=.true. (m-3)
+       real(r8), dimension(1,1:LM)  :: ninst  ! ice num concentration when nicons=.true. (m-3)
+       real(r8), dimension(1,1:LM)  :: ngnst  ! graupel num concentration when ngcons=.true. (m-3)
+
+
                                         
       
         ! Accumulate tendencies 
@@ -606,6 +599,10 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                                                  QLLS_tmp, QILS_tmp, QLCN_tmp, QICN_tmp, CLLS_tmp, CLCN_tmp, PL_tmp, &
                                                  RHC_tmp, NCNUC_tmp
        real(r8) :: DT_R8
+       
+       
+       
+       
 !!!!!!!!!!!!!!Initialize
   
       QRAIN_tmp(1, 1:LM)  = qrr8(1, 1:LM) 
@@ -728,12 +725,11 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              nsootr8, rnsootr8,  & ! soot for contact IN
                              npccnor8, npsacwsor8,npraor8,nsubcor8, nprc1or8, &  ! Number tendencies for liquid
                              npraior8, nnucctor8, nnucccor8, nnuccdor8, nsubior8, nprcior8, nsacwior8,  &  ! Number tendencies for ice
-                             ts_auticex,  ui_scalex, dcritx, disp_liux, nbincontactdustx, urscalex) ! tuning constants  
+                             ts_auticex,  ui_scalex, dcritx, disp_liux, nbincontactdustx, urscalex, nsteps_sed_scale, &
+                             nccons_in, nicons_in, ngcons_in, ncnst, ninst, ngnst) ! tuning constants  
+   
            ! Substepping update
- 
- 
- 
-                   
+                  
                   ! prognostic vars
                           QRAIN_tmp(1, 1:LM) = max( QRAIN_tmp(1, 1:LM) +    REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
                           QSNOW_tmp(1, 1:LM) = max( QSNOW_tmp(1, 1:LM) +    REAL(qstendr8(1, 1:LM)*DT_R8), 0.0) ! grid average
@@ -909,9 +905,9 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        precir8_accum = precir8_accum  + precir8
 
  
-!       effcr8_accum = effcr8_accum  + effcr8
-!       effc_fnr8_accum = effc_fnr8_accum +effc_fnr8
-!       effir8_accum = effir8_accum + effir8
+       !effcr8_accum = effcr8_accum  + effcr8
+       !effc_fnr8_accum = effc_fnr8_accum +effc_fnr8
+       !effir8_accum = effir8_accum + effir8
        
        !use the final size instad of the average
        effcr8_accum = effcr8
@@ -1255,7 +1251,8 @@ subroutine micro_mg_tend ( &
       nsoot, rnsoot,  & ! soot for contact IN
       npccno, npsacwso, nprao, nsubco, nprc1o, &  ! Number tendencies for liquid
       npraio, nnuccto, nnuccco, nnuccdo, nsubio, nprcio, nsacwio,  &  ! Number tendencies for ice
-      ts_auto_ice,   ui_scale, dcrit, disp_liu, nbincontactdust, urscale)
+      ts_auto_ice,   ui_scale, dcrit, disp_liu, nbincontactdust, urscale, nsteps_sed_scale, &
+      nccons, nicons, ngcons, ncnst, ninst, ngnst)
       
   ! Constituent properties.
   use micro_mg_utils, only: &
@@ -1350,6 +1347,17 @@ subroutine micro_mg_tend ( &
   integer :: nbincontactdust !DONIF
   real(r8),  dimension(:) :: rndst(mgncol,nlev, 10)   ! 
   real(r8),  dimension(:) :: nacon(mgncol,nlev, 10)   !
+  
+  
+    logical, intent(in)   :: nccons
+    logical, intent(in)   :: nicons
+    logical, intent(in)   :: ngcons
+    real(r8), dimension(mgncol,nlev)  :: ncnst  ! droplet num concentration when nccons=.true. (m-3)
+    real(r8), dimension(mgncol,nlev)  :: ninst  ! ice num concentration when nicons=.true. (m-3)
+    real(r8), dimension(mgncol,nlev)  :: ngnst  ! graupel num concentration when ngcons=.true. (m-3)
+
+
+
   
   ! output arguments
 
@@ -1512,7 +1520,7 @@ subroutine micro_mg_tend ( &
       real(r8), intent(out) ::  nprc1o(mgncol,nlev)
 
      
-      real(r8)  :: ui_scale, dcrit, ts_auto_ice,  disp_liu, aux, mu_ice, urscale ! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised 
+      real  :: ui_scale, dcrit, ts_auto_ice,  disp_liu, aux, mu_ice, urscale, nsteps_sed_scale ! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised 
        ! used in contact freezing via soot and dust particles 
       real(r8), intent (in) :: nsoot (mgncol,nlev) , rnsoot (mgncol,nlev)  
 
@@ -2312,7 +2320,7 @@ subroutine micro_mg_tend ( &
 
            ! specify droplet concentration
            if (nccons) then
-              ncic(i,k)=ncnst/rho(i,k)
+              ncic(i,k)=ncnst(i,k)/rho(i,k)
            end if
         else
            qcic(i,k)=0._r8
@@ -2326,7 +2334,7 @@ subroutine micro_mg_tend ( &
 
            ! switch for specification of cloud ice number
            if (nicons) then
-              niic(i,k)=ninst/rho(i,k)
+              niic(i,k)=ninst(i,k)/rho(i,k)
            end if
         else
            qiic(i,k)=0._r8
@@ -3456,17 +3464,17 @@ subroutine micro_mg_tend ( &
 
         ! switch for specification of droplet and crystal number
         if (ngcons) then
-           dumng(i,k)=ngnst/rho(i,k)
+           dumng(i,k)=ngnst(i,k)/rho(i,k)
         end if
 
         ! switch for specification of droplet and crystal number
         if (nccons) then
-           dumnc(i,k)=ncnst/rho(i,k)
+           dumnc(i,k)=ncnst(i,k)/rho(i,k)
         end if
 
         ! switch for specification of cloud ice number
         if (nicons) then
-           dumni(i,k)=ninst/rho(i,k)
+           dumni(i,k)=ninst(i,k)/rho(i,k)
         end if
      enddo
   enddo
@@ -3663,7 +3671,7 @@ subroutine micro_mg_tend ( &
      nstep = 1 + int(max( &
           maxval( fi(i,:)*pdel_inv(i,:)), &
           maxval(fni(i,:)*pdel_inv(i,:))) &
-          * deltat)
+          * deltat*nsteps_sed_scale)
 
      ! loop over sedimentation sub-time step to ensure stability
      !==============================================================
@@ -3749,7 +3757,7 @@ subroutine micro_mg_tend ( &
      nstep = 1 + int(max( &
           maxval( fc(i,:)*pdel_inv(i,:)), &
           maxval(fnc(i,:)*pdel_inv(i,:))) &
-          * deltat)
+          * deltat*nsteps_sed_scale)
 
      ! loop over sedimentation sub-time step to ensure stability
      !==============================================================
@@ -3815,7 +3823,7 @@ subroutine micro_mg_tend ( &
      nstep = 1 + int(max( &
           maxval( fr(i,:)*pdel_inv(i,:)), &
           maxval(fnr(i,:)*pdel_inv(i,:))) &
-          * deltat)
+          * deltat*nsteps_sed_scale)
 
      ! loop over sedimentation sub-time step to ensure stability
      !==============================================================
@@ -3871,7 +3879,7 @@ subroutine micro_mg_tend ( &
      nstep = 1 + int(max( &
           maxval( fs(i,:)*pdel_inv(i,:)), &
           maxval(fns(i,:)*pdel_inv(i,:))) &
-          * deltat)
+          * deltat*nsteps_sed_scale)
 
      ! loop over sedimentation sub-time step to ensure stability
      !==============================================================
@@ -3929,7 +3937,7 @@ subroutine micro_mg_tend ( &
      nstep = 1 + int(max( &
           maxval( fg(i,:)*pdel_inv(i,:)), &
           maxval(fng(i,:)*pdel_inv(i,:))) &
-          * deltat)
+          * deltat*nsteps_sed_scale)
 
      ! loop over sedimentation sub-time step to ensure stability
      !==============================================================
@@ -4005,17 +4013,17 @@ subroutine micro_mg_tend ( &
 
         ! switch for specification of droplet and crystal number
         if (nccons) then
-           dumnc(i,k)=ncnst/rho(i,k)*lcldm(i,k)
+           dumnc(i,k)=ncnst(i,k)/rho(i,k)*lcldm(i,k)
         end if
 
         ! switch for specification of cloud ice number
         if (nicons) then
-           dumni(i,k)=ninst/rho(i,k)*icldm(i,k)
+           dumni(i,k)=ninst(i,k)/rho(i,k)*icldm(i,k)
         end if
         
         ! switch for specification of graupel number
         if (ngcons) then
-           dumng(i,k)=ngnst/rho(i,k)*precip_frac(i,k)
+           dumng(i,k)=ngnst(i,k)/rho(i,k)*precip_frac(i,k)
         end if
 
         if (dumc(i,k).lt.qsmall) dumnc(i,k)=0._r8
@@ -4292,17 +4300,17 @@ subroutine micro_mg_tend ( &
 
         ! switch for specification of droplet and crystal number
         if (nccons) then
-           dumnc(i,k)=ncnst/rho(i,k)
+           dumnc(i,k)=ncnst(i,k)/rho(i,k)
         end if
 
         ! switch for specification of cloud ice number
         if (nicons) then
-           dumni(i,k)=ninst/rho(i,k)
+           dumni(i,k)=ninst(i,k)/rho(i,k)
         end if
 
         ! switch for specification of graupel number
         if (ngcons) then
-           dumng(i,k)=ngnst/rho(i,k)*precip_frac(i,k)
+           dumng(i,k)=ngnst(i,k)/rho(i,k)*precip_frac(i,k)
         end if
 
         ! limit in-cloud mixing ratio to reasonable value of 5 g kg-1
@@ -4379,7 +4387,7 @@ subroutine micro_mg_tend ( &
               ! note that nctend may be further adjusted below if mean droplet size is
               ! out of bounds
 
-              nctend(i,k)=(ncnst/rho(i,k)*lcldm(i,k)-nc(i,k))/deltat
+              nctend(i,k)=(ncnst(i,k)/rho(i,k)*lcldm(i,k)-nc(i,k))/deltat
 
            end if
 

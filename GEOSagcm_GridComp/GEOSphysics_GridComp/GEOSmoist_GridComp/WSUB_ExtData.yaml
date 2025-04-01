@@ -1,7 +1,11 @@
 Collections:
   WSUB_SWclim_2005%m2.nc4:
-    template: /discover/nobackup/dbarahon/DEV/SWclim/L72/SWclim_2005%m2.nc4
-    valid_range: "2005-01-01/2005-12-31"
+    template: /discover/nobackup/dbarahon/DEV/SWclim/L181/SWclim_2005%m2.nc4
+    valid_range: "2005-01-01/2005-12-01"
+    
+  Nclim_2005%m2.nc4:
+    template: /discover/nobackup/dbarahon/S2Sanalysis/Nclim/L181/Nclim_2005%m2.nc4
+    valid_range: "2005-01-01/2005-12-01"  
 
 Samplings:
   WSUB_sample_0:
@@ -12,4 +16,14 @@ Exports:
     collection: WSUB_SWclim_2005%m2.nc4
     sample: WSUB_sample_0
     variable: Wstd
+  NCPL_CLIM:
+    collection: Nclim_2005%m2.nc4
+    sample: WSUB_sample_0
+    variable: NCPL_INC
+  NCPI_CLIM:
+    collection: Nclim_2005%m2.nc4
+    sample: WSUB_sample_0
+    variable: NCPI_INC  
+      
+    
 

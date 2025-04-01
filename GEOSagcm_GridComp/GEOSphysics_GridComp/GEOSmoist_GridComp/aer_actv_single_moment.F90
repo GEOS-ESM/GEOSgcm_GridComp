@@ -4,7 +4,7 @@ MODULE Aer_Actv_Single_Moment
 
       USE ESMF
       USE MAPL
-      USE aer_cloud, only: AerPropsNew
+      USE GEOSmoist_Process_Library, only: AerPropsNew
 !-------------------------------------------------------------------------------------------------------------------------
       IMPLICIT NONE
       PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR
@@ -29,6 +29,7 @@ MODULE Aer_Actv_Single_Moment
 
        real, parameter :: NN_MIN      =  100.0e6
        real, parameter :: NN_MAX      = 1000.0e6
+       real, parameter :: min_kappa_soluble = 0.4
 
        LOGICAL  :: USE_BERGERON = .TRUE.
        LOGICAL  :: USE_AEROSOL_NN = .TRUE.
@@ -119,59 +120,69 @@ MODULE Aer_Actv_Single_Moment
                   aci_ptr_2d = FRLAND
               end if
      
-              ACTIVATION_PROPERTIES: do n = 1, n_modes
+               ACTIVATION_PROPERTIES: do n = 1, n_modes
                  call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
-                 
+               ! call WRITE_PARALLEL (trim(aero_aci_modes(n)))  
+                  
                  ! execute the aerosol activation properties method 
                  call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
                  VERIFY_(ACI_STATUS)
                  VERIFY_(STATUS)
+                 
+                if (.not. allocated(AeroPropsNew(n)%num)) allocate(AeroPropsNew(n)%num(IM,JM,LM))
+                if (.not. allocated(AeroPropsNew(n)%dpg)) allocate(AeroPropsNew(n)%dpg(IM,JM,LM))
+                if (.not. allocated(AeroPropsNew(n)%sig)) allocate(AeroPropsNew(n)%sig(IM,JM,LM))
+                if (.not. allocated(AeroPropsNew(n)%den)) allocate(AeroPropsNew(n)%den(IM,JM,LM))
+                if (.not. allocated(AeroPropsNew(n)%kap)) allocate(AeroPropsNew(n)%kap(IM,JM,LM))
+                if (.not. allocated(AeroPropsNew(n)%fdust)) allocate(AeroPropsNew(n)%fdust(IM,JM,LM))
+                if (.not. allocated(AeroPropsNew(n)%fsoot)) allocate(AeroPropsNew(n)%fsoot(IM,JM,LM))
+                if (.not. allocated(AeroPropsNew(n)%forg)) allocate(AeroPropsNew(n)%forg(IM,JM,LM))
+
 
                  ! copy out aerosol activation properties
                  call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%num, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%num = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%dpg, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%dpg = aci_ptr_3d
+               ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%dpg(1,1,1)
 
                  call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%sig, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%sig = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%den, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%den = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%kap, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%kap = aci_ptr_3d
+               ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%kap(1,1,1)
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%fdust, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%fdust = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%fsoot, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%fsoot = aci_ptr_3d
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, AeroPropsNew(n)%forg, trim(aci_field_name), __RC__)
+                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+                 AeroPropsNew(n)%forg = aci_ptr_3d
 
                  AeroPropsNew(n)%nmods = n_modes
 
+                 where (AeroPropsNew(n)%kap > min_kappa_soluble)
+                    NWFA = NWFA + AeroPropsNew(n)%num
+                 end where
+
               end do ACTIVATION_PROPERTIES
 
-              do k = 1, LM
-               do j = 1, JM
-                do i = 1, IM
-                nfaux =  0.0
-                 do n = 1, n_modes
-                   if (AeroPropsNew(n)%kap(i,j,k) .gt. 0.4) then 
-                            nfaux =  nfaux + AeroPropsNew(n)%num(i,j,k)
-                   end if                           
-                 end do !modes
-                 NWFA(I, J, K)  =  nfaux
-                end do
-               end do 
-              end do 
-             
-
-              deallocate(aero_aci_modes, __STAT__)
+          deallocate(aero_aci_modes, __STAT__)
 
       !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
       numbinit = 0.

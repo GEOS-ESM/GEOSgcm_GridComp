@@ -315,7 +315,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 !!!=======AER_CLOUD=======
 
-           AeroProps    , &  !-> Aerosol properties
+         !  AeroProps    , &  !-> Aerosol properties
            CNV_FICE       , & !-> Fraction of ice in detrainment 
            CNV_NICE       , & !-> Detrained ice crystal concentration
            CNV_NDROP      , & !-> Detrained cloud droplet concentration

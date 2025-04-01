@@ -169,20 +169,6 @@ module cldwat2m_micro
 
    real(r8), private:: csmin,csmax,minrefl,mindbz
 
-   !  If constant cloud ice number is set (nicons = .true.),
-    ! then all microphysical processes except mass transfer due to ice nucleation
-    ! (mnuccd) are based on the fixed cloud ice number. Calculation of
-    ! mnuccd follows from the prognosed ice crystal number ni.
-
-    logical  :: nccons  ! nccons = .true. to specify constant cloud droplet number
-    logical  :: nicons  ! nicons = .true. to specify constant cloud ice number
-    logical  :: ngcons  ! ngcons = .true. to specify constant graupel number
-
-    ! specified ice and droplet number concentrations
-    ! note: these are local in-cloud values, not grid-mean
-    real(r8)  :: ncnst  ! droplet num concentration when nccons=.true. (m-3)
-    real(r8)  :: ninst  ! ice num concentration when nicons=.true. (m-3)
-    real(r8)  :: ngnst  ! graupel num concentration when ngcons=.true. (m-3)
 
     real(r8)           :: micro_mg_berg_eff_factor     ! berg efficiency factor
 
@@ -190,8 +176,7 @@ contains
 
    !===============================================================================
 
-   subroutine ini_micro(micro_mg_dcs, micro_mg_berg_eff_factor_in, &
-                         nccons_in, nicons_in, ncnst_in, ninst_in, QCVAR_)
+   subroutine ini_micro(micro_mg_dcs, micro_mg_berg_eff_factor_in,  QCVAR_)
 
       !----------------------------------------------------------------------- 
       ! 
@@ -221,23 +206,14 @@ contains
       logical           :: history_microphysics     ! output variables for microphysics diagnostics package
 
 
- 
- 
       real(r8),         intent(in)  :: micro_mg_berg_eff_factor_in     ! berg efficiency factor
-      logical, intent(in)   :: nccons_in
-      logical, intent(in)   :: nicons_in
-      real(r8), intent(in)  :: ncnst_in
-      real(r8), intent(in)  :: ninst_in
       real(r8), intent(in)  :: micro_mg_dcs
 
 
 
       !declarations for morrison codes (transforms variable names)
 
-       nccons = nccons_in
-       nicons = nicons_in
-       ncnst  = ncnst_in
-       ninst  = ninst_in
+  
        micro_mg_berg_eff_factor    = micro_mg_berg_eff_factor_in
 
       g= gravit                  !gravity
@@ -477,27 +453,28 @@ contains
          nsoot, rnsoot, ui_scale, dcrit, mtimesc, &
          nnuccdo, nnuccco, nsacwio, nsubio, nprcio, &
          npraio, npccno, npsacwso, nsubco, nprao, nprc1o, nbincontactdust,  &
-         ts_auto_ice, rflx, sflx, accre_enhan, accre_enhan_ice)
+         ts_auto_ice, rflx, sflx, accre_enhan, accre_enhan_ice, &
+          nccons, nicons, ncnst, ninst)
 
 
       !Author: Hugh Morrison, Andrew Gettelman, NCAR
       ! e-mail: morrison@ucar.edu, andrew@ucar.edu
 
       use wv_saturation, only: vqsatd, vqsatd_water
-#ifndef GEOS5
-      use constituents,  only: pcnst
-      real(r8), parameter :: ncnst = 100.0e6   ! specified value (m-3) droplet num concentration (in-cloud not grid-mean) DONIF
-      real(r8), parameter :: ninst = 0.10e6
 
-#endif
 
       !--jtb (08/18/10) Is this still needed? Pcnst is not used.
 
       ! input arguments
 #ifdef GEOS5
-      integer,  intent (in) :: pcols, pver    
+      integer,  intent (in) :: pcols, pver 
+      
+      logical, intent(in)  :: nccons, nicons    
+      real(r8), intent (in) :: ncnst(pcols, pver)   ! specified value (m-3) droplet num concentration (in-cloud not grid-mean) DONIF
+      real(r8), intent (in) :: ninst(pcols, pver)   ! specified value (m-3) ice num concentration (in-cloud not grid-mean) 
+      
       real(r8), intent (in) :: nimm (pcols,pver)    ! immersion ice nuclei concentration tendency (kg-1 s-1) 
-      real(r8), intent (in) :: miu_disp , ui_scale, dcrit, mtimesc, ts_auto_ice ! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised  
+      real, intent (in) :: miu_disp , ui_scale, dcrit, mtimesc, ts_auto_ice ! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised  
       real(r8), intent (in) :: nsoot (pcols,pver) , rnsoot (pcols,pver)  
        real(r8), intent (in) :: accre_enhan(pcols,pver), accre_enhan_ice(pcols,pver)
 
@@ -1275,7 +1252,7 @@ contains
 
             ! hm add 6/2/11 switch for specification of cloud ice number 
             if (nicons) then
-               niic(i,k)=ninst/rho(i,k)
+               niic(i,k)=ninst(i, k)/rho(i,k)
             end if
 
 
@@ -1735,12 +1712,12 @@ contains
 
                ! hm add 6/2/11 specify droplet concentration
                if (nccons) then
-                  ncic(i,k)=ncnst/rho(i,k)
+                  ncic(i,k)=ncnst(i, k)/rho(i,k)
                end if
 
                ! hm add 6/2/11 switch for specification of cloud ice number
                if (nicons) then
-                  niic(i,k)=ninst/rho(i,k)
+                  niic(i,k)=ninst(i, k)/rho(i,k)
                end if
 
 
@@ -3369,12 +3346,12 @@ contains
 
             ! hm add 6/2/11 switch for specification of droplet and crystal number
             if (nccons) then
-               dumnc(i,k)=ncnst/rho(i,k)
+               dumnc(i,k)=ncnst(i, k)/rho(i,k)
             end if
 
             ! hm add 6/2/11 switch for specification of cloud ice number
             if (nicons) then
-               dumni(i,k)=ninst/rho(i,k)
+               dumni(i,k)=ninst(i, k)/rho(i,k)
             end if
 
             ! obtain new slope parameter to avoid possible singularity
@@ -3620,12 +3597,12 @@ contains
 
             ! hm add 6/2/11 switch for specification of droplet and crystal number
             if (nccons) then
-               dumnc(i,k)=ncnst/rho(i,k)*lcldm(i,k)
+               dumnc(i,k)=ncnst(i, k)/rho(i,k)*lcldm(i,k)
             end if
 
             ! hm add 6/2/11 switch for specification of cloud ice number
             if (nicons) then
-               dumni(i,k)=ninst/rho(i,k)*icldm(i,k)
+               dumni(i,k)=ninst(i, k)/rho(i,k)*icldm(i,k)
             end if
 
 
@@ -3781,12 +3758,12 @@ contains
 
             ! hm add 6/2/11 switch for specification of droplet and crystal number
             if (nccons) then
-               dumnc(i,k)=ncnst/rho(i,k)
+               dumnc(i,k)=ncnst(i, k)/rho(i,k)
             end if
 
             ! hm add 6/2/11 switch for specification of cloud ice number
             if (nicons) then
-               dumni(i,k)=ninst/rho(i,k)
+               dumni(i,k)=ninst(i, k)/rho(i,k)
             end if
 
 
@@ -3862,7 +3839,7 @@ contains
                   ! note that nctend may be further adjusted below if mean droplet size is
                   ! out of bounds
 
-                  nctend(i,k)=(ncnst/rho(i,k)*lcldm(i,k)-nc(i,k))/deltat
+                  nctend(i,k)=(ncnst(i, k)/rho(i,k)*lcldm(i,k)-nc(i,k))/deltat
                end if
 
 

@@ -1500,7 +1500,7 @@ contains
    VERIFY_(STATUS)
 
    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'ALH'/),                                 &
+         SHORT_NAME  = (/'ALH', 'KM', 'RI'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  TURBL,                                      &
                                                         RC=STATUS  )

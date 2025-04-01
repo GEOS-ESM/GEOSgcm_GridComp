@@ -8,7 +8,7 @@ MODULE RAS
    use GEOS_UtilsMod, only : DQSAT=>GEOS_DQsat
    use module_ras
    !use aer_cloud, only: AerProps, getINsubset
-   use aer_cloud
+   !use aer_cloud
    use RASPARAMS
 
 
@@ -29,6 +29,21 @@ MODULE RAS
          "Invalid Code                    ", & ! 6
          "RH Trigger not met              "  & ! 7
          /)
+
+      integer, parameter :: nsmx_par = 20 !maximum number of modes allowed  
+      type :: AerProps            
+          sequence 
+          real, dimension(nsmx_par)  :: num !Num conc m-3
+          real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
+          real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
+	      real, dimension(nsmx_par)  :: den  !dry density , Kg m-3
+  	      real, dimension(nsmx_par)  :: kap !Hygroscopicity parameter 
+ 	      real, dimension(nsmx_par)  :: fdust! mass fraction of dust 
+	      real, dimension(nsmx_par)  :: fsoot ! mass fraction of soot
+	      real, dimension(nsmx_par)  :: forg ! mass fraction of organics
+	      integer   :: nmods  ! total number of modes (nmods<nmodmax)
+      end type AerProps     
+      
 
 CONTAINS
 
@@ -55,7 +70,7 @@ CONTAINS
          RAS_TAU,                                         &
          
          
-         AEROPROPS,                                   & !!!!!AER_CLOUD
+         !AEROPROPS,                                   & !!!!!AER_CLOUD
          CNV_FICE,                                        & 
          CNV_NICE,                                        & 
          CNV_NDROP,                                    &   !DONIF
@@ -307,9 +322,11 @@ CONTAINS
       REAL                   :: FSCAV_(ITRCR) ! Fraction scavenged per km
 
       ! ************************AER_CLOUD *********************************************
+      ! *****the AEROPROPS part of this code needs to be updated in this code is to be used again
+      ! DONIF 3/10/25
 
 
-      TYPE(AerProps),    DIMENSION(IDIM, K0),    INTENT(IN)    :: AEROPROPS !DONIF
+    
       REAL, DIMENSION (IDIM,K0), INTENT( OUT) ::  CNV_NDROP, CNV_FICE, CNV_NICE
       REAL, DIMENSION (IDIM,K0), INTENT( OUT) ::  RAS_TAU,  RAS_ALPHA
       REAL,  DIMENSION(K0) :: CNVNDROP, CNVNICE, CNVFICE !DONIF
@@ -319,7 +336,10 @@ CONTAINS
       INTEGER, PARAMETER :: NDUSTMAX = 10
 
       INTEGER :: INDEX        
+      
+      TYPE(AerProps),    DIMENSION(IDIM, K0)    :: AEROPROPS !DONIF
       TYPE(AerProps) :: AERAUX, AER_BASE
+      
 
       CNV_FICE  =0.0
       CNV_NDROP =0.0
@@ -1999,9 +2019,9 @@ CONTAINS
              end if
          end do
 
-         if (AER%nmods == 0) then
-             call init_Aer(AER)
-         end if
+         !if (AER%nmods == 0) then
+         !    call init_Aer(AER)
+         !end if
 
 !!!!!!!!!!activate aerosol transported from cloud base 
              NMODES =  AER_BASE%nmods
@@ -2818,6 +2838,20 @@ CONTAINS
    enddo
  end subroutine fill_z
 
+subroutine init_Aer(aerout)
 
+    type (AerProps), intent(inout) :: aerout
+   
+           aerout%num = 0.0
+	   aerout%dpg =  1.0e-9
+	   aerout%sig =  2.0
+	   aerout%kap =  0.2
+	   aerout%den = 2200.0
+	   aerout%fdust  =  0.0
+           aerout%fsoot  =  0.0
+	   aerout%forg   =  0.0
+	   aerout%nmods = 1
+	   
+   end subroutine init_Aer
 
 END MODULE RAS

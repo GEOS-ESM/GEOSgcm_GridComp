@@ -14,6 +14,7 @@ set (srcs
   GEOS_UW_InterfaceMod.F90 uwshcu.F90
   aer_actv_single_moment.F90
   GEOS_MoistGridComp.F90
+  Wnet.F90
   # files that are sometimes present?
   # ras00.F90 cloud.F90
   )
@@ -35,9 +36,15 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF)
+  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF BLAS::BLAS LAPACK::LAPACK)
 
-get_target_property (extra_incs FMS::fms_r4 INTERFACE_INCLUDE_DIRECTORIES)
+# We need to add_dependencies for fms_r4 because CMake doesn't know we
+# need it for include purposes. In R4R8, we only ever link against
+# fms_r8, so it doesn't know to build the target fms_r4
+# NOTE NOTE NOTE: This should *not* be included in GEOSgcm v12
+#     because FMS is pre-built library in that case.
+add_dependencies (${this} fms_r4)
+get_target_property (extra_incs fms_r4 INCLUDE_DIRECTORIES)
 target_include_directories(${this} PRIVATE
    $<BUILD_INTERFACE:${extra_incs}>
    )
