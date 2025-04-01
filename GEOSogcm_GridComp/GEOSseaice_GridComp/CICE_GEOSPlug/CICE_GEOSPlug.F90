@@ -782,6 +782,8 @@ contains
 ! Imports
     REAL_, pointer                     :: TAUX(:,:)          => null()
     REAL_, pointer                     :: TAUY(:,:)          => null()
+    REAL_, pointer                     :: UWA(:,:)           => null()
+    REAL_, pointer                     :: VWA(:,:)           => null()
     REAL_, pointer                     :: UWB(:,:)           => null()
     REAL_, pointer                     :: VWB(:,:)           => null()
     REAL_, pointer                     :: UWC(:,:)           => null()
@@ -839,6 +841,8 @@ contains
     call MAPL_GetPointer(IMPORT, TAUX,     'TAUX'        ,                 _RC)
     call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'        ,                 _RC)
     call MAPL_GetPointer(IMPORT,  SLV,     'SLV'         ,                 _RC)
+    call MAPL_GetPointer(IMPORT,  UWA,     'UW'          ,                 _RC)
+    call MAPL_GetPointer(IMPORT,  VWA,     'VW'          ,                 _RC)
     call MAPL_GetPointer(IMPORT,  UWB,     'UWB'         ,                 _RC)
     call MAPL_GetPointer(IMPORT,  VWB,     'VWB'         ,                 _RC)
     call MAPL_GetPointer(IMPORT,  UWC,     'UWC'         ,                 _RC)
