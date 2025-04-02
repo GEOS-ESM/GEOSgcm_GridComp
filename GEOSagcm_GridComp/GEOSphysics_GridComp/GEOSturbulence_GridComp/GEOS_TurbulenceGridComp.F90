@@ -3018,7 +3018,7 @@ end if
      real                                :: AKHMMAX
      real                                :: C_B, LAMBDA_B, LOUIS_MEMORY
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
-     real                                :: PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHSFCFAC_LND, KHSFCFAC_OCN
+     real                                :: PCEFF_SURF, VSCALE_SURF, KHSFCFAC_LND, KHSFCFAC_OCN
 
      real                                :: SMTH_HGT
      integer                             :: I,J,L,LOCK_ON,ITER
@@ -3184,7 +3184,6 @@ end if
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=1.,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=1500.0, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
@@ -3213,8 +3212,7 @@ end if
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.15e-3,RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=1.,     RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
        LAMBDAM = (MIN(1.0,300.0/DT)**2)*150.0 ! Critical for INTDIS stability with long DTs
        LAMBDAH = (MIN(1.0,300.0/DT)**2)*150.0 ! Critical for INTDIS stability with long DTs
@@ -4200,7 +4198,7 @@ end if
                                       PRANDTLSFC, PRANDTLRAD,   &
                                       BETA_SURF, BETA_RAD,      &
                                       TPFAC_SURF, ENTRATE_SURF, &
-                                      PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
+                                      PCEFF_SURF, VSCALE_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 
          STATUS = cudaGetLastError()
@@ -4404,7 +4402,7 @@ end if
                       PRANDTLSFC, PRANDTLRAD,   &
                       BETA_SURF, BETA_RAD,      &
                       TPFAC_SURF, ENTRATE_SURF, &
-                      PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
+                      PCEFF_SURF, VSCALE_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 #endif
 
@@ -6693,7 +6691,7 @@ end subroutine RUN1
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
       integer :: I,J,L
-      real    :: CBl, wsp0, wsp, FKV_temp
+      real    :: CBl, wsp, FKV_temp
       real, parameter :: C_TOFD = 9.031E-09 * 12.0
 
       if (C_B > 0.0) then
@@ -6726,14 +6724,19 @@ end subroutine RUN1
                 wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
                 FKV_temp = exp(-1*(Z(I,J,L)/LAMBDA_B)**1.5) * Z(I,J,L)**(-1.2)
                 FKV_temp = CBl * VARFLT(i,j) * FKV_temp * wsp
-
+                FKV(I,J,L)  = MIN(20.0,FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))) ! include limit on this forcing for stability
+                FKV_temp = FKV(I,J,L)/(PLE(I,J,L)-PLE(I,J,L-1))
                 BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
                 BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
-                FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
             end if
           end do
         end do
       end do
+
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: BKV ', BKV)
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKV ', FKV*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1)))
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKVP', FKV)
+
       endif
 
    end subroutine BELJAARS
