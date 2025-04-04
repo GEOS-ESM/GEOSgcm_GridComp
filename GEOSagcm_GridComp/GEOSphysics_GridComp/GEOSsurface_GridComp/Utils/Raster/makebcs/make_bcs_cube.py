@@ -36,8 +36,8 @@ if( {TRIPOL_OCEAN} == True ) then
     /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
     bin/FillMomGrid.x -f 0 -g Pfafstetter-M {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
-    /bin/cp til/Pfafstetter-M.til til/Pfafstetter.til
-    /bin/cp rst/Pfafstetter-M.rst rst/Pfafstetter.rst
+    /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
+    /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t {NT} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
     bin/mk_runofftbl.x -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
