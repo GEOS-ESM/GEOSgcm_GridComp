@@ -30,7 +30,7 @@ module GEOS_GwdGridCompMod
    ! !USES:
 
    use ESMF
-   use MAPL_ErrorHandling, only: MAPL_Verify, MAPL_RTRN
+   use MAPL_ErrorHandling, only: MAPL_Verify, MAPL_RTRN, MAPL_ASSERT
    use MAPL_OpenMP_Support, only : MAPL_get_current_thread => get_current_thread
    use MAPL_OpenMP_Support, only : MAPL_get_num_threads => get_num_threads
    use MAPL_OpenMP_Support, only : MAPL_find_bounds => find_bounds
@@ -222,7 +222,6 @@ contains
       ! Local derived type aliases
 
       type(ESMF_Grid) :: grid
-      type(ESMF_Geom) :: geom
       integer                             :: dims_(3), IM, JM
       real(kind=ESMF_KIND_R8), pointer, dimension(:,:) :: LATS, lons
 
@@ -281,10 +280,9 @@ contains
       self => wrap%ptr
 
       ! Grid info
-      call MAPL_GridCompGet(gc, geom=geom, _RC)
-      call ESMF_GeomGet(geom, grid=grid, _RC)
+      call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
       call MAPL_GridGet(grid, localCellCountPerDim=dims_, _RC)
-      IM = dims_(1); JM = dims_(2); LM = dims_(3)
+      IM = dims_(1); JM = dims_(2)
       call MAPL_GridGetCoords(grid, longitudes=lons, latitudes=lats, _RC)
 
       ! Get grid name to determine IMSIZE
@@ -471,7 +469,6 @@ contains
       type (GEOS_GwdGridComp), pointer        :: self
       type(ThreadWorkspace), pointer :: workspace
       integer :: thread
-      type(ESMF_Geom) :: geom
 
       !=============================================================================
 
@@ -500,10 +497,9 @@ contains
       !call MAPL_TimerOn(MAPL,"TOTAL")
 
       ! Grid info
-      call MAPL_GridCompGet(gc, geom=geom, _RC)
-      call ESMF_GeomGet(geom, grid=grid, _RC)
+      call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
       call MAPL_GridGet(grid, localCellCountPerDim=dims_, _RC)
-      IM = dims_(1); JM = dims_(2); LM = dims_(3)
+      IM = dims_(1); JM = dims_(2)
       call MAPL_GridGetCoords(grid, longitudes=lons, latitudes=lats, _RC)
 
       ! call ESMF_ClockGetAlarm(clock, 
