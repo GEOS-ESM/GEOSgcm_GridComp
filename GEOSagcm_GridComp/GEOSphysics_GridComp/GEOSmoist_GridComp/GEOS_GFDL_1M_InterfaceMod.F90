@@ -208,8 +208,9 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
 
 end subroutine GFDL_1M_Setup
 
-subroutine GFDL_1M_Initialize (MAPL, RC)
+subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
+    type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
 
     type (ESMF_Grid )                   :: GRID
@@ -227,6 +228,31 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     type(ESMF_VM) :: VM
     integer :: comm
 
+    real                     :: DBZ_DT
+    type(ESMF_Calendar)      :: calendar
+    type(ESMF_Time)          :: currentTime
+    type(ESMF_Alarm)         :: DBZ_RunAlarm
+    type(ESMF_Time)          :: ringTime
+    type(ESMF_TimeInterval)  :: ringInterval
+    integer                  :: year, month, day, hh, mm, ss
+
+    call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS );VERIFY_(STATUS)
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    DT_MOIST = DT_R8
+    DBZ_DT = max(DT_MOIST,900.0)
+    call MAPL_GetResource(MAPL, DBZ_DT, 'DBZ_DT:', default=DBZ_DT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalSet(ringInterval, S=nint(DBZ_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+    DBZ_RunAlarm = ESMF_AlarmCreate(Clock       = CLOCK,        &
+                                   Name         = 'DBZ_RunAlarm',&
+                                   RingInterval = ringInterval, &
+                                   RingTime     = currentTime,  &
+                                   Enabled      = .true.   ,    &
+                                   Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
+
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     LHYDROSTATIC = LPHYS_HYDROSTATIC
@@ -235,15 +261,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
-    call MAPL_Get( MAPL, &
-         RUNALARM = ALARM,             &
-         INTERNAL_ESMF_STATE=INTERNAL, &
-         RC=STATUS )
-    VERIFY_(STATUS)
-
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
-    DT_MOIST = DT_R8
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
@@ -293,7 +310,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
                                  CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 
@@ -319,6 +336,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
     real                            :: DT_MOIST
+    logical                         :: alarm_is_ringing
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
@@ -362,7 +380,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: RHCRIT3D
     real, pointer, dimension(:,:,:) :: CNV_PRC3 
     real, pointer, dimension(:,:)   :: EIS, LTS
-    real, pointer, dimension(:,:)   :: DBZ_WRF_MAX
     real, pointer, dimension(:,:)   :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
     real, pointer, dimension(:,:)   :: DBZ_MAX_R, DBZ_MAX_S, DBZ_MAX_G
     real, pointer, dimension(:,:,:) :: PTR3D
@@ -878,6 +895,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
         call MAPL_TimerOff(MAPL,"---CLDMICRO")
 
+
+        call MAPL_TimerOn(MAPL,"---CLDDIAGS")
+
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
 
@@ -895,20 +915,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(EXPORT,  NACTR,  'NACTR', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         NACTR = 1.e8*QRAIN**0.8   
 
-        call MAPL_GetPointer(EXPORT, PTR3D      , 'DBZ_WRF'    , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_WRF_MAX, 'DBZ_WRF_MAX', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D) .OR. &
-            associated(DBZ_WRF_MAX)) then
-            TMP3D = 0.0
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
-            if (associated(PTR3D)) PTR3D = TMP3D
-            if (associated(DBZ_WRF_MAX)) then
-               DBZ_WRF_MAX=-9999.0
-               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                  DBZ_WRF_MAX(I,J) = MAX(DBZ_WRF_MAX(I,J),TMP3D(I,J,L))
-               END DO ; END DO ; END DO
-            endif
-        end if
 
         call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
@@ -918,20 +924,36 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D) .OR. &
             associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
 
-          ! call MAPL_MaxMin('refl10cm: QRAIN    ', QRAIN)
-          ! call MAPL_MaxMin('refl10cm: NACTR    ', NACTR)
-          ! call MAPL_MaxMin('refl10cm: QSNOW    ', QSNOW)
-          ! call MAPL_MaxMin('refl10cm: QGRAUPEL ', QGRAUPEL)
-
-            rand1 = 0.0
-            TMP3D = 0.0
-            DO J=1,JM ; DO I=1,IM
-              rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
-              rand1= max( rand1/1000000., 1e-6 )
-              call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
-                 T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
-            END DO ; END DO
-            if (associated(PTR3D)) PTR3D = TMP3D
+            call ESMF_ClockGetAlarm(clock, 'DBZ_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
+            alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+            if (alarm_is_ringing) then
+               call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
+               call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
+              ! CALCDBZ is 10x cheaper    
+               TMP3D = 0.0
+               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
+               if (associated(PTR3D)) PTR3D = TMP3D 
+               call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
+!              call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")
+!             ! calc_refl10cm is expensive, do not call every time
+!              rand1 = 0.0
+!              TMP3D = 0.0
+!              DO J=1,JM ; DO I=1,IM
+!                rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
+!                rand1= max( rand1/1000000., 1e-6 )
+!                call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+!                   T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
+!              END DO ; END DO
+!              if (associated(PTR3D)) PTR3D = TMP3D
+!              call MAPL_TimerOff(MAPL,"---CLD_REFL10CM")
+            else
+               call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
+              ! CALCDBZ is 10x cheaper
+               TMP3D = 0.0
+               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
+               if (associated(PTR3D)) PTR3D = TMP3D
+               call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
+            end if
 
             if (associated(DBZ_MAX)) then
                DBZ_MAX=-9999.0
@@ -969,20 +991,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   END DO
                END DO ; END DO
             endif
-
         endif
 
         call MAPL_GetPointer(EXPORT, DBZ_MAX_R , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_MAX_S , 'DBZ_MAX_S' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_MAX_G , 'DBZ_MAX_G' , RC=STATUS); VERIFY_(STATUS)
         if (associated(DBZ_MAX_R) .OR. associated(DBZ_MAX_S) .OR. associated(DBZ_MAX_G)) then
-            rand1 = 0.0
+            call MAPL_TimerOn(MAPL,"---CLD_REFRSG")
             if (associated(DBZ_MAX_R)) then
                TMP3D = 0.0
-               DO J=1,JM ; DO I=1,IM
-                 call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), 0*QSNOW(I,J,:), 0*QGRAUPEL(I,J,:), &
-                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
-               END DO ; END DO
+               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,0*QSNOW,0*QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
                DBZ_MAX_R=-9999.0
                DO L=1,LM ; DO J=1,JM ; DO I=1,IM
                   DBZ_MAX_R(I,J) = MAX(DBZ_MAX_R(I,J),TMP3D(I,J,L))
@@ -990,10 +1008,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             endif
             if (associated(DBZ_MAX_S)) then
                TMP3D = 0.0
-               DO J=1,JM ; DO I=1,IM
-                 call calc_refl10cm(Q(I,J,:), 0*QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), 0*QGRAUPEL(I,J,:), &
-                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
-               END DO ; END DO
+               call CALCDBZ(TMP3D,100*PLmb,T,Q,0*QRAIN,QSNOW,0*QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)     
                DBZ_MAX_S=-9999.0
                DO L=1,LM ; DO J=1,JM ; DO I=1,IM
                   DBZ_MAX_S(I,J) = MAX(DBZ_MAX_S(I,J),TMP3D(I,J,L))
@@ -1001,15 +1016,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             endif
             if (associated(DBZ_MAX_G)) then
                TMP3D = 0.0
-               DO J=1,JM ; DO I=1,IM
-                 call calc_refl10cm(Q(I,J,:), 0*QRAIN(I,J,:), NACTR(I,J,:), 0*QSNOW(I,J,:), QGRAUPEL(I,J,:), &
-                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
-               END DO ; END DO
+               call CALCDBZ(TMP3D,100*PLmb,T,Q,0*QRAIN,0*QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)     
                DBZ_MAX_G=-9999.0
                DO L=1,LM ; DO J=1,JM ; DO I=1,IM
                   DBZ_MAX_G(I,J) = MAX(DBZ_MAX_G(I,J),TMP3D(I,J,L))
                END DO ; END DO ; END DO
             endif
+            call MAPL_TimerOff(MAPL,"---CLD_REFRSG")
         endif
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
@@ -1020,6 +1033,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
+
+        call MAPL_TimerOff(MAPL,"---CLDDIAGS")
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 

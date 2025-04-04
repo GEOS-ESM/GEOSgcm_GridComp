@@ -110,10 +110,14 @@ module GEOSmoist_Process_Library
   REAL, PARAMETER:: bm_r = 3.0
   REAL, PARAMETER:: am_s = 0.069
   REAL, PARAMETER:: bm_s = 2.0
+  REAL, PARAMETER:: bm_s_2 = 2.0**2
+  REAL, PARAMETER:: bm_s_3 = 2.0**3
   REAL, PARAMETER:: am_g = MAPL_PI*rho_g/6.0
   REAL, PARAMETER:: bm_g = 3.0
   REAL, PARAMETER:: am_i = MAPL_PI*rho_i/6.0
   REAL, PARAMETER:: bm_i = 3.0
+  REAL, PARAMETER:: am_s_r001 = (0.176/0.93) * (6.0/MAPL_PI) * (6.0/MAPL_PI) * (am_s/900.0)**2
+  REAL, PARAMETER:: am_g_r001 = (0.176/0.93) * (6.0/MAPL_PI) * (6.0/MAPL_PI) * (am_g/900.0)**2
 !..Fallspeed power laws relations:  v = (av*D**bv)*exp(-fv*D)
 !.. Rain from Ferrier (1994), ice, snow, and graupel from
 !.. Thompson et al (2008). Coefficient fv is zero for graupel/ice.
@@ -168,6 +172,27 @@ module GEOSmoist_Process_Library
   REAL, DIMENSION(10), PARAMETER, PRIVATE:: &
   sb = (/ 0.476221, -0.015896,  0.165977, 0.007468, -0.000141, &
           0.060366,  0.000079,  0.000594, 0.0,      -0.003577/)
+
+  REAL, PARAMETER:: sa3_bm_s = sa(3)*bm_s
+  REAL, PARAMETER:: sa4_bm_s = sa(4)*bm_s
+  REAL, PARAMETER:: sa6_bm_s = sa(6)*bm_s*bm_s
+  REAL, PARAMETER:: sa7_bm_s = sa(7)*bm_s
+  REAL, PARAMETER:: sa8_bm_s = sa(8)*bm_s*bm_s
+  REAL, PARAMETER:: sa10_bm_s = sa(10)*bm_s*bm_s*bm_s
+
+  REAL, PARAMETER:: sb3_bm_s = sb(3)*bm_s
+  REAL, PARAMETER:: sb4_bm_s = sb(4)*bm_s
+  REAL, PARAMETER:: sb6_bm_s = sb(6)*bm_s*bm_s
+  REAL, PARAMETER:: sb7_bm_s = sb(7)*bm_s
+  REAL, PARAMETER:: sb8_bm_s = sb(8)*bm_s*bm_s
+  REAL, PARAMETER:: sb10_bm_s = sb(10)*bm_s*bm_s*bm_s
+
+  REAL :: sa3_cse1, sa4_cse1, sa6_cse1, sa7_cse1, sa8_cse1, sa10_cse1
+  REAL :: sb3_cse1, sb4_cse1, sb6_cse1, sb7_cse1, sb8_cse1, sb10_cse1
+  REAL :: sa3_cse3, sa4_cse3, sa6_cse3, sa7_cse3, sa8_cse3, sa10_cse3
+  REAL :: sb3_cse3, sb4_cse3, sb6_cse3, sb7_cse3, sb8_cse3, sb10_cse3
+
+  REAL :: r2o7, lam_r000, lam_r001 
 
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
@@ -3923,6 +3948,10 @@ subroutine update_cld( &
       ogg2 = 1./cgg(2)
       ogg3 = 1./cgg(3)
 
+      r2o7 = 2./7.
+      lam_r000 = am_g*cgg(1)
+      lam_r001 = (cgg(3)*ogg2*ogg1)**obmg
+
 !>  - Call radar_init() to initialize various constants for computing radar reflectivity
       xam_r = am_r
       xbm_r = bm_r
@@ -3934,6 +3963,34 @@ subroutine update_cld( &
       xbm_g = bm_g
       xmu_g = mu_g
       call radar_init
+
+      sa3_cse1 = sa(3)*cse(1)
+      sa4_cse1 = sa(4)*cse(1)
+      sa6_cse1 = sa(6)*cse(1)*cse(1)
+      sa7_cse1 = sa(7)*cse(1)
+      sa8_cse1 = sa(8)*cse(1)*cse(1)
+      sa10_cse1 = sa(10)*cse(1)*cse(1)*cse(1)
+
+      sb3_cse1 = sb(3)*cse(1)
+      sb4_cse1 = sb(4)*cse(1)
+      sb6_cse1 = sb(6)*cse(1)*cse(1)
+      sb7_cse1 = sb(7)*cse(1)
+      sb8_cse1 = sb(8)*cse(1)*cse(1)
+      sb10_cse1 = sb(10)*cse(1)*cse(1)*cse(1)
+
+      sa3_cse3 = sa(3)*cse(3)
+      sa4_cse3 = sa(4)*cse(3)
+      sa6_cse3 = sa(6)*cse(3)*cse(3)
+      sa7_cse3 = sa(7)*cse(3)
+      sa8_cse3 = sa(8)*cse(3)*cse(3)
+      sa10_cse3 = sa(10)*cse(3)*cse(3)*cse(3)
+
+      sb3_cse3 = sb(3)*cse(3)
+      sb4_cse3 = sb(4)*cse(3)
+      sb6_cse3 = sb(6)*cse(3)*cse(3)
+      sb7_cse3 = sb(7)*cse(3)
+      sb8_cse3 = sb(8)*cse(3)*cse(3)
+      sb10_cse3 = sb(10)*cse(3)*cse(3)*cse(3)
 
    end subroutine init_refl10cm
 
@@ -3979,7 +4036,7 @@ subroutine update_cld( &
       REAL, DIMENSION(kts:kte):: ze_rain, ze_snow, ze_graupel
 
       DOUBLE PRECISION:: N0_exp, N0_min, lam_exp, lamr, lamg
-      REAL:: a_, b_, loga_, tc0, SR
+      REAL:: a_, b_, loga_, tc0, tc0_2, tc0_3, sa1259, sb1259, SR
       DOUBLE PRECISION:: fmelt_s, fmelt_g
 
       INTEGER:: i, k, k_0, ktop, kbot, kdwn, n
@@ -4085,52 +4142,60 @@ subroutine update_cld( &
       do k = kts, kte
          if (.not. L_qs(k)) CYCLE
          tc0 = MIN(-0.1, temp(k)-273.15)
+         tc0_2 = tc0*tc0
+         tc0_3 = tc0*tc0_2
          smob(k) = rs(k)*oams
+
+         sa1259 = sa(1) + sa(2)*tc0 + sa(5)*tc0_2 + sa(9)*tc0_3
+         sb1259 = sb(1) + sb(2)*tc0 + sb(5)*tc0_2 + sb(9)*tc0_3
 
 !..All other moments based on reference, 2nd moment.  If bm_s.ne.2,
 !.. then we must compute actual 2nd moment and use as reference.
          if (bm_s.gt.(2.0-1.e-3) .and. bm_s.lt.(2.0+1.e-3)) then
             smo2(k) = smob(k)
          else
-            loga_ = sa(1) + sa(2)*tc0 + sa(3)*bm_s &
-     &         + sa(4)*tc0*bm_s + sa(5)*tc0*tc0 &
-     &         + sa(6)*bm_s*bm_s + sa(7)*tc0*tc0*bm_s &
-     &         + sa(8)*tc0*bm_s*bm_s + sa(9)*tc0*tc0*tc0 &
-     &         + sa(10)*bm_s*bm_s*bm_s
+            loga_ = sa1259 + sa3_bm_s &
+     &         + sa4_bm_s*tc0 &
+     &         + sa6_bm_s  + sa7_bm_s*tc0_2 &
+     &         + sa8_bm_s*tc0 &
+     &         + sa10_bm_s
             a_ = 10.0**loga_
-            b_ = sb(1) + sb(2)*tc0 + sb(3)*bm_s &
-     &         + sb(4)*tc0*bm_s + sb(5)*tc0*tc0 &
-     &         + sb(6)*bm_s*bm_s + sb(7)*tc0*tc0*bm_s &
-     &         + sb(8)*tc0*bm_s*bm_s + sb(9)*tc0*tc0*tc0 &
-     &         + sb(10)*bm_s*bm_s*bm_s
+            b_ = sb1259 + sb3_bm_s &
+     &         + sb4_bm_s*tc0 &
+     &         + sb6_bm_s  + sb7_bm_s*tc0_2 &
+     &         + sb8_bm_s*tc0 &
+     &         + sb10_bm_s
             smo2(k) = (smob(k)/a_)**(1./b_)
          endif
 
 !..Calculate bm_s+1 (th) moment.  Useful for diameter calcs.
-         loga_ = sa(1) + sa(2)*tc0 + sa(3)*cse(1) &
-     &         + sa(4)*tc0*cse(1) + sa(5)*tc0*tc0 &
-     &         + sa(6)*cse(1)*cse(1) + sa(7)*tc0*tc0*cse(1) &
-     &         + sa(8)*tc0*cse(1)*cse(1) + sa(9)*tc0*tc0*tc0 &
-     &         + sa(10)*cse(1)*cse(1)*cse(1)
+         loga_ = sa1259 + sa3_cse1 &
+     &         + sa4_cse1*tc0 &
+     &         + sa6_cse1  + sa7_cse1*tc0_2 &
+     &         + sa8_cse1*tc0 &
+     &         + sa10_cse1
          a_ = 10.0**loga_
-         b_ = sb(1)+ sb(2)*tc0 + sb(3)*cse(1) + sb(4)*tc0*cse(1) &
-     &        + sb(5)*tc0*tc0 + sb(6)*cse(1)*cse(1) &
-     &        + sb(7)*tc0*tc0*cse(1) + sb(8)*tc0*cse(1)*cse(1) &
-     &        + sb(9)*tc0*tc0*tc0 + sb(10)*cse(1)*cse(1)*cse(1)
+         b_    = sb1259 + sb3_cse1 &
+     &        + sb4_cse1*tc0 &
+     &        + sb6_cse1  + sb7_cse1*tc0_2 &
+     &        + sb8_cse1*tc0 &
+     &        + sb10_cse1
          smoc(k) = a_ * smo2(k)**b_
 
 !..Calculate bm_s*2 (th) moment.  Useful for reflectivity.
-         loga_ = sa(1) + sa(2)*tc0 + sa(3)*cse(3) &
-     &         + sa(4)*tc0*cse(3) + sa(5)*tc0*tc0 &
-     &         + sa(6)*cse(3)*cse(3) + sa(7)*tc0*tc0*cse(3) &
-     &         + sa(8)*tc0*cse(3)*cse(3) + sa(9)*tc0*tc0*tc0 &
-     &         + sa(10)*cse(3)*cse(3)*cse(3)
+         loga_ = sa1259 + sa3_cse3 &
+     &         + sa4_cse3*tc0 &
+     &         + sa6_cse3  + sa7_cse3*tc0_2 &
+     &         + sa8_cse3*tc0 &
+     &         + sa10_cse3
          a_ = 10.0**loga_
-         b_ = sb(1)+ sb(2)*tc0 + sb(3)*cse(3) + sb(4)*tc0*cse(3) &
-     &        + sb(5)*tc0*tc0 + sb(6)*cse(3)*cse(3) &
-     &        + sb(7)*tc0*tc0*cse(3) + sb(8)*tc0*cse(3)*cse(3) &
-     &        + sb(9)*tc0*tc0*tc0 + sb(10)*cse(3)*cse(3)*cse(3)
+         b_    = sb1259 + sb3_cse3 &
+     &        + sb4_cse3*tc0 &
+     &        + sb6_cse3  + sb7_cse3*tc0_2 &
+     &        + sb8_cse3*tc0 &
+     &        + sb10_cse3
          smoz(k) = a_ * smo2(k)**b_
+
       enddo
       endif
 
@@ -4141,11 +4206,11 @@ subroutine update_cld( &
       if (ANY(L_qg .eqv. .true.)) then
       do k = ktop, kbot, kdwn
          ygra1 = alog10(max(1.E-9, rg(k)))
-         zans1 = 3.4 + 2./7.*(ygra1+8.) + rand1
+         zans1 = 3.4 + r2o7*(ygra1+8.) + rand1
          N0_exp = 10.**(zans1)
          N0_exp = MAX(DBLE(gonv_min), MIN(N0_exp, DBLE(gonv_max)))
-         lam_exp = (N0_exp*am_g*cgg(1)/rg(k))**oge1
-         lamg = lam_exp * (cgg(3)*ogg2*ogg1)**obmg
+         lam_exp = (N0_exp*lam_r000/rg(k))**oge1
+         lamg = lam_exp * lam_r001
          ilamg(k) = 1./lamg
          N0_g(k) = N0_exp/(cgg(2)*lam_exp) * lamg**cge(2)
       enddo
@@ -4179,11 +4244,9 @@ subroutine update_cld( &
          ze_snow(k) = 1.e-22
          ze_graupel(k) = 1.e-22
          if (L_qr(k)) ze_rain(k) = N0_r(k)*crg(4)*ilamr(k)**cre(4)
-         if (L_qs(k)) ze_snow(k) = (0.176/0.93) * (6.0/PI)*(6.0/PI)     &
-     &                           * (am_s/900.0)*(am_s/900.0)*smoz(k)
-         if (L_qg(k)) ze_graupel(k) = (0.176/0.93) * (6.0/PI)*(6.0/PI)  &
-     &                              * (am_g/900.0)*(am_g/900.0)         &
-     &                              * N0_g(k)*cgg(4)*ilamg(k)**cge(4)
+         if (L_qs(k)) ze_snow(k) = am_s_r001*smoz(k)
+         if (L_qg(k)) ze_graupel(k) = am_g_r001 * &
+     &                                N0_g(k)*cgg(4)*ilamg(k)**cge(4)
       enddo
 
 !+---+-----------------------------------------------------------------+

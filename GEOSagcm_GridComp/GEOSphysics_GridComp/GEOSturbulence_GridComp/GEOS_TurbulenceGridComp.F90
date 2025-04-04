@@ -6691,7 +6691,7 @@ end subroutine RUN1
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
       integer :: I,J,L
-      real    :: CBl, wsp0, wsp, FKV_temp
+      real    :: CBl, wsp, FKV_temp
       real, parameter :: C_TOFD = 9.031E-09 * 12.0
 
       if (C_B > 0.0) then
@@ -6724,14 +6724,19 @@ end subroutine RUN1
                 wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
                 FKV_temp = exp(-1*(Z(I,J,L)/LAMBDA_B)**1.5) * Z(I,J,L)**(-1.2)
                 FKV_temp = CBl * VARFLT(i,j) * FKV_temp * wsp
-
+                FKV(I,J,L)  = MIN(20.0,FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))) ! include limit on this forcing for stability
+                FKV_temp = FKV(I,J,L)/(PLE(I,J,L)-PLE(I,J,L-1))
                 BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
                 BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
-                FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
             end if
           end do
         end do
       end do
+
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: BKV ', BKV)
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKV ', FKV*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1)))
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKVP', FKV)
+
       endif
 
    end subroutine BELJAARS

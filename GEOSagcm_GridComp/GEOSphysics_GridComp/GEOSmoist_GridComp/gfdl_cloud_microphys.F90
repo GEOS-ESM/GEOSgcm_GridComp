@@ -198,8 +198,8 @@ module gfdl2_cloud_microphys_mod
     real :: tau_smlt =   900. !< snow melting
     real :: tau_gmlt =  1200. !< graupel melting to rain
 
-    real :: rthreshu =  3.0e-6 !< unstable critical cloud drop radius (micro m)
-    real :: rthreshs = 10.0e-6 !<   stable critical cloud drop radius (micro m)
+    real :: rthreshu =  7.0e-6 !< unstable critical cloud drop radius (micro m)
+    real :: rthreshs = 30.0e-6 !<   stable critical cloud drop radius (micro m)
 
     real :: sat_adj0 = 0.90 !< adjustment factor (0: no, 1: full) during fast_sat_adj
 
@@ -219,7 +219,7 @@ module gfdl2_cloud_microphys_mod
     real :: qi0_crt = 1.0e-4 !< cloud ice to snow autoconversion threshold
                              !! qi0_crt can be dependent on horizontal resolution
                              !! this sensitivity could be handled with onemsig later in the code
-    real :: qs0_crt = 0.6e-3 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
+    real :: qs0_crt = 3.0e-3 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
 
     real :: c_paut  = 1.00  !< autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
 
@@ -249,7 +249,7 @@ module gfdl2_cloud_microphys_mod
 
     real :: vi_min = 0.01 !< minimum fall speed or constant fall speed
     real :: vs_min = 1.   !< minimum fall speed or constant fall speed
-    real :: vg_min = 2.   !< minimum fall speed or constant fall speed
+    real :: vg_min = 3.   !< minimum fall speed or constant fall speed
     real :: vr_min = 4.   !< minimum fall speed or constant fall speed
     real :: vh_min = 9.   !< minimum fall speed or constant fall speed
 
@@ -2437,7 +2437,7 @@ subroutine terminal_fall (dtm, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
                 if (qs (k) > qpmin) then
                     do m = k + 1, kbot
                         if (zt (k + 1) >= ze (m)) exit
-                        dtime = min (dtm, (ze (m) - ze (m + 1)) / (vs_min + vts (k)))
+                        dtime = min (dtm, (ze (m) - ze (m + 1)) / vts (k))
                         if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
                             dtime = min (1.0, dtime / tau_smlt)
                             sink = min (qs (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
