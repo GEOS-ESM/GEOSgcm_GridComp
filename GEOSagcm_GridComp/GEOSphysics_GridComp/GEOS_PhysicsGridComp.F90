@@ -122,6 +122,10 @@ contains
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF
 
+    ! <<>> MSL DEV
+    character(len=ESMF_MAXSTR)              :: co2provider
+    real                                    :: co2_
+
 !=============================================================================
 
 ! Begin...
@@ -1229,6 +1233,27 @@ contains
                             'CFC11 ','CFC12 ','HCFC22'       /), &
                            DST_ID=RAD, SRC_ID=CHEM, RC=STATUS    )
       VERIFY_(STATUS)
+
+! <<>> MSL DEV
+! CO2 is not listed as a RAT, so add it here outside of the RATs code logic
+! It also doesn't appear in PCHEM, so we can't make it part of the RATs list
+  ! -- get info from AGCM.rc
+  call ESMF_ConfigGetAttribute(CF, co2provider, Default='None', &
+                               Label="CO2_PROVIDER:", __RC__ )
+  call ESMF_ConfigGetAttribute(CF, co2_, Default=-1.0, &
+                               Label="CO2:", __RC__ )
+  if (trim(co2provider) .eq. 'GOCART' .and. CO2_ .eq. -2.0) then
+     CALL MAPL_AddConnectivity( GC, &
+          SHORT_NAME  = (/'CO2'/), &
+          DST_ID=RAD, SRC_ID=CHEM, RC=STATUS    )
+     VERIFY_(STATUS)
+  endif
+  if (trim(co2provider) .eq. 'RRG' .and. CO2_ .eq. -2.0) then
+     CALL MAPL_AddConnectivity( GC, &
+          SHORT_NAME  = (/'CO2'/), &
+          DST_ID=RAD, SRC_ID=CHEM, RC=STATUS    )
+     VERIFY_(STATUS)
+  endif
 ! -----------------------------------------------------------------
 
      call MAPL_AddConnectivity ( GC,                               &
