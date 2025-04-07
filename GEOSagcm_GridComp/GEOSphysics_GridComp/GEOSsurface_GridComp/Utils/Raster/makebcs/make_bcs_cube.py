@@ -43,7 +43,8 @@ if( {TRIPOL_OCEAN} == True ) then
     bin/mk_runofftbl.x -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
 
     if ({SKIPLAND} != True) then
-      bin/ExtractBCsFromOrig.py {BCS_DIR}  {lbcvs} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}
+      bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv} -p no
+      bin/ExtractBCsFromOrig.py {BCS_DIR}  {lbcsv} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}
     endif
  
     chmod 755 bin/create_README.csh

@@ -37,6 +37,7 @@ PROGRAM mkCatchParam
   integer              :: NC = i_raster, NR = j_raster    
   character*5          :: LBCSV = 'UNDEF'
   character*128        :: Gridname = ''
+  character*128        :: withbcs  = ''
   character*128        :: ARG, MaskFile
   character*256        :: CMD
   character*1          :: opt
@@ -47,7 +48,7 @@ PROGRAM mkCatchParam
   integer              :: I, J, command_argument_count, nxt
   real*8               :: dx, dy, lon0
   logical              :: regrid
-  character(len=400), dimension (6) ::  Usage 
+  character(len=128), dimension (7) ::  Usage 
   character*128        ::  Grid2
   character*2          :: poles
   character*128        :: fnameRst = ''        ! a.k.a. "gfile[r]" in mod_process_hres_data.F90
@@ -115,7 +116,8 @@ integer :: n_threads=1
     USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320              "
     USAGE(4) ="     -g: Gridname  (name of the .til or .rst file *without* file extension)      "
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC  "
-    USAGE(6) ="     -v  LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08 v09 )  "
+    USAGE(6) ="     -v: Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08 v09 )     "
+    USAGE(7) ="     -p: if no, it creates catchment_def and nc4 tile files then exits           "
 
 ! Process Arguments                            
 !------------------ 
@@ -130,7 +132,7 @@ integer :: n_threads=1
        write (log_file,'(a)')trim(cmd)
        write (log_file,'(a)')' '
     endif
-
+    withbcs = 'yes'
     I = command_argument_count()
     if(I < 1 .or. I > 10) then
        write (log_file,'(a)') "Wrong Number of arguments: ", i
@@ -165,6 +167,8 @@ integer :: n_threads=1
           call init_bcs_config (trim(LBCSV))       ! get bcs details from version string
        case ('b')
           DL = trim(arg)
+       case ('p')
+          withbcs = trim(arg)
        case default
           do j = 1,size(usage)
              print "(sp,a100)", Usage(j)
@@ -274,6 +278,12 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
 
+       if (trim(withbcs) == 'no') then
+         write (log_file,'(a)')'Skipping MOM BCs. BCs will be extracted from the corresponding BCs. '
+         close (log_file,status='keep')
+         call exit(0)
+       endif
+   
        call ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable) 
        N_land = count(iTable(:,0) == 100)          ! n_land = number of land tiles
        allocate(tile_j_dum, source = iTable(1:n_land,7)) ! possible used in cti_stats.dat

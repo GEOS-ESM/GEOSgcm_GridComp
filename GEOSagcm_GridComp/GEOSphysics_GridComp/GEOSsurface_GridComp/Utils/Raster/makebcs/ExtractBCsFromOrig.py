@@ -147,14 +147,14 @@ if __name__ == "__main__":
     mom_catch_params_file   = 'clsm/catch_params.nc4'
     mom_catchcn_params_file = 'clsm/catchcn_params.nc4'
 
-   # create_reduced_nc4(catch_params_file,   mom_catch_params_file, indices)
-   # create_reduced_nc4(catchcn_params_file, mom_catchcn_params_file, indices)
+    create_reduced_nc4(catch_params_file,   mom_catch_params_file, indices)
+    create_reduced_nc4(catchcn_params_file, mom_catchcn_params_file, indices)
 
     files  = glob.glob(bcs_dir + '/' + bcs_ver + '/land/' + air_res + '/*.da*')
     for file in files:
       fname = os.path.basename(file)
       if 'vegdyn' in fname:  
-         create_reduced_nc4( file,'clsm/vegdyn.dat', indices)
+         create_reduced_nc4( file,'clsm/vegdyn.data', indices)
       else:
          shortname = 'clsm/' + fname.split('_')[0] + '.dat'
          create_reduced_bin(file, shortname, indices)
