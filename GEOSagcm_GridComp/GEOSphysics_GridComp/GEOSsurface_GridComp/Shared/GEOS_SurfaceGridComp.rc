@@ -245,14 +245,3 @@
 # GEOSagcm=>PRESCRIBE_DVG: 0
 # GEOSldas=>PRESCRIBE_DVG: 0
 
-#--------------------------------------------------------#
-#                GEOSldas tile types                     #
-#--------------------------------------------------------#
-
-#---- Run with different tile types in GEOSldas
-# Non-land tiles can be run without LAND. LAKE not yet available
-
-#TILE_TYPES:LAND,LANDICE,LAKE !This option is not yet available
-#TILE_TYPES:LAND,LANDICE
-TILE_TYPES:LAND     #default
-
