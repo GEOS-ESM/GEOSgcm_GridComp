@@ -183,10 +183,10 @@ MODULE Aer_Actv_Single_Moment
             tk                 = T(i,j,k)                         ! K
             press              = plo(i,j,k)                       ! Pa   
             air_den            = press/(MAPL_RGAS*tk)             ! kg/m3
-            wupdraft           = vvel(i,j,k) + SQRT(tke(i,j,k))
+            wupdraft           = max(zero_par,vvel(i,j,k) + SQRT(tke(i,j,k)))
 
             ! Liquid Clouds
-            ni = 0.0
+            ni = zero_par
             DO n=1,n_modes
                if (AeroPropsNew(n)%kap(i,j,k) > 0.4) &
                ni   (n)    =   max(AeroPropsNew(n)%num(i,j,k)*air_den,  zero_par)  ! unit: [m-3]
