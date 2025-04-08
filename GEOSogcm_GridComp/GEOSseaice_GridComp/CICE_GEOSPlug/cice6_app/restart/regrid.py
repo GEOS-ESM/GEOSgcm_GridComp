@@ -23,6 +23,7 @@ import math
 import calendar
 import datetime
 import os.path
+from pylab import *
 
 
 c0 = np.float64(0.0)
@@ -227,12 +228,18 @@ def get_src_grid(fname): #reads lat lon for tripolar ocean grid
         LAT     = ncfile.variables['TLAT'][:]
     except:
         pass   
-    bat     = ncfile.variables['Bathymetry'][:]
+    try:
+        LON     = ncfile.variables['lon_centers'][:]
+        LAT     = ncfile.variables['lat_centers'][:]
+    except:
+        pass
+    bat     = ncfile.variables['mask'][:]
     #wet     = ncfile.variables['mask'][:]
     ncfile.close()
     #wet = np.zeros(bat.shape)
     #wet[bat>0.0] = 1.0 
-    return LON, LAT, bat
+    wet = ma.masked_where(bat < 0.5, bat)
+    return LON, LAT, wet
 
 def get_dst_grid(fname): #reads lat lon for tripolar ocean grid 
     ncfile  = Dataset(fname, "r")
