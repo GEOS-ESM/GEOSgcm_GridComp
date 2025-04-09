@@ -1,5 +1,11 @@
 esma_set_this()
 
+# This set(rename_) is for the automatic stubber
+# If directory is not available, this renames the
+# module in the stubbed routine to be
+# name which is expected by the parent.
+set (rename_GEOSwgcm_GridComp GEOS_WgcmGridComp)
+
 set (alldirs
   GEOSagcm_GridComp
   GEOSdataatm_GridComp
