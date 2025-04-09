@@ -1175,7 +1175,7 @@ contains
     type (ESMF_TimeInterval) :: timeStep
 
     real    :: DT,Fac0,Fac1,DTXX,RELAX_TO_OBS
-    real    :: OROGSGH
+    real    :: OROGSGH,SCMAREA
 
     real, dimension(:,:), allocatable :: F0
     real :: SCM_UG, SCM_VG
@@ -1385,8 +1385,13 @@ contains
                                     DEFAULT=0, rc = status )
 
     call ESMF_ConfigGetAttribute ( CF, OROGSGH,  Label="OROG_STDEV:", &
-                                         DEFAULT=100.,  __RC__)
+                                    DEFAULT=100.,  __RC__)
 
+    call ESMF_ConfigGetAttribute( cf, SCMAREA, label ='SCM_AREA:', &
+                                    DEFAULT=1e10, rc = status )
+
+   
+    
     if ( CFMIP .and. CFMIP2) then
             print *, " Error - SCM_CFMIP and SCM_CFMIP2 cannot be set at the same time  "  ! This should never happen
             RETURN_(ESMF_FAILURE)
@@ -1626,14 +1631,17 @@ contains
       call MAPL_GetPointer(EXPORT, PE,  'PE' , __RC__)
       call MAPL_GetPointer(EXPORT, DELTAP, 'DELP' , ALLOC=.true., __RC__)
 
+
 ! whenever datmodyn starts using gocart, this will need to be a real value --
 ! see fvdycore for example
-      if(associated(DUMMYAREA)) then
-          DUMMYAREA=1e10
-      end if
 
+      if(associated(DUMMYAREA)) then
+         DUMMYAREA = SCMAREA
+         print *,'SCM AREA = ',DUMMYAREA
+      end if
+      
       if(associated(DUMMYDXC)) then
-          DUMMYDXC=1.0
+          DUMMYDXC=sqrt(SCMAREA)
       end if
 
       if(associated(DUMMYW)) then
@@ -1645,7 +1653,7 @@ contains
       end if
 
       if(associated(DUMMYDYC)) then
-          DUMMYDYC=1.0
+          DUMMYDYC=sqrt(SCMAREA)
       end if
 
 ! added to satisfy desires of da
