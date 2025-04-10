@@ -29,7 +29,7 @@ install( FILES ${resource_files}
 esma_add_library (
   ${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL MAPL.generic3g MAPL.geom_mgr ESMF::ESMF NetCDF::NetCDF_Fortran TYPE SHARED
+  DEPENDENCIES GEOS_Shared MAPL MAPL.generic3g MAPL.geom ESMF::ESMF NetCDF::NetCDF_Fortran TYPE SHARED
   )
 
 mapl_acg (

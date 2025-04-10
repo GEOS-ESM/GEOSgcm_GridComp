@@ -36,7 +36,7 @@ module GEOS_GwdGridCompMod
    use MAPL_OpenMP_Support, only : MAPL_find_bounds => find_bounds
    use MAPL_OpenMP_Support, only : MAPL_Interval => Interval
    use MAPL_CommsMod, only: MAPL_AM_I_ROOT, ArrayGather
-   use MAPL_MaplGrid, only: MAPL_GridGet
+   use MAPL_MaplGrid, only: MAPL2_GridGet => MAPL_GridGet
    use MAPL_GenericMod, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
    use MAPL, only: MAPL_GetPointer
@@ -48,7 +48,7 @@ module GEOS_GwdGridCompMod
    use mapl3g_generic, only: MAPL_GridCompAddFieldSpec
    use mapl3g_VerticalStaggerLoc, only: VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE
    use mapl3g_UngriddedDims, only: UngriddedDims
-   use mapl3g_geom_mgr, only: MAPL_GridGetCoords => GridGetCoords
+   use mapl3g_Geom_API, only: MAPL_GridGet !MAPL_GridGetCoords => GridGetCoords
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
@@ -222,8 +222,8 @@ contains
       ! Local derived type aliases
 
       type(ESMF_Grid) :: grid
-      integer                             :: dims_(3), IM, JM
-      real(kind=ESMF_KIND_R8), pointer, dimension(:,:) :: LATS, lons
+      integer                             :: IM, JM !, dims_(3)
+      real, pointer, dimension(:,:)       :: LATS
 
       character(len=:), allocatable :: GRIDNAME
       character(len=4)           :: imchar
@@ -281,9 +281,10 @@ contains
 
       ! Grid info
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
-      call MAPL_GridGet(grid, localCellCountPerDim=dims_, _RC)
-      IM = dims_(1); JM = dims_(2)
-      call MAPL_GridGetCoords(grid, longitudes=lons, latitudes=lats, _RC)
+      call MAPL_GridGet(grid, im=IM, jm=JM, latitudes=lats, _RC)
+      ! call MAPL_GridGet(grid, localCellCountPerDim=dims_, _RC)
+      ! IM = dims_(1); JM = dims_(2)
+      ! call MAPL_GridGetCoords(grid, longitudes=lons, latitudes=lats, _RC)
 
       ! Get grid name to determine IMSIZE
       call MAPL_GridCompGetResource(gc, 'AGCM.GRIDNAME', GRIDNAME, _RC)
@@ -386,7 +387,7 @@ contains
               NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
               NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
               1000.0, .TRUE., NCAR_ET_TAUBGND, NCAR_ET_USELATS, NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
-              IM*JM_thread, real(LATS(:,bounds(thread+1)%min:bounds(thread+1)%max)))
+              IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
       end do
 
       ! Orographic Scheme
@@ -454,13 +455,13 @@ contains
       type (ESMF_Alarm       )            :: ALARM
       type (ESMF_Grid        )            :: GRID
 
-      integer                             :: IM, JM, LM, dims_(3)
+      integer                             :: IM, JM, LM !, dims_(3)
       !integer                             :: pgwv
       real                                :: tcrib
       !real                                :: effgworo, effgwbkg
       !real                                :: CDMBGWD1, CDMBGWD2
       !real                                :: bgstressmax
-      real(kind=ESMF_KIND_R8), pointer, dimension(:,:) :: LATS, lons
+      real, pointer, dimension(:,:)       :: LATS
       ! Rayleigh friction parameters
 
       REAL                                :: H0, HH, Z1, TAU1
@@ -498,9 +499,10 @@ contains
 
       ! Grid info
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
-      call MAPL_GridGet(grid, localCellCountPerDim=dims_, _RC)
-      IM = dims_(1); JM = dims_(2)
-      call MAPL_GridGetCoords(grid, longitudes=lons, latitudes=lats, _RC)
+      call MAPL_GridGet(grid, im=IM, jm=JM, latitudes=lats, _RC)
+      ! call MAPL_GridGet(grid, localCellCountPerDim=dims_, _RC)
+      ! IM = dims_(1); JM = dims_(2)
+      ! call MAPL_GridGetCoords(grid, longitudes=lons, latitudes=lats, _RC)
 
       ! call ESMF_ClockGetAlarm(clock, 
 
@@ -595,7 +597,7 @@ contains
 #include "GWD_GetPointer___.h"
 
          CALL PREGEO(IM*JM,   LM,   &
-              PLE, real(LATS),   PMID,  PDEL, RPDEL,     PILN,     PMLN)
+              PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
 
          ! Compute ZM
          !-------------
@@ -679,7 +681,7 @@ contains
                  HT_dc,                 DQCDT_LS,                        &
                  SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
-                 PMID,      PDEL,       RPDEL,      PILN,   ZM,    real(LATS), &
+                 PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
                  PHIS,                                                   &
                  DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
                  DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
@@ -707,7 +709,7 @@ contains
             call gw_intr   (IM*JM,      LM,         DT,                  &
                  self%GEOS_PGWV,                                              &
                  PLE,       T,          U,          V,      SGH,   PREF, &
-                 PMID,      PDEL,       RPDEL,      PILN,   ZM,    real(LATS), &
+                 PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
                  DUDT_GWD_GEOS,  DVDT_GWD_GEOS,   DTDT_GWD_GEOS,         &
                  DUDT_ORG_GEOS,  DVDT_ORG_GEOS,   DTDT_ORG_GEOS,         &
                  TAUXO_TMP_GEOS, TAUYO_TMP_GEOS,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
@@ -1133,12 +1135,12 @@ contains
       real, allocatable :: area_global(:,:)
       real, allocatable :: avar_global(:,:)
       real :: rng(3)
-      integer :: DIMS(3), STATUS, rc
+      integer :: DIMS(3), IM, JM, STATUS, rc
 
-      call MAPL_GridGet(GRID, localCellCountPerDim=DIMS, _RC)
+      call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC); DIMS(1:2) = [IM, JM]
       allocate (      locArr(DIMS(1),DIMS(2)) )
 
-      call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, _RC)
+      call MAPL2_GridGet(GRID, globalCellCountPerDim=DIMS, _RC)
       allocate (      glbArr(DIMS(1),DIMS(2)) )
       allocate ( area_global(DIMS(1),DIMS(2)) )
       allocate ( avar_global(DIMS(1),DIMS(2)) )
