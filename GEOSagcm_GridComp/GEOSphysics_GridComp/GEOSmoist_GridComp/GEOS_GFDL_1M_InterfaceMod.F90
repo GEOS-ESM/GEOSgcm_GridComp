@@ -230,9 +230,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     real                     :: DBZ_DT
     type(ESMF_Calendar)      :: calendar
-    type(ESMF_Time)          :: currentTime
     type(ESMF_Alarm)         :: DBZ_RunAlarm
-    type(ESMF_Time)          :: ringTime
     type(ESMF_TimeInterval)  :: ringInterval
     integer                  :: year, month, day, hh, mm, ss
 
@@ -240,17 +238,13 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
-    DBZ_DT = max(DT_MOIST,900.0)
+    DBZ_DT = max(DT_MOIST,300.0)
     call MAPL_GetResource(MAPL, DBZ_DT, 'DBZ_DT:', default=DBZ_DT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_ClockGet(CLOCK, calendar=calendar, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalSet(ringInterval, S=nint(DBZ_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
     DBZ_RunAlarm = ESMF_AlarmCreate(Clock       = CLOCK,        &
                                    Name         = 'DBZ_RunAlarm',&
                                    RingInterval = ringInterval, &
-                                   RingTime     = currentTime,  &
-                                   Enabled      = .true.   ,    &
                                    Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
@@ -311,8 +305,8 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 3000.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    2.0, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, GFDL_MP_PLID    , 'GFDL_MP_PLID:'    , DEFAULT= 1.0     , RC=STATUS); VERIFY_(STATUS)
 
@@ -916,43 +910,36 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         NACTR = 1.e8*QRAIN**0.8   
 
 
-        call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D) .OR. &
-            associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
+        call ESMF_ClockGetAlarm(clock, 'DBZ_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
+        alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+        if (alarm_is_ringing) then
+           call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
 
-            call ESMF_ClockGetAlarm(clock, 'DBZ_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
-            alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
-            if (alarm_is_ringing) then
-               call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
-               call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
-              ! CALCDBZ is 10x cheaper    
-               TMP3D = 0.0
-               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
-               if (associated(PTR3D)) PTR3D = TMP3D 
-               call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
-!              call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")
-!             ! calc_refl10cm is expensive, do not call every time
-!              rand1 = 0.0
+           call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
+           if (associated(PTR3D) .OR. &
+               associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
+!              call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
+!             ! CALCDBZ is 10x cheaper    
 !              TMP3D = 0.0
-!              DO J=1,JM ; DO I=1,IM
-!                rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
-!                rand1= max( rand1/1000000., 1e-6 )
-!                call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
-!                   T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
-!              END DO ; END DO
-!              if (associated(PTR3D)) PTR3D = TMP3D
-!              call MAPL_TimerOff(MAPL,"---CLD_REFL10CM")
-            else
-               call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
-              ! CALCDBZ is 10x cheaper
+!              call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
+!              if (associated(PTR3D)) PTR3D = TMP3D 
+!              call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
+               call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")
+              ! calc_refl10cm is expensive, do not call every time
+               rand1 = 0.0
                TMP3D = 0.0
-               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
+               DO J=1,JM ; DO I=1,IM
+                 rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
+                 rand1= max( rand1/1000000., 1e-6 )
+                 call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
+               END DO ; END DO
                if (associated(PTR3D)) PTR3D = TMP3D
-               call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
+               call MAPL_TimerOff(MAPL,"---CLD_REFL10CM")
             end if
 
             if (associated(DBZ_MAX)) then
@@ -991,6 +978,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   END DO
                END DO ; END DO
             endif
+
         endif
 
         call MAPL_GetPointer(EXPORT, DBZ_MAX_R , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)

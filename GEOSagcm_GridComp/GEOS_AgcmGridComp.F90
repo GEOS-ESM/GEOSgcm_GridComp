@@ -2578,9 +2578,9 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     call DO_UPDATE_PHY ('DPEDT')
     call DO_UPDATE_PHY ('DTDT' )
 
-    call MAPL_TimerOn (STATE,"AGCM_BARRIER"  )
-    call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
-    call MAPL_TimerOff(STATE,"AGCM_BARRIER"  )
+  ! call MAPL_TimerOn (STATE,"AGCM_BARRIER"  )
+  ! call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
+  ! call MAPL_TimerOff(STATE,"AGCM_BARRIER"  )
 
 ! Run RUN2 of SuperDynamics (ADD_INCS) to add Physics Diabatic Tendencies
 !------------------------------------------------------------------------
