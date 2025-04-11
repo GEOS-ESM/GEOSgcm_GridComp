@@ -104,7 +104,9 @@ MODULE Aer_Actv_Single_Moment
                   aci_ptr_2d = FRLAND
               end if
      
+              do k=LM,1,-1
               ACTIVATION_PROPERTIES: do n = 1, n_modes
+                 call ESMF_AttributeSet(aero_aci, name='at_level', value=k, __RC__)
                  call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
                ! call WRITE_PARALLEL (trim(aero_aci_modes(n)))  
                   
@@ -116,39 +118,39 @@ MODULE Aer_Actv_Single_Moment
                  ! copy out aerosol activation properties
                  call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%num = aci_ptr_3d
+                 AeroPropsNew(n)%num(:,:,k) = aci_ptr_3d(:,:,k)
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%dpg = aci_ptr_3d
+                 AeroPropsNew(n)%dpg(:,:,k) = aci_ptr_3d(:,:,k)
                ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%dpg(1,1,1)
 
                  call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%sig = aci_ptr_3d
+                 AeroPropsNew(n)%sig(:,:,k) = aci_ptr_3d(:,:,k)
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%kap = aci_ptr_3d
+                 AeroPropsNew(n)%kap(:,:,k) = aci_ptr_3d(:,:,k)
                ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%kap(1,1,1)
 
                  if (need_extra_fields) then
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%den = aci_ptr_3d
+                 AeroPropsNew(n)%den(:,:,k) = aci_ptr_3d(:,:,k)
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%fdust = aci_ptr_3d
+                 AeroPropsNew(n)%fdust(:,:,k) = aci_ptr_3d(:,:,k)
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%fsoot = aci_ptr_3d
+                 AeroPropsNew(n)%fsoot(:,:,k) = aci_ptr_3d(:,:,k)
 
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%forg = aci_ptr_3d
+                 AeroPropsNew(n)%forg(:,:,k) = aci_ptr_3d(:,:,k)
 
                  endif
 
@@ -176,7 +178,6 @@ MODULE Aer_Actv_Single_Moment
               deallocate(aero_aci_modes, __STAT__)
 
       !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
-      DO k=LM,1,-1
        DO j=1,JM
         DO i=1,IM
               
@@ -228,8 +229,9 @@ MODULE Aer_Actv_Single_Moment
             NACTI(i,j,k) = (ai*(max(0.0,(MAPL_TICE-tk))**bi)) * (numbinit**(ci*max((MAPL_TICE-tk),0.0)+di)) !#/m3
             NACTI(i,j,k) = MAX(MIN(NACTI(i,j,k),NN_MAX),NN_MIN)
 
-        ENDDO;ENDDO;ENDDO
-
+        ENDDO;ENDDO
+        ENDDO
+        call ESMF_AttributeRemove(aero_aci, name='at_level', __RC__)
 
         deallocate(   rg, __STAT__)
         deallocate(   ni, __STAT__)
