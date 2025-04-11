@@ -8,6 +8,7 @@ import os
 import glob
 
 def get_i_j_pf(til_file):
+""" This is just for cubed-sphere text tile."""
    ii   = []
    jj   = []
    pfaf = []
@@ -17,7 +18,7 @@ def get_i_j_pf(til_file):
           if data[0] == '100' :
              ii.append(int(data[4]))
              jj.append(int(data[5]))
-             pfaf.append(int(data[7]))
+             pfaf.append(int(data[8]))
    return ii, jj, pfaf
 
 def create_reduced_nc4(input_file, output_file, indices):
