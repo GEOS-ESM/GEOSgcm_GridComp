@@ -82,6 +82,7 @@ def compute_thermodynamic_variables(
     ssu0: FloatField,
     ssv0: FloatField,
     tscaleh: FloatFieldIJ,
+    fer_out: FloatField,
     test_var2D: FloatFieldIJ,
     test_var3D: FloatField,
 ):
@@ -351,6 +352,24 @@ def compute_thv0_thvl0(
     sten: FloatField,
     slten: FloatField,
     qiten: FloatField,
+    qv0_o: FloatField,
+    ql0_o: FloatField,
+    qi0_o: FloatField,
+    t0_o: FloatField,
+    s0_o: FloatField,
+    u0_o: FloatField,
+    v0_o: FloatField,
+    qt0_o: FloatField,
+    thl0_o: FloatField,
+    thvl0_o: FloatField,
+    ssthl0_o: FloatField,
+    ssqt0_o: FloatField,
+    thv0bot_o: FloatField,
+    thv0top_o: FloatField,
+    thvl0bot_o: FloatField,
+    thvl0top_o: FloatField,
+    ssu0_o: FloatField,
+    ssv0_o: FloatField,
     test_var2D: FloatFieldIJ,
     test_var3D: FloatField,
 ):
@@ -577,9 +596,19 @@ def find_pbl_height(
     vflx_out: FloatField,
     kinv: IntField,
     cush: FloatFieldIJ,
+    tscaleh: FloatFieldIJ,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
 ):
+    with computation(FORWARD), interval(...):
+        if iteration != i32(1):
+            test_var3D = 0.0
+            test_var2D = 0.0
+
+        if id_exit == False:
+            if iteration != i32(1):
+                tscaleh = cush
+
     with computation(FORWARD), interval(...):
         if id_exit == False:
             """
@@ -612,13 +641,12 @@ def find_pbl_height(
             fication of 'kinv' for general case including SBCL, I imposed an offset
             of 5 [m] in the below 'kinv' finding block.
             """
+
             # Invert kpbl index
             if kpbl_in > i64(k0 / 2):
                 kinv = k0 - kpbl_in + 1
             else:
                 kinv = 5
-
-            test_var3D = iteration
 
             if kinv <= i64(1):
                 id_exit = True
@@ -692,6 +720,7 @@ def find_pbl_averages(
     vavg: FloatField,
     thvlavg: FloatField,
     qtavg: FloatField,
+    iteration: i32,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(0, 1):
@@ -1071,9 +1100,9 @@ def compute_cin_cinlcl(
     cin_IJ: FloatFieldIJ,
     cinlcl_IJ: FloatFieldIJ,
     plfc_IJ: FloatFieldIJ,
-    klfc_IJ: FloatFieldIJ,
+    klfc_IJ: IntFieldIJ,
     plfc: FloatField,
-    klfc: FloatField,
+    klfc: IntField,
     cin: FloatField,
     thvubot: FloatField,
     thvutop: FloatField,
@@ -1093,9 +1122,30 @@ def compute_cin_cinlcl(
     cin_i: FloatFieldIJ,
     cinlcl_i: FloatFieldIJ,
     ke: FloatFieldIJ,
+    kinv_o: IntField,
+    klcl_o: IntField,
+    klfc_o: IntField,
+    plcl_o: FloatField,
+    plfc_o: FloatField,
+    tkeavg_o: FloatField,
+    thvlmin_o: FloatField,
+    qtsrc_o: FloatField,
+    thvlsrc_o: FloatField,
+    thlsrc_o: FloatField,
+    usrc_o: FloatField,
+    vsrc_o: FloatField,
+    thv0lcl_o: FloatField,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
 ):
+
+    with computation(FORWARD), interval(...):
+        if iteration != i32(1):
+            stop35 = False
+            cin_IJ = 0.0
+            cinlcl_IJ = 0.0
+            plfc_IJ = 0.0
+            klfc_IJ = 0.0
 
     with computation(FORWARD), interval(1, -1):
         """
@@ -1124,11 +1174,10 @@ def compute_cin_cinlcl(
         """
         Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' )
         """
+        cin = 0.0
+        cinlcl = 0.0
+        plfc = 0.0
         if id_exit == False and klcl >= kinv - 1 and stop35 == False:
-            cin = 0.0
-            cinlcl = 0.0
-            plfc = 0.0
-
             if stop35 == False and THIS_K >= kinv - 1 and THIS_K < klcl:
                 thvubot = thvlsrc
                 thvutop = thvlsrc
@@ -1277,9 +1326,9 @@ def compute_cin_cinlcl(
         Case 2. LCL height is lower than PBL interface ( 'pLCL > ps0(kinv-1)')
         """
         if id_exit == False and klcl < kinv - 1 and stop35 == False:
-            cin = 0.0
-            cinlcl = 0.0
-            plfc = 0.0
+            # cin = 0.0
+            # cinlcl = 0.0
+            # plfc = 0.0
 
             if stop35 == False and THIS_K >= kinv - 1:
                 (
@@ -1297,7 +1346,7 @@ def compute_cin_cinlcl(
                     esx,
                 )
 
-                if id_check == 1:
+                if id_check == 1 and stop35 == False:
                     id_exit = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
@@ -1320,7 +1369,7 @@ def compute_cin_cinlcl(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if id_exit == False:
+                if id_exit == False and stop35 == False:
                     thvubot = thj * (1.0 + zvir * qvj - qlj - qij)
                     (
                         thj,
@@ -1337,7 +1386,7 @@ def compute_cin_cinlcl(
                         esx,
                     )
 
-                if id_check == 1:
+                if id_check == 1 and stop35 == False:
                     id_exit = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
@@ -1360,7 +1409,7 @@ def compute_cin_cinlcl(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if id_exit == False:
+                if id_exit == False and stop35 == False:
                     thvutop = thj * (1.0 + zvir * qvj - qlj - qij)
 
                     plfc, cin = getbuoy(
@@ -1422,7 +1471,8 @@ def compute_cin_cinlcl(
             calculated 'cin' and 'cinlcl', and other related variables. These will
             be restored after calculating implicit CIN.
             """
-            if iteration == 1:
+
+            if iteration == i32(1):
                 cin_i = cin_IJ
                 cinlcl_i = cinlcl_IJ
                 ke = rbuoy / (rkfre * tkeavg + epsvarw)
@@ -1450,6 +1500,7 @@ def compute_cin_cinlcl(
 
 def avg_initial_and_final_cin(
     id_exit: BoolFieldIJ,
+    iteration: i32,
     cin_IJ: FloatFieldIJ,
     cinlcl_IJ: FloatFieldIJ,
     use_CINcin: i32,
@@ -1464,213 +1515,334 @@ def avg_initial_and_final_cin(
     tr0_o: FloatField_NTracers,
     sstr0: FloatField_NTracers,
     sstr0_o: FloatField_NTracers,
+    kinv_o: IntField,
+    klcl_o: IntField,
+    klfc_o: IntField,
+    plcl_o: FloatField,
+    plfc_o: FloatField,
+    tkeavg_o: FloatField,
+    thvlmin_o: FloatField,
+    qtsrc_o: FloatField,
+    thvlsrc_o: FloatField,
+    thlsrc_o: FloatField,
+    usrc_o: FloatField,
+    vsrc_o: FloatField,
+    thv0lcl_o: FloatField,
+    qv0_o: FloatField,
+    ql0_o: FloatField,
+    qi0_o: FloatField,
+    t0_o: FloatField,
+    s0_o: FloatField,
+    u0_o: FloatField,
+    v0_o: FloatField,
+    qt0_o: FloatField,
+    thl0_o: FloatField,
+    thvl0_o: FloatField,
+    ssthl0_o: FloatField,
+    ssqt0_o: FloatField,
+    thv0bot_o: FloatField,
+    thv0top_o: FloatField,
+    thvl0bot_o: FloatField,
+    thvl0top_o: FloatField,
+    ssu0_o: FloatField,
+    ssv0_o: FloatField,
+    thvlmin_IJ: FloatFieldIJ,
+    umf_zint: FloatField,
+    emf: FloatField,
+    slflx: FloatField,
+    qtflx: FloatField,
+    uflx: FloatField,
+    vflx: FloatField,
+    k0: Int,
+    ufrc: FloatField,
+    thlu: FloatField,
+    qtu: FloatField,
+    uu: FloatField,
+    vu: FloatField,
+    wu: FloatField,
+    thvu: FloatField,
+    thlu_emf: FloatField,
+    qtu_emf: FloatField,
+    uu_emf: FloatField,
+    vu_emf: FloatField,
+    trflx: FloatField_NTracers,
+    trten: FloatField_NTracers,
+    tru: FloatField_NTracers,
+    tru_emf: FloatField_NTracers,
+    umf_s: FloatField,
+    zifc0: FloatField,
+    dcm_s: FloatField,
+    qvten_s: FloatField,
+    qlten_s: FloatField,
+    qiten_s: FloatField,
+    sten_s: FloatField,
+    uten_s: FloatField,
+    vten_s: FloatField,
+    qrten_s: FloatField,
+    qsten_s: FloatField,
+    qldet_s: FloatField,
+    qidet_s: FloatField,
+    qlsub_s: FloatField,
+    qisub_s: FloatField,
+    cush_s: FloatField,
+    cufrc_s: FloatField,
+    qtflx_out: FloatField,
+    qtflx_s: FloatField,
+    slflx_out: FloatField,
+    slflx_s: FloatField,
+    uflx_out: FloatField,
+    uflx_s: FloatField,
+    vflx_out: FloatField,
+    vflx_s: FloatField,
+    fer_s: FloatField,
+    fdr_s: FloatField,
+    umf_out: FloatField,
+    kinv: IntField,
+    klcl: IntField,
+    plcl: FloatField,
+    thv0bot: FloatField,
+    thv0lcl: FloatField,
+    thv0top: FloatField,
+    thlsrc: FloatField,
+    qtsrc: FloatField,
+    thl0: FloatField,
+    ssthl0: FloatField,
+    ssqt0: FloatField,
+    ssu0: FloatField,
+    ssv0: FloatField,
+    qt0: FloatField,
+    u0: FloatField,
+    v0: FloatField,
+    qi0: FloatField,
+    ql0: FloatField,
+    qv0: FloatField,
+    s0: FloatField,
+    qvten_out: FloatField,
+    dcm_out: FloatField,
+    qlten_out: FloatField,
+    qiten_out: FloatField,
+    test_var3D: FloatField,
+    test_var2D: FloatFieldIJ,
     # Add more inputs/outputs
 ):
+
+    with computation(FORWARD), interval(1, None):
+        if iteration == i32(2):
+            if id_exit == False:
+                if thvlmin_o == 0.0 and thvlmin_o[0, 0, -1] != 0.0:
+                    thvlmin_IJ = thvlmin_o[0, 0, -1]
+
     with computation(FORWARD), interval(...):
-        if id_exit == False:
-            """
-            Calculate implicit 'cin' by averaging initial and final cins.    Note that
-            implicit CIN is adopted only when cumulus convection stabilized the system,
-            i.e., only when 'del_CIN >0'. If 'del_CIN<=0', just use explicit CIN. Note
-            also that since 'cinlcl' is set to zero whenever LCL is below the PBL top,
-            (see above CIN calculation part), the use of 'implicit CIN=cinlcl'  is not
-            good. Thus, when using implicit CIN, always try to only use 'implicit CIN=
-            cin', not 'implicit CIN=cinlcl'. However, both 'CIN=cin' and 'CIN=cinlcl'
-            are good when using explicit CIN.
-            """
+        if iteration == i32(2):
+            if id_exit == False:
+                cin_f = cin_IJ
+                cinlcl_f = cinlcl_IJ
 
-            cin_f = cin_IJ
-            cinlcl_f = cinlcl_IJ
-            if use_CINcin == 1:
-                del_CIN = cin_f - cin_i
-            else:
-                del_CIN = cinlcl_f - cinlcl_i
-
-            if del_CIN > 0.0:
-                """
-                Calculate implicit 'cin' and 'cinlcl'. Note that when we chose
-                to use 'implicit CIN = cin', choose 'cinlcl = cinlcl_i' below:
-                because iterative CIN only aims to obtain implicit CIN,  once
-                we obtained 'implicit CIN=cin', it is good to use the original
-                profiles information for all the other variables after that.
-                Note 'cinlcl' will be explicitly used in calculating  'wlcl' &
-                'ufrclcl' after calculating 'winv' & 'ufrcinv'  at the PBL top
-                interface later, after calculating 'cbmf'.
-                """
-                alpha = compute_alpha(del_CIN, ke)
-                cin = cin_i + alpha * del_CIN
                 if use_CINcin == 1:
-                    cinlcl = cinlcl_i
+                    del_CIN = cin_f - cin_i
+                else:
+                    del_CIN = cinlcl_f - cinlcl_i
 
-            #     """
-            #     Restore the original values from the previous 'iter_cin' step (1)
-            #     to compute correct tendencies for (n+1) time step by implicit CIN
-            #     """
+    with computation(FORWARD), interval(...):
+        if iteration == i32(2):
+            if id_exit == False:
+                """
+                Calculate implicit 'cin' by averaging initial and final cins.    Note that
+                implicit CIN is adopted only when cumulus convection stabilized the system,
+                i.e., only when 'del_CIN >0'. If 'del_CIN<=0', just use explicit CIN. Note
+                also that since 'cinlcl' is set to zero whenever LCL is below the PBL top,
+                (see above CIN calculation part), the use of 'implicit CIN=cinlcl'  is not
+                good. Thus, when using implicit CIN, always try to only use 'implicit CIN=
+                cin', not 'implicit CIN=cinlcl'. However, both 'CIN=cin' and 'CIN=cinlcl'
+                are good when using explicit CIN.
+                """
 
-            #     kinv = kinv_o
-            #     klcl = klcl_o
-            #     klfc = klfc_o
-            #     plcl = plcl_o
-            #     plfc = plfc_o
-            #     tkeavg = tkeavg_o
-            #     thvlmin = thvlmin_o
-            #     qtsrc = qtsrc_o
-            #     thvlsrc = thvlsrc_o
-            #     thlsrc = thlsrc_o
-            #     usrc = usrc_o
-            #     vsrc = vsrc_o
-            #     thv0lcl = thv0lcl_o
+                if del_CIN > 0.0:
+                    """
+                    Calculate implicit 'cin' and 'cinlcl'. Note that when we chose
+                    to use 'implicit CIN = cin', choose 'cinlcl = cinlcl_i' below:
+                    because iterative CIN only aims to obtain implicit CIN,  once
+                    we obtained 'implicit CIN=cin', it is good to use the original
+                    profiles information for all the other variables after that.
+                    Note 'cinlcl' will be explicitly used in calculating  'wlcl' &
+                    'ufrclcl' after calculating 'winv' & 'ufrcinv'  at the PBL top
+                    interface later, after calculating 'cbmf'.
+                    """
+                    alpha = compute_alpha(del_CIN, ke)
+                    cin_IJ = cin_i + alpha * del_CIN
+                    if use_CINcin == 1:
+                        cinlcl_IJ = cinlcl_i
 
-            #     # REVISIT THIS!! Check shape of trsrc
-            #     if dotransport == 1.0:
-            #         n = 0
-            #         while n < ncnst:
-            #             trsrc[0, 0, 0][n] = trsrc_o[0, 0, 0][n]
-            #             n += 1
+                    #     """
+                    #     Restore the original values from the previous 'iter_cin' step (1)
+                    #     to compute correct tendencies for (n+1) time step by implicit CIN
+                    #     """
 
-            #     qv0 = qv0_o
-            #     ql0 = ql0_o
-            #     qi0 = qi0_o
-            #     t0 = t0_o
-            #     s0 = s0_o
-            #     u0 = u0_o
-            #     v0 = v0_o
-            #     qt0 = qt0_o
-            #     thl0 = thl0_o
-            #     thvl0 = thvl0_o
-            #     ssthl0 = ssthl0_o
-            #     ssqt0 = ssqt0_o
-            #     thv0bot = thv0bot_o
-            #     thv0top = thv0top_o
-            #     thvl0bot = thvl0bot_o
-            #     thvl0top = thvl0top_o
-            #     ssu0 = ssu0_o
-            #     ssv0 = ssv0_o
+                    kinv = kinv_o
+                    klcl = klcl_o
+                    klfc = klfc_o
+                    plcl = plcl_o
+                    plfc = plfc_o
+                    tkeavg = tkeavg_o
+                    thvlmin = thvlmin_IJ
+                    qtsrc = qtsrc_o
+                    thvlsrc = thvlsrc_o
+                    thlsrc = thlsrc_o
+                    usrc = usrc_o
+                    vsrc = vsrc_o
+                    thv0lcl = thv0lcl_o
 
-            #     if dotransport == 1.0:
-            #         n = 0
-            #         while n < ncnst:
-            #             tr0[0, 0, 0][n] = tr0_o[0, 0, 0][n]
-            #             sstr0[0, 0, 0][n] = sstr0_o[0, 0, 0][n]
-            #             n += 1
+                    # REVISIT THIS!! Check shape of trsrc
+                    if dotransport == 1.0:
+                        n = 0
+                        while n < ncnst:
+                            trsrc[0, 0, 0][n] = trsrc_o[0, 0, 0][n]
+                            n += 1
 
-            #     """
-            #     Initialize all fluxes, tendencies, and other variables
-            #     in association with cumulus convection.
-            #     """
+                    qv0 = qv0_o
+                    ql0 = ql0_o
+                    qi0 = qi0_o
+                    t0 = t0_o
+                    s0 = s0_o
+                    u0 = u0_o
+                    v0 = v0_o
+                    qt0 = qt0_o
+                    thl0 = thl0_o
+                    thvl0 = thvl0_o
+                    ssthl0 = ssthl0_o
+                    ssqt0 = ssqt0_o
+                    thv0bot = thv0bot_o
+                    thv0top = thv0top_o
+                    thvl0bot = thvl0bot_o
+                    thvl0top = thvl0top_o
+                    ssu0 = ssu0_o
+                    ssv0 = ssv0_o
 
-            #     umf_zint[0, 0, 1] = 0.0
-            #     dcm = 0.0
-            #     emf[0, 0, 1] = 0.0
-            #     slflx[0, 0, 1] = 0.0
-            #     qtflx[0, 0, 1] = 0.0
-            #     uflx[0, 0, 1] = 0.0
-            #     vflx[0, 0, 1] = 0.0
-            #     qvten = 0.0
-            #     qlten = 0.0
-            #     qiten = 0.0
-            #     sten = 0.0
-            #     uten = 0.0
-            #     vten = 0.0
-            #     qrten = 0.0
-            #     qsten = 0.0
-            #     dwten = 0.0
-            #     diten = 0.0
-            #     cufrc = 0.0
-            #     qcu = 0.0
-            #     qlu = 0.0
-            #     qiu = 0.0
-            #     fer = 0.0
-            #     fdr = 0.0
-            #     xco = 0.0
-            #     qc = 0.0
-            #     # qldet        = 0.0
-            #     # qidet        = 0.0
-            #     qlten_sub = 0.0
-            #     qiten_sub = 0.0
-            #     qc_l = 0.0
-            #     qc_i = 0.0
-            #     cbmf = 0.0
-            #     cnt = k0
-            #     cnb = 0.0
-            #     qtten = 0.0
-            #     slten = 0.0
-            #     ufrc[0, 0, 1] = 0.0
+                    if dotransport == 1.0:
+                        n = 0
+                        while n < ncnst:
+                            tr0[0, 0, 0][n] = tr0_o[0, 0, 0][n]
+                            sstr0[0, 0, 0][n] = sstr0_o[0, 0, 0][n]
+                            n += 1
 
-            #     thlu[0, 0, 1] = constants.MAPL_UNDEF
-            #     qtu[0, 0, 1] = constants.MAPL_UNDEF
-            #     uu[0, 0, 1] = constants.MAPL_UNDEF
-            #     vu[0, 0, 1] = constants.MAPL_UNDEF
-            #     wu[0, 0, 1] = constants.MAPL_UNDEF
-            #     thvu[0, 0, 1] = constants.MAPL_UNDEF
-            #     thlu_emf[0, 0, 1] = constants.MAPL_UNDEF
-            #     qtu_emf[0, 0, 1] = constants.MAPL_UNDEF
-            #     uu_emf[0, 0, 1] = constants.MAPL_UNDEF
-            #     vu_emf[0, 0, 1] = constants.MAPL_UNDEF
+                    #     """
+                    #     Initialize all fluxes, tendencies, and other variables
+                    #     in association with cumulus convection.
+                    #     """
 
-            #     if dotransport == 1.0:
-            #         n = 0
-            #         while n < ncnst:
-            #             trflx[0, 0, 1][n] = 0.0
-            #             trten[0, 0, 0][n] = 0.0
-            #             tru[0, 0, 1][n] = 0.0
-            #             tru_emf[0, 0, 1][n] = 0.0
-            #             n += 1
+                    umf_zint[0, 0, 1] = 0.0
+                    dcm = 0.0
+                    emf[0, 0, 1] = 0.0
+                    slflx[0, 0, 1] = 0.0
+                    qtflx[0, 0, 1] = 0.0
+                    uflx[0, 0, 1] = 0.0
+                    vflx[0, 0, 1] = 0.0
+                    qvten = 0.0
+                    qlten = 0.0
+                    qiten = 0.0
+                    sten = 0.0
+                    uten = 0.0
+                    vten = 0.0
+                    qrten = 0.0
+                    qsten = 0.0
+                    dwten = 0.0
+                    diten = 0.0
+                    cufrc = 0.0
+                    qcu = 0.0
+                    qlu = 0.0
+                    qiu = 0.0
+                    fer = 0.0
+                    fdr = 0.0
+                    xco = 0.0
+                    qc = 0.0
+                    # qldet        = 0.0
+                    # qidet        = 0.0
+                    qlten_sub = 0.0
+                    qiten_sub = 0.0
+                    qc_l = 0.0
+                    qc_i = 0.0
+                    cbmf = 0.0
+                    cnt = k0
+                    cnb = 0.0
+                    qtten = 0.0
+                    slten = 0.0
+                    ufrc[0, 0, 1] = 0.0
 
-            #     # Below are diagnostic output variables for detailed
-            #     # analysis of cumulus scheme.
-            #     ufrcinvbase = 0.0
-            #     ufrclcl = 0.0
-            #     winvbase = 0.0
-            #     wlcl = 0.0
-            #     emfkbup = 0.0
-            #     cbmflimit = 0.0
+                    thlu[0, 0, 1] = constants.MAPL_UNDEF
+                    qtu[0, 0, 1] = constants.MAPL_UNDEF
+                    uu[0, 0, 1] = constants.MAPL_UNDEF
+                    vu[0, 0, 1] = constants.MAPL_UNDEF
+                    wu[0, 0, 1] = constants.MAPL_UNDEF
+                    thvu[0, 0, 1] = constants.MAPL_UNDEF
+                    thlu_emf[0, 0, 1] = constants.MAPL_UNDEF
+                    qtu_emf[0, 0, 1] = constants.MAPL_UNDEF
+                    uu_emf[0, 0, 1] = constants.MAPL_UNDEF
+                    vu_emf[0, 0, 1] = constants.MAPL_UNDEF
 
-            # else:  # When 'del_CIN < 0', use explicit CIN instead of implicit CIN.
+                    if dotransport == 1.0:
+                        n = 0
+                        while n < ncnst:
+                            trflx[0, 0, 1][n] = 0.0
+                            trten[0, 0, 0][n] = 0.0
+                            tru[0, 0, 1][n] = 0.0
+                            tru_emf[0, 0, 1][n] = 0.0
+                            n += 1
 
-            #     # Identifier showing whether explicit or implicit CIN is used
-            #     ind_delcin = 1.0
+                    # Below are diagnostic output variables for detailed
+                    # analysis of cumulus scheme.
+                    ufrcinvbase = 0.0
+                    ufrclcl = 0.0
+                    winvbase = 0.0
+                    wlcl = 0.0
+                    emfkbup = 0.0
+                    cbmflimit = 0.0
 
-            #     """
-            #     Restore original output values of "iter_cin = 1" and exit
-            #     """
+                else:  # When 'del_CIN < 0', use explicit CIN instead of implicit CIN.
 
-            #     umf_out[0, 0, 1] = umf_s[0, 0, 1]
-            #     if THIS_K >= 0 and THIS_K <= (kinv - 1):
-            #         kbelow = kinv - 1
-            #         umf_out = umf_s.at(K=kbelow) * zifc0 / zifc0.at(K=kbelow)
+                    # Identifier showing whether explicit or implicit CIN is used
+                    ind_delcin = 1.0
 
-            #     dcm_out = dcm_s
-            #     qvten_out = qvten_s
-            #     qlten_out = qlten_s
-            #     qiten_out = qiten_s
-            #     sten_out = sten_s
-            #     uten_out = uten_s
-            #     vten_out = vten_s
-            #     qrten_out = qrten_s
-            #     qsten_out = qsten_s
-            #     qldet_out = qldet_s
-            #     qidet_out = qidet_s
-            #     qlsub_out = qlsub_s
-            #     qisub_out = qisub_s
-            #     cush_inout = cush_s
-            #     cufrc_out = cufrc_s
-            #     qtflx_out[0, 0, 1] = qtflx_s[0, 0, 1]
-            #     slflx_out[0, 0, 1] = slflx_s[0, 0, 1]
-            #     uflx_out[0, 0, 1] = uflx_s[0, 0, 1]
-            #     vflx_out[0, 0, 1] = vflx_s[0, 0, 1]
+                    """
+                    Restore original output values of "iter_cin = 1" and exit
+                    """
 
-            #     # Below are diagnostic output variables for detailed analysis of cumulus scheme.
-            #     # The order of vertical index is reversed for this internal diagnostic output.
-            #     fer_out = fer_s
-            #     fdr_out = fdr_s
+                    umf_out[0, 0, 1] = umf_s[0, 0, 1]
+                    if THIS_K >= 0 and THIS_K <= (kinv - 1):
+                        umf_out = umf_s.at(K=kinv - 1) * zifc0 / zifc0.at(K=kinv - 1)
 
-            #     id_exit = False
-            #     # go to 333
+                    dcm_out = dcm_s
+                    qvten_out = qvten_s
+                    qlten_out = qlten_s
+                    qiten_out = qiten_s
+                    sten_out = sten_s
+                    uten_out = uten_s
+                    vten_out = vten_s
+                    qrten_out = qrten_s
+                    qsten_out = qsten_s
+                    qldet_out = qldet_s
+                    qidet_out = qidet_s
+                    qlsub_out = qlsub_s
+                    qisub_out = qisub_s
+                    cush_inout = cush_s
+                    cufrc_out = cufrc_s
+                    qtflx_out[0, 0, 1] = qtflx_s[0, 0, 1]
+                    slflx_out[0, 0, 1] = slflx_s[0, 0, 1]
+                    uflx_out[0, 0, 1] = uflx_s[0, 0, 1]
+                    vflx_out[0, 0, 1] = vflx_s[0, 0, 1]
+
+                    # Below are diagnostic output variables for detailed analysis of cumulus scheme.
+                    # The order of vertical index is reversed for this internal diagnostic output.
+                    fer_out = fer_s
+                    fdr_out = fdr_s
+
+                    id_exit = True
+                    # go to 333
+                    # stop computing at this column
 
 
 def define_prel_krel(
     id_exit: BoolFieldIJ,
+    iteration: i32,
     klcl: IntField,
     kinv: IntField,
     pifc0: FloatField,
@@ -1702,6 +1874,9 @@ def define_prel_krel(
             still have cumulus convection between PBL top height and 'prel':
             we simply assume that no lateral mixing occurs in this range.
             """
+            if iteration != i32(1):
+                kinv = kinv + 1  # Adjust kinv
+
             if klcl < kinv - 1:
                 krel = kinv - 1
                 prel = pifc0.at(K=krel)
@@ -1714,6 +1889,7 @@ def define_prel_krel(
 
 def calc_cumulus_base_mass_flux(
     id_exit: BoolFieldIJ,
+    iteration: i32,
     use_CINcin: i32,
     cin_IJ: FloatFieldIJ,
     rbuoy: Float,
@@ -1738,7 +1914,9 @@ def calc_cumulus_base_mass_flux(
     cbmf: FloatField,
     rho0inv: FloatField,
     ufrcinv: FloatField,
+    wcrit: FloatFieldIJ,
     test_var3D: FloatField,
+    test_var2D: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
         if id_exit == False:
@@ -1869,6 +2047,7 @@ def calc_cumulus_base_mass_flux(
 
 def define_updraft_properties(
     id_exit: BoolFieldIJ,
+    iteration: i32,
     winv: FloatField,
     cinlcl_IJ: FloatFieldIJ,
     rbuoy: Float,
@@ -1911,6 +2090,7 @@ def define_updraft_properties(
             this again in the below block. If 'ufrclcl < 0.1%', just exit.
             """
             wtw = (winv * winv) - (2.0 * cinlcl_IJ * rbuoy)
+
             if wtw <= 0.0:
                 id_exit = True
                 umf_out[0, 0, 1] = 0.0
@@ -1991,6 +2171,7 @@ def define_updraft_properties(
             # Below is just diagnostic output for detailed analysis of cumulus scheme
             ufrcinvbase = ufrcinv
             winvbase = winv
+
             if THIS_K >= (kinv - 2) and THIS_K <= (krel - 1):
                 umf_zint = cbmf
                 wu = winv
@@ -2034,6 +2215,7 @@ def define_updraft_properties(
 
 def define_env_properties(
     id_exit: BoolFieldIJ,
+    iteration: i32,
     krel: IntField,
     kinv: IntField,
     PGFc: Float,
@@ -2084,6 +2266,7 @@ def define_env_properties(
             if krel == kinv - 1:
                 uplus = PGFc * ssu0.at(K=kinv - 1) * (prel - pifc0.at(K=kinv - 1))
                 vplus = PGFc * ssv0.at(K=kinv - 1) * (prel - pifc0.at(K=kinv - 1))
+
             else:
                 if THIS_K >= kinv - 1 and THIS_K <= max(krel - 1, kinv - 1):
                     uplus_3D = uplus + PGFc * ssu0 * (pifc0[0, 0, 1] - pifc0)
@@ -2219,6 +2402,7 @@ def buoyancy_sorting(
     dcm: FloatField,
     xco: FloatField,
     stop45: BoolFieldIJ,
+    iteration: i32,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
 ):
@@ -2322,6 +2506,9 @@ def buoyancy_sorting(
             # second stage. We can increase the number of iterations, 'nter_xc'.as we
             # want, but a sample test indicated that about 3 - 5 iterations  produced
             # satisfactory converent solution. Finally, identify 'kbup' and 'kpen'.
+
+            if iteration != i32(1):
+                stop45 = False
 
     with computation(FORWARD), interval(1, -2):
         if id_exit == False:
@@ -3210,6 +3397,7 @@ def calc_ppen(
                     if xc1 <= 0.0 and xc2 <= 0.0:
                         ppen = max(xc1, xc2)
                         ppen = min(0.0, max(-dp0.at(K=kpen), ppen))
+
                     elif xc1 > 0.0 and xc2 > 0.0:
                         ppen = -1 * dp0.at(K=kpen)
                     else:
@@ -3268,6 +3456,7 @@ def recalc_condensate(
     xco: FloatField,
     cush: FloatFieldIJ,
     test_var3D: FloatField,
+    test_var2D: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
         if id_exit == False:
@@ -3605,6 +3794,7 @@ def calc_entrainment_mass_flux(
                     vu_emf = v0.at(K=kpen) + ssv0.at(K=kpen) * (
                         pifc0[0, 0, 1] - pmid0.at(K=kpen)
                     )
+
                     if dotransport == 1.0:
                         n = 0
                         while n < ncnst:
@@ -4443,6 +4633,7 @@ def penetrative_entrainment_fluxes(
                 thj, qvj, qlj, qij, qse, id_check = conden(
                     pmid0, thl_prog, qt_prog, ese, esx
                 )
+
                 if id_check == 1:
                     id_exit = True
                     umf_out[0, 0, 1] = 0.0
@@ -4802,6 +4993,7 @@ def calc_thermodynamic_tendencies(
                         thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
                             pifc0[0, 0, 1], thlu, qtu, ese, esx
                         )
+
                         if id_check == 1:
                             id_exit = True
                             umf_out[0, 0, 1] = 0.0
@@ -4909,6 +5101,7 @@ def calc_thermodynamic_tendencies(
                         ese,
                         esx,
                     )
+
                     if id_check == 1:
                         id_exit = True
                         umf_out[0, 0, 1] = 0.0
@@ -5048,11 +5241,13 @@ def prevent_negative_condensate(
             ql0_star = ql0_star + dql
             qi0_star = qi0_star + dqi
             qv0_star = qv0_star - dql - dqi
+
             s0_star = (
                 s0_star
                 + constants.MAPL_LATENT_HEAT_VAPORIZATION * dql
                 + constants.MAPL_LATENT_HEAT_SUBLIMATION * dqi
             )
+
             dqv = max(0.0, 1.0 * qmin.at(K=0) - qv0_star)
             qvten = qvten + dqv / dt
             qv0_star = qv0_star + dqv
@@ -5350,6 +5545,7 @@ def calc_cumulus_condensate_at_interface(
                             / constants.MAPL_GRAV
                             * cufrc
                         )
+
                         rlwp = (
                             rlwp
                             + qlu
@@ -5357,6 +5553,7 @@ def calc_cumulus_condensate_at_interface(
                             / constants.MAPL_GRAV
                             * cufrc
                         )
+
                         riwp = (
                             riwp
                             + qiu
@@ -5435,6 +5632,23 @@ def adjust_implicit_CIN_inputs(
     qi0_s: FloatField,
     s0_s: FloatField,
     t0_s: FloatField,
+    dcm_s: FloatField,
+    qvten_s: FloatField,
+    qlten_s: FloatField,
+    qiten_s: FloatField,
+    sten_s: FloatField,
+    uten_s: FloatField,
+    vten_s: FloatField,
+    qrten_s: FloatField,
+    qsten_s: FloatField,
+    qldet_s: FloatField,
+    qidet_s: FloatField,
+    qlsub_s: FloatField,
+    qisub_s: FloatField,
+    cush_s: FloatField,
+    cufrc_s: FloatField,
+    fer_s: FloatField,
+    fdr_s: FloatField,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
@@ -5515,6 +5729,22 @@ def recalc_environmental_variables(
     slflx_out: FloatField,
     uflx_out: FloatField,
     vflx_out: FloatField,
+    thvl0bot: FloatField,
+    thv0bot: FloatField,
+    thvl0top: FloatField,
+    thv0top: FloatField,
+    thl0: FloatField,
+    qt0: FloatField,
+    thvl0: FloatField,
+    ssthl0: FloatField,
+    ssu0: FloatField,
+    ssv0: FloatField,
+    ssqt0: FloatField,
+    qv0: FloatField,
+    ql0: FloatField,
+    qi0: FloatField,
+    s0: FloatField,
+    t0: FloatField,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
@@ -5709,82 +5939,114 @@ def recalc_environmental_variables(
                 # End of iter loop
 
 
-# def update_output_variables(
-#     umf: FloatField,
-#     zifc0: FloatField,
-#     kinv: IntField,
-#     dcm: FloatField,
-#     qvten: FloatField,
-#     qlten: FloatField,
-#     qiten: FloatField,
-#     sten: FloatField,
-#     uten: FloatField,
-#     vten: FloatField,
-#     qrten: FloatField,
-#     qsten: FloatField,
-#     cufrc: FloatField,
-#     cush: FloatFieldIJ,
-#     qlten_det: FloatField,
-#     qiten_det: FloatField,
-#     qlten_sink: FloatField,
-#     qiten_sink: FloatField,
-#     rdrop: Float,
-#     qtflx: FloatField,
-#     slflx: FloatField,
-#     uflx: FloatField,
-#     vflx: FloatField,
-#     dotransport: Float,
-#     tr0_inout: FloatField,
-#     trten: FloatField,
-#     dt: Float,
-#     fer: FloatField,
-#     fdr: FloatField,
-#     kpen: IntField,
-# ):
-#     with computation(FORWARD), interval(...):
-#         if id_exit == False:
-#             umf_out[0, 0, 1] = umf[0, 0, 1]
+def update_output_variables(
+    id_exit: BoolFieldIJ,
+    umf_zint: FloatField,
+    zifc0: FloatField,
+    kinv: IntField,
+    dcm: FloatField,
+    qvten: FloatField,
+    qlten: FloatField,
+    qiten: FloatField,
+    sten: FloatField,
+    uten: FloatField,
+    vten: FloatField,
+    qrten: FloatField,
+    qsten: FloatField,
+    cufrc: FloatField,
+    cush: FloatFieldIJ,
+    qlten_det: FloatField,
+    qiten_det: FloatField,
+    qlten_sink: FloatField,
+    qiten_sink: FloatField,
+    rdrop: Float,
+    qtflx: FloatField,
+    slflx: FloatField,
+    uflx: FloatField,
+    vflx: FloatField,
+    dotransport: Float,
+    trten: FloatField_NTracers,
+    dt: Float,
+    fer: FloatField,
+    fdr: FloatField,
+    kpen: IntField,
+    ncnst: Int,
+    #     # Outputs
+    #     umf_out: FloatField,
+    #     dcm_out: FloatField,
+    #     qvten_out: FloatField,
+    #     qlten_out: FloatField,
+    #     qiten_out: FloatField,
+    #     sten_out: FloatField,
+    #     uten_out: FloatField,
+    #     vten_out: FloatField,
+    #     qrten_out: FloatField,
+    #     qsten_out: FloatField,
+    #     cufrc_out: FloatField,
+    #     cush_inout: FloatFieldIJ,
+    #     qldet_out: FloatField,
+    #     qidet_out: FloatField,
+    #     qlsub_out: FloatField,
+    #     qisub_out: FloatField,
+    #     ndrop_out: FloatField,
+    #     nice_out: FloatField,
+    #     qtflx_out: FloatField,
+    #     slflx_out: FloatField,
+    #     uflx_out: FloatField,
+    #     vflx_out: FloatField,
+    tr0_inout: FloatField_NTracers,
+    fer_out: FloatField,
+    #     fdr_out: FloatField,
+    #     iteration: i32,
+    test_var3D: FloatField,
+):
+    with computation(FORWARD), interval(...):
+        if id_exit == False:
+            umf_out = umf_zint
 
-#             if THIS_K <= kinv - 1:
-#                 umf_out[0, 0, 1] = umf.at(K=kinv - 1) * zifc0 / zifc0.at(K=kinv - 1)
+            if THIS_K <= kinv - 1:
+                umf_out = umf_zint.at(K=kinv) * zifc0 / zifc0.at(K=kinv)
 
-#             dcm_out = dcm
-#             qvten_out = qvten
-#             qlten_out = qlten
-#             qiten_out = qiten
-#             sten_out = sten
-#             uten_out = uten
-#             vten_out = vten
-#             qrten_out = qrten
-#             qsten_out = qsten
-#             cufrc_out = cufrc
-#             cush_inout = cush
-#             qldet_out = qlten_det
-#             qidet_out = qiten_det
-#             qlsub_out = qlten_sink
-#             qisub_out = qiten_sink
-#             ndrop_out = qlten_det / (4188.787 * rdrop**3)
+            dcm_out = dcm
+            qvten_out = qvten
+            qlten_out = qlten
+            qiten_out = qiten
+            sten_out = sten
+            uten_out = uten
+            vten_out = vten
+            qrten_out = qrten
+            qsten_out = qsten
+            cufrc_out = cufrc
+            cush_inout = cush
+            qldet_out = qlten_det
+            qidet_out = qiten_det
+            qlsub_out = qlten_sink
+            qisub_out = qiten_sink
+            ndrop_out = qlten_det / (4188.787 * rdrop**3)  # Revisit
+            nice_out = qiten_det / (3.0e-10)
+            qtflx_out = qtflx
+            slflx_out = slflx
+            uflx_out = uflx
+            vflx_out = vflx
 
-#             nice_out = qiten_det / (3.0e-10)  # /crystal mass
-#             qtflx_out[0, 0, 1] = qtflx
-#             slflx_out[0, 0, 1] = slflx
-#             uflx_out[0, 0, 1] = uflx
-#             vflx_out[0, 0, 1] = vflx
+            # # REVISIT THIS
+            if dotransport == 1.0:
+                n = 0
+                while n < ncnst:
+                    tr0_inout[0, 0, 0][n] = (
+                        tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
+                    )
+                    n += 1
 
-#             if dotransport == 1.0:
-#                 n = 0
-#                 while n < ncnst:
-#                     tr0_inout[0, 0, 0][n] = (
-#                         tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
-#                     )
-#                     n += 1
-
-#             # Below are specific diagnostic output for detailed
-#             # analysis of cumulus scheme
-
-#             if THIS_K < kpen:
-#                 fer_out = fer
-#                 fdr_out = fdr
+            # Below are specific diagnostic output for detailed
+            # analysis of cumulus scheme
+            fer_out = constants.MAPL_UNDEF
+            fdr_out = constants.MAPL_UNDEF
+            test_var3D = fdr_out
+            if THIS_K <= kpen:
+                fer_out = fer
+                fdr_out = fdr
+                test_var3D = fdr_out
 
 
 class ComputeUwshcu:
@@ -5949,14 +6211,10 @@ class ComputeUwshcu:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        # self._update_output_variables = self.stencil_factory.from_dims_halo(
-        #     func=update_output_variables,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
-
-        # self.id_exit = self.quantity_factory.zeros(
-        #     [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool
-        # )
+        self._update_output_variables = self.stencil_factory.from_dims_halo(
+            func=update_output_variables,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
         self.id_exit = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
         self.stop35 = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
@@ -6107,14 +6365,14 @@ class ComputeUwshcu:
         thv0lcl: FloatField,
         thv0bot: FloatField,
         plfc: FloatField,
-        klfc: FloatField,
+        klfc: IntField,
         cin: FloatField,
         thvubot: FloatField,
         thvutop: FloatField,
         thvlsrc: FloatField,
         cin_IJ: FloatFieldIJ,
         plfc_IJ: FloatFieldIJ,
-        klfc_IJ: FloatFieldIJ,
+        klfc_IJ: IntFieldIJ,
         cinlcl_IJ: FloatFieldIJ,
         ufrc: FloatField,
         umf_zint: FloatField,
@@ -6229,6 +6487,59 @@ class ComputeUwshcu:
         s0_s: FloatField,
         t0_s: FloatField,
         slten: FloatField,
+        qv0_o: FloatField,
+        ql0_o: FloatField,
+        qi0_o: FloatField,
+        t0_o: FloatField,
+        s0_o: FloatField,
+        u0_o: FloatField,
+        v0_o: FloatField,
+        qt0_o: FloatField,
+        thl0_o: FloatField,
+        thvl0_o: FloatField,
+        ssthl0_o: FloatField,
+        ssqt0_o: FloatField,
+        thv0bot_o: FloatField,
+        thv0top_o: FloatField,
+        thvl0bot_o: FloatField,
+        thvl0top_o: FloatField,
+        ssu0_o: FloatField,
+        ssv0_o: FloatField,
+        kinv_o: IntField,
+        klcl_o: IntField,
+        klfc_o: IntField,
+        plcl_o: FloatField,
+        plfc_o: FloatField,
+        tkeavg_o: FloatField,
+        thvlmin_o: FloatField,
+        qtsrc_o: FloatField,
+        thvlsrc_o: FloatField,
+        thlsrc_o: FloatField,
+        usrc_o: FloatField,
+        vsrc_o: FloatField,
+        thv0lcl_o: FloatField,
+        thvlmin_IJ: FloatFieldIJ,
+        dcm_s: FloatField,
+        qvten_s: FloatField,
+        qlten_s: FloatField,
+        qiten_s: FloatField,
+        sten_s: FloatField,
+        uten_s: FloatField,
+        vten_s: FloatField,
+        qrten_s: FloatField,
+        qsten_s: FloatField,
+        qldet_s: FloatField,
+        qidet_s: FloatField,
+        qlsub_s: FloatField,
+        qisub_s: FloatField,
+        cush_s: FloatField,
+        cufrc_s: FloatField,
+        fer_s: FloatField,
+        fdr_s: FloatField,
+        wcrit: FloatFieldIJ,
+        alpha: FloatFieldIJ,
+        del_CIN: FloatFieldIJ,
+        rdrop: Float,
         test_var3D: FloatField,
         test_var2D: FloatFieldIJ,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
@@ -6279,6 +6590,7 @@ class ComputeUwshcu:
             ssv0=ssv0,
             tscaleh=tscaleh,
             dotransport=dotransport,
+            fer_out=fer_out,
             test_var3D=test_var3D,
             test_var2D=test_var2D,
         )
@@ -6360,6 +6672,24 @@ class ComputeUwshcu:
             sten=sten,
             slten=slten,
             qiten=qiten,
+            qv0_o=qv0_o,
+            ql0_o=ql0_o,
+            qi0_o=qi0_o,
+            t0_o=t0_o,
+            s0_o=s0_o,
+            u0_o=u0_o,
+            v0_o=v0_o,
+            qt0_o=qt0_o,
+            thl0_o=thl0_o,
+            thvl0_o=thvl0_o,
+            ssthl0_o=ssthl0_o,
+            ssqt0_o=ssqt0_o,
+            thv0bot_o=thv0bot_o,
+            thv0top_o=thv0top_o,
+            thvl0bot_o=thvl0bot_o,
+            thvl0top_o=thvl0top_o,
+            ssu0_o=ssu0_o,
+            ssv0_o=ssv0_o,
             test_var3D=test_var3D,
             test_var2D=test_var2D,
         )
@@ -6388,6 +6718,7 @@ class ComputeUwshcu:
                 vflx_out=vflx,
                 kinv=kinv,
                 cush=cush,
+                tscaleh=tscaleh,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
             )
@@ -6411,6 +6742,7 @@ class ComputeUwshcu:
                 vavg=vavg,
                 thvlavg=thvlavg,
                 qtavg=qtavg,
+                iteration=iteration,
                 test_var3D=test_var3D,
             )
 
@@ -6518,31 +6850,153 @@ class ComputeUwshcu:
                 cin_i=cin_i,
                 cinlcl_i=cinlcl_i,
                 ke=ke,
+                kinv_o=kinv_o,
+                klcl_o=klcl_o,
+                klfc_o=klfc_o,
+                plcl_o=plcl_o,
+                plfc_o=plfc_o,
+                tkeavg_o=tkeavg_o,
+                thvlmin_o=thvlmin_o,
+                qtsrc_o=qtsrc_o,
+                thvlsrc_o=thvlsrc_o,
+                thlsrc_o=thlsrc_o,
+                usrc_o=usrc_o,
+                vsrc_o=vsrc_o,
+                thv0lcl_o=thv0lcl_o,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
             )
 
-            if iteration != 1:
-                self._avg_initial_and_final_cin(
-                    id_exit=self.id_exit,
-                    cin_IJ=cin_IJ,
-                    cinlcl_IJ=cinlcl_IJ,
-                    use_CINcin=use_CINcin,
-                    cin_i=cin_i,
-                    cinlcl_i=cinlcl_i,
-                    ke=ke,
-                    dotransport=dotransport,
-                    ncnst=ncnst,
-                    trsrc=trsrc,
-                    trsrc_o=trsrc_o,
-                    tr0=tr0,
-                    tr0_o=tr0_o,
-                    sstr0=sstr0,
-                    sstr0_o=sstr0_o,
-                )
+            self._avg_initial_and_final_cin(
+                id_exit=self.id_exit,
+                iteration=iteration,
+                cin_IJ=cin_IJ,
+                cinlcl_IJ=cinlcl_IJ,
+                use_CINcin=use_CINcin,
+                cin_i=cin_i,
+                cinlcl_i=cinlcl_i,
+                ke=ke,
+                dotransport=dotransport,
+                ncnst=ncnst,
+                trsrc=trsrc,
+                trsrc_o=trsrc_o,
+                tr0=tr0,
+                tr0_o=tr0_o,
+                sstr0=sstr0,
+                sstr0_o=sstr0_o,
+                kinv_o=kinv_o,
+                klcl_o=klcl_o,
+                klfc_o=klfc_o,
+                plcl_o=plcl_o,
+                plfc_o=plfc_o,
+                tkeavg_o=tkeavg_o,
+                thvlmin_o=thvlmin_o,
+                qtsrc_o=qtsrc_o,
+                thvlsrc_o=thvlsrc_o,
+                thlsrc_o=thlsrc_o,
+                usrc_o=usrc_o,
+                vsrc_o=vsrc_o,
+                thv0lcl_o=thv0lcl_o,
+                qv0_o=qv0_o,
+                ql0_o=ql0_o,
+                qi0_o=qi0_o,
+                t0_o=t0_o,
+                s0_o=s0_o,
+                u0_o=u0_o,
+                v0_o=v0_o,
+                qt0_o=qt0_o,
+                thl0_o=thl0_o,
+                thvl0_o=thvl0_o,
+                ssthl0_o=ssthl0_o,
+                ssqt0_o=ssqt0_o,
+                thv0bot_o=thv0bot_o,
+                thv0top_o=thv0top_o,
+                thvl0bot_o=thvl0bot_o,
+                thvl0top_o=thvl0top_o,
+                ssu0_o=ssu0_o,
+                ssv0_o=ssv0_o,
+                thvlmin_IJ=thvlmin_IJ,
+                umf_zint=umf_zint,
+                emf=emf,
+                slflx=slflx,
+                qtflx=qtflx,
+                uflx=uflx,
+                vflx=vflx,
+                k0=k0,
+                ufrc=ufrc,
+                thlu=thlu,
+                qtu=qtu,
+                uu=uu,
+                vu=vu,
+                wu=wu,
+                thvu=thvu,
+                thlu_emf=thlu_emf,
+                qtu_emf=qtu_emf,
+                uu_emf=uu_emf,
+                vu_emf=vu_emf,
+                trflx=trflx,
+                trten=trten,
+                tru=tru,
+                tru_emf=tru_emf,
+                umf_s=umf_s,
+                zifc0=zifc0_in,
+                dcm_s=dcm_s,
+                qvten_s=qvten_s,
+                qlten_s=qlten_s,
+                qiten_s=qiten_s,
+                sten_s=sten_s,
+                uten_s=uten_s,
+                vten_s=vten_s,
+                qrten_s=qrten_s,
+                qsten_s=qsten_s,
+                qldet_s=qldet_s,
+                qidet_s=qidet_s,
+                qlsub_s=qlsub_s,
+                qisub_s=qisub_s,
+                cush_s=cush_s,
+                cufrc_s=cufrc_s,
+                qtflx_out=qtflx_out,
+                qtflx_s=qtflx_s,
+                slflx_out=slflx_out,
+                slflx_s=slflx_s,
+                uflx_out=uflx_out,
+                uflx_s=uflx_s,
+                vflx_out=vflx_out,
+                vflx_s=vflx_s,
+                fer_s=fer_s,
+                fdr_s=fdr_s,
+                umf_out=umf_out,
+                kinv=kinv,
+                klcl=klcl,
+                plcl=plcl,
+                thv0bot=thv0bot,
+                thv0lcl=thv0lcl,
+                thv0top=thv0top,
+                thlsrc=thlsrc,
+                qtsrc=qtsrc,
+                thl0=thl0,
+                ssthl0=ssthl0,
+                ssqt0=ssqt0,
+                ssu0=ssu0,
+                ssv0=ssv0,
+                qt0=qt0,
+                u0=u0_in,
+                v0=v0_in,
+                qi0=qi0,
+                ql0=ql0,
+                qv0=qv0,
+                s0=s0,
+                qvten_out=qvten_out,
+                dcm_out=dcm_out,
+                qlten_out=qlten_out,
+                qiten_out=qiten_out,
+                test_var3D=test_var3D,
+                test_var2D=test_var2D,
+            )
 
             self._define_prel_krel(
                 id_exit=self.id_exit,
+                iteration=iteration,
                 klcl=klcl,
                 kinv=kinv,
                 pifc0=pifc0_in,
@@ -6557,6 +7011,7 @@ class ComputeUwshcu:
 
             self._calc_cumulus_base_mass_flux(
                 id_exit=self.id_exit,
+                iteration=iteration,
                 use_CINcin=use_CINcin,
                 cin_IJ=cin_IJ,
                 rbuoy=rbuoy,
@@ -6581,11 +7036,14 @@ class ComputeUwshcu:
                 cbmf=cbmf,
                 rho0inv=rho0inv,
                 ufrcinv=ufrcinv,
+                wcrit=wcrit,
                 test_var3D=test_var3D,
+                test_var2D=test_var2D,
             )
 
             self._define_updraft_properties(
                 id_exit=self.id_exit,
+                iteration=iteration,
                 winv=winv,
                 cinlcl_IJ=cinlcl_IJ,
                 rbuoy=rbuoy,
@@ -6618,6 +7076,7 @@ class ComputeUwshcu:
 
             self._define_env_properties(
                 id_exit=self.id_exit,
+                iteration=iteration,
                 krel=krel,
                 kinv=kinv,
                 PGFc=PGFc,
@@ -6748,6 +7207,7 @@ class ComputeUwshcu:
                 dcm=dcm,
                 xco=xco,
                 stop45=self.stop45,
+                iteration=iteration,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
             )
@@ -6811,6 +7271,7 @@ class ComputeUwshcu:
                 xco=xco,
                 cush=cush,
                 test_var3D=test_var3D,
+                test_var2D=test_var2D,
             )
 
             self._calc_entrainment_mass_flux(
@@ -7175,7 +7636,7 @@ class ComputeUwshcu:
                 test_var3D=test_var3D,
             )
 
-            if iteration != iter_cin:  # Change 2 to iter_cin
+            if iteration != iter_cin:
                 self._adjust_implicit_CIN_inputs(
                     id_exit=self.id_exit,
                     qv0=qv0,
@@ -7233,6 +7694,23 @@ class ComputeUwshcu:
                     qi0_s=qi0_s,
                     s0_s=s0_s,
                     t0_s=t0_s,
+                    dcm_s=dcm_s,
+                    qvten_s=qvten_s,
+                    qlten_s=qlten_s,
+                    qiten_s=qiten_s,
+                    sten_s=sten_s,
+                    uten_s=uten_s,
+                    vten_s=vten_s,
+                    qrten_s=qrten_s,
+                    qsten_s=qsten_s,
+                    qldet_s=qldet_s,
+                    qidet_s=qidet_s,
+                    qlsub_s=qlsub_s,
+                    qisub_s=qisub_s,
+                    cush_s=cush_s,
+                    cufrc_s=cufrc_s,
+                    fer_s=fer_s,
+                    fdr_s=fdr_s,
                     test_var3D=test_var3D,
                 )
 
@@ -7259,40 +7737,84 @@ class ComputeUwshcu:
                     qtflx_out=qtflx_out,
                     uflx_out=uflx_out,
                     vflx_out=vflx_out,
+                    thvl0bot=thvl0bot,
+                    thv0bot=thv0bot,
+                    thvl0top=thvl0top,
+                    thv0top=thv0top,
+                    thl0=thl0,
+                    qt0=qt0,
+                    thvl0=thvl0,
+                    ssthl0=ssthl0,
+                    ssu0=ssu0,
+                    ssv0=ssv0,
+                    ssqt0=ssqt0,
+                    qv0=qv0,
+                    ql0=ql0,
+                    qi0=qi0,
+                    s0=s0,
+                    t0=t0,
                     test_var3D=test_var3D,
                 )
 
-            iteration = i32(2)
+            iteration = iteration + i32(1)
 
-        # self._update_output_variables(
-        #     umf=umf,
-        #     zifc0=zifc0,
-        #     kinv=kinv,
-        #     dcm=dcm,
-        #     qvten=qvten,
-        #     qlten=qlten,
-        #     qiten=qiten,
-        #     sten=sten,
-        #     uten=uten,
-        #     vten=vten,
-        #     qrten=qrten,
-        #     qsten=qsten,
-        #     cufrc=cufrc,
-        #     cush=cush,
-        #     qlten_det=qlten_det,
-        #     qiten_det=qiten_det,
-        #     qlten_sink=qlten_sink,
-        #     qiten_sink=qiten_sink,
-        #     rdrop=rdrop,
-        #     qtflx=qtflx,
-        #     slflx=slflx,
-        #     uflx=uflx,
-        #     vflx=vflx,
-        #     dotransport=dotransport,
-        #     tr0_inout=tr0_inout,
-        #     trten=trten,
-        #     dt=dt,
-        #     fer=fer,
-        #     fdr=fdr,
-        #     kpen=kpen,
-        # )
+        self._update_output_variables(
+            id_exit=self.id_exit,
+            umf_zint=umf_zint,
+            zifc0=zifc0_in,
+            kinv=kinv,
+            dcm=dcm,
+            qvten=qvten,
+            qlten=qlten,
+            qiten=qiten,
+            sten=sten,
+            uten=uten,
+            vten=vten,
+            qrten=qrten,
+            qsten=qsten,
+            cufrc=cufrc,
+            cush=cush,
+            qlten_det=qlten_det,
+            qiten_det=qiten_det,
+            qlten_sink=qlten_sink,
+            qiten_sink=qiten_sink,
+            rdrop=rdrop,
+            qtflx=qtflx,
+            slflx=slflx,
+            uflx=uflx,
+            vflx=vflx,
+            dotransport=dotransport,
+            trten=trten,
+            dt=dt,
+            fer=fer,
+            fdr=fdr,
+            kpen=kpen,
+            ncnst=ncnst,
+            #     umf_out=umf_out,
+            #     dcm_out=dcm_out,
+            #     qvten_out=qvten_out,
+            #     qlten_out=qlten_out,
+            #     qiten_out=qiten_out,
+            #     sten_out=sten_out,
+            #     uten_out=uten_out,
+            #     vten_out=vten_out,
+            #     qrten_out=qrten_out,
+            #     qsten_out=qsten_out,
+            #     cufrc_out=cufrc_out,
+            #     cush_inout=cush_inout,
+            #     qldet_out=qldet_out,
+            #     qidet_out=qidet_out,
+            #     qlsub_out=qlsub_out,
+            #     qisub_out=qisub_out,
+            #     ndrop_out=ndrop_out,
+            #     nice_out=nice_out,
+            #     qtflx_out=qtflx_out,
+            #     slflx_out=slflx_out,
+            #     uflx_out=uflx_out,
+            #     vflx_out=vflx_out,
+            tr0_inout=tr0_inout,
+            fer_out=fer_out,
+            #     fdr_out=fdr_out,
+            #     iteration=iteration,
+            test_var3D=test_var3D,
+        )

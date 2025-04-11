@@ -88,6 +88,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "use_cumpenent",
             "rpen",
             "use_momenflx",
+            "rdrop",
         ]
 
         # FloatField Outputs
@@ -300,6 +301,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         use_cumpenent = np.int32(inputs_reshaped["use_cumpenent"])
         rpen = inputs_reshaped["rpen"]
         use_momenflx = np.int32(inputs_reshaped["use_momenflx"])
+        rdrop = inputs_reshaped["rdrop"]
 
         # Field inputs
         pifc0_in = self.make_zinterface_field(inputs_reshaped["pifc0_in"])
@@ -348,7 +350,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         tru_emf = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
         qtu_emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         kinv = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
-        umf_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
+        umf_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         dcm_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         qvten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         qlten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
@@ -369,9 +371,9 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         vu_emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         uemf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         uflx_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        vflx_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
-        fer_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        fdr_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        vflx_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        fer_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        fdr_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thvlavg = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         tkeavg = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         uavg = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
@@ -380,13 +382,13 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qtavg = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         zmid0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         qt0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
-        thvl0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        thvl0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thvl0bot = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         dpi = self.make_ij_field(np.zeros(shape=[24, 24]))
-        t0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qv0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        pmid0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        thl0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        t0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qv0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        pmid0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thl0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thlsrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         usrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         vsrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
@@ -398,7 +400,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qt0lcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thv0lcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         plfc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
-        klfc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        klfc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
         cin = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thvubot = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thvutop = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
@@ -408,7 +410,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         thl0bot = self.make_ij_field(np.zeros(shape=[24, 24]))
         cin_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
         plfc_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
-        klfc_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
+        klfc_IJ = self.make_ij_field(np.zeros(shape=[24, 24]), dtype=Int)
         cinlcl_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
         test_var_3D = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         test_var_2D = self.make_ij_field(np.zeros(shape=[24, 24]))
@@ -529,6 +531,64 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         s0_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         t0_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         slten = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qv0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        kinv_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
+        klcl_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
+        klfc_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
+        plcl_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        plfc_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        tkeavg_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thvlmin_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thvlmin_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
+        qtsrc_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thvlsrc_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thlsrc_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        usrc_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        vsrc_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thv0lcl_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        ql0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qi0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        t0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        s0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        u0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        v0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qt0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thl0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thvl0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        ssthl0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        ssqt0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thv0bot_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thv0top_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thvl0bot_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thvl0top_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        ssu0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        ssv0_o = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        dcm_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qvten_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qlten_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qiten_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        sten_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        uten_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        vten_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qrten_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qsten_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qldet_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qidet_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qlsub_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qisub_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        cush_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        cufrc_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        fer_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        fdr_s = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        wcrit = self.make_ij_field(np.zeros(shape=[24, 24]))
+        alpha = self.make_ij_field(np.zeros(shape=[24, 24]))
+        del_CIN = self.make_ij_field(np.zeros(shape=[24, 24]))
+        qldet_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qidet_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qlsub_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qisub_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        ndrop_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        nice_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
 
         compute_uwshcu(
             windsrcavg=windsrcavg,
@@ -778,27 +838,84 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             qi0_s=qi0_s,
             s0_s=s0_s,
             t0_s=t0_s,
+            qv0_o=qv0_o,
+            ql0_o=ql0_o,
+            qi0_o=qi0_o,
+            t0_o=t0_o,
+            s0_o=s0_o,
+            u0_o=u0_o,
+            v0_o=v0_o,
+            qt0_o=qt0_o,
+            thl0_o=thl0_o,
+            thvl0_o=thvl0_o,
+            ssthl0_o=ssthl0_o,
+            ssqt0_o=ssqt0_o,
+            thv0bot_o=thv0bot_o,
+            thv0top_o=thv0top_o,
+            thvl0bot_o=thvl0bot_o,
+            thvl0top_o=thvl0top_o,
+            ssu0_o=ssu0_o,
+            ssv0_o=ssv0_o,
             slten=slten,
+            kinv_o=kinv_o,
+            klcl_o=klcl_o,
+            klfc_o=klfc_o,
+            plcl_o=plcl_o,
+            plfc_o=plfc_o,
+            tkeavg_o=tkeavg_o,
+            thvlmin_o=thvlmin_o,
+            qtsrc_o=qtsrc_o,
+            thvlsrc_o=thvlsrc_o,
+            thlsrc_o=thlsrc_o,
+            usrc_o=usrc_o,
+            vsrc_o=vsrc_o,
+            thv0lcl_o=thv0lcl_o,
+            thvlmin_IJ=thvlmin_IJ,
+            dcm_s=dcm_s,
+            qvten_s=qvten_s,
+            qlten_s=qlten_s,
+            qiten_s=qiten_s,
+            sten_s=sten_s,
+            uten_s=uten_s,
+            vten_s=vten_s,
+            qrten_s=qrten_s,
+            qsten_s=qsten_s,
+            qldet_s=qldet_s,
+            qidet_s=qidet_s,
+            qlsub_s=qlsub_s,
+            qisub_s=qisub_s,
+            cush_s=cush_s,
+            cufrc_s=cufrc_s,
+            fer_s=fer_s,
+            fdr_s=fdr_s,
+            wcrit=wcrit,
+            alpha=alpha,
+            del_CIN=del_CIN,
+            rdrop=rdrop,
+            # qldet_out=qldet_out,
+            # qidet_out=qidet_out,
+            # qlsub_out=qlsub_out,
+            # qisub_out=qisub_out,
+            # ndrop_out=ndrop_out,
+            # nice_out=nice_out,
         )
         print("Performed compute_uwshcu on reshaped inputs")
-        print(test_var_3D.view[23, 20, :])
+        print(test_var_3D.view[2, 21, :])
         # print("Reshaped outputs back to original shape")
 
         with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out.nc") as ds:
             # Load in netcdf test var
-            testvar = "kinv"
+            testvar = "fdr_out"
             var = test_var_3D
-            testvar_nan = ds.variables[testvar].data[0, 0, :, 1, :, 0]
+            testvar_nan = ds.variables[testvar].data[0, 0, :, :-1, 0, 0]
             # Replace nans with zero
             testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
 
             # Reshape and make testvar quantity
             i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
-            testvar_reshaped = np.reshape(testvar_zeros, (i, j, k + 1)).astype(
-                np.float32
-            )
-            testvar_out = self.make_zinterface_field(testvar_reshaped)
-            # testvar_out = self.make_ijk_field(testvar_reshaped)
+            testvar_reshaped = np.reshape(testvar_zeros, (i, j, k)).astype(np.float32)
+            # testvar_out = self.make_zinterface_field(testvar_reshaped)
+            testvar_out = self.make_ijk_field(testvar_reshaped)
             # testvar_out = self.make_ntracers_ijk_field(testvar_reshaped)
             # testvar_out = self.make_ntracers_zdim_field(testvar_reshaped)
 
