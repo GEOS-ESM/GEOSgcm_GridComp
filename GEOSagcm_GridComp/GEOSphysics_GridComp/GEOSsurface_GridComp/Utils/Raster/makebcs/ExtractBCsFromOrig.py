@@ -8,7 +8,9 @@ import os
 import glob
 
 def get_i_j_pf(til_file):
-""" This is just for cubed-sphere text tile."""
+   """
+    This is just for cubed-sphere text tile.
+   """
    ii   = []
    jj   = []
    pfaf = []
