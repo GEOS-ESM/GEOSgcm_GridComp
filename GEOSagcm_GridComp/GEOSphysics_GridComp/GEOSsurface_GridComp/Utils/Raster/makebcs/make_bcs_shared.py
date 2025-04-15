@@ -5,7 +5,6 @@
 import os
 import glob
 
-BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
 def get_script_head() :
 
   head =  """#!/bin/csh -x
@@ -18,14 +17,12 @@ def get_script_head() :
 #SBATCH --job-name={GRIDNAME}.j
 """
   constraint = '#SBATCH --constraint="[mil|cas]"'
-  #if 'TRUE' not in BUILT_ON_SLES15:
-  #   constraint = "#SBATCH --constraint=sky"
 
   head = head + constraint + """
-echo "-----------------------------" 
-echo "make_bcs starts date/time" 
-echo `date` 
-echo "-----------------------------" 
+echo "-----------------------------"
+echo "make_bcs starts date/time"
+echo `date`
+echo "-----------------------------"
 
 cd {SCRATCH_DIR}
 
@@ -141,7 +138,7 @@ cd ../../
         clsm/country_and_state_code.data \\
         land/{GRIDNAME}/clsm/
 
-""" 
+"""
    mv_template = mv_template + get_change_til_file(grid_type)
    mv_template = mv_template + """
 
@@ -151,10 +148,10 @@ cd ../../
 
 mkdir -p ../../geometry ../../land/shared ../../logs
 
-echo "-----------------------------" 
-echo "make_bcs ends date/time" 
-echo `date` 
-echo "-----------------------------" 
+echo "-----------------------------"
+echo "make_bcs ends date/time"
+echo `date`
+echo "-----------------------------"
 
 /bin/mv ../logs/{GRIDNAME}  ../../logs/.
 
@@ -167,7 +164,7 @@ cd ../..
 
 /bin/rm -r {TMP_DIR}
 
-# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir 
+# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir
 
 if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
     echo "CO2_MonthlyMean_DiurnalCycle.nc4 already present in bcs dir."
