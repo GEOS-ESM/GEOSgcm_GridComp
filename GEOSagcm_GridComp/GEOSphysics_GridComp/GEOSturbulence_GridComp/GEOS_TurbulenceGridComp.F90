@@ -3165,7 +3165,7 @@ end if
      else
        call MAPL_GetResource (MAPL, JASON_TRB, "JASON_TRB:", default=.FALSE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,      RC=STATUS); VERIFY_(STATUS)
-       SMTH_HGT = MAX(1.0,DT/180.0)*100.0
+       SMTH_HGT = 1000.0 !MAX(1.0,DT/180.0)*100.0
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",   default=SMTH_HGT, RC=STATUS); VERIFY_(STATUS)
      endif
      if (JASON_TRB) then
@@ -3205,14 +3205,14 @@ end if
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-3.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.6,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.6,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.15e-3,RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
        LAMBDAM = (MIN(1.0,300.0/DT)**2)*150.0 ! Critical for INTDIS stability with long DTs
        LAMBDAH = (MIN(1.0,300.0/DT)**2)*150.0 ! Critical for INTDIS stability with long DTs

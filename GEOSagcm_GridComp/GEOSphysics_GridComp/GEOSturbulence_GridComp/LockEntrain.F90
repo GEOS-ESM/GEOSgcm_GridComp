@@ -100,7 +100,7 @@ module LockEntrain
 #ifndef _CUDA
    private
 
-   logical :: use_kludges = .false.
+   logical :: use_kludges = .true.
 
 !-----------------------------------------------------------------------
 !
