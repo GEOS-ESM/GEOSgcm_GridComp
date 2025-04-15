@@ -8,7 +8,7 @@
 program TileFile_ASCII_to_nc4
   use, intrinsic :: iso_fortran_env, only: REAL64 
   use MAPL
-  use LogRectRasterizeMod, only: WriteTilingNC4, MAPL_UNDEF_R8
+  use LogRectRasterizeMod, only: MAPL_UNDEF_R8
   use EASE_conv,           only: ease_extent
   
   implicit none
@@ -29,7 +29,7 @@ program TileFile_ASCII_to_nc4
   real                           :: cell_area
   
   integer                        :: n_tile, n_grid, n_lon1, n_lat1, n_cat, tmp_in1, tmp_in2
-  integer                        :: n_lon2, n_lat2, nx, ny, num, ll, maxcat
+  integer                        :: n_lon2, n_lat2, nx, ny, num, ll, maxcat 
   logical                        :: file_exists
 
   ! ----------------------------------------------------------------------
@@ -181,9 +181,9 @@ program TileFile_ASCII_to_nc4
   ! write nc4 file
   
   if (N_grid == 1) then
-     call WriteTilingNC4(filenameNc4, [gName1        ], [n_lon1        ], [n_lat1        ], nx, ny, iTable, rTable, N_PfafCat=maxcat) 
+     call MAPL_WriteTilingNC4(filenameNc4, [gName1        ], [n_lon1        ], [n_lat1        ], nx, ny, iTable, rTable, N_PfafCat=maxcat) 
   else
-     call WriteTilingNC4(filenameNc4, [gName1, gName2], [n_lon1, n_lon2], [n_lat1, n_lat2], nx, ny, iTable, rTable, N_PfafCat=maxcat) 
+     call MAPL_WriteTilingNC4(filenameNc4, [gName1, gName2], [n_lon1, n_lon2], [n_lat1, n_lat2], nx, ny, iTable, rTable, N_PfafCat=maxcat) 
   endif
   
 contains
