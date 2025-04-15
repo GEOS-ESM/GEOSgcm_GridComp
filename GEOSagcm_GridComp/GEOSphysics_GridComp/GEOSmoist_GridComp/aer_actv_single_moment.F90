@@ -104,6 +104,19 @@ MODULE Aer_Actv_Single_Moment
                   aci_ptr_2d = FRLAND
               end if
      
+              do n = 1, n_modes
+                 allocate(AeroPropsNew(n)%num(im,jm,lm), __STAT__)
+                 allocate(AeroPropsNew(n)%dpg(im,jm,lm), __STAT__)
+                 allocate(AeroPropsNew(n)%sig(im,jm,lm), __STAT__)
+                 allocate(AeroPropsNew(n)%kap(im,jm,lm), __STAT__)
+                 if (need_extra_fields) then
+                    allocate(AeroPropsNew(n)%den(im,jm,lm), __STAT__)
+                    allocate(AeroPropsNew(n)%fdust(im,jm,lm), __STAT__)
+                    allocate(AeroPropsNew(n)%fsoot(im,jm,lm), __STAT__)
+                    allocate(AeroPropsNew(n)%forg(im,jm,lm), __STAT__)
+                 end if
+              end do
+
               do k=LM,1,-1
               ACTIVATION_PROPERTIES: do n = 1, n_modes
                  call ESMF_AttributeSet(aero_aci, name='at_level', value=k, __RC__)
@@ -133,7 +146,6 @@ MODULE Aer_Actv_Single_Moment
                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
                  AeroPropsNew(n)%kap(:,:,k) = aci_ptr_3d(:,:,k)
                ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%kap(1,1,1)
-
                  if (need_extra_fields) then
 
                  call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
@@ -156,8 +168,8 @@ MODULE Aer_Actv_Single_Moment
 
                  AeroPropsNew(n)%nmods = n_modes
 
-                 where (AeroPropsNew(n)%kap > 0.4)
-                    NWFA = NWFA + AeroPropsNew(n)%num
+                 where (AeroPropsNew(n)%kap(:,:,k) > 0.4)
+                    NWFA(:,:,k) = NWFA(:,:,k) + AeroPropsNew(n)%num(:,:,k)
                  end where
 
               end do ACTIVATION_PROPERTIES
@@ -175,7 +187,6 @@ MODULE Aer_Actv_Single_Moment
             !    end do !modes
             ! end if 
              
-              deallocate(aero_aci_modes, __STAT__)
 
       !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
        DO j=1,JM
@@ -184,10 +195,10 @@ MODULE Aer_Actv_Single_Moment
             tk                 = T(i,j,k)                         ! K
             press              = plo(i,j,k)                       ! Pa   
             air_den            = press/(MAPL_RGAS*tk)             ! kg/m3
-            wupdraft           = vvel(i,j,k) + SQRT(tke(i,j,k))
+            wupdraft           = max(zero_par,vvel(i,j,k) + SQRT(tke(i,j ,k)))
 
             ! Liquid Clouds
-            ni = 0.0
+            ni = tiny(1.0)
             DO n=1,n_modes
                if (AeroPropsNew(n)%kap(i,j,k) > 0.4) &
                ni   (n)    =   max(AeroPropsNew(n)%num(i,j,k)*air_den,  zero_par)  ! unit: [m-3]
@@ -231,12 +242,27 @@ MODULE Aer_Actv_Single_Moment
 
         ENDDO;ENDDO
         ENDDO
+        deallocate(aero_aci_modes, __STAT__)
         call ESMF_AttributeRemove(aero_aci, name='at_level', __RC__)
 
+        deallocate( sig0, __STAT__)
         deallocate(   rg, __STAT__)
         deallocate(   ni, __STAT__)
         deallocate(bibar, __STAT__)
         deallocate( nact, __STAT__)
+     
+        do n = 1, n_modes
+           deallocate(AeroPropsNew(n)%num, __STAT__)
+           deallocate(AeroPropsNew(n)%dpg, __STAT__)
+           deallocate(AeroPropsNew(n)%sig, __STAT__)
+           deallocate(AeroPropsNew(n)%kap, __STAT__)
+           if (need_extra_fields) then
+              deallocate(AeroPropsNew(n)%den, __STAT__)
+              deallocate(AeroPropsNew(n)%fdust, __STAT__)
+              deallocate(AeroPropsNew(n)%fsoot, __STAT__)
+              deallocate(AeroPropsNew(n)%forg, __STAT__)
+           end if
+        end do
 
        end if ! n_modes > 0
       
