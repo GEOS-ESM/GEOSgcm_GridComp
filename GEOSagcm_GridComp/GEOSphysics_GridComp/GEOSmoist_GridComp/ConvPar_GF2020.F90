@@ -3102,9 +3102,9 @@ loop0:       do k=kts,ktf
           ! time-scale cape removal from Bechtold et al. 2008
             tau_0 = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)
           ! time-scale for increasing resolution
-            tau_1 = tau_mid*sig(i) + tau_deep*(1.0-sig(i))
+            tau_1 = tau_deep*(1.0-sig(i))
           ! Combine
-            tau_ecmwf(i)= tau_0*sig(i)*cnvfrc(i) + tau_1*(1.0-sig(i))*(1.0-cnvfrc(i))
+            tau_ecmwf(i)= tau_0 + tau_1*(1.0-cnvfrc(i))
           ! Limit
             tau_ecmwf(i)= max(dtime,min(tau_ecmwf(i),tau_deep))
          ENDDO

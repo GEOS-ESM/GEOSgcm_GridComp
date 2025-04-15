@@ -88,8 +88,8 @@ module GEOSmoist_Process_Library
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
   ! base grid length for sigma calculation
-  real :: SIGMA_DX  = 500.0
-  real :: SIGMA_EXP = 1.0
+  real :: SIGMA_DX  = 750.0
+  real :: SIGMA_EXP = 2.0
 
   ! control for order of plumes
   logical :: SH_MD_DP = .FALSE.

@@ -2066,6 +2066,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DBZ_MAX_SIMPLE',                                          &
+         LONG_NAME = 'Maximum_composite_radar_reflectivity_simple',                  &
+         UNITS     = 'dBZ',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ_MAX',                                          &
          LONG_NAME = 'Maximum_composite_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &
@@ -2095,6 +2103,14 @@ contains
          UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &  
+         SHORT_NAME ='PRCP_WATER',                                     &
+         LONG_NAME ='falling_water_at_surface',          &
+         UNITS     ='kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
@@ -3076,6 +3092,30 @@ contains
          SHORT_NAME='PFL_LSAN',                                      &
          LONG_NAME ='3D_flux_of_liquid_nonconvective_precipitation'  ,&
          UNITS     ='kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='PFR_LS',                                      &
+         LONG_NAME ='3D_flux_of_rain_nonanvil_large_scale_precipitation',&
+         UNITS     ='kg m-2 s-1',                                   &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='PFS_LS',                                      &
+         LONG_NAME ='3D_flux_of_snow_nonanvil_large_scale_precipitation',&
+         UNITS     ='kg m-2 s-1',                                   &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='PFG_LS',                                      &
+         LONG_NAME ='3D_flux_of_graupel_nonanvil_large_scale_precipitation',&
+         UNITS     ='kg m-2 s-1',                                   &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
     VERIFY_(STATUS)

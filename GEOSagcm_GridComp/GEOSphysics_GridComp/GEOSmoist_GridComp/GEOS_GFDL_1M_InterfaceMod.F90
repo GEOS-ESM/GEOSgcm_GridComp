@@ -16,6 +16,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
+  use gfdl_mp_mod
 
   implicit none
 
@@ -59,6 +60,8 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: LPHYS_HYDROSTATIC
   logical :: LMELTFRZ
   real    :: GFDL_MP_PLID
+
+  logical :: GFDL_MP3
 
   public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
 
@@ -225,9 +228,6 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     CHARACTER(len=ESMF_MAXSTR) :: errmsg
 
-    type(ESMF_VM) :: VM
-    integer :: comm
-
     real                     :: DBZ_DT
     type(ESMF_Calendar)      :: calendar
     type(ESMF_Alarm)         :: DBZ_RunAlarm
@@ -265,19 +265,25 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
-    call ESMF_VMGetCurrent(VM, _RC)
-    call ESMF_VMGet(VM, mpiCommunicator=comm, _RC)
-
-    call gfdl_cloud_microphys_init(comm)
-    call WRITE_PARALLEL ("INITIALIZED GFDL_1M microphysics in non-generic GC INIT")
+    call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+    if (GFDL_MP3) then 
+      call gfdl_mp_init(LHYDROSTATIC)
+      call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_mp v3 in non-generic GC INIT")
+    else
+      call gfdl_cloud_microphys_init()
+      call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_cloud_microphys in non-generic GC INIT")
+    endif
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= DBZ_LIQUID_SKIN, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, DBZ_VAR_INTERCP , 'DBZ_VAR_INTERCP:' , DEFAULT= DBZ_VAR_INTERCP, RC=STATUS); VERIFY_(STATUS)
 
+
+                                 refl10cm_allow_wet_graupel = .false.
     call MAPL_GetResource( MAPL, refl10cm_allow_wet_graupel , 'refl10cm_allow_wet_graupel:' , &
                         DEFAULT= refl10cm_allow_wet_graupel, RC=STATUS); VERIFY_(STATUS)
+                                 refl10cm_allow_wet_snow    = .true.
     call MAPL_GetResource( MAPL, refl10cm_allow_wet_snow    , 'refl10cm_allow_wet_snow:'    , &
                         DEFAULT= refl10cm_allow_wet_snow, RC=STATUS); VERIFY_(STATUS)
 
@@ -337,7 +343,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
-    real, pointer, dimension(:,:)   :: AREA, FRLAND, TS, DTSX, SH, EVAP, KPBLSC
+    real, pointer, dimension(:,:)   :: AREA, PHIS, FRLAND, TS, DTSX, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: SL2, SL3, QT2, QT3, W2, W3, SLQT, WQT, WQL, WSL, PDF_A
     real, pointer, dimension(:,:,:) :: WTHV2
     real, pointer, dimension(:,:,:) :: OMEGA
@@ -349,7 +355,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: DQST3, QST3
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                            DQSDTmic, DQGDTmic, DQADTmic, &
-                                            DUDTmic,  DVDTmic,  DTDTmic
+                                            DUDTmic,  DVDTmic,  DTDTmic, DWDTmic
     integer, allocatable, dimension(:,:):: KLCL
     integer                             :: KLID
     real, allocatable, dimension(:,:,:) :: TMP3D
@@ -357,7 +363,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:)     :: TMP1D
     ! Exports
     real, pointer, dimension(:,:,:) :: NACTR
-    real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
+    real, pointer, dimension(:,:  ) :: PRCP_WATER, PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
     real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, ICE, FRZR, CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: DQVDT_macro, DQIDT_macro, DQLDT_macro, DQADT_macro, DQRDT_macro, DQSDT_macro, DQGDT_macro
     real, pointer, dimension(:,:,:) ::  DUDT_macro,  DVDT_macro,  DTDT_macro
@@ -370,6 +376,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: VFALL_ICE, VFALL_SNOW, VFALL_GRAUPEL, VFALL_RAIN
     real, pointer, dimension(:,:,:) :: PFL_LS, PFL_AN
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
+    real, pointer, dimension(:,:,:) :: PFR_LS, PFS_LS, PFG_LS
     real, pointer, dimension(:,:,:) :: PDFITERS
     real, pointer, dimension(:,:,:) :: RHCRIT3D
     real, pointer, dimension(:,:,:) :: CNV_PRC3 
@@ -448,6 +455,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PHIS,    'PHIS'    , RC=STATUS); VERIFY_(STATUS)
 
     ! Allocatables
      ! Edge variables
@@ -477,6 +485,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (  DUDTmic(IM,JM,LM  ) )
     ALLOCATE (  DVDTmic(IM,JM,LM  ) )
     ALLOCATE (  DTDTmic(IM,JM,LM  ) )
+    ALLOCATE (  DWDTmic(IM,JM,LM  ) )      
      ! 2D Variables
     ALLOCATE ( TMP2D   (IM,JM     ) )
      ! 1D Variables
@@ -515,6 +524,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Exports  required below
     call MAPL_GetPointer(EXPORT, EVAPC,        'EVAPC'        , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SUBLC,        'SUBLC'        , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PRCP_WATER,   'PRCP_WATER'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PRCP_RAIN,    'PRCP_RAIN'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PRCP_SNOW,    'PRCP_SNOW'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PRCP_ICE,     'PRCP_ICE'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -531,6 +541,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, PFL_LS,   'PFL_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PFI_AN,   'PFI_AN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PFI_LS,   'PFI_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFR_LS,   'PFR_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFS_LS,   'PFS_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFG_LS,   'PFG_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WTHV2,    'WTHV2'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQL,      'WQL'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PDFITERS, 'PDFITERS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -783,6 +796,30 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! GRAUPEL
          RAD_QG = QGRAUPEL
         ! Run the driver
+         if (GFDL_MP3) then
+#ifdef SRC
+subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, & 
+        ua, va, delz, delp, dtm, rhcrit, hs, cnv_frc, eis, area, srf_type,    &
+        water, rain, ice, snow, graupel, hydrostatic, is, ie, ks, ke, &
+        prefluxw, prefluxr, prefluxi, prefluxs, prefluxg)
+#endif
+         call gfdl_mp_driver( &
+                             ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
+                               RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTL, NACTI, &
+                             ! Input fields
+                               T, W, U, V, DZ, DP, &
+                             ! Other inputs
+                               DT_MOIST, RHCRIT3D, PHIS, CNV_FRC, EIS, AREA, SRF_TYPE, &
+                             ! Output precipitates
+                               PRCP_WATER, PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, &
+                             ! constant grid/time information
+                               LHYDROSTATIC, 1, IM*JM, 1,LM, &
+                             ! Output tendencies
+                               DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
+                               DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, DUDTmic, DVDTmic, DWDTmic, &
+                             ! Output mass flux during sedimentation (Pa kg/kg)
+                               PFL_LS, PFR_LS, PFI_LS, PFS_LS, PFG_LS )
+         else
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTL, NACTI, &
@@ -805,6 +842,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! constant grid/time information
                                LHYDROSTATIC, LPHYS_HYDROSTATIC, &
                                1,IM, 1,JM, 1,LM, KLID, LM)
+         endif
      ! Apply tendencies
          T = T + DTDTmic * DT_MOIST
          U = U + DUDTmic * DT_MOIST
@@ -820,6 +858,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
+         PRCP_WATER   = MAX(PRCP_WATER   / 86400.0, 0.0)
          PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
          PRCP_SNOW    = MAX(PRCP_SNOW    / 86400.0, 0.0)
          PRCP_ICE     = MAX(PRCP_ICE     / 86400.0, 0.0)
@@ -832,6 +871,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      ! Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
          PFL_LS = PFL_LS/(MAPL_GRAV*DT_MOIST)
          PFI_LS = PFI_LS/(MAPL_GRAV*DT_MOIST)
+         PFR_LS = PFR_LS/(MAPL_GRAV*DT_MOIST)
+         PFS_LS = PFS_LS/(MAPL_GRAV*DT_MOIST)
+         PFG_LS = PFG_LS/(MAPL_GRAV*DT_MOIST)
      ! Redistribute precipitation fluxes for chemistry
          TMP3D =  MIN(1.0,MAX(QLCN/MAX(RAD_QL,1.E-8),0.0))
          PFL_AN(:,:,1:LM) = PFL_LS(:,:,1:LM) * TMP3D
@@ -909,11 +951,23 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(EXPORT,  NACTR,  'NACTR', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         NACTR = 1.e8*QRAIN**0.8   
 
-
         call ESMF_ClockGetAlarm(clock, 'DBZ_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
         alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
         if (alarm_is_ringing) then
            call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
+
+
+           call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_SIMPLE' , RC=STATUS); VERIFY_(STATUS)
+           if (associated(PTR2D)) then
+               call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
+               TMP3D = 0.0
+               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
+               PTR2D=-9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                  PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+               END DO ; END DO ; END DO
+               call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
+           endif
 
            call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
@@ -922,24 +976,24 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
            if (associated(PTR3D) .OR. &
                associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
-!              call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
-!             ! CALCDBZ is 10x cheaper    
-!              TMP3D = 0.0
-!              call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
-!              if (associated(PTR3D)) PTR3D = TMP3D 
-!              call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
-               call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")
-              ! calc_refl10cm is expensive, do not call every time
-               rand1 = 0.0
+               call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
+              ! CALCDBZ is 10x cheaper    
                TMP3D = 0.0
-               DO J=1,JM ; DO I=1,IM
-                 rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
-                 rand1= max( rand1/1000000., 1e-6 )
-                 call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
-                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
-               END DO ; END DO
-               if (associated(PTR3D)) PTR3D = TMP3D
-               call MAPL_TimerOff(MAPL,"---CLD_REFL10CM")
+               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
+               if (associated(PTR3D)) PTR3D = TMP3D 
+               call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
+!              call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")
+!             ! calc_refl10cm is expensive, do not call every time
+!              rand1 = 0.0
+!              TMP3D = 0.0
+!              DO J=1,JM ; DO I=1,IM
+!               !rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
+!               !rand1= max( rand1/1000000., 1e-6 )
+!                call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+!                   T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
+!              END DO ; END DO
+!              if (associated(PTR3D)) PTR3D = TMP3D
+!              call MAPL_TimerOff(MAPL,"---CLD_REFL10CM")
             end if
 
             if (associated(DBZ_MAX)) then
