@@ -5,7 +5,6 @@
 import os
 import glob
 
-BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
 def get_script_head() :
 
   head =  """#!/bin/csh -x
@@ -17,9 +16,7 @@ def get_script_head() :
 #SBATCH --nodes=1
 #SBATCH --job-name={GRIDNAME2}.j
 """
-  constraint = "#SBATCH --constraint=sky|cas"
-  if BUILT_ON_SLES15 :
-     constraint = "#SBATCH --constraint=mil"
+  constraint = "#SBATCH --constraint=mil|cas"
 
   head = head + constraint + """
 echo "-----------------------------" 

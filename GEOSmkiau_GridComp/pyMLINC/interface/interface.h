@@ -9,22 +9,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-// POD-strict structure to pack options and flags efficiently
-// Struct CANNOT hold pointers. The iso_c_binding does not allow for foolproof
-// pointer memory packing.
-// We use the low-embedded trick of the magic number to attempt to catch
-// any type mismatch betweeen Fortran and C. This is not a foolproof method
-// but it bring a modicum of check at the cost of a single integer.
-typedef struct {
-	int npx;
-	int npy;
-	int npz;
-	// Magic number needs to be last item
-	int mn_123456789;
-} a_pod_struct_t;
-
 // For complex type that can be exported with different
-// types (like the MPI communication object), you can rely on C `union`
+// types (like the MPI communication object), one can rely on C `union`
 typedef union {
 	int comm_int;
 	void *comm_ptr;
@@ -34,5 +20,20 @@ typedef union {
 // Though we define `in_buffer` as a `const float*` it is _not_ enforced
 // by the interface. Treat as a developer hint only.
 
-extern int pyMLINC_interface_init_py();
-extern int pyMLINC_interface_run_py(a_pod_struct_t *options, const float *in_buffer, float *out_buffer);
+extern int pyMLINC_interface_init_py(int magic_number);
+extern int pyMLINC_interface_run_py(
+    int xdim,
+    int ydim,
+    int zdim,
+    const float *u,
+    const float *v,
+    const float *t,
+    const float *qv,
+    const float *ql,
+    const float *qi,
+    const float *qr,
+    const float *qs,
+    const float *qg,
+    const float *ps,
+    float *dtdt,
+    int magic_number);

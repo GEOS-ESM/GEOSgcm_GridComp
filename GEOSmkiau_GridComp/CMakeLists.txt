@@ -1,20 +1,19 @@
 esma_set_this()
 
-option(BUILD_PYMLINC_INTERFACE "Build pyMLINC interface" OFF)
-
-set (srcs
+set(srcs
   IAU_GridCompMod.F90
   GEOS_mkiauGridComp.F90
   DFI_GridComp.F90
   mkiau_specmod.F90
-  DynVec_GridComp.F90
-  )
+  DynVec_GridComp.F90)
 
-if (BUILD_PYMLINC_INTERFACE)
-  list (APPEND srcs
+if (BUILD_WITH_PYMLINC)
+  add_compile_definitions(-DHAS_PYMLINC)
+  set(pymlinc_srcs
     pyMLINC/interface/interface.f90
     pyMLINC/interface/interface.c)
-  include (pyMLINC.cmake)
+  list(APPEND srcs ${pymlinc_srcs})
+  include(pyMLINC.cmake)
   set(dependencies pyMLINC_interface_py)
 endif ()
 
@@ -27,6 +26,6 @@ set(dependencies
   MAPL
   FVdycoreCubed_GridComp
   ESMF::ESMF
-  NetCDF::NetCDF_Fortran)  
+  NetCDF::NetCDF_Fortran)
 
-esma_add_library (${this} SRCS ${srcs} DEPENDENCIES ${dependencies})
+esma_add_library(${this} SRCS ${srcs} DEPENDENCIES ${dependencies})
