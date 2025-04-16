@@ -246,13 +246,13 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
         return qty
 
-    # def make_ntracers_ij_field(self, data) -> Quantity:
-    #     qty = self.ntracers_quantity_factory.empty(
-    #         [X_DIM, Y_DIM, "ntracers"],
-    #         "n/a",
-    #     )
-    #     qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
-    #     return qty
+    def make_ntracers_ij_field(self, data) -> Quantity:
+        qty = self.ntracers_quantity_factory.empty(
+            [X_DIM, Y_DIM, "ntracers"],
+            "n/a",
+        )
+        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
+        return qty
 
     def make_ntracers_zdim_field(self, data) -> Quantity:
         qty = self.ntracers_quantity_factory.empty(
@@ -342,27 +342,28 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         thv0top = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         thv0bot = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
         thvl0top = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
-        tr0_o = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
-        sstr0_o = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        tr0_o = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
+        sstr0_o = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
         trflx = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
-        trten = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        trsrc = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
+        trten = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
         tru = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
         tru_emf = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
         qtu_emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         kinv = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
         umf_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        dcm_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qvten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qlten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qiten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        sten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        uten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        vten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qrten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qsten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        cufrc_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        dcm_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qvten_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qlten_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qiten_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        sten_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        uten_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        vten_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qrten_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qsten_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        cufrc_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         cush_inout = self.make_ij_field(inputs_reshaped["cush_inout"])
-        qtflx_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
+        qtflx_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         slflx_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         slflx = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         thlu_emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
@@ -392,7 +393,6 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         thlsrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         usrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         vsrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
-        trsrc = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
         trsrc_o = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
         plcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         klcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
@@ -589,6 +589,30 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qisub_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         ndrop_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         nice_out = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        umf_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        dcm_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qvten_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qlten_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qiten_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        sten_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        uten_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        vten_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qrten_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qsten_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        cufrc_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        cush_inoutvar = self.make_ij_field(np.zeros(shape=[24, 24]))
+        qldet_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qidet_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qlsub_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qisub_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qtflx_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        slflx_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        uflx_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        vflx_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        fer_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        fdr_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        test_tracers = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
+        # test_tracersIJ = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
 
         compute_uwshcu(
             windsrcavg=windsrcavg,
@@ -892,31 +916,56 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             alpha=alpha,
             del_CIN=del_CIN,
             rdrop=rdrop,
-            # qldet_out=qldet_out,
-            # qidet_out=qidet_out,
-            # qlsub_out=qlsub_out,
-            # qisub_out=qisub_out,
-            # ndrop_out=ndrop_out,
-            # nice_out=nice_out,
+            ndrop_out=ndrop_out,
+            nice_out=nice_out,
+            umf_outvar=umf_outvar,
+            dcm_outvar=dcm_outvar,
+            qvten_outvar=qvten_outvar,
+            qlten_outvar=qlten_outvar,
+            qiten_outvar=qiten_outvar,
+            sten_outvar=sten_outvar,
+            uten_outvar=uten_outvar,
+            vten_outvar=vten_outvar,
+            qrten_outvar=qrten_outvar,
+            qsten_outvar=qsten_outvar,
+            cufrc_outvar=cufrc_outvar,
+            cush_inoutvar=cush_inoutvar,
+            qldet_outvar=qldet_outvar,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            qidet_outvar=qidet_outvar,
+            qlsub_out=qlsub_out,
+            qlsub_outvar=qlsub_outvar,
+            qisub_out=qisub_out,
+            qisub_outvar=qisub_outvar,
+            qtflx_outvar=qtflx_outvar,
+            slflx_outvar=slflx_outvar,
+            uflx_outvar=uflx_outvar,
+            vflx_outvar=vflx_outvar,
+            fer_outvar=fer_outvar,
+            fdr_outvar=fdr_outvar,
+            test_tracers=test_tracers,
         )
         print("Performed compute_uwshcu on reshaped inputs")
-        print(test_var_3D.view[2, 21, :])
+        print(test_tracers.view[23, 20, :, 22])
         # print("Reshaped outputs back to original shape")
 
         with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out.nc") as ds:
             # Load in netcdf test var
-            testvar = "fdr_out"
-            var = test_var_3D
-            testvar_nan = ds.variables[testvar].data[0, 0, :, :-1, 0, 0]
+            testvar = "sstr02"
+            var = test_tracers
+            testvar_nan = ds.variables[testvar].data[0, 0, :, :-1, :23, 0]
             # Replace nans with zero
             testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
 
             # Reshape and make testvar quantity
             i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
-            testvar_reshaped = np.reshape(testvar_zeros, (i, j, k)).astype(np.float32)
+            testvar_reshaped = np.reshape(testvar_zeros, (i, j, k, 23)).astype(
+                np.float32
+            )
             # testvar_out = self.make_zinterface_field(testvar_reshaped)
-            testvar_out = self.make_ijk_field(testvar_reshaped)
-            # testvar_out = self.make_ntracers_ijk_field(testvar_reshaped)
+            # testvar_out = self.make_ijk_field(testvar_reshaped)
+            testvar_out = self.make_ntracers_ijk_field(testvar_reshaped)
             # testvar_out = self.make_ntracers_zdim_field(testvar_reshaped)
 
         # Run translate test by hand
@@ -929,35 +978,37 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         for i in range(testing_variable.view[:].shape[0]):
             for j in range(testing_variable.view[:].shape[1]):
                 for k in range(testing_variable.view[:].shape[2]):
-                    diff = (
-                        testing_variable.view[i, j, k]
-                        - reference_variable.view[i, j, k]
-                    )
+                    for n in range(testing_variable.view[:].shape[3]):
+                        diff = (
+                            testing_variable.view[i, j, k, n]
+                            - reference_variable.view[i, j, k, n]
+                        )
 
-                    rel_error = abs(diff / reference_variable.view[i, j, k])
+                        rel_error = abs(diff / reference_variable.view[i, j, k, n])
 
-                    tot_indicies = tot_indicies + 1
-                    if (
-                        testing_variable.view[i, j, k]
-                        != reference_variable.view[i, j, k]
-                    ):
-                        if abs(diff) != 0.0:
-                            failed_indicies = failed_indicies + 1
-                            print(
-                                "DIFF: ",
-                                i,
-                                j,
-                                k,
-                                "computed: ",
-                                testing_variable.view[i, j, k],
-                                "reference: ",
-                                reference_variable.view[i, j, k],
-                                "abs difference: ",
-                                testing_variable.view[i, j, k]
-                                - reference_variable.view[i, j, k],
-                                "rel difference: ",
-                                diff / reference_variable.view[i, j, k],
-                            )
+                        tot_indicies = tot_indicies + 1
+                        if (
+                            testing_variable.view[i, j, k, n]
+                            != reference_variable.view[i, j, k, n]
+                        ):
+                            if abs(diff) != 0.0:
+                                failed_indicies = failed_indicies + 1
+                                print(
+                                    "DIFF: ",
+                                    i,
+                                    j,
+                                    k,
+                                    n,
+                                    "computed: ",
+                                    testing_variable.view[i, j, k, n],
+                                    "reference: ",
+                                    reference_variable.view[i, j, k, n],
+                                    "abs difference: ",
+                                    testing_variable.view[i, j, k, n]
+                                    - reference_variable.view[i, j, k, n],
+                                    "rel difference: ",
+                                    diff / reference_variable.view[i, j, k, n],
+                                )
         print(
             "failures: ",
             failed_indicies,

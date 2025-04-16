@@ -83,8 +83,10 @@ def compute_thermodynamic_variables(
     ssv0: FloatField,
     tscaleh: FloatFieldIJ,
     fer_out: FloatField,
+    fdr_out: FloatField,
     test_var2D: FloatFieldIJ,
     test_var3D: FloatField,
+    test_tracers: FloatField_NTracers,
 ):
     """
     University of Washington Shallow Convection Scheme
@@ -370,8 +372,10 @@ def compute_thv0_thvl0(
     thvl0top_o: FloatField,
     ssu0_o: FloatField,
     ssv0_o: FloatField,
+    cush_inout: FloatFieldIJ,
     test_var2D: FloatFieldIJ,
     test_var3D: FloatField,
+    test_tracers: FloatField_NTracers,
 ):
 
     with computation(PARALLEL), interval(...):
@@ -596,6 +600,7 @@ def find_pbl_height(
     vflx_out: FloatField,
     kinv: IntField,
     cush: FloatFieldIJ,
+    cush_inout: FloatFieldIJ,
     tscaleh: FloatFieldIJ,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
@@ -872,11 +877,12 @@ def find_cumulus_characteristics(
 
             # REVISIT THIS!
             # Is trsrc a FloatFieldIJ_NTracers??
-            if dotransport == 1.0:
-                n = 0
-                while n < ncnst:
-                    trsrc[0, 0, 0][n] = tr0.at(K=0, ddim=[n])
-                    n += 1
+            # if dotransport == 1.0:
+            #     n = 0
+            #     while n < ncnst:
+            #         trsrc[0, 0,0][n] = tr0.at(K=0, ddim=[n])
+            #         test_tracersIJ[0, 0,0][n] = trsrc[0, 0,0][n]
+            #         n += 1
 
 
 def find_klcl(
@@ -902,6 +908,7 @@ def find_klcl(
     thl0lcl: FloatField,
     qt0lcl: FloatField,
     thv0lcl: FloatField,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
@@ -1135,6 +1142,7 @@ def compute_cin_cinlcl(
     usrc_o: FloatField,
     vsrc_o: FloatField,
     thv0lcl_o: FloatField,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
 ):
@@ -1617,12 +1625,28 @@ def avg_initial_and_final_cin(
     ql0: FloatField,
     qv0: FloatField,
     s0: FloatField,
+    dcm: FloatField,
     qvten_out: FloatField,
     dcm_out: FloatField,
     qlten_out: FloatField,
     qiten_out: FloatField,
+    del_CIN: FloatFieldIJ,
+    sten_out: FloatField,
+    uten_out: FloatField,
+    vten_out: FloatField,
+    qrten_out: FloatField,
+    qsten_out: FloatField,
+    cufrc_out: FloatField,
+    cush_inout: FloatFieldIJ,
+    qldet_out: FloatField,
+    qidet_out: FloatField,
+    qlsub_out: FloatField,
+    qisub_out: FloatField,
+    fdr_out: FloatField,
+    fer_out: FloatField,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
+    test_tracers: FloatField_NTracers,
     # Add more inputs/outputs
 ):
 
@@ -1723,6 +1747,7 @@ def avg_initial_and_final_cin(
                         while n < ncnst:
                             tr0[0, 0, 0][n] = tr0_o[0, 0, 0][n]
                             sstr0[0, 0, 0][n] = sstr0_o[0, 0, 0][n]
+                            test_tracers[0, 0, 0][n] = sstr0[0, 0, 0][n]
                             n += 1
 
                     #     """
@@ -1835,9 +1860,11 @@ def avg_initial_and_final_cin(
                     fer_out = fer_s
                     fdr_out = fdr_s
 
-                    id_exit = True
-                    # go to 333
-                    # stop computing at this column
+    with computation(FORWARD), interval(...):
+        if iteration == i32(2):
+            if id_exit == False:
+                if del_CIN <= 0.0:
+                    id_exit = True  # Done computing at this column
 
 
 def define_prel_krel(
@@ -1852,7 +1879,9 @@ def define_prel_krel(
     krel: IntField,
     prel: FloatField,
     thv0rel: FloatField,
+    umf_out: FloatField,
     test_var2D: FloatFieldIJ,
+    test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
         if id_exit == False:
@@ -1915,6 +1944,7 @@ def calc_cumulus_base_mass_flux(
     rho0inv: FloatField,
     ufrcinv: FloatField,
     wcrit: FloatFieldIJ,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
 ):
@@ -2075,6 +2105,7 @@ def define_updraft_properties(
     thvu: FloatField,
     wlcl: FloatField,
     ufrclcl: FloatField,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
@@ -2403,6 +2434,7 @@ def buoyancy_sorting(
     xco: FloatField,
     stop45: BoolFieldIJ,
     iteration: i32,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
 ):
@@ -3455,6 +3487,8 @@ def recalc_condensate(
     fdr: FloatField,
     xco: FloatField,
     cush: FloatFieldIJ,
+    cush_inout: FloatFieldIJ,
+    iteration: i32,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
 ):
@@ -4457,6 +4491,7 @@ def penetrative_entrainment_fluxes(
     vflx_out: FloatField,
     qlten_sink: FloatField,
     qiten_sink: FloatField,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
@@ -4751,6 +4786,7 @@ def calc_thermodynamic_tendencies(
     qlten_det: FloatField,
     qiten_det: FloatField,
     slten: FloatField,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
@@ -5392,6 +5428,7 @@ def compute_diagnostic_outputs(
     rcwp: FloatFieldIJ,
     rlwp: FloatFieldIJ,
     riwp: FloatFieldIJ,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
 ):
 
@@ -5407,7 +5444,7 @@ def compute_diagnostic_outputs(
                 prel, thlu.at(K=krel - 1), qtu.at(K=krel - 1), ese, esx
             )
 
-            if id_check == 1.0:
+            if id_check == 1:
                 id_exit = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
@@ -5470,6 +5507,7 @@ def calc_cumulus_condensate_at_interface(
     rlwp: FloatFieldIJ,
     riwp: FloatFieldIJ,
     cufrc: FloatField,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
@@ -5745,6 +5783,7 @@ def recalc_environmental_variables(
     qi0: FloatField,
     s0: FloatField,
     t0: FloatField,
+    cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
@@ -5940,7 +5979,6 @@ def recalc_environmental_variables(
 
 
 def update_output_variables(
-    id_exit: BoolFieldIJ,
     umf_zint: FloatField,
     zifc0: FloatField,
     kinv: IntField,
@@ -5964,89 +6002,134 @@ def update_output_variables(
     slflx: FloatField,
     uflx: FloatField,
     vflx: FloatField,
-    dotransport: Float,
-    trten: FloatField_NTracers,
-    dt: Float,
+    # dotransport: Float,
+    # trten: FloatField_NTracers,
+    # dt: Float,
     fer: FloatField,
     fdr: FloatField,
     kpen: IntField,
-    ncnst: Int,
-    #     # Outputs
-    #     umf_out: FloatField,
-    #     dcm_out: FloatField,
-    #     qvten_out: FloatField,
-    #     qlten_out: FloatField,
-    #     qiten_out: FloatField,
-    #     sten_out: FloatField,
-    #     uten_out: FloatField,
-    #     vten_out: FloatField,
-    #     qrten_out: FloatField,
-    #     qsten_out: FloatField,
-    #     cufrc_out: FloatField,
-    #     cush_inout: FloatFieldIJ,
-    #     qldet_out: FloatField,
-    #     qidet_out: FloatField,
-    #     qlsub_out: FloatField,
-    #     qisub_out: FloatField,
-    #     ndrop_out: FloatField,
-    #     nice_out: FloatField,
-    #     qtflx_out: FloatField,
-    #     slflx_out: FloatField,
-    #     uflx_out: FloatField,
-    #     vflx_out: FloatField,
-    tr0_inout: FloatField_NTracers,
+    # ncnst: Int,
+    # # Outputs
+    umf_out: FloatField,
+    dcm_out: FloatField,
+    qvten_out: FloatField,
+    qlten_out: FloatField,
+    qiten_out: FloatField,
+    sten_out: FloatField,
+    uten_out: FloatField,
+    vten_out: FloatField,
+    qrten_out: FloatField,
+    qsten_out: FloatField,
+    cufrc_out: FloatField,
+    cush_inout: FloatFieldIJ,
+    qldet_out: FloatField,
+    qidet_out: FloatField,
+    qlsub_out: FloatField,
+    qisub_out: FloatField,
+    ndrop_out: FloatField,
+    nice_out: FloatField,
+    qtflx_out: FloatField,
+    slflx_out: FloatField,
+    uflx_out: FloatField,
+    vflx_out: FloatField,
+    # tr0_inout: FloatField_NTracers,
     fer_out: FloatField,
-    #     fdr_out: FloatField,
-    #     iteration: i32,
+    fdr_out: FloatField,
+    umf_outvar: FloatField,
+    dcm_outvar: FloatField,
+    qvten_outvar: FloatField,
+    qlten_outvar: FloatField,
+    qiten_outvar: FloatField,
+    sten_outvar: FloatField,
+    uten_outvar: FloatField,
+    vten_outvar: FloatField,
+    qrten_outvar: FloatField,
+    qsten_outvar: FloatField,
+    cufrc_outvar: FloatField,
+    cush_inoutvar: FloatFieldIJ,
+    qldet_outvar: FloatField,
+    qidet_outvar: FloatField,
+    qlsub_outvar: FloatField,
+    qisub_outvar: FloatField,
+    qtflx_outvar: FloatField,
+    slflx_outvar: FloatField,
+    uflx_outvar: FloatField,
+    vflx_outvar: FloatField,
+    fer_outvar: FloatField,
+    fdr_outvar: FloatField,
+    del_CIN: FloatFieldIJ,
     test_var3D: FloatField,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
-            umf_out = umf_zint
+
+        if del_CIN <= 0.0:
+            umf_outvar = umf_out
+            dcm_outvar = dcm_out
+            qvten_outvar = qvten_out
+            qlten_outvar = qlten_out
+            qiten_outvar = qiten_out
+            sten_outvar = sten_out
+            uten_outvar = uten_out
+            vten_outvar = vten_out
+            qrten_outvar = qrten_out
+            qsten_outvar = qsten_out
+            cufrc_outvar = cufrc_out
+            cush_inoutvar = cush_inout
+            qldet_outvar = qldet_out
+            qidet_outvar = qidet_out
+            qlsub_outvar = qlsub_out
+            qisub_outvar = qisub_out
+            qtflx_outvar = qtflx_out
+            slflx_outvar = slflx_out
+            uflx_outvar = uflx_out
+            vflx_outvar = vflx_out
+            fer_outvar = fer_out
+            fdr_outvar = fdr_out
+
+        if del_CIN > 0.0:
+            umf_outvar = umf_zint
 
             if THIS_K <= kinv - 1:
-                umf_out = umf_zint.at(K=kinv) * zifc0 / zifc0.at(K=kinv)
+                umf_outvar = umf_zint.at(K=kinv) * zifc0 / zifc0.at(K=kinv)
 
-            dcm_out = dcm
-            qvten_out = qvten
-            qlten_out = qlten
-            qiten_out = qiten
-            sten_out = sten
-            uten_out = uten
-            vten_out = vten
-            qrten_out = qrten
-            qsten_out = qsten
-            cufrc_out = cufrc
-            cush_inout = cush
-            qldet_out = qlten_det
-            qidet_out = qiten_det
-            qlsub_out = qlten_sink
-            qisub_out = qiten_sink
+            dcm_outvar = dcm
+            qvten_outvar = qvten
+            qlten_outvar = qlten
+            qiten_outvar = qiten
+            sten_outvar = sten
+            uten_outvar = uten
+            vten_outvar = vten
+            qrten_outvar = qrten
+            qsten_outvar = qsten
+            cufrc_outvar = cufrc
+            cush_inoutvar = cush
+            qldet_outvar = qlten_det
+            qidet_outvar = qiten_det
+            qlsub_outvar = qlten_sink
+            qisub_outvar = qiten_sink
             ndrop_out = qlten_det / (4188.787 * rdrop**3)  # Revisit
             nice_out = qiten_det / (3.0e-10)
-            qtflx_out = qtflx
-            slflx_out = slflx
-            uflx_out = uflx
-            vflx_out = vflx
+            qtflx_outvar = qtflx
+            slflx_outvar = slflx
+            uflx_outvar = uflx
+            vflx_outvar = vflx
 
-            # # REVISIT THIS
-            if dotransport == 1.0:
-                n = 0
-                while n < ncnst:
-                    tr0_inout[0, 0, 0][n] = (
-                        tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
-                    )
-                    n += 1
+            # REVISIT THIS
+            # if dotransport == 1.0:
+            #     n = 0
+            #     while n < ncnst:
+            #         tr0_inout[0, 0, 0][n] = (
+            #             tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
+            #         )
+            #         n += 1
 
-            # Below are specific diagnostic output for detailed
-            # analysis of cumulus scheme
-            fer_out = constants.MAPL_UNDEF
-            fdr_out = constants.MAPL_UNDEF
-            test_var3D = fdr_out
+            # # Below are specific diagnostic output for detailed
+            # # analysis of cumulus scheme
+            fer_outvar = constants.MAPL_UNDEF
+            fdr_outvar = constants.MAPL_UNDEF
             if THIS_K <= kpen:
-                fer_out = fer
-                fdr_out = fdr
-                test_var3D = fdr_out
+                fer_outvar = fer
+                fdr_outvar = fdr
 
 
 class ComputeUwshcu:
@@ -6288,12 +6371,12 @@ class ComputeUwshcu:
         cufrc_out: FloatField,
         fer_out: FloatField,
         fdr_out: FloatField,
-        # qldet_out: FloatField,
-        # qidet_out: FloatField,
-        # qlsub_out: FloatField,
-        # qisub_out: FloatField,
-        # ndrop_out: FloatField,
-        # nice_out: FloatField,
+        qldet_out: FloatField,
+        qidet_out: FloatField,
+        qlsub_out: FloatField,
+        qisub_out: FloatField,
+        ndrop_out: FloatField,
+        nice_out: FloatField,
         shfx: FloatFieldIJ,
         evap: FloatFieldIJ,
         # cnvtr: FloatFieldIJ,
@@ -6324,7 +6407,6 @@ class ComputeUwshcu:
         thl0top: FloatField,
         qt0top: FloatField,
         thvl0bot: FloatField,
-        # thl0bot: FloatFieldIJ,
         tr0_o: FloatField_NTracers,
         sstr0_o: FloatField_NTracers,
         trflx: FloatField_NTracers,
@@ -6540,8 +6622,31 @@ class ComputeUwshcu:
         alpha: FloatFieldIJ,
         del_CIN: FloatFieldIJ,
         rdrop: Float,
+        umf_outvar: FloatField,
+        dcm_outvar: FloatField,
+        qvten_outvar: FloatField,
+        qlten_outvar: FloatField,
+        qiten_outvar: FloatField,
+        sten_outvar: FloatField,
+        uten_outvar: FloatField,
+        vten_outvar: FloatField,
+        qrten_outvar: FloatField,
+        qsten_outvar: FloatField,
+        cufrc_outvar: FloatField,
+        cush_inoutvar: FloatFieldIJ,
+        qldet_outvar: FloatField,
+        qidet_outvar: FloatField,
+        qlsub_outvar: FloatField,
+        qisub_outvar: FloatField,
+        qtflx_outvar: FloatField,
+        slflx_outvar: FloatField,
+        uflx_outvar: FloatField,
+        vflx_outvar: FloatField,
+        fer_outvar: FloatField,
+        fdr_outvar: FloatField,
         test_var3D: FloatField,
         test_var2D: FloatFieldIJ,
+        test_tracers: FloatField_NTracers,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
         self.qsat = QSat(
@@ -6591,8 +6696,10 @@ class ComputeUwshcu:
             tscaleh=tscaleh,
             dotransport=dotransport,
             fer_out=fer_out,
+            fdr_out=fdr_out,
             test_var3D=test_var3D,
             test_var2D=test_var2D,
+            test_tracers=test_tracers,
         )
 
         self._compute_thv0_thvl0(
@@ -6690,8 +6797,10 @@ class ComputeUwshcu:
             thvl0top_o=thvl0top_o,
             ssu0_o=ssu0_o,
             ssv0_o=ssv0_o,
+            cush_inout=cush_inout,
             test_var3D=test_var3D,
             test_var2D=test_var2D,
+            test_tracers=test_tracers,
         )
 
         """
@@ -6719,6 +6828,7 @@ class ComputeUwshcu:
                 kinv=kinv,
                 cush=cush,
                 tscaleh=tscaleh,
+                cush_inout=cush_inout,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
             )
@@ -6802,6 +6912,7 @@ class ComputeUwshcu:
                 thl0lcl=thl0lcl,
                 qt0lcl=qt0lcl,
                 thv0lcl=thv0lcl,
+                cush_inout=cush_inout,
                 test_var3D=test_var3D,
             )
 
@@ -6863,6 +6974,7 @@ class ComputeUwshcu:
                 usrc_o=usrc_o,
                 vsrc_o=vsrc_o,
                 thv0lcl_o=thv0lcl_o,
+                cush_inout=cush_inout,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
             )
@@ -6990,8 +7102,24 @@ class ComputeUwshcu:
                 dcm_out=dcm_out,
                 qlten_out=qlten_out,
                 qiten_out=qiten_out,
+                del_CIN=del_CIN,
+                dcm=dcm,
+                sten_out=sten_out,
+                uten_out=uten_out,
+                vten_out=vten_out,
+                qrten_out=qrten_out,
+                qsten_out=qsten_out,
+                cufrc_out=cufrc_out,
+                cush_inout=cush_inout,
+                qldet_out=qldet_out,
+                qidet_out=qidet_out,
+                qlsub_out=qlsub_out,
+                qisub_out=qisub_out,
+                fdr_out=fdr_out,
+                fer_out=fer_out,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
+                test_tracers=test_tracers,
             )
 
             self._define_prel_krel(
@@ -7006,7 +7134,9 @@ class ComputeUwshcu:
                 krel=krel,
                 prel=prel,
                 thv0rel=thv0rel,
+                umf_out=umf_out,
                 test_var2D=test_var2D,
+                test_var3D=test_var3D,
             )
 
             self._calc_cumulus_base_mass_flux(
@@ -7037,6 +7167,7 @@ class ComputeUwshcu:
                 rho0inv=rho0inv,
                 ufrcinv=ufrcinv,
                 wcrit=wcrit,
+                cush_inout=cush_inout,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
             )
@@ -7071,6 +7202,7 @@ class ComputeUwshcu:
                 thvu=thvu,
                 wlcl=wlcl,
                 ufrclcl=ufrclcl,
+                cush_inout=cush_inout,
                 test_var3D=test_var3D,
             )
 
@@ -7206,6 +7338,7 @@ class ComputeUwshcu:
                 diten=diten,
                 dcm=dcm,
                 xco=xco,
+                cush_inout=cush_inout,
                 stop45=self.stop45,
                 iteration=iteration,
                 test_var3D=test_var3D,
@@ -7270,6 +7403,8 @@ class ComputeUwshcu:
                 umf_temp=umf_temp,
                 xco=xco,
                 cush=cush,
+                cush_inout=cush_inout,
+                iteration=iteration,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
             )
@@ -7467,6 +7602,7 @@ class ComputeUwshcu:
                 vflx_out=vflx_out,
                 qlten_sink=qlten_sink,
                 qiten_sink=qiten_sink,
+                cush_inout=cush_inout,
                 test_var3D=test_var3D,
             )
 
@@ -7545,6 +7681,7 @@ class ComputeUwshcu:
                 slten=slten,
                 qlten_det=qlten_det,
                 qiten_det=qiten_det,
+                cush_inout=cush_inout,
                 test_var3D=test_var3D,
             )
 
@@ -7599,6 +7736,7 @@ class ComputeUwshcu:
                 rcwp=rcwp,
                 rlwp=rlwp,
                 riwp=riwp,
+                cush_inout=cush_inout,
                 test_var3D=test_var3D,
             )
 
@@ -7633,6 +7771,7 @@ class ComputeUwshcu:
                 rlwp=rlwp,
                 riwp=riwp,
                 cufrc=cufrc,
+                cush_inout=cush_inout,
                 test_var3D=test_var3D,
             )
 
@@ -7753,13 +7892,14 @@ class ComputeUwshcu:
                     qi0=qi0,
                     s0=s0,
                     t0=t0,
+                    cush_inout=cush_inout,
                     test_var3D=test_var3D,
                 )
 
             iteration = iteration + i32(1)
 
         self._update_output_variables(
-            id_exit=self.id_exit,
+            del_CIN=del_CIN,
             umf_zint=umf_zint,
             zifc0=zifc0_in,
             kinv=kinv,
@@ -7783,38 +7923,59 @@ class ComputeUwshcu:
             slflx=slflx,
             uflx=uflx,
             vflx=vflx,
-            dotransport=dotransport,
-            trten=trten,
-            dt=dt,
+            # dotransport=dotransport,
+            # trten=trten,
+            # dt=dt,
             fer=fer,
             fdr=fdr,
             kpen=kpen,
-            ncnst=ncnst,
-            #     umf_out=umf_out,
-            #     dcm_out=dcm_out,
-            #     qvten_out=qvten_out,
-            #     qlten_out=qlten_out,
-            #     qiten_out=qiten_out,
-            #     sten_out=sten_out,
-            #     uten_out=uten_out,
-            #     vten_out=vten_out,
-            #     qrten_out=qrten_out,
-            #     qsten_out=qsten_out,
-            #     cufrc_out=cufrc_out,
-            #     cush_inout=cush_inout,
-            #     qldet_out=qldet_out,
-            #     qidet_out=qidet_out,
-            #     qlsub_out=qlsub_out,
-            #     qisub_out=qisub_out,
-            #     ndrop_out=ndrop_out,
-            #     nice_out=nice_out,
-            #     qtflx_out=qtflx_out,
-            #     slflx_out=slflx_out,
-            #     uflx_out=uflx_out,
-            #     vflx_out=vflx_out,
-            tr0_inout=tr0_inout,
+            # ncnst=ncnst,
+            umf_out=umf_out,
+            dcm_out=dcm_out,
+            qvten_out=qvten_out,
+            qlten_out=qlten_out,
+            qiten_out=qiten_out,
+            sten_out=sten_out,
+            uten_out=uten_out,
+            vten_out=vten_out,
+            qrten_out=qrten_out,
+            qsten_out=qsten_out,
+            cufrc_out=cufrc_out,
+            cush_inout=cush_inout,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            qlsub_out=qlsub_out,
+            qisub_out=qisub_out,
+            ndrop_out=ndrop_out,
+            nice_out=nice_out,
+            qtflx_out=qtflx_out,
+            slflx_out=slflx_out,
+            uflx_out=uflx_out,
+            vflx_out=vflx_out,
+            # tr0_inout=tr0_inout,
             fer_out=fer_out,
-            #     fdr_out=fdr_out,
-            #     iteration=iteration,
+            umf_outvar=umf_outvar,
+            dcm_outvar=dcm_outvar,
+            qvten_outvar=qvten_outvar,
+            qlten_outvar=qlten_outvar,
+            qiten_outvar=qiten_outvar,
+            sten_outvar=sten_outvar,
+            uten_outvar=uten_outvar,
+            vten_outvar=vten_outvar,
+            qrten_outvar=qrten_outvar,
+            qsten_outvar=qsten_outvar,
+            cufrc_outvar=cufrc_outvar,
+            cush_inoutvar=cush_inoutvar,
+            qldet_outvar=qldet_outvar,
+            qidet_outvar=qidet_outvar,
+            qlsub_outvar=qlsub_outvar,
+            qisub_outvar=qisub_outvar,
+            qtflx_outvar=qtflx_outvar,
+            slflx_outvar=slflx_outvar,
+            uflx_outvar=uflx_outvar,
+            vflx_outvar=vflx_outvar,
+            fdr_out=fdr_out,
+            fer_outvar=fer_outvar,
+            fdr_outvar=fdr_outvar,
             test_var3D=test_var3D,
         )
