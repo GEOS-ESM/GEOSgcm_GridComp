@@ -66,12 +66,17 @@ MODULE Aer_Actv_Single_Moment
       REAL :: numbinit
       integer :: i,j,k,n,rc
 
+      class(BaseProfiler), pointer :: t_p
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
       integer                                 :: STATUS
 
       NWFA = 0.0
 
       if (USE_AEROSOL_NN) then
+
+          ! TIMERS on
+          t_p => get_global_time_profiler()
+          call t_p%start('USE_AEROSOL_NN',_RC)
 
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
@@ -237,6 +242,8 @@ MODULE Aer_Actv_Single_Moment
         deallocate( nact, __STAT__)
 
        end if ! n_modes > 0
+
+        call t_p%stop('USE_AEROSOL_NN',_RC)
 
       else ! USE_AEROSOL_NN
 
