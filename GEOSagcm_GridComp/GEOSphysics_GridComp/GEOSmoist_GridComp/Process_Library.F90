@@ -96,8 +96,8 @@ module GEOSmoist_Process_Library
 
   ! Radar parameter
   integer :: DBZ_VAR_INTERCP=1 ! use variable intercept parameters 
-  integer :: DBZ_LIQUID_SKIN=1 ! use liquid skin on snow/ice in warm environments
-  LOGICAL :: refl10cm_allow_wet_graupel = .true.
+  integer :: DBZ_LIQUID_SKIN=1 ! use liquid skin on snow(1) and graupel(2) in warm environments
+  LOGICAL :: refl10cm_allow_wet_graupel = .false.
   LOGICAL :: refl10cm_allow_wet_snow = .true.
 
   ! Thompson radar constants

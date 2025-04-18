@@ -957,16 +957,23 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
            call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
 
 
-           call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_SIMPLE' , RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(EXPORT, PTR2D , 'REFL10CM_MAX' , RC=STATUS); VERIFY_(STATUS)
            if (associated(PTR2D)) then
-               call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
+               call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")
+              ! calc_refl10cm is expensive, do not call every time
+               rand1 = 0.0
                TMP3D = 0.0
-               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
+               DO J=1,JM ; DO I=1,IM
+                !rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
+                !rand1= max( rand1/1000000., 1e-6 )
+                 call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
+               END DO ; END DO
                PTR2D=-9999.0
                DO L=1,LM ; DO J=1,JM ; DO I=1,IM
                   PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
                END DO ; END DO ; END DO
-               call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
+               call MAPL_TimerOff(MAPL,"---CLD_REFL10CM")
            endif
 
            call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)

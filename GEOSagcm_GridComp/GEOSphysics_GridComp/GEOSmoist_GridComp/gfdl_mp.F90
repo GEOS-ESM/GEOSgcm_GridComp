@@ -281,8 +281,8 @@ module gfdl_mp_mod
 
     logical :: do_sedi_uv = .true. ! transport of horizontal momentum in sedimentation
     logical :: do_sedi_w = .false. ! transport of vertical momentum in sedimentation
-    logical :: do_sedi_heat = .false. ! transport of heat in sedimentation
-    logical :: do_sedi_melt = .false. ! melt cloud ice, snow, and graupel during sedimentation
+    logical :: do_sedi_heat = .true. ! transport of heat in sedimentation
+    logical :: do_sedi_melt = .true. ! melt cloud ice, snow, and graupel during sedimentation
 
     logical :: do_qa = .false. ! do inline cloud fraction
     logical :: rad_snow = .true. ! include snow in cloud fraciton calculation
@@ -315,7 +315,7 @@ module gfdl_mp_mod
     logical :: do_evap_timescale = .true. ! whether to apply a timescale to evaporation
     logical :: do_cond_timescale = .true. ! whether to apply a timescale to condensation
 
-    logical :: do_hail = .false. ! use hail parameters instead of graupel
+    logical :: do_hail = .true. ! use hail parameters instead of graupel
 
     logical :: consv_checker = .false. ! turn on energy and water conservation checker
 
@@ -398,9 +398,9 @@ module gfdl_mp_mod
     real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
     real :: tau_l2v  =  300.0 ! cloud water to water vapor evaporation time scale (s)
     real :: tau_revp =  600.0 ! rain evaporation time scale (s)
-    real :: tau_imlt =  900.0 ! cloud ice melting time scale (s)
+    real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
-    real :: tau_gmlt =  600.0 ! graupel melting time scale (s)
+    real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     real :: tau_wbf  =  300.0 ! graupel melting time scale (s)
     real :: tau_frz  =  600.0 !< timescale for liquid-ice freezing
 
@@ -423,18 +423,16 @@ module gfdl_mp_mod
     real :: qs_mlt = 1.0e-6 ! maximum cloud water allowed from melted snow (kg/kg)
 
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
-    real :: qi0_max = 1.0e-4 ! maximum cloud ice value (autoconverted to snow) (kg/m^3)
+    real :: qi0_max = 9.82679e-5 ! maximum cloud ice value (autoconverted to snow) (kg/m^3)
 
-    real :: qi0_crt = 5.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
+    real :: qi0_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: qs0_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
-
-    real :: qi_gen = 9.82679e-5 ! max cloud ice generation at -40 C
 
     real :: c_paut  = 1.0 ! cloud water to rain autoconversion efficiency
 
     ! collection efficiencies for accretion
     !   Dry processes (frozen to/from frozen)
-    real :: c_psaci = 0.01 ! cloud ice to snow accretion efficiency (was 0.1 in ZETAC)
+    real :: c_psaci = 0.05 ! cloud ice to snow accretion efficiency (was 0.1 in ZETAC)
     real :: c_pgaci = 0.01 ! cloud ice to graupel accretion efficiency (was 0.1 in ZETAC)
     real :: c_pgacs = 0.01 ! snow to graupel accretion efficiency (was 0.1 in ZETAC)
     !   Wet processes (liquid to/from frozen)
@@ -491,8 +489,8 @@ module gfdl_mp_mod
     real :: f_dq_m = 1.0 ! cloud fraction adjustment for undersaturation
 
     real :: fi2s_fac = 1.0 ! maximum sink of cloud ice to form snow: 0-1
-    real :: fi2g_fac = 1.0 ! maximum sink of cloud ice to form graupel: 0-1
-    real :: fs2g_fac = 1.0 ! maximum sink of snow to form graupel: 0-1
+    real :: fi2g_fac = 0.5 ! maximum sink of cloud ice to form graupel: 0-1
+    real :: fs2g_fac = 0.5 ! maximum sink of snow to form graupel: 0-1
 
     real :: beta = 1.22 ! defined in Heymsfield and Mcfarquhar (1996)
 
@@ -3511,8 +3509,8 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             tmp = tz (k)
             newliq = new_liq_condensate(tmp, ql, qi)
-            sink = min (newliq, (tz (k) - tice) / icpk (k))
-            tmp = fac_imlt * min (sink, dim (ql_mlt/qadum/den(k), ql))
+            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
+            tmp = min (sink, dim (ql_mlt/qadum, ql))
 
             tmp = tmp * qadum
             sink = sink * qadum
@@ -3538,10 +3536,10 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, qlk (k), qik (k))
-            sink = min(newice, (tice - tz (k)) / icpk (k))
-            qim = qi_gen * ice_fraction(tmp,cnv_fraction,srf_type)
-            tmp = fac_frz * min (sink, dim (qim/qadum/den(k), qik (k)))
+            newice = new_ice_condensate(tmp, ql, qi)
+            sink = fac_frz * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
+            qim = qi0_max / den (k)
+            tmp = min (sink, dim (qim/qadum, qi))
 
             tmp = tmp*qadum
             sink = sink*qadum
@@ -3614,9 +3612,9 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
             tmp = tz (k)
             newliq = new_liq_condensate(tmp, ql, qi)
-            sink = min (newliq, (tz (k) - tice) / icpk (k))
-            tmp = fac_imlt * min (sink, dim (ql_mlt/qadum/den(k), ql))
- 
+            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
+            tmp = min (sink, dim (ql_mlt/qadum, ql))
+
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-sink+tmp,0.0  ) / &
                                              max(qi+ql         ,qcmin) ) )
@@ -3688,10 +3686,10 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, qlk (k), qik (k))
-            sink = min(newice, (tice - tz (k)) / icpk (k))
-            qim = qi_gen * ice_fraction(tmp,cnv_fraction,srf_type)
-            tmp = fac_frz * min (sink, dim (qim/qadum/den(k), qik (k)))
+            newice = new_ice_condensate(tmp, ql, qi)
+            sink = fac_frz * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
+            qim = qi0_max / den (k)
+            tmp = min (sink, dim (qim/qadum, qi))
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-sink+tmp,0.0  ) / &
@@ -4025,7 +4023,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
                 else
                     dq = qi - qim
                 endif
-                sink = fac_i2s * dq * exp (0.05 * tc)
+                sink = fac_i2s * exp (0.025 * tc) * dq
             endif
             sink = min (fi2s_fac * qi, sink) * qadum
             mppas = mppas + sink * dp (k) * convt
@@ -4277,7 +4275,7 @@ subroutine pgaut (ks, ke, dts, qv, ql, qr, qi, qs, qg, dp, tz, den, mppag, convt
             sink = 0
             qsm = qs0_crt / den (k)
             if (qs (k) .gt. qsm) then
-                factor = dts * 1.e-3 * exp (0.09 * (tz (k) - tice))
+                factor = dts * 1.e-3 * exp (0.09 * tc)
                 sink = factor / (1. + factor) * (qs (k) - qsm)
             endif
 
