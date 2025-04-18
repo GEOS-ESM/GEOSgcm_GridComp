@@ -1752,7 +1752,7 @@ contains
     if(SLOPE < 0.0) then
        GK_B = SLOPE
     else
-       GK_B = (0.86-0.76)/(RHOFRESH-StieglitzSnow_RHOMA)
+       GK_B = (0.86-0.75)/(RHOFRESH-StieglitzSnow_RHOMA)
     endif
     
     DO I=1,NCH
