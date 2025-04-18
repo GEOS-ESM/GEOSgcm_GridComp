@@ -75,8 +75,6 @@ MODULE Aer_Actv_Single_Moment
       if (USE_AEROSOL_NN) then
 
           ! TIMERS on
-          t_p => get_global_time_profiler()
-          call t_p%start('USE_AEROSOL_NN',_RC)
 
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
@@ -129,9 +127,12 @@ MODULE Aer_Actv_Single_Moment
                ! call WRITE_PARALLEL (trim(aero_aci_modes(n)))
 
                  ! execute the aerosol activation properties method
+                 t_p => get_global_time_profiler()
+                 call t_p%start('aero_aci_callback',_RC)
                  call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
                  VERIFY_(ACI_STATUS)
                  VERIFY_(STATUS)
+                 call t_p%stop('aero_aci_callback',_RC)
 
                  ! copy out aerosol activation properties
                  call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
@@ -270,8 +271,6 @@ MODULE Aer_Actv_Single_Moment
         end do
 
        end if ! n_modes > 0
-
-        call t_p%stop('USE_AEROSOL_NN',_RC)
 
       else ! USE_AEROSOL_NN
 
