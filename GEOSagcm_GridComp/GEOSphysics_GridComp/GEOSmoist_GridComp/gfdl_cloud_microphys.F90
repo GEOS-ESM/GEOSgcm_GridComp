@@ -1626,10 +1626,11 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
                 ! qi0_crt (ice to snow conversion) has strong resolution dependence
                 !    account for this using onemsig to convert more ice to snow at coarser resolutions
-                critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig)
-               
-                qim = critical_qi_factor / den (k)
-
+                critical_qi_factor = qi0_crt*(onemsig + 1.e-1*(1.0-onemsig))
+             
+                ! use ice_fraction to convert more ice to snow closer to 0-cel 
+                qim = ice_fraction(tz, cnv_fraction, srf_type) * critical_qi_factor / den (k)
+ 
                 ! -----------------------------------------------------------------------
                 ! assuming linear subgrid vertical distribution of cloud ice
                 ! the mismatch computation following lin et al. 1994, mwr
