@@ -35,7 +35,7 @@ PROGRAM mkEASETilesParam
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
   use process_hres_data,     only : histogram
-  use LogRectRasterizeMod,   only : WriteTilingNC4, SRTM_maxcat, MAPL_UNDEF_R8   ! rasterize.F90
+  use LogRectRasterizeMod,   only : SRTM_maxcat, MAPL_UNDEF_R8   ! rasterize.F90
   use MAPL_SortMod
   use MAPL_ConstantsMod
   use MAPL_ExceptionHandling
@@ -975,7 +975,7 @@ PROGRAM mkEASETilesParam
   
   ! write nc4-formatted tile file (including supplemental tile attributes ["catchment.def"])
 
-  call WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
+  call MAPL_WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
        nc, nr, iTable, rTable)
   
   deallocate( tileid_index, catid_index,veg )
