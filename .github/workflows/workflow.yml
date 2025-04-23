@@ -67,8 +67,7 @@ jobs:
           mepo status
 
       - name: Update other branches
-        if:
-          "!contains('refs/heads/main,refs/heads/develop', github.ref)"
+        if: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
         run: |
           mepo checkout-if-exists ${GITHUB_HEAD_REF}
           mepo status
