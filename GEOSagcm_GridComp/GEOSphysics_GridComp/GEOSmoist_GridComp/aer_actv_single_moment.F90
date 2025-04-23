@@ -70,180 +70,178 @@ MODULE Aer_Actv_Single_Moment
 
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
       integer                                 :: STATUS
-      class(BaseProfiler), pointer :: t_p
 
       NWFA = 0.0
 
-      t_p => get_global_time_profiler()
+      if (.not. USE_AEROSOL_NN) then
 
-      if (USE_AEROSOL_NN) then
+        do k = 1, LM
+          NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+          NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+        end do
 
-          call t_p%start('use_aerosol_nn',_RC)
-          call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
+        return
+     end if
 
-          if (n_modes > 0) then
+     call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
-              allocate( sig0(IM,n_modes), __STAT__)
-              allocate(   rg(IM,n_modes), __STAT__)
-              allocate(   ni(IM,n_modes), __STAT__)
-              allocate(bibar(IM,n_modes), __STAT__)
-              allocate( nact(IM,n_modes), __STAT__)
+     if (n_modes == 0) return
 
-              allocate(aero_aci_modes(n_modes), __STAT__)
-              call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)
-
-              call ESMF_AttributeGet(aero_aci, name='air_pressure_for_aerosol_optics', value=aci_field_name, __RC__)
-              if (aci_field_name /= '') then
-                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                  aci_ptr_3d = PLE
-              end if
-
-              call ESMF_AttributeGet(aero_aci, name='air_temperature', value=aci_field_name, __RC__)
-              if (aci_field_name /= '') then
-                  call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                  aci_ptr_3d = T
-              end if
-
-              call ESMF_AttributeGet(aero_aci, name='fraction_of_land_type', value=aci_field_name, __RC__)
-              if (aci_field_name /= '') then
-                  call MAPL_GetPointer(aero_aci, aci_ptr_2d, trim(aci_field_name), __RC__)
-                  aci_ptr_2d = FRLAND
-              end if
+     allocate( sig0(IM,n_modes), __STAT__)
+     allocate(   rg(IM,n_modes), __STAT__)
+     allocate(   ni(IM,n_modes), __STAT__)
+     allocate(bibar(IM,n_modes), __STAT__)
+     allocate( nact(IM,n_modes), __STAT__)
      
-              ACTIVATION_PROPERTIES: do n = 1, n_modes
-                 call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
-               ! call WRITE_PARALLEL (trim(aero_aci_modes(n)))  
-                  
-                 ! execute the aerosol activation properties method 
-                 call t_p%start('aero_aci_callback',_RC)
-                 call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
-                 VERIFY_(ACI_STATUS)
-                 VERIFY_(STATUS)
-                 call t_p%stop('aero_aci_callback',_RC)
+     allocate(aero_aci_modes(n_modes), __STAT__)
+     call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)
 
-                 call t_p%start('attributes_after_callback',_RC)
-                 ! copy out aerosol activation properties
-                 call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%num = aci_ptr_3d
+     call ESMF_AttributeGet(aero_aci, name='air_pressure_for_aerosol_optics', value=aci_field_name, __RC__)
+     if (aci_field_name /= '') then
+        call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+        aci_ptr_3d = PLE
+     end if
 
-                 call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%dpg = aci_ptr_3d
-               ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%dpg(1,1,1)
+     call ESMF_AttributeGet(aero_aci, name='air_temperature', value=aci_field_name, __RC__)
+     if (aci_field_name /= '') then
+        call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+        aci_ptr_3d = T
+     end if
 
-                 call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%sig = aci_ptr_3d
+     call ESMF_AttributeGet(aero_aci, name='fraction_of_land_type', value=aci_field_name, __RC__)
+     if (aci_field_name /= '') then
+        call MAPL_GetPointer(aero_aci, aci_ptr_2d, trim(aci_field_name), __RC__)
+        aci_ptr_2d = FRLAND
+     end if
 
-                 call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%kap = aci_ptr_3d
-               ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%kap(1,1,1)
+     ACTIVATION_PROPERTIES: do n = 1, n_modes
+        call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
+        ! call WRITE_PARALLEL (trim(aero_aci_modes(n)))  
 
-                 if (need_extra_fields) then
+        ! execute the aerosol activation properties method 
+        call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
+        VERIFY_(ACI_STATUS)
+        VERIFY_(STATUS)
 
-                 call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%den = aci_ptr_3d
+        ! copy out aerosol activation properties
+        call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
+        call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+        AeroPropsNew(n)%num = aci_ptr_3d
 
-                 call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%fdust = aci_ptr_3d
+        call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
+        call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+        AeroPropsNew(n)%dpg = aci_ptr_3d
+        ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%dpg(1,1,1)
 
-                 call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%fsoot = aci_ptr_3d
+        call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
+        call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+        AeroPropsNew(n)%sig = aci_ptr_3d
 
-                 call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
-                 call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
-                 AeroPropsNew(n)%forg = aci_ptr_3d
+        call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
+        call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+        AeroPropsNew(n)%kap = aci_ptr_3d
+        ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%kap(1,1,1)
 
-                 endif
+        if (need_extra_fields) then
 
-                 AeroPropsNew(n)%nmods = n_modes
+           call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
+           call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+           AeroPropsNew(n)%den = aci_ptr_3d
 
-                 where (AeroPropsNew(n)%kap > 0.4)
-                    NWFA = NWFA + AeroPropsNew(n)%num
-                 end where
-                 call t_p%stop('attributes_after_callback',_RC)
+           call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
+           call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+           AeroPropsNew(n)%fdust = aci_ptr_3d
 
-              end do ACTIVATION_PROPERTIES
+           call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
+           call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+           AeroPropsNew(n)%fsoot = aci_ptr_3d
 
-            ! if (MAPL_am_I_root()) then
-            !    do n = 1, n_modes
-            !      print *, n, AeroPropsNew(n)%num(1,1,1)
-            !      print *, n, AeroPropsNew(n)%dpg(1,1,1)
-            !      print *, n, AeroPropsNew(n)%sig(1,1,1)
-            !      print *, n, AeroPropsNew(n)%kap(1,1,1)
-            !      print *, n, AeroPropsNew(n)%den(1,1,1)
-            !      print *, n, AeroPropsNew(n)%fdust(1,1,1)
-            !      print *, n, AeroPropsNew(n)%fsoot(1,1,1)
-            !      print *, n, AeroPropsNew(n)%forg(1,1,1)
-            !    end do !modes
-            ! end if 
-             
-              deallocate(aero_aci_modes, __STAT__)
+           call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
+           call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+           AeroPropsNew(n)%forg = aci_ptr_3d
 
-      !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
-      call t_p%start('k_loop_compute',_RC)
-      DO k=LM,1,-1
-       DO j=1,JM
+        endif
+
+        AeroPropsNew(n)%nmods = n_modes
+
+        where (AeroPropsNew(n)%kap > 0.4)
+           NWFA = NWFA + AeroPropsNew(n)%num
+        end where
+
+     end do ACTIVATION_PROPERTIES
+
+     ! if (MAPL_am_I_root()) then
+     !    do n = 1, n_modes
+     !      print *, n, AeroPropsNew(n)%num(1,1,1)
+     !      print *, n, AeroPropsNew(n)%dpg(1,1,1)
+     !      print *, n, AeroPropsNew(n)%sig(1,1,1)
+     !      print *, n, AeroPropsNew(n)%kap(1,1,1)
+     !      print *, n, AeroPropsNew(n)%den(1,1,1)
+     !      print *, n, AeroPropsNew(n)%fdust(1,1,1)
+     !      print *, n, AeroPropsNew(n)%fsoot(1,1,1)
+     !      print *, n, AeroPropsNew(n)%forg(1,1,1)
+     !    end do !modes
+     ! end if 
+
+     deallocate(aero_aci_modes, __STAT__)
+
+     !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
+     DO k=LM,1,-1
+        DO j=1,JM
 !#        DO i=1,IM
-              
-            tk                 = T(:,j,k)                         ! K
-            press              = plo(:,j,k)                       ! Pa   
-            air_den            = press/(MAPL_RGAS*tk)             ! kg/m3
-            wupdraft           = max(zero_par,vvel(:,j,k) + SQRT(tke(:,j,k)))
 
-            ! Liquid Clouds
-            ni = tiny(1.0)
-            DO n=1,n_modes
+           tk                 = T(:,j,k)                         ! K
+           press              = plo(:,j,k)                       ! Pa   
+           air_den            = press/(MAPL_RGAS*tk)             ! kg/m3
+           wupdraft           = max(zero_par,vvel(:,j,k) + SQRT(tke(:,j,k)))
+
+           ! Liquid Clouds
+           ni = tiny(1.0)
+           DO n=1,n_modes
 !#               if (AeroPropsNew(n)%kap(i,j,k) > 0.4) &
-               where (AeroPropsNew(n)%kap(:,j,k) > 0.4) &
-               ni   (:,n)    =   max(AeroPropsNew(n)%num(:,j,k)*air_den,  zero_par)  ! unit: [m-3]
-               rg   (:,n)    =   max(AeroPropsNew(n)%dpg(:,j,k)*0.5e6,    zero_par)  ! unit: [um]
-               bibar(:,n)    =   max(AeroPropsNew(n)%kap(:,j,k),          zero_par)                 
-               sig0 (:,n)    =       AeroPropsNew(n)%sig(:,j,k)
-            ENDDO
-            call GetActFrac(           IM, n_modes    &
-                           ,      ni(:,1:n_modes)   &
-                           ,      rg(:,1:n_modes)   &
-                           ,    sig0(:,1:n_modes)   &
-                           ,      tk(:)              &
-                           ,   press(:)              &
-                           ,wupdraft(:)              &
-                           ,    nact(:,1:n_modes)   &
-                           ,   bibar(:,1:n_modes)   &
-                           )
-            numbinit(:) = 0.
-            NACTL(:,j,k) = 0.
-            DO n=1,n_modes
-               where (AeroPropsNew(n)%kap(:,j,k) > 0.4)
+              where (AeroPropsNew(n)%kap(:,j,k) > 0.4) &
+                   ni   (:,n)    =   max(AeroPropsNew(n)%num(:,j,k)*air_den,  zero_par)  ! unit: [m-3]
+              rg   (:,n)    =   max(AeroPropsNew(n)%dpg(:,j,k)*0.5e6,    zero_par)  ! unit: [um]
+              bibar(:,n)    =   max(AeroPropsNew(n)%kap(:,j,k),          zero_par)                 
+              sig0 (:,n)    =       AeroPropsNew(n)%sig(:,j,k)
+           ENDDO
+           call GetActFrac(           IM, n_modes    &
+                ,      ni(:,1:n_modes)   &
+                ,      rg(:,1:n_modes)   &
+                ,    sig0(:,1:n_modes)   &
+                ,      tk(:)              &
+                ,   press(:)              &
+                ,wupdraft(:)              &
+                ,    nact(:,1:n_modes)   &
+                ,   bibar(:,1:n_modes)   &
+                )
+           numbinit(:) = 0.
+           NACTL(:,j,k) = 0.
+           DO n=1,n_modes
+              where (AeroPropsNew(n)%kap(:,j,k) > 0.4)
                  numbinit(:) = numbinit(:) + AeroPropsNew(n)%num(:,j,k)
                  NACTL(:,j,k)= NACTL(:,j,k) + nact(:,n) !#/m3
               end where
-            ENDDO
-            numbinit = numbinit * air_den ! #/m3
-            NACTL(:,j,k) = MIN(NACTL(:,j,k),0.99*numbinit)
-            NACTL(:,j,k) = MAX(MIN(NACTL(:,j,k),NN_MAX),NN_MIN)
+           ENDDO
+           numbinit = numbinit * air_den ! #/m3
+           NACTL(:,j,k) = MIN(NACTL(:,j,k),0.99*numbinit)
+           NACTL(:,j,k) = MAX(MIN(NACTL(:,j,k),NN_MAX),NN_MIN)
 
-            ! Ice Clouds
-            numbinit(:) = 0.
-            DO n=1,n_modes
-               where ( (AeroPropsNew(n)%dpg(:,j,k) .ge. 0.5e-6) .and. & ! diameters > 0.5 microns
-                    (AeroPropsNew(n)%kap(:,j,k) .gt. 0.4) )
-                    numbinit(:) = numbinit(:) + AeroPropsNew(n)%num(:,j,k)
-               end where
-            ENDDO
-            numbinit = numbinit * air_den ! #/m3
-            ! Number of activated IN following deMott (2010) [#/m3]
-            NACTI(:,j,k) = (ai*(max(0.0,(MAPL_TICE-tk))**bi)) * (numbinit**(ci*max((MAPL_TICE-tk),0.0)+di)) !#/m3
-            NACTI(:,j,k) = MAX(MIN(NACTI(:,j,k),NN_MAX),NN_MIN)
+           ! Ice Clouds
+           numbinit(:) = 0.
+           DO n=1,n_modes
+              where ( (AeroPropsNew(n)%dpg(:,j,k) .ge. 0.5e-6) .and. & ! diameters > 0.5 microns
+                   (AeroPropsNew(n)%kap(:,j,k) .gt. 0.4) )
+                 numbinit(:) = numbinit(:) + AeroPropsNew(n)%num(:,j,k)
+              end where
+           ENDDO
+           numbinit = numbinit * air_den ! #/m3
+           ! Number of activated IN following deMott (2010) [#/m3]
+           NACTI(:,j,k) = (ai*(max(0.0,(MAPL_TICE-tk))**bi)) * (numbinit**(ci*max((MAPL_TICE-tk),0.0)+di)) !#/m3
+           NACTI(:,j,k) = MAX(MIN(NACTI(:,j,k),NN_MAX),NN_MIN)
 
 !#        ENDDO;ENDDO;ENDDO
         ENDDO;ENDDO
-      call t_p%stop('k_loop_compute',_RC)
 
 
         deallocate(   rg, __STAT__)
@@ -251,18 +249,7 @@ MODULE Aer_Actv_Single_Moment
         deallocate(bibar, __STAT__)
         deallocate( nact, __STAT__)
 
-       end if ! n_modes > 0
       
-        call t_p%stop('use_aerosol_nn',_RC)
-
-      else ! USE_AEROSOL_NN
-
-        do k = 1, LM
-          NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
-          NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
-        end do
-
-      end if
 
       END SUBROUTINE Aer_Activation
       
