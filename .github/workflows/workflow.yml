@@ -66,9 +66,11 @@ jobs:
           mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared GEOS_Util
           mepo status
 
+      - name: Debug PR branch
+        run: echo "PR is coming from ${{ github.event.pull_request.head.ref }}"
+
       - name: Update other branches
-        if:
-          "!contains('refs/heads/main,refs/heads/develop', github.ref)"
+        if: ${{ github.event.pull_request.head.ref != 'main' && github.event.pull_request.head.ref != 'develop' }}
         run: |
           mepo checkout-if-exists ${GITHUB_HEAD_REF}
           mepo status
