@@ -332,7 +332,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         ssu0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         ssv0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         sstr0 = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
-        tr0 = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        tr0 = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
         thj = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         qlj = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         qij = self.make_ijk_field(inputs_reshaped["pmid0_in"])
@@ -345,7 +345,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         tr0_o = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
         sstr0_o = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
         trflx = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
-        trsrc = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
+        trsrc = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
         trten = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
         tru = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
         tru_emf = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
@@ -393,7 +393,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         thlsrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         usrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         vsrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
-        trsrc_o = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
+        trsrc_o = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
         plcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         klcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
         thl0lcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
@@ -426,7 +426,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         vplus = self.make_ij_field(np.zeros(shape=[24, 24]))
         uu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         vu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        tre = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
+        tre = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
         uplus_3D = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         vplus_3D = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         cin_i = self.make_ij_field(np.zeros(shape=[24, 24]))
@@ -475,6 +475,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qtu_top = self.make_ij_field(np.zeros(shape=[24, 24]))
         cldhgt = self.make_ij_field(np.zeros(shape=[24, 24]))
         xflx = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        xflx_ndim = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
         qtflx = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         uflx = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
         ql0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
@@ -502,8 +503,9 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         sten = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         qiten = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         qmin = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
-        trflx_d = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        trflx_u = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        trflx_d = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
+        trflx_u = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
+        trmin = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
         ufrclcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         qcubelow = self.make_ij_field(np.zeros(shape=[24, 24]))
         rcwp = self.make_ij_field(np.zeros(shape=[24, 24]))
@@ -612,7 +614,8 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         fer_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         fdr_outvar = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         test_tracers = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
-        # test_tracersIJ = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
+        test_tracersIJ = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
+        tr0_inoutvar = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
 
         compute_uwshcu(
             windsrcavg=windsrcavg,
@@ -945,16 +948,20 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             fer_outvar=fer_outvar,
             fdr_outvar=fdr_outvar,
             test_tracers=test_tracers,
+            test_tracersIJ=test_tracersIJ,
+            tr0_inoutvar=tr0_inoutvar,
+            xflx_ndim=xflx_ndim,
+            trmin=trmin,
         )
         print("Performed compute_uwshcu on reshaped inputs")
-        print(test_tracers.view[23, 20, :, 22])
+        print(test_tracers.view[23, 20, :, 0])
         # print("Reshaped outputs back to original shape")
 
-        with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out.nc") as ds:
+        with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out2.nc") as ds:
             # Load in netcdf test var
-            testvar = "sstr02"
-            var = test_tracers
-            testvar_nan = ds.variables[testvar].data[0, 0, :, :-1, :23, 0]
+            testvar = "tr0_inout1"
+            var = tr0_inoutvar
+            testvar_nan = ds.variables[testvar].data[0, 0, :, :, :]  # , 0, :23, 0]
             # Replace nans with zero
             testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
 
@@ -966,6 +973,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             # testvar_out = self.make_zinterface_field(testvar_reshaped)
             # testvar_out = self.make_ijk_field(testvar_reshaped)
             testvar_out = self.make_ntracers_ijk_field(testvar_reshaped)
+
             # testvar_out = self.make_ntracers_zdim_field(testvar_reshaped)
 
         # Run translate test by hand

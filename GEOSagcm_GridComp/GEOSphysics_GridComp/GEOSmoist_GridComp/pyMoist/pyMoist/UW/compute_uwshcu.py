@@ -27,7 +27,7 @@ from ndsl.dsl.typing import (
     BoolFieldIJ,
 )
 from ndsl import StencilFactory, QuantityFactory
-from pyMoist.field_types import FloatField_NTracers
+from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
 from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
 from pyMoist.saturation.formulation import SaturationFormulation
 import pyMoist.constants as constants
@@ -604,11 +604,16 @@ def find_pbl_height(
     tscaleh: FloatFieldIJ,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
+    test_tracersIJ: FloatFieldIJ_NTracers,
 ):
     with computation(FORWARD), interval(...):
         if iteration != i32(1):
-            test_var3D = 0.0
+            # test_var3D = 0.0
             test_var2D = 0.0
+            # n = 0
+            # while n < 23:
+            #     test_tracersIJ[0, 0][n] = 0.0
+            #     n += 1
 
         if id_exit == False:
             if iteration != i32(1):
@@ -820,13 +825,15 @@ def find_cumulus_characteristics(
     dotransport: Float,
     ncnst: Int,
     tr0: FloatField_NTracers,
-    trsrc: FloatField_NTracers,
+    trsrc: FloatFieldIJ_NTracers,
     qtsrc: FloatField,
     thvlsrc: FloatField,
     thlsrc: FloatField,
     usrc: FloatField,
     vsrc: FloatField,
     test_var3D: FloatField,
+    test_tracersIJ: FloatFieldIJ_NTracers,
+    iteration: i32,
 ):
     with computation(FORWARD), interval(...):
         if id_exit == False:
@@ -875,14 +882,11 @@ def find_cumulus_characteristics(
                     pifc0.at(K=kbelow_zdim) - pmid0.at(K=kbelow)
                 )
 
-            # REVISIT THIS!
-            # Is trsrc a FloatFieldIJ_NTracers??
-            # if dotransport == 1.0:
-            #     n = 0
-            #     while n < ncnst:
-            #         trsrc[0, 0,0][n] = tr0.at(K=0, ddim=[n])
-            #         test_tracersIJ[0, 0,0][n] = trsrc[0, 0,0][n]
-            #         n += 1
+            if dotransport == 1.0:
+                n = 0
+                while n < ncnst:
+                    trsrc[0, 0][n] = tr0.at(K=0, ddim=[n])
+                    n += 1
 
 
 def find_klcl(
@@ -1124,8 +1128,8 @@ def compute_cin_cinlcl(
     vsrc: FloatField,
     dotransport: Float,
     ncnst: Int,
-    trsrc: FloatField_NTracers,
-    trsrc_o: FloatField_NTracers,
+    trsrc: FloatFieldIJ_NTracers,
+    trsrc_o: FloatFieldIJ_NTracers,
     cin_i: FloatFieldIJ,
     cinlcl_i: FloatFieldIJ,
     ke: FloatFieldIJ,
@@ -1145,6 +1149,7 @@ def compute_cin_cinlcl(
     cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
+    test_tracersIJ: FloatFieldIJ_NTracers,
 ):
 
     with computation(FORWARD), interval(...):
@@ -1498,11 +1503,10 @@ def compute_cin_cinlcl(
                 vsrc_o = vsrc
                 thv0lcl_o = thv0lcl
 
-                # REVISIT THIS!!! What shape is trsrc_o?
                 if dotransport == 1.0:
                     n = 0
                     while n < ncnst:
-                        trsrc_o[0, 0, 0][n] = trsrc[0, 0, 0][n]
+                        trsrc_o[0, 0][n] = trsrc[0, 0][n]
                         n += 1
 
 
@@ -1517,8 +1521,8 @@ def avg_initial_and_final_cin(
     ke: FloatFieldIJ,
     dotransport: Float,
     ncnst: Int,
-    trsrc: FloatField_NTracers,
-    trsrc_o: FloatField_NTracers,
+    trsrc: FloatFieldIJ_NTracers,
+    trsrc_o: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
     tr0_o: FloatField_NTracers,
     sstr0: FloatField_NTracers,
@@ -1647,6 +1651,7 @@ def avg_initial_and_final_cin(
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
     test_tracers: FloatField_NTracers,
+    test_tracersIJ: FloatFieldIJ_NTracers,
     # Add more inputs/outputs
 ):
 
@@ -1716,11 +1721,10 @@ def avg_initial_and_final_cin(
                     vsrc = vsrc_o
                     thv0lcl = thv0lcl_o
 
-                    # REVISIT THIS!! Check shape of trsrc
                     if dotransport == 1.0:
                         n = 0
                         while n < ncnst:
-                            trsrc[0, 0, 0][n] = trsrc_o[0, 0, 0][n]
+                            trsrc[0, 0][n] = trsrc_o[0, 0][n]
                             n += 1
 
                     qv0 = qv0_o
@@ -1747,7 +1751,7 @@ def avg_initial_and_final_cin(
                         while n < ncnst:
                             tr0[0, 0, 0][n] = tr0_o[0, 0, 0][n]
                             sstr0[0, 0, 0][n] = sstr0_o[0, 0, 0][n]
-                            test_tracers[0, 0, 0][n] = sstr0[0, 0, 0][n]
+
                             n += 1
 
                     #     """
@@ -2261,7 +2265,7 @@ def define_env_properties(
     dotransport: Float,
     ncnst: Int,
     tru: FloatField_NTracers,
-    trsrc: FloatField_NTracers,
+    trsrc: FloatFieldIJ_NTracers,
     thv0rel: FloatField,
     thl0: FloatField,
     ssthl0: FloatField,
@@ -2270,7 +2274,7 @@ def define_env_properties(
     ssqt0: FloatField,
     u0: FloatField,
     v0: FloatField,
-    tre: FloatField_NTracers,
+    tre: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
     sstr0: FloatField_NTracers,
     uplus: FloatFieldIJ,
@@ -2288,6 +2292,8 @@ def define_env_properties(
     ve: FloatFieldIJ,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
+    test_tracersIJ: FloatFieldIJ_NTracers,
+    test_tracers: FloatField_NTracers,
 ):
     with computation(FORWARD), interval(...):
         if id_exit == False:
@@ -2317,7 +2323,7 @@ def define_env_properties(
                 n = 0
                 while n < ncnst:
                     if THIS_K == krel - 1:
-                        tru[0, 0, 0][n] = trsrc[0, 0, 0][n]
+                        tru[0, 0, 0][n] = trsrc[0, 0][n]
                     n += 1
 
             """
@@ -2339,8 +2345,7 @@ def define_env_properties(
             if dotransport == 1.0:
                 n = 0
                 while n < ncnst:
-                    # REVISIT THIS!!!
-                    tre[0, 0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
+                    tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
                         K=krel, ddim=[n]
                     ) * (pe - pmid0.at(K=krel))
                     n += 1
@@ -2365,7 +2370,7 @@ def buoyancy_sorting(
     ssv0: FloatField,
     dotransport: Float,
     ncnst: Int,
-    tre: FloatField_NTracers,
+    tre: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
     sstr0: FloatField_NTracers,
     k0: Int,
@@ -2437,6 +2442,8 @@ def buoyancy_sorting(
     cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
     test_var2D: FloatFieldIJ,
+    test_tracersIJ: FloatFieldIJ_NTracers,
+    test_tracers: FloatField_NTracers,
 ):
 
     with computation(FORWARD), interval(...):
@@ -2514,10 +2521,8 @@ def buoyancy_sorting(
 
             if dotransport == 1.0:
                 n = 0
-                # Loop over tracers
-                # REVISIT THIS!!!
                 while n < ncnst:
-                    tre[0, 0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
+                    tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
                         K=krel, ddim=[n]
                     ) * (pe - pmid0.at(K=krel, ddim=[n]))
                     n += 1
@@ -2550,7 +2555,6 @@ def buoyancy_sorting(
                 and stop45 == False
                 and id_exit == False
             ):
-                # km1 = THIS_K - 1
 
                 thlue = thlu[0, 0, -1]
                 qtue = qtu[0, 0, -1]
@@ -2969,15 +2973,14 @@ def buoyancy_sorting(
                                         if dotransport == 1.0:
                                             n = 0
                                             while n < ncnst:
-                                                # REVISIT THIS!!!
-                                                tru[0, 0, 1][n] = (
-                                                    tru[0, 0, 0][n]
+                                                tru[0, 0, 0][n] = (
+                                                    tru[0, 0, -1][n]
                                                     + (
-                                                        tre[0, 0, 0][n]
+                                                        tre[0, 0][n]
                                                         + sstr0.at(K=THIS_K, ddim=[n])
                                                         * dpe
                                                         / 2.0
-                                                        - tru[0, 0, 0][n]
+                                                        - tru[0, 0, -1][n]
                                                     )
                                                     * fer
                                                     * dpe
@@ -3035,15 +3038,14 @@ def buoyancy_sorting(
                                         if dotransport == 1.0:
                                             n = 0
                                             while n < ncnst:
-                                                # REVISIT THIS!!!
-                                                tru[0, 0, 1][n] = (
-                                                    tre[0, 0, 0][n]
+                                                tru[0, 0, 0][n] = (
+                                                    tre[0, 0][n]
                                                     + sstr0[0, 0, 0][n] / fer
                                                     - sstr0[0, 0, 0][n] * dpe / 2.0
                                                 ) - (
-                                                    tre[0, 0, 0][n]
+                                                    tre[0, 0][n]
                                                     + sstr0[0, 0, 0][n] * dpe / 2.0
-                                                    - tru[0, 0, 0][n]
+                                                    - tru[0, 0, -1][n]
                                                     + sstr0[0, 0, 0][n] / fer
                                                 ) * exp(
                                                     -fer * dpe
@@ -3362,9 +3364,8 @@ def buoyancy_sorting(
                             ve = v0[0, 0, 1]
                             if dotransport == 1.0:
                                 n = 0
-                                # REVISIT THIS!!!
                                 while n < ncnst:
-                                    tre[0, 0, 0][n] = tr0[0, 0, 1][n]
+                                    tre[0, 0][n] = tr0[0, 0, 1][n]
                                     n += 1
 
 
@@ -3728,6 +3729,8 @@ def calc_entrainment_mass_flux(
     vu_emf: FloatField,
     emf: FloatField,
     test_var3D: FloatField,
+    test_tracers: FloatField_NTracers,
+    iteration: i32,
 ):
 
     with computation(FORWARD), interval(...):
@@ -3771,7 +3774,6 @@ def calc_entrainment_mass_flux(
             vu_emf[0, 0, 1] = vu
             if dotransport == 1.0:
                 n = 0
-                # REVISIT THIS!!!
                 while n < ncnst:
                     tru_emf[0, 0, 1][n] = tru[0, 0, 0][n]
                     n += 1
@@ -3832,7 +3834,6 @@ def calc_entrainment_mass_flux(
                     if dotransport == 1.0:
                         n = 0
                         while n < ncnst:
-                            # REVISIT THIS!!!
                             tru_emf[0, 0, 0][n] = tr0.at(K=kpen, ddim=[n]) + sstr0.at(
                                 K=kpen, ddim=[n]
                             ) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
@@ -3877,7 +3878,6 @@ def calc_entrainment_mass_flux(
 
                             if dotransport == 1.0:
                                 n = 0
-                                # REVISIT THIS!!!
                                 while n < ncnst:
                                     tru_emf[0, 0, 0][n] = (
                                         tru_emf[0, 0, 1][n] * emf[0, 0, 1]
@@ -3891,7 +3891,6 @@ def calc_entrainment_mass_flux(
                             vu_emf = v0[0, 0, 1]
                             if dotransport == 1.0:
                                 n = 0
-                                # REVISIT THIS!!!
                                 while n < ncnst:
                                     tru_emf[0, 0, 0][n] = tr0[0, 0, 1][n]
                                     n += 1
@@ -3910,7 +3909,6 @@ def calc_entrainment_mass_flux(
                         vu_emf = v0[0, 0, 1]
                         if dotransport == 1.0:
                             n = 0
-                            # REVISIT THIS!!!
                             while n < ncnst:
                                 tru_emf[0, 0, 0][n] = tr0[0, 0, 1][n]
                                 n += 1
@@ -3943,11 +3941,15 @@ def calc_pbl_fluxes(
     ssv0: FloatField,
     dotransport: Float,
     ncnst: Int,
-    trsrc: FloatField_NTracers,
+    trsrc: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
     sstr0: FloatField_NTracers,
     trflx: FloatField_NTracers,
+    xflx_ndim: FloatField_NTracers,
     test_var3D: FloatField,
+    test_tracers: FloatField_NTracers,
+    test_tracersIJ: FloatFieldIJ_NTracers,
+    iteration: i32,
 ):
 
     with computation(FORWARD), interval(...):
@@ -4210,7 +4212,16 @@ def calc_pbl_fluxes(
             if dotransport == 1.0:
                 n = 0
                 while n < ncnst:
-                    xsrc = trsrc[0, 0, 0][n]
+                    xflx_ndim[0, 0, 1][n] = 0.0
+                    xflx_ndim[0, 0, 0][n] = 0.0
+                    n += 1
+
+    with computation(FORWARD), interval(...):
+        if id_exit == False:
+            if dotransport == 1.0:
+                n = 0
+                while n < ncnst:
+                    xsrc = trsrc[0, 0][n]
                     xmean = tr0.at(K=kinv, ddim=[n])
                     xtop = tr0.at(K=kinv + 1, ddim=[n]) + sstr0.at(
                         K=kinv + 1, ddim=[n]
@@ -4219,8 +4230,6 @@ def calc_pbl_fluxes(
                         K=kinv - 1, ddim=[n]
                     ) * (pifc0.at(K=kinv) - pmid0.at(K=kinv - 1))
 
-                    xflx[0, 0, 1] = 0.0
-                    xflx = 0.0
                     k_below = kinv - 1
                     dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -4251,8 +4260,8 @@ def calc_pbl_fluxes(
 
                     # Compute turbulent fluxes.
                     # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
-                    if THIS_K <= k_below + 1:
-                        xflx[0, 0, 1] = (
+                    if THIS_K < k_below + 1:
+                        xflx_ndim[0, 0, 1][n] = (
                             cbmf
                             * (xsrc - xbot)
                             * (pifc0.at(K=0) - pifc0[0, 0, 1])
@@ -4261,12 +4270,12 @@ def calc_pbl_fluxes(
 
                     if THIS_K == k_below + 1:
                         if rr <= 1:
-                            xflx = xflx - (1.0 - rr) * cbmf * (xtop_ori - xbot_ori)
+                            xflx_ndim[0, 0, 0][n] = xflx_ndim[0, 0, 0][n] - (
+                                1.0 - rr
+                            ) * cbmf * (xtop_ori - xbot_ori)
 
                     if THIS_K <= kinv:
-                        # REVISIT THIS!!! What shape is trflx??
-                        # Not sure if we have the tools to deal with this
-                        trflx[0, 0, 0][n] = xflx
+                        trflx[0, 0, 0][n] = xflx_ndim[0, 0, 0][n]
 
                     n += 1
 
@@ -4295,7 +4304,7 @@ def non_buoyancy_sorting_fluxes(
     dotransport: Float,
     ncnst: Int,
     trflx: FloatField_NTracers,
-    trsrc: FloatField_NTracers,
+    trsrc: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
     sstr0: FloatField_NTracers,
     uflx: FloatField,
@@ -4350,9 +4359,8 @@ def non_buoyancy_sorting_fluxes(
                 if dotransport == 1.0:
                     n = 0
                     while n < ncnst:
-                        # REVISIT THIS!!!
                         trflx[0, 0, 1][n] = cbmf * (
-                            trsrc[0, 0, 0][n]
+                            trsrc[0, 0][n]
                             - (
                                 tr0[0, 0, 1][n]
                                 + sstr0[0, 0, 1][n] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])
@@ -4392,6 +4400,8 @@ def buoyancy_sorting_fluxes(
     vflx: FloatField,
     slflx: FloatField,
     test_var3D: FloatField,
+    test_tracers: FloatField_NTracers,
+    iteration: i32,
 ):
     with computation(FORWARD), interval(...):
         if id_exit == False:
@@ -4428,12 +4438,12 @@ def buoyancy_sorting_fluxes(
                     vu
                     - (v0[0, 0, 1] + ssv0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
+
                 if dotransport == 1.0:
                     n = 0
                     while n < ncnst:
-                        # REVISIT THIS!!!
                         trflx[0, 0, 1][n] = umf_zint * (
-                            tru[0, 0, 1][n]
+                            tru[0, 0, 0][n]
                             - (
                                 tr0[0, 0, 1][n]
                                 + sstr0[0, 0, 1][n] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])
@@ -4493,6 +4503,8 @@ def penetrative_entrainment_fluxes(
     qiten_sink: FloatField,
     cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
+    iteration: i32,
+    test_tracers: FloatField_NTracers,
 ):
     with computation(FORWARD), interval(...):
         if id_exit == False:
@@ -4535,9 +4547,8 @@ def penetrative_entrainment_fluxes(
                 vflx[0, 0, 1] = emf * (vu_emf - (v0 + ssv0 * (pifc0[0, 0, 1] - pmid0)))
                 if dotransport == 1.0:
                     n = 0
-                    # REVISIT THIS
                     while n < ncnst:
-                        trflx[0, 0, 0][n] = emf * (
+                        trflx[0, 0, 1][n] = emf * (
                             tru_emf[0, 0, 0][n]
                             - (
                                 tr0[0, 0, 0][n]
@@ -5337,12 +5348,15 @@ def calc_tracer_tendencies(
     k0: Int,
     dt: Float,
     dp0: FloatField,
-    trflx_d: FloatField,
-    trflx_u: FloatField,
+    trflx_d: FloatField_NTracers,
+    trflx_u: FloatField_NTracers,
+    trmin: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
     trflx: FloatField_NTracers,
     trten: FloatField_NTracers,
     test_var3D: FloatField,
+    test_tracers: FloatField_NTracers,
+    iteration: i32,
 ):
 
     with computation(FORWARD), interval(...):
@@ -5351,9 +5365,11 @@ def calc_tracer_tendencies(
             if dotransport == 1.0:
                 n = 0
                 while n < ncnst:
-                    trmin = 0.0
-                    trflx_d[0, 0, 1] = 0.0
-                    trflx_u[0, 0, 1] = 0.0
+                    trmin[0, 0][n] = 0.0
+                    trflx_d[0, 0, 1][n] = 0.0
+                    trflx_d[0, 0, 0][n] = 0.0
+                    trflx_u[0, 0, 1][n] = 0.0
+                    trflx_u[0, 0, 0][n] = 0.0
                     n += 1
 
     with computation(FORWARD), interval(1, -1):
@@ -5363,32 +5379,38 @@ def calc_tracer_tendencies(
                 while n < ncnst:
                     pdelx = dp0
                     dum = (
-                        (tr0[0, 0, 0][n] - trmin) * pdelx / constants.MAPL_GRAV / dt
-                        + trflx[0, 0, -1][n]
-                        - trflx[0, 0, 0][n]
-                        + trflx_d[0, 0, -1]
+                        (tr0[0, 0, 0][n] - trmin[0, 0][n])
+                        * pdelx
+                        / constants.MAPL_GRAV
+                        / dt
+                        + trflx[0, 0, 0][n]
+                        - trflx[0, 0, 1][n]
+                        + trflx_d[0, 0, -1][n]
                     )
-                    trflx_d = min(0.0, dum)
+                    trflx_d[0, 0, 0][n] = min(0.0, dum)
                     n += 1
 
-    with computation(BACKWARD), interval(1, None):
+    with computation(BACKWARD), interval(2, None):
         if id_exit == False:
             if dotransport == 1.0:
                 n = 0
                 while n < ncnst:
                     pdelx = dp0
                     dum = (
-                        (tr0[0, 0, 0][n] - trmin) * pdelx / constants.MAPL_GRAV / dt
-                        + trflx[0, 0, -1][n]
-                        - trflx[0, 0, 0][n]
-                        + trflx_d[0, 0, -1]
-                        - trflx_d
-                        - trflx_u
+                        (tr0[0, 0, 0][n] - trmin[0, 0][n])
+                        * pdelx
+                        / constants.MAPL_GRAV
+                        / dt
+                        + trflx[0, 0, 0][n]
+                        - trflx[0, 0, 1][n]
+                        + trflx_d[0, 0, -1][n]
+                        - trflx_d[0, 0, 0][n]
+                        - trflx_u[0, 0, 0][n]
                     )
-                    trflx_u[0, 0, -1] = max(0.0, -dum)
+                    trflx_u[0, 0, -1][n] = max(0.0, -dum)
                     n += 1
 
-    with computation(FORWARD), interval(1, None):
+    with computation(FORWARD), interval(0, None):
         if id_exit == False:
             if dotransport == 1.0:
                 n = 0
@@ -5396,12 +5418,12 @@ def calc_tracer_tendencies(
                     pdelx = dp0
                     trten[0, 0, 0][n] = (
                         (
-                            trflx[0, 0, -1][n]
-                            - trflx[0, 0, 0][n]
-                            + trflx_d[0, 0, -1]
-                            - trflx_d
-                            + trflx_u[0, 0, -1]
-                            - trflx_u
+                            trflx[0, 0, 0][n]
+                            - trflx[0, 0, 1][n]
+                            + trflx_d[0, 0, 0][n]
+                            - trflx_d[0, 0, 0][n]
+                            + trflx_u[0, 0, 0][n]
+                            - trflx_u[0, 0, 0][n]
                         )
                         * constants.MAPL_GRAV
                         / pdelx
@@ -5688,6 +5710,7 @@ def adjust_implicit_CIN_inputs(
     fer_s: FloatField,
     fdr_s: FloatField,
     test_var3D: FloatField,
+    test_tracers: FloatField_NTracers,
 ):
     with computation(FORWARD), interval(...):
         if id_exit == False:
@@ -5785,6 +5808,7 @@ def recalc_environmental_variables(
     t0: FloatField,
     cush_inout: FloatFieldIJ,
     test_var3D: FloatField,
+    test_tracers: FloatField_NTracers,
 ):
     with computation(FORWARD), interval(...):
         if id_exit == False:
@@ -6002,13 +6026,13 @@ def update_output_variables(
     slflx: FloatField,
     uflx: FloatField,
     vflx: FloatField,
-    # dotransport: Float,
-    # trten: FloatField_NTracers,
-    # dt: Float,
+    dotransport: Float,
+    trten: FloatField_NTracers,
+    dt: Float,
     fer: FloatField,
     fdr: FloatField,
     kpen: IntField,
-    # ncnst: Int,
+    ncnst: Int,
     # # Outputs
     umf_out: FloatField,
     dcm_out: FloatField,
@@ -6032,7 +6056,7 @@ def update_output_variables(
     slflx_out: FloatField,
     uflx_out: FloatField,
     vflx_out: FloatField,
-    # tr0_inout: FloatField_NTracers,
+    tr0_inout: FloatField_NTracers,
     fer_out: FloatField,
     fdr_out: FloatField,
     umf_outvar: FloatField,
@@ -6057,6 +6081,7 @@ def update_output_variables(
     vflx_outvar: FloatField,
     fer_outvar: FloatField,
     fdr_outvar: FloatField,
+    tr0_inoutvar: FloatField_NTracers,
     del_CIN: FloatFieldIJ,
     test_var3D: FloatField,
 ):
@@ -6085,6 +6110,11 @@ def update_output_variables(
             vflx_outvar = vflx_out
             fer_outvar = fer_out
             fdr_outvar = fdr_out
+            if dotransport == 1.0:
+                n = 0
+                while n < ncnst:
+                    tr0_inoutvar[0, 0, 0][n] = tr0_inout[0, 0, 0][n]
+                    n += 1
 
         if del_CIN > 0.0:
             umf_outvar = umf_zint
@@ -6115,13 +6145,13 @@ def update_output_variables(
             vflx_outvar = vflx
 
             # REVISIT THIS
-            # if dotransport == 1.0:
-            #     n = 0
-            #     while n < ncnst:
-            #         tr0_inout[0, 0, 0][n] = (
-            #             tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
-            #         )
-            #         n += 1
+            if dotransport == 1.0:
+                n = 0
+                while n < ncnst:
+                    tr0_inoutvar[0, 0, 0][n] = (
+                        tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
+                    )
+                    n += 1
 
             # # Below are specific diagnostic output for detailed
             # # analysis of cumulus scheme
@@ -6437,8 +6467,8 @@ class ComputeUwshcu:
         thlsrc: FloatField,
         usrc: FloatField,
         vsrc: FloatField,
-        trsrc: FloatField_NTracers,
-        trsrc_o: FloatField_NTracers,
+        trsrc: FloatFieldIJ_NTracers,
+        trsrc_o: FloatFieldIJ_NTracers,
         qtsrc: FloatField,
         plcl: FloatField,
         klcl: IntField,
@@ -6467,7 +6497,7 @@ class ComputeUwshcu:
         vplus: FloatFieldIJ,
         uu: FloatField,
         vu: FloatField,
-        tre: FloatField_NTracers,
+        tre: FloatFieldIJ_NTracers,
         uplus_3D: FloatField,
         vplus_3D: FloatField,
         cin_i: FloatFieldIJ,
@@ -6644,9 +6674,13 @@ class ComputeUwshcu:
         vflx_outvar: FloatField,
         fer_outvar: FloatField,
         fdr_outvar: FloatField,
+        tr0_inoutvar: FloatField_NTracers,
+        xflx_ndim: FloatField_NTracers,
+        trmin: FloatFieldIJ_NTracers,
         test_var3D: FloatField,
         test_var2D: FloatFieldIJ,
         test_tracers: FloatField_NTracers,
+        test_tracersIJ=FloatFieldIJ_NTracers,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
         self.qsat = QSat(
@@ -6831,6 +6865,7 @@ class ComputeUwshcu:
                 cush_inout=cush_inout,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
+                test_tracersIJ=test_tracersIJ,
             )
 
             self._find_pbl_averages(
@@ -6887,6 +6922,8 @@ class ComputeUwshcu:
                 usrc=usrc,
                 vsrc=vsrc,
                 test_var3D=test_var3D,
+                test_tracersIJ=test_tracersIJ,
+                iteration=iteration,
             )
 
             self._find_klcl(
@@ -6977,6 +7014,7 @@ class ComputeUwshcu:
                 cush_inout=cush_inout,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
+                test_tracersIJ=test_tracersIJ,
             )
 
             self._avg_initial_and_final_cin(
@@ -7120,6 +7158,7 @@ class ComputeUwshcu:
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
                 test_tracers=test_tracers,
+                test_tracersIJ=test_tracersIJ,
             )
 
             self._define_prel_krel(
@@ -7250,6 +7289,8 @@ class ComputeUwshcu:
                 ve=ve,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
+                test_tracersIJ=test_tracersIJ,
+                test_tracers=test_tracers,
             )
 
             self._buoyancy_sorting(
@@ -7343,6 +7384,8 @@ class ComputeUwshcu:
                 iteration=iteration,
                 test_var3D=test_var3D,
                 test_var2D=test_var2D,
+                test_tracersIJ=test_tracersIJ,
+                test_tracers=test_tracers,
             )
 
             self._calc_ppen(
@@ -7450,6 +7493,8 @@ class ComputeUwshcu:
                 vu_emf=vu_emf,
                 emf=emf,
                 test_var3D=test_var3D,
+                test_tracers=test_tracers,
+                iteration=iteration,
             )
 
             self._calc_pbl_fluxes(
@@ -7484,6 +7529,10 @@ class ComputeUwshcu:
                 vflx=vflx,
                 slflx=slflx,
                 test_var3D=test_var3D,
+                test_tracers=test_tracers,
+                test_tracersIJ=test_tracersIJ,
+                iteration=iteration,
+                xflx_ndim=xflx_ndim,
             )
 
             self._non_buoyancy_sorting_fluxes(
@@ -7551,6 +7600,8 @@ class ComputeUwshcu:
                 uflx=uflx,
                 slflx=slflx,
                 test_var3D=test_var3D,
+                iteration=iteration,
+                test_tracers=test_tracers,
             )
 
             self._penetrative_entrainment_fluxes(
@@ -7604,6 +7655,8 @@ class ComputeUwshcu:
                 qiten_sink=qiten_sink,
                 cush_inout=cush_inout,
                 test_var3D=test_var3D,
+                iteration=iteration,
+                test_tracers=test_tracers,
             )
 
             self._calc_momentum_tendency(
@@ -7711,10 +7764,13 @@ class ComputeUwshcu:
                 dp0=dp0_in,
                 trflx_d=trflx_d,
                 trflx_u=trflx_u,
+                trmin=trmin,
                 tr0=tr0,
                 trflx=trflx,
                 trten=trten,
                 test_var3D=test_var3D,
+                test_tracers=test_tracers,
+                iteration=iteration,
             )
 
             self._compute_diagnostic_outputs(
@@ -7851,6 +7907,7 @@ class ComputeUwshcu:
                     fer_s=fer_s,
                     fdr_s=fdr_s,
                     test_var3D=test_var3D,
+                    test_tracers=test_tracers,
                 )
 
                 self._recalc_environmental_variables(
@@ -7894,6 +7951,7 @@ class ComputeUwshcu:
                     t0=t0,
                     cush_inout=cush_inout,
                     test_var3D=test_var3D,
+                    test_tracers=test_tracers,
                 )
 
             iteration = iteration + i32(1)
@@ -7923,13 +7981,13 @@ class ComputeUwshcu:
             slflx=slflx,
             uflx=uflx,
             vflx=vflx,
-            # dotransport=dotransport,
-            # trten=trten,
-            # dt=dt,
+            dotransport=dotransport,
+            trten=trten,
+            dt=dt,
             fer=fer,
             fdr=fdr,
             kpen=kpen,
-            # ncnst=ncnst,
+            ncnst=ncnst,
             umf_out=umf_out,
             dcm_out=dcm_out,
             qvten_out=qvten_out,
@@ -7952,7 +8010,7 @@ class ComputeUwshcu:
             slflx_out=slflx_out,
             uflx_out=uflx_out,
             vflx_out=vflx_out,
-            # tr0_inout=tr0_inout,
+            tr0_inout=tr0_inout,
             fer_out=fer_out,
             umf_outvar=umf_outvar,
             dcm_outvar=dcm_outvar,
@@ -7977,5 +8035,6 @@ class ComputeUwshcu:
             fdr_out=fdr_out,
             fer_outvar=fer_outvar,
             fdr_outvar=fdr_outvar,
+            tr0_inoutvar=tr0_inoutvar,
             test_var3D=test_var3D,
         )
