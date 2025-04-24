@@ -138,8 +138,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          default    = 1.0e-6,                                      &
          RESTART    = MAPL_RestartRequired,                        &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                        &
          SHORT_NAME = 'QLLS',                                            &
@@ -147,8 +147,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                         &
          FRIENDLYTO = trim(FRIENDLIES%QLLS),                             &
          DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                       &
          SHORT_NAME = 'QLCN',                                           &
@@ -156,8 +156,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                        &
          FRIENDLYTO = trim(FRIENDLIES%QLCN),                            &
          DIMS       = MAPL_DimsHorzVert,                                &
-         VLOCATION  = MAPL_VLocationCenter,                  RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                  RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'CLLS',                                      &
@@ -165,8 +165,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = '1',                                         &
          FRIENDLYTO = trim(FRIENDLIES%CLLS),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'CLCN',                                      &
@@ -174,8 +174,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = '1',                                         &
          FRIENDLYTO = trim(FRIENDLIES%CLCN),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                     &
          SHORT_NAME = 'QILS',                                         &
@@ -183,8 +183,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                      &
          FRIENDLYTO = trim(FRIENDLIES%QILS),                          &
          DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                    &
          SHORT_NAME = 'QICN',                                        &
@@ -192,12 +192,12 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                     &
          FRIENDLYTO = trim(FRIENDLIES%QICN),                         &
          DIMS       = MAPL_DimsHorzVert,                             &
-         VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'QRAIN',                                     &
-         LONG_NAME  = 'mass_fraction_of_rain',                     & 
+         LONG_NAME  = 'mass_fraction_of_rain',                     &
          UNITS      = 'kg kg-1',                                   &
          FRIENDLYTO = trim(FRIENDLIES%QRAIN),                      &
          default    = 0.0,                                         &
@@ -263,7 +263,7 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter, RC=STATUS  )
     VERIFY_(STATUS)
-
+     
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME ='NGRAUPEL',                                   &
          LONG_NAME  ='particle_number_for_graupel',                &
@@ -276,9 +276,9 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
     
     call MAPL_AddInternalSpec(GC,                               &
          SHORT_NAME = 'NACTL',                                  &
-         LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &           
+         LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &
          UNITS      = 'm-3',                                    &
-         RESTART    = MAPL_RestartSkip,                         &  
+         RESTART    = MAPL_RestartSkip,                         &
          DIMS       = MAPL_DimsHorzVert,                        &
          VLOCATION  = MAPL_VLocationCenter,     RC=STATUS  )
     VERIFY_(STATUS)
@@ -304,7 +304,7 @@ end subroutine  MGB2_2M_Setup
 subroutine MGB2_2M_Initialize (MAPL, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
     integer, optional                   :: RC  ! return code
-
+    
     type (ESMF_State)                   :: INTERNAL
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, CLLS, CLCN
@@ -421,7 +421,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     if  (NI_CST .gt. 0.0)  nicons =.true.
     ngnstr8 = NG_CST
     if  (NG_CST .gt. 0.0)  ngcons =.true.
-    
+   
     if  (MGVERSION .gt. 1) then
         do_graupel = .false.
         if (MGVERSION .gt. 2) do_graupel = .true.
@@ -1589,7 +1589,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Update TH
     TH1 = T/PK
-    
+
     !initialize MG variables
      cldfr8 = 0.0_r8 
      prectr8 = 0.0_r8 
@@ -1987,13 +1987,13 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                          PDFSHAPE , &
                          CNV_FRC(I, J)           , &
                          SRF_TYPE(I, J)          , &
-                         PLmb(I, J, K)            , &
-                         Q (I, J, K)            , &
+                         PLmb(I, J, K)           , &
+                         Q (I, J, K)             , &
                          QLLS(I, J, K)           , &
                          QLCN(I, J, K)           , &
                          QILS(I, J, K)           , &
                          QICN(I, J, K)           , &
-                         T(I, J, K)           , &
+                         T(I, J, K)              , &
                          CLLS(I, J, K)           , &
                          CLCN(I, J, K)           , &
                          SC_ICE(I, J, K)         , &

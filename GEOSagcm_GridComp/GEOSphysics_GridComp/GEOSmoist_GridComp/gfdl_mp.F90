@@ -3243,7 +3243,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
     ! Use In-Cloud condensates
     if (in_cloud) then
-      qadum = max(qak,qcmin)
+      qadum = max(qak,max(qcmin,onemsig))
     else
       qadum = 1.0
     endif
@@ -3484,7 +3484,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+              qadum = max(qak(k),max(qcmin,onemsig))
             else
               qadum = 1.0
             endif
@@ -3508,7 +3508,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+              qadum = max(qak(k),max(qcmin,onemsig))
             else
               qadum = 1.0
             endif
@@ -3580,7 +3580,7 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+              qadum = max(qak(k),max(qcmin,onemsig))
             else
               qadum = 1.0
             endif
@@ -3653,7 +3653,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+              qadum = max(qak(k),max(qcmin,onemsig))
             else
               qadum = 1.0
             endif
@@ -3973,7 +3973,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+              qadum = max(qak(k),max(qcmin,onemsig))
             else
               qadum = 1.0
             endif
