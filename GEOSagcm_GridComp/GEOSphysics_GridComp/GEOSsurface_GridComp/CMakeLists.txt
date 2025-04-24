@@ -18,7 +18,6 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 else ()
 
    esma_add_subdirectories (${alldirs} Shared)
-
 endif()
 
 esma_add_subdirectories(Utils)
