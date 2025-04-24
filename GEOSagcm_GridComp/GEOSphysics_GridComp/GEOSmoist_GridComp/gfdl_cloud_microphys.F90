@@ -980,7 +980,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
 
     ! Use In-Cloud condensates
     if (in_cloud) then
-      qadum = max(qa,max(qcmin,onemsig))
+      qadum = max(qa,qcmin)
     else
       qadum = 1.0
     endif
@@ -1385,7 +1385,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
       ! Use In-Cloud condensates
       if (in_cloud) then
-        qadum = max(qak (k),max(qcmin,onemsig))
+        qadum = max(qak(k),qcmin)
       else    
         qadum = 1.0
       endif
