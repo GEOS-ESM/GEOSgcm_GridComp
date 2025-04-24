@@ -49,7 +49,7 @@ CONTAINS
       real, dimension (IM,JM)     ,intent(in ) :: FRLAND
       real                        ,intent(in ) :: NN_LAND, NN_OCEAN     
       logical                     ,intent(in ) :: need_extra_fields
-      integer, optional           ,intent(in ) :: rc
+      integer, optional           ,intent(out) :: rc
 
       real, dimension (IM,JM,LM),intent(OUT) :: NACTL, NACTI, NWFA
 
@@ -65,7 +65,7 @@ CONTAINS
 
       integer :: n_modes
       REAL :: numbinit(IM,JM)
-      integer :: k,n,rc
+      integer :: k,n
       integer :: nn
 
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
