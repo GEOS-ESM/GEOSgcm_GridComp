@@ -547,57 +547,73 @@ contains
         integer :: n,icnt,ityp, nt, umask, i, header
         real    :: xval,yval, pf
         real,  allocatable :: ln1(:), lt1(:)
-      
-      if(present(mask)) then
-        umask = mask
-      else
-        umask = 100
-      endif
+        real,  pointer     :: AVR(:,:)
+        integer :: filetype
+        logical :: isNC4     
+ 
+        if(present(mask)) then
+          umask = mask
+        else
+          umask = 100
+        endif
    
-      open(11,file=InCNTileFile, &
-           form='formatted',action='read',status='old')
+        call MAPL_NCIOGetFileType(InCNTileFile, filetype)
+        isNC4   = (filetype == MAPL_FILETYPE_NC4)
 
-      ! first read number of lines in the til file header
-      ! -------------------------------------------------
-      header = 5
-      read (11,*, iostat=n) Nt
-      do i = 1, header -1
-         read (11,*)
-      end do
-      read (11,*,IOSTAT=n)ityp,pf,xval, yval
-      if(n /= 0) header = 8
+        if (isNC4) then
+          call MAPL_ReadTilingNC4(InCNTileFile, AVR=AVR)
+          Ntiles = count(int(AVR(:,1)) == umask)
+          if(.not.associated (xlon)) allocate(xlon(Ntiles))
+          if(.not.associated (xlat)) allocate(xlat(Ntiles))
+          xlon = AVR(:Ntiles, 3)
+          xlat = AVR(:Ntiles, 4)
+          deallocate(AVR) 
+        else
 
-      rewind (11)
+          open(11,file=InCNTileFile, form='formatted',action='read',status='old')
 
-      ! read the tile file
-      !-------------------
-      read (11,*, iostat=n) Nt
+          ! first read number of lines in the til file header
+          ! -------------------------------------------------
+          header = 5
+          read (11,*, iostat=n) Nt
+          do i = 1, header -1
+             read (11,*)
+          end do
+          read (11,*,IOSTAT=n)ityp,pf,xval, yval
+          if(n /= 0) header = 8
+
+          rewind (11)
+
+          ! read the tile file
+          !-------------------
+          read (11,*, iostat=n) Nt
    
-      allocate(ln1(Nt),lt1(Nt))
+          allocate(ln1(Nt),lt1(Nt))
 
-      do n = 1,header-1 ! skip header
-         read(11,*)
-      end do
+          do n = 1,header-1 ! skip header
+             read(11,*)
+          end do
      
-      icnt = 0
+          icnt = 0
    
-      do i=1,Nt
-         read(11,*) ityp,pf,xval,yval
-         if(ityp == umask) then
-            icnt = icnt + 1
-            ln1(icnt) = xval
-            Lt1(icnt) = yval
-         endif
-      end do
+          do i=1,Nt
+             read(11,*) ityp,pf,xval,yval
+             if(ityp == umask) then
+                icnt = icnt + 1
+                ln1(icnt) = xval
+                Lt1(icnt) = yval
+             endif
+          end do
    
-      close(11)
-       
-      Ntiles = icnt
-      if(.not.associated (xlon)) allocate(xlon(Ntiles))
-      if(.not.associated (xlat)) allocate(xlat(Ntiles))
-      xlon = ln1(:Ntiles)
-      xlat = lt1(:Ntiles) 
-   
+          close(11)
+           
+          Ntiles = icnt
+          if(.not.associated (xlon)) allocate(xlon(Ntiles))
+          if(.not.associated (xlat)) allocate(xlat(Ntiles))
+          xlon = ln1(:Ntiles)
+          xlat = lt1(:Ntiles) 
+        endif !isNC4
+ 
       end subroutine ReadTileFile_RealLatLon
 
 end module mk_restarts_getidsMod
