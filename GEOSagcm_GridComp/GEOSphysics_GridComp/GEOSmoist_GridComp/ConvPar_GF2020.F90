@@ -2111,6 +2111,7 @@ loop1:  do n=1,maxiens
              aa0_,aa1_,aa2_,aa3_,aa1_bl_,aa1_cin_,tau_bl_,tau_ec_
      real,  dimension (its:ite,kts:kte) :: dtdt,dqdt
      real :: s1,s2,q1,q2,rzenv,factor,CWV,entr_threshold,resten_H,resten_Q,resten_T
+     real :: tau_0, tau_1
      integer :: status
      real :: alp0,beta1,beta2,dp_p,dp_m,delt1,delt2,delt_Tvv,wkf,ckf,wkflcl,rcount
      real,    dimension (kts:kte,8)       ::  tend2d
@@ -3096,12 +3097,16 @@ loop0:       do k=kts,ktf
       ELSE
          DO i=its,itf
             if(ierr(i) /= 0) cycle
-            !- time-scale cape removal from Bechtold et al. 2008
-            dz = max(z_cup(i,ktop(i)+1)-z_cup(i,kbcon(i)),1.e-16) ! cloud depth (H)
-            ! resolution dependent scale factor
-            tau_ecmwf(i)=(dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)*(    sig(i)) + & ! from Bechtold
-                                                   21600.0*(1.0-cnvfrc(i))*(1.0-sig(i))     ! needed for convective scale resolutions
-            tau_ecmwf(i)= max(dtime,min(tau_ecmwf(i),21600.0))
+          ! cloud depth (H)
+            dz = max(z_cup(i,ktop(i))-z_cup(i,kbcon(i)),1.e-16)
+          ! time-scale cape removal from Bechtold et al. 2008
+            tau_0 = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)
+          ! time-scale for increasing resolution
+            tau_1 = tau_deep*(1.0-sig(i))
+          ! Combine
+            tau_ecmwf(i)= tau_0 + tau_1*(1.0-cnvfrc(i))
+          ! Limit
+            tau_ecmwf(i)= max(dtime,min(tau_ecmwf(i),tau_deep))
          ENDDO
       ENDIF
       DO i=its,itf
@@ -11147,7 +11152,7 @@ REAL FUNCTION fract_liq_f(temp2,cnvfrc,srftype) ! temp2 in Kelvin, fraction betw
     ! find a "reasonable" infinity...
     ! we compute this integral indeed
     ! \int_0^M dt t^{x-1} e^{-t}
-    ! where M is such that M^{x-1} e^{-M} ≤ \epsilon
+    ! where M is such that M^{x-1} e^{-M} ? \epsilon
     infty = 1.0e4
     do while ( intfuncgamma(infty, x) > small )
       infty = infty * 10.0
