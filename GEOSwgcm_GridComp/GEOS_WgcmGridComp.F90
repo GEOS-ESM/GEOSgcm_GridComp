@@ -371,6 +371,10 @@ contains
             CHILD_ID       = WM,                     __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
+            SHORT_NAME = 'WCM',                                      &
+            CHILD_ID   = WM,                         __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'DCP',                                  &
             CHILD_ID       = WM,                     __RC__)
 
