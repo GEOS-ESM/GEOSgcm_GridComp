@@ -5619,15 +5619,16 @@ contains
            TMP3D = W
          endif
          ! Pressures in Pa
-         call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
+         call Aer_Activation(MAPL, IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
                              AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
-                             (adjustl(CLDMICR_OPTION)=="MGB2_2M"))
+                             (adjustl(CLDMICR_OPTION)=="MGB2_2M"), __RC__)
 ! Temporary
 !        call MAPL_MaxMin('MST: NWFA     ', NWFA *1.e-6)
 !        call MAPL_MaxMin('MST: NACTL    ', NACTL*1.e-6)
 !        call MAPL_MaxMin('MST: NACTI    ', NACTI*1.e-6)
 ! Temporary
          if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
+            call MAPL_TimerOn (MAPL,"----AERO_ACTIVATE_MGB2_2M")
             call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, RC=STATUS); VERIFY_(STATUS)
             allocate ( AeroProps(IM,JM,LM) )
             do L=1,LM
@@ -5647,6 +5648,7 @@ contains
                 enddo
               enddo
             enddo
+            call MAPL_TimerOff (MAPL,"----AERO_ACTIVATE_MGB2_2M")
          endif
        else
          do L=1,LM

@@ -88,6 +88,7 @@ module gfdl_mp_mod
     public :: c_liq, c_ice, rhow, wet_bulb
     public :: cv_air, cv_vap, mtetw, mte
     public :: hlv, hlf, tice
+    public :: do_hail
 
     ! -----------------------------------------------------------------------
     ! precision definition
@@ -1401,8 +1402,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         ! adjust autoconversion rates and thresholds for stable vs unstable 
         ! -----------------------------------------------------------------------
-        cpaut = cpaut0 * (0.75*fac_eis + (1.0-fac_eis))
-        fac_rc = rc * (rthreshs*fac_eis + rthreshu*(1.0-fac_eis)) ** 3
+        cpaut  = cpaut0 * (    0.75*fac_eis +          (1.0-fac_eis))
+        fac_rc =     rc * (rthreshs*fac_eis + rthreshu*(1.0-fac_eis)) ** 3
 
         ! -----------------------------------------------------------------------
         ! conversion of temperature
@@ -3242,7 +3243,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
     ! Use In-Cloud condensates
     if (in_cloud) then
-      qadum = max(qak,max(qcmin,onemsig))
+      qadum = max(qak,qcmin)
     else
       qadum = 1.0
     endif
@@ -3483,7 +3484,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),max(qcmin,onemsig))
+              qadum = max(qak(k),qcmin)
             else
               qadum = 1.0
             endif
@@ -3507,7 +3508,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),max(qcmin,onemsig))
+              qadum = max(qak(k),qcmin)
             else
               qadum = 1.0
             endif
@@ -3579,7 +3580,7 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),max(qcmin,onemsig))
+              qadum = max(qak(k),qcmin)
             else
               qadum = 1.0
             endif
@@ -3652,7 +3653,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),max(qcmin,onemsig))
+              qadum = max(qak(k),qcmin)
             else
               qadum = 1.0
             endif
@@ -3972,7 +3973,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
             ! Use In-Cloud condensates
             if (in_cloud) then
-              qadum = max(qak(k),max(qcmin,onemsig))
+              qadum = max(qak(k),qcmin)
             else
               qadum = 1.0
             endif
@@ -3982,6 +3983,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             sink = 0.
             di  = max (di, qcmin)
             q_plus = qi + di
+            ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
             qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * critical_qi_factor / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then

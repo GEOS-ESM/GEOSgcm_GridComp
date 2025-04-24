@@ -656,7 +656,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! the following is based on klein eq. 15
         ! -----------------------------------------------------------------------
         if (srf_type(i) < 2.0) then ! exclude snow/ice covered regions
-          fac_eis = min(1.0,eis(i)/15.0)**2 ! Estimated inversion strength determine stable regime
+          fac_eis = min(1.0,eis(i)/10.0)**2 ! Estimated inversion strength determine stable regime
           cpaut = c_paut * (0.75*fac_eis + (1.0-fac_eis)) ! scaling autoconversion for stable->unstable
         else
           fac_eis = 0.0
