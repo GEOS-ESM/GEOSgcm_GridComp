@@ -955,13 +955,11 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
         call ESMF_ClockGetAlarm(clock, 'DBZ_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
         alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
         if (alarm_is_ringing) then
+          ! calc_refl10cm is expensive, do not call every time
            call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
-
-
            call MAPL_GetPointer(EXPORT, PTR2D , 'REFL10CM_MAX' , RC=STATUS); VERIFY_(STATUS)
            if (associated(PTR2D)) then
                call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")
-              ! calc_refl10cm is expensive, do not call every time
                rand1 = 0.0
                TMP3D = 0.0
                DO J=1,JM ; DO I=1,IM
@@ -976,71 +974,58 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
                END DO ; END DO ; END DO
                call MAPL_TimerOff(MAPL,"---CLD_REFL10CM")
            endif
+        endif
 
-           call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
-           if (associated(PTR3D) .OR. &
-               associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
-               call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
-              ! CALCDBZ is 10x cheaper    
-               TMP3D = 0.0
-               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
-               if (associated(PTR3D)) PTR3D = TMP3D 
-               call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
-!              call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")
-!             ! calc_refl10cm is expensive, do not call every time
-!              rand1 = 0.0
-!              TMP3D = 0.0
-!              DO J=1,JM ; DO I=1,IM
-!               !rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
-!               !rand1= max( rand1/1000000., 1e-6 )
-!                call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
-!                   T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
-!              END DO ; END DO
-!              if (associated(PTR3D)) PTR3D = TMP3D
-!              call MAPL_TimerOff(MAPL,"---CLD_REFL10CM")
-            end if
+        call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D) .OR. &
+            associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
+            call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
+           ! CALCDBZ is 10x cheaper    
+            TMP3D = 0.0
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
+            if (associated(PTR3D)) PTR3D = TMP3D 
+            call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
+        end if
 
-            if (associated(DBZ_MAX)) then
-               DBZ_MAX=-9999.0
-               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                  DBZ_MAX(I,J) = MAX(DBZ_MAX(I,J),TMP3D(I,J,L))
-               END DO ; END DO ; END DO
-            endif
+        if (associated(DBZ_MAX)) then
+            DBZ_MAX=-9999.0
+            DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+               DBZ_MAX(I,J) = MAX(DBZ_MAX(I,J),TMP3D(I,J,L))
+            END DO ; END DO ; END DO
+        endif
 
-            if (associated(DBZ_1KM)) then
-               call cs_interpolator(1, IM, 1, JM, LM, TMP3D, 1000., ZLE0, DBZ_1KM, -20.)
-            endif
+        if (associated(DBZ_1KM)) then
+            call cs_interpolator(1, IM, 1, JM, LM, TMP3D, 1000., ZLE0, DBZ_1KM, -20.)
+        endif
 
-            if (associated(DBZ_TOP)) then
-               DBZ_TOP=MAPL_UNDEF
-               DO J=1,JM ; DO I=1,IM
-                  DO L=LM,1,-1
-                     if (ZLE0(i,j,l) >= 25000.) continue
-                     if (TMP3D(i,j,l) >= 18.5 ) then
-                         DBZ_TOP(I,J) = ZLE0(I,J,L)
-                         exit
-                     endif
-                  END DO
-               END DO ; END DO
-            endif
+        if (associated(DBZ_TOP)) then
+            DBZ_TOP=MAPL_UNDEF
+            DO J=1,JM ; DO I=1,IM
+               DO L=LM,1,-1
+                  if (ZLE0(i,j,l) >= 25000.) continue
+                  if (TMP3D(i,j,l) >= 18.5 ) then
+                      DBZ_TOP(I,J) = ZLE0(I,J,L)
+                      exit
+                  endif
+               END DO
+            END DO ; END DO
+        endif
 
-            if (associated(DBZ_M10C)) then
-               DBZ_M10C=MAPL_UNDEF
-               DO J=1,JM ; DO I=1,IM
-                  DO L=LM,1,-1
-                     if (ZLE0(i,j,l) >= 25000.) continue
-                     if (T(i,j,l) <= MAPL_TICE-10.0) then
-                         DBZ_M10C(I,J) = TMP3D(I,J,L)
-                         exit
-                     endif
-                  END DO
-               END DO ; END DO
-            endif
-
+        if (associated(DBZ_M10C)) then
+            DBZ_M10C=MAPL_UNDEF
+            DO J=1,JM ; DO I=1,IM
+               DO L=LM,1,-1
+                  if (ZLE0(i,j,l) >= 25000.) continue
+                  if (T(i,j,l) <= MAPL_TICE-10.0) then
+                      DBZ_M10C(I,J) = TMP3D(I,J,L)
+                      exit
+                  endif
+               END DO
+            END DO ; END DO
         endif
 
         call MAPL_GetPointer(EXPORT, DBZ_MAX_R , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)
