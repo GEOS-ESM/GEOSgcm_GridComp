@@ -18,8 +18,8 @@ PROGRAM mkCatchParam
 !  
 ! Sarith Mahanama - March 23, 2012 
 ! Email: sarith.p.mahanama@nasa.gov
+  use MAPL
   use EASE_conv
-  use LogRectRasterizeMod,     ONLY: ReadTilingNC4
   use rmTinyCatchParaMod 
   use process_hres_data
 
@@ -284,7 +284,8 @@ integer :: n_threads=1
          call exit(0)
        endif
    
-       call ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable) 
+       call MAPL_ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable) 
+
        N_land = count(iTable(:,0) == 100)          ! n_land = number of land tiles
        allocate(tile_j_dum, source = iTable(1:n_land,7)) ! possible used in cti_stats.dat
        deallocate (iTable)
