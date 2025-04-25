@@ -18,6 +18,7 @@ module GEOS_mkiauGridCompMod
   use ESMF_CFIOFileMod
   use GEOS_UtilsMod
 ! use GEOS_RemapMod, only: myremap => remap
+  use MAPL_CubedSphereGridFactoryMod
   use m_set_eta, only: set_eta
 #ifdef HAS_PYMLINC
   use pyMLINC_interface_mod, only: pyMLINC_interface_init_f, pyMLINC_interface_run_f
@@ -718,6 +719,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: nymdm1,nhmsm1
   integer                             :: nymdm2,nhmsm2
   integer                             :: NX,NY,IMG,JMG
+  integer                             :: NX_CUBE,NY_CUBE
   integer                             :: method
   integer                             :: DIMS(ESMF_MAXGRIDDIM)
   integer                             :: JCAP,LMP1
@@ -741,6 +743,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: REPLAY_QV_FACTOR
   real                                :: REPLAY_O3_FACTOR
   real                                :: REPLAY_TS_FACTOR
+
+  type (CubedSphereGridFactory) :: cs_factory
+  type (LatlonGridFactory) :: ll_factory
 
   class (AbstractRegridder), pointer :: ANA2BKG => null()
   class (AbstractRegridder), pointer :: BKG2ANA => null()
@@ -1127,30 +1132,36 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           VERIFY_(STATUS)
        end if
 
+       call CFIO_Open       ( REPLAY_FILEP0, 1, fid, STATUS )
+       VERIFY_(STATUS)
+       call CFIO_DimInquire ( fid, IMana_World, JMana_world, LMana, nt, nvars, natts, rc=STATUS )
+       VERIFY_(STATUS)
+       call CFIO_Close      ( fid, STATUS )
+       VERIFY_(STATUS)
+
        call WRITE_PARALLEL("Creating GRIDana...")
        write(imstr,*) IMana_World
        write(jmstr,*) JMana_World
        gridAnaName='PC'//trim(adjustl(imstr))//'x'//trim(adjustl(jmstr))//'-DC'
 
        ! Get grid_dimensions from file.
-       call CFIO_Open(REPLAY_FILEP0, 1, fid, rc=status)
-       VERIFY_(status)
-       call CFIO_DimInquire (fid, IMana_World, JMana_World, LMana, nt, nvars, natts, rc=status)
-       VERIFY_(status)
-       call CFIO_Close(fid, rc=status)
-       VERIFY_(status)
+       if ( JMana_world == 6*IMana_World ) then
 
-       block
-         use MAPL_LatLonGridFactoryMod
-         GRIDrep = grid_manager%make_grid(                                                 &
-                   LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
-                   nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-         VERIFY_(STATUS)
-         GRIDana = grid_manager%make_grid(                                                 &
-                   LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMbkg, &
-                   nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-         VERIFY_(STATUS)
-       end block
+          call MAPL_MakeDecomposition(NX_CUBE,NY_CUBE,reduceFactor=6,__RC__)
+          cs_factory = CubedSphereGridFactory(im_world=IMana_World,lm=LMana,nx=nx_cube,ny=ny_cube,__RC__)
+          GRIDana = grid_manager%make_grid(cs_factory,__RC__)
+          GRIDrep = grid_manager%make_grid(cs_factory,__RC__)
+
+       else
+
+         block
+           class(AbstractGridFactory), allocatable :: factory
+           allocate(factory, source = grid_manager%make_factory(trim(REPLAY_FILEP0),force_file_coordinates = .false.)) 
+           GRIDrep = grid_manager%make_grid(factory)
+           GRIDana = grid_manager%make_grid(factory)
+         end block
+
+       endif
 
        mkiau_internal_state%im      =   IMana_World
        mkiau_internal_state%jm      =   JMana_World
@@ -1279,7 +1290,7 @@ CONTAINS
     VERIFY_(STATUS)
     call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDana, rc=status)
     VERIFY_(STATUS)
-    call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0, RC=status)
+    call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
     VERIFY_(STATUS)
     call ESMF_FieldBundleGet ( RBUNDLEP0, fieldCount=NQ, RC=STATUS )
     VERIFY_(STATUS)
@@ -1569,13 +1580,13 @@ CONTAINS
         if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDrep, rc=status)
         if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDbkg, rc=status)
         VERIFY_(STATUS)
-        call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
+        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
     else if( (FILE_TIMEP0 .ne. REPLAY_TIMEP0) .or. (FILEP0 .ne. REPLAY_FILEP0) ) then
-        call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
+        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
@@ -1588,13 +1599,13 @@ CONTAINS
             if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDrep, rc=status)
             if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDbkg, rc=status)
             VERIFY_(STATUS)
-            call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
+            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1, REPLAY_TIMEM1, RC=status)
             VERIFY_(STATUS)
                  FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
             NEED_BUNDLEM1 = .FALSE.
         else if ( (FILE_TIMEM1 .ne. REPLAY_TIMEM1) .or. (FILEM1 .ne. REPLAY_FILEM1) ) then
-            call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
+            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1, REPLAY_TIMEM1, RC=status)
             VERIFY_(STATUS)
                  FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
@@ -1607,13 +1618,13 @@ CONTAINS
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
-                call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
+                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1, REPLAY_TIMEP1, RC=status)
                 VERIFY_(STATUS)
                      FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
                 NEED_BUNDLEP1 = .FALSE.
             else if ( FILE_TIMEP1 .ne. REPLAY_TIMEP1 .or. (FILEP1 .ne. REPLAY_FILEP1) ) then
-                call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
+                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1, REPLAY_TIMEP1, RC=status)
                 VERIFY_(STATUS)
                      FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
@@ -1625,13 +1636,13 @@ CONTAINS
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
-                call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
+                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2, REPLAY_TIMEM2, RC=status)
                 VERIFY_(STATUS)
                      FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
                 NEED_BUNDLEM2 = .FALSE.
             else if ( FILE_TIMEM2 .ne. REPLAY_TIMEM2 .or. (FILEM2 .ne. REPLAY_FILEM2) ) then
-                call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
+                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2, REPLAY_TIMEM2, RC=status)
                 VERIFY_(STATUS)
                      FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
@@ -1647,6 +1658,7 @@ CONTAINS
          VERIFY_(STATUS)
          call ESMF_FieldBundleGet ( RBUNDLEP0, fieldNameList=RNAMES, rc=STATUS )
          VERIFY_(STATUS)
+         call RedanduncyCheck(RNAMES)
          if( first ) then
              if(MAPL_AM_I_ROOT() ) then
              print *
@@ -2919,11 +2931,13 @@ CONTAINS
 
       if(     trim(name) == 'U'        ) then
           if( trim(var)  == 'U'        ) match = .true.
+          if( trim(var)  == 'UA'       ) match = .true.
           if( trim(var)  == 'UGRD'     ) match = .true.
       endif
 
       if(     trim(name) == 'V'        ) then
           if( trim(var)  == 'V'        ) match = .true.
+          if( trim(var)  == 'VA'       ) match = .true.
           if( trim(var)  == 'VGRD'     ) match = .true.
       endif
 
@@ -2963,6 +2977,7 @@ CONTAINS
 
       if(     trim(name) == 'O3'       ) then
           if( trim(var)  == 'O3'       ) match = .true.
+          if( trim(var)  == 'O3PPMV'   ) match = .true.
           if( trim(var)  == 'OZONE'    ) match = .true.
       endif
 
@@ -3638,5 +3653,34 @@ CONTAINS
       _RETURN(_SUCCESS)
    end subroutine compute_ml_inc
 #endif
+
+      subroutine RedanduncyCheck(rnames)
+
+      character(len=*), intent(inout) :: rnames(:)
+      ! completely wired
+      ! at the moment, the files generated for/by JEDI
+      ! largely ignore GEOS naming convensions, this
+      ! here a paliative to a solution/clean-up to come
+      ! in the future (Todling).
+
+      ! when both t and tv are in file, bypass t
+      if (any(rnames=='t') .and. any(rnames=='tv')) then
+        where(rnames=='t')
+          rnames = 't-bypass' 
+        endwhere
+      endif
+      ! when both u and ua are in file, bypass u
+      if (any(rnames=='u') .and. any(rnames=='ua')) then
+        where(rnames=='u')
+          rnames = 'u-bypass' 
+        endwhere
+      endif
+      ! when both v and va are in file, bypass v
+      if (any(rnames=='v') .and. any(rnames=='va')) then
+        where(rnames=='v')
+          rnames = 'v-bypass' 
+        endwhere
+      endif
+      end subroutine RedanduncyCheck
 
 end module GEOS_mkiauGridCompMod
