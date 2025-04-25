@@ -68,7 +68,7 @@ module GEOS_GwdGridCompMod
       real :: TAU1
       real :: H0
       real :: HH
-      real, allocatable :: alpha(:) 
+      real, allocatable :: alpha(:)
       type(ThreadWorkspace), allocatable :: workspaces(:)
    end type GEOS_GwdGridComp
 
@@ -147,6 +147,10 @@ contains
       !   set use_threads
       call MAPL%set_use_threads(use_threads)
       call ESMF_ConfigDestroy(myCF, _RC)
+
+      ! We need to get NCAR_NRDG because this is used in the GWD_Internal___.h auto-generated
+      ! code via the MAPL ACG
+      call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
 
       ! Set the state variable specs.
       ! -----------------------------
@@ -249,7 +253,7 @@ contains
     real    :: NCAR_TR_EFF     ! Convective region efficiency factor
     real    :: NCAR_ET_EFF     ! Frontal region efficiency factor
     real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
-    logical :: NCAR_ET_USE_DQCDT  
+    logical :: NCAR_ET_USE_DQCDT
     logical :: NCAR_DC_BERES
     integer :: GEOS_PGWV
     real :: NCAR_EFFGWBKG
@@ -329,7 +333,7 @@ contains
          call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.250, _RC)
          call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.000, _RC)
          call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
-      else  
+      else
         call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
         call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0,  _RC) ! use 0 [1:16] to disable [enable] ridge scheme
         if (self%NCAR_NRDG == 16) then
@@ -602,77 +606,12 @@ contains
 
       call ESMF_AlarmGet( ALARM, ringInterval=TINT,    _RC)
       call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8,      _RC)
-       
+
       DT = DT_R8
 
-! Pointers to inputs
-!---------------------
-
-      call MAPL_GetPointer( IMPORT, PLE,      'PLE',     _RC )
-      call MAPL_GetPointer( IMPORT, T,        'T',       _RC )
-      call MAPL_GetPointer( IMPORT, Q,        'Q',       _RC )
-      call MAPL_GetPointer( IMPORT, U,        'U',       _RC )
-      call MAPL_GetPointer( IMPORT, V,        'V',       _RC )
-      call MAPL_GetPointer( IMPORT, PHIS,     'PHIS',    _RC )
-      call MAPL_GetPointer( IMPORT, SGH,      'SGH',     _RC )
-      call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
-      call MAPL_GetPointer( IMPORT, AREA,     'AREA',    _RC )
-      call MAPL_GetPointer( IMPORT, VARFLT,   'VARFLT',  _RC )
-      call MAPL_GetPointer( IMPORT, HT_dc,    'DTDT_DC', _RC )
-      call MAPL_GetPointer( IMPORT, DQLDT,    'DQLDT'  , _RC )
-      call MAPL_GetPointer( IMPORT, DQIDT,    'DQIDT'  , _RC )
-      call MAPL_GetPointer( IMPORT, CNV_FRC,  'CNV_FRC', _RC )      
- 
-! Allocate/refer to the outputs
-!------------------------------
-
-      call MAPL_GetPointer(EXPORT,  PLE_EXP, 'PLE'     , _RC)
-      call MAPL_GetPointer(EXPORT,    T_EXP, 'T'       , _RC)
-      call MAPL_GetPointer(EXPORT,    Q_EXP, 'Q'       , _RC)
-      call MAPL_GetPointer(EXPORT,    U_EXP, 'U'       , _RC)
-      call MAPL_GetPointer(EXPORT,    V_EXP, 'V'       , _RC)
-      call MAPL_GetPointer(EXPORT,  SGH_EXP, 'SGH'     , _RC)
-      call MAPL_GetPointer(EXPORT, PREF_EXP, 'PREF'    , _RC)
-      call MAPL_GetPointer(EXPORT,    TTMGW, 'TTMGW'   , _RC)
-      call MAPL_GetPointer(EXPORT, DTDT_ORO, 'DTDT_ORO', _RC)
-      call MAPL_GetPointer(EXPORT, DUDT_ORO, 'DUDT_ORO', _RC)
-      call MAPL_GetPointer(EXPORT, DVDT_ORO, 'DVDT_ORO', _RC)
-      call MAPL_GetPointer(EXPORT, DTDT_BKG, 'DTDT_BKG', _RC)
-      call MAPL_GetPointer(EXPORT, DUDT_BKG, 'DUDT_BKG', _RC)
-      call MAPL_GetPointer(EXPORT, DVDT_BKG, 'DVDT_BKG', _RC)
-      call MAPL_GetPointer(EXPORT, DTDT_RAY, 'DTDT_RAY', _RC)
-      call MAPL_GetPointer(EXPORT, DUDT_RAY, 'DUDT_RAY', _RC)
-      call MAPL_GetPointer(EXPORT, DVDT_RAY, 'DVDT_RAY', _RC)
-      call MAPL_GetPointer(EXPORT,   TAUGWX, 'TAUGWX'  , _RC)
-      call MAPL_GetPointer(EXPORT,   TAUGWY, 'TAUGWY'  , _RC)
-      call MAPL_GetPointer(EXPORT,  TAUOROX, 'TAUOROX' , _RC)
-      call MAPL_GetPointer(EXPORT,  TAUOROY, 'TAUOROY' , _RC)
-      call MAPL_GetPointer(EXPORT,  TAUBKGX, 'TAUBKGX' , _RC)
-      call MAPL_GetPointer(EXPORT,  TAUBKGY, 'TAUBKGY' , _RC)
-      call MAPL_GetPointer(EXPORT,  TAUMSTX, 'TAUMSTX' , _RC)
-      call MAPL_GetPointer(EXPORT,  TAUMSTY, 'TAUMSTY' , _RC)
-      call MAPL_GetPointer(EXPORT,    UBASE, 'UBASE'   , _RC)
-      call MAPL_GetPointer(EXPORT,    VBASE, 'VBASE'   , _RC)
-      call MAPL_GetPointer(EXPORT,     UBAR, 'UBAR'    , _RC)
-      call MAPL_GetPointer(EXPORT,     VBAR, 'VBAR'    , _RC)
-      call MAPL_GetPointer(EXPORT,   CLDSTD, 'CLDSTD'  , _RC)
-       
-      call MAPL_GetPointer(EXPORT,     DTDT, 'DTDT'    , _RC)
-      call MAPL_GetPointer(EXPORT,     DUDT, 'DUDT'    , _RC)
-      call MAPL_GetPointer(EXPORT,     DVDT, 'DVDT'    , _RC)
-       
-      call MAPL_GetPointer(EXPORT,    PEGWD, 'PEGWD'   , _RC)
-      call MAPL_GetPointer(EXPORT,    PEORO, 'PEORO'   , _RC)
-      call MAPL_GetPointer(EXPORT,    PERAY, 'PERAY'   , _RC)
-      call MAPL_GetPointer(EXPORT,    PEBKG, 'PEBKG'   , _RC)
-       
-      call MAPL_GetPointer(EXPORT,    KEGWD, 'KEGWD'   , _RC)
-      call MAPL_GetPointer(EXPORT,    KEORO, 'KEORO'   , _RC)
-      call MAPL_GetPointer(EXPORT,    KERAY, 'KERAY'   , _RC)
-      call MAPL_GetPointer(EXPORT,    KEBKG, 'KEBKG'   , _RC)
-      call MAPL_GetPointer(EXPORT,    KERES, 'KERES'   , _RC)
-      call MAPL_GetPointer(EXPORT,   BKGERR, 'BKGERR'  , _RC)
-       
+      ! Pointers to import, export and internal variables
+      call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
+#include "GWD_GetPointer___.h"
 
       CALL PREGEO(IM*JM,   LM,   &
              PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
@@ -687,56 +626,44 @@ contains
 ! Do gravity wave drag calculations on a list of soundings
 !---------------------------------------------------------
 
-    !call MAPL_TimerOn(MAPL,"-INTR")
-
          if (self%NCAR_NRDG /= 0.0) then
 
-         ! get pointers from INTERNAL:MXDIS
-         call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
-         call MAPL_GetPointer( INTERNAL, MXDIS, 'MXDIS', _RC )
-         call MAPL_GetPointer( INTERNAL, HWDTH, 'HWDTH', _RC )
-         call MAPL_GetPointer( INTERNAL, CLNGT, 'CLNGT', _RC )
-         call MAPL_GetPointer( INTERNAL, ANGLL, 'ANGLL', _RC )
-         call MAPL_GetPointer( INTERNAL, ANIXY, 'ANIXY', _RC )
-         call MAPL_GetPointer( INTERNAL, GBXAR, 'GBXAR', _RC )
-         call MAPL_GetPointer( INTERNAL, KWVRDG, 'KWVRDG', _RC )
-         call MAPL_GetPointer( INTERNAL, EFFRDG, 'EFFRDG', _RC )
+            GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
+            WHERE (ANGLL < -180)
+               ANGLL = 0.0
+            END WHERE
 
-         GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
-         WHERE (ANGLL < -180)
-            ANGLL = 0.0
-         END WHERE
+            do nrdg = 1, self%NCAR_NRDG
+               KWVRDG(:,:,nrdg) = 0.001/(HWDTH(:,:,nrdg)+0.001)
+               EFFRDG(:,:,nrdg) = self%NCAR_EFFGWORO*(HWDTH(:,:,nrdg)*CLNGT(:,:,nrdg))/GBXAR_TMP
+            enddo
 
-         do nrdg = 1, self%NCAR_NRDG
-            KWVRDG(:,:,nrdg) = 0.001/(HWDTH(:,:,nrdg)+0.001)
-            EFFRDG(:,:,nrdg) = self%NCAR_EFFGWORO*(HWDTH(:,:,nrdg)*CLNGT(:,:,nrdg))/GBXAR_TMP
-         enddo
+            ! pchakrab: Redundant code? Commenting out.
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
+            ! if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
+            ! if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', _RC)
+            ! if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', _RC)
+            ! if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', _RC)
+            ! if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', _RC)
+            ! if(associated(TMP2D)) TMP2D = GBXAR_TMP
 
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
-         if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
-         if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', _RC)
-         if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', _RC)
-         if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', _RC)
-         if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', _RC)
-         if(associated(TMP2D)) TMP2D = GBXAR_TMP
-       
          else
 
-          allocate ( scratch_ridge(IM,JM,16) )
-          scratch_ridge = 0.0
-          MXDIS => scratch_ridge
-          HWDTH => scratch_ridge
-          CLNGT => scratch_ridge
-          ANGLL => scratch_ridge
-          ANIXY => scratch_ridge
-          KWVRDG => scratch_ridge
-          EFFRDG => scratch_ridge
-          GBXAR_TMP = 0.0
+            allocate ( scratch_ridge(IM,JM,16) )
+            scratch_ridge = 0.0
+            MXDIS => scratch_ridge
+            HWDTH => scratch_ridge
+            CLNGT => scratch_ridge
+            ANGLL => scratch_ridge
+            ANIXY => scratch_ridge
+            KWVRDG => scratch_ridge
+            EFFRDG => scratch_ridge
+            GBXAR_TMP = 0.0
 
          endif
 
@@ -832,7 +759,7 @@ contains
               DUDT_ORG, &
               DVDT_ORG, &
               DTDT_ORG, &
-              
+
               DUDT_TOT, &
               DVDT_TOT, &
               DTDT_TOT, &
@@ -915,13 +842,6 @@ contains
        if(associated( U_EXP )) call MAPL_MaxMin('GWD: U_AF_GWD ', U_EXP)
        if(associated( V_EXP )) call MAPL_MaxMin('GWD: V_AF_GWD ', V_EXP)
     endif
-
-    if (allocated(scratch_ridge)) deallocate(scratch_ridge)
-
-! All done
-!-----------
-    RETURN_(ESMF_SUCCESS)
-   end subroutine GWD_DRIVER
 
     if (allocated(scratch_ridge)) deallocate(scratch_ridge)
 
@@ -1090,7 +1010,7 @@ contains
         dudt_org, &
         dvdt_org, &
         dtdt_org, &
-        
+
                                 ! Outputs
         dudt_tot, &
         dvdt_tot, &

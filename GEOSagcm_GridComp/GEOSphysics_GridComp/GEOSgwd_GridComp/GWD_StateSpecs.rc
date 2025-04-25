@@ -5,17 +5,16 @@ category: INTERNAL
 #--------------------------------------------------------------------------------------------------------------------
 #  VARIABLE    | DIMENSION   |          Additional Metadata
 #--------------------------------------------------------------------------------------------------------------------
- NAME   | UNITS   | DIMS | VLOC | UNGRIDDED  | LONG NAME
+ NAME   | UNITS   | DIMS | VLOC | UNGRIDDED  | COND                  | LONG NAME
 #--------------------------------------------------------------------------------------------------------------------
- SGH30  | m       | xy   | N    |            | standard deviation of 30s elevation from 3km cube
- KWVRDG | km      | xy   | N    | (/16/)     | horizonal wwavenumber of mountain ridges
- EFFRDG | km      | xy   | N    | (/16/)     | efficiency of mountain ridge scheme
- GBXAR  | NA      | xy   | N    |            | grid box area
- HWDTH  | km      | xy   | N    | (/16/)     | width of mountain ridges
- CLNGT  | km      | xy   | N    | (/16/)     | width of mountain ridges
- MXDIS  | NA      | xy   | N    | (/16/)     | NA
- ANGLL  | NA      | xy   | N    | (/16/)     | NA
- ANIXY  | NA      | xy   | N    | (/16/)     | NA
+ KWVRDG | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | horizonal wavenumber of mountain ridges
+ EFFRDG | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | efficiency of mountain ridge scheme
+ GBXAR  | NA      | xy   | N    |            | self%NCAR_NRDG /= 0.0 | grid box area
+ HWDTH  | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | width of mountain ridges
+ CLNGT  | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | width of mountain ridges
+ MXDIS  | NA      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | NA
+ ANGLL  | NA      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | NA
+ ANIXY  | NA      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | NA
 
 category: IMPORT
 #-------------------------------------------------------------------------------------------------------
