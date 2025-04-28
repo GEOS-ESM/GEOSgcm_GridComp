@@ -2066,16 +2066,8 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_WRF',                                          &
-         LONG_NAME = 'wrf_radar_reflectivity',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)          
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_WRF_MAX',                                          &
-         LONG_NAME = 'wrf_wavelength_radar_reflectivity',                  &
+         SHORT_NAME = 'REFL10CM_MAX',                                          &
+         LONG_NAME = 'Maximum_composite_10cm_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
@@ -2111,6 +2103,14 @@ contains
          UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &  
+         SHORT_NAME ='PRCP_WATER',                                     &
+         LONG_NAME ='falling_water_at_surface',          &
+         UNITS     ='kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
@@ -3092,6 +3092,30 @@ contains
          SHORT_NAME='PFL_LSAN',                                      &
          LONG_NAME ='3D_flux_of_liquid_nonconvective_precipitation'  ,&
          UNITS     ='kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='PFR_LS',                                      &
+         LONG_NAME ='3D_flux_of_rain_nonanvil_large_scale_precipitation',&
+         UNITS     ='kg m-2 s-1',                                   &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='PFS_LS',                                      &
+         LONG_NAME ='3D_flux_of_snow_nonanvil_large_scale_precipitation',&
+         UNITS     ='kg m-2 s-1',                                   &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='PFG_LS',                                      &
+         LONG_NAME ='3D_flux_of_graupel_nonanvil_large_scale_precipitation',&
+         UNITS     ='kg m-2 s-1',                                   &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
     VERIFY_(STATUS)
@@ -5245,7 +5269,7 @@ contains
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
 
@@ -5595,15 +5619,16 @@ contains
            TMP3D = W
          endif
          ! Pressures in Pa
-         call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
+         call Aer_Activation(MAPL, IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
                              AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
-                             (adjustl(CLDMICR_OPTION)=="MGB2_2M"))
+                             (adjustl(CLDMICR_OPTION)=="MGB2_2M"), __RC__)
 ! Temporary
 !        call MAPL_MaxMin('MST: NWFA     ', NWFA *1.e-6)
 !        call MAPL_MaxMin('MST: NACTL    ', NACTL*1.e-6)
 !        call MAPL_MaxMin('MST: NACTI    ', NACTI*1.e-6)
 ! Temporary
          if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
+            call MAPL_TimerOn (MAPL,"----AERO_ACTIVATE_MGB2_2M")
             call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, RC=STATUS); VERIFY_(STATUS)
             allocate ( AeroProps(IM,JM,LM) )
             do L=1,LM
@@ -5623,6 +5648,7 @@ contains
                 enddo
               enddo
             enddo
+            call MAPL_TimerOff (MAPL,"----AERO_ACTIVATE_MGB2_2M")
          endif
        else
          do L=1,LM

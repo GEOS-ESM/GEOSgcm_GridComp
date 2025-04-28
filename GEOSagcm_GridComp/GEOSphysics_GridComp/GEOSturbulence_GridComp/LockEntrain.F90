@@ -88,19 +88,14 @@ module LockEntrain
    ! NOTE: GPUs use the QSAT and DQSAT at the end of this module
 #endif 
 
-   use MAPL_ConstantsMod, only: MAPL_GRAV,  MAPL_KARMAN, MAPL_CP,     &
-                                MAPL_RGAS,  MAPL_RVAP,   MAPL_ALHL,   &
-                                MAPL_ALHS,  MAPL_TICE,   MAPL_VIREPS, &
-                                MAPL_P00,   MAPL_KAPPA,  MAPL_H2OMW,  &
-                                MAPL_AIRMW, MAPL_R4,     MAPL_R8
-   use MAPL,              only: MAPL_UNDEF
+   use MAPL
 
    implicit none
 
 #ifndef _CUDA
    private
 
-   logical :: use_kludges = .false.
+   logical :: use_kludges = .true.
 
 !-----------------------------------------------------------------------
 !
@@ -262,6 +257,7 @@ module LockEntrain
 
    real, parameter :: ramp       =  20.
 
+   real, parameter :: r13        =  1.0/3.0
 
 !-----------------------------------------------------------------------
 !
@@ -1232,16 +1228,16 @@ contains
 !calculate surface parcel properties
 
     if (tpfac == 0) then
-      zrho = p(i,j,nlev)/(287.04*(t(i,j,nlev)*(1.+0.608*q(i,j,nlev))))
-      buoyflx = (sh(i,j)/MAPL_CP+0.608*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1                                                                                                  
-      delzg = (50.0)*MAPL_GRAV   ! assume 50m surface scale                                                                                                               
-      wstar = max(0.,0.001+0.41*buoyflx*delzg/t(i,j,nlev)) ! m3 s-3      
-      if (wstar > 0.001) then
-        wstar = 1.0*wstar**.3333
-        tep  = t(i,j,nlev) + 0.4 + 2.*sh(i,j)/(zrho*wstar*MAPL_CP)
-        qp   = q(i,j,nlev) + 2.*evap(i,j)/(zrho*wstar)
+      zrho = p(i,j,nlev)/(MAPL_RDRY*(t(i,j,nlev)*(1.+MAPL_VIREPS*q(i,j,nlev))))
+      buoyflx = (sh(i,j)/MAPL_CP+MAPL_VIREPS*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1
+      delzg = 50.0*MAPL_GRAV   ! assume 50m surface scale
+      wstar = max(0.,0.001+0.41*buoyflx*delzg/t(i,j,nlev)) ! m3 s-3
+      if (wstar > 0.0) then
+        wstar = wstar**r13
+        tep  = t(i,j,nlev) + 0.4 + 2.*  sh(i,j)/(zrho*wstar*MAPL_CP)
+        qp   = q(i,j,nlev) +       2.*evap(i,j)/(zrho*wstar)
       else
-        tep  = t(i,j,nlev) + 0.4
+        tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01, b_star(i,j)/MAPL_GRAV))
         qp   = q(i,j,nlev)
       end if
     else   ! tpfac scales up bstar by inv. ratio of
