@@ -29,8 +29,8 @@ module GEOS_GwdGridCompMod
 
    ! !USES:
 
-   use ESMF
-   use MAPL_ErrorHandling, only: MAPL_Verify, MAPL_RTRN, MAPL_ASSERT
+   use esmf
+   use mapl_ErrorHandling, only: MAPL_Verify, MAPL_RTRN, MAPL_ASSERT
    use MAPL_OpenMP_Support, only : MAPL_get_current_thread => get_current_thread
    use MAPL_OpenMP_Support, only : MAPL_get_num_threads => get_num_threads
    use MAPL_OpenMP_Support, only : MAPL_find_bounds => find_bounds
@@ -39,7 +39,6 @@ module GEOS_GwdGridCompMod
    use MAPL_MaplGrid, only: MAPL2_GridGet => MAPL_GridGet
    use MAPL_GenericMod, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
-   use MAPL, only: MAPL_GetPointer
 
    use mapl3g_generic, only: MAPL_GridCompSetEntryPoint
    use mapl3g_generic, only: MAPL_GridCompGet
@@ -48,7 +47,8 @@ module GEOS_GwdGridCompMod
    use mapl3g_generic, only: MAPL_GridCompAddFieldSpec
    use mapl3g_VerticalStaggerLoc, only: VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE
    use mapl3g_UngriddedDims, only: UngriddedDims
-   use mapl3g_Geom_API, only: MAPL_GridGet !MAPL_GridGetCoords => GridGetCoords
+   use mapl3g_Geom_API, only: MAPL_GridGet
+   use mapl3g_State_API, only: MAPL_StateGetPointer
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
@@ -411,7 +411,7 @@ contains
       endif
 
       allocate(self%alpha(LM+1), _STAT)
-      call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
+      call MAPL_StateGetPointer( IMPORT, PREF,     'PREF',    _RC )
       call gw_newtonian_set(LM, PREF, self%alpha)
 
       ! All done
