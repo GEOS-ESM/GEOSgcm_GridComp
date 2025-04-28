@@ -66,6 +66,7 @@ module GEOS_GFDL_1M_InterfaceMod
   integer :: C_LMELTFRZ, C_LHYDROSTATIC, C_LPHYS_HYDROSTATIC
   logical :: USE_PYMOIST_GFDL1M_EVAP = .FALSE. ! Replace EVAP with pyMoist port
   logical :: USE_PYMOIST_GFDL1M_DRIVER = .FALSE. ! Replace Aer Activation with pyMoist port
+  logical :: USE_PYMOIST = .FALSE.
 #endif
 
 public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
@@ -300,6 +301,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 #ifdef PYMOIST_INTEGRATION
     call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M_EVAP, 'USE_PYMOIST_GFDL1M_EVAP:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
     call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M_DRIVER, 'USE_PYMOIST_GFDL1M_DRIVER:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
+    call MAPL_GetResource(MAPL, USE_PYMOIST, 'USE_PYMOIST:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
 #endif
 
 end subroutine GFDL_1M_Initialize
@@ -376,7 +378,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 #ifdef PYMOIST_INTEGRATION
     integer                               :: NX, NY
-    type(gfdl_1m_flags_interface_type)      :: gfdl_1m_flags
+    type(gfdl_1m_flags_interface_type)    :: gfdl_1m_flags
     logical                               :: init_gfdl_1m_flags = .true.
     ! IEEE trapping see below
     logical                               :: halting_mode(5)
@@ -835,7 +837,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = QGRAUPEL
         ! Run the driver
 #ifdef PYMOIST_INTEGRATION
-        if (init_gfdl_1m_flags) then
+        if (USE_PYMOIST .and. init_gfdl_1m_flags) then
             init_gfdl_1m_flags = .false.
             call make_gfdl_1m_flags_C_interop(LPHYS_HYDROSTATIC, LHYDROSTATIC, do_qa, fix_negative, fast_sat_adj, &
                 const_vi, const_vs, const_vg, const_vr, use_ccn, do_bigg, do_evap, &
