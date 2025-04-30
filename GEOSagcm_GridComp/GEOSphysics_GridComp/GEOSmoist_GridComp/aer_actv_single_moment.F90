@@ -416,7 +416,8 @@ CONTAINS
       nact(:,:) = 0.0
       do n=1, nmodes
          do i = 1, im
-            if (smax(i,n) > 0.0) then
+            if ( (smax(i) > 0.0) .and. &
+                 ((bibar(i,n) > 0.4) .and. (rg(i,n) > 0.0) .and. (wupdraft(i) > 0.0) .and. (xnap(i,n) > 0.0)) ) then
                ac(i,n) = rg(i,n) * ( sm(i,n)/smax(i) )**r23                   ! [um]
                u(i) = log(ac(i,n)/rg(i,n)) / ( sqrt2 * xlogsigm(i,n) )        ! [1]
                fracactn(i,n) = 0.5 * (1.0 - erf(u(i)))                        ! [1]
