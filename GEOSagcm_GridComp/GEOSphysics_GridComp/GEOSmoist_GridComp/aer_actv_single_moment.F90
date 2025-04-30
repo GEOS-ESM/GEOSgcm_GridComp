@@ -14,7 +14,6 @@ MODULE Aer_Actv_Single_Moment
    integer,public,parameter :: AER_PR = MAPL_R4
 
    real        , parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
-   real(AER_PR), parameter :: zero_par  =  tiny(1.0)   ! small non-zero value
    real(AER_PR), parameter :: ai        =  0.0000594
    real(AER_PR), parameter :: bi        =  3.33
    real(AER_PR), parameter :: ci        =  0.0264
@@ -181,7 +180,7 @@ CONTAINS
       allocate(bibar(IM,JM,n_modes), __STAT__)
       allocate( nact(IM,JM,n_modes), __STAT__)
 
-      !$OMP parallel do default(none) shared(IM,JM,LM,n_modes,T,plo,vvel,tke,MAPL_RGAS,zero_par, &
+      !$OMP parallel do default(none) shared(IM,JM,LM,n_modes,T,plo,vvel,tke,MAPL_RGAS, &
       !$OMP                                  AeroPropsNew,NACTL,NACTI,NN_MIN,NN_MAX,ai,bi,ci,di) &
       !$OMP                           private(k,n,tk,press,air_den,wupdraft,ni,rg,bibar,sig0,nact)
       DO k=1,LM
@@ -189,16 +188,14 @@ CONTAINS
          tk                 = T(:,:,k)                         ! K
          press              = plo(:,:,k)                       ! Pa   
          air_den            = press/(MAPL_RGAS*tk)             ! kg/m3
-         wupdraft           = max(zero_par,vvel(:,:,k) + SQRT(tke(:,:,k)))
+         wupdraft           = vvel(:,:,k)+SQRT(tke(:,:,k))     ! m/s
 
          ! Liquid Clouds
-         ni = tiny(1.0)
          DO n=1,n_modes
-            where (AeroPropsNew(n)%kap(:,:,k) > 0.4) &
-                 ni   (:,:,n) =   max(AeroPropsNew(n)%num(:,:,k)*air_den,  zero_par)  ! unit: [m-3]
-            rg   (:,:,n) =   max(AeroPropsNew(n)%dpg(:,:,k)*0.5e6,    zero_par)  ! unit: [um]
-            bibar(:,:,n) =   max(AeroPropsNew(n)%kap(:,:,k),          zero_par)                 
-            sig0 (:,:,n) =       AeroPropsNew(n)%sig(:,:,k)
+            ni   (:,:,n) =   AeroPropsNew(n)%num(:,:,k)*air_den  ! unit: [m-3]
+            rg   (:,:,n) =   AeroPropsNew(n)%dpg(:,:,k)*0.5e6    ! unit: [um]
+            bibar(:,:,n) =   AeroPropsNew(n)%kap(:,:,k)
+            sig0 (:,:,n) =   AeroPropsNew(n)%sig(:,:,k)
          ENDDO
          call GetActFrac(IM*JM, n_modes    &
               ,      ni(:,:,1)   &
@@ -349,8 +346,8 @@ CONTAINS
       real(AER_PR)            :: a(im)                              ! [m]
       real(AER_PR)            :: g(im)                              ! [m^2/s]   
       real(AER_PR)            :: rdrp(im)                           ! [m]   
-      real(AER_PR)            :: f1(im)                             ! [1]   
-      real(AER_PR)            :: f2(im)                             ! [1]
+      real(AER_PR)            :: f1                                 ! [1]   
+      real(AER_PR)            :: f2                                 ! [1]
       real(AER_PR)            :: alpha(im)                          ! [1/m]
       real(AER_PR)            :: gamma(im)                          ! [m^3/kg]   
       real(AER_PR)            :: sm(im,nmodes)                     ! [1]   
@@ -358,6 +355,7 @@ CONTAINS
       real(AER_PR)            :: u(im)                              ! argument to error function [1]
       real(AER_PR)            :: erf                            ! error function [1], but not declared in an f90 module 
       real(AER_PR)            :: smax(im)                           ! maximum supersaturation [1]
+      real(AER_PR)            :: r23 = 2.0/3.0
 
       !----------------------------------------------------------------------------------------------------------------------
       !     rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
@@ -382,47 +380,49 @@ CONTAINS
       alpha = (gravity/(rgasjmol*tkelvin))*((wmolmass*heatvap)/(cpair*tkelvin) - amolmass)    ! [1/m] 
       gamma = (rgasjmol*tkelvin)/(wpe*wmolmass) &
            + (wmolmass*heatvap*heatvap)/(cpair*ptot*amolmass*tkelvin)                        ! [m^3/kg]
-      dum = sqrt(alpha*wupdraft/g)                  ! [1/m] 
-      zeta = 2.*a*dum/3.                    ! [1] 
-      !----------------------------------------------------------------------------------------------------------------
-      ! write(1,'(a27,4d15.5)')'surten,wpe,a            =',surten,wpe,a
-      ! write(1,'(a27,4d15.5)')'xka,xkaprime,dv,dvprime =',xka,xkaprime,dv,dvprime
-      ! write(1,'(a27,4d15.5)')'alpha,gamma,g, zeta     =',alpha,gamma,g,zeta
+      where (wupdraft > 0.0)     
+        dum = sqrt(alpha*wupdraft/g)                  ! [1/m] 
+        zeta = 2.*a*dum/3.                    ! [1] 
+      else where
+        dum = 0.0
+        zeta = 0.0
+      end where
       !----------------------------------------------------------------------------------------------------------------------
       !     these variables must be computed for each mode. 
       !----------------------------------------------------------------------------------------------------------------------
-      xlogsigm(:,:) = log(sigmag(:,:))                                                    ! [1] 
-      smax = 0.0                                                                  ! [1]
+      xlogsigm(:,:) = log(sigmag(:,:))
 
+      smax(:) = 0.0
       do n=1, nmodes
-
-         sm(:,n) = ( 2.0/sqrt(bibar(:,n)) ) * ( a/(3.0*rg(:,n)) )**1.5               ! [1] 
-         eta(:,n) = dum**3 / (twopi*denh2o*gamma*xnap(:,n))                                ! [1] 
-
-         !--------------------------------------------------------------------------------------------------------------
-         ! write(1,'(a27,i4,4d15.5)')'i,eta(i),sm(i) =',i,eta(i),sm(i)
-         !--------------------------------------------------------------------------------------------------------------
-         f1 = 0.5 * exp(2.50 * xlogsigm(:,n)**2)                                 ! [1] 
-         f2 = 1.0 +     0.25 * xlogsigm(:,n)                                     ! [1] 
-         smax = smax + (   f1*(  zeta  / eta(:,n)              )**1.50 &
-              + f2*(sm(i,n)**2/(eta(:,n)+3.0*zeta))**0.75 ) / sm(:,n)**2  ! [1] - eq. (6)
-      enddo
-      smax = 1.0 / sqrt(smax)                                                     ! [1]
-
+         do i = 1, im
+            if ((bibar(i,n) > 0.4) .and. (rg(i,n) > 0.0) .and. (wupdraft(i) > 0.0) .and. (xnap(i,n) > 0.0)) then
+               sm(i,n)  = (2.0/sqrt(bibar(i,n))) * (a(i)/(3.0* rg(i,n)))**1.5
+               eta(i,n) = dum(i)**3 / (twopi * denh2o * gamma(i) * xnap(i,n))
+               f1 = 0.5 * exp(2.50* xlogsigm(i,n)**2)
+               f2 = 1.0 +     0.25* xlogsigm(i,n)
+               smax(i) = smax(i) + (f1 * (zeta(i) / eta(i,n))**1.5 + &
+                                    f2 * (sm(i,n)**2 / (eta(i,n) + 3.0*zeta(i)))**0.75) / sm(i,n)**2
+             end if
+          end do
+      end do
+      ! Finalize smax
+      do i = 1, im
+         if (smax(i) > 0.0) then
+            smax(i) = 1.0/sqrt(smax(i))
+         end if
+      end do
+      ! compute nact
+      fracactn(:,:) = 0.0
+      nact(:,:) = 0.0
       do n=1, nmodes
-
-         ac(:,n)       = rg(:,n) * ( sm(:,n) / smax )**0.66666666666666667               ! [um]
-
-         u           = log(ac(:,n)/rg(:,n)) / ( sqrt2 * xlogsigm(:,n) )                      ! [1]
-         fracactn(:,n) = 0.5 * (1.0 - erf(u))                                    ! [1]
-         nact(:,n)     = min(fracactn(:,n),0.99) * xnap(:,n)                             ! [#/m^3]
-
-         !if(fracactn(i) .gt. 0.9999999 ) then
-         !   write(*,*)i,ac(i),u,fracactn(i),xnap(i)
-         !   print*,' xxx',i,ac(i),u,fracactn(i),xnap(i)
-         !   stop
-         !endif
-
+         do i = 1, im
+            if (smax(i,n) > 0.0) then
+               ac(i,n) = rg(i,n) * ( sm(i,n)/smax(i) )**r23                   ! [um]
+               u(i) = log(ac(i,n)/rg(i,n)) / ( sqrt2 * xlogsigm(i,n) )        ! [1]
+               fracactn(i,n) = 0.5 * (1.0 - erf(u(i)))                        ! [1]
+               nact(i,n) = min(fracactn(i,n),0.99) * xnap(i,n)                ! [#/m^3]
+            end if
+         end do
       end do
 
       return
@@ -437,7 +437,7 @@ CONTAINS
       implicit none
       integer, parameter :: itmax=10000
       real(AER_PR), parameter :: eps=3.0e-07
-      real(AER_PR), parameter :: fpmin=1.0e-30
+      real(AER_PR), parameter :: fpmin=tiny(1.0)
       real(AER_PR) :: a,gammcf,gln,x
       integer :: i
       real(AER_PR) :: an,b,c,d,del,h
