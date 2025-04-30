@@ -5746,13 +5746,11 @@ contains
        if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
 
-       if (adjustl(CLDMICR_OPTION)=="GFDL_1M") then  
-          if (DEBUG_MST) then
+       if (DEBUG_MST) then
           call MAPL_MaxMin('MST: Q_AF_MP  ', Q)      
           call MAPL_MaxMin('MST: T_AF_MP  ', T)
           call MAPL_MaxMin('MST: U_AF_MP  ', U)
           call MAPL_MaxMin('MST: V_AF_MP  ', V)
-          endif
        endif
 
        ! Exports
@@ -5792,16 +5790,18 @@ contains
             PTR3D = 1.0
            end where
          endif
-         QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
+
+         QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3)
          call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) PTR3D = Q/QST3
 
-         ! Rain-out of Relative Humidity where RH > 110%
+         ! Clean up supersaturation only with respect to liquid water
          call MAPL_GetPointer(EXPORT,  DTDT_ER,  'DTDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          DTDT_ER = T
          DQVDT_ER = Q
-         
+
+         ! Rain-out of Relative Humidity where RH > 110%
          call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D,   'ER_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          where ( Q > 1.1*QST3 )
