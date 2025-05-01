@@ -7,6 +7,8 @@
 #define G5KIND      4
 #define REAL_       real(kind=G5KIND)
 
+#define COUPLE_CICE6_AND_WAVES
+
 module CICE_GEOSPlugMod
 
 !BOP
@@ -24,7 +26,9 @@ module CICE_GEOSPlugMod
   use CICE_RunMod                 
   use ice_import_export
   use ice_record_mod
-
+#if defined (COUPLE_CICE6_AND_WAVES)
+  use ice_arrays_column, only: wavefreq, dwavefreq
+#endif
 
   implicit none
   private
@@ -369,6 +373,27 @@ contains
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
   VERIFY_(STATUS)
+
+
+  call MAPL_AddExportSpec(GC,                                     &
+        SHORT_NAME         = 'EF',                                &
+        LONG_NAME          = 'wave_energy_spectrum',              &
+        UNITS              = 'm2 s',                              &
+        UNGRIDDED_DIMS     = [37],                                &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                     &
+        SHORT_NAME         = 'SWHice',                            &
+        LONG_NAME          = 'wave_energy_spectrum',              &
+        UNITS              = '',                                  &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+  VERIFY_(STATUS)
+
 
 
   !*CALLBACK*
@@ -789,6 +814,8 @@ contains
 
 ! Optional Exports
 ! none
+    REAL_, pointer                     :: EF_   (:,:,:)      => null()
+    REAL_, pointer                     :: SWHice  (:,:)      => null()
 
 ! Imports
     REAL_, pointer                     :: TAUX(:,:)          => null()
@@ -798,6 +825,8 @@ contains
     REAL_, pointer                     :: UWC(:,:)           => null()
     REAL_, pointer                     :: VWC(:,:)           => null()
     REAL_, pointer                     :: SLV(:,:)           => null()
+    REAL_, pointer                     :: EF(:,:,:)          => null()
+
 
 ! Temporaries
 
@@ -805,7 +834,16 @@ contains
 
     integer                            :: YEAR,MONTH,DAY,HR,MN,SC
 
-
+#if defined (COUPLE_CICE6_AND_WAVES)
+    REAL_ :: wm_fr1
+    REAL_ :: wm_xfr
+    integer, parameter :: wm_nk = 37
+    integer :: ik
+    REAL_ :: wm_sig
+    REAL_, dimension(0:wm_nk+1) :: wm_sigma
+    REAL_, dimension(1:wm_nk)   :: wm_freq
+    REAL_, dimension(1:wm_nk)   :: wm_freq_width
+#endif
 
     REAL_, pointer, dimension(:,:)     :: LATS  => null()
     REAL_, pointer, dimension(:,:)     :: LONS  => null()
@@ -855,6 +893,53 @@ contains
     call MAPL_GetPointer(IMPORT,  UWC,     'UWC'         ,                 _RC)
     call MAPL_GetPointer(IMPORT,  VWC,     'VWC'         ,                 _RC)
 
+#if defined (COUPLE_CICE6_AND_WAVES)
+    call MAPL_GetPointer(IMPORT,  EF,      'EF'          ,                 _RC)
+    print *, 'DBG::GEOS:CICE6  EF = ', shape(EF), minval(EF), maxval(EF)
+
+    wm_fr1 = 3.13e-2
+    wm_xfr = 1.1
+
+    wm_sig = wm_fr1 * (2*3.1415926) / wm_xfr**2
+    do ik = 0, wm_nk+1 
+        wm_sig = wm_sig * wm_xfr
+        wm_sigma(ik) = wm_sig
+    end do
+
+    wm_freq = wm_sigma(1:wm_nk) / (2*3.1415926)
+    wm_freq_width = 0.5 * wm_freq * (wm_xfr - 1.0/wm_xfr)
+    !same as:
+    !wm_freq_l(1:nk) = wm_freq(1:nk) - 0.5*( wm_freq(1:nk) - wm_freq(1:nk)/wm_xfr)
+    !wm_freq_u(1:nk) = wm_freq(1:nk) + 0.5*(-wm_freq(1:nk) + wm_freq(1:nk)*wm_xfr)
+    !wm_freq_width = wm_freq_u - wm_freq_l
+
+    wavefreq = wm_freq
+    dwavefreq = wm_freq_width
+
+#if (0)
+    do ik = 1, wm_nk
+        print *, 'DBG:GEOS:CICE6 wm freq|width = ', ik, wm_freq(ik), wm_freq_width(ik)
+    end do
+
+    print *, 'DBG::GEOS:CICE6  wm_freq = ', shape(wm_freq), minval(wm_freq), maxval(wm_freq)
+    print *, 'DBG::GEOS:CICE6  dwavefreq = ', shape(dwavefreq), minval(dwavefreq), maxval(dwavefreq)
+#endif
+
+    call MAPL_GetPointer(EXPORT, EF_, 'EF', _RC)
+    if (associated(EF_)) then
+        EF_ = EF
+    end if
+
+    call MAPL_GetPointer(EXPORT, SWHice, 'SWHice', _RC)
+    if (associated(SWHice)) then
+        SWHice = sum(EF**2, dim=3)**0.5
+        where (SWHice > 100)
+           SWHice = 0.0
+        endwhere   
+    end if
+
+#endif
+
     call MAPL_GetPointer(EXPORT,   TI,     'TI'          ,  alloc=.true.,  _RC)
     call MAPL_GetPointer(EXPORT,   FI,     'FRSEAICE'    ,  alloc=.true.,  _RC)
     call MAPL_GetPointer(EXPORT,   UI,     'UI'          ,  alloc=.true.,  _RC)
@@ -873,6 +958,9 @@ contains
 
     call ice_import_dyna(TAUX, TAUY, SLV, UWB, VWB, UWC, VWC, _RC)
 
+#if defined (COUPLE_CICE6_AND_WAVES)
+    call ice_import_waves(EF, _RC)
+#endif
 
     call CICE_Run
 
