@@ -253,6 +253,8 @@ contains
       integer           :: kpbl(idim)
       integer           :: ncnst, IM, JM
 
+      !$ser verbatim real :: CNV_Tracers_temp(24,24,72,23)
+
       ncnst = size(CNV_Tracers)
       IM = size(CNV_Tracers(1)%Q,1)
       JM = size(CNV_Tracers(1)%Q,2)
@@ -273,8 +275,11 @@ contains
          th0(:idim,k)        = t0_inv(:idim,k_inv)/exnmid0_inv(:idim,k_inv)
          do m = 1, ncnst
             tr0(:idim,k,m)   = reshape(CNV_Tracers(m)%Q(:,:,k_inv), (/idim/))
+            !$ser verbatim CNV_Tracers_temp(:,:,k,m) = CNV_Tracers(m)%Q(:,:,k)
          enddo
       enddo
+
+
 
       ! flip interface variables
       tke(:,:) = 0.
@@ -298,13 +303,10 @@ contains
         if (isnan(cnvtrmax(i))) cnvtrmax(i) = 0.
       end do
      
+     
      !$ser savepoint ComputeUwshcu-In
-     !$ser data k0=k0 dt=dt ncnst=ncnst pifc0_in=pifc0 zifc0_in=zifc0
-     !$ser data exnifc0_in=exnifc0 pmid0_in=pmid0 zmid0_in=zmid0 exnmid0_in=exnmid0 dp0_in=dp0
-     !$ser data u0_in=u0 v0_in=v0 qv0_in=qv0 ql0_in=ql0 qi0_in=qi0 th0_in=th0 tr0_inout=tr0 kpbl_in=kpbl
-     !$ser data frland_in=frland tke_in=tke rkfre=rkfre cush_inout=cush 
-     !$ser data evap=evap shfx=shfx dotransport=dotransport
-     ! SERIALIZE SHLWPARAMS FOR NOW
+     !$ser data dotransport=dotransport ncnst=ncnst
+     !$ser data CNV_Tracers=CNV_Tracers_temp tr0=tr0
      !$ser data frc_rasn=shlwparams%frc_rasn windsrcavg=shlwparams%windsrcavg 
      !$ser data qtsrchgt=shlwparams%qtsrchgt thlsrc_fac=shlwparams%thlsrc_fac
      !$ser data qtsrc_fac=shlwparams%qtsrc_fac rbuoy=shlwparams%rbuoy epsvarw=shlwparams%epsvarw
@@ -314,7 +316,8 @@ contains
      !$ser data detrhgt=shlwparams%detrhgt cridist_opt=shlwparams%cridist_opt 
      !$ser data rdrag=shlwparams%rdrag use_self_detrain=shlwparams%use_self_detrain
      !$ser data rpen=shlwparams%rpen use_cumpenent=shlwparams%use_cumpenent 
-     !$ser data use_momenflx=shlwparams%use_momenflx
+     !$ser data use_momenflx=shlwparams%use_momenflx niter_xc=shlwparams%niter_xc
+     !$ser data rdrop=shlwparams%rdrop
      call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
           exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, cush, umf, &
@@ -330,15 +333,14 @@ contains
           thlu, thvu, uu, vu, xc, trten,                   & 
 #endif
           dotransport )
-      !$ser savepoint ComputeUwshcu-Out2
-      !$ser data cushinout=cush umf_out=umf dcm_out=dcm qvten_out=qvten qlten_out=qlten
-      !$ser data tr0_inout=tr0 kpbl_in=kpbl frland_in=frland tke_in=tke rkfre=rkfre
-      !$ser data qiten_out=qiten sten_out=sten uten_out=uten vten_out=vten qrten_out=qrten
-      !$ser data qsten_out=qsten cufrc_out=cufrc fer_out=fer fdr_out=fdr qldet_out=qldet
-      !$ser data qidet_out=qidet qlsub_out=qlsub qisub_out=qisub ndrop_out=ndrop nice_out=nice                       
-      !$ser data shfx=shfx evap=evap cnvtr=cnvtrmax tpert_out=tpert_out qpert_out=qpert_out      
-      !$ser data qtflx_out=qtflx slflx_out=slflx uflx_out=uflx vflx_out=vflx 
-      !$ser data dotransport=dotransport
+      ! $ser savepoint ComputeUwshcu-Out1
+      ! $ser data cush_inout1=cush umf_out1=umf dcm_out1=dcm qvten_out1=qvten qlten_out1=qlten
+      ! $ser data tr0_inout1=tr0
+      ! $ser data qiten_out1=qiten sten_out1=sten uten_out1=uten vten_out1=vten qrten_out1=qrten
+      ! $ser data qsten_out1=qsten cufrc_out1=cufrc fer_out1=fer fdr_out1=fdr qldet_out1=qldet
+      ! $ser data qidet_out1=qidet qlsub_out1=qlsub qisub_out1=qisub ndrop_out1=ndrop nice_out1=nice                       
+      ! $ser data shfx1=shfx evap1=evap cnvtr1=cnvtrmax tpert_out1=tpert_out qpert_out1=qpert_out      
+      ! $ser data qtflx_out1=qtflx slflx_out1=slflx uflx_out1=uflx vflx_out1=vflx dotransport=dotransport
 
       ! Reverse again
 
@@ -404,6 +406,8 @@ contains
          enddo
          endif
       end do
+
+      !$ser data tr0_out=tr0 
       dcm_inv(:idim,k0) = 0.
     ! Re-scale liquid/ice water sub-tendencies to enforce conservation
       where(ABS(qldet_inv+qlsub_inv).gt.1e-12)
@@ -714,7 +718,7 @@ contains
 
       ! Other internal variables
 
-      integer    kk, k, i, kp1, km1, mm, m
+      integer    kk, kkk, k, i, kp1, km1, mm, m
       integer    iter_scaleh, iter_xc
       integer    id_check, status
 
@@ -1160,11 +1164,11 @@ contains
 
     ind_delcin(:idim)            = 0.0
 
-
+      
       !========================
       !   Start column loop
       !========================
-      !$ser verbatim call ser_set_Dx(idim, k0+1, 73, 1)
+      !$ser verbatim call ser_set_Dx(idim, k0+1, 73, 23)
       do i = 1, idim
          !$ser verbatim call ser_set_indices(i, 1 ,1 ,1)
          id_exit = .false.
@@ -1217,15 +1221,20 @@ contains
             sstr0(:k0,m) = slope( k0, tr0(:k0,m), pmid0 )
          end do
          end if
-         !$ser savepoint ComputeUwshcu-Out
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,k,1,1)
-         !$ser data_buffered Dx=2 ssthl0=ssthl0(k) ssqt0=ssqt0(k) ssu0=ssu0(k) ssv0=ssv0(k) 
-         !$ser verbatim do m=1,ncnst
-         !$ser verbatim call ser_set_indices(i,k,m,1)
-         !$ser data_buffered Dx=3 sstr0=sstr0(k,m) tr0=tr0(k,m)
-         !$ser verbatim enddo
-         !$ser verbatim enddo
+        ! $ser savepoint ComputeUwshcu-Out2
+
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,k,1,1)
+        ! $ser data_buffered Dx=2 ssthl0=ssthl0(k) ssqt0=ssqt0(k) ssu0=ssu0(k) ssv0=ssv0(k) 
+        ! $ser data_buffered Dx=2 thl0=thl0(k)
+        ! $ser verbatim do m=1,ncnst
+        ! $ser verbatim call ser_set_indices(i,k,m,1)
+        ! $ser data_buffered Dx=3 sstr0=sstr0(k,m) tr0=tr0(k,m)
+        ! $ser verbatim enddo
+        ! $ser verbatim enddo
+       
+      
+      
 
 
          ! Compute thv0 and thvl0 at top/bottom interfaces in each layer
@@ -1263,16 +1272,16 @@ contains
               thv0top(k)  = thv0bot(k)
               thvl0top(k) = thvl0bot(k)
             end if
-            !$ser data_buffered Dx=2 thj=thj qvj=qvj qlj=qlj qij=qij qse=qse
-            !$ser data_buffered Dx=2 thvl0top=thvl0top(k) thvl0bot=thvl0bot(k) 
+            ! $ser data_buffered Dx=2 thj=thj qvj=qvj qlj=qlj qij=qij qse=qse
+            ! $ser data_buffered Dx=2 thvl0top=thvl0top(k) thvl0bot=thvl0bot(k) 
             
 
          end do
 
-          !$ser verbatim do k=1, k0
-          !$ser verbatim call ser_set_indices(i,k,1,1) 
-          !$ser data_buffered Dx=2 thv0bot=thv0bot(k) thv0top_test=thv0top(k)
-          !$ser verbatim enddo
+          ! $ser verbatim do k=1, k0
+          ! $ser verbatim call ser_set_indices(i,k,1,1) 
+          ! $ser data_buffered Dx=2 thv0bot=thv0bot(k) thv0top_test=thv0top(k)
+          ! $ser verbatim enddo
 
 !         print *,'thvl0bot=',thvl0bot
 !         print *,'thvl0top=',thvl0top
@@ -1307,13 +1316,20 @@ contains
          enddo 
          end if
 
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,k,1,1)
-         !$ser verbatim do m=1,ncnst
-         !$ser verbatim call ser_set_indices(i,k,m,1)
-         !$ser data_buffered Dx=3 tr0_o=tr0_o(k,m) sstr0_o=sstr0_o(k,m)
-         !$ser verbatim enddo
-         !$ser verbatim enddo
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim do m=1,ncnst
+        ! $ser verbatim call ser_set_indices(i,k,m,1)
+        ! $ser data_buffered Dx=3 sstr0_o=sstr0_o(k,m) tr0_o=tr0_o(k,m)
+        ! $ser verbatim enddo
+        ! $ser verbatim enddo
+
+        !  $ser verbatim do k=1,k0
+        !  $ser verbatim call ser_set_indices(i,k,1,1)
+        !  $ser verbatim do m=1,ncnst
+        !  $ser verbatim call ser_set_indices(i,k,m,1)
+        !  $ser data_buffered Dx=3 tr0_o=tr0_o(k,m) sstr0_o=sstr0_o(k,m)
+        !  $ser verbatim enddo
+        !  $ser verbatim enddo
  
          ! ---------------------------------------------- !
          ! Initialize output variables at each grid point !
@@ -1403,13 +1419,21 @@ contains
       enddo
       endif
 
-       !$ser verbatim do k=1,k0
-       !$ser verbatim call ser_set_indices(i,k,1,1)
-       !$ser verbatim do m=1,ncnst
-       !$ser verbatim call ser_set_indices(i,k,m,1)
-       !$ser data_buffered Dx=3 trflx=trflx(k,m) trten=trten(k,m) tru=tru(k,m) tru_emf=tru_emf(k,m)
-       !$ser verbatim enddo
-       !$ser verbatim enddo
+      ! $ser verbatim do k=1,k0
+      ! $ser verbatim call ser_set_indices(i,k,1,1)
+      ! $ser verbatim do m=1,ncnst
+      ! $ser verbatim call ser_set_indices(i,k,m,1)
+      ! $ser data_buffered Dx=3 trten=trten(k,m)
+      ! $ser verbatim enddo
+      ! $ser verbatim enddo
+       
+      ! $ser verbatim do k=1,k0+1
+      ! $ser verbatim call ser_set_indices(i,k,1,1)
+      ! $ser verbatim do m=1,ncnst
+      ! $ser verbatim call ser_set_indices(i,k,m,1)
+      ! $ser data_buffered Dx=3 trflx=trflx(k-1,m) tru=tru(k-1,m) tru_emf=tru_emf(k-1,m)
+      ! $ser verbatim enddo
+      ! $ser verbatim enddo
 
 
         !-----------------------------------------------! 
@@ -1441,6 +1465,13 @@ contains
            uavg    = 0.
            vavg    = 0.
 
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 tscaleh_test=tscaleh
+          ! $ser verbatim end if 
+          ! $ser verbatim end do  
+
            ! ----------------------------------------------------------------------- !
            ! Find PBL top height interface index, 'kinv-1' where 'kinv' is the layer !
            ! index with PBLH in it. When PBLH is exactly at interface, 'kinv' is the !
@@ -1469,10 +1500,12 @@ contains
              kinv = 5
            end if
 
-           !$ser verbatim do k=1,k0
-           !$ser verbatim call ser_set_indices(i,iter,k,1)
-           !$ser data_buffered Dx=3 kinv=kinv
-           !$ser verbatim enddo
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 kinv=kinv
+          ! $ser verbatim end if
+          ! $ser verbatim enddo
 
 15         continue    
 
@@ -1513,7 +1546,7 @@ contains
          thvlmin  = 1000.
          thvlavg  = 0.
          do k = 1,kinv ! max(kinv-1,1)    ! Here, 'k' is an interfacial layer index.
-            !$ser verbatim call ser_set_indices(i,iter,k,1)
+            ! $ser verbatim call ser_set_indices(i,iter,k,1)
             dpi = pifc0(k-1) - pifc0(k)
             dpsum  = dpsum  + dpi 
             tkeavg = tkeavg + dpi*tke(k)
@@ -1522,9 +1555,7 @@ contains
             thvlavg = thvlavg + dpi*thvl0(k)
             if( k .ne. kinv ) then
                thvlmin = min(thvlmin,min(thvl0bot(k),thvl0top(k)))
-               !$ser verbatim if (iter .eq. 1) then
-               !$ser data_buffered Dx=3 thvlmin_test=thvlmin
-               !$ser verbatim end if
+              ! $ser data_buffered Dx=3 thvlmin_test=thvlmin
              end if
          end do
          tkeavg  = tkeavg/dpsum
@@ -1532,13 +1563,13 @@ contains
          vavg    = vavg/dpsum
          thvlavg = thvlavg/dpsum
 
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,iter,k,1)
-         !$ser verbatim if (iter .eq. 1) then
-         !$ser data_buffered Dx=3 thvlavg_test=thvlavg tkeavg_test=tkeavg
-         !$ser data_buffered Dx=3 uavg_test=uavg vavg_test=vavg 
-         !$ser verbatim end if
-         !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 thvlavg_test=thvlavg tkeavg_test=tkeavg
+        ! $ser data_buffered Dx=3 uavg_test=uavg vavg_test=vavg 
+        ! $ser verbatim end if
+        ! $ser verbatim end do
         
 
         ! weighted average over lowest 20mb
@@ -1562,12 +1593,12 @@ contains
            qtavg = qt0(1)
          end if
 
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,iter,k,1)
-         !$ser verbatim if (iter .eq. 1) then
-         !$ser data_buffered Dx=3 qtavg_test=qtavg
-         !$ser verbatim end if
-         !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 qtavg_test=qtavg
+        ! $ser verbatim end if
+        ! $ser verbatim end do
 
 
 
@@ -1609,19 +1640,27 @@ contains
          endif
   
 
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,iter,k,1)
-         !$ser verbatim if (iter .eq. 1) then
-         !$ser data_buffered Dx=3 thlsrc_test=thlsrc thvlsrc_test=thvlsrc
-         !$ser data_buffered Dx=3 vsrc_test=vsrc usrc_test=usrc qtsrc_test=qtsrc
-         !$ser verbatim end if
-         !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 thlsrc_test=thlsrc thvlsrc_test=thvlsrc
+        ! $ser data_buffered Dx=3 vsrc_test=vsrc usrc_test=usrc qtsrc_test=qtsrc
+        ! $ser verbatim end if
+        ! $ser verbatim end do
 
          if (dotransport.eq.1) then
          do m = 1, ncnst
             trsrc(m) = tr0(1,m)
          enddo 
          endif
+
+        ! $ser verbatim do m=1,ncnst
+        ! $ser verbatim call ser_set_indices(i,iter,m,1)
+        ! $ser data_buffered Dx=3 trsrc=trsrc(m)
+        ! $ser verbatim enddo
+        
+
+
          
          
 
@@ -1660,12 +1699,12 @@ contains
          end if
          plcl = qsinvert(qtsrc,thlsrc,pifc0(0))
 
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,iter,k,1)
-         !$ser verbatim if (iter .eq. 1) then
-         !$ser data_buffered Dx=3 plcl_test=plcl
-         !$ser verbatim end if
-         !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 plcl_test=plcl
+        ! $ser verbatim end if
+        ! $ser verbatim end do
          do k = 0, k0
             if( pifc0(k) .lt. plcl ) then
                 klcl = k
@@ -1677,12 +1716,12 @@ contains
 25       continue
          klcl = max(1,klcl)
          
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,iter,k,1)
-         !$ser verbatim if (iter .eq. 1) then
-         !$ser data_buffered Dx=3 klcl_test=klcl
-         !$ser verbatim end if
-         !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 klcl_test=klcl
+        ! $ser verbatim end if
+        ! $ser verbatim end do
 
          
          if( plcl .lt. 60000. ) then               
@@ -1704,20 +1743,20 @@ contains
 
          thl0lcl = thl0(klcl) + ssthl0(klcl) * ( plcl - pmid0(klcl) )
          qt0lcl  = qt0(klcl)  + ssqt0(klcl)  * ( plcl - pmid0(klcl) )
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,iter,k,1)
-         !$ser verbatim if (iter .eq. 1) then
-         !$ser data_buffered Dx=3 thl0lcl_test=thl0lcl qt0lcl_test=qt0lcl
-         !$ser verbatim end if
-         !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 thl0lcl_test=thl0lcl qt0lcl_test=qt0lcl
+        ! $ser verbatim end if
+        ! $ser verbatim end do
          call conden(plcl,thl0lcl,qt0lcl,thj,qvj,qlj,qij,qse,id_check)
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,iter,k,1)
-         !$ser verbatim if (iter .eq. 1) then
-         !$ser data_buffered Dx=3 thj_test=thj qvj_test=qvj qlj_test=qlj
-         !$ser data_buffered Dx=3 qij_test=qij qse_test=qse id_check_test=id_check
-         !$ser verbatim end if
-         !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 thj_test=thj qvj_test=qvj qlj_test=qlj
+        ! $ser data_buffered Dx=3 qij_test=qij qse_test=qse id_check_test=id_check
+        ! $ser verbatim end if
+        ! $ser verbatim end do
          if( id_check .eq. 1 ) then
             exit_conden(i) = 1.
             id_exit = .true.
@@ -1726,12 +1765,12 @@ contains
   
          thv0lcl = thj * ( 1. + zvir * qvj - qlj - qij )
          
-         !$ser verbatim do k=1,k0
-         !$ser verbatim call ser_set_indices(i,iter,k,1)
-         !$ser verbatim if (iter .eq. 1) then
-         !$ser data_buffered Dx=3 thv0lcl_test=thv0lcl
-         !$ser verbatim end if
-         !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 thv0lcl_test=thv0lcl
+        ! $ser verbatim end if
+        ! $ser verbatim end do
 
          
 
@@ -1774,15 +1813,15 @@ contains
 
         if( klcl .ge. kinv ) then
             do k = kinv, k0 - 1
-               !$ser verbatim call ser_set_indices(i,iter,k,1)
+               ! $ser verbatim call ser_set_indices(i,iter,k,1)
                if( k .lt. klcl ) then
                    thvubot = thvlsrc
                    thvutop = thvlsrc 
                    cin     = cin + single_cin(pifc0(k-1),thv0bot(k),pifc0(k),thv0top(k),thvubot,thvutop)
-                  !$ser verbatim if (iter .eq. 1) then
-                  !$ser data_buffered Dx=3 thvubot_test1=thvubot thvutop_test1=thvutop
-                  !$ser data_buffered Dx=3 cin_test1=cin cinlcl_test1=cinlcl
-                  !$ser verbatim end if  
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 thvubot_test1=thvubot thvutop_test1=thvutop
+                  ! $ser data_buffered Dx=3 cin_test1=cin cinlcl_test1=cinlcl
+                  ! $ser verbatim end if  
                elseif( k .eq. klcl ) then
                    !----- Bottom to LCL
                    thvubot = thvlsrc
@@ -1790,10 +1829,10 @@ contains
                    cin     = cin + single_cin(pifc0(k-1),thv0bot(k),plcl,thv0lcl,thvubot,thvutop)
                    if( cin .lt. 0. ) limit_cinlcl(i) = 1.
                    cinlcl  = max(cin,0.)
-                  !$ser verbatim if (iter .eq. 1) then
-                  !$ser data_buffered Dx=3 cinlcl_test1=cinlcl
-                  !$ser verbatim end if 
                    cin     = cinlcl
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 cinlcl_test2=cinlcl cin_test2=cin
+                  ! $ser verbatim end if 
                    !----- LCL to Top
                    thvubot = thvlsrc
                    call conden(pifc0(k),thlsrc,qtsrc,thj,qvj,qlj,qij,qse,id_check)
@@ -1804,16 +1843,16 @@ contains
                    end if
                    thvutop = thj * ( 1. + zvir*qvj - qlj - qij )
                    call getbuoy(plcl,thv0lcl,pifc0(k),thv0top(k),thvubot,thvutop,plfc,cin)
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 thvubot_test1=thvubot thvutop_test1=thvutop
+                  ! $ser data_buffered Dx=3 cin_test3=cin plfc_test1=plfc klfc_test1=klfc
+                  ! $ser data_buffered Dx=3 thj_test1=thj qlj_test1=qlj qij_test1=qij 
+                  ! $ser data_buffered Dx=3 qse_test1=qse id_check_test1=id_check
+                  ! $ser verbatim end if  
                    if( plfc .gt. 0. ) then 
                        klfc = k 
                        go to 35
                    end if
-                  !$ser verbatim if (iter .eq. 1) then
-                  !$ser data_buffered Dx=3 thvubot_test1=thvubot thvutop_test1=thvutop
-                  !$ser data_buffered Dx=3 cin_test1=cin plfc_test1=plfc klfc_test1=klfc
-                  !$ser data_buffered Dx=3 thj_test1=thj qlj_test1=qlj qij_test1=qij 
-                  !$ser data_buffered Dx=3 qse_test1=qse id_check_test1=id_check
-                  !$ser verbatim end if  
                else
                   thvubot = thvutop
                   call conden(pifc0(k),thlsrc,qtsrc,thj,qvj,qlj,qij,qse,id_check)
@@ -1824,16 +1863,22 @@ contains
                   end if
                   thvutop = thj * ( 1. + zvir*qvj - qlj - qij )
                   call getbuoy(pifc0(k-1),thv0bot(k),pifc0(k),thv0top(k),thvubot,thvutop,plfc,cin)
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 thvubot_test1=thvubot thvutop_test1=thvutop
+                  ! $ser data_buffered Dx=3 cin_test4=cin plfc_test1=plfc klfc_test1=klfc
+                  ! $ser data_buffered Dx=3 thj_test1=thj qlj_test1=qlj qij_test1=qij 
+                  ! $ser data_buffered Dx=3 qse_test1=qse id_check_test1=id_check cinlcl_test4=cinlcl
+                  ! $ser verbatim end if  
                   if( plfc .gt. 0. ) then 
                       klfc = k
                       go to 35
                   end if 
-                  !$ser verbatim if (iter .eq. 1) then
-                  !$ser data_buffered Dx=3 thvubot_test1=thvubot thvutop_test1=thvutop
-                  !$ser data_buffered Dx=3 cin_test1=cin plfc_test1=plfc klfc_test1=klfc
-                  !$ser data_buffered Dx=3 thj_test1=thj qlj_test1=qlj qij_test1=qij 
-                  !$ser data_buffered Dx=3 qse_test1=qse id_check_test1=id_check cinlcl_test1=cinlcl
-                  !$ser verbatim end if  
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 thvubot_test1=thvubot thvutop_test1=thvutop
+                  ! $ser data_buffered Dx=3 cin_test5=cin plfc_test1=plfc klfc_test1=klfc
+                  ! $ser data_buffered Dx=3 thj_test1=thj qlj_test1=qlj qij_test1=qij 
+                  ! $ser data_buffered Dx=3 qse_test1=qse id_check_test1=id_check cinlcl_test4=cinlcl
+                  ! $ser verbatim end if  
                endif
             end do     
 
@@ -1844,7 +1889,7 @@ contains
        else
           cinlcl = 0. 
           do k = kinv, k0 - 1
-             !$ser verbatim call ser_set_indices(i,iter,k,1)
+             ! $ser verbatim call ser_set_indices(i,iter,k,1)
              call conden(pifc0(k-1),thlsrc,qtsrc,thj,qvj,qlj,qij,qse,id_check)
              if( id_check .eq. 1 ) then
                  exit_conden(i) = 1.
@@ -1860,16 +1905,22 @@ contains
              end if
              thvutop = thj * ( 1. + zvir*qvj - qlj - qij )
              call getbuoy(pifc0(k-1),thv0bot(k),pifc0(k),thv0top(k),thvubot,thvutop,plfc,cin)
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=3 thvubot_test2=thvubot thvutop_test2=thvutop
+            ! $ser data_buffered Dx=3 cin_test6=cin plfc_test2=plfc klfc_test2=klfc
+            ! $ser data_buffered Dx=3 thj_test2=thj qlj_test2=qlj qij_test2=qij 
+            ! $ser data_buffered Dx=3 qse_test2=qse id_check_test2=id_check cinlcl_test5=cinlcl
+            ! $ser verbatim end if 
              if( plfc .gt. 0. ) then 
                  klfc = k
                  go to 35
              end if 
-            !$ser verbatim if (iter .eq. 1) then
-            !$ser data_buffered Dx=3 thvubot_test2=thvubot thvutop_test2=thvutop
-            !$ser data_buffered Dx=3 cin_test2=cin plfc_test2=plfc klfc_test2=klfc
-            !$ser data_buffered Dx=3 thj_test2=thj qlj_test2=qlj qij_test2=qij 
-            !$ser data_buffered Dx=3 qse_test2=qse id_check_test2=id_check cinlcl_test2=cinlcl
-            !$ser verbatim end if 
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=3 thvubot_test2=thvubot thvutop_test2=thvutop
+            ! $ser data_buffered Dx=3 cin_test7=cin plfc_test2=plfc klfc_test2=klfc
+            ! $ser data_buffered Dx=3 thj_test2=thj qlj_test2=qlj qij_test2=qij 
+            ! $ser data_buffered Dx=3 qse_test2=qse id_check_test2=id_check cinlcl_test5=cinlcl
+            ! $ser verbatim end if 
           end do
        endif  ! End of CIN case selectio
 
@@ -1878,12 +1929,12 @@ contains
        cin = max(0.,cin)
 !       cin = max(cin,0.04*(lts-18.))   ! kludge to reduce UW in StCu regions
 
-      !$ser verbatim do k=1,k0
-      !$ser verbatim call ser_set_indices(i,iter,k,1)
-      !$ser verbatim if (iter .eq. 1) then
-      !$ser data_buffered Dx=3 cin_test3=cin plfc_test3=plfc klfc_test3=klfc cinlcl_test3=cinlcl
-      !$ser verbatim end if 
-      !$ser verbatim end do
+      ! $ser verbatim do k=1,k0
+      ! $ser verbatim call ser_set_indices(i,iter,k,1)
+      ! $ser verbatim if (iter .eq. 2) then
+      ! $ser data_buffered Dx=3 cin_test8=cin plfc_test3=plfc klfc_test3=klfc cinlcl_test6=cinlcl
+      ! $ser verbatim end if 
+      ! $ser verbatim end do
 
 
 
@@ -1897,12 +1948,12 @@ contains
            go to 333
        endif
 
-      !$ser verbatim do k=1,k0
-      !$ser verbatim call ser_set_indices(i,iter,k,1)
-      !$ser verbatim if (iter .eq. 1) then
-      !$ser data_buffered Dx=3 klfc_test4=klfc
-      !$ser verbatim end if 
-      !$ser verbatim end do
+      ! $ser verbatim do k=1,k0
+      ! $ser verbatim call ser_set_indices(i,iter,k,1)
+      ! $ser verbatim if (iter .eq. 2) then
+      ! $ser data_buffered Dx=3 klfc_test4=klfc
+      ! $ser verbatim end if 
+      ! $ser verbatim end do
 
        !----------------------------------------------------------------------!
        ! In order to calculate implicit 'cin' (or 'cinlcl'), save the initially !
@@ -1935,21 +1986,21 @@ contains
        endif
 
 
-      !$ser verbatim do k=1,k0
-      !$ser verbatim call ser_set_indices(i,iter,k,1)
-      !$ser verbatim if (iter .eq. 1) then
-      !$ser data_buffered Dx=3 cinlcl_i=cinlcl_i ke=ke cin_i=cin_i tkeavg_o=tkeavg_o
-      !$ser data_buffered Dx=3 thv0lcl_o=thv0lcl_o plcl_o=plcl_o
-      !$ser verbatim end if 
-      !$ser verbatim end do
+      ! $ser verbatim do k=1,k0
+      ! $ser verbatim call ser_set_indices(i,iter,k,1)
+      ! $ser verbatim if (iter .eq. 1) then
+      ! $ser data_buffered Dx=3 cinlcl_i=cinlcl_i ke=ke cin_i=cin_i tkeavg_o=tkeavg_o thlsrc_o=thlsrc_o
+      ! $ser data_buffered Dx=3 thv0lcl_o=thv0lcl_o plcl_o=plcl_o kinv_o=kinv_o thlvmin_o=thvlmin_o
+      ! $ser verbatim end if 
+      ! $ser verbatim end do
 
-      !$ser verbatim do k=1,k0
-      !$ser verbatim call ser_set_indices(i,k,1,1)
-      !$ser verbatim do m=1,ncnst
-      !$ser verbatim call ser_set_indices(i,k,m,1)
-      !$ser data_buffered Dx=3 trsrc_o=trsrc_o(m)
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+     
+      ! $ser verbatim do m=1,ncnst
+      ! $ser verbatim call ser_set_indices(i,m,1,1)
+      ! $ser verbatim if (iter .eq. 1) then
+      ! $ser data_buffered Dx=2 trsrc_o=trsrc_o(m)
+      ! $ser verbatim end if
+      ! $ser verbatim enddo
 
 
      ! Modification : If I impose w = max(0.1, w) up to the top interface of
@@ -1983,6 +2034,11 @@ contains
                del_CIN = cinlcl_f - cinlcl_i
            endif
 
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser data_buffered Dx=3 del_CIN=del_CIN
+          ! $ser verbatim end do
+
            if( del_CIN .gt. 0. ) then
 
                ! -------------------------------------------------------------- ! 
@@ -2003,6 +2059,11 @@ contains
                else
                    cinlcl = cinlcl_i + alpha * del_cinlcl   
                endif
+
+              ! $ser verbatim do k=1,k0
+              ! $ser verbatim call ser_set_indices(i,iter,k,1)
+              ! $ser data_buffered Dx=3 alpha=alpha cin=cin cinlcl=cinlcl
+              ! $ser verbatim end do
 
                ! ----------------------------------------------------------------- !
                ! Restore the original values from the previous 'iter_cin' step (1) !
@@ -2028,6 +2089,18 @@ contains
                enddo
                end if
 
+               ! $ser verbatim do m=1,ncnst
+               ! $ser verbatim call ser_set_indices(i,m,1,1)
+               ! $ser data_buffered Dx=2 trsrc2=trsrc(m)
+               ! $ser verbatim enddo
+
+              ! $ser verbatim do k=1,k0
+              ! $ser verbatim call ser_set_indices(i,iter,k,1)
+              ! $ser data_buffered Dx=3 kinv_test=kinv klcl=klcl klfc=klfc plcl=plcl plfc=plfc 
+              ! $ser data_buffered Dx=3 tkeavg=tkeavg thvlmin=thvlmin qtsrc=qtsrc thvlsrc=thvlsrc
+              ! $ser data_buffered Dx=3 thlsrc=thlsrc usrc=usrc vsrc=vsrc thv0lcl=thv0lcl
+              ! $ser verbatim end do
+
                qv0(:k0)            = qv0_o(:k0)
                ql0(:k0)            = ql0_o(:k0)
                qi0(:k0)            = qi0_o(:k0)
@@ -2052,6 +2125,22 @@ contains
                   sstr0(:k0,m) = sstr0_o(:k0,m)
                enddo
                end if
+
+              ! $ser verbatim do k=1,k0
+              ! $ser verbatim do m=1,ncnst
+              ! $ser verbatim call ser_set_indices(i,k,m,1)
+              ! $ser data_buffered Dx=3 sstr02=sstr0(k,m) tr02=tr0(k,m)
+              ! $ser verbatim enddo
+              ! $ser verbatim enddo
+
+              ! $ser verbatim do k=1,k0
+              ! $ser verbatim call ser_set_indices(i,iter,k,1)
+              ! $ser data_buffered Dx=3 qv0=qv0(k) ql0=ql0(k) qi0=qi0(k) t0=t0(k) s0=s0(k) 
+              ! $ser data_buffered Dx=3 u0=u0(k) v0=v0(k) qt0=qt0(k) thl0=thl0(k) thvl0=thvl0(k)
+              ! $ser data_buffered Dx=3 ssthl0=ssthl0(k) ssqt0=ssqt0(k) thv0bot=thv0bot(k)
+              ! $ser data_buffered Dx=3 thv0top=thv0top(k) thvl0top=thvl0top(k) thvl0bot=thvl0bot(k)
+              ! $ser data_buffered Dx=3 ssu0=ssu0(k) ssv0=ssv0(k)
+              ! $ser verbatim end do
 
                ! ------------------------------------------------------ !
                ! Initialize all fluxes, tendencies, and other variables ! 
@@ -2152,6 +2241,11 @@ contains
                ! Restore original output values of "iter_cin = 1" and exit !
                ! --------------------------------------------------------- !
 
+              ! $ser verbatim do k=1,k0
+              ! $ser verbatim call ser_set_indices(i,iter,k,1)
+              ! $ser data_buffered Dx=3 cin2=cin cinlcl2=cinlcl
+              ! $ser verbatim end do
+
                umf_out(i,0:k0)         = umf_s(0:k0)
                umf_out(i,0:kinv-1)     = umf_s(kinv-1)*zifc0(0:kinv-1)/zifc0(kinv-1)
 
@@ -2175,6 +2269,22 @@ contains
                uflx_out(i,0:k0)        = uflx_s(0:k0)
                vflx_out(i,0:k0)        = vflx_s(0:k0)
 
+
+              ! $ser verbatim do k=1,k0
+              ! $ser verbatim call ser_set_indices(i,iter,k,1)
+              ! $ser data_buffered Dx=3 dcm_out3=dcm_out(i,k) qvten_out3=qvten_out(i,k) qlten_out3=qlten_out(i,k)
+              ! $ser data_buffered Dx=3 qiten_out3=qiten_out(i,k) sten_out3=sten_out(i,k) uten_out3=uten_out(i,k)
+              ! $ser data_buffered Dx=3 vten_out3=vten_out(i,k) qrten_out3=qrten_out(i,k) qsten_out3=qsten_out(i,k)
+              ! $ser data_buffered Dx=3 qldet_out3=qldet_out(i,k) qidet_out3=qidet_out(i,k) qlsub_out3=qlsub_out(i,k)
+              ! $ser data_buffered Dx=3 qisub_out3=qisub_out(i,k) cush_inout3=cush_inout(i) cufrc_out3=cufrc_out(i,k)
+              ! $ser verbatim end do
+
+              ! $ser verbatim do k=1,k0+1
+              ! $ser verbatim call ser_set_indices(i,iter,k,1)
+              ! $ser data_buffered Dx=3 umf_out3=umf_out(i,k-1) qtflx_out3=qtflx_out(i,k-1) slflx_out3=slflx_out(i,k-1)
+              ! $ser data_buffered Dx=3 uflx_out3=uflx_out(i,k-1) vflx_out3=vflx_out(i,k-1)
+              ! $ser verbatim end do
+
 #ifdef UWDIAG  
                qcu_out(i,:k0)          = qcu_s(:k0)    
                qlu_out(i,:k0)          = qlu_s(:k0)  
@@ -2197,6 +2307,11 @@ contains
 
                fer_out(i,1:k0)      = fer_s(:k0)  
                fdr_out(i,1:k0)      = fdr_s(:k0)  
+
+              ! $ser verbatim do k=1,k0
+              ! $ser verbatim call ser_set_indices(i,iter,k,1)
+              ! $ser data_buffered Dx=3 fer_out=fer_out(i,k) fdr_out=fdr_out(i,k)
+              ! $ser verbatim end do
 
 #ifdef UWDIAG
                ufrcinvbase_out(i)       = ufrcinvbase_s
@@ -2282,22 +2397,33 @@ contains
 
 !         print *,'klcl=',klcl
 
+        !  $ser verbatim do k=1,k0
+        !  $ser verbatim call ser_set_indices(i,iter,k,1)
+        !  $ser data_buffered Dx=3 klcl_test2=klcl kinv_test2=kinv
+        !  $ser verbatim end do
+
          if( klcl .lt. kinv ) then
             krel    = kinv
             prel    = pifc0(krel-1)
             thv0rel = thv0bot(krel) 
+            ! $ser verbatim do k=1,k0
+            ! $ser verbatim call ser_set_indices(i,iter,k,1)
+            ! $ser data_buffered Dx=3 test1=1
+            ! $ser verbatim end do
          else
             krel    = klcl
             prel    = plcl 
             thv0rel = thv0lcl
+            ! $ser verbatim do k=1,k0
+            ! $ser verbatim call ser_set_indices(i,iter,k,1)
+            ! $ser data_buffered Dx=3 test1=0
+            ! $ser verbatim end do
          endif  
 
-        !$ser verbatim do k=1,k0
-        !$ser verbatim call ser_set_indices(i,iter,k,1)
-        !$ser verbatim if (iter .eq. 1) then
-        !$ser data_buffered Dx=3 prel_test=prel krel_test=krel thv0rel_test=thv0rel 
-        !$ser verbatim end if 
-        !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 prel_test=prel krel_test=krel thv0rel_test=thv0rel 
+        ! $ser verbatim end do
 
 
 !         print *,'krel=',krel
@@ -2356,12 +2482,10 @@ contains
          sigmaw = sqrt( rkfre(i) * tkeavg + epsvarw )
          mu = wcrit/sigmaw/1.4142     
 
-        !$ser verbatim do k=1,k0
-        !$ser verbatim call ser_set_indices(i,iter,k,1)
-        !$ser verbatim if (iter .eq. 1) then
-        !$ser data_buffered Dx=3 wcrit_test=wcrit sigmaw_test=sigmaw mu_test=mu
-        !$ser verbatim end if 
-        !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 wcrit_test=wcrit sigmaw_test=sigmaw mu_test=mu cin_test=cin cinlcl_test=cinlcl
+        ! $ser verbatim end do
                       
          if( mu .ge. 3. ) then
             if (scverbose) then
@@ -2372,12 +2496,12 @@ contains
          endif
          rho0inv = pifc0(kinv-1)/(r*thv0top(kinv-1)*exnifc0(kinv-1))
          cbmf = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
-        !$ser verbatim do k=1,k0
-        !$ser verbatim call ser_set_indices(i,iter,k,1)
-        !$ser verbatim if (iter .eq. 1) then
-        !$ser data_buffered Dx=3 rho0inv_test=rho0inv cbmf_test=cbmf
-        !$ser verbatim end if 
-        !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 rho0inv_test=rho0inv cbmf_test=cbmf
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
 
          ! 1. 'cbmf' constraint
          cbmflimit = 0.9*dp0(kinv-1)/g/dt
@@ -2385,23 +2509,23 @@ contains
          if( cbmf .gt. cbmflimit ) mumin0 = sqrt(-log(2.5066*cbmflimit/rho0inv/sigmaw))
          ! 2. 'ufrcinv' constraint
          mu = max(max(mu,mumin0),mumin1)
-        !$ser verbatim do k=1,k0
-        !$ser verbatim call ser_set_indices(i,iter,k,1)
-        !$ser verbatim if (iter .eq. 1) then
-        !$ser data_buffered Dx=3 mu_test2=mu
-        !$ser verbatim end if 
-        !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 mu_test2=mu
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
          ! 3. 'ufrclcl' constraint      
          mulcl = sqrt(2.*cinlcl*rbuoy)/1.4142/sigmaw
          mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac**2)))
-        !$ser verbatim do k=1,k0
-        !$ser verbatim call ser_set_indices(i,iter,k,1)
-        !$ser verbatim if (iter .eq. 1) then
-        !$ser data_buffered Dx=3 mulcl_test=mulcl mulclstar_test=mulclstar
-        !$ser verbatim end if 
-        !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 mulcl_test=mulcl mulclstar_test=mulclstar
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
+         mumin2=0.0
          if( mulcl .gt. 1.e-8 .and. mulcl .gt. mulclstar ) then
-            print *, iter,mulcl,"COMPUTING MUMIN2"
             mumin2 = compute_mumin2(mulcl,rmaxfrac,mu)
             if( mu .gt. mumin2 ) then
                  call write_parallel('Critical error in mu calculation in UW_ShCu')
@@ -2413,13 +2537,12 @@ contains
          if( mu .eq. mumin0 ) limit_cbmf(i) = 1.
          if( mu .eq. mumin1 ) limit_ufrc(i) = 1.
 
-        !$ser verbatim do k=1,k0
-        !$ser verbatim call ser_set_indices(i,iter,k,1)
-        !$ser verbatim if (iter .eq. 1) then
-        !$ser data_buffered Dx=3 mumin2_test=mumin2
-        !$ser data_buffered Dx=3 cbmflimit=cbmflimit mumin0=mumin0 
-        !$ser verbatim end if 
-        !$ser verbatim end do
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 cbmflimit=cbmflimit mumin0=mumin0 mumin2_test=mumin2 mu_test3=mu
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
 
        ! ------------------------------------------------------------------- !    
        ! Calculate final ['cbmf','ufrcinv','winv'] at the PBL top interface. !
@@ -2431,6 +2554,12 @@ contains
          winv = sigmaw*(2./2.5066)*exp(-mu**2)/erfc(mu)
          ufrcinv = cbmf/winv/rho0inv
 
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 cbmf_test2=cbmf winv_test=winv ufrcinv_test=ufrcinv
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
 
        ! ------------------------------------------------------------------- !
        ! Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top, !
@@ -2444,6 +2573,12 @@ contains
        ! ------------------------------------------------------------------- !
 
          wtw = winv * winv - 2. * cinlcl * rbuoy
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 wtw_test=wtw
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
          if( wtw .le. 0. ) then
             if (scverbose) then
               call write_parallel('wlcl < 0 at the LCL')
@@ -2455,6 +2590,12 @@ contains
          wlcl = sqrt(wtw)
          ufrclcl = cbmf/wlcl/rho0inv
          wrel = wlcl
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 wlcl_test=wlcl ufrclcl_test=ufrclcl wrel_test=wrel
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
          if( ufrclcl .le. 0.0001 ) then
             if (scverbose) then
               call write_parallel( 'ufrclcl <= 0.0001' ) 
@@ -2464,6 +2605,10 @@ contains
             go to 333
          endif
          ufrc(krel-1) = ufrclcl
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 ufrc_test=ufrc(krel-1)
+        ! $ser verbatim end do
 
       ! ----------------------------------------------------------------------- !
        ! Below is just diagnostic output for detailed analysis of cumulus scheme !
@@ -2473,6 +2618,18 @@ contains
        winvbase           = winv
        umf(kinv-1:krel-1) = cbmf   
        wu(kinv-1:krel-1)  = winv
+
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 ufrcinvbase_test=ufrcinvbase winvbase_test=winvbase
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
+
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 umf_test=umf(k-1) wu_test=wu(k-1) kinv_test=kinv krel_test=krel
+        ! $ser verbatim end do
 
        ! -------------------------------------------------------------------------- ! 
        ! Define updraft properties at the level where buoyancy sorting starts to be !
@@ -2498,7 +2655,19 @@ contains
          wu(krel-1)   = wrel
          thlu(krel-1) = thlsrc
          qtu(krel-1)  = qtsrc
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 emf_test=emf(k-1) umf_test2=umf(k-1) wu_test2=wu(k-1)
+        ! $ser data_buffered Dx=3 thlu_test=thlu(k-1) qtu_test=qtu(k-1)
+        ! $ser verbatim end do
          call conden(prel,thlsrc,qtsrc,thj,qvj,qlj,qij,qse,id_check)
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 thj_test3=thj qvj_test3=qvj qlj_test3=qlj qij_test3=qij 
+        ! $ser data_buffered Dx=3 qse_test3=qse
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
          if( id_check .eq. 1 ) then
             exit_conden(i) = 1.
             id_exit = .true.
@@ -2507,29 +2676,55 @@ contains
             end if
             go to 333
          endif
-         thvu(krel-1) = thj * ( 1. + zvir*qvj - qlj - qij )       
+         thvu(krel-1) = thj * ( 1. + zvir*qvj - qlj - qij )  
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 thvu_test=thvu(k-1)
+        ! $ser verbatim end do     
 
          uplus = 0.
          vplus = 0.
          if( krel .eq. kinv ) then
             uplus = PGFc * ssu0(kinv) * ( prel - pifc0(kinv-1) )
-            vplus = PGFc * ssv0(kinv) * ( prel - pifc0(kinv-1) )
+            vplus = PGFc * ssv0(kinv) * ( prel - pifc0(kinv-1) ) 
+            
          else
             do k = kinv, max(krel-1,kinv)
                uplus = uplus + PGFc * ssu0(k) * ( pifc0(k) - pifc0(k-1) )
                vplus = vplus + PGFc * ssv0(k) * ( pifc0(k) - pifc0(k-1) )
             end do
             uplus = uplus + PGFc * ssu0(krel) * ( prel - pifc0(krel-1) )
-            vplus = vplus + PGFc * ssv0(krel) * ( prel - pifc0(krel-1) )
+            vplus = vplus + PGFc * ssv0(krel) * ( prel - pifc0(krel-1) ) 
+
+          
          end if
          uu(krel-1) = usrc + uplus
-         vu(krel-1) = vsrc + vplus      
+         vu(krel-1) = vsrc + vplus 
+
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 uplus_test=uplus vplus_test=vplus
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
+         
+
+
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 uu_test=uu(k-1) vu_test=vu(k-1)
+        ! $ser verbatim end do 
 
          if (dotransport.eq.1) then
          do m = 1, ncnst
             tru(krel-1,m)  = trsrc(m)
          enddo
          endif
+
+        ! $ser verbatim do m=1,ncnst
+        ! $ser verbatim call ser_set_indices(i,iter,k,m)
+        ! $ser data_buffered Dx=4 tru2=tru(k,m)
+        ! $ser verbatim enddo
 
        ! -------------------------------------------------------------------------- !
        ! Define environmental properties at the level where buoyancy sorting occurs !
@@ -2552,6 +2747,20 @@ contains
             tre(m) = tr0(krel,m)  + sstr0(krel,m) * ( pe - pmid0(krel) )
          enddo
          end if
+
+        ! $ser verbatim do m=1,ncnst
+        ! $ser verbatim call ser_set_indices(i,iter,m,1)
+        ! $ser data_buffered Dx=3 tre=tre(m)
+        ! $ser verbatim enddo
+
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 pe_test=pe qsat_pe_test=qsat_pe dpe_test=dpe exne_test=exne
+        ! $ser data_buffered Dx=3 thvebot_test=thvebot thle_test=thle qte_test=qte ue_test=ue
+        ! $ser data_buffered Dx=3 ve_test=ve
+        ! $ser verbatim end if 
+        ! $ser verbatim end do  
 
 
        !-------------------------! 
@@ -2591,10 +2800,17 @@ contains
        ! layer thickness. In future, we will use rei(k) = (0.5*rkm/z0(k)/rho/g).  !
        ! In the premitive code,  'scaleh' was largely responsible for the jumping !
        ! variation of precipitation amount.                                       !
-       ! ------------------------------------------------------------------------ !
+       ! ------------------------------------------------------------------------ 
 
          scaleh = tscaleh
          if( tscaleh .le. 0.0 ) scaleh = 1000.
+
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 scaleh_test=scaleh
+        ! $ser verbatim end if 
+        ! $ser verbatim end do  
 
 
      ! Save time : Set iter_scaleh = 1. This will automatically use 'cush' from the previous time step
@@ -2658,6 +2874,12 @@ contains
 
          kbup    = krel
          kpen    = krel
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 kpen3=kpen
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
 
        ! ------------------------------------------------------------ !
        ! Since 'wtw' is continuously updated during vertical motion,  !
@@ -2681,6 +2903,20 @@ contains
          enddo
          endif
 
+        ! $ser verbatim do m=1,ncnst
+        ! $ser verbatim call ser_set_indices(i,iter,m,1)
+        ! $ser data_buffered Dx=3 tre2=tre(m)
+        ! $ser verbatim enddo
+
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 wtw_test=wtw pe_test=pe dpe_test=dpe exne_test=exne
+        ! $ser data_buffered Dx=3 thvebot_test=thvebot thle_test=thle qte_test=qte
+        ! $ser data_buffered Dx=3 ue_test=ue ve_test=ve
+        ! $ser verbatim end if 
+        ! $ser verbatim end do  
+
        ! ----------------------------------------------------------------------- !
        ! Cumulus rises upward from 'prel' ( or base interface of  'krel' layer ) !
        ! until updraft vertical velocity becomes zero.                           !
@@ -2699,8 +2935,9 @@ contains
        ! want, but a sample test indicated that about 3 - 5 iterations  produced !
        ! satisfactory converent solution. Finally, identify 'kbup' and 'kpen'.   !
        ! ----------------------------------------------------------------------- !
-
+      
        do k = krel, k0 - 1 ! Here, 'k' is a layer index.
+         !$ser verbatim call ser_set_indices(i,iter,k,1)
 
           km1 = k - 1
 
@@ -2709,9 +2946,18 @@ contains
           wue   = wu(km1)
           wtwb  = wtw  
 
+        
+          ! $ser data_buffered Dx=3 thlue_test=thlue qtue_test=qtue wue_test=wue wtwb_test=wtwb
+      
+         
          do iter_xc = 1, niter_xc
+            ! $ser verbatim call ser_set_indices(i,iter,k,iter_xc)
           
             wtw = wu(km1) * wu(km1)
+    
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=4 wtw_test2=wtw thle_test=thle qte_test=qte 
+            ! $ser verbatim end if 
 
           ! ---------------------------------------------------------------- !
           ! Calculate environmental and cumulus saturation 'excess' at 'pe'. !
@@ -2721,6 +2967,11 @@ contains
           ! ---------------------------------------------------------------- !
 
             call conden(pe,thle,qte,thj,qvj,qlj,qij,qse,id_check)
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=4 thj_test4=thj qvj_test4=qvj qij_test4=qij qlj_test4=qlj
+            ! $ser data_buffered Dx=4 qse_test4=qse
+            ! $ser verbatim end if 
+
             if( id_check .eq. 1 ) then
                exit_conden(i) = 1.
                id_exit = .true.
@@ -2735,7 +2986,18 @@ contains
             qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)     
             excess0  = qte - qs
 
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 thv0j=thv0j rhomid0j=rhomid0j qsat_arg=qsat_arg qs=qs
+            ! $ser data_buffered Dx=4 excess0=excess0 thlue_test4=thlue
+            ! $ser verbatim end if 
+        
             call conden(pe,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
+          
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 thj_test5=thj qvj_test5=qvj qij_test5=qij qlj_test5=qlj
+            ! $ser data_buffered Dx=4 qse_test5=qse
+            ! $ser verbatim end if 
+      
             if( id_check .eq. 1 ) then
                exit_conden(i) = 1.
                id_exit = .true.
@@ -2758,8 +3020,20 @@ contains
                exqi  = ( ( qlj + qij ) - criqc ) * qij / ( qlj + qij )
                qtue  = qtue - exql - exqi
                thlue = thlue + (xlv/cp/exne)*exql + (xls/cp/exne)*exqi 
+           
+              !  $ser verbatim if (iter .eq. 1) then
+              !  $ser data_buffered Dx=4 exql=exql exqi=exqi qtue_test2=qtue thlue_test2=thlue
+              !  $ser verbatim end if 
+               
             endif
             call conden(pe,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
+            
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 thj_test6=thj qvj_test6=qvj qij_test6=qij qlj_test6=qlj
+            ! $ser data_buffered Dx=4 qse_test6=qse
+            ! $ser verbatim end if 
+           
+      
             if( id_check .eq. 1 ) then
                exit_conden(i) = 1.
                id_exit = .true.
@@ -2773,6 +3047,11 @@ contains
             qsat_arg = thlue*exne
             qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)
             excessu  = qtue - qs
+
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 thvj=thvj tj=tj qsat_arg2=qsat_arg qs2=qs excessu=excessu
+            ! $ser verbatim end if 
+           
 
           ! ------------------------------------------------------------------- !
           ! Calculate critical mixing fraction, 'xc'. Mixture with mixing ratio !
@@ -2790,12 +3069,17 @@ contains
           ! cridis : Critical stopping distance for buoyancy sorting purpose. !
           !          scaleh is only used here.                                !
           ! ----------------------------------------------------------------- !
-
+           
            if (cridist_opt.eq.0) then
-            cridis = rle*scaleh                 ! Original code
+            cridis = rle*scaleh           ! Original code
            else
             cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
            end if 
+
+          !  $ser verbatim if (iter .eq. 1) then
+          !  $ser data_buffered Dx=4 cridis_test=cridis
+          !  $ser verbatim end if 
+           
 
           ! ---------------- !
           ! Buoyancy Sorting !
@@ -2808,6 +3092,12 @@ contains
 
             if( ( excessu .le. 0. .and. excess0 .le. 0. ) .or. ( excessu .ge. 0. .and. excess0 .ge. 0. ) ) then
                 xc = min(1.,max(0.,1.-2.*rbuoy*g*cridis/wue**2.*(1.-thvj/thv0j)))
+              
+                ! $ser verbatim if (iter .eq. 1) then
+                ! $ser data_buffered Dx=4 xc_test=xc
+                ! $ser verbatim end if 
+                
+          
               ! Below 3 lines are diagnostic output not influencing
               ! numerical calculations.
                 aquad = 0.
@@ -2818,6 +3108,11 @@ contains
                else
                   xsat = 0.
                end if
+                
+                ! $ser verbatim if (iter .eq. 1) then
+                ! $ser data_buffered Dx=4 xsat_test=xsat
+                ! $ser verbatim end if 
+               
             else
           ! -------------------------------------------------- !
           ! Case 2 : When either cumulus or env. is saturated. !
@@ -2825,7 +3120,20 @@ contains
               xsat    = excessu / ( excessu - excess0 );
               thlxsat = thlue + xsat * ( thle - thlue );
               qtxsat  = qtue  + xsat * ( qte - qtue );
+              
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 xsat_test=xsat thlxsat_test=thlxsat qtxsat_test=qtxsat
+              ! $ser verbatim end if 
+              
+
               call conden(pe,thlxsat,qtxsat,thj,qvj,qlj,qij,qse,id_check)
+              
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 thj_test7=thj qvj_test7=qvj qij_test7=qij qlj_test7=qlj
+              ! $ser data_buffered Dx=4 qse_test7=qse
+              ! $ser verbatim end if 
+              
+         
               if( id_check .eq. 1 ) then
                   exit_conden(i) = 1.
                   id_exit = .true.
@@ -2834,7 +3142,13 @@ contains
                   end if
                   go to 333
               end if
-              thvxsat = thj * ( 1. + zvir * qvj - qlj - qij )               
+              thvxsat = thj * ( 1. + zvir * qvj - qlj - qij )   
+             
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 thvxsat_test=thvxsat
+              ! $ser verbatim end if 
+              
+             
               ! -------------------------------------------------- !
               ! kk=1 : Cumulus Segment, kk=2 : Environment Segment !
               ! -------------------------------------------------- ! 
@@ -2866,11 +3180,27 @@ contains
                        endif
                    endif
               enddo
+
+              
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 thv_x0_test=thv_x0 thv_x1_test=thv_x1 aquad=aquad bquad=bquad 
+              ! $ser data_buffered Dx=4 cquad=cquad x_cu_test=x_cu x_en_test=x_en xs1=xs1 xs2=xs2 
+              ! $ser data_buffered Dx=4 status=status
+              ! $ser verbatim end if 
+                          
+
               if( x_cu .eq. xsat ) then
                   xc = max(x_cu, x_en)
               else
                   xc = x_cu
               endif
+
+             
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 xc_test=xc
+              ! $ser verbatim end if 
+              
+
             endif
 
           ! ------------------------------------------------------------------------ !
@@ -2888,10 +3218,11 @@ contains
           ! ------------------------------------------------------------------------ !
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
+
             if (min(scaleh,mixscale).ne.0.0) then
               rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)                                  ) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
-! regression bug due to cnvtr
-! WMP         rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+              ! regression bug due to cnvtr
+              ! WMP         rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
             else
               rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
             end if
@@ -2901,9 +3232,12 @@ contains
             fdr(k) = rei(k) * ud2
             xco(k) = xc
 
-          
-
-
+            
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=4 rei_test=rei(k) fer_test=fer(k) fdr_test=fdr(k) xco_test=xco(k)
+            ! $ser verbatim end if 
+            
+ 
           ! ------------------------------------------------------------------------------ !
           ! Iteration Start due to 'maxufrc' constraint [ ****************************** ] ! 
           ! ------------------------------------------------------------------------------ !
@@ -2919,7 +3253,12 @@ contains
             emf(k) = 0.
    
             dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
-!           dcm(k) = min(1.,max(0.,xsat-xc))
+            !           dcm(k) = min(1.,max(0.,xsat-xc))
+
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 umf_test=umf(k) emf_test=emf(k) dcm_test=dcm(k)
+            ! $ser verbatim end if 
+            
 
           ! --------------------------------------------------------- !
           ! Compute cumulus updraft properties at the top interface.  !
@@ -2936,6 +3275,18 @@ contains
                  tru(k,m)  =  tru(km1,m) + ( tre(m)  + sstr0(k,m) * dpe / 2.  -  tru(km1,m) ) * fer(k) * dpe
               enddo
               end if
+
+              ! $ser verbatim do m=1,ncnst
+              ! $ser verbatim call ser_set_indices(i,iter,k,m)
+              ! $ser data_buffered Dx=4 tru=tru(k,m)
+              ! $ser verbatim enddo
+
+            
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 thlu_test=thlu(k) qtu_test=qtu(k) uu_test=uu(k) vu_test=vu(k)
+              ! $ser data_buffered Dx=4 tru_test=tru(k,20)
+              ! $ser verbatim end if 
+          
             else
               thlu(k) = ( thle + ssthl0(k) / fer(k) - ssthl0(k) * dpe / 2. ) -          &
                         ( thle + ssthl0(k) * dpe / 2. - thlu(km1) + ssthl0(k) / fer(k) ) * exp(-fer(k) * dpe)
@@ -2951,6 +3302,12 @@ contains
                              ( tre(m)  + sstr0(k,m) * dpe / 2. - tru(km1,m) + sstr0(k,m) / fer(k) ) * exp(-fer(k) * dpe)
               enddo
               end if
+            
+              ! $ser verbatim do m=1,ncnst
+              ! $ser verbatim call ser_set_indices(i,iter,k,m)
+              ! $ser data_buffered Dx=4 tru2=tru(k,m)
+              ! $ser verbatim enddo
+ 
             end if
 
           !------------------------------------------------------------------- !
@@ -2978,6 +3335,12 @@ contains
           ! ------------------------------------------------------------------ !
 
             call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+            
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 thj_test8=thj qvj_test8=qvj qlj_test8=qlj qij_test8=qij
+            ! $ser data_buffered Dx=4 qse_test8=qse
+            ! $ser verbatim end if 
+            
             if( id_check .eq. 1 ) then
               exit_conden(i) = 1.
               id_exit = .true.
@@ -3009,15 +3372,32 @@ contains
                ! ---------------------------------------------------------------- !
                dwten(k) = exql   
                diten(k) = exqi
+           
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 exql=exql exqi=exqi qtu_test3=qtu(k) thlu_test3=thlu(k)
+              ! $ser data_buffered Dx=4 dwten_test=dwten(k) diten_test=diten(k)
+              ! $ser verbatim end if 
+             
             else
                dwten(k) = 0.
                diten(k) = 0.
+             
+              !  $ser verbatim if (iter .eq. 1) then
+              !  $ser data_buffered Dx=4 dwten_test=dwten(k) diten_test=diten(k)
+              !  $ser verbatim end if 
+            
             endif
 
           ! ----------------------------------------------------------------- ! 
           ! Update 'thvu(k)' after detraining condensate from cumulus updraft.!
           ! ----------------------------------------------------------------- ! 
             call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+         
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 thj_test9=thj qvj_test9=qvj qlj_test9=qlj qij_test9=qij
+            ! $ser data_buffered Dx=4 qse_test9=qse
+            ! $ser verbatim end if 
+      
             if( id_check .eq. 1 ) then
                exit_conden(i) = 1.
                id_exit = .true.
@@ -3027,6 +3407,11 @@ contains
                go to 333
             end if  
             thvu(k) = thj * ( 1. + zvir * qvj - qlj - qij )
+           
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 thvu_test=thvu(k)
+            ! $ser verbatim end if 
+           
 
           ! ----------------------------------------------------------- ! 
           ! Calculate updraft vertical velocity at the upper interface. !
@@ -3049,6 +3434,13 @@ contains
               wtw = wtw + dpe * ( bogbot + bogtop ) / rhomid0j
             endif
 
+            
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 bogbot=bogbot bogtop=bogtop delbog=delbog drage=drage 
+            ! $ser data_buffered Dx=4 expfac=expfac wtwb=wtwb wtw=wtw thvebot=thvebot
+            ! $ser verbatim end if 
+           
+
         ! Force the plume rise at least to klfc of the undiluted plume.
         ! Because even the below is not complete, I decided not to include this.
 
@@ -3065,9 +3457,20 @@ contains
               thlue = 0.5 * ( thlu(km1) + thlu(k) )
               qtue  = 0.5 * ( qtu(km1)  +  qtu(k) )         
               wue   = 0.5 *   sqrt( max( wtwb + wtw, 0. ) )
+          
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 qtue_test3=qtue wue_test3=wue
+              ! $ser verbatim end if 
+          
             else
               go to 111
-            endif 
+            endif
+
+            
+            ! $ser verbatim if (iter .eq. 1) then
+            ! $ser data_buffered Dx=4 qtue_test5=qtue wue_test5=wue thlue_test5=thlue
+            ! $ser verbatim end if 
+           
 
          end do  ! iter_xc loop
 
@@ -3128,10 +3531,16 @@ contains
           ! if( bogtop .gt. 0. ) then          
             if( bogtop .gt. 0. .and. wtw .gt. 0. ) then 
               kbup = k
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 kbup=kbup
+              ! $ser verbatim end if
             end if
 
             if( wtw .le. 0. ) then
               kpen = k
+              ! $ser verbatim if (iter .eq. 1) then
+              ! $ser data_buffered Dx=4 kpen=kpen
+              ! $ser verbatim end if
               go to 45
             end if
 
@@ -3174,6 +3583,10 @@ contains
               fdr(k)  = fer(k) - log( umf(k) / umf(km1) ) / dpe
           endif
 
+          ! $ser verbatim if (iter .eq. 1) then
+          ! $ser data_buffered Dx=4 rhoifc0j=rhoifc0j ufrc=ufrc(k) umf2=umf(k) fdr2=fdr(k)
+          ! $ser verbatim end if 
+
           ! ------------------------------------------------------------ !
           ! Update environmental properties for at the mid-point of next !
           ! upper layer for use in buoyancy sorting.                     !
@@ -3193,7 +3606,27 @@ contains
           enddo
           endif
 
+          ! $ser verbatim do m=1,ncnst
+          ! $ser verbatim call ser_set_indices(i,iter,k,m)
+          ! $ser data_buffered Dx=4 tre3=tre(m)
+          ! $ser verbatim enddo
+
+          ! $ser verbatim do m=1,ncnst
+          ! $ser verbatim call ser_set_indices(i,iter,k,m)
+          ! $ser data_buffered Dx=4 tru3=tru(k,m)
+          ! $ser verbatim enddo
+
+         
+         
+          ! $ser data_buffered Dx=3 pe=pe dpe=dpe exne=exne thvebot2=thvebot thle=thle qte=qte
+          ! $ser data_buffered Dx=3 ue=ue ve=ve
+      
+
          end do  ! k loop
+
+     
+       
+
 
        ! ------------------------------------------------------------------------------- !
        ! Up to this point, we finished all of buoyancy sorting processes from the 'krel' !
@@ -3235,33 +3668,89 @@ contains
        ! It seems that below qudarature solving formula is valid only when bogbot < 0.  !
        ! Below solving equation is clearly wrong ! I should revise this !               !
        ! ------------------------------------------------------------------------------ ! 
-            
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 1) then
+          ! $ser data_buffered Dx=3 kpen2=kpen
+          ! $ser verbatim end if 
+          ! $ser verbatim end do 
+
+          ! $ser verbatim do k=1,k0+1
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 1) then
+          ! $ser data_buffered Dx=3 wu_test=wu(k-1)
+          ! $ser verbatim end if 
+          ! $ser verbatim end do 
+
+
          if( drage .eq. 0. ) then
            aquad =  ( bogtop - bogbot ) / ( pifc0(kpen) - pifc0(kpen-1) )
            bquad =  2. * bogbot
            cquad = -wu(kpen-1)**2 * rhomid0j
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 aquad=aquad bquad=bquad cquad=cquad
+          ! $ser verbatim end if 
+          ! $ser verbatim end do 
            call roots(aquad,bquad,cquad,xc1,xc2,status)
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 xc1=xc1 xc2=xc2 status=status
+          ! $ser verbatim end if 
+          ! $ser verbatim end do 
            if( status .eq. 0 ) then
                if( xc1 .le. 0. .and. xc2 .le. 0. ) then
                    ppen = max( xc1, xc2 )
                    ppen = min( 0.,max( -dp0(kpen), ppen ) )  
+                  ! $ser verbatim do k=1,k0
+                  ! $ser verbatim call ser_set_indices(i,iter,k,1)
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 ppen1=ppen
+                  ! $ser verbatim end if 
+                  ! $ser verbatim end do 
                elseif( xc1 .gt. 0. .and. xc2 .gt. 0. ) then
                    ppen = -dp0(kpen)
+                  ! $ser verbatim do k=1,k0
+                  ! $ser verbatim call ser_set_indices(i,iter,k,1)
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 ppen2=ppen
+                  ! $ser verbatim end if 
+                  ! $ser verbatim end do 
                    if (scverbose) then
                      call write_parallel('Warning : UW-Cumulus penetrates up to kpen interface')
                    end if
                else
                    ppen = min( xc1, xc2 )
                    ppen = min( 0.,max( -dp0(kpen), ppen ) )  
+                  ! $ser verbatim do k=1,k0
+                  ! $ser verbatim call ser_set_indices(i,iter,k,1)
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 ppen3=ppen
+                  ! $ser verbatim end if 
+                  ! $ser verbatim end do 
                endif
            else
                ppen = -dp0(kpen)
+                ! $ser verbatim do k=1,k0
+                ! $ser verbatim call ser_set_indices(i,iter,k,1)
+                ! $ser verbatim if (iter .eq. 2) then
+                ! $ser data_buffered Dx=3 ppen4=ppen
+                ! $ser verbatim end if 
+                ! $ser verbatim end do 
                if (scverbose) then
                  call write_parallel('Warning : UW-Cumulus penetrates up to kpen interface')
                end if
            endif       
          else 
            ppen = compute_ppen(wtwb,drage,bogbot,bogtop,rhomid0j,dp0(kpen))
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 ppen5=ppen
+          ! $ser verbatim end if 
+          ! $ser verbatim end do 
          endif
          if( ppen .eq. -dp0(kpen) .or. ppen .eq. 0. ) limit_ppen(i) = 1.
 
@@ -3276,6 +3765,12 @@ contains
          if( fer(kpen)*(-ppen) .lt. 1.e-4 ) then
            thlu_top = thlu(kpen-1) + ( thl0(kpen) + ssthl0(kpen) * (-ppen) / 2. - thlu(kpen-1) ) * fer(kpen) * (-ppen)
            qtu_top  =  qtu(kpen-1) + (  qt0(kpen) +  ssqt0(kpen) * (-ppen) / 2.  - qtu(kpen-1) ) * fer(kpen) * (-ppen)
+          !  $ser verbatim do k=1,k0
+          !  $ser verbatim call ser_set_indices(i,iter,k,1)
+          !  $ser verbatim if (iter .eq. 2) then
+          !  $ser data_buffered Dx=3 thlu_top1=thlu_top qtu_top1=qtu_top
+          !  $ser verbatim end if 
+          !  $ser verbatim end do 
          else
            thlu_top = ( thl0(kpen) + ssthl0(kpen) / fer(kpen) - ssthl0(kpen) * (-ppen) / 2. ) - &
                       ( thl0(kpen) + ssthl0(kpen) * (-ppen) / 2. - thlu(kpen-1) + ssthl0(kpen) / fer(kpen) ) &
@@ -3283,9 +3778,22 @@ contains
            qtu_top  = ( qt0(kpen)  +  ssqt0(kpen) / fer(kpen) -  ssqt0(kpen) * (-ppen) / 2. ) - &  
                       ( qt0(kpen)  +  ssqt0(kpen) * (-ppen) / 2. -  qtu(kpen-1) +  ssqt0(kpen) / fer(kpen) ) &
                       * exp(-fer(kpen) * (-ppen))
+          !  $ser verbatim do k=1,k0
+          !  $ser verbatim call ser_set_indices(i,iter,k,1)
+          !  $ser verbatim if (iter .eq. 2) then
+          !  $ser data_buffered Dx=3 thlu_top2=thlu_top qtu_top2=qtu_top
+          !  $ser verbatim end if 
+          !  $ser verbatim end do 
          end if
 
          call conden(pifc0(kpen-1)+ppen,thlu_top,qtu_top,thj,qvj,qlj,qij,qse,id_check)
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 thj_test10=thj qvj_test10=qvj qlj_test10=qlj qij_test10=qij 
+          ! $ser data_buffered Dx=3 qse_test10=qse
+          ! $ser verbatim end if 
+          ! $ser verbatim end do 
          if( id_check .eq. 1 ) then
            exit_conden(i) = 1.
            id_exit = .true.
@@ -3295,15 +3803,35 @@ contains
            go to 333
          end if
          exntop = ((pifc0(kpen-1)+ppen)/p00)**rovcp
+        !  $ser verbatim do k=1,k0
+        !  $ser verbatim call ser_set_indices(i,iter,k,1)
+        !  $ser verbatim if (iter .eq. 2) then
+        !  $ser data_buffered Dx=3 exntop=exntop
+        !  $ser verbatim end if 
+        !  $ser verbatim end do 
          if( (qlj + qij) .gt. criqc ) then
             dwten(kpen) = ( ( qlj + qij ) - criqc ) * qlj / ( qlj + qij )
             diten(kpen) = ( ( qlj + qij ) - criqc ) * qij / ( qlj + qij )
             qtu_top  = qtu_top - dwten(kpen) - diten(kpen)
             thlu_top = thlu_top + (xlv/cp/exntop)*dwten(kpen) + (xls/cp/exntop)*diten(kpen) 
+          !  $ser verbatim do k=1,k0
+          !  $ser verbatim call ser_set_indices(i,iter,k,1)
+          !  $ser verbatim if (iter .eq. 2) then
+          !  $ser data_buffered Dx=3 thlu_top4=thlu_top qtu_top4=qtu_top
+          !  $ser data_buffered Dx=3 dwten_kpen=dwten(kpen) diten_kpen=diten(kpen)
+          !  $ser verbatim end if 
+          !  $ser verbatim end do 
          else
             dwten(kpen) = 0.
             diten(kpen) = 0.
          endif
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 thlu_top3=thlu_top qtu_top3=qtu_top
+          ! $ser data_buffered Dx=3 dwten2=dwten(k) diten2=diten(k)
+          ! $ser verbatim end if 
+          ! $ser verbatim end do 
 
        ! ----------------------------------------------------------------------- !
        ! Calculate cumulus scale height as the top height that cumulus can reach.!
@@ -3312,6 +3840,12 @@ contains
          rhoifc0j = pifc0(kpen-1)/(r*0.5*(thv0bot(kpen)+thv0top(kpen-1))*exnifc0(kpen-1))  
          cush   = zifc0(kpen-1) - ppen/rhoifc0j/g
          scaleh = cush 
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 rhoifc0j_test2=rhoifc0j cush_test=cush scaleh_test=scaleh
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
 
 !         end do  ! iter_scaleh loop
 
@@ -3325,13 +3859,28 @@ contains
        ! will be set up in a different ways, as will be shown later.          !
        ! -------------------------------------------------------------------- !
  
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser data_buffered Dx=3 kbup_test=kbup krel_test=krel
+          ! $ser verbatim end do 
+
          if( kbup .eq. krel ) then 
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser data_buffered Dx=3 forcedCu=1
+          ! $ser verbatim end do 
            forcedCu = .true.
            limit_shcu(i) = 1.
          else
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser data_buffered Dx=3 forcedCu=2
+          ! $ser verbatim end do 
            forcedCu = .false.
            limit_shcu(i) = 0.
          endif  
+
+
 
        ! ------------------------------------------------------------------ !
        ! Filtering of unerasonable cumulus adjustment here.  This is a very !
@@ -3348,6 +3897,12 @@ contains
        ! ------------------------------------------------------------------ !
 
          cldhgt = pifc0(kpen-1) + ppen
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 cldhgt=cldhgt
+          ! $ser verbatim end if 
+          ! $ser verbatim end do 
          if( forcedCu ) then
            if (scverbose) then
              call write_parallel( 'forcedCu - did not overcome initial buoyancy barrier')
@@ -3382,6 +3937,20 @@ contains
          fer(kpen+1:k0)   = 0.
          fdr(kpen+1:k0)   = 0.
          xco(kpen+1:k0)   = 0.
+
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 dwten3=dwten(k) diten3=diten(k)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
+
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 umf3=umf(k-1)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
 
        ! ------------------------------------------------------------------------ !
        ! Calculate downward penetrative entrainment mass flux, 'emf(k) < 0',  and !
@@ -3419,6 +3988,12 @@ contains
        ! Calculate entrainment mass flux and conservative scalars of entraining !
        ! free air at interfaces of 'kbup <= k < kpen - 1'                       !
        ! ---------------------------------------------------------------------- !
+          ! $ser verbatim do k=1,k0+1
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 thlu_test=thlu(k-1)
+          ! $ser verbatim end if
+          ! $ser verbatim end do 
 
          do k = 0, k0
            thlu_emf(k) = thlu(k)
@@ -3432,10 +4007,32 @@ contains
            endif
          end do
 
+          ! $ser verbatim do k=1,k0+1
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim do m=1,ncnst
+          ! $ser verbatim call ser_set_indices(i,iter,k,m)
+          ! $ser data_buffered Dx=4 tru_emf2=tru_emf(k-1,m)
+          ! $ser verbatim end do 
+          ! $ser verbatim end do
+
+          ! $ser verbatim do k=1,k0+1
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 thlu_emf_test=thlu_emf(k-1) qtu_emf_test=qtu_emf(k-1) uu_emf_test=uu_emf(k-1)
+          ! $ser data_buffered Dx=3 vu_emf_test=vu_emf(k-1) tru_emf_test=tru_emf(k-1,18)
+          ! $ser verbatim end if
+          ! $ser verbatim end do 
+
+
          do k = kpen - 1, kbup, -1  ! Here, 'k' is an interface index at which
-                                  ! penetrative entrainment fluxes are calculated. 
-                                  
+                                  ! penetrative entrainment fluxes are calculated.                
+          !$ser verbatim call ser_set_indices(i,iter,k,1)
+          
           rhoifc0j = pifc0(k) / ( r * 0.5 * ( thv0bot(k+1) + thv0top(k) ) * exnifc0(k) )
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 rhoifc0j_test=rhoifc0j
+          ! $ser verbatim end if
+          
 
           if( k .eq. kpen - 1 ) then
 
@@ -3477,6 +4074,18 @@ contains
              enddo
              endif
 
+              
+              ! $ser verbatim do m=1,ncnst
+              ! $ser verbatim call ser_set_indices(i,iter,k,m)
+              ! $ser data_buffered Dx=4 tru_emf3=tru_emf(k,m)
+              ! $ser verbatim end do 
+
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=3 emf_test2=emf(k) thlu_emf_test2=thlu_emf(k)
+            ! $ser data_buffered Dx=3 qtu_emf_test2=qtu_emf(k) uu_emf_test2=uu_emf(k)
+            ! $ser data_buffered Dx=3 vu_emf_test2=vu_emf(k) tru_emf_test2=tru_emf(k,18)
+            ! $ser verbatim end if
+
           else ! if(k.lt.kpen-1). 
               
              ! --------------------------------------------------------------------------- !
@@ -3491,6 +4100,9 @@ contains
                  if( ( emf(k+1)-umf(k)*dp0(k+1)*rei(k+1)*rpen ) .lt. -0.1*rhoifc0j )        limit_emf(i) = 1
                  if( ( emf(k+1)-umf(k)*dp0(k+1)*rei(k+1)*rpen ) .lt. -0.9*dp0(k+1)/g/dt ) limit_emf(i) = 1         
                  emf(k) = max(max(emf(k+1)-umf(k)*dp0(k+1)*rei(k+1)*rpen, -0.1*rhoifc0j), -0.9*dp0(k+1)/g/dt )    
+                ! $ser verbatim if (iter .eq. 2) then
+                ! $ser data_buffered Dx=3 emf_test3=emf(k)
+                ! $ser verbatim end if
                  if( abs(emf(k)) .gt. abs(emf(k+1)) ) then
                      thlu_emf(k) = ( thlu_emf(k+1) * emf(k+1) + thl0(k+1) * ( emf(k) - emf(k+1) ) ) / emf(k)
                      qtu_emf(k)  = ( qtu_emf(k+1)  * emf(k+1) + qt0(k+1)  * ( emf(k) - emf(k+1) ) ) / emf(k)
@@ -3501,6 +4113,17 @@ contains
                         tru_emf(k,m)  = ( tru_emf(k+1,m)  * emf(k+1) + tr0(k+1,m)  * ( emf(k) - emf(k+1) ) ) / emf(k)
                      enddo
                      endif
+
+                    ! $ser verbatim do m=1,ncnst
+                    ! $ser verbatim call ser_set_indices(i,iter,k,m)
+                    ! $ser data_buffered Dx=4 tru_emf6=tru_emf(k,m)
+                    ! $ser verbatim end do 
+
+                    ! $ser verbatim if (iter .eq. 2) then
+                    ! $ser data_buffered Dx=3 thlu_emf_test3=thlu_emf(k)
+                    ! $ser data_buffered Dx=3 qtu_emf_test3=qtu_emf(k) uu_emf_test3=uu_emf(k)
+                    ! $ser data_buffered Dx=3 vu_emf_test3=vu_emf(k) tru_emf_test3=tru_emf(k,18)
+                    ! $ser verbatim end if
                  else   
                      thlu_emf(k) = thl0(k+1)
                      qtu_emf(k)  =  qt0(k+1)
@@ -3511,6 +4134,17 @@ contains
                         tru_emf(k,m)  =  tr0(k+1,m)
                      enddo
                      endif
+
+                    ! $ser verbatim do m=1,ncnst
+                    ! $ser verbatim call ser_set_indices(i,iter,k,m)
+                    ! $ser data_buffered Dx=4 tru_emf4=tru_emf(k,m)
+                    ! $ser verbatim end do 
+
+                    ! $ser verbatim if (iter .eq. 2) then
+                    ! $ser data_buffered Dx=3 thlu_emf_test4=thlu_emf(k)
+                    ! $ser data_buffered Dx=3 qtu_emf_test4=qtu_emf(k) uu_emf_test4=uu_emf(k)
+                    ! $ser data_buffered Dx=3 vu_emf_test4=vu_emf(k) tru_emf_test4=tru_emf(k,18)
+                    ! $ser verbatim end if
                  endif   
                      
              else ! Alternative Non-Cumulative Penetrative Entrainment
@@ -3527,6 +4161,16 @@ contains
                     tru_emf(k,m)  =  tr0(k+1,m)
                  enddo
                  endif
+                ! $ser verbatim do m=1,ncnst
+                ! $ser verbatim call ser_set_indices(i,iter,k,m)
+                ! $ser data_buffered Dx=4 tru_emf5=tru_emf(k,m)
+                ! $ser verbatim end do 
+
+                ! $ser verbatim if (iter .eq. 2) then
+                ! $ser data_buffered Dx=3 emf_test5=emf(k) thlu_emf_test5=thlu_emf(k)
+                ! $ser data_buffered Dx=3 qtu_emf_test5=qtu_emf(k) uu_emf_test5uu_emf(k)
+                ! $ser data_buffered Dx=3 vu_emf_test5=vu_emf(k) tru_emf_test5=tru_emf(k,18)
+                ! $ser verbatim end if
 
              endif
 
@@ -3633,25 +4277,66 @@ contains
          xsrc  = qtsrc
          xmean = qt0(kinv)
          xtop  = qt0(kinv+1) + ssqt0(kinv+1) * ( pifc0(kinv)   - pmid0(kinv+1) )
-         xbot  = qt0(kinv-1) + ssqt0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )    
+         xbot  = qt0(kinv-1) + ssqt0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) ) 
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 xsrc=xsrc xmean=xmean xtop=xtop xbot=xbot
+        ! $ser verbatim end if 
+        ! $ser verbatim end do    
 
          call fluxbelowinv( cbmf, pifc0(0:k0), k0, kinv, dt, xsrc, xmean, xtop, xbot, xflx )
-  
+
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 xflx=xflx(k-1)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
+
          qtflx(0:kinv-1) = xflx(0:kinv-1)
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 qtflx=qtflx(k-1)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
 
          xsrc  = thlsrc
          xmean = thl0(kinv)
          xtop  = thl0(kinv+1) + ssthl0(kinv+1) * ( pifc0(kinv)   - pmid0(kinv+1) )
-         xbot  = thl0(kinv-1) + ssthl0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )        
+         xbot  = thl0(kinv-1) + ssthl0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 xsrc2=xsrc xmean2=xmean xtop2=xtop xbot2=xbot
+        ! $ser verbatim end if 
+        ! $ser verbatim end do         
          call fluxbelowinv( cbmf, pifc0(0:k0), k0, kinv, dt, xsrc, xmean, xtop, xbot, xflx )
          slflx(0:kinv-1) = cp * exnifc0(0:kinv-1) * xflx(0:kinv-1)
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 xflx2=xflx(k-1) slflx=slflx(k-1)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
 
          xsrc  = usrc
          xmean = u0(kinv)
          xtop  = u0(kinv+1) + ssu0(kinv+1) * ( pifc0(kinv)   - pmid0(kinv+1) )
          xbot  = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 xsrc3=xsrc xmean3=xmean xtop3=xtop xbot3=xbot
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
          call fluxbelowinv( cbmf, pifc0(0:k0), k0, kinv, dt, xsrc, xmean, xtop, xbot, xflx )
          uflx(0:kinv-1) = xflx(0:kinv-1)
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 xflx3=xflx(k-1) uflx4=uflx(k-1)
+        ! $ser verbatim end do 
 
          xsrc  = vsrc
          xmean = v0(kinv)
@@ -3659,17 +4344,36 @@ contains
          xbot  = v0(kinv-1) + ssv0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
          call fluxbelowinv( cbmf, pifc0(0:k0), k0, kinv, dt, xsrc, xmean, xtop, xbot, xflx )
          vflx(0:kinv-1) = xflx(0:kinv-1)
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 xflx4=xflx(k-1) vflx=vflx(k-1)
+        ! $ser verbatim end do 
 
          if (dotransport.eq.1) then
          do m = 1, ncnst
+           !$ser verbatim call ser_set_indices(i,iter,m,1)
            xsrc  = trsrc(m)
            xmean = tr0(kinv,m)
            xtop  = tr0(kinv+1,m) + sstr0(kinv+1,m) * ( pifc0(kinv)   - pmid0(kinv+1) )
-           xbot  = tr0(kinv-1,m) + sstr0(kinv-1,m) * ( pifc0(kinv-1) - pmid0(kinv-1) )        
+           xbot  = tr0(kinv-1,m) + sstr0(kinv-1,m) * ( pifc0(kinv-1) - pmid0(kinv-1) )   
+           ! $ser data_buffered Dx=3 xsrc_test=xsrc xmean_test=xmean xtop_test=xtop xbot_test=xbot
            call fluxbelowinv( cbmf, pifc0(0:k0), k0, kinv, dt, xsrc, xmean, xtop, xbot, xflx )
            trflx(0:kinv-1,m) = xflx(0:kinv-1)
          enddo
          endif
+
+        ! $ser verbatim do k=1,kinv
+        ! $ser verbatim do m=1,ncnst
+        ! $ser verbatim call ser_set_indices(i,iter,k,m)
+        ! $ser data_buffered Dx=4 trflx=trflx(k-1,m)
+        ! $ser verbatim enddo 
+        ! $ser verbatim enddo
+
+
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 xflx_test=xflx(k-1)
+        ! $ser verbatim end do 
 
        ! -------------------------------------------------------------- !
        ! 2. Non-buoyancy sorting fluxes : kinv <= k <= krel - 1         !
@@ -3682,6 +4386,7 @@ contains
          uplus = 0.
          vplus = 0.
          do k = kinv, krel - 1
+           !$ser verbatim call ser_set_indices(i,iter,k,1)
            kp1 = k + 1
            qtflx(k) = cbmf * ( qtsrc  - (  qt0(kp1) +  ssqt0(kp1) * ( pifc0(k) - pmid0(kp1) ) ) )          
            slflx(k) = cbmf * ( thlsrc - ( thl0(kp1) + ssthl0(kp1) * ( pifc0(k) - pmid0(kp1) ) ) ) * cp * exnifc0(k)
@@ -3691,10 +4396,24 @@ contains
            vflx(k)  = cbmf * ( vsrc + vplus -  (  v0(kp1)  +   ssv0(kp1) * ( pifc0(k) - pmid0(kp1) ) ) )
            if (dotransport.eq.1) then
            do m = 1, ncnst
+             ! $ser verbatim call ser_set_indices(i,iter,k,m)
              trflx(k,m) = cbmf * ( trsrc(m)  - (  tr0(kp1,m) +  sstr0(kp1,m) * ( pifc0(k) - pmid0(kp1) ) ) )
+             ! $ser data_buffered Dx=4 trflx2=trflx(k,m)
            enddo          
            endif
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 uplus=uplus vplus=vplus
+          ! $ser data_buffered Dx=3 uflx2=uflx(k) vflx2=vflx(k) trflx2=trflx(k,13)
+          ! $ser verbatim end if 
          end do
+
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 uflx_test2=uflx(k-1) slflx2=slflx(k-1) qtflx2=qtflx(k-1)
+        ! $ser data_buffered Dx=3 vflx_test2=vflx(k-1)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
 
 
        ! ------------------------------------------------------------------------ !
@@ -3704,7 +4423,8 @@ contains
        !    desirable feature.                                                    !  
        ! ------------------------------------------------------------------------ !
 
-         do k = krel, kbup - 1      
+         do k = krel, kbup - 1    
+           !$ser verbatim call ser_set_indices(i,iter,k,1)  
            kp1 = k + 1
            slflx(k) = cp * exnifc0(k) * umf(k) * ( thlu(k) - ( thl0(kp1) + ssthl0(kp1) * ( pifc0(k) - pmid0(kp1) ) ) )
            qtflx(k) = umf(k) * ( qtu(k) - ( qt0(kp1) + ssqt0(kp1) * ( pifc0(k) - pmid0(kp1) ) ) )
@@ -3712,10 +4432,21 @@ contains
            vflx(k)  = umf(k) * ( vu(k) - ( v0(kp1) + ssv0(kp1) * ( pifc0(k) - pmid0(kp1) ) ) )
            if (dotransport.eq.1) then
            do m = 1, ncnst
+             ! $ser verbatim call ser_set_indices(i,iter,k,m)
              trflx(k,m) = umf(k) * ( tru(k,m) - ( tr0(kp1,m) + sstr0(kp1,m) * ( pifc0(k) - pmid0(kp1) ) ) )
+             ! $ser data_buffered Dx=4 trflx3=trflx(k,m)
            enddo
            endif
+         
+          ! $ser data_buffered Dx=3 qtflx3=qtflx(k) slflx3=slflx(k)
+          ! $ser data_buffered Dx=3 uflx3=uflx(k) vflx3=vflx(k)
          end do
+
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 uflx_test5=uflx(k-1) slflx_test5=slflx(k-1)
+        ! $ser data_buffered Dx=3 vflx_test5=vflx(k-1) qtflx_test5=qtflx(k-1)
+        ! $ser verbatim end do
 
        ! ------------------------------------------------------------------------- !
        ! 4. Penetrative entrainment fluxes : kbup <= k <= kpen - 1                 !
@@ -3776,7 +4507,8 @@ contains
        !       enddo                                                                                                        !
        ! ------------------------------------------------------------------------------------------------------------------ !
 
-         do k = kbup, kpen - 1      
+         do k = kbup, kpen - 1    
+           !$ser verbatim call ser_set_indices(i,iter,k,1)  
            kp1 = k + 1
            slflx(k) = cp * exnifc0(k) * emf(k) * ( thlu_emf(k) - ( thl0(k) + ssthl0(k) * ( pifc0(k) - pmid0(k) ) ) )
            qtflx(k) =                 emf(k) * (  qtu_emf(k) - (  qt0(k) +  ssqt0(k) * ( pifc0(k) - pmid0(k) ) ) ) 
@@ -3784,9 +4516,15 @@ contains
            vflx(k)  =                 emf(k) * (   vu_emf(k) - (   v0(k) +   ssv0(k) * ( pifc0(k) - pmid0(k) ) ) )
            if (dotransport.eq.1) then
            do m = 1, ncnst
+             ! $ser verbatim call ser_set_indices(i,iter,k,m)
              trflx(k,m) = emf(k) * ( tru_emf(k,m) - ( tr0(k,m) + sstr0(k,m) * ( pifc0(k) - pmid0(k) ) ) ) 
+             ! $ser data_buffered Dx=4 trflx4=trflx(k,m)
            enddo
            endif
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qtflx4=qtflx(k) slflx4=slflx(k)
+          ! $ser data_buffered Dx=3 uflx5=uflx(k) vflx4=vflx(k) trflx4=trflx(k,13)
+          ! $ser verbatim end if 
          end do
 
        ! ------------------------------------------- !
@@ -3797,6 +4535,13 @@ contains
            uflx(0:k0) = 0.
            vflx(0:k0) = 0.
          endif  
+
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 uflx6=uflx(k-1) vflx5=vflx(k-1)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
 
        ! -------------------------------------------------------- !
        ! Condensate tendency by compensating subsidence/upwelling !
@@ -3810,12 +4555,28 @@ contains
          uemf(krel:kbup-1)   = umf(krel:kbup-1)
          uemf(kbup:kpen-1)   = emf(kbup:kpen-1) ! Only use penetrative entrainment flux consistently.
 
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 uemf_test=uemf(k-1)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
+  
          comsub(1:k0) = 0.
+ 
          do k = 1, kpen
            comsub(k)  = 0.5 * ( uemf(k) + uemf(k-1) )  ! comsub defined on interfaces 
-         end do     
+         end do    
+
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 comsub=comsub(k)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
 
          do k = 1, kpen
+           !$ser verbatim call ser_set_indices(i,iter,k,1)
            if( comsub(k) .ge. 0. ) then
               if( k .eq. k0 ) then
                   thlten_sub = 0.
@@ -3824,6 +4585,10 @@ contains
                   qiten_sub  = 0.
                   nlten_sub  = 0.
                   niten_sub  = 0.
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 thlten_sub=thlten_sub qtten_sub=qtten_sub
+                  ! $ser data_buffered Dx=3 qlten_sub=qlten_sub qiten_sub=qiten_sub
+                  ! $ser verbatim end if 
               else
                   thlten_sub = g * comsub(k) * ( thl0(k+1) - thl0(k) ) / ( pmid0(k) - pmid0(k+1) )
                   qtten_sub  = g * comsub(k) * (  qt0(k+1) -  qt0(k) ) / ( pmid0(k) - pmid0(k+1) )
@@ -3831,6 +4596,11 @@ contains
                   qiten_sub  = g * comsub(k) * (  qi0(k+1) -  qi0(k) ) / ( pmid0(k) - pmid0(k+1) )
 !                  nlten_sub  = g * comsub(k) * (  tr0(k+1,ixnumliq) -  tr0(k,ixnumliq) ) / ( pmid0(k) - pmid0(k+1) )
 !                  niten_sub  = g * comsub(k) * (  tr0(k+1,ixnumice) -  tr0(k,ixnumice) ) / ( pmid0(k) - pmid0(k+1) )
+      
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 thlten_sub2=thlten_sub qtten_sub2=qtten_sub
+                  ! $ser data_buffered Dx=3 qlten_sub2=qlten_sub qiten_sub2=qiten_sub
+                  ! $ser verbatim end if 
               endif
            else
               if( k .eq. 1 ) then
@@ -3840,6 +4610,10 @@ contains
                   qiten_sub  = 0.
                   nlten_sub  = 0.
                   niten_sub  = 0.
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 thlten_sub3=thlten_sub qtten_sub3=qtten_sub
+                  ! $ser data_buffered Dx=3 qlten_sub3=qlten_sub qiten_sub3=qiten_sub
+                  ! $ser verbatim end if 
               else
                   thlten_sub = g * comsub(k) * ( thl0(k) - thl0(k-1) ) / ( pmid0(k-1) - pmid0(k) )
                   qtten_sub  = g * comsub(k) * (  qt0(k) -  qt0(k-1) ) / ( pmid0(k-1) - pmid0(k) )
@@ -3847,11 +4621,27 @@ contains
                   qiten_sub  = g * comsub(k) * (  qi0(k) -  qi0(k-1) ) / ( pmid0(k-1) - pmid0(k) )
 !                  nlten_sub  = g * comsub(k) * (  tr0(k,ixnumliq) -  tr0(k-1,ixnumliq) ) / ( pmid0(k-1) - pmid0(k) )
 !                  niten_sub  = g * comsub(k) * (  tr0(k,ixnumice) -  tr0(k-1,ixnumice) ) / ( pmid0(k-1) - pmid0(k) )
+  
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 thlten_sub4=thlten_sub qtten_sub4=qtten_sub
+                  ! $ser data_buffered Dx=3 qlten_sub4=qlten_sub qiten_sub4=qiten_sub
+                  ! $ser verbatim end if 
+           
               endif
            endif
            thl_prog = thl0(k) + thlten_sub * dt
            qt_prog  = max( qt0(k) + qtten_sub * dt, 1.e-12 )
+   
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=3 thl_prog=thl_prog qt_prog=qt_prog
+            ! $ser verbatim end if 
+            
            call conden(pmid0(k),thl_prog,qt_prog,thj,qvj,qlj,qij,qse,id_check)
+     
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=3 thj=thj qvj=qvj qij=qij qlj=qlj qse=qse
+            ! $ser verbatim end if 
+        
            if( id_check .eq. 1 ) then
               id_exit = .true.
               if (scverbose) then
@@ -3865,7 +4655,21 @@ contains
            qiten_sink(k) = max( qiten_sub, - qi0(k) / dt ) ! For consistency with prognostic macrophysics scheme
 !           nlten_sink(k) = max( nlten_sub, - tr0(k,ixnumliq) / dt ) 
 !           niten_sink(k) = max( niten_sub, - tr0(k,ixnumice) / dt )
+
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=3 qlten_sink=qlten_sink(k) qiten_sink=qiten_sink(k)
+            ! $ser data_buffered Dx=3 qiten_sub=qiten_sub qlten_sub=qlten_sub
+            ! $ser verbatim end if 
+            
          end do
+         
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 uflx_test6=uflx(k-1) slflx_test6=slflx(k-1)
+        ! $ser data_buffered Dx=3 vflx_test6=vflx(k-1) qtflx_test6=qtflx(k-1)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do
 
        ! --------------------------------------------- !
        !                                               !
@@ -3892,6 +4696,22 @@ contains
          ! enddo
          end do  
 
+        ! $ser verbatim do k=1,kpen
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 uten=uten(k) vten=vten(k) uf=uf(k) vf=vf(k)
+        ! $ser data_buffered Dx=3 dwten_test=dwten(k) diten_test=diten(k)
+        ! $ser verbatim end if 
+        ! $ser verbatim end do 
+
+        ! $ser verbatim do k=1,k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser data_buffered Dx=3 umf_test2=umf(k-1) slflx_test=slflx(k-1) uflx_test=uflx(k-1)
+        ! $ser data_buffered Dx=3 vflx_test=vflx(k-1)
+        ! $ser verbatim end do 
+
+
+
        ! ----------------------------------------------------------------- !
        ! Tendencies of thermodynamic variables.                            ! 
        ! This part requires a careful treatment of bulk cloud microphysics.!
@@ -3902,6 +4722,7 @@ contains
        
 
        do k = 1, kpen
+          !$ser verbatim call ser_set_indices(i,iter,k,1)
 
           km1 = k - 1
 
@@ -3943,7 +4764,9 @@ contains
 
             dwten(k) = dwten(k) * 0.5 * ( umf(k-1) + umf(k) ) * g / dp0(k) ! [ kg/kg/s ]
             diten(k) = diten(k) * 0.5 * ( umf(k-1) + umf(k) ) * g / dp0(k) ! [ kg/kg/s ] 
-
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=3 dwten=dwten(k) diten=diten(k)
+            ! $ser verbatim end if 
           ! dwten(k) = dwten(k) * umf(k) * g / dp0(k) ! [ kg/kg/s ]
           ! diten(k) = diten(k) * umf(k) * g / dp0(k) ! [ kg/kg/s ]
 
@@ -3954,6 +4777,9 @@ contains
 
            qrten(k) = frc_rasn * dwten(k)
            qsten(k) = frc_rasn * diten(k) 
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qrten=qrten(k) qsten=qsten(k)
+          ! $ser verbatim end if 
 
 
           ! ------------------------------------------------------------------------ !
@@ -3971,22 +4797,41 @@ contains
           ! ------------------------------------------------------------------------ !
                    
            slten(k) = ( slflx(km1) - slflx(k) ) * g / dp0(k)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 slten5=slten(k) slflx5=slflx(k)
+          ! $ser verbatim end if 
            if( k .eq. 1 ) then
               slten(k) = slten(k) - g / 4. / dp0(k) * (                            &
                                     uflx(k)*(uf(k+1) - uf(k) + u0(k+1) - u0(k)) +     & 
                                     vflx(k)*(vf(k+1) - vf(k) + v0(k+1) - v0(k)))
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 slten2=slten(k)
+              ! $ser verbatim end if 
            elseif( k .ge. 2 .and. k .le. kpen-1 ) then
               slten(k) = slten(k) - g / 4. / dp0(k) * (                            &
                                     uflx(k)*(uf(k+1) - uf(k) + u0(k+1) - u0(k)) +     &
                                     uflx(k-1)*(uf(k) - uf(k-1) + u0(k) - u0(k-1)) +   &
                                     vflx(k)*(vf(k+1) - vf(k) + v0(k+1) - v0(k)) +     &
                                     vflx(k-1)*(vf(k) - vf(k-1) + v0(k) - v0(k-1)))
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 slten9=slten(k)
+              ! $ser verbatim end if 
            elseif( k .eq. kpen ) then
               slten(k) = slten(k) - g / 4. / dp0(k) * (                            &
                                     uflx(k-1)*(uf(k) - uf(k-1) + u0(k) - u0(k-1)) +   &
                                     vflx(k-1)*(vf(k) - vf(k-1) + v0(k) - v0(k-1)))
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 slten4=slten(k)
+              ! $ser verbatim end if           
            endif
            qtten(k) = ( qtflx(km1) - qtflx(k) ) * g / dp0(k)
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=3 qtten=qtten(k)
+            ! $ser verbatim end if 
+
+            ! $ser verbatim if (iter .eq. 2) then
+            ! $ser data_buffered Dx=3 slten7=slten(k)
+            ! $ser verbatim end if 
 
           ! ---------------------------------------------------------------------------- !
           ! Compute condensate tendency, including reserved condensate                   !
@@ -4003,8 +4848,14 @@ contains
               qiu_mid = 0.
               qlj     = 0.
               qij     = 0.
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 qlu_mid=qlu_mid qiu_mid=qiu_mid qlj=qlj qij=qij
+              ! $ser verbatim end if 
            elseif( k .eq. krel ) then 
               call conden(prel,thlu(krel-1),qtu(krel-1),thj,qvj,qlj,qij,qse,id_check)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 thj=thj qvj=qvj qlj=qlj qij=qij qse=qse
+              ! $ser verbatim end if 
               if( id_check .eq. 1 ) then
                   exit_conden(i) = 1.
                   id_exit = .true.
@@ -4014,8 +4865,14 @@ contains
                   go to 333
               endif
               qlubelow = qlj       
-              qiubelow = qij       
+              qiubelow = qij   
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 qlubelow=qlubelow qiubelow=qiubelow
+              ! $ser verbatim end if     
               call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 thj2=thj qvj2=qvj qlj2=qlj qij2=qij qse2=qse
+              ! $ser verbatim end if 
               if( id_check .eq. 1 ) then
                   exit_conden(i) = 1.
                   id_exit = .true.
@@ -4026,8 +4883,14 @@ contains
               end if
               qlu_mid = 0.5 * ( qlubelow + qlj ) * ( prel - pifc0(k) )/( pifc0(k-1) - pifc0(k) )
               qiu_mid = 0.5 * ( qiubelow + qij ) * ( prel - pifc0(k) )/( pifc0(k-1) - pifc0(k) )
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 qlu_mid3=qlu_mid qiu_mid3=qiu_mid
+              ! $ser verbatim end if 
            elseif( k .eq. kpen ) then 
               call conden(pifc0(k-1)+ppen,thlu_top,qtu_top,thj,qvj,qlj,qij,qse,id_check)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 thj3=thj qvj3=qvj qlj3=qlj qij3=qij qse3=qse
+              ! $ser verbatim end if 
               if( id_check .eq. 1 ) then
                   exit_conden(i) = 1.
                   id_exit = .true.
@@ -4040,8 +4903,15 @@ contains
               qiu_mid = 0.5 * ( qiubelow + qij ) * ( -ppen )        /( pifc0(k-1) - pifc0(k) )
               qlu_top = qlj
               qiu_top = qij
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 qlu_mid2=qlu_mid qiu_mid2=qiu_mid
+              ! $ser data_buffered Dx=3 qlu_top=qlu_top qiu_top=qiu_top
+              ! $ser verbatim end if 
            else
               call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 thj4=thj qvj4=qvj qlj4=qlj qij4=qij qse4=qse
+              ! $ser verbatim end if 
               if( id_check .eq. 1 ) then
                   exit_conden(i) = 1.
                   id_exit = .true.
@@ -4052,14 +4922,24 @@ contains
               end if
               qlu_mid = 0.5 * ( qlubelow + qlj )
               qiu_mid = 0.5 * ( qiubelow + qij )
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 qlu_mid4=qlu_mid qiu_mid4=qiu_mid
+              ! $ser verbatim end if 
            endif
            qlubelow = qlj       
            qiubelow = qij
+
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qlubelow2=qlubelow qiubelow2=qiubelow
+          ! $ser verbatim end if  
 
           ! 1. Non-precipitating portion of expelled condensate
 
            qc_l(k) = ( 1. - frc_rasn ) * dwten(k) ! [ kg/kg/s ]
            qc_i(k) = ( 1. - frc_rasn ) * diten(k) ! [ kg/kg/s ]
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qc_l=qc_l(k) qc_i=qc_i(k)
+          ! $ser verbatim end if
 
           ! 2. Detrained Condensate
 
@@ -4071,6 +4951,9 @@ contains
             ! Below 'nc_lm', 'nc_im' should be used only when frc_rasn = 1.
 !              nc_lm   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * tr0(k,ixnumliq)  
 !              nc_im   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * tr0(k,ixnumice)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 qc_l2=qc_l(k) qc_i2=qc_i(k) qc_lm=qc_lm qc_im=qc_im
+              ! $ser verbatim end if
            else
               qc_lm   = 0.
               qc_im   = 0.
@@ -4087,6 +4970,9 @@ contains
               qc_im   = qc_im   - g * umf(k) * qi0(k)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
 !              nc_lm   = nc_lm   - g * umf(k) * tr0(k,ixnumliq)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
 !              nc_im   = nc_im   - g * umf(k) * tr0(k,ixnumice)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 qc_l3=qc_l(k) qc_i3=qc_i(k) qc_lm2=qc_lm qc_im2=qc_im
+              ! $ser verbatim end if
            endif 
 
           ! 4. Cumulative Penetrative entrainment detrained in the 'kbup' layer
@@ -4094,6 +4980,9 @@ contains
 
            if( k .eq. kbup ) then
               call conden(pmid0(k),thlu_emf(k),qtu_emf(k),thj,qvj,ql_emf_kbup,qi_emf_kbup,qse,id_check)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 thj5=thj qvj5=qvj qlj5=ql_emf_kbup qij5=qi_emf_kbup qse5=qse
+              ! $ser verbatim end if
               if( id_check .eq. 1 ) then
                   id_exit = .true.
                   if (scverbose) then
@@ -4105,20 +4994,32 @@ contains
 !                  nl_emf_kbup = tru_emf(k,ixnumliq)
               else
                   nl_emf_kbup = 0.
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 nl_emf_kbup=nl_emf_kbup
+                  ! $ser verbatim end if
               endif
               if( qi_emf_kbup .gt. 0. ) then
 !                  ni_emf_kbup = tru_emf(k,ixnumice)
               else
                   ni_emf_kbup = 0.
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 ni_emf_kbup=ni_emf_kbup
+                  ! $ser verbatim end if
               endif
               qc_lm   = qc_lm   - g * emf(k) * ( ql_emf_kbup - ql0(k) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
               qc_im   = qc_im   - g * emf(k) * ( qi_emf_kbup - qi0(k) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
 !              nc_lm   = nc_lm   - g * emf(k) * ( nl_emf_kbup - tr0(k,ixnumliq) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
 !              nc_im   = nc_im   - g * emf(k) * ( ni_emf_kbup - tr0(k,ixnumice) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 qc_lm3=qc_lm qc_im3=qc_im
+              ! $ser verbatim end if
            endif 
 
            qlten_det(k)   = qc_l(k) + qc_lm
            qiten_det(k)   = qc_i(k) + qc_im
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qlten_det=qlten_det(k) qiten_det=qiten_det(k)
+          ! $ser verbatim end if
 
           ! --------------------------------------------------------------------------------- !
           ! 'qlten(k)','qiten(k)','qvten(k)','sten(k)'                                        !
@@ -4154,6 +5055,9 @@ contains
 
            if ( ((qc_lm+qlten_sink(k))*dt+ql0(k)).lt.0. ) then
               totsink = qc_lm+qlten_sink(k)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 totsink1=totsink
+              ! $ser verbatim end if
               if (totsink.ne.0.) then
                 qc_lm = -(ql0(k)/dt) * qc_lm/totsink
                 qlten_sink(k) = -(ql0(k)/dt) * qlten_sink(k)/totsink
@@ -4162,6 +5066,9 @@ contains
            end if
            if ( ((qc_im+qiten_sink(k))*dt+qi0(k)).lt.0. ) then
               totsink = qc_im+qiten_sink(k)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 totsink2=totsink
+              ! $ser verbatim end if
               if (totsink.ne.0.) then
                 qc_im = -(qi0(k)/dt) * qc_im/totsink
                 qiten_sink(k) = -(qi0(k)/dt) * qiten_sink(k)/totsink
@@ -4171,13 +5078,23 @@ contains
 
            qlten(k) = qrten(k) + qlten_sink(k) + qlten_det(k)
            qiten(k) = qsten(k) + qiten_sink(k) + qiten_det(k)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qsten=qsten(k) qiten_sink=qiten_sink(k) qiten_det=qiten_det(k)
+          ! $ser verbatim end if
 
            qvten(k) = qtten(k) - qlten(k) - qiten(k)
            sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qlten=qlten(k) qiten=qiten(k) qvten=qvten(k) sten_test=sten(k)
+          ! $ser data_buffered Dx=3 slten3=slten(k) xlv=xlv xls=xls
+          ! $ser verbatim end if
 
 !           qldet(k) = qc_l(k)
 !           qidet(k) = qc_i(k)
            qc(k)  =  qc_l(k) +  qc_i(k)   
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qc=qc(k)
+          ! $ser verbatim end if
 
 
            qlten(k) = qlten(k) - qrten(k)
@@ -4191,6 +5108,10 @@ contains
            slten(k) = sten(k) - xlv*qlten(k) - xls*qiten(k)
            slten(k) = slten(k) + xlv * qrten(k) + xls * qsten(k)         
            sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qlten2=qlten(k) qiten2=qiten(k) qtten2=qtten(k) 
+          ! $ser data_buffered Dx=3 slten6=slten(k) sten2=sten(k)
+          ! $ser verbatim end if
 
          end do
 
@@ -4231,14 +5152,46 @@ contains
        !                in combination with the original computation of qlten, qiten. However,
        !                if we use new 'qlten,qiten', there is no problem.
 
+          ! $ser verbatim do k=1, k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qv0_test3=qv0(k) qvten_test3=qvten(k)
+          ! $ser data_buffered Dx=3 qi0_test3=qi0(k) qiten_test3=qiten(k)
+          ! $ser data_buffered Dx=3 s0_test3=s0(k) sten_test3=sten(k)
+          ! $ser verbatim end if
+          ! $ser verbatim end do 
          qv0_star(:k0) = qv0(:k0) + qvten(:k0) * dt
          ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
          qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
          s0_star(:k0)  =  s0(:k0) +  sten(:k0) * dt
+          ! $ser verbatim do k=1, k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qv0_star=qv0_star(k) ql0_star=ql0_star(k)
+          ! $ser data_buffered Dx=3 qi0_star=qi0_star(k) s0_star=s0_star(k)
+          ! $ser data_buffered Dx=3 sten_test4=sten(k) qiten_test4=qiten(k)
+          ! $ser data_buffered Dx=3 qlten_test4=qlten(k) qvten_test4=qvten(k)
+          ! $ser verbatim end if
+          ! $ser verbatim end do
          call positive_moisture_single( xlv, xls, k0, dt, qmin(1), qmin(ixcldliq), qmin(ixcldice), &
               dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
+          ! $ser verbatim do k=1, k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 sten_out=sten(k) qiten_out=qiten(k) qlten_out=qlten(k)
+          ! $ser data_buffered Dx=3 qvten_out=qvten(k) s0_star_out=s0_star(k)
+          ! $ser data_buffered Dx=3 qi0_star_out=qi0_star(k) 
+          ! $ser data_buffered Dx=3 ql0_star_out=ql0_star(k) qv0_star_out=qv0_star(k) 
+          ! $ser verbatim end if
+          ! $ser verbatim end do
          qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
          slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
+          ! $ser verbatim do k=1, k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 slten5=slten(k) qtten5=qtten(k)
+          ! $ser verbatim end if
+          ! $ser verbatim end do
 
        ! --------------------- !
        ! Tendencies of tracers !
@@ -4301,6 +5254,14 @@ contains
         enddo
         endif
 
+        ! $ser verbatim do k=1,k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim do m=1,ncnst
+        ! $ser verbatim call ser_set_indices(i,iter,k,m)
+        ! $ser data_buffered Dx=4 trten_test=trten(k,m)
+        ! $ser verbatim enddo
+        ! $ser verbatim enddo
+
        ! ---------------------------------------------------------------- !
        ! Cumpute default diagnostic outputs                               !
        ! Note that since 'qtu(krel-1:kpen-1)' & 'thlu(krel-1:kpen-1)' has !
@@ -4310,6 +5271,12 @@ contains
        ! ---------------------------------------------------------------- ! 
  
        call conden(prel,thlu(krel-1),qtu(krel-1),thj,qvj,qlj,qij,qse,id_check)
+        ! $ser verbatim do k=1, k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 thj6=thj qvj6=qvj qlj6=qlj qij6=qij qse6=qse
+        ! $ser verbatim end if
+        ! $ser verbatim end do
        if( id_check .eq. 1 ) then
            exit_conden(i) = 1.
            id_exit = .true.
@@ -4324,12 +5291,28 @@ contains
        rcwp     = 0.
        rlwp     = 0.
        riwp     = 0.
+        ! $ser verbatim do k=1, k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 qcubelow=qcubelow qlubelow=qlubelow qiubelow=qiubelow
+        ! $ser data_buffered Dx=3 rcwp=rcwp rlwp=rlwp riwp=riwp cufrc_test2=cufrc(k)
+        ! $ser verbatim end if
+        ! $ser verbatim end do
+
+        ! $ser verbatim do k=1, k0+1
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 ufrc_test2=ufrc(k-1)
+        ! $ser verbatim end if
+        ! $ser verbatim end do
+
 
        ! --------------------------------------------------------------------- !
        ! In the below calculations, I explicitly considered cloud base ( LCL ) !
        ! and cloud top height ( pifc0(kpen-1) + ppen )                           !
        ! ----------------------------------------------------------------------! 
        do k = krel, kpen ! This is a layer index
+          !$ser verbatim call ser_set_indices(i,iter,k,1)
           ! ------------------------------------------------------------------ ! 
           ! Calculate cumulus condensate at the upper interface of each layer. !
           ! Note 'ppen < 0' and at 'k=kpen' layer, I used 'thlu_top'&'qtu_top' !
@@ -4337,8 +5320,14 @@ contains
           ! ------------------------------------------------------------------ ! 
           if( k .eq. kpen ) then 
               call conden(pifc0(k-1)+ppen,thlu_top,qtu_top,thj,qvj,qlj,qij,qse,id_check)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 thj7=thj qvj7=qvj qlj7=qlj qij7=qij qse7=qse
+              ! $ser verbatim end if
           else
               call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 thj8=thj qvj8=qvj qlj8=qlj qij8=qij qse8=qse
+              ! $ser verbatim end if
           endif
           if( id_check .eq. 1 ) then
               exit_conden(i) = 1.
@@ -4360,28 +5349,53 @@ contains
           qlu(k)   = 0.5 * ( qlubelow + qlj )
           qiu(k)   = 0.5 * ( qiubelow + qij )
           cufrc(k) = ( ufrc(k-1) + ufrc(k) )
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qcu=qcu(k) qlu=qlu(k) qiu=qiu(k) cufrc=cufrc(k) ufrc_test=ufrc(k)
+          ! $ser verbatim end if
           if( k .eq. krel ) then
               cufrc(k) = ( ufrclcl + ufrc(k) )*( prel - pifc0(k) )/( pifc0(k-1) - pifc0(k) )
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 cufrc2=cufrc(k)
+              ! $ser verbatim end if
           else if( k .eq. kpen ) then
               cufrc(k) = ( ufrc(k-1) + 0. )*( -ppen )        /( pifc0(k-1) - pifc0(k) )
+              ! $ser verbatim if (iter .eq. 2) then
+              ! $ser data_buffered Dx=3 cufrc3=cufrc(k)
+              ! $ser verbatim end if
               if( (qlj + qij) .gt. criqc ) then           
                    qcu(k) = 0.5 * ( qcubelow + criqc )
                    qlu(k) = 0.5 * ( qlubelow + criqc * qlj / ( qlj + qij ) )
                    qiu(k) = 0.5 * ( qiubelow + criqc * qij / ( qlj + qij ) )
+                  ! $ser verbatim if (iter .eq. 2) then
+                  ! $ser data_buffered Dx=3 qcu2=qcu(k) qlu2=qlu(k) qiu2=qiu(k)
+                  ! $ser verbatim end if
               endif
           endif  
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 rcwp3=rcwp rlwp3=rlwp riwp3=riwp qlu3=qlu(k) qiu3=qiu(k)
+          ! $ser verbatim end if
           rcwp = rcwp + ( qlu(k) + qiu(k) ) * ( pifc0(k-1) - pifc0(k) ) / g * cufrc(k)
           rlwp = rlwp +   qlu(k)            * ( pifc0(k-1) - pifc0(k) ) / g * cufrc(k)
           riwp = riwp +   qiu(k)            * ( pifc0(k-1) - pifc0(k) ) / g * cufrc(k)
           qcubelow = qlj + qij
           qlubelow = qlj
           qiubelow = qij
+          ! $ser verbatim if (iter .eq. 2) then
+          ! $ser data_buffered Dx=3 qcubelow2=qcubelow qlubelow2=qlubelow qiubelow2=qiubelow
+          ! $ser data_buffered Dx=3 rcwp2=rcwp rlwp2=rlwp riwp2=riwp
+          ! $ser verbatim end if
        end do
        ! ------------------------------------ !      
        ! Cloud top and base interface indices !
        ! ------------------------------------ !
        cnt = real( kpen )
        cnb = real( krel - 1 )
+        ! $ser verbatim do k=1, k0
+        ! $ser verbatim call ser_set_indices(i,iter,k,1)
+        ! $ser verbatim if (iter .eq. 2) then
+        ! $ser data_buffered Dx=3 cnt=cnt cnb=cnb
+        ! $ser verbatim end if
+        ! $ser verbatim end do
 
        ! ------------------------------------------------------------------------- !
        ! End of formal calculation. Below blocks are for implicit CIN calculations ! 
@@ -4413,6 +5427,24 @@ contains
              tr0_s(:k0,m)       = tr0(:k0,m) + trten(:k0,m) * dt
            enddo
            endif
+
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,iter,k,1)
+          ! $ser verbatim do m=1,ncnst
+          ! $ser verbatim call ser_set_indices(i,iter,k,m)
+          ! $ser data_buffered Dx=4 tr0_s2=tr0_s(k,m)
+          ! $ser verbatim enddo
+          ! $ser verbatim enddo
+
+          !  $ser verbatim do k=1,k0
+          !  $ser verbatim call ser_set_indices(i,iter,k,1)
+          !  $ser data_buffered Dx=3 qv0_s=qv0_s(k) ql0_s=ql0_s(k) qi0_s=qi0_s(k)
+          !  $ser data_buffered Dx=3 s0_s=s0_s(k) u0_s=u0_s(k) v0_s=v0_s(k) t0_s=t0_s(k)
+          !  $ser data_buffered Dx=3 qiten_test2=qiten(k) qi0_test2=qi0(k) t0_test=t0(k)
+          !  $ser data_buffered Dx=3 sten_test=sten(k) qvten_test2=qvten(k) qlten_test=qlten(k)
+          !  $ser data_buffered Dx=3 qv0_test=qv0(k) ql0_test=ql0(k) qi0_test=qi0(k)
+          !  $ser data_buffered Dx=3 s0_test=s0(k)
+          !  $ser verbatim end do
 
            umf_s(0:k0)          = umf(0:k0)
            dcm_s(:k0)           = dcm(:k0)
@@ -4447,6 +5479,24 @@ contains
 
 !           slten_s(:k0)         = slten(:k0)
            ufrc_s(0:k0)         = ufrc(0:k0) 
+
+          !  $ser verbatim do k=1,k0+1
+          !  $ser verbatim call ser_set_indices(i,iter,k,1)
+          !  $ser data_buffered Dx=3 umf_s=umf_s(k-1) slflx_s=slflx_s(k-1) qtflx_s=qtflx_s(k-1)
+          !  $ser data_buffered Dx=3 uflx_s=uflx_s(k-1) vflx_s=vflx_s(k-1) ufrc_s=ufrc_s(k-1)
+          !  $ser verbatim end do
+
+          !  $ser verbatim do k=1,k0
+          !  $ser verbatim call ser_set_indices(i,iter,k,1)
+          !  $ser data_buffered Dx=3 dcm_s=dcm_s(k) qvten_s=qvten_s(k) qlten_s=qlten_s(k)
+          !  $ser data_buffered Dx=3 qiten_s=qiten_s(k) sten_s=sten_s(k) uten_s=uten_s(k)
+          !  $ser data_buffered Dx=3 vten_s=vten_s(k) qrten_s=qrten_s(k) qsten_s=qsten_s(k)
+          !  $ser data_buffered Dx=3 cush_s=cush_s cufrc_s=cufrc_s(k) qcu_s=qcu_s(k) qlu_s=qlu_s(k)
+          !  $ser data_buffered Dx=3 qiu_s=qiu_s(k) fer_s=fer_s(k) fdr_s=fdr_s(k)
+          !  $ser data_buffered Dx=3 xc_s=xc_s(k) cin_s=cin_s cinlcl_s=cinlcl_s cbmf_s=cbmf_s
+          !  $ser data_buffered Dx=3 qc_s=qc_s(k) qldet_s=qldet_s(k) qidet_s=qidet_s(k) 
+          !  $ser data_buffered Dx=3 qlsub_s=qlsub_s(k) qisub_s=qisub_s(k)
+          !  $ser verbatim end do
 
 
 #ifdef UWDIAG         
@@ -4535,11 +5585,29 @@ contains
            enddo
            endif
 
-           do k = 1, k0
+          ! $ser verbatim do k=1,k0
+          ! $ser verbatim call ser_set_indices(i,k,1,1)
+          ! $ser verbatim do m=1,ncnst
+          ! $ser verbatim call ser_set_indices(i,k,m,1)
+          ! $ser data_buffered Dx=3 sstr02=sstr0(k,m)
+          ! $ser verbatim enddo
+          ! $ser verbatim enddo
 
+
+          !  $ser verbatim do k=1,k0
+          !  $ser verbatim call ser_set_indices(i,iter,k,1)
+          !  $ser data_buffered Dx=3 qv0=qv0(k) ql0=ql0(k) qi0=qi0(k) s0=s0(k) t0=t0(k)
+          !  $ser data_buffered Dx=3 qt0=qt0(k) thl0=thl0(k) thvl0=thvl0(k) 
+          !  $ser data_buffered Dx=3 ssthl0=ssthl0(k) ssqt0=ssqt0(k) ssu0=ssu0(k) ssv0=ssv0(k)
+          !  $ser verbatim end do
+
+           do k = 1, k0
+             !$ser verbatim call ser_set_indices(i,iter,k,1)
              thl0bot = thl0(k) + ssthl0(k) * ( pifc0(k-1) - pmid0(k) )
              qt0bot  = qt0(k)  + ssqt0(k)  * ( pifc0(k-1) - pmid0(k) )
+             ! $ser data_buffered Dx=3 thl0bot=thl0bot qt0bot=qt0bot
              call conden(pifc0(k-1),thl0bot,qt0bot,thj,qvj,qlj,qij,qse,id_check)
+             ! $ser data_buffered Dx=3 thj=thj qvj=qvj qlj=qlj qij=qij qse=qse
              if( id_check .eq. 1 ) then
                  exit_conden(i) = 1.
                  id_exit = .true.
@@ -4550,10 +5618,13 @@ contains
              end if
              thv0bot(k)  = thj * ( 1. + zvir*qvj - qlj - qij )
              thvl0bot(k) = thl0bot * ( 1. + zvir*qt0bot )
+             ! $ser data_buffered Dx=3 thv0bot=thv0bot(k) thvl0bot=thvl0bot(k)
           
              thl0top = thl0(k) + ssthl0(k) * ( pifc0(k) - pmid0(k) )
              qt0top  =  qt0(k) + ssqt0(k)  * ( pifc0(k) - pmid0(k) )
+             ! $ser data_buffered Dx=3 thl0top=thl0top qt0top=qt0top
              call conden(pifc0(k),thl0top,qt0top,thj,qvj,qlj,qij,qse,id_check)
+              ! $ser data_buffered Dx=3 thj2=thj qvj2=qvj qlj2=qlj qij2=qij qse2=qse
              if( id_check .eq. 1 ) then
                  exit_conden(i) = 1.
                  id_exit = .true.
@@ -4564,6 +5635,7 @@ contains
              end if
              thv0top(k)  = thj * ( 1. + zvir*qvj - qlj - qij )
              thvl0top(k) = thl0top * ( 1. + zvir*qt0top )
+             ! $ser data_buffered Dx=3 thv0top=thv0top(k) thvl0top=thvl0top(k)
 
            end do
 
@@ -4617,6 +5689,24 @@ contains
 
      fer_out(i,1:kpen)          = fer(:kpen)  
      fdr_out(i,1:kpen)          = fdr(:kpen)  
+
+      ! $ser verbatim do k=1,k0+1
+      ! $ser verbatim call ser_set_indices(i,k,1,1)
+      ! $ser data_buffered Dx=2 umf_out=umf_out(i,k-1) qtflx_out=qtflx_out(i,k-1)
+      ! $ser data_buffered Dx=2 slflx_out=slflx_out(i,k-1) uflx_out=uflx_out(i,k-1)
+      ! $ser data_buffered Dx=2 vflx_out=vflx_out(i,k-1) umf_test=umf(k-1)
+      ! $ser verbatim end do
+
+      ! $ser verbatim do k=1,k0
+      ! $ser verbatim call ser_set_indices(i,k,1,1)
+      ! $ser data_buffered Dx=2 dcm_out=dcm_out(i,k) qvten_out=qvten_out(i,k) qlten_out=qlten_out(i,k)
+      ! $ser data_buffered Dx=2 qiten_out=qiten_out(i,k) sten_out=sten_out(i,k) uten_out=uten_out(i,k)
+      ! $ser data_buffered Dx=2 vten_out=vten_out(i,k) qrten_out=qrten_out(i,k) qsten_out=qsten_out(i,k)
+      ! $ser data_buffered Dx=2 cufrc_out=cufrc_out(i,k) cush_inout2=cush_inout(i) qldet_out=qldet_out(i,k)
+      ! $ser data_buffered Dx=2 qidet_out=qidet_out(i,k) qlsub_out=qlsub_out(i,k) qisub_out=qisub_out(i,k)
+      ! $ser data_buffered Dx=2 ndrop_out=ndrop_out(i,k) nice_out=nice_out(i,k) 
+      ! $ser data_buffered Dx=2 fer_out=fer_out(i,k) fdr_out=fdr_out(i,k) kinv_test=kinv kpen_test=kpen
+      ! $ser verbatim end do
 
 #ifdef UWDIAG
      cldhgt_out(i)               = cldhgt
@@ -4800,7 +5890,7 @@ contains
 
      end do ! column i loop
 
-     !$ser flush_savepoint ComputeUwshcu-Out
+     ! $ser flush_savepoint ComputeUwshcu-Out2
 
     
 

@@ -13,7 +13,18 @@ this_dir_path = os.path.dirname(os.path.realpath(__file__))
 moist_comp = os.path.abspath(os.path.join(this_dir_path, "../../../"))
 print(f"Running all .SER in {moist_comp}")
 
-ppser_args = ["--verbose", "--ignore-identical", "-m", "utils_ppser_kbuff"]
+ppser_args = [
+    "--verbose",
+    "--ignore-identical",
+    "-m",
+    "utils_ppser_kbuff",
+    "--savepoints",
+    "ComputeUwshcu-In",
+    "--savepoints",
+    "ComputeUwshcuInv-In",
+    "--savepoints",
+    "ComputeUwshcuInv-Out",
+]
 ppser_script = os.path.abspath(f"{os.getenv('SERIALBOX_ROOT')}/python/pp_ser/pp_ser.py")
 print(f"Executing ppser from {ppser_script}")
 
