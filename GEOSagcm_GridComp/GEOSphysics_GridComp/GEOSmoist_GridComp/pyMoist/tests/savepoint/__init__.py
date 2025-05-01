@@ -1,6 +1,6 @@
-from .translate_compute_uwshcu import TranslateComputeUwshcu
-from .translate_aer_activation import TranslateAerActivation
-from .translate_GFDL_1M import TranslateGFDL_1M
-from .translate_qsat import TranslateQSat
-from .translate_radiation_coupling import TranslateRadCouple
-from .translate_redistribute_clouds import TranslateRedistributeClouds
+# from .translate_conden import TranslateConden
+# from .translate_aer_activation import TranslateAerActivation
+# from .translate_qsat import TranslateQSat
+# from .translate_radiation_coupling import TranslateRadCouple
+# from .translate_redistribute_clouds import TranslateRedistributeClouds
+from .translate_compute_uwshcu import TranslateComputeUwshcuInv
