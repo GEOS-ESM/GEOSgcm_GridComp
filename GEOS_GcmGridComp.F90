@@ -636,6 +636,8 @@ contains
     endif
 
     call MAPL_TerminateImport(GC, SHORT_NAME=['EF'], CHILD=OGCM, _RC)
+    call MAPL_TerminateImport(GC, SHORT_NAME=['UUSSP', 'VUSSP'], CHILD=OGCM, _RC)
+
 
     if (DO_OBIO/=0) then
       call OBIO_TerminateImports(DO_DATA_ATM4OCN, RC)
@@ -2436,7 +2438,15 @@ contains
      SRC => GCM_INTERNAL_STATE%WGCM_EXP
      DST => GIM(OGCM) ! GCM_INTERNAL_STATE%OCN_IMP
 
+!if defined (COUPLE_WAVES_AND_SEA_ICE___disable)
      call DO_W2O(SRC, DST, NAME='EF',    RC=STATUS)
+!endif
+
+!#if defined (COULE_WAVES_AND_OCEAN___disable)
+     call DO_W2O(SRC, DST, NAME='UUSSP',  RC=STATUS)
+     call DO_W2O(SRC, DST, NAME='VUSSP',  RC=STATUS)
+!#endif
+
      VERIFY_(STATUS)
 
      call MAPL_TimerOff(MAPL,"--W2O"  )
@@ -2919,7 +2929,9 @@ contains
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
-     
+!if (COUPLE_WAVES_AND_SEA_ICE___disable) || (COUPLE_WAVES_AND_OCEAN) 
+     _RETURN(0)
+!endif
      call ESMF_StateGet(SRC, name, srcField, rc=status)
      VERIFY_(STATUS)
      call ESMF_StateGet(DST, name, dstField, rc=status)
