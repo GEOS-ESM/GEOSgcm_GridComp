@@ -833,26 +833,26 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser data DQVDTmic=DQVDTmic DQLDTmic=DQLDTmic DQRDTmic=DQRDTmic DQIDTmic=DQIDTmic
          !$ser data DQSDTmic=DQSDTmic DQGDTmic=DQGDTmic DQADTmic=DQADTmic DTDTmic=DTDTmic
          !$ser data T=T W=W U=U V=V DUDTmic=DUDTmic DVDTmic=DVDTmic DZ=DZ DP=DP
-         !$ser data AREA=AREA DT_MOIST=DT_MOIST FRLAND=FRLAND CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE EIS=EIS
+         !$ser data AREA=AREA FRLAND=FRLAND CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE EIS=EIS
          !$ser data RHCRIT3D=RHCRIT3D ANV_ICEFALL=ANV_ICEFALL LS_ICEFALL=LS_ICEFALL
          !$ser data REV_LS=REV_LS RSU_LS=RSU_LS
          !$ser data PRCP_RAIN=PRCP_RAIN PRCP_SNOW=PRCP_SNOW PRCP_ICE=PRCP_ICE PRCP_GRAUPEL=PRCP_GRAUPEL
          !$ser data PFL_LS=PFL_LS(:,:,1:LM) PFI_LS=PFI_LS(:,:,1:LM)
-         !$ser data LHYDROSTATIC=LHYDROSTATIC LPHYS_HYDROSTATIC=LPHYS_HYDROSTATIC
-         !$ser data_writeonly KTOP=1 KBOT=LM
-         !!!!! namelist variables, must be serialize to check if ported code path is available and adjust constants
-         !$ser data mp_time=mp_time t_min=t_min t_sub=t_sub tau_r2g=tau_r2g tau_smlt=tau_smlt tau_g2r=tau_g2r dw_land=dw_land dw_ocean=dw_ocean
-         !$ser data vi_fac=vi_fac vr_fac=vr_fac vs_fac=vs_fac vg_fac=vg_fac ql_mlt=ql_mlt do_qa=do_qa fix_negative=fix_negative vi_max=vi_max
-         !$ser data vs_max=vs_max vg_max=vg_max vr_max=vr_max qs_mlt=qs_mlt qs0_crt=qs0_crt qi_gen=qi_gen ql0_max=ql0_max qi0_max=qi0_max
-         !$ser data qi0_crt=qi0_crt qr0_crt=qr0_crt fast_sat_adj=fast_sat_adj rh_inc=rh_inc rh_ins=rh_ins rh_inr=rh_inr const_vi=const_vi
-         !$ser data const_vs=const_vs const_vg=const_vg const_vr=const_vr use_ccn=use_ccn rthreshu=rthreshu rthreshs=rthreshs ccn_l=ccn_l ccn_o=ccn_o qc_crt=qc_crt
-         !$ser data tau_g2v=tau_g2v tau_v2g=tau_v2g tau_s2v=tau_s2v tau_v2s=tau_v2s
-         !$ser data tau_revp=tau_revp tau_frz=tau_frz do_bigg=do_bigg do_evap=do_evap do_subl=do_subl
-         !$ser data sat_adj0=sat_adj0 c_piacr=c_piacr tau_imlt=tau_imlt tau_v2l=tau_v2l tau_l2v=tau_l2v tau_i2v=tau_i2v
-         !$ser data tau_i2s=tau_i2s tau_l2r=tau_l2r qi_lim=qi_lim ql_gen=ql_gen c_paut=c_paut c_psaci=c_psaci c_pgacs=c_pgacs c_pgaci=c_pgaci
-         !$ser data z_slope_liq=z_slope_liq z_slope_ice=z_slope_ice prog_ccn=prog_ccn c_cracw=c_cracw alin=alin clin=clin
-         !$ser data preciprad=preciprad cld_min=cld_min use_ppm=use_ppm mono_prof=mono_prof
-         !$ser data do_sedi_heat=do_sedi_heat sedi_transport=sedi_transport do_sedi_w=do_sedi_w de_ice=de_ice icloud_f=icloud_f irain_f=irain_f mp_print=mp_print
+         
+         !$ser savepoint GFDL_1M_driver-constants
+         !$ser data HYDROSTATIC=LHYDROSTATIC PHYS_HYDROSTATIC=LPHYS_HYDROSTATIC DT_MOIST=DT_MOIST
+         !$ser data MP_TIME=MP_TIME T_MIN=T_MIN T_SUB=T_SUB TAU_R2G=TAU_R2G TAU_SMLT=TAU_SMLT TAU_G2R=TAU_G2R DW_LAND=DW_LAND DW_OCEAN=DW_OCEAN
+         !$ser data VI_FAC=VI_FAC VR_FAC=VR_FAC VS_FAC=VS_FAC VG_FAC=VG_FAC QL_MLT=QL_MLT DO_QA=DO_QA FIX_NEGATIVE=FIX_NEGATIVE VI_MAX=VI_MAX
+         !$ser data VS_MAX=VS_MAX VG_MAX=VG_MAX VR_MAX=VR_MAX QS_MLT=QS_MLT QS0_CRT=QS0_CRT QI_GEN=QI_GEN QL0_MAX=QL0_MAX QI0_MAX=QI0_MAX
+         !$ser data QI0_CRT=QI0_CRT QR0_CRT=QR0_CRT FAST_SAT_ADJ=FAST_SAT_ADJ RH_INC=RH_INC RH_INS=RH_INS RH_INR=RH_INR CONST_VI=CONST_VI
+         !$ser data CONST_VS=CONST_VS CONST_VG=CONST_VG CONST_VR=CONST_VR USE_CCN=USE_CCN RTHRESHU=RTHRESHU RTHRESHS=RTHRESHS CCN_L=CCN_L CCN_O=CCN_O QC_CRT=QC_CRT
+         !$ser data TAU_G2V=TAU_G2V TAU_V2G=TAU_V2G TAU_S2V=TAU_S2V TAU_V2S=TAU_V2S
+         !$ser data TAU_REVP=TAU_REVP TAU_FRZ=TAU_FRZ DO_BIGG=DO_BIGG DO_EVAP=DO_EVAP DO_SUBL=DO_SUBL
+         !$ser data SAT_ADJ0=SAT_ADJ0 C_PIACR=C_PIACR TAU_IMLT=TAU_IMLT TAU_V2L=TAU_V2L TAU_L2V=TAU_L2V TAU_I2V=TAU_I2V
+         !$ser data TAU_I2S=TAU_I2S TAU_L2R=TAU_L2R QI_LIM=QI_LIM QL_GEN=QL_GEN C_PAUT=C_PAUT C_PSACI=C_PSACI C_PGACS=C_PGACS C_PGACI=C_PGACI
+         !$ser data Z_SLOPE_LIQ=Z_SLOPE_LIQ Z_SLOPE_ICE=Z_SLOPE_ICE PROG_CCN=PROG_CCN C_CRACW=C_CRACW ALIN=ALIN CLIN=CLIN
+         !$ser data PRECIPRAD=PRECIPRAD CLD_MIN=CLD_MIN USE_PPM=USE_PPM MONO_PROF=MONO_PROF
+         !$ser data DO_SEDI_HEAT=DO_SEDI_HEAT SEDI_TRANSPORT=SEDI_TRANSPORT DO_SEDI_W=DO_SEDI_W DE_ICE=DE_ICE ICLOUD_F=ICLOUD_F IRAIN_F=IRAIN_F MP_PRINT=MP_PRINT
          !$ser verbatim call ser_set_Dx(IM, JM, LM, 1)
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
