@@ -259,7 +259,14 @@ contains
              SHORT_NAME    = 'EF',                                   &
              CHILD_ID      = WW3GC,                  __RC__)
  
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME    = 'UUSSP',                                &
+             CHILD_ID      = WW3GC,                  __RC__)
 
+        call MAPL_AddExportSpec(GC,                                  &
+             SHORT_NAME    = 'VUSSP',                                &
+             CHILD_ID      = WW3GC,                  __RC__)
+ 
 ! Set the Profiling timers
 ! ------------------------
 

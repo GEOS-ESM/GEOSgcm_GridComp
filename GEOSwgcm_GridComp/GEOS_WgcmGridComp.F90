@@ -386,10 +386,16 @@ contains
             SHORT_NAME     = 'EF',                                   &
             CHILD_ID       = WM,                     __RC__)
 
+        call MAPL_AddExportSpec(GC,                                  &
+            SHORT_NAME     = 'UUSSP',                                &
+            CHILD_ID       = WM,                     __RC__)
 
-        !
+        call MAPL_AddExportSpec(GC,                                  &
+            SHORT_NAME     = 'VUSSP',                                &
+            CHILD_ID       = WM,                     __RC__)
+
+
         ! Sea spray diagnostics
-        !
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'EDFP',                                 &
             LONG_NAME      = 'wave_energy_dissipation_flux_parameterized', &
