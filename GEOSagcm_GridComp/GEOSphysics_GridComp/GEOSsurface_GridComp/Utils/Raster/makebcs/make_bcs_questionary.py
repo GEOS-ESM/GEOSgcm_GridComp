@@ -43,6 +43,8 @@ def get_configs_from_answers(answers):
    else:
       make_bcs_input_dir = '/nobackup/gmao_SIteam/ModelData/make_bcs_inputs/'
 
+   bcs_dir ='/discover/nobackup/projects/gmao/bcs_shared/fvInput/ExtData/esm/tiles/'
+
    user   = get_user()
    expdir = answers["out_path"]
    now    = datetime.now()
@@ -148,6 +150,7 @@ def get_configs_from_answers(answers):
         config ['expdir']    = expdir
         config ['outdir']    = outdir
         config ['inputdir']  = make_bcs_input_dir
+        config ['bcs_dir']   = bcs_dir
         config ['NCPUS'] = 16
 
         for x in answers.get('Stretched_CS',[]):
