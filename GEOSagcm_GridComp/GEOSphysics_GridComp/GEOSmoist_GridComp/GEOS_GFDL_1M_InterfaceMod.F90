@@ -15,8 +15,8 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
-  use gfdl2_cloud_microphys_mod
-  use gfdl_mp_mod
+  use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
+  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail
 
   implicit none
 
@@ -640,7 +640,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! Do CLOUD MACRO below the pressure lid
              if (L >= KLID) then
              ! Put condensates in touch with the PDF
-             if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP
                call hystpdf( &
                       DT_MOIST       , &
                       ALPHA          , &
@@ -674,7 +673,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       WQL(I,J,L)     , &
                       .false.        , &
                       USE_BERGERON)
-             endif
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
              if (LMELTFRZ) then
            ! meltfrz new condensates
@@ -802,12 +800,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = QGRAUPEL
         ! Run the driver
          if (GFDL_MP3) then
-#ifdef SRC
-subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, & 
-        ua, va, delz, delp, dtm, rhcrit, hs, cnv_frc, eis, area, srf_type,    &
-        water, rain, ice, snow, graupel, hydrostatic, is, ie, ks, ke, &
-        prefluxw, prefluxr, prefluxi, prefluxs, prefluxg)
-#endif
          call gfdl_mp_driver( &
                              ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTL, NACTI, &
