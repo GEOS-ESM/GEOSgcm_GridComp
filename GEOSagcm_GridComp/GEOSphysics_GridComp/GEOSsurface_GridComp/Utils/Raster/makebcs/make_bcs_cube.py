@@ -41,9 +41,12 @@ if( {TRIPOL_OCEAN} == True ) then
     bin/CombineRasters.x -f 0 -t {NT} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
     bin/mk_runofftbl.x -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
-    setenv OMP_NUM_THREADS {NCPUS}
-    if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
-    setenv OMP_NUM_THREADS 1
+
+    if ({SKIPLAND} != True) then
+      bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv} -p no
+      bin/ExtractBCsFromOrig.py {BCS_DIR}  {lbcsv} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}
+    endif
+ 
     chmod 755 bin/create_README.csh
     bin/create_README.csh
 endif
@@ -144,6 +147,7 @@ def make_bcs_cube(config):
            SCRATCH_DIR = scratch_dir, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
+           BCS_DIR  = config['bcs_dir'], \
            DATENAME = DATENAME, \
            POLENAME = POLENAME, \
            OCEAN_VERSION = OCEAN_VERSION, \
