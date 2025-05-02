@@ -55,6 +55,7 @@ file(GLOB MAKE_BCS_PYTHON CONFIGURE_DEPENDS "./make_bcs*.py")
 list(FILTER MAKE_BCS_PYTHON EXCLUDE REGEX "make_bcs_shared.py")
 install(PROGRAMS ${MAKE_BCS_PYTHON} DESTINATION bin)
 install(PROGRAMS TileFile_ASCII_to_nc4.py DESTINATION bin)
+install(PROGRAMS ExtractBCsFromOrig.py DESTINATION bin)
 
 set(file ./make_bcs_shared.py)
 configure_file(${file} ${file} @ONLY)
