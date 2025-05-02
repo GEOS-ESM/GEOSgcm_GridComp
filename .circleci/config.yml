@@ -1,7 +1,7 @@
 version: 2.1
 
 # Anchors in case we need to override the defaults from the orb
-#baselibs_version: &baselibs_version v8.5.0
+#baselibs_version: &baselibs_version v8.14.0
 #bcs_version: &bcs_version v12.0.0
 
 orbs:
