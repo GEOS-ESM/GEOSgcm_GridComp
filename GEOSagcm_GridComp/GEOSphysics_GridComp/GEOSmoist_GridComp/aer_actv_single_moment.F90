@@ -64,7 +64,7 @@ CONTAINS
 
       integer :: n_modes
       REAL :: numbinit(IM,JM)
-      integer :: k,n
+      integer :: i,j,k,n
       integer :: nn
 
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
@@ -207,30 +207,48 @@ CONTAINS
               ,wupdraft(1,1)     &
               ,    nact(1,1,1)   &
               )
-         numbinit = 0.
+         numbinit(:,:) = 0.
          NACTL(:,:,k) = 0.
          DO n=1,n_modes
-            where (AeroPropsNew(n)%kap(:,:,k) > 0.4)
-               numbinit = numbinit + AeroPropsNew(n)%num(:,:,k)
-               NACTL(:,:,k)= NACTL(:,:,k) + nact(:,:,n) !#/m3
-            end where
+           DO j = 1, JM
+             DO i = 1, IM
+               if (AeroPropsNew(n)%kap(i,j,k) > 0.4) then
+                  numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k)
+                  NACTL(i,j,k)= NACTL(i,j,k) + nact(i,j,n) !#/m3
+               endif
+             ENDDO
+           ENDDO
          ENDDO
          numbinit = numbinit * air_den ! #/m3
-         NACTL(:,:,k) = MIN(NACTL(:,:,k),0.99*numbinit)
-         NACTL(:,:,k) = MAX(MIN(NACTL(:,:,k),NN_MAX),NN_MIN)
+         DO j = 1, JM
+           DO i = 1, IM
+              numbinit(i,j) = max(numbinit(i,j),0.0)
+              NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit(i,j))
+              NACTL(i,j,k) = MAX(MIN(NACTL(i,j,k),NN_MAX),NN_MIN)
+           ENDDO
+         ENDDO
 
          ! Ice Clouds
-         numbinit = 0.
+         numbinit(:,:) = 0.
          DO n=1,n_modes
-            where ( (AeroPropsNew(n)%dpg(:,:,k) .ge. 0.5e-6) .and. & ! diameters > 0.5 microns
-                 (AeroPropsNew(n)%kap(:,:,k) .gt. 0.4) )
-               numbinit = numbinit + AeroPropsNew(n)%num(:,:,k)
-            end where
+           DO j = 1, JM
+             DO i = 1, IM
+               if ( (AeroPropsNew(n)%kap(i,j,k) > 0.4) .and. &
+                    (AeroPropsNew(n)%dpg(i,j,k) .ge. 0.5e-6) ) then
+                  numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k)
+               endif 
+             ENDDO
+           ENDDO
          ENDDO
          numbinit = numbinit * air_den ! #/m3
-         ! Number of activated IN following deMott (2010) [#/m3]
-         NACTI(:,:,k) = (ai*(max(0.0,(MAPL_TICE-tk))**bi)) * (numbinit**(ci*max((MAPL_TICE-tk),0.0)+di)) !#/m3
-         NACTI(:,:,k) = MAX(MIN(NACTI(:,:,k),NN_MAX),NN_MIN)
+         DO j = 1, JM
+           DO i = 1, IM
+             numbinit(i,j) = max(numbinit(i,j),0.0)
+             ! Number of activated IN following deMott (2010) [#/m3]
+             NACTI(i,j,k) = (ai*(max(0.0,(MAPL_TICE-tk(i,j)))**bi)) * (numbinit(i,j)**(ci*max((MAPL_TICE-tk(i,j)),0.0)+di)) !#/m3
+             NACTI(i,j,k) = MAX(MIN(NACTI(i,j,k),NN_MAX),NN_MIN)
+           ENDDO
+         ENDDO
 
       ENDDO
 
@@ -344,9 +362,9 @@ CONTAINS
       real(AER_PR)            :: zeta(im)                           ! model parameter [1]
       real(AER_PR)            :: xlogsigm(im,nmodes)               ! ln(sigmag) [1]
       real(AER_PR)            :: a(im)                              ! [m]
-      real(AER_PR)            :: g(im)                              ! [m^2/s]   
-      real(AER_PR)            :: rdrp(im)                           ! [m]   
-      real(AER_PR)            :: f1                                 ! [1]   
+      real(AER_PR)            :: g(im)                              ! [m^2/s]
+      real(AER_PR)            :: rdrp(im)                           ! [m]
+      real(AER_PR)            :: f1                                 ! [1]
       real(AER_PR)            :: f2                                 ! [1]
       real(AER_PR)            :: alpha(im)                          ! [1/m]
       real(AER_PR)            :: gamma(im)                          ! [m^3/kg]
@@ -382,9 +400,9 @@ CONTAINS
       alpha = (gravity/(rgasjmol*tkelvin))*((wmolmass*heatvap)/(cpair*tkelvin) - amolmass)    ! [1/m]
       gamma = (rgasjmol*tkelvin)/(wpe*wmolmass) &
            + (wmolmass*heatvap*heatvap)/(cpair*ptot*amolmass*tkelvin)                        ! [m^3/kg]
-      where (wupdraft > 0.0)     
-        dum = sqrt(alpha*wupdraft/g)                  ! [1/m] 
-        zeta = 2.*a*dum/3.                    ! [1] 
+      where (wupdraft > 0.0)
+        dum = sqrt(alpha*wupdraft/g)                  ! [1/m]
+        zeta = 2.*a*dum/3.                    ! [1]
       else where
         dum = 0.0
         zeta = 0.0

@@ -316,7 +316,7 @@ module gfdl_mp_mod
     logical :: do_evap_timescale = .true. ! whether to apply a timescale to evaporation
     logical :: do_cond_timescale = .true. ! whether to apply a timescale to condensation
 
-    logical :: do_hail = .true. ! use hail parameters instead of graupel
+    logical :: do_hail = .false. ! use hail parameters instead of graupel
 
     logical :: consv_checker = .false. ! turn on energy and water conservation checker
 
