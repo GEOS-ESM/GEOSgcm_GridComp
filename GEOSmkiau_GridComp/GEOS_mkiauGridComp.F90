@@ -237,7 +237,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-#ifdef HAS_PYMLINC
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'QLTOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
@@ -282,7 +281,6 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-#endif
 
     if( BLEND_AT_PBL ) then
     call MAPL_AddImportSpec(GC,                                        &
@@ -324,7 +322,6 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
-#ifdef HAS_PYMLINC
     call MAPL_AddExportSpec ( gc, &
          SHORT_NAME = 'DTDT_ML', &
          LONG_NAME  = 'ml_computed_temperature_analysis_increment', &
@@ -332,7 +329,6 @@ contains
          DIMS       = MAPL_DimsHorzVert, &
          VLOCATION  = MAPL_VLocationCenter, &
          _RC)
-#endif
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DPEDT',                                     &
