@@ -47,20 +47,24 @@ def QSat_Float_Liquid(
     PL: Float = -999.0,
     DQ_trigger: bool = False,
 ):
-    DQ = 0.0
+    QS = 0
+    DQ = 0
     # qsatlqu.code with UTBL = True
     if TL <= TMINLQU:
         QS = estlqu
         if DQ_trigger:
             DDQ = 0.0
     elif TL >= TMAXTBL:
-        QS = esw[0][TABLESIZE - 1]  # type: ignore
+        TABLESIZE_MINUS_1: i32 = TABLESIZE - 1
+        QS = esw[0][TABLESIZE_MINUS_1]  # type: ignore
         if DQ_trigger:
             DDQ = 0.0
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
         IT = i32(TT)
-        IT_MINUS_1 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        IT_MINUS_1: i32 = (
+            IT - 1
+        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
         DDQ = esw[0][IT] - esw[0][IT_MINUS_1]  # type: ignore
         QS = (TT - IT) * DDQ + esw[0][IT_MINUS_1]  # type: ignore
 
@@ -102,7 +106,9 @@ def QSat_Float_Ice(
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
         IT = i32(floor(TT))
-        IT_MINUS_1 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        IT_MINUS_1: i32 = (
+            IT - 1
+        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
         DDQ = ese[0][IT] - ese[0][IT_MINUS_1]  # type: ignore
         QS = (TT - IT) * DDQ + ese[0][IT_MINUS_1]  # type: ignore
 
@@ -213,7 +219,9 @@ def QSat_FloatField(
 
         TI = (TI - TMINTBL) * DEGSUBS + 1
         IT = i32(floor(TI))
-        IT_MINUS_1 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        IT_MINUS_1: i32 = (
+            IT - 1
+        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
 
         if URAMP == TMIX:
             DQ = esx[0][IT] - esx[0][IT_MINUS_1]  # type: ignore

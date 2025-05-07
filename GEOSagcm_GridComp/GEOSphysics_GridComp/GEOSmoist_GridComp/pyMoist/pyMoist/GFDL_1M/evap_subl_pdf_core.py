@@ -475,9 +475,9 @@ def evaporate(
         )  # (100's <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.MAPL_LATENT_HEAT_VAPORIZATION ** 2)
+            (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
             * constants.RHO_W
-            / (constants.K_COND * constants.MAPL_RVAP * (T ** 2))
+            / (constants.K_COND * constants.MAPL_RVAP * (T**2))
         )
         K2 = constants.MAPL_RVAP * T * constants.RHO_W / (constants.DIFFU * (1000.0 / PLmb) * ES)
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
@@ -488,7 +488,7 @@ def evaporate(
             QCm = 0.0
         RADIUS = cloud_effective_radius_liquid(PLmb, T, QCm, NACTL, NACTI)
         if RHx < RHCRIT and RADIUS > 0.0:
-            EVAP = CCW_EVAP_EFF * QLCN * DT_MOIST * (RHCRIT - RHx) / ((K1 + K2) * RADIUS ** 2)
+            EVAP = CCW_EVAP_EFF * QLCN * DT_MOIST * (RHCRIT - RHx) / ((K1 + K2) * RADIUS**2)
             EVAP = min(EVAP, QLCN)
         else:
             EVAP = 0.0
@@ -525,9 +525,9 @@ def sublimate(
         )  # (100s <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.MAPL_LATENT_HEAT_VAPORIZATION ** 2)
+            (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
             * constants.RHO_I
-            / (constants.K_COND * constants.MAPL_RVAP * (T ** 2))
+            / (constants.K_COND * constants.MAPL_RVAP * (T**2))
         )
         K2 = constants.MAPL_RVAP * T * constants.RHO_I / (constants.DIFFU * (1000.0 / PLmb) * ES)
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
@@ -538,7 +538,7 @@ def sublimate(
             QCm = 0.0
         radius = cloud_effective_radius_ice(PLmb, T, QCm, NACTL, NACTI)
         if RHx < RHCRIT and radius > 0.0:
-            SUBL = CCI_EVAP_EFF * QICN * DT_MOIST * (RHCRIT - RHx) / ((K1 + K2) * radius ** 2)
+            SUBL = CCI_EVAP_EFF * QICN * DT_MOIST * (RHCRIT - RHx) / ((K1 + K2) * radius**2)
             SUBL = min(SUBL, QICN)
         else:
             SUBL = 0.0
