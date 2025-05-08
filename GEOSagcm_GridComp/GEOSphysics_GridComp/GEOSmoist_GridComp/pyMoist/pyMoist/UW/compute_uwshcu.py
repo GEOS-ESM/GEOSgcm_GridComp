@@ -31,6 +31,8 @@ from ndsl import StencilFactory, QuantityFactory, Quantity
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
 from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
 from pyMoist.saturation.formulation import SaturationFormulation
+from pyMoist.UW.config import UWConfiguration
+from pyMoist.UW.temporaries import Temporaries
 import pyMoist.constants as constants
 from pyMoist.UW.uwshcu_functions import (
     slope,
@@ -51,7 +53,6 @@ import numpy as np
 def compute_uwshcu_invert_before(
     # Inputs
     k0: Int,
-    ncnst: Int,
     pmid0_inv: FloatField,
     u0_inv: FloatField,
     v0_inv: FloatField,
@@ -89,10 +90,11 @@ def compute_uwshcu_invert_before(
     kpbl_in: IntFieldIJ,
     cnvtrmax: FloatFieldIJ,
 ):
+    from __externals__ import k_end, ncnst
 
     with computation(PARALLEL), interval(...):
         # Flip mid-level variables
-        k_inv = 71 - THIS_K
+        k_inv = k_end - THIS_K
         pmid0_in = pmid0_inv.at(K=k_inv)
         u0_in = u0_inv.at(K=k_inv)
         v0_in = v0_inv.at(K=k_inv)
@@ -137,7 +139,6 @@ def compute_uwshcu_invert_before(
 
 
 def compute_thermodynamic_variables(
-    ncnst: Int,
     pmid0_in: FloatField,
     zmid0_in: FloatField,
     exnmid0_in: FloatField,
@@ -168,7 +169,7 @@ def compute_thermodynamic_variables(
     ssthl0: FloatField,
     ssqt0: FloatField,
     thl0: FloatField,
-    dotransport: Float,
+    dotransport: Int,
     ssu0: FloatField,
     ssv0: FloatField,
     tscaleh: FloatFieldIJ,
@@ -177,6 +178,8 @@ def compute_thermodynamic_variables(
     tpert_out: FloatFieldIJ,
     qpert_out: FloatFieldIJ,
 ):
+    from __externals__ import ncnst
+
     """
     University of Washington Shallow Convection Scheme
 
@@ -187,9 +190,11 @@ def compute_thermodynamic_variables(
     simulations with the Community Atmosphere Model'
     Coded in CESM by Sungsu Park. Oct.2005. May.2008.
     Coded in GEOS by Nathan Arnold. July 2016.
+    NDSL Port by Katrina Fandrich. May 2025.
     For general questions, email sungsup@ucar.edu or
     sungsu@atmos.washington.edu
     For GEOS-specific questions, email nathan.arnold@nasa.gov
+    For NDSL-specific questions, email katrina.fandrich@nasa.gov
     """
 
     with computation(FORWARD), interval(...):
@@ -238,7 +243,7 @@ def compute_thermodynamic_variables(
             - ((constants.MAPL_ALHS * qi0) / constants.MAPL_CP)
         ) / exnmid0
 
-        if dotransport == 1.0:
+        if dotransport == 1:
             n = 0
             # Loop over tracers
             while n < ncnst:
@@ -260,7 +265,7 @@ def compute_thermodynamic_variables(
             v0, v0[0, 0, 1], v0[0, 0, 1], pmid0, pmid0[0, 0, 1], pmid0[0, 0, 1]
         )
 
-        if dotransport == 1.0:
+        if dotransport == 1:
             n = 0
             while n < ncnst:
                 sstr0[0, 0, 0][n] = slope(
@@ -288,7 +293,7 @@ def compute_thermodynamic_variables(
             v0, v0[0, 0, 1], v0[0, 0, -1], pmid0, pmid0[0, 0, 1], pmid0[0, 0, -1]
         )
 
-        if dotransport == 1.0:
+        if dotransport == 1:
             n = 0
             while n < ncnst:
                 sstr0[0, 0, 0][n] = slope(
@@ -322,7 +327,7 @@ def compute_thermodynamic_variables(
         )
 
         # Calculate slope for each tracer by hand
-        if dotransport == 1.0:
+        if dotransport == 1:
             n = 0
             while n < ncnst:
                 sstr0[0, 0, 0][n] = slope(
@@ -357,9 +362,8 @@ def compute_thv0_thvl0(
     u0_in: FloatField,
     v0_in: FloatField,
     k0: Int,
-    id_exit: BoolFieldIJ,
-    dotransport: Float,
-    ncnst: Int,
+    condensation: BoolFieldIJ,
+    dotransport: Int,
     ssu0: FloatField,
     ssv0: FloatField,
     tr0: FloatField_NTracers,
@@ -433,6 +437,7 @@ def compute_thv0_thvl0(
     ssv0_o: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    from __externals__ import ncnst
 
     with computation(PARALLEL), interval(...):
         # Compute interval environmental variables
@@ -441,7 +446,7 @@ def compute_thv0_thvl0(
         qv0 = qv0_in
         ql0 = ql0_in
         qi0 = qi0_in
-        qt0: f32 = f32(qv0) + f32(ql0) + f32(qi0)
+        qt0 = qv0 + ql0 + qi0
         t0 = th0_in * exnmid0
         s0 = constants.MAPL_GRAV * zmid0 + constants.MAPL_CP * t0
         thl0 = (
@@ -460,7 +465,9 @@ def compute_thv0_thvl0(
 
     with computation(FORWARD), interval(...):
         if id_check == 1:
-            id_exit = True
+            condensation = (
+                True  # Indicates if condensation has occurred (e.g., Fortran go to 333)
+            )
             umf_out[0, 0, 1] = 0.0
             dcm_out = 0.0
             qvten_out = 0.0
@@ -483,7 +490,7 @@ def compute_thv0_thvl0(
             fdr_out = constants.MAPL_UNDEF
 
     with computation(PARALLEL), interval(...):
-        if id_exit == False:
+        if condensation == False:
             thv0bot = thj * (1.0 + zvir * qvj - qlj - qij)
             thvl0bot = thl0bot * (1.0 + zvir * qt0bot)
 
@@ -491,15 +498,15 @@ def compute_thv0_thvl0(
             qt0top = qt0 + ssqt0 * (pifc0_in[0, 0, 1] - pmid0)
 
     with computation(PARALLEL), interval(0, -1):
-        if id_exit == False:
+        if condensation == False:
             thj, qvj, qlj, qij, qse, id_check = conden(
                 pifc0_in[0, 0, 1], thl0top, qt0top, ese, esx
             )
 
     with computation(FORWARD), interval(0, -1):
-        if id_exit == False:
+        if condensation == False:
             if id_check == 1:
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -522,17 +529,17 @@ def compute_thv0_thvl0(
                 fdr_out = constants.MAPL_UNDEF
 
     with computation(PARALLEL), interval(0, -1):
-        if id_exit == False:
+        if condensation == False:
             thv0top = thj * (1.0 + zvir * qvj - qlj - qij)
             thvl0top = thl0top * (1.0 + zvir * qt0top)
 
     with computation(PARALLEL), interval(-1, None):
-        if id_exit == False:
+        if condensation == False:
             thv0top = thv0bot
             thvl0top = thvl0bot
 
     with computation(PARALLEL), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Save input and related environmental thermodynamic variables
             # for use at "iter_cin=2" when "del_CIN >= 0"
             qv0_o = qv0
@@ -554,7 +561,7 @@ def compute_thv0_thvl0(
             ssu0_o = ssu0
             ssv0_o = ssv0
 
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     tr0_o[0, 0, 0][n] = tr0[0, 0, 0][n]
@@ -562,7 +569,7 @@ def compute_thv0_thvl0(
                     n += 1
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Initialize output variables at each grid point
             umf_zint[0, 0, 1] = 0.0
             dcm = 0.0
@@ -608,7 +615,6 @@ def compute_thv0_thvl0(
             uu = constants.MAPL_UNDEF
             vu[0, 0, 1] = constants.MAPL_UNDEF
             vu = constants.MAPL_UNDEF
-            # wu[0, 0, 1] = 0.0
             wu[0, 0, 1] = constants.MAPL_UNDEF
             thvu[0, 0, 1] = constants.MAPL_UNDEF
             thlu_emf[0, 0, 1] = constants.MAPL_UNDEF
@@ -634,7 +640,7 @@ def compute_thv0_thvl0(
             qlten_det = 0.0
             qiten_det = 0.0
 
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     trflx[0, 0, 1][n] = 0.0
@@ -648,7 +654,7 @@ def find_pbl_height(
     iteration: i32,
     kpbl_in: IntFieldIJ,
     k0: Int,
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -660,12 +666,12 @@ def find_pbl_height(
     tscaleh: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
-            if iteration != i32(1):
+        if condensation == False:
+            if iteration != i32(0):
                 tscaleh = cush
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             """
             Cumulus scale height
             In contrast to the premitive code, cumulus scale height is iteratively
@@ -704,7 +710,7 @@ def find_pbl_height(
                 kinv = 5
 
             if kinv <= i64(1):
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -726,9 +732,9 @@ def find_pbl_height(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
                 if kinv >= i64(k0 / 4):
-                    id_exit = True
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -752,7 +758,7 @@ def find_pbl_height(
 
 
 def find_pbl_averages(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     thvl0bot: FloatField,
     thvl0top: FloatField,
     kinv: IntField,
@@ -773,7 +779,7 @@ def find_pbl_averages(
     iteration: i32,
 ):
     with computation(FORWARD), interval(0, 1):
-        if id_exit == False:
+        if condensation == False:
             thvlmin = 1000.0
             thvlmin = min(
                 thvlmin,
@@ -781,7 +787,7 @@ def find_pbl_averages(
             )
 
     with computation(FORWARD), interval(1, None):
-        if id_exit == False:
+        if condensation == False:
             if i64(THIS_K) <= i64(kinv - 2):
                 thvlmin = min(
                     thvlmin[0, 0, -1],
@@ -789,7 +795,7 @@ def find_pbl_averages(
                 )
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
 
             """
             Find PBL averaged tke ('tkeavg') and minimum 'thvl' ('thvlmin') in the PBL
@@ -841,7 +847,7 @@ def find_pbl_averages(
 
 
 def find_cumulus_characteristics(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     windsrcavg: Int,
     pifc0: FloatField,
     t0: FloatField,
@@ -861,8 +867,7 @@ def find_cumulus_characteristics(
     ssu0: FloatField,
     ssv0: FloatField,
     pmid0: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     tr0: FloatField_NTracers,
     trsrc: FloatFieldIJ_NTracers,
     qtsrc: FloatField,
@@ -874,8 +879,10 @@ def find_cumulus_characteristics(
     qpert_out: FloatFieldIJ,
     iteration: i32,
 ):
+    from __externals__ import ncnst
+
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc
             # Note that 'thlsrc' was concocted using 'thvlsrc' and 'qtsrc'.
             # 'qtsrc' is defined as the lowest layer mid-point value;   'thlsrc'
@@ -922,7 +929,7 @@ def find_cumulus_characteristics(
                     pifc0.at(K=kbelow_zdim) - pmid0.at(K=kbelow)
                 )
 
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     trsrc[0, 0][n] = tr0.at(K=0, ddim=[n])
@@ -930,7 +937,7 @@ def find_cumulus_characteristics(
 
 
 def find_klcl(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     pifc0: FloatField,
     umf_out: FloatField,
     qtflx_out: FloatField,
@@ -955,7 +962,7 @@ def find_klcl(
     cush_inout: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             """
             Find LCL of the source air and a layer index containing LCL (klcl)
             When the LCL is exactly at the interface, 'klcl' is a layer index
@@ -971,7 +978,7 @@ def find_klcl(
             set to 1.
             """
             if pifc0.at(K=0) < 70000 or pifc0.at(K=0) > 115000.0:
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -993,9 +1000,9 @@ def find_klcl(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
                 if qtsrc > 0.1 or qtsrc < 1e-8:
-                    id_exit = True
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1017,9 +1024,9 @@ def find_klcl(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
                 if thlsrc > 400.0 or thlsrc < 100.0:
-                    id_exit = True
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1041,7 +1048,7 @@ def find_klcl(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
                 plcl = qsinvert(qtsrc, thlsrc, pifc0.at(K=0), ese, esx)
 
                 lev = 0
@@ -1056,11 +1063,11 @@ def find_klcl(
                 if klcl_flag == 0.0:
                     klcl = 0
 
-                klcl = max(1, klcl)
+                klcl = max(0, klcl)
                 klcl = klcl - 1  # Adjust klcl by 1
 
                 if plcl < 60000.0:
-                    id_exit = True
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1081,7 +1088,7 @@ def find_klcl(
                     vflx_out[0, 0, 1] = 0.0
                     fer_out = constants.MAPL_UNDEF
 
-                if id_exit == False:
+                if condensation == False:
                     """
                     Calculate environmental virtual potential temperature at LCL,
                     'thv0lcl' which is solely used in the 'cin' calculation. Note
@@ -1100,7 +1107,7 @@ def find_klcl(
                     )
 
                     if id_check == 1:
-                        id_exit = True
+                        condensation = True
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -1123,13 +1130,13 @@ def find_klcl(
                         fdr_out = constants.MAPL_UNDEF
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             thv0lcl = thj * (1.0 + zvir * qvj - qlj - qij)
 
 
 def compute_cin_cinlcl(
-    id_exit: BoolFieldIJ,
-    stop35: BoolFieldIJ,
+    condensation: BoolFieldIJ,
+    stop_cin: BoolFieldIJ,
     klcl: IntField,
     kinv: IntField,
     thvlsrc: FloatField,
@@ -1165,8 +1172,7 @@ def compute_cin_cinlcl(
     thvlmin: FloatField,
     usrc: FloatField,
     vsrc: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     trsrc: FloatFieldIJ_NTracers,
     trsrc_o: FloatFieldIJ_NTracers,
     cin_i: FloatFieldIJ,
@@ -1187,10 +1193,13 @@ def compute_cin_cinlcl(
     thv0lcl_o: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
-        if iteration != i32(1):
-            stop35 = False
+        if iteration != i32(0):
+            stop_cin = (
+                False  # Indicates if CIN calcuation is done (e.g., Fortran go to 35)
+            )
             cin_IJ = 0.0
             cinlcl_IJ = 0.0
             plfc_IJ = 0.0
@@ -1226,8 +1235,8 @@ def compute_cin_cinlcl(
         cin = 0.0
         cinlcl = 0.0
         plfc = 0.0
-        if id_exit == False and klcl >= kinv - 1 and stop35 == False:
-            if stop35 == False and THIS_K >= kinv - 1 and THIS_K < klcl:
+        if condensation == False and klcl >= kinv - 1 and stop_cin == False:
+            if stop_cin == False and THIS_K >= kinv - 1 and THIS_K < klcl:
                 thvubot = thvlsrc
                 thvutop = thvlsrc
                 cin = cin[0, 0, -1] + single_cin(
@@ -1239,7 +1248,7 @@ def compute_cin_cinlcl(
                     thvutop,
                 )
 
-            elif stop35 == False and THIS_K == klcl:
+            elif stop_cin == False and THIS_K == klcl:
                 # ----- Bottom to LCL
                 thvubot = thvlsrc
                 thvutop = thvlsrc
@@ -1255,7 +1264,6 @@ def compute_cin_cinlcl(
                 cin = cinlcl
 
                 # ----- LCL to Top
-                # thvubot = thvlsrc
                 (
                     thj,
                     qvj,
@@ -1272,7 +1280,7 @@ def compute_cin_cinlcl(
                 )
 
                 if id_check == 1:
-                    id_exit = True
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1294,7 +1302,7 @@ def compute_cin_cinlcl(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if id_exit == False:
+                if condensation == False:
                     thvutop = thj * (1.0 + zvir * qvj - qlj - qij)
 
                     plfc, cin = getbuoy(
@@ -1310,10 +1318,10 @@ def compute_cin_cinlcl(
 
                     if plfc > 0.0:
                         klfc = THIS_K
-                        stop35 = True
+                        stop_cin = True
 
             else:
-                if id_exit == False and THIS_K > klcl and stop35 == False:
+                if condensation == False and THIS_K > klcl and stop_cin == False:
                     thvubot = thvutop[0, 0, -1]
                     (
                         thj,
@@ -1331,7 +1339,7 @@ def compute_cin_cinlcl(
                     )
 
                     if id_check == 1:
-                        id_exit = True
+                        condensation = True
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -1353,7 +1361,7 @@ def compute_cin_cinlcl(
                         fer_out = constants.MAPL_UNDEF
                         fdr_out = constants.MAPL_UNDEF
 
-                    if id_exit == False and stop35 == False:
+                    if condensation == False and stop_cin == False:
                         thvutop = thj * (1.0 + zvir * qvj - qlj - qij)
                         plfc, cin = getbuoy(
                             pifc0,
@@ -1368,18 +1376,18 @@ def compute_cin_cinlcl(
 
                         if plfc > 0.0:
                             klfc = THIS_K
-                            stop35 = True
+                            stop_cin = True
 
     with computation(FORWARD), interval(1, -1):
         """
         Case 2. LCL height is lower than PBL interface ( 'pLCL > ps0(kinv-1)')
         """
-        if id_exit == False and klcl < kinv - 1 and stop35 == False:
+        if condensation == False and klcl < kinv - 1 and stop_cin == False:
             # cin = 0.0
             # cinlcl = 0.0
             # plfc = 0.0
 
-            if stop35 == False and THIS_K >= kinv - 1:
+            if stop_cin == False and THIS_K >= kinv - 1:
                 (
                     thj,
                     qvj,
@@ -1395,8 +1403,8 @@ def compute_cin_cinlcl(
                     esx,
                 )
 
-                if id_check == 1 and stop35 == False:
-                    id_exit = True
+                if id_check == 1 and stop_cin == False:
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1418,7 +1426,7 @@ def compute_cin_cinlcl(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if id_exit == False and stop35 == False:
+                if condensation == False and stop_cin == False:
                     thvubot = thj * (1.0 + zvir * qvj - qlj - qij)
                     (
                         thj,
@@ -1435,8 +1443,8 @@ def compute_cin_cinlcl(
                         esx,
                     )
 
-                if id_check == 1 and stop35 == False:
-                    id_exit = True
+                if id_check == 1 and stop_cin == False:
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1458,7 +1466,7 @@ def compute_cin_cinlcl(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if id_exit == False and stop35 == False:
+                if condensation == False and stop_cin == False:
                     thvutop = thj * (1.0 + zvir * qvj - qlj - qij)
 
                     plfc, cin = getbuoy(
@@ -1474,10 +1482,10 @@ def compute_cin_cinlcl(
 
                     if plfc > 0.0:
                         klfc = THIS_K
-                        stop35 = True
+                        stop_cin = True
 
     with computation(FORWARD), interval(1, None):
-        if id_exit == False:
+        if condensation == False:
             # Store cin, cinlcl, plfc, and klfc as 2D fields
             if cin == 0.0 and cin[0, 0, -1] != 0.0:
                 cin_IJ = cin[0, 0, -1]
@@ -1488,10 +1496,10 @@ def compute_cin_cinlcl(
                 klfc_IJ = klfc[0, 0, -1]
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             if klfc_IJ >= k0 - 1:
                 klfc_IJ = k0 - 1
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -1514,14 +1522,14 @@ def compute_cin_cinlcl(
                 fdr_out = constants.MAPL_UNDEF
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             """
             In order to calculate implicit 'cin' (or 'cinlcl'), save the initially
             calculated 'cin' and 'cinlcl', and other related variables. These will
             be restored after calculating implicit CIN.
             """
 
-            if iteration == i32(1):
+            if iteration == i32(0):
                 cin_i = cin_IJ
                 cinlcl_i = cinlcl_IJ
                 ke = rbuoy / (rkfre * tkeavg + epsvarw)
@@ -1539,7 +1547,7 @@ def compute_cin_cinlcl(
                 vsrc_o = vsrc
                 thv0lcl_o = thv0lcl
 
-                if dotransport == 1.0:
+                if dotransport == 1:
                     n = 0
                     while n < ncnst:
                         trsrc_o[0, 0][n] = trsrc[0, 0][n]
@@ -1547,7 +1555,7 @@ def compute_cin_cinlcl(
 
 
 def avg_initial_and_final_cin(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     iteration: i32,
     cin_IJ: FloatFieldIJ,
     cinlcl_IJ: FloatFieldIJ,
@@ -1555,8 +1563,7 @@ def avg_initial_and_final_cin(
     cin_i: FloatFieldIJ,
     cinlcl_i: FloatFieldIJ,
     ke: FloatFieldIJ,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     trsrc: FloatFieldIJ_NTracers,
     trsrc_o: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
@@ -1685,16 +1692,17 @@ def avg_initial_and_final_cin(
     fdr_out: FloatField,
     fer_out: FloatField,
 ):
+    from __externals__ import ncnst
 
     with computation(FORWARD), interval(1, None):
-        if iteration == i32(2):
-            if id_exit == False:
+        if iteration != i32(0):
+            if condensation == False:
                 if thvlmin_o == 0.0 and thvlmin_o[0, 0, -1] != 0.0:
                     thvlmin_IJ = thvlmin_o[0, 0, -1]
 
     with computation(FORWARD), interval(...):
-        if iteration == i32(2):
-            if id_exit == False:
+        if iteration != i32(0):
+            if condensation == False:
                 cin_f = cin_IJ
                 cinlcl_f = cinlcl_IJ
 
@@ -1704,8 +1712,8 @@ def avg_initial_and_final_cin(
                     del_CIN = cinlcl_f - cinlcl_i
 
     with computation(FORWARD), interval(...):
-        if iteration == i32(2):
-            if id_exit == False:
+        if iteration == i32(1):
+            if condensation == False:
                 """
                 Calculate implicit 'cin' by averaging initial and final cins.    Note that
                 implicit CIN is adopted only when cumulus convection stabilized the system,
@@ -1733,11 +1741,10 @@ def avg_initial_and_final_cin(
                     if use_CINcin == 1:
                         cinlcl_IJ = cinlcl_i
 
-                    #     """
-                    #     Restore the original values from the previous 'iter_cin' step (1)
-                    #     to compute correct tendencies for (n+1) time step by implicit CIN
-                    #     """
-
+                    """
+                    Restore the original values from the previous 'iter_cin' step (1)
+                    to compute correct tendencies for (n+1) time step by implicit CIN
+                    """
                     kinv = kinv_o
                     klcl = klcl_o
                     klfc = klfc_o
@@ -1752,7 +1759,7 @@ def avg_initial_and_final_cin(
                     vsrc = vsrc_o
                     thv0lcl = thv0lcl_o
 
-                    if dotransport == 1.0:
+                    if dotransport == 1:
                         n = 0
                         while n < ncnst:
                             trsrc[0, 0][n] = trsrc_o[0, 0][n]
@@ -1777,7 +1784,7 @@ def avg_initial_and_final_cin(
                     ssu0 = ssu0_o
                     ssv0 = ssv0_o
 
-                    if dotransport == 1.0:
+                    if dotransport == 1:
                         n = 0
                         while n < ncnst:
                             tr0[0, 0, 0][n] = tr0_o[0, 0, 0][n]
@@ -1785,11 +1792,10 @@ def avg_initial_and_final_cin(
 
                             n += 1
 
-                    #     """
-                    #     Initialize all fluxes, tendencies, and other variables
-                    #     in association with cumulus convection.
-                    #     """
-
+                    """
+                    Initialize all fluxes, tendencies, and other variables
+                    in association with cumulus convection.
+                    """
                     umf_zint[0, 0, 1] = 0.0
                     dcm = 0.0
                     emf[0, 0, 1] = 0.0
@@ -1839,7 +1845,7 @@ def avg_initial_and_final_cin(
                     uu_emf[0, 0, 1] = constants.MAPL_UNDEF
                     vu_emf[0, 0, 1] = constants.MAPL_UNDEF
 
-                    if dotransport == 1.0:
+                    if dotransport == 1:
                         n = 0
                         while n < ncnst:
                             trflx[0, 0, 1][n] = 0.0
@@ -1896,14 +1902,14 @@ def avg_initial_and_final_cin(
                     fdr_out = fdr_s
 
     with computation(FORWARD), interval(...):
-        if iteration == i32(2):
-            if id_exit == False:
+        if iteration == i32(1):
+            if condensation == False:
                 if del_CIN <= 0.0:
-                    id_exit = True  # Done computing at this column
+                    condensation = True  # Done computing at this column
 
 
 def define_prel_krel(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     iteration: i32,
     klcl: IntField,
     kinv: IntField,
@@ -1917,7 +1923,7 @@ def define_prel_krel(
     umf_out: FloatField,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             """
             Define a release level, 'prel' and release layer, 'krel'.
             'prel' is the lowest level from which buoyancy sorting occurs, and
@@ -1936,7 +1942,7 @@ def define_prel_krel(
             still have cumulus convection between PBL top height and 'prel':
             we simply assume that no lateral mixing occurs in this range.
             """
-            if iteration != i32(1):
+            if iteration != i32(0):
                 kinv = kinv + 1  # Adjust kinv
 
             if klcl < kinv - 1:
@@ -1950,7 +1956,7 @@ def define_prel_krel(
 
 
 def calc_cumulus_base_mass_flux(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     iteration: i32,
     use_CINcin: i32,
     cin_IJ: FloatFieldIJ,
@@ -1980,7 +1986,7 @@ def calc_cumulus_base_mass_flux(
     cush_inout: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             """
             ! Calculate cumulus base mass flux ('cbmf'), fractional area ('ufrcinv'), and !
             ! and mean vertical velocity (winv) of cumulus updraft at PBL top interface.  !
@@ -2038,7 +2044,7 @@ def calc_cumulus_base_mass_flux(
             mu = wcrit / sigmaw / 1.4142
 
             if mu >= 3.0:
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -2060,7 +2066,7 @@ def calc_cumulus_base_mass_flux(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
                 kbelow = kinv - 1
                 rho0inv = pifc0.at(K=kbelow) / (
                     constants.MAPL_RDRY
@@ -2094,7 +2100,7 @@ def calc_cumulus_base_mass_flux(
                     mu = max(mu, mumin2)
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             """
             Calculate final ['cbmf','ufrcinv','winv'] at the PBL top interface.
             Note that final 'cbmf' here is obtained in such that 'ufrcinv' and
@@ -2107,7 +2113,7 @@ def calc_cumulus_base_mass_flux(
 
 
 def define_updraft_properties(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     iteration: i32,
     winv: FloatField,
     cinlcl_IJ: FloatFieldIJ,
@@ -2139,7 +2145,7 @@ def define_updraft_properties(
     cush_inout: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             """
             Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top,
             it automatically becomes 'ufrclcl = ufrcinv' & 'wlcl = winv', since
@@ -2153,7 +2159,7 @@ def define_updraft_properties(
             wtw = (winv * winv) - (2.0 * cinlcl_IJ * rbuoy)
 
             if wtw <= 0.0:
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -2175,14 +2181,14 @@ def define_updraft_properties(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
 
                 wlcl = sqrt(wtw)
                 ufrclcl = cbmf / wlcl / rho0inv
                 wrel = wlcl
 
                 if ufrclcl <= 0.0001:
-                    id_exit = True
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -2204,12 +2210,12 @@ def define_updraft_properties(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if id_exit == False:
+                if condensation == False:
                     if THIS_K == (krel - 1):
                         ufrc[0, 0, 1] = ufrclcl
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             """
             Define updraft properties at the level where buoyancy sorting starts to be
             happening, i.e., by definition, at 'prel' level within the release layer.
@@ -2247,7 +2253,7 @@ def define_updraft_properties(
             thj, qvj, qlj, qij, qse, id_check = conden(prel, thlsrc, qtsrc, ese, esx)
 
             if id_check == 1:
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -2269,13 +2275,13 @@ def define_updraft_properties(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
                 if THIS_K == (krel - 1):
                     thvu = thj * (1.0 + zvir * qvj - qlj - qij)
 
 
 def define_env_properties(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     iteration: i32,
     krel: IntField,
     kinv: IntField,
@@ -2288,8 +2294,7 @@ def define_env_properties(
     vu: FloatField,
     usrc: FloatField,
     vsrc: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     tru: FloatField_NTracers,
     trsrc: FloatFieldIJ_NTracers,
     thv0rel: FloatField,
@@ -2317,8 +2322,10 @@ def define_env_properties(
     ue: FloatFieldIJ,
     ve: FloatFieldIJ,
 ):
+    from __externals__ import ncnst
+
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             uplus = 0.0
             vplus = 0.0
 
@@ -2341,7 +2348,7 @@ def define_env_properties(
                 uu = usrc + uplus
                 vu = vsrc + vplus
 
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     if THIS_K == krel - 1:
@@ -2364,7 +2371,7 @@ def define_env_properties(
             qte = qt0.at(K=krel) + ssqt0.at(K=krel) * (pe - pmid0.at(K=krel))
             ue = u0.at(K=krel) + ssu0.at(K=krel) * (pe - pmid0.at(K=krel))
             ve = v0.at(K=krel) + ssv0.at(K=krel) * (pe - pmid0.at(K=krel))
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
@@ -2374,7 +2381,7 @@ def define_env_properties(
 
 
 def buoyancy_sorting(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     tscaleh: FloatFieldIJ,
     krel: IntField,
     wlcl: FloatField,
@@ -2390,8 +2397,7 @@ def buoyancy_sorting(
     v0: FloatField,
     ssu0: FloatField,
     ssv0: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     tre: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
     sstr0: FloatField_NTracers,
@@ -2459,10 +2465,11 @@ def buoyancy_sorting(
     fdr: FloatField,
     dcm: FloatField,
     xco: FloatField,
-    stop45: BoolFieldIJ,
+    stop_buoyancy_sort: BoolFieldIJ,
     iteration: i32,
     cush_inout: FloatFieldIJ,
 ):
+    from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         # Define cumulus scale height.
@@ -2482,7 +2489,7 @@ def buoyancy_sorting(
         # In the premitive code,  'scaleh' was largely responsible for the jumping
         # variation of precipitation amount.
 
-        if id_exit == False:
+        if condensation == False:
             scaleh = tscaleh
 
             if tscaleh <= 0.0:
@@ -2537,7 +2544,7 @@ def buoyancy_sorting(
             ue = u0.at(K=krel) + ssu0.at(K=krel) * (pe - pmid0.at(K=krel))
             ve = v0.at(K=krel) + ssv0.at(K=krel) * (pe - pmid0.at(K=krel))
 
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
@@ -2562,16 +2569,16 @@ def buoyancy_sorting(
             # want, but a sample test indicated that about 3 - 5 iterations  produced
             # satisfactory converent solution. Finally, identify 'kbup' and 'kpen'.
 
-            if iteration != i32(1):
-                stop45 = False
+            if iteration != i32(0):
+                stop_buoyancy_sort = False  # Indicates that buoyancy sorting processes are done (e.g., Fortran go to 45)
 
     with computation(FORWARD), interval(1, -2):
-        if id_exit == False:
+        if condensation == False:
             if (
                 THIS_K >= krel
                 and THIS_K < k0 - 1
-                and stop45 == False
-                and id_exit == False
+                and stop_buoyancy_sort == False
+                and condensation == False
             ):
 
                 thlue = thlu[0, 0, -1]
@@ -2580,7 +2587,7 @@ def buoyancy_sorting(
                 wtwb = wtw
 
                 iter_xc = 1
-                while iter_xc <= niter_xc and id_exit == False:
+                while iter_xc <= niter_xc and condensation == False:
                     wtw = wu[0, 0, -1] * wu[0, 0, -1]
 
                     # Calculate environmental and cumulus saturation 'excess' at 'pe'.
@@ -2591,7 +2598,7 @@ def buoyancy_sorting(
                     thj, qvj, qlj, qij, qse, id_check = conden(pe, thle, qte, ese, esx)
 
                     if id_check == 1:
-                        id_exit = True
+                        condensation = True
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -2613,7 +2620,7 @@ def buoyancy_sorting(
                         fer_out = constants.MAPL_UNDEF
                         fdr_out = constants.MAPL_UNDEF
 
-                    if id_exit == False:
+                    if condensation == False:
                         thv0j = thj * (1.0 + zvir * qvj - qlj - qij)
                         rhomid0j = pe / (constants.MAPL_RDRY * thv0j * exne)
                         qsat_arg = thle * exne
@@ -2625,7 +2632,7 @@ def buoyancy_sorting(
                         )
 
                         if id_check == 1:
-                            id_exit = True
+                            condensation = True
                             umf_out[0, 0, 1] = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
@@ -2647,7 +2654,7 @@ def buoyancy_sorting(
                             fer_out = constants.MAPL_UNDEF
                             fdr_out = constants.MAPL_UNDEF
 
-                        if id_exit == False:
+                        if condensation == False:
                             # Detrain excessive condensate larger than 'criqc' from the cumulus
                             # updraft before performing buoyancy sorting. All I should to do is
                             # to update 'thlue' &  'que' here. Below modification is completely
@@ -2685,7 +2692,7 @@ def buoyancy_sorting(
                             )
 
                             if id_check == 1:
-                                id_exit = True
+                                condensation = True
                                 umf_out[0, 0, 1] = 0.0
                                 dcm_out = 0.0
                                 qvten_out = 0.0
@@ -2707,7 +2714,7 @@ def buoyancy_sorting(
                                 fer_out = constants.MAPL_UNDEF
                                 fdr_out = constants.MAPL_UNDEF
 
-                            if id_exit == False:
+                            if condensation == False:
                                 thvj = thj * (1.0 + zvir * qvj - qlj - qij)
                                 tj = (
                                     thj * exne
@@ -2774,7 +2781,7 @@ def buoyancy_sorting(
                                     )
 
                                     if id_check == 1:
-                                        id_exit = True
+                                        condensation = True
                                         umf_out[0, 0, 1] = 0.0
                                         dcm_out = 0.0
                                         qvten_out = 0.0
@@ -2796,7 +2803,7 @@ def buoyancy_sorting(
                                         fer_out = constants.MAPL_UNDEF
                                         fdr_out = constants.MAPL_UNDEF
 
-                                    if id_exit == False:
+                                    if condensation == False:
                                         thvxsat = thj * (1.0 + zvir * qvj - qlj - qij)
 
                                         # kk=1 : Cumulus segment, kk=2 : Environment segment
@@ -2886,7 +2893,7 @@ def buoyancy_sorting(
                                 # is always satisfied.
                                 # Below limiter of 'rei(k)' becomes negative for some cases, causing error.
                                 # So, for the time being, I came back to the original limiter.
-                                if id_exit == False:
+                                if condensation == False:
                                     ee2 = xc**2
                                     ud2 = 1.0 - 2.0 * xc + xc**2
                                     if min(scaleh, mixscale) != 0.0:
@@ -2988,7 +2995,7 @@ def buoyancy_sorting(
                                             - PGFc * ssv0 * dpe
                                         )
 
-                                        if dotransport == 1.0:
+                                        if dotransport == 1:
                                             n = 0
                                             while n < ncnst:
                                                 tru[0, 0, 0][n] = (
@@ -3053,7 +3060,7 @@ def buoyancy_sorting(
                                             -fer * dpe
                                         )
 
-                                        if dotransport == 1.0:
+                                        if dotransport == 1:
                                             n = 0
                                             while n < ncnst:
                                                 tru[0, 0, 0][n] = (
@@ -3101,7 +3108,7 @@ def buoyancy_sorting(
                                     )
 
                                     if id_check == 1:
-                                        id_exit = True
+                                        condensation = True
                                         umf_out[0, 0, 1] = 0.0
                                         dcm_out = 0.0
                                         qvten_out = 0.0
@@ -3123,7 +3130,7 @@ def buoyancy_sorting(
                                         fer_out = constants.MAPL_UNDEF
                                         fdr_out = constants.MAPL_UNDEF
 
-                                    if id_exit == False:
+                                    if condensation == False:
                                         if (qlj + qij) > criqc:
                                             exql = (
                                                 ((qlj + qij) - criqc)
@@ -3184,7 +3191,7 @@ def buoyancy_sorting(
                                         )
 
                                         if id_check == 1:
-                                            id_exit = True
+                                            condensation = True
                                             umf_out[0, 0, 1] = 0.0
                                             dcm_out = 0.0
                                             qvten_out = 0.0
@@ -3206,7 +3213,7 @@ def buoyancy_sorting(
                                             fer_out = constants.MAPL_UNDEF
                                             fdr_out = constants.MAPL_UNDEF
 
-                                        if id_exit == False:
+                                        if condensation == False:
 
                                             thvu = thj * (1.0 + zvir * qvj - qlj - qij)
 
@@ -3278,7 +3285,7 @@ def buoyancy_sorting(
                 # velocity square at the top interface. Use of auto-detrainment term will  be
                 # determined by setting 'use_self_detrain=.true.' in the parameter sentence.
 
-                if id_exit == False:
+                if condensation == False:
                     if use_self_detrain == 1:
                         autodet = min(
                             0.5
@@ -3310,13 +3317,13 @@ def buoyancy_sorting(
 
                     if wtw <= 0.0:
                         kpen_IJ = THIS_K
-                        stop45 = True  # Break out of kloop
+                        stop_buoyancy_sort = True  # Done calculating updraft properties, break out of loop
 
-                    if stop45 == False:
+                    if stop_buoyancy_sort == False:
                         wu = sqrt(wtw)
 
                         if wu > 100.0:
-                            id_exit = True
+                            condensation = True
                             umf_out[0, 0, 1] = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
@@ -3338,7 +3345,7 @@ def buoyancy_sorting(
                             fer_out = constants.MAPL_UNDEF
                             fdr_out = constants.MAPL_UNDEF
 
-                        if id_exit == False:
+                        if condensation == False:
                             # Iteration end due to 'rmaxfrac' constraint
 
                             # Calculate updraft fractional area at the upper interface and set upper
@@ -3380,7 +3387,7 @@ def buoyancy_sorting(
                             qte = qt0[0, 0, 1]
                             ue = u0[0, 0, 1]
                             ve = v0[0, 0, 1]
-                            if dotransport == 1.0:
+                            if dotransport == 1:
                                 n = 0
                                 while n < ncnst:
                                     tre[0, 0][n] = tr0[0, 0, 1][n]
@@ -3388,7 +3395,7 @@ def buoyancy_sorting(
 
 
 def calc_ppen(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     drage: FloatFieldIJ,
     bogbot: FloatFieldIJ,
     bogtop: FloatFieldIJ,
@@ -3402,7 +3409,7 @@ def calc_ppen(
     ppen: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Up to this point, we finished all of buoyancy sorting processes from the 'krel'
             # layer to 'kpen' layer: at the top interface of individual layers, we calculated
             # updraft and penetrative mass fluxes [ umf(k) & emf(k) = 0 ], updraft fractional
@@ -3464,7 +3471,7 @@ def calc_ppen(
 
 
 def recalc_condensate(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     fer: FloatField,
     kpen: IntField,
     ppen: FloatFieldIJ,
@@ -3509,7 +3516,7 @@ def recalc_condensate(
     iteration: i32,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Re-calculate the amount of expelled condensate from cloud updraft
             # at the cumulus top. This is necessary for refined calculations of
             # bulk cloud microphysics at the cumulus top. Note that ppen < 0.
@@ -3558,7 +3565,7 @@ def recalc_condensate(
             )
 
             if id_check == 1:
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -3580,7 +3587,7 @@ def recalc_condensate(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
                 p00 = 1e5
                 rovcp = constants.MAPL_RGAS / constants.MAPL_CP
                 exntop = ((pifc0.at(K=kpen) + ppen) / p00) ** rovcp
@@ -3654,7 +3661,7 @@ def recalc_condensate(
                 cldhgt = pifc0.at(K=kpen) + ppen
 
                 if forcedCu == True:
-                    id_exit = True
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -3676,7 +3683,7 @@ def recalc_condensate(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if id_exit == False:
+                if condensation == False:
                     # Re-initializing some key variables above the 'kpen' layer in order to suppress
                     # the influence of non-physical values above 'kpen', in association with the use
                     # of 'iter_scaleh' loop. Note that umf, emf,  ufrc are defined at the interfaces
@@ -3704,15 +3711,14 @@ def recalc_condensate(
 
 
 def calc_entrainment_mass_flux(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     k0: Int,
     thlu: FloatField,
     qtu: FloatField,
     uu: FloatField,
     vu: FloatField,
     tru: FloatField_NTracers,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     tru_emf: FloatField_NTracers,
     kpen: IntField,
     kbup: IntField,
@@ -3745,9 +3751,10 @@ def calc_entrainment_mass_flux(
     emf: FloatField,
     iteration: i32,
 ):
+    from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Calculate downward penetrative entrainment mass flux, 'emf(k) < 0',  and
             # thermodynamic properties of penetratively entrained airs at   entraining
             # interfaces. emf(k) is defined from the top interface of the  layer  kbup
@@ -3785,14 +3792,14 @@ def calc_entrainment_mass_flux(
             qtu_emf[0, 0, 1] = qtu
             uu_emf[0, 0, 1] = uu
             vu_emf[0, 0, 1] = vu
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     tru_emf[0, 0, 1][n] = tru[0, 0, 0][n]
                     n += 1
 
     with computation(BACKWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             if (
                 THIS_K <= kpen - 1 and THIS_K >= kbup
             ):  # Here, 'k' is an interface index at which
@@ -3844,7 +3851,7 @@ def calc_entrainment_mass_flux(
                         pifc0[0, 0, 1] - pmid0.at(K=kpen)
                     )
 
-                    if dotransport == 1.0:
+                    if dotransport == 1:
                         n = 0
                         while n < ncnst:
                             tru_emf[0, 0, 0][n] = tr0.at(K=kpen, ddim=[n]) + sstr0.at(
@@ -3889,7 +3896,7 @@ def calc_entrainment_mass_flux(
                                 + v0[0, 0, 1] * (emf - emf[0, 0, 1])
                             ) / emf
 
-                            if dotransport == 1.0:
+                            if dotransport == 1:
                                 n = 0
                                 while n < ncnst:
                                     tru_emf[0, 0, 0][n] = (
@@ -3902,7 +3909,7 @@ def calc_entrainment_mass_flux(
                             qtu_emf = qt0[0, 0, 1]
                             uu_emf = u0[0, 0, 1]
                             vu_emf = v0[0, 0, 1]
-                            if dotransport == 1.0:
+                            if dotransport == 1:
                                 n = 0
                                 while n < ncnst:
                                     tru_emf[0, 0, 0][n] = tr0[0, 0, 1][n]
@@ -3920,7 +3927,7 @@ def calc_entrainment_mass_flux(
                         qtu_emf = qt0[0, 0, 1]
                         uu_emf = u0[0, 0, 1]
                         vu_emf = v0[0, 0, 1]
-                        if dotransport == 1.0:
+                        if dotransport == 1:
                             n = 0
                             while n < ncnst:
                                 tru_emf[0, 0, 0][n] = tr0[0, 0, 1][n]
@@ -3928,7 +3935,7 @@ def calc_entrainment_mass_flux(
 
 
 def calc_pbl_fluxes(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     qtsrc: FloatField,
     qt0: FloatField,
     ssqt0: FloatField,
@@ -3952,8 +3959,7 @@ def calc_pbl_fluxes(
     vsrc: FloatField,
     v0: FloatField,
     ssv0: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     trsrc: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
     sstr0: FloatField_NTracers,
@@ -3961,6 +3967,7 @@ def calc_pbl_fluxes(
     xflx_ndim: FloatField_NTracers,
     iteration: i32,
 ):
+    from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         # Compute turbulent heat, moisture, momentum flux at all interfaces
@@ -3968,7 +3975,7 @@ def calc_pbl_fluxes(
         # 1. PBL fluxes :  0 <= k <= kinv - 1
         # All the information necessary to reconstruct PBL
         # height are passed to 'fluxbelowinv'.
-        if id_exit == False:
+        if condensation == False:
             kinv = kinv - 1  # Adjust kinv by 1
             xsrc = qtsrc
             xmean = qt0.at(K=kinv)
@@ -3980,12 +3987,12 @@ def calc_pbl_fluxes(
             )
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             xflx[0, 0, 1] = 0.0
             xflx = 0.0
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
 
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
@@ -4028,7 +4035,7 @@ def calc_pbl_fluxes(
                     xflx = xflx - (1.0 - rr) * cbmf * (xtop_ori - xbot_ori)
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K <= kinv:
                 qtflx = xflx
 
@@ -4042,12 +4049,12 @@ def calc_pbl_fluxes(
             )
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             xflx[0, 0, 1] = 0.0
             xflx = 0.0
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
 
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
@@ -4090,7 +4097,7 @@ def calc_pbl_fluxes(
                     xflx = xflx - (1.0 - rr) * cbmf * (xtop_ori - xbot_ori)
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K <= kinv:
                 slflx = constants.MAPL_CP * exnifc0 * xflx
 
@@ -4104,12 +4111,12 @@ def calc_pbl_fluxes(
             )
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             xflx[0, 0, 1] = 0.0
             xflx = 0.0
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
 
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
@@ -4151,7 +4158,7 @@ def calc_pbl_fluxes(
                 if rr <= 1:
                     xflx = xflx - (1.0 - rr) * cbmf * (xtop_ori - xbot_ori)
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K <= kinv:
                 uflx = xflx
 
@@ -4165,12 +4172,12 @@ def calc_pbl_fluxes(
             )
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             xflx[0, 0, 1] = 0.0
             xflx = 0.0
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
 
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
@@ -4213,13 +4220,13 @@ def calc_pbl_fluxes(
                     xflx = xflx - (1.0 - rr) * cbmf * (xtop_ori - xbot_ori)
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K <= kinv:
                 vflx = xflx
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
-            if dotransport == 1.0:
+        if condensation == False:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     xflx_ndim[0, 0, 1][n] = 0.0
@@ -4227,8 +4234,8 @@ def calc_pbl_fluxes(
                     n += 1
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
-            if dotransport == 1.0:
+        if condensation == False:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     xsrc = trsrc[0, 0][n]
@@ -4291,7 +4298,7 @@ def calc_pbl_fluxes(
 
 
 def non_buoyancy_sorting_fluxes(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     kinv: IntField,
     krel: IntField,
     cbmf: FloatField,
@@ -4311,8 +4318,7 @@ def non_buoyancy_sorting_fluxes(
     v0: FloatField,
     usrc: FloatField,
     vsrc: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     trflx: FloatField_NTracers,
     trsrc: FloatFieldIJ_NTracers,
     tr0: FloatField_NTracers,
@@ -4322,9 +4328,10 @@ def non_buoyancy_sorting_fluxes(
     slflx: FloatField,
     qtflx: FloatField,
 ):
+    from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # 2. Non-buoyancy sorting fluxes : kinv <= k <= krel - 1
             # Note that when 'krel = kinv', below block is never executed
             # as in a desirable, expected way ( but I must check  if this
@@ -4365,7 +4372,7 @@ def non_buoyancy_sorting_fluxes(
                     + vplus
                     - (v0[0, 0, 1] + ssv0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
-                if dotransport == 1.0:
+                if dotransport == 1:
                     n = 0
                     while n < ncnst:
                         trflx[0, 0, 1][n] = cbmf * (
@@ -4379,7 +4386,7 @@ def non_buoyancy_sorting_fluxes(
 
 
 def buoyancy_sorting_fluxes(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     kbup: IntField,
     krel: IntField,
     exnifc0: FloatField,
@@ -4398,8 +4405,7 @@ def buoyancy_sorting_fluxes(
     vu: FloatField,
     ssu0: FloatField,
     ssv0: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     trflx: FloatField_NTracers,
     tru: FloatField_NTracers,
     tr0: FloatField_NTracers,
@@ -4410,8 +4416,10 @@ def buoyancy_sorting_fluxes(
     slflx: FloatField,
     iteration: i32,
 ):
+    from __externals__ import ncnst
+
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # 3. Buoyancy sorting fluxes : krel <= k <= kbup - 1
             # In case that 'kbup = krel - 1 ' ( or even in case 'kbup = krel' ),
             # buoyancy sorting fluxes are not calculated, which is consistent,
@@ -4446,7 +4454,7 @@ def buoyancy_sorting_fluxes(
                     - (v0[0, 0, 1] + ssv0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
 
-                if dotransport == 1.0:
+                if dotransport == 1:
                     n = 0
                     while n < ncnst:
                         trflx[0, 0, 1][n] = umf_zint * (
@@ -4460,7 +4468,7 @@ def buoyancy_sorting_fluxes(
 
 
 def penetrative_entrainment_fluxes(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     kbup: IntField,
     kpen: IntField,
     exnifc0: FloatField,
@@ -4479,8 +4487,7 @@ def penetrative_entrainment_fluxes(
     v0: FloatField,
     ssu0: FloatField,
     ssv0: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     trflx: FloatField_NTracers,
     tru_emf: FloatField_NTracers,
     tr0: FloatField_NTracers,
@@ -4511,8 +4518,10 @@ def penetrative_entrainment_fluxes(
     cush_inout: FloatFieldIJ,
     iteration: i32,
 ):
+    from __externals__ import ncnst
+
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # 4. Penetrative entrainment fluxes : kbup <= k <= kpen - 1
             # The only confliction that can happen is when 'kbup = kinv-1'. For this
             # case, turbulent flux at kinv-1 is calculated  both from 'fluxbelowinv'
@@ -4550,7 +4559,7 @@ def penetrative_entrainment_fluxes(
                 )
                 uflx[0, 0, 1] = emf * (uu_emf - (u0 + ssu0 * (pifc0[0, 0, 1] - pmid0)))
                 vflx[0, 0, 1] = emf * (vu_emf - (v0 + ssv0 * (pifc0[0, 0, 1] - pmid0)))
-                if dotransport == 1.0:
+                if dotransport == 1:
                     n = 0
                     while n < ncnst:
                         trflx[0, 0, 1][n] = emf * (
@@ -4596,7 +4605,7 @@ def penetrative_entrainment_fluxes(
                 comsub = 0.5 * (uemf[0, 0, 1] + uemf)  # comsub defined on interfaces
 
     with computation(FORWARD), interval(0, 1):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K <= kpen:
                 if comsub < 0.0:
                     thlten_sub = 0.0
@@ -4607,7 +4616,7 @@ def penetrative_entrainment_fluxes(
                     niten_sub = 0.0
 
     with computation(FORWARD), interval(0, -1):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K <= kpen:
                 if comsub >= 0.0:
                     thlten_sub = (
@@ -4636,7 +4645,7 @@ def penetrative_entrainment_fluxes(
                     )
 
     with computation(FORWARD), interval(1, None):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K <= kpen:
                 if comsub < 0.0:
                     thlten_sub = (
@@ -4665,7 +4674,7 @@ def penetrative_entrainment_fluxes(
                     )
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K <= kpen:
                 if comsub >= 0.0:
                     if THIS_K == k0 - 1:
@@ -4677,7 +4686,7 @@ def penetrative_entrainment_fluxes(
                         niten_sub = 0.0
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K <= kpen:
                 thl_prog = thl0 + thlten_sub * dt
                 qt_prog = max(qt0 + qtten_sub * dt, 1.0e-12)
@@ -4686,7 +4695,7 @@ def penetrative_entrainment_fluxes(
                 )
 
                 if id_check == 1:
-                    id_exit = True
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -4708,7 +4717,7 @@ def penetrative_entrainment_fluxes(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if id_exit == False:
+                if condensation == False:
                     qlten_sink = max(
                         qlten_sub, -ql0 / dt
                     )  # For consistency with prognostic macrophysics scheme
@@ -4718,7 +4727,7 @@ def penetrative_entrainment_fluxes(
 
 
 def calc_momentum_tendency(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     kpen: IntField,
     uflx: FloatField,
     vflx: FloatField,
@@ -4732,7 +4741,7 @@ def calc_momentum_tendency(
     vten: FloatField,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Calculate convective tendencies at each layer
             # Momentum tendency
             if THIS_K <= kpen:
@@ -4743,7 +4752,7 @@ def calc_momentum_tendency(
 
 
 def calc_thermodynamic_tendencies(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     kpen: IntField,
     umf_zint: FloatField,
     dp0: FloatField,
@@ -4804,7 +4813,7 @@ def calc_thermodynamic_tendencies(
     cush_inout: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
 
             umf_zint[0, 0, 1] = umf_temp[0, 0, 1]  # Update umf
 
@@ -4928,7 +4937,7 @@ def calc_thermodynamic_tendencies(
                     )
 
                     if id_check == 1:
-                        id_exit = True
+                        condensation = True
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -4949,7 +4958,7 @@ def calc_thermodynamic_tendencies(
                         vflx_out[0, 0, 1] = 0.0
                         fer_out = constants.MAPL_UNDEF
                         fdr_out = constants.MAPL_UNDEF
-                    if id_exit == False:
+                    if condensation == False:
                         qlubelow = qlj_2D
                         qiubelow = qij_2D
                         thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
@@ -4957,7 +4966,7 @@ def calc_thermodynamic_tendencies(
                         )
 
                         if id_check == 1:
-                            id_exit = True
+                            condensation = True
                             umf_out[0, 0, 1] = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
@@ -4979,7 +4988,7 @@ def calc_thermodynamic_tendencies(
                             fer_out = constants.MAPL_UNDEF
                             fdr_out = constants.MAPL_UNDEF
 
-                        if id_exit == False:
+                        if condensation == False:
                             qlu_mid = (
                                 0.5
                                 * (qlubelow + qlj_2D)
@@ -4994,13 +5003,13 @@ def calc_thermodynamic_tendencies(
                             )
 
                 elif THIS_K == kpen:
-                    if id_exit == False:
+                    if condensation == False:
                         thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
                             pifc0 + ppen, thlu_top, qtu_top, ese, esx
                         )
 
                         if id_check == 1:
-                            id_exit = True
+                            condensation = True
                             umf_out[0, 0, 1] = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
@@ -5021,7 +5030,7 @@ def calc_thermodynamic_tendencies(
                             vflx_out[0, 0, 1] = 0.0
                             fer_out = constants.MAPL_UNDEF
                             fdr_out = constants.MAPL_UNDEF
-                        if id_exit == False:
+                        if condensation == False:
                             qlu_mid = (
                                 0.5
                                 * (qlubelow + qlj_2D)
@@ -5039,13 +5048,13 @@ def calc_thermodynamic_tendencies(
                             qiu_top = qij_2D
 
                 else:
-                    if id_exit == False:
+                    if condensation == False:
                         thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
                             pifc0[0, 0, 1], thlu, qtu, ese, esx
                         )
 
                         if id_check == 1:
-                            id_exit = True
+                            condensation = True
                             umf_out[0, 0, 1] = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
@@ -5066,11 +5075,11 @@ def calc_thermodynamic_tendencies(
                             vflx_out[0, 0, 1] = 0.0
                             fer_out = constants.MAPL_UNDEF
                             fdr_out = constants.MAPL_UNDEF
-                        if id_exit == False:
+                        if condensation == False:
                             qlu_mid = 0.5 * (qlubelow + qlj_2D)
                             qiu_mid = 0.5 * (qiubelow + qij_2D)
 
-                if id_exit == False:
+                if condensation == False:
                     qlubelow = qlj_2D
                     qiubelow = qij_2D
 
@@ -5153,7 +5162,7 @@ def calc_thermodynamic_tendencies(
                     )
 
                     if id_check == 1:
-                        id_exit = True
+                        condensation = True
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -5175,7 +5184,7 @@ def calc_thermodynamic_tendencies(
                         fer_out = constants.MAPL_UNDEF
                         fdr_out = constants.MAPL_UNDEF
 
-                    if id_exit == False:
+                    if condensation == False:
                         if ql_emf_kbup < 0.0:
                             nl_emf_kbup = 0.0
 
@@ -5193,7 +5202,7 @@ def calc_thermodynamic_tendencies(
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
 
-                if id_exit == False:
+                if condensation == False:
                     qlten_det = qc_l + qc_lm
                     qiten_det = qc_i + qc_im
 
@@ -5244,7 +5253,7 @@ def calc_thermodynamic_tendencies(
 
 
 def prevent_negative_condensate(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     qv0: FloatField,
     dt: Float,
     qvten: FloatField,
@@ -5260,7 +5269,7 @@ def prevent_negative_condensate(
 ):
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Prevent the onset-of negative condensate at the next time step
             # Potentially, this block can be moved just in front of the above
             # block.
@@ -5274,7 +5283,7 @@ def prevent_negative_condensate(
 
     with computation(BACKWARD), interval(...):
         # Calculate positive_moisture_single
-        if id_exit == False:
+        if condensation == False:
             ixcldice = 1
             ixcldliq = 2
             dql: f64 = max(f64(0.0), f64(1.0) * qmin.at(K=ixcldliq) - ql0_star)
@@ -5302,18 +5311,18 @@ def prevent_negative_condensate(
             qv0_star = qv0_star + dqv
 
     with computation(BACKWARD), interval(1, None):
-        if id_exit == False:
+        if condensation == False:
             qv0_star[0, 0, -1] = qv0_star[0, 0, -1] - dqv * dp0 / dp0[0, 0, -1]
             qvten[0, 0, -1] = qvten[0, 0, -1] - dqv * dp0 / dp0[0, 0, -1] / dt
 
     with computation(BACKWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             qv0_star = max(qv0_star, qmin)
             ql0_star = max(ql0_star, qmin)
             qi0_star = max(qi0_star, qmin)
 
     with computation(PARALLEL), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Extra moisture used to satisfy 'qv(i,1)=qvmin' is proportionally
             # extracted from all the layers that has 'qv > 2*qvmin'. This fully
             # preserves column moisture.
@@ -5334,7 +5343,7 @@ def prevent_negative_condensate(
                 # print('Full positive_moisture is impossible in uwshcu')
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             qtten = qvten + qlten + qiten
             slten = (
                 sten
@@ -5344,9 +5353,8 @@ def prevent_negative_condensate(
 
 
 def calc_tracer_tendencies(
-    id_exit: BoolFieldIJ,
-    dotransport: Float,
-    ncnst: Int,
+    condensation: BoolFieldIJ,
+    dotransport: Int,
     k0: Int,
     dt: Float,
     dp0: FloatField,
@@ -5358,11 +5366,12 @@ def calc_tracer_tendencies(
     trten: FloatField_NTracers,
     iteration: i32,
 ):
+    from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Tendencies of tracers
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     trmin[0, 0][n] = 0.0
@@ -5373,8 +5382,8 @@ def calc_tracer_tendencies(
                     n += 1
 
     with computation(FORWARD), interval(1, -1):
-        if id_exit == False:
-            if dotransport == 1.0:
+        if condensation == False:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     pdelx = dp0
@@ -5391,8 +5400,8 @@ def calc_tracer_tendencies(
                     n += 1
 
     with computation(BACKWARD), interval(2, None):
-        if id_exit == False:
-            if dotransport == 1.0:
+        if condensation == False:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     pdelx = dp0
@@ -5411,8 +5420,8 @@ def calc_tracer_tendencies(
                     n += 1
 
     with computation(FORWARD), interval(0, None):
-        if id_exit == False:
-            if dotransport == 1.0:
+        if condensation == False:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     pdelx = dp0
@@ -5432,7 +5441,7 @@ def calc_tracer_tendencies(
 
 
 def compute_diagnostic_outputs(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     prel: FloatField,
     thlu: FloatField,
     qtu: FloatField,
@@ -5454,7 +5463,7 @@ def compute_diagnostic_outputs(
 ):
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Compute default diagnostic outputs
             # Note that since 'qtu(krel-1:kpen-1)' & 'thlu(krel-1:kpen-1)' has
             # been adjusted after detraining cloud condensate into environment
@@ -5466,7 +5475,7 @@ def compute_diagnostic_outputs(
             )
 
             if id_check == 1:
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -5488,7 +5497,7 @@ def compute_diagnostic_outputs(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
                 qcubelow = qlj + qij
                 qlubelow = qlj
                 qiubelow = qij
@@ -5498,7 +5507,7 @@ def compute_diagnostic_outputs(
 
 
 def calc_cumulus_condensate_at_interface(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     krel: IntField,
     kpen: IntField,
     pifc0: FloatField,
@@ -5531,9 +5540,9 @@ def calc_cumulus_condensate_at_interface(
     cush_inout: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             if THIS_K >= krel and THIS_K <= kpen:
-                if id_exit == False:
+                if condensation == False:
                     # Calculate cumulus condensate at the upper interface of each layer.
                     # Note 'ppen < 0' and at 'k=kpen' layer, I used 'thlu_top'&'qtu_top'
                     # which explicitly considered zero or non-zero 'fer(kpen)'.
@@ -5548,7 +5557,7 @@ def calc_cumulus_condensate_at_interface(
                         )
 
                     if id_check == 1:
-                        id_exit = True
+                        condensation = True
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -5570,7 +5579,7 @@ def calc_cumulus_condensate_at_interface(
                         fer_out = constants.MAPL_UNDEF
                         fdr_out = constants.MAPL_UNDEF
 
-                    if id_exit == False:
+                    if condensation == False:
                         # Calculate in-cloud mean LWC ( qlu(k) ), IWC ( qiu(k) ),  & layer
                         # mean cumulus fraction ( cufrc(k) ),  vertically-integrated layer
                         # mean LWP and IWP. Expel some of in-cloud condensate at the upper
@@ -5624,7 +5633,7 @@ def calc_cumulus_condensate_at_interface(
                         qlubelow = qlj
                         qiubelow = qij
 
-            if id_exit == False:
+            if condensation == False:
                 # Cloud top and base interface indices
                 cnt = f32(kpen)
                 cnb = f32(krel - 1)
@@ -5634,7 +5643,7 @@ def calc_cumulus_condensate_at_interface(
 
 
 def adjust_implicit_CIN_inputs(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     qv0: FloatField,
     qvten: FloatField,
     dt: Float,
@@ -5649,8 +5658,7 @@ def adjust_implicit_CIN_inputs(
     v0: FloatField,
     vten: FloatField,
     t0: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     tr0_s: FloatField_NTracers,
     tr0: FloatField_NTracers,
     trten: FloatField_NTracers,
@@ -5708,8 +5716,10 @@ def adjust_implicit_CIN_inputs(
     fer_s: FloatField,
     fdr_s: FloatField,
 ):
+    from __externals__ import ncnst
+
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Adjust the original input profiles for implicit CIN calculation
             # Save the output from "iter_cin = 1"
             # These output will be writed-out if "iter_cin = 1" was not performed
@@ -5723,7 +5733,7 @@ def adjust_implicit_CIN_inputs(
 
             t0_s = t0 + sten * dt / constants.MAPL_CP
 
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     tr0_s[0, 0, 0][n] = tr0[0, 0, 0][n] + trten[0, 0, 0][n] * dt
@@ -5764,7 +5774,7 @@ def adjust_implicit_CIN_inputs(
 
 
 def recalc_environmental_variables(
-    id_exit: BoolFieldIJ,
+    condensation: BoolFieldIJ,
     qv0_s: FloatField,
     ql0_s: FloatField,
     qi0_s: FloatField,
@@ -5772,8 +5782,7 @@ def recalc_environmental_variables(
     t0_s: FloatField,
     exnmid0: FloatField,
     pmid0: FloatField,
-    dotransport: Float,
-    ncnst: Int,
+    dotransport: Int,
     sstr0: FloatField_NTracers,
     tr0: FloatField_NTracers,
     u0: FloatField,
@@ -5804,8 +5813,10 @@ def recalc_environmental_variables(
     t0: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    from __externals__ import ncnst
+
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             # Recalculate environmental variables for new cin calculation at "iter_cin = 2"
             # using the updated state variables. Perform only for variables necessary  for
             # the new cin calculation.
@@ -5825,7 +5836,7 @@ def recalc_environmental_variables(
             thvl0 = (1.0 + zvir * qt0) * thl0
 
     with computation(FORWARD), interval(0, 1):
-        if id_exit == False:
+        if condensation == False:
             ssthl0 = slope(
                 thl0,
                 thl0[0, 0, 1],
@@ -5843,7 +5854,7 @@ def recalc_environmental_variables(
             ssv0 = slope(
                 v0, v0[0, 0, 1], v0[0, 0, 1], pmid0, pmid0[0, 0, 1], pmid0[0, 0, 1]
             )
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     sstr0[0, 0, 0][n] = slope(
@@ -5857,7 +5868,7 @@ def recalc_environmental_variables(
                     n += 1
 
     with computation(FORWARD), interval(1, -1):
-        if id_exit == False:
+        if condensation == False:
             ssthl0 = slope(
                 thl0,
                 thl0[0, 0, 1],
@@ -5876,7 +5887,7 @@ def recalc_environmental_variables(
             ssv0 = slope(
                 v0, v0[0, 0, 1], v0[0, 0, -1], pmid0, pmid0[0, 0, 1], pmid0[0, 0, -1]
             )
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     sstr0[0, 0, 0][n] = slope(
@@ -5890,7 +5901,7 @@ def recalc_environmental_variables(
                     n += 1
 
     with computation(FORWARD), interval(-1, None):
-        if id_exit == False:
+        if condensation == False:
             ssthl0 = slope(
                 thl0[0, 0, -1],
                 thl0,
@@ -5915,7 +5926,7 @@ def recalc_environmental_variables(
             ssv0 = slope(
                 v0[0, 0, -1], v0, v0[0, 0, -2], pmid0[0, 0, -1], pmid0, pmid0[0, 0, -2]
             )
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     sstr0[0, 0, 0][n] = slope(
@@ -5929,12 +5940,12 @@ def recalc_environmental_variables(
                     n += 1
 
     with computation(FORWARD), interval(...):
-        if id_exit == False:
+        if condensation == False:
             thl0bot = thl0 + ssthl0 * (pifc0 - pmid0)
             qt0bot = qt0 + ssqt0 * (pifc0 - pmid0)
             thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, ese, esx)
             if id_check == 1:
-                id_exit = True
+                condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -5956,7 +5967,7 @@ def recalc_environmental_variables(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if id_exit == False:
+            if condensation == False:
                 thv0bot = thj * (1.0 + zvir * qvj - qlj - qij)
                 thvl0bot = thl0bot * (1.0 + zvir * qt0bot)
 
@@ -5967,7 +5978,7 @@ def recalc_environmental_variables(
                 )
 
                 if id_check == 1:
-                    id_exit = True
+                    condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -5989,7 +6000,7 @@ def recalc_environmental_variables(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if id_exit == False:
+                if condensation == False:
                     thv0top = thj * (1.0 + zvir * qvj - qlj - qij)
                     thvl0top = thl0top * (1.0 + zvir * qt0top)
 
@@ -6020,13 +6031,12 @@ def update_output_variables(
     slflx: FloatField,
     uflx: FloatField,
     vflx: FloatField,
-    dotransport: Float,
+    dotransport: Int,
     trten: FloatField_NTracers,
     dt: Float,
     fer: FloatField,
     fdr: FloatField,
     kpen: IntField,
-    ncnst: Int,
     # # Outputs
     umf_out: FloatField,
     dcm_out: FloatField,
@@ -6078,6 +6088,8 @@ def update_output_variables(
     tr0_inoutvar: FloatField_NTracers,
     del_CIN: FloatFieldIJ,
 ):
+    from __externals__ import ncnst
+
     with computation(FORWARD), interval(...):
 
         if del_CIN <= 0.0:
@@ -6103,7 +6115,7 @@ def update_output_variables(
             vflx_outvar = vflx_out
             fer_outvar = fer_out
             fdr_outvar = fdr_out
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     tr0_inoutvar[0, 0, 0][n] = tr0_inout[0, 0, 0][n]
@@ -6137,8 +6149,7 @@ def update_output_variables(
             uflx_outvar = uflx
             vflx_outvar = vflx
 
-            # REVISIT THIS
-            if dotransport == 1.0:
+            if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     tr0_inoutvar[0, 0, 0][n] = (
@@ -6158,7 +6169,6 @@ def update_output_variables(
 def compute_uwshcu_invert_after(
     # Inputs
     k0: Int,
-    ncnst: Int,
     umf_outvar: FloatField,
     qtflx_outvar: FloatField,
     slflx_outvar: FloatField,
@@ -6209,8 +6219,10 @@ def compute_uwshcu_invert_after(
     qidet_inv: FloatField,
     qisub_inv: FloatField,
     CNV_Tracers: FloatField_NTracers,
-    dotransport: Float,
+    dotransport: Int,
 ):
+    from __externals__ import k_end, ncnst
+
     with computation(FORWARD), interval(...):
         # Revert interface variables
         k_inv = k0 - THIS_K
@@ -6243,14 +6255,14 @@ def compute_uwshcu_invert_after(
         nice_inv = nice_out.at(K=k_inv)
 
         mintracer = 1.1754944e-38  # mintracer = tiny(1.0)
-        if dotransport == 1.0:
+        if dotransport == 1:
             n = 0
             while n < ncnst:
                 tr0[0, 0, 0][n] = max(mintracer, tr0_inoutvar[0, 0, 0][n])
                 CNV_Tracers[0, 0, 0][n] = tr0.at(K=k_inv, ddim=[n])
                 n += 1
 
-        if THIS_K == 71:
+        if THIS_K == k_end:
             dcm_inv = 0.0
 
         # Re-scale liquid/ice water sub-tendencies to enforce conservation
@@ -6270,6 +6282,7 @@ class ComputeUwshcuInv:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
+        UW_config: UWConfiguration,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
         """
@@ -6278,26 +6291,37 @@ class ComputeUwshcuInv:
         Parameters:
         stencil_factory (StencilFactory): Factory for creating stencil computations.
         quantity_factory (QuantityFactory): Factory for creating quantities.
-        formulation: Saturation Formulation used for QSat
+        UW_config (dataclass): Data class containing configuration dependent constants.
+        formulation: Saturation Formulation used for QSat.
         """
-
+        self.UW_config = UW_config
+        self.temporaries = Temporaries.make(quantity_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
         grid_indexing = stencil_factory.grid_indexing
 
+        if constants.NCNST != self.UW_config.NCNST:
+            raise NotImplementedError(
+                f"Coding limitation: {constants.NCNST} tracers are expected, "
+                f"getting {self.UW_config.NCNST}"
+            )
+
         self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
             func=compute_uwshcu_invert_before,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._compute_thermodynamic_variables = self.stencil_factory.from_dims_halo(
             func=compute_thermodynamic_variables,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._compute_thv0_thvl0 = self.stencil_factory.from_dims_halo(
             func=compute_thv0_thvl0,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._find_pbl_height = self.stencil_factory.from_dims_halo(
@@ -6313,6 +6337,7 @@ class ComputeUwshcuInv:
         self._find_cumulus_characteristics = self.stencil_factory.from_dims_halo(
             func=find_cumulus_characteristics,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._find_klcl = self.stencil_factory.from_dims_halo(
@@ -6323,11 +6348,13 @@ class ComputeUwshcuInv:
         self._compute_cin_cinlcl = self.stencil_factory.from_dims_halo(
             func=compute_cin_cinlcl,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._avg_initial_and_final_cin = self.stencil_factory.from_dims_halo(
             func=avg_initial_and_final_cin,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._define_prel_krel = self.stencil_factory.from_dims_halo(
@@ -6348,11 +6375,13 @@ class ComputeUwshcuInv:
         self._define_env_properties = self.stencil_factory.from_dims_halo(
             func=define_env_properties,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._buoyancy_sorting = self.stencil_factory.from_dims_halo(
             func=buoyancy_sorting,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._calc_ppen = self.stencil_factory.from_dims_halo(
@@ -6368,26 +6397,31 @@ class ComputeUwshcuInv:
         self._calc_entrainment_mass_flux = self.stencil_factory.from_dims_halo(
             func=calc_entrainment_mass_flux,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._calc_pbl_fluxes = self.stencil_factory.from_dims_halo(
             func=calc_pbl_fluxes,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._non_buoyancy_sorting_fluxes = self.stencil_factory.from_dims_halo(
             func=non_buoyancy_sorting_fluxes,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._buoyancy_sorting_fluxes = self.stencil_factory.from_dims_halo(
             func=buoyancy_sorting_fluxes,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._penetrative_entrainment_fluxes = self.stencil_factory.from_dims_halo(
             func=penetrative_entrainment_fluxes,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._calc_momentum_tendency = self.stencil_factory.from_dims_halo(
@@ -6408,6 +6442,7 @@ class ComputeUwshcuInv:
         self._calc_tracer_tendencies = self.stencil_factory.from_dims_halo(
             func=calc_tracer_tendencies,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._compute_diagnostic_outputs = self.stencil_factory.from_dims_halo(
@@ -6425,32 +6460,45 @@ class ComputeUwshcuInv:
         self._adjust_implicit_CIN_inputs = self.stencil_factory.from_dims_halo(
             func=adjust_implicit_CIN_inputs,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._recalc_environmental_variables = self.stencil_factory.from_dims_halo(
             func=recalc_environmental_variables,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._update_output_variables = self.stencil_factory.from_dims_halo(
             func=update_output_variables,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
         self._compute_uwshcu_invert_after = self.stencil_factory.from_dims_halo(
             func=compute_uwshcu_invert_after,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
         )
 
-        self.id_exit = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
-        self.stop35 = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
-        self.stop45 = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
+        # Create masks
+        # Mask that indicates if condensation has occurred (e.g., Fortran goto 333)
+        self.condensation = self.quantity_factory.zeros(
+            [X_DIM, Y_DIM], "n/a", dtype=bool
+        )
+        self.stop_cin = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
+        self.stop_buoyancy_sort = self.quantity_factory.zeros(
+            [X_DIM, Y_DIM], "n/a", dtype=bool
+        )
+
         self.ntracers_quantity_factory = self.make_ntracers_quantity_factory(
-            self.quantity_factory
+            self.quantity_factory,
         )
 
     @staticmethod
-    def make_ntracers_quantity_factory(ijk_quantity_factory: QuantityFactory):
+    def make_ntracers_quantity_factory(
+        ijk_quantity_factory: QuantityFactory,
+    ):
         ntracers_quantity_factory = copy.deepcopy(ijk_quantity_factory)
         ntracers_quantity_factory.set_extra_dim_lengths(
             **{
@@ -6458,23 +6506,6 @@ class ComputeUwshcuInv:
             }
         )
         return ntracers_quantity_factory
-
-    def make_ijk_field(self, data, dtype=FloatField) -> Quantity:
-        qty = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], "n/a", dtype=dtype)
-        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
-        return qty
-
-    def make_ij_field(self, data, dtype=FloatField) -> Quantity:
-        qty = self.quantity_factory.empty([X_DIM, Y_DIM], "n/a", dtype=dtype)
-        qty.view[:, :] = qty.np.asarray(data[:, :])
-        return qty
-
-    def make_zinterface_field(self, data, dtype=FloatField) -> Quantity:
-        qty = self.quantity_factory.empty(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a", dtype=dtype
-        )
-        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
-        return qty
 
     def make_ntracers_ijk_field(self, data) -> Quantity:
         qty = self.ntracers_quantity_factory.empty(
@@ -6527,7 +6558,6 @@ class ComputeUwshcuInv:
         CNV_Tracers: FloatField_NTracers,
         # Float/Int inputs
         dotransport: Int,
-        ncnst: Int,
         k0: Int,
         windsrcavg: Int,
         qtsrchgt: Float,
@@ -6554,6 +6584,7 @@ class ComputeUwshcuInv:
         rpen: Float,
         use_momenflx: Int,
         rdrop: Float,
+        iter_cin: i32,
         # Outputs
         umf_inv: FloatField,
         dcm_inv: FloatField,
@@ -6588,279 +6619,6 @@ class ComputeUwshcuInv:
             formulation=formulation,
         )
 
-        # Initialize internal variables
-        # FloatFields
-        ssthl0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ssqt0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ssu0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ssv0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thj = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlj = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qvj = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qse = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qij = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thv0top = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thv0bot = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvl0top = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        dcm_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qvten_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlten_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qiten_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        sten_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        uten_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        vten_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qrten_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qsten_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        cufrc_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        fer_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        fdr_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvlavg = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        tkeavg = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        uavg = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        vavg = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvlmin = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qtavg = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        zmid0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qt0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvl0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvl0bot = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        t0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qv0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        pmid0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thl0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thlsrc = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        usrc = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        vsrc = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        plcl = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thl0lcl = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qt0lcl = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thv0lcl = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        plfc = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        fer_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        fdr_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        cin = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvubot = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvutop = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvlsrc = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thl0top = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qt0top = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qldet_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qidet_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlsub_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qisub_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        dcm_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qvten_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlten_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qiten_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        sten_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        uten_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        vten_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qrten_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qsten_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        cufrc_outvar = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        usrc_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        vsrc_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thv0lcl_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ql0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qi0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        t0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        s0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        u0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        v0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qt0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thl0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvl0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ssthl0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ssqt0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thv0bot_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thv0top_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvl0bot_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvl0top_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ssu0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ssv0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        dcm_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qvten_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlten_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qiten_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        sten_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        uten_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        vten_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qrten_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qsten_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qldet_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qidet_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlsub_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qisub_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        cush_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        cufrc_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        fer_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        fdr_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qtsrc_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvlsrc_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thlsrc_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qldet_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qidet_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlsub_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qisub_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ndrop_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        nice_out = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        dcm = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        xco = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qc = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlten_det = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qiten_det = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qv0_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ql0_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qi0_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        s0_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        t0_s = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        slten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qv0_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        plcl_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        plfc_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        tkeavg_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thvlmin_o = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ufrclcl = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qcu = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlu = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qiu = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        cufrc = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qtsrc = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        uplus_3D = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        vplus_3D = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        prel = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thv0rel = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        winv = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        cbmf = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        rho0inv = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ufrcinv = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        wlcl = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qsat_pe = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        thlue = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qtue = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        wue = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        rei = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        fer = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        dwten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        diten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ql0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qi0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        uten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        vten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        uf = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        vf = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        dwten_temp = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        diten_temp = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        fdr = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlten_sink = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qiten_sink = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qrten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qsten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        s0 = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qvten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qlten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        sten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qiten = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qmin = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        pmid0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        u0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        v0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        zmid0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        exnmid0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        dp0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qv0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        ql0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        qi0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-        th0_in = self.make_ijk_field(np.zeros(shape=(24, 24, 72)))
-
-        # FloatFieldIJs
-        cush_inout = self.make_ij_field(np.zeros(shape=[24, 24]))
-        dpi = self.make_ij_field(np.zeros(shape=[24, 24]))
-        thvlmin_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
-        wcrit = self.make_ij_field(np.zeros(shape=[24, 24]))
-        alpha = self.make_ij_field(np.zeros(shape=[24, 24]))
-        del_CIN = self.make_ij_field(np.zeros(shape=[24, 24]))
-        cin_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
-        plfc_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
-        cinlcl_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
-        pe = self.make_ij_field(np.zeros(shape=[24, 24]))
-        thle = self.make_ij_field(np.zeros(shape=[24, 24]))
-        qte = self.make_ij_field(np.zeros(shape=[24, 24]))
-        dpe = self.make_ij_field(np.zeros(shape=[24, 24]))
-        exne = self.make_ij_field(np.zeros(shape=[24, 24]))
-        thvebot = self.make_ij_field(np.zeros(shape=[24, 24]))
-        ue = self.make_ij_field(np.zeros(shape=[24, 24]))
-        ve = self.make_ij_field(np.zeros(shape=[24, 24]))
-        drage = self.make_ij_field(np.zeros(shape=[24, 24]))
-        bogbot = self.make_ij_field(np.zeros(shape=[24, 24]))
-        bogtop = self.make_ij_field(np.zeros(shape=[24, 24]))
-        rhomid0j = self.make_ij_field(np.zeros(shape=[24, 24]))
-        cush_inoutvar = self.make_ij_field(np.zeros(shape=[24, 24]))
-        uplus = self.make_ij_field(np.zeros(shape=[24, 24]))
-        vplus = self.make_ij_field(np.zeros(shape=[24, 24]))
-        cin_i = self.make_ij_field(np.zeros(shape=[24, 24]))
-        cinlcl_i = self.make_ij_field(np.zeros(shape=[24, 24]))
-        ke = self.make_ij_field(np.zeros(shape=[24, 24]))
-        thlu_top = self.make_ij_field(np.zeros(shape=[24, 24]))
-        qtu_top = self.make_ij_field(np.zeros(shape=[24, 24]))
-        cldhgt = self.make_ij_field(np.zeros(shape=[24, 24]))
-        qlubelow = self.make_ij_field(np.zeros(shape=[24, 24]))
-        qiubelow = self.make_ij_field(np.zeros(shape=[24, 24]))
-        qlj_2D = self.make_ij_field(np.zeros(shape=[24, 24]))
-        qij_2D = self.make_ij_field(np.zeros(shape=[24, 24]))
-        qcubelow = self.make_ij_field(np.zeros(shape=[24, 24]))
-        rcwp = self.make_ij_field(np.zeros(shape=[24, 24]))
-        rlwp = self.make_ij_field(np.zeros(shape=[24, 24]))
-        riwp = self.make_ij_field(np.zeros(shape=[24, 24]))
-        ppen = self.make_ij_field(np.zeros(shape=[24, 24]))
-        tscaleh = self.make_ij_field(np.zeros(shape=[24, 24]))
-        wtwb = self.make_ij_field(np.zeros(shape=[24, 24]))
-        cnvtrmax = self.make_ij_field(np.zeros(shape=[24, 24]))
-
-        # Interface FloatFields
-        qtu_emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        umf_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        qtflx_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        slflx_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        slflx = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        thlu_emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        uu_emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        vu_emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        uemf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        uflx_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        vflx_out = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        ufrc = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        wu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        thlu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        qtu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        thvu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        uu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        vu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        umf_zint = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        thvu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        umf_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        qtflx_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        slflx_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        uflx_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        vflx_outvar = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        slflx_s = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        qtflx_s = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        uflx_s = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        vflx_s = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        qtflx = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        uflx = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        ufrc_s = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        xflx = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        vflx = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        umf_temp = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        umf_s = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        tke_in = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        pifc0_in = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        zifc0_in = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-        exnifc0_in = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
-
         # FloatFieldIJ NTracers
         trsrc = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
         trsrc_o = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
@@ -6889,35 +6647,14 @@ class ComputeUwshcuInv:
                 np.zeros(shape=[24, 24, 73, 23])
             )
 
-        IntFields = {}
-        for name in [
-            "kinv",
-            "klcl",
-            "klfc",
-            "kinv_o",
-            "klcl_o",
-            "klfc_o",
-            "kbup",
-            "krel",
-            "kpen",
-        ]:
-            IntFields[name] = self.make_ijk_field(
-                np.zeros(shape=(24, 24, 72)), dtype=Int
-            )
-
-        IntFieldIJs = {}
-        for name in ["kbup_IJ", "klfc_IJ", "kpen_IJ", "kpbl_in"]:
-            IntFieldIJs[name] = self.make_ij_field(np.zeros(shape=[24, 24]), dtype=Int)
-
         # Initialize masks, default is False
-        self.id_exit.view[:, :] = False
-        self.stop35.view[:, :] = False
-        self.stop45.view[:, :] = False
+        self.condensation.view[:, :] = False
+        self.stop_cin.view[:, :] = False
+        self.stop_buoyancy_sort.view[:, :] = False
 
         self._compute_uwshcu_invert_before(
             # Inputs
             k0=k0,
-            ncnst=ncnst,
             pmid0_inv=pmid0_inv,
             u0_inv=u0_inv,
             v0_inv=v0_inv,
@@ -6938,92 +6675,90 @@ class ComputeUwshcuInv:
             CNV_Tracers=CNV_Tracers,
             tr0_inout=tr0_inout,
             # Outputs
-            pmid0_in=pmid0_in,
-            u0_in=u0_in,
-            v0_in=v0_in,
-            zmid0_in=zmid0_in,
-            exnmid0_in=exnmid0_in,
-            dp0_in=dp0_in,
-            qv0_in=qv0_in,
-            ql0_in=ql0_in,
-            qi0_in=qi0_in,
-            th0_in=th0_in,
-            tke_in=tke_in,
-            pifc0_in=pifc0_in,
-            zifc0_in=zifc0_in,
-            exnifc0_in=exnifc0_in,
-            kpbl_in=IntFieldIJs["kpbl_in"],
-            cnvtrmax=cnvtrmax,
+            pmid0_in=self.temporaries.pmid0_in,
+            u0_in=self.temporaries.u0_in,
+            v0_in=self.temporaries.v0_in,
+            zmid0_in=self.temporaries.zmid0_in,
+            exnmid0_in=self.temporaries.exnmid0_in,
+            dp0_in=self.temporaries.dp0_in,
+            qv0_in=self.temporaries.qv0_in,
+            ql0_in=self.temporaries.ql0_in,
+            qi0_in=self.temporaries.qi0_in,
+            th0_in=self.temporaries.th0_in,
+            tke_in=self.temporaries.tke_in,
+            pifc0_in=self.temporaries.pifc0_in,
+            zifc0_in=self.temporaries.zifc0_in,
+            exnifc0_in=self.temporaries.exnifc0_in,
+            kpbl_in=self.temporaries.kpbl_in,
+            cnvtrmax=self.temporaries.cnvtrmax,
         )
 
         self._compute_thermodynamic_variables(
-            ncnst=ncnst,
-            pmid0_in=pmid0_in,
-            zmid0_in=zmid0_in,
-            exnmid0_in=exnmid0_in,
-            dp0_in=dp0_in,
-            u0_in=u0_in,
-            v0_in=v0_in,
-            qv0_in=qv0_in,
-            ql0_in=ql0_in,
-            qi0_in=qi0_in,
-            th0_in=th0_in,
+            pmid0_in=self.temporaries.pmid0_in,
+            zmid0_in=self.temporaries.zmid0_in,
+            exnmid0_in=self.temporaries.exnmid0_in,
+            dp0_in=self.temporaries.dp0_in,
+            u0_in=self.temporaries.u0_in,
+            v0_in=self.temporaries.v0_in,
+            qv0_in=self.temporaries.qv0_in,
+            ql0_in=self.temporaries.ql0_in,
+            qi0_in=self.temporaries.qi0_in,
+            th0_in=self.temporaries.th0_in,
             tr0_inout=tr0_inout,
             cush_inout=cush,
             cush=cush,
-            umf_out=umf_out,
+            umf_out=self.temporaries.umf_out,
             shfx=shfx,
             evap=evap,
-            qtflx_out=qtflx_out,
-            slflx_out=slflx_out,
-            uflx_out=uflx_out,
-            vflx_out=vflx_out,
-            qt0=qt0,
-            t0=t0,
-            qv0=qv0,
-            qi0=qi0,
-            pmid0=pmid0,
+            qtflx_out=self.temporaries.qtflx_out,
+            slflx_out=self.temporaries.slflx_out,
+            uflx_out=self.temporaries.uflx_out,
+            vflx_out=self.temporaries.vflx_out,
+            qt0=self.temporaries.qt0,
+            t0=self.temporaries.t0,
+            qv0=self.temporaries.qv0,
+            qi0=self.temporaries.qi0,
+            pmid0=self.temporaries.pmid0,
             tr0=FloatField_NTracer["tr0"],
             sstr0=FloatField_NTracer["sstr0"],
-            thl0=thl0,
-            ssthl0=ssthl0,
-            ssqt0=ssqt0,
-            ssu0=ssu0,
-            ssv0=ssv0,
-            tscaleh=tscaleh,
+            thl0=self.temporaries.thl0,
+            ssthl0=self.temporaries.ssthl0,
+            ssqt0=self.temporaries.ssqt0,
+            ssu0=self.temporaries.ssu0,
+            ssv0=self.temporaries.ssv0,
+            tscaleh=self.temporaries.tscaleh,
             dotransport=dotransport,
-            fer_out=fer_out,
-            fdr_out=fdr_out,
+            fer_out=self.temporaries.fer_out,
+            fdr_out=self.temporaries.fdr_out,
             tpert_out=tpert_out,
             qpert_out=qpert_out,
         )
 
         self._compute_thv0_thvl0(
-            pmid0_in=pmid0_in,
-            exnmid0_in=exnmid0_in,
-            qv0_in=qv0_in,
-            ql0_in=ql0_in,
-            qi0_in=qi0_in,
-            th0_in=th0_in,
-            zmid0=zmid0_in,
-            pifc0_in=pifc0_in,
-            ssthl0=ssthl0,
-            ssqt0=ssqt0,
+            pmid0_in=self.temporaries.pmid0_in,
+            exnmid0_in=self.temporaries.exnmid0_in,
+            qv0_in=self.temporaries.qv0_in,
+            ql0_in=self.temporaries.ql0_in,
+            qi0_in=self.temporaries.qi0_in,
+            th0_in=self.temporaries.th0_in,
+            zmid0=self.temporaries.zmid0_in,
+            pifc0_in=self.temporaries.pifc0_in,
+            ssthl0=self.temporaries.ssthl0,
+            ssqt0=self.temporaries.ssqt0,
             ese=self.qsat.ese,
             esx=self.qsat.esx,
-            umf_out=umf_out,
-            qtflx_out=qtflx_out,
-            slflx_out=slflx_out,
-            uflx_out=uflx_out,
-            vflx_out=vflx_out,
-            u0_in=u0_in,
-            v0_in=v0_in,
+            umf_out=self.temporaries.umf_out,
+            qtflx_out=self.temporaries.qtflx_out,
+            slflx_out=self.temporaries.slflx_out,
+            uflx_out=self.temporaries.uflx_out,
+            vflx_out=self.temporaries.vflx_out,
+            u0_in=self.temporaries.u0_in,
+            v0_in=self.temporaries.v0_in,
             k0=k0,
-            id_exit=self.id_exit,
+            condensation=self.condensation,
             dotransport=dotransport,
-            ncnst=ncnst,
-            ssu0=ssu0,
-            ssv0=ssv0,
+            ssu0=self.temporaries.ssu0,
+            ssv0=self.temporaries.ssv0,
             tr0=FloatField_NTracer["tr0"],
             sstr0=FloatField_NTracer["sstr0"],
             tr0_o=FloatField_NTracer["tr0_o"],
@@ -7032,68 +6767,68 @@ class ComputeUwshcuInv:
             trten=FloatField_NTracer["trten"],
             tru=FloatField_NTracers_ZDIM["tru"],
             tru_emf=FloatField_NTracers_ZDIM["tru_emf"],
-            umf_zint=umf_zint,
-            emf=emf,
-            slflx=slflx,
-            qtflx=qtflx,
-            uflx=uflx,
-            vflx=vflx,
-            thlu=thlu,
-            qtu=qtu,
-            uu=uu,
-            vu=vu,
-            wu=wu,
-            thvu=thvu,
-            thlu_emf=thlu_emf,
-            qtu_emf=qtu_emf,
-            uu_emf=uu_emf,
-            vu_emf=vu_emf,
-            uemf=uemf,
-            thvl0bot=thvl0bot,
-            thvl0top=thvl0top,
-            thvl0=thvl0,
-            qt0=qt0,
-            t0=t0,
-            qv0=qv0,
-            ql0=ql0,
-            qi0=qi0,
-            thl0=thl0,
-            thv0bot=thv0bot,
-            thv0top=thv0top,
-            uten=uten,
-            vten=vten,
-            s0=s0,
-            qcu=qcu,
-            qlu=qlu,
-            qiu=qiu,
-            cufrc=cufrc,
-            ufrc=ufrc,
-            qlten_det=qlten_det,
-            qiten_det=qiten_det,
-            qlten_sink=qlten_sink,
-            qiten_sink=qiten_sink,
-            sten=sten,
-            slten=slten,
-            qiten=qiten,
-            qv0_o=qv0_o,
-            ql0_o=ql0_o,
-            qi0_o=qi0_o,
-            t0_o=t0_o,
-            s0_o=s0_o,
-            u0_o=u0_o,
-            v0_o=v0_o,
-            qt0_o=qt0_o,
-            thl0_o=thl0_o,
-            thvl0_o=thvl0_o,
-            ssthl0_o=ssthl0_o,
-            ssqt0_o=ssqt0_o,
-            thv0bot_o=thv0bot_o,
-            thv0top_o=thv0top_o,
-            thvl0bot_o=thvl0bot_o,
-            thvl0top_o=thvl0top_o,
-            ssu0_o=ssu0_o,
-            ssv0_o=ssv0_o,
-            cush_inout=cush_inout,
+            umf_zint=self.temporaries.umf_zint,
+            emf=self.temporaries.emf,
+            slflx=self.temporaries.slflx,
+            qtflx=self.temporaries.qtflx,
+            uflx=self.temporaries.uflx,
+            vflx=self.temporaries.vflx,
+            thlu=self.temporaries.thlu,
+            qtu=self.temporaries.qtu,
+            uu=self.temporaries.uu,
+            vu=self.temporaries.vu,
+            wu=self.temporaries.wu,
+            thvu=self.temporaries.thvu,
+            thlu_emf=self.temporaries.thlu_emf,
+            qtu_emf=self.temporaries.qtu_emf,
+            uu_emf=self.temporaries.uu_emf,
+            vu_emf=self.temporaries.vu_emf,
+            uemf=self.temporaries.uemf,
+            thvl0bot=self.temporaries.thvl0bot,
+            thvl0top=self.temporaries.thvl0top,
+            thvl0=self.temporaries.thvl0,
+            qt0=self.temporaries.qt0,
+            t0=self.temporaries.t0,
+            qv0=self.temporaries.qv0,
+            ql0=self.temporaries.ql0,
+            qi0=self.temporaries.qi0,
+            thl0=self.temporaries.thl0,
+            thv0bot=self.temporaries.thv0bot,
+            thv0top=self.temporaries.thv0top,
+            uten=self.temporaries.uten,
+            vten=self.temporaries.vten,
+            s0=self.temporaries.s0,
+            qcu=self.temporaries.qcu,
+            qlu=self.temporaries.qlu,
+            qiu=self.temporaries.qiu,
+            cufrc=self.temporaries.cufrc,
+            ufrc=self.temporaries.ufrc,
+            qlten_det=self.temporaries.qlten_det,
+            qiten_det=self.temporaries.qiten_det,
+            qlten_sink=self.temporaries.qlten_sink,
+            qiten_sink=self.temporaries.qiten_sink,
+            sten=self.temporaries.sten,
+            slten=self.temporaries.slten,
+            qiten=self.temporaries.qiten,
+            qv0_o=self.temporaries.qv0_o,
+            ql0_o=self.temporaries.ql0_o,
+            qi0_o=self.temporaries.qi0_o,
+            t0_o=self.temporaries.t0_o,
+            s0_o=self.temporaries.s0_o,
+            u0_o=self.temporaries.u0_o,
+            v0_o=self.temporaries.v0_o,
+            qt0_o=self.temporaries.qt0_o,
+            thl0_o=self.temporaries.thl0_o,
+            thvl0_o=self.temporaries.thvl0_o,
+            ssthl0_o=self.temporaries.ssthl0_o,
+            ssqt0_o=self.temporaries.ssqt0_o,
+            thv0bot_o=self.temporaries.thv0bot_o,
+            thv0top_o=self.temporaries.thv0top_o,
+            thvl0bot_o=self.temporaries.thvl0bot_o,
+            thvl0top_o=self.temporaries.thvl0top_o,
+            ssu0_o=self.temporaries.ssu0_o,
+            ssv0_o=self.temporaries.ssv0_o,
+            cush_inout=self.temporaries.cush_inout,
         )
 
         """
@@ -7104,882 +6839,871 @@ class ComputeUwshcuInv:
         iterative cin calculation, because cumulus convection induces non-zero fluxes
         even at interfaces below PBL top height through 'fluxbelowinv' stencil.
         """
-        iteration = i32(1)
-        iter_cin = i32(2)
-        while iteration <= iter_cin:
+
+        for iteration in range(iter_cin):
+            iteration = i32(iteration)
 
             self._find_pbl_height(
                 iteration=iteration,
-                kpbl_in=IntFieldIJs["kpbl_in"],
+                kpbl_in=self.temporaries.kpbl_in,
                 k0=k0,
-                id_exit=self.id_exit,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx,
-                vflx_out=vflx,
-                kinv=IntFields["kinv"],
+                condensation=self.condensation,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx,
+                vflx_out=self.temporaries.vflx,
+                kinv=self.temporaries.kinv,
                 cush=cush,
-                tscaleh=tscaleh,
-                cush_inout=cush_inout,
+                tscaleh=self.temporaries.tscaleh,
+                cush_inout=self.temporaries.cush_inout,
             )
 
             self._find_pbl_averages(
-                id_exit=self.id_exit,
-                thvl0bot=thvl0bot,
-                thvl0top=thvl0top,
-                kinv=IntFields["kinv"],
-                pifc0=pifc0_in,
-                tke_in=tke_in,
-                u0=u0_in,
-                v0=v0_in,
-                thvl0=thvl0,
-                zmid0=zmid0_in,
+                condensation=self.condensation,
+                thvl0bot=self.temporaries.thvl0bot,
+                thvl0top=self.temporaries.thvl0top,
+                kinv=self.temporaries.kinv,
+                pifc0=self.temporaries.pifc0_in,
+                tke_in=self.temporaries.tke_in,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                thvl0=self.temporaries.thvl0,
+                zmid0=self.temporaries.zmid0_in,
                 qtsrchgt=qtsrchgt,
-                qt0=qt0,
-                thvlmin=thvlmin,
-                tkeavg=tkeavg,
-                uavg=uavg,
-                vavg=vavg,
-                thvlavg=thvlavg,
-                qtavg=qtavg,
+                qt0=self.temporaries.qt0,
+                thvlmin=self.temporaries.thvlmin,
+                tkeavg=self.temporaries.tkeavg,
+                uavg=self.temporaries.uavg,
+                vavg=self.temporaries.vavg,
+                thvlavg=self.temporaries.thvlavg,
+                qtavg=self.temporaries.qtavg,
                 iteration=iteration,
             )
 
             self._find_cumulus_characteristics(
-                id_exit=self.id_exit,
+                condensation=self.condensation,
                 windsrcavg=windsrcavg,
-                pifc0=pifc0_in,
-                t0=t0,
-                qv0=qv0,
+                pifc0=self.temporaries.pifc0_in,
+                t0=self.temporaries.t0,
+                qv0=self.temporaries.qv0,
                 shfx=shfx,
                 evap=evap,
                 thlsrc_fac=thlsrc_fac,
                 qtsrc_fac=qtsrc_fac,
-                qt0=qt0,
-                qtavg=qtavg,
-                thvlmin=thvlmin,
-                uavg=uavg,
-                vavg=uavg,
-                kinv=IntFields["kinv"],
-                u0=u0_in,
-                v0=v0_in,
-                ssu0=ssu0,
-                ssv0=ssv0,
-                pmid0=pmid0_in,
+                qt0=self.temporaries.qt0,
+                qtavg=self.temporaries.qtavg,
+                thvlmin=self.temporaries.thvlmin,
+                uavg=self.temporaries.uavg,
+                vavg=self.temporaries.vavg,
+                kinv=self.temporaries.kinv,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                pmid0=self.temporaries.pmid0_in,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 tr0=FloatField_NTracer["tr0"],
                 trsrc=trsrc,
-                qtsrc=qtsrc,
-                thvlsrc=thvlsrc,
-                thlsrc=thlsrc,
-                usrc=usrc,
-                vsrc=vsrc,
+                qtsrc=self.temporaries.qtsrc,
+                thvlsrc=self.temporaries.thvlsrc,
+                thlsrc=self.temporaries.thlsrc,
+                usrc=self.temporaries.usrc,
+                vsrc=self.temporaries.vsrc,
                 tpert_out=tpert_out,
                 qpert_out=qpert_out,
                 iteration=iteration,
             )
 
             self._find_klcl(
-                id_exit=self.id_exit,
-                pifc0=pifc0_in,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
-                qtsrc=qtsrc,
-                thlsrc=thlsrc,
+                condensation=self.condensation,
+                pifc0=self.temporaries.pifc0_in,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                qtsrc=self.temporaries.qtsrc,
+                thlsrc=self.temporaries.thlsrc,
                 ese=self.qsat.ese,
                 esx=self.qsat.esx,
                 k0=k0,
-                thl0=thl0,
-                ssthl0=ssthl0,
-                pmid0=pmid0_in,
-                qt0=qt0,
-                ssqt0=ssqt0,
-                plcl=plcl,
-                klcl=IntFields["klcl"],
-                thl0lcl=thl0lcl,
-                qt0lcl=qt0lcl,
-                thv0lcl=thv0lcl,
-                cush_inout=cush_inout,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pmid0=self.temporaries.pmid0_in,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                plcl=self.temporaries.plcl,
+                klcl=self.temporaries.klcl,
+                thl0lcl=self.temporaries.thl0lcl,
+                qt0lcl=self.temporaries.qt0lcl,
+                thv0lcl=self.temporaries.thv0lcl,
+                cush_inout=self.temporaries.cush_inout,
             )
 
             self._compute_cin_cinlcl(
-                id_exit=self.id_exit,
-                stop35=self.stop35,
-                klcl=IntFields["klcl"],
-                kinv=IntFields["kinv"],
-                thvlsrc=thvlsrc,
-                pifc0=pifc0_in,
-                thv0bot=thv0bot,
-                thv0top=thv0top,
-                plcl=plcl,
-                thv0lcl=thv0lcl,
-                thlsrc=thlsrc,
-                qtsrc=qtsrc,
+                condensation=self.condensation,
+                stop_cin=self.stop_cin,
+                klcl=self.temporaries.klcl,
+                kinv=self.temporaries.kinv,
+                thvlsrc=self.temporaries.thvlsrc,
+                pifc0=self.temporaries.pifc0_in,
+                thv0bot=self.temporaries.thv0bot,
+                thv0top=self.temporaries.thv0top,
+                plcl=self.temporaries.plcl,
+                thv0lcl=self.temporaries.thv0lcl,
+                thlsrc=self.temporaries.thlsrc,
+                qtsrc=self.temporaries.qtsrc,
                 ese=self.qsat.ese,
                 esx=self.qsat.esx,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
-                cin_IJ=cin_IJ,
-                cinlcl_IJ=cinlcl_IJ,
-                plfc_IJ=plfc_IJ,
-                klfc_IJ=IntFieldIJs["klfc_IJ"],
-                plfc=plfc,
-                klfc=IntFields["klfc"],
-                cin=cin,
-                thvubot=thvubot,
-                thvutop=thvutop,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                cin_IJ=self.temporaries.cin_IJ,
+                cinlcl_IJ=self.temporaries.cinlcl_IJ,
+                plfc_IJ=self.temporaries.plfc_IJ,
+                klfc_IJ=self.temporaries.klfc_IJ,
+                plfc=self.temporaries.plfc,
+                klfc=self.temporaries.klfc,
+                cin=self.temporaries.cin,
+                thvubot=self.temporaries.thvubot,
+                thvutop=self.temporaries.thvutop,
                 k0=k0,
                 iteration=iteration,
                 rbuoy=rbuoy,
                 rkfre=rkfre,
-                tkeavg=tkeavg,
+                tkeavg=self.temporaries.tkeavg,
                 epsvarw=epsvarw,
-                thvlmin=thvlmin,
-                usrc=usrc,
-                vsrc=vsrc,
+                thvlmin=self.temporaries.thvlmin,
+                usrc=self.temporaries.usrc,
+                vsrc=self.temporaries.vsrc,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 trsrc=trsrc,
                 trsrc_o=trsrc_o,
-                cin_i=cin_i,
-                cinlcl_i=cinlcl_i,
-                ke=ke,
-                kinv_o=IntFields["kinv_o"],
-                klcl_o=IntFields["klcl_o"],
-                klfc_o=IntFields["klfc_o"],
-                plcl_o=plcl_o,
-                plfc_o=plfc_o,
-                tkeavg_o=tkeavg_o,
-                thvlmin_o=thvlmin_o,
-                qtsrc_o=qtsrc_o,
-                thvlsrc_o=thvlsrc_o,
-                thlsrc_o=thlsrc_o,
-                usrc_o=usrc_o,
-                vsrc_o=vsrc_o,
-                thv0lcl_o=thv0lcl_o,
-                cush_inout=cush_inout,
+                cin_i=self.temporaries.cin_i,
+                cinlcl_i=self.temporaries.cinlcl_i,
+                ke=self.temporaries.ke,
+                kinv_o=self.temporaries.kinv_o,
+                klcl_o=self.temporaries.klcl_o,
+                klfc_o=self.temporaries.klfc_o,
+                plcl_o=self.temporaries.plcl_o,
+                plfc_o=self.temporaries.plfc_o,
+                tkeavg_o=self.temporaries.tkeavg_o,
+                thvlmin_o=self.temporaries.thvlmin_o,
+                qtsrc_o=self.temporaries.qtsrc_o,
+                thvlsrc_o=self.temporaries.thvlsrc_o,
+                thlsrc_o=self.temporaries.thlsrc_o,
+                usrc_o=self.temporaries.usrc_o,
+                vsrc_o=self.temporaries.vsrc_o,
+                thv0lcl_o=self.temporaries.thv0lcl_o,
+                cush_inout=self.temporaries.cush_inout,
             )
 
             self._avg_initial_and_final_cin(
-                id_exit=self.id_exit,
+                condensation=self.condensation,
                 iteration=iteration,
-                cin_IJ=cin_IJ,
-                cinlcl_IJ=cinlcl_IJ,
+                cin_IJ=self.temporaries.cin_IJ,
+                cinlcl_IJ=self.temporaries.cinlcl_IJ,
                 use_CINcin=use_CINcin,
-                cin_i=cin_i,
-                cinlcl_i=cinlcl_i,
-                ke=ke,
+                cin_i=self.temporaries.cin_i,
+                cinlcl_i=self.temporaries.cinlcl_i,
+                ke=self.temporaries.ke,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 trsrc=trsrc,
                 trsrc_o=trsrc_o,
                 tr0=FloatField_NTracer["tr0"],
                 tr0_o=FloatField_NTracer["tr0_o"],
                 sstr0=FloatField_NTracer["sstr0"],
                 sstr0_o=FloatField_NTracer["sstr0_o"],
-                kinv_o=IntFields["kinv_o"],
-                klcl_o=IntFields["klcl_o"],
-                klfc_o=IntFields["klfc_o"],
-                plcl_o=plcl_o,
-                plfc_o=plfc_o,
-                tkeavg_o=tkeavg_o,
-                thvlmin_o=thvlmin_o,
-                qtsrc_o=qtsrc_o,
-                thvlsrc_o=thvlsrc_o,
-                thlsrc_o=thlsrc_o,
-                usrc_o=usrc_o,
-                vsrc_o=vsrc_o,
-                thv0lcl_o=thv0lcl_o,
-                qv0_o=qv0_o,
-                ql0_o=ql0_o,
-                qi0_o=qi0_o,
-                t0_o=t0_o,
-                s0_o=s0_o,
-                u0_o=u0_o,
-                v0_o=v0_o,
-                qt0_o=qt0_o,
-                thl0_o=thl0_o,
-                thvl0_o=thvl0_o,
-                ssthl0_o=ssthl0_o,
-                ssqt0_o=ssqt0_o,
-                thv0bot_o=thv0bot_o,
-                thv0top_o=thv0top_o,
-                thvl0bot_o=thvl0bot_o,
-                thvl0top_o=thvl0top_o,
-                ssu0_o=ssu0_o,
-                ssv0_o=ssv0_o,
-                thvlmin_IJ=thvlmin_IJ,
-                umf_zint=umf_zint,
-                emf=emf,
-                slflx=slflx,
-                qtflx=qtflx,
-                uflx=uflx,
-                vflx=vflx,
+                kinv_o=self.temporaries.kinv_o,
+                klcl_o=self.temporaries.klcl_o,
+                klfc_o=self.temporaries.klfc_o,
+                plcl_o=self.temporaries.plcl_o,
+                plfc_o=self.temporaries.plfc_o,
+                tkeavg_o=self.temporaries.tkeavg_o,
+                thvlmin_o=self.temporaries.thvlmin_o,
+                qtsrc_o=self.temporaries.qtsrc_o,
+                thvlsrc_o=self.temporaries.thvlsrc_o,
+                thlsrc_o=self.temporaries.thlsrc_o,
+                usrc_o=self.temporaries.usrc_o,
+                vsrc_o=self.temporaries.vsrc_o,
+                thv0lcl_o=self.temporaries.thv0lcl_o,
+                qv0_o=self.temporaries.qv0_o,
+                ql0_o=self.temporaries.ql0_o,
+                qi0_o=self.temporaries.qi0_o,
+                t0_o=self.temporaries.t0_o,
+                s0_o=self.temporaries.s0_o,
+                u0_o=self.temporaries.u0_o,
+                v0_o=self.temporaries.v0_o,
+                qt0_o=self.temporaries.qt0_o,
+                thl0_o=self.temporaries.thl0_o,
+                thvl0_o=self.temporaries.thvl0_o,
+                ssthl0_o=self.temporaries.ssthl0_o,
+                ssqt0_o=self.temporaries.ssqt0_o,
+                thv0bot_o=self.temporaries.thv0bot_o,
+                thv0top_o=self.temporaries.thv0top_o,
+                thvl0bot_o=self.temporaries.thvl0bot_o,
+                thvl0top_o=self.temporaries.thvl0top_o,
+                ssu0_o=self.temporaries.ssu0_o,
+                ssv0_o=self.temporaries.ssv0_o,
+                thvlmin_IJ=self.temporaries.thvlmin_IJ,
+                umf_zint=self.temporaries.umf_zint,
+                emf=self.temporaries.emf,
+                slflx=self.temporaries.slflx,
+                qtflx=self.temporaries.qtflx,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
                 k0=k0,
-                ufrc=ufrc,
-                thlu=thlu,
-                qtu=qtu,
-                uu=uu,
-                vu=vu,
-                wu=wu,
-                thvu=thvu,
-                thlu_emf=thlu_emf,
-                qtu_emf=qtu_emf,
-                uu_emf=uu_emf,
-                vu_emf=vu_emf,
+                ufrc=self.temporaries.ufrc,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                uu=self.temporaries.uu,
+                vu=self.temporaries.vu,
+                wu=self.temporaries.wu,
+                thvu=self.temporaries.thvu,
+                thlu_emf=self.temporaries.thlu_emf,
+                qtu_emf=self.temporaries.qtu_emf,
+                uu_emf=self.temporaries.uu_emf,
+                vu_emf=self.temporaries.vu_emf,
                 trflx=FloatField_NTracers_ZDIM["trflx"],
                 trten=FloatField_NTracer["trten"],
                 tru=FloatField_NTracers_ZDIM["tru"],
                 tru_emf=FloatField_NTracers_ZDIM["tru_emf"],
-                umf_s=umf_s,
-                zifc0=zifc0_in,
-                dcm_s=dcm_s,
-                qvten_s=qvten_s,
-                qlten_s=qlten_s,
-                qiten_s=qiten_s,
-                sten_s=sten_s,
-                uten_s=uten_s,
-                vten_s=vten_s,
-                qrten_s=qrten_s,
-                qsten_s=qsten_s,
-                qldet_s=qldet_s,
-                qidet_s=qidet_s,
-                qlsub_s=qlsub_s,
-                qisub_s=qisub_s,
-                cush_s=cush_s,
-                cufrc_s=cufrc_s,
-                qtflx_out=qtflx_out,
-                qtflx_s=qtflx_s,
-                slflx_out=slflx_out,
-                slflx_s=slflx_s,
-                uflx_out=uflx_out,
-                uflx_s=uflx_s,
-                vflx_out=vflx_out,
-                vflx_s=vflx_s,
-                fer_s=fer_s,
-                fdr_s=fdr_s,
-                umf_out=umf_out,
-                kinv=IntFields["kinv"],
-                klcl=IntFields["klcl"],
-                plcl=plcl,
-                thv0bot=thv0bot,
-                thv0lcl=thv0lcl,
-                thv0top=thv0top,
-                thlsrc=thlsrc,
-                qtsrc=qtsrc,
-                thl0=thl0,
-                ssthl0=ssthl0,
-                ssqt0=ssqt0,
-                ssu0=ssu0,
-                ssv0=ssv0,
-                qt0=qt0,
-                u0=u0_in,
-                v0=v0_in,
-                qi0=qi0,
-                ql0=ql0,
-                qv0=qv0,
-                s0=s0,
-                qvten_out=qvten_out,
-                dcm_out=dcm_out,
-                qlten_out=qlten_out,
-                qiten_out=qiten_out,
-                del_CIN=del_CIN,
-                dcm=dcm,
-                sten_out=sten_out,
-                uten_out=uten_out,
-                vten_out=vten_out,
-                qrten_out=qrten_out,
-                qsten_out=qsten_out,
-                cufrc_out=cufrc_out,
-                cush_inout=cush_inout,
-                qldet_out=qldet_out,
-                qidet_out=qidet_out,
-                qlsub_out=qlsub_out,
-                qisub_out=qisub_out,
-                fdr_out=fdr_out,
-                fer_out=fer_out,
+                umf_s=self.temporaries.umf_s,
+                zifc0=self.temporaries.zifc0_in,
+                dcm_s=self.temporaries.dcm_s,
+                qvten_s=self.temporaries.qvten_s,
+                qlten_s=self.temporaries.qlten_s,
+                qiten_s=self.temporaries.qiten_s,
+                sten_s=self.temporaries.sten_s,
+                uten_s=self.temporaries.uten_s,
+                vten_s=self.temporaries.vten_s,
+                qrten_s=self.temporaries.qrten_s,
+                qsten_s=self.temporaries.qsten_s,
+                qldet_s=self.temporaries.qldet_s,
+                qidet_s=self.temporaries.qidet_s,
+                qlsub_s=self.temporaries.qlsub_s,
+                qisub_s=self.temporaries.qisub_s,
+                cush_s=self.temporaries.cush_s,
+                cufrc_s=self.temporaries.cufrc_s,
+                qtflx_out=self.temporaries.qtflx_out,
+                qtflx_s=self.temporaries.qtflx_s,
+                slflx_out=self.temporaries.slflx_out,
+                slflx_s=self.temporaries.slflx_s,
+                uflx_out=self.temporaries.uflx_out,
+                uflx_s=self.temporaries.uflx_s,
+                vflx_out=self.temporaries.vflx_out,
+                vflx_s=self.temporaries.vflx_s,
+                fer_s=self.temporaries.fer_s,
+                fdr_s=self.temporaries.fdr_s,
+                umf_out=self.temporaries.umf_out,
+                kinv=self.temporaries.kinv,
+                klcl=self.temporaries.klcl,
+                plcl=self.temporaries.plcl,
+                thv0bot=self.temporaries.thv0bot,
+                thv0lcl=self.temporaries.thv0lcl,
+                thv0top=self.temporaries.thv0top,
+                thlsrc=self.temporaries.thlsrc,
+                qtsrc=self.temporaries.qtsrc,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                ssqt0=self.temporaries.ssqt0,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                qt0=self.temporaries.qt0,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                qi0=self.temporaries.qi0,
+                ql0=self.temporaries.ql0,
+                qv0=self.temporaries.qv0,
+                s0=self.temporaries.s0,
+                qvten_out=self.temporaries.qvten_out,
+                dcm_out=self.temporaries.dcm_out,
+                qlten_out=self.temporaries.qlten_out,
+                qiten_out=self.temporaries.qiten_out,
+                del_CIN=self.temporaries.del_CIN,
+                dcm=self.temporaries.dcm,
+                sten_out=self.temporaries.sten_out,
+                uten_out=self.temporaries.uten_out,
+                vten_out=self.temporaries.vten_out,
+                qrten_out=self.temporaries.qrten_out,
+                qsten_out=self.temporaries.qsten_out,
+                cufrc_out=self.temporaries.cufrc_out,
+                cush_inout=self.temporaries.cush_inout,
+                qldet_out=self.temporaries.qldet_out,
+                qidet_out=self.temporaries.qidet_out,
+                qlsub_out=self.temporaries.qlsub_out,
+                qisub_out=self.temporaries.qisub_out,
+                fdr_out=self.temporaries.fdr_out,
+                fer_out=self.temporaries.fer_out,
             )
 
             self._define_prel_krel(
-                id_exit=self.id_exit,
+                condensation=self.condensation,
                 iteration=iteration,
-                klcl=IntFields["klcl"],
-                kinv=IntFields["kinv"],
-                pifc0=pifc0_in,
-                thv0bot=thv0bot,
-                plcl=plcl,
-                thv0lcl=thv0lcl,
-                krel=IntFields["krel"],
-                prel=prel,
-                thv0rel=thv0rel,
-                umf_out=umf_out,
+                klcl=self.temporaries.klcl,
+                kinv=self.temporaries.kinv,
+                pifc0=self.temporaries.pifc0_in,
+                thv0bot=self.temporaries.thv0bot,
+                plcl=self.temporaries.plcl,
+                thv0lcl=self.temporaries.thv0lcl,
+                krel=self.temporaries.krel,
+                prel=self.temporaries.prel,
+                thv0rel=self.temporaries.thv0rel,
+                umf_out=self.temporaries.umf_out,
             )
 
             self._calc_cumulus_base_mass_flux(
-                id_exit=self.id_exit,
+                condensation=self.condensation,
                 iteration=iteration,
                 use_CINcin=use_CINcin,
-                cin_IJ=cin_IJ,
+                cin_IJ=self.temporaries.cin_IJ,
                 rbuoy=rbuoy,
-                cinlcl_IJ=cinlcl_IJ,
+                cinlcl_IJ=self.temporaries.cinlcl_IJ,
                 rkfre=rkfre,
-                tkeavg=tkeavg,
+                tkeavg=self.temporaries.tkeavg,
                 epsvarw=epsvarw,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
-                kinv=IntFields["kinv"],
-                pifc0=pifc0_in,
-                thv0top=thv0top,
-                exnifc0=exnifc0_in,
-                dp0=dp0_in,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                kinv=self.temporaries.kinv,
+                pifc0=self.temporaries.pifc0_in,
+                thv0top=self.temporaries.thv0top,
+                exnifc0=self.temporaries.exnifc0_in,
+                dp0=self.temporaries.dp0_in,
                 dt=dt,
                 mumin1=mumin1,
                 rmaxfrac=rmaxfrac,
-                winv=winv,
-                cbmf=cbmf,
-                rho0inv=rho0inv,
-                ufrcinv=ufrcinv,
-                wcrit=wcrit,
-                cush_inout=cush_inout,
+                winv=self.temporaries.winv,
+                cbmf=self.temporaries.cbmf,
+                rho0inv=self.temporaries.rho0inv,
+                ufrcinv=self.temporaries.ufrcinv,
+                wcrit=self.temporaries.wcrit,
+                cush_inout=self.temporaries.cush_inout,
             )
 
             self._define_updraft_properties(
-                id_exit=self.id_exit,
+                condensation=self.condensation,
                 iteration=iteration,
-                winv=winv,
-                cinlcl_IJ=cinlcl_IJ,
+                winv=self.temporaries.winv,
+                cinlcl_IJ=self.temporaries.cinlcl_IJ,
                 rbuoy=rbuoy,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
-                cbmf=cbmf,
-                rho0inv=rho0inv,
-                krel=IntFields["krel"],
-                ufrc=ufrc,
-                ufrcinv=ufrcinv,
-                kinv=IntFields["kinv"],
-                umf_zint=umf_zint,
-                wu=wu,
-                emf=emf,
-                thlu=thlu,
-                qtu=qtu,
-                thlsrc=thlsrc,
-                qtsrc=qtsrc,
-                prel=prel,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                cbmf=self.temporaries.cbmf,
+                rho0inv=self.temporaries.rho0inv,
+                krel=self.temporaries.krel,
+                ufrc=self.temporaries.ufrc,
+                ufrcinv=self.temporaries.ufrcinv,
+                kinv=self.temporaries.kinv,
+                umf_zint=self.temporaries.umf_zint,
+                wu=self.temporaries.wu,
+                emf=self.temporaries.emf,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                thlsrc=self.temporaries.thlsrc,
+                qtsrc=self.temporaries.qtsrc,
+                prel=self.temporaries.prel,
                 ese=self.qsat.ese,
                 esx=self.qsat.esx,
-                thvu=thvu,
-                wlcl=wlcl,
-                ufrclcl=ufrclcl,
-                cush_inout=cush_inout,
+                thvu=self.temporaries.thvu,
+                wlcl=self.temporaries.wlcl,
+                ufrclcl=self.temporaries.ufrclcl,
+                cush_inout=self.temporaries.cush_inout,
             )
 
             self._define_env_properties(
-                id_exit=self.id_exit,
+                condensation=self.condensation,
                 iteration=iteration,
-                krel=IntFields["krel"],
-                kinv=IntFields["kinv"],
+                krel=self.temporaries.krel,
+                kinv=self.temporaries.kinv,
                 PGFc=PGFc,
-                ssu0=ssu0,
-                ssv0=ssv0,
-                prel=prel,
-                pifc0=pifc0_in,
-                uu=uu,
-                vu=vu,
-                usrc=usrc,
-                vsrc=vsrc,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                prel=self.temporaries.prel,
+                pifc0=self.temporaries.pifc0_in,
+                uu=self.temporaries.uu,
+                vu=self.temporaries.vu,
+                usrc=self.temporaries.usrc,
+                vsrc=self.temporaries.vsrc,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 tru=FloatField_NTracers_ZDIM["tru"],
                 trsrc=trsrc,
-                thv0rel=thv0rel,
-                thl0=thl0,
-                ssthl0=ssthl0,
-                pmid0=pmid0_in,
-                qt0=qt0,
-                ssqt0=ssqt0,
-                u0=u0_in,
-                v0=v0_in,
+                thv0rel=self.temporaries.thv0rel,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pmid0=self.temporaries.pmid0_in,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
                 tre=tre,
                 tr0=FloatField_NTracer["tr0"],
                 sstr0=FloatField_NTracer["sstr0"],
-                uplus=uplus,
-                vplus=vplus,
-                uplus_3D=uplus_3D,
-                vplus_3D=vplus_3D,
-                qsat_pe=qsat_pe,
-                pe=pe,
-                thle=thle,
-                qte=qte,
-                dpe=dpe,
-                exne=exne,
-                thvebot=thvebot,
-                ue=ue,
-                ve=ve,
+                uplus=self.temporaries.uplus,
+                vplus=self.temporaries.vplus,
+                uplus_3D=self.temporaries.uplus_3D,
+                vplus_3D=self.temporaries.vplus_3D,
+                qsat_pe=self.temporaries.qsat_pe,
+                pe=self.temporaries.pe,
+                thle=self.temporaries.thle,
+                qte=self.temporaries.qte,
+                dpe=self.temporaries.dpe,
+                exne=self.temporaries.exne,
+                thvebot=self.temporaries.thvebot,
+                ue=self.temporaries.ue,
+                ve=self.temporaries.ve,
             )
 
             self._buoyancy_sorting(
-                id_exit=self.id_exit,
-                tscaleh=tscaleh,
-                krel=IntFields["krel"],
-                wlcl=wlcl,
-                prel=prel,
-                pifc0=pifc0_in,
-                thv0rel=thv0rel,
-                thl0=thl0,
-                ssthl0=ssthl0,
-                pmid0=pmid0_in,
-                qt0=qt0,
-                ssqt0=ssqt0,
-                u0=u0_in,
-                v0=v0_in,
-                ssu0=ssu0,
-                ssv0=ssv0,
+                condensation=self.condensation,
+                tscaleh=self.temporaries.tscaleh,
+                krel=self.temporaries.krel,
+                wlcl=self.temporaries.wlcl,
+                prel=self.temporaries.prel,
+                pifc0=self.temporaries.pifc0_in,
+                thv0rel=self.temporaries.thv0rel,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pmid0=self.temporaries.pmid0_in,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 tre=tre,
                 tr0=FloatField_NTracer["tr0"],
                 sstr0=FloatField_NTracer["sstr0"],
                 k0=k0,
-                thlu=thlu,
-                qtu=qtu,
-                wu=wu,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                wu=self.temporaries.wu,
                 niter_xc=niter_xc,
                 ese=self.qsat.ese,
                 esx=self.qsat.esx,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
-                qsat_pe=qsat_pe,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                qsat_pe=self.temporaries.qsat_pe,
                 criqc=criqc,
                 cridist_opt=cridist_opt,
                 rle=rle,
-                zifc0=zifc0_in,
+                zifc0=self.temporaries.zifc0_in,
                 rbuoy=rbuoy,
                 mixscale=mixscale,
                 rkm=rkm,
-                zmid0=zmid0_in,
+                zmid0=self.temporaries.zmid0_in,
                 detrhgt=detrhgt,
-                thlue=thlue,
-                qtue=qtue,
-                wue=wue,
-                wtwb=wtwb,
-                dp0=dp0_in,
+                thlue=self.temporaries.thlue,
+                qtue=self.temporaries.qtue,
+                wue=self.temporaries.wue,
+                wtwb=self.temporaries.wtwb,
+                dp0=self.temporaries.dp0_in,
                 dt=dt,
-                thv0bot=thv0bot,
-                exnmid0=exnmid0_in,
+                thv0bot=self.temporaries.thv0bot,
+                exnmid0=self.temporaries.exnmid0_in,
                 rmaxfrac=rmaxfrac,
-                thv0top=thv0top,
-                exnifc0=exnifc0_in,
+                thv0top=self.temporaries.thv0top,
+                exnifc0=self.temporaries.exnifc0_in,
                 use_self_detrain=use_self_detrain,
                 rdrag=rdrag,
                 PGFc=PGFc,
                 tru=FloatField_NTracers_ZDIM["tru"],
-                umf_zint=umf_zint,
-                emf=emf,
-                thvu=thvu,
-                rei=rei,
-                uu=uu,
-                vu=vu,
-                ufrc=ufrc,
-                pe=pe,
-                thle=thle,
-                qte=qte,
-                dpe=dpe,
-                exne=exne,
-                thvebot=thvebot,
-                ue=ue,
-                ve=ve,
-                drage=drage,
-                bogbot=bogbot,
-                bogtop=bogtop,
-                kpen_IJ=IntFieldIJs["kpen_IJ"],
-                rhomid0j=rhomid0j,
-                kbup_IJ=IntFieldIJs["kbup_IJ"],
-                fer=fer,
-                fdr=fdr,
-                dwten=dwten,
-                diten=diten,
-                dcm=dcm,
-                xco=xco,
-                cush_inout=cush_inout,
-                stop45=self.stop45,
+                umf_zint=self.temporaries.umf_zint,
+                emf=self.temporaries.emf,
+                thvu=self.temporaries.thvu,
+                rei=self.temporaries.rei,
+                uu=self.temporaries.uu,
+                vu=self.temporaries.vu,
+                ufrc=self.temporaries.ufrc,
+                pe=self.temporaries.pe,
+                thle=self.temporaries.thle,
+                qte=self.temporaries.qte,
+                dpe=self.temporaries.dpe,
+                exne=self.temporaries.exne,
+                thvebot=self.temporaries.thvebot,
+                ue=self.temporaries.ue,
+                ve=self.temporaries.ve,
+                drage=self.temporaries.drage,
+                bogbot=self.temporaries.bogbot,
+                bogtop=self.temporaries.bogtop,
+                kpen_IJ=self.temporaries.kpen_IJ,
+                rhomid0j=self.temporaries.rhomid0j,
+                kbup_IJ=self.temporaries.kbup_IJ,
+                fer=self.temporaries.fer,
+                fdr=self.temporaries.fdr,
+                dwten=self.temporaries.dwten,
+                diten=self.temporaries.diten,
+                dcm=self.temporaries.dcm,
+                xco=self.temporaries.xco,
+                cush_inout=self.temporaries.cush_inout,
+                stop_buoyancy_sort=self.stop_buoyancy_sort,
                 iteration=iteration,
             )
 
             self._calc_ppen(
-                id_exit=self.id_exit,
-                drage=drage,
-                bogbot=bogbot,
-                bogtop=bogtop,
-                pifc0=pifc0_in,
-                kpen_IJ=IntFieldIJs["kpen_IJ"],
-                kpen=IntFields["kpen"],
-                wu=wu,
-                rhomid0j=rhomid0j,
-                dp0=dp0_in,
-                wtwb=wtwb,
-                ppen=ppen,
+                condensation=self.condensation,
+                drage=self.temporaries.drage,
+                bogbot=self.temporaries.bogbot,
+                bogtop=self.temporaries.bogtop,
+                pifc0=self.temporaries.pifc0_in,
+                kpen_IJ=self.temporaries.kpen_IJ,
+                kpen=self.temporaries.kpen,
+                wu=self.temporaries.wu,
+                rhomid0j=self.temporaries.rhomid0j,
+                dp0=self.temporaries.dp0_in,
+                wtwb=self.temporaries.wtwb,
+                ppen=self.temporaries.ppen,
             )
 
             self._recalc_condensate(
-                id_exit=self.id_exit,
-                fer=fer,
-                kpen=IntFields["kpen"],
-                ppen=ppen,
-                thlu=thlu,
-                thl0=thl0,
-                ssthl0=ssthl0,
-                qtu=qtu,
-                qt0=qt0,
-                ssqt0=ssqt0,
-                pifc0=pifc0_in,
+                condensation=self.condensation,
+                fer=self.temporaries.fer,
+                kpen=self.temporaries.kpen,
+                ppen=self.temporaries.ppen,
+                thlu=self.temporaries.thlu,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                qtu=self.temporaries.qtu,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                pifc0=self.temporaries.pifc0_in,
                 ese=self.qsat.ese,
                 esx=self.qsat.esx,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
                 criqc=criqc,
-                thv0bot=thv0bot,
-                thv0top=thv0top,
-                exnifc0=exnifc0_in,
-                zifc0=zifc0_in,
-                kbup_IJ=IntFieldIJs["kbup_IJ"],
-                kbup=IntFields["kbup"],
-                krel=IntFields["krel"],
+                thv0bot=self.temporaries.thv0bot,
+                thv0top=self.temporaries.thv0top,
+                exnifc0=self.temporaries.exnifc0_in,
+                zifc0=self.temporaries.zifc0_in,
+                kbup_IJ=self.temporaries.kbup_IJ,
+                kbup=self.temporaries.kbup,
+                krel=self.temporaries.krel,
                 k0=k0,
-                umf_zint=umf_zint,
-                emf=emf,
-                ufrc=ufrc,
-                dwten=dwten,
-                diten=diten,
-                dwten_temp=dwten_temp,
-                diten_temp=diten_temp,
-                thlu_top=thlu_top,
-                qtu_top=qtu_top,
-                cldhgt=cldhgt,
-                fdr=fdr,
-                umf_temp=umf_temp,
-                xco=xco,
+                umf_zint=self.temporaries.umf_zint,
+                emf=self.temporaries.emf,
+                ufrc=self.temporaries.ufrc,
+                dwten=self.temporaries.dwten,
+                diten=self.temporaries.diten,
+                dwten_temp=self.temporaries.dwten_temp,
+                diten_temp=self.temporaries.diten_temp,
+                thlu_top=self.temporaries.thlu_top,
+                qtu_top=self.temporaries.qtu_top,
+                cldhgt=self.temporaries.cldhgt,
+                fdr=self.temporaries.fdr,
+                umf_temp=self.temporaries.umf_temp,
+                xco=self.temporaries.xco,
                 cush=cush,
-                cush_inout=cush_inout,
+                cush_inout=self.temporaries.cush_inout,
                 iteration=iteration,
             )
 
             self._calc_entrainment_mass_flux(
-                id_exit=self.id_exit,
+                condensation=self.condensation,
                 k0=k0,
-                thlu=thlu,
-                qtu=qtu,
-                uu=uu,
-                vu=vu,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                uu=self.temporaries.uu,
+                vu=self.temporaries.vu,
                 tru=FloatField_NTracers_ZDIM["tru"],
                 dotransport=dotransport,
-                ncnst=ncnst,
                 tru_emf=FloatField_NTracers_ZDIM["tru_emf"],
-                kpen=IntFields["kpen"],
-                kbup=IntFields["kbup"],
-                pifc0=pifc0_in,
-                thv0bot=thv0bot,
-                thv0top=thv0top,
-                exnifc0=exnifc0_in,
-                umf_zint=umf_zint,
-                ppen=ppen,
-                rei=rei,
+                kpen=self.temporaries.kpen,
+                kbup=self.temporaries.kbup,
+                pifc0=self.temporaries.pifc0_in,
+                thv0bot=self.temporaries.thv0bot,
+                thv0top=self.temporaries.thv0top,
+                exnifc0=self.temporaries.exnifc0_in,
+                umf_zint=self.temporaries.umf_zint,
+                ppen=self.temporaries.ppen,
+                rei=self.temporaries.rei,
                 rpen=rpen,
-                dp0=dp0_in,
+                dp0=self.temporaries.dp0_in,
                 dt=dt,
-                thl0=thl0,
-                ssthl0=ssthl0,
-                pmid0=pmid0_in,
-                qt0=qt0,
-                ssqt0=ssqt0,
-                u0=u0_in,
-                ssu0=ssu0,
-                v0=v0_in,
-                ssv0=ssv0,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pmid0=self.temporaries.pmid0_in,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                u0=self.temporaries.u0_in,
+                ssu0=self.temporaries.ssu0,
+                v0=self.temporaries.v0_in,
+                ssv0=self.temporaries.ssv0,
                 tr0=FloatField_NTracer["tr0"],
                 sstr0=FloatField_NTracer["sstr0"],
                 use_cumpenent=use_cumpenent,
-                thlu_emf=thlu_emf,
-                qtu_emf=qtu_emf,
-                uu_emf=uu_emf,
-                vu_emf=vu_emf,
-                emf=emf,
+                thlu_emf=self.temporaries.thlu_emf,
+                qtu_emf=self.temporaries.qtu_emf,
+                uu_emf=self.temporaries.uu_emf,
+                vu_emf=self.temporaries.vu_emf,
+                emf=self.temporaries.emf,
                 iteration=iteration,
             )
 
             self._calc_pbl_fluxes(
-                id_exit=self.id_exit,
-                qtsrc=qtsrc,
-                qt0=qt0,
-                ssqt0=ssqt0,
-                pifc0=pifc0_in,
-                pmid0=pmid0_in,
-                kinv=IntFields["kinv"],
-                cbmf=cbmf,
+                condensation=self.condensation,
+                qtsrc=self.temporaries.qtsrc,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                pifc0=self.temporaries.pifc0_in,
+                pmid0=self.temporaries.pmid0_in,
+                kinv=self.temporaries.kinv,
+                cbmf=self.temporaries.cbmf,
                 dt=dt,
-                xflx=xflx,
-                qtflx=qtflx,
-                thlsrc=thlsrc,
-                thl0=thl0,
-                ssthl0=ssthl0,
-                exnifc0=exnifc0_in,
-                usrc=usrc,
-                u0=u0_in,
-                ssu0=ssu0,
-                vsrc=vsrc,
-                v0=v0_in,
-                ssv0=ssv0,
+                xflx=self.temporaries.xflx,
+                qtflx=self.temporaries.qtflx,
+                thlsrc=self.temporaries.thlsrc,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                exnifc0=self.temporaries.exnifc0_in,
+                usrc=self.temporaries.usrc,
+                u0=self.temporaries.u0_in,
+                ssu0=self.temporaries.ssu0,
+                vsrc=self.temporaries.vsrc,
+                v0=self.temporaries.v0_in,
+                ssv0=self.temporaries.ssv0,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 trsrc=trsrc,
                 tr0=FloatField_NTracer["tr0"],
                 sstr0=FloatField_NTracer["sstr0"],
                 trflx=FloatField_NTracers_ZDIM["trflx"],
-                uflx=uflx,
-                vflx=vflx,
-                slflx=slflx,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                slflx=self.temporaries.slflx,
                 iteration=iteration,
                 xflx_ndim=FloatField_NTracers_ZDIM["xflx_ndim"],
             )
 
             self._non_buoyancy_sorting_fluxes(
-                id_exit=self.id_exit,
-                kinv=IntFields["kinv"],
-                krel=IntFields["krel"],
-                cbmf=cbmf,
-                qtsrc=qtsrc,
-                qt0=qt0,
-                ssqt0=ssqt0,
-                pifc0=pifc0_in,
-                pmid0=pmid0_in,
-                thlsrc=thlsrc,
-                thl0=thl0,
-                ssthl0=ssthl0,
+                condensation=self.condensation,
+                kinv=self.temporaries.kinv,
+                krel=self.temporaries.krel,
+                cbmf=self.temporaries.cbmf,
+                qtsrc=self.temporaries.qtsrc,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                pifc0=self.temporaries.pifc0_in,
+                pmid0=self.temporaries.pmid0_in,
+                thlsrc=self.temporaries.thlsrc,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
                 PGFc=PGFc,
-                exnifc0=exnifc0_in,
-                ssu0=ssu0,
-                ssv0=ssv0,
-                u0=u0_in,
-                v0=v0_in,
-                usrc=usrc,
-                vsrc=vsrc,
+                exnifc0=self.temporaries.exnifc0_in,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                usrc=self.temporaries.usrc,
+                vsrc=self.temporaries.vsrc,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 trflx=FloatField_NTracers_ZDIM["trflx"],
                 trsrc=trsrc,
                 tr0=FloatField_NTracer["tr0"],
                 sstr0=FloatField_NTracer["sstr0"],
-                uflx=uflx,
-                vflx=vflx,
-                slflx=slflx,
-                qtflx=qtflx,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                slflx=self.temporaries.slflx,
+                qtflx=self.temporaries.qtflx,
             )
 
             self._buoyancy_sorting_fluxes(
-                id_exit=self.id_exit,
-                kbup=IntFields["kbup"],
-                krel=IntFields["krel"],
-                exnifc0=exnifc0_in,
-                umf_zint=umf_zint,
-                thlu=thlu,
-                thl0=thl0,
-                ssthl0=ssthl0,
-                pifc0=pifc0_in,
-                pmid0=pmid0_in,
-                qtu=qtu,
-                qt0=qt0,
-                ssqt0=ssqt0,
-                uu=uu,
-                u0=u0_in,
-                v0=v0_in,
-                vu=vu,
-                ssu0=ssu0,
-                ssv0=ssv0,
+                condensation=self.condensation,
+                kbup=self.temporaries.kbup,
+                krel=self.temporaries.krel,
+                exnifc0=self.temporaries.exnifc0_in,
+                umf_zint=self.temporaries.umf_zint,
+                thlu=self.temporaries.thlu,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pifc0=self.temporaries.pifc0_in,
+                pmid0=self.temporaries.pmid0_in,
+                qtu=self.temporaries.qtu,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                uu=self.temporaries.uu,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                vu=self.temporaries.vu,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 trflx=FloatField_NTracers_ZDIM["trflx"],
                 tru=FloatField_NTracers_ZDIM["tru"],
                 tr0=FloatField_NTracer["tr0"],
                 sstr0=FloatField_NTracer["sstr0"],
-                qtflx=qtflx,
-                vflx=vflx,
-                uflx=uflx,
-                slflx=slflx,
+                qtflx=self.temporaries.qtflx,
+                vflx=self.temporaries.vflx,
+                uflx=self.temporaries.uflx,
+                slflx=self.temporaries.slflx,
                 iteration=iteration,
             )
 
             self._penetrative_entrainment_fluxes(
-                id_exit=self.id_exit,
-                kbup=IntFields["kbup"],
-                kpen=IntFields["kpen"],
-                exnifc0=exnifc0_in,
-                emf=emf,
-                thlu_emf=thlu_emf,
-                thl0=thl0,
-                ssthl0=ssthl0,
-                pifc0=pifc0_in,
-                pmid0=pmid0_in,
-                qtu_emf=qtu_emf,
-                qt0=qt0,
-                ssqt0=ssqt0,
-                uu_emf=uu_emf,
-                vu_emf=vu_emf,
-                u0=u0_in,
-                v0=v0_in,
-                ssu0=ssu0,
-                ssv0=ssv0,
+                condensation=self.condensation,
+                kbup=self.temporaries.kbup,
+                kpen=self.temporaries.kpen,
+                exnifc0=self.temporaries.exnifc0_in,
+                emf=self.temporaries.emf,
+                thlu_emf=self.temporaries.thlu_emf,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pifc0=self.temporaries.pifc0_in,
+                pmid0=self.temporaries.pmid0_in,
+                qtu_emf=self.temporaries.qtu_emf,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                uu_emf=self.temporaries.uu_emf,
+                vu_emf=self.temporaries.vu_emf,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 trflx=FloatField_NTracers_ZDIM["trflx"],
                 tru_emf=FloatField_NTracers_ZDIM["tru_emf"],
                 tr0=FloatField_NTracer["tr0"],
                 sstr0=FloatField_NTracer["sstr0"],
                 use_momenflx=use_momenflx,
-                cbmf=cbmf,
-                uflx=uflx,
-                vflx=vflx,
-                qtflx=qtflx,
-                slflx=slflx,
-                uemf=uemf,
-                kinv=IntFields["kinv"],
-                krel=IntFields["krel"],
-                umf_zint=umf_zint,
+                cbmf=self.temporaries.cbmf,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                qtflx=self.temporaries.qtflx,
+                slflx=self.temporaries.slflx,
+                uemf=self.temporaries.uemf,
+                kinv=self.temporaries.kinv,
+                krel=self.temporaries.krel,
+                umf_zint=self.temporaries.umf_zint,
                 k0=k0,
-                ql0=ql0,
-                qi0=qi0,
+                ql0=self.temporaries.ql0,
+                qi0=self.temporaries.qi0,
                 dt=dt,
                 ese=self.qsat.ese,
                 esx=self.qsat.esx,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
-                qlten_sink=qlten_sink,
-                qiten_sink=qiten_sink,
-                cush_inout=cush_inout,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                qlten_sink=self.temporaries.qlten_sink,
+                qiten_sink=self.temporaries.qiten_sink,
+                cush_inout=self.temporaries.cush_inout,
                 iteration=iteration,
             )
 
             self._calc_momentum_tendency(
-                id_exit=self.id_exit,
-                kpen=IntFields["kpen"],
-                uflx=uflx,
-                vflx=vflx,
-                dp0=dp0_in,
-                u0=u0_in,
-                v0=v0_in,
+                condensation=self.condensation,
+                kpen=self.temporaries.kpen,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                dp0=self.temporaries.dp0_in,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
                 dt=dt,
-                uten=uten,
-                vten=vten,
-                uf=uf,
-                vf=vf,
+                uten=self.temporaries.uten,
+                vten=self.temporaries.vten,
+                uf=self.temporaries.uf,
+                vf=self.temporaries.vf,
             )
 
             self._calc_thermodynamic_tendencies(
-                id_exit=self.id_exit,
-                kpen=IntFields["kpen"],
-                umf_zint=umf_zint,
-                dp0=dp0_in,
+                condensation=self.condensation,
+                kpen=self.temporaries.kpen,
+                umf_zint=self.temporaries.umf_zint,
+                dp0=self.temporaries.dp0_in,
                 frc_rasn=frc_rasn,
-                slflx=slflx,
-                uflx=uflx,
-                vflx=vflx,
-                u0=u0_in,
-                v0=v0_in,
-                uf=uf,
-                vf=vf,
-                dwten=dwten,
-                diten=diten,
-                dwten_temp=dwten_temp,
-                diten_temp=diten_temp,
-                umf_temp=umf_temp,
-                qtflx=qtflx,
-                krel=IntFields["krel"],
-                prel=prel,
-                thlu=thlu,
-                qtu=qtu,
+                slflx=self.temporaries.slflx,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                uf=self.temporaries.uf,
+                vf=self.temporaries.vf,
+                dwten=self.temporaries.dwten,
+                diten=self.temporaries.diten,
+                dwten_temp=self.temporaries.dwten_temp,
+                diten_temp=self.temporaries.diten_temp,
+                umf_temp=self.temporaries.umf_temp,
+                qtflx=self.temporaries.qtflx,
+                krel=self.temporaries.krel,
+                prel=self.temporaries.prel,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
                 ese=self.qsat.ese,
                 esx=self.qsat.esx,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
-                pifc0=pifc0_in,
-                ppen=ppen,
-                thlu_top=thlu_top,
-                qtu_top=qtu_top,
-                qlubelow=qlubelow,
-                qiubelow=qiubelow,
-                qlj_2D=qlj_2D,
-                qij_2D=qij_2D,
-                fdr=fdr,
-                ql0=ql0,
-                qi0=qi0,
-                kbup=IntFields["kbup"],
-                pmid0=pmid0_in,
-                thlu_emf=thlu_emf,
-                qtu_emf=qtu_emf,
-                emf=emf,
-                qlten_sink=qlten_sink,
-                qiten_sink=qiten_sink,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                pifc0=self.temporaries.pifc0_in,
+                ppen=self.temporaries.ppen,
+                thlu_top=self.temporaries.thlu_top,
+                qtu_top=self.temporaries.qtu_top,
+                qlubelow=self.temporaries.qlubelow,
+                qiubelow=self.temporaries.qiubelow,
+                qlj_2D=self.temporaries.qlj_2D,
+                qij_2D=self.temporaries.qij_2D,
+                fdr=self.temporaries.fdr,
+                ql0=self.temporaries.ql0,
+                qi0=self.temporaries.qi0,
+                kbup=self.temporaries.kbup,
+                pmid0=self.temporaries.pmid0_in,
+                thlu_emf=self.temporaries.thlu_emf,
+                qtu_emf=self.temporaries.qtu_emf,
+                emf=self.temporaries.emf,
+                qlten_sink=self.temporaries.qlten_sink,
+                qiten_sink=self.temporaries.qiten_sink,
                 dt=dt,
-                qrten=qrten,
-                qsten=qsten,
-                qvten=qvten,
-                qlten=qlten,
-                sten=sten,
-                qiten=qiten,
-                qc=qc,
-                slten=slten,
-                qlten_det=qlten_det,
-                qiten_det=qiten_det,
-                cush_inout=cush_inout,
+                qrten=self.temporaries.qrten,
+                qsten=self.temporaries.qsten,
+                qvten=self.temporaries.qvten,
+                qlten=self.temporaries.qlten,
+                sten=self.temporaries.sten,
+                qiten=self.temporaries.qiten,
+                qc=self.temporaries.qc,
+                slten=self.temporaries.slten,
+                qlten_det=self.temporaries.qlten_det,
+                qiten_det=self.temporaries.qiten_det,
+                cush_inout=self.temporaries.cush_inout,
             )
 
             self._prevent_negative_condensate(
-                id_exit=self.id_exit,
-                qv0=qv0,
+                condensation=self.condensation,
+                qv0=self.temporaries.qv0,
                 dt=dt,
-                qvten=qvten,
-                ql0=ql0,
-                qlten=qlten,
-                qi0=qi0,
-                s0=s0,
-                sten=sten,
-                dp0=dp0_in,
-                qiten=qiten,
+                qvten=self.temporaries.qvten,
+                ql0=self.temporaries.ql0,
+                qlten=self.temporaries.qlten,
+                qi0=self.temporaries.qi0,
+                s0=self.temporaries.s0,
+                sten=self.temporaries.sten,
+                dp0=self.temporaries.dp0_in,
+                qiten=self.temporaries.qiten,
                 k0=k0,
-                qmin=qmin,
+                qmin=self.temporaries.qmin,
             )
 
             self._calc_tracer_tendencies(
-                id_exit=self.id_exit,
+                condensation=self.condensation,
                 dotransport=dotransport,
-                ncnst=ncnst,
                 k0=k0,
                 dt=dt,
-                dp0=dp0_in,
+                dp0=self.temporaries.dp0_in,
                 trflx_d=FloatField_NTracers_ZDIM["trflx_d"],
                 trflx_u=FloatField_NTracers_ZDIM["trflx_u"],
                 trmin=trmin,
@@ -7990,291 +7714,285 @@ class ComputeUwshcuInv:
             )
 
             self._compute_diagnostic_outputs(
-                id_exit=self.id_exit,
-                prel=prel,
-                thlu=thlu,
-                qtu=qtu,
-                krel=IntFields["krel"],
+                condensation=self.condensation,
+                prel=self.temporaries.prel,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                krel=self.temporaries.krel,
                 ese=self.qsat.ese,
                 esx=self.qsat.esx,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
-                qcubelow=qcubelow,
-                qlubelow=qlubelow,
-                qiubelow=qiubelow,
-                rcwp=rcwp,
-                rlwp=rlwp,
-                riwp=riwp,
-                cush_inout=cush_inout,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                qcubelow=self.temporaries.qcubelow,
+                qlubelow=self.temporaries.qlubelow,
+                qiubelow=self.temporaries.qiubelow,
+                rcwp=self.temporaries.rcwp,
+                rlwp=self.temporaries.rlwp,
+                riwp=self.temporaries.riwp,
+                cush_inout=self.temporaries.cush_inout,
             )
 
             self._calc_cumulus_condensate_at_interfaces(
-                id_exit=self.id_exit,
-                krel=IntFields["krel"],
-                kpen=IntFields["kpen"],
-                pifc0=pifc0_in,
-                ppen=ppen,
-                thlu_top=thlu_top,
-                qtu_top=qtu_top,
-                thlu=thlu,
-                qtu=qtu,
+                condensation=self.condensation,
+                krel=self.temporaries.krel,
+                kpen=self.temporaries.kpen,
+                pifc0=self.temporaries.pifc0_in,
+                ppen=self.temporaries.ppen,
+                thlu_top=self.temporaries.thlu_top,
+                qtu_top=self.temporaries.qtu_top,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
                 ese=self.qsat.ese,
                 esx=self.qsat.esx,
-                umf_out=umf_out,
-                qtflx_out=qtflx_out,
-                slflx_out=slflx_out,
-                uflx_out=uflx_out,
-                vflx_out=vflx_out,
-                ufrc=ufrc,
-                ufrclcl=ufrclcl,
-                prel=prel,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                ufrc=self.temporaries.ufrc,
+                ufrclcl=self.temporaries.ufrclcl,
+                prel=self.temporaries.prel,
                 criqc=criqc,
-                qcubelow=qcubelow,
-                qlubelow=qlubelow,
-                qiubelow=qiubelow,
-                qcu=qcu,
-                qlu=qlu,
-                qiu=qiu,
-                rcwp=rcwp,
-                rlwp=rlwp,
-                riwp=riwp,
-                cufrc=cufrc,
-                cush_inout=cush_inout,
+                qcubelow=self.temporaries.qcubelow,
+                qlubelow=self.temporaries.qlubelow,
+                qiubelow=self.temporaries.qiubelow,
+                qcu=self.temporaries.qcu,
+                qlu=self.temporaries.qlu,
+                qiu=self.temporaries.qiu,
+                rcwp=self.temporaries.rcwp,
+                rlwp=self.temporaries.rlwp,
+                riwp=self.temporaries.riwp,
+                cufrc=self.temporaries.cufrc,
+                cush_inout=self.temporaries.cush_inout,
             )
 
             if iteration != iter_cin:
                 self._adjust_implicit_CIN_inputs(
-                    id_exit=self.id_exit,
-                    qv0=qv0,
-                    qvten=qvten,
+                    condensation=self.condensation,
+                    qv0=self.temporaries.qv0,
+                    qvten=self.temporaries.qvten,
                     dt=dt,
-                    ql0=ql0,
-                    qlten=qlten,
-                    qi0=qi0,
-                    qiten=qiten,
-                    s0=s0,
-                    sten=sten,
-                    u0=u0_in,
-                    uten=uten,
-                    v0=v0_in,
-                    vten=vten,
-                    t0=t0,
+                    ql0=self.temporaries.ql0,
+                    qlten=self.temporaries.qlten,
+                    qi0=self.temporaries.qi0,
+                    qiten=self.temporaries.qiten,
+                    s0=self.temporaries.s0,
+                    sten=self.temporaries.sten,
+                    u0=self.temporaries.u0_in,
+                    uten=self.temporaries.uten,
+                    v0=self.temporaries.v0_in,
+                    vten=self.temporaries.vten,
+                    t0=self.temporaries.t0,
                     dotransport=dotransport,
-                    ncnst=ncnst,
                     tr0_s=FloatField_NTracer["tr0_s"],
                     tr0=FloatField_NTracer["tr0"],
                     trten=FloatField_NTracer["trten"],
-                    umf_s=umf_s,
-                    umf_zint=umf_zint,
-                    dcm=dcm,
-                    qrten=qrten,
-                    qsten=qsten,
+                    umf_s=self.temporaries.umf_s,
+                    umf_zint=self.temporaries.umf_zint,
+                    dcm=self.temporaries.dcm,
+                    qrten=self.temporaries.qrten,
+                    qsten=self.temporaries.qsten,
                     cush=cush,
-                    cufrc=cufrc,
-                    slflx_s=slflx_s,
-                    slflx=slflx,
-                    qtflx_s=qtflx_s,
-                    qtflx=qtflx,
-                    uflx_s=uflx_s,
-                    uflx=uflx,
-                    vflx_s=vflx_s,
-                    vflx=vflx,
-                    qcu=qcu,
-                    qlu=qlu,
-                    qiu=qiu,
-                    fer=fer,
-                    fdr=fdr,
-                    xco=xco,
-                    cin_IJ=cin_IJ,
-                    cinlcl_IJ=cinlcl_IJ,
-                    cbmf=cbmf,
-                    qc=qc,
-                    qlten_det=qlten_det,
-                    qiten_det=qiten_det,
-                    qlten_sink=qlten_sink,
-                    qiten_sink=qiten_sink,
-                    ufrc_s=ufrc_s,
-                    ufrc=ufrc,
-                    qv0_s=qv0_s,
-                    ql0_s=ql0_s,
-                    qi0_s=qi0_s,
-                    s0_s=s0_s,
-                    t0_s=t0_s,
-                    dcm_s=dcm_s,
-                    qvten_s=qvten_s,
-                    qlten_s=qlten_s,
-                    qiten_s=qiten_s,
-                    sten_s=sten_s,
-                    uten_s=uten_s,
-                    vten_s=vten_s,
-                    qrten_s=qrten_s,
-                    qsten_s=qsten_s,
-                    qldet_s=qldet_s,
-                    qidet_s=qidet_s,
-                    qlsub_s=qlsub_s,
-                    qisub_s=qisub_s,
-                    cush_s=cush_s,
-                    cufrc_s=cufrc_s,
-                    fer_s=fer_s,
-                    fdr_s=fdr_s,
+                    cufrc=self.temporaries.cufrc,
+                    slflx_s=self.temporaries.slflx_s,
+                    slflx=self.temporaries.slflx,
+                    qtflx_s=self.temporaries.qtflx_s,
+                    qtflx=self.temporaries.qtflx,
+                    uflx_s=self.temporaries.uflx_s,
+                    uflx=self.temporaries.uflx,
+                    vflx_s=self.temporaries.vflx_s,
+                    vflx=self.temporaries.vflx,
+                    qcu=self.temporaries.qcu,
+                    qlu=self.temporaries.qlu,
+                    qiu=self.temporaries.qiu,
+                    fer=self.temporaries.fer,
+                    fdr=self.temporaries.fdr,
+                    xco=self.temporaries.xco,
+                    cin_IJ=self.temporaries.cin_IJ,
+                    cinlcl_IJ=self.temporaries.cinlcl_IJ,
+                    cbmf=self.temporaries.cbmf,
+                    qc=self.temporaries.qc,
+                    qlten_det=self.temporaries.qlten_det,
+                    qiten_det=self.temporaries.qiten_det,
+                    qlten_sink=self.temporaries.qlten_sink,
+                    qiten_sink=self.temporaries.qiten_sink,
+                    ufrc_s=self.temporaries.ufrc_s,
+                    ufrc=self.temporaries.ufrc,
+                    qv0_s=self.temporaries.qv0_s,
+                    ql0_s=self.temporaries.ql0_s,
+                    qi0_s=self.temporaries.qi0_s,
+                    s0_s=self.temporaries.s0_s,
+                    t0_s=self.temporaries.t0_s,
+                    dcm_s=self.temporaries.dcm_s,
+                    qvten_s=self.temporaries.qvten_s,
+                    qlten_s=self.temporaries.qlten_s,
+                    qiten_s=self.temporaries.qiten_s,
+                    sten_s=self.temporaries.sten_s,
+                    uten_s=self.temporaries.uten_s,
+                    vten_s=self.temporaries.vten_s,
+                    qrten_s=self.temporaries.qrten_s,
+                    qsten_s=self.temporaries.qsten_s,
+                    qldet_s=self.temporaries.qldet_s,
+                    qidet_s=self.temporaries.qidet_s,
+                    qlsub_s=self.temporaries.qlsub_s,
+                    qisub_s=self.temporaries.qisub_s,
+                    cush_s=self.temporaries.cush_s,
+                    cufrc_s=self.temporaries.cufrc_s,
+                    fer_s=self.temporaries.fer_s,
+                    fdr_s=self.temporaries.fdr_s,
                 )
 
                 self._recalc_environmental_variables(
-                    id_exit=self.id_exit,
-                    qv0_s=qv0_s,
-                    ql0_s=ql0_s,
-                    qi0_s=qi0_s,
-                    s0_s=s0_s,
-                    t0_s=t0_s,
-                    exnmid0=exnmid0_in,
-                    pmid0=pmid0_in,
+                    condensation=self.condensation,
+                    qv0_s=self.temporaries.qv0_s,
+                    ql0_s=self.temporaries.ql0_s,
+                    qi0_s=self.temporaries.qi0_s,
+                    s0_s=self.temporaries.s0_s,
+                    t0_s=self.temporaries.t0_s,
+                    exnmid0=self.temporaries.exnmid0_in,
+                    pmid0=self.temporaries.pmid0_in,
                     dotransport=dotransport,
-                    ncnst=ncnst,
                     sstr0=FloatField_NTracer["sstr0"],
                     tr0=FloatField_NTracer["tr0"],
-                    u0=u0_in,
-                    v0=v0_in,
-                    pifc0=pifc0_in,
+                    u0=self.temporaries.u0_in,
+                    v0=self.temporaries.v0_in,
+                    pifc0=self.temporaries.pifc0_in,
                     ese=self.qsat.ese,
                     esx=self.qsat.esx,
-                    umf_out=umf_out,
-                    slflx_out=slflx_out,
-                    qtflx_out=qtflx_out,
-                    uflx_out=uflx_out,
-                    vflx_out=vflx_out,
-                    thvl0bot=thvl0bot,
-                    thv0bot=thv0bot,
-                    thvl0top=thvl0top,
-                    thv0top=thv0top,
-                    thl0=thl0,
-                    qt0=qt0,
-                    thvl0=thvl0,
-                    ssthl0=ssthl0,
-                    ssu0=ssu0,
-                    ssv0=ssv0,
-                    ssqt0=ssqt0,
-                    qv0=qv0,
-                    ql0=ql0,
-                    qi0=qi0,
-                    s0=s0,
-                    t0=t0,
-                    cush_inout=cush_inout,
+                    umf_out=self.temporaries.umf_out,
+                    slflx_out=self.temporaries.slflx_out,
+                    qtflx_out=self.temporaries.qtflx_out,
+                    uflx_out=self.temporaries.uflx_out,
+                    vflx_out=self.temporaries.vflx_out,
+                    thvl0bot=self.temporaries.thvl0bot,
+                    thv0bot=self.temporaries.thv0bot,
+                    thvl0top=self.temporaries.thvl0top,
+                    thv0top=self.temporaries.thv0top,
+                    thl0=self.temporaries.thl0,
+                    qt0=self.temporaries.qt0,
+                    thvl0=self.temporaries.thvl0,
+                    ssthl0=self.temporaries.ssthl0,
+                    ssu0=self.temporaries.ssu0,
+                    ssv0=self.temporaries.ssv0,
+                    ssqt0=self.temporaries.ssqt0,
+                    qv0=self.temporaries.qv0,
+                    ql0=self.temporaries.ql0,
+                    qi0=self.temporaries.qi0,
+                    s0=self.temporaries.s0,
+                    t0=self.temporaries.t0,
+                    cush_inout=self.temporaries.cush_inout,
                 )
 
-            iteration = iteration + i32(1)
-
         self._update_output_variables(
-            del_CIN=del_CIN,
-            umf_zint=umf_zint,
-            zifc0=zifc0_in,
-            kinv=IntFields["kinv"],
-            dcm=dcm,
-            qvten=qvten,
-            qlten=qlten,
-            qiten=qiten,
-            sten=sten,
-            uten=uten,
-            vten=vten,
-            qrten=qrten,
-            qsten=qsten,
-            cufrc=cufrc,
+            del_CIN=self.temporaries.del_CIN,
+            umf_zint=self.temporaries.umf_zint,
+            zifc0=self.temporaries.zifc0_in,
+            kinv=self.temporaries.kinv,
+            dcm=self.temporaries.dcm,
+            qvten=self.temporaries.qvten,
+            qlten=self.temporaries.qlten,
+            qiten=self.temporaries.qiten,
+            sten=self.temporaries.sten,
+            uten=self.temporaries.uten,
+            vten=self.temporaries.vten,
+            qrten=self.temporaries.qrten,
+            qsten=self.temporaries.qsten,
+            cufrc=self.temporaries.cufrc,
             cush=cush,
-            qlten_det=qlten_det,
-            qiten_det=qiten_det,
-            qlten_sink=qlten_sink,
-            qiten_sink=qiten_sink,
+            qlten_det=self.temporaries.qlten_det,
+            qiten_det=self.temporaries.qiten_det,
+            qlten_sink=self.temporaries.qlten_sink,
+            qiten_sink=self.temporaries.qiten_sink,
             rdrop=rdrop,
-            qtflx=qtflx,
-            slflx=slflx,
-            uflx=uflx,
-            vflx=vflx,
+            qtflx=self.temporaries.qtflx,
+            slflx=self.temporaries.slflx,
+            uflx=self.temporaries.uflx,
+            vflx=self.temporaries.vflx,
             dotransport=dotransport,
             trten=FloatField_NTracer["trten"],
             dt=dt,
-            fer=fer,
-            fdr=fdr,
-            kpen=IntFields["kpen"],
-            ncnst=ncnst,
-            umf_out=umf_out,
-            dcm_out=dcm_out,
-            qvten_out=qvten_out,
-            qlten_out=qlten_out,
-            qiten_out=qiten_out,
-            sten_out=sten_out,
-            uten_out=uten_out,
-            vten_out=vten_out,
-            qrten_out=qrten_out,
-            qsten_out=qsten_out,
-            cufrc_out=cufrc_out,
-            cush_inout=cush_inout,
-            qldet_out=qldet_out,
-            qidet_out=qidet_out,
-            qlsub_out=qlsub_out,
-            qisub_out=qisub_out,
-            ndrop_out=ndrop_out,
-            nice_out=nice_out,
-            qtflx_out=qtflx_out,
-            slflx_out=slflx_out,
-            uflx_out=uflx_out,
-            vflx_out=vflx_out,
+            fer=self.temporaries.fer,
+            fdr=self.temporaries.fdr,
+            kpen=self.temporaries.kpen,
+            umf_out=self.temporaries.umf_out,
+            dcm_out=self.temporaries.dcm_out,
+            qvten_out=self.temporaries.qvten_out,
+            qlten_out=self.temporaries.qlten_out,
+            qiten_out=self.temporaries.qiten_out,
+            sten_out=self.temporaries.sten_out,
+            uten_out=self.temporaries.uten_out,
+            vten_out=self.temporaries.vten_out,
+            qrten_out=self.temporaries.qrten_out,
+            qsten_out=self.temporaries.qsten_out,
+            cufrc_out=self.temporaries.cufrc_out,
+            cush_inout=self.temporaries.cush_inout,
+            qldet_out=self.temporaries.qldet_out,
+            qidet_out=self.temporaries.qidet_out,
+            qlsub_out=self.temporaries.qlsub_out,
+            qisub_out=self.temporaries.qisub_out,
+            ndrop_out=self.temporaries.ndrop_out,
+            nice_out=self.temporaries.nice_out,
+            qtflx_out=self.temporaries.qtflx_out,
+            slflx_out=self.temporaries.slflx_out,
+            uflx_out=self.temporaries.uflx_out,
+            vflx_out=self.temporaries.vflx_out,
             tr0_inout=tr0_inout,
-            fer_out=fer_out,
-            umf_outvar=umf_outvar,
-            dcm_outvar=dcm_outvar,
-            qvten_outvar=qvten_outvar,
-            qlten_outvar=qlten_outvar,
-            qiten_outvar=qiten_outvar,
-            sten_outvar=sten_outvar,
-            uten_outvar=uten_outvar,
-            vten_outvar=vten_outvar,
-            qrten_outvar=qrten_outvar,
-            qsten_outvar=qsten_outvar,
-            cufrc_outvar=cufrc_outvar,
-            cush_inoutvar=cush_inoutvar,
-            qldet_outvar=qldet_outvar,
-            qidet_outvar=qidet_outvar,
-            qlsub_outvar=qlsub_outvar,
-            qisub_outvar=qisub_outvar,
-            qtflx_outvar=qtflx_outvar,
-            slflx_outvar=slflx_outvar,
-            uflx_outvar=uflx_outvar,
-            vflx_outvar=vflx_outvar,
-            fdr_out=fdr_out,
-            fer_outvar=fer_outvar,
-            fdr_outvar=fdr_outvar,
+            fer_out=self.temporaries.fer_out,
+            umf_outvar=self.temporaries.umf_outvar,
+            dcm_outvar=self.temporaries.dcm_outvar,
+            qvten_outvar=self.temporaries.qvten_outvar,
+            qlten_outvar=self.temporaries.qlten_outvar,
+            qiten_outvar=self.temporaries.qiten_outvar,
+            sten_outvar=self.temporaries.sten_outvar,
+            uten_outvar=self.temporaries.uten_outvar,
+            vten_outvar=self.temporaries.vten_outvar,
+            qrten_outvar=self.temporaries.qrten_outvar,
+            qsten_outvar=self.temporaries.qsten_outvar,
+            cufrc_outvar=self.temporaries.cufrc_outvar,
+            cush_inoutvar=self.temporaries.cush_inoutvar,
+            qldet_outvar=self.temporaries.qldet_outvar,
+            qidet_outvar=self.temporaries.qidet_outvar,
+            qlsub_outvar=self.temporaries.qlsub_outvar,
+            qisub_outvar=self.temporaries.qisub_outvar,
+            qtflx_outvar=self.temporaries.qtflx_outvar,
+            slflx_outvar=self.temporaries.slflx_outvar,
+            uflx_outvar=self.temporaries.uflx_outvar,
+            vflx_outvar=self.temporaries.vflx_outvar,
+            fdr_out=self.temporaries.fdr_out,
+            fer_outvar=self.temporaries.fer_outvar,
+            fdr_outvar=self.temporaries.fdr_outvar,
             tr0_inoutvar=FloatField_NTracer["tr0_inoutvar"],
         )
 
         self._compute_uwshcu_invert_after(
             # Inputs
             k0=k0,
-            ncnst=ncnst,
-            umf_outvar=umf_outvar,
-            qtflx_outvar=qtflx_outvar,
-            slflx_outvar=slflx_outvar,
-            uflx_outvar=uflx_outvar,
-            vflx_outvar=vflx_outvar,
-            dcm_outvar=dcm_outvar,
-            qvten_outvar=qvten_outvar,
-            qlten_outvar=qlten_outvar,
-            qiten_outvar=qiten_outvar,
-            sten_outvar=sten_outvar,
-            uten_outvar=uten_outvar,
-            vten_outvar=vten_outvar,
-            qrten_outvar=qrten_outvar,
-            qsten_outvar=qsten_outvar,
-            cufrc_outvar=cufrc_outvar,
-            qldet_outvar=qldet_outvar,
-            qidet_outvar=qidet_outvar,
-            qlsub_outvar=qlsub_outvar,
-            qisub_outvar=qisub_outvar,
-            fer_outvar=fer_outvar,
-            fdr_outvar=fdr_outvar,
-            ndrop_out=ndrop_out,
-            nice_out=nice_out,
+            umf_outvar=self.temporaries.umf_outvar,
+            qtflx_outvar=self.temporaries.qtflx_outvar,
+            slflx_outvar=self.temporaries.slflx_outvar,
+            uflx_outvar=self.temporaries.uflx_outvar,
+            vflx_outvar=self.temporaries.vflx_outvar,
+            dcm_outvar=self.temporaries.dcm_outvar,
+            qvten_outvar=self.temporaries.qvten_outvar,
+            qlten_outvar=self.temporaries.qlten_outvar,
+            qiten_outvar=self.temporaries.qiten_outvar,
+            sten_outvar=self.temporaries.sten_outvar,
+            uten_outvar=self.temporaries.uten_outvar,
+            vten_outvar=self.temporaries.vten_outvar,
+            qrten_outvar=self.temporaries.qrten_outvar,
+            qsten_outvar=self.temporaries.qsten_outvar,
+            cufrc_outvar=self.temporaries.cufrc_outvar,
+            qldet_outvar=self.temporaries.qldet_outvar,
+            qidet_outvar=self.temporaries.qidet_outvar,
+            qlsub_outvar=self.temporaries.qlsub_outvar,
+            qisub_outvar=self.temporaries.qisub_outvar,
+            fer_outvar=self.temporaries.fer_outvar,
+            fdr_outvar=self.temporaries.fdr_outvar,
+            ndrop_out=self.temporaries.ndrop_out,
+            nice_out=self.temporaries.nice_out,
             tr0=FloatField_NTracer["tr0"],
             tr0_inoutvar=FloatField_NTracer["tr0_inoutvar"],
             CNV_Tracers=CNV_Tracers,

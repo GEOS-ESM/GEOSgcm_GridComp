@@ -284,26 +284,27 @@ def compute_mumin2(
 @gtscript.function
 def compute_ppen(
     wtwb: Float,
-    D: Float,
+    drag: Float,
     bogbot: Float,
     bogtop: Float,
     rho0j: Float,
     dpen: Float,
 ):
-
-    # Subroutine to compute critical 'ppen[Pa]<0' ( pressure dis.
-    # from 'pifc0(kpen-1)' to the cumulus top where cumulus updraft
-    # vertical velocity is exactly zero ) by considering exact
-    # non-zero fer(kpen).
+    """
+    Subroutine to compute critical 'ppen[Pa]<0' ( pressure dis.
+    from 'pifc0(kpen-1)' to the cumulus top where cumulus updraft
+    vertical velocity is exactly zero ) by considering exact
+    non-zero fer(kpen).
+    """
 
     # Buoyancy slope
     SB: f64 = (bogtop - bogbot) / dpen
 
     # Sign of slope, 'f' at x = 0
     # If 's00>0', 'w' increases with height.
-    s00: f64 = bogbot / rho0j - D * wtwb
+    s00: f64 = bogbot / rho0j - drag * wtwb
 
-    if D * dpen < f64(1.0e-4):
+    if drag * dpen < f64(1.0e-4):
         if s00 >= f64(0.0):
             x0: f64 = dpen
         else:
@@ -316,14 +317,14 @@ def compute_ppen(
 
         iteration = 0
         while iteration < 5:
-            aux: f64 = min(max(f64(-2.0) * D * x0, -20.0), 20.0)
+            aux: f64 = min(max(f64(-2.0) * drag * x0, -20.0), 20.0)
 
-            f: f64 = exp(aux) * (wtwb - (bogbot - SB / (2.0 * D)) / (D * rho0j)) + (
-                SB * x0 + bogbot - SB / (2.0 * D)
-            ) / (D * rho0j)
-            fs: f64 = -2.0 * D * exp(aux) * (
-                wtwb - (bogbot - SB / (2.0 * D)) / (D * rho0j)
-            ) + (SB) / (D * rho0j)
+            f: f64 = exp(aux) * (
+                wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)
+            ) + (SB * x0 + bogbot - SB / (2.0 * drag)) / (drag * rho0j)
+            fs: f64 = -2.0 * drag * exp(aux) * (
+                wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)
+            ) + (SB) / (drag * rho0j)
 
             x1: f64 = x0 - f / fs
             x0: f64 = x1
@@ -345,14 +346,15 @@ def getbuoy(
     cin_in: Float,
     plfc_in: Float,
 ):
-
-    # Subroutine to calculate integrated CIN [ J/kg = m2/s2 ] and
-    #'cinlcl, plfc' if any. Assume 'thv' is linear in each layer
-    # both for cumulus and environment. Note that this subroutine
-    # only includes positive CIN in calculation - if there is any
-    # negative CIN, it is assumed to be zero.    This is slightly
-    # different from 'single_cin' below, where both positive  and
-    # negative CIN are included.
+    """
+    Subroutine to calculate integrated CIN [ J/kg = m2/s2 ] and
+    'cinlcl, plfc' if any. Assume 'thv' is linear in each layer
+    both for cumulus and environment. Note that this subroutine
+    only includes positive CIN in calculation - if there is any
+    negative CIN, it is assumed to be zero.    This is slightly
+    different from 'single_cin' below, where both positive  and
+    negative CIN are included.
+    """
     plfc = plfc_in
     cin = cin_in
 
@@ -365,7 +367,6 @@ def getbuoy(
             pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
             + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
-        # cin = 1.0
     elif thvubot > thv0bot and thvutop <= thv0top:
         frc = (thvutop / thv0top - 1.0) / (
             (thvutop / thv0top - 1.0) - (thvubot / thv0bot - 1.0)
@@ -376,7 +377,6 @@ def getbuoy(
             pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
             + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
-        # cin = 2.0
     else:
         frc = (thvubot / thv0bot - 1.0) / (
             (thvubot / thv0bot - 1.0) - (thvutop / thv0top - 1.0)
@@ -388,7 +388,6 @@ def getbuoy(
                 + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
             )
         )
-        # cin = 3.0
 
     return plfc, cin  # Note: plfc and cin are returned, but not always used
 
@@ -416,7 +415,6 @@ def qsinvert(
     rovcp = constants.MAPL_RDRY / constants.MAPL_CP
 
     # Calculate best initial guess of pLCL
-
     Ti: f64 = thl * (ps_in / p00) ** rovcp
     Tgeos: f32 = Ti
     Pgeos: f32 = f32(ps_in)
@@ -425,7 +423,6 @@ def qsinvert(
     rhi: f64 = qt / f64(qs)
 
     if rhi <= f64(0.01):
-        # print('Source air is too dry and pLCL is set to psmin in uwshcu.F90')
         qsinvert = psmin
 
     else:
@@ -457,8 +454,6 @@ def qsinvert(
             dPisdps: f64 = rovcp * Pis / ps
             dlnqsdps: f64 = f64(-1.0) / (ps - (1.0 - py_constants.ep2) * es)
             derrdps: f64 = -qs * (dlnqsdT * dTdPis * dPisdps + dlnqsdps)
-            # if derrdps = 0:
-            # print("QSINVERT: derrdps=0 !!!")
             dps: f64 = -err / derrdps
             ps: f64 = ps + dps
 
@@ -483,8 +478,9 @@ def sign(
     a: Float,
     b: Float,
 ):
-
-    # Function that returns the magnitude of one argument and the sign of another.
+    """
+    Function that returns the magnitude of one argument and the sign of another.
+    """
 
     if b >= 0.0:
         result = abs(a)
@@ -500,9 +496,9 @@ def roots(
     b: Float,
     c: Float,
 ):
-
-    # Subroutine to solve the second order polynomial equation.
-    # I should check this subroutine later.
+    """
+    Function to solve a second order polynomial equation.
+    """
 
     status = 0
 
