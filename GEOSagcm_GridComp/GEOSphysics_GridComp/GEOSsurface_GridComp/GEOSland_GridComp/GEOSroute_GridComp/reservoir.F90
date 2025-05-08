@@ -255,7 +255,7 @@ subroutine res_init(input_dir,nall,nc,minCatch,maxCatch,use_res,active_res,type_
   enddo
 
   ! Deactivate reservoirs if the use_res flag is set to False
-  if(use_res == .False.) active_res = 0
+  if(use_res .eqv. .False.) active_res = 0
 
   deallocate(flag_grand,catid_grand,elec_grand,type_res_all,cap_grand,area_grand)
   deallocate(area_res,area_max_res,fld_grand,supply_grand,irr_grand)
