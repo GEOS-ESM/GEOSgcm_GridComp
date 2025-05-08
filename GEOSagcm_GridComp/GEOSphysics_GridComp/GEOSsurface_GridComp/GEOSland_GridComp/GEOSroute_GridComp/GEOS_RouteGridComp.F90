@@ -42,7 +42,7 @@ module GEOS_RouteGridCompMod
 
   private
 
-  type RES_STATE
+  type RES_STATE !reserver related variables
     integer, pointer :: active_res(:)
     integer, pointer :: active_up(:,:)
     real,    pointer :: Wr_res(:) !m3
@@ -55,7 +55,7 @@ module GEOS_RouteGridCompMod
     real,    pointer :: qres_acc(:)  
   end type RES_STATE
 
-  type T_RROUTE_STATE
+  type T_RROUTE_STATE !routing related variables
      private
      type (ESMF_RouteHandle) :: routeHandle
      type (ESMF_Field)       :: field
@@ -199,10 +199,6 @@ contains
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN2, RC=STATUS )
     VERIFY_(STATUS)
-
-!------------------------------------------------------------
-! Set generic final method 
-!------------------------------------------------------------
 
     
 ! -----------------------------------------------------------
@@ -400,13 +396,12 @@ contains
     route%mype = mype
  
     allocate(ims(1:ndes))
-    ! define minCatch, maxCatch
+    ! define catchment space for this processor
     call MAPL_DecomposeDim ( n_catg,ims,ndes ) ! ims(mype+1) gives the size of my partition
     ! myPE is 0-based!
     beforeMe = sum(ims(1:mype))
     minCatch = beforeMe + 1
     maxCatch = beforeMe + ims(myPe+1)
- 
     ! get LocStream
     call MAPL_Get(MAPL, LocStream = locstream, RC=status)
     VERIFY_(STATUS) 
@@ -415,7 +410,7 @@ contains
          tileGrid=tilegrid, nt_global=nt_global, RC=status)
     VERIFY_(STATUS)     
     route%nt_global = nt_global
-
+    ! Determine the resolution
     if(nt_global==112573)then
       resname="M36"
       nmax=150
@@ -429,23 +424,22 @@ contains
       endif
     endif
     ! exchange Pfaf across PEs
-
     call MAPL_LocStreamGet(locstream, TILEAREA = tile_area_src, LOCAL_ID=local_id, RC=status)
     VERIFY_(STATUS) 
     nt_local=size(tile_area_src,1) 
     route%nt_local=nt_local       
-
     ntiles = maxCatch-minCatch+1
     allocate(arbSeq_pf(maxCatch-minCatch+1))
-    arbSeq_pf = [(i, i = minCatch, maxCatch)]
-   
-    ! redist pfaf (NOTE: me might need a second routehandle for integers)
-
+    arbSeq_pf = [(i, i = minCatch, maxCatch)]   
     route%pfaf => arbSeq_pf
     route%ntiles = ntiles  
     route%minCatch = minCatch
     route%maxCatch = maxCatch 
-  ! Read sub-area data from text files
+
+
+
+
+  ! Read sub-catchment data 
     allocate(nsub_global(N_CatG),subarea_global(nmax,N_CatG))
     open(77,file=trim(inputdir)//"/Pfaf_nsub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)nsub_global; close(77)
     open(77,file=trim(inputdir)//"/Pfaf_asub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)subarea_global; close(77)       
@@ -464,7 +458,7 @@ contains
     route%subi => subi
     deallocate(subi_global)
 
-
+  ! Set variables used in MPI
     allocate(scounts(ndes),scounts_global(ndes),rdispls_global(ndes))
     scounts=0
     scounts(mype+1)=nt_local  
@@ -493,6 +487,7 @@ contains
     route%runoff_save => runoff_save
     route%runoff_save=0.
 
+  ! Read tile area data
     allocate(tile_area_local(nt_local),tile_area_global(nt_global))  
     open(77,file=trim(inputdir)//"/area_"//trim(resname)//"_1d.txt",status="old",action="read");read(77,*)tile_area_global;close(77)
     tile_area_local=tile_area_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local)*1.e6 !km2->m2
@@ -512,6 +507,7 @@ contains
     enddo  
     route%areacat=>areacat
 
+  ! Read river network-realated data
     allocate(lengsc_global(n_catg),lengsc(ntiles))   
     open(77,file=trim(inputdir)//"/Pfaf_lriv_PR.txt",status="old",action="read");read(77,*)lengsc_global;close(77)
     lengsc=lengsc_global(minCatch:maxCatch)*1.e3 !km->m
@@ -530,6 +526,7 @@ contains
     route%upid=>upid
     deallocate(upid_global)
 
+  ! Read restart data
     call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
     call ESMF_TimeGet(CurrentTime, yy=YY, mm=MM, dd=DD, h=HH, m=MMM, s=SS, rc=status) 
     write(yr_s,'(I4.4)')YY
@@ -606,6 +603,7 @@ contains
     route%wriver=>wriver
     route%reservoir%Wr_res=>wres
 
+  ! accumulated variables for output 
     allocate(route%wriver_acc(ntiles),route%wstream_acc(ntiles),route%qoutflow_acc(ntiles),route%qsflow_acc(ntiles),route%reservoir%qres_acc(ntiles))
     route%wriver_acc=0.
     route%wstream_acc=0.
@@ -613,7 +611,7 @@ contains
     route%qsflow_acc=0.
     route%reservoir%qres_acc=0.
 
-   !input for geometry hydraulic
+   !Read input specially for geometry hydraulic (not required by linear model)
     allocate(buff_global(n_catg),route%lstr(ntiles))   
     open(77,file=trim(inputdir)//"/Pfaf_lstr_PR.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%lstr=buff_global(minCatch:maxCatch)*1.e3 !km->m
@@ -644,6 +642,7 @@ contains
     route%qstr_clmt=buff_global(minCatch:maxCatch) !m3/s
     deallocate(buff_global) 
 
+    !Initial reservoir module
     res => route%reservoir
     call res_init(inputdir,n_catg,ntiles,minCatch,maxCatch,use_res,res%active_res,res%type_res,res%cap_res,res%fld_res,res%Qfld_thres,res%cat2res,res%wid_res)
     if(mapl_am_I_root()) print *,"reservoir init success" 
@@ -850,8 +849,10 @@ contains
     N_CYC = ROUTE_DT/HEARTBEAT    
     RUN_MODEL : if (ThisCycle == N_CYC) then   
 
+      !accumulates runoff
        runoff_save = runoff_save + RUNOFF_SRC0/real (N_CYC)
 
+      !Gets time used for output and restart 
        call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
        call ESMF_TimeGet(CurrentTime, yy=YY, mm=MM, dd=DD, h=HH, m=MMM, s=SS, rc=status)  
        call ESMF_ClockGetNextTime(clock, nextTime=nextTime, rc=status)
@@ -860,12 +861,14 @@ contains
        write(mon_s,'(I2.2)')MM
        write(day_s,'(I2.2)')DD
 
+      !Collect runoff from all processors
        allocate(runoff_global(nt_global))
        call MPI_allgatherv  (                          &
           runoff_save,  route%scounts_global(mype+1)      ,MPI_REAL, &
           runoff_global, route%scounts_global, route%rdispls_global,MPI_REAL, &
           MPI_COMM_WORLD, mpierr) 
 
+       !Distribute runoff from tile space to catchment space
        if(FirstTime.and.mapl_am_I_root()) print *,"nmax=",nmax
        allocate(RUNOFF_ACT(ntiles))
        RUNOFF_ACT=0.
@@ -881,7 +884,7 @@ contains
 
        deallocate(runoff_global) 
 
-
+       ! Prepares to conduct routing model
        allocate (AREACAT_ACT (ntiles))       
        allocate (LENGSC_ACT  (ntiles))
        allocate (QSFLOW_ACT  (ntiles))
@@ -908,7 +911,8 @@ contains
             route%qstr_clmt, route%qri_clmt, route%qin_clmt, &
             route%K, route%Kstr, &
             WSTREAM_ACT,WRIVER_ACT, &
-            QSFLOW_ACT,QOUTFLOW_ACT)     
+            QSFLOW_ACT,QOUTFLOW_ACT)  
+       ! Call reservoir module        
        do i=1,ntiles
          call res_cal(res%active_res(i),QOUTFLOW_ACT(i),res%type_res(i),res%cat2res(i),&
               QRES_ACT(i),res%wid_res(i),res%fld_res(i),res%Wr_res(i),res%Qfld_thres(i),res%cap_res(i),real(route_dt))
@@ -916,13 +920,14 @@ contains
        QOUT_CAT = QOUTFLOW_ACT              
        where(res%active_res==1) QOUT_CAT=QRES_ACT
 
-
+      ! Collects dishcarge (routing model output) from all processors
        allocate(QOUTFLOW_GLOBAL(n_catg))
        call MPI_allgatherv  (                          &
             QOUT_CAT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
             QOUTFLOW_GLOBAL, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
             MPI_COMM_WORLD, mpierr)      
 
+      ! Linking discharge as inflow to downstream catchment to adjust river storage
        allocate(QINFLOW_LOCAL(ntiles))
        QINFLOW_LOCAL=0.
        do i=1,nTiles
@@ -937,8 +942,10 @@ contains
          enddo
        enddo
 
-       call check_balance(route,ntiles,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
+      ! Check balance if needed
+       !call check_balance(route,ntiles,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
 
+      ! Update accumulated variables for output
        if(FirstTime) nstep_per_day = 86400/route_dt
        route%wriver_acc = route%wriver_acc + WRIVER_ACT/real(nstep_per_day)
        route%wstream_acc = route%wstream_acc + WSTREAM_ACT/real(nstep_per_day)
@@ -954,7 +961,7 @@ contains
        runoff_save = 0.
        ThisCycle   = 1           
 
-      ! output
+      ! output variables
        !if(mapl_am_I_root())print *, "nstep_per_day=",nstep_per_day
        if(mapl_am_I_root())print *, "Current time is ", YY, "/", MM, "/", DD, " ", HH, ":", MMM, ":", SS, ", next MM_next:",MM_next
        if(FirstTime)then
@@ -1021,7 +1028,7 @@ contains
          res%qres_acc = 0.
        endif
  
-       !restart
+       !write restart
        if(MM_next/=MM)then
          allocate(wriver_global(n_catg),wstream_global(n_catg))
          call MPI_allgatherv  (                          &

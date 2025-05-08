@@ -6,27 +6,26 @@ private
 public :: res_init, res_cal
 
 !----Reservoir module constants----------
-integer,parameter :: nres=7250
-integer,parameter :: nlake=3917
+integer,parameter  :: nres=7250
+integer,parameter  :: nlake=3917
 
-real, parameter  :: fac_elec_a = 0.30 ! Coefficient for hydropower calculation
-real, parameter  :: fac_elec_b = 2.00 ! Exponent for hydropower calculation
-real, parameter  :: fac_irr_a = 0.01 ! Coefficient for irrigation calculation (arid areas)
-real, parameter  :: fac_irr_b = 3.00  ! Scaling factor for irrigation (arid areas)
-real, parameter  :: fac_sup_a = 0.03  ! Coefficient for water supply calculation
-real, parameter  :: fac_sup_b = 2.00  ! Exponent for water supply calculation
-real, parameter  :: fac_other_a = 0.20 ! Coefficient for other reservoir types
-real, parameter  :: fac_other_b = 2.00 ! Exponent for other reservoir types
+real, parameter    :: fac_elec_a = 0.30 ! Coefficient for hydropower calculation
+real, parameter    :: fac_elec_b = 2.00 ! Exponent for hydropower calculation
+real, parameter    :: fac_irr_a = 0.01 ! Coefficient for irrigation calculation (arid areas)
+real, parameter    :: fac_irr_b = 3.00  ! Scaling factor for irrigation (arid areas)
+real, parameter    :: fac_sup_a = 0.03  ! Coefficient for water supply calculation
+real, parameter    :: fac_sup_b = 2.00  ! Exponent for water supply calculation
+real, parameter    :: fac_other_a = 0.20 ! Coefficient for other reservoir types
+real, parameter    :: fac_other_b = 2.00 ! Exponent for other reservoir types
 integer, parameter :: fac_fld = 1         ! Flood control parameter
 
-real, parameter  :: fac_a_slake = 0.003  ! Factor for small lakes
-real, parameter  :: fac_b_slake = 0.40   ! Exponent for small lakes
-real, parameter  :: fac_a_llake = 0.01   ! Factor for large lakes
-real, parameter  :: fac_b_llake = 0.60   ! Exponent for large lakes
-real, parameter  :: thr_wid_lake = 1.e5    ! Threshold lake width (in m)
+real, parameter    :: fac_a_slake = 0.003  ! Factor for small lakes
+real, parameter    :: fac_b_slake = 0.40   ! Exponent for small lakes
+real, parameter    :: fac_a_llake = 0.01   ! Factor for large lakes
+real, parameter    :: fac_b_llake = 0.60   ! Exponent for large lakes
+real, parameter    :: thr_wid_lake = 1.e5    ! Threshold lake width (in m)
 
-!real, parameter :: dt = 86400.       ! Time step in seconds (1 day)
-real, parameter :: rho = 1.e3         ! Water density (kg/m^3)
+real, parameter    :: rho = 1.e3         ! Water density (kg/m^3)
 
 !-----------------------------------------
 

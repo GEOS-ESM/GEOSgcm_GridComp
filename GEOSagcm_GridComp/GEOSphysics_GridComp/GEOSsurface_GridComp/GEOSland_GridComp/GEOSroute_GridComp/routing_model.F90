@@ -8,8 +8,24 @@ MODULE routing_model
 
   CONTAINS
 
-
   ! ------------------------------------------------------------------------
+    ! Routing Model Input Parameters
+    ! ------------------------------
+    !**** NCAT      = NUMBER OF CATCHMENTS IN THE STUDY DOMAIN
+    !**** RUNCATCH  = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT [m^3/s]
+    !**** AREACAT   = AREA OF CATCHMENT [km^2]
+    !**** LENGSC    = LENGTHSCALE OF CATCHMENT FOR RIVER CALCULATION [km]
+    !                 Note: We assume LENGSC for stream to river calculation as AREACAT/LENGSC
+
+    ! Routing Model Prognostics
+    ! -------------------------
+    !**** WSTREAM   = AMOUNT OF WATER IN "LOCAL STREAM"  [m^3]
+    !**** WRIVER    = AMOUNT OF WATER IN RIVER           [m^3]
+
+    ! Routing Model Diagnostics
+    ! -------------------------
+    !**** QSFLOW    = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE [m^3/s]
+    !**** QOUTFLOW  = TRANSFER OF RIVER WATER TO THE DOWNSTREAM CATCHMENT  [m^3/s]  
 
   SUBROUTINE RIVER_ROUTING_LIN (                &
        NCAT,                                &
@@ -30,26 +46,6 @@ MODULE routing_model
 
     INTEGER :: N,I,J 
     REAL    :: COEFF, LS, COEFF1, COEFF2,ROFF 
-
-    ! Routing Model Input Parameters
-    ! ------------------------------
-    !**** NCAT      = NUMBER OF CATCHMENTS IN THE STUDY DOMAIN
-    !**** RUNCATCH  = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT [m3/s]
-    !**** AREACAT   = AREA OF CATCHMENT [km^2]
-    !**** LENGSC    = LENGTHSCALE OF CATCHMENT FOR RIVER CALCULATION [km]
-    !                 Note: We assume LENGSC for stream to river calculation as AREACAT/LENGSC
-
-    ! Routing Model Prognostics
-    ! -------------------------
-    !**** WSTREAM   = AMOUNT OF WATER IN "LOCAL STREAM"  [m^3]
-    !**** WRIVER    = AMOUNT OF WATER IN RIVER           [m^3]
-
-    ! Routing Model Diagnostics
-    ! -------------------------
-    !**** QSFLOW    = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE [m^3/s]
-    !**** QINFLOW   = TRANSFER OF RIVER WATER FROM UPSTREAM CATCHMENTS [m^3/s] - i.e. sum of
-    !                 QOUTFLOWs from all upstream catchments. This is computed outside this subroutine
-    !**** QOUTFLOW  = TRANSFER OF RIVER WATER TO THE DOWNSTREAM CATCHMENT  [m^3/s]
 
     QSFLOW   = 0.
     QOUTFLOW = 0.       
@@ -137,6 +133,27 @@ MODULE routing_model
   END SUBROUTINE SEARCH_DNST
 
 ! -------------------------------------------------------------------------------------------------------
+    ! Routing Model Input Parameters
+    ! ------------------------------
+    !**** NCAT      = NUMBER OF CATCHMENTS IN THE STUDY DOMAIN
+    !**** Qrunf0    = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT [m^3/s]
+    !**** llc_ori   = MAIN RIVER LENGTH SCALE [m]
+    !**** lstr      = LOCAL STREAMS LENGTH SCALE [m]
+    !**** qstr_clmt0= CLIMATOLOGY RUNOFF [m^3/s]  
+    !**** qri_clmt0 = CLIMATOLOGY DISCHAR [m^3/s]
+    !**** qin_clmt0 = CLIMATOLOGY INFLOW [m^3/s]               
+    !**** K         = K PARAMETER FOR MAIN RIVER
+    !**** Kstr0     = K PARAMETER FOR LOCAL STREAM [m^3/s]
+
+    ! Routing Model Prognostics
+    ! -------------------------
+    !**** Ws0       = AMOUNT OF WATER IN "LOCAL STREAM"  [m^3]
+    !**** Wr0       = AMOUNT OF WATER IN RIVER          [m^3]
+
+    ! Routing Model Diagnostics
+    ! -------------------------
+    !**** QS        = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE [m^3/s]
+    !**** QOUT      = TRANSFER OF RIVER WATER TO THE DOWNSTREAM CATCHMENT  [m^3/s]  
 
   SUBROUTINE RIVER_ROUTING_HYD (                &
        NCAT,                                &
@@ -181,7 +198,7 @@ MODULE routing_model
     Kstr = fac_kstr * Kstr0
     dt = ROUTE_DT
 
-    ! Calculate llc (length of river channel)
+    ! Adjust llc (length of river channel)
     nume = qri_clmt**(2.-M) - qin_clmt**(2.-M)  ! Numerator for the llc calculation
     deno = (2.-M) * (qri_clmt - qin_clmt) * (qri_clmt**(1.-M))  ! Denominator for the llc calculation
     where(abs(deno) > small) llc = llc_ori * (nume / deno)  ! Compute llc where denominator is not too small

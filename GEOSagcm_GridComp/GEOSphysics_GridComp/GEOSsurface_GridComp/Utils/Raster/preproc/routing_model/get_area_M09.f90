@@ -1,84 +1,103 @@
 program main
+!Main purpose: Gets the area for each catchment-tile for M09 grid.
 
 use river_read
+use constant, only: nmax=>nmax09,nc,nlon,nlat,nlat09,nlon09,nt_global=>nt_global09
+
 implicit none
+! Require explicit declaration of all variables
 
-integer,parameter :: nmax=458
-integer,parameter :: nc=291284
-integer,parameter :: nlon=21600
-integer,parameter :: nlat=10800
-integer,parameter :: nlat36=1624,nlon36=3856
-integer,parameter :: nt_global=1684725
+! Declare variables for indices, flags, and temporary storage
+integer             :: id, xi, yi, i, j, flag, subi, x_m09, y_m09, it
+! Allocatable arrays to hold sub-catchment coordinate indices and global sub-catchment information
+integer,allocatable :: xsub(:,:), ysub(:,:), subi_global(:,:)
 
-integer :: id,xi,yi,i,j,flag,subi,x_m36,y_m36,it
-integer :: nsub(nc)
-integer,allocatable :: xsub(:,:),ysub(:,:),subi_global(:,:)
-real,allocatable :: asub(:,:)
+! Allocatable array to store sub-catchment area data
+real,allocatable    :: asub(:,:)
 
-real*8,allocatable :: lon(:),lat(:)
-integer,allocatable :: loni(:),lati(:)
-integer,allocatable :: catchind(:,:),map_tile(:,:)
-real,allocatable :: cellarea(:,:),area_m36(:,:),area_tile(:)
-real*8,allocatable :: lat36(:),lon36(:)
+! Allocatable double precision arrays for storing longitude and latitude values from file
+real*8,allocatable  :: lon(:), lat(:)
+! Allocatable integer arrays for mapping longitude and latitude indices
+integer,allocatable :: loni(:), lati(:)
+! 2D arrays: catchind holds catchment index for each grid cell; map_tile maps M09 grid cells to global indices
+integer,allocatable :: catchind(:,:), map_tile(:,:)
+! Arrays for cell areas from the original grid, aggregated area on the M grid, and area per global tile
+real,allocatable    :: cellarea(:,:), area_m09(:,:), area_tile(:)
 
+! Define file path for input routing data:
+character(len=900)  :: file_path !"input/CatchIndex.nc"   
 
-!allocate(subi_global(nmax,nc))
-!open(77,file="Pfaf_isub_M36.txt",status="old",action="read"); read(77,*)subi_global; close(77)
-!open(90,file="subi.txt",action="write")
-!do i=1,nc
-!  write(90,'(150(i7))')subi_global(:,i)
-!end do
-!print *,"successful"
-!stop
+if (command_argument_count() /= 1) then
+    print *, "no <file_path> found"
+    stop
+endif
+call get_command_argument(1, file_path)
 
-allocate(xsub(nmax,nc),ysub(nmax,nc),asub(nmax,nc))
-allocate(catchind(nlon,nlat),cellarea(nlon,nlat))
-allocate(lon(nlon),lat(nlat))
-allocate(loni(nlon),lati(nlat))
+! Allocate arrays for sub-catchment data
+! Allocate 2D arrays with dimensions (nmax, nc) for sub-catchment coordinate indices and areas
+allocate(xsub(nmax,nc), ysub(nmax,nc), asub(nmax,nc))
 
+! Allocate arrays for the catchment index grid and cell area data
+allocate(catchind(nlon,nlat), cellarea(nlon,nlat))
+! Allocate 1D arrays for longitude and latitude values
+allocate(lon(nlon), lat(nlat))
+! Allocate arrays for integer mappings of longitude and latitude indices
+allocate(loni(nlon), lati(nlat))
 
-call read_ncfile_double1d("input/CatchIndex.nc","lon",lon,nlon)
-call read_ncfile_double1d("input/CatchIndex.nc","lat",lat,nlat)
-call read_ncfile_int2d("input/CatchIndex.nc","data",catchind,nlon,nlat)
-call read_ncfile_real2d("temp/cellarea.nc","data",cellarea,nlon,nlat)
-cellarea=cellarea/1.e6
+! Read longitude and latitude data from the NetCDF file
+call read_ncfile_double1d(trim(file_path), "longitude", lon, nlon)
+call read_ncfile_double1d(trim(file_path), "latitude", lat, nlat)
+! Read 2D catchment index data from the same file
+call read_ncfile_int2d(trim(file_path), "CatchIndex", catchind, nlon, nlat)
+! Read cell area data 
+call read_ncfile_real2d("temp/cellarea.nc", "data", cellarea, nlon, nlat)
+! Scale cell area values (from m^2 to km^2)
+cellarea = cellarea/1.e6
 
+! Read mapping indices from text files for the M09 grid conversion
+! Read integer latitude indices mapping for each original grid 
+open(10, file="temp/lati_1m_M09.txt")
+read(10, *) lati
+! Read integer longitude indices mapping for each original grid 
+open(11, file="temp/loni_1m_M09.txt")
+read(11, *) loni
 
-open(10,file="temp/lati_1m_M09.txt")
-read(10,*)lati
-open(11,file="temp/loni_1m_M09.txt")
-read(11,*)loni
-
-
-allocate(area_m36(nlon36,nlat36))
-area_m36=0.
-do xi=1,nlon
-  do yi=1,nlat
-    if(catchind(xi,yi)>=1)then
-      x_m36=loni(xi)
-      y_m36=lati(yi)
-      area_m36(x_m36,y_m36)=area_m36(x_m36,y_m36)+cellarea(xi,yi)
+! Allocate and initialize the aggregated area array for the M09 grid
+allocate(area_m09(nlon09, nlat09))
+area_m09 = 0.
+! Loop over the original grid and accumulate cell areas into the M09 grid using mapping indices
+do xi = 1, nlon
+  do yi = 1, nlat
+    if (catchind(xi,yi) >= 1) then
+      x_m09 = loni(xi)
+      y_m09 = lati(yi)
+      ! For grid cells with a valid catchment index, add their cell area to the corresponding M09 grid cell      
+      area_m09(x_m09, y_m09) = area_m09(x_m09, y_m09) + cellarea(xi,yi)
     endif
   enddo
 enddo
 
-allocate(map_tile(nlon36,nlat36))
-call read_ncfile_int2d("temp/map_tile_M09.nc","data",map_tile,nlon36,nlat36)
+! Allocate the map_tile array and read its data from a NetCDF file
+allocate(map_tile(nlon09, nlat09))
+call read_ncfile_int2d("temp/map_tile_M09.nc", "data", map_tile, nlon09, nlat09)
+! Allocate the global area array to hold area data for each tile
 allocate(area_tile(nt_global))
-area_tile=-9999.
-do i=1,nlon36
-  do j=1,nlat36
-    it=map_tile(i,j)
-    if(it>0)then
-      area_tile(it)=area_m36(i,j)
+area_tile = -9999.
+
+! Map the aggregated M09 grid areas to the global tile indices using the map_tile array
+do i = 1, nlon09
+  do j = 1, nlat09
+    it = map_tile(i, j)
+    if (it > 0) then    
+      area_tile(it) = area_m09(i, j)
     endif
   enddo
 enddo
 
-open(88,file="output/area_M09_1d.txt")
-do i=1,nt_global
-  write(88,*)area_tile(i)
+! Write the global tile area data to an output text file
+open(88, file="output/area_M09_1d.txt")
+do i = 1, nt_global
+  write(88, *) area_tile(i)
 enddo
-
 
 end

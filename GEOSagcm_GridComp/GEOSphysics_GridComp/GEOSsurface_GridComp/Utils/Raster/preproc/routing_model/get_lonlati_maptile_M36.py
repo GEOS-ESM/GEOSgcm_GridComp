@@ -1,6 +1,8 @@
+import sys  
 import numpy as np
 from netCDF4 import Dataset
 import os
+#Main purpose: Assigns a catchment‐tile index from catchment definition files to each model grid cell for M36 grid.
 
 # Load data
 nt = 112573
@@ -19,8 +21,10 @@ latc = (lat_bot + lat_up) / 2.0
 lonc = (lon_left + lon_right) / 2.0
 
 # Read latitudes and longitudes for the grid
-lat36m = np.loadtxt("input/lat_M36.txt", dtype=float)
-lon36m = np.loadtxt("input/lon_M36.txt", dtype=float)
+lat36_file, lon36_file = sys.argv[1:3]
+
+lat36m = np.loadtxt(lat36_file, dtype=float)
+lon36m = np.loadtxt(lon36_file, dtype=float)
 
 # Find the nearest coordinates
 def ind_nearest_coord(coord_array1, coord_array2):

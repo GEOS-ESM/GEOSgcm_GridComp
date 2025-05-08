@@ -1,5 +1,9 @@
+import sys 
 import numpy as np
 from netCDF4 import Dataset
+#Main purpose: Processes lake data to be used in the river routing model.
+
+file_lat1m, file_lon1m, file_catmap, file_lake_mantag, file_lakecat_manfix = sys.argv[1:6]
 
 # Define constants
 nlat = 10800
@@ -8,8 +12,8 @@ nlon = 21600
 # Read data from files
 lats = np.loadtxt("temp/outlet_lat.txt", dtype=float)  # Latitude of outlets
 lons = np.loadtxt("temp/outlet_lon.txt", dtype=float)  # Longitude of outlets
-lat1m = np.loadtxt("input/lat_1m.txt", dtype=float)  # Latitude grid
-lon1m = np.loadtxt("input/lon_1m.txt", dtype=float)  # Longitude grid
+lat1m = np.loadtxt(file_lat1m, dtype=float)  # Latitude grid
+lon1m = np.loadtxt(file_lon1m, dtype=float)  # Longitude grid
 
 # Function to find the nearest index in a coordinate array
 def ind_nearest_coord(coord_array1, coord_array2):
@@ -43,7 +47,7 @@ def read_ncfile_int2d(filepath, varname, shape):
             data = np.where(data == fill_value, -9999, data)  # Replace missing values with 0
     return data
 
-catchind = read_ncfile_int2d("input/CatchIndex.nc", "data", (nlat, nlon))
+catchind = read_ncfile_int2d(file_catmap, "CatchIndex", (nlat, nlon))
 
 # Calculate catid
 catid = np.zeros(ns, dtype=int)
@@ -87,7 +91,7 @@ for i in range(ns):
 
 #------------------------------------------------------------------------------------------------------
 # Read tags
-tag_INCON = np.loadtxt("input/outletINCON_catid_tag_from_excel.txt", dtype=int)
+tag_INCON = np.loadtxt(file_lake_mantag, dtype=int)
 
 # Update catid and aca_model based on tags
 for i in range(nv):
@@ -155,8 +159,8 @@ for i in range(ns):
 
 outidV += 1
 
-# Fix multi-outlet IDs
-catid_outfix_2097 = np.loadtxt("input/outlet2097_catid_multiOut_fix.txt", dtype=int)
+# Fix multiple outlets in same catchment
+catid_outfix_2097 = np.loadtxt(file_lakecat_manfix, dtype=int)
 catid_outfix_out = np.full(ns, -9999, dtype=int)
 
 for i in range(nv3):
@@ -166,7 +170,4 @@ for i in range(nv3):
 catid = np.where((catid_outfix_out != 0) & (catid_outfix_out != -9999), catid_outfix_out, catid)
 np.savetxt("output/lake_outlet_catid.txt", catid, fmt="%d")
 
-# Final flag computation
-#flag_final = np.where(catid > 0, 1, 0)
-#print(np.sum(flag_final))
 

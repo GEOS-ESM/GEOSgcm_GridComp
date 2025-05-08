@@ -1,14 +1,12 @@
+import sys  
 import numpy as np
 import os
 from netCDF4 import Dataset
 
-# Define file paths
-lat36_file = "input/lat_M36.txt"
-lon36_file = "input/lon_M36.txt"
-lat1m_file = "input/lat_1m.txt"
-lon1m_file = "input/lon_1m.txt"
-lat09_file = "input/lat_M09.txt"
-lon09_file = "input/lon_M09.txt"
+#Main purpose: Computes grid-cell index arrays and per-cell areas for 1-m high-res grid.
+
+lat36_file, lon36_file, lat09_file, lon09_file, lat1m_file, lon1m_file = sys.argv[1:7]
+
 lati36_output_file = "temp/lati_1m_M36.txt"
 loni36_output_file = "temp/loni_1m_M36.txt"
 lati09_output_file = "temp/lati_1m_M09.txt"
