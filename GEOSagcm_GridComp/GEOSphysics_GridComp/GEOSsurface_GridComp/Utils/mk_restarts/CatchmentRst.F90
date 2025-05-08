@@ -807,10 +807,10 @@ contains
      if (root_proc) then
         allocate (long   (out_ntiles))
         allocate (latg   (out_ntiles))
-        call ReadTileFile_RealLatLon ( OutTileFile, n, long, latg)
+        call ReadTileFile_RealLatLon ( OutTileFile, n, xlon=long, xlat=latg)
         _ASSERT( n == out_ntiles, "Out tile number should match")
         this%latg = latg
-        call ReadTileFile_RealLatLon ( InTileFile, n, lonc, latc)
+        call ReadTileFile_RealLatLon ( InTileFile, n, xlon=lonc, xlat=latc)
         _ASSERT( n == in_ntiles, "In tile number should match")
      endif
 
