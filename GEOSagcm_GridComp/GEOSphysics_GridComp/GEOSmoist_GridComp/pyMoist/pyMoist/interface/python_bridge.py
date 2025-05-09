@@ -446,10 +446,10 @@ class PYMOIST_WRAPPER:
                 t_dt=t_dt,
                 t=t,
                 w=w,
-                uin=uin,
-                vin=vin,
-                udt=udt,
-                vdt=vdt,
+                u=uin,
+                v=vin,
+                u_dt=udt,
+                v_dt=vdt,
                 dz=dz,
                 dp=dp,
                 area=area,
@@ -494,14 +494,28 @@ class PYMOIST_WRAPPER:
             self.f_py.python_to_fortran(srf_type, f_srf_type)
             self.f_py.python_to_fortran(eis, f_eis)
             self.f_py.python_to_fortran(rhcrit3d, f_rhcrit3d)
-            self.f_py.python_to_fortran(self.pymoist.driver.rain.view[:], f_rain)
-            self.f_py.python_to_fortran(self.pymoist.driver.snow.view[:], f_snow)
-            self.f_py.python_to_fortran(self.pymoist.driver.ice.view[:], f_ice)
-            self.f_py.python_to_fortran(self.pymoist.driver.graupel.view[:], f_graupel)
-            self.f_py.python_to_fortran(self.pymoist.driver.m2_rain.view[:], f_m2_rain)
-            self.f_py.python_to_fortran(self.pymoist.driver.m2_sol.view[:], f_m2_sol)
-            self.f_py.python_to_fortran(self.pymoist.driver.revap.view[:], f_revap)
-            self.f_py.python_to_fortran(self.pymoist.driver.isubl.view[:], f_isubl)
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.rain.view[:], f_rain
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.snow.view[:], f_snow
+            )
+            self.f_py.python_to_fortran(self.pymoist.driver.outputs.ice.view[:], f_ice)
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.graupel.view[:], f_graupel
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.m2_rain.view[:], f_m2_rain
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.m2_sol.view[:], f_m2_sol
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.revap.view[:], f_revap
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.isubl.view[:], f_isubl
+            )
 
 
 WRAPPER = PYMOIST_WRAPPER()
@@ -727,9 +741,9 @@ def pyMoist_init(pyMoist_flags: cffi.FFI.CData):
     )
 
 
-def gfdl_1m_init(gfdl_1m_flags: cffi.FFI.CData):
+def gfdl_1m_init(gfdl_1m_flags: cffi.FFI.CData) -> None:
     if not WRAPPER.ready:
         raise RuntimeError("[GFDL_1M WRAPPER] pyMoist_init needs to be called first")
-    WRAPPER.pymoist.init_gfdl_1m_flags(
+    WRAPPER.pymoist.init_gfdl_1m_configuration(
         flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
     )
