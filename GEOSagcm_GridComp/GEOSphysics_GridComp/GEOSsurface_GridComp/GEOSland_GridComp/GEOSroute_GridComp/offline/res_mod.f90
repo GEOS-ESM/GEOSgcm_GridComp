@@ -247,7 +247,7 @@ subroutine res_init(input_dir,nres,nc,use_res,active_res,Wr_res,Q_res,type_res,c
   ! Wres_tar = Wres_tar * 1.D6 * rho  ! Convert from million cubic meters (MCM) to kilograms (kg)
 
   ! Deactivate reservoirs if the use_res flag is set to False
-  if(use_res == .False.) active_res = 0
+  if(use_res .eqv. .False.) active_res = 0
 
 end subroutine res_init
 

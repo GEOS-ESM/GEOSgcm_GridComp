@@ -1004,7 +1004,7 @@ contains
               !print *, "output stream storage is: ",sum(wstream_global)/1.e9             
          endif  
 
-         if(use_res==.True.)then
+         if(use_res .eqv. .True.)then
            allocate(qres_global(n_catg))
            call MPI_allgatherv  (                          &
                 res%qres_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
@@ -1054,7 +1054,7 @@ contains
               print *, "saved stream storage is: ",sum(wstream_global)/1.e9                                 
          endif
 
-         if(use_res==.True.)then
+         if(use_res .eqv. .True.)then
            allocate(wres_global(n_catg))
            call MPI_allgatherv  (                          &
                 res%Wr_res,  route%scounts_cat(mype+1)      ,MPI_REAL, &

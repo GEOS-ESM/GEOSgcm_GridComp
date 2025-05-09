@@ -63,7 +63,7 @@ subroutine lake_init(input_dir, use_lake, nc, nlake, nres, active_res, active_la
   where (active_res == 1) active_lake = 0
 
   ! If lakes are not being used, set active lakes to zero
-  if (use_lake == .False.) active_lake = 0
+  if (use_lake .eqv. .False.) active_lake = 0
 
 end subroutine lake_init
 
