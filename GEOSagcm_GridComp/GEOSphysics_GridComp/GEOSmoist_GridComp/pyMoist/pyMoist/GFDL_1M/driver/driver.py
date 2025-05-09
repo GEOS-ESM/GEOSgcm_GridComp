@@ -24,7 +24,6 @@ class MicrophysicsDriver:
         quantity_factory: QuantityFactory,
         GFDL_1M_config: MicrophysicsConfiguration,
     ):
-
         self.config_dependent_constants = ConfigConstants.make(GFDL_1M_config)
 
         # Check values for untested code paths
@@ -104,7 +103,6 @@ class MicrophysicsDriver:
 
     def __call__(
         self,
-        GFDL_1M_config: MicrophysicsConfiguration,
         qv: FloatField,
         ql: FloatField,
         qr: FloatField,
