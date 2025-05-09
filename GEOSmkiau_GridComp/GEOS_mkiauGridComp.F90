@@ -3503,11 +3503,11 @@ CONTAINS
       real, allocatable, dimension(:,:,:) :: dtdt_1deg
       real, allocatable, dimension(:,:,:) :: dtdt
       real, pointer, dimension(:, :, :) :: dtdt_ml
-      integer :: ushape(3), nx_, ny_, num_levels, im_world_tmp, jm_world_tmp
+      integer :: ushape(3), nx_, ny_, im_world_tmp, jm_world_tmp
       integer :: dims_(3), im_, jm_, im_1deg, jm_1deg, level, status
 
       integer, parameter :: magic_number = 123456789
-      integer, parameter :: im_world_1deg = 360, jm_world_1deg = 181, lm=181
+      integer, parameter :: im_world_1deg = 360, jm_world_1deg = 181, lm_181 = 181, lm_41 = 41
 
       ! Grid stuff (native and 1deg lat/lon)
       ! -native
@@ -3518,48 +3518,48 @@ CONTAINS
       call MAPL_GetResource(MAPL, ny_, 'NY:', default=MAPL_UNDEFINED_INTEGER, _RC)
       grid_1deg = grid_manager%make_grid( &
            LatLonGridFactory( &
-                im_world=im_world_1deg, jm_world=jm_world_1deg, lm=lm, &
+                im_world=im_world_1deg, jm_world=jm_world_1deg, lm=lm_181, &
                 nx=nx_, ny=ny_, &
                 pole="PC", dateline= "DC", &
                 rc=status))
       call MAPL_GridGet(grid_1deg, localCellCountPerDim=dims_, _RC)
-      im_1deg = dims_(1); jm_1deg = dims_(2); num_levels = dims_(3)
+      im_1deg = dims_(1); jm_1deg = dims_(2)
 
       ! Regrid - native to 1deg lat/lon
       to_1deg => new_regridder_manager%make_regridder(grid_bkg, grid_1deg, REGRID_METHOD_BILINEAR, _RC)
-      allocate(u_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(u_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
       nullify(ptr3d)
       call MAPL_GetPointer(import_state, ptr3d, "U", _RC)
       call to_1deg%regrid(ptr3d, u_1deg, _RC)
-      allocate(v_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(v_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
       nullify(ptr3d)
       call MAPL_GetPointer(import_state, ptr3d, "V", _RC)
       call to_1deg%regrid(ptr3d, v_1deg, _RC)
-      allocate(t_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(t_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
       nullify(ptr3d)
       call MAPL_GetPointer(import_state, ptr3d, "TV", _RC)
       call to_1deg%regrid(ptr3d, t_1deg, _RC)
-      allocate(qv_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qv_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
       nullify(ptr3d)
       call MAPL_GetPointer(import_state, ptr3d, "QV", _RC)
       call to_1deg%regrid(ptr3d, qv_1deg, _RC)
-      allocate(ql_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(ql_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
       nullify(ptr3d)
       call MAPL_GetPointer(import_state, ptr3d, "QLTOT", _RC)
       call to_1deg%regrid(ptr3d, ql_1deg, _RC)
-      allocate(qi_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qi_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
       nullify(ptr3d)
       call MAPL_GetPointer(import_state, ptr3d, "QITOT", _RC)
       call to_1deg%regrid(ptr3d, qi_1deg, _RC)
-      allocate(qr_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qr_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
       nullify(ptr3d)
       call MAPL_GetPointer(import_state, ptr3d, "QRTOT", _RC)
       call to_1deg%regrid(ptr3d, qr_1deg, _RC)
-      allocate(qs_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qs_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
       nullify(ptr3d)
       call MAPL_GetPointer(import_state, ptr3d, "QSTOT", _RC)
       call to_1deg%regrid(ptr3d, qs_1deg, _RC)
-      allocate(qg_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qg_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
       nullify(ptr3d)
       call MAPL_GetPointer(import_state, ptr3d, "QGTOT", _RC)
       call to_1deg%regrid(ptr3d, qg_1deg, _RC)
@@ -3576,18 +3576,18 @@ CONTAINS
          im_world_tmp = 0
          jm_world_tmp = 0
       end if
-      allocate(u_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
-      allocate(v_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
-      allocate(t_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
-      allocate(qv_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
-      allocate(ql_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
-      allocate(qi_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
-      allocate(qr_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
-      allocate(qs_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
-      allocate(qg_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(u_global(im_world_tmp, jm_world_tmp, lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(v_global(im_world_tmp, jm_world_tmp, lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(t_global(im_world_tmp, jm_world_tmp, lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(qv_global(im_world_tmp, jm_world_tmp, lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(ql_global(im_world_tmp, jm_world_tmp, lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(qi_global(im_world_tmp, jm_world_tmp, lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(qr_global(im_world_tmp, jm_world_tmp, lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(qs_global(im_world_tmp, jm_world_tmp, lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(qg_global(im_world_tmp, jm_world_tmp, lm_181), source=MAPL_UNDEFINED_REAL)
       allocate(ps_global(im_world_tmp, jm_world_tmp), source=MAPL_UNDEFINED_REAL)
-      allocate(dtdt_global(im_world_tmp, jm_world_tmp, lm), source = MAPL_UNDEFINED_REAL)
-      do level = 1, num_levels
+      allocate(dtdt_global(im_world_tmp, jm_world_tmp, lm_181), source = MAPL_UNDEFINED_REAL)
+      do level = 1, lm_181
          call ArrayGather(local_array=u_1deg(:, :, level), global_array=u_global(:, :, level), grid=grid_1deg, _RC)
          call ArrayGather(local_array=v_1deg(:, :, level), global_array=v_global(:, :, level), grid=grid_1deg, _RC)
          call ArrayGather(local_array=t_1deg(:, :, level), global_array=t_global(:, :, level), grid=grid_1deg, _RC)
@@ -3635,15 +3635,15 @@ CONTAINS
       deallocate(ps_global)
 
       ! Scatter dtdt back to all ranks
-      allocate(dtdt_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
-      do level = 1, num_levels
+      allocate(dtdt_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
+      do level = 1, lm_181
          call ArrayScatter(local_array=dtdt_1deg(:, :, level), global_array=dtdt_global(:, :, level), grid=grid_1deg, _RC)
       end do
       deallocate(dtdt_global)
 
       ! Regrid dtdt from 1deg lat/lon to native grid
       to_native => new_regridder_manager%make_regridder(grid_1deg, grid_bkg, REGRID_METHOD_BILINEAR, _RC)
-      allocate(dtdt(im_, jm_, lm), source=MAPL_UNDEFINED_REAL)      
+      allocate(dtdt(im_, jm_, lm_181), source=MAPL_UNDEFINED_REAL)      
       call to_native%regrid(dtdt_1deg, dtdt, _RC)
 
       ! Add to export spec
