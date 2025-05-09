@@ -1,10 +1,7 @@
 import copy
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import sin, erfc, exp, log, sqrt, f32, f64, THIS_K
-from ndsl.dsl.typing import (
-    Float,
-    Bool,
-)
+from ndsl.dsl.typing import Float, Bool, FloatField
 from pyMoist.field_types import FloatField_NTracers
 from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
 from pyMoist.saturation.formulation import SaturationFormulation
@@ -34,45 +31,34 @@ def exnerfn(
 
 
 @gtscript.function
-def slope(
-    field: Float,
-    field_above: Float,
-    field_below: Float,
-    p0: Float,
-    p0_above: Float,
-    p0_below: Float,
-):
+def slope(max_k: Float, field: FloatField, p0: FloatField):
     """
     Function that calculates slope of a given field at each grid cell.
 
     Inputs:
-    k_idx (Float): K-level mask (e.g., 0-71)
-    field (Float): Field of interest [N/A]
-    field_above (Float): The k-level above field (e.g., field[0,0,1]) [N/A]
-    field_below (Float): The k-level below field (e.g., field[0,0,-1]) [N/A]
+    max_k (Float): maximal k_index of the field
+    field (FloatField): Field of interest [N/A]
     p0 (Float): Pressure [Pa]
-    p0_above (Float): The k-level above p0 (e.g., p0[0,0,1]) [Pa]
-    p0_below (Float): The k-level below p0 (e.g., p0[0,0,-1]) [Pa]
 
     Returns:
     slope (Float): Slope of the field of interest [N/A]
     """
     if THIS_K == 0:
-        value = (field_above - field) / (p0_above - p0)
+        value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
         if value > 0.0:
             slope = max(0.0, value)
         else:
             slope = min(0.0, value)
-    elif THIS_K > 0 and THIS_K < 71:
-        above_value = (field_above - field) / (p0_above - p0)
-        below_value = (field - field_below) / (p0 - p0_below)
+    elif THIS_K > 0 and THIS_K < max_k:
+        above_value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
+        below_value = (field - field[0, 0, -1]) / (p0 - p0[0, 0, -1])
         if above_value > 0.0:
             slope = max(0.0, min(above_value, below_value))
         else:
             slope = min(0.0, max(above_value, below_value))
     else:
-        above_value = (field_above - field) / (p0_above - p0)
-        below_value = (field - field_below) / (p0 - p0_below)
+        above_value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
+        below_value = (field - field[0, 0, -1]) / (p0 - p0[0, 0, -1])
         if above_value > 0.0:
             slope = max(0.0, min(above_value, below_value))
         else:
