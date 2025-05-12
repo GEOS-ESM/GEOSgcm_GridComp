@@ -49,16 +49,11 @@ class Translatephase_change(TranslateFortranData2Py):
         )
         self.out_vars.update(
             {
-                "RHX": {},
-                "EVAPC": {},
-                "SUBLC": {},
+                "RHX": grid.compute_dict(),
+                "EVAPC": grid.compute_dict(),
+                "SUBLC": grid.compute_dict(),
             }
         )
-        self.out_vars = {
-            "RHX": self.grid.compute_dict(),
-            "EVAPC": self.grid.compute_dict(),
-            "SUBLC": self.grid.compute_dict(),
-        }
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("phase_change-constants")
@@ -83,7 +78,6 @@ class Translatephase_change(TranslateFortranData2Py):
             phase_change_config=self.phase_change_config,
         )
 
-        print("README", inputs.keys())
         phase_change(
             phase_change_config=self.phase_change_config,
             **inputs,
@@ -91,9 +85,9 @@ class Translatephase_change(TranslateFortranData2Py):
 
         inputs.update(
             {
-                "RHX": phase_change.outputs.rhx.view[:],
-                "EVAPC": phase_change.outputs.evapc.view[:],
-                "SUBLC": phase_change.outputs.sublc.view[:],
+                "RHX": phase_change.outputs.rhx,
+                "EVAPC": phase_change.outputs.evapc,
+                "SUBLC": phase_change.outputs.sublc,
             }
         )
         return inputs

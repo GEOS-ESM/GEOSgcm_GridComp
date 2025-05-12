@@ -96,6 +96,9 @@ class PhaseChange:
         self._meltfrz = self.stencil_factory.from_dims_halo(
             func=melt_freeze,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "DT_MOIST": phase_change_config.DT_MOIST,
+            },
         )
         self._evap = self.stencil_factory.from_dims_halo(
             func=evaporate,
@@ -164,7 +167,6 @@ class PhaseChange:
             t,
             clls,
             clcn,
-            nactl,
             nacti,
             self.outputs.rhx,
             self.qsat.ese,
@@ -175,12 +177,8 @@ class PhaseChange:
         )
 
         if self.phase_change_config.DO_MELT_FREEZE:
-            self._meltfrz(
-                self.phase_change_config.DT_MOIST, cnv_frc, srf_type, t, qlcn, qicn
-            )
-            self._meltfrz(
-                self.phase_change_config.DT_MOIST, cnv_frc, srf_type, t, qlls, qils
-            )
+            self._meltfrz(cnv_frc, srf_type, t, qlcn, qicn)
+            self._meltfrz(cnv_frc, srf_type, t, qlls, qils)
 
         if self.phase_change_config.CCW_EVAP_EFF > 0.0:
             self._evap(

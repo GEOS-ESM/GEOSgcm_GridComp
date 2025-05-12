@@ -10,61 +10,61 @@ from pyMoist.shared_incloud_processes import cloud_effective_radius_liquid
 
 
 def evaporate(
-    PLmb: FloatField,
-    T: FloatField,
-    Q: FloatField,
-    QLCN: FloatField,
-    QICN: FloatField,
-    CLCN: FloatField,
-    NACTL: FloatField,
-    NACTI: FloatField,
-    QST: FloatField,
-    EVAPC: FloatField,
+    p_mb: FloatField,
+    t: FloatField,
+    q: FloatField,
+    qlcn: FloatField,
+    qicn: FloatField,
+    clcn: FloatField,
+    nactl: FloatField,
+    nacti: FloatField,
+    qst: FloatField,
+    evapc: FloatField,
 ):
     from __externals__ import DT_MOIST, CCW_EVAP_EFF
 
     with computation(PARALLEL), interval(...):
-        EVAPC = Q
-        RHCRIT = 1
+        evapc = q
+        rh_crit = 1
         # Evaporation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
-        ES = (
-            100.0 * PLmb * QST / (constants.EPSILON + (1.0 - constants.EPSILON) * QST)
+        es = (
+            100.0 * p_mb * qst / (constants.EPSILON + (1.0 - constants.EPSILON) * qst)
         )  # (100's <-^ convert from mbar to Pa)
-        RHx = min(Q / QST, 1.00)
-        K1 = (
+        rhx = min(q / qst, 1.00)
+        k1 = (
             (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
             * constants.RHO_W
-            / (constants.K_COND * constants.MAPL_RVAP * (T**2))
+            / (constants.K_COND * constants.MAPL_RVAP * (t**2))
         )
-        K2 = (
+        k2 = (
             constants.MAPL_RVAP
-            * T
+            * t
             * constants.RHO_W
-            / (constants.DIFFU * (1000.0 / PLmb) * ES)
+            / (constants.DIFFU * (1000.0 / p_mb) * es)
         )
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
         # for increased diffusivity at lower pressure
-        if CLCN > 0.0 and QLCN > 0.0:
-            QCm = QLCN / CLCN
+        if clcn > 0.0 and qlcn > 0.0:
+            qcm = qlcn / clcn
         else:
-            QCm = 0.0
-        RADIUS = cloud_effective_radius_liquid(PLmb, T, QCm, NACTL, NACTI)
-        if RHx < RHCRIT and RADIUS > 0.0:
-            EVAP = (
+            qcm = 0.0
+        radius = cloud_effective_radius_liquid(p_mb, t, qcm, nactl, nacti)
+        if rhx < rh_crit and radius > 0.0:
+            evap = (
                 CCW_EVAP_EFF
-                * QLCN
+                * qlcn
                 * DT_MOIST
-                * (RHCRIT - RHx)
-                / ((K1 + K2) * RADIUS**2)
+                * (rh_crit - rhx)
+                / ((k1 + k2) * radius**2)
             )
-            EVAP = min(EVAP, QLCN)
+            evap = min(evap, qlcn)
         else:
-            EVAP = 0.0
-        QC = QLCN + QICN
-        if QC > 0.0:
-            CLCN = CLCN * (QC - EVAP) / QC
-        Q = Q + EVAP
-        QLCN = QLCN - EVAP
-        T = T - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CPDRY) * EVAP
-        EVAPC = (Q - EVAPC) / DT_MOIST
+            evap = 0.0
+        qc = qlcn + qicn
+        if qc > 0.0:
+            clcn = clcn * (qc - evap) / qc
+        q = q + evap
+        qlcn = qlcn - evap
+        t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CPDRY) * evap
+        evapc = (q - evapc) / DT_MOIST

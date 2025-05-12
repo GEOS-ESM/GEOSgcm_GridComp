@@ -11,40 +11,41 @@ from pyMoist.shared_incloud_processes import ice_fraction
 
 
 def melt_freeze(
-    dt: Float,
     cnv_frc: FloatFieldIJ,
     srf_type: FloatFieldIJ,
-    T: FloatField,
-    QLCN: FloatField,
-    QICN: FloatField,
+    t: FloatField,
+    qlcn: FloatField,
+    qicn: FloatField,
 ):
+    from __externals__ import DT_MOIST
+
     with computation(PARALLEL), interval(...):
-        if T <= constants.MAPL_TICE:
-            fQi = ice_fraction(T, cnv_frc, srf_type)
-            dQil = QLCN * (1.0 - exp(-dt * fQi / constants.TAUFRZ))
-            dQil = max(0.0, dQil)
-            QICN = QICN + dQil
-            QLCN = QLCN - dQil
-            T = (
-                T
+        if t <= constants.MAPL_TICE:
+            f_qi = ice_fraction(t, cnv_frc, srf_type)
+            d_qil = qlcn * (1.0 - exp(-DT_MOIST * f_qi / constants.TAUFRZ))
+            d_qil = max(0.0, d_qil)
+            qicn = qicn + d_qil
+            qlcn = qlcn - d_qil
+            t = (
+                t
                 + (
                     constants.MAPL_LATENT_HEAT_SUBLIMATION
                     - constants.MAPL_LATENT_HEAT_VAPORIZATION
                 )
-                * dQil
+                * d_qil
                 / constants.MAPL_CP
             )
         else:
-            dQil = -QICN
-            dQil = min(0.0, dQil)
-            QICN = QICN + dQil
-            QLCN = QLCN - dQil
-            T = (
-                T
+            d_qil = -qicn
+            d_qil = min(0.0, d_qil)
+            qicn = qicn + d_qil
+            qlcn = qlcn - d_qil
+            t = (
+                t
                 + (
                     constants.MAPL_LATENT_HEAT_SUBLIMATION
                     - constants.MAPL_LATENT_HEAT_VAPORIZATION
                 )
-                * dQil
+                * d_qil
                 / constants.MAPL_CP
             )

@@ -178,7 +178,6 @@ def hydrostatic_pdf(
     t: FloatField,
     clls: FloatField,
     clcn: FloatField,
-    nactl: FloatField,
     nacti: FloatField,
     rhx: FloatField,
     ese: FloatField_VaporSaturationTable,

@@ -11,61 +11,61 @@ from pyMoist.shared_incloud_processes import cloud_effective_radius_ice
 
 
 def sublimate(
-    PLmb: FloatField,
-    T: FloatField,
-    Q: FloatField,
-    QLCN: FloatField,
-    QICN: FloatField,
-    CLCN: FloatField,
-    NACTL: FloatField,
-    NACTI: FloatField,
-    QST: FloatField,
-    SUBLC: FloatField,
+    p_mb: FloatField,
+    t: FloatField,
+    q: FloatField,
+    qlcn: FloatField,
+    qicn: FloatField,
+    clcn: FloatField,
+    nactl: FloatField,
+    nacti: FloatField,
+    qst: FloatField,
+    sublc: FloatField,
 ):
     from __externals__ import DT_MOIST, CCI_EVAP_EFF
 
     with computation(PARALLEL), interval(...):
-        SUBLC = Q
-        RHCRIT = 1
+        sublc = q
+        rh_crit = 1
         # Sublimation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
-        ES = (
-            100.0 * PLmb * QST / (constants.EPSILON + (1.0 - constants.EPSILON) * QST)
+        es = (
+            100.0 * p_mb * qst / (constants.EPSILON + (1.0 - constants.EPSILON) * qst)
         )  # (100s <-^ convert from mbar to Pa)
-        RHx = min(Q / QST, 1.00)
-        K1 = (
+        rhx = min(q / qst, 1.00)
+        k1 = (
             (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
             * constants.RHO_I
-            / (constants.K_COND * constants.MAPL_RVAP * (T**2))
+            / (constants.K_COND * constants.MAPL_RVAP * (t**2))
         )
-        K2 = (
+        k2 = (
             constants.MAPL_RVAP
-            * T
+            * t
             * constants.RHO_I
-            / (constants.DIFFU * (1000.0 / PLmb) * ES)
+            / (constants.DIFFU * (1000.0 / p_mb) * es)
         )
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
         # for increased diffusivity at lower pressure
-        if CLCN > 0.0 and QICN > 0.0:
-            QCm = QICN / CLCN
+        if clcn > 0.0 and qicn > 0.0:
+            qcm = qicn / clcn
         else:
-            QCm = 0.0
-        radius = cloud_effective_radius_ice(PLmb, T, QCm, NACTL, NACTI)
-        if RHx < RHCRIT and radius > 0.0:
-            SUBL = (
+            qcm = 0.0
+        radius = cloud_effective_radius_ice(p_mb, t, qcm, nactl, nacti)
+        if rhx < rh_crit and radius > 0.0:
+            subl = (
                 CCI_EVAP_EFF
-                * QICN
+                * qicn
                 * DT_MOIST
-                * (RHCRIT - RHx)
-                / ((K1 + K2) * radius**2)
+                * (rh_crit - rhx)
+                / ((k1 + k2) * radius**2)
             )
-            SUBL = min(SUBL, QICN)
+            subl = min(subl, qicn)
         else:
-            SUBL = 0.0
-        QC = QLCN + QICN
-        if QC > 0.0:
-            CLCN = CLCN * (QC - SUBL) / QC
-        Q = Q + SUBL
-        QICN = QICN - SUBL
-        T = T - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CPDRY) * SUBL
-        SUBLC = (Q - SUBLC) / DT_MOIST
+            subl = 0.0
+        qc = qlcn + qicn
+        if qc > 0.0:
+            clcn = clcn * (qc - subl) / qc
+        q = q + subl
+        qicn = qicn - subl
+        t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CPDRY) * subl
+        sublc = (q - sublc) / DT_MOIST
