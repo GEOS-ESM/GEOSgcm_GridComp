@@ -12,8 +12,8 @@ import os
 from ndsl.utils import safe_assign_array
 
 # Merge netcdf files needed for testing UW
-path = "/Users/kfandric/netcdf/"
-os.system("ncks -A " + path + "ComputeUwshcu-In.nc " + path + "ComputeUwshcuInv-In.nc ")
+# path = "/Users/kfandric/netcdf/"
+# os.system("ncks -A " + path + "ComputeUwshcu-In.nc " + path + "ComputeUwshcuInv-In.nc ")
 
 
 class TranslateComputeUwshcuInv(TranslateFortranData2Py):

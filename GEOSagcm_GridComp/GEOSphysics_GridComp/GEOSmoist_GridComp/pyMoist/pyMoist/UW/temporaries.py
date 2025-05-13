@@ -284,6 +284,9 @@ class Temporaries:
     klfc_IJ: Quantity
     kpen_IJ: Quantity
     kpbl_in: Quantity
+    tr0_temp: Quantity
+    u0: Quantity
+    v0: Quantity
 
     @classmethod
     def make(cls, quantity_factory: QuantityFactory):
@@ -297,6 +300,7 @@ class Temporaries:
         qvj = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         qse = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         qij = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        tr0_temp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         thv0top = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         thv0bot = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         thvl0top = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -463,6 +467,8 @@ class Temporaries:
         pmid0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         u0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         v0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        u0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        v0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         zmid0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         exnmid0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         dp0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -861,4 +867,7 @@ class Temporaries:
             klfc_IJ,
             kpen_IJ,
             kpbl_in,
+            tr0_temp,
+            u0,
+            v0,
         )

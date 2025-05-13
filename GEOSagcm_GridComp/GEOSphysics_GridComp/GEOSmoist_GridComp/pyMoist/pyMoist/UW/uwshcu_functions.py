@@ -4,8 +4,9 @@ from gt4py.cartesian.gtscript import sin, erfc, exp, log, sqrt, f32, f64, THIS_K
 from ndsl.dsl.typing import (
     Float,
     Bool,
+    Int,
+    FloatField,
 )
-from pyMoist.field_types import FloatField_NTracers
 from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
 from pyMoist.saturation.formulation import SaturationFormulation
 import pyMoist.constants as constants
@@ -34,45 +35,80 @@ def exnerfn(
 
 
 @gtscript.function
-def slope(
-    field: Float,
-    field_above: Float,
-    field_below: Float,
-    p0: Float,
-    p0_above: Float,
-    p0_below: Float,
+def slope_bot(
+    field: FloatField,
+    p0: FloatField,
 ):
     """
-    Function that calculates slope of a given field at each grid cell.
+    Function that calculates slope at bottom layer of a field.
 
     Inputs:
-    k_idx (Float): K-level mask (e.g., 0-71)
-    field (Float): Field of interest [N/A]
-    field_above (Float): The k-level above field (e.g., field[0,0,1]) [N/A]
-    field_below (Float): The k-level below field (e.g., field[0,0,-1]) [N/A]
-    p0 (Float): Pressure [Pa]
-    p0_above (Float): The k-level above p0 (e.g., p0[0,0,1]) [Pa]
-    p0_below (Float): The k-level below p0 (e.g., p0[0,0,-1]) [Pa]
+    field (FloatField): Field of interest [N/A]
+    p0 (FloatField): Pressure [Pa]
 
     Returns:
     slope (Float): Slope of the field of interest [N/A]
     """
     if THIS_K == 0:
-        value = (field_above - field) / (p0_above - p0)
+        value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
         if value > 0.0:
             slope = max(0.0, value)
         else:
             slope = min(0.0, value)
-    elif THIS_K > 0 and THIS_K < 71:
-        above_value = (field_above - field) / (p0_above - p0)
-        below_value = (field - field_below) / (p0 - p0_below)
+
+    return slope
+
+
+@gtscript.function
+def slope_mid(
+    max_k: Int,
+    field: FloatField,
+    p0: FloatField,
+):
+    """
+    Function that calculates slope at mid layers of a field.
+
+    Inputs:
+    max_k (Int): Max k level (e.g., 71)
+    field (FloatField): Field of interest [N/A]
+    p0 (FloatField): Pressure [Pa]
+
+    Returns:
+    slope (Float): Slope of the field of interest [N/A]
+    """
+
+    if THIS_K > 0 and THIS_K < max_k:
+        above_value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
+        below_value = (field - field[0, 0, -1]) / (p0 - p0[0, 0, -1])
         if above_value > 0.0:
             slope = max(0.0, min(above_value, below_value))
         else:
             slope = min(0.0, max(above_value, below_value))
-    else:
-        above_value = (field_above - field) / (p0_above - p0)
-        below_value = (field - field_below) / (p0 - p0_below)
+
+    return slope
+
+
+@gtscript.function
+def slope_top(
+    max_k: Int,
+    field: FloatField,
+    p0: FloatField,
+):
+    """
+    Function that calculates slope at mid layers of a field.
+
+    Inputs:
+    max_k (Int): Max k level (e.g., 71)
+    field (FloatField): Field of interest [N/A]
+    p0 (FloatField): Pressure [Pa]
+
+    Returns:
+    slope (Float): Slope of the field of interest [N/A]
+    """
+
+    if THIS_K == max_k:
+        above_value = (field[0, 0, -1] - field) / (p0[0, 0, -1] - p0)
+        below_value = (field - field[0, 0, -2]) / (p0 - p0[0, 0, -2])
         if above_value > 0.0:
             slope = max(0.0, min(above_value, below_value))
         else:
