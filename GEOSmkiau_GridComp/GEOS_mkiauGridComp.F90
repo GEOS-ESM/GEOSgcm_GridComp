@@ -23,6 +23,7 @@ module GEOS_mkiauGridCompMod
 #ifdef HAS_PYMLINC
   use pyMLINC_interface_mod, only: pyMLINC_interface_init_f, pyMLINC_interface_run_f
   use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
+  use GEOS_GmapMod, only: mappm_
 #endif
   implicit none
   private
@@ -1156,7 +1157,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
          block
            class(AbstractGridFactory), allocatable :: factory
-           allocate(factory, source = grid_manager%make_factory(trim(REPLAY_FILEP0),force_file_coordinates = .false.)) 
+           allocate(factory, source = grid_manager%make_factory(trim(REPLAY_FILEP0),force_file_coordinates = .false.))
            GRIDrep = grid_manager%make_grid(factory)
            GRIDana = grid_manager%make_grid(factory)
          end block
@@ -3492,19 +3493,18 @@ CONTAINS
 
       type(ESMF_Grid) :: grid_1deg
       class(AbstractRegridder), pointer :: to_1deg => null(), to_native => null()
-      real, pointer :: ptr3d(:, :, :), ptr2d(:, :)
+      real, pointer :: ptr3d(:,:,:), ps(:,:), ak(:), bk(:)
       real, allocatable, dimension(:,:,:) :: u_1deg, v_1deg, t_1deg
-      real, allocatable, dimension(:,:,:) :: u_global, v_global, t_global
       real, allocatable, dimension(:,:,:) :: qv_1deg, ql_1deg, qi_1deg, qr_1deg, qs_1deg, qg_1deg
+      real, allocatable, dimension(:,:,:) :: u_global, v_global, t_global
       real, allocatable, dimension(:,:,:) :: qv_global, ql_global, qi_global, qr_global, qs_global, qg_global
-      real, allocatable, dimension(:,:) :: ps_1deg
-      real, allocatable, dimension(:,:) :: ps_global
-      real, allocatable, dimension(:,:,:) :: dtdt_global
-      real, allocatable, dimension(:,:,:) :: dtdt_1deg
-      real, allocatable, dimension(:,:,:) :: dtdt
-      real, pointer, dimension(:, :, :) :: dtdt_ml
+      real, allocatable, dimension(:,:) :: ps_1deg, ps_global
+      real, allocatable, dimension(:,:,:) :: dtdt_1deg, dtdt_global
+      real, allocatable, dimension(:,:,:) :: ple_41, ple_181, dp_41, dp_181
+      real, allocatable, dimension(:,:,:) :: dtdt_41, dtdt_181
+      real, pointer, dimension(:,:,:) :: dtdt_ml
       integer :: ushape(3), nx_, ny_, im_world_tmp, jm_world_tmp
-      integer :: dims_(3), im_native, jm_native, im_1deg, jm_1deg, level, km, status
+      integer :: dims_(3), im_native, jm_native, im_1deg, jm_1deg, level, km, status, j
 
       integer, parameter :: magic_number = 123456789
       integer, parameter :: im_world_1deg = 360, jm_world_1deg = 181, lm_181 = 181, lm_41 = 41
@@ -3528,6 +3528,7 @@ CONTAINS
            160, &
            170, &
            181]
+      integer, parameter :: kord = 9
 
       ! Grid stuff (native and 1deg lat/lon)
       ! -native
@@ -3585,11 +3586,11 @@ CONTAINS
       call MAPL_GetPointer(import_state, ptr3d, "QGTOT", _RC)
       call to_1deg%regrid(ptr3d, qg_1deg, _RC)
       allocate(ps_1deg(im_1deg, jm_1deg), source=MAPL_UNDEFINED_REAL)
-      nullify(ptr2d)
-      call MAPL_GetPointer(import_state, ptr2d, "PS", _RC)
-      call to_1deg%regrid(ptr2d, ps_1deg, _RC)
+      nullify(ptr3d, ps)
+      call MAPL_GetPointer(import_state, ps, "PS", _RC)
+      call to_1deg%regrid(ps, ps_1deg, _RC)
 
-      ! Gather inputs (u, v, t, q's, ps) on rank 0
+      ! Subset to 41 levels and gather inputs (u, v, t, q's, ps) on rank 0
       if (MAPL_AM_I_ROOT()) then
          im_world_tmp = im_world_1deg
          jm_world_tmp = jm_world_1deg
@@ -3660,21 +3661,48 @@ CONTAINS
       deallocate(ps_global)
 
       ! Scatter dtdt back to all ranks
-      allocate(dtdt_1deg(im_1deg, jm_1deg, lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(dtdt_1deg(im_1deg, jm_1deg, lm_41), source=MAPL_UNDEFINED_REAL)
       do level = 1, lm_41
-         km = l181tol41(level)
-         call ArrayScatter(local_array=dtdt_1deg(:, :, km), global_array=dtdt_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayScatter(local_array=dtdt_1deg(:, :, level), global_array=dtdt_global(:, :, level), grid=grid_1deg, _RC)
       end do
       deallocate(dtdt_global)
 
       ! Regrid dtdt from 1deg lat/lon to native grid
       to_native => new_regridder_manager%make_regridder(grid_1deg, grid_bkg, REGRID_METHOD_BILINEAR, _RC)
-      allocate(dtdt(im_native, jm_native, lm_181), source=MAPL_UNDEFINED_REAL)      
-      call to_native%regrid(dtdt_1deg, dtdt, _RC)
+      allocate(dtdt_41(im_native, jm_native, lm_41), source=MAPL_UNDEFINED_REAL)
+      call to_native%regrid(dtdt_1deg, dtdt_41, _RC)
+
+      ! Vertical regridding - 41->181 levels
+      call MAPL_GetPointer(import_state, ak, "AK", _RC)
+      call MAPL_GetPointer(import_state, bk, "BK", _RC)
+      call MAPL_GetPointer(import_state, ps, "PS", _RC)
+      allocate(ple_181(im_native, jm_native, 0:lm_181), source=MAPL_UNDEFINED_REAL)
+      allocate(dp_181(im_native, jm_native, lm_181), source=MAPL_UNDEFINED_REAL)
+      do concurrent (level = 0:lm_181)
+         ple_181(:, :, level) = ak(level) + bk(level) * ps(:, :)
+      end do
+      do concurrent (level = 1:lm_181)
+         dp_181(:, :, level) = ple_181(:, :, level) - ple_181(:, :, level-1)
+      end do
+      allocate(ple_41(im_native, jm_native, 0:lm_41), source=MAPL_UNDEFINED_REAL)
+      allocate(dp_41(im_native, jm_native, lm_41), source=MAPL_UNDEFINED_REAL)
+      ple_41 = ple_181(:, :, [0, l181tol41])
+      dp_41 = dp_181(:, :, l181tol41)
+      allocate(dtdt_181(im_native, jm_native, lm_181), source=MAPL_UNDEFINED_REAL)
+      do j = 1, jm_native
+         call mappm_( &
+              lm_41, ple_41(:, j, :), dp_41(:, j, :), dtdt_41(:, j, :), &
+              lm_181, ple_181(:, j, :), dp_181(:, j, :), dtdt_181(:, j, :), &
+              im_native, 1, kord)
+      end do
+      if (MAPL_AM_I_ROOT()) then
+         print *, "41: ", dtdt_41(2, 3, :)
+         print *, "181: ", dtdt_181(2, 3, :)
+      end if
 
       ! Add to export spec
       call MAPL_GetPointer(export_state, dtdt_ml, "DTDT_ML", _RC)
-      if (associated(dtdt_ml)) dtdt_ml = dtdt
+      if (associated(dtdt_ml)) dtdt_ml = dtdt_181
 
       _RETURN(_SUCCESS)
    end subroutine compute_ml_inc
@@ -3692,19 +3720,19 @@ CONTAINS
       ! when both t and tv are in file, bypass t
       if (any(rnames=='t') .and. any(rnames=='tv')) then
         where(rnames=='t')
-          rnames = 't-bypass' 
+          rnames = 't-bypass'
         endwhere
       endif
       ! when both u and ua are in file, bypass u
       if (any(rnames=='u') .and. any(rnames=='ua')) then
         where(rnames=='u')
-          rnames = 'u-bypass' 
+          rnames = 'u-bypass'
         endwhere
       endif
       ! when both v and va are in file, bypass v
       if (any(rnames=='v') .and. any(rnames=='va')) then
         where(rnames=='v')
-          rnames = 'v-bypass' 
+          rnames = 'v-bypass'
         endwhere
       endif
       end subroutine RedanduncyCheck
