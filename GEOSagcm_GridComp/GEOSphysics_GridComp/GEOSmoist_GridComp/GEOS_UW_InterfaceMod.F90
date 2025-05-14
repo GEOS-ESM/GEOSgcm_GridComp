@@ -14,6 +14,7 @@ module GEOS_UW_InterfaceMod
   use MAPL
   use UWSHCU   ! using module that contains uwshcu code
   use GEOSmoist_Process_Library
+  use compute_uwshcu_interface_mod
 
   implicit none
 
@@ -53,6 +54,11 @@ subroutine UW_Setup (GC, CF, RC)
 
     call MAPL_TimerAdd(GC, name="--UW", RC=STATUS)
     VERIFY_(STATUS)
+
+#ifdef RUN_PYUW
+  call MAPL_GetResource(MAPL, run_pyuw, 'RUN_PYUW:', default=0, RC=STATUS)
+  VERIFY_(STATUS)
+#endif
 
 end subroutine UW_Setup
 
@@ -145,6 +151,10 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT=40.0,   RC=STATUS) ; VERIFY_(STATUS)
 
+#ifdef RUN_PYUW
+  call compute_uwshcu_f_init()
+#endif
+
 end subroutine UW_Initialize
 
 subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
@@ -199,6 +209,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     integer                         :: I, J, L
     integer                         :: IM,JM,LM
+
+    integer                         :: ncnst
+    real, allocatable               :: tracers(:,:,:,:)   
 
     call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -325,7 +338,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     QLTOT = QLLS+QLCN
     QITOT = QILS+QICN
- 
+
+#ifdef RUN_PYUW
+    if (run_pyuw == 0) then
+#endif
+
       !  Call UW shallow convection
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
@@ -349,6 +366,99 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             XC_SC,                                        &
 #endif 
             USE_TRACER_TRANSP_UW)
+#ifdef RUN_PYUW
+    else
+      ncnst = size(CNV_Tracers)
+      allocate(tracers(IM,JM,LM,ncnst))
+      do k = 1, LM
+        k_inv = k0 + 1 - k
+        do m = 1, ncnst
+          tracers(:,:,k,m) = CNV_Tracers(m)%Q(:,:,k_inv)
+        enddo
+      enddo
+      ! I think to get the tracers, I need to manually extract them from CNV_Tracers
+      call compute_uwshcu_f_run_compute_uwshcu(
+         USE_TRACER_TRANSP_UW, &
+         size(CNV_Tracers), &
+         LM, & ! k0
+         SHLWPARAMS%WINDSRCAVG, & ! windsrcavg
+         SHLWPARAMS%QTSRCHGT, &
+         SHLWPARAMS%QTSRC_FAC, &
+         SHLWPARAMS%THLSRC_FAC, &
+         SHLWPARAMS%FRC_RASN, &
+         SHLWPARAMS%RBUOY, &
+         SHLWPARAMS%EPSVARW, &
+         SHLWPARAMS%USE_CINCIN, &
+         SHLWPARAMS%MUMIN1, &
+         SHLWPARAMS%RMAXFRAC, &
+         SHLWPARAMS%PGFC, &
+         UW_DT, &
+         SHLWPARAMS%NITER_XC, &
+         SHLWPARAMS%CRIQC, &
+         SHLWPARAMS%RLE, &
+         SHLWPARAMS%CRIDIST_OPT, &
+         SHLWPARAMS%MIXSCALE, &
+         SHLWPARAMS%RKM, &
+         SHLWPARAMS%DETRHGT, &
+         SHLWPARAMS%RDRAG, &
+         SHLWPARAMS%USE_SELF_DETRAIN, &
+         SHLWPARAMS%USE_CUMPENENT, &
+         SHLWPARAMS%RPEN, &
+         SHLWPARAMS%USE_MOMENFLX, &
+         SHLWPARAMS%RDROP, &
+         PLE, shape(PLE), rank(PLE), &
+         ZLE0, shape(ZLE0), rank(ZLE0), &
+         PL, shape(PL), rank(PL), &
+         ZL0, shape(ZL0), rank(ZL0), &
+         KPBL_SC, shape(KPBL_SC), rank(KPBL_SC), &
+         PK, shape(PK), rank(PK), &
+         PKE, shape(PKE), rank(PKE), &
+         DP, shape(DP), rank(DP), &
+         U, shape(U), rank(U), &
+         V, shape(V), rank(V), &
+         Q, shape(Q), rank(Q), &
+         QLTOT, shape(QLTOT), rank(QLTOT), &
+         QITOT, shape(QITOT), rank(QITOT), &
+         T, shape(T), rank(T), &
+         FRLAND, shape(FRLAND), rank(FRLAND), &
+         TKE, shape(TKE), rank(TKE), &
+         RKFRE, shape(RKFRE), rank(RKFRE), &
+         CUSH, shape(CUSH), rank(CUSH), &
+         SH, shape(SH), rank(SH), &
+         EVAP, shape(EVAP), rank(EVAP), &
+         CNPCPRATE, shape(CNPCPRATE), rank(CNPCPRATE), &
+         tracers, shape(tracers), rank(tracers), &
+         !inouts
+         !outputs
+         UMF_SC, shape(UMF_SC), rank(UMF_SC), &
+         DCM_SC, shape(DCM_SC), rank(DCM_SC), &
+         QTFLX_SC, shape(QTFLX_SC), rank(QTFLX_SC), &
+         SLFLX_SC, shape(SLFLX_SC), rank(SLFLX_SC), &
+         UFLX_SC, shape(UFLX_SC), rank(UFLX_SC), &
+         VFLX_SC, shape(VFLX_SC), rank(VFLX_SC), &
+         DQVDT_SC, shape(DQVDT_SC), rank(DQVDT_SC), &
+         DQLDT_SC, shape(DQLDT_SC), rank(DQLDT_SC), &
+         DQIDT_SC, shape(DQIDT_SC), rank(DQIDT_SC), &
+         DTDT_SC, shape(DTDT_SC), rank(DTDT_SC), &
+         DUDT_SC, shape(DUDT_SC), rank(DUDT_SC), &
+         DVDT_SC, shape(DVDT_SC), rank(DVDT_SC), &
+         DQRDT_SC, shape(DQRDT_SC), rank(DQRDT_SC), &
+         DQSDT_SC, shape(DQSDT_SC), rank(DQSDT_SC), &
+         CUFRC_SC, shape(CUFRC_SC), rank(CUFRC_SC), &
+         ENTR_SC, shape(ENTR_SC), rank(ENTR_SC), &
+         DETR_SC, shape(DETR_SC), rank(DETR_SC), &
+         SC_NDROP, shape(SC_NDROP), rank(SC_NDROP), &
+         SC_NICE, shape(SC_NICE), rank(SC_NICE), &
+         QLDET_SC, shape(QLDET_SC), rank(QLDET_SC), &
+         QLSUB_SC, shape(QLSUB_SC), rank(QLSUB_SC), &
+         QIDET_SC, shape(QIDET_SC), rank(QIDET_SC), &
+         QISUB_SC, shape(QISUB_SC), rank(QISUB_SC), &
+         TPERT_SC, shape(TPERT_SC), rank(TPERT_SC), &
+         QPERT_SC, shape(QPERT_SC), rank(QPERT_SC) &
+         )
+      
+    endif
+#endif
 
       !  Apply tendencies
       !--------------------------------------------------------------
