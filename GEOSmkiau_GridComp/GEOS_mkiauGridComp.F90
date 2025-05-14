@@ -3695,10 +3695,6 @@ CONTAINS
               lm_181, ple_181(:, j, :), dp_181(:, j, :), dtdt_181(:, j, :), &
               im_native, 1, kord)
       end do
-      if (MAPL_AM_I_ROOT()) then
-         print *, "41: ", dtdt_41(2, 3, :)
-         print *, "181: ", dtdt_181(2, 3, :)
-      end if
 
       ! Add to export spec
       call MAPL_GetPointer(export_state, dtdt_ml, "DTDT_ML", _RC)
