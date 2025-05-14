@@ -5,7 +5,6 @@
 import os
 import glob
 
-BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
 def get_script_head() :
 
   head =  """#!/bin/csh -x
@@ -18,14 +17,12 @@ def get_script_head() :
 #SBATCH --job-name={GRIDNAME}.j
 """
   constraint = '#SBATCH --constraint="[mil|cas]"'
-  #if 'TRUE' not in BUILT_ON_SLES15:
-  #   constraint = "#SBATCH --constraint=sky"
 
   head = head + constraint + """
-echo "-----------------------------" 
-echo "make_bcs starts date/time" 
-echo `date` 
-echo "-----------------------------" 
+echo "-----------------------------"
+echo "make_bcs starts date/time"
+echo `date`
+echo "-----------------------------"
 
 cd {SCRATCH_DIR}
 
@@ -115,33 +112,32 @@ cd land/{GRIDNAME}
 ln -s vegdyn_{RC}.dat vegdyn_{RC}.nc4
 cd ../../
 
-/bin/mv clsm/ar.new \\
-        clsm/bf.dat \\
-        clsm/ts.dat \\
-        clsm/catchment.def \\
-        clsm/cti_stats.dat \\
-        clsm/tau_param.dat \\
-        clsm/soil_param.dat \\
-        clsm/mosaic_veg_typs_fracs \\
-        clsm/soil_param.first \\
-        clsm/bad_sat_param.tiles \\
-        clsm/README \\
-        clsm/lai.* \\
-        clsm/AlbMap* \\
-        clsm/g5fmt \\
-        clsm/vegetation.hst2 \\
-        clsm/pfaf_fractions.dat \\
-        clsm/plots \\
-        clsm/CLM_veg_typs_fracs \\
-        clsm/Grid2Catch_TransferData.nc \\
-        clsm/CLM_NDep_SoilAlb_T2m \\
-        clsm/CLM4.5_abm_peatf_gdp_hdm_fc \\
-        clsm/catch_params.nc4 \\
-        clsm/catchcn_params.nc4 \\
-        clsm/country_and_state_code.data \\
-        land/{GRIDNAME}/clsm/
+/bin/mv clsm/ar.new land/{GRIDNAME}/clsm/ 
+/bin/mv clsm/bf.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/ts.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/catchment.def land/{GRIDNAME}/clsm/
+/bin/mv clsm/cti_stats.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/tau_param.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/soil_param.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/mosaic_veg_typs_fracs land/{GRIDNAME}/clsm/
+/bin/mv clsm/soil_param.first land/{GRIDNAME}/clsm/
+/bin/mv clsm/bad_sat_param.tiles land/{GRIDNAME}/clsm/
+/bin/mv clsm/README land/{GRIDNAME}/clsm/
+/bin/mv clsm/lai.* land/{GRIDNAME}/clsm/
+/bin/mv clsm/AlbMap* land/{GRIDNAME}/clsm/
+/bin/mv clsm/g5fmt land/{GRIDNAME}/clsm/
+/bin/mv clsm/vegetation.hst2 land/{GRIDNAME}/clsm/
+/bin/mv clsm/pfaf_fractions.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/plots land/{GRIDNAME}/clsm/
+/bin/mv clsm/CLM_veg_typs_fracs land/{GRIDNAME}/clsm/
+/bin/mv clsm/Grid2Catch_TransferData.nc land/{GRIDNAME}/clsm/
+/bin/mv clsm/CLM_NDep_SoilAlb_T2m land/{GRIDNAME}/clsm/
+/bin/mv clsm/CLM4.5_abm_peatf_gdp_hdm_fc land/{GRIDNAME}/clsm/
+/bin/mv clsm/catch_params.nc4 land/{GRIDNAME}/clsm/
+/bin/mv clsm/catchcn_params.nc4 land/{GRIDNAME}/clsm/
+/bin/mv clsm/country_and_state_code.data land/{GRIDNAME}/clsm/
 
-""" 
+"""
    mv_template = mv_template + get_change_til_file(grid_type)
    mv_template = mv_template + """
 
@@ -151,10 +147,10 @@ cd ../../
 
 mkdir -p ../../geometry ../../land/shared ../../logs
 
-echo "-----------------------------" 
-echo "make_bcs ends date/time" 
-echo `date` 
-echo "-----------------------------" 
+echo "-----------------------------"
+echo "make_bcs ends date/time"
+echo `date`
+echo "-----------------------------"
 
 /bin/mv ../logs/{GRIDNAME}  ../../logs/.
 
@@ -167,7 +163,7 @@ cd ../..
 
 /bin/rm -r {TMP_DIR}
 
-# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir 
+# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir
 
 if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
     echo "CO2_MonthlyMean_DiurnalCycle.nc4 already present in bcs dir."
