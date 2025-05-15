@@ -27,6 +27,10 @@ module GEOS_UW_InterfaceMod
   character(len=ESMF_MAXSTR)              :: IAm
   integer                                 :: STATUS
 
+#ifdef RUN_PYUW
+   integer :: run_pyuw = 0
+#endif
+
   public :: UW_Setup, UW_Initialize, UW_Run
    
 contains
@@ -55,10 +59,6 @@ subroutine UW_Setup (GC, CF, RC)
     call MAPL_TimerAdd(GC, name="--UW", RC=STATUS)
     VERIFY_(STATUS)
 
-#ifdef RUN_PYUW
-  call MAPL_GetResource(MAPL, run_pyuw, 'RUN_PYUW:', default=0, RC=STATUS)
-  VERIFY_(STATUS)
-#endif
 
 end subroutine UW_Setup
 
@@ -152,7 +152,14 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT=40.0,   RC=STATUS) ; VERIFY_(STATUS)
 
 #ifdef RUN_PYUW
-  call compute_uwshcu_f_init()
+  call MAPL_GetResource(MAPL, run_pyuw, 'RUN_PYUW:', default=0, RC=STATUS)
+  VERIFY_(STATUS)
+#endif
+
+#ifdef RUN_PYUW
+    if (run_pyuw == 1) then
+      call compute_uwshcu_f_init()
+    endif
 #endif
 
 end subroutine UW_Initialize
@@ -207,11 +214,12 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Local variables
 
-    integer                         :: I, J, L
+    integer                         :: I, J, L, k, k_inv, mm
     integer                         :: IM,JM,LM
 
     integer                         :: ncnst
-    real, allocatable               :: tracers(:,:,:,:)   
+    real, dimension(:,:,:,:), allocatable :: tracers
+    integer, dimension(:,:),  allocatable :: kpbl_int
 
     call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -343,6 +351,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (run_pyuw == 0) then
 #endif
 
+      print*, 'compute_uwshcu_inv called'
       !  Call UW shallow convection
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
@@ -370,18 +379,25 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     else
       ncnst = size(CNV_Tracers)
       allocate(tracers(IM,JM,LM,ncnst))
+      allocate(kpbl_int(IM,JM))
       do k = 1, LM
-        k_inv = k0 + 1 - k
-        do m = 1, ncnst
-          tracers(:,:,k,m) = CNV_Tracers(m)%Q(:,:,k_inv)
+        k_inv = LM + 1 - k
+        do mm = 1, ncnst
+          tracers(:,:,k,mm) = CNV_Tracers(mm)%Q(:,:,k_inv)
+        enddo
+      enddo
+
+      do j = 1, JM
+        do i = 1, IM
+          kpbl_int(i,j) = int(KPBL_SC(i,j))
         enddo
       enddo
       ! I think to get the tracers, I need to manually extract them from CNV_Tracers
-      call compute_uwshcu_f_run_compute_uwshcu(
+      call compute_uwshcu_f_run_compute_uwshcu( &
          USE_TRACER_TRANSP_UW, &
          size(CNV_Tracers), &
-         LM, & ! k0
-         SHLWPARAMS%WINDSRCAVG, & ! windsrcavg
+         LM, &
+         SHLWPARAMS%WINDSRCAVG, &
          SHLWPARAMS%QTSRCHGT, &
          SHLWPARAMS%QTSRC_FAC, &
          SHLWPARAMS%THLSRC_FAC, &
@@ -410,7 +426,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ZLE0, shape(ZLE0), rank(ZLE0), &
          PL, shape(PL), rank(PL), &
          ZL0, shape(ZL0), rank(ZL0), &
-         KPBL_SC, shape(KPBL_SC), rank(KPBL_SC), &
+         kpbl_int, shape(kpbl_int), rank(kpbl_int), &
          PK, shape(PK), rank(PK), &
          PKE, shape(PKE), rank(PKE), &
          DP, shape(DP), rank(DP), &
