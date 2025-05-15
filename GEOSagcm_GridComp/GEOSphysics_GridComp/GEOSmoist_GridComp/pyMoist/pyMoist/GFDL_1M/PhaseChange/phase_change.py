@@ -5,8 +5,8 @@ Calculations can be found in deeper functions."""
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
-from pyMoist.saturation_old.formulation import SaturationFormulation
-from pyMoist.saturation_old.qsat import QSat
+from pyMoist.saturation_tables.formulation import SaturationFormulation
+from pyMoist.saturation_tables.qsat_functions import QSat
 from pyMoist.shared_incloud_processes import fix_up_clouds
 from pyMoist.GFDL_1M.PhaseChange.config import PhaseChangeConfiguration
 from pyMoist.GFDL_1M.PhaseChange.rh_calculations import rh_calculations

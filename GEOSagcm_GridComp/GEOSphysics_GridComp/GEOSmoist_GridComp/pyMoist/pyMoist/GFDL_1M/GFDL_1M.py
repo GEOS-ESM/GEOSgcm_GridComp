@@ -12,8 +12,8 @@ from pyMoist.GFDL_1M.evap_subl_pdf_core import (
     melt_freeze,
     sublimate,
 )
-from pyMoist.saturation_old.formulation import SaturationFormulation
-from pyMoist.saturation_old.qsat import QSat
+from pyMoist.saturation_tables.formulation import SaturationFormulation
+from pyMoist.saturation_tables.qsat_functions import QSat
 from pyMoist.shared_gt4py_workarounds import get_last, hybrid_index_2dout
 from pyMoist.shared_incloud_processes import fix_up_clouds
 

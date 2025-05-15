@@ -2,12 +2,13 @@ import copy
 from typing import Optional
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import PARALLEL, computation, floor, i32, interval
+from gt4py.cartesian.gtscript import i32
+from ndsl.dsl.gt4py import PARALLEL, computation, floor, interval
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, FloatField
-from pyMoist.saturation_old.constants import (
+from ndsl.dsl.typing import Float, FloatField, Int
+from pyMoist.saturation_tables.constants import (
     DEGSUBS,
     ERFAC,
     ESFAC,
@@ -19,8 +20,8 @@ from pyMoist.saturation_old.constants import (
     TMINTBL,
     TMIX,
 )
-from pyMoist.saturation_old.formulation import SaturationFormulation
-from pyMoist.saturation_old.table import get_table
+from pyMoist.saturation_tables.formulation import SaturationFormulation
+from pyMoist.saturation_tables.tables.main import get_table
 
 
 # FloatField with extra dimension initialized to handle table data
@@ -31,108 +32,114 @@ from pyMoist.saturation_old.table import get_table
 # Current implementation does not allow for flexible table sizes
 # so if needed this will have to be implemented in another way.
 # DEV NOTE: we have to "type ignore" the indexation due to a misread of mypy
-FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
+GlobalTable_saturaion_tables = gtscript.GlobalTable[(Float, (int(TABLESIZE)))]
 
 
-# The following two functions, QSat_Float_Liquid and QSat_Float_Ice are,
+# The following two functions, QSat_Float_Ice and QSat_Float_Liquid are,
 # together, a non-equivalent replacement for QSat_Float.
 # QSat_Float interpolates a smooth transition between liquid water and ice
 # (based on the parameter TMIX), while the Liquic/Ice versions have a
 # hard transition at zero C.
-@gtscript.function
-def QSat_Float_Liquid(
-    esw: FloatField_Extra_Dim,  # type: ignore  # type: ignore
-    estlqu: Float,
-    TL: Float,
-    PL: Float = -999.0,
-    DQ_trigger: bool = False,
-):
-    QS = 0
-    DQ = 0
-    # qsatlqu.code with UTBL = True
-    if TL <= TMINLQU:
-        QS = estlqu
-        if DQ_trigger:
-            DDQ = 0.0
-    elif TL >= TMAXTBL:
-        TABLESIZE_MINUS_1: i32 = TABLESIZE - 1
-        QS = esw[0][TABLESIZE_MINUS_1]  # type: ignore
-        if DQ_trigger:
-            DDQ = 0.0
-    else:
-        TT = (TL - TMINTBL) * DEGSUBS + 1
-        IT = i32(TT)
-        IT_MINUS_1: i32 = (
-            IT - 1
-        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
-        DDQ = esw[0][IT] - esw[0][IT_MINUS_1]  # type: ignore
-        QS = (TT - IT) * DDQ + esw[0][IT_MINUS_1]  # type: ignore
-
-    if PL != -999.0:
-        if PL > QS:
-            DD = ESFAC / (PL - (1.0 - ESFAC) * QS)
-            QS = QS * DD
-            if DQ_trigger:
-                DQ = DDQ * ERFAC * PL * DD * DD
-        else:
-            QS = MAX_MIXING_RATIO
-            if DQ_trigger:
-                DQ = 0.0
-    else:
-        if DQ_trigger:
-            DQ = DDQ
-
-    return QS, DQ
 
 
 @gtscript.function
 def QSat_Float_Ice(
-    ese: FloatField_Extra_Dim,  # type: ignore
+    ese: GlobalTable_saturaion_tables,  # type: ignore
     estfrz: Float,
-    TL: Float,
-    PL: Float = -999.0,
-    DQ_trigger: bool = False,
+    t: Float,
+    p: Float,
+    use_p: bool,
+    compute_dq: bool,
 ):
-    # qsatice.code with UTBL = True
-    if TL <= TMINTBL:
-        QS = ese[0][0]  # type: ignore
-        if DQ_trigger:
-            DDQ = 0.0
-    elif TL >= MAPL_TICE:
-        QS = estfrz
-        if DQ_trigger:
-            DDQ = 0.0
+    """
+    Qsat ice function using table lookup
+    """
+    qs = 0
+    dq = 0
+    if t <= TMINTBL:
+        qs = ese.A[0]  # type: ignore
+        if compute_dq:
+            ddq = 0.0
+    elif t >= MAPL_TICE:
+        qs = estfrz
+        if compute_dq:
+            ddq = 0.0
     else:
-        TT = (TL - TMINTBL) * DEGSUBS + 1
-        IT = i32(floor(TT))
-        IT_MINUS_1: i32 = (
-            IT - 1
-        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
-        DDQ = ese[0][IT] - ese[0][IT_MINUS_1]  # type: ignore
-        QS = (TT - IT) * DDQ + ese[0][IT_MINUS_1]  # type: ignore
+        new_t = (t - TMINTBL) * DEGSUBS + 1
+        new_t_integer = i32(floor(new_t))
+        new_t_integer_minus_1: i32 = new_t_integer - 1
+        ddq = ese.A[new_t_integer] - ese.A[new_t_integer_minus_1]  # type: ignore
+        qs = (new_t - new_t_integer) * ddq + ese.A[new_t_integer_minus_1]  # type: ignore
 
-    if PL != -999.0:
-        if PL > QS:
-            DD = ESFAC / (PL - (1.0 - ESFAC) * QS)
-            QS = QS * DD
-            if DQ_trigger:
-                DQ = DDQ * ERFAC * PL * DD * DD
+    if use_p == True:
+        if p > qs:
+            dd = ESFAC / (p - (1.0 - ESFAC) * qs)
+            qs = qs * dd
+            if compute_dq:
+                dq = ddq * ERFAC * p * dd * dd
         else:
-            QS = MAX_MIXING_RATIO
-            if DQ_trigger:
-                DQ = 0.0
+            qs = MAX_MIXING_RATIO
+            if compute_dq:
+                dq = 0.0
     else:
-        if DQ_trigger:
-            DQ = DDQ
+        if compute_dq:
+            dq = ddq
 
-    return QS, DQ
+    return qs, dq
+
+
+@gtscript.function
+def QSat_Float_Liquid(
+    esw: GlobalTable_saturaion_tables,  # type: ignore
+    estlqu: Float,
+    t: Float,
+    p: Float,
+    use_p: bool,
+    compute_dq: bool,
+):
+    """
+    Qsat liquid function using table lookup
+    """
+    qs = 0
+    dq = 0
+    if t <= TMINLQU:
+        qs = estlqu
+        if compute_dq == True:
+            ddq = 0.0
+    elif t >= TMAXTBL:
+        TABLESIZE_MINUS_1: i32 = TABLESIZE - 1
+        qs = esw.A[TABLESIZE_MINUS_1]  # type: ignore
+    if compute_dq == True:
+        ddq = 0.0
+    else:
+        new_t = (t - TMINTBL) * DEGSUBS + 1
+        new_t_integer = i32(new_t)
+        new_t_integer_minus_1: i32 = new_t_integer - 1
+        ddq = esw.A[new_t_integer] - esw.A[new_t_integer_minus_1]  # type: ignore
+        qs = (new_t - new_t_integer) * ddq + esw.A[new_t_integer_minus_1]  # type: ignore
+
+    if use_p == True:
+        if p > qs:
+            dd = ESFAC / (p - (1.0 - ESFAC) * qs)
+            qs = qs * dd
+            if compute_dq == True:
+                dq = ddq * ERFAC * p * dd * dd
+        else:
+            qs = MAX_MIXING_RATIO
+            if compute_dq == True:
+                dq = 0.0
+    else:
+        if compute_dq:
+            dq = ddq
+
+    return qs, dq
 
 
 # Function version of QSat_table
 @gtscript.function
 def QSat_Float(
-    ese: FloatField_Extra_Dim,  # type: ignore
-    esx: FloatField_Extra_Dim,  # type: ignore
+    ese: GlobalTable_saturaion_tables,  # type: ignore
+    esx: GlobalTable_saturaion_tables,  # type: ignore
     T: Float,
     PL: Float,
     RAMP: Float = -999.0,
@@ -189,8 +196,8 @@ def QSat_Float(
 
 # Stencils implement QSAT0 function from GEOS_Utilities.F90
 def QSat_FloatField(
-    ese: FloatField_Extra_Dim,  # type: ignore
-    esx: FloatField_Extra_Dim,  # type: ignore
+    ese: GlobalTable_saturaion_tables,  # type: ignore
+    esx: GlobalTable_saturaion_tables,  # type: ignore
     T: FloatField,
     PL: FloatField,
     QSAT: FloatField,

@@ -9,7 +9,6 @@ class IceExactConstatns:
     TMINSTR = Float(-95.0)
     TMINICE = MAPL_TICE + TMINSTR
 
-    TMINSTR = Float(-95.0)
     TSTARR1 = Float(-75.0)
     TSTARR2 = Float(-65.0)
     TSTARR3 = Float(-50.0)

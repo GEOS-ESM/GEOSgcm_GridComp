@@ -3,14 +3,14 @@ from typing import Optional
 import numpy as np
 
 from ndsl.dsl.typing import Float
-from pyMoist.saturation_old.constants import (
+from pyMoist.saturation_tables.constants import (
     DELTA_T,
     ERFAC,
     ESFAC,
     MAPL_TICE,
     MAX_MIXING_RATIO,
 )
-from pyMoist.saturation_old.formulation import SaturationFormulation
+from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.constants import IceExactConstatns
 
 

@@ -10,7 +10,11 @@ from gt4py.cartesian.gtscript import (
 import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.field_types import FloatField_VaporSaturationTable
-from pyMoist.saturation_old.qsat import QSat_Float, QSat_Float_Ice, QSat_Float_Liquid
+from pyMoist.saturation_tables.qsat_functions import (
+    QSat_Float,
+    QSat_Float_Ice,
+    QSat_Float_Liquid,
+)
 from pyMoist.shared_incloud_processes import ice_fraction
 
 
@@ -110,7 +114,7 @@ def bergeron_partition(
         else:
             QVINC = Q
             QSLIQ, _ = QSat_Float_Liquid(esw, estlqu, TE, PL * 100.0)
-            QSICE, DQSI = QSat_Float_Ice(ese, estfrz, TE, PL * 100.0, DQ_trigger=True)
+            QSICE, DQSI = QSat_Float_Ice(ese, estfrz, TE, PL * 100.0, compute_dq=True)
             QVINC = min(QVINC, QSLIQ)  # limit to below water saturation
             # Calculate deposition onto preexisting ice
 

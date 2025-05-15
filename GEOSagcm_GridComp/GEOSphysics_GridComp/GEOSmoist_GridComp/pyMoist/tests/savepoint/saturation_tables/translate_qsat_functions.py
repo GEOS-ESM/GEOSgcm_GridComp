@@ -2,8 +2,50 @@ from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.saturation_tables.qsat_functions import QSat_Float_Liquid
-import numpy as np
+from pyMoist.saturation_tables.qsat_functions import QSat_Float_Liquid, QSat_Float_Ice
+from ndsl.dsl.gt4py import GlobalTable, PARALLEL, computation, interval
+from ndsl.dsl.typing import Float, FloatField
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from pyMoist.saturation_tables.constants import TABLESIZE
+
+
+GlobalTable_saturaion_tables = GlobalTable[(Float, (int(TABLESIZE)))]
+
+
+def _stencil(
+    t: FloatField,
+    p: FloatField,
+    out_qsatice: FloatField,
+    out_qsatlqu: FloatField,
+    out_dqsi: FloatField,
+    out_dqsl: FloatField,
+    ese: GlobalTable_saturaion_tables,
+    esw: GlobalTable_saturaion_tables,
+    esx: GlobalTable_saturaion_tables,
+    frz: Float,
+    lqu: Float,
+):
+    with computation(PARALLEL), interval(...):
+        out_qsatice, out_dqsi = QSat_Float_Ice(ese, frz, t, p, True, True)
+        out_qsatlqu, out_dqsl = QSat_Float_Liquid(esw, lqu, t, p, True, True)
+
+
+def _stencil_2d(
+    t: FloatField,
+    p: FloatField,
+    out_qsatice: FloatField,
+    out_qsatlqu: FloatField,
+    out_dqsi: FloatField,
+    out_dqsl: FloatField,
+    ese: GlobalTable_saturaion_tables,
+    esw: GlobalTable_saturaion_tables,
+    esx: GlobalTable_saturaion_tables,
+    frz: Float,
+    lqu: Float,
+):
+    with computation(PARALLEL), interval(0, 1):
+        out_qsatice, out_dqsi = QSat_Float_Ice(ese, frz, t, p, True, True)
+        out_qsatlqu, out_dqsl = QSat_Float_Liquid(esw, lqu, t, p, True, True)
 
 
 class Translateqsat_functions(TranslateFortranData2Py):
@@ -17,6 +59,8 @@ class Translateqsat_functions(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {
             "t": grid.compute_dict() | {"serialname": "T"},
             "p": grid.compute_dict() | {"serialname": "PLmb"},
+            "t_2d": grid.compute_dict() | {"serialname": "TEMP_ARRAY"},
+            "p_2d": grid.compute_dict() | {"serialname": "PRES_ARRAY"},
         }
 
         # Set Up Outputs
@@ -25,40 +69,91 @@ class Translateqsat_functions(TranslateFortranData2Py):
             "SER_QSATICE": {},
             "SER_DQSL": {},
             "SER_DQSI": {},
+            "SER_QSATLQU_2D": {},
+            "SER_QSATICE_2D": {},
+            "SER_DQSL_2D": {},
+            "SER_DQSI_2D": {},
         }
 
     def compute(self, inputs):
-        tables = SaturationVaporPressureTable()
-        domain = self._grid.compute_dict()
-        halo = self._grid.halo
-        out_qsatlqu = np.zeros(
-            (domain["iend"] - halo + 1, domain["jend"] - halo + 1, domain["kend"] + 1)
-        )
-        out_qsatice = np.zeros(
-            (domain["iend"] - halo + 1, domain["jend"] - halo + 1, domain["kend"] + 1)
-        )
-        out_dqsl = np.zeros(
-            (domain["iend"] - halo + 1, domain["jend"] - halo + 1, domain["kend"] + 1)
-        )
-        out_dqsi = np.zeros(
-            (domain["iend"] - halo + 1, domain["jend"] - halo + 1, domain["kend"] + 1)
-        )
+        # Initalize tables
+        tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+
+        # Get input data
         t = inputs.pop("T")
         p = inputs.pop("PLmb")
-        print(f"README {type(tables.ese)}")
-        # for i in range(0, domain["iend"] - halo):
-        #     for j in range(0, domain["jend"] - halo):
-        #         for k in range(0, domain["kend"]):
-        #             out_qsatlqu, out_dqsl = QSat_Float_Liquid(
-        #                 tables.esw, tables.lqu, t[i, j, k], p[i, j, k], True
-        #             )
+        t_2d = inputs.pop("TEMP_ARRAY")
+        p_2d = inputs.pop("PRES_ARRAY")
+
+        out_qsatlqu = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        out_qsatice = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        out_dqsl = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        out_dqsi = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+
+        domain_2d = (t_2d.shape[0], t_2d.shape[1])
+        out_qsatlqu_2d = self.quantity_factory.zeros(
+            [domain_2d[0], domain_2d[1]], "n/a"
+        )
+        out_qsatice_2d = self.quantity_factory.zeros(
+            [domain_2d[0], domain_2d[1]], "n/a"
+        )
+        out_dqsl_2d = self.quantity_factory.zeros([domain_2d[0], domain_2d[1]], "n/a")
+        out_dqsi_2d = self.quantity_factory.zeros([domain_2d[0], domain_2d[1]], "n/a")
+
+        origin, domain = self.stencil_factory.grid_indexing.get_origin_domain(
+            dims=[X_DIM, Y_DIM, Z_DIM]
+        )
+
+        stencil = self.stencil_factory.from_origin_domain(
+            func=_stencil,
+            origin=(0, 0, 0),
+            domain=domain,
+        )
+
+        stencil_2d = self.stencil_factory.from_origin_domain(
+            func=_stencil_2d,
+            origin=(0, 0),
+            domain=domain_2d,
+        )
+
+        # stencil(
+        #     t,
+        #     p,
+        #     out_qsatice,
+        #     out_qsatlqu,
+        #     out_dqsi,
+        #     out_dqsl,
+        #     tables.ese,
+        #     tables.esw,
+        #     tables.esx,
+        #     tables.frz,
+        #     tables.lqu,
+        # )
+
+        # stencil_2d(
+        #     t_2d,
+        #     p_2d,
+        #     out_qsatlqu_2d,
+        #     out_qsatice_2d,
+        #     out_dqsl_2d,
+        #     out_dqsi_2d,
+        #     tables.ese,
+        #     tables.esw,
+        #     tables.esx,
+        #     tables.frz,
+        #     tables.lqu,
+        # )
 
         inputs.update(
             {
-                "SER_QSATLQU": None,
-                "SER_QSATICE": None,
-                "SER_DQSL": None,
-                "SER_DQSI": None,
+                "SER_QSATICE": out_qsatice.field,
+                "SER_QSATLQU": out_qsatlqu.field,
+                "SER_DQSI": out_dqsi.field,
+                "SER_DQSL": out_dqsl.field,
+                "SER_QSATICE_2D": out_qsatice_2d.field,
+                "SER_QSATLQU_2D": out_qsatlqu_2d.field,
+                "SER_DQSI_2D": out_dqsi_2d.field,
+                "SER_DQSL_2D": out_dqsl_2d.field,
             }
         )
 
