@@ -7,7 +7,6 @@ from .GFDL_1M.driver.translate_warm_rain import Translatewarm_rain
 from .GFDL_1M.translate_GFDL_1M import TranslateGFDL_1M
 from .GFDL_1M.PhaseChange.translate_phase_change import Translatephase_change
 from .translate_aer_activation import TranslateAerActivation
-from .translate_saturation_tables import Translatesaturation_tables
 from .translate_radiation_coupling import TranslateRadCouple
 from .translate_redistribute_clouds import TranslateRedistributeClouds
 from .translate_SUBLC import TranslateSUBLC
@@ -15,3 +14,5 @@ from .GFDL_1M.PhaseChange.translate_melt_freeze import Translatemelt_freeze
 from .GFDL_1M.PhaseChange.translate_hydrostatic_pdf import Translatehydrostatic_pdf
 from .GFDL_1M.PhaseChange.translate_evaporate import Translateevaporate
 from .GFDL_1M.PhaseChange.translate_sublimate import Translatesublimate
+from .saturation_tables.translate_saturation_tables import Translatesaturation_tables
+from .saturation_tables.translate_qsat_functions import Translateqsat_functions

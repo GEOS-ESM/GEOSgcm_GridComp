@@ -3,8 +3,8 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.stencils.testing.grid import Grid
 from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from pyMoist.saturation.qsat import QSat
-from pyMoist.saturation.formulation import SaturationFormulation
+from pyMoist.saturation_old.qsat import QSat
+from pyMoist.saturation_old.formulation import SaturationFormulation
 
 
 class Translatehydrostatic_pdf(TranslateFortranData2Py):

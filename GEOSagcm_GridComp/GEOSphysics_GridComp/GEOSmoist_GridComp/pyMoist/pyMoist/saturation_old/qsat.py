@@ -7,7 +7,7 @@ from gt4py.cartesian.gtscript import PARALLEL, computation, floor, i32, interval
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField
-from pyMoist.saturation.constants import (
+from pyMoist.saturation_old.constants import (
     DEGSUBS,
     ERFAC,
     ESFAC,
@@ -19,8 +19,8 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
-from pyMoist.saturation.formulation import SaturationFormulation
-from pyMoist.saturation.table import get_table
+from pyMoist.saturation_old.formulation import SaturationFormulation
+from pyMoist.saturation_old.table import get_table
 
 
 # FloatField with extra dimension initialized to handle table data
