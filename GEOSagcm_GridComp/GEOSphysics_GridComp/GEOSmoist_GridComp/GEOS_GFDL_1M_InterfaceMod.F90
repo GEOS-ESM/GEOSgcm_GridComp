@@ -815,7 +815,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, DUDTmic, DVDTmic, DWDTmic, &
                              ! Output mass flux during sedimentation (Pa kg/kg)
-                               PFL_LS, PFR_LS, PFI_LS, PFS_LS, PFG_LS )
+                               PFL_LS(:,:,1:LM), PFR_LS(:,:,1:LM), PFI_LS(:,:,1:LM), PFS_LS(:,:,1:LM), PFG_LS(:,:,1:LM) )
        ! Convert cloud/precipitation flux exports from (mm/day) to (kg m-2 s-1)
            PFL_LS = PFL_LS/(86400.0)
            PFI_LS = PFI_LS/(86400.0)
@@ -879,11 +879,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          FRZR    = 0.0
      ! Redistribute precipitation fluxes for chemistry
          TMP3D =  MIN(1.0,MAX(QLCN/MAX(RAD_QL,1.E-8),0.0))
-         PFL_AN = (PFL_LS+PFR_LS) * TMP3D
-         PFL_LS = (PFL_LS+PFR_LS) - PFL_AN
+         PFL_AN(:,:,1:LM) = (PFL_LS(:,:,1:LM)+PFR_LS(:,:,1:LM)) * TMP3D
+         PFL_LS(:,:,1:LM) = (PFL_LS(:,:,1:LM)+PFR_LS(:,:,1:LM)) - PFL_AN(:,:,1:LM)
          TMP3D =  MIN(1.0,MAX(QICN/MAX(RAD_QI,1.E-8),0.0))
-         PFI_AN = (PFI_LS+PFS_LS+PFG_LS) * TMP3D
-         PFI_LS = (PFI_LS+PFS_LS+PFG_LS) - PFI_AN
+         PFI_AN(:,:,1:LM) = (PFI_LS(:,:,1:LM)+PFS_LS(:,:,1:LM)+PFG_LS(:,:,1:LM)) * TMP3D
+         PFI_LS(:,:,1:LM) = (PFI_LS(:,:,1:LM)+PFS_LS(:,:,1:LM)+PFG_LS(:,:,1:LM)) - PFI_AN(:,:,1:LM)
      ! cleanup suspended precipitation condensates
          call FIX_NEGATIVE_PRECIP(RAD_QR, RAD_QS, RAD_QG)
      ! Fill vapor/rain/snow/graupel state
