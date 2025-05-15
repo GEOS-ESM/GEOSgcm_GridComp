@@ -864,7 +864,7 @@ contains
 
     !call ice_import_thermo2()
 
-    call ice_import_dyna(TAUX, TAUY, SLV, UWB, VWB, UWC, VWC, _RC)
+    call ice_import_dyna(TAUX, TAUY, SLV, UWA, VWA, UWB, VWB, UWC, VWC, _RC)
 
 
     call CICE_Run
