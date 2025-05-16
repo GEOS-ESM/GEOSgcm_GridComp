@@ -3,7 +3,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.stencils.testing.grid import Grid
 from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from pyMoist.saturation_tables.qsat_functions import QSat
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 
 
@@ -57,18 +57,14 @@ class Translatehydrostatic_pdf(TranslateFortranData2Py):
             },
         )
 
-        self.qsat = QSat(
-            self.stencil_factory,
-            self.quantity_factory,
-            formulation=SaturationFormulation.Staars,
-        )
+        tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         _hydrostatic_pdf(
-            ese=self.qsat.ese,
-            esw=self.qsat.esw,
-            esx=self.qsat.esx,
-            estfrz=self.qsat.esw.view[0][12316],
-            estlqu=self.qsat.esw.view[0][8316],
+            ese=tables.ese,
+            esw=tables.esw,
+            esx=tables.esx,
+            estfrz=tables.frz,
+            estlqu=tables.lqu,
             **inputs,
         )
 

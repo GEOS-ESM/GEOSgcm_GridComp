@@ -43,9 +43,9 @@ GlobalTable_saturaion_tables = gtscript.GlobalTable[(Float, (int(TABLESIZE)))]
 
 
 @gtscript.function
-def QSat_Float_Ice(
+def qsat_ice_table_lookup(
     ese: GlobalTable_saturaion_tables,  # type: ignore
-    estfrz: Float,
+    frz: Float,
     t: Float,
     p: Float,
     use_p: bool,
@@ -54,22 +54,20 @@ def QSat_Float_Ice(
     """
     Qsat ice function using table lookup
     """
-    qs = 0
-    dq = 0
+    dq = 0.0
     if t <= TMINTBL:
         qs = ese.A[0]  # type: ignore
         if compute_dq:
             ddq = 0.0
     elif t >= MAPL_TICE:
-        qs = estfrz
+        qs = frz
         if compute_dq:
             ddq = 0.0
     else:
         new_t = (t - TMINTBL) * DEGSUBS + 1
-        new_t_integer = i32(floor(new_t))
-        new_t_integer_minus_1: i32 = new_t_integer - 1
-        ddq = ese.A[new_t_integer] - ese.A[new_t_integer_minus_1]  # type: ignore
-        qs = (new_t - new_t_integer) * ddq + ese.A[new_t_integer_minus_1]  # type: ignore
+        new_t_integer = int(floor(new_t))
+        ddq = ese.A[new_t_integer] - ese.A[new_t_integer - 1]  # type: ignore
+        qs = (new_t - new_t_integer) * ddq + ese.A[new_t_integer - 1]  # type: ignore
 
     if use_p == True:
         if p > qs:
@@ -89,7 +87,7 @@ def QSat_Float_Ice(
 
 
 @gtscript.function
-def QSat_Float_Liquid(
+def qsat_liquid_table_lookup(
     esw: GlobalTable_saturaion_tables,  # type: ignore
     estlqu: Float,
     t: Float,
@@ -100,8 +98,7 @@ def QSat_Float_Liquid(
     """
     Qsat liquid function using table lookup
     """
-    qs = 0
-    dq = 0
+    dq = 0.0
     if t <= TMINLQU:
         qs = estlqu
         if compute_dq == True:
@@ -109,14 +106,13 @@ def QSat_Float_Liquid(
     elif t >= TMAXTBL:
         TABLESIZE_MINUS_1: i32 = TABLESIZE - 1
         qs = esw.A[TABLESIZE_MINUS_1]  # type: ignore
-    if compute_dq == True:
-        ddq = 0.0
+        if compute_dq == True:
+            ddq = 0.0
     else:
         new_t = (t - TMINTBL) * DEGSUBS + 1
-        new_t_integer = i32(new_t)
-        new_t_integer_minus_1: i32 = new_t_integer - 1
-        ddq = esw.A[new_t_integer] - esw.A[new_t_integer_minus_1]  # type: ignore
-        qs = (new_t - new_t_integer) * ddq + esw.A[new_t_integer_minus_1]  # type: ignore
+        new_t_integer = int(floor(new_t))
+        ddq = esw.A[new_t_integer] - esw.A[new_t_integer - 1]  # type: ignore
+        qs = (new_t - new_t_integer) * ddq + esw.A[new_t_integer - 1]  # type: ignore
 
     if use_p == True:
         if p > qs:

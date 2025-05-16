@@ -10,8 +10,8 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.field_types import FloatField_VaporSaturationTable
 from pyMoist.saturation_tables.qsat_functions import (
     QSat_Float,
-    QSat_Float_Ice,
-    QSat_Float_Liquid,
+    qsat_ice_table_lookup,
+    qsat_liquid_table_lookup,
 )
 from pyMoist.shared_incloud_processes import (
     cloud_effective_radius_ice,
@@ -111,8 +111,10 @@ def bergeron_partition(
             fQI = ice_fraction(TE, CNV_FRC, SRF_TYPE)
         else:
             QVINC = Q
-            QSLIQ, _ = QSat_Float_Liquid(esw, estlqu, TE, PL * 100.0)
-            QSICE, DQSI = QSat_Float_Ice(ese, estfrz, TE, PL * 100.0, compute_dq=True)
+            QSLIQ, _ = qsat_liquid_table_lookup(esw, estlqu, TE, PL * 100.0)
+            QSICE, DQSI = qsat_ice_table_lookup(
+                ese, estfrz, TE, PL * 100.0, compute_dq=True
+            )
             QVINC = min(QVINC, QSLIQ)  # limit to below water saturation
             # Calculate deposition onto preexisting ice
 
