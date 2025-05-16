@@ -556,7 +556,7 @@ def sublimate(
     NACTL: FloatField,
     NACTI: FloatField,
     QST: FloatField,
-    EVAPC: FloatField,
+    SUBLC: FloatField,
 ):
     with computation(PARALLEL), interval(...):
         SUBLC = Q

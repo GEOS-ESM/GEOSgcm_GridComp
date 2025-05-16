@@ -218,21 +218,21 @@ class GFDL_1M:
     ):
         if LMELTFRZ is not True:
             raise NotImplementedError(
-                "Untested option for LMELTFRZ. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
+                f"Untested option for LMELTFRZ={LMELTFRZ}. Code may be missing"
+                " or incomplete. Disable this error manually to continue."
             )
         if PDFSHAPE != 1:
             raise NotImplementedError(
-                "Untested option for PDFSHAPE. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
+                f"Untested option for PDFSHAPE={PDFSHAPE}. Code may be missing"
+                "  or incomplete. Disable this error manually to continue."
             )
         if CCW_EVAP_EFF <= 0:
             raise NotImplementedError(
-                "Untested option for CCW_EVAP_EFF. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
+                f"Untested option for CCW_EVAP_EFF={CCW_EVAP_EFF}. Code may be"
+                " missing or incomplete. Disable this error manually to continue."
             )
         if CCI_EVAP_EFF <= 0:
             raise NotImplementedError(
-                "Untested option for CCI_EVAP_EFF. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
+                f"Untested option for CCI_EVAP_EFF={CCI_EVAP_EFF}. Code may be"
+                " missing or incomplete. Disable this error manually to continue."
             )
