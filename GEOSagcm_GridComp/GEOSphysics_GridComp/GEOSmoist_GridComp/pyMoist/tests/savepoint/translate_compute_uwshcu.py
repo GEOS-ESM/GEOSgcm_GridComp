@@ -1,19 +1,10 @@
-from ndsl import Namelist, StencilFactory, Quantity, QuantityFactory
+from ndsl import Namelist, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from ndsl.utils import safe_assign_array
 from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv
 from pyMoist.UW.config import UWConfiguration
-import numpy as np
-from ndsl.dsl.typing import (
-    Int,
-    Float,
-)
-import os
-from ndsl.utils import safe_assign_array
-
-# Merge netcdf files needed for testing UW
-# path = "/Users/kfandric/netcdf/"
-# os.system("ncks -A " + path + "ComputeUwshcu-In.nc " + path + "ComputeUwshcuInv-In.nc ")
 
 
 class TranslateComputeUwshcuInv(TranslateFortranData2Py):
@@ -131,16 +122,10 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
         return qty
 
-    def make_ntracers_ij_field(self, data) -> Quantity:
-        qty = self.ntracers_quantity_factory.empty(
-            [X_DIM, Y_DIM, "ntracers"],
-            "n/a",
-        )
-        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
-        return qty
-
     def compute(self, inputs):
-        self.UW_config = UWConfiguration(Int(inputs["ncnst"]))
+        self.UW_config = UWConfiguration(
+            Int(inputs["ncnst"]), Int(inputs["k0"]), Int(inputs["windsrcavg"])
+        )
 
         compute_uwshcu = ComputeUwshcuInv(
             self.stencil_factory,

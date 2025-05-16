@@ -2,7 +2,7 @@ import copy
 from typing import Optional
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import PARALLEL, computation, floor, interval
+from gt4py.cartesian.gtscript import PARALLEL, computation, floor, i32, interval
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -139,7 +139,7 @@ def QSat_Float(
     RAMP_trigger: bool = False,
     DQSAT_trigger: bool = False,
 ):
-    DQ=0.0
+    DQ = 0.0
     if RAMP_trigger:
         URAMP = -abs(RAMP)
     else:

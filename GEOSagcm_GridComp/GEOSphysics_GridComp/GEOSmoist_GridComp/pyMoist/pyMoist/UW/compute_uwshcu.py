@@ -1,54 +1,55 @@
 import copy
+
 from gt4py.cartesian.gtscript import (
-    computation,
-    interval,
-    PARALLEL,
-    FORWARD,
     BACKWARD,
-    exp,
-    sqrt,
-    log,
-    erfc,
-    isnan,
+    FORWARD,
+    PARALLEL,
     THIS_K,
+    computation,
+    erfc,
+    exp,
     f32,
-    i64,
-    i32,
     f64,
+    i32,
+    i64,
+    interval,
+    isnan,
+    log,
+    sqrt,
 )
+
+import pyMoist.constants as constants
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import (
-    FloatField,
-    Float,
-    Int,
-    IntFieldIJ,
-    FloatFieldIJ,
-    IntField,
     BoolFieldIJ,
+    Float,
+    FloatField,
+    FloatFieldIJ,
+    Int,
+    IntField,
+    IntFieldIJ,
 )
-from ndsl import StencilFactory, QuantityFactory, Quantity
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
-from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
 from pyMoist.saturation.formulation import SaturationFormulation
+from pyMoist.saturation.qsat import FloatField_Extra_Dim, QSat, QSat_Float
 from pyMoist.UW.config import UWConfiguration
 from pyMoist.UW.temporaries import Temporaries
-import pyMoist.constants as constants
 from pyMoist.UW.uwshcu_functions import (
-    slope_bot,
-    slope_mid,
-    slope_top,
-    conden,
-    qsinvert,
-    single_cin,
-    getbuoy,
     compute_alpha,
     compute_mumin2,
     compute_ppen,
+    conden,
     exnerfn,
+    getbuoy,
+    qsinvert,
     roots,
+    single_cin,
+    slope_bot,
+    slope_mid,
+    slope_top,
     zvir,
 )
-import numpy as np
 
 
 def compute_uwshcu_invert_before(
@@ -183,21 +184,6 @@ def compute_thermodynamic_variables(
     qpert_out: FloatFieldIJ,
 ):
     from __externals__ import k_end, ncnst
-
-    # University of Washington Shallow Convection Scheme
-
-    # Described in Park and Bretherton. 2008. J. Climate :
-
-    # 'The University of Washington shallow convection and
-    # moist turbulent schemes and their impact on climate
-    # simulations with the Community Atmosphere Model'
-    # Coded in CESM by Sungsu Park. Oct.2005. May.2008.
-    # Coded in GEOS by Nathan Arnold. July 2016.
-    # NDSL Port by Katrina Fandrich. May 2025.
-    # For general questions, email sungsup@ucar.edu or
-    # sungsu@atmos.washington.edu
-    # For GEOS-specific questions, email nathan.arnold@nasa.gov
-    # For NDSL-specific questions, email katrina.fandrich@nasa.gov
 
     with computation(FORWARD), interval(...):
 
@@ -747,7 +733,7 @@ def find_pbl_averages(
             # Find PBL averaged tke ('tkeavg') and minimum 'thvl' ('thvlmin') in the PBL
             # In the current code, 'tkeavg' is obtained by averaging all interfacial TKE
             # within the PBL. However, in order to be conceptually consistent with   PBL
-            # scheme, 'tkeavg' should be calculated by considering surface buoyancy flux.
+            # scheme, 'tkeavg' should be calculated by considering surface buoyancy flux
             # If surface buoyancy flux is positive ( bflxs >0 ), surface interfacial TKE
             # should be included in calculating 'tkeavg', while if bflxs <= 0,   surface
             # interfacial TKE should not be included in calculating 'tkeavg'.   I should
@@ -835,7 +821,8 @@ def find_cumulus_characteristics(
             # as the values just below the PBL top interface.
 
             if windsrcavg == 1:
-                # Caution: This code has not been tested, since windsrcavg is never 1
+                # Caution: This code has not been tested, since windsrcavg is 0
+                # An error will be raised if windsrcavg == 1
                 zrho = pifc0.at(K=0) / (
                     287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0)))
                 )
@@ -847,7 +834,7 @@ def find_cumulus_characteristics(
                 qpert_out = 0.0
                 tpert_out = 0.0
                 if wstar > 0.001:
-                    wstar = 1.0 * wstar**0.3333
+                    wstar = 1.0 * wstar ** 0.3333
                     tpert_out = (
                         thlsrc_fac * shfx / (zrho * wstar * constants.MAPL_CP)
                     )  # K
@@ -1133,6 +1120,7 @@ def compute_cin_cinlcl(
     usrc_o: FloatField,
     vsrc_o: FloatField,
     thv0lcl_o: FloatField,
+    cinlcl: FloatField,
     cush_inout: FloatFieldIJ,
 ):
     from __externals__ import ncnst
@@ -1174,8 +1162,8 @@ def compute_cin_cinlcl(
         cin = 0.0
         cinlcl = 0.0
         plfc = 0.0
-        if not condensation and klcl >= kinv - 1 and stop_cin == False:
-            if stop_cin == False and THIS_K >= kinv - 1 and THIS_K < klcl:
+        if not condensation and klcl >= kinv - 1 and not stop_cin:
+            if not stop_cin and THIS_K >= kinv - 1 and THIS_K < klcl:
                 thvubot = thvlsrc
                 thvutop = thvlsrc
                 cin = cin[0, 0, -1] + single_cin(
@@ -1187,7 +1175,7 @@ def compute_cin_cinlcl(
                     thvutop,
                 )
 
-            elif stop_cin == False and THIS_K == klcl:
+            elif not stop_cin and THIS_K == klcl:
                 # ----- Bottom to LCL
                 thvubot = thvlsrc
                 thvutop = thvlsrc
@@ -1203,14 +1191,7 @@ def compute_cin_cinlcl(
                 cin = cinlcl
 
                 # ----- LCL to Top
-                (
-                    thj,
-                    qvj,
-                    qlj,
-                    qij,
-                    qse,
-                    id_check,
-                ) = conden(
+                (thj, qvj, qlj, qij, qse, id_check,) = conden(
                     pifc0[0, 0, 1],
                     thlsrc,
                     qtsrc,
@@ -1260,16 +1241,9 @@ def compute_cin_cinlcl(
                         stop_cin = True
 
             else:
-                if not condensation and THIS_K > klcl and stop_cin == False:
+                if not condensation and THIS_K > klcl and not stop_cin:
                     thvubot = thvutop[0, 0, -1]
-                    (
-                        thj,
-                        qvj,
-                        qlj,
-                        qij,
-                        qse,
-                        id_check,
-                    ) = conden(
+                    (thj, qvj, qlj, qij, qse, id_check,) = conden(
                         pifc0[0, 0, 1],
                         thlsrc,
                         qtsrc,
@@ -1300,7 +1274,7 @@ def compute_cin_cinlcl(
                         fer_out = constants.MAPL_UNDEF
                         fdr_out = constants.MAPL_UNDEF
 
-                    if not condensation and stop_cin == False:
+                    if not condensation and not stop_cin:
                         thvutop = thj * (1.0 + zvir * qvj - qlj - qij)
                         plfc, cin = getbuoy(
                             pifc0,
@@ -1319,16 +1293,9 @@ def compute_cin_cinlcl(
 
     with computation(FORWARD), interval(1, -1):
         # Case 2. LCL height is lower than PBL interface ( 'pLCL > ps0(kinv-1)')
-        if not condensation and klcl < kinv - 1 and stop_cin == False:
-            if stop_cin == False and THIS_K >= kinv - 1:
-                (
-                    thj,
-                    qvj,
-                    qlj,
-                    qij,
-                    qse,
-                    id_check,
-                ) = conden(
+        if not condensation and klcl < kinv - 1 and not stop_cin:
+            if not stop_cin and THIS_K >= kinv - 1:
+                (thj, qvj, qlj, qij, qse, id_check,) = conden(
                     pifc0,
                     thlsrc,
                     qtsrc,
@@ -1336,7 +1303,7 @@ def compute_cin_cinlcl(
                     esx,
                 )
 
-                if id_check == 1 and stop_cin == False:
+                if id_check == 1 and not stop_cin:
                     condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
@@ -1359,16 +1326,9 @@ def compute_cin_cinlcl(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if not condensation and stop_cin == False:
+                if not condensation and not stop_cin:
                     thvubot = thj * (1.0 + zvir * qvj - qlj - qij)
-                    (
-                        thj,
-                        qvj,
-                        qlj,
-                        qij,
-                        qse,
-                        id_check,
-                    ) = conden(
+                    (thj, qvj, qlj, qij, qse, id_check,) = conden(
                         pifc0[0, 0, 1],
                         thlsrc,
                         qtsrc,
@@ -1376,7 +1336,7 @@ def compute_cin_cinlcl(
                         esx,
                     )
 
-                if id_check == 1 and stop_cin == False:
+                if id_check == 1 and not stop_cin:
                     condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
@@ -1399,7 +1359,7 @@ def compute_cin_cinlcl(
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
-                if not condensation and stop_cin == False:
+                if not condensation and not stop_cin:
                     thvutop = thj * (1.0 + zvir * qvj - qlj - qij)
 
                     plfc, cin = getbuoy(
@@ -1643,7 +1603,7 @@ def avg_initial_and_final_cin(
     with computation(FORWARD), interval(...):
         if not condensation:
             # Calculate implicit 'cin' by averaging initial and final cins.    Note that
-            # implicit CIN is adopted only when cumulus convection stabilized the system,
+            # implicit CIN is adopted only when cumulus convection stabilized the system
             # i.e., only when 'del_CIN >0'. If 'del_CIN<=0', just use explicit CIN. Note
             # also that since 'cinlcl' is set to zero whenever LCL is below the PBL top,
             # (see above CIN calculation part), the use of 'implicit CIN=cinlcl'  is not
@@ -1812,8 +1772,10 @@ def avg_initial_and_final_cin(
                 uflx_out[0, 0, 1] = uflx_s[0, 0, 1]
                 vflx_out[0, 0, 1] = vflx_s[0, 0, 1]
 
-                # Below are diagnostic output variables for detailed analysis of cumulus scheme.
-                # The order of vertical index is reversed for this internal diagnostic output.
+                # Below are diagnostic output variables for detailed analysis of cumulus
+                # scheme.
+                # The order of vertical index is reversed for this internal diagnostic
+                # output.
                 fer_out = fer_s
                 fdr_out = fdr_s
 
@@ -1900,48 +1862,52 @@ def calc_cumulus_base_mass_flux(
 ):
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Calculate cumulus base mass flux ('cbmf'), fractional area ('ufrcinv'), and
-            # and mean vertical velocity (winv) of cumulus updraft at PBL top interface.
-            # Also, calculate updraft fractional area (ufrclcl) and vertical velocity  at
-            # the LCL (wlcl). When LCL is below PBLH, cinlcl = 0 and 'ufrclcl = ufrcinv',
-            # and 'wlcl = winv.
-            # Only updrafts strong enough to overcome CIN can rise over PBL top interface.
-            # Thus,  in order to calculate cumulus mass flux at PBL top interface, 'cbmf',
-            # we need to know 'CIN' ( the strength of potential energy barrier ) and
-            # 'sigmaw' ( a standard deviation of updraft vertical velocity at the PBL top
-            # interface, a measure of turbulentce strength in the PBL ).   Naturally, the
-            # ratio of these two variables, 'mu' - normalized CIN by TKE- is key variable
-            # controlling 'cbmf'.  If 'mu' becomes large, only small fraction of updrafts
-            # with very strong TKE can rise over the PBL - both 'cbmf' and 'ufrc' becomes
-            # small, but 'winv' becomes large ( this can be easily understood by PDF of w
-            # at PBL top ).  If 'mu' becomes small, lots of updraft can rise over the PBL
-            # top - both 'cbmf' and 'ufrc' becomes large, but 'winv' becomes small. Thus,
-            # all of the key variables associated with cumulus convection  at the PBL top
-            # - 'cbmf', 'ufrc', 'winv' where 'cbmf = rho*ufrc*winv' - are a unique functi
-            # ons of 'mu', normalized CIN. Although these are uniquely determined by 'mu',
-            # we usually impose two comstraints on 'cbmf' and 'ufrc': (1) because we will
-            # simply assume that subsidence warming and drying of 'kinv-1' layer in assoc
-            # iation with 'cbmf' at PBL top interface is confined only in 'kinv-1' layer,
-            # cbmf must not be larger than the mass within the 'kinv-1' layer. Otherwise,
-            # instability will occur due to the breaking of stability con. If we consider
-            # semi-Lagrangian vertical advection scheme and explicitly consider the exten
-            # t of vertical movement of each layer in association with cumulus mass flux,
-            # we don't need to impose this constraint. However,  using a  semi-Lagrangian
-            # scheme is a future research subject. Note that this constraint should be ap
-            # plied for all interfaces above PBL top as well as PBL top interface.   As a
-            # result, this 'cbmf' constraint impose a 'lower' limit on mu - 'mumin0'. (2)
-            # in order for mass flux parameterization - rho*(w'a')= M*(a_c-a_e) - to   be
-            # valid, cumulus updraft fractional area should be much smaller than 1.    In
-            # current code, we impose 'rmaxfrac = 0.1 ~ 0.2'   through the whole vertical
-            # layers where cumulus convection occurs. At the PBL top interface,  the same
-            # constraint is made by imposing another lower 'lower' limit on mu, 'mumin1'.
-            # After that, also limit 'ufrclcl' to be smaller than 'rmaxfrac' by 'mumin2'.
+            # Calculate cumulus base mass flux ('cbmf'), fractional area ('ufrcinv'),
+            # and mean vertical velocity (winv) of cumulus updraft at PBL top interface
+            # Also, calculate updraft fractional area (ufrclcl) and vertical velocity at
+            # the LCL (wlcl). When LCL is below PBLH, cinlcl = 0 and 'ufrclcl = ufrcinv'
+            # and 'wlcl = winv. Only updrafts strong enough to overcome CIN can rise
+            # over PBL top interface.
 
-            # Calculate normalized CIN, 'mu' satisfying all the three constraints imposed
-            # on 'cbmf'('mumin0'), 'ufrc' at the PBL top - 'ufrcinv' - ( by 'mumin1' from
-            # a parameter sentence), and 'ufrc' at the LCL - 'ufrclcl' ( by 'mumin2').
-            # Note that 'cbmf' does not change between PBL top and LCL  because we assume
-            # that buoyancy sorting does not occur when cumulus updraft is unsaturated.
+            # Thus, in order to calculate cumulus mass flux at PBL top interface, 'cbmf'
+            # we need to know 'CIN' ( the strength of potential energy barrier ) and
+            # 'sigmaw' (a standard deviation of updraft vertical velocity at the PBL top
+            # interface, a measure of turbulentce strength in the PBL ). Naturally, the
+            # ratio of these two variables, 'mu' - normalized CIN by TKE- is key
+            # variable controlling 'cbmf'.  If 'mu' becomes large, only small fraction
+            # of updrafts with very strong TKE can rise over the PBL - both 'cbmf' and
+            # 'ufrc' becomes small, but 'winv' becomes large ( this can be easily
+            # understood by PDF of w at PBL top ).  If 'mu' becomes small, lots of
+            # updraft can rise over the PBL top - both 'cbmf' and 'ufrc' becomes large,
+            # but 'winv' becomes small. Thus, all of the key variables associated with
+            # cumulus convection  at the PBL top - 'cbmf', 'ufrc', 'winv' where 'cbmf =
+            # rho*ufrc*winv' - are a unique functions of 'mu', normalized CIN. Although
+            # these are uniquely determined by 'mu', we usually impose two comstraints
+            # on 'cbmf' and 'ufrc': (1) because we will simply assume that subsidence
+            # warming and drying of 'kinv-1' layer in association with 'cbmf' at PBL top
+            # interface is confined only in 'kinv-1' layer, cbmf must not be larger than
+            # the mass within the 'kinv-1' layer. Otherwise, instability will occur due
+            # to the breaking of stability con. If we consider semi-Lagrangian vertical
+            # advection scheme and explicitly consider the extent of vertical movement
+            # of each layer in association with cumulus mass flux, we don't need to
+            # impose this constraint. However,  using a  semi-Lagrangian scheme is a
+            # future research subject. Note that this constraint should be applied for
+            # all interfaces above PBL top as well as PBL top interface.   As a result,
+            # this 'cbmf' constraint impose a 'lower' limit on mu - 'mumin0'. (2) in
+            # order for mass flux parameterization - rho*(w'a')= M*(a_c-a_e) - to be
+            # valid, cumulus updraft fractional area should be much smaller than 1. In
+            # current code, we impose 'rmaxfrac = 0.1 ~ 0.2'   through the whole
+            # vertical layers where cumulus convection occurs. At the PBL top interface,
+            # the same constraint is made by imposing another lower 'lower' limit on mu,
+            # 'mumin1'. After that, also limit 'ufrclcl' to be smaller than 'rmaxfrac'
+            # by 'mumin2'.
+
+            # Calculate normalized CIN, 'mu' satisfying all the three constraints
+            # imposed on 'cbmf'('mumin0'), 'ufrc' at the PBL top - 'ufrcinv' - ( by
+            # 'mumin1' from a parameter sentence), and 'ufrc' at the LCL - 'ufrclcl'
+            # ( by 'mumin2'). Note that 'cbmf' does not change between PBL top and LCL
+            # because we assume that buoyancy sorting does not occur when cumulus
+            # updraft is unsaturated.
 
             if use_CINcin == i32(1):
                 wcrit = sqrt(2.0 * cin_IJ * rbuoy)
@@ -1981,7 +1947,7 @@ def calc_cumulus_base_mass_flux(
                     * thv0top.at(K=kbelow - 1)
                     * exnifc0.at(K=kbelow)
                 )
-                cbmf = (rho0inv * sigmaw / 2.5066) * exp(-(mu**2))
+                cbmf = (rho0inv * sigmaw / 2.5066) * exp(-(mu ** 2))
 
                 # 1. 'cbmf' constraint
                 cbmflimit = 0.9 * dp0.at(K=kbelow - 1) / constants.MAPL_GRAV / dt
@@ -1998,8 +1964,8 @@ def calc_cumulus_base_mass_flux(
                     max(
                         0.0,
                         2.0
-                        * (exp(-(mu**2)) / 2.5066) ** 2
-                        * (1.0 / erfc(mu) ** 2 - 0.25 / rmaxfrac**2),
+                        * (exp(-(mu ** 2)) / 2.5066) ** 2
+                        * (1.0 / erfc(mu) ** 2 - 0.25 / rmaxfrac ** 2),
                     )
                 )
 
@@ -2013,8 +1979,8 @@ def calc_cumulus_base_mass_flux(
             # Note that final 'cbmf' here is obtained in such that 'ufrcinv' and
             # 'ufrclcl' are smaller than ufrcmax with no instability.
 
-            cbmf = rkfre * (rho0inv * sigmaw / 2.5066) * exp((-(mu**2)))
-            winv = sigmaw * (2.0 / 2.5066) * exp(-(mu**2)) / erfc(mu)
+            cbmf = rkfre * (rho0inv * sigmaw / 2.5066) * exp((-(mu ** 2)))
+            winv = sigmaw * (2.0 / 2.5066) * exp(-(mu ** 2)) / erfc(mu)
             ufrcinv = cbmf / winv / rho0inv
 
 
@@ -2128,7 +2094,7 @@ def define_updraft_properties(
             # horizontal momentums of source air are modified by horizontal PGF forcings
             # from PBL top interface to 'prel'.  For this case, we should add additional
             # horizontal momentum from PBL top interface to 'prel' as will be done below
-            # to 'usrc' and 'vsrc'. Note that below cumulus updraft properties - umf, wu,
+            # to 'usrc' and 'vsrc'. Note that below cumulus updraft properties - umf, wu
             # thlu, qtu, thvu, uu, vu - are defined all interfaces not at the layer mid-
             # point. From the index notation of cumulus scheme, wu(k) is the cumulus up-
             # draft vertical velocity at the top interface of k layer.
@@ -2392,11 +2358,12 @@ def buoyancy_sorting(
             if tscaleh <= 0.0:
                 scaleh = 1000
 
-            # Save time : Set iter_scaleh = 1. This will automatically use 'cush' from the previous
-            # time step at the first implicit iteration. At the second implicit iteration, it will
-            # use the updated 'cush' by the first implicit cin. So, this updating has an effect of
-            # doing one iteration for cush calculation, which is good. So, only this setting of
-            # 'iter_scaleh = 1' is sufficient-enough to save computation time.
+            # Save time : Set iter_scaleh = 1. This will automatically use 'cush' from
+            # the previous time step at the first implicit iteration. At the second
+            # implicit iteration, it will use the updated 'cush' by the first implicit
+            # cin. So, this updating has an effect of doing one iteration for cush
+            # calculation, which is good. So, only this setting of 'iter_scaleh = 1'
+            # is sufficient-enough to save computation time.
 
             iter_scaleh = 1
 
@@ -2467,13 +2434,16 @@ def buoyancy_sorting(
             # satisfactory converent solution. Finally, identify 'kbup' and 'kpen'.
 
             if iteration != i32(0):
-                stop_buoyancy_sort = False  # Indicates that buoyancy sorting processes are done (e.g., Fortran go to 45)
+                stop_buoyancy_sort = (
+                    False  # Indicates that buoyancy sorting processes are done
+                )
+                # (e.g., Fortran go to 45)
 
     with computation(FORWARD), interval(1, -2):
         if (
             THIS_K >= krel
             and THIS_K < k0 - 1
-            and stop_buoyancy_sort == False
+            and not stop_buoyancy_sort
             and not condensation
         ):
 
@@ -2551,13 +2521,14 @@ def buoyancy_sorting(
                         fdr_out = constants.MAPL_UNDEF
 
                     if not condensation:
-                        # Detrain excessive condensate larger than 'criqc' from the cumulus
-                        # updraft before performing buoyancy sorting. All I should to do is
-                        # to update 'thlue' &  'que' here. Below modification is completely
-                        # compatible with the other part of the code since 'thule' & 'qtue'
-                        # are used only for buoyancy sorting. I found that as long as I use
-                        # 'niter_xc >= 2',  detraining excessive condensate before buoyancy
-                        # sorting has negligible influence on the buoyancy sorting results.
+                        # Detrain excessive condensate larger than 'criqc' from the
+                        # cumulus updraft before performing buoyancy sorting. All I
+                        # should to do is to update 'thlue' &  'que' here. Below
+                        # modification is completely compatible with the other part of
+                        # the code since 'thule' & 'qtue' are used only for buoyancy
+                        # sorting. I found that as long as I use 'niter_xc >= 2',
+                        # detraining excessive condensate before buoyancy sorting has
+                        # negligible influence on the buoyancy sorting results.
 
                         if (qlj + qij) > criqc:
                             exql = ((qlj + qij) - criqc) * qlj / (qlj + qij)
@@ -2619,18 +2590,20 @@ def buoyancy_sorting(
                             qs, _ = QSat_Float(ese, esx, qsat_arg, qsat_pe / 100.0)
                             excessu = qtue - qs
 
-                            # Calculate critical mixing fraction, 'xc'. Mixture with mixing ratio
-                            # smaller than 'xc' will be entrained into cumulus updraft.  Both the
-                            # saturated updrafts with 'positive buoyancy' or 'negative buoyancy +
-                            # strong vertical velocity enough to rise certain threshold distance'
-                            # are kept into the updraft in the below program. If the core updraft
-                            # is unsaturated, we can set 'xc = 0' and let the cumulus  convection
-                            # still works or we may exit.
-                            # Current below code does not entrain unsaturated mixture. However it
-                            # should be modified such that it also entrain unsaturated mixture.
+                            # Calculate critical mixing fraction, 'xc'. Mixture with
+                            # mixing ratio smaller than 'xc' will be entrained into
+                            # cumulus updraft. Both the saturated updrafts with
+                            # 'positive buoyancy' or 'negative buoyancy + strong
+                            # vertical velocity enough to rise certain threshold
+                            # distance' are kept into the updraft in the below program.
+                            # If the core updraft is unsaturated, we can set 'xc = 0'
+                            # and let the cumulus  convection still works or we may
+                            # exit. Current below code does not entrain unsaturated
+                            # mixture. However it should be modified such that it also
+                            # entrain unsaturated mixture.
 
-                            # cridis : Critical stopping distance for buoyancy sorting purpose.
-                            #        scaleh is only used here.
+                            # cridis : Critical stopping distance for buoyancy sorting
+                            # purpose. scaleh is only used here.
 
                             if cridist_opt == 0:
                                 cridis = rle * scaleh  # Original code
@@ -2639,7 +2612,8 @@ def buoyancy_sorting(
                                 # New code
 
                             # Buoyancy Sorting
-                            # Case 1 : When both cumulus and env. are unsaturated or saturated.
+                            # Case 1 : When both cumulus and env. are unsaturated or
+                            # saturated.
                             xsat = 0.0
 
                             if (excessu <= 0.0 and excess0 <= 0.0) or (
@@ -2654,7 +2628,7 @@ def buoyancy_sorting(
                                         * rbuoy
                                         * constants.MAPL_GRAV
                                         * cridis
-                                        / wue**2.0
+                                        / wue ** 2.0
                                         * (1.0 - thvj / thv0j),
                                     ),
                                 )
@@ -2718,7 +2692,7 @@ def buoyancy_sorting(
                                                 (1.0 / (1.0 - xsat)) * thvxsat
                                             )
 
-                                        aquad = wue**2
+                                        aquad = wue ** 2
                                         bquad = (
                                             2.0
                                             * rbuoy
@@ -2726,7 +2700,7 @@ def buoyancy_sorting(
                                             * cridis
                                             * (thv_x1 - thv_x0)
                                             / thv0j
-                                            - 2.0 * wue**2
+                                            - 2.0 * wue ** 2
                                         )
                                         cquad = (
                                             2.0
@@ -2735,10 +2709,12 @@ def buoyancy_sorting(
                                             * cridis
                                             * (thv_x0 - thv0j)
                                             / thv0j
-                                            + wue**2
+                                            + wue ** 2
                                         )
                                         if kk == 1:
-                                            if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
+                                            if (
+                                                bquad ** 2 - 4.0 * aquad * cquad
+                                            ) >= 0.0:
                                                 xs1, xs2, status = roots(
                                                     aquad, bquad, cquad
                                                 )
@@ -2753,7 +2729,9 @@ def buoyancy_sorting(
                                                 x_cu = xsat
 
                                         else:
-                                            if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
+                                            if (
+                                                bquad ** 2 - 4.0 * aquad * cquad
+                                            ) >= 0.0:
                                                 xs1, xs2, status = roots(
                                                     aquad, bquad, cquad
                                                 )
@@ -2774,21 +2752,23 @@ def buoyancy_sorting(
                                     else:
                                         xc = x_cu
 
-                            # Compute fractional lateral entrainment & detrainment rate in each layers.
-                            # The unit of rei(k), fer(k), and fdr(k) is [Pa-1].  Alternative choice of
-                            # 'rei(k)' is also shown below, where coefficient 0.5 was from approximate
-                            # tuning against the BOMEX case.
-                            # In order to prevent the onset of instability in association with cumulus
-                            # induced subsidence advection, cumulus mass flux at the top interface  in
-                            # any layer should be smaller than ( 90% of ) total mass within that layer.
-                            # I imposed limits on 'rei(k)' as below,  in such that stability condition
-                            # is always satisfied.
-                            # Below limiter of 'rei(k)' becomes negative for some cases, causing error.
-                            # So, for the time being, I came back to the original limiter.
+                            # Compute fractional lateral entrainment & detrainment rate
+                            # in each layers. The unit of rei(k), fer(k), and fdr(k) is
+                            # [Pa-1]. Alternative choice of 'rei(k)' is also shown
+                            # below, where coefficient 0.5 was from approximate tuning
+                            # against the BOMEX case. In order to prevent the onset of
+                            # instability in association with cumulus induced
+                            # subsidence advection, cumulus mass flux at the top
+                            # interface  in any layer should be smaller than (90% of)
+                            # total mass within that layer. I imposed limits on
+                            # 'rei(k)' as below,  in such that stability condition is
+                            # always satisfied. Below limiter of 'rei(k)' becomes
+                            # negative for some cases, causing error. So, for the time
+                            # being, I came back to the original limiter.
 
                             if not condensation:
-                                ee2 = xc**2
-                                ud2 = 1.0 - 2.0 * xc + xc**2
+                                ee2 = xc ** 2
+                                ud2 = 1.0 - 2.0 * xc + xc ** 2
                                 if min(scaleh, mixscale) != 0.0:
                                     rei = (
                                         (
@@ -2831,10 +2811,12 @@ def buoyancy_sorting(
                                 xco = xc
 
                                 # Iteration Start due to 'maxufrc' constraint
-                                # Calculate cumulus updraft mass flux and penetrative entrainment mass flux.
-                                # Note that  non-zero penetrative entrainment mass flux will be asigned only
-                                # to interfaces from the top interface of 'kbup' layer to the base interface
-                                # of 'kpen' layer as will be shown later.
+                                # Calculate cumulus updraft mass flux and penetrative
+                                # entrainment mass flux. Note that  non-zero
+                                # penetrative entrainment mass flux will be asigned
+                                # only to interfaces from the top interface of 'kbup'
+                                # layer to the base interface of 'kpen' layer as will
+                                # be shown later.
 
                                 umf_zint = umf_zint[0, 0, -1] * exp(dpe * (fer - fdr))
 
@@ -2848,8 +2830,9 @@ def buoyancy_sorting(
                                     * min(1.0, max(0.0, xsat - xc))
                                 )
 
-                                # Compute cumulus updraft properties at the top interface.
-                                # Also use Tayler expansion in order to treat limiting case
+                                # Compute cumulus updraft properties at the top
+                                # interface. Also use Tayler expansion in order to
+                                # treat limiting case
 
                                 if fer * dpe < 1.0e-4:
                                     thlu = (
@@ -2960,27 +2943,34 @@ def buoyancy_sorting(
                                             )
                                             n += 1
 
-                                # Expel some of cloud water and ice from cumulus  updraft at the top
-                                # interface.  Note that this is not 'detrainment' term  but a 'sink'
-                                # term of cumulus updraft qt ( or one part of 'source' term of  mean
-                                # environmental qt ). At this stage, as the most simplest choice, if
-                                # condensate amount within cumulus updraft is larger than a critical
-                                # value, 'criqc', expels the surplus condensate from cumulus updraft
-                                # to the environment. A certain fraction ( e.g., 'frc_sus' ) of this
-                                # expelled condesnate will be in a form that can be suspended in the
-                                # layer k where it was formed, while the other fraction, '1-frc_sus'
-                                # will be in a form of precipitatble (e.g.,can potentially fall down
-                                # across the base interface of layer k ). In turn we should describe
-                                # subsequent falling of precipitable condensate ('1-frc_sus') across
-                                # the base interface of the layer k, &  evaporation of precipitating
-                                # water in the below layer k-1 and associated evaporative cooling of
-                                # the later, k-1, and falling of 'non-evaporated precipitating water
-                                # ( which was initially formed in layer k ) and a newly-formed preci
-                                # pitable water in the layer, k-1', across the base interface of the
-                                # lower layer k-1.  Cloud microphysics should correctly describe all
-                                # of these process.  In a near future, I should significantly modify
-                                # this cloud microphysics, including precipitation-induced downdraft
-                                # also.
+                                # Expel some of cloud water and ice from cumulus
+                                # updraft at the top interface.  Note that this
+                                # is not 'detrainment' term  but a 'sink' term of
+                                # cumulus updraft qt ( or one part of 'source' term
+                                # of  mean environmental qt ). At this stage, as
+                                # the most simplest choice, if condensate amount
+                                # within cumulus updraft is larger than a critical
+                                # value, 'criqc', expels the surplus condensate from
+                                # cumulus updraft to the environment. A certain
+                                # fraction ( e.g., 'frc_sus' ) of this expelled
+                                # condesnate will be in a form that can be suspended
+                                # in the layer k where it was formed, while the
+                                # other fraction, '1-frc_sus' will be in a form of
+                                # precipitatble (e.g.,can potentially fall down
+                                # across the base interface of layer k ). In turn we
+                                # should describe subsequent falling of
+                                # precipitable condensate ('1-frc_sus') across the
+                                # base interface of the layer k, &  evaporation of
+                                # precipitating water in the below layer k-1 and
+                                # associated evaporative cooling of the later, k-1,
+                                # and falling of 'non-evaporated precipitating water
+                                # (which was initially formed in layer k ) and a
+                                # newly-formed precipitable water in the layer, k-1',
+                                # across the base interface of the lower layer k-1.
+                                # Cloud microphysics should correctly describe all
+                                # of these process.  In a near future, I should
+                                # significantly modify this cloud microphysics,
+                                # including precipitation-induced downdraft also.
 
                                 thj, qvj, qlj, qij, qse, id_check = conden(
                                     pifc0[0, 0, 1],
@@ -3018,11 +3008,14 @@ def buoyancy_sorting(
                                         exql = ((qlj + qij) - criqc) * qlj / (qlj + qij)
                                         exqi = ((qlj + qij) - criqc) * qij / (qlj + qij)
 
-                                        # It is very important to re-update 'qtu' and 'thlu'  at the upper
-                                        # interface after expelling condensate from cumulus updraft at the
-                                        # top interface of the layer. As mentioned above, this is a 'sink'
-                                        # of cumulus qt (or equivalently, a 'source' of environmentasl qt),
-                                        # not a regular convective'detrainment'.
+                                        # It is very important to re-update 'qtu'
+                                        # and 'thlu' at the upper interface after
+                                        # expelling condensate from cumulus updraft
+                                        # at the top interface of the layer. As
+                                        # mentioned above, this is a 'sink' of
+                                        # cumulus qt (or equivalently, a 'source'
+                                        # of environmentasl qt), not a regular
+                                        # convective'detrainment'.
 
                                         qtu = qtu - exql - exqi
                                         thlu = (
@@ -3041,13 +3034,17 @@ def buoyancy_sorting(
                                             * exqi
                                         )
 
-                                        # Expelled cloud condensate into the environment from the updraft.
-                                        # After all the calculation later, 'dwten' and 'diten' will have a
-                                        # unit of [ kg/kg/s ], because it is a tendency of qt. Restoration
-                                        # of 'dwten' and 'diten' to this correct unit through  multiplying
-                                        # 'umf(k)*g/dp0(k)' will be performed later after finally updating
-                                        # 'umf' using a 'rmaxfrac' constraint near the end of this updraft
-                                        # buoyancy sorting loop.
+                                        # Expelled cloud condensate into the
+                                        # environment from the updraft. After
+                                        # all the calculation later, 'dwten' and
+                                        # 'diten' will have a unit of [ kg/kg/s ],
+                                        # because it is a tendency of qt.
+                                        # Restoration of 'dwten' and 'diten' to
+                                        # this correct unit through  multiplying
+                                        # 'umf(k)*g/dp0(k)' will be performed
+                                        # later after finally updating 'umf' using
+                                        # a 'rmaxfrac' constraint near the end of
+                                        # this updraft buoyancy sorting loop.
 
                                         dwten = exql
                                         diten = exqi
@@ -3056,7 +3053,8 @@ def buoyancy_sorting(
                                         dwten = 0.0
                                         diten = 0.0
 
-                                    # Update 'thvu(k)' after detraining condensate from cumulus updraft.
+                                    # Update 'thvu(k)' after detraining condensate
+                                    # from cumulus updraft.
                                     thj, qvj, qlj, qij, qse, id_check = conden(
                                         pifc0[0, 0, 1],
                                         thlu,
@@ -3092,10 +3090,12 @@ def buoyancy_sorting(
 
                                         thvu = thj * (1.0 + zvir * qvj - qlj - qij)
 
-                                        # Calculate updraft vertical velocity at the upper interface.
-                                        # In order to calculate 'wtw' at the upper interface, we use
-                                        # 'wtw' at the lower interface. Note  'wtw'  is continuously
-                                        # updated as cumulus updraft rises.
+                                        # Calculate updraft vertical velocity at the
+                                        # upper interface. In order to calculate
+                                        # 'wtw' at the upper interface, we use 'wtw'
+                                        # at the lower interface. Note  'wtw'  is
+                                        # continuously updated as cumulus updraft
+                                        # rises.
 
                                         bogbot = rbuoy * (
                                             thvu[0, 0, -1] / thvebot - 1.0
@@ -3124,11 +3124,13 @@ def buoyancy_sorting(
                                                 wtw + dpe * (bogbot + bogtop) / rhomid0j
                                             )
 
-                                        # Force the plume rise at least to klfc of the undiluted plume.
-                                        # Because even the below is not complete, I decided not to include this.
+                                        # Force the plume rise at least to klfc of the
+                                        # undiluted plume. Because even the below is
+                                        # not complete, I decided not to include this.
 
-                                        # Repeat 'iter_xc' iteration loop until 'iter_xc = niter_xc'.
-                                        # Also treat the case even when wtw < 0 at the 'kpen' interface.
+                                        # Repeat 'iter_xc' iteration loop until
+                                        # 'iter_xc = niter_xc'. Also treat the case
+                                        # even when wtw < 0 at the 'kpen' interface.
 
                                         if wtw > 0.0:
                                             thlue = 0.5 * (thlu[0, 0, -1] + thlu)
@@ -3142,21 +3144,24 @@ def buoyancy_sorting(
 
                 iter_xc += 1  # end iter_xc loop
 
-            # Add the contribution of self-detrainment  to vertical variations of cumulus
-            # updraft mass flux. The reason why we are trying to include self-detrainment
-            # is as follows.  In current scheme,  vertical variation of updraft mass flux
-            # is not fully consistent with the vertical variation of updraft vertical w.
-            # For example, within a given layer, let's assume that  cumulus w is positive
-            # at the base interface, while negative at the top interface. This means that
-            # cumulus updraft cannot reach to the top interface of the layer. However,
-            # cumulus updraft mass flux at the top interface is not zero according to the
-            # vertical tendency equation of cumulus mass flux.   Ideally, cumulus updraft
-            # mass flux at the top interface should be zero for this case. In order to
-            # assures that cumulus updraft mass flux goes to zero when cumulus updraft
-            # vertical velocity goes to zero, we are imposing self-detrainment term as
-            # below by considering layer-mean cloud buoyancy and cumulus updraft vertical
-            # velocity square at the top interface. Use of auto-detrainment term will  be
-            # determined by setting 'use_self_detrain=.true.' in the parameter sentence.
+            # Add the contribution of self-detrainment  to vertical variations of
+            # cumulus updraft mass flux. The reason why we are trying to include
+            # self-detrainment is as follows.  In current scheme,  vertical
+            # variation of updraft mass flux is not fully consistent with the
+            # vertical variation of updraft vertical w. For example, within a
+            # given layer, let's assume that  cumulus w is positive at the base
+            # interface, while negative at the top interface. This means that
+            # cumulus updraft cannot reach to the top interface of the layer.
+            # However, cumulus updraft mass flux at the top interface is not zero
+            # according to the vertical tendency equation of cumulus mass flux.
+            # Ideally, cumulus updraft mass flux at the top interface should be
+            # zero for this case. In order to assures that cumulus updraft mass
+            # flux goes to zero when cumulus updraft vertical velocity goes to
+            # zero, we are imposing self-detrainment term as below by considering
+            # layer-mean cloud buoyancy and cumulus updraft vertical velocity
+            # square at the top interface. Use of auto-detrainment term will be
+            # determined by setting 'use_self_detrain=.true.' in the parameter
+            # sentence.
 
             if not condensation:
                 if use_self_detrain == 1:
@@ -3194,7 +3199,7 @@ def buoyancy_sorting(
                         True  # Done calculating updraft properties, break out of loop
                     )
 
-                if stop_buoyancy_sort == False:
+                if not stop_buoyancy_sort:
                     wu = sqrt(wtw)
 
                     if wu > 100.0:
@@ -3224,19 +3229,22 @@ def buoyancy_sorting(
 
                         # Iteration end due to 'rmaxfrac' constraint
 
-                        # Calculate updraft fractional area at the upper interface and set upper
-                        # limit to 'ufrc' by 'rmaxfrac'. In order to keep the consistency  among
-                        # ['ufrc','umf','wu (or wtw)'], if ufrc is limited by 'rmaxfrac', either
-                        # 'umf' or 'wu' should be changed. Although both 'umf' and 'wu (wtw)' at
-                        # the current upper interface are used for updating 'umf' & 'wu'  at the
-                        # next upper interface, 'umf' is a passive variable not influencing  the
-                        # buoyancy sorting process in contrast to 'wtw'. This is a reason why we
-                        # adjusted 'umf' instead of 'wtw'. In turn we updated 'fdr' here instead
-                        # of 'fer',  which guarantees  that all previously updated thermodynamic
-                        # variables at the upper interface before applying 'rmaxfrac' constraint
-                        # are already internally consistent,  even though 'ufrc'  is  limited by
-                        # 'rmaxfrac'. Thus, we don't need to go through interation loop again.If
-                        # If we update 'fer' however, we should go through above iteration loop.
+                        # Calculate updraft fractional area at the upper interface and
+                        # set upper limit to 'ufrc' by 'rmaxfrac'. In order to keep the
+                        # consistency  among ['ufrc','umf','wu (or wtw)'], if ufrc is
+                        # limited by 'rmaxfrac', either 'umf' or 'wu' should be changed.
+                        # Although both 'umf' and 'wu (wtw)' at the current upper
+                        # interface are used for updating 'umf' & 'wu'  at the next
+                        # upper interface, 'umf' is a passive variable not influencing
+                        # the buoyancy sorting process in contrast to 'wtw'. This is a
+                        # reason why we adjusted 'umf' instead of 'wtw'. In turn we
+                        # updated 'fdr' here instead of 'fer',  which guarantees  that
+                        # all previously updated thermodynamic variables at the upper
+                        # interface before applying 'rmaxfrac' constraint are already
+                        # internally consistent,  even though 'ufrc'  is  limited by
+                        # 'rmaxfrac'. Thus, we don't need to go through interation loop
+                        # again. If we update 'fer' however, we should go through above
+                        # iteration loop.
 
                         rhoifc0j = pifc0[0, 0, 1] / (
                             constants.MAPL_RDRY
@@ -3286,37 +3294,41 @@ def calc_ppen(
 ):
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Up to this point, we finished all of buoyancy sorting processes from the 'krel'
-            # layer to 'kpen' layer: at the top interface of individual layers, we calculated
-            # updraft and penetrative mass fluxes [ umf(k) & emf(k) = 0 ], updraft fractional
-            # area [ ufrc(k) ],  updraft vertical velocity [ wu(k) ],  updraft  thermodynamic
-            # variables [thlu(k),qtu(k),uu(k),vu(k),thvu(k)]. In the layer,we also calculated
-            # fractional entrainment-detrainment rate [ fer(k), fdr(k) ], and detrainment ten
-            # dency of water and ice from cumulus updraft [ dwten(k), diten(k) ]. In addition,
-            # we updated and identified 'krel' and 'kpen' layer index, if any.  In the 'kpen'
-            # layer, we calculated everything mentioned above except the 'wu(k)' and 'ufrc(k)'
-            # since a real value of updraft vertical velocity is not defined at the kpen  top
-            # interface (note 'ufrc' at the top interface of layer is calculated from 'umf(k)'
-            # and 'wu(k)'). As mentioned before, special treatment is required when 'kbup' is
-            # not updated and so 'kbup = krel'.
+            # Up to this point, we finished all of buoyancy sorting processes from the
+            # 'krel' layer to 'kpen' layer: at the top interface of individual layers,
+            # we calculated updraft and penetrative mass fluxes [umf(k) & emf(k) = 0],
+            # updraft fractional area [ ufrc(k) ],  updraft vertical velocity [wu(k)],
+            # updraft  thermodynamic variables [thlu(k),qtu(k),uu(k),vu(k),thvu(k)].
+            # In the layer,we also calculated fractional entrainment-detrainment rate
+            # [ fer(k), fdr(k) ], and detrainment tendency of water and ice from
+            # cumulus updraft [ dwten(k), diten(k) ]. In addition, we updated and
+            # identified 'krel' and 'kpen' layer index, if any.  In the 'kpen' layer,
+            # we calculated everything mentioned above except the 'wu(k)' and 'ufrc(k)'
+            # since a real value of updraft vertical velocity is not defined at the kpen
+            # top interface (note 'ufrc' at the top interface of layer is calculated
+            # from 'umf(k)' and 'wu(k)'). As mentioned before, special treatment is
+            # required when 'kbup' is not updated and so 'kbup = krel'.
 
-            # During the 'iter_scaleh' iteration loop, non-physical ( with non-zero values )
-            # values can remain in the variable arrays above (also 'including' in case of wu
-            # and ufrc at the top interface) the 'kpen' layer. This can happen when the kpen
-            # layer index identified from the 'iter_scaleh = 1' iteration loop is located at
-            # above the kpen layer index identified from   'iter_scaleh = 3' iteration loop.
-            # Thus, in the following calculations, we should only use the values in each
-            # variables only up to finally identified 'kpen' layer & 'kpen' interface except
-            # 'wu' and 'ufrc' at the top interface of 'kpen' layer.    Note that in order to
-            # prevent any problems due to these non-physical values, I re-initialized    the
-            # values of [ umf(kpen:k0), emf(kpen:k0), dwten(kpen+1:k0), diten(kpen+1:k0),!
-            # fer(kpen:k0), fdr(kpen+1:k0), ufrc(kpen:k0) ] to be zero after 'iter_scaleh'!
-            # do loop.
+            # During the 'iter_scaleh' iteration loop, non-physical (with non-zero
+            # values) values can remain in the variable arrays above (also 'including'
+            # in case of wu and ufrc at the top interface) the 'kpen' layer. This can
+            # happen when the kpen layer index identified from the 'iter_scaleh = 1'
+            # iteration loop is located at above the kpen layer index identified from
+            # 'iter_scaleh = 3' iteration loop. Thus, in the following calculations,
+            # we should only use the values in each variables only up to finally
+            # identified 'kpen' layer & 'kpen' interface except 'wu' and 'ufrc' at the
+            # top interface of 'kpen' layer.    Note that in order to prevent any
+            # problems due to these non-physical values, I re-initialized the values
+            # of [ umf(kpen:k0), emf(kpen:k0), dwten(kpen+1:k0), diten(kpen+1:k0),
+            # fer(kpen:k0), fdr(kpen+1:k0), ufrc(kpen:k0) ] to be zero after
+            # 'iter_scaleh' do loop.
 
-            # Calculate 'ppen( < 0 )', updraft penetrative distance from the lower interface
-            # of 'kpen' layer. Note that bogbot & bogtop at the 'kpen' layer either when fer
-            # is zero or non-zero was already calculated above.
-            # It seems that below qudarature solving formula is valid only when bogbot < 0.
+            # Calculate 'ppen( < 0 )', updraft penetrative distance from the lower
+            # interface of 'kpen' layer. Note that bogbot & bogtop at the 'kpen' layer
+            # either when fer is zero or non-zero was already calculated above.
+            # It seems that below qudarature solving formula is valid only when
+            # bogbot < 0.
+
             # Below solving equation is clearly wrong ! I should revise this !
 
             kpen = kpen_IJ  # Convert kpen_IJ to a 3D field
@@ -3497,7 +3509,8 @@ def recalc_condensate(
                         dwten = 0.0
                         diten = 0.0
 
-                # Calculate cumulus scale height as the top height that cumulus can reach.
+                # Calculate cumulus scale height as the top height that cumulus can
+                # reach.
                 rhoifc0j = pifc0.at(K=kpen) / (
                     constants.MAPL_RDRY
                     * 0.5
@@ -3536,7 +3549,7 @@ def recalc_condensate(
 
                 cldhgt = pifc0.at(K=kpen) + ppen
 
-                if forcedCu == True:
+                if forcedCu:
                     condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
@@ -3560,14 +3573,16 @@ def recalc_condensate(
                     fdr_out = constants.MAPL_UNDEF
 
                 if not condensation:
-                    # Re-initializing some key variables above the 'kpen' layer in order to suppress
-                    # the influence of non-physical values above 'kpen', in association with the use
-                    # of 'iter_scaleh' loop. Note that umf, emf,  ufrc are defined at the interfaces
-                    # (0:k0), while 'dwten','diten', 'fer', 'fdr' are defined at layer mid-points.
-                    # Initialization of 'fer' and 'fdr' is for correct writing purpose of diagnostic
-                    # output. Note that we set umf(kpen)=emf(kpen)=ufrc(kpen)=0, in consistent  with
-                    # wtw < 0  at the top interface of 'kpen' layer. However, we still have non-zero
-                    # expelled cloud condensate in the 'kpen' layer.
+                    # Re-initializing some key variables above the 'kpen' layer in
+                    # order to suppress the influence of non-physical values above
+                    # 'kpen', in association with the use of 'iter_scaleh' loop.
+                    # Note that umf, emf,  ufrc are defined at the interfaces (0:k0),
+                    # while 'dwten','diten', 'fer', 'fdr' are defined at layer
+                    # mid-points. Initialization of 'fer' and 'fdr' is for correct
+                    # writing purpose of diagnostic output. Note that we set
+                    # umf(kpen)=emf(kpen)=ufrc(kpen)=0, in consistent  with wtw < 0
+                    # at the top interface of 'kpen' layer. However, we still have
+                    # non-zero expelled cloud condensate in the 'kpen' layer.
                     if THIS_K >= kpen - 1 and THIS_K <= k0:
                         umf_zint[0, 0, 1] = 0.0
                         emf[0, 0, 1] = 0.0
@@ -3687,25 +3702,28 @@ def calc_entrainment_mass_flux(
                 )
 
                 if THIS_K == (kpen - 1):
-                    # Note that 'ppen' has already been calculated in the above 'iter_scaleh'
-                    # loop assuming zero lateral entrainmentin the layer 'kpen'.
+                    # Note that 'ppen' has already been calculated in the above
+                    # 'iter_scaleh' loop assuming zero lateral entrainmentin the
+                    # layer 'kpen'.
 
                     # Calculate returning mass flux, emf ( < 0 )
-                    # Current penetrative entrainment rate with 'rpen~10' is too large and
-                    # future refinement is necessary including the definition of 'thl','qt'
-                    # of penetratively entrained air.  Penetratively entrained airs across
-                    # the 'kpen-1' interface is assumed to have the properties of the base
-                    # interface of 'kpen' layer. Note that 'emf ~ - umf/ufrc = - w * rho'.
-                    # Thus, below limit sets an upper limit of |emf| to be ~ 10cm/s, which
-                    # is very loose constraint. Here, I used more restricted constraint on
-                    # the limit of emf, assuming 'emf' cannot exceed a net mass within the
-                    # layer above the interface. Similar to the case of warming and drying
-                    # due to cumulus updraft induced compensating subsidence,  penetrative
-                    # entrainment induces compensating upwelling -     in order to prevent
-                    # numerical instability in association with compensating upwelling, we
-                    # should similarily limit the amount of penetrative entrainment at the
-                    # interface by the amount of masses within the layer just above the
-                    # penetratively entraining interface.
+                    # Current penetrative entrainment rate with 'rpen~10' is too
+                    # large and future refinement is necessary including the
+                    # definition of 'thl','qt' of penetratively entrained air.
+                    # Penetratively entrained airs across the 'kpen-1' interface
+                    # is assumed to have the properties of the base interface of
+                    # 'kpen' layer. Note that 'emf ~ - umf/ufrc = - w * rho'. Thus,
+                    # below limit sets an upper limit of |emf| to be ~ 10cm/s,
+                    # which is very loose constraint. Here, I used more restricted
+                    # constraint on the limit of emf, assuming 'emf' cannot exceed
+                    # a net mass within the layer above the interface. Similar to
+                    # the case of warming and drying due to cumulus updraft induced
+                    # compensating subsidence, penetrative entrainment induces
+                    # compensating upwelling -     in order to prevent numerical
+                    # instability in association with compensating upwelling, we
+                    # should similarily limit the amount of penetrative entrainment
+                    # at the interface by the amount of masses within the layer just
+                    # above the penetratively entraining interface.
 
                     emf = max(
                         max(
@@ -3737,10 +3755,11 @@ def calc_entrainment_mass_flux(
 
                 else:
 
-                    # Note we are coming down from the higher interfaces to the lower interfaces.
-                    # Also note that 'emf < 0'. So, below operation is a summing not subtracting.
-                    # In order to ensure numerical stability, I imposed a modified correct limit
-                    # of '-0.9*dp0(k+1)/g/dt' on emf(k).
+                    # Note we are coming down from the higher interfaces to the lower
+                    # interfaces. Also note that 'emf < 0'. So, below operation is a
+                    # summing not subtracting. In order to ensure numerical stability,
+                    # I imposed a modified correct limit of '-0.9*dp0(k+1)/g/dt' on
+                    # emf(k).
 
                     if (
                         use_cumpenent == 1
@@ -4152,7 +4171,8 @@ def calc_pbl_fluxes(
                     )  # Effective "pinv" after detraining mass
 
                     # Compute turbulent fluxes.
-                    # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
+                    # Below two cases exactly converges at 'kinv-1' interface when
+                    # rr = 1.
                     if THIS_K < k_below + 1:
                         xflx_ndim[0, 0, 1][n] = (
                             cbmf
@@ -4471,9 +4491,9 @@ def penetrative_entrainment_fluxes(
             if THIS_K >= krel and THIS_K <= (kbup - 1):
                 uemf[0, 0, 1] = umf_zint
             if THIS_K >= kbup and THIS_K <= (kpen - 1):
-                uemf[0, 0, 1] = (
-                    emf  # Only use penetrative entrainment flux consistently.
-                )
+                uemf[
+                    0, 0, 1
+                ] = emf  # Only use penetrative entrainment flux consistently.
 
             comsub = 0.0
 
@@ -4703,34 +4723,37 @@ def calc_thermodynamic_tendencies(
                 # Compute 'slten', 'qtten', 'qvten', 'qlten', 'qiten', and 'sten'
 
                 # Key assumptions made in this 'cumulus scheme' are :
-                # 1. Cumulus updraft expels condensate into the environment at the top interface
-                #    of each layer. Note that in addition to this expel process ('source' term),
-                #    cumulus updraft can modify layer mean condensate through normal detrainment
-                #    forcing or compensating subsidence.
-                # 2. Expelled water can be either 'sustaining' or 'precipitating' condensate. By
-                #    definition, 'suataining condensate' will remain in the layer where it was
-                #    formed, while 'precipitating condensate' will fall across the base of the
-                #    layer where it was formed.
-                # 3. All precipitating condensates are assumed to fall into the release layer or
-                #    ground as soon as it was formed without being evaporated during the falling
-                #    process down to the desinated layer ( either release layer of surface ).
+                # 1. Cumulus updraft expels condensate into the environment at the top
+                #   interface of each layer. Note that in addition to this expel process
+                #   ('source' term), cumulus updraft can modify layer mean condensate
+                #   through normal detrainment forcing or compensating subsidence.
+                # 2. Expelled water can be either 'sustaining' or 'precipitating'
+                #   condensate. By definition, 'suataining condensate' will remain in
+                #   the layer where it was formed, while 'precipitating condensate'
+                #   will fall across the base of the layer where it was formed.
+                # 3. All precipitating condensates are assumed to fall into the release
+                #   layer or ground as soon as it was formed without being evaporated
+                #   during the falling process down to the desinated layer ( either
+                #   release layer of surface ).
 
-                # 'dwten(k)','diten(k)' : Production rate of condensate  within the layer k
-                #      [ kg/kg/s ]        by the expels of condensate from cumulus updraft.
-                # It is important to note that in terms of moisture tendency equation, this
-                # is a 'source' term of enviromental 'qt'.  More importantly,  these source
-                # are already counted in the turbulent heat and moisture fluxes we computed
-                # until now, assuming all the expelled condensate remain in the layer where
-                # it was formed. Thus, in calculation of 'qtten' and 'slten' below, we MUST
-                # NOT add or subtract these terms explicitly in order not to double or miss
-                # count, unless some expelled condensates fall down out of the layer.  Note
-                # this falling-down process ( i.e., precipitation process ) and  associated
-                # 'qtten' and 'slten' and production of surface precipitation flux  will be
-                # treated later in 'zm_conv_evap' in 'convect_shallow_tend' subroutine.
-                # In below, we are converting expelled cloud condensate into correct unit.
-                # I found that below use of '0.5 * (umf(k-1) + umf(k))' causes conservation
-                # errors at some columns in global simulation. So, I returned to originals.
-                # This will cause no precipitation flux at 'kpen' layer since umf(kpen)=0.
+                # 'dwten(k)','diten(k)' : Production rate of condensate  within the
+                # layer k [ kg/kg/s ] by the expels of condensate from cumulus updraft.
+                # It is important to note that in terms of moisture tendency equation,
+                # this is a 'source' term of enviromental 'qt'.  More importantly,
+                # these source are already counted in the turbulent heat and moisture
+                # fluxes we computed until now, assuming all the expelled condensate
+                # remain in the layer where it was formed. Thus, in calculation of
+                # 'qtten' and 'slten' below, we MUST NOT add or subtract these terms
+                # explicitly in order not to double or miss count, unless some expelled
+                # condensates fall down out of the layer.  Note this falling-down
+                # process ( i.e., precipitation process ) and  associated 'qtten' and
+                # 'slten' and production of surface precipitation flux  will be treated
+                # later in 'zm_conv_evap' in 'convect_shallow_tend' subroutine. In below
+                # we are converting expelled cloud condensate into correct unit. I found
+                # that below use of '0.5 * (umf(k-1) + umf(k))' causes conservation
+                # errors at some columns in global simulation. So, I returned to
+                # originals. This will cause no precipitation flux at 'kpen' layer since
+                # umf(kpen)=0.
 
                 dwten = (
                     dwten_temp
@@ -4748,22 +4771,24 @@ def calc_thermodynamic_tendencies(
                     / dp0
                 )  # [ kg/kg/s ]
 
-                # 'qrten(k)','qsten(k)' : Production rate of rain and snow within the layer k
-                # [ kg/kg/s ]         by cumulus expels of condensates to the environment.
+                # 'qrten(k)','qsten(k)' : Production rate of rain and snow within the
+                # layer k [ kg/kg/s ] by cumulus expels of condensates to the
+                # environment.
                 qrten = frc_rasn * dwten
                 qsten = frc_rasn * diten
 
                 # 'slten(k)','qtten(k)'
-                # Note that 'slflx(k)' and 'qtflx(k)' we have calculated already included
-                # all the contributions of (1) expels of condensate (dwten(k), diten(k)),
-                # (2) mass detrainment ( delta * umf * ( qtu - qt ) ), & (3) compensating
-                # subsidence ( M * dqt / dz ). Thus 'slflx(k)' and 'qtflx(k)' we computed
-                # is a hybrid turbulent flux containing one part of 'source' term - expel
-                # of condensate. In order to calculate 'slten' and 'qtten', we should add
-                # additional 'source' term, if any. If the expelled condensate falls down
-                # across the base of the layer, it will be another sink (negative source)
-                # term.  Note also that we included frictional heating terms in the below
-                # alculation of 'slten'.
+                # Note that 'slflx(k)' and 'qtflx(k)' we have calculated already
+                # included all the contributions of (1) expels of condensate
+                # (dwten(k), diten(k)), (2) mass detrainment
+                # ( delta * umf * ( qtu - qt ) ), & (3) compensating subsidence
+                # ( M * dqt / dz ). Thus 'slflx(k)' and 'qtflx(k)' we computed is a
+                # hybrid turbulent flux containing one part of 'source' term -
+                # expel of condensate. In order to calculate 'slten' and 'qtten',
+                # we should add additional 'source' term, if any. If the expelled
+                # condensate falls down across the base of the layer, it will be
+                # another sink (negative source) term.  Note also that we included
+                # frictional heating terms in the below calculation of 'slten'.
 
                 slten = (slflx - slflx[0, 0, 1]) * constants.MAPL_GRAV / dp0
 
@@ -4796,10 +4821,10 @@ def calc_thermodynamic_tendencies(
                 qtten = (qtflx - qtflx[0, 0, 1]) * constants.MAPL_GRAV / dp0
 
                 # Compute condensate tendency, including reserved condensate
-                # We assume that eventual detachment and detrainment occurs in kbup layer  due
-                # to downdraft buoyancy sorting. In the layer above the kbup, only penetrative
-                # entrainment exists. Penetrative entrained air is assumed not to contain any
-                # condensate.
+                # We assume that eventual detachment and detrainment occurs in kbup
+                # layer  due to downdraft buoyancy sorting. In the layer above the
+                # kbup, only penetrative entrainment exists. Penetrative entrained
+                # air is assumed not to contain any condensate.
 
                 # Compute in-cumulus condensate at the layer mid-point.
                 if THIS_K < krel or THIS_K > kpen:
@@ -5025,8 +5050,9 @@ def calc_thermodynamic_tendencies(
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
 
-                    # 4. Cumulative Penetrative entrainment detrained in the 'kbup' layer
-                    # Explicitly compute the properties detrained penetrative entrained airs in k = kbup layer.
+                    # 4. Cumulative Penetrative entrainment detrained in the 'kbup'
+                    # layer. Explicitly compute the properties detrained penetrative
+                    # entrained airs in k = kbup layer.
 
                 if THIS_K == kbup:
                     thj, qvj, ql_emf_kbup, qi_emf_kbup, qse, id_check = conden(
@@ -5456,12 +5482,14 @@ def calc_cumulus_condensate_at_interface(
                         fdr_out = constants.MAPL_UNDEF
 
                     if not condensation:
-                        # Calculate in-cloud mean LWC ( qlu(k) ), IWC ( qiu(k) ),  & layer
-                        # mean cumulus fraction ( cufrc(k) ),  vertically-integrated layer
-                        # mean LWP and IWP. Expel some of in-cloud condensate at the upper
-                        # interface if it is largr than criqc. Note cumulus cloud fraction
-                        # is assumed to be twice of core updraft fractional area. Thus LWP
-                        # and IWP will be twice of actual value coming from our scheme.
+                        # Calculate in-cloud mean LWC ( qlu(k) ), IWC ( qiu(k) ),
+                        # & layer mean cumulus fraction ( cufrc(k) ),
+                        # vertically-integrated layer mean LWP and IWP. Expel some
+                        # of in-cloud condensate at the upper interface if it is
+                        # largr than criqc. Note cumulus cloud fraction is assumed
+                        # to be twice of core updraft fractional area. Thus LWP
+                        # and IWP will be twice of actual value coming from our
+                        # scheme.
 
                         qcu = 0.5 * (qcubelow + qlj + qij)
                         qlu = 0.5 * (qlubelow + qlj)
@@ -5514,8 +5542,9 @@ def calc_cumulus_condensate_at_interface(
                 cnt = f32(kpen)
                 cnb = f32(krel - 1)
 
-                # End of formal calculation. Below blocks are for implicit CIN calculations
-                # with re-initialization and save variables at iter_cin = 1.
+                # End of formal calculation. Below blocks are for implicit CIN
+                # calculations with re-initialization and save variables at
+                # iter_cin = 1.
 
 
 def adjust_implicit_CIN_inputs(
@@ -5690,13 +5719,13 @@ def recalc_environmental_variables(
     tr0_temp: FloatField,
     cush_inout: FloatFieldIJ,
 ):
-    from __externals__ import ncnst, k_end
+    from __externals__ import k_end, ncnst
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Recalculate environmental variables for new cin calculation at "iter_cin = 2"
-            # using the updated state variables. Perform only for variables necessary  for
-            # the new cin calculation.
+            # Recalculate environmental variables for new cin calculation at
+            # "iter_cin = 2" using the updated state variables. Perform only
+            # for variables necessary for the new cin calculation.
 
             qv0 = qv0_s
             ql0 = ql0_s
@@ -5964,7 +5993,7 @@ def update_output_variables(
             qidet_outvar = qiten_det
             qlsub_outvar = qlten_sink
             qisub_outvar = qiten_sink
-            ndrop_out = qlten_det / (4188.787 * rdrop**3)
+            ndrop_out = qlten_det / (4188.787 * rdrop ** 3)
             nice_out = qiten_det / (3.0e-10)
             qtflx_outvar = qtflx
             slflx_outvar = slflx
@@ -6108,12 +6137,13 @@ class ComputeUwshcuInv:
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
 
-        # Initialize the ComputeUwshcu class.
+        # Initialize the ComputeUwshcu class
 
         # Parameters:
         # stencil_factory (StencilFactory): Factory for creating stencil computations.
         # quantity_factory (QuantityFactory): Factory for creating quantities.
-        # UW_config (dataclass): Data class containing configuration dependent constants.
+        # UW_config (dataclass): Data class containing configuration dependent
+        # constants.
         # formulation: Saturation Formulation used for QSat.
 
         self.UW_config = UW_config
@@ -6126,6 +6156,18 @@ class ComputeUwshcuInv:
             raise NotImplementedError(
                 f"Coding limitation: {constants.NCNST} tracers are expected, "
                 f"getting {self.UW_config.NCNST}"
+            )
+
+        if self.UW_config.k0 < 5:
+            raise NotImplementedError(
+                f"Coding limitation: Only {self.UW_config.k0} k-levels are "
+                f"available, atleast 5 are expected"
+            )
+
+        if self.UW_config.windsrcavg != 0:
+            raise NotImplementedError(
+                f"Coding limitation: windsrcavg is {self.UW_config.windsrcavg}"
+                f"expected 0"
             )
 
         self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
@@ -6317,6 +6359,62 @@ class ComputeUwshcuInv:
             self.quantity_factory,
         )
 
+        # Create tracer fields
+        self.trsrc = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, "ntracers"], "n/a"
+        )
+        self.trsrc_o = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, "ntracers"], "n/a"
+        )
+        self.tre = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, "ntracers"], "n/a"
+        )
+        self.trmin = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, "ntracers"], "n/a"
+        )
+        self.sstr0 = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
+        )
+        self.tr0 = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
+        )
+        self.tr0_o = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
+        )
+        self.sstr0_o = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
+        )
+        self.trten = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
+        )
+        self.tr0_s = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
+        )
+        self.tr0_inoutvar = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
+        )
+        self.tr0_inout = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
+        )
+        self.trflx = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
+        )
+        self.tru = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
+        )
+        self.tru_emf = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
+        )
+        self.xflx_ndim = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
+        )
+        self.trflx_d = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
+        )
+        self.trflx_u = self.ntracers_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
+        )
+
     @staticmethod
     def make_ntracers_quantity_factory(
         ijk_quantity_factory: QuantityFactory,
@@ -6328,30 +6426,6 @@ class ComputeUwshcuInv:
             }
         )
         return ntracers_quantity_factory
-
-    def make_ntracers_ijk_field(self, data) -> Quantity:
-        qty = self.ntracers_quantity_factory.empty(
-            [X_DIM, Y_DIM, Z_DIM, "ntracers"],
-            "n/a",
-        )
-        qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
-        return qty
-
-    def make_ntracers_ij_field(self, data) -> Quantity:
-        qty = self.ntracers_quantity_factory.empty(
-            [X_DIM, Y_DIM, "ntracers"],
-            "n/a",
-        )
-        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
-        return qty
-
-    def make_ntracers_zdim_field(self, data) -> Quantity:
-        qty = self.ntracers_quantity_factory.empty(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"],
-            "n/a",
-        )
-        qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
-        return qty
 
     def __call__(
         self,
@@ -6435,41 +6509,62 @@ class ComputeUwshcuInv:
         qpert_out: FloatFieldIJ,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
+
+        # University of Washington Shallow Convection Scheme
+
+        # Described in Park and Bretherton. 2008. J. Climate :
+
+        # 'The University of Washington shallow convection and
+        # moist turbulent schemes and their impact on climate
+        # simulations with the Community Atmosphere Model'
+        # Coded in CESM by Sungsu Park. Oct.2005. May.2008.
+        # Coded in GEOS by Nathan Arnold. July 2016.
+        # NDSL Port by Katrina Fandrich. May 2025.
+
+        # For general questions, email sungsup@ucar.edu or sungsu@atmos.washington.edu
+        # For GEOS-specific questions, email nathan.arnold@nasa.gov
+        # For NDSL-specific questions, email katrina.fandrich@nasa.gov
+
+        ##############################################################################
+
+        # General Notes on ComputeUwshcu:
+
+        # Masks:
+
+        # - There are several masks used throughout ComputeUwshcu to replicate
+        #  some of the 'go tos' in the original Fortran code (e.g., go to 333).
+        # - These masks are set to False by default, but can become True if the
+        # calculation converges.
+
+        # - The most frequently used mask is the 'condensation' mask, which
+        # indicates if the condensation process has occurred.
+        # - If condensation occurs, the mask becomes True and UW Shallow
+        # Convection scheme is done for that column.
+
+        # Special naming of variables:
+
+        # - The suffix '_s' is used to indicate variables computed during the
+        # first iteration of the iterative CIN calculation (e.g, s0_s, u0_s,
+        # v0_s)
+
+        # - The suffix '_o' is used to indicate variables computed during the
+        # second iteration of the iterative CIN calculation (e.g, s0_o, u0_o,
+        # v0_o)
+
+        # - The suffix '_IJ' is used to indicate variables that were 3D at an
+        # earlier stage in the
+        #   computation, but have been converted to 2D (e.g., cin_IJ,
+        # cinlcl_IJ).
+
+        ######################################################################
+
         self.qsat = QSat(
             self.stencil_factory,
             self.quantity_factory,
             formulation=formulation,
         )
 
-        # FloatFieldIJ NTracers
-        trsrc = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
-        trsrc_o = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
-        tre = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
-        trmin = self.make_ntracers_ij_field(np.zeros(shape=[24, 24, 23]))
-
-        FloatField_NTracer = {}
-        for name in [
-            "sstr0",
-            "tr0",
-            "tr0_o",
-            "sstr0_o",
-            "trten",
-            "tr0_s",
-            "tr0_inoutvar",
-        ]:
-            FloatField_NTracer[name] = self.make_ntracers_ijk_field(
-                np.zeros(shape=[24, 24, 72, 23])
-            )
-
-        tr0_inout = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
-
-        FloatField_NTracers_ZDIM = {}
-        for name in ["trflx", "tru", "tru_emf", "xflx_ndim", "trflx_d", "trflx_u"]:
-            FloatField_NTracers_ZDIM[name] = self.make_ntracers_zdim_field(
-                np.zeros(shape=[24, 24, 73, 23])
-            )
-
-        # Initialize masks, default is False
+        # Initialize masks, default for all masks is False.
         self.condensation.view[:, :] = False
         self.stop_cin.view[:, :] = False
         self.stop_buoyancy_sort.view[:, :] = False
@@ -6495,7 +6590,7 @@ class ComputeUwshcuInv:
             cnvtr=cnvtr,
             frland=frland,
             CNV_Tracers=CNV_Tracers,
-            tr0_inout=tr0_inout,
+            tr0_inout=self.tr0_inout,
             # Outputs
             pmid0_in=self.temporaries.pmid0_in,
             u0_in=self.temporaries.u0_in,
@@ -6528,7 +6623,7 @@ class ComputeUwshcuInv:
             ql0_in=self.temporaries.ql0_in,
             qi0_in=self.temporaries.qi0_in,
             th0_in=self.temporaries.th0_in,
-            tr0_inout=tr0_inout,
+            tr0_inout=self.tr0_inout,
             cush_inout=cush,
             cush=cush,
             umf_out=self.temporaries.umf_out,
@@ -6543,9 +6638,9 @@ class ComputeUwshcuInv:
             qv0=self.temporaries.qv0,
             qi0=self.temporaries.qi0,
             pmid0=self.temporaries.pmid0,
-            tr0=FloatField_NTracer["tr0"],
+            tr0=self.tr0,
             tr0_temp=self.temporaries.tr0_temp,
-            sstr0=FloatField_NTracer["sstr0"],
+            sstr0=self.sstr0,
             thl0=self.temporaries.thl0,
             ssthl0=self.temporaries.ssthl0,
             ssqt0=self.temporaries.ssqt0,
@@ -6584,14 +6679,14 @@ class ComputeUwshcuInv:
             dotransport=dotransport,
             ssu0=self.temporaries.ssu0,
             ssv0=self.temporaries.ssv0,
-            tr0=FloatField_NTracer["tr0"],
-            sstr0=FloatField_NTracer["sstr0"],
-            tr0_o=FloatField_NTracer["tr0_o"],
-            sstr0_o=FloatField_NTracer["sstr0_o"],
-            trflx=FloatField_NTracers_ZDIM["trflx"],
-            trten=FloatField_NTracer["trten"],
-            tru=FloatField_NTracers_ZDIM["tru"],
-            tru_emf=FloatField_NTracers_ZDIM["tru_emf"],
+            tr0=self.tr0,
+            sstr0=self.sstr0,
+            tr0_o=self.tr0_o,
+            sstr0_o=self.sstr0_o,
+            trflx=self.trflx,
+            trten=self.trten,
+            tru=self.tru,
+            tru_emf=self.tru_emf,
             umf_zint=self.temporaries.umf_zint,
             emf=self.temporaries.emf,
             slflx=self.temporaries.slflx,
@@ -6726,8 +6821,8 @@ class ComputeUwshcuInv:
                 ssv0=self.temporaries.ssv0,
                 pmid0=self.temporaries.pmid0_in,
                 dotransport=dotransport,
-                tr0=FloatField_NTracer["tr0"],
-                trsrc=trsrc,
+                tr0=self.tr0,
+                trsrc=self.trsrc,
                 qtsrc=self.temporaries.qtsrc,
                 thvlsrc=self.temporaries.thvlsrc,
                 thlsrc=self.temporaries.thlsrc,
@@ -6803,8 +6898,8 @@ class ComputeUwshcuInv:
                 usrc=self.temporaries.usrc,
                 vsrc=self.temporaries.vsrc,
                 dotransport=dotransport,
-                trsrc=trsrc,
-                trsrc_o=trsrc_o,
+                trsrc=self.trsrc,
+                trsrc_o=self.trsrc_o,
                 cin_i=self.temporaries.cin_i,
                 cinlcl_i=self.temporaries.cinlcl_i,
                 ke=self.temporaries.ke,
@@ -6821,6 +6916,7 @@ class ComputeUwshcuInv:
                 usrc_o=self.temporaries.usrc_o,
                 vsrc_o=self.temporaries.vsrc_o,
                 thv0lcl_o=self.temporaries.thv0lcl_o,
+                cinlcl=self.temporaries.cinlcl,
                 cush_inout=self.temporaries.cush_inout,
             )
             if iteration != i32(0):
@@ -6834,12 +6930,12 @@ class ComputeUwshcuInv:
                     cinlcl_i=self.temporaries.cinlcl_i,
                     ke=self.temporaries.ke,
                     dotransport=dotransport,
-                    trsrc=trsrc,
-                    trsrc_o=trsrc_o,
-                    tr0=FloatField_NTracer["tr0"],
-                    tr0_o=FloatField_NTracer["tr0_o"],
-                    sstr0=FloatField_NTracer["sstr0"],
-                    sstr0_o=FloatField_NTracer["sstr0_o"],
+                    trsrc=self.trsrc,
+                    trsrc_o=self.trsrc_o,
+                    tr0=self.tr0,
+                    tr0_o=self.tr0_o,
+                    sstr0=self.sstr0,
+                    sstr0_o=self.sstr0_o,
                     kinv_o=self.temporaries.kinv_o,
                     klcl_o=self.temporaries.klcl_o,
                     klfc_o=self.temporaries.klfc_o,
@@ -6890,10 +6986,10 @@ class ComputeUwshcuInv:
                     qtu_emf=self.temporaries.qtu_emf,
                     uu_emf=self.temporaries.uu_emf,
                     vu_emf=self.temporaries.vu_emf,
-                    trflx=FloatField_NTracers_ZDIM["trflx"],
-                    trten=FloatField_NTracer["trten"],
-                    tru=FloatField_NTracers_ZDIM["tru"],
-                    tru_emf=FloatField_NTracers_ZDIM["tru_emf"],
+                    trflx=self.trflx,
+                    trten=self.trten,
+                    tru=self.tru,
+                    tru_emf=self.tru_emf,
                     umf_s=self.temporaries.umf_s,
                     zifc0=self.temporaries.zifc0_in,
                     dcm_s=self.temporaries.dcm_s,
@@ -7057,8 +7153,8 @@ class ComputeUwshcuInv:
                 usrc=self.temporaries.usrc,
                 vsrc=self.temporaries.vsrc,
                 dotransport=dotransport,
-                tru=FloatField_NTracers_ZDIM["tru"],
-                trsrc=trsrc,
+                tru=self.tru,
+                trsrc=self.trsrc,
                 thv0rel=self.temporaries.thv0rel,
                 thl0=self.temporaries.thl0,
                 ssthl0=self.temporaries.ssthl0,
@@ -7067,9 +7163,9 @@ class ComputeUwshcuInv:
                 ssqt0=self.temporaries.ssqt0,
                 u0=self.temporaries.u0_in,
                 v0=self.temporaries.v0_in,
-                tre=tre,
-                tr0=FloatField_NTracer["tr0"],
-                sstr0=FloatField_NTracer["sstr0"],
+                tre=self.tre,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
                 uplus=self.temporaries.uplus,
                 vplus=self.temporaries.vplus,
                 uplus_3D=self.temporaries.uplus_3D,
@@ -7103,9 +7199,9 @@ class ComputeUwshcuInv:
                 ssu0=self.temporaries.ssu0,
                 ssv0=self.temporaries.ssv0,
                 dotransport=dotransport,
-                tre=tre,
-                tr0=FloatField_NTracer["tr0"],
-                sstr0=FloatField_NTracer["sstr0"],
+                tre=self.tre,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
                 k0=k0,
                 thlu=self.temporaries.thlu,
                 qtu=self.temporaries.qtu,
@@ -7142,7 +7238,7 @@ class ComputeUwshcuInv:
                 use_self_detrain=use_self_detrain,
                 rdrag=rdrag,
                 PGFc=PGFc,
-                tru=FloatField_NTracers_ZDIM["tru"],
+                tru=self.tru,
                 umf_zint=self.temporaries.umf_zint,
                 emf=self.temporaries.emf,
                 thvu=self.temporaries.thvu,
@@ -7243,9 +7339,9 @@ class ComputeUwshcuInv:
                 qtu=self.temporaries.qtu,
                 uu=self.temporaries.uu,
                 vu=self.temporaries.vu,
-                tru=FloatField_NTracers_ZDIM["tru"],
+                tru=self.tru,
                 dotransport=dotransport,
-                tru_emf=FloatField_NTracers_ZDIM["tru_emf"],
+                tru_emf=self.tru_emf,
                 kpen=self.temporaries.kpen,
                 kbup=self.temporaries.kbup,
                 pifc0=self.temporaries.pifc0_in,
@@ -7267,8 +7363,8 @@ class ComputeUwshcuInv:
                 ssu0=self.temporaries.ssu0,
                 v0=self.temporaries.v0_in,
                 ssv0=self.temporaries.ssv0,
-                tr0=FloatField_NTracer["tr0"],
-                sstr0=FloatField_NTracer["sstr0"],
+                tr0=self.tr0,
+                sstr0=self.sstr0,
                 use_cumpenent=use_cumpenent,
                 thlu_emf=self.temporaries.thlu_emf,
                 qtu_emf=self.temporaries.qtu_emf,
@@ -7301,15 +7397,15 @@ class ComputeUwshcuInv:
                 v0=self.temporaries.v0_in,
                 ssv0=self.temporaries.ssv0,
                 dotransport=dotransport,
-                trsrc=trsrc,
-                tr0=FloatField_NTracer["tr0"],
-                sstr0=FloatField_NTracer["sstr0"],
-                trflx=FloatField_NTracers_ZDIM["trflx"],
+                trsrc=self.trsrc,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
+                trflx=self.trflx,
                 uflx=self.temporaries.uflx,
                 vflx=self.temporaries.vflx,
                 slflx=self.temporaries.slflx,
                 iteration=iteration,
-                xflx_ndim=FloatField_NTracers_ZDIM["xflx_ndim"],
+                xflx_ndim=self.xflx_ndim,
             )
 
             self._non_buoyancy_sorting_fluxes(
@@ -7334,10 +7430,10 @@ class ComputeUwshcuInv:
                 usrc=self.temporaries.usrc,
                 vsrc=self.temporaries.vsrc,
                 dotransport=dotransport,
-                trflx=FloatField_NTracers_ZDIM["trflx"],
-                trsrc=trsrc,
-                tr0=FloatField_NTracer["tr0"],
-                sstr0=FloatField_NTracer["sstr0"],
+                trflx=self.trflx,
+                trsrc=self.trsrc,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
                 uflx=self.temporaries.uflx,
                 vflx=self.temporaries.vflx,
                 slflx=self.temporaries.slflx,
@@ -7365,10 +7461,10 @@ class ComputeUwshcuInv:
                 ssu0=self.temporaries.ssu0,
                 ssv0=self.temporaries.ssv0,
                 dotransport=dotransport,
-                trflx=FloatField_NTracers_ZDIM["trflx"],
-                tru=FloatField_NTracers_ZDIM["tru"],
-                tr0=FloatField_NTracer["tr0"],
-                sstr0=FloatField_NTracer["sstr0"],
+                trflx=self.trflx,
+                tru=self.tru,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
                 qtflx=self.temporaries.qtflx,
                 vflx=self.temporaries.vflx,
                 uflx=self.temporaries.uflx,
@@ -7397,10 +7493,10 @@ class ComputeUwshcuInv:
                 ssu0=self.temporaries.ssu0,
                 ssv0=self.temporaries.ssv0,
                 dotransport=dotransport,
-                trflx=FloatField_NTracers_ZDIM["trflx"],
-                tru_emf=FloatField_NTracers_ZDIM["tru_emf"],
-                tr0=FloatField_NTracer["tr0"],
-                sstr0=FloatField_NTracer["sstr0"],
+                trflx=self.trflx,
+                tru_emf=self.tru_emf,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
                 use_momenflx=use_momenflx,
                 cbmf=self.temporaries.cbmf,
                 uflx=self.temporaries.uflx,
@@ -7527,12 +7623,12 @@ class ComputeUwshcuInv:
                 k0=k0,
                 dt=dt,
                 dp0=self.temporaries.dp0_in,
-                trflx_d=FloatField_NTracers_ZDIM["trflx_d"],
-                trflx_u=FloatField_NTracers_ZDIM["trflx_u"],
-                trmin=trmin,
-                tr0=FloatField_NTracer["tr0"],
-                trflx=FloatField_NTracers_ZDIM["trflx"],
-                trten=FloatField_NTracer["trten"],
+                trflx_d=self.trflx_d,
+                trflx_u=self.trflx_u,
+                trmin=self.trmin,
+                tr0=self.tr0,
+                trflx=self.trflx,
+                trten=self.trten,
                 iteration=iteration,
             )
 
@@ -7610,9 +7706,9 @@ class ComputeUwshcuInv:
                     vten=self.temporaries.vten,
                     t0=self.temporaries.t0,
                     dotransport=dotransport,
-                    tr0_s=FloatField_NTracer["tr0_s"],
-                    tr0=FloatField_NTracer["tr0"],
-                    trten=FloatField_NTracer["trten"],
+                    tr0_s=self.tr0_s,
+                    tr0=self.tr0,
+                    trten=self.trten,
                     umf_s=self.temporaries.umf_s,
                     umf_zint=self.temporaries.umf_zint,
                     dcm=self.temporaries.dcm,
@@ -7678,8 +7774,8 @@ class ComputeUwshcuInv:
                     exnmid0=self.temporaries.exnmid0_in,
                     pmid0=self.temporaries.pmid0_in,
                     dotransport=dotransport,
-                    sstr0=FloatField_NTracer["sstr0"],
-                    tr0=FloatField_NTracer["tr0"],
+                    sstr0=self.sstr0,
+                    tr0=self.tr0,
                     u0=self.temporaries.u0_in,
                     v0=self.temporaries.v0_in,
                     pifc0=self.temporaries.pifc0_in,
@@ -7736,7 +7832,7 @@ class ComputeUwshcuInv:
             uflx=self.temporaries.uflx,
             vflx=self.temporaries.vflx,
             dotransport=dotransport,
-            trten=FloatField_NTracer["trten"],
+            trten=self.trten,
             dt=dt,
             fer=self.temporaries.fer,
             fdr=self.temporaries.fdr,
@@ -7763,7 +7859,7 @@ class ComputeUwshcuInv:
             slflx_out=self.temporaries.slflx_out,
             uflx_out=self.temporaries.uflx_out,
             vflx_out=self.temporaries.vflx_out,
-            tr0_inout=tr0_inout,
+            tr0_inout=self.tr0_inout,
             fer_out=self.temporaries.fer_out,
             umf_outvar=self.temporaries.umf_outvar,
             dcm_outvar=self.temporaries.dcm_outvar,
@@ -7788,7 +7884,7 @@ class ComputeUwshcuInv:
             fdr_out=self.temporaries.fdr_out,
             fer_outvar=self.temporaries.fer_outvar,
             fdr_outvar=self.temporaries.fdr_outvar,
-            tr0_inoutvar=FloatField_NTracer["tr0_inoutvar"],
+            tr0_inoutvar=self.tr0_inoutvar,
         )
 
         self._compute_uwshcu_invert_after(
@@ -7817,8 +7913,8 @@ class ComputeUwshcuInv:
             fdr_outvar=self.temporaries.fdr_outvar,
             ndrop_out=self.temporaries.ndrop_out,
             nice_out=self.temporaries.nice_out,
-            tr0=FloatField_NTracer["tr0"],
-            tr0_inoutvar=FloatField_NTracer["tr0_inoutvar"],
+            tr0=self.tr0,
+            tr0_inoutvar=self.tr0_inoutvar,
             CNV_Tracers=CNV_Tracers,
             # Outputs
             umf_inv=umf_inv,

@@ -1,19 +1,14 @@
-import copy
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import sin, erfc, exp, log, sqrt, f32, f64, THIS_K
-from ndsl.dsl.typing import (
-    Float,
-    Bool,
-    Int,
-    FloatField,
-)
-from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
-from pyMoist.saturation.formulation import SaturationFormulation
+from gt4py.cartesian.gtscript import THIS_K, erfc, exp, f32, f64, log, sin, sqrt
+
 import pyMoist.constants as constants
 import pyMoist.pyMoist_constants as py_constants
+from ndsl.dsl.typing import Float, FloatField, Int
+from pyMoist.saturation.qsat import FloatField_Extra_Dim, QSat_Float
 
-P00 = f32(1e5)  # Reference pressure
-zvir = f32(0.609)  # r_H2O/r_air-1
+
+P00 = Float(1e5)  # Reference pressure
+zvir = Float(0.609)  # r_H2O/r_air-1
 ROVCP = constants.MAPL_RGAS / constants.MAPL_CP  # Gas constant over specific heat
 
 
@@ -212,7 +207,8 @@ def conden(
     ql (Float): Liquid water mixing ratio [kg/kg]
     qi (Float): Ice water mixing ratio [kg/kg]
     rvls (Float): Saturation specific humidity [kg/kg]
-    id_check (Int): Flag that indicates if condensation occurs (0 for no condensation, 1 for condensation).
+    id_check (Int): Flag that indicates if condensation occurs
+    (0 for no condensation, 1 for condensation).
     """
 
     tc: f64 = f32(thl) * exnerfn(p)
@@ -246,7 +242,7 @@ def conden(
             qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
             rvls = qs
             iteration += 1
-        qc: f64 = max(qt - qs, f64(0.0))
+        qc = max(qt - qs, f64(0.0))
         qv = qt - qc
         ql = qc * (f64(1.0) - nu)
         qi = nu * qc
@@ -297,17 +293,17 @@ def compute_mumin2(
     x0: f64 = mulow
     iteration = 0
     while iteration < 10:
-        ex: f64 = exp(-(x0**2))
+        ex: f64 = exp(-(x0 ** 2))
         ef: f64 = erfc(x0)  # Complimentary error fraction function
         exf: f64 = ex / ef
         f: f64 = (
-            f64(0.5) * exf**2
+            f64(0.5) * exf ** 2
             - f64(0.5) * (ex / f64(2.0) / rmaxfrax) ** 2
             - (mulcl * f64(2.5066) / f64(2.0)) ** 2
         )
-        fs: f64 = (f64(2.0) * exf**2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
-            f64(0.5) * x0 * ex**2
-        ) / (rmaxfrax**2)
+        fs: f64 = (f64(2.0) * exf ** 2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
+            f64(0.5) * x0 * ex ** 2
+        ) / (rmaxfrax ** 2)
         x1: f64 = x0 - f / fs
         x0 = x1
         iteration += 1
@@ -344,12 +340,12 @@ def compute_ppen(
         if s00 >= f64(0.0):
             x0: f64 = dpen
         else:
-            x0: f64 = max(f64(0.0), min(dpen, f64(-0.5) * wtwb / s00))
+            x0 = max(f64(0.0), min(dpen, f64(-0.5) * wtwb / s00))
     else:
         if s00 >= f64(0.0):
-            x0: f64 = dpen
+            x0 = dpen
         else:
-            x0: f64 = f64(0.0)
+            x0 = f64(0.0)
 
         iteration = 0
         while iteration < 5:
@@ -363,7 +359,7 @@ def compute_ppen(
             ) + (SB) / (drag * rho0j)
 
             x1: f64 = x0 - f / fs
-            x0: f64 = x1
+            x0 = x1
             iteration += 1
 
     compute_ppen = -max(f64(0.0), min(dpen, x0))
@@ -459,7 +455,7 @@ def qsinvert(
     rhi: f64 = qt / f64(qs)
 
     if rhi <= f64(0.01):
-        qsinvert = psmin
+        qsinvert: f32 = psmin
 
     else:
 
@@ -467,7 +463,7 @@ def qsinvert(
             f64(1.0) / (Ti - f64(55.0)) - log(rhi) / f64(2840.0)
         )  # Bolton's formula. MWR.1980.Eq.(22)
         PiLCL: f64 = TLCL / thl
-        ps = p00 * (PiLCL) ** (f64(1.0) / rovcp)
+        ps: f64 = p00 * (PiLCL) ** (f64(1.0) / rovcp)
 
         iteration = 0
         while iteration < 10:
@@ -491,18 +487,18 @@ def qsinvert(
             dlnqsdps: f64 = f64(-1.0) / (ps - (1.0 - py_constants.ep2) * es)
             derrdps: f64 = -qs * (dlnqsdT * dTdPis * dPisdps + dlnqsdps)
             dps: f64 = -err / derrdps
-            ps: f64 = ps + dps
+            ps = ps + dps
 
             if ps < f64(0.0):
-                qsinvert: f32 = psmin
+                qsinvert = psmin
                 iteration = 10
 
             elif abs(dps) <= dpsmax:
-                qsinvert: f32 = ps
+                qsinvert = ps
                 iteration = 10
 
             else:
-                qsinvert: f32 = psmin
+                qsinvert = psmin
 
             iteration += 1
 
@@ -552,10 +548,10 @@ def roots(
                 r1 = sqrt(-c / a)
             r2 = -r1
         else:  # Form a*x**2 + b*x + c = 0
-            if (b**2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
+            if (b ** 2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
                 status = 3
             else:
-                q = -0.5 * (b + sign(1.0, b) * sqrt(b**2 - 4.0 * a * c))
+                q = -0.5 * (b + sign(1.0, b) * sqrt(b ** 2 - 4.0 * a * c))
                 r1 = q / a
                 r2 = c / q
 

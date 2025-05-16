@@ -287,6 +287,7 @@ class Temporaries:
     tr0_temp: Quantity
     u0: Quantity
     v0: Quantity
+    cinlcl: Quantity
 
     @classmethod
     def make(cls, quantity_factory: QuantityFactory):
@@ -476,6 +477,7 @@ class Temporaries:
         ql0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         qi0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         th0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        cinlcl = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         # FloatFieldIJs
         cush_inout = quantity_factory.zeros([X_DIM, Y_DIM], units="n/a")
         dpi = quantity_factory.zeros([X_DIM, Y_DIM], units="n/a")
@@ -870,4 +872,5 @@ class Temporaries:
             tr0_temp,
             u0,
             v0,
+            cinlcl,
         )

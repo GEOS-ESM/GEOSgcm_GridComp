@@ -2,11 +2,9 @@
 
 from ndsl.dsl.typing import Float
 
-# Generic Global Constants
-TAUFRZ = 450.0
 
-# Define number of tracers in UW Shallow Convection
-NCNST = 23
+# Generic Global Constants
+TAUFRZ = Float(450.0)
 
 # Following taken from MathConstants.F90
 PI = Float(3.14159265358979323846)
@@ -16,7 +14,7 @@ rad_to_deg = 180 / PI
 # Following taken from PhysicalConstants.F90
 # Universal Constants
 CODATA_2018_CONSTANTS = True  # set for now, needs to be dynamic
-if CODATA_2018_CONSTANTS == True:
+if CODATA_2018_CONSTANTS:
     stfbol = Float(5.670374419e-8)  # W/(m^2 K^4)
     avogad = Float(6.02214076e26)  # 1/kmol
     runiv = Float(8314.462618)  # J/(Kmole K)

@@ -6,6 +6,3 @@
 - Version ported: v2.5.2 (as part of GEOS v11..5.2)
 
 - Last updated: 5/3/25
-
-
-
