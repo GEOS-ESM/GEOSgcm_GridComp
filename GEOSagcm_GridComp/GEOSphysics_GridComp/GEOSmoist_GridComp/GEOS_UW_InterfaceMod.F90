@@ -14,7 +14,10 @@ module GEOS_UW_InterfaceMod
   use MAPL
   use UWSHCU   ! using module that contains uwshcu code
   use GEOSmoist_Process_Library
+#ifdef RUN_PYUW
+  use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
   use compute_uwshcu_interface_mod
+#endif
 
   implicit none
 
@@ -80,6 +83,9 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     type(ESMF_Time)         :: ringTime
     type(ESMF_TimeInterval) :: ringInterval
     integer                 :: year, month, day, hh, mm, ss
+#ifdef RUN_PYUW
+    logical :: halting_mode(5)
+#endif
 
     call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, RC=STATUS );VERIFY_(STATUS)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
@@ -158,7 +164,12 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
 
 #ifdef RUN_PYUW
     if (run_pyuw == 1) then
+      print*, "*******CALLING compute_uwshcu_f_init************"
+      call ieee_get_halting_mode(ieee_all, halting_mode)
+      call ieee_set_halting_mode(ieee_all, .false.)
       call compute_uwshcu_f_init()
+      call ieee_set_halting_mode(ieee_all, halting_mode)
+      print*, "*******RETURNING from compute_uwshcu_f_init************"
     endif
 #endif
 
