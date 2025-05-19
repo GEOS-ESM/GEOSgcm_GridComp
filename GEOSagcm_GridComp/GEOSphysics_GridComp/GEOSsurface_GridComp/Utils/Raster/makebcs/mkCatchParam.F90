@@ -22,8 +22,7 @@ PROGRAM mkCatchParam
   use EASE_conv
   use rmTinyCatchParaMod 
   use process_hres_data
-
-  !   use module_irrig_params, ONLY : create_irrig_params
+  use module_irrig_params, ONLY : create_irrig_params
 
   implicit none
   
@@ -806,10 +805,17 @@ integer :: n_threads=1
           write (log_file,'(a)')' '
        endif
 
-       !      inquire(file='clsm/irrig.dat', exist=file_exists)
-       !      if (.not.file_exists) call create_irrig_params (nc,nr,fnameRst)
-       !      write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
-       
+       if(IRRIGBCS) then 
+          tmpstring = 'Step 15: Irrigation'
+          inquire(file='clsm/irrig.dat', exist=file_exists)
+          if (.not.file_exists) then 
+             write (log_file,'(a)') trim(tmpstring)
+             write (log_file,'(a)')'         Creating file...'
+             call create_irrig_params (nc,nr,fnameRst)
+             write (log_file,'(a)') '        Done computing irrigation model parameters........'
+          endif
+       endif
+
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
        write (log_file,'(a)')'============================================================'

@@ -671,6 +671,42 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'IRRG_RATE_SPR'                         ,&
+         LONG_NAME  = 'irrigation_flux_sprinkler'             ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  
+    
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'IRRG_RATE_DRP'                         ,&
+         LONG_NAME  = 'irrigation_flux_drip'	              ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  	 
+   
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'IRRG_RATE_FRW'                         ,&
+         LONG_NAME  = 'irrigation_flux_furrow'                 ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'IRRG_RATE_PDY'                         ,&
+         LONG_NAME  = 'irrigation_flux_paddy'                 ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
   !  EXPORT STATE:
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LST',      CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
@@ -789,6 +825,8 @@ subroutine SetServices ( GC, RC )
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PRLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_TOT' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
