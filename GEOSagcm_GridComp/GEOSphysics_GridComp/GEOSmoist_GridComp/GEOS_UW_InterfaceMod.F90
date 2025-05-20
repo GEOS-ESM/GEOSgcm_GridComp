@@ -34,7 +34,22 @@ module GEOS_UW_InterfaceMod
    integer :: run_pyuw = 0
 #endif
 
-  public :: UW_Setup, UW_Initialize, UW_Run
+  public :: UW_Setup, UW_Initialize, UW_Run, moist_flags_interface_type
+
+  ! Copied from interface.f90 for simplification
+  type, bind(c) :: moist_flags_interface_type
+      ! Grid information
+      integer(kind=c_int) :: npx
+      integer(kind=c_int) :: npy
+      integer(kind=c_int) :: npz
+      integer(kind=c_int) :: layout_x
+      integer(kind=c_int) :: layout_y
+      integer(kind=c_int) :: n_tiles
+      ! Aer Activation
+      integer(kind=c_int) :: n_modes
+      ! Magic number
+      integer(kind=c_int) :: make_flags_C_interop = 123456789
+   end type
    
 contains
 
@@ -85,6 +100,10 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     integer                 :: year, month, day, hh, mm, ss
 #ifdef RUN_PYUW
     logical :: halting_mode(5)
+    integer :: IM, JM, NX, NY
+    type(moist_flags_interface_type)      :: moist_flags
+    integer                               :: n_modes = 0
+    type(ESMF_State) :: INTERNAL
 #endif
 
     call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, RC=STATUS );VERIFY_(STATUS)
@@ -164,6 +183,18 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
 
 #ifdef RUN_PYUW
     if (run_pyuw == 1) then
+
+      call MAPL_Get(MAPL, IM=IM, JM=JM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, NX, 'NX:', default=0, RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, NY, 'NY:', default=0, RC=STATUS ); VERIFY_(STATUS)
+      print*,"NX, NY = ", NX, NY
+      moist_flags%npx = IM
+      moist_flags%npy = JM
+      moist_flags%npz = LM
+      moist_flags%layout_x = NX
+      moist_flags%layout_y = NY
+      moist_flags%n_tiles = 6
+      moist_flags%n_modes = 0
       print*, "*******CALLING compute_uwshcu_f_init************"
       call ieee_get_halting_mode(ieee_all, halting_mode)
       call ieee_set_halting_mode(ieee_all, .false.)

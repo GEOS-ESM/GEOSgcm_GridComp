@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from ndsl.dsl.typing import Float, Int
 
 from tcn.py_ftn_interface.templates.data_conversion import FortranPythonConversion
-from tcn.py_ftn_interface.UW_interface.UWSHCU_wrapper import UWSHCUwrapper
+from UWSHCU_wrapper import UWSHCUwrapper
 
 if TYPE_CHECKING:
     import cffi
@@ -28,7 +28,7 @@ class COMPUTE_UWSHCU:
 
         print("My code for compute_uwshcu_init goes here.")
         global UW_GLOBAL_WRAPPER
-        if not UW_GLOBAL_WRAPPER:
+        if UW_GLOBAL_WRAPPER is not None:
             raise RuntimeError("[UW_GLOBAL_WRAPPER] Double init")
         
         UW_GLOBAL_WRAPPER= UWSHCUwrapper()
