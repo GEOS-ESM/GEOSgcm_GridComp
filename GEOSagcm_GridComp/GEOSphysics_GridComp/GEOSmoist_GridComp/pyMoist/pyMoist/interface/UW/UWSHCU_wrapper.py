@@ -39,10 +39,14 @@ from ndsl.comm.mpi import MPIComm
 from pyFV3.tracers import Tracers
 
 from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv
+from pyMoist.UW.config import UWConfiguration
 class UWSHCUwrapper:
 
     def __init__(
         self,
+        ncnst: int,
+        k0: int,
+        windsrcavg: int,
     ):
         print("UWSHCUwrapper.__init__")
 
@@ -106,9 +110,11 @@ class UWSHCUwrapper:
             config=stencil_config, grid_indexing=self._grid_indexing
         )
 
+        UW_config = UWConfiguration(ncnst, k0, windsrcavg)
         self.compute_uwshcu = ComputeUwshcuInv(
             stencil_factory,
             quantity_factory,
+            UW_config,
         )
 
     def __call__(
@@ -134,14 +140,15 @@ class UWSHCUwrapper:
         rle: Float,
         cridist_opt: Int,
         mixscale: Float,
-        rkm: Float,
-        detrhgt: Float,
         rdrag: Float,
+        rkm: Float,
         use_self_detrain: Int,
+        detrhgt: Float,
         use_cumpenent: Int,
         rpen: Float,
         use_momenflx: Int,
         rdrop: Float,
+        iter_cin: Int,
         pifc0_inv: np.ndarray,
         zifc0_inv: np.ndarray,
         pmid0_inv: np.ndarray,
@@ -219,8 +226,6 @@ class UWSHCUwrapper:
             cnvtr=cnvtr,
             CNV_Tracers=CNV_Tracers,
             # Float/Int inputs
-            dotransport=dotransport,
-            ncnst=ncnst,
             k0=k0,
             windsrcavg=windsrcavg,
             qtsrchgt=qtsrchgt,
@@ -247,6 +252,7 @@ class UWSHCUwrapper:
             rpen=rpen,
             use_momenflx=use_momenflx,
             rdrop=rdrop,
+            iter_cin=iter_cin,
             # Outputs
             umf_inv=umf_inv,
             dcm_inv=dcm_inv,

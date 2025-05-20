@@ -10,7 +10,7 @@ typedef union {
 
 extern void compute_uwshcu_py_init(
     // inputs
-
+    int ncnst, int k0, int windsrcavg
     // inputs-outputs
 
     // outputs
@@ -19,12 +19,12 @@ extern void compute_uwshcu_py_init(
 
 extern void compute_uwshcu_py_run_compute_uwshcu(
     // inputs
-    int dotransport, int ncnst, int k0, int windsrcavg, float qtsrchgt,
-    float qtsrc_fac, float thlsrc_fac, float frc_rasn, float rbuoy,
-    float epsvarw, int use_CINcin, float mumin1, float rmaxfrac, float PGFc,
-    float dt, int niter_xc, float criqc, float rle, int cridist_opt,
-    float mixscale, float rkm, float detrhgt, float rdrag, int use_self_detrain,
-    int use_cumpenent, float rpen, int use_momenflx, float rdrop,
+    int dotransport, int k0, int windsrcavg, float qtsrchgt, float qtsrc_fac,
+    float thlsrc_fac, float frc_rasn, float rbuoy, float epsvarw,
+    int use_CINcin, float mumin1, float rmaxfrac, float PGFc, float dt,
+    int niter_xc, float criqc, float rle, int cridist_opt, float mixscale,
+    float rdrag, float rkm, int use_self_detrain, float detrhgt,
+    int use_cumpenent, float rpen, int use_momenflx, float rdrop, int iter_cin,
     const float *pifc0_inv, int *pifc0_inv_dim_sizes, int pifc0_inv_rank,
     const float *zifc0_inv, int *zifc0_inv_dim_sizes, int zifc0_inv_rank,
     const float *pmid0_inv, int *pmid0_inv_dim_sizes, int pmid0_inv_rank,

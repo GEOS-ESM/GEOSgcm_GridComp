@@ -5,13 +5,13 @@
 
 void compute_uwshcu_c_init(
     // inputs
-
+    int ncnst, int k0, int windsrcavg
     // inputs-outputs
 
     // outputs
 
 ) {
-  compute_uwshcu_py_init(
+  compute_uwshcu_py_init(ncnst, k0, windsrcavg
 
   );
 
@@ -23,12 +23,12 @@ void compute_uwshcu_c_init(
 
 void compute_uwshcu_c_run_compute_uwshcu(
     // inputs
-    int dotransport, int ncnst, int k0, int windsrcavg, float qtsrchgt,
-    float qtsrc_fac, float thlsrc_fac, float frc_rasn, float rbuoy,
-    float epsvarw, int use_CINcin, float mumin1, float rmaxfrac, float PGFc,
-    float dt, int niter_xc, float criqc, float rle, int cridist_opt,
-    float mixscale, float rkm, float detrhgt, float rdrag, int use_self_detrain,
-    int use_cumpenent, float rpen, int use_momenflx, float rdrop,
+    int dotransport, int k0, int windsrcavg, float qtsrchgt, float qtsrc_fac,
+    float thlsrc_fac, float frc_rasn, float rbuoy, float epsvarw,
+    int use_CINcin, float mumin1, float rmaxfrac, float PGFc, float dt,
+    int niter_xc, float criqc, float rle, int cridist_opt, float mixscale,
+    float rdrag, float rkm, int use_self_detrain, float detrhgt,
+    int use_cumpenent, float rpen, int use_momenflx, float rdrop, int iter_cin,
     const float *pifc0_inv, int *pifc0_inv_dim_sizes, int pifc0_inv_rank,
     const float *zifc0_inv, int *zifc0_inv_dim_sizes, int zifc0_inv_rank,
     const float *pmid0_inv, int *pmid0_inv_dim_sizes, int pmid0_inv_rank,
@@ -79,10 +79,10 @@ void compute_uwshcu_c_run_compute_uwshcu(
     int *tpert_out_dim_sizes, int tpert_out_rank, float *qpert_out,
     int *qpert_out_dim_sizes, int qpert_out_rank) {
   compute_uwshcu_py_run_compute_uwshcu(
-      dotransport, ncnst, k0, windsrcavg, qtsrchgt, qtsrc_fac, thlsrc_fac,
-      frc_rasn, rbuoy, epsvarw, use_CINcin, mumin1, rmaxfrac, PGFc, dt,
-      niter_xc, criqc, rle, cridist_opt, mixscale, rkm, detrhgt, rdrag,
-      use_self_detrain, use_cumpenent, rpen, use_momenflx, rdrop, pifc0_inv,
+      dotransport, k0, windsrcavg, qtsrchgt, qtsrc_fac, thlsrc_fac, frc_rasn,
+      rbuoy, epsvarw, use_CINcin, mumin1, rmaxfrac, PGFc, dt, niter_xc, criqc,
+      rle, cridist_opt, mixscale, rdrag, rkm, use_self_detrain, detrhgt,
+      use_cumpenent, rpen, use_momenflx, rdrop, iter_cin, pifc0_inv,
       pifc0_inv_dim_sizes, pifc0_inv_rank, zifc0_inv, zifc0_inv_dim_sizes,
       zifc0_inv_rank, pmid0_inv, pmid0_inv_dim_sizes, pmid0_inv_rank, zmid0_inv,
       zmid0_inv_dim_sizes, zmid0_inv_rank, kpbl_inv, kpbl_inv_dim_sizes,

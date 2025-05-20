@@ -20,6 +20,9 @@ class COMPUTE_UWSHCU:
     def init(
         self,
         # input
+        ncnst: int,
+        k0: int,
+        windsrcavg: int,
         # input-output
         # output
     ):
@@ -28,10 +31,10 @@ class COMPUTE_UWSHCU:
 
         print("My code for compute_uwshcu_init goes here.")
         global UW_GLOBAL_WRAPPER
-        if UW_GLOBAL_WRAPPER is not None:
+        if UW_GLOBAL_WRAPPER:
             raise RuntimeError("[UW_GLOBAL_WRAPPER] Double init")
         
-        UW_GLOBAL_WRAPPER= UWSHCUwrapper()
+        UW_GLOBAL_WRAPPER= UWSHCUwrapper(ncnst, k0, windsrcavg)
 
         # Note: Will need to add in potential offset for call to .python_to_fortran
 
@@ -39,7 +42,6 @@ class COMPUTE_UWSHCU:
         self,
         # input
         dotransport: int,
-        ncnst: int,
         k0: int,
         windsrcavg: int,
         qtsrchgt: float,
@@ -58,14 +60,15 @@ class COMPUTE_UWSHCU:
         rle: float,
         cridist_opt: int,
         mixscale: float,
-        rkm: float,
-        detrhgt: float,
         rdrag: float,
+        rkm: float,
         use_self_detrain: int,
+        detrhgt: float,
         use_cumpenent: int,
         rpen: float,
         use_momenflx: int,
         rdrop: float,
+        iter_cin: int,
         pifc0_inv: "cffi.FFI.CData",
         pifc0_inv_dim_sizes: "cffi.FFI.CData",
         pifc0_inv_rank: int,
@@ -362,7 +365,6 @@ class COMPUTE_UWSHCU:
         print("My code for compute_uwshcu_run_compute_uwshcu goes here.")
         UW_GLOBAL_WRAPPER(
             dotransport=Int(dotransport),
-            ncnst=Int(ncnst),
             k0=Int(k0),
             windsrcavg=Int(windsrcavg),
             qtsrchgt=Float(qtsrchgt),
@@ -381,14 +383,15 @@ class COMPUTE_UWSHCU:
             rle=Float(rle),
             cridist_opt=Int(cridist_opt),
             mixscale=Float(mixscale),
-            rkm=Float(rkm),
-            detrhgt=Float(detrhgt),
             rdrag=Float(rdrag),
+            rkm=Float(rkm),
             use_self_detrain=Int(use_self_detrain),
+            detrhgt=Float(detrhgt),
             use_cumpenent=Int(use_cumpenent),
             rpen=Float(rpen),
             use_momenflx=Int(use_momenflx),
             rdrop=Float(rdrop),
+            iter_cin=Int(iter_cin),
             pifc0_inv=python_state_data["pifc0_inv"],
             zifc0_inv=python_state_data["zifc0_inv"],
             pmid0_inv=python_state_data["pmid0_inv"],

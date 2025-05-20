@@ -17,18 +17,26 @@ module compute_uwshcu_interface_mod
 
       subroutine compute_uwshcu_f_init( &
          !inputs
+         ncnst, &
+         k0, &
+         windsrcavg &
          !inouts
          !outputs
          ) bind(c, name='compute_uwshcu_c_init')
          import c_int, c_float, c_double
          implicit none
 
+         integer(kind=c_int), value, intent(in) :: ncnst
+
+         integer(kind=c_int), value, intent(in) :: k0
+
+         integer(kind=c_int), value, intent(in) :: windsrcavg
+
       end subroutine compute_uwshcu_f_init
 
       subroutine compute_uwshcu_f_run_compute_uwshcu( &
          !inputs
          dotransport, &
-         ncnst, &
          k0, &
          windsrcavg, &
          qtsrchgt, &
@@ -47,14 +55,15 @@ module compute_uwshcu_interface_mod
          rle, &
          cridist_opt, &
          mixscale, &
-         rkm, &
-         detrhgt, &
          rdrag, &
+         rkm, &
          use_self_detrain, &
+         detrhgt, &
          use_cumpenent, &
          rpen, &
          use_momenflx, &
          rdrop, &
+         iter_cin, &
          pifc0_inv, pifc0_inv_dim_sizes, pifc0_inv_rank, &
          zifc0_inv, zifc0_inv_dim_sizes, zifc0_inv_rank, &
          pmid0_inv, pmid0_inv_dim_sizes, pmid0_inv_rank, &
@@ -110,8 +119,6 @@ module compute_uwshcu_interface_mod
 
          integer(kind=c_int), value, intent(in) :: dotransport
 
-         integer(kind=c_int), value, intent(in) :: ncnst
-
          integer(kind=c_int), value, intent(in) :: k0
 
          integer(kind=c_int), value, intent(in) :: windsrcavg
@@ -148,13 +155,13 @@ module compute_uwshcu_interface_mod
 
          real(kind=c_float), value, intent(in) :: mixscale
 
-         real(kind=c_float), value, intent(in) :: rkm
-
-         real(kind=c_float), value, intent(in) :: detrhgt
-
          real(kind=c_float), value, intent(in) :: rdrag
 
+         real(kind=c_float), value, intent(in) :: rkm
+
          integer(kind=c_int), value, intent(in) :: use_self_detrain
+
+         real(kind=c_float), value, intent(in) :: detrhgt
 
          integer(kind=c_int), value, intent(in) :: use_cumpenent
 
@@ -163,6 +170,8 @@ module compute_uwshcu_interface_mod
          integer(kind=c_int), value, intent(in) :: use_momenflx
 
          real(kind=c_float), value, intent(in) :: rdrop
+
+         integer(kind=c_int), value, intent(in) :: iter_cin
 
          real(kind=c_float), dimension(*), intent(in) :: pifc0_inv
          integer(kind=c_int), dimension(*), intent(in) :: pifc0_inv_dim_sizes

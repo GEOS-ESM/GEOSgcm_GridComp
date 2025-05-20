@@ -26,6 +26,9 @@ from compute_uwshcu_hook import compute_uwshcu
 @ffi.def_extern()
 def compute_uwshcu_py_init(
       # inputs
+      ncnst:int,
+      k0:int,
+      windsrcavg:int,
       
       # inputs-outputs
       
@@ -38,6 +41,9 @@ def compute_uwshcu_py_init(
 
     compute_uwshcu.init(
         
+      ncnst=ncnst,
+      k0=k0,
+      windsrcavg=windsrcavg,
       
       
       
@@ -47,7 +53,6 @@ def compute_uwshcu_py_init(
 def compute_uwshcu_py_run_compute_uwshcu(
       # inputs
       dotransport:int,
-      ncnst:int,
       k0:int,
       windsrcavg:int,
       qtsrchgt:float,
@@ -66,14 +71,15 @@ def compute_uwshcu_py_run_compute_uwshcu(
       rle:float,
       cridist_opt:int,
       mixscale:float,
-      rkm:float,
-      detrhgt:float,
       rdrag:float,
+      rkm:float,
       use_self_detrain:int,
+      detrhgt:float,
       use_cumpenent:int,
       rpen:float,
       use_momenflx:int,
       rdrop:float,
+      iter_cin:int,
       pifc0_inv:'cffi.FFI.CData',
       pifc0_inv_dim_sizes:'cffi.FFI.CData',
       pifc0_inv_rank:int,
@@ -228,7 +234,6 @@ def compute_uwshcu_py_run_compute_uwshcu(
     compute_uwshcu.run_compute_uwshcu(
         
       dotransport=dotransport,
-      ncnst=ncnst,
       k0=k0,
       windsrcavg=windsrcavg,
       qtsrchgt=qtsrchgt,
@@ -247,14 +252,15 @@ def compute_uwshcu_py_run_compute_uwshcu(
       rle=rle,
       cridist_opt=cridist_opt,
       mixscale=mixscale,
-      rkm=rkm,
-      detrhgt=detrhgt,
       rdrag=rdrag,
+      rkm=rkm,
       use_self_detrain=use_self_detrain,
+      detrhgt=detrhgt,
       use_cumpenent=use_cumpenent,
       rpen=rpen,
       use_momenflx=use_momenflx,
       rdrop=rdrop,
+      iter_cin=iter_cin,
       pifc0_inv=pifc0_inv,
       pifc0_inv_dim_sizes=pifc0_inv_dim_sizes,
       pifc0_inv_rank=pifc0_inv_rank,
