@@ -1,38 +1,38 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
+from ndsl.dsl.gt4py import (
     PARALLEL,
     computation,
     exp,
     interval,
     sqrt,
+    GlobalTable,
+    function,
 )
-
 import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
-from pyMoist.field_types import FloatField_VaporSaturationTable
 from pyMoist.saturation_tables.qsat_functions import (
-    QSat_Float,
-    qsat_ice_table_lookup,
-    qsat_liquid_table_lookup,
+    saturation_specific_humidity,
+    saturation_specific_humidity_frozen_surface,
+    saturation_specific_humidity_liquid_surface,
 )
 from pyMoist.shared_incloud_processes import ice_fraction
+from pyMoist.field_types import GlobalTable_saturaion_tables
+from gt4py.cartesian.gtscript import f64
 
 
-@gtscript.function
+@function
 def pdffrac(
     pdfshape: Int,
     qtmean: Float,
     sigmaqt1: Float,
     sigmaqt2: Float,
     qstar: Float,
-    clfrac: Float,
 ):
     if pdfshape == 1:
         if (qtmean + sigmaqt1) < qstar:
             clfrac = 0.0
         else:
             if sigmaqt1 > 0.0:
-                clfrac = min((qtmean + sigmaqt1 - qstar), 2.0 * sigmaqt1) / (
+                clfrac = min(qtmean + sigmaqt1 - qstar, 2.0 * sigmaqt1) / (
                     2.0 * sigmaqt1
                 )
             else:
@@ -43,132 +43,143 @@ def pdffrac(
     return clfrac
 
 
-@gtscript.function
+@function
 def pdfcondensate(
     pdfshape: Int,
     qtmean: Float,
     sigmaqt1: Float,
     sigmaqt2: Float,
     qstar: Float,
-    condensate: Float,
 ):
+    qtmean_64: f64 = qtmean
+    sigmaqt1_64: f64 = sigmaqt1
+    sigmaqt2_64: f64 = sigmaqt2
+    qstar_64: f64 = qstar
+
     if pdfshape == 1:
-        if (qtmean + sigmaqt1) < qstar:
-            condensate = 0.0
-        elif qstar > (qtmean - sigmaqt1):
-            if sigmaqt1 > 0.0:
-                condensate = (min(qtmean + sigmaqt1 - qstar, 2.0 * sigmaqt1) ** 2) / (
-                    4.0 * sigmaqt1
-                )
+        if (qtmean_64 + sigmaqt1_64) < qstar_64:
+            condensate: f64 = 0.0
+        elif qstar_64 > (qtmean_64 - sigmaqt1_64):
+            if sigmaqt1_64 > 0.0:
+                condensate: f64 = (
+                    min(qtmean_64 + sigmaqt1_64 - qstar_64, 2.0 * sigmaqt1_64) ** 2
+                ) / (4.0 * sigmaqt1_64)
             else:
-                condensate = qtmean - qstar
+                condensate: f64 = qtmean_64 - qstar_64
         else:
-            condensate = qtmean - qstar
+            condensate: f64 = qtmean_64 - qstar_64
 
     # Above code only executes when pdfshape = 1. Fortran code exists for pdfshape = 2
 
     return condensate
 
 
-@gtscript.function
+@function
 def bergeron_partition(
-    DTIME: Float,
-    PL: Float,
-    TE: Float,
-    Q: Float,
-    QILS: Float,
-    QICN: Float,
-    QLLS: Float,
-    QLCN: Float,
-    NI: Float,
-    DQALL: Float,
-    CNV_FRC: Float,
-    SRF_TYPE: Float,
-    ese: FloatField_VaporSaturationTable,
-    esw: FloatField_VaporSaturationTable,
-    estfrz: Float,
-    estlqu: Float,
-    count: Float,
+    DT_MOIST: Float,
+    p_mb: Float,
+    t: Float,
+    q: Float,
+    qils: Float,
+    qicn: Float,
+    qlls: Float,
+    qlcn: Float,
+    ni: Float,
+    dq_all: Float,
+    cnv_frc: Float,
+    srf_type: Float,
+    ese: GlobalTable_saturaion_tables,
+    esw: GlobalTable_saturaion_tables,
+    frz: Float,
+    lqu: Float,
 ):
-    QI = QILS + QICN  # neccesary because NI is for convective and large scale
-    QL = QLLS + QLCN
-    QTOT = QI + QLLS
-    if QTOT > 0.0:
-        FQA = (QICN + QILS) / QTOT
+    qi = qils + qicn  # neccesary because NI is for convective and large scale
+    ql = qlls + qlcn
+    qtot = qi + ql
+    if qtot > 0.0:
+        f_qa = (qicn + qils) / qtot
     else:
-        FQA = 0.0
-    NIX = (1.0 - FQA) * NI
+        f_qa = 0.0
+    ni_x = (1.0 - f_qa) * ni
 
-    DQALL = DQALL / DTIME
-    TC = TE - constants.MAPL_TICE
+    dq_all = dq_all / DT_MOIST
+    t_c = t - constants.MAPL_TICE
 
     # Completelely glaciated cloud:
-    if TE >= constants.iT_ICE_MAX:  # liquid cloud
-        fQI = 0.0
-    elif TE <= constants.iT_ICE_ALL:  # ice cloud
-        fQI = 1.0
+    if t >= constants.iT_ICE_MAX:  # liquid cloud
+        f_qi = 0.0
+    elif t <= constants.iT_ICE_ALL:  # ice cloud
+        f_qi = 1.0
     else:  # mixed phase cloud
-        fQI = 0.0
-        if QILS <= 0.0:
-            fQI = ice_fraction(TE, CNV_FRC, SRF_TYPE)
+        f_qi = 0.0
+        if qils <= 0.0:
+            f_qi = ice_fraction(t, cnv_frc, srf_type)
         else:
-            QVINC = Q
-            QSLIQ, _ = qsat_liquid_table_lookup(esw, estlqu, TE, PL * 100.0)
-            QSICE, DQSI = qsat_ice_table_lookup(
-                ese, estfrz, TE, PL * 100.0, compute_dq=True
+            qv_inc = q
+            qs_liq, _ = saturation_specific_humidity_liquid_surface(
+                esw, lqu, t, p_mb * 100.0, True, False
             )
-            QVINC = min(QVINC, QSLIQ)  # limit to below water saturation
+            qs_ice, dq_si = saturation_specific_humidity_frozen_surface(
+                ese, frz, t, p_mb * 100.0, True, True
+            )
+            qv_inc = min(qv_inc, qs_liq)  # limit to below water saturation
+
             # Calculate deposition onto preexisting ice
 
-            DIFF = (
-                (0.211 * 1013.25 / (PL + 0.1))
-                * (((TE + 0.1) / constants.MAPL_TICE) ** 1.94)
+            diff = (
+                (0.211 * 1013.25 / (p_mb + 0.1))
+                * (((t + 0.1) / constants.MAPL_TICE) ** 1.94)
                 * 1e-4
             )  # From Seinfeld and Pandis 2006
-            DENAIR = PL * 100.0 / constants.MAPL_RDRY / TE
-            DENICE = 1000.0 * (0.9167 - 1.75e-4 * TC - 5.0e-7 * TC * TC)  # From PK 97
-            LHcorr = 1.0 + DQSI * constants.MAPL_LATENT_HEAT_SUBLIMATION / (
-                constants.MAPL_RDRY / constants.MAPL_KAPPA
+            den_air = p_mb * 100.0 / constants.MAPL_RDRY / t
+            den_ice = 1000.0 * (
+                0.9167 - 1.75e-4 * t_c - 5.0e-7 * t_c * t_c
+            )  # From PK 97
+            # lh_corr = 1.0 + dq_si * constants.MAPL_LATENT_HEAT_SUBLIMATION / (
+            #     constants.MAPL_RDRY / constants.MAPL_KAPPA
+            # )  # must be ice deposition
+            lh_corr = (
+                1.0 + dq_si * constants.MAPL_ALHS / constants.MAPL_CP
             )  # must be ice deposition
 
-            if NIX > 1.0 and QILS > 1.0e-10:
-                DC = max(
-                    (QILS / (NIX * DENICE * constants.MAPL_PI)) ** 0.333, 20.0e-6
+            if ni_x > 1.0 and qils > 1.0e-10:
+                dc = max(
+                    (qils / (ni_x * den_ice * constants.MAPL_PI)) ** 0.333, 20.0e-6
                 )  # Assumme monodisperse size dsitribution
             else:
-                DC = 20.0e-6
+                dc = 20.0e-6
 
-            TEFF = (
-                NIX * DENAIR * 2.0 * constants.MAPL_PI * DIFF * DC / LHcorr
+            teff = (
+                ni_x * den_air * 2.0 * constants.MAPL_PI * diff * dc / lh_corr
             )  # 1/Dep time scale
 
-            DEP = 0.0
-            if TEFF > 0.0 and QILS > 1.0e-14:
-                AUX = max(min(DTIME * TEFF, 20.0), 0.0)
-                DEP = (QVINC - QSICE) * (1.0 - exp(-AUX)) / DTIME
-            DEP = max(DEP, -QILS / DTIME)  # only existing ice can be sublimated
+            dep = 0.0
+            if teff > 0.0 and qils > 1.0e-14:
+                aux = max(min(DT_MOIST * teff, 20.0), 0.0)
+                dep = (qv_inc - qs_ice) * (1.0 - exp(-aux)) / DT_MOIST
+            dep = max(dep, -qils / DT_MOIST)  # only existing ice can be sublimated
 
-            DQI = 0.0
-            DQL = 0.0
-            fQI = 0.0
+            dqi = 0.0
+            dql = 0.0
+            f_qi = 0.0
             # Partition DQALL accounting for Bergeron-Findensen process
-            if DQALL >= 0:  # net condensation. Note: do not allow bergeron with QLCN
-                if DEP > 0.0:
-                    DQI = min(DEP, DQALL + QLLS / DTIME)
-                    DQL = DQALL - DQI
+            if dq_all >= 0:  # net condensation. Note: do not allow bergeron with QLCN
+                if dep > 0.0:
+                    dqi = min(dep, dq_all + qlls / DT_MOIST)
+                    dql = dq_all - dqi
                 else:
-                    DQL = DQALL  # could happen because the PDF allows
+                    dql = dq_all  # could happen because the PDF allows
                     # condensation in subsaturated conditions
-                    DQI = 0.0
+                    dqi = 0.0
             if (
-                DQALL < 0.0
+                dq_all < 0.0
             ):  # net evaporation. Water evaporates first regaardless of DEP
-                DQL = max(DQALL, -QLLS / DTIME)
-                DQI = max(DQALL - DQL, -QILS / DTIME)
-            if DQALL != 0.0:
-                fQI = max(min(DQI / DQALL, 1.0), 0.0)
+                dql = max(dq_all, -qlls / DT_MOIST)
+                dqi = max(dq_all - dql, -qils / DT_MOIST)
+            if dq_all != 0.0:
+                f_qi = max(min(dqi / dq_all, 1.0), 0.0)
 
-    return fQI, DQALL
+    return f_qi, dq_all
 
 
 def hydrostatic_pdf(
@@ -186,13 +197,13 @@ def hydrostatic_pdf(
     clcn: FloatField,
     nacti: FloatField,
     rhx: FloatField,
-    ese: FloatField_VaporSaturationTable,
-    esw: FloatField_VaporSaturationTable,
-    esx: FloatField_VaporSaturationTable,
+    ese: GlobalTable_saturaion_tables,
+    esw: GlobalTable_saturaion_tables,
+    esx: GlobalTable_saturaion_tables,
     estfrz: Float,
     estlqu: Float,
 ):
-    from __externals__ import DT_MOIST, PDF_SHAPE, USE_BERGERON
+    from __externals__ import DT_MOIST, PDF_SHAPE, USE_BERGERON, FLOAT_TINY
 
     # Reference Fortran: Process_Library.F90: subroutine hystpdf
     # with PDFSHAPE = 1, USE_BERGERON = True, and SC_ICE = False
@@ -201,9 +212,7 @@ def hydrostatic_pdf(
             inv_clcn = 1.0 / (1.0 - clcn)
         else:
             inv_clcn = 0.0
-        if (
-            clcn > 0.0
-        ):  # need to make sure this is equivilant to fortran CLCN > tiny(0.0)
+        if clcn > FLOAT_TINY:
             qa_x = (qlcn + qicn) / clcn
         else:
             qa_x = 0.0
@@ -211,7 +220,7 @@ def hydrostatic_pdf(
         qc_n = (qlls + qils) * inv_clcn
         qc_i = qils * inv_clcn
         t_n = t
-        qs_x, _ = QSat_Float(ese, esx, t, p_mb)
+        qs_x, _ = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
         qv_n = (q - qs_x * clcn) * inv_clcn
 
         qt = qc_n + qv_n  # Total LS water after microphysics
@@ -222,7 +231,9 @@ def hydrostatic_pdf(
             qc_p = qc_n
             cf_p = cf_n
             t_p = t_n
-            qs_n, dqs = QSat_Float(ese, esx, t_n, p_mb, DQSAT_trigger=True)
+            qs_n, dqs = saturation_specific_humidity(
+                t=t_n, p=p_mb * 100, ese=ese, esx=esx
+            )
 
             if PDF_SHAPE < 3:  # 1 = top-hat 2 = triangulat
                 sigmaqt1 = alpha * qs_n
@@ -231,8 +242,8 @@ def hydrostatic_pdf(
                 sigmaqt1 = max(alpha / sqrt(3.0), 0.001)
 
             if PDF_SHAPE < 5:
-                cf_n = pdffrac(PDF_SHAPE, qt, sigmaqt1, sigmaqt2, qs_n, cf_n)
-                qc_n = pdfcondensate(PDF_SHAPE, qt, sigmaqt1, sigmaqt2, qs_n, qc_n)
+                cf_n = pdffrac(PDF_SHAPE, qt, sigmaqt1, sigmaqt2, qs_n)
+                qc_n = pdfcondensate(PDF_SHAPE, qt, sigmaqt1, sigmaqt2, qs_n)
 
             if USE_BERGERON:
                 dq_all = qc_n - qc_p
@@ -257,14 +268,13 @@ def hydrostatic_pdf(
                     esw,
                     estfrz,
                     estlqu,
-                    count,
                 )
             else:
                 f_qi = ice_fraction(t_n, cnv_frc, srf_type)
 
-            latent_heat_factor = (1.0 - f_qi) * (
-                constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP
-            ) + f_qi * (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP)
+            latent_heat_factor = (
+                1.0 - f_qi
+            ) * constants.ALHLBCP + f_qi * constants.ALHSBCP
             if PDF_SHAPE == 1:
                 qc_n = qc_p + (qc_n - qc_p) / (
                     1.0
@@ -296,6 +306,7 @@ def hydrostatic_pdf(
             # the following conditional to occasionsally trigger incorrectly,
             # leading to occasional errors in various fields at the end of the
             # PDF stencil.
+            pdf_iters = count
             if abs(t_n - t_p) < 0.00001:
                 count = 21  # break out of loop
             else:
@@ -319,13 +330,13 @@ def hydrostatic_pdf(
         # Now take {\em New} condensate and partition into ice and liquid
 
         # large scale
-        qc_xCx = qc_n - (qlls + qils)
-        if qc_xCx < 0.0:  # net evaporation
-            d_qlls = max(qc_xCx, -qlls)  # Water evaporates first
-            d_qils = max(qc_xCx - d_qlls, -qils)  # Then sublimation
+        qc_x = qc_n - (qlls + qils)
+        if qc_x < 0.0:  # net evaporation
+            d_qlls = max(qc_x, -qlls)  # Water evaporates first
+            d_qils = max(qc_x - d_qlls, -qils)  # Then sublimation
         else:
-            d_qlls = (1.0 - f_qi) * qc_xCx
-            d_qils = f_qi * qc_xCx
+            d_qlls = (1.0 - f_qi) * qc_x
+            d_qils = f_qi * qc_x
 
         # convective
         qa_x = qa_o - (qlcn + qicn)
@@ -377,5 +388,5 @@ def hydrostatic_pdf(
             qlcn = 0.0
             clcn = 0.0
 
-        denom, _ = QSat_Float(ese, esx, t, p_mb)
+        denom, _ = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
         rhx = q / denom

@@ -6,7 +6,7 @@ from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.saturation_tables.formulation import SaturationFormulation
-from pyMoist.saturation_tables.qsat_functions import QSat
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared_incloud_processes import fix_up_clouds
 from pyMoist.GFDL_1M.PhaseChange.config import PhaseChangeConfiguration
 from pyMoist.GFDL_1M.PhaseChange.rh_calculations import rh_calculations
@@ -17,6 +17,7 @@ from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.GFDL_1M.PhaseChange.outputs import Outputs
 from pyMoist.GFDL_1M.PhaseChange.masks import Masks
 from pyMoist.GFDL_1M.PhaseChange.temporaries import Temporaries
+from pyMoist.constants import FLOAT_TINY
 
 
 class PhaseChange:
@@ -62,9 +63,8 @@ class PhaseChange:
         # -----------------------------------------------------------------------
         # Initalize QSat tables
         # -----------------------------------------------------------------------
-        self.qsat = QSat(
-            self.stencil_factory,
-            self.quantity_factory,
+        self.tables = SaturationVaporPressureTable(
+            self.stencil_factory.backend,
             formulation=formulation,
         )
 
@@ -90,6 +90,7 @@ class PhaseChange:
                 "DT_MOIST": phase_change_config.DT_MOIST,
                 "PDF_SHAPE": phase_change_config.PDF_SHAPE,
                 "USE_BERGERON": phase_change_config.USE_BERGERON,
+                "FLOAT_TINY": FLOAT_TINY,
             },
         )
 
@@ -143,37 +144,36 @@ class PhaseChange:
         nacti: FloatField,
         qst: FloatField,
     ):
-
         self._rh_calculations(
-            estimated_inversion_strength,
-            self.temporaries.minrhcrit,
-            p_mb,
-            p_interface_mb,
-            area,
-            self.temporaries.alpha,
-            klcl,
+            eis=estimated_inversion_strength,
+            minrhcrit=self.temporaries.minrhcrit,
+            p_mb=p_mb,
+            p_interface_mb=p_interface_mb,
+            area=area,
+            alpha=self.temporaries.alpha,
+            klcl=klcl,
         )
 
         self._hydrostatic_pdf(
-            self.temporaries.alpha,
-            cnv_frc,
-            srf_type,
-            p_mb,
-            q,
-            qlls,
-            qlcn,
-            qils,
-            qicn,
-            t,
-            clls,
-            clcn,
-            nacti,
-            self.outputs.rhx,
-            self.qsat.ese,
-            self.qsat.esw,
-            self.qsat.esx,
-            self.qsat.esw.view[0][12316],
-            self.qsat.esw.view[0][8316],
+            alpha=self.temporaries.alpha,
+            cnv_frc=cnv_frc,
+            srf_type=srf_type,
+            p_mb=p_mb,
+            q=q,
+            qlls=qlls,
+            qlcn=qlcn,
+            qils=qils,
+            qicn=qicn,
+            t=t,
+            clls=clls,
+            clcn=clcn,
+            nacti=nacti,
+            rhx=self.outputs.rhx,
+            ese=self.tables.ese,
+            esw=self.tables.esw,
+            esx=self.tables.esx,
+            estfrz=self.tables.frz,
+            estlqu=self.tables.lqu,
         )
 
         if self.phase_change_config.DO_MELT_FREEZE:

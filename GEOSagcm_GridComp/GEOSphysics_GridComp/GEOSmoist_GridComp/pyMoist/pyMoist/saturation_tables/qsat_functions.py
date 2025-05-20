@@ -1,9 +1,8 @@
 import copy
 from typing import Optional
 
-import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import i32
-from ndsl.dsl.gt4py import PARALLEL, computation, floor, interval
+from ndsl.dsl.gt4py import PARALLEL, computation, floor, interval, GlobalTable, function
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -22,37 +21,33 @@ from pyMoist.saturation_tables.constants import (
 )
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.main import get_table
+from pyMoist.field_types import GlobalTable_saturaion_tables
 
 
-# FloatField with extra dimension initialized to handle table data
-# This is a temporary solution. This solution creates a KxTABLESIZE array
-# At some point a proper solution will be implemented, enabling a 1xTABLESIZE array
-# Allocation is currently fixed to TABLESIZE constant. Fortran has some examples of
-# flexible table sixes (larger than TABLESIZE, with increased granulatiry).
-# Current implementation does not allow for flexible table sizes
-# so if needed this will have to be implemented in another way.
-# DEV NOTE: we have to "type ignore" the indexation due to a misread of mypy
-GlobalTable_saturaion_tables = gtscript.GlobalTable[(Float, (int(TABLESIZE)))]
-
-
-# The following two functions, QSat_Float_Ice and QSat_Float_Liquid are,
-# together, a non-equivalent replacement for QSat_Float.
-# QSat_Float interpolates a smooth transition between liquid water and ice
-# (based on the parameter TMIX), while the Liquic/Ice versions have a
-# hard transition at zero C.
-
-
-@gtscript.function
-def qsat_ice_table_lookup(
+@function
+def saturation_specific_humidity_frozen_surface(
     ese: GlobalTable_saturaion_tables,  # type: ignore
     frz: Float,
     t: Float,
     p: Float,
-    use_p: bool,
+    pressure_correction: bool,
     compute_dq: bool,
 ):
     """
-    Qsat ice function using table lookup
+    Computes saturation specific humitidy over liquid water surface, using
+    data from saturation pressure tables.
+
+    Arguments:
+        ese (in): saturation pressure table in Pascals, specifics unknown
+        frz (in): saturation pressure at reference temperature (273.16 K)
+        t (in): temperature in Kelvin
+        p (in): pressure in Pascals
+        pressure_correction (in): trigger for pressure correction
+        compute_dq (in): trigger for computing derivative saturation specific humidity
+
+    Returns:
+        qsat (out): saturation specific humidity
+        dqsat (out): derivative saturation specific humidity with respect to temperature
     """
     dq = 0.0
     if t <= TMINTBL:
@@ -64,12 +59,12 @@ def qsat_ice_table_lookup(
         if compute_dq:
             ddq = 0.0
     else:
-        new_t = (t - TMINTBL) * DEGSUBS + 1
-        new_t_integer = int(floor(new_t))
-        ddq = ese.A[new_t_integer] - ese.A[new_t_integer - 1]  # type: ignore
-        qs = (new_t - new_t_integer) * ddq + ese.A[new_t_integer - 1]  # type: ignore
+        t = (t - TMINTBL) * DEGSUBS + 1
+        t_integer = int(floor(t))
+        ddq = ese.A[t_integer] - ese.A[t_integer - 1]  # type: ignore
+        qs = (t - t_integer) * ddq + ese.A[t_integer - 1]  # type: ignore
 
-    if use_p == True:
+    if pressure_correction == True:
         if p > qs:
             dd = ESFAC / (p - (1.0 - ESFAC) * qs)
             qs = qs * dd
@@ -86,111 +81,125 @@ def qsat_ice_table_lookup(
     return qs, dq
 
 
-@gtscript.function
-def qsat_liquid_table_lookup(
+@function
+def saturation_specific_humidity_liquid_surface(
     esw: GlobalTable_saturaion_tables,  # type: ignore
-    estlqu: Float,
+    lqu: Float,
     t: Float,
     p: Float,
-    use_p: bool,
-    compute_dq: bool,
+    pressure_correction: bool = False,
+    compute_dq: bool = False,
 ):
     """
-    Qsat liquid function using table lookup
+    Computes saturation specific humitidy over liquid water surface, using
+    data from saturation pressure tables.
+
+    Arguments:
+        esw (in): saturation pressure table in Pascals, specifics unknown
+        lqu (in): saturation pressure at reference temperature (233.16 K)
+        t (in): temperature in Kelvin
+        p (in): pressure in Pascals
+        pressure_correction (in): trigger for pressure correction
+        compute_dq (in): trigger for computing derivative saturation specific humidity
+
+    Returns:
+        qsat (out): saturation specific humidity
+        dqsat (out): derivative saturation specific humidity with respect to temperature
     """
-    dq = 0.0
+    dqsat = 0.0
     if t <= TMINLQU:
-        qs = estlqu
+        qsat = lqu
         if compute_dq == True:
             ddq = 0.0
     elif t >= TMAXTBL:
         TABLESIZE_MINUS_1: i32 = TABLESIZE - 1
-        qs = esw.A[TABLESIZE_MINUS_1]  # type: ignore
+        qsat = esw.A[TABLESIZE_MINUS_1]  # type: ignore
         if compute_dq == True:
             ddq = 0.0
     else:
-        new_t = (t - TMINTBL) * DEGSUBS + 1
-        new_t_integer = int(floor(new_t))
-        ddq = esw.A[new_t_integer] - esw.A[new_t_integer - 1]  # type: ignore
-        qs = (new_t - new_t_integer) * ddq + esw.A[new_t_integer - 1]  # type: ignore
+        t = (t - TMINTBL) * DEGSUBS + 1
+        t_integer = int(floor(t))
+        ddq = esw.A[t_integer] - esw.A[t_integer - 1]  # type: ignore
+        qsat = (t - t_integer) * ddq + esw.A[t_integer - 1]  # type: ignore
 
-    if use_p == True:
-        if p > qs:
-            dd = ESFAC / (p - (1.0 - ESFAC) * qs)
-            qs = qs * dd
+    if pressure_correction == True:
+        if p > qsat:
+            dd = ESFAC / (p - (1.0 - ESFAC) * qsat)
+            qsat = qsat * dd
             if compute_dq == True:
-                dq = ddq * ERFAC * p * dd * dd
+                dqsat = ddq * ERFAC * p * dd * dd
         else:
-            qs = MAX_MIXING_RATIO
+            qsat = MAX_MIXING_RATIO
             if compute_dq == True:
-                dq = 0.0
+                dqsat = 0.0
     else:
-        if compute_dq:
-            dq = ddq
+        if compute_dq == True:
+            dqsat = ddq
 
-    return qs, dq
+    return qsat, dqsat
 
 
-# Function version of QSat_table
-@gtscript.function
-def QSat_Float(
+# Function version of GEOS_Qsat
+@function
+def saturation_specific_humidity(
+    t: Float,
+    p: Float,
     ese: GlobalTable_saturaion_tables,  # type: ignore
     esx: GlobalTable_saturaion_tables,  # type: ignore
-    T: Float,
-    PL: Float,
-    RAMP: Float = -999.0,
-    PASCALS_trigger: bool = False,
-    RAMP_trigger: bool = False,
-    DQSAT_trigger: bool = False,
+    use_ramp: bool = False,
+    ramp: Float = -999.0,
 ):
-    if RAMP_trigger:
-        URAMP = -abs(RAMP)
+    """
+    Compute saturation specific humidity and derivative saturation specific humidity
+    with respect to temperature from saturation pressure tables.
+
+    Tables must be initalized before use.
+
+    Arguments:
+        t (in): temperature in Kelvin
+        p (in): pressure in Pascals
+        ese (in): saturation pressure table in Pascals, specifics unknown
+        esx (in): saturation presure table in Pascals, specifics unknown
+        use_ramp (in): trigger for "ramp" option. details unknown
+        ramp (in): parameter used for "ramp" option. details unknown
+
+    Returns:
+        qsat (out): saturation specific humidity
+        dqsat (out): derivative saturation specific humidity with respect to temperature
+    """
+    if use_ramp == True:
+        uramp = -abs(ramp)
     else:
-        URAMP = TMIX
+        uramp = TMIX
 
-    if PASCALS_trigger:
-        PP = PL
+    if t <= TMINTBL:
+        t = TMINTBL
+    elif t >= TMAXTBL - 0.001:
+        t = TMAXTBL - 0.001
+
+    t = (t - TMINTBL) * DEGSUBS + 1
+    t_integer = i32(floor(t))
+    IT_MINUS_1 = t_integer - 1
+
+    if uramp == TMIX:
+        dq = esx.A[t_integer] - esx.A[IT_MINUS_1]  # type: ignore
+        qsat = (t - t_integer) * dq + esx.A[IT_MINUS_1]  # type: ignore
     else:
-        PP = PL * 100.0
+        dq = ese.A[t_integer] - ese.A[IT_MINUS_1]  # type: ignore
+        qsat = (t - t_integer) * dq + ese.A[IT_MINUS_1]  # type: ignore
 
-    if T <= TMINTBL:
-        TI = TMINTBL
-    elif T >= TMAXTBL - 0.001:
-        TI = TMAXTBL - 0.001
+    if p <= qsat:
+        qsat = MAX_MIXING_RATIO
+        dqsat = 0.0
     else:
-        TI = T
+        dd = 1.0 / (p - (1.0 - ESFAC) * qsat)
+        qsat = ESFAC * qsat * dd
+        dqsat = ESFAC * dq * DEGSUBS * p * (dd * dd)
 
-    TI = (TI - TMINTBL) * DEGSUBS + 1
-    IT = i32(floor(TI))
-    IT_MINUS_1 = (
-        IT - 1
-    )  # dace backend does not allow for [IT - 1] indexing because of cast to int
-
-    if URAMP == TMIX:
-        DQ = esx[0][IT] - esx[0][IT_MINUS_1]  # type: ignore
-        QSAT = (TI - IT) * DQ + esx[0][IT_MINUS_1]  # type: ignore
-    else:
-        DQ = ese[0][IT] - ese[0][IT_MINUS_1]  # type: ignore
-        QSAT = (TI - IT) * DQ + ese[0][IT_MINUS_1]  # type: ignore
-
-    if PP <= QSAT:
-        QSAT = MAX_MIXING_RATIO
-        if DQSAT_trigger:
-            DQSAT = 0.0
-        else:
-            DQSAT = -999.0
-    else:
-        DD = 1.0 / (PP - (1.0 - ESFAC) * QSAT)
-        QSAT = ESFAC * QSAT * DD
-        if DQSAT_trigger:
-            DQSAT = ESFAC * DQ * DEGSUBS * PP * (DD * DD)
-        else:
-            DQSAT = -999.0
-
-    return QSAT, DQSAT
+    return qsat, dqsat
 
 
-# Stencils implement QSAT0 function from GEOS_Utilities.F90
+# Stencils implement GEOS_Qsat subroutine from GEOS_Utilities.F90
 def QSat_FloatField(
     ese: GlobalTable_saturaion_tables,  # type: ignore
     esx: GlobalTable_saturaion_tables,  # type: ignore

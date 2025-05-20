@@ -16,8 +16,4 @@ class Temporaries:
         minrhcrit = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         alpha = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
-        return cls(
-            temporary,
-            minrhcrit,
-            alpha,
-        )
+        return cls(temporary, minrhcrit, alpha)

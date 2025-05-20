@@ -29,17 +29,14 @@ def rh_calculations(
         minrhcrit = (1.0 - DW_OCEAN) * (1.0 - fac_eis) + (1.0 - DW_LAND) * fac_eis
         # determine the turn pressure using the LCL
         if TURNRHCRIT_PARAM <= 0:
-            turnrhcrit = (
-                p_mb.at(K=klcl) - 250
-            )  # implementation of for loop needs to go here
+            turnrhcrit = p_mb.at(K=klcl - 1) - 250
         else:
             turnrhcrit = TURNRHCRIT_PARAM
 
-    # lower turn from maxrhcrit=1.0 # implemented in multiple "with" statements
-    # to deal with hybrid indexing
     with computation(PARALLEL), interval(0, -1):
         # Use Slingo-Ritter (1985) formulation for critical rel ative humidity
         rh_crit = 1.0
+        # lower turn from maxrhcrit=1.0
         if p_mb <= turnrhcrit:
             rh_crit = minrhcrit
         else:

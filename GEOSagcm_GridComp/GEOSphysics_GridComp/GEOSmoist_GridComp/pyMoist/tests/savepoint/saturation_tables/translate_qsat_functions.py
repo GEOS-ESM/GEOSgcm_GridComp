@@ -3,8 +3,9 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.saturation_tables.qsat_functions import (
-    qsat_liquid_table_lookup,
-    qsat_ice_table_lookup,
+    saturation_specific_humidity_liquid_surface,
+    saturation_specific_humidity_frozen_surface,
+    saturation_specific_humidity,
 )
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.dsl.gt4py import GlobalTable, PARALLEL, computation, interval, FORWARD
@@ -12,8 +13,7 @@ from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.saturation_tables.constants import TABLESIZE
 
-
-GlobalTable_saturaion_tables = GlobalTable[(Float, (int(TABLESIZE)))]
+from pyMoist.field_types import GlobalTable_saturaion_tables
 
 
 def _stencil(
@@ -30,8 +30,10 @@ def _stencil(
     lqu: Float,
 ):
     with computation(PARALLEL), interval(...):
-        out_qsatice, out_dqsi = qsat_ice_table_lookup(ese, frz, t, p * 100, True, True)
-        out_qsatlqu, out_dqsl = qsat_liquid_table_lookup(
+        out_qsatice, out_dqsi = saturation_specific_humidity_frozen_surface(
+            ese, frz, t, p * 100, True, True
+        )
+        out_qsatlqu, out_dqsl = saturation_specific_humidity_liquid_surface(
             esw, lqu, t, p * 100, True, True
         )
 
@@ -50,11 +52,28 @@ def _stencil_2d(
     lqu: Float,
 ):
     with computation(FORWARD), interval(0, 1):
-        out_qsatice_2d, out_dqsi_2d = qsat_ice_table_lookup(
+        out_qsatice_2d, out_dqsi_2d = saturation_specific_humidity_frozen_surface(
             ese, frz, t, p * 100, True, True
         )
-        out_qsatlqu_2d, out_dqsl_2d = qsat_liquid_table_lookup(
+        out_qsatlqu_2d, out_dqsl_2d = saturation_specific_humidity_liquid_surface(
             esw, lqu, t, p * 100, True, True
+        )
+
+
+def _saturation_specific_humidity_stencil(
+    t: FloatFieldIJ,
+    p: FloatFieldIJ,
+    out_qs: FloatFieldIJ,
+    out_dq: FloatFieldIJ,
+    ese: GlobalTable_saturaion_tables,
+    esx: GlobalTable_saturaion_tables,
+):
+    with computation(FORWARD), interval(0, 1):
+        out_qs, out_dq = saturation_specific_humidity(
+            t=t,
+            p=p * 100,
+            ese=ese,
+            esx=esx,
         )
 
 
@@ -83,6 +102,10 @@ class Translateqsat_functions(TranslateFortranData2Py):
             "SER_QSATICE_2D": {},
             "SER_DQSL_2D": {},
             "SER_DQSI_2D": {},
+            "SER_QSAT0_QS_2D": {},
+            "SER_QSAT0_DQ_2D": {},
+            "SER_DQSAT0_QS_2D": {},
+            "SER_DQSAT0_DQ_2D": {},
         }
 
     def compute(self, inputs):
@@ -116,6 +139,9 @@ class Translateqsat_functions(TranslateFortranData2Py):
         out_dqsl_2d = quantity_factory_2d.zeros([X_DIM, Y_DIM], "n/a")
         out_dqsi_2d = quantity_factory_2d.zeros([X_DIM, Y_DIM], "n/a")
 
+        out_qsat_qs_2d = quantity_factory_2d.zeros([X_DIM, Y_DIM], "n/a")
+        out_qsat_dq_2d = quantity_factory_2d.zeros([X_DIM, Y_DIM], "n/a")
+
         stencil = self.stencil_factory.from_dims_halo(
             func=_stencil,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -127,6 +153,12 @@ class Translateqsat_functions(TranslateFortranData2Py):
 
         stencil_2d = stencil_factory_2d.from_origin_domain(
             func=_stencil_2d,
+            origin=(0, 0, 0),
+            domain=domain_2d,
+        )
+
+        saturation_specific_humidity_stencil = stencil_factory_2d.from_origin_domain(
+            func=_saturation_specific_humidity_stencil,
             origin=(0, 0, 0),
             domain=domain_2d,
         )
@@ -159,6 +191,15 @@ class Translateqsat_functions(TranslateFortranData2Py):
             lqu=tables.lqu,
         )
 
+        saturation_specific_humidity_stencil(
+            t=t_2d,
+            p=p_2d,
+            out_qs=out_qsat_qs_2d,
+            out_dq=out_qsat_dq_2d,
+            ese=tables.ese,
+            esx=tables.esx,
+        )
+
         inputs.update(
             {
                 "SER_QSATICE": out_qsatice.field,
@@ -169,6 +210,10 @@ class Translateqsat_functions(TranslateFortranData2Py):
                 "SER_QSATLQU_2D": out_qsatlqu_2d.field,
                 "SER_DQSI_2D": out_dqsi_2d.field,
                 "SER_DQSL_2D": out_dqsl_2d.field,
+                "SER_QSAT0_QS_2D": out_qsat_qs_2d.field,
+                "SER_QSAT0_DQ_2D": out_qsat_dq_2d.field,
+                "SER_DQSAT0_QS_2D": out_qsat_qs_2d.field,
+                "SER_DQSAT0_DQ_2D": out_qsat_dq_2d.field,
             }
         )
 

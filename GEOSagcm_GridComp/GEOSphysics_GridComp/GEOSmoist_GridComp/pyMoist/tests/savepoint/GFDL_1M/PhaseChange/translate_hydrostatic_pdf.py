@@ -5,6 +5,7 @@ from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.saturation_tables.formulation import SaturationFormulation
+from pyMoist.constants import FLOAT_TINY
 
 
 class Translatehydrostatic_pdf(TranslateFortranData2Py):
@@ -54,6 +55,7 @@ class Translatehydrostatic_pdf(TranslateFortranData2Py):
                 "DT_MOIST": inputs.pop("DT_MOIST"),
                 "PDF_SHAPE": inputs.pop("PDFSHAPE"),
                 "USE_BERGERON": bool(inputs.pop("USE_BERGERON")),
+                "FLOAT_TINY": FLOAT_TINY,
             },
         )
 

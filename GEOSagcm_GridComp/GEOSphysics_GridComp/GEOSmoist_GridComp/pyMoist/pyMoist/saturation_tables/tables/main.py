@@ -15,18 +15,11 @@ from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import GlobalTable, computation, PARALLEL, interval
 from pyMoist.saturation_tables.formulation import SaturationFormulation
-
 from gt4py.cartesian.gtscript import THIS_K
-
-
 from pyMoist.saturation_tables.tables.ice_exact import ice_exact
-
-
 from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact
 from ndsl.dsl.typing import Int
-
-
-GlobalTable_saturaion_tables = GlobalTable[(Float, (int(TABLESIZE)))]
+from pyMoist.field_types import GlobalTable_saturaion_tables
 
 
 class SaturationVaporPressureTable:
