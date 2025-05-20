@@ -44,6 +44,7 @@ module SoilBiogeochemCarbonFluxType
      real(r8), pointer :: hr_col                                    (:)     ! (gC/m2/s) total heterotrophic respiration
      real(r8), pointer :: lithr_col                                 (:)     ! (gC/m2/s) litter heterotrophic respiration 
      real(r8), pointer :: somhr_col                                 (:)     ! (gC/m2/s) soil organic matter heterotrophic res   
+     real(r8), pointer :: cwdhr_col                                 (:)     ! (gC/m2/s) coarse woody debris heterotrophic res
      real(r8), pointer :: soilc_change_col                          (:)     ! (gC/m2/s) FUN used soil C
 
 
@@ -134,6 +135,7 @@ contains
      allocate(this%hr_col                  (begc:endc)) ; this%hr_col                  (:) = nan
      allocate(this%lithr_col               (begc:endc)) ; this%lithr_col               (:) = nan
      allocate(this%somhr_col               (begc:endc)) ; this%somhr_col               (:) = nan
+     allocate(this%cwdhr_col               (begc:endc)) ; this%cwdhr_col               (:) = nan
      allocate(this%soilc_change_col        (begc:endc)) ; this%soilc_change_col        (:) = nan
 
 !     if(use_soil_matrixcn)then
@@ -257,6 +259,7 @@ contains
        this%somc_fire_col(i)     = value_column
        this%som_c_leached_col(i) = value_column
        this%somhr_col(i)         = value_column
+       this%cwdhr_col(i)         = value_column
        this%lithr_col(i)         = value_column
        this%soilc_change_col(i)  = value_column
     end do
@@ -366,12 +369,25 @@ contains
          end do
        end associate
 
+    ! coarse woody debris heterotrophic respiration (CWDHR)
+    associate(is_cwd => decomp_cascade_con%is_cwd)  ! TRUE => pool is a cwd pool
+      do k = 1, ndecomp_cascade_transitions
+         if ( is_cwd(decomp_cascade_con%cascade_donor_pool(k)) ) then
+            do fc = 1,num_soilc
+               c = filter_soilc(fc)
+               this%cwdhr_col(c) = this%cwdhr_col(c) + this%decomp_cascade_hr_col(c,k)
+            end do
+         end if
+      end do
+    end associate
+
     ! total heterotrophic respiration (HR)
        do fc = 1,num_soilc
           c = filter_soilc(fc)
 
           this%hr_col(c) = &
                this%lithr_col(c) + &
+               this%cwdhr_col(c) + &
                this%somhr_col(c)
 
        end do
