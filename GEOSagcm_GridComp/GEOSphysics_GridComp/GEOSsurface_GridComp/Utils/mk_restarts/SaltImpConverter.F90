@@ -6,7 +6,7 @@ program SaltImpConverter
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use netcdf
   use MAPL
-  use mk_restarts_getidsMod, only: ReadTileFile_IntLatLon
+  use mk_restarts_getidsMod, only: ReadTileFile_RealLatLon
   use gFTL2_StringVector
   implicit none
 
@@ -18,8 +18,6 @@ program SaltImpConverter
   character*256 :: arg
 
   integer :: i, rc, jc, iostat, iargc, n, mask,j,k,otiles,nsubtiles,l,itiles,nwords
-  integer, pointer  :: Lono(:), Lato(:), Id(:), Pf(:)
-  integer, pointer  :: Loni(:), Lati(:)
   real, allocatable :: varIn(:),varOut(:)
   real, allocatable :: TW(:),SW(:)
   real*8, allocatable :: varInR8(:),varOutR8(:)
@@ -113,13 +111,7 @@ program SaltImpConverter
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom, 0)
-  deallocate(Pf,Id)
-
-  nullify(Pf)
-  nullify(Id)
-
-  itiles = size(loni)  ! Input  Tile Size
+  call ReadTileFile_RealLatLon(InTileFile , itiles, mask = 0)
 
   allocate( varIn(itiles) )
   allocate( varOut(itiles) )
