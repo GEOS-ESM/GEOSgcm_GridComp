@@ -9,7 +9,7 @@ _f32 = np.float32
 _f64 = np.float64
 _i32 = np.int32
 
-# Define number of tracers
+# Define number of tracers in UW
 NCNST = _i32(23)
 
 # MAPL_UNDEF is set to 1E15 in the Fortran
