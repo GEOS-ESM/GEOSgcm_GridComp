@@ -1,0 +1,86 @@
+type: py_ftn_interface
+name: compute_uwshcu
+functions:
+    init:
+        inputs:
+            ncnst : int
+            k0 : int
+            windsrcavg : int
+    run_compute_uwshcu:
+        inputs:
+            dotransport : int
+            k0 : int
+            windsrcavg : int
+            qtsrchgt : float
+            qtsrc_fac : float
+            thlsrc_fac : float
+            frc_rasn : float
+            rbuoy : float
+            epsvarw : float
+            use_CINcin : int
+            mumin1 : float
+            rmaxfrac : float
+            PGFc : float
+            dt : float
+            niter_xc : int
+            criqc : float
+            rle : float
+            cridist_opt : int
+            mixscale : float
+            rdrag : float
+            rkm : float
+            use_self_detrain : int
+            detrhgt : float
+            use_cumpenent : int
+            rpen : float
+            use_momenflx : int
+            rdrop : float
+            iter_cin : int
+            pifc0_inv : array_float
+            zifc0_inv : array_float
+            pmid0_inv : array_float
+            zmid0_inv : array_float
+            kpbl_inv : array_int
+            exnmid0_inv : array_float
+            exnifc0_inv : array_float
+            dp0_inv : array_float
+            u0_inv : array_float
+            v0_inv : array_float
+            qv0_inv : array_float
+            ql0_inv : array_float
+            qi0_inv : array_float
+            t0_inv : array_float
+            frland_in : array_float
+            tke_inv : array_float
+            rkfre : array_float
+            cush  : array_float
+            shfx : array_float
+            evap : array_float
+            cnvtr : array_float
+            CNV_Tracers : array_float
+        outputs:
+            umf_inv : array_float
+            dcm_inv : array_float
+            qtflx_inv : array_float
+            slflx_inv : array_float
+            uflx_inv : array_float
+            vflx_inv : array_float
+            qvten_inv : array_float
+            qlten_inv : array_float
+            qiten_inv : array_float
+            tten_inv : array_float
+            uten_inv : array_float
+            vten_inv : array_float
+            qrten_inv : array_float
+            qsten_inv : array_float
+            cufrc_inv : array_float
+            fer_inv : array_float
+            fdr_inv : array_float
+            ndrop_inv : array_float
+            nice_inv : array_float
+            qldet_inv : array_float
+            qlsub_inv : array_float
+            qidet_inv : array_float
+            qisub_inv : array_float
+            tpert_out : array_float
+            qpert_out : array_float
