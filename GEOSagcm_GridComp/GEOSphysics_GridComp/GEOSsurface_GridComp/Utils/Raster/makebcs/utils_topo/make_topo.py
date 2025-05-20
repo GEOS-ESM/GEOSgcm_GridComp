@@ -33,7 +33,7 @@ def get_script_topo(answers) :
 #SBATCH --output=topo.log
 #SBATCH --error=topo.err
 #SBATCH --account={account}
-#SBATCH --time=12:00:00
+#SBATCH --time=1:00:00
 #SBATCH --nodes=1
 #SBATCH --job-name=topo_{res_tag}.j
 """
@@ -70,7 +70,7 @@ set smooths = {SMOOTHMAP}
 set resolutions = {RESOLUTIONS}
 set lowres  = 0
 set highres = 0
-set veryhighres = 0 
+set ultrares = 0
 set SG001 = ( 270 540 1080 2160 )
 set SG002 = ( 1539 )
 
@@ -110,18 +110,18 @@ _EOF_
 endif
 
 # Generate ultra-high-resolution intermediate cube (5760) explicitly for c5760
-if ($veryhighres == 1) then
+if ($ultrares == 1) then
 cat << _EOF_ > bin_to_cube.nl
 &binparams
   raw_latlon_data_file='{raw_latlon_data}'
-  output_file='c4320.gmted_fixedanarticasuperior.nc'
-  ncube=4320
+  output_file='c5760.gmted_fixedanarticasuperior.nc'
+  ncube=5760
 /
 _EOF_
   bin/bin_to_cube.x
 
   if ($status != 0) then
-      echo "ERROR: bin_to_cube.x failed at 4320 intermediate generation (exit $status)"
+      echo "ERROR: bin_to_cube.x failed at 5760 intermediate generation (exit $status)"
       exit 1
   endif
 endif
@@ -329,7 +329,8 @@ def ask_questions():
             "type": "checkbox",
             "name": "resolutions",
             "message": "Select resolutions: \n",
-            "choices": ["C12","C24", "C48", "C90", "C180", "C360", "C720", "C1120", "C1440", "C2880", "C5760", "SG001","SG002"]
+            "choices": ["C12","C24", "C48", "C90", "C180", "C360", "C720", "C1120", "C1440", "C2880", "SG001","SG002"]
+            #"choices": ["C12","C24", "C48", "C90", "C180", "C360", "C720", "C1120", "C1440", "C2880", "C5760", "SG001","SG002"]
         },
 
         {
