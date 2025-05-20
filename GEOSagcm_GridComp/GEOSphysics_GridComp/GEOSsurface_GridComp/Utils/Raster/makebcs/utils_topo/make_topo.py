@@ -35,12 +35,15 @@ def get_script_topo(answers) :
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
-#SBATCH --job-name=topo.j
+#SBATCH --job-name=topo_{res_tag}.j
 """
 
   constraint = '#SBATCH --constraint="[mil|cas]"'
-  #if 'TRUE' not in BUILT_ON_SLES15:
-  #   constraint = "#SBATCH --constraint=sky"
+
+  if len(answers['resolutions']) == 1:
+      res_tag = answers['resolutions'][0].lower()
+  else:
+      res_tag = "_".join(r.lower() for r in answers['resolutions'])  
 
   topo_template = head + constraint + """
 
@@ -55,6 +58,7 @@ endif
 
 source bin/g5_modules  
 module load nco
+module load cdo
 
 if ( ! -e landm_coslat.nc ) then
   /bin/ln -s bin/landm_coslat.nc landm_coslat.nc
@@ -66,19 +70,23 @@ set smooths = {SMOOTHMAP}
 set resolutions = {RESOLUTIONS}
 set lowres  = 0
 set highres = 0
+set veryhighres = 0 
 set SG001 = ( 270 540 1080 2160 )
 set SG002 = ( 1539 )
 
+# Update flags based on requested resolutions
 foreach res ($resolutions)
   if ($res < $cutoff) then
-    set lowres  = 1
-  endif
-  if ($res > $cutoff) then
+    set lowres = 1
+  else if ($res >= $cutoff && $res < 5760) then
     set highres = 1
+  else if ($res == 5760) then
+    set ultrares = 1
   endif
 end
 
-if ( $lowres == 1 ) then
+# Generate low-resolution intermediate cube (360) for c12, c24, c48
+if ($lowres == 1) then
 cat << _EOF_ > bin_to_cube.nl
 &binparams
   raw_latlon_data_file='{raw_latlon_data}'
@@ -86,10 +94,11 @@ cat << _EOF_ > bin_to_cube.nl
   ncube=360
 /
 _EOF_
-   bin/bin_to_cube.x
+  bin/bin_to_cube.x
 endif
 
-if ( $highres == 1 ) then
+# Generate high-resolution intermediate cube (3000) for all other resolutions (except 5760)
+if ($highres == 1) then
 cat << _EOF_ > bin_to_cube.nl
 &binparams
   raw_latlon_data_file='{raw_latlon_data}'
@@ -97,13 +106,30 @@ cat << _EOF_ > bin_to_cube.nl
   ncube=3000
 /
 _EOF_
-   bin/bin_to_cube.x
+  bin/bin_to_cube.x
+endif
+
+# Generate ultra-high-resolution intermediate cube (5760) explicitly for c5760
+if ($veryhighres == 1) then
+cat << _EOF_ > bin_to_cube.nl
+&binparams
+  raw_latlon_data_file='{raw_latlon_data}'
+  output_file='c4320.gmted_fixedanarticasuperior.nc'
+  ncube=4320
+/
+_EOF_
+  bin/bin_to_cube.x
+
+  if ($status != 0) then
+      echo "ERROR: bin_to_cube.x failed at 4320 intermediate generation (exit $status)"
+      exit 1
+  endif
 endif
 
 @ count = 1
 foreach im ($resolutions)
   @ jm = ($im * 6)
-  set output_dir = output_$im
+  set output_dir = output_${{im}}
 
   if ( ! -e $output_dir ) then
     mkdir $output_dir
@@ -148,30 +174,65 @@ _EOF_
 
    cat ${{config_file}}
    mpirun -np 6 bin/generate_scrip_cube_topo.x
-   rm ${{config_file}}
 
-   if ($im < $cutoff) then
-     set intermediate_cube = c360.gmted_fixedanarticasuperior.nc
-   else
-     set intermediate_cube = c3000.gmted_fixedanarticasuperior.nc
+   # --- Add error-checking here ---
+   if ( $status != 0 ) then
+       echo "ERROR: generate_scrip_cube_topo.x failed (exit $status)"
+       exit 1
    endif
-   set jmax_segments=''
-   if ($im == 2880) then
-      set jmax_segments = --jmax_segments=32
+   if ( ! -e ${{scriptfile}} ) then
+       echo "ERROR: descriptor ${{scriptfile}} not created"
+       exit 1
    endif
 
-   if "$DO_SCHMIDT" == "" then
-      set rrfac_max =''
+   if ( $im < $cutoff ) then
+       set intermediate_cube = c360.gmted_fixedanarticasuperior.nc
+   else if ( $im <= 3000 ) then
+       set intermediate_cube = c3000.gmted_fixedanarticasuperior.nc
    else
-      set rrfacmax = `ncks -M $scriptfile | grep :rrfac_max | tr -s ' ' | cut -d ' ' -f4`
-      set rrfac_max = --rrfac_max=$rrfacmax
+       set intermediate_cube = c5760.gmted_fixedanarticasuperior.nc
    endif
+
+   #--------------------------------------------------------
+   # Build jmax/rrfac flags
+   #--------------------------------------------------------
+
+       # --- rrfac_max  = ceil( max(rrfac) ) ------------------
+       set rr = `cdo -s infon $scriptfile | \
+                 awk '/rrfac/ {{v=$(NF-2); printf("%d",(v>int(v)?int(v)+1:int(v)));}}'`
+       if ( "$rr" != "" ) then
+        set rrfac = "--rrfac_max=$rr"
+      else
+          set rrfac = "--rrfac_max=1"
+      endif       
+
+       # Single unified call (stretched or regular)
+       bin/cube_to_target.x \
+           --grid_descriptor_file=$scriptfile \
+           --intermediate_cs_name=$intermediate_cube \
+           --output_data_directory=$output_dir \
+           --smoothing_scale=${{smooths[$count]}} \
+           --name_email_of_creator=gmao \
+           --fine_radius=0 \
+           --output_grid=$output_grid \
+           --source_data_identifier=gmted_intel \
+           $rrfac
+
+      # Safety check after cube_to_target.x
+      if ( $status != 0 ) then
+          echo "ERROR: cube_to_target.x failed (exit $status). Check stdout above."
+          exit 1
+      endif
+      
+      ls $output_dir/*.nc >& /dev/null
+      if ( $status != 0 ) then
+          echo "ERROR: cube_to_target.x returned 0, but wrote no *.nc files."
+          exit 1
+      endif
+
    
-
-   set output_grid = PE${{im}}x${{jm}}-CF
-   bin/cube_to_target.x --grid_descriptor_file=$scriptfile --intermediate_cs_name=$intermediate_cube --output_data_directory=$output_dir --smoothing_scale=${{smooths[$count]}} --name_email_of_creator='gmao' --fine_radius=0 --output_grid=$output_grid --source_data_identifier=$source_topo $jmax_segments  $rrfac_max
-
    rm $scriptfile
+   rm ${{config_file}}
 
    #convert to gmao
    cd $output_dir
@@ -198,16 +259,26 @@ end
        bin_dir = answers['bin_dir'], \
        raw_latlon_data = answers['path_latlon']+ "/gmted_fixed_anartica_superior_caspian.nc4", \
        SMOOTHMAP   = SMOOTHMAP, \
-       RESOLUTIONS = RESOLUTIONS )
+       RESOLUTIONS = RESOLUTIONS, \
+       res_tag = res_tag )
   out_dir = answers['out_dir']
   pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
-  topojob = out_dir+'/topo.j'
+  if len(answers['resolutions']) == 1:
+      res_tag = answers['resolutions'][0].lower()
+  else:
+      res_tag = "_".join(r.lower() for r in answers['resolutions'])
+  
+  topojob = f"{out_dir}/topo_{res_tag}.j"  
+  
+#  topojob = out_dir+'/topo.j'
   topo_job = open(topojob,'wt')
   topo_job.write(script_string)
   topo_job.close()
   subprocess.call(['chmod', '755', topojob])
 
-  print("\nJob script topo.j has been generated in "  + out_dir + "\n")
+#  print("\nJob script topo.j has been generated in "  + out_dir + "\n")
+  print(f"\nJob script {os.path.basename(topojob)} has been generated in {out_dir}\n")
+
   
 def get_user():
    cmd = 'whoami'
@@ -258,7 +329,7 @@ def ask_questions():
             "type": "checkbox",
             "name": "resolutions",
             "message": "Select resolutions: \n",
-            "choices": ["C12","C24", "C48", "C90", "C180", "C360", "C720", "C1120", "C1440", "C2880","C5760", "SG001","SG002"]
+            "choices": ["C12","C24", "C48", "C90", "C180", "C360", "C720", "C1120", "C1440", "C2880", "C5760", "SG001","SG002"]
         },
 
         {

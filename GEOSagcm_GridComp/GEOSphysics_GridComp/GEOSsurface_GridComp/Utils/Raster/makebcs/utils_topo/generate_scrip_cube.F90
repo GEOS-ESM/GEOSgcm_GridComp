@@ -189,19 +189,43 @@
           elseif ( abs(lon_e - lon_w) > 1.5_8*pi .and. (SCRIP_CenterLon(n) > pi) ) then
              where(node_xy(1,:) < pi) node_xy_tmp(1,:) = node_xy(1,:) + 2._8*pi
           endif
-          !call points_hull_2d(4, node_xy_tmp, hull_num, hull)
-          !if(ANY(hull==0)) then
-             !write(*,100)'Zero Hull ', corner_lons(i  ,j),corner_lons(i+1,j),corner_lons(i+1,j+1),corner_lons(i,j+1)
-             !write(*,100)'Zero Hull ', node_xy_tmp(1,:)
-          !endif
-          !do k=1,4
-            !SCRIP_CornerLon(k,n) = node_xy(1,hull(k))*(180._8/pi)
-            !SCRIP_CornerLat(k,n) = node_xy(2,hull(k))*(180._8/pi) 
-          !enddo
-          do k=1,4
-            SCRIP_CornerLon(k,n) = node_xy(1,k)*(180._8/pi)
-            SCRIP_CornerLat(k,n) = node_xy(2,k)*(180._8/pi) 
-          enddo
+          !———————————————————————————————————————————————————————————————
+          !   Only stretched grids need the convex-hull fix
+          !———————————————————————————————————————————————————————————————
+          !  Dateline-wrap fix for Schmidt-stretched faces
+          !  -------------------------------------------------------------
+          !  When a stretched cube-sphere face is centred near 180°E/W the
+          !  raw corner longitudes can straddle the dateline (-180°/ +180°),
+          !  causing an incorrect corner order and a self intersecting
+          !  quadrilateral.  The convex-hull call below re-orders the four
+          !  points so the polygon is consistently counter clockwise and the
+          !  SCRIP cell area stays positive.  The extra work is only needed
+          !  when DO_SCHMIDT =.true.; for uniform PE grids we keep the
+          !  original (faster) path.
+          !———————————————————————————————————————————————————————————————          
+
+          if (do_schmidt) then
+             !--- reorder the four corners with a convex hull ----------------
+             call points_hull_2d(4, node_xy_tmp, hull_num, hull)
+          
+             if (any(hull == 0)) then
+                write(*,100) 'Zero Hull ', corner_lons(i  ,j), corner_lons(i+1,j), &
+                                        corner_lons(i+1,j+1), corner_lons(i,j+1)
+                write(*,100) 'Zero Hull ', node_xy_tmp(1,:)
+             endif
+          
+             do k = 1, 4
+                SCRIP_CornerLon(k,n) = node_xy_tmp(1,hull(k)) * (180._8/pi)
+                SCRIP_CornerLat(k,n) = node_xy_tmp(2,hull(k)) * (180._8/pi)
+             end do
+          else
+             ! Uniform PE faces keep the original ordering
+             do k = 1, 4
+                SCRIP_CornerLon(k,n) = node_xy(1,k) * (180._8/pi)
+                SCRIP_CornerLat(k,n) = node_xy(2,k) * (180._8/pi)
+             end do
+          endif
+
           p1 = [corner_lons(i,j),corner_lats(i,j)]
           p2 = [corner_lons(i,j+1),corner_lats(i,j+1)]
           p3 = [corner_lons(i+1,j),corner_lats(i+1,j)]
