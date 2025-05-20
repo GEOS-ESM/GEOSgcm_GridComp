@@ -30,7 +30,7 @@ module clm_varctl
 
   logical, public :: use_lch4            = .false.
   logical, public :: use_nitrif_denitrif = .true.  
-  logical, public :: use_vertsoilc       = .true.
+  logical, public :: use_vertsoilc       = .false.
   logical, public :: use_century_decomp  = .true.
   logical, public :: use_cn              = .true.
   logical, public :: use_cndv            = .false.

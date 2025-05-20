@@ -351,7 +351,7 @@ module CN_initMod
    call readCNGapMortalityParams(ncid)
    call readCNFUNParams(ncid)
    call readSoilBiogeochemNitrifDenitrifParams(ncid)
-   call readParams_SoilStateInitTimeConst(ncid)   
+   !call readParams_SoilStateInitTimeConst(ncid)   
 
    call ncid%close(rc=status)
 
