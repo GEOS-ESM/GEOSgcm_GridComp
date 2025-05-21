@@ -39,6 +39,10 @@
 #
 # GEOSagcm=>CHOOSEMOSFC: 1
 # GEOSldas=>CHOOSEMOSFC: 0
+#
+# GEOSagcm=>MOSFC_EXTRA_DERIVS_LAND: 0
+# GEOSldas=>MOSFC_EXTRA_DERIVS_LAND: 1
+
 
 # ---- Thickness of surface layer for soil moisture [mm]
 #
