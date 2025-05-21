@@ -3625,19 +3625,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       
       call MAPL_TimerOn(MAPL,"-SURF")    ! timer for computation of MOSFC exchange coeffs and derivs (Louis or Helfand)
       
-      ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      !
-      ! reichle, 9/9/2024
-      !
-      ! TBD: LIMIT QC+DeltaQC TO qsat(TC)?  See comment/question below (~line 5300)
-      !
-      ! TBD: VERIFY LIST OF INTENT(INOUT) VARIABLES FOR louissurface() AND helfsurface()
-      !
-      ! TBD: FOR NUMERICAL DERIVS, CAN WE COMPUTE DELTA W.R.T. VIRTUAL TEMP TO AVOID ONE CALL
-      !      TO louissurface() OR helfsurface()?
-      !
-      ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      
       if (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.0) then
 
          ! Louis surface turbulence
@@ -5416,23 +5403,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! reichle, 9/9/2024
         !--------------------------------------------------------------------------------------------------
         
-        
         ! initialize derivatives that may not be filled later
         
         DEDTC =0.0
         DHSDQC=0.0
 
-        ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        !
-        ! reichle, 9/9/2024
-        !
-        ! TBD: PRECOMPUTE (TC-TA), (QC-QA), MAPL_VIREPS*TC, (1+MAPL_VIREPS*QC) ??  OR LEAVE OPTIMIZATION  TO COMPILER??
-        !
-        ! TBD: CHANGE ORDER OF "if" BLOCK, "select" BLOCK, and "do" LOOP??  (Note: "do" LOOP N IS ONLY 1..4)
-        !
-        ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-        
         if (CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
 
            ! Catchment in offline (land-only) mode
