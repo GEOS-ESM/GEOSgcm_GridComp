@@ -6150,7 +6150,7 @@ class ComputeUwshcuInv:
         self.temporaries = Temporaries.make(quantity_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
-        grid_indexing = stencil_factory.grid_indexing
+
 
         if constants.NCNST != self.UW_config.NCNST:
             raise NotImplementedError(
@@ -6161,7 +6161,7 @@ class ComputeUwshcuInv:
         if self.UW_config.k0 < 5:
             raise NotImplementedError(
                 f"Coding limitation: Only {self.UW_config.k0} k-levels are "
-                f"available, atleast 5 are expected"
+                f"available, at least 5 are expected"
             )
 
         if self.UW_config.windsrcavg != 0:
@@ -6344,6 +6344,13 @@ class ComputeUwshcuInv:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={"ncnst": UW_config.NCNST},
         )
+
+        self.qsat = QSat(
+            self.stencil_factory,
+            self.quantity_factory,
+            formulation=formulation,
+        )
+
 
         # Create masks
         # Mask that indicates if condensation has occurred (e.g., Fortran goto 333)
@@ -6557,12 +6564,6 @@ class ComputeUwshcuInv:
         # cinlcl_IJ).
 
         ######################################################################
-
-        self.qsat = QSat(
-            self.stencil_factory,
-            self.quantity_factory,
-            formulation=formulation,
-        )
 
         # Initialize masks, default for all masks is False.
         self.condensation.view[:, :] = False
