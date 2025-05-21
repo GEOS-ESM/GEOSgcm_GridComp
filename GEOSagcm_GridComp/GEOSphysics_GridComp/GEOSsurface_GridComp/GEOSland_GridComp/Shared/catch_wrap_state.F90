@@ -75,10 +75,10 @@ contains
     !
     !  Over *land*, use derivatives of exchange coeffs w.r.t. temp. & humidity.
     !    
-    !    0 : none                   Default for Helfand
-    !    1 : analytical derivs      Default for Louis;   *not* available for Helfand
-    !    2 : numerical  derivs
-    !    3 : numerical  derivs      via virtual temp.;   *not* available for Helfand
+    !    0 : None,               default for Helfand.  
+    !    1 : Analytical derivs,  default for Louis,    *not* available for Helfand.
+    !    2 : Numerical  derivs. 
+    !    3 : Numerical  derivs,  via virtual temp.,    *not* available for Helfand,  same as 2 but faster than 2.
     !
     !  Runtimes: Helfand takes ~10 times longer than Louis.  In offline mode, Helfand consumes
     !            about as much CPU as Catchment.  Option 2 triples the runtime of the MOSFC scheme.
@@ -96,7 +96,7 @@ contains
           
           ! Louis
           call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=1,             __RC__ )
-          ! make sure parameter values is allowed
+          ! make sure parameter value is allowed
           ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii>=0 .and. ii<=3, 'unknown MOSFC_EXTRA_DERIVS_LAND for Louis  ')
           
        elseif (statePtr%CHOOSEMOSFC==1) then
@@ -113,14 +113,17 @@ contains
        end if
 
     end if
+
+    ! for CatchCN, must have MOSFC_EXTRA_DERIVS_LAND<=1     (numerical derivatives not yet implemented for CatchCN)
+    
+    select type (statePtr)
+    type is (T_CATCHCN_STATE) ! CATCHCN
        
-    ! ==================================================================================================================================
-    !
-    ! STILL NEED TO ASSERT THE FOLLOWING:
-    !
-    ! if LSM_CHOICE>1, must have MOSFC_EXTRA_DERIVS_LAND<=1     (numerical derivatives not yet implemented for CatchCN)
-    !
-    ! =============================================================================================================================
+       _ASSERT( statePtr%MOSFC_EXTRA_DERIVS_LAND<=1, 'selected choice for MOSFC_EXTRA_DERIVS_LAND not yet implemented for CatchCN')
+       
+    end select
+
+    ! -------------------------
     
     call MAPL_GetResource(    SCF, statePtr%USE_FWET_FOR_RUNOFF,      label='USE_FWET_FOR_RUNOFF:',      DEFAULT=.FALSE.,       __RC__ )
     call MAPL_GetResource(    SCF, statePtr%Z0_FORMULATION,           label='Z0_FORMULATION:',           DEFAULT=4,             __RC__ )
