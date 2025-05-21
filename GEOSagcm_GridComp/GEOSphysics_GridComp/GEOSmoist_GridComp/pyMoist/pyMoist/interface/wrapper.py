@@ -2,12 +2,12 @@
 Wraps pyMoist for GEOS interface use.
 """
 
+import dataclasses
 import enum
 import logging
 import os
 from typing import Callable, Optional
 
-import numpy as np
 from gt4py.cartesian.config import build_settings as gt_build_settings
 from mpi4py import MPI
 
@@ -34,9 +34,10 @@ from ndsl.dsl.typing import floating_point_precision
 from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
+from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
-from pyMoist.interface.flags import gfdl_1m_flags, moist_flags
+from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
 
 
 class MemorySpace(enum.Enum):
@@ -102,7 +103,7 @@ class StencilBackendCompilerOverride:
 class GEOSPyMoistWrapper:
     def __init__(
         self,
-        flags: moist_flags,
+        flags: MoistFlags,
         backend="numpy",
         fortran_mem_space: MemorySpace = MemorySpace.HOST,
     ) -> None:
@@ -203,12 +204,12 @@ class GEOSPyMoistWrapper:
         self._GFDL_1M_driver: Optional[MicrophysicsDriver] = None
 
         # Initalize flags later
-        self.gfdl_1m_flags: Optional[gfdl_1m_flags] = None
+        self.gfdl_microphysics_config = None
 
     @property
     def driver(self) -> Callable:
         if not self._GFDL_1M_driver:
-            if self.gfdl_1m_flags is None:
+            if self.microphysics_config is None:
                 raise RuntimeError("GFDL_1M flags not initalized")
             with StencilBackendCompilerOverride(
                 MPI.COMM_WORLD,
@@ -217,98 +218,18 @@ class GEOSPyMoistWrapper:
                 self._GFDL_1M_driver = MicrophysicsDriver(
                     self.stencil_factory,
                     self.quantity_factory,
-                    self.gfdl_1m_flags.phys_hydrostatic,
-                    self.gfdl_1m_flags.hydrostatic,
-                    self.gfdl_1m_flags.dt_moist,
-                    # Namelist options
-                    self.gfdl_1m_flags.mp_time,
-                    self.gfdl_1m_flags.t_min,
-                    self.gfdl_1m_flags.t_sub,
-                    self.gfdl_1m_flags.tau_r2g,
-                    self.gfdl_1m_flags.tau_smlt,
-                    self.gfdl_1m_flags.tau_g2r,
-                    self.gfdl_1m_flags.dw_land,
-                    self.gfdl_1m_flags.dw_ocean,
-                    self.gfdl_1m_flags.vi_fac,
-                    self.gfdl_1m_flags.vr_fac,
-                    self.gfdl_1m_flags.vs_fac,
-                    self.gfdl_1m_flags.vg_fac,
-                    self.gfdl_1m_flags.ql_mlt,
-                    self.gfdl_1m_flags.do_qa,
-                    self.gfdl_1m_flags.fix_negative,
-                    self.gfdl_1m_flags.vi_max,
-                    self.gfdl_1m_flags.vs_max,
-                    self.gfdl_1m_flags.vg_max,
-                    self.gfdl_1m_flags.vr_max,
-                    self.gfdl_1m_flags.qs_mlt,
-                    self.gfdl_1m_flags.qs0_crt,
-                    self.gfdl_1m_flags.qi_gen,
-                    self.gfdl_1m_flags.ql0_max,
-                    self.gfdl_1m_flags.qi0_max,
-                    self.gfdl_1m_flags.qi0_crt,
-                    self.gfdl_1m_flags.qr0_crt,
-                    self.gfdl_1m_flags.fast_sat_adj,
-                    self.gfdl_1m_flags.rh_inc,
-                    self.gfdl_1m_flags.rh_ins,
-                    self.gfdl_1m_flags.rh_inr,
-                    self.gfdl_1m_flags.const_vi,
-                    self.gfdl_1m_flags.const_vs,
-                    self.gfdl_1m_flags.const_vg,
-                    self.gfdl_1m_flags.const_vr,
-                    self.gfdl_1m_flags.use_ccn,
-                    self.gfdl_1m_flags.rthreshu,
-                    self.gfdl_1m_flags.rthreshs,
-                    self.gfdl_1m_flags.ccn_l,
-                    self.gfdl_1m_flags.ccn_o,
-                    self.gfdl_1m_flags.qc_crt,
-                    self.gfdl_1m_flags.tau_g2v,
-                    self.gfdl_1m_flags.tau_v2g,
-                    self.gfdl_1m_flags.tau_s2v,
-                    self.gfdl_1m_flags.tau_v2s,
-                    self.gfdl_1m_flags.tau_revp,
-                    self.gfdl_1m_flags.tau_frz,
-                    self.gfdl_1m_flags.do_bigg,
-                    self.gfdl_1m_flags.do_evap,
-                    self.gfdl_1m_flags.do_subl,
-                    self.gfdl_1m_flags.sat_adj0,
-                    self.gfdl_1m_flags.c_piacr,
-                    self.gfdl_1m_flags.tau_imlt,
-                    self.gfdl_1m_flags.tau_v2l,
-                    self.gfdl_1m_flags.tau_l2v,
-                    self.gfdl_1m_flags.tau_i2v,
-                    self.gfdl_1m_flags.tau_i2s,
-                    self.gfdl_1m_flags.tau_l2r,
-                    self.gfdl_1m_flags.qi_lim,
-                    self.gfdl_1m_flags.ql_gen,
-                    self.gfdl_1m_flags.c_paut,
-                    self.gfdl_1m_flags.c_psaci,
-                    self.gfdl_1m_flags.c_pgacs,
-                    self.gfdl_1m_flags.c_pgaci,
-                    self.gfdl_1m_flags.z_slope_liq,
-                    self.gfdl_1m_flags.z_slope_ice,
-                    self.gfdl_1m_flags.prog_ccn,
-                    self.gfdl_1m_flags.c_cracw,
-                    self.gfdl_1m_flags.alin,
-                    self.gfdl_1m_flags.clin,
-                    self.gfdl_1m_flags.preciprad,
-                    self.gfdl_1m_flags.cld_min,
-                    self.gfdl_1m_flags.use_ppm,
-                    self.gfdl_1m_flags.mono_prof,
-                    self.gfdl_1m_flags.do_sedi_heat,
-                    self.gfdl_1m_flags.sedi_transport,
-                    self.gfdl_1m_flags.do_sedi_w,
-                    self.gfdl_1m_flags.de_ice,
-                    np.int32(self.gfdl_1m_flags.icloud_f),
-                    np.int32(self.gfdl_1m_flags.irain_f),
-                    self.gfdl_1m_flags.mp_print,
+                    self.microphysics_config,
                 )
         return self._GFDL_1M_driver
 
-    def init_gfdl_1m_flags(
+    def init_gfdl_1m_configuration(
         self,
-        flags,
+        flags: GFDL1MFlags,
     ):
-        self.gfdl_1m_flags = flags
+        upper_case_dict = {}
+        for field in dataclasses.fields(MicrophysicsConfiguration):
+            upper_case_dict[field.name] = getattr(flags, field.name.lower())
+        self.microphysics_config = MicrophysicsConfiguration(**upper_case_dict)
 
     @property
     def aer_activation(self) -> Callable:
