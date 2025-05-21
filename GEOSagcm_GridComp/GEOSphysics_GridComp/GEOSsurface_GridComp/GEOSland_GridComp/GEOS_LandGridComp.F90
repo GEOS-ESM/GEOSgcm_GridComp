@@ -1458,7 +1458,7 @@ contains
           IF(RUN_ROUTE == 1) THEN
              call MAPL_AddConnectivity (                              &
                   GC                                                 ,&
-                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
+                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&   ! RUNOFF = total runoff = surface runoff + baseflow
                   SRC_ID =  CATCH(I)                                 ,&
                   DST_ID =  ROUTE(I)                                 ,&
                   
@@ -1491,7 +1491,7 @@ contains
           IF(RUN_ROUTE == 1) THEN
              call MAPL_AddConnectivity (                              &
                   GC                                                 ,&
-                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
+                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&   ! RUNOFF = total runoff = surface runoff + baseflow
                   SRC_ID =  CATCHCN(I)                               ,&
                   DST_ID =  ROUTE(I)                                 ,&
                   
