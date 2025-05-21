@@ -38,6 +38,7 @@ from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
 from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
+from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv, UWConfiguration
 
 
 class MemorySpace(enum.Enum):
@@ -202,6 +203,7 @@ class GEOSPyMoistWrapper:
         self._aer_activation: Optional[AerActivation] = None
         self._GFDL_1M_evap: Optional[GFDL_1M] = None
         self._GFDL_1M_driver: Optional[MicrophysicsDriver] = None
+        self._UW_shallow_convection: Optional[ComputeUwshcuInv] = None
 
         # Initalize flags later
         self.gfdl_microphysics_config = None
@@ -246,9 +248,17 @@ class GEOSPyMoistWrapper:
                 )
         return self._aer_activation
 
+    def make_nmmodes_quantity(self, data):
+        qty = self.nmodes_quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
+            "n/a",
+        )
+        qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
+        return qty
+
     @property
     def GFDL_1M_evap(self) -> Callable:
-        if not self._GFDL_1M_evap:
+        if self._GFDL_1M_evap is None:
             with StencilBackendCompilerOverride(
                 MPI.COMM_WORLD,
                 self.stencil_config.dace_config,
@@ -259,10 +269,28 @@ class GEOSPyMoistWrapper:
                 )
         return self._GFDL_1M_evap
 
-    def make_nmmodes_quantity(self, data):
-        qty = self.nmodes_quantity_factory.empty(
-            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
-            "n/a",
+    @property
+    def UW_shallow_convection(self) -> Callable:
+        if self._UW_shallow_convection is None:
+            with StencilBackendCompilerOverride(
+                MPI.COMM_WORLD,
+                self.stencil_config.dace_config,
+            ):
+                self._UW_shallow_convection = ComputeUwshcuInv(
+                    stencil_factory=self.stencil_factory,
+                    quantity_factory=self.quantity_factory,
+                    UW_config=self.UW_config,
+                )
+        return self._UW_shallow_convection
+
+    def init_UW_configuration(
+        self,
+        NCNST,
+        k0,
+        windsrcavg,
+    ):
+        self.UW_config = UWConfiguration(
+            NCNST=NCNST,
+            k0=k0,
+            windsrcavg=windsrcavg,
         )
-        qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
-        return qty

@@ -517,6 +517,245 @@ class PYMOIST_WRAPPER:
                 self.pymoist.driver.outputs.isubl.view[:], f_isubl
             )
 
+    def UW_shallow_convection(
+        self,
+        dotransport: int,
+        k0: int,
+        windsrcavg: int,
+        qtsrchgt: float,
+        qtsrc_fac: float,
+        thlsrc_fac: float,
+        frc_rasn: float,
+        rbuoy: float,
+        epsvarw: float,
+        use_CINcin: int,
+        mumin1: float,
+        rmaxfrac: float,
+        PGFc: float,
+        dt: float,
+        niter_xc: int,
+        criqc: float,
+        rle: float,
+        cridist_opt: int,
+        mixscale: float,
+        rdrag: float,
+        rkm: float,
+        use_self_detrain: int,
+        detrhgt: float,
+        use_cumpenent: int,
+        rpen: float,
+        use_momenflx: int,
+        rdrop: float,
+        iter_cin: int,
+        f_pifc0_inv: cffi.FFI.CData,
+        f_zifc0_inv: cffi.FFI.CData,
+        f_pmid0_inv: cffi.FFI.CData,
+        f_zmid0_inv: cffi.FFI.CData,
+        f_kpbl_inv: cffi.FFI.CData,
+        f_exnmid0_inv: cffi.FFI.CData,
+        f_exnifc0_inv: cffi.FFI.CData,
+        f_dp0_inv: cffi.FFI.CData,
+        f_u0_inv: cffi.FFI.CData,
+        f_v0_inv: cffi.FFI.CData,
+        f_qv0_inv: cffi.FFI.CData,
+        f_ql0_inv: cffi.FFI.CData,
+        f_qi0_inv: cffi.FFI.CData,
+        f_t0_inv: cffi.FFI.CData,
+        f_frland: cffi.FFI.CData,
+        f_tke_inv: cffi.FFI.CData,
+        f_rkfre: cffi.FFI.CData,
+        f_cush: cffi.FFI.CData,
+        f_shfx: cffi.FFI.CData,
+        f_evap: cffi.FFI.CData,
+        f_cnvtr: cffi.FFI.CData,
+        f_CNV_Tracers: cffi.FFI.CData,
+        f_umf_inv: cffi.FFI.CData,
+        f_dcm_inv: cffi.FFI.CData,
+        f_qtflx_inv: cffi.FFI.CData,
+        f_slflx_inv: cffi.FFI.CData,
+        f_uflx_inv: cffi.FFI.CData,
+        f_vflx_inv: cffi.FFI.CData,
+        f_qvten_inv: cffi.FFI.CData,
+        f_qlten_inv: cffi.FFI.CData,
+        f_qiten_inv: cffi.FFI.CData,
+        f_tten_inv: cffi.FFI.CData,
+        f_uten_inv: cffi.FFI.CData,
+        f_vten_inv: cffi.FFI.CData,
+        f_qrten_inv: cffi.FFI.CData,
+        f_qsten_inv: cffi.FFI.CData,
+        f_cufrc_inv: cffi.FFI.CData,
+        f_fer_inv: cffi.FFI.CData,
+        f_fdr_inv: cffi.FFI.CData,
+        f_ndrop_inv: cffi.FFI.CData,
+        f_nice_inv: cffi.FFI.CData,
+        f_qldet_inv: cffi.FFI.CData,
+        f_qlsub_inv: cffi.FFI.CData,
+        f_qidet_inv: cffi.FFI.CData,
+        f_qisub_inv: cffi.FFI.CData,
+        f_tpert_out: cffi.FFI.CData,
+        f_qpert_out: cffi.FFI.CData,
+    ):
+        CUDAProfiler.start_cuda_profiler()
+
+        with TimedCUDAProfiler("[UW] Fortran -> Python", self._timings):
+            in_pifc0_inv = self.f_py.fortran_to_python(f_pifc0_inv)
+            in_zifc0_inv = self.f_py.fortran_to_python(f_zifc0_inv)
+            in_pmid0_inv = self.f_py.fortran_to_python(f_pmid0_inv)
+            in_zmid0_inv = self.f_py.fortran_to_python(f_zmid0_inv)
+            in_kpbl_inv = self.f_py.fortran_to_python(f_kpbl_inv)
+            in_exnmid0_inv = self.f_py.fortran_to_python(f_exnmid0_inv)
+            in_exnifc0_inv = self.f_py.fortran_to_python(f_exnifc0_inv)
+            in_dp0_inv = self.f_py.fortran_to_python(f_dp0_inv)
+            in_u0_inv = self.f_py.fortran_to_python(f_u0_inv)
+            in_v0_inv = self.f_py.fortran_to_python(f_v0_inv)
+            in_qv0_inv = self.f_py.fortran_to_python(f_qv0_inv)
+            in_ql0_inv = self.f_py.fortran_to_python(f_ql0_inv)
+            in_qi0_inv = self.f_py.fortran_to_python(f_qi0_inv)
+            in_t0_inv = self.f_py.fortran_to_python(f_t0_inv)
+            in_frland = self.f_py.fortran_to_python(f_frland)
+            in_tke_inv = self.f_py.fortran_to_python(f_tke_inv)
+            in_rkfre = self.f_py.fortran_to_python(f_rkfre)
+            in_cush = self.f_py.fortran_to_python(f_cush)
+            in_shfx = self.f_py.fortran_to_python(f_shfx)
+            in_evap = self.f_py.fortran_to_python(f_evap)
+            in_cnvtr = self.f_py.fortran_to_python(f_cnvtr)
+            in_CNV_Tracers = self.f_py.fortran_to_python(f_CNV_Tracers)
+
+            out_umf_inv = self.f_py.fortran_to_python(f_umf_inv)
+            out_dcm_inv = self.f_py.fortran_to_python(f_dcm_inv)
+            out_qtflx_inv = self.f_py.fortran_to_python(f_qtflx_inv)
+            out_slflx_inv = self.f_py.fortran_to_python(f_slflx_inv)
+            out_uflx_inv = self.f_py.fortran_to_python(f_uflx_inv)
+            out_vflx_inv = self.f_py.fortran_to_python(f_vflx_inv)
+            out_qvten_inv = self.f_py.fortran_to_python(f_qvten_inv)
+            out_qlten_inv = self.f_py.fortran_to_python(f_qlten_inv)
+            out_qiten_inv = self.f_py.fortran_to_python(f_qiten_inv)
+            out_tten_inv = self.f_py.fortran_to_python(f_tten_inv)
+            out_uten_inv = self.f_py.fortran_to_python(f_uten_inv)
+            out_vten_inv = self.f_py.fortran_to_python(f_vten_inv)
+            out_qrten_inv = self.f_py.fortran_to_python(f_qrten_inv)
+            out_qsten_inv = self.f_py.fortran_to_python(f_qsten_inv)
+            out_cufrc_inv = self.f_py.fortran_to_python(f_cufrc_inv)
+            out_fer_inv = self.f_py.fortran_to_python(f_fer_inv)
+            out_fdr_inv = self.f_py.fortran_to_python(f_fdr_inv)
+            out_ndrop_inv = self.f_py.fortran_to_python(f_ndrop_inv)
+            out_nice_inv = self.f_py.fortran_to_python(f_nice_inv)
+            out_qldet_inv = self.f_py.fortran_to_python(f_qldet_inv)
+            out_qlsub_inv = self.f_py.fortran_to_python(f_qlsub_inv)
+            out_qidet_inv = self.f_py.fortran_to_python(f_qidet_inv)
+            out_qisub_inv = self.f_py.fortran_to_python(f_qisub_inv)
+            out_tpert_out = self.f_py.fortran_to_python(f_tpert_out)
+            out_qpert_out = self.f_py.fortran_to_python(f_qpert_out)
+
+        with TimedCUDAProfiler("[UW] Run", self._timings):
+            self.pymoist.UW_shallow_convection(
+                # Inputs
+                pifc0_inv=in_pifc0_inv,
+                zifc0_inv=in_zifc0_inv,
+                pmid0_inv=in_pmid0_inv,
+                zmid0_inv=in_zmid0_inv,
+                kpbl_inv=in_kpbl_inv,
+                exnmid0_inv=in_exnmid0_inv,
+                exnifc0_inv=in_exnifc0_inv,
+                dp0_inv=in_dp0_inv,
+                u0_inv=in_u0_inv,
+                v0_inv=in_v0_inv,
+                qv0_inv=in_qv0_inv,
+                ql0_inv=in_ql0_inv,
+                qi0_inv=in_qi0_inv,
+                t0_inv=in_t0_inv,
+                frland=in_frland,
+                tke_inv=in_tke_inv,
+                rkfre=in_rkfre,
+                cush=in_cush,
+                shfx=in_shfx,
+                evap=in_evap,
+                cnvtr=in_cnvtr,
+                CNV_Tracers=in_CNV_Tracers,
+                # Parameters
+                dotransport=dotransport,
+                k0=k0,
+                windsrcavg=windsrcavg,
+                qtsrchgt=qtsrchgt,
+                qtsrc_fac=qtsrc_fac,
+                thlsrc_fac=thlsrc_fac,
+                frc_rasn=frc_rasn,
+                rbuoy=rbuoy,
+                epsvarw=epsvarw,
+                use_CINcin=use_CINcin,
+                mumin1=mumin1,
+                rmaxfrac=rmaxfrac,
+                PGFc=PGFc,
+                dt=dt,
+                niter_xc=niter_xc,
+                criqc=criqc,
+                rle=rle,
+                cridist_opt=cridist_opt,
+                mixscale=mixscale,
+                rdrag=rdrag,
+                rkm=rkm,
+                use_self_detrain=use_self_detrain,
+                detrhgt=detrhgt,
+                use_cumpenent=use_cumpenent,
+                rpen=rpen,
+                use_momenflx=use_momenflx,
+                rdrop=rdrop,
+                iter_cin=iter_cin,
+                # Outputs
+                umf_inv=out_umf_inv,
+                dcm_inv=out_dcm_inv,
+                qtflx_inv=out_qtflx_inv,
+                slflx_inv=out_slflx_inv,
+                uflx_inv=out_uflx_inv,
+                vflx_inv=out_vflx_inv,
+                qvten_inv=out_qvten_inv,
+                qlten_inv=out_qlten_inv,
+                qiten_inv=out_qiten_inv,
+                tten_inv=out_tten_inv,
+                uten_inv=out_uten_inv,
+                vten_inv=out_vten_inv,
+                qrten_inv=out_qrten_inv,
+                qsten_inv=out_qsten_inv,
+                cufrc_inv=out_cufrc_inv,
+                fer_inv=out_fer_inv,
+                fdr_inv=out_fdr_inv,
+                ndrop_inv=out_ndrop_inv,
+                nice_inv=out_nice_inv,
+                qldet_inv=out_qldet_inv,
+                qlsub_inv=out_qlsub_inv,
+                qidet_inv=out_qidet_inv,
+                qisub_inv=out_qisub_inv,
+                tpert_out=out_tpert_out,
+                qpert_out=out_qpert_out,
+            )
+
+        with TimedCUDAProfiler("[GFDL_1M] Python -> Fortran", self._timings):
+            self.f_py.python_to_fortran(out_umf_inv, f_umf_inv)
+            self.f_py.python_to_fortran(out_dcm_inv, f_dcm_inv)
+            self.f_py.python_to_fortran(out_qtflx_inv, f_qtflx_inv)
+            self.f_py.python_to_fortran(out_slflx_inv, f_slflx_inv)
+            self.f_py.python_to_fortran(out_uflx_inv, f_uflx_inv)
+            self.f_py.python_to_fortran(out_vflx_inv, f_vflx_inv)
+            self.f_py.python_to_fortran(out_qvten_inv, f_qvten_inv)
+            self.f_py.python_to_fortran(out_qlten_inv, f_qlten_inv)
+            self.f_py.python_to_fortran(out_qiten_inv, f_qiten_inv)
+            self.f_py.python_to_fortran(out_tten_inv, f_tten_inv)
+            self.f_py.python_to_fortran(out_uten_inv, f_uten_inv)
+            self.f_py.python_to_fortran(out_vten_inv, f_vten_inv)
+            self.f_py.python_to_fortran(out_qrten_inv, f_qrten_inv)
+            self.f_py.python_to_fortran(out_qsten_inv, f_qsten_inv)
+            self.f_py.python_to_fortran(out_cufrc_inv, f_cufrc_inv)
+            self.f_py.python_to_fortran(out_fer_inv, f_fer_inv)
+            self.f_py.python_to_fortran(out_fdr_inv, f_fdr_inv)
+            self.f_py.python_to_fortran(out_ndrop_inv, f_ndrop_inv)
+            self.f_py.python_to_fortran(out_nice_inv, f_nice_inv)
+            self.f_py.python_to_fortran(out_qldet_inv, f_qldet_inv)
+            self.f_py.python_to_fortran(out_qlsub_inv, f_qlsub_inv)
+            self.f_py.python_to_fortran(out_qidet_inv, f_qidet_inv)
+            self.f_py.python_to_fortran(out_qisub_inv, f_qisub_inv)
+            self.f_py.python_to_fortran(out_tpert_out, f_tpert_out)
+            self.f_py.python_to_fortran(out_qpert_out, f_qpert_out)
+
 
 WRAPPER = PYMOIST_WRAPPER()
 
@@ -734,7 +973,7 @@ def pyMoist_init(pyMoist_flags: cffi.FFI.CData):
     # Read in the backend
     BACKEND = os.environ.get("GEOS_PYFV3_BACKEND", "dace:cpu")
     if WRAPPER.ready:
-        raise RuntimeError("[PYMOIST WRAPPER] Double init")
+        raise RuntimeError("[GEOS WRAPPER] Bad init, did you call init?")
     WRAPPER.init(
         pyMoist_flags=pyMoist_flags,
         backend=BACKEND,
@@ -743,7 +982,7 @@ def pyMoist_init(pyMoist_flags: cffi.FFI.CData):
 
 def gfdl_1m_init(gfdl_1m_flags: cffi.FFI.CData) -> None:
     if not WRAPPER.ready:
-        raise RuntimeError("[GFDL_1M WRAPPER] pyMoist_init needs to be called first")
+        raise RuntimeError("[GEOS WRAPPER] Bad init, did you call init?")
     WRAPPER.pymoist.init_gfdl_1m_configuration(
         flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
     )
@@ -755,6 +994,13 @@ def compute_uwshcu_init(
     windsrcavg: int,
 ):
     print("Reached compute_uwschu_init")
+    if not WRAPPER.ready:
+        raise RuntimeError("[GEOS WRAPPER] Bad init, did you call init?")
+    WRAPPER.pymoist.init_UW_configuration(
+        NCNST=ncnst,
+        k0=k0,
+        windsrcavg=windsrcavg,
+    )
 
 
 def compute_uwshcu_run(
@@ -931,4 +1177,82 @@ def compute_uwshcu_run(
     qpert_out_dim_sizes: "cffi.FFI.CData",
     qpert_out_rank: int,
 ):
-    print("Reached compute_uwshcu_run")
+    if not WRAPPER.ready:
+        raise RuntimeError("[GEOS WRAPPER] Bad init, did you call init?")
+    WRAPPER.UW_shallow_convection(
+        dotransport=dotransport,
+        k0=k0,
+        windsrcavg=windsrcavg,
+        qtsrchgt=qtsrchgt,
+        qtsrc_fac=qtsrc_fac,
+        thlsrc_fac=thlsrc_fac,
+        frc_rasn=frc_rasn,
+        rbuoy=rbuoy,
+        epsvarw=epsvarw,
+        use_CINcin=use_CINcin,
+        mumin1=mumin1,
+        rmaxfrac=rmaxfrac,
+        PGFc=PGFc,
+        dt=dt,
+        niter_xc=niter_xc,
+        criqc=criqc,
+        rle=rle,
+        cridist_opt=cridist_opt,
+        mixscale=mixscale,
+        rdrag=rdrag,
+        rkm=rkm,
+        use_self_detrain=use_self_detrain,
+        detrhgt=detrhgt,
+        use_cumpenent=use_cumpenent,
+        rpen=rpen,
+        use_momenflx=use_momenflx,
+        rdrop=rdrop,
+        iter_cin=iter_cin,
+        f_pifc0_inv=pifc0_inv,
+        f_zifc0_inv=zifc0_inv,
+        f_pmid0_inv=pmid0_inv,
+        f_zmid0_inv=zmid0_inv,
+        f_kpbl_inv=kpbl_inv,
+        f_exnmid0_inv=exnmid0_inv,
+        f_exnifc0_inv=exnifc0_inv,
+        f_dp0_inv=dp0_inv,
+        f_u0_inv=u0_inv,
+        f_v0_inv=v0_inv,
+        f_qv0_inv=qv0_inv,
+        f_ql0_inv=ql0_inv,
+        f_qi0_inv=qi0_inv,
+        f_t0_inv=t0_inv,
+        f_frland=frland_in,
+        f_tke_inv=tke_inv,
+        f_rkfre=rkfre,
+        f_cush=cush,
+        f_shfx=shfx,
+        f_evap=evap,
+        f_cnvtr=cnvtr,
+        f_CNV_Tracers=CNV_Tracers,
+        f_umf_inv=umf_inv,
+        f_dcm_inv=dcm_inv,
+        f_qtflx_inv=qtflx_inv,
+        f_slflx_inv=slflx_inv,
+        f_uflx_inv=uflx_inv,
+        f_vflx_inv=vflx_inv,
+        f_qvten_inv=qvten_inv,
+        f_qlten_inv=qlten_inv,
+        f_qiten_inv=qiten_inv,
+        f_tten_inv=tten_inv,
+        f_uten_inv=uten_inv,
+        f_vten_inv=vten_inv,
+        f_qrten_inv=qrten_inv,
+        f_qsten_inv=qsten_inv,
+        f_cufrc_inv=cufrc_inv,
+        f_fer_inv=fer_inv,
+        f_fdr_inv=fdr_inv,
+        f_ndrop_inv=ndrop_inv,
+        f_nice_inv=nice_inv,
+        f_qldet_inv=qldet_inv,
+        f_qlsub_inv=qlsub_inv,
+        f_qidet_inv=qidet_inv,
+        f_qisub_inv=qisub_inv,
+        f_tpert_out=tpert_out,
+        f_qpert_out=qpert_out,
+    )
