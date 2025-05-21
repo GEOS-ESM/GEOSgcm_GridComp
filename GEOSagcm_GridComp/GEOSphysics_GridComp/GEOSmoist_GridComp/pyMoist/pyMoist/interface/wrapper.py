@@ -30,7 +30,7 @@ from ndsl import (
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.dace.build import set_distributed_caches
 from ndsl.dsl.gt4py_utils import is_gpu_backend
-from ndsl.dsl.typing import floating_point_precision
+from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
@@ -190,7 +190,7 @@ class GEOSPyMoistWrapper:
             f"         bridge : {self._fortran_mem_space}"
             f" > {self._pace_mem_space}\n"
             f"        backend : {backend}\n"
-            f"          float : {floating_point_precision()}bit\n"
+            f"          float : {get_precision()}bit\n"
             f"  orchestration : {self._is_orchestrated}\n"
             f"          sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
