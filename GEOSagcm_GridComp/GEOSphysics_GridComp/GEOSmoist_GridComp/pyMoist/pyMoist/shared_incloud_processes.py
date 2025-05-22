@@ -7,6 +7,7 @@ from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log10
 
 import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField
+from pyMoist.shared_generic_math import air_density
 
 
 @gtscript.function
@@ -124,7 +125,7 @@ def cloud_effective_radius_liquid(
     """
     # Calculate liquid water content
     WC = (
-        1.0e3 * (100.0 * PL) / (constants.MAPL_RDRY * TE) * QC
+        1.0e3 * air_density(PL, TE) * QC
     )  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
     # Calculate cloud drop number concentration from the aerosol model + ....
     NNX = max(NNL * 1.0e-6, 10.0)
@@ -177,7 +178,7 @@ def cloud_effective_radius_ice(
     """
     # Calculate ice water content
     WC = (
-        1.0e3 * (100.0 * PL) / (constants.MAPL_RDRY * TE) * QC
+        1.0e3 * air_density(PL, TE) * QC
     )  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
     # Calculate radius in meters [m]
     if constants.ICE_RADII_PARAM == 1:
