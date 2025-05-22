@@ -20,10 +20,11 @@ def exnerfn(
     Function that calculates the Exner function for a given pressure.
 
     Inputs:
-    p (Float): Atmospheric pressure [Pa]
+    p [Float]: Atmospheric pressure [Pa]
 
     Returns:
-    (p / 100000.0) ** (constants.MAPL_RGAS / constants.MAPL_CP) (Float): Exner function
+    (p / 100000.0) ** (constants.MAPL_RGAS / constants.MAPL_CP) [Float]:
+    Exner function [unitless]
     """
 
     return (p / 100000.0) ** (constants.MAPL_RGAS / constants.MAPL_CP)
@@ -64,12 +65,12 @@ def slope_mid(
     Function that calculates slope at mid layers of a field.
 
     Inputs:
-    max_k (Int): Max k level (e.g., 71)
-    field (FloatField): Field of interest [N/A]
-    p0 (FloatField): Pressure [Pa]
+    max_k [Int]: Max k level (e.g., 71)
+    field [FloatField]: Field of interest [n/a]
+    p0 [FloatField]: Pressure [Pa]
 
     Returns:
-    slope (Float): Slope of the field of interest [N/A]
+    slope [Float]: Slope of the field of interest [n/a]
     """
 
     if THIS_K > 0 and THIS_K < max_k:
@@ -93,12 +94,12 @@ def slope_top(
     Function that calculates slope at mid layers of a field.
 
     Inputs:
-    max_k (Int): Max k level (e.g., 71)
-    field (FloatField): Field of interest [N/A]
-    p0 (FloatField): Pressure [Pa]
+    max_k [Int]: Max k level (e.g., 71)
+    field [FloatField]: Field of interest [n/a]
+    p0 [FloatField]: Pressure [Pa]
 
     Returns:
-    slope (Float): Slope of the field of interest [N/A]
+    slope [Float]: Slope of the field of interest [n/a]
     """
 
     if THIS_K == max_k:
@@ -118,6 +119,17 @@ def ice_fraction(
     cnv_frc: Float,
     srf_type: Float,
 ):
+    """
+    Function description
+
+    Inputs:
+    temp [Float]: Temperature [K]
+    cnv_frc [Float]: Convective fraction [?]
+    srf_type [Float]: Surface type [?]
+
+    Returns:
+    ice_frac [Float]: Ice fraction [unitless]
+    """
     # Anvil clouds
     # Anvil-Convective sigmoidal function like figure 6(right)
     # Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
@@ -195,18 +207,18 @@ def conden(
     Function that determines if condensation process has occurred.
 
     Inputs:
-    p (Float): Pressure [Pa]
-    thl (Float): Temperature [K]
-    qt (Float): Mixing ratio [kg/kg]
-    ese (FloatField_Extra_Dim): Used in QSat_Float [N/A]
-    esx (FloatField_Extra_Dim): Used in for QSat_Float [N/A]
+    p [Float]: Pressure [Pa]
+    thl [Float]: Liquid potential temperature [K]
+    qt [Float]: Mixing ratio [kg/kg]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
 
     Returns:
-    th (Float): Temperature [K]
-    qv (Float): Water vapor mixing ratio [kg/kg]
-    ql (Float): Liquid water mixing ratio [kg/kg]
-    qi (Float): Ice water mixing ratio [kg/kg]
-    rvls (Float): Saturation specific humidity [kg/kg]
+    th [Float]: Temperature [K]
+    qv [Float]: Water vapor mixing ratio [kg/kg]
+    ql [Float]: Liquid water mixing ratio [kg/kg]
+    qi [Float]: Ice water mixing ratio [kg/kg]
+    rvls [Float]: Saturation specific humidity [kg/kg]
     id_check (Int): Flag that indicates if condensation occurs
     (0 for no condensation, 1 for condensation).
     """
@@ -260,9 +272,17 @@ def compute_alpha(
     del_CIN: Float,
     ke: Float,
 ):
+    """
+    Subroutine to compute proportionality factor for
+    implicit CIN calculation.
 
-    # Subroutine to compute proportionality factor for
-    # implicit CIN calculation.
+    Inputs:
+    del_CIN [Float]: Difference between initial and final CIN calculations [J/kg]
+    ke [Float]: Evaporative efficiency [?]
+
+    Returns:
+    compute_alpha [Float]: Proportionality factor for CIN calculation [unitless]
+    """
 
     x0: f64 = f64(0.0)
     del_CIN8_f64: f64 = f64(del_CIN)
@@ -286,24 +306,34 @@ def compute_mumin2(
     rmaxfrax: Float,
     mulow: Float,
 ):
+    """
+    Subroutine to compute critical 'mu' (normalized CIN) such
+    that updraft fraction at the LCL is equal to 'rmaxfrac'.
 
-    # Subroutine to compute critical 'mu' (normalized CIN) such
-    # that updraft fraction at the LCL is equal to 'rmaxfrac'.
+    Inputs:
+    mulcl [Float]: Some var at the LCL [?]
+    rmaxfrac [Float]: Maximum core updraft fraction [unitless]
+    mulow [Float]: Some var at the bottom interface [?]
+
+    Returns:
+    compute_mumin2 [Float]: Critical mu (normalized CIN) [unitless]
+
+    """
 
     x0: f64 = mulow
     iteration = 0
     while iteration < 10:
-        ex: f64 = exp(-(x0 ** 2))
+        ex: f64 = exp(-(x0**2))
         ef: f64 = erfc(x0)  # Complimentary error fraction function
         exf: f64 = ex / ef
         f: f64 = (
-            f64(0.5) * exf ** 2
+            f64(0.5) * exf**2
             - f64(0.5) * (ex / f64(2.0) / rmaxfrax) ** 2
             - (mulcl * f64(2.5066) / f64(2.0)) ** 2
         )
-        fs: f64 = (f64(2.0) * exf ** 2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
-            f64(0.5) * x0 * ex ** 2
-        ) / (rmaxfrax ** 2)
+        fs: f64 = (f64(2.0) * exf**2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
+            f64(0.5) * x0 * ex**2
+        ) / (rmaxfrax**2)
         x1: f64 = x0 - f / fs
         x0 = x1
         iteration += 1
@@ -323,10 +353,21 @@ def compute_ppen(
     dpen: Float,
 ):
     """
-    Subroutine to compute critical 'ppen[Pa]<0' ( pressure dis.
+    Function to compute critical 'ppen[Pa]<0' ( pressure dis.
     from 'pifc0(kpen-1)' to the cumulus top where cumulus updraft
     vertical velocity is exactly zero ) by considering exact
     non-zero fer(kpen).
+
+    Inputs:
+    wtwb [Float]: Updraft vertical velocity at lower interface [m/s]
+    drag [Float]: Drag coefficient [unitless]
+    bogbot [Float]: Cloud buoyancy at base interface [n/a]
+    bogtop [Float]: Cloud buoyancy at top interface [n/a]
+    rho0j [Float]: Density of water [kg/m^3] [?]
+    dpen [Float]: Environmental layer pressure thickness [Pa] > 0
+
+    Returns:
+    compute_ppen [Float]: Critical ppen [Pa]
     """
 
     # Buoyancy slope
@@ -379,13 +420,27 @@ def getbuoy(
     plfc_in: Float,
 ):
     """
-    Subroutine to calculate integrated CIN [ J/kg = m2/s2 ] and
+    Function to calculate integrated CIN [ J/kg = m2/s2 ] and
     'cinlcl, plfc' if any. Assume 'thv' is linear in each layer
     both for cumulus and environment. Note that this subroutine
     only includes positive CIN in calculation - if there is any
-    negative CIN, it is assumed to be zero.    This is slightly
+    negative CIN, it is assumed to be zero. This is slightly
     different from 'single_cin' below, where both positive  and
     negative CIN are included.
+
+    Inputs:
+    pbot [Float]: Pressure at bottom layer [Pa]
+    thv0bot [Float]: Some sort of temperature at bottom [?]
+    ptop [Float]: Pressure at top layer [Pa]
+    thv0top [Float]: Some sort of temperature at top [?]
+    thvubot [Float]: Some sort of temperature at bot [?]
+    thvutop [Float]: Some sort of temperature at top [?]
+    cin_in [Float]: Convective inhibition [J/kg]
+    plfc_in [Float]: Pressure at the level of free convection [Pa]
+
+    Returns:
+    plfc [Float]: Pressure at level of free convection [Pa]
+    cin [Float]: Integreated CIN [J/kg]
     """
     plfc = plfc_in
     cin = cin_in
@@ -437,6 +492,16 @@ def qsinvert(
     thl ( liquid potential temperature,  NOT liquid virtual potential
     temperature) by inverting Bolton formula. I should check later if
     current use of 'leff' instead of 'xlv' here is reasonable or not.
+
+    Inputs:
+    qt [Float]: Mixing ratio [kg/kg]
+    thl [Float]: Liquid potential temperature [K]
+    ps_in [Float]: Pressure [Pa]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+
+    Returns:
+    qsinvert [Float]: Saturation pressure [Pa]
     """
 
     psmin: f64 = f64(
@@ -512,6 +577,13 @@ def sign(
 ):
     """
     Function that returns the magnitude of one argument and the sign of another.
+
+    Inputs:
+    a [Float]: Argument of which the magnitude is needed [unitless]
+    b [Float]: Argument of which the sign is needed [unitless]
+
+    Returns:
+    result [Float]: The magnitude of a and sign of b [unitless]
     """
 
     if b >= 0.0:
@@ -529,7 +601,19 @@ def roots(
     c: Float,
 ):
     """
-    Function to solve a second order polynomial equation.
+    Function to solve a second order polynomial equation of the
+    form [ax^2 + bx + c].
+
+    Inputs:
+    a [Float]: Coefficient of the x^2 term [unitless]
+    b [Float]: Coefficient of x [unitless]
+    c [Float]: Constant term [unitless]
+
+    Returns:
+    r1 [Float]: The first root of the polynomial [unitless]
+    r2  [Float]: The second root of the polynomial [unitless]
+    status [Int]: 0 if roots are found. 1, 2, or 3 if
+    there are no roots [unitless]
     """
 
     status = 0
@@ -548,10 +632,10 @@ def roots(
                 r1 = sqrt(-c / a)
             r2 = -r1
         else:  # Form a*x**2 + b*x + c = 0
-            if (b ** 2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
+            if (b**2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
                 status = 3
             else:
-                q = -0.5 * (b + sign(1.0, b) * sqrt(b ** 2 - 4.0 * a * c))
+                q = -0.5 * (b + sign(1.0, b) * sqrt(b**2 - 4.0 * a * c))
                 r1 = q / a
                 r2 = c / q
 
@@ -570,6 +654,17 @@ def single_cin(
     """
     Function to calculate a single layer CIN by summing all
     positive and negative CIN.
+
+    Inputs:
+    pbot [Float]: Pressure at bottom layer [Pa]
+    thv0bot [Float]: Some sort of temperature at bottom layer [?]
+    ptop [Float]: Pressure at top of layer [Pa]
+    thv0top [Float]: Some sort of temperature at top layer [?]
+    thvubot [Float]: Some sort of temperature at bottom layer [?]
+    thvutop [Float]: Some sort of temperature at top layer [?]
+
+    Returns:
+    single_cin [Float]: Convective Inhibition (CIN) of a single layer [J/kg]
     """
 
     single_cin = (

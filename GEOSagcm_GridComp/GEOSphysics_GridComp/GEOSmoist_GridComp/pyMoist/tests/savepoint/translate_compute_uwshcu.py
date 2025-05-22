@@ -181,7 +181,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         )
         safe_assign_array(zmid0_inv.view[:, :, :], inputs["zmid0_inv"])
         kpbl_inv = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a", dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
         )
         safe_assign_array(kpbl_inv.view[:, :], inputs["kpbl_inv"])
         exnmid0_inv = QuantityFactory.zeros(
