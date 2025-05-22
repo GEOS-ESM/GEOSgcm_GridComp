@@ -360,7 +360,26 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer :: I, J, L
 
     integer :: comm, rank, mpierr
-    
+    !$ser verbatim integer :: temporary_1, temporary_2, iter, iter_1, iter_2
+
+    !$ser verbatim real,    parameter :: TMINTBL    =  150.0
+    !$ser verbatim real,    parameter :: TMAXTBL    =  333.0
+    !$ser verbatim integer, parameter :: DEGSUBS    =  100
+    !$ser verbatim integer, parameter :: TABLESIZE  =  nint(TMAXTBL-TMINTBL)*DEGSUBS + 1
+    !$ser verbatim integer, parameter :: TEST_ARRAY_SIZE  =  100
+
+    !$ser verbatim integer :: SER_TABLESIZE
+    !$ser verbatim real :: SER_ESTBLE(TABLESIZE)
+    !$ser verbatim real :: SER_ESTBLW(TABLESIZE)
+    !$ser verbatim real :: SER_ESTBLX(TABLESIZE)
+    !$ser verbatim real :: SER_ESTFRZ
+    !$ser verbatim real :: SER_ESTLQU
+
+    !$ser verbatim real, allocatable, dimension(:,:,:) :: SER_QSATLQU, SER_QSATICE, SER_DQSL, SER_DQSI, SER_DQSAT_QS, SER_DQSAT_DQ, SER_QSAT_QS, SER_QSAT_DQ
+    !$ser verbatim real, allocatable, dimension(:,:) :: TEMP_ARRAY, PRES_ARRAY
+    !$ser verbatim real, allocatable, dimension(:,:) :: SER_QSATLQU_2D, SER_QSATICE_2D, SER_DQSL_2D, SER_DQSI_2D
+    !$ser verbatim real, allocatable, dimension(:,:) :: SER_QSAT0_QS_2D, SER_QSAT0_DQ_2D, SER_DQSAT0_QS_2D, SER_DQSAT0_DQ_2D
+
     type(ESMF_VM) :: vm
     call ESMF_VMGetCurrent(vm,rc=status)
     call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
@@ -461,6 +480,25 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      ! 2D Variables
     ALLOCATE ( KLCL         (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
+
+    !$ser verbatim ALLOCATE(SER_QSATLQU(IM, JM, LM))
+    !$ser verbatim ALLOCATE(SER_QSATICE(IM, JM, LM))
+    !$ser verbatim ALLOCATE(SER_DQSL(IM, JM, LM))
+    !$ser verbatim ALLOCATE(SER_DQSI(IM, JM, LM))
+    !$ser verbatim ALLOCATE(SER_DQSAT_QS(IM, JM, LM))
+    !$ser verbatim ALLOCATE(SER_DQSAT_DQ(IM, JM, LM)) 
+    !$ser verbatim ALLOCATE(SER_QSAT_QS(IM, JM, LM)) 
+    !$ser verbatim ALLOCATE(SER_QSAT_DQ(IM, JM, LM)) 
+    !$ser verbatim ALLOCATE(TEMP_ARRAY(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
+    !$ser verbatim ALLOCATE(PRES_ARRAY(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
+    !$ser verbatim ALLOCATE(SER_QSATLQU_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
+    !$ser verbatim ALLOCATE(SER_QSATICE_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
+    !$ser verbatim ALLOCATE(SER_DQSL_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
+    !$ser verbatim ALLOCATE(SER_DQSI_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
+    !$ser verbatim ALLOCATE(SER_QSAT0_QS_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
+    !$ser verbatim ALLOCATE(SER_QSAT0_DQ_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
+    !$ser verbatim ALLOCATE(SER_DQSAT0_QS_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
+    !$ser verbatim ALLOCATE(SER_DQSAT0_DQ_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
 
     ! Derived States
     PLEmb    =  PLE*.01
@@ -574,6 +612,47 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
    call MAPL_GetPointer(EXPORT,  PDF_RWQT,  'PDF_RWQT' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 #endif
 
+    !$ser verbatim do iter=0, TEST_ARRAY_SIZE-1
+      !$ser verbatim TEMP_ARRAY(iter+1, :) = 150 + (2*iter)
+      !$ser verbatim PRES_ARRAY(:, iter+1) = 0.01 + (10*iter)
+    !$ser verbatim enddo
+
+    !$ser verbatim SER_TABLESIZE=TABLESIZE
+    !$ser savepoint saturation_tables-In
+    !$ser data TABLESIZE=SER_TABLESIZE
+    !$ser verbatim call SERIALIZE_ESINIT(SER_ESTBLE, SER_ESTBLW, SER_ESTBLX, SER_ESTFRZ, SER_ESTLQU)
+    !$ser savepoint saturation_tables-Out
+    !$ser data ESTBLE=SER_ESTBLE ESTBLW=SER_ESTBLW ESTBLX=SER_ESTBLX
+    !$ser data ESTFRZ=SER_ESTFRZ ESTLQU=SER_ESTLQU
+
+    !$ser savepoint qsat_functions-In
+    !$ser data T=T PLmb=PLmb TEMP_ARRAY=TEMP_ARRAY PRES_ARRAY=PRES_ARRAY
+    !$ser verbatim do L=1,LM
+      !$ser verbatim do J=1,JM
+        !$ser verbatim do I=1,IM
+          !$ser verbatim SER_QSATICE(I, J, L) = GEOS_QsatICE( T(I, J, L), PLmb(I, J, L)*100.0 , DQ=SER_DQSI(I, J, L) )
+          !$ser verbatim SER_QSATLQU(I, J, L) = GEOS_QsatLQU( T(I, J, L), PLmb(I, J, L)*100.0 , DQ=SER_DQSL(I, J, L) )
+          !$ser verbatim SER_QSAT_QS(I, J, L) = GEOS_Qsat( T(I, J, L), PLmb(I, J, L), DQSAT=SER_QSAT_DQ(I, J, L) )
+          !$ser verbatim SER_DQSAT_DQ(I, J, L) = GEOS_DQsat( T(I, J, L), PLmb(I, J, L), QSAT=SER_DQSAT_QS(I, J, L) )
+        !$ser verbatim enddo
+      !$ser verbatim enddo
+    !$ser verbatim enddo
+
+    !$ser verbatim do iter_1=1, TEST_ARRAY_SIZE
+      !$ser verbatim do iter_2=1, TEST_ARRAY_SIZE
+        !$ser verbatim SER_QSATICE_2D(iter_1, iter_2) = GEOS_QsatICE( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2)*100.0 , DQ=SER_DQSI_2D(iter_1, iter_2) )
+        !$ser verbatim SER_QSATLQU_2D(iter_1, iter_2) = GEOS_QsatLQU( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2)*100.0 , DQ=SER_DQSL_2D(iter_1, iter_2) )
+        !$ser verbatim SER_QSAT0_QS_2D(iter_1, iter_2) = GEOS_Qsat( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2), DQSAT=SER_QSAT0_DQ_2D(iter_1, iter_2) )
+        !$ser verbatim SER_DQSAT0_DQ_2D(iter_1, iter_2) = GEOS_DQsat( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2), QSAT=SER_DQSAT0_QS_2D(iter_1, iter_2) )
+      !$ser verbatim enddo
+    !$ser verbatim enddo
+    !$ser savepoint qsat_functions-Out
+    !$ser data SER_QSATLQU=SER_QSATLQU SER_QSATICE=SER_QSATICE SER_DQSL=SER_DQSL SER_DQSI=SER_DQSI
+    !$ser data SER_QSATLQU_2D=SER_QSATLQU_2D SER_QSATICE_2D=SER_QSATICE_2D SER_DQSL_2D=SER_DQSL_2D SER_DQSI_2D=SER_DQSI_2D
+    !$ser data SER_QSAT_QS=SER_QSAT_QS SER_QSAT_DQ=SER_QSAT_DQ SER_DQSAT_QS=SER_DQSAT_QS SER_DQSAT_DQ=SER_DQSAT_DQ
+    !$ser data SER_QSAT0_QS_2D=SER_QSAT0_QS_2D SER_QSAT0_DQ_2D=SER_QSAT0_DQ_2D SER_DQSAT0_QS_2D=SER_DQSAT0_QS_2D SER_DQSAT0_DQ_2D=SER_DQSAT0_DQ_2D
+
+        
 
       ! Include shallow precip condensates if present
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -590,6 +669,24 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
         !$ser data DT_MOIST=DT_MOIST PDFSHAPE=PDFSHAPE CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
         !$ser data TURNRHCRIT_PARAM=TURNRHCRIT_PARAM dw_land=dw_land dw_ocean=dw_ocean
+        !$ser savepoint phase_change-In
+        !$ser data EIS=EIS CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE T=T Q=Q NACTL=NACTL NACTI=NACTI
+        !$ser data QLCN=QLCN QICN=QICN QILS=QILS QLLS=QLLS CLLS=CLLS CLCN=CLCN KLCL=KLCL
+        !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
+        !$ser verbatim if (LMELTFRZ .eqv. .true.) then
+        !$ser verbatim   temporary_1 = 1
+        !$ser verbatim else
+        !$ser verbatim   temporary_1 = 0
+        !$ser verbatim endif
+        !$ser verbatim if (USE_BERGERON .eqv. .true.) then
+        !$ser verbatim   temporary_2 = 1
+        !$ser verbatim else
+        !$ser verbatim   temporary_2 = 0
+        !$ser verbatim endif
+        !$ser savepoint phase_change-constants
+        !$ser data DT_MOIST=DT_MOIST PDFSHAPE=PDFSHAPE CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
+        !$ser data TURNRHCRIT_PARAM=TURNRHCRIT_PARAM dw_land=dw_land dw_ocean=dw_ocean do_qa=do_qa
+        !$ser data LMELTFRZ=temporary_1 USE_BERGERON=temporary_2
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         !$ser verbatim call ser_set_Dx(IM, JM, LM, 1)
@@ -628,6 +725,18 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
            ! Put condensates in touch with the PDF
              if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP
+              !$ser verbatim if (USE_BERGERON .eqv. .true.) then
+              !$ser verbatim   temporary_2 = 1
+              !$ser verbatim else
+              !$ser verbatim   temporary_2 = 0
+              !$ser verbatim endif
+              !$ser savepoint hydrostatic_pdf-In
+              !$ser data_buffered Dx=0 DT_MOIST=DT_MOIST PDFSHAPE=PDFSHAPE USE_BERGERON=temporary_2
+              !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
+              !$ser data_buffered Dx=3 ALPHA=ALPHA PLmb=PLmb(I,J,L) Q=Q(I,J,L)
+              !$ser data_buffered Dx=3 QLLS=QLLS(I,J,L) QLCN=QLCN(I,J,L) QILS=QILS(I,J,L)
+              !$ser data_buffered Dx=3 QICN=QICN(I,J,L) T=T(I,J,L) CLLS=CLLS(I,J,L) CLCN=CLCN(I,J,L)
+              !$ser data_buffered Dx=3 NACTI=NACTI(I,J,L) RHX=RHX(I,J,L) PDFITERS=PDFITERS(I,J,L)
              call hystpdf( &
                       DT_MOIST       , &
                       ALPHA          , &
@@ -679,11 +788,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       .false.        , &
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+              !$ser savepoint hydrostatic_pdf-Out
+              !$ser data_buffered Dx=3 Q=Q(I,J,L) QLLS=QLLS(I,J,L) QLCN=QLCN(I,J,L) QILS=QILS(I,J,L)
+              !$ser data_buffered Dx=3 QICN=QICN(I,J,L) T=T(I,J,L) CLLS=CLLS(I,J,L) CLCN=CLCN(I,J,L)
+              !$ser data_buffered Dx=3 RHX=RHX(I,J,L) PDFITERS=PDFITERS(I,J,L)
             endif
-            !$ser savepoint meltfrz-In
+            !$ser savepoint melt_freeze-In
             !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
             !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
-            !$ser data_buffered Dx=1 DT_MOIST_ARRAY=DT_MOIST
+            !$ser data_buffered Dx=0 DT_MOIST=DT_MOIST
             if (LMELTFRZ) then
              ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
@@ -692,7 +805,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                             T(I,J,L)     , &
                             QLCN(I,J,L)  , &
                             QICN(I,J,L) )
-             !$ser savepoint Meltfrz-Out
+             !$ser savepoint melt_freeze-Out
              !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
              ! evaporation for CN
              call MELTFRZ ( DT_MOIST     , &
@@ -703,9 +816,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                             QILS(I,J,L) )
              endif
              if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
-             !$ser savepoint EVAP-In
-             !$ser data_buffered Dx=3 PLmb=PLmb(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L) CLCN=CLCN(I,J,L) NACTL=NACTL(I,J,L) NACTI=NACTI(I,J,L) QST3=QST3(I,J,L)
-             !$ser data_buffered Dx=0 CCW_EVAP_EFF_s=CCW_EVAP_EFF DT_MOIST_s=DT_MOIST 
+             !$ser savepoint evaporate-In
+             !$ser data_buffered Dx=3 PLmb=PLmb(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L)
+             !$ser data_buffered Dx=3 QICN=QICN(I,J,L) CLCN=CLCN(I,J,L) NACTL=NACTL(I,J,L)
+             !$ser data_buffered Dx=3 NACTI=NACTI(I,J,L) QST3=QST3(I,J,L) EVAPC=EVAPC(I,J,L)
+             !$ser data_buffered Dx=0 CCW_EVAP_EFF_s=CCW_EVAP_EFF DT_MOIST_s=DT_MOIST
              RHCRIT = 1.0
              EVAPC(I,J,L) = Q(I,J,L)
              call EVAP3 (         &
@@ -722,13 +837,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
-             !$ser savepoint EVAP-Out
-             !$ser data_buffered Dx=3 EVAPC=EVAPC(I,J,L)
+             !$ser savepoint evaporate-Out
+             !$ser data_buffered Dx=3 EVAPC=EVAPC(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L)
+             !$ser data_buffered Dx=3 QICN=QICN(I,J,L) CLCN=CLCN(I,J,L)
             endif
            ! sublimation for CN
              if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
-             !$ser savepoint SUBLC-In
-             !$ser data_buffered Dx=3 PLmb=PLmb(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L) CLCN=CLCN(I,J,L) NACTL=NACTL(I,J,L) NACTI=NACTI(I,J,L) QST3=QST3(I,J,L)
+             !$ser savepoint sublimate-In
+             !$ser data_buffered Dx=3 PLmb=PLmb(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L)
+             !$ser data_buffered Dx=3 QICN=QICN(I,J,L) CLCN=CLCN(I,J,L) NACTL=NACTL(I,J,L)
+             !$ser data_buffered Dx=3 NACTI=NACTI(I,J,L) QST3=QST3(I,J,L) SUBLC=SUBLC(I,J,L)
              !$ser data_buffered Dx=0 DT_MOIST_s=DT_MOIST CCI_EVAP_EFF_s=CCI_EVAP_EFF
               RHCRIT = 1.0
              SUBLC(I,J,L) = Q(I,J,L)
@@ -746,8 +864,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
-             !$ser savepoint SUBLC-Out
-             !$ser data_buffered Dx=3 SUBLC=SUBLC(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L) CLCN=CLCN(I,J,L)
+             !$ser savepoint sublimate-Out
+             !$ser data_buffered Dx=3 SUBLC=SUBLC(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L)
+             !$ser data_buffered Dx=3 QICN=QICN(I,J,L) CLCN=CLCN(I,J,L)
             endif
            ! cleanup clouds
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
@@ -758,6 +877,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        !$ser flush_savepoint meltfrz-Out
        !$ser savepoint GFDL_1M-Out
        !$ser data T=T Q=Q QLLS=QLLS QILS=QILS QLCN=QLCN QICN=QICN CLLS=CLLS CLCN=CLCN RHX=RHX EVAPC=EVAPC SUBLC=SUBLC
+       !$ser savepoint phase_change-Out
+       !$ser data T=T Q=Q QLLS=QLLS QILS=QILS QLCN=QLCN QICN=QICN CLLS=CLLS CLCN=CLCN
+       !$ser data RHX=RHX EVAPC=EVAPC SUBLC=SUBLC KLCL=KLCL RHCRIT3D=RHCRIT3D
 
     ! Update macrophysics tendencies
      DUDT_macro=( U         - DUDT_macro)/DT_MOIST

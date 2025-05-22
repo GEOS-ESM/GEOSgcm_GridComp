@@ -2156,6 +2156,14 @@ module GEOSmoist_Process_Library
            Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
+           !$ser verbatim if (n==1) then
+            !$ser savepoint bergeron_partition-In
+            !$ser data_buffered Dx=3 PL=PL TEn=TEn QT=QT QILS=QILS QICN=QICN QLLS=QLLS
+            !$ser data_buffered Dx=3 QLCN=QLCN CLLS=CLLS CLCN=CLCN NLv=NLv NIv=NIv
+            !$ser data_buffered Dx=3 DQCALL=DQCALL fQi=fQi
+            !$ser data_buffered Dx=2 CNVFRC=CNVFRC SRF_TYPE=SRF_TYPE
+            !$ser data_buffered Dx=0 DT=DT needs_preexisting=needs_preexisting
+           !$ser verbatim endif
            call Bergeron_Partition( &         !Microphysically-based partitions the new condensate
                  DT               , &
                  PL               , &
@@ -2173,6 +2181,14 @@ module GEOSmoist_Process_Library
                  fQi              , &
                  CNVFRC,SRF_TYPE  , &
                  needs_preexisting)
+           !$ser verbatim if (n==1) then
+            !$ser savepoint bergeron_partition-Out
+            !$ser data_buffered Dx=3 PL=PL TEn=TEn QT=QT QILS=QILS QICN=QICN QLLS=QLLS
+            !$ser data_buffered Dx=3 QLCN=QLCN CLLS=CLLS CLCN=CLCN NLv=NLv NIv=NIv
+            !$ser data_buffered Dx=3 DQCALL=DQCALL fQi=fQi
+            !$ser data_buffered Dx=2 CNVFRC=CNVFRC SRF_TYPE=SRF_TYPE
+            !$ser data_buffered Dx=0 DT=DT needs_preexisting=needs_preexisting
+           !$ser verbatim endif
          ELSE
            fQi = ice_fraction( TEn, CNVFRC,SRF_TYPE )
          ENDIF
