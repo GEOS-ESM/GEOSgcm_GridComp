@@ -317,7 +317,7 @@ contains
      !$ser data rdrag=shlwparams%rdrag use_self_detrain=shlwparams%use_self_detrain
      !$ser data rpen=shlwparams%rpen use_cumpenent=shlwparams%use_cumpenent 
      !$ser data use_momenflx=shlwparams%use_momenflx niter_xc=shlwparams%niter_xc
-     !$ser data rdrop=shlwparams%rdrop
+     !$ser data rdrop=shlwparams%rdrop iter_cin=shlwparams%iter_cin
      call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
           exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, cush, umf, &
