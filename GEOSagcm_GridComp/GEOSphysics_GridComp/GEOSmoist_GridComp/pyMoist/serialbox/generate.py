@@ -18,12 +18,6 @@ ppser_args = [
     "--ignore-identical",
     "-m",
     "utils_ppser_kbuff",
-    "--savepoints",
-    "ComputeUwshcu-In",
-    "--savepoints",
-    "ComputeUwshcuInv-In",
-    "--savepoints",
-    "ComputeUwshcuInv-Out",
 ]
 ppser_script = os.path.abspath(f"{os.getenv('SERIALBOX_ROOT')}/python/pp_ser/pp_ser.py")
 print(f"Executing ppser from {ppser_script}")
