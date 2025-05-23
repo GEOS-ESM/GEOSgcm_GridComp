@@ -28,6 +28,7 @@ jobs:
           fetch-depth: 1
           filter: blob:none
           repository: GEOS-ESM/GEOSgcm
+          ref: release/MAPL-v3
 
       - name: Set all directories as git safe
         run: |
@@ -48,12 +49,6 @@ jobs:
         run: |
           ls
           mepo clone --partial blobless
-          mepo status
-
-      - name: Mepo develop usual suspects
-        run: |
-          ls
-          mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared GEOS_Util
           mepo status
 
       - name: Debug PR branch

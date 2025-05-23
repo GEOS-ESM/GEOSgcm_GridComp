@@ -29,8 +29,26 @@ module GEOS_GwdGridCompMod
 
    ! !USES:
 
-   use ESMF
-   use MAPL
+   use esmf
+   use mapl_ErrorHandling, only: MAPL_Verify, MAPL_RTRN, MAPL_ASSERT
+   use MAPL_OpenMP_Support, only : MAPL_get_current_thread => get_current_thread
+   use MAPL_OpenMP_Support, only : MAPL_get_num_threads => get_num_threads
+   use MAPL_OpenMP_Support, only : MAPL_find_bounds => find_bounds
+   use MAPL_OpenMP_Support, only : MAPL_Interval => Interval
+   use MAPL_CommsMod, only: MAPL_AM_I_ROOT, ArrayGather
+   use MAPL_MaplGrid, only: MAPL2_GridGet => MAPL_GridGet
+   use MAPL_GenericMod, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
+   use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
+
+   use mapl3g_generic, only: MAPL_GridCompSetEntryPoint
+   use mapl3g_generic, only: MAPL_GridCompGet
+   use mapl3g_generic, only: MAPL_GridCompGetResource
+   use mapl3g_generic, only: MAPL_GridCompGetInternalState
+   use mapl3g_generic, only: MAPL_GridCompAddFieldSpec
+   use mapl3g_VerticalStaggerLoc, only: VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE
+   use mapl3g_UngriddedDims, only: UngriddedDims
+   use mapl3g_Geom_API, only: MAPL_GridGet
+   use mapl3g_State_API, only: MAPL_StateGetPointer
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
@@ -77,6 +95,7 @@ module GEOS_GwdGridCompMod
    end type wrap_
 
    !logical, save      :: FIRST_RUN = .true.
+   logical, parameter :: MAPL_RestartSkip = .true.
 
 contains
 
@@ -107,9 +126,6 @@ contains
       character(len=ESMF_MAXSTR)              :: IAm
       integer                                 :: STATUS
       character(len=ESMF_MAXSTR)              :: COMP_NAME
-      type (MAPL_MetaComp),     pointer   :: MAPL
-      !=============================================================================
-      logical :: use_threads
       type (ESMF_Config)                            :: myCF
 
       type (wrap_)                                :: wrap
@@ -139,14 +155,9 @@ contains
       call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize,  _RC)
       call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  _RC)
 
-      call MAPL_GetObjectFromGC ( GC, MAPL, _RC )
-
-      myCF = ESMF_ConfigCreate (_RC)
-      call ESMF_ConfigLoadFile (myCF, 'GWD_GridComp.rc', _RC)
-      call ESMF_ConfigGetAttribute (myCF, use_threads, label='use_threads:', default=.FALSE., _RC)
-      !   set use_threads
-      call MAPL%set_use_threads(use_threads)
-      call ESMF_ConfigDestroy(myCF, _RC)
+      ! myCF = ESMF_ConfigCreate (_RC)
+      ! call ESMF_ConfigLoadFile (myCF, 'GWD_GridComp.rc', _RC)
+      ! call ESMF_ConfigDestroy(myCF, _RC)
 
       ! Set the state variable specs.
       ! -----------------------------
@@ -172,11 +183,6 @@ contains
       !   --------------------------
       call ESMF_UserCompSetInternalState ( GC, 'GEOS_GwdGridComp', wrap, _RC )
 
-      ! Set generic init and final methods
-      ! ----------------------------------
-
-      call MAPL_GenericSetServices    ( gc, _RC)
-
       RETURN_(ESMF_SUCCESS)
 
    end subroutine SetServices
@@ -193,11 +199,11 @@ contains
 
       ! !ARGUMENTS:
 
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
-      type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-      type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-      type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-      integer, optional,   intent(  out) :: RC     ! Error code
+      type(ESMF_GridComp)  :: GC     ! Gridded component
+      type(ESMF_State)     :: IMPORT ! Import state
+      type(ESMF_State)     :: EXPORT ! Export state
+      type(ESMF_Clock)     :: CLOCK  ! The clock
+      integer, intent(out) :: RC     ! Error code
 
       ! !DESCRIPTION: The Initialize method of the GWD Physics Gridded Component first
       !   calls the Initialize method of the children.  Then, if using the NCAR GWD
@@ -215,12 +221,11 @@ contains
 
       ! Local derived type aliases
 
-      type (MAPL_MetaComp),      pointer  :: MAPL
-
-      integer                             :: IM, JM
+      type(ESMF_Grid) :: grid
+      integer                             :: IM, JM !, dims_(3)
       real, pointer, dimension(:,:)       :: LATS
 
-      character(len=ESMF_MAXSTR) :: GRIDNAME
+      character(len=:), allocatable :: GRIDNAME
       character(len=4)           :: imchar
       character(len=2)           :: dateline
       integer                    :: imsize,nn
@@ -230,10 +235,8 @@ contains
       real, pointer, dimension(:)      :: PREF
 
       ! NCAR GWD variables
-
-      character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
+      character(len=:), allocatable :: BERES_FILE_NAME
       character(len=ESMF_MAXSTR)     :: ERRstring
-
       logical :: JASON_BKG, JASON_ORO
       logical :: NCAR_TAU_TOP_ZERO
       real    :: NCAR_PRNDL
@@ -271,84 +274,81 @@ contains
       call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC )
       Iam = trim(COMP_NAME) // Iam
 
-      ! Get my internal MAPL_Generic state
-      !-----------------------------------
-
-      call MAPL_GetObjectFromGC ( GC, MAPL, _RC )
-
       !   Get my internal private state
       !   -----------------------------
       call ESMF_UserCompGetInternalState(GC, 'GEOS_GwdGridComp', wrap, _RC)
       self => wrap%ptr
 
-      ! Call Generic Initialize for GWD GC
-      !-----------------------------------
-
-      call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, _RC )
-
-      call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, LATS=LATS, _RC)
+      ! Grid info
+      call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
+      call MAPL_GridGet(grid, im=IM, jm=JM, latitudes=lats, _RC)
 
       ! Get grid name to determine IMSIZE
-      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM.GRIDNAME:', _RC)
+      call MAPL_GridCompGetResource(gc, 'AGCM.GRIDNAME', GRIDNAME, _RC)
       GRIDNAME =  AdjustL(GRIDNAME)
       nn = len_trim(GRIDNAME)
       dateline = GRIDNAME(nn-1:nn)
       imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
       read(imchar,*) imsize
       if(dateline.eq.'CF') imsize = imsize*4
-      call MAPL_GetResource(MAPL,STRETCH_FACTOR,'AGCM.STRETCH_FACTOR:', default=1.0, _RC)
+      call MAPL_GridCompGetResource(gc, 'AGCM.STRETCH_FACTOR', STRETCH_FACTOR, default=1.0, _RC)
       imsize = imsize*CEILING(STRETCH_FACTOR)
       sigma = 1.0-0.9839*exp(-0.09835*4.e7*0.9/imsize/1000.) ! Based on Arakawa 2011 sigma used in GF2020
 
       ! Background Gravity wave drag
       ! ----------------------------
-      call MAPL_GetResource(MAPL,JASON_BKG,'JASON_BKG:', default=(LM==72), _RC)
+      call MAPL_GridCompGetResource(gc, 'JASON_BKG', JASON_BKG, default=(LM==72), _RC)
       if (JASON_BKG) then
          GEOS_PGWV = 4
-         call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
-         call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, _RC)
-         call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
-         call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.000, _RC)
-         call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=172800., _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_PGWV",     self%GEOS_PGWV,     default=GEOS_PGWV, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_BGSTRESS", self%GEOS_BGSTRESS, default=0.900, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_EFFGWBKG", self%GEOS_EFFGWBKG, default=0.125, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_EFFGWBKG", self%NCAR_EFFGWBKG, default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_TAU1", self%TAU1,          default=172800., _RC)
       else
          GEOS_PGWV = NINT(32*LM/181.0)
-         call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
-         call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, _RC)
-         call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_PGWV",     self%GEOS_PGWV,     default=GEOS_PGWV, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_BGSTRESS", self%GEOS_BGSTRESS, default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_EFFGWBKG", self%GEOS_EFFGWBKG, default=0.000, _RC)
          self%NCAR_EFFGWBKG = 1.0 !(1.0 - 0.5*sigma)
-         call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=self%NCAR_EFFGWBKG, _RC)
-         call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.00, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_EFFGWBKG", self%NCAR_EFFGWBKG, default=self%NCAR_EFFGWBKG, _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_TAU1", self%TAU1,          default=0.00, _RC)
       endif
 
       ! Orographic Gravity wave drag
       ! ----------------------------
-      call MAPL_GetResource(MAPL,JASON_ORO,'JASON_ORO:', default=(LM==72), _RC)
+      call MAPL_GridCompGetResource(gc, 'JASON_ORO', JASON_ORO, default=(LM==72), _RC)
       if (JASON_ORO) then
-         call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.250, _RC)
-         call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.000, _RC)
-         call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_EFFGWORO", self%GEOS_EFFGWORO, default=0.250, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_EFFGWORO", self%NCAR_EFFGWORO, default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_NRDG",     self%NCAR_NRDG,     default=0, _RC)
       else  
-         call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
-         call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, _RC)
-         call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=16, _RC)
+         call MAPL_GridCompGetResource(gc, "GEOS_EFFGWORO", self%GEOS_EFFGWORO, default=0.000, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_EFFGWORO", self%NCAR_EFFGWORO, default=1.000, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_NRDG",     self%NCAR_NRDG,     default=16, _RC)
       endif
 
       ! Rayleigh friction
       ! -----------------
       if (self%TAU1 > 0.0) then
-         call MAPL_GetResource( MAPL, self%Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  _RC)
-         call MAPL_GetResource( MAPL, self%H0,   Label="RAYLEIGH_H0:",   default=7000.,   _RC)
-         call MAPL_GetResource( MAPL, self%HH,   Label="RAYLEIGH_HH:",   default=7500.,   _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_Z1",   self%Z1,   default=75000.,  _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_H0",   self%H0,   default=7000.,   _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_HH",   self%HH,   default=7500.,   _RC)
       endif
 
       ! NCAR GWD settings
       ! -----------------
-      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., _RC)
-      call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_TAU_TOP_ZERO", NCAR_TAU_TOP_ZERO, default=.true., _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_PRNDL", NCAR_PRNDL, default=0.50, _RC)
       NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.25*sigma
-      call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
+      call MAPL_GridCompGetResource( &
+           gc, &
+           "NCAR_QBO_HDEPTH_SCALING", &
+           NCAR_QBO_HDEPTH_SCALING, &
+           default=NCAR_QBO_HDEPTH_SCALING, &
+           _RC)
       NCAR_HR_CF = CEILING(30.0*sigma)
-      call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_HR_CF", NCAR_HR_CF, default=NCAR_HR_CF, _RC)
 
       call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
            MAPL_GRAV , &
@@ -357,19 +357,23 @@ contains
            NCAR_PRNDL, NCAR_QBO_HDEPTH_SCALING, NCAR_HR_CF, ERRstring )
 
       ! Beres Scheme File
-      call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
-           default='ExtData/g5gcm/gwd/newmfspectra40_dc25.nc', _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,     _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,   _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=3.2,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USELATS,     Label="NCAR_ET_USELATS:",     default=.TRUE., _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=800.0,  _RC)
+      call MAPL_GridCompGetResource( &
+           gc, &
+           "BERES_FILE_NAME", &
+           BERES_FILE_NAME, &
+           default='ExtData/g5gcm/gwd/newmfspectra40_dc25.nc', &
+           _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_PGWV",       NCAR_BKG_PGWV,       default=32,     _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_GW_DC",      NCAR_BKG_GW_DC,      default=2.5,    _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_FCRIT2",     NCAR_BKG_FCRIT2,     default=1.0,    _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_WAVELENGTH", NCAR_BKG_WAVELENGTH, default=1.e5,   _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ET_TAUBGND",     NCAR_ET_TAUBGND,     default=3.2,    _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ET_USELATS",     NCAR_ET_USELATS,     default=.TRUE., _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_BKG_TNDMAX",     NCAR_BKG_TNDMAX,     default=800.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
       ! Beres DeepCu
-      call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
-      call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_DC_BERES_SRC_LEVEL", NCAR_DC_BERES_SRC_LEVEL, DEFAULT=70000.0, _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_DC_BERES", NCAR_DC_BERES, DEFAULT=.TRUE., _RC)
       num_threads = MAPL_get_num_threads()
       bounds = MAPL_find_bounds(JM, num_threads)
       do thread = 0, num_threads-1
@@ -384,20 +388,21 @@ contains
       end do
 
       ! Orographic Scheme
-      call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5,  _RC)
-      call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
-      call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ORO_PGWV",       NCAR_ORO_PGWV,       default=0,    _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ORO_GW_DC",      NCAR_ORO_GW_DC,      default=2.5,  _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ORO_FCRIT2",     NCAR_ORO_FCRIT2,     default=1.0,  _RC)
+      call MAPL_GridCompGetResource(gc, "NCAR_ORO_WAVELENGTH", NCAR_ORO_WAVELENGTH, default=1.e5, _RC)
+
       if (self%NCAR_NRDG > 0) then
          ! Ridge Scheme
-         call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=400.0, _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_ORO_TNDMAX",    NCAR_ORO_TNDMAX,    default=400.0, _RC)
          NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
          do thread = 0, num_threads-1
             call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
          end do
       else
          ! Old Scheme
-         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  _RC)
+         call MAPL_GridCompGetResource(gc, "NCAR_ORO_SOUTH_FAC", NCAR_ORO_SOUTH_FAC, default=2.0,  _RC)
          do thread = 0, num_threads-1
             call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
                  NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
@@ -406,7 +411,7 @@ contains
       endif
 
       allocate(self%alpha(LM+1), _STAT)
-      call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
+      call MAPL_StateGetPointer( IMPORT, PREF,     'PREF',    _RC )
       call gw_newtonian_set(LM, PREF, self%alpha)
 
       ! All done
@@ -424,11 +429,11 @@ contains
    subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       ! !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
-      type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-      type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-      type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-      integer, optional,   intent(  out) :: RC     ! Error code:
+      type(ESMF_GridComp) :: GC     ! Gridded component
+      type(ESMF_State) :: IMPORT ! Import state
+      type(ESMF_State) :: EXPORT ! Export state
+      type(ESMF_Clock) :: CLOCK  ! The clock
+      integer, intent(out) :: RC     ! Error code:
 
       ! !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
       !                the Initialize and Finalize services, as well as allocating
@@ -444,18 +449,16 @@ contains
 
       ! Local derived type aliases
 
-      type (MAPL_MetaComp),     pointer   :: MAPL
       type (ESMF_Alarm       )            :: ALARM
-      type (ESMF_Grid        )            :: ESMFGRID
+      type (ESMF_Grid        )            :: GRID
 
-      integer                             :: IM, JM, LM
+      integer                             :: IM, JM, LM !, dims_(3)
       !integer                             :: pgwv
       real                                :: tcrib
       !real                                :: effgworo, effgwbkg
       !real                                :: CDMBGWD1, CDMBGWD2
       !real                                :: bgstressmax
       real, pointer, dimension(:,:)       :: LATS
-
       ! Rayleigh friction parameters
 
       REAL                                :: H0, HH, Z1, TAU1
@@ -473,14 +476,8 @@ contains
       ! -----------------------------------------------------------
 
       Iam = "Run"
-      !call ESMF_GridCompGet( GC, name=COMP_NAME, grid=ESMFGRID, _RC )
       call ESMF_GridCompGet( GC, name=COMP_NAME, _RC )
       Iam = trim(COMP_NAME) // Iam
-
-      ! Retrieve the pointer to the state
-      !----------------------------------
-
-      call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
       !   Get my internal private state
       !   -----------------------------
@@ -497,23 +494,21 @@ contains
 
       !call MAPL_TimerOn(MAPL,"TOTAL")
 
-      ! Get parameters from generic state.
-      !-----------------------------------
+      ! Grid info
+      call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
+      call MAPL_GridGet(grid, im=IM, jm=JM, latitudes=lats, _RC)
 
-      call MAPL_Get(MAPL, &
-           IM=IM, JM=JM, LM=LM,        &
-           RUNALARM=ALARM, LATS=LATS,  &
-           _RC )
+      ! call ESMF_ClockGetAlarm(clock, 
 
       ! If its time, recalculate the GWD tendency
       ! -----------------------------------------
 
-      if ( ESMF_AlarmIsRinging( ALARM ) ) then
+      ! if ( ESMF_AlarmIsRinging( ALARM ) ) then
          !call ESMF_AlarmRingerOff(ALARM, _RC)
          !call MAPL_TimerOn (MAPL,"DRIVER")
          call Gwd_Driver(_RC)
          !call MAPL_TimerOff(MAPL,"DRIVER")
-      endif
+      ! endif
 
       !call MAPL_TimerOff(MAPL,"TOTAL")
 
@@ -586,13 +581,13 @@ contains
          ! Get time step
          !-------------------------------------------------
 
-         call ESMF_AlarmGet( ALARM, ringInterval=TINT,    _RC)
+         call ESMF_ClockGet(clock, timeStep=TINT, _RC)
          call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8,      _RC)
 
          DT = DT_R8
 
          ! Pointers to import, export and internal variables
-         call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
+         call MAPL_GridCompGetInternalState(gc, internal)
 #include "GWD_GetPointer___.h"
 
          CALL PREGEO(IM*JM,   LM,   &
@@ -626,16 +621,16 @@ contains
          !!#ifdef DEBUG_GWD
          !           if (self%NCAR_NRDG > 0) then
          !            IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
-         !            call Write_Profile(GBXAR_TMP,         AREA, ESMFGRID, 'GBXAR')
+         !            call Write_Profile(GBXAR_TMP,         AREA, GRID, 'GBXAR')
          !            do nrdg = 1, self%NCAR_NRDG
          !             IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
-         !             call Write_Profile(MXDIS(:,:,nrdg),  AREA, ESMFGRID, 'MXDIS')
-         !             call Write_Profile(ANGLL(:,:,nrdg),  AREA, ESMFGRID, 'ANGLL')
-         !             call Write_Profile(ANIXY(:,:,nrdg),  AREA, ESMFGRID, 'ANIXY')
-         !             call Write_Profile(CLNGT(:,:,nrdg),  AREA, ESMFGRID, 'CLNGT')
-         !             call Write_Profile(HWDTH(:,:,nrdg),  AREA, ESMFGRID, 'HWDTH')
-         !             call Write_Profile(KWVRDG(:,:,nrdg), AREA, ESMFGRID, 'KWVRDG')
-         !             call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
+         !             call Write_Profile(MXDIS(:,:,nrdg),  AREA, GRID, 'MXDIS')
+         !             call Write_Profile(ANGLL(:,:,nrdg),  AREA, GRID, 'ANGLL')
+         !             call Write_Profile(ANIXY(:,:,nrdg),  AREA, GRID, 'ANIXY')
+         !             call Write_Profile(CLNGT(:,:,nrdg),  AREA, GRID, 'CLNGT')
+         !             call Write_Profile(HWDTH(:,:,nrdg),  AREA, GRID, 'HWDTH')
+         !             call Write_Profile(KWVRDG(:,:,nrdg), AREA, GRID, 'KWVRDG')
+         !             call Write_Profile(EFFRDG(:,:,nrdg), AREA, GRID, 'EFFRDG')
          !            enddo
          !          endif
          !!#endif
@@ -1134,12 +1129,12 @@ contains
       real, allocatable :: area_global(:,:)
       real, allocatable :: avar_global(:,:)
       real :: rng(3)
-      integer :: DIMS(3), STATUS, rc
+      integer :: DIMS(3), IM, JM, STATUS, rc
 
-      call MAPL_GridGet(GRID, localCellCountPerDim=DIMS, _RC)
+      call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC); DIMS(1:2) = [IM, JM]
       allocate (      locArr(DIMS(1),DIMS(2)) )
 
-      call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, _RC)
+      call MAPL2_GridGet(GRID, globalCellCountPerDim=DIMS, _RC)
       allocate (      glbArr(DIMS(1),DIMS(2)) )
       allocate ( area_global(DIMS(1),DIMS(2)) )
       allocate ( avar_global(DIMS(1),DIMS(2)) )
@@ -1158,7 +1153,7 @@ contains
          rng(2) = MAXVAL(MAXVAL(avar_global,DIM=1),DIM=1)
          rng(3) = SUM(SUM(avar_global*area_global,DIM=1),DIM=1) / &
               SUM(SUM(            area_global,DIM=1),DIM=1)
-         Write(*,'(A," ",3(f21.9,1x))'),trim(name),rng(:)
+         Write(*,'(A," ",3(f21.9,1x))') trim(name), rng(:)
       End IF
 #else
       rng(1) = MINVAL(MINVAL(avar,DIM=1),DIM=1)
@@ -1176,3 +1171,11 @@ contains
    End Subroutine Write_Profile
 
 end module GEOS_GwdGridCompMod
+
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_GwdGridCompMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine SetServices
