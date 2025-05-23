@@ -1153,7 +1153,7 @@ contains
          rng(2) = MAXVAL(MAXVAL(avar_global,DIM=1),DIM=1)
          rng(3) = SUM(SUM(avar_global*area_global,DIM=1),DIM=1) / &
               SUM(SUM(            area_global,DIM=1),DIM=1)
-         Write(*,'(A," ",3(f21.9,1x))'),trim(name),rng(:)
+         Write(*,'(A," ",3(f21.9,1x))') trim(name), rng(:)
       End IF
 #else
       rng(1) = MINVAL(MINVAL(avar,DIM=1),DIM=1)

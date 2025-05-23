@@ -147,7 +147,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
     ! Source level index allocated, filled later
     desc%spectrum_source = spectrum_source
-    allocate(desc%k(ncol))
+    ! allocate(desc%k(ncol))
 
     desc%min_hdepth = min_hdepth
 
@@ -202,6 +202,8 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
     end if
     deallocate( c0, cw4 )
   end if
+
+  allocate(desc%k(ncol))
     
 end subroutine gw_beres_init
 
