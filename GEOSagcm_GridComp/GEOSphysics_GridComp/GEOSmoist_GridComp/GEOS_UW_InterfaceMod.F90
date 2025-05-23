@@ -361,19 +361,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (USE_PYMOIST_UW) then
       ncnst = size(CNV_Tracers)
       allocate(tracers(IM,JM,LM,ncnst))
-      allocate(kpbl_int(IM,JM))
-      do k = 1, LM
-        k_inv = LM + 1 - k
-        do mm = 1, ncnst
-          tracers(:,:,k,mm) = CNV_Tracers(mm)%Q(:,:,k_inv)
-        enddo
+      do mm = 1, ncnst
+        tracers(:,:,:,mm) = CNV_Tracers(mm)%Q(:,:,:)
       enddo
 
-      do j = 1, JM
-        do i = 1, IM
-          kpbl_int(i,j) = int(KPBL_SC(i,j))
-        enddo
-      enddo
       ! I think to get the tracers, I need to manually extract them from CNV_Tracers
       call compute_uwshcu_f_run_compute_uwshcu( &
         !inputs
@@ -409,7 +400,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ZLE0, shape(ZLE0), rank(ZLE0), &
         PL, shape(PL), rank(PL), &
         ZL0, shape(ZL0), rank(ZL0), &
-        kpbl_int, shape(kpbl_int), rank(kpbl_int), &
+        KPBL_SC, shape(KPBL_SC), rank(KPBL_SC), &
         PK, shape(PK), rank(PK), &
         PKE, shape(PKE), rank(PKE), &
         DP, shape(DP), rank(DP), &

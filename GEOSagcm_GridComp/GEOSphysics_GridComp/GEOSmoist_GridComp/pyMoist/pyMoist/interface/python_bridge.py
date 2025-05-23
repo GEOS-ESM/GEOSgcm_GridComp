@@ -598,13 +598,28 @@ class PYMOIST_WRAPPER:
         CUDAProfiler.start_cuda_profiler()
 
         with TimedCUDAProfiler("[UW] Fortran -> Python", self._timings):
-            in_pifc0_inv = self.f_py.fortran_to_python(f_pifc0_inv)
-            in_zifc0_inv = self.f_py.fortran_to_python(f_zifc0_inv)
+            in_pifc0_inv = self.f_py.fortran_to_python(
+                f_pifc0_inv,
+                [self.flags.npx, self.flags.npy, self.flags.npz + 1],
+            )
+            in_zifc0_inv = self.f_py.fortran_to_python(
+                f_zifc0_inv,
+                [self.flags.npx, self.flags.npy, self.flags.npz + 1],
+            )
             in_pmid0_inv = self.f_py.fortran_to_python(f_pmid0_inv)
             in_zmid0_inv = self.f_py.fortran_to_python(f_zmid0_inv)
-            in_kpbl_inv = self.f_py.fortran_to_python(f_kpbl_inv)
+            in_kpbl_inv = self.f_py.fortran_to_python(
+                f_kpbl_inv,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
             in_exnmid0_inv = self.f_py.fortran_to_python(f_exnmid0_inv)
-            in_exnifc0_inv = self.f_py.fortran_to_python(f_exnifc0_inv)
+            in_exnifc0_inv = self.f_py.fortran_to_python(
+                f_exnifc0_inv,
+                [self.flags.npx, self.flags.npy, self.flags.npz + 1],
+            )
             in_dp0_inv = self.f_py.fortran_to_python(f_dp0_inv)
             in_u0_inv = self.f_py.fortran_to_python(f_u0_inv)
             in_v0_inv = self.f_py.fortran_to_python(f_v0_inv)
@@ -612,21 +627,75 @@ class PYMOIST_WRAPPER:
             in_ql0_inv = self.f_py.fortran_to_python(f_ql0_inv)
             in_qi0_inv = self.f_py.fortran_to_python(f_qi0_inv)
             in_t0_inv = self.f_py.fortran_to_python(f_t0_inv)
-            in_frland = self.f_py.fortran_to_python(f_frland)
-            in_tke_inv = self.f_py.fortran_to_python(f_tke_inv)
-            in_rkfre = self.f_py.fortran_to_python(f_rkfre)
-            in_cush = self.f_py.fortran_to_python(f_cush)
-            in_shfx = self.f_py.fortran_to_python(f_shfx)
-            in_evap = self.f_py.fortran_to_python(f_evap)
-            in_cnvtr = self.f_py.fortran_to_python(f_cnvtr)
+            in_frland = self.f_py.fortran_to_python(
+                f_frland,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            in_tke_inv = self.f_py.fortran_to_python(
+                f_tke_inv,
+                [self.flags.npx, self.flags.npy, self.flags.npz + 1],
+            )
+            in_rkfre = self.f_py.fortran_to_python(
+                f_rkfre,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            in_cush = self.f_py.fortran_to_python(
+                f_cush,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            in_shfx = self.f_py.fortran_to_python(
+                f_shfx,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            in_evap = self.f_py.fortran_to_python(
+                f_evap,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            in_cnvtr = self.f_py.fortran_to_python(
+                f_cnvtr,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
             in_CNV_Tracers = self.f_py.fortran_to_python(f_CNV_Tracers)
 
-            out_umf_inv = self.f_py.fortran_to_python(f_umf_inv)
+            out_umf_inv = self.f_py.fortran_to_python(
+                f_umf_inv,
+                [self.flags.npx, self.flags.npy, self.flags.npz + 1],
+            )
             out_dcm_inv = self.f_py.fortran_to_python(f_dcm_inv)
-            out_qtflx_inv = self.f_py.fortran_to_python(f_qtflx_inv)
-            out_slflx_inv = self.f_py.fortran_to_python(f_slflx_inv)
-            out_uflx_inv = self.f_py.fortran_to_python(f_uflx_inv)
-            out_vflx_inv = self.f_py.fortran_to_python(f_vflx_inv)
+            out_qtflx_inv = self.f_py.fortran_to_python(
+                f_qtflx_inv,
+                [self.flags.npx, self.flags.npy, self.flags.npz + 1],
+            )
+            out_slflx_inv = self.f_py.fortran_to_python(
+                f_slflx_inv,
+                [self.flags.npx, self.flags.npy, self.flags.npz + 1],
+            )
+            out_uflx_inv = self.f_py.fortran_to_python(
+                f_uflx_inv,
+                [self.flags.npx, self.flags.npy, self.flags.npz + 1],
+            )
+            out_vflx_inv = self.f_py.fortran_to_python(
+                f_vflx_inv,
+                [self.flags.npx, self.flags.npy, self.flags.npz + 1],
+            )
             out_qvten_inv = self.f_py.fortran_to_python(f_qvten_inv)
             out_qlten_inv = self.f_py.fortran_to_python(f_qlten_inv)
             out_qiten_inv = self.f_py.fortran_to_python(f_qiten_inv)
@@ -644,8 +713,20 @@ class PYMOIST_WRAPPER:
             out_qlsub_inv = self.f_py.fortran_to_python(f_qlsub_inv)
             out_qidet_inv = self.f_py.fortran_to_python(f_qidet_inv)
             out_qisub_inv = self.f_py.fortran_to_python(f_qisub_inv)
-            out_tpert_out = self.f_py.fortran_to_python(f_tpert_out)
-            out_qpert_out = self.f_py.fortran_to_python(f_qpert_out)
+            out_tpert_out = self.f_py.fortran_to_python(
+                f_tpert_out,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            out_qpert_out = self.f_py.fortran_to_python(
+                f_qpert_out,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
 
         with TimedCUDAProfiler("[UW] Run", self._timings):
             self.pymoist.UW_shallow_convection(
