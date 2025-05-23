@@ -673,7 +673,16 @@ class PYMOIST_WRAPPER:
                     self.flags.npy,
                 ],
             )
-            in_CNV_Tracers = self.f_py.fortran_to_python(f_CNV_Tracers)
+            in_CNV_Tracers = self.f_py.fortran_to_python(
+                f_CNV_Tracers,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                    self.flags.npz,
+                    self.pymoist.UW_config.NCNST,
+                ],
+            )
+            self.f_py.fortran_to_python(f_CNV_Tracers)
 
             out_umf_inv = self.f_py.fortran_to_python(
                 f_umf_inv,
