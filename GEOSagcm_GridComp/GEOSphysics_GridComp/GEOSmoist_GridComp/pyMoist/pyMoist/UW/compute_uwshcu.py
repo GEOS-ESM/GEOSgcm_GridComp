@@ -2551,7 +2551,7 @@ def buoyancy_sorting(
                 while n < ncnst:
                     tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
                         K=krel, ddim=[n]
-                    ) * (pe - pmid0.at(K=krel, ddim=[n]))
+                    ) * (pe - pmid0.at(K=krel))
                     n += 1
 
             # Cumulus rises upward from 'prel' ( or base interface of  'krel' layer )
@@ -5935,14 +5935,96 @@ def adjust_implicit_CIN_inputs(
     fer_s: FloatField,
     fdr_s: FloatField,
 ):
+    """
+    Stencil to adjust the original input profiles for implicit CIN
+    calculation. Save the output from "iter_cin = 0".
+
+    These output will be writed-out if "iter_cin = 0" was not performed
+    for some reason.
+
+    Variables ending in '_s' indicate output from first iteration
+    of CIN calculation.
+
+    Inputs:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    qv0 [FloatField]: Environmental specific humidity
+    qvten [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    dt [Float]: Timestep [s]
+    ql0 [FloatField]: Environmental liquid water specific humidity
+    qlten [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    qi0 [FloatField]: Environmental ice specific humidity
+    qiten [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    s0 [FloatField]: Environmental dry static energy [J/kg]
+    sten [FloatField]: Tendency of dry static energy [J/kg/s]
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    uten [FloatField]: Tendency of zonal wind [m/s2]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    vten [FloatField]: Tendency of meridional wind [m/s2]
+    t0 [FloatField]: Environmental temperature [K]
+    dotransport [Int]: Transport tracers [1 true]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    trten [FloatField_NTracers]: Tendency of tracers [#/s, kg/kg/s]
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    dcm [FloatField]: Detrained cloudy air mass
+    qrten [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    cush [FloatFieldIJ]: Convective scale height [m]
+    cufrc [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    slflx [FloatField]: [?]
+    qtflx [FloatField]: [?]
+    uflx [FloatField]: [?]
+    vflx [FloatField]: [?]
+    qcu [FloatField]: Condensate water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    qlu [FloatField]: Liquid water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    qiu [FloatField]: Ice specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    fer [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    xco [FloatField]:
+    cin_IJ [FloatFieldIJ]:
+    cinlcl_IJ [FloatFieldIJ]:
+    cbmf [FloatField]: Cloud base mass flux [kg/m2/s]
+    qc [FloatField]:
+    qlten_det [FloatField]: [?]
+    qiten_det [FloatField]: [?]
+    qlten_sink [FloatField]: [?]
+    qiten_sink [FloatField]: [?]
+    ufrc [FloatField]: Cumulus updraft fraction [fraction]
+
+    Outputs:
+    tr0_s [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    umf_s [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    slflx_s [FloatField]: [?]
+    qtflx_s [FloatField]: [?]
+    uflx_s [FloatField]: [?]
+    vflx_s [FloatField]: [?]
+    ufrc_s [FloatField]: Cumulus updraft fraction [fraction]
+    qv0_s [FloatField]: Environmental specific humidity
+    ql0_s [FloatField]: Environmental liquid water specific humidity
+    qi0_s [FloatField]: Environmental ice specific humidity
+    s0_s [FloatField]: Environmental dry static energy [J/kg]
+    t0_s [FloatField]: Environmental temperature [K]
+    dcm_s [FloatField]: Detrained cloudy air mass
+    qvten_s [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    qlten_s [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    qiten_s [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    sten_s [FloatField]: Tendency of dry static energy [J/kg/s]
+    uten_s [FloatField]: Tendency of zonal wind [m/s2]
+    vten_s [FloatField]: Tendency of meridional wind [m/s2]
+    qrten_s [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten_s [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    qldet_s [FloatField]: [?]
+    qidet_s [FloatField]: [?]
+    qlsub_s [FloatField]: [?]
+    qisub_s [FloatField]: [?]
+    cush_s [FloatField]: Convective scale height [m]
+    cufrc_s [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    fer_s [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr_s [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Adjust the original input profiles for implicit CIN calculation
-            # Save the output from "iter_cin = 1"
-            # These output will be writed-out if "iter_cin = 1" was not performed
-            # for some reasons.
             qv0_s = qv0 + qvten * dt
             ql0_s = ql0 + qlten * dt
             qi0_s = qi0 + qiten * dt
