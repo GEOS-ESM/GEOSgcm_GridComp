@@ -6152,7 +6152,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ALWN(:,N) = -3.0*BLWN(:,N)*TC(:,N)
               BLWN(:,N) =  4.0*BLWN(:,N)
            end do
-           if(catchcn_internal%CHOOSEMOSFC==0 .and. catchcn_internal%MOSFC_EXTRA_DERIVS_LAND==1) then
+           if(catchcn_internal%CHOOSEMOSFC==0 .and. catchcn_internal%MOSFC_EXTRA_DERIVS_OFFL_LAND==1) then
               do N=1,NUM_SUBTILES
                  DEVSBT(:,N)=CQ(:,N)+max(0.0,-DCQ(:,N)*MAPL_VIREPS*TC(:,N)*(QC(:,N)-QA))
                  DEDTC(:,N) =max(0.0,-DCQ(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(QC(:,N)-QA))

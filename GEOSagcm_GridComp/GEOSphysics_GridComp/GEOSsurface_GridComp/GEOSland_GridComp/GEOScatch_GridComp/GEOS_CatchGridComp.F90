@@ -1399,7 +1399,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
   
-  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then
+  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND == 1) then
      
      ! for *analytical* extra derivatives in louissurface
      
@@ -1425,7 +1425,7 @@ subroutine SetServices ( GC, RC )
           RC=STATUS  )
      VERIFY_(STATUS)
 
-  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND >= 2) then 
+  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND >= 2) then 
      
      ! for *numerical* extra derivatives in helfsurface and louissurface
      
@@ -3364,14 +3364,14 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
     VERIFY_(STATUS)
     
-    if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then   
+    if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND == 1) then   
        
        call MAPL_GetPointer(INTERNAL,delCH_delTVA , 'delCH_delTVA' ,    RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL,delCQ_delTVA , 'delCQ_delTVA' ,    RC=STATUS)
        VERIFY_(STATUS)
        
-    elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND >= 2) then 
+    elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND >= 2) then 
 
        call MAPL_GetPointer(INTERNAL,delCQ_delQC  , 'delCQ_delQC'  ,    RC=STATUS)
        VERIFY_(STATUS)   
@@ -3514,7 +3514,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
 
-    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND>=2) then
+    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND>=2) then
        
        ! allocate variables for numerical extra derivatives (louissurface, helfsurface)
        
@@ -3632,7 +3632,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          WW(:,N) = 0.
          CM(:,N) = 0.
          
-         if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==1) then
+         if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND==1) then
             
             ! analytical extra derivatives (default for Louis)
             
@@ -3642,7 +3642,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
             
             ! none .or. numerical extra derivatives
             
-            if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND>=2) then
+            if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND>=2) then
 
                ! Prep calculation of numerical extra derivatives.  Start with calling louissurface with perturbed inputs and
                !  save only the perturbed exchange coeffs.  The final call with nominal inputs produces the unperturbed
@@ -3658,7 +3658,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
                               
                call louissurface(   3,N,UU,WW,PS,TA,TC+DeltaTC,QA,QC        ,PCU,LAI,DummyZ0T,DZE,DummyCM,CN,RIB,ZT,ZQ,CHpert,CQ    ,UUU,UCN,RE)
                
-               if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
+               if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND==2) then
                   
                   ! perturb QC: send in (QC+DeltaQC), get back CQpert
                   
@@ -3677,7 +3677,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
             
             call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
             
-         end if  ! MOSFC_EXTRA_DERIVS_LAND
+         end if  ! MOSFC_EXTRA_DERIVS_OFFL_LAND
          
       elseif (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.1)then
 
@@ -3692,7 +3692,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
               (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
          
-         if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
+         if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND==2) then
             
             ! Prep calculation of numerical extra derivatives.  Start with calling louissurface with perturbed inputs and
             !  save only the perturbed exchange coeffs.  The final call with nominal inputs produces the unperturbed
@@ -3723,7 +3723,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
             CQpert(  :,N) = VKH
 
-         end if  ! MOSFC_EXTRA_DERIVS_LAND==2
+         end if  ! MOSFC_EXTRA_DERIVS_OFFL_LAND==2
 
          ! Call with nominal inputs [after calls with perturbed inputs to obtain correct outputs (Z0T, [*]2m, [*]10m, etc.)]
 
@@ -3757,14 +3757,14 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       endif  ! CHOOSEMOSFC
 
-      if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then                        
+      if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND==2) then                        
          
          ! finalize numerical derivatives
          
          delCH_delTC(:,N) = (CHpert(:,N) - CH(:,N)) / DeltaTC(:,N)
          delCQ_delQC(:,N) = (CQpert(:,N) - CQ(:,N)) / DeltaQC(:,N)
 
-      elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==3) then                        
+      elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND==3) then                        
 
          ! finalize numerical derivatives (valid for Louis only!)
 
@@ -3876,7 +3876,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
-    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND>=2) then
+    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND>=2) then
        deallocate(DeltaTC )
        deallocate(DeltaQC )
        deallocate(CHpert  )
@@ -4703,12 +4703,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,CQ         ,'CQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
 
-        if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then
+        if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND == 1) then
            
            call MAPL_GetPointer(INTERNAL,delCQ_delTVA ,'delCQ_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,delCH_delTVA ,'delCH_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
            
-        elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND >= 2) then 
+        elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND >= 2) then 
            
            call MAPL_GetPointer(INTERNAL,delCH_delTC  ,'delCH_delTC'        ,RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,delCQ_delQC  ,'delCQ_delQC'        ,RC=STATUS); VERIFY_(STATUS)
@@ -5426,7 +5426,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            end do
            
-           select case (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND)
+           select case (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND)
               
            case (0)    ! ignore derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
 
@@ -5457,7 +5457,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            case default
 
-              _ASSERT(.false., 'unknown MOSFC_EXTRA_DERIVS_LAND')
+              _ASSERT(.false., 'unknown MOSFC_EXTRA_DERIVS_OFFL_LAND')
               
            end select
            
@@ -6620,14 +6620,14 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(INTERNAL, ww, 'WW', rc=status)
   VERIFY_(status)
 
-  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then
+  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND == 1) then
  
      call MAPL_GetPointer(INTERNAL, delCQ_delTVA, 'delCQ_delTVA', rc=status)
      VERIFY_(status)
      call MAPL_GetPointer(INTERNAL, delCH_delTVA, 'delCH_delTVA', rc=status)
      VERIFY_(status)
 
-  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND >= 2) then 
+  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND >= 2) then 
      
      call MAPL_GetPointer(INTERNAL, delCH_delTC, 'delCH_delTC', rc=status)
      VERIFY_(status)

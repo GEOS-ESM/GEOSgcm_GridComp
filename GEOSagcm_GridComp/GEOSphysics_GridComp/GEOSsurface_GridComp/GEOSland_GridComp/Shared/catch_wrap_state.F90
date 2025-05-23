@@ -27,7 +27,7 @@ module catch_wrap_stateMod
      !
      ! some (but not all) resource parameters from GEOS_SurfaceGridComp.rc:
      integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
-     integer :: CHOOSEMOSFC, MOSFC_EXTRA_DERIVS_LAND, SNOW_ALBEDO_INFO
+     integer :: CHOOSEMOSFC, MOSFC_EXTRA_DERIVS_OFFL_LAND, SNOW_ALBEDO_INFO
      real    :: SURFLAY  
      real    :: FWETC, FWETL
      logical :: USE_FWET_FOR_RUNOFF
@@ -71,7 +71,7 @@ contains
     call MAPL_GetResource(    SCF, statePtr%USE_ASCATZ0,              label='USE_ASCATZ0:',              DEFAULT=0,             __RC__ )
     call MAPL_GetResource(    SCF, statePtr%CHOOSEMOSFC,              label='CHOOSEMOSFC:',              DEFAULT=1,             __RC__ )
 
-    ! MOSFC_EXTRA_DERIVS_LAND: Resource parameter for *offline* (LDAS) mode.
+    ! MOSFC_EXTRA_DERIVS_OFFL_LAND: Resource parameter for *offline* (LDAS) mode.
     !
     !  Over *land*, use derivatives of exchange coeffs w.r.t. temp. & humidity.
     !    
@@ -86,25 +86,25 @@ contains
 
     if (statePtr%CATCH_OFFLINE==0) then
 
-       statePtr%MOSFC_EXTRA_DERIVS_LAND = 0        ! must be 0 for GCM
+       statePtr%MOSFC_EXTRA_DERIVS_OFFL_LAND = 0        ! must be 0 for GCM
 
     else
 
-       ! offline (LDAS) mode;  default for MOSFC_EXTRA_DERIVS_LAND depends on CHOOSEMOSFC (Louis or Helfand)
+       ! offline (LDAS) mode;  default for MOSFC_EXTRA_DERIVS_OFFL_LAND depends on CHOOSEMOSFC (Louis or Helfand)
        
        if     (statePtr%CHOOSEMOSFC==0) then
           
           ! Louis
-          call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=1,             __RC__ )
+          call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_OFFL_LAND,  label='MOSFC_EXTRA_DERIVS_OFFL_LAND:',  DEFAULT=1,             __RC__ )
           ! make sure parameter value is allowed
-          ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii>=0 .and. ii<=3, 'unknown MOSFC_EXTRA_DERIVS_LAND for Louis  ')
+          ii = statePtr%MOSFC_EXTRA_DERIVS_OFFL_LAND ; _ASSERT(ii>=0 .and. ii<=3, 'unknown MOSFC_EXTRA_DERIVS_OFFL_LAND for Louis  ')
           
        elseif (statePtr%CHOOSEMOSFC==1) then
           
           ! Helfand
-          call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=0,             __RC__ )
+          call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_OFFL_LAND,  label='MOSFC_EXTRA_DERIVS_OFFL_LAND:',  DEFAULT=0,             __RC__ )
           ! make sure parameter value is allowed (analytical derivs not implemented for Helfand)
-          ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0 .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Helfand')   
+          ii = statePtr%MOSFC_EXTRA_DERIVS_OFFL_LAND ; _ASSERT(ii==0 .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_OFFL_LAND for Helfand')   
           
        else
           
@@ -114,12 +114,12 @@ contains
 
     end if
 
-    ! for CatchCN, must have MOSFC_EXTRA_DERIVS_LAND<=1     (numerical derivatives not yet implemented for CatchCN)
+    ! for CatchCN, must have MOSFC_EXTRA_DERIVS_OFFL_LAND<=1     (numerical derivatives not yet implemented for CatchCN)
     
     select type (statePtr)
     type is (T_CATCHCN_STATE) ! CATCHCN
        
-       _ASSERT( statePtr%MOSFC_EXTRA_DERIVS_LAND<=1, 'selected choice for MOSFC_EXTRA_DERIVS_LAND not yet implemented for CatchCN')
+       _ASSERT( statePtr%MOSFC_EXTRA_DERIVS_OFFL_LAND<=1, 'selected choice for MOSFC_EXTRA_DERIVS_OFFL_LAND not yet implemented for CatchCN')
        
     end select
 
