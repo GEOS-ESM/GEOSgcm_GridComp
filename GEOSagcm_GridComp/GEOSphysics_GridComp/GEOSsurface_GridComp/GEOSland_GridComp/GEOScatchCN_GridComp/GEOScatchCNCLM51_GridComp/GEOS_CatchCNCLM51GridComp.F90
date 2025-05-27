@@ -7117,6 +7117,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                       sminn_to_npool,ndep_to_sminn,totvegn,totlitn,totsomn,&
                       retransn,retransn_to_npool,fuelc,totlitc,cwdc,rootc)
 
+       istep_cn = istep_cn + 1
+
        ! jkolassa: padd is a correction term that we may no longer need;
        !           I am setting it to zero here in order to avoid having to change
        !           the restart file for now       
