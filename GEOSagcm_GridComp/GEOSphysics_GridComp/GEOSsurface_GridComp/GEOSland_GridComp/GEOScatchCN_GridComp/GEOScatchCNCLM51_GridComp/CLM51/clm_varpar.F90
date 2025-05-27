@@ -142,8 +142,8 @@ contains
     ! currently it works on either a single level or on nlevsoi and nlevgrnd levels
     if (use_vertsoilc) then
        nlevdecomp      = nlevsoi
-      ! nlevdecomp_full = nlevgrnd
-       nlevdecomp_full = nlevdecomp + 1 !jkolassa Nov 2024: nlevdecomp_full needs to be larger than nlevdecomp 
+       nlevdecomp_full = nlevgrnd
+      ! nlevdecomp_full = nlevdecomp + 1 !jkolassa Nov 2024: nlevdecomp_full needs to be larger than nlevdecomp 
                                         ! when use_vertsoilc is true
     else
        nlevdecomp      = 1
