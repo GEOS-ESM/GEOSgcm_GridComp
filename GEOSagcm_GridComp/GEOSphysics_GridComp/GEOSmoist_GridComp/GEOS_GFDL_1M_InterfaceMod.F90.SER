@@ -617,13 +617,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !$ser verbatim PRES_ARRAY(:, iter+1) = 0.01 + (10*iter)
     !$ser verbatim enddo
 
-    !$ser verbatim SER_TABLESIZE=TABLESIZE
-    !$ser savepoint saturation_tables-In
-    !$ser data TABLESIZE=SER_TABLESIZE
-    !$ser verbatim call SERIALIZE_ESINIT(SER_ESTBLE, SER_ESTBLW, SER_ESTBLX, SER_ESTFRZ, SER_ESTLQU)
-    !$ser savepoint saturation_tables-Out
-    !$ser data ESTBLE=SER_ESTBLE ESTBLW=SER_ESTBLW ESTBLX=SER_ESTBLX
-    !$ser data ESTFRZ=SER_ESTFRZ ESTLQU=SER_ESTLQU
+    !-$ser verbatim SER_TABLESIZE=TABLESIZE
+    !-$ser savepoint saturation_tables-In
+    !-$ser data TABLESIZE=SER_TABLESIZE
+    !-$ser verbatim call SERIALIZE_ESINIT(SER_ESTBLE, SER_ESTBLW, SER_ESTBLX, SER_ESTFRZ, SER_ESTLQU)
+    !-$ser savepoint saturation_tables-Out
+    !-$ser data ESTBLE=SER_ESTBLE ESTBLW=SER_ESTBLW ESTBLX=SER_ESTBLX
+    !-$ser data ESTFRZ=SER_ESTFRZ ESTLQU=SER_ESTLQU
 
     !$ser savepoint qsat_functions-In
     !$ser data T=T PLmb=PLmb TEMP_ARRAY=TEMP_ARRAY PRES_ARRAY=PRES_ARRAY
