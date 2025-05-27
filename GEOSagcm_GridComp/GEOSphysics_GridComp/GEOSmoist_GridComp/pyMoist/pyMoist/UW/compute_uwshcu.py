@@ -2413,7 +2413,7 @@ def buoyancy_sorting(
                 while n < ncnst:
                     tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
                         K=krel, ddim=[n]
-                    ) * (pe - pmid0.at(K=krel, ddim=[n]))
+                    ) * (pe - pmid0.at(K=krel))
                     n += 1
 
             # Cumulus rises upward from 'prel' ( or base interface of  'krel' layer )
