@@ -1,8 +1,8 @@
 from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.saturation_tables.tables.main import get_table
 from pyMoist.saturation_tables.formulation import SaturationFormulation
+from pyMoist.saturation_tables.tables.main import get_table
 
 
 class Translatesaturation_tables(TranslateFortranData2Py):

@@ -1,11 +1,4 @@
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    atan,
-    computation,
-    interval,
-    sqrt,
-    tan,
-)
+from gt4py.cartesian.gtscript import PARALLEL, atan, computation, interval, sqrt, tan
 
 import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, IntFieldIJ
@@ -20,7 +13,7 @@ def rh_calculations(
     alpha: FloatField,
     klcl: IntFieldIJ,
 ):
-    from __externals__ import DW_LAND, DW_OCEAN, k_end, TURNRHCRIT_PARAM
+    from __externals__ import DW_LAND, DW_OCEAN, TURNRHCRIT_PARAM, k_end
 
     with computation(PARALLEL), interval(...):
         # Send the condensates through the pdf after convection

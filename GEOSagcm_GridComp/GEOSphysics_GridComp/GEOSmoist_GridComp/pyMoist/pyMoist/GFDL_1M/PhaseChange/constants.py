@@ -13,10 +13,11 @@ from ndsl.dsl.typing import Float, Int
 
 @dataclass
 class PhaseChangeConstants:
-    '''
+    """
     Constants used in the GFDL_1M PhaseChange subsection
     NOTE: CURRENTLY USING DRIVER CONSTANTS
-    '''
+    """
+
     GRAV = Float(9.80665)
     "gfs: acceleration due to gravity"
     RDGAS = Float(287.05)

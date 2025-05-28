@@ -1,8 +1,8 @@
 from ndsl import Namelist, StencilFactory
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from ndsl.stencils.testing.grid import Grid
-from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 
 
 class Translatemelt_freeze(TranslateFortranData2Py):

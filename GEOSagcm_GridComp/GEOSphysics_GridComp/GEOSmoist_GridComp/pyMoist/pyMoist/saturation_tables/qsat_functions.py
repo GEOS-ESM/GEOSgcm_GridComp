@@ -2,11 +2,12 @@ import copy
 from typing import Optional
 
 from gt4py.cartesian.gtscript import i32
-from ndsl.dsl.gt4py import PARALLEL, computation, floor, interval, GlobalTable, function
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import PARALLEL, GlobalTable, computation, floor, function, interval
 from ndsl.dsl.typing import Float, FloatField, Int
+from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.constants import (
     DEGSUBS,
     ERFAC,
@@ -21,7 +22,6 @@ from pyMoist.saturation_tables.constants import (
 )
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.main import get_table
-from pyMoist.field_types import GlobalTable_saturaion_tables
 
 
 @function

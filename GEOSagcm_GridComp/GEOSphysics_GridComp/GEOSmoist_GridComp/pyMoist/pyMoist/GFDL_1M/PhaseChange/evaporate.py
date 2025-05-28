@@ -1,8 +1,4 @@
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    computation,
-    interval,
-)
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField
@@ -21,7 +17,7 @@ def evaporate(
     qst: FloatField,
     evapc: FloatField,
 ):
-    from __externals__ import DT_MOIST, CCW_EVAP_EFF
+    from __externals__ import CCW_EVAP_EFF, DT_MOIST
 
     with computation(PARALLEL), interval(...):
         evapc = q
@@ -33,9 +29,9 @@ def evaporate(
         )  # (100's <-^ convert from mbar to Pa)
         rhx = min(q / qst, 1.00)
         k1 = (
-            (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
+            (constants.MAPL_LATENT_HEAT_VAPORIZATION ** 2)
             * constants.RHO_W
-            / (constants.K_COND * constants.MAPL_RVAP * (t**2))
+            / (constants.K_COND * constants.MAPL_RVAP * (t ** 2))
         )
         k2 = (
             constants.MAPL_RVAP
@@ -56,7 +52,7 @@ def evaporate(
                 * qlcn
                 * DT_MOIST
                 * (rh_crit - rhx)
-                / ((k1 + k2) * radius**2)
+                / ((k1 + k2) * radius ** 2)
             )
             evap = min(evap, qlcn)
         else:

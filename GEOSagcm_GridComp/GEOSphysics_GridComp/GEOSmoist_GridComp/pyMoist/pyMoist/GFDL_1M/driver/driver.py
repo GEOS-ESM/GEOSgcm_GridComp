@@ -18,12 +18,36 @@ from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
 
 
 class MicrophysicsDriver:
+    """
+    This class contains the GFDL single moment microphysics driver. The driver is broken
+    into six components: Setup, FallSpeed, TerminalFall, WarmRain, IceCloud, and Finish.
+
+    __init__:
+        - checks validity of constants and trigger parameters for unimplemented options
+        - initalizes internal fields
+        - constructs stencils
+        Arguments: StencilFactory, QuantityFactory, MicrophysicsConfiguration
+
+    __call__:
+        - evaluates stencils
+        Arguments: various state fields (pressure, temperature, wind) and mixing ratios
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         GFDL_1M_config: MicrophysicsConfiguration,
     ):
+        """
+        Perform setup for the microphysics driver. Check flags for unimplemented options,
+        initalize internal fields, and compile stencils.
+
+        Arguments:
+            stencil_factory: StencilFactory with model domain information
+            quantity_factory: QuantityFactory with model domain information
+            GFDL_1M_config: driver configuration
+        """
         self.config_dependent_constants = ConfigConstants.make(GFDL_1M_config)
 
         # Check values for untested code paths
@@ -136,6 +160,50 @@ class MicrophysicsDriver:
         anv_icefall: Float,
         ls_icefall: Float,
     ):
+        """
+        Evaluate the microphysics driver. The driver call is broken into six parts:
+            - Setup: fill temporaries, compute required intermediary fields from inputs
+            - FallSpeed: compute real fall speed of precipitates
+            - TerminalFall: compute terminal fall speed of precipitates
+            - WarmRain: warm rain cloud microphysics
+            - IceCloud: ice cloud microphysical processes
+            - Finish: compute output tendencies
+
+        Arguments:
+            GFDL_1M_config (in): driver configuration
+            qv: (in): water vapor mixing ratio (kg/kg)
+            ql (in): in cloud liquid mixing radio (kg/kg)
+            qr (in): falling rain (kg/kg)
+            qi (in): in cloud ice mixing radio (kg/kg)
+            qs (in): in cloud snow mixing radio (kg/kg)
+            qg (in): in cloud graupel mixing radio (kg/kg)
+            qa (in): cloud fraction (convective + large scale)
+            qn (in): liquid + ice concentration (m^-3)
+            qv_dt (out): water vapor tendency
+            ql_dt (out): in cloud liquid water tendency
+            qr_dt (out): falling rain tendency
+            qi_dt (out): in cloud frozen water tendency
+            qs_dt (out): in cloud snow tendency
+            qg_dt (out): in cloud graupel tendency
+            qa_dt (out): cloud fraction (convective + large scale) tendency
+            t_dt (out): atmospheric temperature tendency
+            t (in): atmospheric temperature (K)
+            w (in): vertical velocity (m/s)
+            u (in): eastward winds (m/s)
+            v (in): northward winds (m/s)
+            u_dt (out): eastward wind tendency
+            v_dt (out): northward wind tendency
+            dz (in): layer thickness (m)
+            dp (in): change in pressure between model levels (mb)
+            area (in): grid cell area
+            fr_land (in): land fraction
+            cnv_frc (in): convection fraction
+            srf_type (in): surface type
+            eis (in): estimated inversion strength
+            rhcrit3d (out): details unknown
+            anv_icefall (in): internal parameter related to convective cloud icefall
+            ls_icefall (in): internal parameter related to large scale cloud icefall
+        """
         self._setup(
             t,
             dp,

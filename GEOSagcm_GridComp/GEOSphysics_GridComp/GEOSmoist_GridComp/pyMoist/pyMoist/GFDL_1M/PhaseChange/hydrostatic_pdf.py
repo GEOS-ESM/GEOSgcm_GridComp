@@ -1,22 +1,23 @@
+from gt4py.cartesian.gtscript import f64
+
+import pyMoist.constants as constants
 from ndsl.dsl.gt4py import (
     PARALLEL,
+    GlobalTable,
     computation,
     exp,
+    function,
     interval,
     sqrt,
-    GlobalTable,
-    function,
 )
-import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.qsat_functions import (
     saturation_specific_humidity,
     saturation_specific_humidity_frozen_surface,
     saturation_specific_humidity_liquid_surface,
 )
 from pyMoist.shared_incloud_processes import ice_fraction
-from pyMoist.field_types import GlobalTable_saturaion_tables
-from gt4py.cartesian.gtscript import f64
 
 
 @function
@@ -203,7 +204,7 @@ def hydrostatic_pdf(
     estfrz: Float,
     estlqu: Float,
 ):
-    from __externals__ import DT_MOIST, PDF_SHAPE, USE_BERGERON, FLOAT_TINY
+    from __externals__ import DT_MOIST, FLOAT_TINY, PDF_SHAPE, USE_BERGERON
 
     # Reference Fortran: Process_Library.F90: subroutine hystpdf
     # with PDFSHAPE = 1, USE_BERGERON = True, and SC_ICE = False

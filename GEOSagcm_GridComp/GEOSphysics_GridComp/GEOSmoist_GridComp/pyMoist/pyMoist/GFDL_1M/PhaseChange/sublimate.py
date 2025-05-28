@@ -1,9 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    computation,
-    interval,
-)
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField
@@ -22,7 +18,7 @@ def sublimate(
     qst: FloatField,
     sublc: FloatField,
 ):
-    from __externals__ import DT_MOIST, CCI_EVAP_EFF
+    from __externals__ import CCI_EVAP_EFF, DT_MOIST
 
     with computation(PARALLEL), interval(...):
         sublc = q
@@ -34,9 +30,9 @@ def sublimate(
         )  # (100s <-^ convert from mbar to Pa)
         rhx = min(q / qst, 1.00)
         k1 = (
-            (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
+            (constants.MAPL_LATENT_HEAT_VAPORIZATION ** 2)
             * constants.RHO_I
-            / (constants.K_COND * constants.MAPL_RVAP * (t**2))
+            / (constants.K_COND * constants.MAPL_RVAP * (t ** 2))
         )
         k2 = (
             constants.MAPL_RVAP
@@ -57,7 +53,7 @@ def sublimate(
                 * qicn
                 * DT_MOIST
                 * (rh_crit - rhx)
-                / ((k1 + k2) * radius**2)
+                / ((k1 + k2) * radius ** 2)
             )
             subl = min(subl, qicn)
         else:

@@ -1,9 +1,4 @@
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    computation,
-    exp,
-    interval,
-)
+from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval
 
 import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ

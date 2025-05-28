@@ -56,6 +56,7 @@ class Translateice_cloud(TranslateFortranData2Py):
             self.out_vars["vtr"],
             self.out_vars["den1"],
             self.out_vars["denfac"],
+            self.out_vars["subl1"],
             self.out_vars["rh_limited"],
             self.out_vars["ccn"],
             self.out_vars["cnv_frc"],
@@ -67,8 +68,8 @@ class Translateice_cloud(TranslateFortranData2Py):
 
     def compute_from_storage(self, inputs):
         self.GFDL_1M_config = MicrophysicsConfiguration(
-            self.constants["PHYS_HYDROSTATIC"],
-            self.constants["HYDROSTATIC"],
+            bool(self.constants["PHYS_HYDROSTATIC"]),
+            bool(self.constants["HYDROSTATIC"]),
             self.constants["DT_MOIST"],
             self.constants["MP_TIME"],
             self.constants["T_MIN"],
@@ -83,8 +84,8 @@ class Translateice_cloud(TranslateFortranData2Py):
             self.constants["VS_FAC"],
             self.constants["VG_FAC"],
             self.constants["QL_MLT"],
-            self.constants["DO_QA"],
-            self.constants["FIX_NEGATIVE"],
+            bool(self.constants["DO_QA"]),
+            bool(self.constants["FIX_NEGATIVE"]),
             self.constants["VI_MAX"],
             self.constants["VS_MAX"],
             self.constants["VG_MAX"],
@@ -96,15 +97,15 @@ class Translateice_cloud(TranslateFortranData2Py):
             self.constants["QI0_MAX"],
             self.constants["QI0_CRT"],
             self.constants["QR0_CRT"],
-            self.constants["FAST_SAT_ADJ"],
+            bool(self.constants["FAST_SAT_ADJ"]),
             self.constants["RH_INC"],
             self.constants["RH_INS"],
             self.constants["RH_INR"],
-            self.constants["CONST_VI"],
-            self.constants["CONST_VS"],
-            self.constants["CONST_VG"],
-            self.constants["CONST_VR"],
-            self.constants["USE_CCN"],
+            bool(self.constants["CONST_VI"]),
+            bool(self.constants["CONST_VS"]),
+            bool(self.constants["CONST_VG"]),
+            bool(self.constants["CONST_VR"]),
+            bool(self.constants["USE_CCN"]),
             self.constants["RTHRESHU"],
             self.constants["RTHRESHS"],
             self.constants["CCN_L"],
@@ -116,9 +117,9 @@ class Translateice_cloud(TranslateFortranData2Py):
             self.constants["TAU_V2S"],
             self.constants["TAU_REVP"],
             self.constants["TAU_FRZ"],
-            self.constants["DO_BIGG"],
-            self.constants["DO_EVAP"],
-            self.constants["DO_SUBL"],
+            bool(self.constants["DO_BIGG"]),
+            bool(self.constants["DO_EVAP"]),
+            bool(self.constants["DO_SUBL"]),
             self.constants["SAT_ADJ0"],
             self.constants["C_PIACR"],
             self.constants["TAU_IMLT"],
@@ -133,34 +134,34 @@ class Translateice_cloud(TranslateFortranData2Py):
             self.constants["C_PSACI"],
             self.constants["C_PGACS"],
             self.constants["C_PGACI"],
-            self.constants["Z_SLOPE_LIQ"],
-            self.constants["Z_SLOPE_ICE"],
-            self.constants["PROG_CCN"],
+            bool(self.constants["Z_SLOPE_LIQ"]),
+            bool(self.constants["Z_SLOPE_ICE"]),
+            bool(self.constants["PROG_CCN"]),
             self.constants["C_CRACW"],
             self.constants["ALIN"],
             self.constants["CLIN"],
-            self.constants["PRECIPRAD"],
+            bool(self.constants["PRECIPRAD"]),
             self.constants["CLD_MIN"],
-            self.constants["USE_PPM"],
-            self.constants["MONO_PROF"],
-            self.constants["DO_SEDI_HEAT"],
-            self.constants["SEDI_TRANSPORT"],
-            self.constants["DO_SEDI_W"],
-            self.constants["DE_ICE"],
+            bool(self.constants["USE_PPM"]),
+            bool(self.constants["MONO_PROF"]),
+            bool(self.constants["DO_SEDI_HEAT"]),
+            bool(self.constants["SEDI_TRANSPORT"]),
+            bool(self.constants["DO_SEDI_W"]),
+            bool(self.constants["DE_ICE"]),
             self.constants["ICLOUD_F"],
             self.constants["IRAIN_F"],
-            self.constants["MP_PRINT"],
+            bool(self.constants["MP_PRINT"]),
         )
 
-        self.config_dependent_constants = ConfigConstants(self.GFDL_1M_config)
+        self.config_dependent_constants = ConfigConstants.make(self.GFDL_1M_config)
 
         # Initalize saturation tables
         self.sat_tables = get_tables(self.stencil_factory.backend)
 
         # Initalize extra quantities
-        temporaries = Temporaries(self.quantity_factory)
-        outputs = Outputs(self.quantity_factory)
-        masks = Masks(self.quantity_factory)
+        temporaries = Temporaries.make(self.quantity_factory)
+        outputs = Outputs.make(self.quantity_factory)
+        masks = Masks.make(self.quantity_factory)
 
         # Initalize object to be tested
         self.ice_cloud = IceCloud(
