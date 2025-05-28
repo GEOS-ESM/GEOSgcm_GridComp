@@ -448,7 +448,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       )
     else
 #endif
-      print*, 'compute_uwshcu_inv called'
       !  Call UW shallow convection
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
