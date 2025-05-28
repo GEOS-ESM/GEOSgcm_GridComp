@@ -40,7 +40,7 @@ functions:
             zifc0_inv : array_float
             pmid0_inv : array_float
             zmid0_inv : array_float
-            kpbl_inv : array_int
+            kpbl_inv : array_float
             exnmid0_inv : array_float
             exnifc0_inv : array_float
             dp0_inv : array_float

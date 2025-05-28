@@ -1083,7 +1083,6 @@ def compute_uwshcu_init(
     k0: int,
     windsrcavg: int,
 ):
-    print("Reached compute_uwschu_init")
     if not WRAPPER.ready:
         raise RuntimeError("[GEOS WRAPPER] Bad init, did you call init?")
     WRAPPER.pymoist.init_UW_configuration(
