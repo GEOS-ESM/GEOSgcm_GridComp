@@ -92,7 +92,7 @@ module C_BRIDGE_TO_MAPL
     
     end function    
 
-    function MAPLpy_GetPointer(state_c_ptr, name_c_ptr, name_len, alloc) result(c_data_ptr) bind(c, name="MAPLpy_GetPointer")
+    function MAPLpy_GetPointer(esmf_state_c_ptr, name_c_ptr, name_len, alloc) result(c_data_ptr) bind(c, name="MAPLpy_GetPointer")
         ! Read in STATE
         type(c_ptr), intent(in) :: esmf_state_c_ptr
         type(ESMF_State), pointer :: state
@@ -113,15 +113,15 @@ module C_BRIDGE_TO_MAPL
         ! Turn the ESMF State C pointer to a Fortran pointer
         call c_f_pointer(esmf_state_c_ptr, state)        
 
-        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=alloc)
+        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc))
         c_data_ptr=c_loc(f_ptr)
     
     end function
 
-    function MAPLpy_GetResource_Bool(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Bool")
+    function MAPLpy_GetResource_Bool(mapl_metacomp_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Bool")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
-        type(ESMF_State), pointer :: state
+        type(c_ptr), intent(in) :: mapl_metacomp_c_ptr
+        type(MAPL_MetaComp), pointer :: state
 
         ! Read in name
         type(c_ptr), intent(in), value :: name_c_ptr
@@ -136,16 +136,16 @@ module C_BRIDGE_TO_MAPL
         call c_f_pointer(name_c_ptr, name)
 
         ! Turn the ESMF State C pointer to a Fortran pointer
-        call c_f_pointer(esmf_state_c_ptr, state)        
+        call c_f_pointer(mapl_metacomp_c_ptr, state)        
 
-        call MAPL_GetResource(state, result, label=trim(name), default=default)
+        call MAPL_GetResource(state, result, label=trim(name), default=logical(default))
     
     end function
 
-    function MAPLpy_GetResource_Int(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Int")
+    function MAPLpy_GetResource_Int(mapl_metacomp_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Int")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
-        type(ESMF_State), pointer :: state
+        type(c_ptr), intent(in) :: mapl_metacomp_c_ptr
+        type(MAPL_MetaComp), pointer :: state
 
         ! Read in name
         type(c_ptr), intent(in), value :: name_c_ptr
@@ -160,16 +160,16 @@ module C_BRIDGE_TO_MAPL
         call c_f_pointer(name_c_ptr, name)
 
         ! Turn the ESMF State C pointer to a Fortran pointer
-        call c_f_pointer(esmf_state_c_ptr, state)        
+        call c_f_pointer(mapl_metacomp_c_ptr, state)        
 
-        call MAPL_GetResource(state, result, label=trim(name), default=default)
+        call MAPL_GetResource(state, result, label=trim(name), default=logical(default))
     
     end function
 
-    function MAPLpy_GetResource_Float(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Float")
+    function MAPLpy_GetResource_Float(mapl_metacomp_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Float")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
-        type(ESMF_State), pointer :: state
+        type(c_ptr), intent(in) :: mapl_metacomp_c_ptr
+        type(MAPL_MetaComp), pointer :: state
 
         ! Read in name
         type(c_ptr), intent(in), value :: name_c_ptr
@@ -184,22 +184,22 @@ module C_BRIDGE_TO_MAPL
         call c_f_pointer(name_c_ptr, name)
 
         ! Turn the ESMF State C pointer to a Fortran pointer
-        call c_f_pointer(esmf_state_c_ptr, state)        
+        call c_f_pointer(mapl_metacomp_c_ptr, state)        
 
-        call MAPL_GetResource(state, result, label=trim(name), default=default)
+        call MAPL_GetResource(state, result, label=trim(name), default=logical(default))
     
     end function
 
     function MAPLpy_ESMF_TimeIntervalGet(time_state_c_ptr) result(result) bind(c, name="MAPLpy_ESMF_TimeIntervalGet")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(c_ptr), intent(in) :: time_state_c_ptr
         type(ESMF_TimeInterval), pointer :: state
 
         ! Results
         real(c_double) :: result
 
         ! Turn the ESMF State C pointer to a Fortran pointer
-        call c_f_pointer(esmf_state_c_ptr, state)        
+        call c_f_pointer(time_state_c_ptr, state)        
 
         call ESMF_TimeIntervalGet(state, S_R8=result)
     

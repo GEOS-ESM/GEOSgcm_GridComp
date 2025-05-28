@@ -5352,7 +5352,7 @@ contains
           ! disable trapping of FPEs temporarily, call the Python interface and resume trapping
           call ieee_get_halting_mode(ieee_all, halting_mode)
           call ieee_set_halting_mode(ieee_all, .false.)
-          call pymoist_interface_f_init(moist_flags, c_loc(AERO))
+          call pymoist_interface_f_init(moist_flags)
           call ieee_set_halting_mode(ieee_all, halting_mode)
           call cpu_time(finish)
           if (rank == 0) print *, rank, ': pymoist_runtime_init: time taken = ', finish - start, 's'
