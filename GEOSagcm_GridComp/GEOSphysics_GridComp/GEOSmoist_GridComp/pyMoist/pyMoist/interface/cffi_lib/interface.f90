@@ -1,6 +1,6 @@
 module pymoist_interface_mod
 
-   use iso_c_binding, only: c_int, c_float, c_double, c_bool
+   use iso_c_binding, only: c_int, c_float, c_double, c_bool, c_ptr
 
    implicit none
 

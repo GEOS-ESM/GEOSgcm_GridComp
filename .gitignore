@@ -1,3 +1,7 @@
 /@GEOSchem_GridComp
 /GEOSchem_GridComp
 /GEOSchem_GridComp@
+
+# Python (cache, install artifacts, ...)
+*.egg-info/
+**/__pycache__/
