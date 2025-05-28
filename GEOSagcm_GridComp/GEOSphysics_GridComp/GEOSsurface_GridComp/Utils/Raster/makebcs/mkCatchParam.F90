@@ -19,7 +19,6 @@ PROGRAM mkCatchParam
 ! Sarith Mahanama - March 23, 2012 
 ! Email: sarith.p.mahanama@nasa.gov
   use MAPL
-  use EASE_conv
   use rmTinyCatchParaMod 
   use process_hres_data
 

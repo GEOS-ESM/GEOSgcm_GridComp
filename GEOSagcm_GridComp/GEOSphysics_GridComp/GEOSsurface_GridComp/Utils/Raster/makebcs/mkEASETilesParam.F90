@@ -30,7 +30,6 @@ PROGRAM mkEASETilesParam
   ! - added comments
   ! - white-space changes for improved readability
   
-  use EASE_conv,             only : EASE_extent, EASE_convert, EASE_inverse
   use rmTinyCatchParaMod,    only : i_raster, j_raster 
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
