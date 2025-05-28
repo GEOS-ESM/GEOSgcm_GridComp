@@ -69,7 +69,7 @@ def compute_uwshcu_invert_before(
     pifc0_inv: FloatField,
     zifc0_inv: FloatField,
     exnifc0_inv: FloatField,
-    kpbl_inv: IntFieldIJ,
+    kpbl_inv: FloatFieldIJ,
     cnvtr: FloatFieldIJ,
     frland: FloatFieldIJ,
     tr0_inout: FloatField_NTracers,
@@ -130,7 +130,7 @@ def compute_uwshcu_invert_before(
         exnifc0_in[0, 0, 1] = exnifc0_inv.at(K=k_inv)
         exnifc0_in = exnifc0_inv.at(K=k_inv)
 
-        kpbl_in = kpbl_inv
+        kpbl_in = i32(kpbl_inv)
 
     with computation(FORWARD), interval(...):
         cnvtrmax = min(1e-5, max(0.0, cnvtr))
@@ -6441,7 +6441,7 @@ class ComputeUwshcuInv:
         zifc0_inv: FloatField,
         pmid0_inv: FloatField,
         zmid0_inv: FloatField,
-        kpbl_inv: IntFieldIJ,
+        kpbl_inv: FloatFieldIJ,
         exnmid0_inv: FloatField,
         exnifc0_inv: FloatField,
         dp0_inv: FloatField,
