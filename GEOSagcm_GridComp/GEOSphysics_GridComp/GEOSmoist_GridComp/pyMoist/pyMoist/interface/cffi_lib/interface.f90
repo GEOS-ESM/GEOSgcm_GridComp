@@ -446,7 +446,7 @@ module pymoist_interface_mod
          integer(kind=c_int), dimension(*), intent(in) :: zmid0_inv_dim_sizes
          integer(kind=c_int), value, intent(in) :: zmid0_inv_rank
 
-         integer(kind=c_int), dimension(*), intent(in) :: kpbl_inv
+         real(kind=c_float), dimension(*), intent(in) :: kpbl_inv
          integer(kind=c_int), dimension(*), intent(in) :: kpbl_inv_dim_sizes
          integer(kind=c_int), value, intent(in) :: kpbl_inv_rank
 

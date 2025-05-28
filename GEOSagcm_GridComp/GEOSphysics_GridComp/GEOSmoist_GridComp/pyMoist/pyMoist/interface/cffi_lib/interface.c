@@ -159,7 +159,7 @@ void compute_uwshcu_c_run_compute_uwshcu(
     const float *zifc0_inv, int *zifc0_inv_dim_sizes, int zifc0_inv_rank,
     const float *pmid0_inv, int *pmid0_inv_dim_sizes, int pmid0_inv_rank,
     const float *zmid0_inv, int *zmid0_inv_dim_sizes, int zmid0_inv_rank,
-    const int *kpbl_inv, int *kpbl_inv_dim_sizes, int kpbl_inv_rank,
+    const float *kpbl_inv, int *kpbl_inv_dim_sizes, int kpbl_inv_rank,
     const float *exnmid0_inv, int *exnmid0_inv_dim_sizes, int exnmid0_inv_rank,
     const float *exnifc0_inv, int *exnifc0_inv_dim_sizes, int exnifc0_inv_rank,
     const float *dp0_inv, int *dp0_inv_dim_sizes, int dp0_inv_rank,
