@@ -2278,7 +2278,7 @@ contains
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
-   real, pointer, dimension(:)    :: ICE => null()
+   real, pointer, dimension(:)    :: ICEF => null()
    real, pointer, dimension(:)    :: FRZR => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
@@ -2406,7 +2406,7 @@ contains
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,ICE    , 'ICE'    ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,ICEF   , 'ICE'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS); VERIFY_(STATUS)
@@ -2515,7 +2515,7 @@ contains
 
     RAIN = PLS + PCU
 
-    SNOW = SNO + ICE + FRZR
+    SNOW = SNO + ICEF + FRZR
 
 ! Initialize PAR and UVR beam fluxes
 !-----------------------------------

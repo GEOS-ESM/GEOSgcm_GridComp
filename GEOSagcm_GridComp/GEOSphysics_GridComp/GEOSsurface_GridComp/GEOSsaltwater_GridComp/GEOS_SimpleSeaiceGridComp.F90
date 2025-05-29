@@ -1790,7 +1790,7 @@ contains
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
-   real, pointer, dimension(:)    :: ICE => null()
+   real, pointer, dimension(:)    :: ICEF => null()
    real, pointer, dimension(:)    :: FRZR => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
@@ -1896,7 +1896,7 @@ contains
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    _RC)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    _RC)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    _RC)
-   call MAPL_GetPointer(IMPORT,ICE    , 'ICE'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,ICEF   , 'ICE'    ,    _RC)
    call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    _RC)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    _RC)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    _RC)
@@ -2172,7 +2172,7 @@ contains
        QS(:,N) = QS(:,N) + DQS
 
        if (.not. seaIceT_extData) then
-         HH(:,N) = HH(:,N) + DT*(SNO + ICE + FRZR - EVP)
+         HH(:,N) = HH(:,N) + DT*(SNO + ICEF + FRZR - EVP)
          HH(:,N) = max(min(HH(:,N),  MAXICEDEPTH),  MINICEDEPTH)
        endif
 
@@ -2184,7 +2184,7 @@ contains
        if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
 
        if (seaIceT_extData) then
-         if(associated(HSNO )) HSNO = (DT*(SNO + ICE + FRZR - EVP))/water_RHO('fresh_water')
+         if(associated(HSNO )) HSNO = (DT*(SNO + ICEF + FRZR - EVP))/water_RHO('fresh_water')
          if(associated(SEAICETHICKNESSe )) SEAICETHICKNESSe = SEAICETHICKNESSi
        endif
 
