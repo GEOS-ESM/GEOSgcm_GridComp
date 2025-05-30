@@ -1,13 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    computation,
-    exp,
-    interval,
-    log,
-    log10,
-    sqrt,
-)
+from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, log10, sqrt
 
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -31,17 +23,7 @@ def get_top_speed(
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine fall_speed
     """
-    from __externals__ import (
-        const_vg,
-        const_vi,
-        const_vs,
-        vg_fac,
-        vg_max,
-        vi_fac,
-        vi_max,
-        vs_fac,
-        vs_max,
-    )
+    from __externals__ import const_vg, const_vi, const_vs, vg_fac, vg_max, vi_fac, vi_max, vs_fac, vs_max
 
     rhof = sqrt(min(10.0, constants.SFCRHO / den))
     if const_vi == True:  # noqa

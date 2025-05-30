@@ -49,7 +49,7 @@ repos:
       args: [
         "--exclude=docs",
         "--ignore=W503,E302,E203,F841",
-        "--max-line-length=88"
+        "--max-line-length=110"
       ]
       exclude: |
         (?x)^(
