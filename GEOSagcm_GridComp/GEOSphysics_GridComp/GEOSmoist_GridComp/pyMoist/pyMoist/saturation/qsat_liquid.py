@@ -75,17 +75,14 @@ def _saturation_formulation(formulation: SaturationFormulation, t: Float):
             + DL[2]
             * (Float(10.0) ** (DL[3] * (Float(1.0) - (Float(1.0) / TT))) - Float(1.0))
             / Float(10000000.0)
-            + DL[4]
-            * (Float(10.0) ** (DL[5] * (TT - Float(1.0))) - Float(1.0))
-            / Float(1000.0)
+            + DL[4] * (Float(10.0) ** (DL[5] * (TT - Float(1.0))) - Float(1.0)) / Float(1000.0)
             + LOGPS
             + Float(2.0)
         )
     elif formulation == SaturationFormulation.MurphyAndKoop:
         EX = np.exp(
             (CL[0] + CL[1] / t + CL[2] * np.log(t) + CL[3] * t)
-            + np.tanh(CL[4] * (t - CL[5]))
-            * (CL[6] + CL[7] / t + CL[8] * np.log(t) + CL[9] * t)
+            + np.tanh(CL[4] * (t - CL[5])) * (CL[6] + CL[7] / t + CL[8] * np.log(t) + CL[9] * t)
         )
     return Float(EX)
 

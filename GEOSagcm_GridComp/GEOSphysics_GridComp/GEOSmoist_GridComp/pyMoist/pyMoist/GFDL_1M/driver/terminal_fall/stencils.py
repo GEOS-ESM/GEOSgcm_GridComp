@@ -151,9 +151,7 @@ def update_w1(
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
             if do_sedi_w:
-                w1 = (dm * w1 - m1[0, 0, -1] * vt[0, 0, -1] + m1 * vt) / (
-                    dm + m1[0, 0, -1] - m1
-                )
+                w1 = (dm * w1 - m1[0, 0, -1] * vt[0, 0, -1] + m1 * vt) / (dm + m1[0, 0, -1] - m1)
 
 
 def reset(

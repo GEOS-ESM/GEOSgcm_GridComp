@@ -109,9 +109,7 @@ class FortranPythonConversion:
                 swap_axes,
             )
             self._current_stream = (
-                self._stream_A
-                if self._current_stream == self._stream_B
-                else self._stream_B
+                self._stream_A if self._current_stream == self._stream_B else self._stream_B
             )
             return final_array
 
@@ -167,9 +165,7 @@ class FortranPythonConversion:
                 device_array.astype(dtype).flatten(order="F"),
             )
             self._current_stream = (
-                self._stream_A
-                if self._current_stream == self._stream_B
-                else self._stream_B
+                self._stream_A if self._current_stream == self._stream_B else self._stream_B
             )
             return host_array
 

@@ -78,9 +78,7 @@ class SaturationVaporPressureTable:
 
 
 # Table needs to be calculated only once
-_cached_estimated_saturation: Dict[
-    SaturationFormulation, Optional[SaturationVaporPressureTable]
-] = {
+_cached_estimated_saturation: Dict[SaturationFormulation, Optional[SaturationVaporPressureTable]] = {
     SaturationFormulation.MurphyAndKoop: None,
     SaturationFormulation.CAM: None,
     SaturationFormulation.Staars: None,
@@ -91,7 +89,5 @@ def get_table(
     formulation: SaturationFormulation = SaturationFormulation.Staars,
 ) -> SaturationVaporPressureTable:
     if _cached_estimated_saturation[formulation] is None:
-        _cached_estimated_saturation[formulation] = SaturationVaporPressureTable(
-            formulation
-        )
+        _cached_estimated_saturation[formulation] = SaturationVaporPressureTable(formulation)
     return _cached_estimated_saturation[formulation]

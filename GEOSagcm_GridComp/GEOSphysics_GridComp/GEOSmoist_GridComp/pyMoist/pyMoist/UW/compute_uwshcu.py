@@ -21,7 +21,15 @@ from gt4py.cartesian.gtscript import (
 import pyMoist.constants as constants
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
+from ndsl.dsl.typing import (
+    BoolFieldIJ,
+    Float,
+    FloatField,
+    FloatFieldIJ,
+    Int,
+    IntField,
+    IntFieldIJ,
+)
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat import FloatField_Extra_Dim, QSat, QSat_Float
@@ -229,7 +237,6 @@ def compute_thermodynamic_variables(
     from __externals__ import k_end, ncnst
 
     with computation(FORWARD), interval(...):
-
         # Initialize output variables defined for all grid points
         umf_out[0, 0, 1] = 0.0
         dcm_out = 0.0
@@ -902,7 +909,6 @@ def find_pbl_averages(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             # Find PBL averaged tke ('tkeavg') and minimum 'thvl' ('thvlmin') in the PBL
             # In the current code, 'tkeavg' is obtained by averaging all interfacial TKE
             # within the PBL. However, in order to be conceptually consistent with   PBL
@@ -2027,7 +2033,6 @@ def avg_initial_and_final_cin(
                 cbmflimit = 0.0
 
             else:  # When 'del_CIN < 0', use explicit CIN instead of implicit CIN.
-
                 # Identifier showing whether explicit or implicit CIN is used
                 ind_delcin = 1.0
 
@@ -2409,7 +2414,6 @@ def define_updraft_properties(
                 fdr_out = constants.MAPL_UNDEF
 
             if not condensation:
-
                 wlcl = sqrt(wtw)
                 ufrclcl = cbmf / wlcl / rho0inv
                 wrel = wlcl
@@ -2865,7 +2869,6 @@ def buoyancy_sorting(
             and not stop_buoyancy_sort
             and not condensation
         ):
-
             thlue = thlu[0, 0, -1]
             qtue = qtu[0, 0, -1]
             wue = wu[0, 0, -1]
@@ -3305,9 +3308,7 @@ def buoyancy_sorting(
                                         + ssthl0 * dpe / 2.0
                                         - thlu[0, 0, -1]
                                         + ssthl0 / fer
-                                    ) * exp(
-                                        -fer * dpe
-                                    )
+                                    ) * exp(-fer * dpe)
 
                                     qtu = (qte + ssqt0 / fer - ssqt0 * dpe / 2.0) - (
                                         qte
@@ -3325,9 +3326,7 @@ def buoyancy_sorting(
                                         + ssu0 * dpe / 2.0
                                         - uu[0, 0, -1]
                                         + (1.0 - PGFc) * ssu0 / fer
-                                    ) * exp(
-                                        -fer * dpe
-                                    )
+                                    ) * exp(-fer * dpe)
                                     vu = (
                                         ve
                                         + (1.0 - PGFc) * ssv0 / fer
@@ -3337,9 +3336,7 @@ def buoyancy_sorting(
                                         + ssv0 * dpe / 2.0
                                         - vu[0, 0, -1]
                                         + (1.0 - PGFc) * ssv0 / fer
-                                    ) * exp(
-                                        -fer * dpe
-                                    )
+                                    ) * exp(-fer * dpe)
 
                                     if dotransport == 1:
                                         n = 0
@@ -3353,9 +3350,7 @@ def buoyancy_sorting(
                                                 + sstr0[0, 0, 0][n] * dpe / 2.0
                                                 - tru[0, 0, -1][n]
                                                 + sstr0[0, 0, 0][n] / fer
-                                            ) * exp(
-                                                -fer * dpe
-                                            )
+                                            ) * exp(-fer * dpe)
                                             n += 1
 
                                 # Expel some of cloud water and ice from cumulus
@@ -3502,7 +3497,6 @@ def buoyancy_sorting(
                                         fdr_out = constants.MAPL_UNDEF
 
                                     if not condensation:
-
                                         thvu = thj * (1.0 + zvir * qvj - qlj - qij)
 
                                         # Calculate updraft vertical velocity at the
@@ -3641,7 +3635,6 @@ def buoyancy_sorting(
                         fdr_out = constants.MAPL_UNDEF
 
                     if not condensation:
-
                         # Iteration end due to 'rmaxfrac' constraint
 
                         # Calculate updraft fractional area at the upper interface and
@@ -3922,9 +3915,7 @@ def recalc_condensate(
                     + ssthl0.at(K=kpen) * (-ppen) / 2.0
                     - thlu.at(K=kpen - 1)
                     + ssthl0.at(K=kpen) / fer.at(K=kpen)
-                ) * exp(
-                    -fer.at(K=kpen) * (-ppen)
-                )
+                ) * exp(-fer.at(K=kpen) * (-ppen))
                 qtu_top = (
                     qt0.at(K=kpen)
                     + ssqt0.at(K=kpen) / fer.at(K=kpen)
@@ -3934,9 +3925,7 @@ def recalc_condensate(
                     + ssqt0.at(K=kpen) * (-ppen) / 2.0
                     - qtu.at(K=kpen - 1)
                     + ssqt0.at(K=kpen) / fer.at(K=kpen)
-                ) * exp(
-                    -fer.at(K=kpen) * (-ppen)
-                )
+                ) * exp(-fer.at(K=kpen) * (-ppen))
 
             thj, qvj, qlj, qij, qse, id_check = conden(
                 pifc0.at(K=kpen) + ppen, thlu_top, qtu_top, ese, esx
@@ -4288,7 +4277,6 @@ def calc_entrainment_mass_flux(
                             n += 1
 
                 else:
-
                     # Note we are coming down from the higher interfaces to the lower
                     # interfaces. Also note that 'emf < 0'. So, below operation is a
                     # summing not subtracting. In order to ensure numerical stability,
@@ -4298,7 +4286,6 @@ def calc_entrainment_mass_flux(
                     if (
                         use_cumpenent == 1
                     ):  # Original Cumulative Penetrative Entrainment
-
                         emf = max(
                             max(
                                 emf[0, 0, 1]
@@ -4422,7 +4409,6 @@ def calc_pbl_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -4484,7 +4470,6 @@ def calc_pbl_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -4546,7 +4531,6 @@ def calc_pbl_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -4607,7 +4591,6 @@ def calc_pbl_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -5461,7 +5444,6 @@ def calc_thermodynamic_tendencies(
     """
     with computation(FORWARD), interval(...):
         if not condensation:
-
             umf_zint[0, 0, 1] = umf_temp[0, 0, 1]  # Update umf
 
             if THIS_K <= kpen:
@@ -5776,24 +5758,16 @@ def calc_thermodynamic_tendencies(
                     if THIS_K == kbup:
                         qc_l = qc_l + constants.MAPL_GRAV * umf_zint[
                             0, 0, 1
-                        ] * qlj_2D / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ] * qlj_2D / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
                         qc_i = qc_i + constants.MAPL_GRAV * umf_zint[
                             0, 0, 1
-                        ] * qij_2D / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ] * qij_2D / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
                         qc_lm = qc_lm - constants.MAPL_GRAV * umf_zint[
                             0, 0, 1
-                        ] * ql0 / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ] * ql0 / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
                         qc_im = qc_im - constants.MAPL_GRAV * umf_zint[
                             0, 0, 1
-                        ] * qi0 / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ] * qi0 / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
 
                     # 4. Cumulative Penetrative entrainment detrained in the 'kbup'
                     # layer. Explicitly compute the properties detrained penetrative
@@ -5840,14 +5814,10 @@ def calc_thermodynamic_tendencies(
 
                         qc_lm = qc_lm - constants.MAPL_GRAV * emf * (
                             ql_emf_kbup - ql0
-                        ) / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ) / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
                         qc_im = qc_im - constants.MAPL_GRAV * emf * (
                             qi_emf_kbup - qi0
-                        ) / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ) / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
 
                 if not condensation:
                     qlten_det = qc_l + qc_lm
@@ -5914,7 +5884,6 @@ def prevent_negative_condensate(
     k0: Int,
     qmin: FloatField,
 ):
-
     with computation(FORWARD), interval(...):
         if not condensation:
             # Prevent the onset-of negative condensate at the next time step
@@ -6987,7 +6956,6 @@ def update_output_variables(
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
-
         if del_CIN <= 0.0:
             umf_outvar = umf_out
             dcm_outvar = dcm_out
@@ -7181,7 +7149,6 @@ class ComputeUwshcuInv:
         UW_config: UWConfiguration,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
-
         # Initialize the ComputeUwshcu class
 
         # Parameters:
@@ -7554,7 +7521,6 @@ class ComputeUwshcuInv:
         qpert_out: FloatFieldIJ,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
-
         # University of Washington Shallow Convection Scheme
 
         # Described in Park and Bretherton. 2008. J. Climate :

@@ -70,12 +70,7 @@ def get_top_speed(
         if qs < constants.THS:
             vts = constants.VF_MIN
         else:
-            vts = (
-                vs_fac
-                * constants.VCONS
-                * rhof
-                * exp(0.0625 * log(qs * den / constants.NORMS))
-            )
+            vts = vs_fac * constants.VCONS * rhof * exp(0.0625 * log(qs * den / constants.NORMS))
             vts = min(vs_max, max(constants.VF_MIN, vts))
 
     # -----------------------------------------------------------------------
@@ -88,12 +83,7 @@ def get_top_speed(
         if qg < constants.THG:
             vtg = constants.VF_MIN
         else:
-            vtg = (
-                vg_fac
-                * constants.VCONG
-                * rhof
-                * sqrt(sqrt(sqrt(qg * den / constants.NORMG)))
-            )
+            vtg = vg_fac * constants.VCONG * rhof * sqrt(sqrt(sqrt(qg * den / constants.NORMG)))
             vtg = min(vg_max, max(constants.VF_MIN, vtg))
 
     return vti, vts, vtg
@@ -138,6 +128,4 @@ def fall_speed_core(
             den1 = den * dz / dz1
             denfac = sqrt(constants.SFCRHO / den1)
 
-        vti, vts, vtg = get_top_speed(
-            p_dry, cnv_frc, anv_icefall, lsc_icefall, den1, qs1, qi1, qg1, ql1, t1
-        )
+        vti, vts, vtg = get_top_speed(p_dry, cnv_frc, anv_icefall, lsc_icefall, den1, qs1, qi1, qg1, ql1, t1)
