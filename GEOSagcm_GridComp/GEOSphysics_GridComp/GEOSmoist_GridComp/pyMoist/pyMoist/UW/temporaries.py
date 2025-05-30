@@ -542,21 +542,11 @@ class Temporaries:
         vu = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         umf_zint = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         thvu = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        umf_outvar = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        qtflx_outvar = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        slflx_outvar = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        uflx_outvar = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        vflx_outvar = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        umf_outvar = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        qtflx_outvar = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        slflx_outvar = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        uflx_outvar = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        vflx_outvar = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         slflx_s = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         qtflx_s = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         uflx_s = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
@@ -571,9 +561,7 @@ class Temporaries:
         tke_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         pifc0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         zifc0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        exnifc0_in = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        exnifc0_in = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         # IntFields
         kinv = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int)
         klcl = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int)

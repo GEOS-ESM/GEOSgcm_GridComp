@@ -126,8 +126,7 @@ LK = Float(0.75)
 LBX = (
     LDISS
     * Float(1.0e3)
-    * (Float(3.0) / (Float(4.0) * MAPL_PI * LK * RHO_W * Float(1.0e-3)))
-    ** (Float(1.0) / Float(3.0))
+    * (Float(3.0) / (Float(4.0) * MAPL_PI * LK * RHO_W * Float(1.0e-3))) ** (Float(1.0) / Float(3.0))
 )
 LBE = Float(1.0) / Float(3.0) - Float(0.14)
 

@@ -1,12 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    exp,
-    interval,
-)
+from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval
 
 from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -158,9 +151,7 @@ def update_w1(
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
             if do_sedi_w:
-                w1 = (dm * w1 - m1[0, 0, -1] * vt[0, 0, -1] + m1 * vt) / (
-                    dm + m1[0, 0, -1] - m1
-                )
+                w1 = (dm * w1 - m1[0, 0, -1] * vt[0, 0, -1] + m1 * vt) / (dm + m1[0, 0, -1] - m1)
 
 
 def reset(
