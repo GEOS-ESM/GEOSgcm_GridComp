@@ -1,14 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    FORWARD,
-    PARALLEL,
-    THIS_K,
-    computation,
-    exp,
-    interval,
-    log,
-    log10,
-)
+from gt4py.cartesian.gtscript import FORWARD, PARALLEL, THIS_K, computation, exp, interval, log, log10
 
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM

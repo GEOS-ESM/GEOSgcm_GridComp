@@ -1,14 +1,6 @@
 import copy
 
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    computation,
-    exp,
-    f64,
-    interval,
-    log,
-    sqrt,
-)
+from gt4py.cartesian.gtscript import PARALLEL, computation, exp, f64, interval, log, sqrt
 
 import pyMoist.constants as constants
 from ndsl import QuantityFactory, StencilFactory, orchestrate
