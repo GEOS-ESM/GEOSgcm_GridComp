@@ -1072,6 +1072,25 @@ module GEOS_OpenwaterGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
+     call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'icefall'                     ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'ICE'                         ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'freezing_rain_fall'          ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'FRZR'                        ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
 
 ! Surface air quantities
 
@@ -2093,6 +2112,8 @@ contains
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
+   real, pointer, dimension(:)    :: ICE => null()
+   real, pointer, dimension(:)    :: FRZR => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: PS => null()
@@ -2220,6 +2241,8 @@ contains
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    _RC)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    _RC)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,ICE    , 'ICE'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    _RC)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    _RC)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    _RC)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    _RC)
@@ -2589,7 +2612,7 @@ contains
     if(associated(AOQFLUX)) AOQFLUX = EVP    *FRWATER
     if(associated(AOLWFLX)) AOLWFLX = (LWDNSRF-ALW-BLW*TS(:,WATER))*FRWATER
     if(associated(AORAIN )) AORAIN  = PCU + PLS
-    if(associated(AOSNOW )) AOSNOW  = SNO    *FRWATER
+    if(associated(AOSNOW )) AOSNOW  = (SNO+ICE+FRZR) *FRWATER
     if(associated(AODRNIR)) AODRNIR = (1.-ALBNRO)*DRNIR*FRWATER
     if(associated(AODFNIR)) AODFNIR = (1.-ALBNFO)*DFNIR*FRWATER
     if(associated(FSURF  )) FSURF   = SWN+LWDNSRF-(ALW+BLW*TS(:,WATER))-SHF-LHF
