@@ -24,9 +24,7 @@ class Temporaries:
 
         # used as placeholders to note what features are needed. will be r
         need_2d_temporaries_feature = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        need_double_k_loop_feature = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )
+        need_double_k_loop_feature = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         return cls(
             lhi,
             icpk,

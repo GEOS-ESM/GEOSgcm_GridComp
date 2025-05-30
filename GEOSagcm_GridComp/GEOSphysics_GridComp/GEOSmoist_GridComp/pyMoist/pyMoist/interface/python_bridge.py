@@ -115,9 +115,7 @@ class PYMOIST_WRAPPER:
                 ],
             )
 
-            frland = self.f_py.fortran_to_python(
-                f_frland, [self.flags.npx, self.flags.npy]
-            )
+            frland = self.f_py.fortran_to_python(f_frland, [self.flags.npx, self.flags.npy])
 
             t = self.f_py.fortran_to_python(f_t)
             plo = self.f_py.fortran_to_python(f_plo)
@@ -494,28 +492,14 @@ class PYMOIST_WRAPPER:
             self.f_py.python_to_fortran(srf_type, f_srf_type)
             self.f_py.python_to_fortran(eis, f_eis)
             self.f_py.python_to_fortran(rhcrit3d, f_rhcrit3d)
-            self.f_py.python_to_fortran(
-                self.pymoist.driver.outputs.rain.view[:], f_rain
-            )
-            self.f_py.python_to_fortran(
-                self.pymoist.driver.outputs.snow.view[:], f_snow
-            )
+            self.f_py.python_to_fortran(self.pymoist.driver.outputs.rain.view[:], f_rain)
+            self.f_py.python_to_fortran(self.pymoist.driver.outputs.snow.view[:], f_snow)
             self.f_py.python_to_fortran(self.pymoist.driver.outputs.ice.view[:], f_ice)
-            self.f_py.python_to_fortran(
-                self.pymoist.driver.outputs.graupel.view[:], f_graupel
-            )
-            self.f_py.python_to_fortran(
-                self.pymoist.driver.outputs.m2_rain.view[:], f_m2_rain
-            )
-            self.f_py.python_to_fortran(
-                self.pymoist.driver.outputs.m2_sol.view[:], f_m2_sol
-            )
-            self.f_py.python_to_fortran(
-                self.pymoist.driver.outputs.revap.view[:], f_revap
-            )
-            self.f_py.python_to_fortran(
-                self.pymoist.driver.outputs.isubl.view[:], f_isubl
-            )
+            self.f_py.python_to_fortran(self.pymoist.driver.outputs.graupel.view[:], f_graupel)
+            self.f_py.python_to_fortran(self.pymoist.driver.outputs.m2_rain.view[:], f_m2_rain)
+            self.f_py.python_to_fortran(self.pymoist.driver.outputs.m2_sol.view[:], f_m2_sol)
+            self.f_py.python_to_fortran(self.pymoist.driver.outputs.revap.view[:], f_revap)
+            self.f_py.python_to_fortran(self.pymoist.driver.outputs.isubl.view[:], f_isubl)
 
     def UW_shallow_convection(
         self,

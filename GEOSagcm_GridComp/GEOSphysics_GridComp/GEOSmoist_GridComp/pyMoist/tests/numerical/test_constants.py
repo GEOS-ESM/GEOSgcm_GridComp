@@ -37,14 +37,9 @@ if __name__ == "__main__":
             f90 = ds[v][0, 0].to_numpy()
             py = getattr(const, v)
             if not _check_dtype(f90, py):
-                print(
-                    f"🔶 {v} {f90.dtype} != {py.dtype} " f"(value f90: {f90} | py: {py})"
-                )
+                print(f"🔶 {v} {f90.dtype} != {py.dtype} " f"(value f90: {f90} | py: {py})")
             else:
-                print(
-                    f"{'✅' if getattr(const, v) == f90 else '❌'} {v} "
-                    f"(f90: {f90} | py: {py})"
-                )
+                print(f"{'✅' if getattr(const, v) == f90 else '❌'} {v} " f"(f90: {f90} | py: {py})")
         else:
             unchecked_vars.add(v)
 

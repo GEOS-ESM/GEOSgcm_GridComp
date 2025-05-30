@@ -15,16 +15,9 @@ def ice_fraction_modis(
     temp: Float,
 ):
     # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
-    tc = max(
-        -46.0, min(temp - constants.MAPL_TICE, 46.0)
-    )  # convert to celcius and limit range from -46:46 C
+    tc = max(-46.0, min(temp - constants.MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
     ptc = (
-        7.6725
-        + 1.0118 * tc
-        + 0.1422 * tc ** 2
-        + 0.0106 * tc ** 3
-        + 0.000339 * tc ** 4
-        + 0.00000395 * tc ** 5
+        7.6725 + 1.0118 * tc + 0.1422 * tc ** 2 + 0.0106 * tc ** 3 + 0.000339 * tc ** 4 + 0.00000395 * tc ** 5
     )
     ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
     return ice_frct
@@ -45,11 +38,7 @@ def ice_fraction(
         icefrct_c = sin(
             0.5
             * constants.MAPL_PI
-            * (
-                1.00
-                - (temp - constants.JaT_ICE_ALL)
-                / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)
-            )
+            * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL))
         )
     else:
         icefrct_c = 0.00
@@ -72,11 +61,7 @@ def ice_fraction(
             icefrct_m = sin(
                 0.5
                 * constants.MAPL_PI
-                * (
-                    1.00
-                    - (temp - constants.lT_ICE_ALL)
-                    / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)
-                )
+                * (1.00 - (temp - constants.lT_ICE_ALL) / (constants.lT_ICE_MAX - constants.lT_ICE_ALL))
             )
         else:
             icefrct_m = 0.00
@@ -88,11 +73,7 @@ def ice_fraction(
             icefrct_m = sin(
                 0.5
                 * constants.MAPL_PI
-                * (
-                    1.00
-                    - (temp - constants.oT_ICE_ALL)
-                    / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)
-                )
+                * (1.00 - (temp - constants.oT_ICE_ALL) / (constants.oT_ICE_MAX - constants.oT_ICE_ALL))
             )
         else:
             icefrct_m = 0.00
@@ -124,9 +105,7 @@ def cloud_effective_radius_liquid(
     Float: Effective radius of liquid clouds.
     """
     # Calculate liquid water content
-    WC = (
-        1.0e3 * air_density(PL, TE) * QC
-    )  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
+    WC = 1.0e3 * air_density(PL, TE) * QC  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
     # Calculate cloud drop number concentration from the aerosol model + ....
     NNX = max(NNL * 1.0e-6, 10.0)
     # Calculate Radius in meters [m]
@@ -136,11 +115,7 @@ def cloud_effective_radius_liquid(
             60.0e-6,
             max(
                 2.5e-6,
-                1.0e-6
-                * constants.BX
-                * (WC / NNX) ** constants.R13BBETA
-                * constants.ABETA
-                * 6.92,
+                1.0e-6 * constants.BX * (WC / NNX) ** constants.R13BBETA * constants.ABETA * 6.92,
             ),
         )
     else:
@@ -177,9 +152,7 @@ def cloud_effective_radius_ice(
     Float: Effective radius of ice clouds.
     """
     # Calculate ice water content
-    WC = (
-        1.0e3 * air_density(PL, TE) * QC
-    )  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
+    WC = 1.0e3 * air_density(PL, TE) * QC  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
     # Calculate radius in meters [m]
     if constants.ICE_RADII_PARAM == 1:
         # Ice cloud effective radius -- [klaus wyser, 1998]
@@ -250,9 +223,7 @@ def fix_up_clouds(
         # LS LIQUID too small
         if QLC < 1.0e-8:
             QV = QV + QLC
-            TE = (
-                TE - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLC
-            )
+            TE = TE - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLC
             QLC = 0.0
         # LS ICE too small
         if QIC < 1.0e-8:
@@ -262,9 +233,7 @@ def fix_up_clouds(
         # Anvil LIQUID too small
         if QLA < 1.0e-8:
             QV = QV + QLA
-            TE = (
-                TE - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLA
-            )
+            TE = TE - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLA
             QLA = 0.0
         # Anvil ICE too small
         if QIA < 1.0e-8:

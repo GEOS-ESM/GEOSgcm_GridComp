@@ -7,9 +7,7 @@ from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
 
-def get_last(
-    in_field: FloatField, temporary_field: FloatFieldIJ, out_field: FloatField
-):
+def get_last(in_field: FloatField, temporary_field: FloatFieldIJ, out_field: FloatField):
     """Workaround for getting last value, e.g. `Field[max(K)]`"""
     with computation(FORWARD), interval(-1, None):
         temporary_field = in_field

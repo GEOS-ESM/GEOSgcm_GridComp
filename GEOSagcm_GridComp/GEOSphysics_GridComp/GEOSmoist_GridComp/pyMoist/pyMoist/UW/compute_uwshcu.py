@@ -183,10 +183,60 @@ def compute_thermodynamic_variables(
     tpert_out: FloatFieldIJ,
     qpert_out: FloatFieldIJ,
 ):
+    """
+    Start of Main Calculation.
+
+    Stencil to compute basic thermodynamic variables directly from
+    input variables for each column.
+
+    Inputs:
+    pmid0_in [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    zmid0_in [FloatField]: Environmental height at the layer mid-point [m]
+    exnmid0_in [FloatField]: Exner function at the layer mid-point
+    dp0_in [FloatField]: Environmental layer pressure thickness [Pa] > 0
+    u0_in [FloatField]: Environmental zonal wind [m/s]
+    v0_in [FloatField]: Environmental meridional wind [m/s]
+    qv0_in [FloatField]: Environmental water vapor specific humidity [kg/kg]
+    ql0_in [FloatField]: Environmental liquid water specific humidity [kg/kg]
+    qi0_in [FloatField]: Environmental ice specific humidity [kg/kg]
+    th0_in [FloatField]: Environmental potential temperature [K]
+    tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    dotransport [Int]: Transport tracers [1 true]
+
+    Outputs:
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    cush [FloatFieldIJ]: Convective scale height [m]
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    shfx [FloatFieldIJ]: Surface sensible heat [J]
+    evap [FloatFieldIJ]: Surface evaporation [kg/m^2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    qt0 [FloatField]: Mixing ratio [?]
+    t0 [FloatField]: Environmental temperature [K]
+    qv0 [FloatField]: Environmental specific humidity
+    qi0 [FloatField]: Environmental ice specific humidity
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    tr0_temp [FloatField]: Environmental tracers [#, kg/kg]
+    sstr0 [FloatField_NTracers]: Convective tracer [?]
+    ssthl0 [FloatField]: Temperature [?]
+    ssqt0 [FloatField]: [?]
+    thl0 [FloatField]: Temperature [?]
+    ssu0 [FloatField]: [?]
+    ssv0 [FloatField]: [?]
+    tscaleh [FloatFieldIJ]: [?]
+    fer_out [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr_out [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    tpert_out [FloatFieldIJ]: Temperature perturbation
+    qpert_out [FloatFieldIJ]: Humidity perturbation
+    """
     from __externals__ import k_end, ncnst
 
     with computation(FORWARD), interval(...):
-
         # Initialize output variables defined for all grid points
         umf_out[0, 0, 1] = 0.0
         dcm_out = 0.0
@@ -212,9 +262,6 @@ def compute_thermodynamic_variables(
         cush = cush_inout
         tscaleh = cush_inout
 
-    # Start Main Calculation
-    # Compute basic thermodynamic variables directly from
-    # input variables for each column
     with computation(PARALLEL), interval(...):
         pmid0 = pmid0_in
         u0 = u0_in
@@ -377,10 +424,119 @@ def compute_thv0_thvl0(
     ssv0_o: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Stencil to compute internal environmental variables
+
+    The 'condensation' mask is introduced in this stencil.
+    This mask is used to indicate if the condensation process has occurred.
+    It is set to False by default and becomes True if condensation occurs.
+    Once condensation occurs, the UW shallow convection scheme is done
+    computing at that column.
+
+    Variables ending in '_o' indicate variables used in the second
+    iteration of the implicit CIN calculation.
+
+    Inputs:
+    pmid0_in [FloatField]: Environmental pressure at midpoints [Pa]
+    exnmid0_in [FloatField]: Exner function at the layer mid-point
+    qv0_in [FloatField]: Environmental specific humidity
+    ql0_in [FloatField]: Environmental liquid water specific humidity [kg/kg]
+    qi0_in [FloatField]: Environmental ice specific humidity [kg/kg]
+    th0_in [FloatField]: Environmental potential temperature [K]
+    zmid0 [FloatField]: Environmental height at the layer mid-point [m]
+    pifc0_in [FloatField]: Environmental pressure at interfaces [Pa]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    u0_in [FloatField]: Environmental zonal wind [m/s]
+    v0_in [FloatField]: Environmental meridional wind [m/s]
+    k0 [Int]: Number of levels
+    dotransport [Int]: Transport tracers [1 true]
+    ssu0 [FloatField]: [?]
+    ssv0 [FloatField]: [?]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    sstr0 [FloatField_NTracers]: Convective tracer [?]
+    t0 [FloatField]: Environmental temperature [K]
+
+    Outputs:
+    ssthl0 [FloatField]: Temperature [?]
+    ssqt0 [FloatField]: Temperature [?]
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    tr0_o [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    sstr0_o [FloatField_NTracers]: Convective tracer [?]
+    trflx [FloatField_NTracers]: Tracer PBL flux [?]
+    trten [FloatField_NTracers]: Tendency of [?]
+    tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
+    tru_emf [FloatField_NTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    emf [FloatField]: Penetrative [?]
+    slflx [FloatField]: Sensible heat flux [?]
+    qtflx [FloatField]: Mixing ratio flux [?]
+    uflx [FloatField]: Zonal wind flux [?]
+    vflx [FloatField]: Meridional wind flux [?]
+    thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
+    qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
+    uu [FloatField]: Updraft zonal wind at the interface [m/s]
+    vu [FloatField]: Updraft meridional wind at the interface [m/s]
+    wu [FloatField]: Updraft vertical velocity at the interface [m/s]
+    thvu [FloatField]: Updraft virtual potential temperature at the interface [m/s]
+    thlu_emf [FloatField]: Penetrative downdraft liquid potential temperature at entraining interfaces [K]
+    qtu_emf [FloatField]: Penetrative downdraft total water at entraining interfaces [kg/kg]
+    uu_emf [FloatField]: Penetrative downdraft zonal wind at entraining interfaces [m/s]
+    vu_emf [FloatField]: Penetrative downdraft meridional wind at entraining interfaces [m/s]
+    uemf [FloatField]: Net updraft mass flux at the interface ( emf + umf ) [kg/m2/s]
+    thvl0bot [FloatField]: Temperature at bottom [?]
+    thvl0top [FloatField]: Temperature at top [?]
+    thvl0 [FloatField]: Temperature [?]
+    qt0 [FloatField]: Mixing ratio [?]
+    qv0 [FloatField]: Environmental specific humidity
+    thl0 [FloatField]: Temperature [?]
+    ql0 [FloatField]: Environmental liquid water specific humidity
+    qi0 [FloatField]: Environmental ice specific humidity
+    thv0bot [FloatField]: Temperature at bottom [?]
+    thv0top [FloatField]: Potential temperature at top [?]
+    uten [FloatField]: Tendency of zonal wind [m/s2]
+    vten [FloatField]: Tendency of meridional wind [m/s2]
+    s0 [FloatField]: Environmental dry static energy [J/kg]
+    qcu [FloatField]: Condensate water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    qlu [FloatField]: Liquid water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    qiu [FloatField]: Ice specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    cufrc [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    ufrc [FloatField]: Cumulus updraft fraction [fraction]
+    qlten_det [FloatField]: [?]
+    qiten_det [FloatField]: [?]
+    qlten_sink [FloatField]: Liquid condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    qiten_sink [FloatField]: Ice condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    sten [FloatField]: Tendency of dry static energy [J/kg/s]
+    slten [FloatField]: Tendency of [?]
+    qiten [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    qv0_o [FloatField]: Environmental water vapor specific humidity [kg/kg]
+    ql0_o [FloatField]: Environmental liquid water specific humidity [kg/kg]
+    qi0_o [FloatField]: Environmental ice specific humidity [kg/kg]
+    t0_o [FloatField]: Environmental temperature [K]
+    s0_o [FloatField]: Environmental dry static energy [J/kg]
+    u0_o [FloatField]: Environmental zonal wind [m/s]
+    v0_o [FloatField]: Environmental meridional wind [m/s]
+    qt0_o [FloatField]: Mixing ratio [?]
+    thl0_o [FloatField]: Temperature [?]
+    thvl0_o [FloatField]: Temperature [?]
+    ssthl0_o [FloatField]: Temperature [?]
+    ssqt0_o [FloatField]: Temperature [?]
+    thv0bot_o [FloatField]: Temperature at bottom [?]
+    thv0top_o [FloatField]: Temperature at top [?]
+    thvl0bot_o [FloatField]: Temperature at bottom [?]
+    thvl0top_o [FloatField]: Temperature at top [?]
+    ssu0_o [FloatField]: [?]
+    ssv0_o [FloatField]: [?]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    """
     from __externals__ import ncnst
 
     with computation(PARALLEL), interval(...):
-        # Compute interval environmental variables
         pmid0 = pmid0_in
         exnmid0 = exnmid0_in
         qv0 = qv0_in
@@ -601,6 +757,30 @@ def find_pbl_height(
     cush_inout: FloatFieldIJ,
     tscaleh: FloatFieldIJ,
 ):
+    """
+    Stencil to find PBL top height interface index, 'kinv-1' where 'kinv' is the layer
+    index with PBLH in it. When PBLH is exactly at interface, 'kinv' is the
+    layer index having PBLH as a lower interface.
+
+    Inputs:
+    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    kpbl_in [IntFieldIJ]: Height of PBL [m]
+    k0 [Int]: Number of levels
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    cush [FloatFieldIJ]: Convective scale height [m]
+
+    Outputs:
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    kinv [IntField]: Inversion layer with PBL top interface as lower interface
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    tscaleh [FloatFieldIJ]: [?]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
             if iteration != i32(0):
@@ -729,7 +909,6 @@ def find_pbl_averages(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             # Find PBL averaged tke ('tkeavg') and minimum 'thvl' ('thvlmin') in the PBL
             # In the current code, 'tkeavg' is obtained by averaging all interfacial TKE
             # within the PBL. However, in order to be conceptually consistent with   PBL
@@ -810,16 +989,54 @@ def find_cumulus_characteristics(
     qpert_out: FloatFieldIJ,
     iteration: i32,
 ):
+    """
+    Stencil to find characteristics of cumulus source air:
+    qtsrc,thlsrc,usrc,vsrc.
+
+    Note that 'thlsrc' was concocted using 'thvlsrc' and 'qtsrc'.
+    'qtsrc' is defined as the lowest layer mid-point value;   'thlsrc'
+    is from 'qtsrc' and 'thvlmin=thvlsrc'; 'usrc' & 'vsrc' are defined
+    as the values just below the PBL top interface.
+
+    Inputs:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    windsrcavg [Int]: Source air uses PBL mean momentum
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    t0 [FloatField]: Environmental temperature [K]
+    qv0 [FloatField]: Environmental specific humidity
+    shfx [FloatFieldIJ]: Surface sensible heat [J]
+    evap [FloatFieldIJ]: Surface evaporation [kg/m^2/s]
+    thlsrc_fac [Float]: Scaling factor for thlsrc perturbation
+    qtsrc_fac [Float]: Scaling factor for qtsrc perturbation
+    qt0 [FloatField]: Mixing ratio [?]
+    qtavg [FloatField]: Average qt over the PBL [?]
+    thvlmin [FloatField]: Minimum 'thvl' within PBL, obtained by comparing top & base
+    uavg [FloatField]: Average u over the PBL [?]
+    vavg [FloatField]: Average v over the PBL [?]
+    kinv [IntField]: Inversion layer with PBL top interface as lower interface
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    ssu0 [FloatField]: [?]
+    ssv0 [FloatField]: [?]
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    dotransport [Int]: Transport tracers [1 true]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+
+    Outputs:
+    trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
+    qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
+    thvlsrc [FloatField]: Temperature of cumulus source air [K] [?]
+    thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
+    usrc [FloatField]: Zonal wind of cumulus source air [m/s] [?]
+    vsrc [FloatField]: Meridional wind of cumulus source air [m/s] [?]
+    tpert_out [FloatFieldIJ]: Temperature perturbation
+    qpert_out [FloatFieldIJ]: Humidity perturbation
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc
-            # Note that 'thlsrc' was concocted using 'thvlsrc' and 'qtsrc'.
-            # 'qtsrc' is defined as the lowest layer mid-point value;   'thlsrc'
-            # is from 'qtsrc' and 'thvlmin=thvlsrc'; 'usrc' & 'vsrc' are defined
-            # as the values just below the PBL top interface.
-
             if windsrcavg == 1:
                 # Caution: This code has not been tested, since windsrcavg is 0
                 # An error will be raised if windsrcavg == 1
@@ -834,7 +1051,7 @@ def find_cumulus_characteristics(
                 qpert_out = 0.0
                 tpert_out = 0.0
                 if wstar > 0.001:
-                    wstar = 1.0 * wstar ** 0.3333
+                    wstar = 1.0 * wstar**0.3333
                     tpert_out = (
                         thlsrc_fac * shfx / (zrho * wstar * constants.MAPL_CP)
                     )  # K
@@ -893,21 +1110,52 @@ def find_klcl(
     thv0lcl: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Find LCL of the source air and a layer index containing LCL (klcl)
+    When the LCL is exactly at the interface, 'klcl' is a layer index
+    having 'plcl' as the lower interface similar to the 'kinv' case.
+
+    In the previous code, I assumed that if LCL is located within the
+    lowest model layer ( 1 ) or the top model layer ( k0 ), then  no
+    convective adjustment is performed and just exited.   However, in
+    the revised code, I relaxed the first constraint and  even though
+    LCL is at the lowest model layer, I allowed cumulus convection to
+    be initiated. For this case, cumulus convection should be started
+    from the PBL top height, as shown in the following code.
+    When source air is already saturated even at the surface, klcl is
+    set to 1.
+
+    Inputs:
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
+    thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    k0 [Int]: Number of levels
+    thl0 [FloatField]: Temperature [?]
+    ssthl0 [FloatField]: Temperature [?]
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    qt0 [FloatField]: Mixing ratio [?]
+    ssqt0 [FloatField]: [?]
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+
+    Outputs:
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    plcl [FloatField]: LCL of source air [Pa]
+    klcl [IntField]: Layer containing LCL of source air
+    thl0lcl [FloatField]: Temperature at the LCL [?]
+    qt0lcl [FloatField]: Mixing ratio at LCL [?]
+    thv0lcl [FloatField]: Temperature at LCL [?]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Find LCL of the source air and a layer index containing LCL (klcl)
-            # When the LCL is exactly at the interface, 'klcl' is a layer index
-            # having 'plcl' as the lower interface similar to the 'kinv' case.
-            # In the previous code, I assumed that if LCL is located within the
-            # lowest model layer ( 1 ) or the top model layer ( k0 ), then  no
-            # convective adjustment is performed and just exited.   However, in
-            # the revised code, I relaxed the first constraint and  even though
-            # LCL is at the lowest model layer, I allowed cumulus convection to
-            # be initiated. For this case, cumulus convection should be started
-            # from the PBL top height, as shown in the following code.
-            # When source air is already saturated even at the surface, klcl is
-            # set to 1.
-
             if pifc0.at(K=0) < 70000 or pifc0.at(K=0) > 115000.0:
                 condensation = True
                 umf_out[0, 0, 1] = 0.0
@@ -1123,6 +1371,33 @@ def compute_cin_cinlcl(
     cinlcl: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Compute Convective Inhibition, 'cin' & 'cinlcl' [J/kg]=[m2/s2] TKE unit.
+
+    'cin' (cinlcl) is computed from the PBL top interface to LFC (LCL) using
+    piecewisely reconstructed environmental profiles, assuming environmental
+    buoyancy profile within each layer ( or from LCL to upper interface in
+    each layer ) is simply a linear profile. For the purpose of cin (cinlcl)
+    calculation, we simply assume that lateral entrainment does not occur in
+    updrafting cumulus plume, i.e., cumulus source air property is conserved.
+
+    Below explains some rules used in the calculations of cin (cinlcl).   In
+    general, both 'cin' and 'cinlcl' are calculated from a PBL top interface
+    to LCL and LFC, respectively :
+
+    1. If LCL is lower than the PBL height, cinlcl = 0 and cin is calculated
+    from PBL height to LFC.
+
+    2. If LCL is higher than PBL height,   'cinlcl' is calculated by summing
+    both positive and negative cloud buoyancy up to LCL using 'single_cin'
+    From the LCL to LFC, however, only negative cloud buoyancy is counted
+    to calculate final 'cin' upto LFC.
+
+    3. If either 'cin' or 'cinlcl' is negative, they are set to be zero.
+
+    In the below code, 'klfc' is the layer index containing 'LFC' similar to
+    'kinv' and 'klcl'.
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
@@ -1136,28 +1411,6 @@ def compute_cin_cinlcl(
             klfc_IJ = 0.0
 
     with computation(FORWARD), interval(1, -1):
-        # Compute Convective Inhibition, 'cin' & 'cinlcl' [J/kg]=[m2/s2] TKE unit.
-
-        # 'cin' (cinlcl) is computed from the PBL top interface to LFC (LCL) using
-        # piecewisely reconstructed environmental profiles, assuming environmental
-        # buoyancy profile within each layer ( or from LCL to upper interface in
-        # each layer ) is simply a linear profile. For the purpose of cin (cinlcl)
-        # calculation, we simply assume that lateral entrainment does not occur in
-        # updrafting cumulus plume, i.e., cumulus source air property is conserved.
-        # Below explains some rules used in the calculations of cin (cinlcl).   In
-        # general, both 'cin' and 'cinlcl' are calculated from a PBL top interface
-        # to LCL and LFC, respectively :
-        # 1. If LCL is lower than the PBL height, cinlcl = 0 and cin is calculated
-        # from PBL height to LFC.
-        # 2. If LCL is higher than PBL height,   'cinlcl' is calculated by summing
-        # both positive and negative cloud buoyancy up to LCL using 'single_cin'
-        # From the LCL to LFC, however, only negative cloud buoyancy is counted
-        # to calculate final 'cin' upto LFC.
-        # 3. If either 'cin' or 'cinlcl' is negative, they are set to be zero.
-
-        # In the below code, 'klfc' is the layer index containing 'LFC' similarto
-        # 'kinv' and 'klcl'.
-
         # Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' )
         cin = 0.0
         cinlcl = 0.0
@@ -1191,7 +1444,14 @@ def compute_cin_cinlcl(
                 cin = cinlcl
 
                 # ----- LCL to Top
-                (thj, qvj, qlj, qij, qse, id_check,) = conden(
+                (
+                    thj,
+                    qvj,
+                    qlj,
+                    qij,
+                    qse,
+                    id_check,
+                ) = conden(
                     pifc0[0, 0, 1],
                     thlsrc,
                     qtsrc,
@@ -1243,7 +1503,14 @@ def compute_cin_cinlcl(
             else:
                 if not condensation and THIS_K > klcl and not stop_cin:
                     thvubot = thvutop[0, 0, -1]
-                    (thj, qvj, qlj, qij, qse, id_check,) = conden(
+                    (
+                        thj,
+                        qvj,
+                        qlj,
+                        qij,
+                        qse,
+                        id_check,
+                    ) = conden(
                         pifc0[0, 0, 1],
                         thlsrc,
                         qtsrc,
@@ -1295,7 +1562,14 @@ def compute_cin_cinlcl(
         # Case 2. LCL height is lower than PBL interface ( 'pLCL > ps0(kinv-1)')
         if not condensation and klcl < kinv - 1 and not stop_cin:
             if not stop_cin and THIS_K >= kinv - 1:
-                (thj, qvj, qlj, qij, qse, id_check,) = conden(
+                (
+                    thj,
+                    qvj,
+                    qlj,
+                    qij,
+                    qse,
+                    id_check,
+                ) = conden(
                     pifc0,
                     thlsrc,
                     qtsrc,
@@ -1328,7 +1602,14 @@ def compute_cin_cinlcl(
 
                 if not condensation and not stop_cin:
                     thvubot = thj * (1.0 + zvir * qvj - qlj - qij)
-                    (thj, qvj, qlj, qij, qse, id_check,) = conden(
+                    (
+                        thj,
+                        qvj,
+                        qlj,
+                        qij,
+                        qse,
+                        id_check,
+                    ) = conden(
                         pifc0[0, 0, 1],
                         thlsrc,
                         qtsrc,
@@ -1583,6 +1864,16 @@ def avg_initial_and_final_cin(
     fdr_out: FloatField,
     fer_out: FloatField,
 ):
+    """
+    Calculate implicit 'cin' by averaging initial and final cins. Note that
+    implicit CIN is adopted only when cumulus convection stabilized the system,
+    i.e., only when 'del_CIN >0'. If 'del_CIN<=0', just use explicit CIN. Note
+    also that since 'cinlcl' is set to zero whenever LCL is below the PBL top,
+    (see above CIN calculation part), the use of 'implicit CIN=cinlcl'  is not
+    good. Thus, when using implicit CIN, always try to only use 'implicit CIN=
+    cin', not 'implicit CIN=cinlcl'. However, both 'CIN=cin' and 'CIN=cinlcl'
+    are good when using explicit CIN.
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(1, None):
@@ -1742,7 +2033,6 @@ def avg_initial_and_final_cin(
                 cbmflimit = 0.0
 
             else:  # When 'del_CIN < 0', use explicit CIN instead of implicit CIN.
-
                 # Identifier showing whether explicit or implicit CIN is used
                 ind_delcin = 1.0
 
@@ -1860,55 +2150,90 @@ def calc_cumulus_base_mass_flux(
     wcrit: FloatFieldIJ,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Calculate cumulus base mass flux ('cbmf'), fractional area ('ufrcinv'),
+    and mean vertical velocity (winv) of cumulus updraft at PBL top interface
+    Also, calculate updraft fractional area (ufrclcl) and vertical velocity at
+    the LCL (wlcl). When LCL is below PBLH, cinlcl = 0 and 'ufrclcl = ufrcinv'
+    and 'wlcl = winv. Only updrafts strong enough to overcome CIN can rise
+    over PBL top interface.
+
+    Thus, in order to calculate cumulus mass flux at PBL top interface, 'cbmf'
+    we need to know 'CIN' ( the strength of potential energy barrier ) and
+    'sigmaw' (a standard deviation of updraft vertical velocity at the PBL top
+    interface, a measure of turbulentce strength in the PBL ). Naturally, the
+    ratio of these two variables, 'mu' - normalized CIN by TKE- is key
+    variable controlling 'cbmf'.  If 'mu' becomes large, only small fraction
+    of updrafts with very strong TKE can rise over the PBL - both 'cbmf' and
+    'ufrc' becomes small, but 'winv' becomes large ( this can be easily
+    understood by PDF of w at PBL top ).  If 'mu' becomes small, lots of
+    updraft can rise over the PBL top - both 'cbmf' and 'ufrc' becomes large,
+    but 'winv' becomes small. Thus, all of the key variables associated with
+    cumulus convection  at the PBL top - 'cbmf', 'ufrc', 'winv' where 'cbmf =
+    rho*ufrc*winv' - are a unique functions of 'mu', normalized CIN. Although
+    these are uniquely determined by 'mu', we usually impose two comstraints
+    on 'cbmf' and 'ufrc': (1) because we will simply assume that subsidence
+    warming and drying of 'kinv-1' layer in association with 'cbmf' at PBL top
+    interface is confined only in 'kinv-1' layer, cbmf must not be larger than
+    the mass within the 'kinv-1' layer. Otherwise, instability will occur due
+    to the breaking of stability con. If we consider semi-Lagrangian vertical
+    advection scheme and explicitly consider the extent of vertical movement
+    of each layer in association with cumulus mass flux, we don't need to
+    impose this constraint. However,  using a  semi-Lagrangian scheme is a
+    future research subject. Note that this constraint should be applied for
+    all interfaces above PBL top as well as PBL top interface.   As a result,
+    this 'cbmf' constraint impose a 'lower' limit on mu - 'mumin0'. (2) in
+    order for mass flux parameterization - rho*(w'a')= M*(a_c-a_e) - to be
+    valid, cumulus updraft fractional area should be much smaller than 1. In
+    current code, we impose 'rmaxfrac = 0.1 ~ 0.2'   through the whole
+    vertical layers where cumulus convection occurs. At the PBL top interface,
+    the same constraint is made by imposing another lower 'lower' limit on mu,
+    'mumin1'. After that, also limit 'ufrclcl' to be smaller than 'rmaxfrac'
+    by 'mumin2'.
+
+    Calculate normalized CIN, 'mu' satisfying all the three constraints
+    imposed on 'cbmf'('mumin0'), 'ufrc' at the PBL top - 'ufrcinv' - ( by
+    'mumin1' from a parameter sentence), and 'ufrc' at the LCL - 'ufrclcl'
+    ( by 'mumin2'). Note that 'cbmf' does not change between PBL top and LCL
+    because we assume that buoyancy sorting does not occur when cumulus
+    updraft is unsaturated.
+
+    Inputs:
+    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    use_CINcin [i32]: if true, calc CIN thru L..
+    cin_IJ [FloatFieldIJ]: Convective inhibition [J/kg]
+    rbuoy [Float]: Non-hydro pressure effect on updraft
+    cinlcl_IJ [FloatFieldIJ]: Convective inhibition at LCL [J/kg]
+    rkfre [FloatFieldIJ]: Resolution dependent vertical velocity variance as fraction of tke
+    tkeavg [FloatField]: Average tke over the PBL [m2/s2]
+    epsvarw [Float]: Variance of PBL w by mesoscale
+    kinv [IntField]: Inversion layer with PBL top interface as lower interface
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    thv0top [FloatField]: Potential temperature at top [?]
+    exnifc0 [FloatField]: Exner function at interfaces
+    dp0 [FloatField]: Environmental layer pressure thickness [Pa] > 0
+    dt [Float]: Timestep [s]
+    mumin1 [Float]: Normalized CIN ('mu') corresponding to 'rmaxfrac' at the PBL top
+    rmaxfrac [Float]: Maximum core updraft fraction
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+
+    Outputs:
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    winv [FloatField]: Mean vertical velocity of cumulus updraft at PBL top interface [m/s]
+    cbmf [FloatField]: Cloud base mass flux [kg/m2/s]
+    rho0inv [FloatField]: Density of water [?]
+    ufrcinv [FloatField]: Fractional area [unitless]
+    wcrit [FloatFieldIJ]: Critical mixing ratio [?]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Calculate cumulus base mass flux ('cbmf'), fractional area ('ufrcinv'),
-            # and mean vertical velocity (winv) of cumulus updraft at PBL top interface
-            # Also, calculate updraft fractional area (ufrclcl) and vertical velocity at
-            # the LCL (wlcl). When LCL is below PBLH, cinlcl = 0 and 'ufrclcl = ufrcinv'
-            # and 'wlcl = winv. Only updrafts strong enough to overcome CIN can rise
-            # over PBL top interface.
-
-            # Thus, in order to calculate cumulus mass flux at PBL top interface, 'cbmf'
-            # we need to know 'CIN' ( the strength of potential energy barrier ) and
-            # 'sigmaw' (a standard deviation of updraft vertical velocity at the PBL top
-            # interface, a measure of turbulentce strength in the PBL ). Naturally, the
-            # ratio of these two variables, 'mu' - normalized CIN by TKE- is key
-            # variable controlling 'cbmf'.  If 'mu' becomes large, only small fraction
-            # of updrafts with very strong TKE can rise over the PBL - both 'cbmf' and
-            # 'ufrc' becomes small, but 'winv' becomes large ( this can be easily
-            # understood by PDF of w at PBL top ).  If 'mu' becomes small, lots of
-            # updraft can rise over the PBL top - both 'cbmf' and 'ufrc' becomes large,
-            # but 'winv' becomes small. Thus, all of the key variables associated with
-            # cumulus convection  at the PBL top - 'cbmf', 'ufrc', 'winv' where 'cbmf =
-            # rho*ufrc*winv' - are a unique functions of 'mu', normalized CIN. Although
-            # these are uniquely determined by 'mu', we usually impose two comstraints
-            # on 'cbmf' and 'ufrc': (1) because we will simply assume that subsidence
-            # warming and drying of 'kinv-1' layer in association with 'cbmf' at PBL top
-            # interface is confined only in 'kinv-1' layer, cbmf must not be larger than
-            # the mass within the 'kinv-1' layer. Otherwise, instability will occur due
-            # to the breaking of stability con. If we consider semi-Lagrangian vertical
-            # advection scheme and explicitly consider the extent of vertical movement
-            # of each layer in association with cumulus mass flux, we don't need to
-            # impose this constraint. However,  using a  semi-Lagrangian scheme is a
-            # future research subject. Note that this constraint should be applied for
-            # all interfaces above PBL top as well as PBL top interface.   As a result,
-            # this 'cbmf' constraint impose a 'lower' limit on mu - 'mumin0'. (2) in
-            # order for mass flux parameterization - rho*(w'a')= M*(a_c-a_e) - to be
-            # valid, cumulus updraft fractional area should be much smaller than 1. In
-            # current code, we impose 'rmaxfrac = 0.1 ~ 0.2'   through the whole
-            # vertical layers where cumulus convection occurs. At the PBL top interface,
-            # the same constraint is made by imposing another lower 'lower' limit on mu,
-            # 'mumin1'. After that, also limit 'ufrclcl' to be smaller than 'rmaxfrac'
-            # by 'mumin2'.
-
-            # Calculate normalized CIN, 'mu' satisfying all the three constraints
-            # imposed on 'cbmf'('mumin0'), 'ufrc' at the PBL top - 'ufrcinv' - ( by
-            # 'mumin1' from a parameter sentence), and 'ufrc' at the LCL - 'ufrclcl'
-            # ( by 'mumin2'). Note that 'cbmf' does not change between PBL top and LCL
-            # because we assume that buoyancy sorting does not occur when cumulus
-            # updraft is unsaturated.
-
             if use_CINcin == i32(1):
                 wcrit = sqrt(2.0 * cin_IJ * rbuoy)
             else:
@@ -1947,7 +2272,7 @@ def calc_cumulus_base_mass_flux(
                     * thv0top.at(K=kbelow - 1)
                     * exnifc0.at(K=kbelow)
                 )
-                cbmf = (rho0inv * sigmaw / 2.5066) * exp(-(mu ** 2))
+                cbmf = (rho0inv * sigmaw / 2.5066) * exp(-(mu**2))
 
                 # 1. 'cbmf' constraint
                 cbmflimit = 0.9 * dp0.at(K=kbelow - 1) / constants.MAPL_GRAV / dt
@@ -1964,8 +2289,8 @@ def calc_cumulus_base_mass_flux(
                     max(
                         0.0,
                         2.0
-                        * (exp(-(mu ** 2)) / 2.5066) ** 2
-                        * (1.0 / erfc(mu) ** 2 - 0.25 / rmaxfrac ** 2),
+                        * (exp(-(mu**2)) / 2.5066) ** 2
+                        * (1.0 / erfc(mu) ** 2 - 0.25 / rmaxfrac**2),
                     )
                 )
 
@@ -1979,8 +2304,8 @@ def calc_cumulus_base_mass_flux(
             # Note that final 'cbmf' here is obtained in such that 'ufrcinv' and
             # 'ufrclcl' are smaller than ufrcmax with no instability.
 
-            cbmf = rkfre * (rho0inv * sigmaw / 2.5066) * exp((-(mu ** 2)))
-            winv = sigmaw * (2.0 / 2.5066) * exp(-(mu ** 2)) / erfc(mu)
+            cbmf = rkfre * (rho0inv * sigmaw / 2.5066) * exp((-(mu**2)))
+            winv = sigmaw * (2.0 / 2.5066) * exp(-(mu**2)) / erfc(mu)
             ufrcinv = cbmf / winv / rho0inv
 
 
@@ -2016,17 +2341,53 @@ def define_updraft_properties(
     ufrclcl: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top,
+    it automatically becomes 'ufrclcl = ufrcinv' & 'wlcl = winv', since
+    it was already set to 'cinlcl=0' if LCL is below PBL top interface.
+    Note 'cbmf' at the PBL top is the same as 'cbmf' at the LCL.  Note
+    also that final 'cbmf' here is obtained in such that 'ufrcinv' and
+    'ufrclcl' are smaller than ufrcmax and there is no instability.
+    By construction, it must be 'wlcl > 0' but for assurance, I checked
+    this again in the below block. If 'ufrclcl < 0.1%', just exit.
+
+    Inputs:
+    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    winv [FloatField]: Mean vertical velocity of cumulus updraft at PBL top interface [m/s]
+    cinlcl_IJ [FloatFieldIJ]: Convective inhibition at LCL [J/kg]
+    rbuoy [Float]: Non-hydro pressure effect on updraft
+    cbmf [FloatField]: Cloud base mass flux [kg/m2/s]
+    rho0inv [FloatField]: Density of water [?]
+    krel [IntField]: Release layer where buoyancy sorting first occurs
+    kinv [IntField]: Inversion layer with PBL top interface as lower interface
+    thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
+    qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
+    prel [FloatField]: Lowest level from which buoyancy sorting occurs [Pa]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+
+    Outputs:
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    ufrc [FloatField]: Cumulus updraft fraction [fraction]
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    wu [FloatField]: Updraft vertical velocity at the interface [m/s]
+    emf [FloatField]: Penetrative [?]
+    thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
+    qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
+    thvu [FloatField]: Updraft virtual potential temperature at the interface [m/s]
+    wlcl [FloatField]: Vertical velocity at LCL [m/s]
+    ufrclcl [FloatField]: Updraft fractional area [no unit]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top,
-            # it automatically becomes 'ufrclcl = ufrcinv' & 'wlcl = winv', since
-            # it was already set to 'cinlcl=0' if LCL is below PBL top interface.
-            # Note 'cbmf' at the PBL top is the same as 'cbmf' at the LCL.  Note
-            # also that final 'cbmf' here is obtained in such that 'ufrcinv' and
-            # 'ufrclcl' are smaller than ufrcmax and there is no instability.
-            # By construction, it must be 'wlcl > 0' but for assurance, I checked
-            # this again in the below block. If 'ufrclcl < 0.1%', just exit.
-
             wtw = (winv * winv) - (2.0 * cinlcl_IJ * rbuoy)
 
             if wtw <= 0.0:
@@ -2053,7 +2414,6 @@ def define_updraft_properties(
                 fdr_out = constants.MAPL_UNDEF
 
             if not condensation:
-
                 wlcl = sqrt(wtw)
                 ufrclcl = cbmf / wlcl / rho0inv
                 wrel = wlcl
@@ -2187,6 +2547,56 @@ def define_env_properties(
     ue: FloatFieldIJ,
     ve: FloatFieldIJ,
 ):
+    """
+    Define environmental properties at the level where buoyancy sorting occurs
+    ('pe', normally, layer midpoint except in the 'krel' layer). In the 'krel'
+    layer where buoyancy sorting starts to occur, however, 'pe' is defined
+    differently because LCL is regarded as lower interface for mixing purpose.
+
+    Inputs:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    krel [IntField]: Release layer where buoyancy sorting first occurs
+    kinv [IntField]: Inversion layer with PBL top interface as lower interface
+    PGFc [Float]: Pressure gradient force
+    ssu0 [FloatField]: [?]
+    ssv0 [FloatField]: [?]
+    prel [FloatField]: Lowest level from which buoyancy sorting occurs [Pa]
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    usrc [FloatField]: Zonal wind of cumulus source air [m/s] [?]
+    vsrc [FloatField]: Meridional wind of cumulus source air [m/s] [?]
+    dotransport [Int]: Transport tracers [1 true]
+    trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
+    thv0rel [FloatField]: [?]
+    thl0 [FloatField]: Temperature [?]
+    ssthl0 [FloatField]: [?]
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    qt0 [FloatField]: Mixing ratio [?]
+    ssqt0 [FloatField]: [?]
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    sstr0 [FloatField_NTracers]: Convective tracer [?]
+
+    Outputs:
+    uu [FloatField]: Updraft zonal wind at the interface [m/s]
+    vu [FloatField]: Updraft meridional wind at the interface [m/s]
+    tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
+    tre [FloatFieldIJ_NTracers]: [?]
+    uplus [FloatFieldIJ]: [?]
+    vplus [FloatFieldIJ]: [?]
+    uplus_3D [FloatField]: [?]
+    vplus_3D [FloatField]: [?]
+    qsat_pe [FloatField]: Saturation vapor pressure at level where buoyancy occurs [?]
+    pe [FloatFieldIJ]: Level where buoyancy occurs [Pa]
+    thle [FloatFieldIJ]: Temperature at level where buoyancy occurs [?]
+    qte [FloatFieldIJ]: [?]
+    dpe [FloatFieldIJ]: [?]
+    exne [FloatFieldIJ]: Exner function at level where buoyancy occurs [?]
+    thvebot [FloatFieldIJ]: [?]
+    ue [FloatFieldIJ]: Zonal wind at level where buoyancy occurs [?]
+    ve [FloatFieldIJ]: Meridional wind at level where buoyancy occurs [?]
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
@@ -2219,11 +2629,6 @@ def define_env_properties(
                     if THIS_K == krel - 1:
                         tru[0, 0, 0][n] = trsrc[0, 0][n]
                     n += 1
-
-            # Define environmental properties at the level where buoyancy sorting occurs
-            # ('pe', normally, layer midpoint except in the 'krel' layer). In the 'krel'
-            # layer where buoyancy sorting starts to occur, however, 'pe' is defined
-            # differently because LCL is regarded as lower interface for mixing purpose.
 
             pe = 0.5 * (prel + pifc0.at(K=krel + 1))
             qsat_pe = 0.5 * (prel + pifc0.at(K=krel + 1))
@@ -2332,6 +2737,24 @@ def buoyancy_sorting(
     iteration: i32,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Buoyancy-Sorting Mixing
+
+    In order to complete buoyancy-sorting mixing at layer mid-point, and so
+    calculate 'updraft mass flux, updraft w velocity, conservative scalars'
+    at the upper interface of each layer, we need following 3 information.
+
+    1. Pressure where mixing occurs ('pe'), and temperature at 'pe' which is
+         necessary to calculate various thermodynamic coefficients at pe. This
+         temperature is obtained by undiluted cumulus properties lifted to pe.
+    2. Undiluted updraft properties at pe - conservative scalar and vertical
+         velocity -which are assumed to be the same as the properties at lower
+         interface only for calculation of fractional lateral entrainment  and
+         detrainment rate ( fer(k) and fdr(k) [Pa-1] ), respectively.    Final
+         values of cumulus conservative scalars and w at the top interface are
+         calculated afterward after obtaining fer(k) & fdr(k).
+    3. Environmental properties at pe.
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
@@ -2413,7 +2836,7 @@ def buoyancy_sorting(
                 while n < ncnst:
                     tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
                         K=krel, ddim=[n]
-                    ) * (pe - pmid0.at(K=krel))
+                    ) * (pe - pmid0.at(K=krel, ddim=[n]))
                     n += 1
 
             # Cumulus rises upward from 'prel' ( or base interface of  'krel' layer )
@@ -2446,7 +2869,6 @@ def buoyancy_sorting(
             and not stop_buoyancy_sort
             and not condensation
         ):
-
             thlue = thlu[0, 0, -1]
             qtue = qtu[0, 0, -1]
             wue = wu[0, 0, -1]
@@ -2628,7 +3050,7 @@ def buoyancy_sorting(
                                         * rbuoy
                                         * constants.MAPL_GRAV
                                         * cridis
-                                        / wue ** 2.0
+                                        / wue**2.0
                                         * (1.0 - thvj / thv0j),
                                     ),
                                 )
@@ -2692,7 +3114,7 @@ def buoyancy_sorting(
                                                 (1.0 / (1.0 - xsat)) * thvxsat
                                             )
 
-                                        aquad = wue ** 2
+                                        aquad = wue**2
                                         bquad = (
                                             2.0
                                             * rbuoy
@@ -2700,7 +3122,7 @@ def buoyancy_sorting(
                                             * cridis
                                             * (thv_x1 - thv_x0)
                                             / thv0j
-                                            - 2.0 * wue ** 2
+                                            - 2.0 * wue**2
                                         )
                                         cquad = (
                                             2.0
@@ -2709,12 +3131,10 @@ def buoyancy_sorting(
                                             * cridis
                                             * (thv_x0 - thv0j)
                                             / thv0j
-                                            + wue ** 2
+                                            + wue**2
                                         )
                                         if kk == 1:
-                                            if (
-                                                bquad ** 2 - 4.0 * aquad * cquad
-                                            ) >= 0.0:
+                                            if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
                                                 xs1, xs2, status = roots(
                                                     aquad, bquad, cquad
                                                 )
@@ -2729,9 +3149,7 @@ def buoyancy_sorting(
                                                 x_cu = xsat
 
                                         else:
-                                            if (
-                                                bquad ** 2 - 4.0 * aquad * cquad
-                                            ) >= 0.0:
+                                            if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
                                                 xs1, xs2, status = roots(
                                                     aquad, bquad, cquad
                                                 )
@@ -2767,8 +3185,8 @@ def buoyancy_sorting(
                             # being, I came back to the original limiter.
 
                             if not condensation:
-                                ee2 = xc ** 2
-                                ud2 = 1.0 - 2.0 * xc + xc ** 2
+                                ee2 = xc**2
+                                ud2 = 1.0 - 2.0 * xc + xc**2
                                 if min(scaleh, mixscale) != 0.0:
                                     rei = (
                                         (
@@ -2890,9 +3308,7 @@ def buoyancy_sorting(
                                         + ssthl0 * dpe / 2.0
                                         - thlu[0, 0, -1]
                                         + ssthl0 / fer
-                                    ) * exp(
-                                        -fer * dpe
-                                    )
+                                    ) * exp(-fer * dpe)
 
                                     qtu = (qte + ssqt0 / fer - ssqt0 * dpe / 2.0) - (
                                         qte
@@ -2910,9 +3326,7 @@ def buoyancy_sorting(
                                         + ssu0 * dpe / 2.0
                                         - uu[0, 0, -1]
                                         + (1.0 - PGFc) * ssu0 / fer
-                                    ) * exp(
-                                        -fer * dpe
-                                    )
+                                    ) * exp(-fer * dpe)
                                     vu = (
                                         ve
                                         + (1.0 - PGFc) * ssv0 / fer
@@ -2922,9 +3336,7 @@ def buoyancy_sorting(
                                         + ssv0 * dpe / 2.0
                                         - vu[0, 0, -1]
                                         + (1.0 - PGFc) * ssv0 / fer
-                                    ) * exp(
-                                        -fer * dpe
-                                    )
+                                    ) * exp(-fer * dpe)
 
                                     if dotransport == 1:
                                         n = 0
@@ -2938,9 +3350,7 @@ def buoyancy_sorting(
                                                 + sstr0[0, 0, 0][n] * dpe / 2.0
                                                 - tru[0, 0, -1][n]
                                                 + sstr0[0, 0, 0][n] / fer
-                                            ) * exp(
-                                                -fer * dpe
-                                            )
+                                            ) * exp(-fer * dpe)
                                             n += 1
 
                                 # Expel some of cloud water and ice from cumulus
@@ -3087,7 +3497,6 @@ def buoyancy_sorting(
                                         fdr_out = constants.MAPL_UNDEF
 
                                     if not condensation:
-
                                         thvu = thj * (1.0 + zvir * qvj - qlj - qij)
 
                                         # Calculate updraft vertical velocity at the
@@ -3226,7 +3635,6 @@ def buoyancy_sorting(
                         fdr_out = constants.MAPL_UNDEF
 
                     if not condensation:
-
                         # Iteration end due to 'rmaxfrac' constraint
 
                         # Calculate updraft fractional area at the upper interface and
@@ -3292,6 +3700,31 @@ def calc_ppen(
     wtwb: FloatFieldIJ,
     ppen: FloatFieldIJ,
 ):
+    """
+    Calculate 'ppen( < 0 )', updraft penetrative distance from the lower
+    interface of 'kpen' layer. Note that bogbot & bogtop at the 'kpen' layer
+    either when fer is zero or non-zero was already calculated above.
+    It seems that below qudarature solving formula is valid only when
+    bogbot < 0.
+
+    Note: The suffix '_IJ' is used to indicate 2D variables (e.g., kpen_IJ)
+
+    Inputs:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    drage [FloatFieldIJ]: Drag coefficient [no unit] [?]
+    bogbot [FloatFieldIJ]: [?]
+    bogtop [FloatFieldIJ]: [?]
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    kpen_IJ [IntFieldIJ]: Highest layer with positive updraft velocity
+    wu [FloatField]: Updraft vertical velocity at the interface [m/s]
+    rhomid0j [FloatFieldIJ]: Density of water at mid layers [?]
+    dp0 [FloatField]: Environmental layer pressure thickness [Pa] > 0
+    wtwb [FloatFieldIJ]: [?]
+
+    Outputs:
+    kpen [IntField]: Highest layer with positive updraft velocity
+    ppen [FloatFieldIJ]: Highest interface evel where Cu w = 0 [Pa]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
             # Up to this point, we finished all of buoyancy sorting processes from the
@@ -3403,14 +3836,64 @@ def recalc_condensate(
     cush_inout: FloatFieldIJ,
     iteration: i32,
 ):
+    """
+    Re-calculate the amount of expelled condensate from cloud updraft
+    at the cumulus top. This is necessary for refined calculations of
+    bulk cloud microphysics at the cumulus top. Note that ppen < 0.
+    In the below, I explicitly calculate 'thlu_top' & 'qtu_top' by
+    using non-zero 'fer(kpen)'.
+
+    Inputs:
+    fer [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    kpen [IntField]: Highest layer with positive updraft velocity
+    ppen [FloatFieldIJ]: Highest interface evel where Cu w = 0 [Pa]
+    thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
+    thl0 [FloatField]: Temperature [?]
+    ssthl0 [FloatField]: [?]
+    qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
+    qt0 [FloatField]: Mixing ratio [?]
+    ssqt0 [FloatField]: Mixing ratio [?]
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    criqc [Float]: Maximum condensate that can be hold by cumulus updraft [kg/kg]
+    thv0bot [FloatField]: Temperature at bottom [?]
+    thv0top [FloatField]: Temperature at top [?]
+    exnifc0 [FloatField]: Exner function at interfaces
+    zifc0 [FloatField]: Environmental height at interfaces [m]
+    kbup_IJ [IntFieldIJ]: Top layer in which buoyancy is positive at top interface
+    krel [IntField]: Release layer where buoyancy sorting first occurs
+    k0 [Int]: Number of levels
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    emf [FloatField]: [?]
+    ufrc [FloatField]: Cumulus updraft fraction [fraction]
+    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+
+    Outputs:
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    kbup [IntField]: Top layer in which buoyancy is positive at top interface
+    dwten [FloatField]: Detrained [?]
+    diten [FloatField]: Detrained [?]
+    dwten_temp [FloatField]: Detrained [?]
+    diten_temp [FloatField]: Detrained [?]
+    thlu_top [FloatFieldIJ]: Updraft liquid potential temperature at top [K]
+    qtu_top [FloatFieldIJ]: Updraft total specific humidity at top [kg/kg]
+    cldhgt [FloatFieldIJ]: Cloud height [?]
+    umf_temp [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    fdr [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    xco [FloatField]: [?]
+    cush [FloatFieldIJ]: Convective scale height [m]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Re-calculate the amount of expelled condensate from cloud updraft
-            # at the cumulus top. This is necessary for refined calculations of
-            # bulk cloud microphysics at the cumulus top. Note that ppen < 0.
-            # In the below, I explicitly calculate 'thlu_top' & 'qtu_top' by
-            # using non-zero 'fer(kpen)'.
-
             if fer.at(K=kpen) * (-ppen) < 1.0e-4:
                 thlu_top = thlu.at(K=kpen - 1) + (
                     thl0.at(K=kpen)
@@ -3432,9 +3915,7 @@ def recalc_condensate(
                     + ssthl0.at(K=kpen) * (-ppen) / 2.0
                     - thlu.at(K=kpen - 1)
                     + ssthl0.at(K=kpen) / fer.at(K=kpen)
-                ) * exp(
-                    -fer.at(K=kpen) * (-ppen)
-                )
+                ) * exp(-fer.at(K=kpen) * (-ppen))
                 qtu_top = (
                     qt0.at(K=kpen)
                     + ssqt0.at(K=kpen) / fer.at(K=kpen)
@@ -3444,9 +3925,7 @@ def recalc_condensate(
                     + ssqt0.at(K=kpen) * (-ppen) / 2.0
                     - qtu.at(K=kpen - 1)
                     + ssqt0.at(K=kpen) / fer.at(K=kpen)
-                ) * exp(
-                    -fer.at(K=kpen) * (-ppen)
-                )
+                ) * exp(-fer.at(K=kpen) * (-ppen))
 
             thj, qvj, qlj, qij, qse, id_check = conden(
                 pifc0.at(K=kpen) + ppen, thlu_top, qtu_top, ese, esx
@@ -3642,43 +4121,87 @@ def calc_entrainment_mass_flux(
     emf: FloatField,
     iteration: i32,
 ):
+    """
+    Calculate downward penetrative entrainment mass flux, 'emf(k) < 0',  and
+    thermodynamic properties of penetratively entrained airs at   entraining
+    interfaces. emf(k) is defined from the top interface of the  layer  kbup
+    to the bottom interface of the layer 'kpen'. Note even when  kbup = krel,
+    i.e.,even when 'kbup' was not updated in the above buoyancy  sorting  do
+    loop (i.e., 'kbup' remains as the initialization value),   below do loop
+    of penetrative entrainment flux can be performed without  any conceptual
+    or logical problems, because we have already computed all  the variables
+    necessary for performing below penetrative entrainment block.
+    In the below 'do' loop, 'k' is an interface index at which non-zero 'emf'
+    (penetrative entrainment mass flux) is calculated. Since cumulus updraft
+    is negatively buoyant in the layers between the top interface of 'kbup'
+    layer (interface index, kbup) and the top interface of 'kpen' layer, the
+    fractional lateral entrainment, fer(k) within these layers will be close
+    to zero - so it is likely that only strong lateral detrainment occurs in
+    thses layers. Under this situation,we can easily calculate the amount of
+    detrainment cumulus air into these negatively buoyanct layers by  simply
+    comparing cumulus updraft mass fluxes between the base and top interface
+    of each layer: emf(k) = emf(k-1)*exp(-fdr(k)*dp0(k))
+                          ~ emf(k-1)*(1-rei(k)*dp0(k))
+                   emf(k-1)-emf(k) ~ emf(k-1)*rei(k)*dp0(k)
+    Current code assumes that about 'rpen~10' times of these detrained  mass
+    are penetratively re-entrained down into the 'k-1' interface. And all of
+    these detrained masses are finally dumped down into the top interface of
+    'kbup' layer. Thus, the amount of penetratively entrained air across the
+    top interface of 'kbup' layer with 'rpen~10' becomes too large.
+    Note that this penetrative entrainment part can be completely turned-off
+    and we can simply use normal buoyancy-sorting involved turbulent  fluxes
+    by modifying 'penetrative entrainment fluxes' part below.
+
+    Calculate entrainment mass flux and conservative scalars of entraining
+    free air at interfaces of 'kbup <= k < kpen - 1'
+
+    Inputs:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    k0 [Int]: Number of levels
+    thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
+    qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
+    uu [FloatField]: Updraft zonal wind at the interface [m/s]
+    vu [FloatField]: Updraft meridional wind at the interface [m/s]
+    tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
+    dotransport [Int]: Transport tracers [1 true]
+    kpen [IntField]: Highest layer with positive updraft velocity
+    kbup [IntField]: Top layer in which buoyancy is positive at top interface
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    thv0bot [FloatField]: Temperature at bottom [?]
+    thv0top [FloatField]: Temperature at top [?]
+    exnifc0 [FloatField]: Exner function at interfaces
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    ppen [FloatFieldIJ]: Highest interface evel where Cu w = 0 [Pa]
+    rei [FloatField]: Updraft fractional mixing rate with the environment [1/Pa]
+    rpen [Float]: Penentrative entrainment factor
+    dp0 [FloatField]: Environmental layer pressure thickness [Pa] > 0
+    dt [Float]: Timestep [s]
+    thl0 [FloatField]: Temperature [?]
+    ssthl0 [FloatField]: [?]
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    qt0 [FloatField]: Mixing ratio [?]
+    ssqt0 [FloatField]: [?]
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    ssu0 [FloatField]: [?]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    ssv0 [FloatField]: [?]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    sstr0 [FloatField_NTracers]: Convective tracer [?]
+    use_cumpenent [Int]: Cumulative penetrative entrainment
+    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+
+    Outputs:
+    tru_emf [FloatField_NTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
+    thlu_emf [FloatField]: Penetrative downdraft liquid potential temperature at entraining interfaces [K]
+    qtu_emf [FloatField]: Penetrative downdraft total water at entraining interfaces [kg/kg]
+    uu_emf [FloatField]: Penetrative downdraft zonal wind at entraining interfaces [m/s]
+    vu_emf [FloatField]: Penetrative downdraft meridional wind at entraining interfaces [m/s]
+    emf [FloatField]: [?]
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            # Calculate downward penetrative entrainment mass flux, 'emf(k) < 0',  and
-            # thermodynamic properties of penetratively entrained airs at   entraining
-            # interfaces. emf(k) is defined from the top interface of the  layer  kbup
-            # to the bottom interface of the layer 'kpen'. Note even when  kbup = krel,
-            # i.e.,even when 'kbup' was not updated in the above buoyancy  sorting  do
-            # loop (i.e., 'kbup' remains as the initialization value),   below do loop
-            # of penetrative entrainment flux can be performed without  any conceptual
-            # or logical problems, because we have already computed all  the variables
-            # necessary for performing below penetrative entrainment block.
-            # In the below 'do' loop, 'k' is an interface index at which non-zero 'emf'
-            # (penetrative entrainment mass flux) is calculated. Since cumulus updraft
-            # is negatively buoyant in the layers between the top interface of 'kbup'
-            # layer (interface index, kbup) and the top interface of 'kpen' layer, the
-            # fractional lateral entrainment, fer(k) within these layers will be close
-            # to zero - so it is likely that only strong lateral detrainment occurs in
-            # thses layers. Under this situation,we can easily calculate the amount of
-            # detrainment cumulus air into these negatively buoyanct layers by  simply
-            # comparing cumulus updraft mass fluxes between the base and top interface
-            # of each layer: emf(k) = emf(k-1)*exp(-fdr(k)*dp0(k))
-            #                       ~ emf(k-1)*(1-rei(k)*dp0(k))
-            #                emf(k-1)-emf(k) ~ emf(k-1)*rei(k)*dp0(k)
-            # Current code assumes that about 'rpen~10' times of these detrained  mass
-            # are penetratively re-entrained down into the 'k-1' interface. And all of
-            # these detrained masses are finally dumped down into the top interface of
-            # 'kbup' layer. Thus, the amount of penetratively entrained air across the
-            # top interface of 'kbup' layer with 'rpen~10' becomes too large.
-            # Note that this penetrative entrainment part can be completely turned-off
-            # and we can simply use normal buoyancy-sorting involved turbulent  fluxes
-            # by modifying 'penetrative entrainment fluxes' part below.
-
-            # Calculate entrainment mass flux and conservative scalars of entraining
-            # free air at interfaces of 'kbup <= k < kpen - 1'
-
             thlu_emf[0, 0, 1] = thlu
             qtu_emf[0, 0, 1] = qtu
             uu_emf[0, 0, 1] = uu
@@ -3754,7 +4277,6 @@ def calc_entrainment_mass_flux(
                             n += 1
 
                 else:
-
                     # Note we are coming down from the higher interfaces to the lower
                     # interfaces. Also note that 'emf < 0'. So, below operation is a
                     # summing not subtracting. In order to ensure numerical stability,
@@ -3764,7 +4286,6 @@ def calc_entrainment_mass_flux(
                     if (
                         use_cumpenent == 1
                     ):  # Original Cumulative Penetrative Entrainment
-
                         emf = max(
                             max(
                                 emf[0, 0, 1]
@@ -3888,7 +4409,6 @@ def calc_pbl_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -3950,7 +4470,6 @@ def calc_pbl_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -4012,7 +4531,6 @@ def calc_pbl_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -4073,7 +4591,6 @@ def calc_pbl_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -4224,16 +4741,50 @@ def non_buoyancy_sorting_fluxes(
     slflx: FloatField,
     qtflx: FloatField,
 ):
+    """
+    2. Calculate non-buoyancy sorting fluxes : kinv <= k <= krel - 1
+    Note that when 'krel = kinv', below block is never executed
+    as in a desirable, expected way ( but I must check  if this
+    is the case ). The non-buoyancy sorting fluxes are computed
+    only when 'krel > kinv'.
+
+    Inputs:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    kinv [IntField]: Inversion layer with PBL top interface as lower interface
+    krel [IntField]: Release layer where buoyancy sorting first occurs
+    cbmf [FloatField]: Cloud base mass flux [kg/m2/s]
+    qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
+    qt0 [FloatField]: Mixing ratio [?]
+    ssqt0 [FloatField]: [?]
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
+    thl0 [FloatField]: Temperature [?]
+    ssthl0 [FloatField]: [?]
+    PGFc [Float]: Pressure gradient force
+    exnifc0 [FloatField]: Exner function at interfaces
+    ssu0 [FloatField]: [?]
+    ssv0 [FloatField]: [?]
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    usrc [FloatField]: Zonal wind of cumulus source air [m/s] [?]
+    vsrc [FloatField]: Meridional wind of cumulus source air [m/s] [?]
+    dotransport [Int]: Transport tracers [1 true]
+    trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    sstr0 [FloatField_NTracers]: Convective tracer [?]
+
+    Outputs:
+    trflx [FloatField_NTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
+    uflx [FloatField]: Zonal wind flux [?]
+    vflx [FloatField]: Meridional wind flux [?]
+    slflx [FloatField]: Sensible heat flux [?]
+    qtflx [FloatField]: Mixing ratio flux [?]
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            # 2. Non-buoyancy sorting fluxes : kinv <= k <= krel - 1
-            # Note that when 'krel = kinv', below block is never executed
-            # as in a desirable, expected way ( but I must check  if this
-            # is the case ). The non-buoyancy sorting fluxes are computed
-            # only when 'krel > kinv'.
-
             uplus = 0.0
             vplus = 0.0
             if THIS_K >= kinv and THIS_K < (krel - 1):
@@ -4312,15 +4863,49 @@ def buoyancy_sorting_fluxes(
     slflx: FloatField,
     iteration: i32,
 ):
+    """
+    3. Calculate buoyancy sorting fluxes : krel <= k <= kbup - 1
+    In case that 'kbup = krel - 1 ' ( or even in case 'kbup = krel' ),
+    buoyancy sorting fluxes are not calculated, which is consistent,
+    desirable feature.
+
+    Inputs:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    kbup [IntField]: Top layer in which buoyancy is positive at top interface
+    krel [IntField]: Release layer where buoyancy sorting first occurs
+    exnifc0 [FloatField]: Exner function at interfaces
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
+    thl0 [FloatField]: Temperature [?]
+    ssthl0 [FloatField]: [?]
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
+    qt0 [FloatField]: Mixing ratio [?]
+    ssqt0 [FloatField]: [?]
+    uu [FloatField]: Updraft zonal wind at the interface [m/s]
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    vu [FloatField]: Updraft meridional wind at the interface [m/s]
+    ssu0 [FloatField]: [?]
+    ssv0 [FloatField]: [?]
+    dotransport [Int]: Transport tracers [1 true]
+    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    sstr0 [FloatField_NTracers]: Convective tracer [?]
+
+    Outputs:
+    trflx [FloatField_NTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
+    qtflx [FloatField]: Mixing ratio flux [?]
+    uflx [FloatField]: Zonal wind flux [?]
+    vflx [FloatField]: Meridional wind flux [?]
+    slflx [FloatField]: Sensible heat flux [?]
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            # 3. Buoyancy sorting fluxes : krel <= k <= kbup - 1
-            # In case that 'kbup = krel - 1 ' ( or even in case 'kbup = krel' ),
-            # buoyancy sorting fluxes are not calculated, which is consistent,
-            # desirable feature.
-
             if THIS_K >= krel and THIS_K <= (kbup - 1):
                 slflx[0, 0, 1] = (
                     constants.MAPL_CP
@@ -4414,35 +4999,91 @@ def penetrative_entrainment_fluxes(
     cush_inout: FloatFieldIJ,
     iteration: i32,
 ):
+    """
+    4. Penetrative entrainment fluxes : kbup <= k <= kpen - 1
+    The only confliction that can happen is when 'kbup = kinv-1'. For this
+    case, turbulent flux at kinv-1 is calculated  both from 'fluxbelowinv'
+    and here as penetrative entrainment fluxes.  Since penetrative flux is
+    calculated later, flux at 'kinv - 1 ' will be that of penetrative flux.
+    However, turbulent flux calculated at 'kinv - 1' from penetrative entr.
+    is less attractable,  since more reasonable turbulent flux at 'kinv-1'
+    should be obtained from 'fluxbelowinv', by considering  re-constructed
+    inversion base height. This conflicting problem can be solved if we can
+    initialize 'kbup = krel', instead of kbup = krel - 1. This choice seems
+    to be more reasonable since it is not conflicted with 'fluxbelowinv' in
+    calculating fluxes at 'kinv - 1' ( for this case, flux at 'kinv-1' is
+    always from 'fluxbelowinv' ), and flux at 'krel-1' is calculated from
+    the non-buoyancy sorting flux without being competed with penetrative
+    entrainment fluxes. Even when we use normal cumulus flux instead of
+    penetrative entrainment fluxes at 'kbup <= k <= kpen-1' interfaces,
+    the initialization of kbup=krel perfectly works without any conceptual
+    confliction. Thus it seems to be much better to choose 'kbup = krel'
+    initialization of 'kbup', which is current choice.
+    Note that below formula uses conventional updraft cumulus fluxes for
+    shallow cumulus which did not overcome the first buoyancy barrier above
+    PBL top while uses penetrative entrainment fluxes for the other cases
+    'kbup <= k <= kpen-1' interfaces. Depending on cases, however, I can
+    selelct different choice.
+
+    Inputs:
+    kbup [IntField]: Top layer in which buoyancy is positive at top interface
+    kpen [IntField]: Highest layer with positive updraft velocity
+    exnifc0 [FloatField]: Exner function at interfaces
+    emf [FloatField]: Penetrative [?]
+    thlu_emf [FloatField]: Penetrative downdraft liquid potential temperature at entraining interfaces [K]
+    thl0 [FloatField]: Temperature [?]
+    ssthl0 [FloatField]: [?]
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    qtu_emf [FloatField]: Penetrative downdraft total water at entraining interfaces [kg/kg]
+    qt0 [FloatField]: Mixing ratio [?]
+    ssqt0 [FloatField]: [?]
+    uu_emf [FloatField]: Penetrative downdraft zonal wind at entraining interfaces [m/s]
+    vu_emf [FloatField]: Penetrative downdraft meridional wind at entraining interfaces [m/s]
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    ssu0 [FloatField]: [?]
+    ssv0 [FloatField]: [?]
+    dotransport [Int]: Transport tracers [1 true]
+    tru_emf [FloatField_NTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    sstr0 [FloatField_NTracers]: Convective tracer [?]
+    use_momenflx [Int]: Perform momentum transport
+    kinv [IntField]: Inversion layer with PBL top interface as lower interface
+    cbmf [FloatField]: Cloud base mass flux [kg/m2/s]
+    krel [IntField]: Release layer where buoyancy sorting first occurs
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    k0 [Int]: Number of levels
+    ql0 [FloatField]: Environmental liquid water specific humidity
+    qi0 [FloatField]: Environmental ice specific humidity
+    dt [Float]: Timestep [s]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+
+    Outputs:
+    trflx [FloatField_NTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
+    uflx [FloatField]: Zonal wind flux [?]
+    vflx [FloatField]: Meridional wind flux [?]
+    slflx [FloatField]: Sensible heat flux [?]
+    qtflx [FloatField]: Mixing ratio flux [?]
+    uemf [FloatField]: Net updraft mass flux at the interface ( emf + umf ) [kg/m2/s]
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    qlten_sink [FloatField]: Liquid condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    qiten_sink [FloatField]: Ice condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            # 4. Penetrative entrainment fluxes : kbup <= k <= kpen - 1
-            # The only confliction that can happen is when 'kbup = kinv-1'. For this
-            # case, turbulent flux at kinv-1 is calculated  both from 'fluxbelowinv'
-            # and here as penetrative entrainment fluxes.  Since penetrative flux is
-            # calculated later, flux at 'kinv - 1 ' will be that of penetrative flux.
-            # However, turbulent flux calculated at 'kinv - 1' from penetrative entr.
-            # is less attractable,  since more reasonable turbulent flux at 'kinv-1'
-            # should be obtained from 'fluxbelowinv', by considering  re-constructed
-            # inversion base height. This conflicting problem can be solved if we can
-            # initialize 'kbup = krel', instead of kbup = krel - 1. This choice seems
-            # to be more reasonable since it is not conflicted with 'fluxbelowinv' in
-            # calculating fluxes at 'kinv - 1' ( for this case, flux at 'kinv-1' is
-            # always from 'fluxbelowinv' ), and flux at 'krel-1' is calculated from
-            # the non-buoyancy sorting flux without being competed with penetrative
-            # entrainment fluxes. Even when we use normal cumulus flux instead of
-            # penetrative entrainment fluxes at 'kbup <= k <= kpen-1' interfaces,
-            # the initialization of kbup=krel perfectly works without any conceptual
-            # confliction. Thus it seems to be much better to choose 'kbup = krel'
-            # initialization of 'kbup', which is current choice.
-            # Note that below formula uses conventional updraft cumulus fluxes for
-            # shallow cumulus which did not overcome the first buoyancy barrier above
-            # PBL top while uses penetrative entrainment fluxes for the other cases
-            # 'kbup <= k <= kpen-1' interfaces. Depending on cases, however, I can
-            # selelct different choice.
-
             if THIS_K >= kbup and THIS_K <= kpen - 1:
                 slflx[0, 0, 1] = (
                     constants.MAPL_CP
@@ -4491,9 +5132,9 @@ def penetrative_entrainment_fluxes(
             if THIS_K >= krel and THIS_K <= (kbup - 1):
                 uemf[0, 0, 1] = umf_zint
             if THIS_K >= kbup and THIS_K <= (kpen - 1):
-                uemf[
-                    0, 0, 1
-                ] = emf  # Only use penetrative entrainment flux consistently.
+                uemf[0, 0, 1] = (
+                    emf  # Only use penetrative entrainment flux consistently.
+                )
 
             comsub = 0.0
 
@@ -4636,6 +5277,27 @@ def calc_momentum_tendency(
     uten: FloatField,
     vten: FloatField,
 ):
+    """
+    Stencil to calculate momentum tendency at each layer.
+
+    Inputs:
+    kpen [IntField]: Highest layer with positive updraft velocity
+    uflx [FloatField]: Zonal wind flux [?]
+    vflx [FloatField]: Meridional wind flux [?]
+    dp0 [FloatField]: Environmental layer pressure thickness [Pa] > 0
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    dt [Float]: Timestep [s]
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+
+    Outputs:
+    uf [FloatField]: [?]
+    vf [FloatField]: [?]
+    uten [FloatField]: Tendency of zonal wind [m/s2]
+    vten [FloatField]: Tendency of meridional wind [m/s2]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
             # Calculate convective tendencies at each layer
@@ -4708,16 +5370,81 @@ def calc_thermodynamic_tendencies(
     slten: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Tendencies of thermodynamic variables.
+    This part requires a careful treatment of bulk cloud microphysics.
+    Relocations of 'precipitable condensates' either into the surface
+    or into the tendency of 'krel' layer will be performed just after
+    finishing the below 'do-loop'.
+
+    Inputs:
+    kpen [IntField]: Highest layer with positive updraft velocity
+    dp0 [FloatField]: Environmental layer pressure thickness [Pa] > 0
+    frc_rasn [Float]: Precipitation fraction of expelled condensate
+    slflx [FloatField]: Sensible heat flux [?]
+    uflx [FloatField]: Zonal wind flux [?]
+    vflx [FloatField]: Meridional wind flux [?]
+    qtflx [FloatField]: Mixing ratio flux [?]
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    uf [FloatField]: [?]
+    vf [FloatField]: [?]
+    umf_temp [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    krel [IntField]: Release layer where buoyancy sorting first occurs
+    prel [FloatField]: Lowest level from which buoyancy sorting occurs [Pa]
+    thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
+    qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    ppen [FloatFieldIJ]: Highest interface evel where Cu w = 0 [Pa]
+    thlu_top [FloatFieldIJ]: Updraft liquid potential temperature at top [K]
+    qtu_top [FloatFieldIJ]: Updraft total specific humidity at top [kg/kg]
+    kbup [IntField]: Top layer in which buoyancy is positive at top interface
+    fdr [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    ql0 [FloatField]: Environmental liquid water specific humidity
+    qi0 [FloatField]: Environmental ice specific humidity
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    thlu_emf [FloatField]: Penetrative downdraft liquid potential temperature at entraining interfaces [K]
+    qtu_emf [FloatField]: Penetrative downdraft total water at entraining interfaces [kg/kg]
+    emf [FloatField]: Penetrative [?]
+    dt [Float]: Timestep [s]
+    qlten_sink [FloatField]: Liquid condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    qiten_sink [FloatField]: Ice condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+
+    Outputs:
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    dwten [FloatField]: Detrained [?]
+    diten [FloatField]: Detrained [?]
+    dwten_temp [FloatField]: Detrained [?]
+    diten_temp [FloatField]: Detrained [?]
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    qlubelow [FloatFieldIJ]: [?]
+    qiubelow [FloatFieldIJ]: [?]
+    qlj_2D [FloatFieldIJ]: [?]
+    qij_2D [FloatFieldIJ]: [?]
+    qrten [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    qvten [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    qlten [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    sten [FloatField]: Tendency of dry static energy [J/kg/s]
+    qiten [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    qc [FloatField]: Tendency due [?]
+    qlten_det [FloatField]: [?]
+    qiten_det [FloatField]: [?]
+    slten [FloatField]: Tendency of [?]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
-
             umf_zint[0, 0, 1] = umf_temp[0, 0, 1]  # Update umf
-
-            # Tendencies of thermodynamic variables.
-            # This part requires a careful treatment of bulk cloud microphysics.
-            # Relocations of 'precipitable condensates' either into the surface
-            # or into the tendency of 'krel' layer will be performed just after
-            # finishing the below 'do-loop'.
 
             if THIS_K <= kpen:
                 # Compute 'slten', 'qtten', 'qvten', 'qlten', 'qiten', and 'sten'
@@ -5031,24 +5758,16 @@ def calc_thermodynamic_tendencies(
                     if THIS_K == kbup:
                         qc_l = qc_l + constants.MAPL_GRAV * umf_zint[
                             0, 0, 1
-                        ] * qlj_2D / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ] * qlj_2D / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
                         qc_i = qc_i + constants.MAPL_GRAV * umf_zint[
                             0, 0, 1
-                        ] * qij_2D / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ] * qij_2D / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
                         qc_lm = qc_lm - constants.MAPL_GRAV * umf_zint[
                             0, 0, 1
-                        ] * ql0 / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ] * ql0 / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
                         qc_im = qc_im - constants.MAPL_GRAV * umf_zint[
                             0, 0, 1
-                        ] * qi0 / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ] * qi0 / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
 
                     # 4. Cumulative Penetrative entrainment detrained in the 'kbup'
                     # layer. Explicitly compute the properties detrained penetrative
@@ -5095,14 +5814,10 @@ def calc_thermodynamic_tendencies(
 
                         qc_lm = qc_lm - constants.MAPL_GRAV * emf * (
                             ql_emf_kbup - ql0
-                        ) / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ) / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
                         qc_im = qc_im - constants.MAPL_GRAV * emf * (
                             qi_emf_kbup - qi0
-                        ) / (
-                            pifc0 - pifc0[0, 0, 1]
-                        )  # [ kg/kg/s ]
+                        ) / (pifc0 - pifc0[0, 0, 1])  # [ kg/kg/s ]
 
                 if not condensation:
                     qlten_det = qc_l + qc_lm
@@ -5169,7 +5884,6 @@ def prevent_negative_condensate(
     k0: Int,
     qmin: FloatField,
 ):
-
     with computation(FORWARD), interval(...):
         if not condensation:
             # Prevent the onset-of negative condensate at the next time step
@@ -5363,7 +6077,39 @@ def compute_diagnostic_outputs(
     riwp: FloatFieldIJ,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Stencil to compute default diagnostic outputs.
 
+    Note that since 'qtu(krel-1:kpen-1)' & 'thlu(krel-1:kpen-1)' has
+    been adjusted after detraining cloud condensate into environment
+    during cumulus updraft motion,  below calculations will  exactly
+    reproduce in-cloud properties as shown in the output analysis.
+
+    Inputs:
+    prel [FloatField]: Lowest level from which buoyancy sorting occurs [Pa]
+    thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
+    qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
+    krel [IntField]: Release layer where buoyancy sorting first occurs
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+
+    Outputs:
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]:  Meridional wind flux [?]
+    qcubelow [FloatFieldIJ]: [?]
+    qlubelow [FloatFieldIJ]: [?]
+    qiubelow [FloatFieldIJ]: [?]
+    rcwp [FloatFieldIJ]: Layer mean Cumulus LWP+IWP [kg/m2]
+    rlwp [FloatFieldIJ]: Layer mean Cumulus LWP [kg/m2]
+    riwp [FloatFieldIJ]: Layer mean Cumulus IWP [kg/m2]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
             # Compute default diagnostic outputs
@@ -5441,6 +6187,46 @@ def calc_cumulus_condensate_at_interface(
     cufrc: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Stencil to calculate cumulus condensate at the upper interface of each layer.
+
+    Inputs:
+    krel [IntField]: Release layer where buoyancy sorting first occurs
+    kpen [IntField]: Highest layer with positive updraft velocity
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    ppen [FloatFieldIJ]: Highest interface evel where Cu w = 0 [Pa]
+    thlu_top [FloatFieldIJ]: Updraft liquid potential temperature at top [K]
+    qtu_top [FloatFieldIJ]: Updraft total specific humidity at top [kg/kg]
+    thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
+    qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]:  Used in QSat_Float [n/a]
+    ufrc [FloatField]: Cumulus updraft fraction [fraction]
+    ufrclcl [FloatField]: Cumulus updraft fraction at the LCL [fraction]
+    prel [FloatField]: Lowest level from which buoyancy sorting occurs [Pa]
+    criqc [Float]: Maximum condensate that can be hold by cumulus updraft [kg/kg]
+    qcubelow [FloatFieldIJ]: [?]
+    qlubelow [FloatFieldIJ]: [?]
+    qiubelow [FloatFieldIJ]: [?]
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+
+    Outputs:
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    qcu [FloatField]: Condensate water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    qlu [FloatField]: Liquid water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    qiu [FloatField]: Ice specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    rcwp [FloatFieldIJ]: Layer mean Cumulus LWP+IWP [kg/m2]
+    rlwp [FloatFieldIJ]: Layer mean Cumulus LWP [kg/m2]
+    riwp [FloatFieldIJ]: Layer mean Cumulus IWP [kg/m2]
+    cufrc [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    """
     with computation(FORWARD), interval(...):
         if not condensation:
             if THIS_K >= krel and THIS_K <= kpen:
@@ -5621,6 +6407,92 @@ def adjust_implicit_CIN_inputs(
     fer_s: FloatField,
     fdr_s: FloatField,
 ):
+    """
+    Stencil to adjust the original input profiles for implicit CIN
+    calculation. Save the output from "iter_cin = 0".
+
+    These output will be writed-out if "iter_cin = 0" was not performed
+    for some reason.
+
+    Variables ending in '_s' indicate output from first iteration
+    of CIN calculation.
+
+    Inputs:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    qv0 [FloatField]: Environmental specific humidity
+    qvten [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    dt [Float]: Timestep [s]
+    ql0 [FloatField]: Environmental liquid water specific humidity
+    qlten [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    qi0 [FloatField]: Environmental ice specific humidity
+    qiten [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    s0 [FloatField]: Environmental dry static energy [J/kg]
+    sten [FloatField]: Tendency of dry static energy [J/kg/s]
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    uten [FloatField]: Tendency of zonal wind [m/s2]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    vten [FloatField]: Tendency of meridional wind [m/s2]
+    t0 [FloatField]: Environmental temperature [K]
+    dotransport [Int]: Transport tracers [1 true]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    trten [FloatField_NTracers]: Tendency of tracers [#/s, kg/kg/s]
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    dcm [FloatField]: Detrained cloudy air mass
+    qrten [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    cush [FloatFieldIJ]: Convective scale height [m]
+    cufrc [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    slflx [FloatField]: Sensible heat flux [?]
+    qtflx [FloatField]: Mixing ratio flux [?]
+    uflx [FloatField]: Zonal wind flux [?]
+    vflx [FloatField]: Meridional wind flux [?]
+    qcu [FloatField]: Condensate water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    qlu [FloatField]: Liquid water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    qiu [FloatField]: Ice specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    fer [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    xco [FloatField]: [?]
+    cin_IJ [FloatFieldIJ]: Convective inhibition [J/kg]
+    cinlcl_IJ [FloatFieldIJ]: Convective inhibition at LCL [J/kg]
+    cbmf [FloatField]: Cloud base mass flux [kg/m2/s]
+    qc [FloatField]: Tendency due [?]
+    qlten_det [FloatField]: [?]
+    qiten_det [FloatField]: [?]
+    qlten_sink [FloatField]: Liquid condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    qiten_sink [FloatField]: Ice condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    ufrc [FloatField]: Cumulus updraft fraction [fraction]
+
+    Outputs:
+    tr0_s [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    umf_s [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    slflx_s [FloatField]: [?]
+    qtflx_s [FloatField]: [?]
+    uflx_s [FloatField]: [?]
+    vflx_s [FloatField]: [?]
+    ufrc_s [FloatField]: Cumulus updraft fraction [fraction]
+    qv0_s [FloatField]: Environmental specific humidity
+    ql0_s [FloatField]: Environmental liquid water specific humidity
+    qi0_s [FloatField]: Environmental ice specific humidity
+    s0_s [FloatField]: Environmental dry static energy [J/kg]
+    t0_s [FloatField]: Environmental temperature [K]
+    dcm_s [FloatField]: Detrained cloudy air mass
+    qvten_s [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    qlten_s [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    qiten_s [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    sten_s [FloatField]: Tendency of dry static energy [J/kg/s]
+    uten_s [FloatField]: Tendency of zonal wind [m/s2]
+    vten_s [FloatField]: Tendency of meridional wind [m/s2]
+    qrten_s [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten_s [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    qldet_s [FloatField]: [?]
+    qidet_s [FloatField]: [?]
+    qlsub_s [FloatField]: [?]
+    qisub_s [FloatField]: [?]
+    cush_s [FloatField]: Convective scale height [m]
+    cufrc_s [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    fer_s [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr_s [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
@@ -5719,6 +6591,58 @@ def recalc_environmental_variables(
     tr0_temp: FloatField,
     cush_inout: FloatFieldIJ,
 ):
+    """
+    Stencil to update environmental variables after first iteration
+    of implicit CIN calculation.
+
+    The suffix '_s' (e.g., qv0_s) indicates variables used in the first
+    iteration of the implicit CIN calculation.
+
+    Inputs:
+    qv0_s [FloatField]: Environmental water vapor specific humidity [kg/kg]
+    ql0_s [FloatField]: Environmental liquid water specific humidity [kg/kg]
+    qi0_s [FloatField]: Environmental ice specific humidity [kg/kg]
+    s0_s [FloatField]: Environmental dry static energy [J/kg]
+    t0_s [FloatField]: Environmental temperature [K]
+    exnmid0 [FloatField]: Exner function at the layer mid-point
+    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+    dotransport [Int]: Transport tracers [1 true]
+    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    u0 [FloatField]: Environmental zonal wind [m/s]
+    v0 [FloatField]: Environmental meridional wind [m/s]
+    pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    tr0_temp [FloatField]: Environmental tracers [#, kg/kg]
+
+    Inouts:
+    condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+
+    Outputs:
+    sstr0 [FloatField_NTracers]: Convective tracer [?]
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    thvl0bot [FloatField]: Temperature at bottom [?]
+    thv0bot [FloatField]: Temperature at bottom [?]
+    thvl0top [FloatField]: Temperature at top [?]
+    thv0top [FloatField]: Potential temperature at top [?]
+    thl0 [FloatField]: Temperature [?]
+    qt0 [FloatField]: Mixing ratio [?]
+    thvl0 [FloatField]: Temperature [?]
+    ssthl0 [FloatField]: [?]
+    ssu0 [FloatField]: [?]
+    ssv0 [FloatField]: [?]
+    ssqt0 [FloatField]: [?]
+    qv0 [FloatField]: Environmental specific humidity
+    ql0 [FloatField]: Environmental liquid water specific humidity
+    qi0 [FloatField]: Environmental ice specific humidity
+    s0 [FloatField]: Environmental dry static energy [J/kg]
+    t0 [FloatField]: Environmental temperature [K]
+    """
     from __externals__ import k_end, ncnst
 
     with computation(FORWARD), interval(...):
@@ -5939,10 +6863,99 @@ def update_output_variables(
     tr0_inoutvar: FloatField_NTracers,
     del_CIN: FloatFieldIJ,
 ):
+    """
+    Stencil to update ComputeUwshcu output variables.
+
+    If del_CIN <= 0.0, output variables remain unchanged from the first
+    implicit CIN iteration.
+
+    If del_CIN > 0.0, output variables are updated.
+
+    Inputs:
+    del_CIN [FloatFieldIJ]: Difference between initial and final CIN calculations [J/kg]
+    umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    zifc0 [FloatField]: Environmental height at interfaces [m]
+    kinv [IntField]: Inversion layer with PBL top interface as lower interface
+    dcm [FloatField]: Detrained cloudy air mass
+    qvten [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    qlten [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    qiten [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    sten [FloatField]: Tendency of dry static energy [J/kg/s]
+    uten [FloatField]: Tendency of zonal wind [m/s2]
+    vten [FloatField]: Tendency of meridional wind [m/s2]
+    qrten [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    cufrc [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    cush [FloatFieldIJ]: Convective scale height [m]
+    qlten_det [FloatField]: [?]
+    qiten_det [FloatField]: [?]
+    qlten_sink [FloatField]: Liquid condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    qiten_sink [FloatField]: Ice condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    rdrop [Float]: Liquid drop radius
+    qtflx [FloatField]: Mixing ratio flux [?]
+    slflx [FloatField]: Sensible heat flux [?]
+    uflx [FloatField]: Zonal wind flux [?]
+    vflx [FloatField]: Meridional wind flux [?]
+    dotransport [Int]: Transport tracers [1 true]
+    trten [FloatField_NTracers]: Tendency of tracers [#/s, kg/kg/s]
+    dt [Float]: Timestep [s]
+    fer [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    kpen [IntField]: Highest layer with positive updraft velocity
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    dcm_out [FloatField]: Detrained cloudy air mass
+    qvten_out [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    qlten_out [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    qiten_out [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    sten_out [FloatField]: Tendency of dry static energy [J/kg/s]
+    uten_out [FloatField]: Tendency of zonal wind [m/s2]
+    vten_out [FloatField]: Tendency of meridional wind [m/s2]
+    qrten_out [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten_out [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    cufrc_out [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    qldet_out [FloatField]: [?]
+    qidet_out [FloatField]: [?]
+    qlsub_out [FloatField]: [?]
+    qisub_out [FloatField]: [?]
+    qtflx_out [FloatField]: Mixing ratio flux [?]
+    slflx_out [FloatField]: Sensible heat flux [?]
+    uflx_out [FloatField]: Zonal wind flux [?]
+    vflx_out [FloatField]: Meridional wind flux [?]
+    tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    fer_out [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr_out [FloatField]: Fractional lateral detrainment rate [1/Pa]
+
+    Outputs:
+    umf_outvar [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    dcm_outvar [FloatField]: Detrained cloudy air mass
+    qvten_outvar [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    qlten_outvar [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    qiten_outvar [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    sten_outvar [FloatField]: Tendency of dry static energy [J/kg/s]
+    uten_outvar [FloatField]: Tendency of zonal wind [m/s2]
+    vten_outvar [FloatField]: Tendency of meridional wind [m/s2]
+    qrten_outvar [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten_outvar [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    cufrc_outvar [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    cush_inoutvar [FloatFieldIJ]: Convective scale height [m]
+    qldet_outvar [FloatField]: [?]
+    qidet_outvar [FloatField]: [?]
+    qlsub_outvar [FloatField]: [?]
+    qisub_outvar [FloatField]: [?]
+    qtflx_outvar [FloatField]: [?]
+    slflx_outvar [FloatField]: [?]
+    uflx_outvar [FloatField]: [?]
+    vflx_outvar [FloatField]: [?]
+    fer_outvar [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr_outvar [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    ndrop_out [FloatField]: [?]
+    nice_out [FloatField]: [?]
+    tr0_inoutvar [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
-
         if del_CIN <= 0.0:
             umf_outvar = umf_out
             dcm_outvar = dcm_out
@@ -5993,7 +7006,7 @@ def update_output_variables(
             qidet_outvar = qiten_det
             qlsub_outvar = qlten_sink
             qisub_outvar = qiten_sink
-            ndrop_out = qlten_det / (4188.787 * rdrop ** 3)
+            ndrop_out = qlten_det / (4188.787 * rdrop**3)
             nice_out = qiten_det / (3.0e-10)
             qtflx_outvar = qtflx
             slflx_outvar = slflx
@@ -6136,7 +7149,6 @@ class ComputeUwshcuInv:
         UW_config: UWConfiguration,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
-
         # Initialize the ComputeUwshcu class
 
         # Parameters:
@@ -6150,7 +7162,6 @@ class ComputeUwshcuInv:
         self.temporaries = Temporaries.make(quantity_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
-
 
         if constants.NCNST != self.UW_config.NCNST:
             raise NotImplementedError(
@@ -6351,7 +7362,6 @@ class ComputeUwshcuInv:
             formulation=formulation,
         )
 
-
         # Create masks
         # Mask that indicates if condensation has occurred (e.g., Fortran goto 333)
         self.condensation = self.quantity_factory.zeros(
@@ -6516,7 +7526,6 @@ class ComputeUwshcuInv:
         qpert_out: FloatFieldIJ,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
-
         # University of Washington Shallow Convection Scheme
 
         # Described in Park and Bretherton. 2008. J. Climate :

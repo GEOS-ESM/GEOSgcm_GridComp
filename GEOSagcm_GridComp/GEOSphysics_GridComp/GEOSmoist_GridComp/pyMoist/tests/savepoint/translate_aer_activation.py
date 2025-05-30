@@ -12,9 +12,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
         self.quantity_factory = grid.quantity_factory
         self._grid = grid
 
-        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
-            self.quantity_factory
-        )
+        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(self.quantity_factory)
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
