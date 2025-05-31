@@ -51,6 +51,11 @@
     integer                           :: npts, tmp, mpiC
     integer                           :: IG, JG, rrfac_max
     logical                           :: do_schmidt
+    logical, allocatable              :: fallback_mask(:)
+    integer                           :: global_start
+    integer                           :: start_mask(1), cnt_mask(1)
+    integer                           :: varid_mask_fallback  ! NetCDF variable ID
+    integer, allocatable              :: mask_fallback(:)     ! Array to hold data
     real(ESMF_KIND_R8)                :: p1(2),p2(2),p3(2),p4(2)
     real(ESMF_KIND_R8)                :: local_max_length, max_length, local_min_length, min_length
     real(ESMF_KIND_R4)                :: target_lon, target_lat, stretch_factor
@@ -65,6 +70,9 @@
     type(ESMF_Time) :: start_time
     type(ESMF_TimeInterval) :: time_interval
     real(ESMF_KIND_R4), pointer  :: ptr2d(:,:)
+    integer :: failed_cells
+    real(ESMF_KIND_R8) :: min_area, max_area
+
 
     call ESMF_Initialize(logKindFlag=ESMF_LOGKIND_NONE,rc=status)
     _VERIFY(status)
@@ -162,26 +170,30 @@
     _VERIFY(status)
     allocate(SCRIP_rrfac(tmp),stat=status)
     _VERIFY(status)
+    allocate(fallback_mask(tmp), stat=status)
+    _VERIFY(status)
 
     local_max_length = 0.0d0
     local_min_length = 1.e15
-    n=1
+    fallback_mask = .false.
+    failed_cells = 0
+    min_area = 1.d30
+    max_area = -1.d30
+    n = 1
+
     do jg=1,im_world
        do ig=1,im_world
           i=ig
           j=jg
           mytile=localPet
-          SCRIP_CenterLon(n) = center_lons(i,j)*(180._8/pi)
+          SCRIP_CenterLon(n) = modulo(center_lons(i,j)*(180._8/pi), 360.0_8)
           SCRIP_CenterLat(n) = center_lats(i,j)*(180._8/pi)
-
-          !node_xy(1,1:4) = (/grid_global(i  ,j,1,myTile+1),grid_global(i+1,j,1,myTile+1),grid_global(i+1,j+1,1,myTile+1),grid_global(i,j+1,1,myTile+1)/)
-          !node_xy(2,1:4) = (/grid_global(i  ,j,2,myTile+1),grid_global(i+1,j,2,myTile+1),grid_global(i+1,j+1,2,myTile+1),grid_global(i,j+1,2,myTile+1)/)
+    
           node_xy(1,1:4) = [corner_lons(i  ,j),corner_lons(i+1,j),corner_lons(i+1,j+1),corner_lons(i,j+1)]
           node_xy(2,1:4) = [corner_lats(i  ,j),corner_lats(i+1,j),corner_lats(i+1,j+1),corner_lats(i,j+1)]
           node_xy_tmp = node_xy
-
-! Correct for the periodic boundary at 0/360
-! ------------------------------------------
+    
+          ! Correct for the periodic boundary at 0/360
           lon_w = min( corner_lons(i  ,j),corner_lons(i+1,j),corner_lons(i+1,j+1),corner_lons(i,j+1) )
           lon_e = max( corner_lons(i  ,j),corner_lons(i+1,j),corner_lons(i+1,j+1),corner_lons(i,j+1) )
           if ( abs(lon_e - lon_w) > 1.5_8*pi .and. (SCRIP_CenterLon(n) < pi) ) then
@@ -189,33 +201,21 @@
           elseif ( abs(lon_e - lon_w) > 1.5_8*pi .and. (SCRIP_CenterLon(n) > pi) ) then
              where(node_xy(1,:) < pi) node_xy_tmp(1,:) = node_xy(1,:) + 2._8*pi
           endif
+    
           !———————————————————————————————————————————————————————————————
           !   Only stretched grids need the convex-hull fix
           !———————————————————————————————————————————————————————————————
-          !  Dateline-wrap fix for Schmidt-stretched faces
-          !  -------------------------------------------------------------
-          !  When a stretched cube-sphere face is centred near 180°E/W the
-          !  raw corner longitudes can straddle the dateline (-180°/ +180°),
-          !  causing an incorrect corner order and a self intersecting
-          !  quadrilateral.  The convex-hull call below re-orders the four
-          !  points so the polygon is consistently counter clockwise and the
-          !  SCRIP cell area stays positive.  The extra work is only needed
-          !  when DO_SCHMIDT =.true.; for uniform PE grids we keep the
-          !  original (faster) path.
-          !———————————————————————————————————————————————————————————————          
-
           if (do_schmidt) then
-             !--- reorder the four corners with a convex hull ----------------
              call points_hull_2d(4, node_xy_tmp, hull_num, hull)
-          
+    
              if (any(hull == 0)) then
                 write(*,100) 'Zero Hull ', corner_lons(i  ,j), corner_lons(i+1,j), &
                                         corner_lons(i+1,j+1), corner_lons(i,j+1)
                 write(*,100) 'Zero Hull ', node_xy_tmp(1,:)
              endif
-          
+    
              do k = 1, 4
-                SCRIP_CornerLon(k,n) = node_xy_tmp(1,hull(k)) * (180._8/pi)
+                SCRIP_CornerLon(k,n) = modulo(node_xy_tmp(1,hull(k)) * (180._8/pi), 360.0_8)
                 SCRIP_CornerLat(k,n) = node_xy_tmp(2,hull(k)) * (180._8/pi)
              end do
           else
@@ -225,23 +225,53 @@
                 SCRIP_CornerLat(k,n) = node_xy(2,k) * (180._8/pi)
              end do
           endif
-
+    
           p1 = [corner_lons(i,j),corner_lats(i,j)]
           p2 = [corner_lons(i,j+1),corner_lats(i,j+1)]
           p3 = [corner_lons(i+1,j),corner_lats(i+1,j)]
           p4 = [corner_lons(i+1,j+1),corner_lats(i+1,j+1)]
-
-          SCRIP_Area(n) = get_area_spherical_polygon(p1,p2,p3,p4)
-          call  get_grid_length(p1,p2,p3, SCRIP_rrfac(n), local_max_length, local_min_length)
-
+    
+          SCRIP_Area(n) = get_area_spherical_polygon(p1, p2, p3, p4)
+    
+          !------------------------------------------------------------
+          !--- ONLY ADDITION REQUIRED FOR MASK DETECTION STARTS HERE --
+          !------------------------------------------------------------
+          if (SCRIP_Area(n) <= 0.d0) then
+             failed_cells = failed_cells + 1
+             fallback_mask(n) = .true.
+             ! Print first 10 failures, then every 10-millionth cell afterward
+             if (failed_cells <= 10 .or. mod(n,10000000) == 0) then
+                write(*,*) 'Negative/zero area at cell ', n, &
+                           ' Area:', SCRIP_Area(n), &
+                           ' Lon:', SCRIP_CenterLon(n), &
+                           ' Lat:', SCRIP_CenterLat(n)
+             endif
+          endif          
+    
+          ! Update global min/max area statistics
+          min_area = min(min_area, SCRIP_Area(n))
+          max_area = max(max_area, SCRIP_Area(n))
+          !------------------------------------------------------------
+          !--- ONLY ADDITION REQUIRED FOR MASK DETECTION ENDS HERE ----
+          !------------------------------------------------------------
+    
+          call get_grid_length(p1, p2, p3, SCRIP_rrfac(n), local_max_length, local_min_length)
+    
           n=n+1
        enddo
     enddo
-
+    
     call MPI_AllReduce(local_max_length, max_length, 1, MPI_DOUBLE, MPI_MAX, mpiC,status)
     call MPI_AllReduce(local_min_length, min_length, 1, MPI_DOUBLE, MPI_MIN, mpiC,status)
     SCRIP_rrfac = max_length/SCRIP_rrfac
     rrfac_max = int(ceiling(max_length/min_length))
+    
+    !------------------------------------------------------------
+    !--- ADDITIONAL REQUIRED DIAGNOSTIC (END OF LOOP) ----------
+    !------------------------------------------------------------
+    write(*,*) 'SUMMARY: INVALID CELLS:', failed_cells
+    write(*,*) 'SUMMARY: AREA RANGE:', min_area, max_area
+    !------------------------------------------------------------
 
  100     format(a,4f20.15)
  101     format(a,f20.15)
@@ -293,6 +323,12 @@
     status = nf90_put_att(UNIT, mask, "units"    , "unitless")
     _VERIFY(status)
 
+!! Inavalid cells stretched grid mask
+!! ----------------------------------
+   status = nf90_def_var(UNIT, "grid_fallback_mask", NF90_INT, [gridsize], varid_mask_fallback)
+   _VERIFY(status)
+   status = nf90_put_att(UNIT, varid_mask_fallback, "description", "1 = fallback area used, 0 = valid")
+   _VERIFY(status)
 !! cell center Longitude variable
 !! ------------------------------
     status = nf90_def_var(UNIT, "grid_center_lon", NF90_DOUBLE, [gridsize], centerlon)
@@ -377,10 +413,32 @@
     _VERIFY(status)
     deallocate(grid_imask)
 
+    global_start = start(1)    
     start(2)=start(1)
     start(1)=1
     cnt(1)=4
     cnt(2)=tmp
+
+    ! Fallback mask write (1D version, safe)
+    allocate(mask_fallback(tmp), stat=status)
+    _VERIFY(status)
+    mask_fallback = 0
+    where (fallback_mask)
+       mask_fallback = 1
+    end where
+
+    ! Use local start/count for 1D fallback mask
+    start_mask(1) = global_start
+    cnt_mask(1)   = tmp
+
+    print *, 'DEBUG PET', localPet, 'start_mask=', start_mask(1), 'cnt_mask=', cnt_mask(1) 
+
+    if (cnt_mask(1) > 0 .and. size(mask_fallback) == cnt_mask(1)) then
+       status = nf90_put_var(UNIT, varid_mask_fallback, mask_fallback, start_mask, cnt_mask)
+       _VERIFY(status)
+    else
+       print *, 'WARNING: PET', localPet, 'skipping fallback mask write (size mismatch or empty)'
+    endif
 
     status = NF90_PUT_VAR(UNIT, cornerlat, SCRIP_CornerLat, start, cnt)
     _VERIFY(STATUS)
@@ -402,6 +460,7 @@
     deallocate(GlobalCounts)
     deallocate(recvCounts)
     deallocate(recvOffsets)
+    deallocate(fallback_mask)
 
     call ESMF_Finalize ( rc=status)
     _VERIFY(status)
@@ -741,6 +800,15 @@ subroutine create_gmao_file(grid,im_world,filename,rc)
    end subroutine   
 
 
+!------------------------------------------------------------
+! Girard's Formula computes the area of a polygon on a sphere by 
+! calculating the sum of the polygon's corner angles (interior angles) 
+! and subtracting the expected sum of angles for a planar polygon. 
+! On a sphere, polygons have slightly larger angle sums compared 
+! to their planar counterparts, and this difference known as 
+! spherical excess directly gives the polygon's area.
+! stretched grid has very small areas and need a safeguard. 
+!------------------------------------------------------------
  function get_area_spherical_polygon(p1,p4,p2,p3) result(area)
     real(REAL64), parameter           :: PI = 3.14159265358979323846
     real(real64) :: area
@@ -748,6 +816,7 @@ subroutine create_gmao_file(grid,im_world,filename,rc)
 
     real(real64) :: e1(3),e2(3),e3(3)
     real(real64) :: ang1,ang2,ang3,ang4
+
 
     e1 = convert_to_cart(p1)
     e2 = convert_to_cart(p2)
@@ -770,6 +839,11 @@ subroutine create_gmao_file(grid,im_world,filename,rc)
     ang4 = spherical_angles(e1, e2, e3)
 
     area = ang1 + ang2 + ang3 + ang4 - 2.0d0*PI
+
+    ! stretched grid safeguard
+   if (area <= 0.d0 .and. area > -1e-10) then
+      area = abs(area) ! minor numerical fix
+   endif
 
  end function get_area_spherical_polygon
 
@@ -832,6 +906,9 @@ function spherical_angles(p1,p2,p3) result(spherical_angle)
       angle = 0.d0
    else
       ddd = (px*qx+py*qy+pz*qz) / sqrt(ddd)
+      ! Added numerical safeguard for acos domain
+      if (ddd >  1.0d0) ddd =  1.0d0
+      if (ddd < -1.0d0) ddd = -1.0d0
       if ( abs(ddd)>1.d0) then
          angle = 0.5d0 * PI
          if (ddd < 0.d0) then

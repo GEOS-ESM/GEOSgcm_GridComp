@@ -70,7 +70,6 @@ set smooths = {SMOOTHMAP}
 set resolutions = {RESOLUTIONS}
 set lowres  = 0
 set highres = 0
-set ultrares = 0
 set SG001 = ( 270 540 1080 2160 )
 set SG002 = ( 1539 )
 
@@ -78,10 +77,8 @@ set SG002 = ( 1539 )
 foreach res ($resolutions)
   if ($res < $cutoff) then
     set lowres = 1
-  else if ($res >= $cutoff && $res < 5760) then
+  else if ($res >= $cutoff) then
     set highres = 1
-  else if ($res == 5760) then
-    set ultrares = 1
   endif
 end
 
@@ -107,23 +104,6 @@ cat << _EOF_ > bin_to_cube.nl
 /
 _EOF_
   bin/bin_to_cube.x
-endif
-
-# Generate ultra-high-resolution intermediate cube (5760) explicitly for c5760
-if ($ultrares == 1) then
-cat << _EOF_ > bin_to_cube.nl
-&binparams
-  raw_latlon_data_file='{raw_latlon_data}'
-  output_file='c5760.gmted_fixedanarticasuperior.nc'
-  ncube=5760
-/
-_EOF_
-  bin/bin_to_cube.x
-
-  if ($status != 0) then
-      echo "ERROR: bin_to_cube.x failed at 5760 intermediate generation (exit $status)"
-      exit 1
-  endif
 endif
 
 @ count = 1
@@ -187,10 +167,8 @@ _EOF_
 
    if ( $im < $cutoff ) then
        set intermediate_cube = c360.gmted_fixedanarticasuperior.nc
-   else if ( $im <= 3000 ) then
-       set intermediate_cube = c3000.gmted_fixedanarticasuperior.nc
    else
-       set intermediate_cube = c5760.gmted_fixedanarticasuperior.nc
+       set intermediate_cube = c3000.gmted_fixedanarticasuperior.nc
    endif
 
    #--------------------------------------------------------
@@ -206,17 +184,22 @@ _EOF_
           set rrfac = "--rrfac_max=1"
       endif       
 
-       # Single unified call (stretched or regular)
-       bin/cube_to_target.x \
-           --grid_descriptor_file=$scriptfile \
-           --intermediate_cs_name=$intermediate_cube \
-           --output_data_directory=$output_dir \
-           --smoothing_scale=${{smooths[$count]}} \
-           --name_email_of_creator=gmao \
-           --fine_radius=0 \
-           --output_grid=$output_grid \
-           --source_data_identifier=gmted_intel \
-           $rrfac
+      if ($im == 5760) then
+          set smoothing_scale = 0.0
+      else
+          set smoothing_scale = ${{smooths[$count]}}
+      endif
+
+        bin/cube_to_target.x \
+            --grid_descriptor_file=$scriptfile \
+            --intermediate_cs_name=$intermediate_cube \
+            --output_data_directory=$output_dir \
+            --smoothing_scale=$smoothing_scale \
+            --name_email_of_creator=gmao \
+            --fine_radius=0 \
+            --output_grid=$output_grid \
+            --source_data_identifier=gmted_intel \
+            $rrfac
 
       # Safety check after cube_to_target.x
       if ( $status != 0 ) then
@@ -231,7 +214,7 @@ _EOF_
       endif
 
    
-   rm $scriptfile
+   #rm $scriptfile
    rm ${{config_file}}
 
    #convert to gmao
