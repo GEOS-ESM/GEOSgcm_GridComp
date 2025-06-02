@@ -240,6 +240,22 @@ module GEOS_OpenwaterGridCompMod
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        LONG_NAME          = 'ocean_icefall'            ,&
+        UNITS              = 'kg m-2 s-1'                ,&
+        SHORT_NAME         = 'ICEFOCN'                   ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                               _RC  )
+
+     call MAPL_AddExportSpec(GC,                     &
+        LONG_NAME          = 'ocean_snow_and_ice_fall'   ,&
+        UNITS              = 'kg m-2 s-1'                ,&
+        SHORT_NAME         = 'SPTOTOCN'                  ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                               _RC  )
+
+     call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'ocean_rainfall'            ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'RAINOCN'                   ,&
@@ -2026,6 +2042,8 @@ contains
    real, pointer, dimension(:  )  :: EVAPOUT => null()
    real, pointer, dimension(:  )  :: SUBLIM  => null()
    real, pointer, dimension(:  )  :: SNOWOCN => null()
+   real, pointer, dimension(:  )  :: ICEFOCN => null()
+   real, pointer, dimension(:  )  :: SPTOTOCN => null()
    real, pointer, dimension(:  )  :: RAINOCN => null()
    real, pointer, dimension(:  )  :: SHWTR   => null()
    real, pointer, dimension(:  )  :: SHOUT   => null()
@@ -2303,6 +2321,8 @@ contains
    call MAPL_GetPointer(EXPORT,PENPAF , 'PENPAF'  ,    _RC)
    call MAPL_GetPointer(EXPORT,EVAPOUT, 'EVAPOUT' ,    _RC)
    call MAPL_GetPointer(EXPORT,SNOWOCN, 'SNOWOCN' ,    _RC)
+   call MAPL_GetPointer(EXPORT,ICEFOCN, 'ICEFOCN' ,    _RC)
+   call MAPL_GetPointer(EXPORT,SPTOTOCN,'SPTOTOCN',    _RC)
    call MAPL_GetPointer(EXPORT,RAINOCN, 'RAINOCN' ,    _RC)
    call MAPL_GetPointer(EXPORT,SHOUT  , 'SHOUT'   ,    _RC)
    call MAPL_GetPointer(EXPORT,SHWTR  , 'SHWTR'   ,    _RC)
@@ -2619,6 +2639,9 @@ contains
     if(associated(PENOCNe)) PENOCNe = PEN_ocean * FRWATER
 
     if(associated(SNOWOCN)) SNOWOCN = SNO*FR(:,WATER)
+    if(associated(ICEFOCN)) ICEFOCN = ICE*FR(:,WATER)
+    ! NOTE: FRZR may be moved to be part of RAINOCN
+    if(associated(SPTOTOCN))SPTOTOCN = (SNO+ICE+FRZR)*FR(:,WATER)
     if(associated(RAINOCN)) RAINOCN = PCU + PLS
     if(associated(HLWUP  )) HLWUP   = ALW*FR(:,WATER) 
     if(associated(LWNDSRF)) LWNDSRF = (LWDNSRF - ALW)*FR(:,WATER)
