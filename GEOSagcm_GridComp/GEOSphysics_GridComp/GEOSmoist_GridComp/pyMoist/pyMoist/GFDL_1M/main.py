@@ -1,8 +1,11 @@
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
 from ndsl import QuantityFactory, StencilFactory
-from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
-from pyMoist.GFDL_1M.getters_temporary import mapl_placeholder, esmf_placeholder
+from pyMoist.GFDL_1M.config import GFDL1MConfig
+from pyMoist.GFDL_1M.getters_temporary import (
+    mapl_get_resource_placeholder,
+    esmf_placeholder,
+)
 from ndsl.dsl.typing import Float
 from pyMoist.GFDL_1M.state import (
     LiquidWaterStaticEnergy,
@@ -11,6 +14,11 @@ from pyMoist.GFDL_1M.state import (
     MixingRatios,
     CloudFractions,
 )
+from pyMoist.GFDL_1M.stencils import calculate_derived_states, find_klcl
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.GFDL_1M.temporaries import Temporaries
+from pyMoist.GFDL_1M.masks import Masks
 
 
 class GFDL1M:
@@ -18,7 +26,6 @@ class GFDL1M:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        GFDL_1M_config: MicrophysicsConfiguration,
         MP_TIME: Float,
         T_MIN: Float,
         T_SUB: Float,
@@ -100,12 +107,15 @@ class GFDL1M:
         IRAIN_F: Float,
         MP_PRINT: bool,
     ):
-        PHYS_HYDROSTATIC = mapl_placeholder("LPHYS_HYDROSTATIC")
-        HYDROSTATIC = mapl_placeholder("LHYDROSTATIC")
-        DT_MOIST = esmf_placeholder("DT_R8")
-        MELTFRZ = mapl_placeholder("MELTFRZ")
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = quantity_factory
 
-        self.GFDL_1M_config = MicrophysicsConfiguration(
+        PHYS_HYDROSTATIC = mapl_get_resource_placeholder("LPHYS_HYDROSTATIC")
+        HYDROSTATIC = mapl_get_resource_placeholder("LHYDROSTATIC")
+        DT_MOIST = esmf_placeholder("DT_R8")
+        MELTFRZ = mapl_get_resource_placeholder("MELTFRZ")
+
+        self.GFDL_1M_config = GFDL1MConfig(
             PHYS_HYDROSTATIC=PHYS_HYDROSTATIC,
             HYDROSTATIC=HYDROSTATIC,
             DT_MOIST=DT_MOIST,
@@ -191,47 +201,93 @@ class GFDL1M:
             MP_PRINT=MP_PRINT,
         )
 
+        # Initalize internal fields
+        self.temporaries = Temporaries.make(quantity_factory=quantity_factory)
+        self.masks = Masks.make(quantity_factory=quantity_factory)
+
+        # Construct stencils
+        self.calculate_derived_states = stencil_factory.from_dims_halo(
+            func=calculate_derived_states,
+            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+        )
+
+        self.find_klcl = stencil_factory.from_dims_halo(
+            func=find_klcl,
+            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+        )
+
     def __call__(self, *args, **kwds):
-        
+
         # Get model state
         mixing_ratios = MixingRatios(
-            vapor=mapl_placeholder("Q"),
-            rain=mapl_placeholder("QRAIN"),
-            snow=mapl_placeholder("QSNOW"),
-            graupel=mapl_placeholder("QGRAUPEL"),
-            convective_liquid=mapl_placeholder("QLLS"),
-            convective_ice=mapl_placeholder("QILS"),
-            large_scale_liquid=mapl_placeholder("QLCN"),
-            large_scale_ice=mapl_placeholder("QICN"),
+            vapor=mapl_get_resource_placeholder("Q"),
+            rain=mapl_get_resource_placeholder("QRAIN"),
+            snow=mapl_get_resource_placeholder("QSNOW"),
+            graupel=mapl_get_resource_placeholder("QGRAUPEL"),
+            convective_liquid=mapl_get_resource_placeholder("QLLS"),
+            convective_ice=mapl_get_resource_placeholder("QILS"),
+            large_scale_liquid=mapl_get_resource_placeholder("QLCN"),
+            large_scale_ice=mapl_get_resource_placeholder("QICN"),
         )
         cloud_fractions = CloudFractions(
-            convective=mapl_placeholder("CLCN"), large_scale=mapl_placeholder("CLLS")
+            convective=mapl_get_resource_placeholder("CLCN"),
+            large_scale=mapl_get_resource_placeholder("CLLS"),
         )
-        nactl = mapl_placeholder("NACTL")
-        nacti = mapl_placeholder("NACTI")
-
-
-        area = mapl_placeholder("AREA")
-        zle = mapl_placeholder("ZLE")
-        ple = mapl_placeholder("PLE")
-        t = mapl_placeholder("T")
-        u = mapl_placeholder("U")
-        v = mapl_placeholder("V")
-        land_fraction = mapl_placeholder("FRLAND")
+        nactl = mapl_get_resource_placeholder("NACTL")
+        nacti = mapl_get_resource_placeholder("NACTI")
+        area = mapl_get_resource_placeholder("AREA")
+        geopotential_height_interface = mapl_get_resource_placeholder("ZLE")
+        p_interface = mapl_get_resource_placeholder("PLE")
+        t = mapl_get_resource_placeholder("T")
+        u = mapl_get_resource_placeholder("U")
+        v = mapl_get_resource_placeholder("V")
+        land_fraction = mapl_get_resource_placeholder("FRLAND")
         vertical_motion = VericalMotion(
-            velocity=mapl_placeholder("W"),
-            variance=mapl_placeholder("W2"),
-            third_moment=mapl_placeholder("W3"),
+            velocity=mapl_get_resource_placeholder("W"),
+            variance=mapl_get_resource_placeholder("W2"),
+            third_moment=mapl_get_resource_placeholder("W3"),
         )
-        liquid_water_energy_flux = LiquidWaterStaticEnergy(
-            mapl_placeholder("WSL"),
-            mapl_placeholder("SL2"),
-            mapl_placeholder("SL3"),
+        liquid_water_static_energy = LiquidWaterStaticEnergy(
+            flux=mapl_get_resource_placeholder("WSL"),
+            variance=mapl_get_resource_placeholder("SL2"),
+            third_moment=mapl_get_resource_placeholder("SL3"),
         )
         total_water = TotalWater(
-            mapl_placeholder("WQT"),
-            mapl_placeholder("QT2"),
-            mapl_placeholder("QT3"),
+            flux=mapl_get_resource_placeholder("WQT"),
+            variance=mapl_get_resource_placeholder("QT2"),
+            third_moment=mapl_get_resource_placeholder("QT3"),
         )
-        EVAP = mapl_placeholder("EVAP")
-        OMEGA = mapl_placeholder("OMEGA")
+
+        # Initalize saturation tables
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+
+        self.calculate_derived_states(
+            p_interface=p_interface,
+            p_interface_mb=self.temporaries.p_interface_mb,
+            p_mb=self.temporaries.p_mb,
+            geopotential_height_interface=geopotential_height_interface,
+            edge_height_above_surface=self.temporaries.edge_height_above_surface,
+            layer_height_above_surface=self.temporaries.layer_height_above_surface,
+            layer_thickness=self.temporaries.layer_thickness,
+            dp=self.temporaries.dp,
+            mass=self.temporaries.mass,
+            t=t,
+            ese=saturation_tables.ese,
+            esx=saturation_tables.esx,
+            qsat=self.temporaries.qsat,
+            dqsat=self.temporaries.dqsat,
+            u=u,
+            u_unmodified=self.temporaries.u_unmodified,
+            v=v,
+            v_unmodified=self.temporaries.v_unmodified,
+        )
+
+        self.find_klcl(
+            t=t,
+            p_mb=self.temporaries.p_mb,
+            vapor=mixing_ratios.vapor,
+            ese=saturation_tables.ese,
+            esx=saturation_tables.esx,
+            found_level=self.masks.boolean_2d_mask,
+            k_lcl=self.temporaries.k_lcl,
+        )

@@ -1,7 +1,7 @@
 from ndsl import StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
-from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
+from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.ice_cloud.stencils import icloud_core, update_precip_total
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
@@ -18,7 +18,7 @@ class IceCloud:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        GFDL_1M_config: MicrophysicsConfiguration,
+        GFDL_1M_config: GFDL1MConfig,
         config_dependent_constants: ConfigConstants,
     ):
 

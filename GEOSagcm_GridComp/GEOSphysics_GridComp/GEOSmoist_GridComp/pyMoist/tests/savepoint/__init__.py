@@ -17,3 +17,4 @@ from .saturation_tables.translate_saturation_tables import Translatesaturation_t
 from .translate_aer_activation import TranslateAerActivation
 from .translate_radiation_coupling import TranslateRadCouple
 from .translate_redistribute_clouds import TranslateRedistributeClouds
+from .GFDL_1M.translate_derived_states import Translatederived_states

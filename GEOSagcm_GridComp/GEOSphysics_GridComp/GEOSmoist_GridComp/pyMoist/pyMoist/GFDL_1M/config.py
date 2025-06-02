@@ -4,7 +4,7 @@ from ndsl.dsl.typing import Float
 
 
 @dataclass
-class MicrophysicsConfiguration:
+class GFDL1MConfig:
     PHYS_HYDROSTATIC: bool
     HYDROSTATIC: bool
     DT_MOIST: Float

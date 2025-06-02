@@ -4,7 +4,7 @@ import numpy as np
 from gt4py.cartesian.gtscript import i32
 
 from ndsl.dsl.typing import Float
-from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
+from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.constants import constants
 
 
@@ -75,7 +75,7 @@ class ConfigConstants:
     CGMLT_4: Float
 
     @classmethod
-    def make(cls, GFDL_1M_config: MicrophysicsConfiguration):
+    def make(cls, GFDL_1M_config: GFDL1MConfig):
         # -----------------------------------------------------------------------
         # define heat capacity of dry air and water vap based on hydrostatical property
         # -----------------------------------------------------------------------
