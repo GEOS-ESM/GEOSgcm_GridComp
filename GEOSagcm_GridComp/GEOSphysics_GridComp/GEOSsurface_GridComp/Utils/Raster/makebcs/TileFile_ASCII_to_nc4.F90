@@ -7,8 +7,8 @@
 
 program TileFile_ASCII_to_nc4
   use, intrinsic :: iso_fortran_env, only: REAL64 
-  use MAPL
-  use LogRectRasterizeMod, only: MAPL_UNDEF_R8
+  use MAPL,                          only: MAPL_WriteTilingNC4, ease_extent 
+  use LogRectRasterizeMod,           only: MAPL_UNDEF_R8
   
   implicit none
   

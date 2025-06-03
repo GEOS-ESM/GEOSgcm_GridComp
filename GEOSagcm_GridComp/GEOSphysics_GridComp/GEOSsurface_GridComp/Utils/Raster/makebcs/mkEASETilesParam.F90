@@ -29,16 +29,16 @@ PROGRAM mkEASETilesParam
   ! - removed repetition of identical operations
   ! - added comments
   ! - white-space changes for improved readability
-  
+  use, intrinsic :: iso_fortran_env, only: REAL64 
   use rmTinyCatchParaMod,    only : i_raster, j_raster 
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
   use process_hres_data,     only : histogram
   use LogRectRasterizeMod,   only : SRTM_maxcat, MAPL_UNDEF_R8   ! rasterize.F90
   use MAPL_SortMod
-  use MAPL_ConstantsMod
+  use MAPL_ConstantsMod,     only : MAPL_PI_r8, MAPL_RADIUS
   use MAPL_ExceptionHandling
-  use MAPL
+  use MAPL,                  only : ease_extent, ease_convert, ease_inverse, MAPL_WriteTilingNC4
   use netcdf
   
   implicit none

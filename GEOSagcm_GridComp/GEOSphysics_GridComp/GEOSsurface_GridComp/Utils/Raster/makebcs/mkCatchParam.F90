@@ -21,7 +21,7 @@ PROGRAM mkCatchParam
 !  
 ! Sarith Mahanama - March 23, 2012 
 ! Email: sarith.p.mahanama@nasa.gov
-  use MAPL
+  use MAPL, only: ease_extent, MAPL_ReadTilingNC4 
   use rmTinyCatchParaMod 
   use process_hres_data
   use MAPL_ExceptionHandling
