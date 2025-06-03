@@ -2,7 +2,6 @@ esma_set_this()
 
 set (srcs
 LDAS_DateTimeMod.F90
-EASE_conv.F90
 mod_process_hres_data.F90
 rasterize.F90
 read_riveroutlet.F90
