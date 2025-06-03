@@ -1837,6 +1837,14 @@ contains
           if ( SCM_CORIOLIS == 0 ) then
              UTDYN(:,:,l) = 0.
              VTDYN(:,:,l) = 0.
+          else if (SCM_CORIOLIS == -1 ) then
+             if (L.gt.110.) then
+               UTDYN(:,:,l) = F0*( V(:,:,l) - V(:,:,110) )
+               VTDYN(:,:,l) = -F0*( U(:,:,l) - U(:,:,110) )
+             else
+               UTDYN(:,:,l) = 0.
+               VTDYN(:,:,l) = 0.
+             end if
           else
              UTDYN(:,:,l) = F0*( V(:,:,l) - SCM_VG )
              VTDYN(:,:,l) = -F0*( U(:,:,l) - SCM_UG )
