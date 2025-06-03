@@ -35,7 +35,7 @@ module GEOS_RouteGridCompMod
   integer, parameter :: upmax    = 34
   character(len=500) :: inputdir = "/discover/nobackup/yzeng3/data/river_input/"
   logical, parameter :: use_res  = .True.
-  integer, save      :: nmax 
+  integer, save      :: nmax,nmaxt 
 
   private
 
@@ -65,11 +65,17 @@ module GEOS_RouteGridCompMod
      integer :: myPe
      integer :: minCatch
      integer :: maxCatch
+     integer :: minNT
+     integer :: maxNT     
      integer, pointer :: pfaf(:)           => NULL()
      real,    pointer :: tile_area(:)      => NULL()  ! m2
+
      integer, pointer :: nsub(:)           => NULL()
      integer, pointer :: subi(:,:)         => NULL()
      real,    pointer :: subarea(:,:)      => NULL()  ! m2
+     integer, pointer :: nsubt(:)           => NULL()
+     integer, pointer :: subit(:,:)         => NULL()
+     real,    pointer :: subareat(:,:)      => NULL()  ! m2     
 
      integer, pointer :: scounts_global(:) => NULL()
      integer, pointer :: rdispls_global(:) => NULL()
@@ -343,6 +349,10 @@ contains
     real,    pointer :: subarea_global(:,:)=> NULL(),subarea(:,:)=> NULL() ! Arrays for sub-area and fractions
     integer, pointer :: subi_global(:,:)=> NULL(),subi(:,:)=> NULL()
     integer, pointer :: nsub_global(:)=> NULL(),nsub(:)=> NULL()
+    real,    pointer :: subareat_global(:,:)=> NULL(),subareat(:,:)=> NULL() ! Arrays for sub-area and fractions
+    integer, pointer :: subit_global(:,:)=> NULL(),subit(:,:)=> NULL()
+    integer, pointer :: nsubt_global(:)=> NULL(),nsubt(:)=> NULL()
+
     real,    pointer :: area_cat_global(:)=> NULL(),area_cat(:)=> NULL()
     integer, pointer :: scounts(:)=>NULL()
     integer, pointer :: scounts_global(:)=>NULL(),rdispls_global(:)=>NULL()
@@ -412,9 +422,11 @@ contains
     if(nt_global==112573)then
        resname="M36"
        nmax=150
+       nmaxt=34
     else if(nt_global==1684725)then
        resname="M09"
        nmax=458
+       nmaxt=12
     else
        if(mapl_am_I_root())then
           print *,"unknown grid for routing model"
@@ -465,6 +477,8 @@ contains
     deallocate(scounts)
     route%scounts_global=>scounts_global
     route%rdispls_global=>rdispls_global
+    route%minNT=rdispls_global(mype+1)+1
+    route%maxNT=rdispls_global(mype+1)+nt_local
 
     allocate(scounts(ndes),scounts_cat(ndes),rdispls_cat(ndes))
     scounts=0
@@ -481,6 +495,27 @@ contains
     allocate(runoff_save(1:nt_local))
     route%runoff_save => runoff_save
     route%runoff_save=0.
+
+
+   !for output interpolated on model grid
+    allocate(nsubt_global(nt_global),subareat_global(nmaxt,nt_global))
+    open(77,file=trim(inputdir)//"/nsub_tile_"//trim(resname)//".txt",status="old",action="read"); read(77,*)nsubt_global; close(77)
+    open(77,file=trim(inputdir)//"/areasub_tile_"//trim(resname)//".txt",status="old",action="read"); read(77,*)subareat_global; close(77)       
+    allocate(nsubt(nt_local),subareat(nmaxt,nt_local))
+    nsubt=nsubt_global(route%minNT:route%maxNT)
+    subareat=subareat_global(:,route%minNT:route%maxNT)
+    subareat=subareat*1.e6 !km2->m2
+    deallocate(nsubt_global,subareat_global)
+    route%nsubt    => nsubt
+    route%subareat => subareat
+
+    allocate(subit_global(nmaxt,nt_global),subit(nmaxt,nt_local))
+    open(77,file=trim(inputdir)//"/catisub_tile_"//trim(resname)//".txt",status="old",action="read");read(77,*)subit_global;close(77)
+    subit=subit_global(:,route%minNT:route%maxNT)
+    route%subit => subit
+    deallocate(subit_global)
+
+
 
     ! Read tile area data
     allocate(tile_area_local(nt_local),tile_area_global(nt_global))  
