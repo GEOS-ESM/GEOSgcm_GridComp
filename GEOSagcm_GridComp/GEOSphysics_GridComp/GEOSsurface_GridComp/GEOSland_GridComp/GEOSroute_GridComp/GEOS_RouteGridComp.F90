@@ -75,7 +75,9 @@ module GEOS_RouteGridCompMod
      real,    pointer :: subarea(:,:)      => NULL()  ! m2
      integer, pointer :: nsubt(:)           => NULL()
      integer, pointer :: subit(:,:)         => NULL()
-     real,    pointer :: subareat(:,:)      => NULL()  ! m2     
+     real,    pointer :: subareat(:,:)      => NULL()  ! frac  
+
+     real,    pointer :: catarea_global(:)  => NULL()  !m2
 
      integer, pointer :: scounts_global(:) => NULL()
      integer, pointer :: rdispls_global(:) => NULL()
@@ -352,6 +354,7 @@ contains
     real,    pointer :: subareat_global(:,:)=> NULL(),subareat(:,:)=> NULL() ! Arrays for sub-area and fractions
     integer, pointer :: subit_global(:,:)=> NULL(),subit(:,:)=> NULL()
     integer, pointer :: nsubt_global(:)=> NULL(),nsubt(:)=> NULL()
+    real,    pointer :: catarea_global(:)=> NULL()
 
     real,    pointer :: area_cat_global(:)=> NULL(),area_cat(:)=> NULL()
     integer, pointer :: scounts(:)=>NULL()
@@ -447,15 +450,17 @@ contains
     route%maxCatch = maxCatch 
 
     ! Read sub-catchment data 
-    allocate(nsub_global(N_CatG),subarea_global(nmax,N_CatG))
+    allocate(nsub_global(N_CatG),subarea_global(nmax,N_CatG),catarea_global(N_CatG))
     open(77,file=trim(inputdir)//"/Pfaf_nsub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)nsub_global; close(77)
     open(77,file=trim(inputdir)//"/Pfaf_asub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)subarea_global; close(77)       
     allocate(nsub(ntiles),subarea(nmax,ntiles))
     nsub=nsub_global(minCatch:maxCatch)
+    subarea_global=subarea_global*1.e6!km2->m2
+    catarea_global=sum(subarea_global,dim=1)
     subarea=subarea_global(:,minCatch:maxCatch)
-    subarea=subarea*1.e6 !km2->m2
     deallocate(nsub_global,subarea_global)
 
+    route%catarea_global => catarea_global !m2
     route%nsub    => nsub
     route%subarea => subarea
 
@@ -500,11 +505,11 @@ contains
    !for output interpolated on model grid
     allocate(nsubt_global(nt_global),subareat_global(nmaxt,nt_global))
     open(77,file=trim(inputdir)//"/nsub_tile_"//trim(resname)//".txt",status="old",action="read"); read(77,*)nsubt_global; close(77)
-    open(77,file=trim(inputdir)//"/areasub_tile_"//trim(resname)//".txt",status="old",action="read"); read(77,*)subareat_global; close(77)       
+    open(77,file=trim(inputdir)//"/fracsub_tile_"//trim(resname)//".txt",status="old",action="read"); read(77,*)subareat_global; close(77)       
     allocate(nsubt(nt_local),subareat(nmaxt,nt_local))
     nsubt=nsubt_global(route%minNT:route%maxNT)
-    subareat=subareat_global(:,route%minNT:route%maxNT)
-    subareat=subareat*1.e6 !km2->m2
+    subareat=subareat_global(:,route%minNT:route%maxNT) !frac
+    !subareat=subareat*1.e6 !km2->m2
     deallocate(nsubt_global,subareat_global)
     route%nsubt    => nsubt
     route%subareat => subareat
@@ -819,6 +824,7 @@ contains
     real,             pointer     :: WSTREAM_ACT(:)=>NULL()
     real,             pointer     :: WRIVER_ACT(:) =>NULL()
     type (RES_STATE), pointer     :: res => NULL()    
+    real,             pointer     :: flow_riv(:)=>NULL()
 
     real,             allocatable :: runoff_save_m3(:),runoff_global_m3(:),QOUTFLOW_GLOBAL(:),Qres_global(:)
     real,             allocatable :: WTOT_BEFORE(:),WTOT_AFTER(:),QINFLOW_LOCAL(:),UNBALANCE(:),UNBALANCE_GLOBAL(:),ERROR(:),ERROR_GLOBAL(:)
@@ -1001,7 +1007,7 @@ contains
        if(FirstTime)then
           if(mapl_am_I_root()) istat = mkdir("../river", int(o'755',c_int16_t))  
        endif
-       if(HH==23)then
+       if(HH==23)then          
           allocate(wriver_global(n_catg),wstream_global(n_catg),qoutflow_global(n_catg),qsflow_global(n_catg))       
           !call MPI_allgatherv  (                          &
           !     route%wriver_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
@@ -1014,7 +1020,23 @@ contains
           call MPI_allgatherv  (                          &
                route%qoutflow_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
                qoutflow_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-               MPI_COMM_WORLD, mpierr)        
+               MPI_COMM_WORLD, mpierr)  
+
+          allocate(flow_riv(nt_local))
+          flow_riv=0.
+          do i=1,nt_local
+            do j=1,nmaxt
+              it=route%subit(j,i) 
+              if(it>0)then
+                if(route%catarea_global(it)>0.)then
+                  flow_riv(i)=flow_riv(i)+route%subareat(j,i)*(qoutflow_global(it)/route%catarea_global(it)*1.e3) 
+                endif  
+              endif
+              if(it==0)exit
+            enddo
+          enddo
+          deallocate(flow_riv)
+
           !call MPI_allgatherv  (                          &
           !     route%qsflow_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
           !     qsflow_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
@@ -1038,21 +1060,21 @@ contains
              !print *, "output stream storage is: ",sum(wstream_global)/1.e9             
           endif
 
-          if(use_res .eqv. .True.)then
-             allocate(qres_global(n_catg))
-             call MPI_allgatherv  (                                           &
-                  res%qres_acc,  route%scounts_cat(mype+1)         ,MPI_REAL, &
-                  qres_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-                  MPI_COMM_WORLD, mpierr) 
-             if(mapl_am_I_root())then                 
-                open(92,file="../river/res_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
-                do i=1,n_catg
-                   write(92,*)qres_global(i)
-                enddo
-                close(92)
-             endif
-             deallocate(qres_global)
-          endif
+          !if(use_res .eqv. .True.)then
+          !   allocate(qres_global(n_catg))
+          !   call MPI_allgatherv  (                                           &
+          !        res%qres_acc,  route%scounts_cat(mype+1)         ,MPI_REAL, &
+          !        qres_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+          !        MPI_COMM_WORLD, mpierr) 
+          !   if(mapl_am_I_root())then                 
+          !      open(92,file="../river/res_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
+          !      do i=1,n_catg
+          !         write(92,*)qres_global(i)
+          !      enddo
+          !      close(92)
+          !   endif
+          !   deallocate(qres_global)
+          !endif
 
           deallocate(wriver_global,wstream_global,qoutflow_global,qsflow_global)
           route%wriver_acc = 0.
