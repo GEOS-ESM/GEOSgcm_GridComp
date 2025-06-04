@@ -436,7 +436,12 @@ contains
             SHORT_NAME = 'RUNOFF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       VERIFY_(STATUS)                                                                         
+       VERIFY_(STATUS)    
+       call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'RIVFLOW', &
+            CHILD_ID = ROUTE(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)                                                                                
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EVPINT', &
             CHILD_ID = CATCH(1), &
@@ -1055,7 +1060,9 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SHOUT'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RUNOFF' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       VERIFY_(STATUS)                                                                         
+       VERIFY_(STATUS)  
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RIVFLOW' ,  CHILD_ID = ROUTE(1), RC=STATUS  )
+       VERIFY_(STATUS)                                                                              
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVPINT' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVPSOI' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )

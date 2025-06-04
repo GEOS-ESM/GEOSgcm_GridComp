@@ -105,6 +105,8 @@ module GEOS_RouteGridCompMod
      real,    pointer :: K(:)              => NULL()
      real,    pointer :: Kstr(:)           => NULL()
 
+     real,    pointer :: flow_riv(:)       => NULL()
+
   end type T_RROUTE_STATE
 
 
@@ -247,6 +249,15 @@ contains
          LONG_NAME          = 'runoff_total_flux'         ,&
          UNITS              = 'kg m-2 s-1'                ,&
          SHORT_NAME         = 'RUNOFF'                    ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+         RC=STATUS  ) 
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                    &
+         LONG_NAME          = 'river_water_flux'          ,&
+         UNITS              = 'kg m-2 s-1'                ,&
+         SHORT_NAME         = 'RIVFLOW'                   ,&
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
          RC=STATUS  ) 
@@ -646,6 +657,10 @@ contains
     route%qsflow_acc=0.
     route%reservoir%qres_acc=0.
 
+    !for output on model grid
+    allocate(route%flow_riv(nt_local))
+    route%flow_riv=0.
+
     !Read input specially for geometry hydraulic (not required by linear model)
     allocate(buff_global(n_catg),route%lstr(ntiles))   
     open(77,file=trim(inputdir)//"/Pfaf_lstr_PR.txt",status="old",action="read");read(77,*)buff_global;close(77)
@@ -772,9 +787,13 @@ contains
     real, dimension(:), pointer :: LRIVERMOUTH
     real, dimension(:), pointer :: ORIVERMOUTH
 
+
 ! -----------------------------------------------------
 ! EXPORT pointers 
-! -----------------------------------------------------
+! ----------------------------------------------------- 
+
+    real, dimension(:),   pointer :: RIVFLOW
+
 
     real, dimension(:), pointer :: QSFLOW
     real, dimension(:), pointer :: QINFLOW
@@ -847,6 +866,8 @@ contains
 ! Get my internal MAPL_Generic state
 ! -----------------------------------------------------------
 
+    call MAPL_GetPointer(EXPORT,RIVFLOW, 'RIVFLOW' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
     call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, RC=STATUS)
@@ -871,6 +892,7 @@ contains
     runoff_save => route%runoff_save
     nt_local    =  route%nt_local
     res         => route%reservoir
+    flow_riv    => route%flow_riv
 
     ! get the field from IMPORT
     call ESMF_StateGet(IMPORT, 'RUNOFF', field=runoff_src, RC=STATUS)
@@ -982,6 +1004,19 @@ contains
           enddo
        enddo
 
+       flow_riv=0.
+       do i=1,nt_local
+         do j=1,nmaxt
+            it=route%subit(j,i) 
+            if(it>0)then
+              if(route%catarea_global(it)>0.)then
+                flow_riv(i)=flow_riv(i)+route%subareat(j,i)*(QOUTFLOW_GLOBAL(it)/route%catarea_global(it)*1.e3) !kg m-2 s-1
+              endif  
+            endif
+            if(it==0)exit
+          enddo
+       enddo
+
        ! Check balance if needed
        !call check_balance(route,ntiles,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
 
@@ -1021,22 +1056,6 @@ contains
                route%qoutflow_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
                qoutflow_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
                MPI_COMM_WORLD, mpierr)  
-
-          allocate(flow_riv(nt_local))
-          flow_riv=0.
-          do i=1,nt_local
-            do j=1,nmaxt
-              it=route%subit(j,i) 
-              if(it>0)then
-                if(route%catarea_global(it)>0.)then
-                  flow_riv(i)=flow_riv(i)+route%subareat(j,i)*(qoutflow_global(it)/route%catarea_global(it)*1.e3) 
-                endif  
-              endif
-              if(it==0)exit
-            enddo
-          enddo
-          deallocate(flow_riv)
-
           !call MPI_allgatherv  (                          &
           !     route%qsflow_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
           !     qsflow_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
@@ -1140,7 +1159,12 @@ contains
 
     endif RUN_MODEL 
 
+    RIVFLOW = flow_riv
+
     runoff_save => NULL()
+    res         => NULL()
+    flow_riv    => NULL()
+
 
 ! All done
 ! --------
