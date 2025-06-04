@@ -62,9 +62,9 @@
     grid_format  = 'nc'
     grid_type    = 'tripole'
     grid_subtype = 'geosmom'
-    grid_ice     = 'B'
+    grid_ice     = 'C'
     grid_atm     = 'A'
-    grid_ocn     = 'B'
+    grid_ocn     = 'C'
     grid_file    = 'cice6_grid.nc'
     kmt_file     = 'cice6_kmt.nc'
     bathymetry_file = 'cice6_global.bathy.nc'
@@ -293,8 +293,6 @@
     restart_hbrine  = .false.
     tr_zaero        = .false.
     modal_aero      = .false.
-    optics_file     = 'unknown'
-    optics_file_fieldname = 'modalBCabsorptionParameter5band'
     skl_bgc         = .false.
     z_tracers       = .false.
     dEdd_algae      = .false.
@@ -472,7 +470,7 @@
     f_snowfrac     = 'x'
     f_snow         = 'x' 
     f_snow_ai      = 'm' 
-    f_rain         = 'x' 
+    f_rain         = 'm' 
     f_rain_ai      = 'm' 
     f_sst          = 'm' 
     f_sss          = 'm' 
@@ -494,7 +492,7 @@
     f_alidf_ai     = 'x'
     f_albice       = 'md'
     f_albsno       = 'md'
-    f_albpnd       = 'x'
+    f_albpnd       = 'md'
     f_coszen       = 'x'
     f_flat         = 'md' 
     f_flat_ai      = 'md' 

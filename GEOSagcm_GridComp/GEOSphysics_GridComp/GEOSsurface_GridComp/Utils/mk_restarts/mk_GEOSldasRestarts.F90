@@ -462,7 +462,7 @@ contains
         allocate (lon_rst  (1:ntiles_rst))
         allocate (lat_rst  (1:ntiles_rst))
 
-        call ReadTileFile_RealLatLon ('InData/OutTileFile', i, long, latg); VERIFY_(i-ntiles)
+        call ReadTileFile_RealLatLon ('InData/OutTileFile', i, xlon=long, xlat=latg); VERIFY_(i-ntiles)
 
         read  (10) LDAS2BCS
         read  (10) tile_id
@@ -1209,17 +1209,17 @@ contains
        allocate (latg   (ntiles))
        allocate (ld_reorder(ntiles_smap)) 
 
-       call ReadTileFile_RealLatLon ('InData/OutTileFile', i, long, latg); VERIFY_(i-ntiles)
+       call ReadTileFile_RealLatLon ('InData/OutTileFile', i, xlon=long, xlat=latg); VERIFY_(i-ntiles)
        ! ---------------------------------------------
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
        
        if(index(MODEL,'catchcn') /=0) then
-          call ReadTileFile_RealLatLon(trim(InCNTilFile ),i,lonc,latc) 
+          call ReadTileFile_RealLatLon(trim(InCNTilFile ),i,xlon=lonc,xlat=latc) 
           VERIFY_(i-ntiles_smap)
        endif
        if(trim(MODEL) == 'catch'  ) then
-          call ReadTileFile_RealLatLon(trim(InCatTilFile),i,lonc,latc) 
+          call ReadTileFile_RealLatLon(trim(InCatTilFile),i,xlon=lonc,xlat=latc) 
           VERIFY_(i-ntiles_smap)
        endif
        if(index(MODEL,'catchcn') /=0) then
@@ -1972,7 +1972,7 @@ contains
        allocate (latg   (ntiles))
        allocate (DAYX   (NTILES))
 
-       call ReadTileFile_RealLatLon (OutTileFile, i, long, latg); VERIFY_(i-ntiles)
+       call ReadTileFile_RealLatLon (OutTileFile, i, xlon=long, xlat=latg); VERIFY_(i-ntiles)
 
        ! Compute DAYX
        ! ------------
@@ -1985,7 +1985,7 @@ contains
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
 
-       call ReadTileFile_RealLatLon(trim(InCNTilFile),i,lonc,latc); VERIFY_(i-ntiles_cn)
+       call ReadTileFile_RealLatLon(trim(InCNTilFile),i,xlon=lonc,xlat=latc); VERIFY_(i-ntiles_cn)
 
     endif
 

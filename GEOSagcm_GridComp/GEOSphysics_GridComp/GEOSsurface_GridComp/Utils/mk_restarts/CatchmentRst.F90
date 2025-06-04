@@ -577,7 +577,7 @@ contains
            call MAPL_VarRead ( CatchFmt ,'SNOWALB', this%snowalb, __RC__)
            if ( .not. this%meta%has_variable('SNOWALB')) then
               var = Variable(type=pFIO_REAL32, dimensions='tile')
-              call var%add_attribute('long_name', 'snow_albedo')
+              call var%add_attribute('long_name', 'snow_reflectivity')
               call var%add_attribute('units', '1')
               call this%meta%add_variable('SNOWALB', var)
            endif
@@ -807,10 +807,10 @@ contains
      if (root_proc) then
         allocate (long   (out_ntiles))
         allocate (latg   (out_ntiles))
-        call ReadTileFile_RealLatLon ( OutTileFile, n, long, latg)
+        call ReadTileFile_RealLatLon ( OutTileFile, n, xlon=long, xlat=latg)
         _ASSERT( n == out_ntiles, "Out tile number should match")
         this%latg = latg
-        call ReadTileFile_RealLatLon ( InTileFile, n, lonc, latc)
+        call ReadTileFile_RealLatLon ( InTileFile, n, xlon=lonc, xlat=latc)
         _ASSERT( n == in_ntiles, "In tile number should match")
      endif
 

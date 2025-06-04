@@ -7,20 +7,22 @@ import glob
 
 def get_script_head() :
 
-   return  """#!/bin/csh -x
+  head =  """#!/bin/csh -x
 
-#SBATCH --output={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.log
-#SBATCH --error={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.err
+#SBATCH --output={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME}.log
+#SBATCH --error={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
-#SBATCH --job-name={GRIDNAME2}.j
-#SBATCH --constraint=sky|cas
+#SBATCH --job-name={GRIDNAME}.j
+"""
+  constraint = '#SBATCH --constraint="[mil|cas]"'
 
-echo "-----------------------------" 
-echo "make_bcs starts date/time" 
-echo `date` 
-echo "-----------------------------" 
+  head = head + constraint + """
+echo "-----------------------------"
+echo "make_bcs starts date/time"
+echo `date`
+echo "-----------------------------"
 
 cd {SCRATCH_DIR}
 
@@ -29,6 +31,7 @@ if( ! -d bin ) then
 endif
 
 source bin/g5_modules
+module load nco
 setenv MASKFILE {MASKFILE}
 setenv MAKE_BCS_INPUT_DIR {MAKE_BCS_INPUT_DIR}
 limit stacksize unlimited
@@ -37,6 +40,7 @@ if( ! -d geometry ) then
   mkdir -p geometry land/shared til rst data/MOM5 data/MOM6 clsm/plots
 endif
 """
+  return head
 
 def get_change_til_file(grid_type):
   script = ""
@@ -46,33 +50,23 @@ def get_change_til_file(grid_type):
        script = """
 
 cd geometry/{GRIDNAME}/
-/bin/rm -f sedfile
 if( {TRIPOL_OCEAN} == True ) then
-cat > sedfile << EOF
-s/CF{NC}x6C/PE{nc}x{nc6}-CF/g
-s/{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{OCEAN_VERSION}/g
-EOF
-sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
-/bin/mv -f tile.file {GRIDNAME}{RS}.til
-/bin/rm -f sedfile
+  sed -i 's/{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{OCEAN_VERSION}/g' {GRIDNAME}{RS}.til
+  sed -i 's/CF{NC}x6C/PE{nc}x{nc6}-CF/g' {GRIDNAME}{RS}.til
+  ncatted -a Grid_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+  ncatted -a Grid_ocn_Name,global,o,c,'PE{imo}x{jmo}-{OCEAN_VERSION}' {GRIDNAME}{RS}.nc4
 endif
 if( {CUBED_SPHERE_OCEAN} == True ) then
-cat > sedfile << EOF
-s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g
-s/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g
-EOF
-sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
-/bin/mv -f tile.file {GRIDNAME}{RS}.til
-/bin/rm -f sedfile
+  sed -i 's/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g' {GRIDNAME}{RS}.til
+  sed -i 's/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g' {GRIDNAME}{RS}.til
+  ncatted -a Grid_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+  ncatted -a Grid_ocn_Name,global,o,c,'OC{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
 endif
 if( {LATLON_OCEAN} == True ) then
-cat > sedfile << EOF
-s/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g
-s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g
-EOF
-sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
-/bin/mv -f tile.file {GRIDNAME}{RS}.til
-/bin/rm -f sedfile
+  sed -i 's/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g' {GRIDNAME}{RS}.til
+  sed -i 's/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g' {GRIDNAME}{RS}.til
+  ncatted -a Grid_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+  ncatted -a Grid_ocn_Name,global,o,c,'PE{imo}x{jmo}-{DATENAME}' {GRIDNAME}{RS}.nc4
 endif
 cd ../../
 
@@ -81,14 +75,10 @@ cd ../../
 
      script = """
 cd geometry/{GRIDNAME}/
-/bin/rm -f sedfile
-cat > sedfile << EOF
-s/DC{IM}xPC{JM}/PC{im}x{jm}-DC/g
-s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g
-EOF
-sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
-/bin/mv -f tile.file {GRIDNAME}{RS}.til
-/bin/rm -f sedfile
+sed -i 's/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g' {GRIDNAME}{RS}.til
+sed -i 's/DC{IM}xPC{JM}/PC{im}x{jm}-DC/g' {GRIDNAME}{RS}.til
+ncatted -a Grid_Name,global,o,c,'PC{im}x{jm}-DC' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_ocn_Name,global,o,c,'PE{imo}x{jmo}-{DATENAME}' {GRIDNAME}{RS}.nc4
 cd ../../
 
 """
@@ -101,6 +91,7 @@ def get_script_mv(grid_type):
 mkdir -p geometry/{GRIDNAME}
 /bin/mv {GRIDNAME}.j geometry/{GRIDNAME}/.
 /bin/cp til/{GRIDNAME}{RS}.til geometry/{GRIDNAME}/.
+/bin/cp til/{GRIDNAME}{RS}.nc4 geometry/{GRIDNAME}/.
 if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN geometry/{GRIDNAME}/.
 
 /bin/mv rst til geometry/{GRIDNAME}/.
@@ -116,33 +107,37 @@ mkdir -p land/{GRIDNAME}/clsm
 /bin/mv clsm/lnfm.dat    land/{GRIDNAME}/lnfm_clim_{RC}.data
 /bin/mv clsm/ndvi.dat    land/{GRIDNAME}/ndvi_clim_{RC}.data
 
-/bin/mv clsm/ar.new \\
-        clsm/bf.dat \\
-        clsm/ts.dat \\
-        clsm/catchment.def \\
-        clsm/cti_stats.dat \\
-        clsm/tau_param.dat \\
-        clsm/soil_param.dat \\
-        clsm/mosaic_veg_typs_fracs \\
-        clsm/soil_param.first \\
-        clsm/bad_sat_param.tiles \\
-        clsm/README \\
-        clsm/lai.* \\
-        clsm/AlbMap* \\
-        clsm/g5fmt \\
-        clsm/vegetation.hst2 \\
-        clsm/pfaf_fractions.dat \\
-        clsm/plots \\
-        clsm/CLM_veg_typs_fracs \\
-        clsm/Grid2Catch_TransferData.nc \\
-        clsm/CLM_NDep_SoilAlb_T2m \\
-        clsm/CLM4.5_abm_peatf_gdp_hdm_fc \\
-        clsm/catch_params.nc4 \\
-        clsm/catchcn_params.nc4 \\
-        clsm/country_and_state_code.data \\
-        land/{GRIDNAME}/clsm/
+# vegdyn_{RC}.dat file is nc4; for clarification, create link with proper file name extension
+cd land/{GRIDNAME}
+ln -s vegdyn_{RC}.dat vegdyn_{RC}.nc4
+cd ../../
 
-""" 
+/bin/mv clsm/ar.new land/{GRIDNAME}/clsm/ 
+/bin/mv clsm/bf.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/ts.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/catchment.def land/{GRIDNAME}/clsm/
+/bin/mv clsm/cti_stats.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/tau_param.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/soil_param.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/mosaic_veg_typs_fracs land/{GRIDNAME}/clsm/
+/bin/mv clsm/soil_param.first land/{GRIDNAME}/clsm/
+/bin/mv clsm/bad_sat_param.tiles land/{GRIDNAME}/clsm/
+/bin/mv clsm/README land/{GRIDNAME}/clsm/
+/bin/mv clsm/lai.* land/{GRIDNAME}/clsm/
+/bin/mv clsm/AlbMap* land/{GRIDNAME}/clsm/
+/bin/mv clsm/g5fmt land/{GRIDNAME}/clsm/
+/bin/mv clsm/vegetation.hst2 land/{GRIDNAME}/clsm/
+/bin/mv clsm/pfaf_fractions.dat land/{GRIDNAME}/clsm/
+/bin/mv clsm/plots land/{GRIDNAME}/clsm/
+/bin/mv clsm/CLM_veg_typs_fracs land/{GRIDNAME}/clsm/
+/bin/mv clsm/Grid2Catch_TransferData.nc land/{GRIDNAME}/clsm/
+/bin/mv clsm/CLM_NDep_SoilAlb_T2m land/{GRIDNAME}/clsm/
+/bin/mv clsm/CLM4.5_abm_peatf_gdp_hdm_fc land/{GRIDNAME}/clsm/
+/bin/mv clsm/catch_params.nc4 land/{GRIDNAME}/clsm/
+/bin/mv clsm/catchcn_params.nc4 land/{GRIDNAME}/clsm/
+/bin/mv clsm/country_and_state_code.data land/{GRIDNAME}/clsm/
+
+"""
    mv_template = mv_template + get_change_til_file(grid_type)
    mv_template = mv_template + """
 
@@ -152,10 +147,10 @@ mkdir -p land/{GRIDNAME}/clsm
 
 mkdir -p ../../geometry ../../land/shared ../../logs
 
-echo "-----------------------------" 
-echo "make_bcs ends date/time" 
-echo `date` 
-echo "-----------------------------" 
+echo "-----------------------------"
+echo "make_bcs ends date/time"
+echo `date`
+echo "-----------------------------"
 
 /bin/mv ../logs/{GRIDNAME}  ../../logs/.
 
@@ -168,7 +163,7 @@ cd ../..
 
 /bin/rm -r {TMP_DIR}
 
-# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir 
+# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir
 
 if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
     echo "CO2_MonthlyMean_DiurnalCycle.nc4 already present in bcs dir."

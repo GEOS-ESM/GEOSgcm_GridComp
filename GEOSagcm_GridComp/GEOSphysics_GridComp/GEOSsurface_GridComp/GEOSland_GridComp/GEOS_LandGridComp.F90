@@ -234,7 +234,7 @@ contains
 ! These are from RUN2 of the first catchment instance
     SELECT CASE (LSM_CHOICE)
 
-    CASE (1) 
+    CASE (1)                                    ! Catchment model
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'LST', &
             CHILD_ID = CATCH(1), &
@@ -656,6 +656,11 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'SPLH', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SPWATR', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
@@ -686,18 +691,17 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    ! the following constants are needed by GEOSldas (to assemble the catparam structure)   
+
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'COND' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'PSIS' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BEE'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'GNU'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'VGWMAX',CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF1'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF2'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF3'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR1', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS1' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS3' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
@@ -715,6 +719,28 @@ contains
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+
+    ! the following constants are needed by GEOSldas and for the "land constants" output collection
+
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+
+    ! the following constants are needed for the "land constants" output collection
+
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT1', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT3', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT4', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT5', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT6', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZPR',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZRZ',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZSF',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZTS',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPEMW', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPMC',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+
 
 !   From catment grid internal to be perturbed by land_pert grid
 !   WESNN1-3 are originally exported
@@ -1114,9 +1140,12 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DHLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )              ! a.k.a. SPSHLAND
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPWATR' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+! will need later for CatchCN:
+!       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLH'   ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+!       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPWATR' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )              ! a.k.a. SPEVLAND
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
@@ -1129,18 +1158,17 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CAPAC'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    ! the following constants are needed by GEOSldas (to assemble the catparam structure)   
+
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'COND' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'PSIS' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BEE'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'GNU'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'VGWMAX',CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF1'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF2'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF3'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR1', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS1' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS2' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS3' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
@@ -1159,6 +1187,9 @@ contains
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
 
 !   From catmentcn grid internal to be perturbed by land_pert grid
 !   WESNN1-3 are originally exported
