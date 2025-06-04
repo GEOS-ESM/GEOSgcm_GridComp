@@ -2172,7 +2172,7 @@ contains
        QS(:,N) = QS(:,N) + DQS
 
        if (.not. seaIceT_extData) then
-         HH(:,N) = HH(:,N) + DT*(SNO + ICEF + FRZR - EVP)
+         HH(:,N) = HH(:,N) + DT*(SNO + ICEF - EVP)
          HH(:,N) = max(min(HH(:,N),  MAXICEDEPTH),  MINICEDEPTH)
        endif
 

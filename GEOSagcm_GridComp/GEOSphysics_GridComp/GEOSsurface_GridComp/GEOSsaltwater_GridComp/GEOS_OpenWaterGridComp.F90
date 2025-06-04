@@ -2574,7 +2574,7 @@ contains
 
     call AOIL_v0 (NT, DO_SKIN_LAYER, DO_DATASEA, n_iter_cool, fr_ice_thresh, trim(DO_GRAD_DECAY_warmLayer), &
                   DT, MUSKIN, epsilon_d, MaxWaterDepth, MinWaterDepth, MaxSalinity, MinSalinity,            &
-                  STOKES_SPEED, CM(:,WATER), CFT, CFQ, SH, EVAP, DSH, DEV, THATM, QHATM, PS, SNO, PCU+PLS,  &
+                  STOKES_SPEED, CM(:,WATER), CFT, CFQ, SH, EVAP, DSH, DEV, THATM, QHATM, PS, SNO+ICE, PCU+PLS+FRZR,  &
                   UUA, VVA, UW, VW, FRWATER, SWN, SWN_surf, PEN, PEN_ocean, LWDNSRF, ALW, BLW,              &
                   HH(:,WATER), TS(:,WATER), SS(:,WATER), QS(:,WATER), TS_FOUNDi,                            &
                   DWARM_, TBAR_, USTARW_, DCOOL_, TDROP_, SWCOOL_, QCOOL_, BCOOL_, LCOOL_,                  &
@@ -2631,8 +2631,8 @@ contains
     if(associated(AOSHFLX)) AOSHFLX = SHF    *FRWATER
     if(associated(AOQFLUX)) AOQFLUX = EVP    *FRWATER
     if(associated(AOLWFLX)) AOLWFLX = (LWDNSRF-ALW-BLW*TS(:,WATER))*FRWATER
-    if(associated(AORAIN )) AORAIN  = PCU + PLS
-    if(associated(AOSNOW )) AOSNOW  = (SNO+ICE+FRZR) *FRWATER
+    if(associated(AORAIN )) AORAIN  = PCU + PLS + FRZR
+    if(associated(AOSNOW )) AOSNOW  = (SNO+ICE) *FRWATER
     if(associated(AODRNIR)) AODRNIR = (1.-ALBNRO)*DRNIR*FRWATER
     if(associated(AODFNIR)) AODFNIR = (1.-ALBNFO)*DFNIR*FRWATER
     if(associated(FSURF  )) FSURF   = SWN+LWDNSRF-(ALW+BLW*TS(:,WATER))-SHF-LHF
@@ -2640,9 +2640,8 @@ contains
 
     if(associated(SNOWOCN)) SNOWOCN = SNO*FR(:,WATER)
     if(associated(ICEFOCN)) ICEFOCN = ICE*FR(:,WATER)
-    ! NOTE: FRZR may be moved to be part of RAINOCN
-    if(associated(SPTOTOCN))SPTOTOCN = (SNO+ICE+FRZR)*FR(:,WATER)
-    if(associated(RAINOCN)) RAINOCN = PCU + PLS
+    if(associated(SPTOTOCN))SPTOTOCN = (SNO+ICE)*FR(:,WATER)
+    if(associated(RAINOCN)) RAINOCN = PCU + PLS + FRZR
     if(associated(HLWUP  )) HLWUP   = ALW*FR(:,WATER) 
     if(associated(LWNDSRF)) LWNDSRF = (LWDNSRF - ALW)*FR(:,WATER)
 

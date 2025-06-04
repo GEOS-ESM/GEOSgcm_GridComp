@@ -2513,9 +2513,9 @@ contains
 ! Aggregate imports if required
 !-----------------------------------
 
-    RAIN = PLS + PCU
+    RAIN = PLS + PCU + FRZR
 
-    SNOW = SNO + ICEF + FRZR
+    SNOW = SNO + ICEF
 
 ! Initialize PAR and UVR beam fluxes
 !-----------------------------------

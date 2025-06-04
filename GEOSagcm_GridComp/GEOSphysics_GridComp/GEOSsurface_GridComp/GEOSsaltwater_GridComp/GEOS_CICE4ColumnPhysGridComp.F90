@@ -3491,7 +3491,7 @@ contains
     if(associated(USTARI))   USTARI     = sqrt(sqrt(TAUXBOT**2+TAUYBOT**2)/MAPL_RHO_SEAWATER)
 
     if(associated(PR_C5)) then
-          PR_C5 = FRCICE * (PLS + PCU)
+          PR_C5 = FRCICE * (PLS + PCU + FRZR)
           where(FRCICE == 0.0)
              PR_C5 = 0.0
           endwhere
@@ -4546,7 +4546,7 @@ contains
 
           TRACERSDB      =  TRACERS(:,NSUB)
           LWDNSRFDB      =  LWDNSRF(K)
-          SNODB          =  SNO(K) + ICEF(K) + FRZR(K)
+          SNODB          =  SNO(K) + ICEF(K)
           TBOTDB         =  TBOT(K)
           FBOTDB         =  FBOT(K)
           FSWABSDB       =  FSWABS(K)
@@ -4660,7 +4660,7 @@ contains
              VOLSNODB        =  VOLSNO(K,NSUB)
              APONDNDB        =  APONDN(K,NSUB)
              HPONDNDB        =  HPONDN(K,NSUB)
-             FRAINDB         =  PCU(K) + PLS(K)
+             FRAINDB         =  PCU(K) + PLS(K) + FRZR(K)
              call compute_ponds(1, 1,                      &
                            1, 1, 1, 1,                     &
                            MELTTDB, MELTSDB, FRAINDB,      &
