@@ -1720,6 +1720,15 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'river_water_flux'          ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'RIVFLOW'                   ,&
+    DIMS               = MAPL_DimsHorzOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'EVLAND',                    &
     LONG_NAME          = 'total_evapotranspiration_land',          &
     UNITS              = 'kg m-2 s-1',                &
@@ -5541,6 +5550,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: RUNOFF       => NULL()
     real, pointer, dimension(:,:) :: DISCHARGE    => NULL()
     real, pointer, dimension(:,:) :: RUNSURF      => NULL()
+    real, pointer, dimension(:,:) :: RIVFLOW      => NULL()    
     real, pointer, dimension(:,:) :: BASEFLOW     => NULL()
     real, pointer, dimension(:,:) :: ACCUM        => NULL()
     real, pointer, dimension(:,:) :: SMELT        => NULL()
@@ -5858,6 +5868,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: SWNDSRFTILE      => NULL()
     real, pointer, dimension(:) :: RUNOFFTILE       => NULL()
     real, pointer, dimension(:) :: RUNSURFTILE      => NULL()
+    real, pointer, dimension(:) :: RIVFLOWTILE      => NULL()    
     real, pointer, dimension(:) :: DISCHARGETILE    => NULL()
     real, pointer, dimension(:) :: BASEFLOWTILE     => NULL()
     real, pointer, dimension(:) :: ACCUMTILE        => NULL()
@@ -6747,6 +6758,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , RUNOFF  , 'RUNOFF' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DISCHARGE,'DISCHARGE',RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RUNSURF , 'RUNSURF',  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , RIVFLOW , 'RIVFLOW',  RC=STATUS); VERIFY_(STATUS)    
     call MAPL_GetPointer(EXPORT  , BASEFLOW, 'BASEFLOW', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , ACCUM   , 'ACCUM'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SMELT   , 'SMELT'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -7381,6 +7393,7 @@ module GEOS_SurfaceGridCompMod
     end if
 
     call MKTILE(RUNSURF ,RUNSURFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(RIVFLOW ,RIVFLOWTILE ,NT,RC=STATUS); VERIFY_(STATUS)    
     call MKTILE(BASEFLOW,BASEFLOWTILE,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(ACCUM   ,ACCUMTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SMELT   ,SMELTTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -8156,6 +8169,10 @@ module GEOS_SurfaceGridCompMod
        call MAPL_LocStreamTransform( LOCSTREAM, RUNSURF,   RUNSURFTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
+    if(associated(  RIVFLOW)) then
+       call MAPL_LocStreamTransform( LOCSTREAM, RIVFLOW,   RIVFLOWTILE, RC=STATUS)
+       VERIFY_(STATUS)
+    endif    
     if(associated(  BASEFLOW)) then
        call MAPL_LocStreamTransform( LOCSTREAM, BASEFLOW,   BASEFLOWTILE, RC=STATUS)
        VERIFY_(STATUS)
@@ -8951,6 +8968,7 @@ module GEOS_SurfaceGridCompMod
     if(associated(RUNOFFTILE  )) deallocate(RUNOFFTILE  )
     if(associated(DISCHARGETILE))deallocate(DISCHARGETILE)
     if(associated(RUNSURFTILE )) deallocate(RUNSURFTILE )
+    if(associated(RIVFLOWTILE )) deallocate(RIVFLOWTILE )    
     if(associated(BASEFLOWTILE)) deallocate(BASEFLOWTILE)
     if(associated(ACCUMTILE   )) deallocate(ACCUMTILE   )
     if(associated(SMELTTILE   )) deallocate(SMELTTILE   )
@@ -9242,6 +9260,8 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'RUNSURF' , ALLOC=associated(RUNSURFTILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RIVFLOW' , ALLOC=associated(RIVFLOWTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)      
       call MAPL_GetPointer(GEX(type), dum, 'BASEFLOW', ALLOC=associated(BASEFLOWTILE), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'ACCUM'   , ALLOC=associated(ACCUMTILE   ), notFoundOK=.true., RC=STATUS)
@@ -9839,6 +9859,10 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'RUNSURF',RUNSURFTILE,XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
+      if(associated(RIVFLOWTILE)) then
+         call FILLOUT_TILE(GEX(type), 'RIVFLOW',RIVFLOWTILE,XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if      
       if(associated(BASEFLOWTILE)) then
          call FILLOUT_TILE(GEX(type), 'BASEFLOW',BASEFLOWTILE,XFORM, RC=STATUS)
          VERIFY_(STATUS)
