@@ -312,8 +312,7 @@ def ask_questions():
             "type": "checkbox",
             "name": "resolutions",
             "message": "Select resolutions: \n",
-            "choices": ["C12","C24", "C48", "C90", "C180", "C360", "C720", "C1120", "C1440", "C2880", "SG001","SG002"]
-            #"choices": ["C12","C24", "C48", "C90", "C180", "C360", "C720", "C1120", "C1440", "C2880", "C5760", "SG001","SG002"]
+            "choices": ["C12","C24", "C48", "C90", "C180", "C360", "C720", "C1120", "C1440", "C2880", "C5760", "SG001","SG002"]
         },
 
         {

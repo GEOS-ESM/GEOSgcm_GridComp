@@ -239,6 +239,8 @@
           if (SCRIP_Area(n) <= 0.d0) then
              failed_cells = failed_cells + 1
              fallback_mask(n) = .true.
+            ! Adjust the negative or zero area explicitly
+            SCRIP_Area(n) = 1.d-12
              ! Print first 10 failures, then every 10-millionth cell afterward
              if (failed_cells <= 10 .or. mod(n,10000000) == 0) then
                 write(*,*) 'Negative/zero area at cell ', n, &
@@ -840,9 +842,10 @@ subroutine create_gmao_file(grid,im_world,filename,rc)
 
     area = ang1 + ang2 + ang3 + ang4 - 2.0d0*PI
 
-    ! stretched grid safeguard
-   if (area <= 0.d0 .and. area > -1e-10) then
-      area = abs(area) ! minor numerical fix
+   if (area <= 0.d0 .and. area > -1e-7) then
+       area = abs(area)
+   elseif (area <= -1e-7) then
+       area = 1e-12 ! explicitly assign a minimal positive area to highly distorted cells
    endif
 
  end function get_area_spherical_polygon
@@ -878,7 +881,7 @@ function spherical_angles(p1,p2,p3) result(spherical_angle)
    real (real64):: e1(3), e2(3), e3(3)
    real (real64):: px, py, pz
    real (real64):: qx, qy, qz
-   real (real64):: angle, ddd
+   real (real64):: angle, ddd, threshold
    integer n
    real(REAL64), parameter           :: PI = 3.14159265358979323846
 
@@ -900,26 +903,16 @@ function spherical_angles(p1,p2,p3) result(spherical_angle)
    qy = e1(3)*e3(1) - e1(1)*e3(3)
    qz = e1(1)*e3(2) - e1(2)*e3(1)
 
-   ddd = (px*px+py*py+pz*pz)*(qx*qx+qy*qy+qz*qz)
-
-   if ( ddd <= 0.0d0 ) then
-      angle = 0.d0
-   else
-      ddd = (px*qx+py*qy+pz*qz) / sqrt(ddd)
-      ! Added numerical safeguard for acos domain
-      if (ddd >  1.0d0) ddd =  1.0d0
-      if (ddd < -1.0d0) ddd = -1.0d0
-      if ( abs(ddd)>1.d0) then
-         angle = 0.5d0 * PI
-         if (ddd < 0.d0) then
-            angle = PI
-         else
-            angle = 0.d0
-         end if
-      else
-         angle = acos( ddd )
-      endif
-   endif
+    ddd = (px*px + py*py + pz*pz)*(qx*qx + qy*qy + qz*qz)
+    
+    threshold = 1.d-24
+    if (ddd <= threshold) then
+        angle = 0.d0
+    else
+        ddd   = (px*qx + py*qy + pz*qz) / sqrt(ddd)
+        ddd   = min(1.d0, max(-1.d0, ddd))
+        angle = acos(ddd)
+    endif
 
    spherical_angle = angle
 end function
