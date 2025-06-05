@@ -43,26 +43,26 @@ def get_script_topo(answers) :
   if len(answers['resolutions']) == 1:
       res_tag = answers['resolutions'][0].lower()
   else:
-      res_tag = "_".join(r.lower() for r in answers['resolutions'])  
+      res_tag = "_".join(r.lower() for r in answers['resolutions'])
 
   topo_template = head + constraint + """
 
-echo "-----------------------------" 
-echo "make_topo starts date/time" 
-echo `date` 
-echo "-----------------------------" 
+echo "-----------------------------"
+echo "make_topo starts date/time"
+echo `date`
+echo "-----------------------------"
 
 if( ! -d bin ) then
   /bin/ln -s {bin_dir}
 endif
 
-source bin/g5_modules  
+source bin/g5_modules
 module load nco
 module load cdo
 
 if ( ! -e landm_coslat.nc ) then
   /bin/ln -s bin/landm_coslat.nc landm_coslat.nc
-endif 
+endif
 
 set source_topo = gmted_intel
 set cutoff = 50
@@ -182,7 +182,7 @@ _EOF_
         set rrfac = "--rrfac_max=$rr"
       else
           set rrfac = "--rrfac_max=1"
-      endif       
+      endif
 
       if ($im == 5760) then
           set smoothing_scale = 0.0
@@ -206,14 +206,14 @@ _EOF_
           echo "ERROR: cube_to_target.x failed (exit $status). Check stdout above."
           exit 1
       endif
-      
+
       ls $output_dir/*.nc >& /dev/null
       if ( $status != 0 ) then
           echo "ERROR: cube_to_target.x returned 0, but wrote no *.nc files."
           exit 1
       endif
 
-   
+
    #rm $scriptfile
    rm ${{config_file}}
 
@@ -228,7 +228,7 @@ _EOF_
 end
 """
   account = get_account()
-  SMOOTHMAP = '( ' 
+  SMOOTHMAP = '( '
   RESOLUTIONS = '( '
   for res in answers['resolutions']:
       SMOOTHMAP = SMOOTHMAP + str(smoothmap[res]) + ' '
@@ -250,9 +250,9 @@ end
       res_tag = answers['resolutions'][0].lower()
   else:
       res_tag = "_".join(r.lower() for r in answers['resolutions'])
-  
-  topojob = f"{out_dir}/topo_{res_tag}.j"  
-  
+
+  topojob = f"{out_dir}/topo_{res_tag}.j"
+
 #  topojob = out_dir+'/topo.j'
   topo_job = open(topojob,'wt')
   topo_job.write(script_string)
@@ -262,7 +262,7 @@ end
 #  print("\nJob script topo.j has been generated in "  + out_dir + "\n")
   print(f"\nJob script {os.path.basename(topojob)} has been generated in {out_dir}\n")
 
-  
+
 def get_user():
    cmd = 'whoami'
    p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
@@ -296,7 +296,7 @@ def ask_questions():
        {
             "type": "path",
             "name": "out_dir",
-            "message": "Enter the root path of the bin:\n",
+            "message": "Enter the path of the output directory:\n",
             "default": "/discover/nobackup/"+user_name+"/BCS_TOPO/"
         },
 
@@ -307,8 +307,8 @@ def ask_questions():
             "default": "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/topo/v1/"
         },
 
-                
-        {   
+
+        {
             "type": "checkbox",
             "name": "resolutions",
             "message": "Select resolutions: \n",
@@ -319,7 +319,7 @@ def ask_questions():
             "type": "checkbox",
             "name": "SG001",
             "message": "Select resolution of SG001 grid: \n",
-            "choices": ['C270', 'C540', 'C1080', 'C2160'], 
+            "choices": ['C270', 'C540', 'C1080', 'C2160'],
             "when": lambda x : 'SG001' in x.get('resolutions'),
         },
         {
@@ -342,7 +342,7 @@ def ask_questions():
    print(answers['resolutions'])
    return answers
 
-    
+
 if __name__ == '__main__' :
 
    answers = ask_questions()
