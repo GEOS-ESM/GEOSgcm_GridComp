@@ -130,7 +130,8 @@
 
       SUBROUTINE CATCHMENT (                                                   &
                      NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &  ! LONS, LATS are in [radians] !!!
-                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &  ! cat_id is set to no-data in GEOS_CatchGridcomp; DZSF in [mm] !!!
+                     cat_id,ITYP,DZSF,                                         &  ! cat_id is set to no-data in GEOS_CatchGridcomp; DZSF in [mm] !!!
+                     TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,                    &  ! TFRZR=0 as of Jun 2025; needs attention if ever TFRZR/=0
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -845,8 +846,8 @@
         END IF
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
-        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
-        snowf  = tsnow(n)+tice(n)+tfrzr(n)
+        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)  ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025:
+        snowf  = tsnow(n)+tice(n)                      !   freezing rain is liquid not solid, (probably) included in trainl+trainc
         dedea  = dedqas(n)*epsilon/psur(n) 
         dhsdea = dhsdqas(n)*epsilon/psur(n) 
         ea     = qm(n)*psur(n)/epsilon 
@@ -1302,7 +1303,7 @@
         !FSW_CHANGE IS THE CHANGE IN THE FREE-STANDING WATER, RELEVANT FOR PEATLAND ONLY
         FSW_CHANGE(N) = 0.
         IF(POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
-           pr = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
+           pr = trainc(n)+trainl(n)+tsnow(n)+tice(n)              ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025
            FSW_CHANGE(N) = PR - EVAP(N) - RUNOFF(N) - WCHANGE(N)
         ENDIF
 

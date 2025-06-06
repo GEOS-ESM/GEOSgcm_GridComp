@@ -6423,8 +6423,8 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT, ICE , 'ICE' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FRZR, 'FRZR', alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
-! These are the precips exported by moist
-!----------------------------------------
+! These are the precips imported from moist
+!------------------------------------------
 
     call MAPL_GetPointer(IMPORT, PCU     , 'PCU'     ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PLS     , 'PLS'     ,  RC=STATUS); VERIFY_(STATUS)
@@ -6485,8 +6485,12 @@ module GEOS_SurfaceGridCompMod
        allocate( PRECSUM(IM,JM), stat=STATUS )
        VERIFY_(STATUS)
 
-       PRECSUM = RCU+RLS+SNO+ICE+FRZR
-
+       ! PRECSUM = uncorrected total precip
+       ! PTTe    = total precip from file
+       
+       PRECSUM = RCU+RLS+SNO+ICE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in RCU+RLS
+                                  ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025
+       
        where (PTTe == MAPL_UNDEF)
           RCU = PCU
           RLS = PLS
@@ -7673,7 +7677,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
     if(PRECIP_FILE /= "null") then
-       TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE + FRZRFLTILE
+       TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in PCUTILE+PCSTILE
        call MAPL_LocStreamTransform( LOCSTREAM, PRECTOT, TMPTILE, RC=STATUS)
        VERIFY_(STATUS)
     else

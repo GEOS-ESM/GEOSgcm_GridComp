@@ -6194,8 +6194,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! get total solid precip
         ! --------------------------------------------------------------------------
 
-        SLDTOT = SNO+ICE+FRZR
+        SLDTOT = SNO+ICE      ! do *not* add FRZR (freezing rain) to solid precip, see comment below
 
+        ! FRZR (freezing rain) is rain that falls as super-cooled liquid water, which freezes upon
+        !      impact on a sufficiently cold surface.  As such, FRZR is *not* solid precipitation
+        !      and should be considered rainfall.
+        !
+        ! As of Jun 2025, FRZR is identical to 0 and can be ignored.  Looking ahead, make sure to
+        !      account correctly for FRZR in the input precipitation variables.  Once it's filled
+        !      with non-zero values, FRZR will (probably) be included in PLS+PCU.  It is (probably)
+        !      better to replace PCU & PLS with RAIN and FRZR, where RAIN (probably) does *not*
+        !      include FRZR and PCU+PLS=RAIN+FRZR (TO BE CONFIRMED!).
+        !
+        ! - reichle, 6/6/2025
+        
 	! --------------------------------------------------------------------------
 	! protect the forcing from unsavory values, as per practice in offline
 	! driver
