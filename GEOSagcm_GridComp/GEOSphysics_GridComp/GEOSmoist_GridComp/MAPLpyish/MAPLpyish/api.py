@@ -82,6 +82,8 @@ class MAPLBridge:
         # ESMF_TimeIntervalGet
         self.ffi.cdef("void* MAPLpy_ESMF_TimeIntervalGet(void* esmf_time_state_c_ptr);")
 
+        self.ffi.cdef("bool MAPLpy_Associated(void*);")
+
     def __del__(self):
         self.ffi.dlclose(self.mapl_c_bridge)
 
@@ -148,3 +150,6 @@ class MAPLBridge:
         return self.mapl_c_bridge.MAPLpy_ESMF_TimeIntervalGet(  # type: ignore
             time_state
         )
+
+    def associated(self, ptr: CVoidPointer):
+        return self.mapl_c_bridge.associated(ptr)  # type: ignore

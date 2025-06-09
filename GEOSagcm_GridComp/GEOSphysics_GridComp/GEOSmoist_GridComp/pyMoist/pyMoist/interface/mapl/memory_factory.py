@@ -25,16 +25,21 @@ class MAPLMemoryFactory:
         dtype: npt.DTypeLike,
         dims: list[str],
         alloc: bool = False,
-    ) -> npt.ArrayLike:
+    ) -> tuple[npt.ArrayLike, bool]:
         # MAPL Fortran call retrieve memory as a void*
         fptr = self._bridge.MAPL_GetPointer(self._state, name, alloc=alloc)
 
         # Turn dims into int-sized list
         shape = self._quantity_factory.sizer.get_shape(dims)
 
-        return self._f_py_converter.fortran_to_python(fptr, dim=list(shape))
+        return self._f_py_converter.fortran_to_python(
+            fptr, dim=list(shape)
+        ), self._bridge.associated(fptr)
 
     def get_resource(
         self, name: str, dtype: npt.DTypeLike, default: bool = False
     ) -> npt.DTypeLike:
         return self._bridge.MAPL_GetResource(self._state, name, dtype, default=default)
+
+    def __del__(self):
+        raise NotImplementedError("WE SHOULD BE RE-UPLOADING THINGS")
