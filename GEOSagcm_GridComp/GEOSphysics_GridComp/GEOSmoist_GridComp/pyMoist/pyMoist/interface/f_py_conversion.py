@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple, TypeAlias
 
 import cffi
 import numpy as np
+import numpy.typing as npt
 
 from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
@@ -14,8 +15,8 @@ from ndsl.optional_imports import cupy as cp
 # Dev note: we would like to use cp.ndarray for Device and
 # Union of np and cp ndarray for Python but we can't
 # because cp might not be importable!
-DeviceArray: TypeAlias = np.ndarray
-PythonArray: TypeAlias = np.ndarray
+DeviceArray: TypeAlias = npt.ArrayLike
+PythonArray: TypeAlias = npt.ArrayLike
 
 
 class NullStream:
@@ -195,7 +196,7 @@ class FortranPythonConversion:
         fptr: cffi.FFI.CData,
         ptr_offset: int = 0,
         swap_axes: Optional[Tuple[int, int]] = None,
-    ) -> np.ndarray:
+    ) -> None:
         """
         Input: Fortran data pointed to by fptr and of shape dim = (i, j, k)
         Output: C-ordered double precision NumPy data of shape (i, j, k)
