@@ -35,6 +35,6 @@ class MAPLMemoryFactory:
         return self._f_py_converter.fortran_to_python(fptr, dim=list(shape))
 
     def get_resource(
-        self, name: str, dtype: npt.DTypeLike, dims: list[str], default: bool = False
+        self, name: str, dtype: npt.DTypeLike, default: bool = False
     ) -> npt.DTypeLike:
         return self._bridge.MAPL_GetResource(self._state, name, dtype, default=default)
