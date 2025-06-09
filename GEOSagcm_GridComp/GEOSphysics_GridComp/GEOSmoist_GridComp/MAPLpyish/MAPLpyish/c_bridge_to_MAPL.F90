@@ -142,7 +142,7 @@ module C_BRIDGE_TO_MAPL
     
     end function
 
-    function MAPLpy_GetResource_Int(mapl_metacomp_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Int")
+    function MAPLpy_GetResource_Int32(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Int32")
         ! Read in STATE
         type(c_ptr), intent(in) :: mapl_metacomp_c_ptr
         type(MAPL_MetaComp), pointer :: state
@@ -154,7 +154,31 @@ module C_BRIDGE_TO_MAPL
         logical(c_bool), intent(in), value :: default
 
         ! Results
-        integer(c_int) :: result
+        integer(C_INT32_T) :: result
+
+        ! Turn the C string into a Fortran string
+        call c_f_pointer(name_c_ptr, name)
+
+        ! Turn the ESMF State C pointer to a Fortran pointer
+        call c_f_pointer(esmf_state_c_ptr, state)        
+
+        call MAPL_GetResource(state, result, label=trim(name), default=default)
+    
+    end function
+
+        function MAPLpy_GetResource_Int64(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Int64")
+        ! Read in STATE
+        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(ESMF_State), pointer :: state
+
+        ! Read in name
+        type(c_ptr), intent(in), value :: name_c_ptr
+        integer(c_int), intent(in), value :: name_len
+        character(len=name_len,kind=c_char), pointer :: name
+        logical(c_bool), intent(in), value :: default
+
+        ! Results
+        integer(C_INT64_T) :: result
 
         ! Turn the C string into a Fortran string
         call c_f_pointer(name_c_ptr, name)
@@ -187,6 +211,30 @@ module C_BRIDGE_TO_MAPL
         call c_f_pointer(mapl_metacomp_c_ptr, state)        
 
         call MAPL_GetResource(state, result, label=trim(name), default=logical(default))
+    
+    end function
+
+        function MAPLpy_GetResource_Double(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Double")
+        ! Read in STATE
+        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(ESMF_State), pointer :: state
+
+        ! Read in name
+        type(c_ptr), intent(in), value :: name_c_ptr
+        integer(c_int), intent(in), value :: name_len
+        character(len=name_len,kind=c_char), pointer :: name
+        logical(c_bool), intent(in), value :: default
+
+        ! Results
+        real(c_double) :: result
+
+        ! Turn the C string into a Fortran string
+        call c_f_pointer(name_c_ptr, name)
+
+        ! Turn the ESMF State C pointer to a Fortran pointer
+        call c_f_pointer(esmf_state_c_ptr, state)        
+
+        call MAPL_GetResource(state, result, label=trim(name), default=default)
     
     end function
 
