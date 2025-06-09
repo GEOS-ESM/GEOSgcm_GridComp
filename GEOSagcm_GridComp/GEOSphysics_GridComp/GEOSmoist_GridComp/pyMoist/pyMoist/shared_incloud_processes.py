@@ -16,14 +16,7 @@ def ice_fraction_modis(
 ):
     # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
     tc = max(-46.0, min(temp - constants.MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
-    ptc = (
-        7.6725
-        + 1.0118 * tc
-        + 0.1422 * tc ** 2
-        + 0.0106 * tc ** 3
-        + 0.000339 * tc ** 4
-        + 0.00000395 * tc ** 5
-    )
+    ptc = 7.6725 + 1.0118 * tc + 0.1422 * tc**2 + 0.0106 * tc**3 + 0.000339 * tc**4 + 0.00000395 * tc**5
     ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
     return ice_frct
 
@@ -166,28 +159,28 @@ def cloud_effective_radius_ice(
         else:
             BB = -2.0 + log10(WC / 50.0) * (1.0e-3 * (constants.MAPL_TICE - TE) ** 1.5)
         BB = min(max(BB, -6.0), -2.0)
-        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB ** 2 + 2.3696 * BB ** 3
+        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB**2 + 2.3696 * BB**3
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
         TC = TE - constants.MAPL_TICE
         ZFSR = 1.2351 + 0.0105 * TC
-        AA = 45.8966 * (WC ** 0.2214)
-        BB = 0.79570 * (WC ** 0.2535)
+        AA = 45.8966 * (WC**0.2214)
+        BB = 0.79570 * (WC**0.2535)
         RADIUS = ZFSR * (AA + BB * (TE - 83.15))
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
     return RADIUS
 
 
 def fix_up_clouds(
-    q: FloatField,
+    vapor: FloatField,
     t: FloatField,
-    qlls: FloatField,
-    qils: FloatField,
-    clls: FloatField,
-    qlcn: FloatField,
-    qicn: FloatField,
-    clcn: FloatField,
+    large_scale_liquid: FloatField,
+    large_scale_ice: FloatField,
+    large_scale_cloud_fraction: FloatField,
+    convective_liquid: FloatField,
+    convective_ice: FloatField,
+    convective_cloud_fraction: FloatField,
 ) -> None:
     """
     Modify various cloud variables to ensure physical consistency.
@@ -201,77 +194,77 @@ def fix_up_clouds(
             and remove cloud.
 
     Parameters:
-    q (inout): water vapor mixing ratio
+    vapor (inout): water vapor mixing ratio
     t (inout): temperature.
-    qlls (inout): large scale cloud liquid water mixing ratio
-    qils (inout): large scale cloud frozen water mixing ratio
-    clls (inout): large scale cloud fraction
-    qlcn (inout): convective cloud liquid water mixing ratio
-    qicn (inout): convective cloud frozen water mixing ratio
-    clcn (inout): convective cloud fraction
+    large_scale_liquid (inout): large scale cloud liquid water mixing ratio
+    large_scale_ice (inout): large scale cloud frozen water mixing ratio
+    large_scale_cloud_fraction (inout): large scale cloud fraction
+    convective_liquid (inout): convective cloud liquid water mixing ratio
+    convective_ice (inout): convective cloud frozen water mixing ratio
+    convective_cloud_fraction (inout): convective cloud fraction
     """
     with computation(PARALLEL), interval(...):
         # fix small convective cloud fraction
-        if clcn < 1.0e-5:
-            q = q + qlcn + qicn
+        if convective_cloud_fraction < 1.0e-5:
+            vapor = vapor + convective_liquid + convective_ice
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * qlcn
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * qicn
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * convective_liquid
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * convective_ice
             )
-            clcn = 0.0
-            qlcn = 0.0
-            qicn = 0.0
+            convective_cloud_fraction = 0.0
+            convective_liquid = 0.0
+            convective_ice = 0.0
         # fix small large scale cloud fraction
-        if clls < 1.0e-5:
-            q = q + qlls + qils
+        if large_scale_cloud_fraction < 1.0e-5:
+            vapor = vapor + large_scale_liquid + large_scale_ice
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * qlls
-                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * qils
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * large_scale_liquid
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * large_scale_ice
             )
-            clls = 0.0
-            qlls = 0.0
-            qils = 0.0
+            large_scale_cloud_fraction = 0.0
+            large_scale_liquid = 0.0
+            large_scale_ice = 0.0
         # if large scale liquid water conentration is too low
-        if qlls < 1.0e-8:
-            q = q + qlls
-            t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * qlls
-            qlls = 0.0
+        if large_scale_liquid < 1.0e-8:
+            vapor = vapor + large_scale_liquid
+            t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * large_scale_liquid
+            large_scale_liquid = 0.0
         # if large scale frozen water conentration is too low
-        if qils < 1.0e-8:
-            q = q + qils
-            t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * qils
-            qils = 0.0
+        if large_scale_ice < 1.0e-8:
+            vapor = vapor + large_scale_ice
+            t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * large_scale_ice
+            large_scale_ice = 0.0
         # if convective liquid water conentration is too low
-        if qlcn < 1.0e-8:
-            q = q + qlcn
-            t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * qlcn
-            qlcn = 0.0
+        if convective_liquid < 1.0e-8:
+            vapor = vapor + convective_liquid
+            t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * convective_liquid
+            convective_liquid = 0.0
         # if convective frozen water conentration is too low
-        if qicn < 1.0e-8:
-            q = q + qicn
-            t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * qicn
-            qicn = 0.0
+        if convective_ice < 1.0e-8:
+            vapor = vapor + convective_ice
+            t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * convective_ice
+            convective_ice = 0.0
         # if total convective water is too low
-        if (qlcn + qicn) < 1.0e-8:
-            q = q + qlcn + qicn
+        if (convective_liquid + convective_ice) < 1.0e-8:
+            vapor = vapor + convective_liquid + convective_ice
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * qlcn
-                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * qicn
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * convective_liquid
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * convective_ice
             )
-            clcn = 0.0
-            qlcn = 0.0
-            qicn = 0.0
+            convective_cloud_fraction = 0.0
+            convective_liquid = 0.0
+            convective_ice = 0.0
         # if total large scale water is too low
-        if (qlls + qils) < 1.0e-8:
-            q = q + qlls + qils
+        if (large_scale_liquid + large_scale_ice) < 1.0e-8:
+            vapor = vapor + large_scale_liquid + large_scale_ice
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * qlls
-                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * qils
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * large_scale_liquid
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * large_scale_ice
             )
-            clls = 0.0
-            qlls = 0.0
-            qils = 0.0
+            large_scale_cloud_fraction = 0.0
+            large_scale_liquid = 0.0
+            large_scale_ice = 0.0

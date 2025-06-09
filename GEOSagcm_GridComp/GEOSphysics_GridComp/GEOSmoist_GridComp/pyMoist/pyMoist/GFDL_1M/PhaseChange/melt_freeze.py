@@ -6,21 +6,21 @@ from pyMoist.shared_incloud_processes import ice_fraction
 
 
 def melt_freeze(
-    cnv_frc: FloatFieldIJ,
-    srf_type: FloatFieldIJ,
+    convection_fraction: FloatFieldIJ,
+    surface_type: FloatFieldIJ,
     t: FloatField,
-    qlcn: FloatField,
-    qicn: FloatField,
+    liquid: FloatField,
+    ice: FloatField,
 ):
     from __externals__ import DT_MOIST
 
     with computation(PARALLEL), interval(...):
         if t <= constants.MAPL_TICE:
-            f_qi = ice_fraction(t, cnv_frc, srf_type)
-            d_qil = qlcn * (1.0 - exp(-DT_MOIST * f_qi / constants.TAUFRZ))
+            f_qi = ice_fraction(t, convection_fraction, surface_type)
+            d_qil = liquid * (1.0 - exp(-DT_MOIST * f_qi / constants.TAUFRZ))
             d_qil = max(0.0, d_qil)
-            qicn = qicn + d_qil
-            qlcn = qlcn - d_qil
+            ice = ice + d_qil
+            liquid = liquid - d_qil
             t = (
                 t
                 + (
@@ -31,10 +31,10 @@ def melt_freeze(
                 / constants.MAPL_CP
             )
         else:
-            d_qil = -qicn
+            d_qil = -ice
             d_qil = min(0.0, d_qil)
-            qicn = qicn + d_qil
-            qlcn = qlcn - d_qil
+            ice = ice + d_qil
+            liquid = liquid - d_qil
             t = (
                 t
                 + (

@@ -9,6 +9,7 @@ class Outputs:
     rhx: Quantity
     evapc: Quantity
     sublc: Quantity
+    rh_crit: Quantity
 
     @classmethod
     def make(cls, quantity_factory: QuantityFactory):
@@ -18,4 +19,5 @@ class Outputs:
         rhx = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         evapc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         sublc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        return cls(rhx, evapc, sublc)
+        rh_crit = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        return cls(rhx, evapc, sublc, rh_crit)

@@ -128,36 +128,37 @@ class MicrophysicsDriver:
     def __call__(
         self,
         GFDL_1M_config: GFDL1MConfig,
-        qv: FloatField,
-        ql: FloatField,
-        qr: FloatField,
-        qi: FloatField,
-        qs: FloatField,
-        qg: FloatField,
-        qa: FloatField,
-        qn: FloatField,  # NACTL + NACTI
-        qv_dt: FloatField,
-        ql_dt: FloatField,
-        qr_dt: FloatField,
-        qi_dt: FloatField,
-        qs_dt: FloatField,
-        qg_dt: FloatField,
-        qa_dt: FloatField,
-        t_dt: FloatField,
         t: FloatField,
         w: FloatField,
         u: FloatField,
         v: FloatField,
-        u_dt: FloatField,
-        v_dt: FloatField,
         dz: FloatField,
         dp: FloatField,
         area: FloatFieldIJ,
-        fr_land: FloatFieldIJ,
-        cnv_frc: FloatFieldIJ,
-        srf_type: FloatFieldIJ,
-        eis: FloatFieldIJ,
-        rhcrit3d: FloatField,
+        land_fraction: FloatFieldIJ,
+        convection_fraction: FloatFieldIJ,
+        surface_type: FloatFieldIJ,
+        estimated_inversion_strength: FloatFieldIJ,
+        rh_crit: FloatField,
+        vapor: FloatField,
+        liquid: FloatField,
+        rain: FloatField,
+        ice: FloatField,
+        snow: FloatField,
+        graupel: FloatField,
+        cloud_fraction: FloatField,
+        ice_concentration: FloatField,
+        liquid_concentration: FloatField,
+        dvapor_dt: FloatField,
+        dliquid_dt: FloatField,
+        drain_dt: FloatField,
+        dice_dt: FloatField,
+        dsnow_dt: FloatField,
+        dgraupel_dt: FloatField,
+        dcloud_fraction_dt: FloatField,
+        dt_dt: FloatField,
+        du_dt: FloatField,
+        dv_dt: FloatField,
         anv_icefall: Float,
         ls_icefall: Float,
     ):
@@ -172,51 +173,53 @@ class MicrophysicsDriver:
 
         Arguments:
             GFDL_1M_config (in): driver configuration
-            qv: (in): water vapor mixing ratio (kg/kg)
-            ql (in): in cloud liquid mixing radio (kg/kg)
-            qr (in): falling rain (kg/kg)
-            qi (in): in cloud ice mixing radio (kg/kg)
-            qs (in): in cloud snow mixing radio (kg/kg)
-            qg (in): in cloud graupel mixing radio (kg/kg)
-            qa (in): cloud fraction (convective + large scale)
-            qn (in): liquid + ice concentration (m^-3)
-            qv_dt (out): water vapor tendency
-            ql_dt (out): in cloud liquid water tendency
-            qr_dt (out): falling rain tendency
-            qi_dt (out): in cloud frozen water tendency
-            qs_dt (out): in cloud snow tendency
-            qg_dt (out): in cloud graupel tendency
-            qa_dt (out): cloud fraction (convective + large scale) tendency
-            t_dt (out): atmospheric temperature tendency
             t (in): atmospheric temperature (K)
             w (in): vertical velocity (m/s)
             u (in): eastward winds (m/s)
             v (in): northward winds (m/s)
-            u_dt (out): eastward wind tendency
-            v_dt (out): northward wind tendency
             dz (in): layer thickness (m)
             dp (in): change in pressure between model levels (mb)
             area (in): grid cell area
-            fr_land (in): land fraction
-            cnv_frc (in): convection fraction
-            srf_type (in): surface type
-            eis (in): estimated inversion strength
-            rhcrit3d (out): details unknown
-            anv_icefall (in): internal parameter related to convective cloud icefall
-            ls_icefall (in): internal parameter related to large scale cloud icefall
+            land_fraction (in): land fraction
+            convection_fraction (in): convection fraction
+            surface_type (in): surface type
+            estimated_inversion_strength (in): estimated inversion strength
+            rh_crit (in): critical relative humidity for pdf
+            vapor: (in): water vapor mixing ratio (kg/kg)
+            liquid (in): in cloud liquid mixing radio (kg/kg)
+            rain (in): falling rain (kg/kg)
+            ice (in): in cloud ice mixing radio (kg/kg)
+            snow (in): in cloud snow mixing radio (kg/kg)
+            graupel (in): in cloud graupel mixing radio (kg/kg)
+            cloud_fraction (in): cloud fraction (convective + large scale)
+            ice_concentration (in): ice concentration (m^-3)
+            liquid_concentration (in): liquid concentration (m^-3)
+            dvapor_dt (out): water vapor tendency
+            dliquid_dt (out): in cloud liquid water tendency
+            drain_dt (out): falling rain tendency
+            dice_dt (out): in cloud frozen water tendency
+            dsnow_dt (out): in cloud snow tendency
+            dgraupel_dt (out): in cloud graupel tendency
+            dcloud_fraction_dt (out): cloud fraction (convective + large scale) tendency
+            dt_dt (out): atmospheric temperature tendency
+            du_dt (out): eastward wind tendency
+            dv_dt (out): northward wind tendency
+            anv_icefall (in): internal parameter related to convective cloud icefall, details unknown
+            ls_icefall (in): internal parameter related to large scale cloud icefall, details unknown
         """
         self._setup(
             t,
             dp,
-            rhcrit3d,
-            qv,
-            ql,
-            qi,
-            qr,
-            qs,
-            qg,
-            qa,
-            qn,
+            rh_crit,
+            vapor,
+            liquid,
+            ice,
+            rain,
+            snow,
+            graupel,
+            cloud_fraction,
+            ice_concentration,
+            liquid_concentration,
             self.temporaries.qv0,
             self.temporaries.ql0,
             self.temporaries.qr0,
@@ -276,7 +279,7 @@ class MicrophysicsDriver:
                 self.temporaries.vti,
                 self.temporaries.vts,
                 self.temporaries.vtg,
-                cnv_frc,
+                convection_fraction,
                 anv_icefall,
                 ls_icefall,
             )
@@ -330,7 +333,7 @@ class MicrophysicsDriver:
                 self.temporaries.m1_rain,
                 self.temporaries.w1,
                 self.temporaries.rh_limited,
-                eis,
+                estimated_inversion_strength,
                 self.temporaries.onemsig,
                 self.temporaries.rain1,
                 self.temporaries.ze,
@@ -372,8 +375,8 @@ class MicrophysicsDriver:
                 self.outputs.isubl,
                 self.temporaries.rh_limited,
                 self.temporaries.ccn,
-                cnv_frc,
-                srf_type,
+                convection_fraction,
+                surface_type,
                 self.sat_tables.table2,
                 self.sat_tables.table3,
                 self.sat_tables.des2,
@@ -394,24 +397,24 @@ class MicrophysicsDriver:
             self.temporaries.qi1,
             self.temporaries.qs1,
             self.temporaries.qg1,
-            qv_dt,
-            ql_dt,
-            qr_dt,
-            qi_dt,
-            qs_dt,
-            qg_dt,
-            qa_dt,
+            dvapor_dt,
+            dliquid_dt,
+            drain_dt,
+            dice_dt,
+            dsnow_dt,
+            dgraupel_dt,
+            dcloud_fraction_dt,
             t,
             self.temporaries.t1,
-            t_dt,
+            dt_dt,
             w,
             self.temporaries.w1,
             u,
             self.temporaries.u1,
-            u_dt,
+            du_dt,
             v,
             self.temporaries.v1,
-            v_dt,
+            dv_dt,
             dp,
             self.temporaries.dp1,
             self.temporaries.m1,

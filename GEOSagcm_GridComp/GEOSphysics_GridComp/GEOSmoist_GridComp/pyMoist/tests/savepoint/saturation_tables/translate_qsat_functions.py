@@ -22,6 +22,8 @@ def _stencil(
     out_qsatlqu: FloatField,
     out_dqsi: FloatField,
     out_dqsl: FloatField,
+    out_qs: FloatField,
+    out_dq: FloatField,
     ese: GlobalTable_saturaion_tables,
     esw: GlobalTable_saturaion_tables,
     esx: GlobalTable_saturaion_tables,
@@ -29,21 +31,21 @@ def _stencil(
     lqu: Float,
 ):
     with computation(PARALLEL), interval(...):
-        out_qsatice, out_dqsi = saturation_specific_humidity_frozen_surface(
-            ese, frz, t, p * 100, True, True
-        )
-        out_qsatlqu, out_dqsl = saturation_specific_humidity_liquid_surface(
-            esw, lqu, t, p * 100, True, True
-        )
+        out_qsatice, out_dqsi = saturation_specific_humidity_frozen_surface(ese, frz, t, p * 100, True, True)
+        out_qsatlqu, out_dqsl = saturation_specific_humidity_liquid_surface(esw, lqu, t, p * 100, True, True)
+
+        out_qs, out_dq = saturation_specific_humidity(t=t, p=p * 100, ese=ese, esx=esx)
 
 
 def _stencil_2d(
-    t: FloatFieldIJ,
-    p: FloatFieldIJ,
+    t_2d: FloatFieldIJ,
+    p_2d: FloatFieldIJ,
     out_qsatice_2d: FloatFieldIJ,
     out_qsatlqu_2d: FloatFieldIJ,
     out_dqsi_2d: FloatFieldIJ,
     out_dqsl_2d: FloatFieldIJ,
+    out_qs_2d: FloatFieldIJ,
+    out_dq_2d: FloatFieldIJ,
     ese: GlobalTable_saturaion_tables,
     esw: GlobalTable_saturaion_tables,
     esx: GlobalTable_saturaion_tables,
@@ -52,25 +54,15 @@ def _stencil_2d(
 ):
     with computation(FORWARD), interval(0, 1):
         out_qsatice_2d, out_dqsi_2d = saturation_specific_humidity_frozen_surface(
-            ese, frz, t, p * 100, True, True
+            ese, frz, t_2d, p_2d * 100, True, True
         )
         out_qsatlqu_2d, out_dqsl_2d = saturation_specific_humidity_liquid_surface(
-            esw, lqu, t, p * 100, True, True
+            esw, lqu, t_2d, p_2d * 100, True, True
         )
 
-
-def _saturation_specific_humidity_stencil(
-    t: FloatFieldIJ,
-    p: FloatFieldIJ,
-    out_qs: FloatFieldIJ,
-    out_dq: FloatFieldIJ,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
-):
-    with computation(FORWARD), interval(0, 1):
-        out_qs, out_dq = saturation_specific_humidity(
-            t=t,
-            p=p * 100,
+        out_qs_2d, out_dq_2d = saturation_specific_humidity(
+            t=t_2d,
+            p=p_2d * 100,
             ese=ese,
             esx=esx,
         )
@@ -105,6 +97,10 @@ class Translateqsat_functions(TranslateFortranData2Py):
             "SER_QSAT0_DQ_2D": {},
             "SER_DQSAT0_QS_2D": {},
             "SER_DQSAT0_DQ_2D": {},
+            "SER_QSAT_QS": {},
+            "SER_QSAT_DQ": {},
+            "SER_DQSAT_QS": {},
+            "SER_DQSAT_DQ": {},
         }
 
     def compute(self, inputs):
@@ -141,23 +137,18 @@ class Translateqsat_functions(TranslateFortranData2Py):
         out_qsat_qs_2d = quantity_factory_2d.zeros([X_DIM, Y_DIM], "n/a")
         out_qsat_dq_2d = quantity_factory_2d.zeros([X_DIM, Y_DIM], "n/a")
 
+        out_qs = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        out_dq = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+
         stencil = self.stencil_factory.from_dims_halo(
             func=_stencil,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        origin, domain = self.stencil_factory.grid_indexing.get_origin_domain(
-            dims=[X_DIM, Y_DIM, Z_DIM]
-        )
+        origin, domain = self.stencil_factory.grid_indexing.get_origin_domain(dims=[X_DIM, Y_DIM, Z_DIM])
 
         stencil_2d = stencil_factory_2d.from_origin_domain(
             func=_stencil_2d,
-            origin=(0, 0, 0),
-            domain=domain_2d,
-        )
-
-        saturation_specific_humidity_stencil = stencil_factory_2d.from_origin_domain(
-            func=_saturation_specific_humidity_stencil,
             origin=(0, 0, 0),
             domain=domain_2d,
         )
@@ -169,6 +160,8 @@ class Translateqsat_functions(TranslateFortranData2Py):
             out_qsatlqu=out_qsatlqu,
             out_dqsi=out_dqsi,
             out_dqsl=out_dqsl,
+            out_qs=out_qs,
+            out_dq=out_dq,
             ese=tables.ese,
             esw=tables.esw,
             esx=tables.esx,
@@ -177,26 +170,19 @@ class Translateqsat_functions(TranslateFortranData2Py):
         )
 
         stencil_2d(
-            t=t_2d,
-            p=p_2d,
+            t_2d=t_2d,
+            p_2d=p_2d,
             out_qsatice_2d=out_qsatice_2d,
             out_qsatlqu_2d=out_qsatlqu_2d,
             out_dqsi_2d=out_dqsi_2d,
             out_dqsl_2d=out_dqsl_2d,
+            out_qs_2d=out_qsat_qs_2d,
+            out_dq_2d=out_qsat_dq_2d,
             ese=tables.ese,
             esw=tables.esw,
             esx=tables.esx,
             frz=tables.frz,
             lqu=tables.lqu,
-        )
-
-        saturation_specific_humidity_stencil(
-            t=t_2d,
-            p=p_2d,
-            out_qs=out_qsat_qs_2d,
-            out_dq=out_qsat_dq_2d,
-            ese=tables.ese,
-            esx=tables.esx,
         )
 
         inputs.update(
@@ -213,6 +199,10 @@ class Translateqsat_functions(TranslateFortranData2Py):
                 "SER_QSAT0_DQ_2D": out_qsat_dq_2d.field,
                 "SER_DQSAT0_QS_2D": out_qsat_qs_2d.field,
                 "SER_DQSAT0_DQ_2D": out_qsat_dq_2d.field,
+                "SER_QSAT_QS": out_qs.field,
+                "SER_QSAT_DQ": out_dq.field,
+                "SER_DQSAT_QS": out_qs.field,
+                "SER_DQSAT_DQ": out_dq.field,
             }
         )
 

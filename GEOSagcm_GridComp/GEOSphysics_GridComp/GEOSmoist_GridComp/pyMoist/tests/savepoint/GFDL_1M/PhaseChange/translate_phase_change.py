@@ -16,42 +16,43 @@ class Translatephase_change(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {
             "estimated_inversion_strength": grid.compute_dict() | {"serialname": "EIS"},
             "p_mb": grid.compute_dict() | {"serialname": "PLmb"},
-            "klcl": grid.compute_dict() | {"serialname": "KLCL"},
+            "k_lcl": grid.compute_dict() | {"serialname": "KLCL"},
             "p_interface_mb": grid.compute_dict() | {"serialname": "PLEmb"},
             "area": grid.compute_dict() | {"serialname": "AREA"},
-            "cnv_frc": grid.compute_dict() | {"serialname": "CNV_FRC"},
-            "srf_type": grid.compute_dict() | {"serialname": "SRF_TYPE"},
+            "convection_fraction": grid.compute_dict() | {"serialname": "CNV_FRC"},
+            "surface_type": grid.compute_dict() | {"serialname": "SRF_TYPE"},
             "t": grid.compute_dict() | {"serialname": "T"},
-            "qlcn": grid.compute_dict() | {"serialname": "QLCN"},
-            "qicn": grid.compute_dict() | {"serialname": "QICN"},
-            "qlls": grid.compute_dict() | {"serialname": "QLLS"},
-            "qils": grid.compute_dict() | {"serialname": "QILS"},
-            "q": grid.compute_dict() | {"serialname": "Q"},
-            "clls": grid.compute_dict() | {"serialname": "CLLS"},
-            "clcn": grid.compute_dict() | {"serialname": "CLCN"},
+            "convective_liquid": grid.compute_dict() | {"serialname": "QLCN"},
+            "convective_ice": grid.compute_dict() | {"serialname": "QICN"},
+            "large_scale_liquid": grid.compute_dict() | {"serialname": "QLLS"},
+            "large_scale_ice": grid.compute_dict() | {"serialname": "QILS"},
+            "vapor": grid.compute_dict() | {"serialname": "Q"},
+            "large_scale_cloud_fraction": grid.compute_dict() | {"serialname": "CLLS"},
+            "convective_cloud_fraction": grid.compute_dict() | {"serialname": "CLCN"},
             "nactl": grid.compute_dict() | {"serialname": "NACTL"},
             "nacti": grid.compute_dict() | {"serialname": "NACTI"},
-            "qst": grid.compute_dict() | {"serialname": "QST"},
+            "qsat": grid.compute_dict() | {"serialname": "QST"},
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
         del (
             self.out_vars["estimated_inversion_strength"],
             self.out_vars["p_mb"],
-            self.out_vars["klcl"],
+            self.out_vars["k_lcl"],
             self.out_vars["p_interface_mb"],
             self.out_vars["area"],
-            self.out_vars["cnv_frc"],
-            self.out_vars["srf_type"],
+            self.out_vars["convection_fraction"],
+            self.out_vars["surface_type"],
             self.out_vars["nactl"],
             self.out_vars["nacti"],
-            self.out_vars["qst"],
+            self.out_vars["qsat"],
         )
         self.out_vars.update(
             {
                 "RHX": grid.compute_dict(),
                 "EVAPC": grid.compute_dict(),
                 "SUBLC": grid.compute_dict(),
+                "RHCRIT3D": grid.compute_dict(),
             }
         )
 
@@ -88,6 +89,7 @@ class Translatephase_change(TranslateFortranData2Py):
                 "RHX": phase_change.outputs.rhx,
                 "EVAPC": phase_change.outputs.evapc,
                 "SUBLC": phase_change.outputs.sublc,
+                "RHCRIT3D": phase_change.outputs.rh_crit,
             }
         )
         return inputs

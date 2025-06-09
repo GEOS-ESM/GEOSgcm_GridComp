@@ -8,26 +8,26 @@ from pyMoist.shared_incloud_processes import cloud_effective_radius_liquid
 def evaporate(
     p_mb: FloatField,
     t: FloatField,
-    q: FloatField,
-    qlcn: FloatField,
-    qicn: FloatField,
-    clcn: FloatField,
+    vapor: FloatField,
+    convective_liquid: FloatField,
+    convective_ice: FloatField,
+    convective_cloud_fraction: FloatField,
     nactl: FloatField,
     nacti: FloatField,
-    qst: FloatField,
+    qsat: FloatField,
     evapc: FloatField,
 ):
     from __externals__ import CCW_EVAP_EFF, DT_MOIST
 
     with computation(PARALLEL), interval(...):
-        evapc = q
+        evapc = vapor
         rh_crit = 1
         # Evaporation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         es = (
-            100.0 * p_mb * qst / (constants.EPSILON + (1.0 - constants.EPSILON) * qst)
+            100.0 * p_mb * qsat / (constants.EPSILON + (1.0 - constants.EPSILON) * qsat)
         )  # (100's <-^ convert from mbar to Pa)
-        rhx = min(q / qst, 1.00)
+        rhx = min(vapor / qsat, 1.00)
         k1 = (
             (constants.MAPL_LATENT_HEAT_VAPORIZATION ** 2)
             * constants.RHO_W
@@ -41,26 +41,26 @@ def evaporate(
         )
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
         # for increased diffusivity at lower pressure
-        if clcn > 0.0 and qlcn > 0.0:
-            qcm = qlcn / clcn
+        if convective_cloud_fraction > 0.0 and convective_liquid > 0.0:
+            qcm = convective_liquid / convective_cloud_fraction
         else:
             qcm = 0.0
         radius = cloud_effective_radius_liquid(p_mb, t, qcm, nactl, nacti)
         if rhx < rh_crit and radius > 0.0:
             evap = (
                 CCW_EVAP_EFF
-                * qlcn
+                * convective_liquid
                 * DT_MOIST
                 * (rh_crit - rhx)
                 / ((k1 + k2) * radius ** 2)
             )
-            evap = min(evap, qlcn)
+            evap = min(evap, convective_liquid)
         else:
             evap = 0.0
-        qc = qlcn + qicn
+        qc = convective_liquid + convective_ice
         if qc > 0.0:
-            clcn = clcn * (qc - evap) / qc
-        q = q + evap
-        qlcn = qlcn - evap
+            convective_cloud_fraction = convective_cloud_fraction * (qc - evap) / qc
+        vapor = vapor + evap
+        convective_liquid = convective_liquid - evap
         t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CPDRY) * evap
-        evapc = (q - evapc) / DT_MOIST
+        evapc = (vapor - evapc) / DT_MOIST

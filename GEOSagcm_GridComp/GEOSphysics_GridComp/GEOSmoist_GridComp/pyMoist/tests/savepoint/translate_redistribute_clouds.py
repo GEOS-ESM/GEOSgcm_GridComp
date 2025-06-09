@@ -1,12 +1,13 @@
 from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.redistribute_clouds import RedistributeClouds
+from ndsl.stencils.testing.grid import Grid
 
 
 class TranslateRedistributeClouds(TranslateFortranData2Py):
     def __init__(
         self,
-        grid,
+        grid: Grid,
         namelist: Namelist,
         stencil_factory: StencilFactory,
     ):
@@ -18,50 +19,35 @@ class TranslateRedistributeClouds(TranslateFortranData2Py):
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
-            "RAD_CF": {},
-            "RAD_QL": {},
-            "RAD_QI": {},
-            "CLCN": {},
-            "CLLS": {},
-            "QLCN": {},
-            "QLLS": {},
-            "QICN": {},
-            "QILS": {},
-            "RAD_QV": {},
-            "T": {},
+            "cloud_fraction": grid.compute_dict() | {"serialname": "RAD_CF"},
+            "convective_cloud_fraction": grid.compute_dict() | {"serialname": "CLCN"},
+            "large_scale_cloud_fraction": grid.compute_dict() | {"serialname": "CLLS"},
+            "liquid": grid.compute_dict() | {"serialname": "RAD_QL"},
+            "convective_liquid": grid.compute_dict() | {"serialname": "QLCN"},
+            "large_scale_liquid": grid.compute_dict() | {"serialname": "QLLS"},
+            "ice": grid.compute_dict() | {"serialname": "RAD_QI"},
+            "convective_ice": grid.compute_dict() | {"serialname": "QICN"},
+            "large_scale_ice": grid.compute_dict() | {"serialname": "QILS"},
+            "vapor": grid.compute_dict() | {"serialname": "RAD_QV"},
+            "temperature": grid.compute_dict() | {"serialname": "T"},
         }
-
-        # Float Inputs
-        # self.in_vars["parameters"] = ["alhlbcp", "alhsbcp"]
 
         # FloatField Outputs
-        self.out_vars = {
-            "RAD_CF": self.grid.compute_dict(),
-            "RAD_QL": self.grid.compute_dict(),
-            "RAD_QI": self.grid.compute_dict(),
-            "CLCN": self.grid.compute_dict(),
-            "CLLS": self.grid.compute_dict(),
-            "QLCN": self.grid.compute_dict(),
-            "QLLS": self.grid.compute_dict(),
-            "QICN": self.grid.compute_dict(),
-            "QILS": self.grid.compute_dict(),
-            "RAD_QV": self.grid.compute_dict(),
-            "T": self.grid.compute_dict(),
-        }
+        self.out_vars = self.in_vars["data_vars"].copy()
 
     # Calculated Outputs
     def compute_from_storage(self, inputs):
         self.compute_func(**inputs)
         return {
-            "RAD_CF": inputs["RAD_CF"],
-            "RAD_QL": inputs["RAD_QL"],
-            "RAD_QI": inputs["RAD_QI"],
-            "CLCN": inputs["CLCN"],
-            "CLLS": inputs["CLLS"],
-            "QLCN": inputs["QLCN"],
-            "QLLS": inputs["QLLS"],
-            "QICN": inputs["QICN"],
-            "QILS": inputs["QILS"],
-            "RAD_QV": inputs["RAD_QV"],
-            "T": inputs["T"],
+            "cloud_fraction": inputs["cloud_fraction"],
+            "convective_cloud_fraction": inputs["convective_cloud_fraction"],
+            "large_scale_cloud_fraction": inputs["large_scale_cloud_fraction"],
+            "liquid": inputs["liquid"],
+            "convective_liquid": inputs["convective_liquid"],
+            "large_scale_liquid": inputs["large_scale_liquid"],
+            "ice": inputs["ice"],
+            "convective_ice": inputs["convective_ice"],
+            "large_scale_ice": inputs["large_scale_ice"],
+            "vapor": inputs["vapor"],
+            "temperature": inputs["temperature"],
         }

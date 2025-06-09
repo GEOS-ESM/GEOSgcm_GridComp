@@ -127,46 +127,47 @@ class PhaseChange:
         phase_change_config: PhaseChangeConfiguration,
         estimated_inversion_strength: FloatFieldIJ,
         p_mb: FloatField,
-        klcl: FloatFieldIJ,
+        k_lcl: FloatFieldIJ,
         p_interface_mb: FloatField,
         area: FloatFieldIJ,
-        cnv_frc: FloatFieldIJ,
-        srf_type: FloatFieldIJ,
+        convection_fraction: FloatFieldIJ,
+        surface_type: FloatFieldIJ,
         t: FloatField,
-        qlcn: FloatField,
-        qicn: FloatField,
-        qlls: FloatField,
-        qils: FloatField,
-        q: FloatField,
-        clls: FloatField,
-        clcn: FloatField,
+        convective_liquid: FloatField,
+        convective_ice: FloatField,
+        large_scale_liquid: FloatField,
+        large_scale_ice: FloatField,
+        vapor: FloatField,
+        large_scale_cloud_fraction: FloatField,
+        convective_cloud_fraction: FloatField,
         nactl: FloatField,
         nacti: FloatField,
-        qst: FloatField,
+        qsat: FloatField,
     ):
         self._rh_calculations(
-            eis=estimated_inversion_strength,
+            estimated_inversion_strength=estimated_inversion_strength,
             minrhcrit=self.temporaries.minrhcrit,
             p_mb=p_mb,
             p_interface_mb=p_interface_mb,
             area=area,
             alpha=self.temporaries.alpha,
-            klcl=klcl,
+            k_lcl=k_lcl,
+            rh_crit_3d=self.outputs.rh_crit,
         )
 
         self._hydrostatic_pdf(
             alpha=self.temporaries.alpha,
-            cnv_frc=cnv_frc,
-            srf_type=srf_type,
+            convection_fraction=convection_fraction,
+            surface_type=surface_type,
             p_mb=p_mb,
-            q=q,
-            qlls=qlls,
-            qlcn=qlcn,
-            qils=qils,
-            qicn=qicn,
+            vapor=vapor,
+            large_scale_liquid=large_scale_liquid,
+            convective_liquid=convective_liquid,
+            large_scale_ice=large_scale_ice,
+            convective_ice=convective_ice,
             t=t,
-            clls=clls,
-            clcn=clcn,
+            large_scale_cloud_fraction=large_scale_cloud_fraction,
+            convective_cloud_fraction=convective_cloud_fraction,
             nacti=nacti,
             rhx=self.outputs.rhx,
             ese=self.tables.ese,
@@ -177,20 +178,20 @@ class PhaseChange:
         )
 
         if self.phase_change_config.DO_MELT_FREEZE:
-            self._meltfrz(cnv_frc, srf_type, t, qlcn, qicn)
-            self._meltfrz(cnv_frc, srf_type, t, qlls, qils)
+            self._meltfrz(convection_fraction, surface_type, t, convective_liquid, convective_ice)
+            self._meltfrz(convection_fraction, surface_type, t, large_scale_liquid, large_scale_ice)
 
         if self.phase_change_config.CCW_EVAP_EFF > 0.0:
             self._evap(
                 p_mb,
                 t,
-                q,
-                qlcn,
-                qicn,
-                clcn,
+                vapor,
+                convective_liquid,
+                convective_ice,
+                convective_cloud_fraction,
                 nactl,
                 nacti,
-                qst,
+                qsat,
                 self.outputs.evapc,
             )
 
@@ -198,14 +199,23 @@ class PhaseChange:
             self._subl(
                 p_mb,
                 t,
-                q,
-                qlcn,
-                qicn,
-                clcn,
+                vapor,
+                convective_liquid,
+                convective_ice,
+                convective_cloud_fraction,
                 nactl,
                 nacti,
-                qst,
+                qsat,
                 self.outputs.sublc,
             )
 
-        self._fix_up_clouds(q, t, qlls, qils, clls, qlcn, qicn, clcn)
+        self._fix_up_clouds(
+            vapor,
+            t,
+            large_scale_liquid,
+            large_scale_ice,
+            large_scale_cloud_fraction,
+            convective_liquid,
+            convective_ice,
+            convective_cloud_fraction,
+        )
