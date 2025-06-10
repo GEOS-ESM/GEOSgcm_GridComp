@@ -121,6 +121,31 @@ module C_BRIDGE_TO_MAPL
     
     end function
 
+    function MAPLpy_GetResource_Float(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Float")
+        ! Read in STATE
+        type(c_ptr), intent(in) :: state_c_ptr
+        type(MAPL_MetaComp), pointer :: state
+
+        ! Read in name
+        type(c_ptr), intent(in), value :: name_c_ptr
+        integer(c_int), intent(in), value :: name_len
+        character(len=name_len,kind=c_char), pointer :: name
+        real(c_float), intent(in), value :: default
+
+        ! Results & local
+        real(c_float) :: result
+        real(kind=4) :: local_r, local_d
+
+        ! Make pointer & string fortran from C
+        call c_f_pointer(name_c_ptr, name)
+        call c_f_pointer(state_c_ptr, state)        
+
+        ! Use fortran type & cast back to C types
+        local_d = default
+        call MAPL_GetResource(state, local_r, label=trim(name), default=local_d)       
+        result = local_r
+    end function
+
     function MAPLpy_GetResource_Bool(mapl_metacomp_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Bool")
         ! Read in STATE
         type(c_ptr), intent(in) :: mapl_metacomp_c_ptr
@@ -134,6 +159,7 @@ module C_BRIDGE_TO_MAPL
 
         ! Results
         logical(c_bool) :: result
+        logical :: local_r, local_d
 
         ! Turn the C string into a Fortran string
         call c_f_pointer(name_c_ptr, name)
@@ -141,7 +167,9 @@ module C_BRIDGE_TO_MAPL
         ! Turn the ESMF State C pointer to a Fortran pointer
         call c_f_pointer(mapl_metacomp_c_ptr, state)        
 
-        call MAPL_GetResource(state, result, label=trim(name), default=logical(default))
+        local_d = default
+        call MAPL_GetResource(state, local_r, label=trim(name), default=local_d)
+        result = local_r
     
     end function
 
@@ -154,18 +182,19 @@ module C_BRIDGE_TO_MAPL
         type(c_ptr), intent(in), value :: name_c_ptr
         integer(c_int), intent(in), value :: name_len
         character(len=name_len,kind=c_char), pointer :: name
-        logical(c_bool), intent(in), value :: default
+        integer(C_INT32_T), intent(in), value :: default
 
         ! Results
         integer(C_INT32_T) :: result
+        integer(kind=4) :: local_r, local_d
 
-        ! Turn the C string into a Fortran string
+        ! Make pointer & string fortran from C
         call c_f_pointer(name_c_ptr, name)
+        call c_f_pointer(state_c_ptr, state)              
 
-        ! Turn the ESMF State C pointer to a Fortran pointer
-        call c_f_pointer(state_c_ptr, state)        
-
-        call MAPL_GetResource(state, result, label=trim(name), default=default)
+        local_d = default
+        call MAPL_GetResource(state, local_r, label=trim(name), default=local_d)
+        result = local_r
     
     end function
 
@@ -192,30 +221,6 @@ module C_BRIDGE_TO_MAPL
     !     call MAPL_GetResource(state, result, label=trim(name), default=logical(default))
     
     ! end function
-
-    function MAPLpy_GetResource_Float(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Float")
-        ! Read in STATE
-        type(c_ptr), intent(in) :: state_c_ptr
-        type(MAPL_MetaComp), pointer :: state
-
-        ! Read in name
-        type(c_ptr), intent(in), value :: name_c_ptr
-        integer(c_int), intent(in), value :: name_len
-        character(len=name_len,kind=c_char), pointer :: name
-        logical(c_bool), intent(in), value :: default
-
-        ! Results
-        real(c_float) :: result
-
-        ! Turn the C string into a Fortran string
-        call c_f_pointer(name_c_ptr, name)
-
-        ! Turn the ESMF State C pointer to a Fortran pointer
-        call c_f_pointer(state_c_ptr, state)        
-
-        call MAPL_GetResource(state, result, label=trim(name), default=logical(default))
-    
-    end function
 
     ! function MAPLpy_GetResource_Double(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Double")
     !     ! Read in STATE
