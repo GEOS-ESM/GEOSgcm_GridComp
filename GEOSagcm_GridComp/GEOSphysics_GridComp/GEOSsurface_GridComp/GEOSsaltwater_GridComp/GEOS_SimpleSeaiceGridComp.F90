@@ -2184,7 +2184,7 @@ contains
        if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
 
        if (seaIceT_extData) then
-         if(associated(HSNO )) HSNO = (DT*(SNO + ICEF + FRZR - EVP))/water_RHO('fresh_water')
+         if(associated(HSNO )) HSNO = (DT*(SNO + ICEF - EVP))/water_RHO('fresh_water')
          if(associated(SEAICETHICKNESSe )) SEAICETHICKNESSe = SEAICETHICKNESSi
        endif
 

@@ -3491,7 +3491,7 @@ contains
     if(associated(USTARI))   USTARI     = sqrt(sqrt(TAUXBOT**2+TAUYBOT**2)/MAPL_RHO_SEAWATER)
 
     if(associated(PR_C5)) then
-          PR_C5 = FRCICE * (PLS + PCU + FRZR)
+          PR_C5 = FRCICE * (PLS + PCU) ! as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
           where(FRCICE == 0.0)
              PR_C5 = 0.0
           endwhere
@@ -4660,7 +4660,7 @@ contains
              VOLSNODB        =  VOLSNO(K,NSUB)
              APONDNDB        =  APONDN(K,NSUB)
              HPONDNDB        =  HPONDN(K,NSUB)
-             FRAINDB         =  PCU(K) + PLS(K) + FRZR(K)
+             FRAINDB         =  PCU(K) + PLS(K) ! as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
              call compute_ponds(1, 1,                      &
                            1, 1, 1, 1,                     &
                            MELTTDB, MELTSDB, FRAINDB,      &

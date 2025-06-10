@@ -2513,7 +2513,7 @@ contains
 ! Aggregate imports if required
 !-----------------------------------
 
-    RAIN = PLS + PCU + FRZR
+    RAIN = PLS + PCU ! + FRZR  as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
 
     SNOW = SNO + ICEF
 
