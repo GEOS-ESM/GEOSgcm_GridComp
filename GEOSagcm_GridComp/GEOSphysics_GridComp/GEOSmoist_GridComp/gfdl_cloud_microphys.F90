@@ -849,7 +849,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         !
         ! if (id_droplets > 0) then
         ! do k = ktop, kbot
-        ! qn2 (i, j, k) = ccn (k)
+        ! qn2 (i, j, k) = ccn_l (k)
         ! enddo
         ! endif
 
@@ -996,7 +996,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            if (qadum(k) >= onemsig) then
             if (tz (k) > t_wfr) then
                 qc = fac_rc * ccn (k) / den (k)
                 dq = ql (k) - qc
@@ -1010,7 +1009,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                                                      max(qadum(k)*(qi (k)+ql (k)     ),qcmin) ) )
                 endif
             endif
-            endif
         enddo
         
     else
@@ -1022,7 +1020,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
 
         do k = ktop, kbot
-            if (qadum(k) >= onemsig) then
             if (tz (k) > t_wfr + dt_fr) then
                 dl (k) = min (max (qcmin, dl (k)), 0.5 * ql (k))
                 ! --------------------------------------------------------------------
@@ -1046,7 +1043,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     qa (k) = max(0.0,min(1.,qa (k) * max(qadum(k)*(qi (k)+ql (k)     ),0.0  ) / &
                                                      max(qadum(k)*(qi (k)+ql (k)+sink),qcmin) ) )
                 endif
-            endif
             endif
         enddo
 
@@ -1389,7 +1385,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
       else    
         qadum = 1.0
       endif
-      if (qadum >= onemsig) then
 
         ql = qlk (k)/qadum
         qi = qik (k)/qadum
@@ -1439,8 +1434,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
         ! Revert In-Cloud condensate
         qlk (k) = ql*qadum
         qik (k) = qi*qadum
-
-      endif
 
     enddo
 

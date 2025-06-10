@@ -6696,6 +6696,7 @@ end subroutine RUN1
 
       integer :: I,J,L
       real    :: CBl, wsp, FKV_temp
+      real    :: CBl2D(IM,JM), SIGMA
       real, parameter :: C_TOFD = 9.031E-09 * 12.0
 
       if (C_B > 0.0) then
@@ -6719,7 +6720,13 @@ end subroutine RUN1
       else
     ! C_TOFD is the end product of all coeficients in eq 16 of Beljaars, 2003 (doi: 10.1256/qj.03.73)
     ! C_B is a factor used to amplify the variance of the filtered topography
-      CBl = C_TOFD * C_B**2
+    ! resolution dependent amplification factor based on Arakawa sigma function of cell area
+      do J = 1, JM
+        do I = 1, IM
+           SIGMA = MAX(1.e-9,MIN(1.0,1.0-0.9839*EXP(-0.09835*(SQRT(AREA(i,j))/750.0))))**2 
+           CBl2D(I,J) = C_TOFD * (ABS(C_B)*SIGMA + (1.0-SIGMA))**2
+        end do
+      end do
       do L = LM, 1, -1
         do J = 1, JM
           do I = 1, IM
@@ -6727,7 +6734,7 @@ end subroutine RUN1
             if (VARFLT(i,j) > 0.0 .AND. Z(I,J,L) < 4.0*LAMBDA_B) then
                 wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
                 FKV_temp = exp(-1*(Z(I,J,L)/LAMBDA_B)**1.5) * Z(I,J,L)**(-1.2)
-                FKV_temp = CBl * VARFLT(i,j) * FKV_temp * wsp
+                FKV_temp = CBl2D(I,J) * VARFLT(i,j) * FKV_temp * wsp
                 FKV(I,J,L)  = MIN(FKV_LIM,FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))) ! include limit on this forcing for stability
                 FKV_temp = FKV(I,J,L)/(PLE(I,J,L)-PLE(I,J,L-1))
                 BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
