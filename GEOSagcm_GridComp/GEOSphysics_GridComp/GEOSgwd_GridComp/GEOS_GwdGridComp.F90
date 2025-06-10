@@ -44,7 +44,8 @@ module GEOS_GwdGridCompMod
    use mapl3g_generic, only: MAPL_GridCompGet
    use mapl3g_generic, only: MAPL_GridCompGetResource
    use mapl3g_generic, only: MAPL_GridCompGetInternalState
-   use mapl3g_generic, only: MAPL_GridCompAddFieldSpec
+   use mapl3g_generic, only: MAPL_GridCompAddSpec
+   use mapl3g_generic, only: MAPL_RESTART_SKIP
    use mapl3g_VerticalStaggerLoc, only: VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE
    use mapl3g_UngriddedDims, only: UngriddedDims
    use mapl3g_Geom_API, only: MAPL_GridGet
