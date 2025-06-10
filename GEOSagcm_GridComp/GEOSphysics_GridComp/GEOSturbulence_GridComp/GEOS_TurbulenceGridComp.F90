@@ -2451,11 +2451,40 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'TRACER1',                                   &
+       LONG_NAME  = 'test_tracer_1',                             &
+       UNITS      = '1',                                         &
+       DEFAULT    = 0.,                                          &
+       FRIENDLYTO = 'TURBULENCE',                                &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'TRACER2',                                   &
+       LONG_NAME  = 'test_tracer_2',                             &
+       UNITS      = '1',                                         &
+       DEFAULT    = 0.,                                          &
+       FRIENDLYTO = 'TURBULENCE',                                &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'TRACER3',                                   &
+       LONG_NAME  = 'test_tracer_3',                             &
+       UNITS      = '1',                                         &
+       DEFAULT    = 0.,                                          &
+       FRIENDLYTO = 'TURBULENCE',                                &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'TKH',                                       &
        LONG_NAME  = 'turbulent_diffusivity_from_SHOC',        &
        UNITS      = 'm+2 s-1',                                   &
        DEFAULT    = 0.0,                                           &
-       FRIENDLYTO = 'TURBULENCE',                             &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -2619,7 +2648,7 @@ end if
 
 ! SHOC-related variables
     integer                             :: DO_SHOC, SCM_SL
-    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2,WQT_DC,PDF_A
+    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2,WQT_DC,PDF_A,TRACER1,TRACER2,TRACER3
 
     real, dimension(:,:), pointer   :: EVAP, SH
 
@@ -2785,6 +2814,12 @@ end if
     call MAPL_GetPointer(INTERNAL, QT2,    'QT2',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, PDF_A,  'PDF_A',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, TRACER1,    'TRACER1',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, TRACER2,    'TRACER2',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, TRACER3,    'TRACER3',     RC=STATUS)
     VERIFY_(STATUS)
 
 !
@@ -3434,7 +3469,7 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_tke,    'EDMF_TKE', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_mfx,    'EDMF_MF', RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_mfx,    'EDMF_MF', ALLOC=PDFALLOC, RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  ssrcmf,      'SSRCMF', RC=STATUS)
      VERIFY_(STATUS)
@@ -3472,7 +3507,7 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_moist_qc,  'EDMF_MOIST_QC',    RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_entx,      'EDMF_ENTR',  RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_entx,      'EDMF_ENTR', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_depth,     'EDMF_DEPTH', RC=STATUS)
      VERIFY_(STATUS)
@@ -3637,6 +3672,8 @@ end if
     if ( DOMF /= 0 ) then
       ! number of updrafts
       call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=10,    RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%DOTRACERS, "EDMF_DOTRACERS:",     default=.false., RC=STATUS)
+
       ! boundaries for the updraft area (min/max sigma of w pdf)
       call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.2,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    RC=STATUS)
@@ -3804,6 +3841,9 @@ end if
                     EVAP,                     & 
                     FRLAND,                   &
                     ZPBL,                     &
+                    tracer1,                  &
+                    tracer2,                  &
+                    tracer3,                  &
 !                   MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP inputs
                     !== Outputs for trisolver ==
                     ae3,                      &
@@ -5179,7 +5219,7 @@ end if
     logical                             :: WEIGHTED
     logical                             :: OPT      ! selects algorithm in VTRISOLVE
 
-    real,               dimension(IM,JM,LM) :: DP
+    real,               dimension(IM,JM,LM) :: DP,DZ
     real(kind=MAPL_R8), dimension(IM,JM,LM) :: SX
 
     real :: DOMF
@@ -5190,6 +5230,11 @@ end if
     integer :: SCM_SL, SCM_SL_FLUX
     real    :: SCM_SH, SCM_EVAP
 
+    ! EDMF transport
+    real    :: EntExp, EntDyn
+    real, dimension(LM) :: UPSX
+    real, dimension(:,:,:), pointer :: edmf_mf, edmf_entx
+    
     ! pointers to exports after diffuse
     real, dimension(:,:,:), pointer     :: UAFDIFFUSE, VAFDIFFUSE, SAFDIFFUSE, QAFDIFFUSE
 
@@ -5201,6 +5246,7 @@ end if
     real, dimension(IM,JM)              :: SH_SPRAY
     real, dimension(IM,JM)              :: LH_SPRAY
 
+    
     real, parameter :: SH_SPRAY_MIN = -500.0
     real, parameter :: SH_SPRAY_MAX =  500.0
     real, parameter :: LH_SPRAY_MIN = -500.0
@@ -5269,6 +5315,11 @@ end if
     call MAPL_GetPointer(EXPORT, SAFDIFFUSE ,  'SAFDIFFUSE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QAFDIFFUSE ,  'QAFDIFFUSE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
+
+    call MAPL_GetPointer(EXPORT,  edmf_mf,    'EDMF_MF', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  edmf_entx,  'EDMF_ENTR', RC=STATUS); VERIFY_(STATUS)
+
+    
 ! Count the firlds in TR...
 !--------------------------
 
@@ -5295,6 +5346,7 @@ end if
 !-----------------------------
 
     DP = PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
+    DZ = ZLE(:,:,0:LM-1)-ZLE(:,:,1:LM)
 
 ! Loop over all quantities to be diffused.
 !----------------------------------------
@@ -5402,6 +5454,33 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
        
        SX = S
 
+       ! Calculate EDMF tracer transport
+       if (MFPARAMS%DOTRACERS) then
+         do I=1,IM
+           do J=1,JM
+             if (edmf_mf(I,J,LM-1).gt.1e-8) then              
+               UPSX(:)   = 0.
+               UPSX(LM-1) = SX(I,J,LM)
+               L = LM-2
+               do while (edmf_mf(I,J,L).gt.1e-8 .and. L.gt.1)
+                 entdyn  = max(0.,edmf_mf(I,J,L)-edmf_mf(I,J,L+1))/(edmf_mf(I,J,L+1)*DZ(I,J,L+1)) ! dynamical entrainment
+                 entexp  = exp(-(entdyn+EDMF_ENTX(I,J,L+1))*DZ(I,J,L+1)) 
+
+                 ! Effect of mixing on tracers in updraft
+                 UPSX(L)  = SX(I,J,L+1)*(1.-entexp)+UPSX(L+1)*entexp
+                 L = L-1
+               end do
+               do ll = 1,2    ! substep
+                 SX(I,J,2:LM) = SX(I,J,2:LM) + 0.5*(DT*MAPL_GRAV/DP(I,J,L+1))* &
+                                      ( edmf_mf(I,J,2:LM)   * (UPSX(2:LM)   - SX(I,J,2:LM) )  &
+                                       -edmf_mf(I,J,1:LM-1) * (UPSX(1:LM-1) - SX(I,J,1:LM-1) ) )
+               end do
+             end if
+           end do ! JM
+        end do ! IM
+        SX = max( 0., SX )  ! prevent negative values from roundoff
+       end if
+       
  elseif (trim(name) =='S') then
           CX => CT
           DX => DKS
@@ -5417,13 +5496,13 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           DX => DKQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQL
-!          OPT = .FALSE.
+          OPT = .FALSE.
  elseif (trim(name)=='QILS') then
           CX => CQ
           DX => DKQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
-!          OPT = .FALSE.
+          OPT = .FALSE.
  elseif (trim(name)=='U') then       
          CX => CU
          DX => DKV

@@ -1845,6 +1845,14 @@ contains
           if ( SCM_CORIOLIS == 0 ) then
              UTDYN(:,:,l) = 0.
              VTDYN(:,:,l) = 0.
+          else if (SCM_CORIOLIS == -1 ) then
+             if (L.gt.110.) then
+               UTDYN(:,:,l) = F0*( V(:,:,l) - V(:,:,110) )
+               VTDYN(:,:,l) = -F0*( U(:,:,l) - U(:,:,110) )
+             else
+               UTDYN(:,:,l) = 0.
+	       VTDYN(:,:,l) = 0.
+             end if
           else
              UTDYN(:,:,l) = F0*( V(:,:,l) - SCM_VG )
              VTDYN(:,:,l) = -F0*( U(:,:,l) - SCM_UG )
@@ -2033,7 +2041,7 @@ contains
          elseif (CFCSE .eq. 11) then
            zrel=2500.
            zrelp=3000.
-           qfloor=0.  !3.55e-3  ! not used in Blossey LES, but recommended for future
+           qfloor=3.55e-3  ! not used in Blossey LES, but recommended for future
          elseif (CFCSE .eq. 6) then
            zrel=4000.
            zrelp=4800.
