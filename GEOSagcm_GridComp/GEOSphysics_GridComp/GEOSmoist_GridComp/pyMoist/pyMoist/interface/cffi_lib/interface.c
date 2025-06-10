@@ -2,7 +2,7 @@
 #include <time.h>
 #include "moist.h"
 
-extern int pymoist_interface_c_init(moist_flags_t *flags)
+extern int pymoist_interface_c_init(void *import, void *export, void *internal, void *mapl_comp, moist_flags_t *flags)
 {
     // Check magic number
     if (flags->mn_123456789 != 123456789)
@@ -11,7 +11,7 @@ extern int pymoist_interface_c_init(moist_flags_t *flags)
         exit(-1);
     }
 
-    int return_code = pymoist_interface_py_init(flags);
+    int return_code = pymoist_interface_py_init(import, export, internal, mapl_comp, flags);
 
     if (return_code < 0)
     {
@@ -116,6 +116,15 @@ void pymoist_interface_c_run_AerActivation(
         nacti,
         nwfa,
         nactl);
+    if (return_code < 0)
+    {
+        exit(return_code);
+    }
+}
+
+void pymoist_interface_c_run_GFDL_1M()
+{
+    int return_code = pymoist_interface_py_run_GFDL_1M();
     if (return_code < 0)
     {
         exit(return_code);
