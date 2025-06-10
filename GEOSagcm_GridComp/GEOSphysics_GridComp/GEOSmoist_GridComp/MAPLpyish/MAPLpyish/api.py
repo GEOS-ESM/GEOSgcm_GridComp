@@ -111,7 +111,7 @@ class MAPLBridge:
         self, state: MAPLState, name: str, alloc: bool = False
     ) -> CVoidPointer:
         return self.mapl_c_bridge.MAPLpy_GetPointer(  # type: ignore
-            state, self.ffi.new("char[]", name.encode()), len(name)
+            state, self.ffi.new("char[]", name.encode()), len(name), alloc
         )
 
     def MAPL_GetResource(
@@ -152,4 +152,4 @@ class MAPLBridge:
         )
 
     def associated(self, ptr: CVoidPointer):
-        return self.mapl_c_bridge.associated(ptr)  # type: ignore
+        return self.mapl_c_bridge.MAPLpy_Associated(ptr)  # type: ignore

@@ -121,6 +121,19 @@ module C_BRIDGE_TO_MAPL
     
     end function
 
+    function MAPLpy_Associated(pointer_to_test) result(result) bind(c, name="MAPLpy_Associated")
+
+        type(c_ptr), intent(in) :: pointer_to_test
+        type(ESMF_TimeInterval), pointer :: state
+        logical(c_bool) :: result
+
+        real, pointer :: f_ptr
+
+        call c_f_pointer(pointer_to_test, f_ptr)
+        result = associated(f_ptr)
+
+    end function
+
     function MAPLpy_GetResource_Float(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Float")
         ! Read in STATE
         type(c_ptr), intent(in) :: state_c_ptr
@@ -259,19 +272,6 @@ module C_BRIDGE_TO_MAPL
 
         call ESMF_TimeIntervalGet(state, S_R8=result)
     
-    end function
-
-    function MAPLpy_Associated(pointer_to_test) result(result) bind(c, name="MAPLpy_Associated")
-
-        type(c_ptr), intent(in) :: pointer_to_test
-        type(ESMF_TimeInterval), pointer :: state
-        logical(c_bool) :: result
-
-        real, pointer :: f_ptr
-
-        call c_f_pointer(pointer_to_test, f_ptr)
-        result = associated(f_ptr)
-
     end function
 
 end module C_BRIDGE_TO_MAPL
