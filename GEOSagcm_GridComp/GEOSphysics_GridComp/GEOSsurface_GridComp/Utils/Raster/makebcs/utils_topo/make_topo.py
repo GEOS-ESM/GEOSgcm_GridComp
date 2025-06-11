@@ -21,7 +21,7 @@ smoothmap ={ 'C12'  : 773.91,
              'C1080': 10,
              'C1120': 8.26,
              'C1440': 6.43,
-             'C1539': 6,
+             'C1536': 6,
              'C2160': 5,
              'C2880': 3.21,
              'C5760': 1.61
@@ -71,7 +71,7 @@ set resolutions = {RESOLUTIONS}
 set lowres  = 0
 set highres = 0
 set SG001 = ( 270 540 1080 2160 )
-set SG002 = ( 1539 )
+set SG002 = ( 1536 )
 
 # Update flags based on requested resolutions
 foreach res ($resolutions)
@@ -326,7 +326,7 @@ def ask_questions():
             "type": "checkbox",
             "name": "SG002",
             "message": "Select resolution of SG002 grid: \n",
-            "choices": ['C1539'],
+            "choices": ['C1536'],
             "when": lambda x : 'SG002' in x.get('resolutions'),
          },
 
