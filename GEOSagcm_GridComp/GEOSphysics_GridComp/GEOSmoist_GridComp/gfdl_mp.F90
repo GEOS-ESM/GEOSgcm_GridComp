@@ -399,6 +399,7 @@ module gfdl_mp_mod
     real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
     real :: tau_l2v  =  300.0 ! cloud water to water vapor evaporation time scale (s)
     real :: tau_revp =  600.0 ! rain evaporation time scale (s)
+    real :: tau_frez =  600.0 ! cloud liquid freezing time scale (s)
     real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
@@ -1477,16 +1478,18 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qaz (k) = qa (i, k)
             zez (k) = zet (i, k)
 
+            dp0 (k) = delp (i, k)
+
             if (do_inline_mp) then
                 q_cond = qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
                 con_r8 = one_r8 - (qvz (k) + q_cond)
+                dp (k) = delp (i, k) * con_r8
+                con_r8 = one_r8 / con_r8
             else
-                con_r8 = one_r8 - qvz (k)
+                dp (k) = dp0 (k) * (one_r8 - qvz (k))
+                con_r8 = dp0 (k) / dp (k)
             endif
 
-            dp0 (k) = delp (i, k)
-            dp (k) = delp (i, k) * con_r8
-            con_r8 = one_r8 / con_r8
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1746,12 +1749,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             if (do_inline_mp) then
                 q_cond = qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
                 con_r8 = one_r8 + qvz (k) + q_cond
+                dp  (k) = dp (k) * con_r8
+                con_r8 = one_r8 / con_r8 
             else
-                con_r8 = one_r8 + qvz (k)
+                con_r8 = dp (k) / dp0 (k)
             endif
 
-            dp  (k) = dp (k) * con_r8
-            con_r8 = one_r8 / con_r8
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1780,7 +1783,14 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qi_dt (i, k) = rdt * (qiz (k) - qi (i, k))
             qs_dt (i, k) = rdt * (qsz (k) - qs (i, k))
             qg_dt (i, k) = rdt * (qgz (k) - qg (i, k))
-            qa_dt (i, k) = rdt * (qaz (k) - qa (i, k))
+
+            if (.not. do_qa) then 
+               qa_dt (i, k) = rdt * ( &
+                      qa (i, k) * SQRT( (qiz(k)+qlz(k)) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
+                      qa (i, k) )                                                          ! Old Cloud
+            else
+               qa_dt (i, k) = rdt * (qaz (k) - qa (i, k))
+            endif
 
             ! -----------------------------------------------------------------------
             ! calculate some more variables needed outside
@@ -3281,7 +3291,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
                 if (dq .gt. 0.) then
 
-                    c_praut (k) = cpaut * exp (so1 * log (ccn (k) * rhow))
+                    c_praut (k) = cpaut * exp (so1 * log (ccn (k) * den (k) * rhow))
                     sink = min (1., dq / dl (k)) * dts * c_praut (k) * den (k) * &
                         exp (so3 * log (ql (k)))
                     sink = min (ql0_max/qadum(k), ql (k), sink) * qadum (k)
@@ -3315,7 +3325,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
                 if (dq .gt. 0.) then
 
-                    c_praut (k) = cpaut * exp (so1 * log (ccn (k) * rhow))
+                    c_praut (k) = cpaut * exp (so1 * log (ccn (k) * den (k) * rhow))
                     sink = min (dq, dts * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
                     sink = min (ql0_max/qadum(k), ql (k), sink) * qadum (k)
                     mppar = mppar + sink * dp (k) * convt
@@ -3486,9 +3496,10 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     integer :: k
 
     real :: ql, qi, qim, qadum, newliq, newice
-    real :: tmp, sink, fac_imlt
+    real :: tmp, sink, fac_imlt, fac_frez
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
+    fac_frez = 1. - exp (- dts / tau_frez)
 
     do k = ks, ke
 
@@ -3529,7 +3540,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
-            sink = min(ql, newice, ql * (tice - tz (k)) / icpk (k))
+            sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
@@ -3653,7 +3664,9 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     integer :: k
 
     real :: ql, qi, qadum, newice 
-    real :: tmp, sink, qim
+    real :: tmp, sink, qim, fac_frez
+
+    fac_frez = 1. - exp (- dts / tau_frez)
 
     do k = ks, ke
 
@@ -3670,7 +3683,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
-            sink = min(ql, newice, ql * (tice - tz (k)) / icpk (k))
+            sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
@@ -4496,7 +4509,7 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
 
     integer :: k
 
-    real :: sink, tmp, tin, qpz, rh, dqdt, qsw, qsi, rh_adj
+    real :: sink, subl, tin, qpz, rh, dqdt, qsw, qsi, rh_adj
     real :: dq, factor, fac_l2v, rh_tem
 
     fac_l2v = 1. - exp (- dts / tau_l2v)
@@ -4536,12 +4549,11 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
             if (rh .lt. rh_adj) then
                 ! instant evap of all liquid & ice
                 sink = ql (k)
-                tmp = qi (k)
+                subl = qi (k)
             else
                 ! partial evap of liquid
                 tin = tz (k)
                 qsw = wqs (tin, den (k), dqdt)
-                rh_tem = qpz / qsw
                 dq = qsw - qv (k)
                 if (dq > qvmin) then
                    if (do_evap_timescale) then
@@ -4550,22 +4562,22 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                       factor = 1.
                    endif  
                    sink = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dqdt))
-                   if (use_rhc_cevap .and. rh_tem .ge. rhc_cevap) then
+                   if (use_rhc_cevap .and. ((qpz / qsw) .ge. rhc_cevap)) then
                       sink = 0.
                    endif
                 endif
                 ! nothing for ice
-                tmp = 0.0
+                subl = 0.0
              endif
 
              sink = sink*onemsig ! resolution dependent evap 0:1 coarse:fine
-             tmp  = tmp*onemsig ! resolution dependent subl 0:1 coarse:fine
+             subl = subl*onemsig ! resolution dependent subl 0:1 coarse:fine
 
              mppe1 = mppe1 + sink * dp (k) * convt
-             mpps1 = mpps1 + tmp * dp (k) * convt
+             mpps1 = mpps1 + subl * dp (k) * convt
 
              call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                 sink + tmp, - sink, 0., - tmp, 0., 0., te8 (k), cvm (k), tz (k), &
+                 sink + subl, - sink, 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
                  lcpk (k), icpk (k), tcpk (k), tcp3 (k))
 
         endif
@@ -4684,16 +4696,14 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
 
     integer :: k
 
-    real :: sink, tc
+    real :: ifrac, sink
                 
     do k = ks, ke
 
-        tc = t_wfr - tz (k)
+        ifrac = ice_fraction(real(tz(k)),cnv_fraction,srf_type)
+        if (ifrac .eq. 1. .and. ql (k) .gt. qcmin) then
 
-        if (tc .gt. 0. .and. ql (k) .gt. qcmin) then
-
-            sink = ql (k) * tc / dt_fr
-            sink = min (ql (k), sink, tc / icpk (k))
+            sink = ql (k)
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
@@ -4886,7 +4896,7 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             tin = tz (k)
             qsi = iqs (tin, den (k), dqdt)
             dq = qv (k) - qsi
-            tmp = dq / (1. + tcpk (k) * dqdt)
+            tmp = min( qi (k), dq / (1. + tcpk (k) * dqdt) )
 
             if (qi (k) .gt. qcmin) then
                 if (do_psd_ice_num) then
