@@ -12,6 +12,7 @@ def parse_args():
     p = argparse.ArgumentParser(description='convert old style cube to new style cube input')
     p.add_argument('-i','--input',type=str,help='input file',default=None)
     p.add_argument('-o','--output',type=str,help='output file',default=None)
+    p.add_argument('-g','--grid',type=str,help='grid identifier (e.g., sg001, sg002)',default='regular')
     return vars(p.parse_args())
 
 #------------------
@@ -23,6 +24,17 @@ Output_file  = comm_args['output']
 
 ncFid = Dataset(Input_file, mode='r')
 ncFidOut = Dataset(Output_file, mode='w', format='NETCDF4')
+
+grid_type = comm_args['grid']
+
+if grid_type == 'sg001':
+    ncFidOut.STRETCH_FACTOR = 2.5
+    ncFidOut.TARGET_LAT = 39.5
+    ncFidOut.TARGET_LON = -98.35
+elif grid_type == 'sg002':
+    ncFidOut.STRETCH_FACTOR = 3.0
+    ncFidOut.TARGET_LAT = 39.5
+    ncFidOut.TARGET_LON = -98.35
 
 #---------------------
 # Extracting variables
