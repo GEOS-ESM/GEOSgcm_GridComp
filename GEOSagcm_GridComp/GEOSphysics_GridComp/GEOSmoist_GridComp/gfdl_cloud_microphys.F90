@@ -1940,10 +1940,10 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         if (do_evap) then
            evap = 0.0
            subl = 0.0
+           qpz = qv (k) + ql (k) + qi (k)
            tin = tz (k) - (lhl (k) * (ql (k) + qi (k)) + lhi (k) * qi (k)) / (c_air + &
                  qpz * c_vap + qr (k) * c_liq + (qs (k) + qg (k)) * c_ice)
            if (tin > t_sub + 6.) then
-             qpz = qv (k) + ql (k) + qi (k)
              rh = qpz / iqs1 (tin, den (k))
              if (rh < rh_adj) then
                 ! instant evap of all liquid
