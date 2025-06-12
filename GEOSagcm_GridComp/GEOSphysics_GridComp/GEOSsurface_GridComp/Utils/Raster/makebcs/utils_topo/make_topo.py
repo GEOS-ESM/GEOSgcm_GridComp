@@ -119,7 +119,7 @@ foreach im ($resolutions)
   set TARGET_LON = ''
   set TARGET_LAT = ''
   set STRETCH_FACTOR = ''
-  set grid_type = regular
+  set grid_type = ''
 
   foreach sg1 ($SG001)
      if ($im == $sg1) then
@@ -224,7 +224,13 @@ _EOF_
    cd $output_dir
    set arr = `ls *.nc`
    echo $arr
-   ../bin/scrip_to_restart_topo.py -i $arr -o gwd_internal_rst -g $grid_type
+
+   if ( "$grid_type" != "" ) then
+     ../bin/scrip_to_restart_topo.py -i $arr -o gwd_internal_rst -g $grid_type
+   else
+     ../bin/scrip_to_restart_topo.py -i $arr -o gwd_internal_rst
+   endif   
+
    ../bin/convert_to_gmao_output_topo.x -i $arr --im $im
    cd ..
    @ count = $count + 1
