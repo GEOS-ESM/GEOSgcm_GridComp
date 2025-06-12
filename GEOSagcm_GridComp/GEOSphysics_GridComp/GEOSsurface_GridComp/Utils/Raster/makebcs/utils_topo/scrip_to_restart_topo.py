@@ -12,7 +12,7 @@ def parse_args():
     p = argparse.ArgumentParser(description='convert old style cube to new style cube input')
     p.add_argument('-i','--input',type=str,help='input file',default=None)
     p.add_argument('-o','--output',type=str,help='output file',default=None)
-    p.add_argument('-g','--grid',type=str,help='grid identifier (e.g., sg001, sg002)',default='regular')
+    p.add_argument('-g','--grid',type=str,help='grid identifier (e.g., sg001, sg002)',default=None)
     return vars(p.parse_args())
 
 #------------------
