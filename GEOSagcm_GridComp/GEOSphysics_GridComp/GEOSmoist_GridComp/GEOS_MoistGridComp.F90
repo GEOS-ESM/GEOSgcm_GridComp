@@ -5666,42 +5666,42 @@ contains
        if (SH_MD_DP) then
          if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          if (adjustl(SHALLOW_OPTION)=="UW"     ) then
-          !if (DEBUG_MST) then
-          !call MAPL_MaxMin('MST: Q_AF_UW  ', Q)
-          !call MAPL_MaxMin('MST: T_AF_UW  ', T)
-          !call MAPL_MaxMin('MST: U_AF_UW  ', U)
-          !call MAPL_MaxMin('MST: V_AF_UW  ', V)
-          !endif
+           if (DEBUG_MST) then
+           call MAPL_MaxMin('MST: Q_AF_UW  ', Q)
+           call MAPL_MaxMin('MST: T_AF_UW  ', T)
+           call MAPL_MaxMin('MST: U_AF_UW  ', U)
+           call MAPL_MaxMin('MST: V_AF_UW  ', V)
+           endif
          endif
          if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          if (adjustl(CONVPAR_OPTION)=="GF"     ) then
-          !if (DEBUG_MST) then
-          !call MAPL_MaxMin('MST: Q_AF_GF  ', Q)
-          !call MAPL_MaxMin('MST: T_AF_GF  ', T)
-          !call MAPL_MaxMin('MST: U_AF_GF  ', U)
-          !call MAPL_MaxMin('MST: V_AF_GF  ', V)
-          !endif
+           if (DEBUG_MST) then
+           call MAPL_MaxMin('MST: Q_AF_GF  ', Q)
+           call MAPL_MaxMin('MST: T_AF_GF  ', T)
+           call MAPL_MaxMin('MST: U_AF_GF  ', U)
+           call MAPL_MaxMin('MST: V_AF_GF  ', V)
+           endif
          endif
        else
          if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          if (adjustl(CONVPAR_OPTION)=="GF"     ) then
-          !if (DEBUG_MST) then
-          !call MAPL_MaxMin('MST: Q_AF_GF  ', Q)
-          !call MAPL_MaxMin('MST: T_AF_GF  ', T)
-          !call MAPL_MaxMin('MST: U_AF_GF  ', U)
-          !call MAPL_MaxMin('MST: V_AF_GF  ', V)
-          !endif
+           if (DEBUG_MST) then
+           call MAPL_MaxMin('MST: Q_AF_GF  ', Q)
+           call MAPL_MaxMin('MST: T_AF_GF  ', T)
+           call MAPL_MaxMin('MST: U_AF_GF  ', U)
+           call MAPL_MaxMin('MST: V_AF_GF  ', V)
+           endif
          endif
          if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          if (adjustl(SHALLOW_OPTION)=="UW"     ) then
-          !if (DEBUG_MST) then
-          !call MAPL_MaxMin('MST: Q_AF_UW  ', Q)
-          !call MAPL_MaxMin('MST: T_AF_UW  ', T)
-          !call MAPL_MaxMin('MST: U_AF_UW  ', U)
-          !call MAPL_MaxMin('MST: V_AF_UW  ', V)
-          !endif
+           if (DEBUG_MST) then
+           call MAPL_MaxMin('MST: Q_AF_UW  ', Q)
+           call MAPL_MaxMin('MST: T_AF_UW  ', T)
+           call MAPL_MaxMin('MST: U_AF_UW  ', U)
+           call MAPL_MaxMin('MST: V_AF_UW  ', V)
+           endif
          endif
        endif
 
@@ -5747,10 +5747,10 @@ contains
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
 
        if (DEBUG_MST) then
-        !call MAPL_MaxMin('MST: Q_AF_MP  ', Q)      
-         call MAPL_MaxMin('MST: T_AF_MP  ', T)
-        !call MAPL_MaxMin('MST: U_AF_MP  ', U)
-        !call MAPL_MaxMin('MST: V_AF_MP  ', V)
+          call MAPL_MaxMin('MST: Q_AF_MP  ', Q)      
+          call MAPL_MaxMin('MST: T_AF_MP  ', T)
+          call MAPL_MaxMin('MST: U_AF_MP  ', U)
+          call MAPL_MaxMin('MST: V_AF_MP  ', V)
        endif
 
        ! Exports
@@ -5781,7 +5781,6 @@ contains
              PTR3D=0.0
            end where
          endif
-
          call MAPL_GetPointer(EXPORT, PTR3D, 'SAT_RAT', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) then
            where (CFICE .lt. 0.99 .and. QST3 .gt. 1.0e-20)
@@ -5814,7 +5813,8 @@ contains
          LS_PRCP = LS_PRCP + PTR2D
          Q = Q - TMP3D
          T = T + (MAPL_ALHL/MAPL_CP)*TMP3D
-
+        
+        
          DTDT_ER = (T -  DTDT_ER)/DT_MOIST
          DQVDT_ER = (Q - DQVDT_ER)/DT_MOIST
 

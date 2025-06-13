@@ -3101,7 +3101,7 @@ loop0:       do k=kts,ktf
             dz = max(z_cup(i,ktop(i))-z_cup(i,kbcon(i)),1.e-16)
           ! time-scale cape removal from Bechtold et al. 2008
             tau_0 = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)
-          ! time-scale for increasing resolution
+          ! prefered time-scale for increasing resolution
             tau_1 = tau_deep*(1.0-sig(i))
           ! Combine
             tau_ecmwf(i)= tau_0 + tau_1*(1.0-cnvfrc(i))

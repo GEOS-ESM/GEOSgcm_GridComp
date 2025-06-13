@@ -15,8 +15,8 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
-  use gfdl2_cloud_microphys_mod
-  use gfdl_mp_mod
+  use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
+  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail
 
   implicit none
 
@@ -265,12 +265,13 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    if (GFDL_MP3) then 
-      if (DT_R8 <= 300.0) do_hail = .true.
+    if (DT_R8 < 300.0) then 
+      call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      do_hail = .true.
       call gfdl_mp_init(LHYDROSTATIC)
       call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_mp v3 in non-generic GC INIT")
     else
+      call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
       call gfdl_cloud_microphys_init()
       call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_cloud_microphys in non-generic GC INIT")
     endif
@@ -640,7 +641,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! Do CLOUD MACRO below the pressure lid
              if (L >= KLID) then
              ! Put condensates in touch with the PDF
-             if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP
                call hystpdf( &
                       DT_MOIST       , &
                       ALPHA          , &
@@ -674,7 +674,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       WQL(I,J,L)     , &
                       .false.        , &
                       USE_BERGERON)
-             endif
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
              if (LMELTFRZ) then
            ! meltfrz new condensates
@@ -802,12 +801,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = QGRAUPEL
         ! Run the driver
          if (GFDL_MP3) then
-#ifdef SRC
-subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, & 
-        ua, va, delz, delp, dtm, rhcrit, hs, cnv_frc, eis, area, srf_type,    &
-        water, rain, ice, snow, graupel, hydrostatic, is, ie, ks, ke, &
-        prefluxw, prefluxr, prefluxi, prefluxs, prefluxg)
-#endif
          call gfdl_mp_driver( &
                              ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTL, NACTI, &
@@ -823,7 +816,13 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
                                DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, DUDTmic, DVDTmic, DWDTmic, &
                              ! Output mass flux during sedimentation (Pa kg/kg)
-                               PFL_LS, PFR_LS, PFI_LS, PFS_LS, PFG_LS )
+                               PFL_LS(:,:,1:LM), PFR_LS(:,:,1:LM), PFI_LS(:,:,1:LM), PFS_LS(:,:,1:LM), PFG_LS(:,:,1:LM) )
+       ! Convert cloud/precipitation flux exports from (mm/day) to (kg m-2 s-1)
+           PFL_LS = PFL_LS/(86400.0)
+           PFI_LS = PFI_LS/(86400.0)
+           PFR_LS = PFR_LS/(86400.0)
+           PFS_LS = PFS_LS/(86400.0)  
+           PFG_LS = PFG_LS/(86400.0)
          else
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
@@ -847,6 +846,12 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
                              ! constant grid/time information
                                LHYDROSTATIC, LPHYS_HYDROSTATIC, &
                                1,IM, 1,JM, 1,LM, KLID, LM)
+       ! Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
+           PFL_LS = PFL_LS/(MAPL_GRAV*DT_MOIST)
+           PFI_LS = PFI_LS/(MAPL_GRAV*DT_MOIST)
+           PFR_LS = 0.0
+           PFS_LS = 0.0
+           PFG_LS = 0.0
          endif
      ! Apply tendencies
          T = T + DTDTmic * DT_MOIST
@@ -873,19 +878,13 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
          LS_SNR  = PRCP_SNOW
          ICE     = PRCP_ICE + PRCP_GRAUPEL
          FRZR    = 0.0
-     ! Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
-         PFL_LS = PFL_LS/(MAPL_GRAV*DT_MOIST)
-         PFI_LS = PFI_LS/(MAPL_GRAV*DT_MOIST)
-         PFR_LS = PFR_LS/(MAPL_GRAV*DT_MOIST)
-         PFS_LS = PFS_LS/(MAPL_GRAV*DT_MOIST)
-         PFG_LS = PFG_LS/(MAPL_GRAV*DT_MOIST)
      ! Redistribute precipitation fluxes for chemistry
          TMP3D =  MIN(1.0,MAX(QLCN/MAX(RAD_QL,1.E-8),0.0))
-         PFL_AN(:,:,1:LM) = PFL_LS(:,:,1:LM) * TMP3D
-         PFL_LS(:,:,1:LM) = PFL_LS(:,:,1:LM) - PFL_AN(:,:,1:LM)
+         PFL_AN(:,:,1:LM) = (PFL_LS(:,:,1:LM)+PFR_LS(:,:,1:LM)) * TMP3D
+         PFL_LS(:,:,1:LM) = (PFL_LS(:,:,1:LM)+PFR_LS(:,:,1:LM)) - PFL_AN(:,:,1:LM)
          TMP3D =  MIN(1.0,MAX(QICN/MAX(RAD_QI,1.E-8),0.0))
-         PFI_AN(:,:,1:LM) = PFI_LS(:,:,1:LM) * TMP3D
-         PFI_LS(:,:,1:LM) = PFI_LS(:,:,1:LM) - PFI_AN(:,:,1:LM)
+         PFI_AN(:,:,1:LM) = (PFI_LS(:,:,1:LM)+PFS_LS(:,:,1:LM)+PFG_LS(:,:,1:LM)) * TMP3D
+         PFI_LS(:,:,1:LM) = (PFI_LS(:,:,1:LM)+PFS_LS(:,:,1:LM)+PFG_LS(:,:,1:LM)) - PFI_AN(:,:,1:LM)
      ! cleanup suspended precipitation condensates
          call FIX_NEGATIVE_PRECIP(RAD_QR, RAD_QS, RAD_QG)
      ! Fill vapor/rain/snow/graupel state
