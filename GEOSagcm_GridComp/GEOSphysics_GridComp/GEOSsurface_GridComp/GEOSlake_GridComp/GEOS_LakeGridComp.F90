@@ -745,7 +745,7 @@ module GEOS_LakeGridCompMod
      call MAPL_AddImportSpec(GC,                              &
          LONG_NAME          = 'icefall',                          &
          UNITS              = 'kg m-2 s-1',                       &
-         SHORT_NAME         = 'ICEF',                             &
+         SHORT_NAME         = 'ICE',                             &
          DIMS               = MAPL_DimsTileOnly,                  &
          VLOCATION          = MAPL_VLocationNone,                 &
                                                        RC=STATUS  )
@@ -1615,7 +1615,7 @@ contains
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,ICEF   , 'ICEF'   ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,ICEF   , 'ICE'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    RC=STATUS); VERIFY_(STATUS)
@@ -1848,7 +1848,7 @@ contains
           DTX = (DT/LAKECAP)*FR(:,N) ! FR accounts for skin under ice
           SWN =   (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
                   (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
-          DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHL - MAPL_ALHF*(SNO + ICEF) ) !include freezing rainfall with snow for energy needed to melt
+          DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHL - MAPL_ALHF*(SNO + ICEF) ) !include icefall with snow for energy needed to melt
           DTS = DTS   / ( 1.0 + DTX*(BLW + SHD + EVD*MAPL_ALHL) )
           EVP = EVP + EVD * DTS
           SHF = SHF + SHD * DTS
