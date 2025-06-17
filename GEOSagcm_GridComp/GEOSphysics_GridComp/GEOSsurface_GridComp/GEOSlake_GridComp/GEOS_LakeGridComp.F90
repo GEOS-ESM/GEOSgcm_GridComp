@@ -742,6 +742,25 @@ module GEOS_LakeGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC,                              &
+         LONG_NAME          = 'icefall',                          &
+         UNITS              = 'kg m-2 s-1',                       &
+         SHORT_NAME         = 'ICEF',                             &
+         DIMS               = MAPL_DimsTileOnly,                  &
+         VLOCATION          = MAPL_VLocationNone,                 &
+                                                       RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
+         LONG_NAME          = 'freezing_rain_fall',               &
+         UNITS              = 'kg m-2 s-1',                       &
+         SHORT_NAME         = 'FRZR',                             &
+         DIMS               = MAPL_DimsTileOnly,                  &
+         VLOCATION          = MAPL_VLocationNone,                 &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
+
      call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'liquid_water_convective_precipitation', &
         UNITS              = 'kg m-2 s-1',                        &
@@ -1519,7 +1538,9 @@ contains
    real, pointer, dimension(:)    :: SH 
    real, pointer, dimension(:)    :: DEV   
    real, pointer, dimension(:)    :: DSH 
-   real, pointer, dimension(:)    :: SNO    
+   real, pointer, dimension(:)    :: SNO
+   real, pointer, dimension(:)    :: ICEF
+   real, pointer, dimension(:)    :: FRZR    
    real, pointer, dimension(:)    :: PCU
    real, pointer, dimension(:)    :: PLS    
    real, pointer, dimension(:)    :: PS     
@@ -1594,6 +1615,8 @@ contains
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,ICEF   , 'ICEF'   ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS); VERIFY_(STATUS)
@@ -1825,7 +1848,7 @@ contains
           DTX = (DT/LAKECAP)*FR(:,N) ! FR accounts for skin under ice
           SWN =   (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
                   (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
-          DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHL - MAPL_ALHF*SNO )
+          DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHL - MAPL_ALHF*(SNO + ICEF) ) !include freezing rainfall with snow for energy needed to melt
           DTS = DTS   / ( 1.0 + DTX*(BLW + SHD + EVD*MAPL_ALHL) )
           EVP = EVP + EVD * DTS
           SHF = SHF + SHD * DTS
@@ -1842,7 +1865,7 @@ contains
           if(associated(SUBLIM)) SUBLIM = EVP*FR(:,N)
        end if
 
-       RNF = PCU + PLS + SNO - EVP
+       RNF = PCU + PLS + SNO + ICEF - EVP !Supercooled rainfall (FRZR is included in PCU + PLS as of June 2025 github pull request #111)
 
 ! Update surface temperature and moisture
 !----------------------------------------
