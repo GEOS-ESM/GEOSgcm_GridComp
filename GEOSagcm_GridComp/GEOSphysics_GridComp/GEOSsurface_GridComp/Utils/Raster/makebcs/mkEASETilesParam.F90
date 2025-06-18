@@ -38,7 +38,7 @@ PROGRAM mkEASETilesParam
   use MAPL_SortMod
   use MAPL_ConstantsMod,     only : MAPL_PI_r8, MAPL_RADIUS
   use MAPL_ExceptionHandling
-  use MAPL,                  only : ease_extent, ease_convert, ease_inverse, MAPL_WriteTilingNC4
+  use MAPL,                  only : MAPL_ease_extent, MAPL_ease_convert, MAPL_ease_inverse, MAPL_WriteTilingNC4
   use netcdf
   
   implicit none
@@ -157,7 +157,7 @@ PROGRAM mkEASETilesParam
   
   EASElabel = trim(EASELabel_)
   
-  call ease_extent( EASELabel, nc_ease, nr_ease, _RC)
+  call MAPL_ease_extent( EASELabel, nc_ease, nr_ease, _RC)
   
   write(nc_string, '(i0)') nc_ease
   write(nr_string, '(i0)') nr_ease
@@ -883,20 +883,20 @@ PROGRAM mkEASETilesParam
      ! get min/max lat/lon of EASE grid cell
      ! BUG: This is *not* the desired min/max lat/lon of the land tile!!!
      
-     call EASE_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon, _RC) 
+     call MAPL_ease_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon, _RC) 
      
      mnx = clon - dx_ease
      mxx = clon + dx_ease
      
      jgv = real(jg-1) + 0.5
      
-     call EASE_inverse( EASELabel, real(ig-1), jgv, clat, clon, _RC) 
+     call MAPL_ease_inverse( EASELabel, real(ig-1), jgv, clat, clon, _RC) 
      
      mny = clat
      
      jgv = real(jg-1) - 0.5
      
-     call EASE_inverse( EASELabel, real(ig-1), jgv, clat, clon, _RC) 
+     call MAPL_ease_inverse( EASELabel, real(ig-1), jgv, clat, clon, _RC) 
      
      mxy = clat 
      
@@ -920,7 +920,7 @@ PROGRAM mkEASETilesParam
      !       contributing raster grid cells, which is *not* the same for all EASE grid cells;
      !       that is, cannot use exact (globally constant) area of EASE grid  cell.
      
-     call EASE_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon, _RC)
+     call MAPL_ease_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon, _RC)
      
      fr_gcm = tile_area(nn) / ease_grid_area((jg-1)*nc_ease+ig)
      
@@ -1031,7 +1031,7 @@ PROGRAM mkEASETilesParam
 !!!           do i = 1, nc_ease+1
 !!!              x = real(i-1)        -0.5
 !!!              y = real(nr_ease - j)+0.5
-!!!              call EASE_inverse(MGRID, x, y, yout, xout)
+!!!              call MAPL_ease_inverse(MGRID, x, y, yout, xout)
 !!!              ys (i,j) = dble(yout)
 !!!              xs (i,j) = dble(xout)
 !!!           end do

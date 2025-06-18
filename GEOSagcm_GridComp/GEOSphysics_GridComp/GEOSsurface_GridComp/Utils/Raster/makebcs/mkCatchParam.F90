@@ -21,7 +21,7 @@ PROGRAM mkCatchParam
 !  
 ! Sarith Mahanama - March 23, 2012 
 ! Email: sarith.p.mahanama@nasa.gov
-  use MAPL, only: ease_extent, MAPL_ReadTilingNC4 
+  use MAPL, only: MAPL_ease_extent, MAPL_ReadTilingNC4 
   use rmTinyCatchParaMod 
   use process_hres_data
   use MAPL_ExceptionHandling
@@ -193,7 +193,7 @@ integer :: n_threads=1
   
    if (index(Gridname,'EASEv') /=0) then
       ! here Gridname has alias EASELabel
-      call ease_extent(Gridname, nc_ease, nr_ease, _RC)
+      call MAPL_ease_extent(Gridname, nc_ease, nr_ease, _RC)
       write(nc_string, '(i0)') nc_ease
       write(nr_string, '(i0)') nr_ease
       Gridname = trim(Gridname)//'_'//trim(nc_string)//'x'//trim(nr_string)
