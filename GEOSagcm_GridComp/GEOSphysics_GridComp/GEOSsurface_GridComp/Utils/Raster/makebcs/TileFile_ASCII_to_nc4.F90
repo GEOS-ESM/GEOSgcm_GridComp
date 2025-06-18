@@ -7,9 +7,8 @@
 
 program TileFile_ASCII_to_nc4
   use, intrinsic :: iso_fortran_env, only: REAL64 
-  use MAPL
-  use LogRectRasterizeMod, only: MAPL_UNDEF_R8
-  use EASE_conv,           only: ease_extent
+  use MAPL,                          only: MAPL_WriteTilingNC4, MAPL_ease_extent 
+  use LogRectRasterizeMod,           only: MAPL_UNDEF_R8
   
   implicit none
   
@@ -114,7 +113,7 @@ program TileFile_ASCII_to_nc4
      ! rTable(:,4) is tile area fraction within grid cell (fr), convert to area;
      ! get fr back in WriteTilingNC4
 
-     call ease_extent(gName1, tmp_in1, tmp_in2, cell_area=cell_area)  ! get EASE grid cell area
+     call MAPL_ease_extent(gName1, tmp_in1, tmp_in2, cell_area=cell_area)  ! get EASE grid cell area
      
      rTable(:,3) = rTable(:,4)*cell_area
      rTable(:,4) = cell_area 
