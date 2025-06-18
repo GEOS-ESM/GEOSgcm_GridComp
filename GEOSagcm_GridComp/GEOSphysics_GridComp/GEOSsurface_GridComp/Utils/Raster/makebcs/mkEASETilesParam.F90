@@ -372,7 +372,7 @@ PROGRAM mkEASETilesParam
               
               ! get 1-based ind_col and ind_row indices of EASE grid cell that contains raster grid cell (i,j)
               
-              call EASE_convert(EASELabel, clat, clon, r_ease, s_ease, _RC)
+              call MAPL_EASE_convert(EASELabel, clat, clon, r_ease, s_ease, _RC)
               
               ind_col = nint(r_ease) + 1 
               ind_row = nint(s_ease) + 1     ! can be negative or greater than nr_ease (lat near N/S pole)
@@ -542,7 +542,7 @@ PROGRAM mkEASETilesParam
 !            do j =nr ,1 ,-1
 !               
 !               clat = -90. + float(j-1)*dy + dy/2.
-!               call EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
+!               call MAPL_EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
 !               
 !               ind_col = nint(r_ease) + 1 
 !               ind_row = nint(s_ease) + 1
@@ -656,7 +656,7 @@ PROGRAM mkEASETilesParam
         
         ! get 1-based ind_col and ind_row indices of EASE grid cell that contains raster grid cell (i,j)
         
-        call EASE_convert(EASELabel, clat, clon, r_ease, s_ease, _RC)
+        call MAPL_EASE_convert(EASELabel, clat, clon, r_ease, s_ease, _RC)
         
         ind_col = nint(r_ease) + 1 
         ind_row = nint(s_ease) + 1     ! NOTE: can be zero or negative or greater than nr_ease (lat near N/S pole)
