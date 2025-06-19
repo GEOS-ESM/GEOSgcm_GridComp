@@ -33,7 +33,6 @@ module GEOS_RouteGridCompMod
   implicit none
 
   integer, parameter :: upmax    = 34
-  character(len=500) :: inputdir = "/discover/nobackup/yzeng3/data/river_input/"
   logical, parameter :: use_res  = .True.
   integer, save      :: nmax 
 
@@ -327,6 +326,8 @@ contains
 
     type(MAPL_MetaComp), pointer   :: MAPL
     type(MAPL_LocStream)           :: locstream
+
+    character(len=ESMF_MAXSTR) :: River_RoutingFile    
     
     integer, pointer :: ims(:) => NULL()
     integer, pointer :: pfaf(:) => NULL()
@@ -368,7 +369,7 @@ contains
 
     real, pointer    :: dataPtr(:)
     integer          :: j,nt_local,mpierr,it
-    
+
     ! ------------------
     ! begin
 
@@ -434,10 +435,13 @@ contains
     route%minCatch = minCatch
     route%maxCatch = maxCatch 
 
+
+    call MAPL_GetResource (MAPL, River_RoutingFile, label = 'River_Routing_FILE:',  default = 'river_input', RC=STATUS )
+
     ! Read sub-catchment data 
     allocate(nsub_global(N_CatG),subarea_global(nmax,N_CatG))
-    open(77,file=trim(inputdir)//"/Pfaf_nsub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)nsub_global; close(77)
-    open(77,file=trim(inputdir)//"/Pfaf_asub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)subarea_global; close(77)       
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_nsub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)nsub_global; close(77)
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_asub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)subarea_global; close(77)       
     allocate(nsub(ntiles),subarea(nmax,ntiles))
     nsub=nsub_global(minCatch:maxCatch)
     subarea=subarea_global(:,minCatch:maxCatch)
@@ -448,7 +452,7 @@ contains
     route%subarea => subarea
 
     allocate(subi_global(nmax,N_CatG),subi(nmax,ntiles))
-    open(77,file=trim(inputdir)//"/Pfaf_isub_"//trim(resname)//".txt",status="old",action="read");read(77,*)subi_global;close(77)
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_isub_"//trim(resname)//".txt",status="old",action="read");read(77,*)subi_global;close(77)
     subi=subi_global(:,minCatch:maxCatch)
     route%subi => subi
     deallocate(subi_global)
@@ -484,7 +488,7 @@ contains
 
     ! Read tile area data
     allocate(tile_area_local(nt_local),tile_area_global(nt_global))  
-    open(77,file=trim(inputdir)//"/area_"//trim(resname)//"_1d.txt",status="old",action="read");read(77,*)tile_area_global;close(77)
+    open(77,file=trim(River_RoutingFile)//"/area_"//trim(resname)//"_1d.txt",status="old",action="read");read(77,*)tile_area_global;close(77)
     tile_area_local=tile_area_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local)*1.e6 !km2->m2
     route%tile_area => tile_area_local
     deallocate(tile_area_global)
@@ -504,19 +508,19 @@ contains
 
     ! Read river network-realated data
     allocate(lengsc_global(n_catg),lengsc(ntiles))   
-    open(77,file=trim(inputdir)//"/Pfaf_lriv_PR.txt",status="old",action="read");read(77,*)lengsc_global;close(77)
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_lriv_PR.txt",status="old",action="read");read(77,*)lengsc_global;close(77)
     lengsc=lengsc_global(minCatch:maxCatch)*1.e3 !km->m
     route%lengsc=>lengsc
     deallocate(lengsc_global)
 
     allocate(downid_global(n_catg),downid(ntiles))
-    open(77,file=trim(inputdir)//"/downstream_1D_new_noadj.txt",status="old",action="read");read(77,*)downid_global;close(77)    
+    open(77,file=trim(River_RoutingFile)//"/downstream_1D_new_noadj.txt",status="old",action="read");read(77,*)downid_global;close(77)    
     downid=downid_global(minCatch:maxCatch)
     route%downid=>downid
     deallocate(downid_global)
 
     allocate(upid_global(upmax,n_catg),upid(upmax,ntiles))   
-    open(77,file=trim(inputdir)//"/upstream_1D.txt",status="old",action="read");read(77,*)upid_global;close(77)  
+    open(77,file=trim(River_RoutingFile)//"/upstream_1D.txt",status="old",action="read");read(77,*)upid_global;close(77)  
     upid=upid_global(:,minCatch:maxCatch)   
     route%upid=>upid
     deallocate(upid_global)
@@ -535,12 +539,12 @@ contains
        read(77,*)wriver_global;close(77)
     else
        close(77)
-       open(78,file=trim(inputdir)//"/river_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
+       open(78,file=trim(River_RoutingFile)//"/river_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
        if(status==0)then   
           read(78,*)wriver_global;close(78)  
        else
           close(78)      
-          open(79,file=trim(inputdir)//"/river_storage_rs.txt",status="old",action="read",iostat=status)      
+          open(79,file=trim(River_RoutingFile)//"/river_storage_rs.txt",status="old",action="read",iostat=status)      
           if(status==0)then 
              read(79,*)wriver_global;close(79) 
           else
@@ -554,12 +558,12 @@ contains
        read(77,*)wstream_global;close(77)
     else
        close(77)
-       open(78,file=trim(inputdir)//"/stream_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
+       open(78,file=trim(River_RoutingFile)//"/stream_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
        if(status==0)then   
           read(78,*)wstream_global;close(78)  
        else
           close(78)      
-          open(79,file=trim(inputdir)//"/stream_storage_rs.txt",status="old",action="read",iostat=status)      
+          open(79,file=trim(River_RoutingFile)//"/stream_storage_rs.txt",status="old",action="read",iostat=status)      
           if(status==0)then 
              read(79,*)wstream_global;close(79) 
           else
@@ -573,12 +577,12 @@ contains
        read(77,*)wres_global;close(77)
     else
        close(77)
-       open(78,file=trim(inputdir)//"/res_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
+       open(78,file=trim(River_RoutingFile)//"/res_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
        if(status==0)then   
           read(78,*)wres_global;close(78)  
        else
           close(78)      
-          open(79,file=trim(inputdir)//"/res_storage_rs.txt",status="old",action="read",iostat=status)      
+          open(79,file=trim(River_RoutingFile)//"/res_storage_rs.txt",status="old",action="read",iostat=status)      
           if(status==0)then 
              read(79,*)wres_global;close(79) 
           else
@@ -608,38 +612,38 @@ contains
 
     !Read input specially for geometry hydraulic (not required by linear model)
     allocate(buff_global(n_catg),route%lstr(ntiles))   
-    open(77,file=trim(inputdir)//"/Pfaf_lstr_PR.txt",status="old",action="read");read(77,*)buff_global;close(77)
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_lstr_PR.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%lstr=buff_global(minCatch:maxCatch)*1.e3 !km->m
     deallocate(buff_global)   
 
     allocate(buff_global(n_catg),route%K(ntiles))   
-    open(77,file=trim(inputdir)//"/Pfaf_Kv_PR_0p35_0p45_0p2_n0p2.txt",status="old",action="read");read(77,*)buff_global;close(77)
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_Kv_PR_0p35_0p45_0p2_n0p2.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%K=buff_global(minCatch:maxCatch) 
     deallocate(buff_global)  
 
     allocate(buff_global(n_catg),route%Kstr(ntiles))   
-    open(77,file=trim(inputdir)//"/Pfaf_Kstr_PR_fac1_0p35_0p45_0p2_n0p2.txt",status="old",action="read");read(77,*)buff_global;close(77)
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_Kstr_PR_fac1_0p35_0p45_0p2_n0p2.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%Kstr=buff_global(minCatch:maxCatch)
     deallocate(buff_global)     
 
     allocate(buff_global(n_catg),route%qri_clmt(ntiles))   
-    open(77,file=trim(inputdir)//"/Pfaf_qri.txt",status="old",action="read");read(77,*)buff_global;close(77)
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_qri.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%qri_clmt=buff_global(minCatch:maxCatch) !m3/s
     deallocate(buff_global)      
 
     allocate(buff_global(n_catg),route%qin_clmt(ntiles))   
-    open(77,file=trim(inputdir)//"/Pfaf_qin.txt",status="old",action="read");read(77,*)buff_global;close(77)
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_qin.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%qin_clmt=buff_global(minCatch:maxCatch) !m3/s
     deallocate(buff_global)  
 
     allocate(buff_global(n_catg),route%qstr_clmt(ntiles))   
-    open(77,file=trim(inputdir)//"/Pfaf_qstr.txt",status="old",action="read");read(77,*)buff_global;close(77)
+    open(77,file=trim(River_RoutingFile)//"/Pfaf_qstr.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%qstr_clmt=buff_global(minCatch:maxCatch) !m3/s
     deallocate(buff_global) 
 
     !Initial reservoir module
     res => route%reservoir
-    call res_init(inputdir,n_catg,ntiles,minCatch,maxCatch,use_res,res%active_res,res%type_res,res%cap_res,res%fld_res,res%Qfld_thres,res%cat2res,res%wid_res)
+    call res_init(River_RoutingFile,n_catg,ntiles,minCatch,maxCatch,use_res,res%active_res,res%type_res,res%cap_res,res%fld_res,res%Qfld_thres,res%cat2res,res%wid_res)
     if(mapl_am_I_root()) print *,"reservoir init success" 
 
     !if (mapl_am_I_root())then

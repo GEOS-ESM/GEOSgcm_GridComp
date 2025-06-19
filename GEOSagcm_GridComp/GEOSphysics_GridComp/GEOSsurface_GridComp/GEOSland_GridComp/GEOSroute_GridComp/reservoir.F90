@@ -34,7 +34,7 @@ contains
 !------------------------------------------
 ! Initialization subroutine for reservoirs
 subroutine res_init(input_dir,nall,nc,minCatch,maxCatch,use_res,active_res,type_res,cap_res,fld_res,Qfld_thres,cat2res,wid_res)
-  character(len=500),intent(in) :: input_dir
+  character(len=*),intent(in) :: input_dir
   ! Define the number of reservoirs (nres) and the number of catchments (nc)
   integer,intent(in) :: nall,nc,minCatch,maxCatch
   ! Logical variable to check if reservoirs are used
