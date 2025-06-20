@@ -28,6 +28,7 @@ module GEOS_CatchCNCLM51GridCompMod
 !
 ! !USES:
 
+  use, intrinsic :: iso_fortran_env, only: INT64
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
   use GEOS_Mod
@@ -3964,9 +3965,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer :: nv, nz, ib
     real    :: bare
     logical, save :: first = .true.
-    integer*8, save :: istep_cn = 0 ! gkw: legacy variable from offline
+    integer(INT64), save :: istep_cn = 0 ! gkw: legacy variable from offline
     real :: ndt
-    integer :: nstep_cn
+    integer(INT64) :: nstep_cn
 
   ! Offline mode
 
@@ -5256,7 +5257,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
    
     integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr, AGCM_S_ofday
     logical, save :: first = .true.
-    integer*8, save :: istep_cn = 1 ! gkw: legacy variable from offline
+    integer(INT64), save :: istep_cn = 1 ! gkw: legacy variable from offline
 
     ! solar declination related
     real :: ob, declin, zs, zc, max_decl, max_dayl
@@ -6155,10 +6156,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              / log((max(DZ-D0,10.)+Z0)/Z0))
 
         !--------------- GOSWIM IMPORTS FROM GOCART ---------------
-        ! Initialization 
-        RCONSTIT(:,:,:)  = 0.0
-        TOTDEPOS(:,:) = 0.0
-        RMELT(:,:)  = 0.0
+        ! Initialization
+        if (N_CONSTIT > 0) then 
+           RCONSTIT(:,:,:)  = 0.0
+           TOTDEPOS(:,:) = 0.0
+           RMELT(:,:)  = 0.0
+        endif
         !------------------------------------------------------------------
 
         ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
@@ -6216,16 +6219,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! TOTDEPOS(:,13): Combined sea salt deposition from size bin 3 (dry, conv-scav, ls-scav, sed)
 ! TOTDEPOS(:,14): Combined sea salt deposition from size bin 4 (dry, conv-scav, ls-scav, sed)
 ! TOTDEPOS(:,15): Combined sea salt deposition from size bin 5 (dry, conv-scav, ls-scav, sed)
-
-        TOTDEPOS(:,1) = DUDP(:,1) + DUSV(:,1) + DUWT(:,1) + DUSD(:,1)
-        TOTDEPOS(:,2) = DUDP(:,2) + DUSV(:,2) + DUWT(:,2) + DUSD(:,2)
-        TOTDEPOS(:,3) = DUDP(:,3) + DUSV(:,3) + DUWT(:,3) + DUSD(:,3)
-        TOTDEPOS(:,4) = DUDP(:,4) + DUSV(:,4) + DUWT(:,4) + DUSD(:,4)
-        TOTDEPOS(:,5) = DUDP(:,5) + DUSV(:,5) + DUWT(:,5) + DUSD(:,5)
-        TOTDEPOS(:,6) = BCDP(:,1) + BCSV(:,1) + BCWT(:,1) + BCSD(:,1)
-        TOTDEPOS(:,7) = BCDP(:,2) + BCSV(:,2) + BCWT(:,2) + BCSD(:,2)
-        TOTDEPOS(:,8) = OCDP(:,1) + OCSV(:,1) + OCWT(:,1) + OCSD(:,1)
-        TOTDEPOS(:,9) = OCDP(:,2) + OCSV(:,2) + OCWT(:,2) + OCSD(:,2)
+        if (N_CONSTIT > 0) then
+           TOTDEPOS(:,1) = DUDP(:,1) + DUSV(:,1) + DUWT(:,1) + DUSD(:,1)
+           TOTDEPOS(:,2) = DUDP(:,2) + DUSV(:,2) + DUWT(:,2) + DUSD(:,2)
+           TOTDEPOS(:,3) = DUDP(:,3) + DUSV(:,3) + DUWT(:,3) + DUSD(:,3)
+           TOTDEPOS(:,4) = DUDP(:,4) + DUSV(:,4) + DUWT(:,4) + DUSD(:,4)
+           TOTDEPOS(:,5) = DUDP(:,5) + DUSV(:,5) + DUWT(:,5) + DUSD(:,5)
+           TOTDEPOS(:,6) = BCDP(:,1) + BCSV(:,1) + BCWT(:,1) + BCSD(:,1)
+           TOTDEPOS(:,7) = BCDP(:,2) + BCSV(:,2) + BCWT(:,2) + BCSD(:,2)
+           TOTDEPOS(:,8) = OCDP(:,1) + OCSV(:,1) + OCWT(:,1) + OCSD(:,1)
+           TOTDEPOS(:,9) = OCDP(:,2) + OCSV(:,2) + OCWT(:,2) + OCSD(:,2)
+        endif
 !============================= Possible future applications ====================================
 !        TOTDEPOS(:,10) = SUDP(:,1) + SUSV(:,1) + SUWT(:,1) + SUSD(:,1)
 !        TOTDEPOS(:,11) = SSDP(:,1) + SSSV(:,1) + SSWT(:,1) + SSSD(:,1)
@@ -6257,17 +6261,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            ! RCONSTIT(NTILES,N,13): Sea salt mass from size bin 3 in layer N
            ! RCONSTIT(NTILES,N,14): Sea salt mass from size bin 4 in layer N
            ! RCONSTIT(NTILES,N,15): Sea salt mass from size bin 5 in layer N
-           
-           RCONSTIT(:,:,1) = RDU001(:,:)
-           RCONSTIT(:,:,2) = RDU002(:,:)
-           RCONSTIT(:,:,3) = RDU003(:,:)
-           RCONSTIT(:,:,4) = RDU004(:,:)
-           RCONSTIT(:,:,5) = RDU005(:,:)
-           RCONSTIT(:,:,6) = RBC001(:,:)
-           RCONSTIT(:,:,7) = RBC002(:,:)
-           RCONSTIT(:,:,8) = ROC001(:,:)
-           RCONSTIT(:,:,9) = ROC002(:,:)
-
+           if (N_CONSTIT > 0) then 
+              RCONSTIT(:,:,1) = RDU001(:,:)
+              RCONSTIT(:,:,2) = RDU002(:,:)
+              RCONSTIT(:,:,3) = RDU003(:,:)
+              RCONSTIT(:,:,4) = RDU004(:,:)
+              RCONSTIT(:,:,5) = RDU005(:,:)
+              RCONSTIT(:,:,6) = RBC001(:,:)
+              RCONSTIT(:,:,7) = RBC002(:,:)
+              RCONSTIT(:,:,8) = ROC001(:,:)
+              RCONSTIT(:,:,9) = ROC002(:,:)
+           endif
 !============================= Possible future applications ====================================
 !        RCONSTIT(:,:,10) = RSU003(:,:)
 !        RCONSTIT(:,:,11) = RSS001(:,:)
@@ -7902,15 +7906,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(FICE2 )) FICE2  = max( min( FICESOUT(2,:),1.0 ), 0.0 )
         if(associated(FICE3 )) FICE3  = max( min( FICESOUT(3,:),1.0 ), 0.0 )
 
-        if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
-        if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
-        if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
-        if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
-        if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
-        if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
-        if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
-        if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
-        if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        if (N_CONSTIT > 0) then
+           if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
+           if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
+           if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
+           if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
+           if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
+           if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
+           if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
+           if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
+           if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9)
+        endif
         if(associated(PEATCLSM_FSWCHANGE )) then
            where (POROS >= PEATCLSM_POROS_THRESHOLD)
               PEATCLSM_FSWCHANGE = FSW_CHANGE
@@ -7987,7 +7993,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN2  = SNDZN (2,:)
         SNDZN3  = SNDZN (3,:)
 
-        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
+        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0 .and. N_CONSTIT > 0 ) then
            RDU001(:,:) = RCONSTIT(:,:,1) 
            RDU002(:,:) = RCONSTIT(:,:,2) 
            RDU003(:,:) = RCONSTIT(:,:,3) 

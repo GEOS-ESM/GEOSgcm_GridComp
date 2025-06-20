@@ -8,7 +8,7 @@ module CN_initMod
   use clm_varpar        , only : VAR_COL, VAR_PFT, clm_varpar_init
   use clm_varctl        , only : use_century_decomp, init_clm_varctl
   use clm_time_manager  , only : get_step_size, update_rad_dtime
-  use decompMod      
+  use decompMod         , only : bounds
   use filterMod
   use CNVegNitrogenStateType
   use CNVegCarbonStateType

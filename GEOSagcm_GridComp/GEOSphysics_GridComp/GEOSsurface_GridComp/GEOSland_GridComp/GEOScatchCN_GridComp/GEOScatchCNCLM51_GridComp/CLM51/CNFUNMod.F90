@@ -17,7 +17,8 @@ module CNFUNMod
 ! ! available to the plant for grwoth, and the C spent on obtaining
   !  it. 
 
-! !USES: 
+! !USES:
+  use, intrinsic :: iso_fortran_env, only: INT64 
   use shr_kind_mod                    , only : r8 => shr_kind_r8
   use shr_log_mod                     , only : errMsg => shr_log_errMsg
   use clm_varctl                      , only : iulog
@@ -138,7 +139,7 @@ module CNFUNMod
   !  FUN (s)
   real(r8)          :: numofyear                ! number of days per
   !  year
-  integer           :: nstep                    ! time step number
+  integer(INT64)    :: nstep                    ! time step number
   integer           :: nstep_fun                ! Number of
   !  atmospheric timesteps between calls to FUN
   character(len=32) :: subname = 'CNFUNInit'

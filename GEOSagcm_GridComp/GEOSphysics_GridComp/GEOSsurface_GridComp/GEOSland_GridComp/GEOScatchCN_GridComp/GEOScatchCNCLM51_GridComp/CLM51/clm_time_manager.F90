@@ -3,6 +3,7 @@ module clm_time_manager
 #include "MAPL_Generic.h"
 #include "shr_assert.h"
 
+   use, intrinsic :: iso_fortran_env, only: INT64
    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
    use update_model_para4cn, only: curr_year,curr_month,curr_day,curr_dofyr,curr_hour,curr_min,curr_sec, &
                                    prev_year,prev_month,prev_day,prev_dofyr,prev_hour,prev_min,prev_sec
@@ -87,13 +88,13 @@ real(r8) function get_step_size_real()
 
 !=========================================================================================
 
-integer function get_nstep(istep)
+integer(INT64) function get_nstep(istep)
 
   ! Return the timestep number.
   
-  integer*8, optional, intent(in) :: istep
+  integer(INT64), optional, intent(in) :: istep
   
-  integer, save :: istep_default = -999
+  integer(INT64), save :: istep_default = -999
   
   if ( present(istep) ) then
    istep_default = istep
@@ -111,7 +112,8 @@ end function get_nstep
     ! 
     ! Local Arguments
     logical,intent(in) ::  doalb
-    integer :: dtime,nstep
+    integer        :: dtime
+    integer(INT64) :: nstep
 
     if (doalb) then
 

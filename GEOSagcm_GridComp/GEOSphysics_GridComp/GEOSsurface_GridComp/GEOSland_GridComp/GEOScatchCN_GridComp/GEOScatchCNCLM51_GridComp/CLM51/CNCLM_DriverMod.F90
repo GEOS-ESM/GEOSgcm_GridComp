@@ -1,5 +1,6 @@
 module CNCLM_DriverMod
 
+ use, intrinsic :: iso_fortran_env, only: INT64
  use nanMod           , only : nan
  use CNVegetationFacade
  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
@@ -78,7 +79,7 @@ contains
  implicit none
  
  !INPUT
- integer,              intent(in) :: istep ! number of CN time steps run
+ integer(INT64),       intent(in) :: istep ! number of CN time steps run
  integer,              intent(in) :: nch     ! number of tiles 
  integer, dimension(nch,num_veg,num_zon),      intent(in) :: ityp ! PFT index
  real, dimension(nch,num_veg,num_zon),         intent(in) :: fveg    ! PFT fraction
@@ -221,7 +222,7 @@ contains
  real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  integer  :: n, p, nc, nz, np, nv
- integer :: nstep_cn   ! number of CN model steps run
+ integer(INT64) :: nstep_cn   ! number of CN model steps run
 
  !-------------------------------
 
