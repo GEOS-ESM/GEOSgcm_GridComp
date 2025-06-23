@@ -60,57 +60,49 @@ def implicit_fall(
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                height_diff = ze - ze[0, 0, 1]
-                dd = dts * vt
-                q = q * dp1
+            height_diff = ze - ze[0, 0, 1]
+            dd = dts * vt
+            q = q * dp1
 
     # -----------------------------------------------------------------------
     # sedimentation: non - vectorizable loop
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                qm = q / (height_diff + dd)
+            qm = q / (height_diff + dd)
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                qm = (q + dd[0, 0, -1] * qm[0, 0, -1]) / (height_diff + dd)
+            qm = (q + dd[0, 0, -1] * qm[0, 0, -1]) / (height_diff + dd)
 
     # -----------------------------------------------------------------------
     # qm is density at this stage
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                qm = qm * height_diff
+            qm = qm * height_diff
 
     # -----------------------------------------------------------------------
     # output mass fluxes: non - vectorizable loop
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                m1 = q - qm
+            m1 = q - qm
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                m1 = m1[0, 0, -1] + q - qm
+            m1 = m1[0, 0, -1] + q - qm
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                precip = m1
+            precip = m1
 
     # -----------------------------------------------------------------------
     # update:
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                q = qm / dp1
+            q = qm / dp1
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:

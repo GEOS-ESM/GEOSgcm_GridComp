@@ -79,7 +79,6 @@ class TerminalFall:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
-                "use_ppm": GFDL_1M_config.USE_PPM,
             },
         )
 
@@ -146,6 +145,10 @@ class TerminalFall:
             self.temporaries.icpk,
             self.temporaries.cvm,
             is_frozen,
+            precip_rain,
+            precip_graupel,
+            precip_snow,
+            precip_ice,
         )
 
         # -----------------------------------------------------------------------
@@ -183,16 +186,17 @@ class TerminalFall:
                 precip_fall,
             )
 
-            self._implicit_fall(
-                qi1,
-                vti,
-                ze,
-                dp1,
-                self.temporaries.m1,
-                m1_sol,
-                precip_ice,
-                precip_fall,
-            )
+            if self.GFDL_1M_config.USE_PPM == False:
+                self._implicit_fall(
+                    qi1,
+                    vti,
+                    ze,
+                    dp1,
+                    self.temporaries.m1,
+                    m1_sol,
+                    precip_ice,
+                    precip_fall,
+                )
 
             self._update_w1(
                 w1,
@@ -240,16 +244,17 @@ class TerminalFall:
             precip_fall,
         )
 
-        self._implicit_fall(
-            qs1,
-            vts,
-            ze,
-            dp1,
-            self.temporaries.m1,
-            m1_sol,
-            precip_snow,
-            precip_fall,
-        )
+        if self.GFDL_1M_config.USE_PPM == False:
+            self._implicit_fall(
+                qs1,
+                vts,
+                ze,
+                dp1,
+                self.temporaries.m1,
+                m1_sol,
+                precip_snow,
+                precip_fall,
+            )
 
         self._update_w1(
             w1,
@@ -297,16 +302,17 @@ class TerminalFall:
             precip_fall,
         )
 
-        self._implicit_fall(
-            qg1,
-            vtg,
-            ze,
-            dp1,
-            self.temporaries.m1,
-            m1_sol,
-            precip_graupel,
-            precip_fall,
-        )
+        if self.GFDL_1M_config.USE_PPM == False:
+            self._implicit_fall(
+                qg1,
+                vtg,
+                ze,
+                dp1,
+                self.temporaries.m1,
+                m1_sol,
+                precip_graupel,
+                precip_fall,
+            )
 
         self._update_w1(
             w1,

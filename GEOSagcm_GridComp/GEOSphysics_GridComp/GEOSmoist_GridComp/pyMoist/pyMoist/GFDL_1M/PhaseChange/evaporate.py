@@ -45,7 +45,7 @@ def evaporate(
             qcm = convective_liquid / convective_cloud_fraction
         else:
             qcm = 0.0
-        radius = cloud_effective_radius_liquid(p_mb, t, qcm, nactl, nacti)
+        radius = cloud_effective_radius_liquid(p_mb, t, qcm, nactl)
         if rhx < rh_crit and radius > 0.0:
             evap = (
                 CCW_EVAP_EFF

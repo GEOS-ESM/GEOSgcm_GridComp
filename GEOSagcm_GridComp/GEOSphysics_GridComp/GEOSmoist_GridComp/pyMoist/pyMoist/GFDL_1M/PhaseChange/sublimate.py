@@ -41,7 +41,7 @@ def sublimate(
             qcm = convective_ice / convective_cloud_fraction
         else:
             qcm = 0.0
-        radius = cloud_effective_radius_ice(p_mb, t, qcm, nactl, nacti)
+        radius = cloud_effective_radius_ice(p_mb, t, qcm)
         if rhx < rh_crit and radius > 0.0:
             subl = CCI_EVAP_EFF * convective_ice * DT_MOIST * (rh_crit - rhx) / ((k1 + k2) * radius**2)
             subl = min(subl, convective_ice)

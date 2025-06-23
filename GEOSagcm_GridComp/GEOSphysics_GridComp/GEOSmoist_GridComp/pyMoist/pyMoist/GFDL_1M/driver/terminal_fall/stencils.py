@@ -247,6 +247,10 @@ def setup(
     icpk: FloatField,
     cvm: FloatField,
     is_frozen: BoolField,
+    precip_rain: FloatFieldIJ,
+    precip_graupel: FloatFieldIJ,
+    precip_snow: FloatFieldIJ,
+    precip_ice: FloatFieldIJ,
 ):
     """
     Calculate terminal fall speed, accounting for
@@ -320,6 +324,13 @@ def setup(
         lhi = constants.LI00 + constants.DC_ICE * t1
         icpk = lhi / cvm
 
+    # zero local precipitaton values
+    with computation(FORWARD), interval(0, 1):
+        precip_rain = 0
+        precip_graupel = 0
+        precip_snow = 0
+        precip_ice = 0
+
 
 def update_outputs(
     rain: FloatFieldIJ,
@@ -342,7 +353,7 @@ def update_outputs(
         snow = snow + precip_snow
         ice = ice + precip_ice
 
-        precip_rain = 0
-        precip_graupel = 0
-        precip_snow = 0
-        precip_ice = 0
+        # precip_rain = 0
+        # precip_graupel = 0
+        # precip_snow = 0
+        # precip_ice = 0

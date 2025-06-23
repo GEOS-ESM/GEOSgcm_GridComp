@@ -38,12 +38,28 @@ class Outputs:
     radiation_graupel: Quantity
     ice_radius: Quantity
     liquid_radius: Quantity
-    evaporation: Quantity
-    sublimation: Quantity
+    large_scale_nonanvil_precipitation_evaporation: Quantity
+    large_scale_nonanvil_precipitation_sublimation: Quantity
+    relative_humidity_after_pdf: Quantity
     precipitated_rain: Quantity
     precipitated_snow: Quantity
     precipitated_ice: Quantity
     precipitated_graupel: Quantity
+    large_scale_precip: Quantity
+    large_scale_snow: Quantity
+    icefall: Quantity
+    freezing_rainfall: Quantity
+    large_scale_nonanvil_ice_flux: Quantity
+    large_scale_nonanvil_liquid_flux: Quantity
+    anvil_liquid_flux: Quantity
+    anvil_ice_flux: Quantity
+    large_scale_rainwater_source: Quantity
+    moist_friction_temperature_tendency: Quantity
+    simulated_reflectivity: Quantity
+    maximum_reflectivity: Quantity
+    one_km_agl_reflectivity: Quantity
+    echo_top_reflectivity: Quantity
+    minus_10c_reflectivity: Quantity
 
     @classmethod
     def make(cls, quantity_factory: QuantityFactory):
@@ -79,12 +95,28 @@ class Outputs:
         radiation_graupel = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         ice_radius = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         liquid_radius = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        evaporation = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        sublimation = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        large_scale_nonanvil_precipitation_evaporation = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        large_scale_nonanvil_precipitation_sublimation = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        relative_humidity_after_pdf = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         precipitated_rain = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         precipitated_snow = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         precipitated_ice = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         precipitated_graupel = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        large_scale_precip = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        large_scale_snow = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        icefall = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        freezing_rainfall = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        large_scale_nonanvil_ice_flux = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        large_scale_nonanvil_liquid_flux = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        anvil_liquid_flux = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        anvil_ice_flux = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        large_scale_rainwater_source = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        moist_friction_temperature_tendency = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        simulated_reflectivity = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        maximum_reflectivity = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        one_km_agl_reflectivity = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        echo_top_reflectivity = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        minus_10c_reflectivity = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
 
         return cls(
             lower_tropospheric_stability,
@@ -119,10 +151,26 @@ class Outputs:
             radiation_graupel,
             ice_radius,
             liquid_radius,
-            evaporation,
-            sublimation,
+            large_scale_nonanvil_precipitation_evaporation,
+            large_scale_nonanvil_precipitation_sublimation,
+            relative_humidity_after_pdf,
             precipitated_rain,
             precipitated_snow,
             precipitated_ice,
             precipitated_graupel,
+            large_scale_precip,
+            large_scale_snow,
+            icefall,
+            freezing_rainfall,
+            large_scale_nonanvil_ice_flux,
+            large_scale_nonanvil_liquid_flux,
+            anvil_liquid_flux,
+            anvil_ice_flux,
+            large_scale_rainwater_source,
+            moist_friction_temperature_tendency,
+            simulated_reflectivity,
+            maximum_reflectivity,
+            one_km_agl_reflectivity,
+            echo_top_reflectivity,
+            minus_10c_reflectivity,
         )

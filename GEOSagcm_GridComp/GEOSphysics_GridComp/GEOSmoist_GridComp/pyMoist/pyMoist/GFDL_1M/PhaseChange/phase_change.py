@@ -6,7 +6,7 @@ from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.constants import FLOAT_TINY
-from pyMoist.GFDL_1M.PhaseChange.config import PhaseChangeConfiguration
+from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.PhaseChange.evaporate import evaporate
 from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
 from pyMoist.GFDL_1M.PhaseChange.masks import Masks
@@ -29,10 +29,10 @@ class PhaseChange:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        phase_change_config: PhaseChangeConfiguration,
+        GFDL_1M_config: GFDL1MConfig,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
-        if phase_change_config.USE_BERGERON is not True:
+        if GFDL_1M_config.USE_BERGERON is not True:
             raise NotImplementedError(
                 "Untested option for use_bergeron. Code may be missing or incomplete. \
                     Disable this error manually to continue."
@@ -40,7 +40,7 @@ class PhaseChange:
 
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
-        self.phase_change_config = phase_change_config
+        self.GFDL_1M_config = GFDL_1M_config
 
         # -----------------------------------------------------------------------
         # initialize precipitation outputs
@@ -77,9 +77,9 @@ class PhaseChange:
             func=rh_calculations,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "DW_LAND": phase_change_config.DW_LAND,
-                "DW_OCEAN": phase_change_config.DW_OCEAN,
-                "TURNRHCRIT_PARAM": phase_change_config.TURNRHCRIT_PARAM,
+                "DW_LAND": GFDL_1M_config.DW_LAND,
+                "DW_OCEAN": GFDL_1M_config.DW_OCEAN,
+                "TURNRHCRIT_PARAM": GFDL_1M_config.TURNRHCRIT_PARAM,
             },
         )
 
@@ -87,9 +87,9 @@ class PhaseChange:
             func=hydrostatic_pdf,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "DT_MOIST": phase_change_config.DT_MOIST,
-                "PDF_SHAPE": phase_change_config.PDF_SHAPE,
-                "USE_BERGERON": phase_change_config.USE_BERGERON,
+                "DT_MOIST": GFDL_1M_config.DT_MOIST,
+                "PDF_SHAPE": GFDL_1M_config.PDF_SHAPE,
+                "USE_BERGERON": GFDL_1M_config.USE_BERGERON,
                 "FLOAT_TINY": FLOAT_TINY,
             },
         )
@@ -98,23 +98,23 @@ class PhaseChange:
             func=melt_freeze,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "DT_MOIST": phase_change_config.DT_MOIST,
+                "DT_MOIST": GFDL_1M_config.DT_MOIST,
             },
         )
         self._evap = self.stencil_factory.from_dims_halo(
             func=evaporate,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "DT_MOIST": phase_change_config.DT_MOIST,
-                "CCW_EVAP_EFF": phase_change_config.CCW_EVAP_EFF,
+                "DT_MOIST": GFDL_1M_config.DT_MOIST,
+                "CCW_EVAP_EFF": GFDL_1M_config.CCW_EVAP_EFF,
             },
         )
         self._subl = self.stencil_factory.from_dims_halo(
             func=sublimate,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "DT_MOIST": phase_change_config.DT_MOIST,
-                "CCI_EVAP_EFF": phase_change_config.CCW_EVAP_EFF,
+                "DT_MOIST": GFDL_1M_config.DT_MOIST,
+                "CCI_EVAP_EFF": GFDL_1M_config.CCW_EVAP_EFF,
             },
         )
         self._fix_up_clouds = self.stencil_factory.from_dims_halo(
@@ -124,7 +124,6 @@ class PhaseChange:
 
     def __call__(
         self,
-        phase_change_config: PhaseChangeConfiguration,
         estimated_inversion_strength: FloatFieldIJ,
         p_mb: FloatField,
         k_lcl: FloatFieldIJ,
@@ -177,11 +176,11 @@ class PhaseChange:
             estlqu=self.tables.lqu,
         )
 
-        if self.phase_change_config.DO_MELT_FREEZE:
+        if self.GFDL_1M_config.MELTFRZ:
             self._meltfrz(convection_fraction, surface_type, t, convective_liquid, convective_ice)
             self._meltfrz(convection_fraction, surface_type, t, large_scale_liquid, large_scale_ice)
 
-        if self.phase_change_config.CCW_EVAP_EFF > 0.0:
+        if self.GFDL_1M_config.CCW_EVAP_EFF > 0.0:
             self._evap(
                 p_mb,
                 t,
@@ -195,7 +194,7 @@ class PhaseChange:
                 self.outputs.evapc,
             )
 
-        if self.phase_change_config.CCI_EVAP_EFF > 0.0:
+        if self.GFDL_1M_config.CCI_EVAP_EFF > 0.0:
             self._subl(
                 p_mb,
                 t,

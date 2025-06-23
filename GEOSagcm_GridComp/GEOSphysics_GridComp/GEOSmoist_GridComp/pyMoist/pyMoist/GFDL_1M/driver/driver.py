@@ -127,7 +127,6 @@ class MicrophysicsDriver:
 
     def __call__(
         self,
-        GFDL_1M_config: GFDL1MConfig,
         t: FloatField,
         w: FloatField,
         u: FloatField,
@@ -172,7 +171,6 @@ class MicrophysicsDriver:
             - Finish: compute output tendencies
 
         Arguments:
-            GFDL_1M_config (in): driver configuration
             t (in): atmospheric temperature (K)
             w (in): vertical velocity (m/s)
             u (in): eastward winds (m/s)

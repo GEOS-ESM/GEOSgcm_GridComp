@@ -161,6 +161,7 @@ def warm_rain_step_1(
     des2: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
+    test_var_1: FloatFieldIJ,
 ):
     """
     Warm rain cloud microphysics: evaporation, accretion
@@ -192,6 +193,10 @@ def warm_rain_step_1(
         z_slope_liq,
     )
 
+    with computation(FORWARD), interval(...):
+        # ensure mask is clear of any previous values
+        precip_fall = 0
+
     # reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
     # determine if any precip falls in the column
     # if it falls anywhere in the column, the entire column becomes true
@@ -216,8 +221,15 @@ def warm_rain_step_1(
         ql1 = ql1 / qadum
         qi1 = qi1 / qadum
 
+        # test_var_1 = 0
+
         fac_rc = min(1.0, eis / 15.0) ** 2  # Estimated inversion strength determine stable regime
         fac_rc = constants.RC * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
+        # NOTE: the multiplication "constants.RC * (result of parenthetical)" produces different results
+        # in Fortran and Python, despite constants.RC and (result of parenthetical) being identical.
+        # This creates errors later throughout warm_rain and the larger driver.
+    with computation(FORWARD), interval(0, 1):
+        test_var_1 = fac_rc
 
     with computation(PARALLEL), interval(...):
         if irain_f != 0:
@@ -288,6 +300,8 @@ def warm_rain_step_1(
 
             # end reference Fortran: gfdl_cloud_microphys.F90: subroutine linear_prof
 
+    with computation(PARALLEL), interval(...):
+        if irain_f == 0:
             if qadum > onemsig:
                 if t1 > constants.T_WFR + constants.DT_FR:
                     dl = min(max(constants.QCMIN, dl), 0.5 * ql1)
@@ -345,7 +359,17 @@ def warm_rain_step_1(
     # evaporation and accretion of rain for the first 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
+        (
+            t1,
+            qv1,
+            qr1,
+            ql1,
+            qi1,
+            qs1,
+            qg1,
+            qa1,
+            revap,
+        ) = revap_racc(
             t1,
             qv1,
             ql1,
@@ -456,7 +480,17 @@ def warm_rain_step_2(
     # evaporation and accretion of rain for the remaing 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
+        (
+            t1,
+            qv1,
+            qr1,
+            ql1,
+            qi1,
+            qs1,
+            qg1,
+            qa1,
+            revap,
+        ) = revap_racc(
             t1,
             qv1,
             ql1,
@@ -515,11 +549,5 @@ def update_outputs(
         m2_sol = m2_sol + m1_sol
         m1 = m1 + m1_rain + m1_sol
 
-        evap1 = 0
-        m1_rain = 0
-        m1_sol = 0
-
     with computation(FORWARD), interval(0, 1):
         rain = rain + rain1
-
-        rain1 = 0

@@ -1,4 +1,4 @@
-from ndsl.dsl.typing import FloatField
+from ndsl import Quantity
 from dataclasses import dataclass
 
 
@@ -11,9 +11,9 @@ class LiquidWaterStaticEnergy:
         third_moment: K+3
     """
 
-    flux: FloatField
-    variance: FloatField
-    third_moment: FloatField
+    flux: Quantity
+    variance: Quantity
+    third_moment: Quantity
 
 
 @dataclass
@@ -30,14 +30,14 @@ class MixingRatios:
         large_scale_ice: kg kg-1
     """
 
-    vapor: FloatField
-    rain: FloatField
-    snow: FloatField
-    graupel: FloatField
-    convective_liquid: FloatField
-    convective_ice: FloatField
-    large_scale_liquid: FloatField
-    large_scale_ice: FloatField
+    vapor: Quantity
+    rain: Quantity
+    snow: Quantity
+    graupel: Quantity
+    convective_liquid: Quantity
+    convective_ice: Quantity
+    large_scale_liquid: Quantity
+    large_scale_ice: Quantity
 
 
 @dataclass
@@ -48,8 +48,8 @@ class CloudFractions:
         large_scale: 1
     """
 
-    convective: FloatField
-    large_scale: FloatField
+    convective: Quantity
+    large_scale: Quantity
 
 
 @dataclass
@@ -61,9 +61,9 @@ class TotalWater:
         third_moment: 1
     """
 
-    flux: FloatField
-    variance: FloatField
-    third_moment: FloatField
+    flux: Quantity
+    variance: Quantity
+    third_moment: Quantity
 
 
 @dataclass
@@ -75,6 +75,6 @@ class VericalMotion:
         third_moment: m3 s-3
     """
 
-    velocity: FloatField
-    variance: FloatField
-    third_moment: FloatField
+    velocity: Quantity
+    variance: Quantity
+    third_moment: Quantity

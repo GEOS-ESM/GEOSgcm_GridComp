@@ -94,7 +94,6 @@ class RedistributeClouds:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
     ) -> None:
         self._redistribute_clouds = stencil_factory.from_dims_halo(
             func=redistribute_clouds,
