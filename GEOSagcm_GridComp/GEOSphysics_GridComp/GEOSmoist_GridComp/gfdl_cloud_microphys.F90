@@ -232,6 +232,7 @@ module gfdl2_cloud_microphys_mod
     real :: c_psaci = 0.05  !< accretion: cloud ice to snow
     real :: c_pgacs = 0.01  !< accretion: snow to graupel
     real :: c_pgaci = 0.01  !< accretion: cloud ice to graupel
+    real :: c_pgacw = 0.01  !< accretion: cloud water to graupel
     !   Wet processes (liquid to/from frozen)
     real :: c_cracw = 1.00  !< accretion: cloud water to rain
 
@@ -294,7 +295,7 @@ module gfdl2_cloud_microphys_mod
         tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
-        tau_i2s, tau_l2r, qi_lim, c_paut, c_psaci, c_pgacs, c_pgaci,  &
+        tau_i2s, tau_l2r, qi_lim, c_paut, c_psaci, c_pgacs, c_pgaci, c_pgacw,  &
         z_slope_liq, z_slope_ice, c_cracw, alin, clin,              &
         preciprad, cld_min, use_ppm, mono_prof, in_cloud,         &
         do_icepsettle, &
@@ -309,7 +310,7 @@ module gfdl2_cloud_microphys_mod
         tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
-        tau_i2s, tau_l2r, qi_lim, c_paut, c_psaci, c_pgacs, c_pgaci,  &
+        tau_i2s, tau_l2r, qi_lim, c_paut, c_psaci, c_pgacs, c_pgaci, c_pgacw,  &
         z_slope_liq, z_slope_ice, c_cracw, alin, clin,              &
         preciprad, cld_min, use_ppm, mono_prof, in_cloud,         &
         do_icepsettle, &
@@ -3240,6 +3241,7 @@ subroutine setupm
     ! decreasing gcon will reduce accretion of graupel from cloud ice/water
     cgacw = pie * rnzg * gcon * gam350 / (4. * act (6) ** 0.875)
     cgaci = c_pgaci * cgacw
+    cgacw = c_pgacw * cgacw 
 
     ! subl and revp: five constants for three separate processes
 
