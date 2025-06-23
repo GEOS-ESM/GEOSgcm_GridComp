@@ -408,6 +408,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     VERIFY_(STATUS)
 
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+#ifdef PYMOIST_INTEGRATION
+    call MAPL_GetResource( MAPL, MAX_RI , 'MAX_RI:' , DEFAULT=100.e-6, RC=STATUS); VERIFY_(STATUS)
+    WRITE (*,*) "Fortran MAX RI", MAX_RI, c_loc(MAPL)
+    call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
+    WRITE (*,*) "Fortran T (before)", T(12, 9, 30)
+    call pymoist_interface_f_run_GFDL_1M()
+    WRITE (*,*) "Fortran T (after)", T(12, 9, 30)
+#endif
+
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
 

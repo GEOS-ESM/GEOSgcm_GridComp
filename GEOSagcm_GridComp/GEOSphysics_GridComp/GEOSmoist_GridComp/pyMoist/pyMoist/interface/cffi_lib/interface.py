@@ -23,16 +23,17 @@ from pyMoist.interface.python_bridge import (
     pyMoist_run_AerActivation,
     pyMoist_run_GFDL_1M_evap_subl_hystpdf,
     pymoist_run_GFDL_1M_driver,
+    pymoist_interface_GFDL_1M,
     pyMoist_finalize,
     gfdl_1m_init
 )
 import traceback
 
 @ffi.def_extern()
-def pymoist_interface_py_init(flags) -> int:
+def pymoist_interface_py_init(import_state, export_state, internal_state, mapl_comp, flags) -> int:
 
     try:
-        pyMoist_init(flags)
+        pyMoist_init(import_state, export_state, internal_state, mapl_comp, flags)
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())
@@ -132,6 +133,16 @@ def pymoist_interface_py_run_GFDL_1M_driver(
             print(traceback.format_exc())
             return -1
         return 0
+
+@ffi.def_extern()
+def pymoist_interface_py_run_GFDL_1M() -> int:
+    try:
+        pymoist_interface_GFDL_1M()
+    except Exception as err:
+        print("Error in Python:")
+        print(traceback.format_exc())
+        return -1
+    return 0
 
 @ffi.def_extern()
 def pymoist_interface_py_finalize() -> int:

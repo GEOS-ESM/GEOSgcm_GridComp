@@ -5,6 +5,7 @@ Wraps pyMoist for GEOS interface use.
 import dataclasses
 import enum
 import logging
+import numpy as np
 import os
 from typing import Callable, Optional
 
@@ -30,14 +31,18 @@ from ndsl import (
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.dace.build import set_distributed_caches
 from ndsl.dsl.gt4py_utils import is_gpu_backend
-from ndsl.dsl.typing import floating_point_precision
+from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
-from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
+from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
-from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
 from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
+from MAPLpyish import CVoidPointer
+from pyMoist.interface.mapl.memory_factory import (
+    MAPLMemoryRepository,
+    MAPLManagedMemory,
+)
 
 
 class MemorySpace(enum.Enum):
@@ -100,9 +105,18 @@ class StencilBackendCompilerOverride:
         ndsl_log.info(f"Rank {self.comm.Get_rank()} ready for execution")
 
 
+@dataclasses.dataclass
+class MAPLStates:
+    import_: CVoidPointer
+    export: CVoidPointer
+    internal: CVoidPointer
+    mapl_comp: CVoidPointer
+
+
 class GEOSPyMoistWrapper:
     def __init__(
         self,
+        mapl_states: MAPLStates,
         flags: MoistFlags,
         backend="numpy",
         fortran_mem_space: MemorySpace = MemorySpace.HOST,
@@ -135,11 +149,17 @@ class GEOSPyMoistWrapper:
             tile_partitioner=partitioner.tile,
             tile_rank=self.communicator.tile.rank,
         )
-        self.quantity_factory = QuantityFactory.from_backend(sizer=sizer, backend=backend)
-        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(self.quantity_factory)
+        self.quantity_factory = QuantityFactory.from_backend(
+            sizer=sizer, backend=backend
+        )
+        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
+            self.quantity_factory
+        )
 
         self.stencil_config = StencilConfig(
-            compilation_config=CompilationConfig(backend=backend, rebuild=False, validate_args=True),
+            compilation_config=CompilationConfig(
+                backend=backend, rebuild=False, validate_args=True
+            ),
         )
 
         # Build a DaCeConfig for orchestration.
@@ -155,15 +175,23 @@ class GEOSPyMoistWrapper:
 
         # TODO: Orchestrate all code called from this function
 
-        self._grid_indexing = GridIndexing.from_sizer_and_communicator(sizer=sizer, comm=self.communicator)
-        self.stencil_factory = StencilFactory(config=self.stencil_config, grid_indexing=self._grid_indexing)
+        self._grid_indexing = GridIndexing.from_sizer_and_communicator(
+            sizer=sizer, comm=self.communicator
+        )
+        self.stencil_factory = StencilFactory(
+            config=self.stencil_config, grid_indexing=self._grid_indexing
+        )
 
         self._fortran_mem_space = fortran_mem_space
-        self._pace_mem_space = MemorySpace.DEVICE if is_gpu_backend(backend) else MemorySpace.HOST
+        self._pace_mem_space = (
+            MemorySpace.DEVICE if is_gpu_backend(backend) else MemorySpace.HOST
+        )
 
         # Feedback information
         device_ordinal_info = (
-            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}\n" if is_gpu_backend(backend) else "N/A"
+            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}\n"
+            if is_gpu_backend(backend)
+            else "N/A"
         )
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = (
@@ -176,7 +204,7 @@ class GEOSPyMoistWrapper:
             f"         bridge : {self._fortran_mem_space}"
             f" > {self._pace_mem_space}\n"
             f"        backend : {backend}\n"
-            f"          float : {floating_point_precision()}bit\n"
+            f"          float : {get_precision()}bit\n"
             f"  orchestration : {self._is_orchestrated}\n"
             f"          sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
@@ -186,11 +214,27 @@ class GEOSPyMoistWrapper:
 
         # JIT system for the component of Moist
         self._aer_activation: Optional[AerActivation] = None
-        self._GFDL_1M_evap: Optional[GFDL_1M] = None
         self._GFDL_1M_driver: Optional[MicrophysicsDriver] = None
 
         # Initalize flags later
         self.gfdl_microphysics_config = None
+
+        self._mapl_internal = MAPLMemoryRepository(
+            mapl_states.internal,
+            self.quantity_factory,
+        )
+        self._mapl_import = MAPLMemoryRepository(
+            mapl_states.import_,
+            self.quantity_factory,
+        )
+        self._mapl_export = MAPLMemoryRepository(
+            mapl_states.export,
+            self.quantity_factory,
+        )
+        self._mapl_comp = MAPLMemoryRepository(
+            mapl_states.mapl_comp,
+            self.quantity_factory,
+        )
 
     @property
     def driver(self) -> Callable:
@@ -213,9 +257,9 @@ class GEOSPyMoistWrapper:
         flags: GFDL1MFlags,
     ):
         upper_case_dict = {}
-        for field in dataclasses.fields(MicrophysicsConfiguration):
+        for field in dataclasses.fields(GFDL1MConfig):
             upper_case_dict[field.name] = getattr(flags, field.name.lower())
-        self.microphysics_config = MicrophysicsConfiguration(**upper_case_dict)
+        self.microphysics_config = GFDL1MConfig(**upper_case_dict)
 
     @property
     def aer_activation(self) -> Callable:
@@ -232,19 +276,6 @@ class GEOSPyMoistWrapper:
                 )
         return self._aer_activation
 
-    @property
-    def GFDL_1M_evap(self) -> Callable:
-        if not self._GFDL_1M_evap:
-            with StencilBackendCompilerOverride(
-                MPI.COMM_WORLD,
-                self.stencil_config.dace_config,
-            ):
-                self._GFDL_1M_evap = GFDL_1M(
-                    stencil_factory=self.stencil_factory,
-                    quantity_factory=self.quantity_factory,
-                )
-        return self._GFDL_1M_evap
-
     def make_nmmodes_quantity(self, data):
         qty = self.nmodes_quantity_factory.empty(
             [X_DIM, Y_DIM, Z_DIM, "n_modes"],
@@ -252,3 +283,17 @@ class GEOSPyMoistWrapper:
         )
         qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
         return qty
+
+    def GFDL_Single_Moment_Microphysics(self):
+        # call MAPL_GetResource( MAPL, MAX_RI , 'MAX_RI:' , DEFAULT=100.e-6, RC=STATUS); VERIFY_(STATUS)
+        MAX_RI = self._mapl_comp.get_resource("MAX_RI:", np.float32, default=100.0e-6)
+        print(f"MAX_RI From Python = {MAX_RI}, expected 9.99999975E-05")
+
+        # call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
+        # __init__
+        self._mapl_import.register("T", np.float32, [X_DIM, Y_DIM, Z_DIM])
+
+        # __call__
+        with MAPLManagedMemory(self._mapl_import) as mmm:
+            print(f"T From Python ({mmm.associated('T')}) = {mmm.T[7, 11, 29]}")
+            mmm.T[11, 8, 29] = -300.00

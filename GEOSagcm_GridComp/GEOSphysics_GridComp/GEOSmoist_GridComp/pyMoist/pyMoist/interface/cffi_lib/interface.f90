@@ -9,6 +9,7 @@ module pymoist_interface_mod
    public :: gfdl_1m_interface_f_init
    public :: pymoist_interface_f_run_AerActivation
    public :: pymoist_interface_f_run_GFDL1M
+   public :: pymoist_interface_f_run_GFDL_1M
    public :: pymoist_interface_f_run_gfdl_1m_driver
    public :: pymoist_interface_f_finalize
    public :: make_moist_flags_C_interop
@@ -125,12 +126,13 @@ module pymoist_interface_mod
 
    interface
 
-      subroutine pymoist_interface_f_init(moist_flags) bind(c, name='pymoist_interface_c_init')
+      subroutine pymoist_interface_f_init(IMPORT, EXPORT, INTERNAL, MAPL_COMP, moist_flags) bind(c, name='pymoist_interface_c_init')
 
-         import c_int, c_float, c_double, c_bool, moist_flags_interface_type
+         import c_ptr, c_int, c_float, c_double, c_bool, moist_flags_interface_type
 
          implicit none
          type(moist_flags_interface_type), intent(in) :: moist_flags
+         type(c_ptr), intent(in) :: IMPORT, EXPORT, INTERNAL, MAPL_COMP
 
       end subroutine pymoist_interface_f_init
 
@@ -191,7 +193,7 @@ module pymoist_interface_mod
          KLCL, &
          EIS, PLmb, PLEmb, NACTL, NACTI, QST,&
          T, Q, QLCN, QICN, QLLS, QILS, CLLS, CLCN, &
-         SUBLC, EVAPC, RHX )  bind(c, name='pymoist_interface_c_run_GFDL1M')
+         SUBLC, EVAPC, RHX ) bind(c, name='pymoist_interface_c_run_GFDL1M')
 
          import c_int, c_float, c_bool
 
@@ -248,6 +250,8 @@ module pymoist_interface_mod
 
       end subroutine pymoist_interface_f_run_GFDL_1M_driver
 
+      subroutine pymoist_interface_f_run_GFDL_1M() bind(c, name='pymoist_interface_c_run_GFDL_1M')
+      end subroutine pymoist_interface_f_run_GFDL_1M
 
       subroutine pymoist_interface_f_finalize() bind(c, name='pymoist_interface_c_finalize')
       end subroutine pymoist_interface_f_finalize

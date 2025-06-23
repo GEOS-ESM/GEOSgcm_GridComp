@@ -120,7 +120,7 @@ typedef union
 	void *comm_ptr;
 } MPI_Comm_t;
 
-extern int pymoist_interface_py_init(moist_flags_t *flags);
+extern int pymoist_interface_py_init(void *import, void *export, void *internal, void *mapl_comp, moist_flags_t *flags);
 
 extern int gfdl_1m_interface_py_init(gfdl_1m_flags_t *flags);
 
@@ -155,5 +155,7 @@ extern int pymoist_interface_py_run_GFDL_1M_driver(
 	float *PRCP_RAIN, float *PRCP_SNOW, float *PRCP_ICE, float *PRCP_GRAUPEL,
 	float *PFL_LS, float *PFI_LS,
 	bool LHYDROSTATIC, bool LPHYS_HYDROSTATIC);
+
+extern int pymoist_interface_py_run_GFDL_1M();
 
 extern int pymoist_interface_py_finalize();

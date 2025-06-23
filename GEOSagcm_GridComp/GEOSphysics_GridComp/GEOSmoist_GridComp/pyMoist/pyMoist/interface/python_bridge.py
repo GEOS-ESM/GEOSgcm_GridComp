@@ -13,7 +13,7 @@ from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
 from pyMoist.interface.flags import gfdl_1m_flags_f_to_python, moist_flags_f_to_python
-from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MemorySpace
+from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MemorySpace, MAPLStates
 
 
 class PYMOIST_WRAPPER:
@@ -22,6 +22,7 @@ class PYMOIST_WRAPPER:
 
     def init(
         self,
+        mapl_states: MAPLStates,
         pyMoist_flags: cffi.FFI.CData,
         backend: str = "dace:cpu",
     ) -> None:
@@ -44,7 +45,7 @@ class PYMOIST_WRAPPER:
         )
 
         # Initalize pyMoist
-        self.pymoist = GEOSPyMoistWrapper(self.flags, backend)
+        self.pymoist = GEOSPyMoistWrapper(mapl_states, self.flags, backend)
 
         self._timings: Dict[str, List[float]] = {}
         self.ready = True
@@ -115,7 +116,9 @@ class PYMOIST_WRAPPER:
                 ],
             )
 
-            frland = self.f_py.fortran_to_python(f_frland, [self.flags.npx, self.flags.npy])
+            frland = self.f_py.fortran_to_python(
+                f_frland, [self.flags.npx, self.flags.npy]
+            )
 
             t = self.f_py.fortran_to_python(f_t)
             plo = self.f_py.fortran_to_python(f_plo)
@@ -171,147 +174,6 @@ class PYMOIST_WRAPPER:
             self.f_py.python_to_fortran(nacti, f_nacti)
             self.f_py.python_to_fortran(nwfa, f_nwfa)
             self.f_py.python_to_fortran(nactl, f_nactl)
-
-    def GFDL_1M_evap_subl_hystpdf(
-        self,
-        f_EIS: cffi.FFI.CData,
-        f_dw_land: np.float32,
-        f_dw_ocean: np.float32,
-        f_PDF_shape: np.int32,
-        f_TurnRHCrit_Param: cffi.FFI.CData,
-        f_PLmb: cffi.FFI.CData,
-        f_KLCL: cffi.FFI.CData,
-        f_PLEmb: cffi.FFI.CData,
-        f_Area: cffi.FFI.CData,
-        f_dt_moist: np.float32,
-        f_CNV_FRC: cffi.FFI.CData,
-        f_SRF_TYPE: cffi.FFI.CData,
-        f_T: cffi.FFI.CData,
-        f_QLCN: cffi.FFI.CData,
-        f_QICN: cffi.FFI.CData,
-        f_QLLS: cffi.FFI.CData,
-        f_QILS: cffi.FFI.CData,
-        f_CCW_EVAP_EFF: np.float32,
-        f_CCI_EVAP_EFF: np.float32,
-        f_Q: cffi.FFI.CData,
-        f_CLLS: cffi.FFI.CData,
-        f_CLCN: cffi.FFI.CData,
-        f_NACTL: cffi.FFI.CData,
-        f_NACTI: cffi.FFI.CData,
-        f_QST: cffi.FFI.CData,
-        f_SUBLC: cffi.FFI.CData,
-        f_EVAPC: cffi.FFI.CData,
-        f_RHX: cffi.FFI.CData,
-        f_LMELTFRZ: bool = True,
-    ):
-        CUDAProfiler.start_cuda_profiler()
-
-        with TimedCUDAProfiler("[GFDL_1M] Fortran -> Python", self._timings):
-            eis = self.f_py.fortran_to_python(
-                f_EIS,
-                [
-                    self.flags.npx,
-                    self.flags.npy,
-                ],
-            )
-            klcl = self.f_py.fortran_to_python(
-                f_KLCL,
-                [
-                    self.flags.npx,
-                    self.flags.npy,
-                ],
-            )
-            aera = self.f_py.fortran_to_python(
-                f_Area,
-                [
-                    self.flags.npx,
-                    self.flags.npy,
-                ],
-            )
-            cnv_fraction = self.f_py.fortran_to_python(
-                f_CNV_FRC,
-                [
-                    self.flags.npx,
-                    self.flags.npy,
-                ],
-            )
-            surface_type = self.f_py.fortran_to_python(
-                f_SRF_TYPE,
-                [
-                    self.flags.npx,
-                    self.flags.npy,
-                ],
-            )
-
-            plmb = self.f_py.fortran_to_python(f_PLmb)
-            plemb = self.f_py.fortran_to_python(f_PLEmb)
-            T = self.f_py.fortran_to_python(f_T)
-            QLCN = self.f_py.fortran_to_python(f_QLCN)
-            QICN = self.f_py.fortran_to_python(f_QICN)
-            QLLS = self.f_py.fortran_to_python(f_QLLS)
-            QILS = self.f_py.fortran_to_python(f_QILS)
-            Q = self.f_py.fortran_to_python(f_Q)
-            CLLS = self.f_py.fortran_to_python(f_CLLS)
-            CLCN = self.f_py.fortran_to_python(f_CLCN)
-            NACTL = self.f_py.fortran_to_python(f_NACTL)
-            NACTI = self.f_py.fortran_to_python(f_NACTI)
-            QST = self.f_py.fortran_to_python(f_QST)
-
-            self.f_py.device_sync()
-
-        with TimedCUDAProfiler("[GFDL_1M] Run", self._timings):
-            self.pymoist.GFDL_1M_evap(
-                EIS=eis,
-                dw_land=Float(f_dw_land),
-                dw_ocean=Float(f_dw_ocean),
-                PDFSHAPE=Float(f_PDF_shape),
-                TURNRHCRIT_PARAM=Float(f_TurnRHCrit_Param),
-                PLmb=plmb,
-                KLCL=klcl,
-                PLEmb=plemb,
-                AREA=aera,
-                DT_MOIST=Float(f_dt_moist),
-                CNV_FRC=cnv_fraction,
-                SRF_TYPE=surface_type,
-                T=T,
-                QLCN=QLCN,
-                QICN=QICN,
-                QLLS=QLLS,
-                QILS=QILS,
-                CCW_EVAP_EFF=Float(f_CCW_EVAP_EFF),
-                CCI_EVAP_EFF=Float(f_CCI_EVAP_EFF),
-                Q=Q,
-                CLLS=CLLS,
-                CLCN=CLCN,
-                NACTL=NACTL,
-                NACTI=NACTI,
-                QST=QST,
-                LMELTFRZ=f_LMELTFRZ,
-            )
-
-        # Convert NumPy arrays back to Fortran
-        with TimedCUDAProfiler("[GFDL_1M] Python -> Fortran", self._timings):
-            self.f_py.python_to_fortran(eis, f_EIS)
-            self.f_py.python_to_fortran(klcl, f_KLCL)
-            self.f_py.python_to_fortran(aera, f_Area)
-            self.f_py.python_to_fortran(cnv_fraction, f_CNV_FRC)
-            self.f_py.python_to_fortran(surface_type, f_SRF_TYPE)
-            self.f_py.python_to_fortran(plmb, f_PLmb)
-            self.f_py.python_to_fortran(plemb, f_PLEmb)
-            self.f_py.python_to_fortran(T, f_T)
-            self.f_py.python_to_fortran(QLCN, f_QLCN)
-            self.f_py.python_to_fortran(QICN, f_QICN)
-            self.f_py.python_to_fortran(QLLS, f_QLLS)
-            self.f_py.python_to_fortran(QILS, f_QILS)
-            self.f_py.python_to_fortran(Q, f_Q)
-            self.f_py.python_to_fortran(CLLS, f_CLLS)
-            self.f_py.python_to_fortran(CLCN, f_CLCN)
-            self.f_py.python_to_fortran(NACTL, f_NACTL)
-            self.f_py.python_to_fortran(NACTI, f_NACTI)
-            self.f_py.python_to_fortran(QST, f_QST)
-            self.f_py.python_to_fortran(self.pymoist.gfdl_1M.sublc.view[:], f_SUBLC)
-            self.f_py.python_to_fortran(self.pymoist.gfdl_1M.evapc.view[:], f_EVAPC)
-            self.f_py.python_to_fortran(self.pymoist.gfdl_1M.rhx.view[:], f_RHX)
 
     def driver(
         self,
@@ -492,14 +354,28 @@ class PYMOIST_WRAPPER:
             self.f_py.python_to_fortran(srf_type, f_srf_type)
             self.f_py.python_to_fortran(eis, f_eis)
             self.f_py.python_to_fortran(rhcrit3d, f_rhcrit3d)
-            self.f_py.python_to_fortran(self.pymoist.driver.outputs.rain.view[:], f_rain)
-            self.f_py.python_to_fortran(self.pymoist.driver.outputs.snow.view[:], f_snow)
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.rain.view[:], f_rain
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.snow.view[:], f_snow
+            )
             self.f_py.python_to_fortran(self.pymoist.driver.outputs.ice.view[:], f_ice)
-            self.f_py.python_to_fortran(self.pymoist.driver.outputs.graupel.view[:], f_graupel)
-            self.f_py.python_to_fortran(self.pymoist.driver.outputs.m2_rain.view[:], f_m2_rain)
-            self.f_py.python_to_fortran(self.pymoist.driver.outputs.m2_sol.view[:], f_m2_sol)
-            self.f_py.python_to_fortran(self.pymoist.driver.outputs.revap.view[:], f_revap)
-            self.f_py.python_to_fortran(self.pymoist.driver.outputs.isubl.view[:], f_isubl)
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.graupel.view[:], f_graupel
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.m2_rain.view[:], f_m2_rain
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.m2_sol.view[:], f_m2_sol
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.revap.view[:], f_revap
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.driver.outputs.isubl.view[:], f_isubl
+            )
 
 
 WRAPPER = PYMOIST_WRAPPER()
@@ -709,17 +585,29 @@ def pyMoist_run_AerActivation(
     )
 
 
+def pymoist_interface_GFDL_1M():
+    if WRAPPER.ready:
+        WRAPPER.pymoist.GFDL_Single_Moment_Microphysics()
+
+
 def pyMoist_finalize():
     if WRAPPER.ready:
         WRAPPER.finalize()
 
 
-def pyMoist_init(pyMoist_flags: cffi.FFI.CData):
+def pyMoist_init(
+    import_state: cffi.FFI.CData,
+    export_state: cffi.FFI.CData,
+    internal_state: cffi.FFI.CData,
+    mapl_comp: cffi.FFI.CData,
+    pyMoist_flags: cffi.FFI.CData,
+):
     # Read in the backend
     BACKEND = os.environ.get("GEOS_PYFV3_BACKEND", "dace:cpu")
     if WRAPPER.ready:
         raise RuntimeError("[PYMOIST WRAPPER] Double init")
     WRAPPER.init(
+        mapl_states=MAPLStates(import_state, export_state, internal_state, mapl_comp),
         pyMoist_flags=pyMoist_flags,
         backend=BACKEND,
     )

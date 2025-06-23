@@ -54,33 +54,35 @@ class MAPLBridge:
 
         # MAPL_GetResource
         self.ffi.cdef(
-            "void* MAPLpy_GetResource_Bool"
-            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool default"
+            "bool MAPLpy_GetResource_Bool"
+            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool default_value"
             ");"
         )
         self.ffi.cdef(
-            "void* MAPLpy_GetResource_Int32"
-            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool default"
+            "int32_t MAPLpy_GetResource_Int32"
+            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, int32_t default_value"
             ");"
         )
         self.ffi.cdef(
-            "void* MAPLpy_GetResource_Int64"
-            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool default"
+            "int64_t MAPLpy_GetResource_Int64"
+            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, int64_t default_value"
             ");"
         )
         self.ffi.cdef(
-            "void* MAPLpy_GetResource_Float"
-            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool default"
+            "float MAPLpy_GetResource_Float"
+            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, float default_value"
             ");"
         )
         self.ffi.cdef(
-            "void* MAPLpy_GetResource_Double"
-            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool default"
+            "double MAPLpy_GetResource_Double"
+            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, double default_value"
             ");"
         )
 
         # ESMF_TimeIntervalGet
         self.ffi.cdef("void* MAPLpy_ESMF_TimeIntervalGet(void* esmf_time_state_c_ptr);")
+
+        self.ffi.cdef("bool MAPLpy_Associated(void*);")
 
     def __del__(self):
         self.ffi.dlclose(self.mapl_c_bridge)
@@ -109,33 +111,33 @@ class MAPLBridge:
         self, state: MAPLState, name: str, alloc: bool = False
     ) -> CVoidPointer:
         return self.mapl_c_bridge.MAPLpy_GetPointer(  # type: ignore
-            state, self.ffi.new("char[]", name.encode()), len(name)
+            state, self.ffi.new("char[]", name.encode()), len(name), alloc
         )
 
     def MAPL_GetResource(
         self,
         state: MAPLState,
         name: str,
-        dtype: npt.DTypeLike,
-        default: bool = False,
+        default: npt.DTypeLike,
     ) -> Any:
-        if isinstance(dtype, (int, np.int64)):  # type: ignore
+        dtype = type(default)
+        if dtype in [int, np.int64]:  # type: ignore
             return self.mapl_c_bridge.MAPLpy_GetResource_Int32(  # type: ignore
                 state, self.ffi.new("char[]", name.encode()), len(name), default
             )
-        elif isinstance(dtype, np.int32):  # type: ignore
+        elif dtype in [np.int32]:  # type: ignore
             return self.mapl_c_bridge.MAPLpy_GetResource_Int64(  # type: ignore
                 state, self.ffi.new("char[]", name.encode()), len(name), default
             )
-        elif isinstance(dtype, np.float32):  # type: ignore
+        elif dtype in [np.float32]:  # type: ignore
             return self.mapl_c_bridge.MAPLpy_GetResource_Float(  # type: ignore
                 state, self.ffi.new("char[]", name.encode()), len(name), default
             )
-        elif isinstance(dtype, (float, np.float64)):  # type: ignore
+        elif dtype in [float, np.float64]:  # type: ignore
             return self.mapl_c_bridge.MAPLpy_GetResource_Double(  # type: ignore
                 state, self.ffi.new("char[]", name.encode()), len(name), default
             )
-        elif isinstance(dtype, bool):
+        elif dtype in [bool]:
             return self.mapl_c_bridge.MAPLpy_GetResource_Bool(  # type: ignore
                 state, self.ffi.new("char[]", name.encode()), len(name), default
             )
@@ -148,3 +150,6 @@ class MAPLBridge:
         return self.mapl_c_bridge.MAPLpy_ESMF_TimeIntervalGet(  # type: ignore
             time_state
         )
+
+    def associated(self, ptr: CVoidPointer):
+        return self.mapl_c_bridge.MAPLpy_Associated(ptr)  # type: ignore
