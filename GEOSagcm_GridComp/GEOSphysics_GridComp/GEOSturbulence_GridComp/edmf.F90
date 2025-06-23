@@ -23,6 +23,7 @@ real, parameter ::     &
      r        = 2.
 
  type EDMFPARAMS_TYPE
+    logical :: DOTRACERS
     integer :: DISCRETE
     integer :: IMPLICIT
     integer :: ENTRAIN
