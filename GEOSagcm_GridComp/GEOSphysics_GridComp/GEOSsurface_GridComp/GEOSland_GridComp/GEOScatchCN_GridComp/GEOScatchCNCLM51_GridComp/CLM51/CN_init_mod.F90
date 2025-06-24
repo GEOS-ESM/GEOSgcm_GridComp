@@ -78,7 +78,8 @@ module CN_initMod
   use SoilBiogeochemCompetitionMod       , only : SoilBiogeochemCompetitionInit
   use SoilBiogeochemPotentialMod         , only : readSoilBiogeochemPotentialParams      => readParams
   use CNGapMortalityMod                  , only : readCNGapMortalityParams               => readParams
-  use CNFUNMod                           , only : readCNFUNParams                        => readParams
+  use CNFUNMod                           , only : readCNFUNParams                        => readParams, &
+                                                  CNFUNInit
   use CNNDynamicsMod                     , only : CNNDynamicsReadNML
   use SurfaceAlbedoMod                   , only: SurfaceAlbedo_readnl
   use SoilBiogeochemPrecisionControlMod  , only: SoilBiogeochemPrecisionControlInit
@@ -359,6 +360,7 @@ module CN_initMod
 
    call CNPhenologyInit                (bounds)
    call SoilBiogeochemCompetitionInit  (bounds)
+   call CNFUNInit(bounds,bgc_vegetation_inst%cnveg_state_inst,bgc_vegetation_inst%cnveg_carbonstate_inst,bgc_vegetation_inst%cnveg_nitrogenstate_inst)
 
    ! Initialize precision control for soil biogeochemistry (use soilbiogeochem_carbonstate three times, since we   do not currently use isotopes)
     call SoilBiogeochemPrecisionControlInit( soilbiogeochem_carbonstate_inst, soilbiogeochem_carbonstate_inst, &         
