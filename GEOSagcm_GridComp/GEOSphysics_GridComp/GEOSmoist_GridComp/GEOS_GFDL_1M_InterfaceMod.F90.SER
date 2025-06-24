@@ -500,6 +500,70 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser verbatim ALLOCATE(SER_DQSAT0_QS_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
     !$ser verbatim ALLOCATE(SER_DQSAT0_DQ_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
 
+    !$ser savepoint GFDL_1M-constants
+    !$ser data LHYDROSTATIC=LHYDROSTATIC LPHYS_HYDROSTATIC=LPHYS_HYDROSTATIC DT_MOIST=DT_MOIST
+    !$ser data MP_TIME=MP_TIME T_MIN=T_MIN T_SUB=T_SUB TAU_R2G=TAU_R2G TAU_SMLT=TAU_SMLT TAU_G2R=TAU_G2R DW_LAND=DW_LAND DW_OCEAN=DW_OCEAN
+    !$ser data VI_FAC=VI_FAC VR_FAC=VR_FAC VS_FAC=VS_FAC VG_FAC=VG_FAC QL_MLT=QL_MLT DO_QA=DO_QA FIX_NEGATIVE=FIX_NEGATIVE VI_MAX=VI_MAX
+    !$ser data VS_MAX=VS_MAX VG_MAX=VG_MAX VR_MAX=VR_MAX QS_MLT=QS_MLT QS0_CRT=QS0_CRT QI_GEN=QI_GEN QL0_MAX=QL0_MAX QI0_MAX=QI0_MAX
+    !$ser data QI0_CRT=QI0_CRT QR0_CRT=QR0_CRT FAST_SAT_ADJ=FAST_SAT_ADJ RH_INC=RH_INC RH_INS=RH_INS RH_INR=RH_INR CONST_VI=CONST_VI
+    !$ser data CONST_VS=CONST_VS CONST_VG=CONST_VG CONST_VR=CONST_VR USE_CCN=USE_CCN RTHRESHU=RTHRESHU RTHRESHS=RTHRESHS CCN_L=CCN_L CCN_O=CCN_O QC_CRT=QC_CRT
+    !$ser data TAU_G2V=TAU_G2V TAU_V2G=TAU_V2G TAU_S2V=TAU_S2V TAU_V2S=TAU_V2S
+    !$ser data TAU_REVP=TAU_REVP TAU_FRZ=TAU_FRZ DO_BIGG=DO_BIGG DO_EVAP=DO_EVAP DO_SUBL=DO_SUBL
+    !$ser data SAT_ADJ0=SAT_ADJ0 C_PIACR=C_PIACR TAU_IMLT=TAU_IMLT TAU_V2L=TAU_V2L TAU_L2V=TAU_L2V TAU_I2V=TAU_I2V
+    !$ser data TAU_I2S=TAU_I2S TAU_L2R=TAU_L2R QI_LIM=QI_LIM QL_GEN=QL_GEN C_PAUT=C_PAUT C_PSACI=C_PSACI C_PGACS=C_PGACS C_PGACI=C_PGACI
+    !$ser data Z_SLOPE_LIQ=Z_SLOPE_LIQ Z_SLOPE_ICE=Z_SLOPE_ICE PROG_CCN=PROG_CCN C_CRACW=C_CRACW ALIN=ALIN CLIN=CLIN
+    !$ser data PRECIPRAD=PRECIPRAD CLD_MIN=CLD_MIN USE_PPM=USE_PPM MONO_PROF=MONO_PROF
+    !$ser data DO_SEDI_HEAT=DO_SEDI_HEAT SEDI_TRANSPORT=SEDI_TRANSPORT DO_SEDI_W=DO_SEDI_W DE_ICE=DE_ICE
+    !$ser data ICLOUD_F=ICLOUD_F IRAIN_F=IRAIN_F MP_PRINT=MP_PRINT USE_BERGERON=USE_BERGERON
+    !$ser data LMELTFRZ=LMELTFRZ TURNRHCRIT_PARAM=TURNRHCRIT_PARAM PDFSHAPE=PDFSHAPE ANV_ICEFALL=ANV_ICEFALL LS_ICEFALL=LS_ICEFALL
+    !$ser data LIQ_RADII_PARAM=LIQ_RADII_PARAM ICE_RADII_PARAM=ICE_RADII_PARAM FAC_RI=FAC_RI MIN_RI=MIN_RI
+    !$ser data MAX_RI=MAX_RI FAC_RL=FAC_RL MIN_RL=MIN_RL MAX_RL=MAX_RL
+    !$ser data CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
+
+    !$ser verbatim do iter=0, TEST_ARRAY_SIZE-1
+      !$ser verbatim TEMP_ARRAY(iter+1, :) = 150 + (2*iter)
+      !$ser verbatim PRES_ARRAY(:, iter+1) = 0.01 + (10*iter)
+    !$ser verbatim enddo
+
+    !$ser verbatim SER_TABLESIZE=TABLESIZE
+    !$ser savepoint saturation_tables-In
+    !$ser data TABLESIZE=SER_TABLESIZE
+    !$ser verbatim call SERIALIZE_ESINIT(SER_ESTBLE, SER_ESTBLW, SER_ESTBLX, SER_ESTFRZ, SER_ESTLQU)
+    !$ser savepoint saturation_tables-Out
+    !$ser data ESTBLE=SER_ESTBLE ESTBLW=SER_ESTBLW ESTBLX=SER_ESTBLX
+    !$ser data ESTFRZ=SER_ESTFRZ ESTLQU=SER_ESTLQU
+
+    !$ser savepoint qsat_functions-In
+    !$ser data T=T PLmb=PLmb TEMP_ARRAY=TEMP_ARRAY PRES_ARRAY=PRES_ARRAY
+    !$ser verbatim do L=1,LM
+      !$ser verbatim do J=1,JM
+        !$ser verbatim do I=1,IM
+          !$ser verbatim SER_QSATICE(I, J, L) = GEOS_QsatICE( T(I, J, L), PLmb(I, J, L)*100.0 , DQ=SER_DQSI(I, J, L) )
+          !$ser verbatim SER_QSATLQU(I, J, L) = GEOS_QsatLQU( T(I, J, L), PLmb(I, J, L)*100.0 , DQ=SER_DQSL(I, J, L) )
+          !$ser verbatim SER_QSAT_QS(I, J, L) = GEOS_Qsat( T(I, J, L), PLmb(I, J, L), DQSAT=SER_QSAT_DQ(I, J, L) )
+          !$ser verbatim SER_DQSAT_DQ(I, J, L) = GEOS_DQsat( T(I, J, L), PLmb(I, J, L), QSAT=SER_DQSAT_QS(I, J, L) )
+        !$ser verbatim enddo
+      !$ser verbatim enddo
+    !$ser verbatim enddo
+
+    !$ser verbatim do iter_1=1, TEST_ARRAY_SIZE
+      !$ser verbatim do iter_2=1, TEST_ARRAY_SIZE
+        !$ser verbatim SER_QSATICE_2D(iter_1, iter_2) = GEOS_QsatICE( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2)*100.0 , DQ=SER_DQSI_2D(iter_1, iter_2) )
+        !$ser verbatim SER_QSATLQU_2D(iter_1, iter_2) = GEOS_QsatLQU( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2)*100.0 , DQ=SER_DQSL_2D(iter_1, iter_2) )
+        !$ser verbatim SER_QSAT0_QS_2D(iter_1, iter_2) = GEOS_Qsat( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2), DQSAT=SER_QSAT0_DQ_2D(iter_1, iter_2) )
+        !$ser verbatim SER_DQSAT0_DQ_2D(iter_1, iter_2) = GEOS_DQsat( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2), QSAT=SER_DQSAT0_QS_2D(iter_1, iter_2) )
+      !$ser verbatim enddo
+    !$ser verbatim enddo
+    !$ser savepoint qsat_functions-Out
+    !$ser data SER_QSATLQU=SER_QSATLQU SER_QSATICE=SER_QSATICE SER_DQSL=SER_DQSL SER_DQSI=SER_DQSI
+    !$ser data SER_QSATLQU_2D=SER_QSATLQU_2D SER_QSATICE_2D=SER_QSATICE_2D SER_DQSL_2D=SER_DQSL_2D SER_DQSI_2D=SER_DQSI_2D
+    !$ser data SER_QSAT_QS=SER_QSAT_QS SER_QSAT_DQ=SER_QSAT_DQ SER_DQSAT_QS=SER_DQSAT_QS SER_DQSAT_DQ=SER_DQSAT_DQ
+    !$ser data SER_QSAT0_QS_2D=SER_QSAT0_QS_2D SER_QSAT0_DQ_2D=SER_QSAT0_DQ_2D SER_DQSAT0_QS_2D=SER_DQSAT0_QS_2D SER_DQSAT0_DQ_2D=SER_DQSAT0_DQ_2D
+    
+    !$ser savepoint GFDL_1M_setup-In
+    !$ser data PLE=PLE ZLE=ZLE T=T U=U V=V Q=Q QRAIN=QRAIN QSNOW=QSNOW QGRAUPEL=QGRAUPEL
+    !$ser data QLLS=QLLS QLCN=QLCN CLCN=CLCN CLLS=CLLS QILS=QILS QICN=QICN
+
     ! Derived States
     PLEmb    =  PLE*.01
     PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
@@ -610,83 +674,33 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
    call MAPL_GetPointer(EXPORT,  PDF_RQTTH,  'PDF_RQTTH' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,  PDF_RWTH,  'PDF_RWTH' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,  PDF_RWQT,  'PDF_RWQT' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-#endif
-
-    !$ser verbatim do iter=0, TEST_ARRAY_SIZE-1
-      !$ser verbatim TEMP_ARRAY(iter+1, :) = 150 + (2*iter)
-      !$ser verbatim PRES_ARRAY(:, iter+1) = 0.01 + (10*iter)
-    !$ser verbatim enddo
-
-    !-$ser verbatim SER_TABLESIZE=TABLESIZE
-    !-$ser savepoint saturation_tables-In
-    !-$ser data TABLESIZE=SER_TABLESIZE
-    !-$ser verbatim call SERIALIZE_ESINIT(SER_ESTBLE, SER_ESTBLW, SER_ESTBLX, SER_ESTFRZ, SER_ESTLQU)
-    !-$ser savepoint saturation_tables-Out
-    !-$ser data ESTBLE=SER_ESTBLE ESTBLW=SER_ESTBLW ESTBLX=SER_ESTBLX
-    !-$ser data ESTFRZ=SER_ESTFRZ ESTLQU=SER_ESTLQU
-
-    !$ser savepoint qsat_functions-In
-    !$ser data T=T PLmb=PLmb TEMP_ARRAY=TEMP_ARRAY PRES_ARRAY=PRES_ARRAY
-    !$ser verbatim do L=1,LM
-      !$ser verbatim do J=1,JM
-        !$ser verbatim do I=1,IM
-          !$ser verbatim SER_QSATICE(I, J, L) = GEOS_QsatICE( T(I, J, L), PLmb(I, J, L)*100.0 , DQ=SER_DQSI(I, J, L) )
-          !$ser verbatim SER_QSATLQU(I, J, L) = GEOS_QsatLQU( T(I, J, L), PLmb(I, J, L)*100.0 , DQ=SER_DQSL(I, J, L) )
-          !$ser verbatim SER_QSAT_QS(I, J, L) = GEOS_Qsat( T(I, J, L), PLmb(I, J, L), DQSAT=SER_QSAT_DQ(I, J, L) )
-          !$ser verbatim SER_DQSAT_DQ(I, J, L) = GEOS_DQsat( T(I, J, L), PLmb(I, J, L), QSAT=SER_DQSAT_QS(I, J, L) )
-        !$ser verbatim enddo
-      !$ser verbatim enddo
-    !$ser verbatim enddo
-
-    !$ser verbatim do iter_1=1, TEST_ARRAY_SIZE
-      !$ser verbatim do iter_2=1, TEST_ARRAY_SIZE
-        !$ser verbatim SER_QSATICE_2D(iter_1, iter_2) = GEOS_QsatICE( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2)*100.0 , DQ=SER_DQSI_2D(iter_1, iter_2) )
-        !$ser verbatim SER_QSATLQU_2D(iter_1, iter_2) = GEOS_QsatLQU( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2)*100.0 , DQ=SER_DQSL_2D(iter_1, iter_2) )
-        !$ser verbatim SER_QSAT0_QS_2D(iter_1, iter_2) = GEOS_Qsat( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2), DQSAT=SER_QSAT0_DQ_2D(iter_1, iter_2) )
-        !$ser verbatim SER_DQSAT0_DQ_2D(iter_1, iter_2) = GEOS_DQsat( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2), QSAT=SER_DQSAT0_QS_2D(iter_1, iter_2) )
-      !$ser verbatim enddo
-    !$ser verbatim enddo
-    !$ser savepoint qsat_functions-Out
-    !$ser data SER_QSATLQU=SER_QSATLQU SER_QSATICE=SER_QSATICE SER_DQSL=SER_DQSL SER_DQSI=SER_DQSI
-    !$ser data SER_QSATLQU_2D=SER_QSATLQU_2D SER_QSATICE_2D=SER_QSATICE_2D SER_DQSL_2D=SER_DQSL_2D SER_DQSI_2D=SER_DQSI_2D
-    !$ser data SER_QSAT_QS=SER_QSAT_QS SER_QSAT_DQ=SER_QSAT_DQ SER_DQSAT_QS=SER_DQSAT_QS SER_DQSAT_DQ=SER_DQSAT_DQ
-    !$ser data SER_QSAT0_QS_2D=SER_QSAT0_QS_2D SER_QSAT0_DQ_2D=SER_QSAT0_DQ_2D SER_DQSAT0_QS_2D=SER_DQSAT0_QS_2D SER_DQSAT0_DQ_2D=SER_DQSAT0_DQ_2D
-
-        
+#endif  
 
       ! Include shallow precip condensates if present
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then
+          !$ser data SHLW_PRC3=PTR3D
           QRAIN = QRAIN + PTR3D*DT_MOIST
         endif
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then 
+          !$ser data SHLW_SNO3=PTR3D
           QSNOW = QSNOW + PTR3D*DT_MOIST
         endif
-        !$ser savepoint GFDL_1M-In
-        !$ser data EIS=EIS CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE T=T Q=Q NACTL=NACTL NACTI=NACTI
-        !$ser data QLCN=QLCN QICN=QICN QILS=QILS QLLS=QLLS CLLS=CLLS CLCN=CLCN KLCL=KLCL
-        !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
-        !$ser data DT_MOIST=DT_MOIST PDFSHAPE=PDFSHAPE CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
-        !$ser data TURNRHCRIT_PARAM=TURNRHCRIT_PARAM dw_land=dw_land dw_ocean=dw_ocean
-        !$ser savepoint phase_change-In
-        !$ser data EIS=EIS CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE T=T Q=Q NACTL=NACTL NACTI=NACTI
-        !$ser data QLCN=QLCN QICN=QICN QILS=QILS QLLS=QLLS CLLS=CLLS CLCN=CLCN KLCL=KLCL
-        !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
-        !$ser verbatim if (LMELTFRZ .eqv. .true.) then
-        !$ser verbatim   temporary_1 = 1
-        !$ser verbatim else
-        !$ser verbatim   temporary_1 = 0
-        !$ser verbatim endif
-        !$ser verbatim if (USE_BERGERON .eqv. .true.) then
-        !$ser verbatim   temporary_2 = 1
-        !$ser verbatim else
-        !$ser verbatim   temporary_2 = 0
-        !$ser verbatim endif
-        !$ser savepoint phase_change-constants
-        !$ser data DT_MOIST=DT_MOIST PDFSHAPE=PDFSHAPE CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
-        !$ser data TURNRHCRIT_PARAM=TURNRHCRIT_PARAM dw_land=dw_land dw_ocean=dw_ocean do_qa=do_qa
-        !$ser data LMELTFRZ=temporary_1 USE_BERGERON=temporary_2
+
+    !$ser savepoint GFDL_1M_setup-Out
+    !$ser data PLEmb=PLEmb PLmb=PLmb ZLE0=ZLE0 ZL0=ZL0 DZET=DZET DP=DP
+    !$ser data MASS=MASS iMASS=iMASS U0=U0 V0=V0 QST3=QST3 DQST3=DQST3
+    !$ser data KLCL=KLCL LTS=LTS EIS=EIS QRAIN=QRAIN QSNOW=QSNOW
+    !$ser data DUDT_macro=DUDT_macro DVDT_macro=DVDT_macro DTDT_macro=DTDT_macro DQVDT_macro=DQVDT_macro
+    !$ser data DQLDT_macro=DQLDT_macro DQIDT_macro=DQIDT_macro DQADT_macro=DQADT_macro DQRDT_macro=DQRDT_macro
+    !$ser data DQSDT_macro=DQSDT_macro DQGDT_macro=DQGDT_macro
+
+
+    !$ser savepoint phase_change-In
+    !$ser data EIS=EIS CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE T=T Q=Q NACTL=NACTL NACTI=NACTI
+    !$ser data QLCN=QLCN QICN=QICN QILS=QILS QLLS=QLLS CLLS=CLLS CLCN=CLCN KLCL=KLCL
+    !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         !$ser verbatim call ser_set_Dx(IM, JM, LM, 1)
@@ -873,13 +887,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
-       !$ser flush_savepoint meltfrz-In
-       !$ser flush_savepoint meltfrz-Out
-       !$ser savepoint GFDL_1M-Out
-       !$ser data T=T Q=Q QLLS=QLLS QILS=QILS QLCN=QLCN QICN=QICN CLLS=CLLS CLCN=CLCN RHX=RHX EVAPC=EVAPC SUBLC=SUBLC
-       !$ser savepoint phase_change-Out
-       !$ser data T=T Q=Q QLLS=QLLS QILS=QILS QLCN=QLCN QICN=QICN CLLS=CLLS CLCN=CLCN
-       !$ser data RHX=RHX EVAPC=EVAPC SUBLC=SUBLC KLCL=KLCL RHCRIT3D=RHCRIT3D
+    !$ser savepoint phase_change-Out
+    !$ser data T=T Q=Q QLLS=QLLS QILS=QILS QLCN=QLCN QICN=QICN CLLS=CLLS CLCN=CLCN
+    !$ser data RHX=RHX EVAPC=EVAPC SUBLC=SUBLC KLCL=KLCL RHCRIT3D=RHCRIT3D
 
     ! Update macrophysics tendencies
      DUDT_macro=( U         - DUDT_macro)/DT_MOIST
@@ -951,30 +961,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = QGRAUPEL
         ! Run the driver
          !$ser savepoint GFDL_1M_driver-In
-         !$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QR=RAD_QR RAD_QI=RAD_QI RAD_QS=RAD_QS RAD_QG=RAD_QG RAD_CF=RAD_CF NACTLI=(NACTL+NACTI)
+         !$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QR=RAD_QR RAD_QI=RAD_QI RAD_QS=RAD_QS RAD_QG=RAD_QG RAD_CF=RAD_CF
+         !$ser data NACTL=NACTL NACTI=NACTI
          !$ser data DQVDTmic=DQVDTmic DQLDTmic=DQLDTmic DQRDTmic=DQRDTmic DQIDTmic=DQIDTmic
          !$ser data DQSDTmic=DQSDTmic DQGDTmic=DQGDTmic DQADTmic=DQADTmic DTDTmic=DTDTmic
          !$ser data T=T W=W U=U V=V DUDTmic=DUDTmic DVDTmic=DVDTmic DZ=DZ DP=DP
          !$ser data AREA=AREA FRLAND=FRLAND CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE EIS=EIS
-         !$ser data RHCRIT3D=RHCRIT3D ANV_ICEFALL=ANV_ICEFALL LS_ICEFALL=LS_ICEFALL
+         !$ser data RHCRIT3D=RHCRIT3D
          !$ser data REV_LS=REV_LS RSU_LS=RSU_LS
          !$ser data PRCP_RAIN=PRCP_RAIN PRCP_SNOW=PRCP_SNOW PRCP_ICE=PRCP_ICE PRCP_GRAUPEL=PRCP_GRAUPEL
-         !$ser data PFL_LS=PFL_LS(:,:,1:LM) PFI_LS=PFI_LS(:,:,1:LM)
+         !$ser data PFL_LS_driver=PFL_LS(:,:,1:LM) PFI_LS_driver=PFI_LS(:,:,1:LM)
          
-         !$ser savepoint GFDL_1M_driver-constants
-         !$ser data HYDROSTATIC=LHYDROSTATIC PHYS_HYDROSTATIC=LPHYS_HYDROSTATIC DT_MOIST=DT_MOIST
-         !$ser data MP_TIME=MP_TIME T_MIN=T_MIN T_SUB=T_SUB TAU_R2G=TAU_R2G TAU_SMLT=TAU_SMLT TAU_G2R=TAU_G2R DW_LAND=DW_LAND DW_OCEAN=DW_OCEAN
-         !$ser data VI_FAC=VI_FAC VR_FAC=VR_FAC VS_FAC=VS_FAC VG_FAC=VG_FAC QL_MLT=QL_MLT DO_QA=DO_QA FIX_NEGATIVE=FIX_NEGATIVE VI_MAX=VI_MAX
-         !$ser data VS_MAX=VS_MAX VG_MAX=VG_MAX VR_MAX=VR_MAX QS_MLT=QS_MLT QS0_CRT=QS0_CRT QI_GEN=QI_GEN QL0_MAX=QL0_MAX QI0_MAX=QI0_MAX
-         !$ser data QI0_CRT=QI0_CRT QR0_CRT=QR0_CRT FAST_SAT_ADJ=FAST_SAT_ADJ RH_INC=RH_INC RH_INS=RH_INS RH_INR=RH_INR CONST_VI=CONST_VI
-         !$ser data CONST_VS=CONST_VS CONST_VG=CONST_VG CONST_VR=CONST_VR USE_CCN=USE_CCN RTHRESHU=RTHRESHU RTHRESHS=RTHRESHS CCN_L=CCN_L CCN_O=CCN_O QC_CRT=QC_CRT
-         !$ser data TAU_G2V=TAU_G2V TAU_V2G=TAU_V2G TAU_S2V=TAU_S2V TAU_V2S=TAU_V2S
-         !$ser data TAU_REVP=TAU_REVP TAU_FRZ=TAU_FRZ DO_BIGG=DO_BIGG DO_EVAP=DO_EVAP DO_SUBL=DO_SUBL
-         !$ser data SAT_ADJ0=SAT_ADJ0 C_PIACR=C_PIACR TAU_IMLT=TAU_IMLT TAU_V2L=TAU_V2L TAU_L2V=TAU_L2V TAU_I2V=TAU_I2V
-         !$ser data TAU_I2S=TAU_I2S TAU_L2R=TAU_L2R QI_LIM=QI_LIM QL_GEN=QL_GEN C_PAUT=C_PAUT C_PSACI=C_PSACI C_PGACS=C_PGACS C_PGACI=C_PGACI
-         !$ser data Z_SLOPE_LIQ=Z_SLOPE_LIQ Z_SLOPE_ICE=Z_SLOPE_ICE PROG_CCN=PROG_CCN C_CRACW=C_CRACW ALIN=ALIN CLIN=CLIN
-         !$ser data PRECIPRAD=PRECIPRAD CLD_MIN=CLD_MIN USE_PPM=USE_PPM MONO_PROF=MONO_PROF
-         !$ser data DO_SEDI_HEAT=DO_SEDI_HEAT SEDI_TRANSPORT=SEDI_TRANSPORT DO_SEDI_W=DO_SEDI_W DE_ICE=DE_ICE ICLOUD_F=ICLOUD_F IRAIN_F=IRAIN_F MP_PRINT=MP_PRINT
          !$ser verbatim call ser_set_Dx(IM, JM, LM, 1)
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
@@ -1002,9 +999,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser data DQVDTmic=DQVDTmic DQLDTmic=DQLDTmic DQRDTmic=DQRDTmic
          !$ser data DQIDTmic=DQIDTmic DQSDTmic=DQSDTmic DQGDTmic=DQGDTmic
          !$ser data PRCP_RAIN=PRCP_RAIN PRCP_SNOW=PRCP_SNOW PRCP_ICE=PRCP_ICE PRCP_GRAUPEL=PRCP_GRAUPEL
-         !$ser data PFL_LS=PFL_LS(:,:,1:LM) PFI_LS=PFI_LS(:,:,1:LM)
-         !$ser data REV_LS=REV_LS
-         !$ser data RSU_LS=RSU_LS
+         !$ser data PFL_LS_driver=PFL_LS(:,:,1:LM) PFI_LS_driver=PFI_LS(:,:,1:LM)
+         !$ser data REV_LS=REV_LS RSU_LS=RSU_LS
      ! Apply tendencies
          T = T + DTDTmic * DT_MOIST
          U = U + DUDTmic * DT_MOIST
@@ -1017,12 +1013,25 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
-         ! Serialize data for RedistributeClouds
-         !$ser savepoint RedistributeClouds-In
-         !$ser data RAD_CF=RAD_CF RAD_QL=RAD_QL RAD_QI=RAD_QI CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS RAD_QV=RAD_QV T=T
+
+     !$ser savepoint GFDL_1M_finalize-In
+      !$ser data T=T U=U V=V PLmb=PLmb RAD_CF=RAD_CF RAD_QI=RAD_QI RAD_QL=RAD_QL
+      !$ser data RAD_QV=RAD_QV RAD_QR=RAD_QR RAD_QS=RAD_QS RAD_QG=RAD_QG MASS=MASS
+      !$ser data CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS NACTI=NACTI NACTL=NACTL
+      !$ser data Q=Q QRAIN=QRAIN QSNOW=QSNOW QGRAUPEL=QGRAUPEL REV_LS=REV_LS RSU_LS=RSU_LS
+      !$ser data PRCP_RAIN=PRCP_RAIN PRCP_SNOW=PRCP_SNOW PRCP_ICE=PRCP_ICE PRCP_GRAUPEL=PRCP_GRAUPEL
+      !$ser data LS_PRCP=LS_PRCP LS_SNR=LS_SNR ICE=ICE FRZR=FRZR CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI
+      !$ser data PFL_LS=PFL_LS PFI_LS=PFI_LS PFL_AN=PFL_AN PFI_AN=PFI_AN RHX=RHX
+      !$ser data DQVDT_micro=DQVDT_micro DQLDT_micro=DQLDT_micro DQIDT_micro=DQIDT_micro
+      !$ser data DQADT_micro=DQADT_micro DQRDT_micro=DQRDT_micro DQSDT_micro=DQSDT_micro
+      !$ser data DQGDT_micro=DQGDT_micro DUDT_micro=DUDT_micro DVDT_micro=DVDT_micro DTDT_micro=DTDT_micro
+
      ! Redistribute CN/LS CF/QL/QI
+         ! Serialize data for GFDL_1M_redistribute_clouds-In
+         !$ser savepoint GFDL_1M_redistribute_clouds-In
+         !$ser data RAD_CF=RAD_CF RAD_QL=RAD_QL RAD_QI=RAD_QI CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS RAD_QV=RAD_QV T=T
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
-         !$ser savepoint RedistributeClouds-Out
+         !$ser savepoint GFDL_1M_redistribute_clouds-Out
          !$ser data RAD_CF=RAD_CF RAD_QL=RAD_QL RAD_QI=RAD_QI CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS RAD_QV=RAD_QV T=T
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
@@ -1054,12 +1063,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
        timestep = timestep + 1
       !  print*, "TIMESTEP = ", timestep, ' rank = ', rank, ' do_qa = ', do_qa, "6 * rank + TIMESTEP = ", 6*rank+timestep
-!$ser savepoint RadCouple-In timestep=timestep
+!$ser savepoint GFDL_1M_radiation_coupling-In
 !$ser data Q=Q T=T QLLS=QLLS QILS=QILS CLLS=CLLS QLCN=QLCN QICN=QICN CLCN=CLCN
 !$ser data PLmb=PLmb QRAIN=QRAIN QSNOW=QSNOW QGRAUPEL=QGRAUPEL NACTL=NACTL NACTI=NACTI
 !$ser data FAC_RL=FAC_RL MIN_RL=MIN_RL MAX_RL=MAX_RL FAC_RI=FAC_RI MIN_RI=MIN_RI MAX_RI=MAX_RI
 !$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QI=RAD_QI RAD_QR=RAD_QR RAD_QS=RAD_QS
-!$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI
+!$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI RHX=RHX
 
      ! Radiation Coupling
          do L = 1, LM
@@ -1077,10 +1086,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             enddo
           enddo
          enddo
-!$ser savepoint RadCouple-Out timestep=timestep
+!$ser savepoint GFDL_1M_radiation_coupling-Out
 !$ser data Q=Q T=T QLLS=QLLS QILS=QILS CLLS=CLLS QLCN=QLCN QICN=QICN CLCN=CLCN 
 !$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QI=RAD_QI RAD_QR=RAD_QR RAD_QS=RAD_QS
-!$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI
+!$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI RHX=RHX
 
          call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
@@ -1177,7 +1186,20 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         endif
 
+        !$ser savepoint GFDL_1M_finalize-Out
+        !$ser data T=T U=U V=V PLmb=PLmb RAD_CF=RAD_CF RAD_QI=RAD_QI RAD_QL=RAD_QL
+        !$ser data RAD_QV=RAD_QV RAD_QR=RAD_QR RAD_QS=RAD_QS RAD_QG=RAD_QG MASS=MASS
+        !$ser data CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS NACTI=NACTI NACTL=NACTL
+        !$ser data Q=Q QRAIN=QRAIN QSNOW=QSNOW QGRAUPEL=QGRAUPEL REV_LS=REV_LS RSU_LS=RSU_LS
+        !$ser data PRCP_RAIN=PRCP_RAIN PRCP_SNOW=PRCP_SNOW PRCP_ICE=PRCP_ICE PRCP_GRAUPEL=PRCP_GRAUPEL
+        !$ser data LS_PRCP=LS_PRCP LS_SNR=LS_SNR ICE=ICE FRZR=FRZR CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI
+        !$ser data PFL_LS=PFL_LS PFI_LS=PFI_LS PFL_AN=PFL_AN PFI_AN=PFI_AN RHX=RHX
+        !$ser data DQVDT_micro=DQVDT_micro DQLDT_micro=DQLDT_micro DQIDT_micro=DQIDT_micro
+        !$ser data DQADT_micro=DQADT_micro DQRDT_micro=DQRDT_micro DQSDT_micro=DQSDT_micro
+        !$ser data DQGDT_micro=DQGDT_micro DUDT_micro=DUDT_micro DVDT_micro=DVDT_micro DTDT_micro=DTDT_micro
+
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
+
 
 end subroutine GFDL_1M_Run
 
