@@ -3165,7 +3165,7 @@ end if
      else
        call MAPL_GetResource (MAPL, JASON_TRB, "JASON_TRB:", default=.FALSE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,      RC=STATUS); VERIFY_(STATUS)
-       SMTH_HGT = MAX(1.0,DT/180.0)*100.0
+       SMTH_HGT = MAX(2.5,DT/180.0)*100.0
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",   default=SMTH_HGT, RC=STATUS); VERIFY_(STATUS)
      endif
      if (JASON_TRB) then

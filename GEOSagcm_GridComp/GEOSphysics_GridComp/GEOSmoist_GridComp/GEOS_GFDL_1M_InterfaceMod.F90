@@ -268,13 +268,17 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     if (DT_R8 < 300.0) then 
       call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
       do_hail = .true.
-      call gfdl_mp_init(LHYDROSTATIC)
-      call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_mp v3 in non-generic GC INIT")
     else
       call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+    endif
+
+    if (GFDL_MP3) then
+      call gfdl_mp_init(LHYDROSTATIC)
+      call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_mp v3 in non-generic GC INIT")
+    else  
       call gfdl_cloud_microphys_init()
       call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_cloud_microphys in non-generic GC INIT")
-    endif
+    endif 
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
@@ -809,7 +813,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! Other inputs
                                DT_MOIST, RHCRIT3D, PHIS, CNV_FRC, EIS, AREA, SRF_TYPE, &
                              ! Output precipitates
-                               PRCP_WATER, PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, &
+                               PRCP_WATER, PRCP_RAIN, PRCP_ICE, PRCP_SNOW, PRCP_GRAUPEL, &
                              ! constant grid/time information
                                LHYDROSTATIC, 1, IM*JM, 1,LM, KLID, &
                              ! Output tendencies
