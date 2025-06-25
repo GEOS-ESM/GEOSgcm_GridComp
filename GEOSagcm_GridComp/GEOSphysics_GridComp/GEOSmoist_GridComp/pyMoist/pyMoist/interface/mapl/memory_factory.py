@@ -64,9 +64,7 @@ class MAPLMemoryRepository:
         except KeyError:
             raise KeyError(f"Pointer {name} was never registered.")
 
-        fmem.python_array = self._f_py_converter.fortran_to_python(
-            fmem.pointer, dim=list(fmem.shape)
-        )
+        fmem.python_array = self._f_py_converter.fortran_to_python(fmem.pointer, dim=list(fmem.shape))
 
         return fmem.python_array
 

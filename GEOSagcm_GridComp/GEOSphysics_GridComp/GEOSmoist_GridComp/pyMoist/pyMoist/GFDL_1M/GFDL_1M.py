@@ -9,7 +9,6 @@ from pyMoist.GFDL_1M.getters_temporary import (
     mapl_get_pointer_placeholder,
     associated_checker,
 )
-from ndsl.dsl.typing import Float
 from pyMoist.GFDL_1M.state import (
     LiquidWaterStaticEnergy,
     TotalWater,
@@ -30,6 +29,7 @@ from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.finalize import Finalize
 from pyMoist.GFDL_1M.setup import Setup
+from pyMoist.interface.mapl.memory_factory import MAPLMemoryRepository
 
 
 class GFDL1M:
@@ -113,126 +113,177 @@ class GFDL1M:
             update_tendencies=self.update_tendencies,
         )
 
-    def get_fortran_data(self, *args, **kwds):
-        ##### Link FORTRAN memory to Python memory #####
-        ##### All links are live, so changes in Python will be reflected in FORTRAN #####
-        ##### Not all "input" (model state) fields are modified #####
+    def get_fortran_data(
+        self,
+        mapl_internal: MAPLMemoryRepository,
+        mapl_import: MAPLMemoryRepository,
+        mapl_export: MAPLMemoryRepository,
+        mapl_comp: MAPLMemoryRepository,
+    ):
+        ##### Link Fortran memory to Python memory #####
+        ##### Fortran memory will only be modified if the __call__ function
+        ##### is called from within a "with MAPLManagedMemory" statement #####
+        ##### Not all linked fields are modified #####
+
+        from numpy import float32
 
         # Get model state
         self.mixing_ratios = MixingRatios(
-            vapor=mapl_get_pointer_placeholder("Q"),
-            rain=mapl_get_pointer_placeholder("QRAIN"),
-            snow=mapl_get_pointer_placeholder("QSNOW"),
-            graupel=mapl_get_pointer_placeholder("QGRAUPEL"),
-            convective_liquid=mapl_get_pointer_placeholder("QLCN"),
-            convective_ice=mapl_get_pointer_placeholder("QICN"),
-            large_scale_liquid=mapl_get_pointer_placeholder("QLLS"),
-            large_scale_ice=mapl_get_pointer_placeholder("QILS"),
+            vapor=(mapl_import.register("Q", float32, [X_DIM, Y_DIM, Z_DIM])),
+            rain=(mapl_import.register("QRAIN", float32, [X_DIM, Y_DIM, Z_DIM])),
+            snow=(mapl_import.register("QSNOW", float32, [X_DIM, Y_DIM, Z_DIM])),
+            graupel=(mapl_import.register("QGRAUPEL", float32, [X_DIM, Y_DIM, Z_DIM])),
+            convective_liquid=(mapl_import.register("QLCN", float32, [X_DIM, Y_DIM, Z_DIM])),
+            convective_ice=(mapl_import.register("QICN", float32, [X_DIM, Y_DIM, Z_DIM])),
+            large_scale_liquid=(mapl_import.register("QLLS", float32, [X_DIM, Y_DIM, Z_DIM])),
+            large_scale_ice=(mapl_import.register("QILS", float32, [X_DIM, Y_DIM, Z_DIM])),
         )
         self.cloud_fractions = CloudFractions(
-            convective=mapl_get_pointer_placeholder("CLCN"),
-            large_scale=mapl_get_pointer_placeholder("CLLS"),
+            convective=(mapl_import.register("CLCN", float32, [X_DIM, Y_DIM, Z_DIM])),
+            large_scale=(mapl_import.register("CLLS", float32, [X_DIM, Y_DIM, Z_DIM])),
         )
-        self.liquid_concentration = mapl_get_pointer_placeholder("NACTL")
-        self.ice_concentration = mapl_get_pointer_placeholder("NACTI")
-        self.area = mapl_get_pointer_placeholder("AREA")
-        self.geopotential_height_interface = mapl_get_pointer_placeholder("ZLE")
-        self.p_interface = mapl_get_pointer_placeholder("PLE")
-        self.t = mapl_get_pointer_placeholder("T")
-        self.u = mapl_get_pointer_placeholder("U")
-        self.v = mapl_get_pointer_placeholder("V")
-        self.land_fraction = mapl_get_pointer_placeholder("FRLAND")
+        self.liquid_concentration = mapl_import.register("NACTL", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.ice_concentration = mapl_import.register("NACTI", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.area = mapl_import.register("AREA", float32, [X_DIM, Y_DIM])
+        self.geopotential_height_interface = mapl_import.register(
+            "ZLE", float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM]
+        )
+        self.p_interface = mapl_import.register("PLE", float32, [X_DIM, Y_DIM])
+        self.t = mapl_import.register("T", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.u = mapl_import.register("U", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.v = mapl_import.register("V", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.land_fraction = mapl_import.register("FRLAND", float32, [X_DIM, Y_DIM])
         self.vertical_motion = VericalMotion(
-            velocity=mapl_get_pointer_placeholder("W"),
-            variance=mapl_get_pointer_placeholder("W2"),
-            third_moment=mapl_get_pointer_placeholder("W3"),
+            velocity=(mapl_import.register("W", float32, [X_DIM, Y_DIM, Z_DIM])),
+            variance=(mapl_import.register("W2", float32, [X_DIM, Y_DIM, Z_DIM])),
+            third_moment=(mapl_import.register("W3", float32, [X_DIM, Y_DIM, Z_DIM])),
         )
         self.liquid_water_static_energy = LiquidWaterStaticEnergy(
-            flux=mapl_get_pointer_placeholder("WSL"),
-            variance=mapl_get_pointer_placeholder("SL2"),
-            third_moment=mapl_get_pointer_placeholder("SL3"),
+            flux=(mapl_import.register("WSL", float32, [X_DIM, Y_DIM, Z_DIM])),
+            variance=(mapl_import.register("SL2", float32, [X_DIM, Y_DIM, Z_DIM])),
+            third_moment=(mapl_import.register("SL3", float32, [X_DIM, Y_DIM, Z_DIM])),
         )
         self.total_water = TotalWater(
-            flux=mapl_get_pointer_placeholder("WQT"),
-            variance=mapl_get_pointer_placeholder("QT2"),
-            third_moment=mapl_get_pointer_placeholder("QT3"),
+            flux=(mapl_import.register("WQT", float32, [X_DIM, Y_DIM, Z_DIM])),
+            variance=(mapl_import.register("QT2", float32, [X_DIM, Y_DIM, Z_DIM])),
+            third_moment=(mapl_import.register("QT3", float32, [X_DIM, Y_DIM, Z_DIM])),
         )
-        self.convection_fraction = mapl_get_pointer_placeholder("CNV_FRC")
-        self.surface_type = mapl_get_pointer_placeholder("SRF_TYPE")
+        self.convection_fraction = mapl_export.register("CNV_FRC", float32, [X_DIM, Y_DIM])
+        self.surface_type = mapl_export.register("SRF_TYPE", float32, [X_DIM, Y_DIM])
         self.shallow_convective_rain = mapl_get_pointer_placeholder("SHLW_PRC3")
         self.shallow_convective_snow = mapl_get_pointer_placeholder("SHLW_SNO3")
         self.rh_crit = mapl_get_pointer_placeholder("RHCRIT")
 
         # Outputs: model fields originating from within GFDL
-        self.outputs.liquid_radius = mapl_get_pointer_placeholder("RL")
-        self.outputs.ice_radius = mapl_get_pointer_placeholder("RI")
-        self.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_get_resource_placeholder("EVAPC")
-        self.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_get_resource_placeholder("SUBLC")
-        self.outputs.precipitated_rain = mapl_get_resource_placeholder("PRCP_RAIN")
-        self.outputs.precipitated_snow = mapl_get_resource_placeholder("PRCP_SNOW")
-        self.outputs.precipitated_ice = mapl_get_resource_placeholder("PRCP_ICE")
-        self.outputs.precipitated_graupel = mapl_get_resource_placeholder("PRCP_GRAUPEL")
+        self.outputs.liquid_radius = mapl_export.register("RL", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.ice_radius = mapl_export.reiregister("RI", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_export.register(
+            "EVAPC", float32, [X_DIM, Y_DIM, Z_DIM]
+        )
+        self.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_export.register(
+            "SUBLC", float32, [X_DIM, Y_DIM, Z_DIM]
+        )
+        self.outputs.precipitated_rain = mapl_export.register("PRCP_RAIN", float32, [X_DIM, Y_DIM])
+        self.outputs.precipitated_snow = mapl_export.register("PRCP_SNOW", float32, [X_DIM, Y_DIM])
+        self.outputs.precipitated_ice = mapl_export.register("PRCP_ICE", float32, [X_DIM, Y_DIM])
+        self.outputs.precipitated_graupel = mapl_export.register("PRCP_GRAUPEL", float32, [X_DIM, Y_DIM])
 
         # Outputs: model fields originating from within GFDL; radiation fields
-        self.outputs.radiation_cloud_fraction = mapl_get_pointer_placeholder("FCLD")
-        self.outputs.radiation_vapor = mapl_get_pointer_placeholder("QV")
-        self.outputs.radiation_liquid = mapl_get_pointer_placeholder("QL")
-        self.outputs.radiation_ice = mapl_get_pointer_placeholder("QI")
-        self.outputs.radiation_rain = mapl_get_pointer_placeholder("QR")
-        self.outputs.radiation_snow = mapl_get_pointer_placeholder("QS")
-        self.outputs.radiation_graupel = mapl_get_pointer_placeholder("QG")
-        self.outputs.lower_tropospheric_stability = mapl_get_pointer_placeholder("LTS")
-        self.outputs.estimated_inversion_strength = mapl_get_pointer_placeholder("EIS")
-        self.outputs.z_lcl = mapl_get_resource_placeholder("ZLCL")
+        self.outputs.radiation_cloud_fraction = mapl_export.register("FCLD", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.radiation_vapor = mapl_export.register("QV", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.radiation_liquid = mapl_export.register("QL", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.radiation_ice = mapl_export.register("QI", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.radiation_rain = mapl_export.register("QR", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.radiation_snow = mapl_export.register("QS", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.radiation_graupel = mapl_export.register("QG", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.lower_tropospheric_stability = (
+            mapl_export.register("LTS"),
+            float32,
+            [X_DIM, Y_DIM, Z_DIM],
+        )
+        self.outputs.estimated_inversion_strength = (
+            mapl_export.register("EIS"),
+            float32,
+            [X_DIM, Y_DIM, Z_DIM],
+        )
+        self.outputs.z_lcl = (mapl_export.register("ZLCL"), float32, [X_DIM, Y_DIM])
 
         # Outputs: model fields originating from within GFDL; macrophysics/microphysics tendencies
-        self.outputs.du_dt_macro = mapl_get_pointer_placeholder("DUDT_macro")
-        self.outputs.dv_dt_macro = mapl_get_pointer_placeholder("DVDT_macro")
-        self.outputs.dt_dt_macro = mapl_get_pointer_placeholder("DTDT_macro")
-        self.outputs.dvapor_dt_macro = mapl_get_pointer_placeholder("DQVDT_macro")
-        self.outputs.dliquid_dt_macro = mapl_get_pointer_placeholder("DQLDT_macro")
-        self.outputs.dice_dt_macro = mapl_get_pointer_placeholder("DQIDT_macro")
-        self.outputs.dcloud_fraction_dt_macro = mapl_get_pointer_placeholder("DQADT_macro")
-        self.outputs.drain_dt_macro = mapl_get_pointer_placeholder("DQRDT_macro")
-        self.outputs.dsnow_dt_macro = mapl_get_pointer_placeholder("DQSDT_macro")
-        self.outputs.dgraupel_dt_macro = mapl_get_pointer_placeholder("DQGDT_macro")
-        self.outputs.du_dt_micro = mapl_get_pointer_placeholder("DUDT_micro")
-        self.outputs.dv_dt_micro = mapl_get_pointer_placeholder("DVDT_micro")
-        self.outputs.dt_dt_micro = mapl_get_pointer_placeholder("DTDT_micro")
-        self.outputs.dvapor_dt_micro = mapl_get_pointer_placeholder("DQVDT_micro")
-        self.outputs.dliquid_dt_micro = mapl_get_pointer_placeholder("DQLDT_micro")
-        self.outputs.dice_dt_micro = mapl_get_pointer_placeholder("DQIDT_micro")
-        self.outputs.dcloud_fraction_dt_micro = mapl_get_pointer_placeholder("DQADT_micro")
-        self.outputs.drain_dt_micro = mapl_get_pointer_placeholder("DQRDT_micro")
-        self.outputs.dsnow_dt_micro = mapl_get_pointer_placeholder("DQSDT_micro")
-        self.outputs.dgraupel_dt_micro = mapl_get_pointer_placeholder("DQGDT_micro")
+        self.outputs.du_dt_macro = mapl_export.register("DUDT_macro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dv_dt_macro = mapl_export.register("DVDT_macro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dt_dt_macro = mapl_export.register("DTDT_macro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dvapor_dt_macro = mapl_export.register("DQVDT_macro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dliquid_dt_macro = mapl_export.register("DQLDT_macro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dice_dt_macro = mapl_export.register("DQIDT_macro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dcloud_fraction_dt_macro = mapl_export.register(
+            "DQADT_macro", float32, [X_DIM, Y_DIM, Z_DIM]
+        )
+        self.outputs.drain_dt_macro = mapl_export.register("DQRDT_macro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dsnow_dt_macro = mapl_export.register("DQSDT_macro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dgraupel_dt_macro = mapl_export.register("DQGDT_macro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.du_dt_micro = mapl_export.register("DUDT_micro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dv_dt_micro = mapl_export.register("DVDT_micro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dt_dt_micro = mapl_export.register("DTDT_micro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dvapor_dt_micro = mapl_export.register("DQVDT_micro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dliquid_dt_micro = mapl_export.register("DQLDT_micro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dice_dt_micro = mapl_export.register("DQIDT_micro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dcloud_fraction_dt_micro = mapl_export.register(
+            "DQADT_micro", float32, [X_DIM, Y_DIM, Z_DIM]
+        )
+        self.outputs.drain_dt_micro = mapl_export.register("DQRDT_micro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dsnow_dt_micro = mapl_export.register("DQSDT_micro", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.dgraupel_dt_micro = mapl_export.register("DQGDT_micro", float32, [X_DIM, Y_DIM, Z_DIM])
         # Outputs: Exports to be filled
-        self.outputs.large_scale_precip = mapl_get_pointer_placeholder("LS_PRCP")
-        self.outputs.large_scale_snow = mapl_get_pointer_placeholder("LS_SNR")
-        self.outputs.icefall = mapl_get_pointer_placeholder("ICE")
-        self.outputs.freezing_rainfall = mapl_get_pointer_placeholder("FRZR")
-        self.outputs.relative_humidity_after_pdf = mapl_get_pointer_placeholder("RHX")
-        self.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_get_pointer_placeholder("REV_LS")
-        self.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_get_pointer_placeholder("RSU_LS")
-        self.outputs.large_scale_nonanvil_liquid_flux = mapl_get_pointer_placeholder("PFL_LS")
-        self.outputs.large_scale_nonanvil_ice_flux = mapl_get_pointer_placeholder("PFI_LS")
-        self.outputs.anvil_liquid_flux = mapl_get_pointer_placeholder("PFL_AN")
-        self.outputs.anvil_ice_flux = mapl_get_pointer_placeholder("PFI_AN")
-        self.outputs.large_scale_rainwater_source = mapl_get_pointer_placeholder("DQRL")
-        self.outputs.simulated_reflectivity = mapl_get_pointer_placeholder("DBZ")
-        self.outputs.maximum_reflectivity = mapl_get_pointer_placeholder("DBZ_MAX")
-        self.outputs.one_km_agl_reflectivity = mapl_get_pointer_placeholder("DBZ_1KM")
-        self.outputs.echo_top_reflectivity = mapl_get_pointer_placeholder("DBZ_TOP")
-        self.outputs.minus_10c_reflectivity = mapl_get_pointer_placeholder("DBZ_M10C")
+        self.outputs.large_scale_precip = mapl_export.register("LS_PRCP", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.large_scale_snow = mapl_export.register("LS_SNR", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.icefall = mapl_export.register("ICE", float32, [X_DIM, Y_DIM])
+        self.outputs.freezing_rainfall = mapl_export.register("FRZR", float32, [X_DIM, Y_DIM])
+        self.outputs.relative_humidity_after_pdf = mapl_export.register("RHX", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_export.register(
+            "REV_LS", float32, [X_DIM, Y_DIM, Z_DIM]
+        )
+        self.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_export.register(
+            "RSU_LS", float32, [X_DIM, Y_DIM, Z_DIM]
+        )
+        self.outputs.large_scale_nonanvil_liquid_flux = mapl_export.register(
+            "PFL_LS", float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM]
+        )
+        self.outputs.large_scale_nonanvil_ice_flux = mapl_export.register(
+            "PFI_LS", float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM]
+        )
+        self.outputs.anvil_liquid_flux = mapl_export.register(
+            "PFL_AN", float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM]
+        )
+        self.outputs.anvil_ice_flux = mapl_export.register("PFI_AN", float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
+        self.outputs.large_scale_rainwater_source = mapl_export.register(
+            "DQRL", float32, [X_DIM, Y_DIM, Z_DIM]
+        )
+        self.outputs.simulated_reflectivity = mapl_export.register("DBZ", float32, [X_DIM, Y_DIM, Z_DIM])
+        self.outputs.maximum_reflectivity = mapl_export.register("DBZ_MAX", float32, [X_DIM, Y_DIM])
+        self.outputs.one_km_agl_reflectivity = mapl_export.register("DBZ_1KM", float32, [X_DIM, Y_DIM])
+        self.outputs.echo_top_reflectivity = mapl_export.register("DBZ_TOP", float32, [X_DIM, Y_DIM])
+        self.outputs.minus_10c_reflectivity = mapl_export.register("DBZ_M10C", float32, [X_DIM, Y_DIM])
         # Unused fields, force to zero
-        self.temporaries.all_zeros_3d = mapl_get_pointer_placeholder("CN_PRCP")
-        self.temporaries.all_zeros_3d = mapl_get_pointer_placeholder("AN_PRCP")
-        self.temporaries.all_zeros_3d = mapl_get_pointer_placeholder("SC_PRCP")
-        self.temporaries.all_zeros_3d = mapl_get_pointer_placeholder("CN_SNR")
-        self.temporaries.all_zeros_3d = mapl_get_pointer_placeholder("AN_SNR")
-        self.temporaries.all_zeros_3d = mapl_get_pointer_placeholder("SC_SNR")
+        self.temporaries.all_zeros_3d = self.quantity_factory.zeros(
+            mapl_export.register("CN_PRCP", float32, [X_DIM, Y_DIM])
+        )
+        self.temporaries.all_zeros_3d = self.quantity_factory.zeros(
+            mapl_export.register("AN_PRCP", float32, [X_DIM, Y_DIM])
+        )
+        self.temporaries.all_zeros_3d = self.quantity_factory.zeros(
+            mapl_export.register("SC_PRCP", float32, [X_DIM, Y_DIM])
+        )
+        self.temporaries.all_zeros_3d = self.quantity_factory.zeros(
+            mapl_export.register("CN_SNR", float32, [X_DIM, Y_DIM])
+        )
+        self.temporaries.all_zeros_3d = self.quantity_factory.zeros(
+            mapl_export.register("AN_SNR", float32, [X_DIM, Y_DIM])
+        )
+        self.temporaries.all_zeros_3d = self.quantity_factory.zeros(
+            mapl_export.register("SC_SNR", float32, [X_DIM, Y_DIM])
+        )
 
-    def __call__(self, *args, **kwds):
+    def __call__(self, mapl_import, mapl_export):
         self.setup(
             geopotential_height_interface=self.geopotential_height_interface,
             p_interface=self.p_interface,
@@ -378,8 +429,8 @@ class GFDL1M:
             dt_dt=self.temporaries.dt_dt,
             du_dt=self.temporaries.du_dt,
             dv_dt=self.temporaries.dv_dt,
-            anv_icefall=self.ANV_ICEFALL,
-            ls_icefall=self.LS_ICEFALL,
+            anv_icefall=self.GFDL_1M_config.ANV_ICEFALL,
+            ls_icefall=self.GFDL_1M_config.LS_ICEFALL,
         )
 
         self.update_radiation_quantities(
