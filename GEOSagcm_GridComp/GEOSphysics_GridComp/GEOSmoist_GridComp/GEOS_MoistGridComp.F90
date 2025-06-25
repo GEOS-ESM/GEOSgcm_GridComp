@@ -36,6 +36,7 @@ module GEOS_MoistGridCompMod
 #ifdef PYMOIST_INTEGRATION
   use pymoist_interface_mod
   use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
+  use iso_c_binding, only: c_loc
 #endif
 
   implicit none

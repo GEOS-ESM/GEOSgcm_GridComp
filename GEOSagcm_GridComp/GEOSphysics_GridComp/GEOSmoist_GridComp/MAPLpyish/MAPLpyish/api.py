@@ -19,7 +19,7 @@ class MAPLBridge:
 
         # FFI & C library setup
         self.ffi = cffi.FFI()
-        self.mapl_c_bridge = self.ffi.dlopen(f"{geos_dir}/lib/libMAPLpyish.so")
+        self.mapl_c_bridge = self.ffi.dlopen(f"{geos_dir}/lib/libMAPLpyish.dylib")
 
         # We use CFFI ABI mode, so we need to describe each function cdef
         # to the system

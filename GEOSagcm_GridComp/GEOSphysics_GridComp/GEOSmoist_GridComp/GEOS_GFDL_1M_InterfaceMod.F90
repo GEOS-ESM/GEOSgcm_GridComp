@@ -64,6 +64,7 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: LMELTFRZ
 #ifdef PYMOIST_INTEGRATION
   integer :: C_LMELTFRZ, C_LHYDROSTATIC, C_LPHYS_HYDROSTATIC
+  logical :: USE_PYMOIST_GFDL_1M = .FALSE. ! replace entire GFDL_1M module with pyMoist version
   logical :: USE_PYMOIST_GFDL1M_EVAP = .FALSE. ! Replace EVAP with pyMoist port
   logical :: USE_PYMOIST_GFDL1M_DRIVER = .FALSE. ! Replace Aer Activation with pyMoist port
   logical :: USE_PYMOIST = .FALSE.
@@ -299,6 +300,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 #ifdef PYMOIST_INTEGRATION
+    call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL_1M, 'USE_PYMOIST_GFDL_1M:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
     call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M_EVAP, 'USE_PYMOIST_GFDL1M_EVAP:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
     call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M_DRIVER, 'USE_PYMOIST_GFDL1M_DRIVER:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
     call MAPL_GetResource(MAPL, USE_PYMOIST, 'USE_PYMOIST:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
@@ -408,18 +410,24 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     VERIFY_(STATUS)
 
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-#ifdef PYMOIST_INTEGRATION
-    call MAPL_GetResource( MAPL, MAX_RI , 'MAX_RI:' , DEFAULT=100.e-6, RC=STATUS); VERIFY_(STATUS)
-    WRITE (*,*) "Fortran MAX RI", MAX_RI, c_loc(MAPL)
-    call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
-    WRITE (*,*) "Fortran T (before)", T(12, 9, 30)
-    call pymoist_interface_f_run_GFDL_1M()
-    WRITE (*,*) "Fortran T (after)", T(12, 9, 30)
-#endif
+! #ifdef PYMOIST_INTEGRATION
+!     call MAPL_GetResource( MAPL, MAX_RI , 'MAX_RI:' , DEFAULT=100.e-6, RC=STATUS); VERIFY_(STATUS)
+!     WRITE (*,*) "Fortran MAX RI", MAX_RI, c_loc(MAPL)
+!     call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
+!     WRITE (*,*) "Fortran T (before)", T(12, 9, 30)
+!     call pymoist_interface_f_run_GFDL_1M()
+!     WRITE (*,*) "Fortran T (after)", T(12, 9, 30)
+! #endif
 
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
 
+#ifdef PYMOIST_INTEGRATION
+  IF (USE_PYMOIST_GFDL_1M) THEN
+    CALL gfdl_1m_interface_f_init(gfdl_1m_flags)
+    CALL pymoist_interface_f_run_GFDL_1M()
+  ELSE
+#endif
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QSNOW,    'QSNOW'   , RC=STATUS); VERIFY_(STATUS)
@@ -848,18 +856,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 #ifdef PYMOIST_INTEGRATION
         if (USE_PYMOIST .and. init_gfdl_1m_flags) then
             init_gfdl_1m_flags = .false.
-            call make_gfdl_1m_flags_C_interop(LPHYS_HYDROSTATIC, LHYDROSTATIC, do_qa, fix_negative, fast_sat_adj, &
-                const_vi, const_vs, const_vg, const_vr, use_ccn, do_bigg, do_evap, &
-                do_subl, z_slope_liq, z_slope_ice, prog_ccn, preciprad, use_ppm, &
-                mono_prof, do_sedi_heat, sedi_transport, do_sedi_w, de_ice, mp_print, &
-                dt_moist, mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r, &
-                dw_land, dw_ocean, vi_fac, vr_fac, vs_fac, vg_fac, ql_mlt, vi_max, &
-                vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max, &
-                qi0_crt, qr0_crt, rh_inc, rh_ins, rh_inr, rthreshu, rthreshs, ccn_l, &
-                ccn_o, qc_crt, tau_g2v, tau_v2g, tau_s2v, tau_v2s, tau_revp, tau_frz, &
-                sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, tau_i2s, &
-                tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci, c_cracw, &
-                alin, clin, cld_min, icloud_f, irain_f, gfdl_1m_flags)
+            call make_gfdl_1m_flags_C_interop(dt_moist, mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r, &
+              dw_land, dw_ocean, vi_fac, vr_fac, vs_fac, vg_fac, ql_mlt, do_qa, fix_negative, vi_max, vs_max, &
+              vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max, qi0_crt, qr0_crt, fast_sat_adj, rh_inc, &
+              rh_ins, rh_inr, const_vi, const_vs, const_vg, const_vr, use_ccn, rthreshu, rthreshs, ccn_l, ccn_o, &
+              qc_crt, tau_g2v, tau_v2g, tau_s2v, tau_v2s, tau_revp, tau_frz, do_bigg, do_evap, do_subl, sat_adj0, &
+              c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, &
+              c_pgacs, c_pgaci, z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, preciprad, cld_min, &
+              use_ppm, mono_prof, do_sedi_heat, sedi_transport, do_sedi_w, de_ice, mp_print, &
+              lmeltfrz, use_bergeron, gfdl_1m_flags)
             call gfdl_1m_interface_f_init(gfdl_1m_flags)
         endif
         IF (USE_PYMOIST_GFDL1M_DRIVER) THEN
@@ -1062,7 +1067,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         endif
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
-
+#ifdef PYMOIST_INTEGRATION
+  ENDIF
+#endif
 end subroutine GFDL_1M_Run
 
 end module GEOS_GFDL_1M_InterfaceMod
