@@ -1160,7 +1160,7 @@ module GEOS_SeaiceInterfaceGridComp
         UNITS              = 'psu',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        DEFAULT            = 33.3333,                             &  !corresponding to -1.8 deg c
+        DEFAULT            = 30.0,                             &  !corresponding to -1.8 deg c !! skhani1 correction from 33.3333
 
                                                        _RC  )
 
