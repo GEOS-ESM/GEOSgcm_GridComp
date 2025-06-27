@@ -95,7 +95,7 @@ module C_BRIDGE_TO_MAPL
     
     end function    
 
-    function MAPLpy_GetPointer(esmf_state_c_ptr, name_c_ptr, name_len, alloc) result(c_data_ptr) bind(c, name="MAPLpy_GetPointer")
+    function MAPLpy_GetPointer_3D(esmf_state_c_ptr, name_c_ptr, name_len, alloc) result(c_data_ptr) bind(c, name="MAPLpy_GetPointer")
         ! Read in STATE
         type(c_ptr), intent(in) :: esmf_state_c_ptr
         type(ESMF_State), pointer :: state
@@ -108,6 +108,32 @@ module C_BRIDGE_TO_MAPL
 
         ! Results
         real, pointer, dimension(:,:,:) :: f_ptr
+        type(c_ptr) :: c_data_ptr
+
+        ! Turn the C string into a Fortran string
+        call c_f_pointer(name_c_ptr, name)
+
+        ! Turn the ESMF State C pointer to a Fortran pointer
+        call c_f_pointer(esmf_state_c_ptr, state)        
+
+        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc))
+        c_data_ptr=c_loc(f_ptr)
+    
+    end function
+
+    function MAPLpy_GetPointer_2D(esmf_state_c_ptr, name_c_ptr, name_len, alloc) result(c_data_ptr) bind(c, name="MAPLpy_GetPointer")
+        ! Read in STATE
+        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(ESMF_State), pointer :: state
+
+        ! Read in name
+        type(c_ptr), intent(in), value :: name_c_ptr
+        integer(c_int), intent(in), value :: name_len
+        character(len=name_len,kind=c_char), pointer :: name
+        logical(c_bool), intent(in), value :: alloc
+
+        ! Results
+        real, pointer, dimension(:,:) :: f_ptr
         type(c_ptr) :: c_data_ptr
 
         ! Turn the C string into a Fortran string

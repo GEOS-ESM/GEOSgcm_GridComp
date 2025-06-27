@@ -47,7 +47,12 @@ class MAPLBridge:
 
         # MAPLpy_GetPointer
         self.ffi.cdef(
-            "void* MAPLpy_GetPointer("
+            "void* MAPLpy_GetPointer_3D("
+            "void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool alloc"
+            ");"
+        )
+        self.ffi.cdef(
+            "void* MAPLpy_GetPointer_2D("
             "void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool alloc"
             ");"
         )
@@ -107,10 +112,17 @@ class MAPLBridge:
             state, self.ffi.new("char[]", name.encode()), len(name)
         )
 
-    def MAPL_GetPointer(
+    def MAPL_GetPointer_3D(
         self, state: MAPLState, name: str, alloc: bool = False
     ) -> CVoidPointer:
-        return self.mapl_c_bridge.MAPLpy_GetPointer(  # type: ignore
+        return self.mapl_c_bridge.MAPLpy_GetPointer_3D(  # type: ignore
+            state, self.ffi.new("char[]", name.encode()), len(name), alloc
+        )
+
+    def MAPL_GetPointer_2D(
+        self, state: MAPLState, name: str, alloc: bool = False
+    ) -> CVoidPointer:
+        return self.mapl_c_bridge.MAPLpy_GetPointer_2D(  # type: ignore
             state, self.ffi.new("char[]", name.encode()), len(name), alloc
         )
 

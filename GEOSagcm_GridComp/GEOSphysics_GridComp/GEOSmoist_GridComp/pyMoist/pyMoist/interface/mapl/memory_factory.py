@@ -46,7 +46,14 @@ class MAPLMemoryRepository:
     ):
         """Register the fortran memory with the factorty"""
         # MAPL Fortran call retrieve memory as a void* - we will cast
-        void_fptr = self._bridge.MAPL_GetPointer(self._state, name, alloc=alloc)
+        if len(dims) == 3:
+            void_fptr = self._bridge.MAPL_GetPointer_3D(self._state, name, alloc=alloc)
+        elif len(dims) == 2:
+            void_fptr = self._bridge.MAPL_GetPointer_2D(self._state, name, alloc=alloc)
+        else:
+            raise NotImplementedError(
+                f"Only 2D & 3D fields implemented, missing support for {len(dims)}D arrays."
+            )
         self._fortran_pointers[name] = MAPLMemoryRepository.FortranMemory(
             pointer=self._f_py_converter.cast(dtype, void_fptr),
             associated=self._bridge.associated(void_fptr),
@@ -64,7 +71,9 @@ class MAPLMemoryRepository:
         except KeyError:
             raise KeyError(f"Pointer {name} was never registered.")
 
-        fmem.python_array = self._f_py_converter.fortran_to_python(fmem.pointer, dim=list(fmem.shape))
+        fmem.python_array = self._f_py_converter.fortran_to_python(
+            fmem.pointer, dim=list(fmem.shape)
+        )
 
         return fmem.python_array
 
