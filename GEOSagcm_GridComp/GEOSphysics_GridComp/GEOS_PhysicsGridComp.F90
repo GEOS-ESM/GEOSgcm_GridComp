@@ -551,7 +551,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME = 'TKESHOCIT',                                       &
-         LONG_NAME  = 'tendency_of_TKE_due_to_turbulence',               &
+         LONG_NAME  = 'tendency_of_TKE_due_to_turbulence_transport',     &
          UNITS      = 'm2 s-3',                                          &
          DIMS       = MAPL_DimsHorzVert,                                 &
          VLOCATION  = MAPL_VLocationCenter,                              &
@@ -2573,7 +2573,7 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer ( EXPORT,     DQIDTTRB, 'QILSIT',   alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer ( EXPORT,     TKEIT,    'TKESHOCIT', alloc=.true., RC=STATUS)
+       call MAPL_GetPointer ( EXPORT,     TKEIT,   'TKESHOCIT', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer ( GEX(TURBL), DPDTTRB , 'DPDTTRB',  alloc=.true., RC=STATUS)
        VERIFY_(STATUS)

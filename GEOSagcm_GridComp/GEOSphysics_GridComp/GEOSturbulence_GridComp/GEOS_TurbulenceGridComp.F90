@@ -1929,7 +1929,7 @@ end if
 
     call MAPL_AddExportSpec(GC,                                  &
        SHORT_NAME = 'TKEBUOY',                                   &
-       LONG_NAME  = 'tke_buoyancy_production_from_SHOC',         &
+       LONG_NAME  = 'tke_buoyancy_tendency_from_SHOC',           &
        UNITS      = 'm+2 s-3',                                   &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
@@ -1942,15 +1942,6 @@ end if
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                  &
-       SHORT_NAME = 'TKETRANS',                                  &
-       LONG_NAME  = 'tke_transport_from_SHOC',                   &
-       UNITS      = 'm+2 s-3',                                   &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
-    VERIFY_(STATUS)
-
 
     call MAPL_AddExportSpec(GC,                                  &
        SHORT_NAME = 'ISOTROPY',                                  &
@@ -2988,7 +2979,7 @@ end if
      real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,ISOTROPY, &
                                             LSHOC1,LSHOC2,LSHOC3, & 
                                             SHOCPRNUM,&
-                                            TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx,TKETRANS, &
+                                            TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx, &
                                             SL2, SL3, W2, W3, WSL, SLQT, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
      real, dimension(:,:), pointer       :: LMIX, edmf_depth
 
@@ -3491,8 +3482,6 @@ end if
      call MAPL_GetPointer(EXPORT, TKEBUOY, 'TKEBUOY',  RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, TKESHEAR,'TKESHEAR', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, TKETRANS,'TKETRANS', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, ISOTROPY,'ISOTROPY', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
