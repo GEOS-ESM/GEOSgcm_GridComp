@@ -101,7 +101,7 @@
     restart_lvl  = .true.
     tr_pond_topo = .false.
     restart_pond_topo = .false.
-    tr_pond_lvl  = .false.
+    tr_pond_lvl  = .true.
     restart_pond_lvl  = .false.
     tr_snow      = .false.
     restart_snow = .false.
@@ -181,9 +181,9 @@
     albsnowv        = 0.98
     albsnowi        = 0.70 
     ahmax           = 0.3
-    R_ice           = -1.
-    R_pnd           = -1.
-    R_snw           = -1.
+    R_ice           = 0.
+    R_pnd           = 0.
+    R_snw           = 0.
     dT_mlt          = 1.5
     rsnw_mlt        = 1500.
     kalg            = 0.0
