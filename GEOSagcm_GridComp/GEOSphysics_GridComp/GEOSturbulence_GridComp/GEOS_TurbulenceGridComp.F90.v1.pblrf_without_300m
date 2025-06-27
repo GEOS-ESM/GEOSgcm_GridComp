@@ -1119,33 +1119,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'radar_wind_profiler_simulated_backscatter',             &
-       SHORT_NAME = 'RWPCN2',                                                   &
-       UNITS      = '1',                                                     &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'radar_wind_profiler_boundary_layer_height',             &
-       SHORT_NAME = 'ZPBLRWP',                                               &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'radar_wind_profiler_signal_noise_ratio',                &
-       SHORT_NAME = 'RWPSNR',                                                &
-       UNITS      = '1',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'planetary_boundary_layer_height_rich_0',                &
        SHORT_NAME = 'ZPBLRI',                                                &
        UNITS      = 'm',                                                     &
@@ -1974,7 +1947,7 @@ contains
      real, dimension(:    ), pointer     :: PREF
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
-     real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA, DELP
+     real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA
      real, dimension(IM,JM,0:LM)         :: PKE
 
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
@@ -1984,9 +1957,6 @@ contains
      real, dimension(:,:  ), pointer     :: ZPBL10P => null()
      real, dimension(:,:  ), pointer     :: ZPBLHTKE => null()
      real, dimension(:,:,:), pointer     :: TKE => null()
-     real, dimension(:,:,:), pointer     :: CN2 => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRWP => null()
-     real, dimension(:,:  ), pointer     :: RWPSNR => null()
      real, dimension(:,:  ), pointer     :: ZPBLRI => null()
      real, dimension(:,:  ), pointer     :: ZPBLRI2 => null()
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
@@ -2019,13 +1989,13 @@ contains
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
      real                                :: PCEFF_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
-     integer                             :: I,J,K,L,LOCK_ON,LTOP,LBOT,KMIN,KMIN2,LMAX
+     integer                             :: I,J,K,L,LOCK_ON,LTOP,LBOT,KMIN,KMIN2
      integer                             :: KPBLMIN,PBLHT_OPTION
 
      real                                :: a1,a2
      real,               dimension(IM,JM,LM) :: dum3d,tmp3d,WVP
      real,               dimension(LM+1) :: temparray, htke
-     real,               dimension(IM,JM,LM  ) :: tcrib,tmpp3d !TransCom bulk Ri
+     real,               dimension(IM,JM,LM  ) :: tcrib !TransCom bulk Ri
      real,               dimension(LM+1) :: thetav
 
      ! variables associated with SHOC
@@ -2041,7 +2011,7 @@ contains
      integer :: locmax
      real    :: maxkh,minlval
      real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p
-     real    :: maxdthvdz,dthvdz,b1,b2
+     real    :: maxdthvdz,dthvdz
      real    :: tmp1
 
      ! PBL-top diagnostic
@@ -2179,12 +2149,6 @@ contains
      call MAPL_GetPointer(EXPORT,    ZPBLHTKE,  'ZPBLHTKE',         RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    TKE,  'TKE',         RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    CN2,  'RWPCN2', ALLOC=.TRUE.,  RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLRWP,  'ZPBLRWP',           RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    RWPSNR,  'RWPSNR', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLRI,  'ZPBLRI',             RC=STATUS)
      VERIFY_(STATUS)
@@ -2329,7 +2293,7 @@ contains
 
       ! Miscellaneous factors
       !----------------------
-      DELP = PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
+
       RDZ = PLE(:,:,1:LM-1) / ( MAPL_RGAS * TVE )
       RDZ = RDZ(:,:,1:LM-1) / (Z(:,:,1:LM-1)-Z(:,:,2:LM))
       DMI = (MAPL_GRAV*DT)/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
@@ -2875,73 +2839,6 @@ contains
 
                             ZPBL = MAPL_UNDEF
       if (associated(PPBL)) PPBL = MAPL_UNDEF
-
-      if (associated(ZPBLRWP)) Then
-!         if (.not. associated(CN2)) ALLOCATE(CN2(IM,JM,0:LM), __STAT__)
-
-         ZPBLRWP = 0.  ! Default value if no RWP
-
-         ! N = 77.6 * ( P + 4811.*e/T ) / T   ! this is n-1 multiplied by 1e6
-         tmpp3d = (77.6/T)*PLO*(1.+48.11*Q/(T*(0.622+Q)))
-         Cn2(:,:,1:LM-1) = ( (tmpp3d(:,:,1:LM-1)-tmpp3d(:,:,2:LM)) / (Z(:,:,1:LM-1)-Z(:,:,2:LM)) )**2
-         Cn2(:,:,LM-1) = Cn2(:,:,LM-2)
-         Cn2(:,:,LM) = Cn2(:,:,LM-2)
-         Cn2(:,:,0) = Cn2(:,:,1)
-
-         ! eta = 0.379*Cn2*lam**(-0.333)  ! reflectivity/backscatter
-
-         tmpp3d(:,:,1:LM-1) = 0.333*(CN2(:,:,0:LM-2)+CN2(:,:,1:LM-1)+CN2(:,:,2:LM))
-         tmpp3d(:,:,LM) = CN2(:,:,LM)
-
-         tmpp3d(:,:,2:LM-1) = 0.333*(tmpp3d(:,:,1:LM-2)+tmpp3d(:,:,2:LM-1)+tmpp3d(:,:,3:LM))
-         tmpp3d(:,:,1) = 0.333*(tmpp3d(:,:,1)+tmpp3d(:,:,1)+tmpp3d(:,:,2))
-
-         CN2(:,:,1:LM) = CN2(:,:,1:LM) - tmpp3d
-         CN2(:,:,0) = CN2(:,:,1)
-
-         do I = 1,IM
-          do J = 1,JM
-            LTOP = LM
-            do while (ZLE(I,J,LTOP).lt.MIN(MAX(1.5*ZPBL(I,J),2000.),6000.)) ! exclude levels above 6 km
-              LTOP = LTOP-1
-            end do
-
-            ! algorithm 2: Molod et al 2015
-!            b1 = SUM( Cn2SMTH(I,J,LTOP:LM-2) ) / (LM-LTOP-1)  ! average from 6km to near-surface
-            b1 = SUM( CN2(I,J,LTOP:LM-2)*DELP(I,J,LTOP:LM-2) ) / SUM(DELP(I,J,LTOP:LM-2))  ! average from 6km to near-surface
-
-!            if (BSTAR(I,J).ge.0.) then
-
-              b2 = SQRT( SUM( DELP(I,J,LTOP:LM-2)*(Cn2(I,J,LTOP:LM-2)-b1)**2 ) / SUM(DELP(I,J,LTOP:LM-2)) ) ! std dev
-
-              L = LM-2
-              do while (L.gt.LTOP)
-                 if (Cn2(I,J,L).gt.Cn2(I,J,L+1) .and. Cn2(I,J,L).gt.Cn2(I,J,L-1)) then ! if local max
-                    LMAX = L-1
-                    do while (Cn2(I,J,LMAX).gt.Cn2(I,J,LMAX-1) .and. LMAX.gt.LTOP) ! scan up for local min
-                       LMAX = LMAX-1
-                    end do
-                    b1 = Cn2(I,J,L)-Cn2(I,J,LMAX)
-                    LMAX = L+1
-                    do while (Cn2(I,J,LMAX).gt.Cn2(I,J,LMAX+1) .and. LMAX.lt.LM) ! scan down for local min
-                       LMAX = LMAX+1
-                    end do
-!                    b1 = 0.5*(b1 + Cn2(I,J,L)-Cn2(I,J,LMAX))   ! use the average up and down max-min difference
-                    b1 = SQRT(b1*(Cn2(I,J,L)-Cn2(I,J,LMAX)))   ! use geometric mean of up and down max-min difference
-
-                    if (b1 .gt. 2.*b2 ) then  ! up/down max-min exceeds 2 std dev
-                       ZPBLRWP(I,J) = ZLE(I,J,L)
-                       RWPSNR(I,J) = b1/b2
-                       exit
-                    end if
-
-                 end if
-                 L = L-1
-              end do  ! L loop
-!            end if ! if BSTAR>0
-          end do ! J loop
-        end do ! I loop
-      end if   ! end ZPBLRWP calc
 
       if (CALC_TCZPBL) then
          TCZPBL = MAPL_UNDEF

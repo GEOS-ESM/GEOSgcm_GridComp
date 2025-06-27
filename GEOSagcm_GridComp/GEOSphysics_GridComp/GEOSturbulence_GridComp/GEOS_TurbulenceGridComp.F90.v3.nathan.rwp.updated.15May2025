@@ -30,23 +30,23 @@ module GEOS_TurbulenceGridCompMod
   public SetServices
 
 ! !DESCRIPTION:
-! 
+!
 !   {\tt GEOS\_TurbulenceGridComp} computes atmospheric tendencies due to turbulence.
 !   Its physics is a combination of the first-order scheme of Louis---for stable PBLs
 !   and free atmospheric turbulence---with a modified version of the non-local-K
 !   scheme proposed by Lock for unstable and cloud-topped boundary layers.
 !   In addition to diffusive tendencies, it adds the effects orographic form drag
 !   for features with horizontal scales of 2 to 20 km following Beljaars et al. (2003,
-!   ECMWF Tech. Memo. 427).  
+!   ECMWF Tech. Memo. 427).
 !
 !\vspace{12 pt}
 !\noindent
 !{\bf Grid Considerations}
 !
-!   Like all GEOS\_Generic-based components, it works on an inherited 
+!   Like all GEOS\_Generic-based components, it works on an inherited
 !   3-dimensional ESMF grid. It assumes that the first two (inner) dimensions span the
 !   horizontal and the third (outer) dimension is the vertical. In the horizontal,
-!   one or both dimensions can be degenerate, effectively supporting 
+!   one or both dimensions can be degenerate, effectively supporting
 !   single-columns (1-D), and slices (2-D). No horizontal dimension needs to be
 !   aligned with a particular coordinate. In the vertical, the only assumption
 !   is that columns are indexed from top to bottom.
@@ -63,7 +63,7 @@ module GEOS_TurbulenceGridCompMod
 !\noindent
 !{\bf Time Behavior}
 !
-!   {\tt GEOS\_TurbulenceGridComp} assumes both run stages will be invoked every 
+!   {\tt GEOS\_TurbulenceGridComp} assumes both run stages will be invoked every
 !   RUN\_DT seconds, where RUN\_DT is required in the configuration. On this interval
 !   both run stages will perform diffusion updates using diffusivities found in the
 !   internal state.  The diffusivities in the internal state may be refreshed intermitently
@@ -87,43 +87,43 @@ module GEOS_TurbulenceGridCompMod
 !   to the quantity and in what form its effects are implemented.
 !
 !   Quantities to be diffused can be marked as "Friendly-for-diffusion". In that case,
-!   {\tt GEOS\_TurbulenceGridComp} directly updates the quantity; otherwise it 
+!   {\tt GEOS\_TurbulenceGridComp} directly updates the quantity; otherwise it
 !   merely computes its tendency, placing it in the appropriate bundle and treating
 !   the quantity itself as read-only.
 !
-!   In working with bundled quantities, corresponding fields must appear in the 
-!   same order in all bundles. Some of these fields, however, 
+!   In working with bundled quantities, corresponding fields must appear in the
+!   same order in all bundles. Some of these fields, however,
 !   may be ``empty'' in the sense that the data pointer has not been allocated.
-!   
+!
 !   {\tt GEOS\_TurbulenceGridComp} works with six bundles; three in the import
 !   state and three in the export state. The import bundles are:
 ! \begin{itemize}
 !   \item[]
-!   \makebox[1in][l]{\bf TR} 
+!   \makebox[1in][l]{\bf TR}
 !   \parbox[t]{4in}{The quantity being diffused.}
 !   \item[]
-!   \makebox[1in][l]{\bf TRG} 
+!   \makebox[1in][l]{\bf TRG}
 !   \parbox[t]{4in}{The surface (ground) value of the quantity being diffused.
 !                   (Used only by Run2)}
 !   \item[]
-!   \makebox[1in][l]{\bf DTG} 
+!   \makebox[1in][l]{\bf DTG}
 !   \parbox[t]{4in}{The change of TRG during the time step. (Used only by Run2)}
 ! \end{itemize}
 !
 !   The export bundles are:
 ! \begin{itemize}
 !   \item[]
-!   \makebox[1in][l]{\bf TRI} 
+!   \makebox[1in][l]{\bf TRI}
 !   \parbox[t]{4in}{The tendency of the quantity being diffused.
 !                   (Produced by Run1, updated by Run2.)  }
 !   \item[]
-!   \makebox[1in][l]{\bf FSTAR} 
+!   \makebox[1in][l]{\bf FSTAR}
 !   \parbox[t]{4in}{After Run1, the ``preliminary'' (i.e., at the original surface
 !    value) surface flux of the diffused quantity; after Run2, its final value.
 !    (Produced by Run1, updated by Run2)}
 !   \item[]
-!   \makebox[1in][l]{\bf DFSTAR} 
-!   \parbox[t]{4in}{The change of preliminary FSTAR per unit change in the 
+!   \makebox[1in][l]{\bf DFSTAR}
+!   \parbox[t]{4in}{The change of preliminary FSTAR per unit change in the
 !                   surface value. (Produced by Run1)}
 ! \end{itemize}
 !
@@ -137,7 +137,7 @@ module GEOS_TurbulenceGridCompMod
 ! \item DiffuseLike: ('S','Q','M') default='S' --- Use mixing coefficients for either
 !          heat, moisture or momentum.
 ! \end{itemize}
-!  
+!
 !   Only fields in the TR bundle are checked for friendly status. Non-friendly
 !   fields in TR and all other bundles are treated with the usual Import/Export
 !   rules.
@@ -147,7 +147,7 @@ module GEOS_TurbulenceGridCompMod
 !{\bf Other imports and exports}
 !
 !   In addition to the updates of these bundles, {\tt GEOS\_TurbulenceGridComp} produces
-!   a number of diagnostic exports, as well as frictional heating contributions. The latter 
+!   a number of diagnostic exports, as well as frictional heating contributions. The latter
 !   are NOT added by {\tt GEOS\_TurbulenceGridComp}, but merely exported to be added
 !   elsewhere in the GCM.
 !
@@ -158,13 +158,13 @@ module GEOS_TurbulenceGridCompMod
 !   The two-stage scheme for interacting with the surface module is as follows:
 ! \begin{itemize}
 !   \item  The first run stage takes the surface values of the diffused quantities
-!      and the surface exchange coefficients as input. These are, of course, on the 
+!      and the surface exchange coefficients as input. These are, of course, on the
 !      grid turbulence is working on.
 !   \item  It then does the full diffusion calculation assuming the surface values are
 !      fixed, i.e., the explicit surface case. In addition, it also computes derivatives of the
 !      tendencies wrt surface values. These are to be used in the second stage.
 !   \item The second run stage takes the increments of the surface values as inputs
-!      and produces the final results, adding the implicit surface contributions. 
+!      and produces the final results, adding the implicit surface contributions.
 !   \item It also computes the frictional heating due to both implicit and explicit
 !       surface contributions.
 ! \end{itemize}
@@ -196,11 +196,11 @@ contains
 
 ! !DESCRIPTION: This version uses the {\tt GEOS\_GenericSetServices}, which sets
 !               the Initialize and Finalize services to generic versions. It also
-!   allocates our instance of a generic state and puts it in the 
+!   allocates our instance of a generic state and puts it in the
 !   gridded component (GC). Here we only set the two-stage run method and
 !   declare the data services.
 ! \newline
-! !REVISION HISTORY: 
+! !REVISION HISTORY:
 !   ??Jul2006 E.Novak./Todling - Added output defining TLM/ADM trajectory
 
 ! !INTERFACE:
@@ -727,7 +727,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME='DPDTTRB',                                      & 
+         SHORT_NAME='DPDTTRB',                                      &
          LONG_NAME ='layer_pressure_thickness_tendency_from_turbulence', &
          UNITS     ='Pa s-1',                                       &
          DIMS      = MAPL_DimsHorzVert,                             &
@@ -757,54 +757,6 @@ contains
          UNITS      = '1',                                    &
          DIMS       = MAPL_DimsHorzOnly,                          &
          VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( gc,                                 &
-         SHORT_NAME = 'QT',                                       &
-         LONG_NAME  = 'total_water_after_turbulence',             &
-         UNITS      = 'kg kg-1',                                  &
-         DIMS       = MAPL_DimsHorzVert,                          &
-         VLOCATION  = MAPL_VLocationCenter,              RC=STATUS  )
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( gc,                                 &
-         SHORT_NAME = 'SL',                                       &
-         LONG_NAME  = 'liquid_water_static_energy_after_turbulence', &
-         UNITS      = 'J kg-1',                                   &
-         DIMS       = MAPL_DimsHorzVert,                          &
-         VLOCATION  = MAPL_VLocationCenter,              RC=STATUS  )
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( gc,                                 &
-         SHORT_NAME = 'QTFLXTRB',                                 &
-         LONG_NAME  = 'kinematic_total_water_flux_from_turbulence',         &
-         UNITS      = 'kg kg-1 m-1 s-1',                          &
-         DIMS       = MAPL_DimsHorzVert,                          &
-         VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( gc,                                 &
-         SHORT_NAME = 'SLFLXTRB',                                 &
-         LONG_NAME  = 'kinematic_liquid_water_static_energy_flux_from_turbulence', &
-         UNITS      = 'J kg-1 m-1 s-1',                           &
-         DIMS       = MAPL_DimsHorzVert,                          &
-         VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( gc,                                 &
-         SHORT_NAME = 'UFLXTRB',                                  &
-         LONG_NAME  = 'kinematic_turbulent_flux_of_zonal_wind_component',   &
-         UNITS      = 'm2 s-2',                                   &
-         DIMS       = MAPL_DimsHorzVert,                          &
-         VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( gc,                                 &
-         SHORT_NAME = 'VFLXTRB',                                  &
-         LONG_NAME  = 'kinematic_turbulent_flux_of_meridional_wind_component', &
-         UNITS      = 'm2 s-2',                                   &
-         DIMS       = MAPL_DimsHorzVert,                          &
-         VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
      VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
@@ -1173,42 +1125,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'boundary_layer_height_from_refractivity_gradient',      &
-       SHORT_NAME = 'ZPBLRFRCT',                                             &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'lower_boundary_layer_height_from_refractivity_gradient',&
-       SHORT_NAME = 'ZPBLRFRCTLOW',                                          &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'upper_boundary_layer_height_from_refractivity_gradient',&
-       SHORT_NAME = 'ZPBLRFRCTHGH',                                          &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'refractivity_pbl_height_quality_parameter',             &
-       SHORT_NAME = 'ZPBLRFRCTQP',                                           &
-       UNITS      = '1',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'pbltop_level',                                          &
        SHORT_NAME = 'KPBL',                                                  &
        UNITS      = '1',                                                     &
@@ -1243,16 +1159,6 @@ contains
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                            &
-       LONG_NAME  = 'geopotential_height_above_surface',                     &
-       SHORT_NAME = 'ZLES',                                                   &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
 
 
 
@@ -1481,22 +1387,10 @@ contains
        SHORT_NAME = 'TKH',                                       &
        LONG_NAME  = 'turbulent_heat_diffusivity_from_SHOC',      &
        UNITS      = 'm+2 s-1',                                   &
-       DEFAULT    = 0.0,                                         &
+       DEFAULT    = 0.0,                                          &
        FRIENDLYTO = trim(COMP_NAME),                             &
        DIMS       = MAPL_DimsHorzVert,                           &
-       RESTART    = MAPL_RestartSkip,                            &
-       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                &
-       SHORT_NAME = 'TKM',                                       &
-       LONG_NAME  = 'turbulent_momentum_diffusivity_from_SHOC',  &
-       UNITS      = 'm+2 s-1',                                   &
-       DEFAULT    = 0.0,                                         &
-       FRIENDLYTO = trim(COMP_NAME),                             &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       RESTART    = MAPL_RestartSkip,                            &
-       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
@@ -1625,7 +1519,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="--UPDATE"    ,RC=STATUS)
     VERIFY_(STATUS)
-    
+
 ! Set generic init and final methods
 ! ----------------------------------
 
@@ -1633,7 +1527,7 @@ contains
     VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
-  
+
   end subroutine SetServices
 
 
@@ -1664,22 +1558,22 @@ contains
 !   sets-up the matrix for a backward-implicit computation of the surface fluxes,
 !   and solves this system for a fixed surface value of the diffused quantity. Run1
 !   takes as inputs the surface exchange coefficients (i.e., $\rho |U| C_{m,h,q}$) for
-!   momentun, heat, and moisture, as well as the pressure, temperature, moisture, 
+!   momentun, heat, and moisture, as well as the pressure, temperature, moisture,
 !   and winds for the sounding. These are used only for computing the diffusivities
 !   and, as explained above,  are not the temperatures, moistures, etc. being diffused.
 !
 !   The computation of turbulence fluxes for fixed surface values is done at every
-!   time step in the contained subroutine {\tt DIFFUSE}; but the computation of 
+!   time step in the contained subroutine {\tt DIFFUSE}; but the computation of
 !   diffusivities and orographic drag coefficients, as well as the set-up of the
 !   vertical difference matrix and its LU decomposition
 !   can be done intermittently for economy in the contained subroutine  {\tt REFRESH}.
-!   The results of this calculation are stored in an internal state. 
-!   Run1 also computes the sensitivity of the 
+!   The results of this calculation are stored in an internal state.
+!   Run1 also computes the sensitivity of the
 !   atmospheric tendencies and the surface flux to changes in the surface value.
 !
 !   The diffusivities are computed by calls to {\tt LOUIS\_KS} and {\tt ENTRAIN}, which
-!   compute the Louis et al. (1983) and Lock (2000) diffusivities. The Louis 
-!   diffusivities are computed for all conditions, and {\tt ENTRAIN} overrides them 
+!   compute the Louis et al. (1983) and Lock (2000) diffusivities. The Louis
+!   diffusivities are computed for all conditions, and {\tt ENTRAIN} overrides them
 !   where appropriate. Lock can be turned off from the resource file.
 
 
@@ -1697,8 +1591,8 @@ contains
 
     type (MAPL_MetaComp), pointer   :: MAPL
     type (ESMF_Config      )            :: CF
-    type (ESMF_State       )            :: INTERNAL 
-    type (ESMF_Alarm       )            :: ALARM   
+    type (ESMF_State       )            :: INTERNAL
+    type (ESMF_Alarm       )            :: ALARM
 
 ! Local variables
 
@@ -1709,16 +1603,16 @@ contains
     real, dimension(:,:  ), pointer     :: CU, CT, CQ, ZPBL
     integer                             :: IM, JM, LM
     real                                :: DT
- 
+
 ! SHOC-related variables
-    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,TKM,LSHOC,BRUNTSHOC, & 
+    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,LSHOC,BRUNTSHOC, &
                                            SHEARSHOC,CLD, WTHV2,        &
                                            TKEBUOY,TKESHEAR,TKEDISS,TKETRANS,&
                                            DTDT_SHC,DQDT_SHC,DQLDT_SHC, &
                                            DQIDT_SHC
     real, dimension(:,:), pointer       :: EVAP, SH
 
-! Begin... 
+! Begin...
 !---------
 
 ! Get my name and set-up traceback handle
@@ -1829,8 +1723,6 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, TKH,   'TKH',    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, TKM,   'TKM',    RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, LSHOC,   'LSHOC',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, BRUNTSHOC,'BRUNTSHOC',    RC=STATUS)
@@ -1904,8 +1796,8 @@ contains
      integer,           intent(IN)       :: IM,JM,LM
      integer, optional, intent(OUT)      :: RC
 
-! !DESCRIPTION: 
-!   {\tt REFRESH} can be called intermittently to compute new values of the 
+! !DESCRIPTION:
+!   {\tt REFRESH} can be called intermittently to compute new values of the
 !   diffusivities. In addition it does all possible calculations that depend
 !   only on these. In particular, it sets up the semi-implicit tridiagonal
 !   solver in the vertical and does the LU decomposition. It also includes the
@@ -1916,17 +1808,17 @@ contains
 !   they are overridden by the Lock values ({\tt ENTRAIN}).
 !   Once diffusivities are computed, {\tt REFRESH} sets-up the tridiagonal
 !   matrices for the semi-implicit vertical diffusion calculation and performs
-!   their $LU$ decomposition. 
+!   their $LU$ decomposition.
 !
 !   {\tt REFRESH} requires surface exchange coefficients for heat, moisture, and
 !   momentum,  The calculations in the interior are also
 !   done for momentum, heat, and water diffusion. Heat and water mixing
 !   coefficients differ only at the surface, but these affect the entire $LU$
-!   decomposition, and so all three decompositions are saved in the internal state. 
+!   decomposition, and so all three decompositions are saved in the internal state.
 !
 !   For a conservatively diffused quantity $q$, we have
 !   $$
-!   \frac{\partial q}{\partial t} = -g \frac{\partial }{\partial p} 
+!   \frac{\partial q}{\partial t} = -g \frac{\partial }{\partial p}
 !       \left(\rho K_q \frac{\partial q}{\partial z} \right)
 !   $$
 !   In finite difference form, using backward time differencing, this becomes
@@ -1936,7 +1828,7 @@ contains
 !     \delta_l \left[
 !      \left( \frac{\Delta t \rho K_q}{\delta_l z} \right)^* (\delta_l q)^{n+1} \right]   \\
 !   &&\\
-!                         & = & - \alpha_l ( \beta_{l+\frac{1}{2}}(q_{l+1}-q_l)^{n+1} - 
+!                         & = & - \alpha_l ( \beta_{l+\frac{1}{2}}(q_{l+1}-q_l)^{n+1} -
 !                                            \beta_{l-\frac{1}{2}}(q_l-q_{l-1})^{n+1} ) \\
 !   &&\\
 !   \alpha_l & = & \frac{g \Delta t}{(p_{l+\frac{1}{2}}-p_{l-\frac{1}{2}})^*} \\
@@ -1960,17 +1852,17 @@ contains
 !   $$
 !   At the top boundary, we assume $K_q=0$, so  $ \beta_{\frac{1}{2}}=0$ and $a_1=0$.
 !   At the surface, $ \beta_{L+\frac{1}{2}}= \rho_s |U|_s C_{m,h,q}$, the surface exchange coefficient.
-!   
+!
 
 !EOP
- 
+
      character(len=ESMF_MAXSTR)          :: IAm='Refresh'
      integer                             :: STATUS
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: VARFLT
      real, dimension(:,:,:), pointer     :: KH, KM, QLLS, QILS, CLLS, QLCN, QICN, CLCN
-     real, dimension(:,:,:), pointer     :: ALH,ZLES
+     real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
@@ -1990,10 +1882,6 @@ contains
      real, dimension(:,:  ), pointer     :: ZPBLRI => null()
      real, dimension(:,:  ), pointer     :: ZPBLRI2 => null()
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRFRCT => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRFRCTLOW => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRFRCTHGH => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRFRCTQP => null()
      real, dimension(:,:  ), pointer     :: KPBL => null()
      real, dimension(:,:  ), pointer     :: KPBL_SC => null()
      real, dimension(:,:  ), pointer     :: WEBRV,VSCBRV,DSIEMS,CHIS,ZCLDTOP,DELSINV,SMIXT,ZRADBS,CLDRF,VSCSFC,RADRCODE
@@ -2011,7 +1899,7 @@ contains
      real                                :: LOUIS, ALHFAC, ALMFAC
      real                                :: LAMBDAM, LAMBDAM2
      real                                :: LAMBDAH, LAMBDAH2
-     real                                :: ZKMENV, ZKHENV 
+     real                                :: ZKMENV, ZKHENV
      real                                :: MINTHICK
      real                                :: MINSHEAR
      real                                :: AKHMMAX
@@ -2019,19 +1907,17 @@ contains
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
      real                                :: PCEFF_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
-     integer                             :: I,J,K,L,LOCK_ON,LTOP,LBOT,KMIN,KMIN2,LMAX
+     integer                             :: I,J,L,LOCK_ON,LTOP,LMAX
      integer                             :: KPBLMIN,PBLHT_OPTION
 
-     real                                :: a1,a2
-     real,               dimension(IM,JM,LM) :: dum3d,tmp3d,WVP
      real,               dimension(LM+1) :: temparray, htke
-     real,               dimension(IM,JM,LM  ) :: tcrib,tmpp3d !TransCom bulk Ri
+     real,               dimension(IM,JM,LM  ) :: tcrib,tmp3d !TransCom bulk Ri
      real,               dimension(LM+1) :: thetav
 
      ! variables associated with SHOC
 !     real, dimension( IM, JM )           :: HFLX,EVAP
      real, dimension( IM, JM, LM )       :: PRANDTLSHOC,QPL,QPI,TDUM,QDUM, &
-                                            QIDUM,QLDUM,DZ
+                                            QIDUM,QLDUM
      integer                             :: DO_SHOC,SHC_DO_COND,SHC_DO_TRANS
      real                                :: SHC_LAMBDA,SHC_TSCALE,SHC_VONK,SHC_CK, &
                                             SHC_CEFAC,SHC_CESFAC,SHC_THL2TUNE,    &
@@ -2041,8 +1927,7 @@ contains
      integer :: locmax
      real    :: maxkh,minlval
      real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p
-     real    :: maxdthvdz,dthvdz,b1,b2
-     real    :: tmp1
+     real    :: maxdthvdz,dthvdz,a1,a2
 
      ! PBL-top diagnostic
      ! -----------------------------------------
@@ -2192,14 +2077,6 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLRFRCT,  'ZPBLRFRCT', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLRFRCTLOW,  'ZPBLRFRCTLOW', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLRFRCTHGH,  'ZPBLRFRCTHGH', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,   ZPBLRFRCTQP, 'ZPBLRFRCTQP', ALLOC=.TRUE., RC=STATUS)
-     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,   LWCRT,   'LWCRT', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,   WERAD,   'WERAD',               RC=STATUS)
@@ -2253,8 +2130,6 @@ contains
      call MAPL_GetPointer(EXPORT,  AKVODT,  'AKVODT',               RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  CKVODT,  'CKVODT',               RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZLES,    'ZLES',               RC=STATUS)
      VERIFY_(STATUS)
 
 ! Initialize some arrays
@@ -2311,7 +2186,6 @@ contains
       do L = LM, 1, -1
          ZLE(:,:,L-1) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*TH(:,:,L)*(PKE(:,:,L)-PKE(:,:,L-1))
       end do
-      if (associated(ZLES)) ZLES = ZLE
 
       ! Layer height, pressure, and virtual temperatures
       !-------------------------------------------------
@@ -2322,7 +2196,7 @@ contains
       Z   = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
       PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
 
-      TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
+      TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI )
       THV = TV*(TH/T)
 
       TVE = (TV(:,:,1:LM-1) + TV(:,:,2:LM))*0.5
@@ -2337,11 +2211,11 @@ contains
       !===> Running 1-2-1 smooth of bottom 5 levels of Virtual Pot. Temp.
       if (LM .eq. 72) then
       THV(:,:,LM  ) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
-      THV(:,:,LM-1) = THV(:,:,LM-2)*0.25 + THV(:,:,LM-1)*0.50 + THV(:,:,LM  )*0.25 
-      THV(:,:,LM-2) = THV(:,:,LM-3)*0.25 + THV(:,:,LM-2)*0.50 + THV(:,:,LM-1)*0.25 
-      THV(:,:,LM-3) = THV(:,:,LM-4)*0.25 + THV(:,:,LM-3)*0.50 + THV(:,:,LM-2)*0.25 
-      THV(:,:,LM-4) = THV(:,:,LM-5)*0.25 + THV(:,:,LM-4)*0.50 + THV(:,:,LM-3)*0.25 
-      THV(:,:,LM-5) = THV(:,:,LM-6)*0.25 + THV(:,:,LM-5)*0.50 + THV(:,:,LM-4)*0.25 
+      THV(:,:,LM-1) = THV(:,:,LM-2)*0.25 + THV(:,:,LM-1)*0.50 + THV(:,:,LM  )*0.25
+      THV(:,:,LM-2) = THV(:,:,LM-3)*0.25 + THV(:,:,LM-2)*0.50 + THV(:,:,LM-1)*0.25
+      THV(:,:,LM-3) = THV(:,:,LM-4)*0.25 + THV(:,:,LM-3)*0.50 + THV(:,:,LM-2)*0.25
+      THV(:,:,LM-4) = THV(:,:,LM-5)*0.25 + THV(:,:,LM-4)*0.50 + THV(:,:,LM-3)*0.25
+      THV(:,:,LM-5) = THV(:,:,LM-6)*0.25 + THV(:,:,LM-5)*0.50 + THV(:,:,LM-4)*0.25
       endif
 
       call MAPL_TimerOff(MAPL,"---PRELIMS")
@@ -2453,12 +2327,12 @@ contains
 
       if (DO_SHOC == 0) then
         call LOUIS_KS(                      &
-            Z,ZLE(:,:,1:LM-1),THV,U,V,ZPBL, &    
+            Z,ZLE(:,:,1:LM-1),THV,U,V,ZPBL, &
             KH(:,:,1:LM-1),KM(:,:,1:LM-1),  &
-            RI(:,:,1:LM-1),DU(:,:,1:LM-1),  &    
+            RI(:,:,1:LM-1),DU(:,:,1:LM-1),  &
             LOUIS, MINSHEAR, MINTHICK,      &
-            LAMBDAM, LAMBDAM2,              & 
-            LAMBDAH, LAMBDAH2,              & 
+            LAMBDAM, LAMBDAM2,              &
+            LAMBDAH, LAMBDAH2,              &
             ALHFAC, ALMFAC,                 &
             ZKMENV, ZKHENV, AKHMMAX,        &
             ALH, KMLS, KHLS                 )
@@ -2494,7 +2368,7 @@ contains
 
          ! Inputs - Lock
          ! -------------
-      
+
          ALLOCATE(TDTLW_IN_dev(IM,JM,LM), __STAT__)
          ALLOCATE(U_STAR_dev(IM,JM), __STAT__)
          ALLOCATE(B_STAR_dev(IM,JM), __STAT__)
@@ -2512,7 +2386,7 @@ contains
 
          ! Inoutputs - Lock
          ! ----------------
-      
+
          ALLOCATE(DIFF_M_dev(IM,JM,LM+1), __STAT__)
          ALLOCATE(DIFF_T_dev(IM,JM,LM+1), __STAT__)
 
@@ -2532,7 +2406,7 @@ contains
          ! ------------------
 
          ! MAT: Using device pointers on CUDA is a bit convoluted. First, we
-         ! only allocate the actual working arrays on the device if the 
+         ! only allocate the actual working arrays on the device if the
          ! EXPORT pointer is associated.
 
          IF (ASSOCIATED(ZCLDTOP))  ALLOCATE(ZCLDTOP_DIAG_dev(IM,JM), __STAT__)
@@ -2599,7 +2473,7 @@ contains
 
          ! Inoutputs - Lock
          ! ----------------
-      
+
          DIFF_M_dev(:,:,1:LM+1) = KM(:,:,0:LM)
          DIFF_T_dev(:,:,1:LM+1) = KH(:,:,0:LM)
 
@@ -2659,7 +2533,7 @@ contains
 
 
          STATUS = cudaGetLastError()
-         if (STATUS /= 0) then 
+         if (STATUS /= 0) then
             write (*,*) "Error code from ENTRAIN kernel call: ", STATUS
             write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
             _ASSERT(.FALSE.,'needs informative message')
@@ -2679,13 +2553,13 @@ contains
 
          ! Inoutputs - Lock
          ! ----------------
-      
+
             KM(:,:,0:LM) = DIFF_M_dev(:,:,1:LM+1)
             KH(:,:,0:LM) = DIFF_T_dev(:,:,1:LM+1)
 
          ! Outputs - Lock
          ! --------------
-      
+
            EKM(:,:,0:LM) = K_M_ENTR_dev(:,:,1:LM+1)
            EKH(:,:,0:LM) = K_T_ENTR_dev(:,:,1:LM+1)
          KHSFC(:,:,0:LM) = K_SFC_dev(:,:,1:LM+1)
@@ -2694,10 +2568,10 @@ contains
                   ZRADML = ZRADML_dev
                   ZRADBS = ZRADBASE_dev
                   ZSML   = ZSML_dev
-      
+
          ! Diagnostics - Lock
          ! ------------------
-      
+
          IF (ASSOCIATED(ZCLDTOP))  ZCLDTOP  = ZCLDTOP_DIAG_dev
          IF (ASSOCIATED(WESFC))    WESFC    = WENTR_SFC_DIAG_dev
          IF (ASSOCIATED(WERAD))    WERAD    = WENTR_RAD_DIAG_dev
@@ -2721,10 +2595,10 @@ contains
          ! ------------------------
          ! Deallocate device arrays
          ! ------------------------
-   
+
          ! Inputs - Lock
          ! -------------
-   
+
          DEALLOCATE(TDTLW_IN_dev)
          DEALLOCATE(U_STAR_dev)
          DEALLOCATE(B_STAR_dev)
@@ -2739,16 +2613,16 @@ contains
          DEALLOCATE(PFULL_dev)
          DEALLOCATE(ZHALF_dev)
          DEALLOCATE(PHALF_dev)
-      
+
          ! Inoutputs - Lock
          ! ----------------
-   
+
          DEALLOCATE(DIFF_M_dev)
          DEALLOCATE(DIFF_T_dev)
-   
+
          ! Outputs - Lock
          ! --------------
-      
+
          DEALLOCATE(K_M_ENTR_dev)
          DEALLOCATE(K_T_ENTR_dev)
          DEALLOCATE(K_SFC_dev)
@@ -2757,13 +2631,13 @@ contains
          DEALLOCATE(ZRADML_dev)
          DEALLOCATE(ZRADBASE_dev)
          DEALLOCATE(ZSML_dev)
-      
+
          ! Diagnostics - Lock
          ! ------------------
 
          ! MAT Again, we only deallocate a device array if the diagnostic
          ! was asked for.
-      
+
          IF (ASSOCIATED(ZCLDTOP))  DEALLOCATE(ZCLDTOP_DIAG_dev)
          IF (ASSOCIATED(WESFC))    DEALLOCATE(WENTR_SFC_DIAG_dev)
          IF (ASSOCIATED(WERAD))    DEALLOCATE(WENTR_RAD_DIAG_dev)
@@ -2783,7 +2657,7 @@ contains
          ! This step is probably unnecessary, but better safe than sorry
          ! as the lifetime of a device pointer is not really specified
          ! by NVIDIA
-   
+
          IF (ASSOCIATED(ZCLDTOP))  NULLIFY(ZCLDTOP_DIAG_dev_ptr)
          IF (ASSOCIATED(WESFC))    NULLIFY(WENTR_SFC_DIAG_dev_ptr)
          IF (ASSOCIATED(WERAD))    NULLIFY(WENTR_RAD_DIAG_dev_ptr)
@@ -2878,25 +2752,25 @@ contains
 
       if (associated(ZPBLRWP)) Then
 !         if (.not. associated(CN2)) ALLOCATE(CN2(IM,JM,0:LM), __STAT__)
-
+         
          ZPBLRWP = 0.  ! Default value if no RWP
 
          ! N = 77.6 * ( P + 4811.*e/T ) / T   ! this is n-1 multiplied by 1e6
-         tmpp3d = (77.6/T)*PLO*(1.+48.11*Q/(T*(0.622+Q)))
-         Cn2(:,:,1:LM-1) = ( (tmpp3d(:,:,1:LM-1)-tmpp3d(:,:,2:LM)) / (Z(:,:,1:LM-1)-Z(:,:,2:LM)) )**2
+         tmp3d = (77.6/T)*PLO*(1.+48.11*Q/(T*(0.622+Q)))
+         Cn2(:,:,1:LM-1) = ( (tmp3d(:,:,1:LM-1)-tmp3d(:,:,2:LM)) / (Z(:,:,1:LM-1)-Z(:,:,2:LM)) )**2
          Cn2(:,:,LM-1) = Cn2(:,:,LM-2)
          Cn2(:,:,LM) = Cn2(:,:,LM-2)
          Cn2(:,:,0) = Cn2(:,:,1)
 
          ! eta = 0.379*Cn2*lam**(-0.333)  ! reflectivity/backscatter
 
-         tmpp3d(:,:,1:LM-1) = 0.333*(CN2(:,:,0:LM-2)+CN2(:,:,1:LM-1)+CN2(:,:,2:LM))
-         tmpp3d(:,:,LM) = CN2(:,:,LM)
+         tmp3d(:,:,1:LM-1) = 0.333*(CN2(:,:,0:LM-2)+CN2(:,:,1:LM-1)+CN2(:,:,2:LM))
+         tmp3d(:,:,LM) = CN2(:,:,LM)
+         
+         tmp3d(:,:,2:LM-1) = 0.333*(tmp3d(:,:,1:LM-2)+tmp3d(:,:,2:LM-1)+tmp3d(:,:,3:LM))
+         tmp3d(:,:,1) = 0.333*(tmp3d(:,:,1)+tmp3d(:,:,1)+tmp3d(:,:,2))
 
-         tmpp3d(:,:,2:LM-1) = 0.333*(tmpp3d(:,:,1:LM-2)+tmpp3d(:,:,2:LM-1)+tmpp3d(:,:,3:LM))
-         tmpp3d(:,:,1) = 0.333*(tmpp3d(:,:,1)+tmpp3d(:,:,1)+tmpp3d(:,:,2))
-
-         CN2(:,:,1:LM) = CN2(:,:,1:LM) - tmpp3d
+         CN2(:,:,1:LM) = CN2(:,:,1:LM) - tmp3d
          CN2(:,:,0) = CN2(:,:,1)
 
          do I = 1,IM
@@ -2907,12 +2781,12 @@ contains
             end do
 
             ! algorithm 2: Molod et al 2015
-!            b1 = SUM( Cn2SMTH(I,J,LTOP:LM-2) ) / (LM-LTOP-1)  ! average from 6km to near-surface
-            b1 = SUM( CN2(I,J,LTOP:LM-2)*DELP(I,J,LTOP:LM-2) ) / SUM(DELP(I,J,LTOP:LM-2))  ! average from 6km to near-surface
+!            a1 = SUM( Cn2SMTH(I,J,LTOP:LM-2) ) / (LM-LTOP-1)  ! average from 6km to near-surface
+            a1 = SUM( CN2(I,J,LTOP:LM-2)*DELP(I,J,LTOP:LM-2) ) / SUM(DELP(I,J,LTOP:LM-2))  ! average from 6km to near-surface
 
 !            if (BSTAR(I,J).ge.0.) then
 
-              b2 = SQRT( SUM( DELP(I,J,LTOP:LM-2)*(Cn2(I,J,LTOP:LM-2)-b1)**2 ) / SUM(DELP(I,J,LTOP:LM-2)) ) ! std dev
+              a2 = SQRT( SUM( DELP(I,J,LTOP:LM-2)*(Cn2(I,J,LTOP:LM-2)-a1)**2 ) / SUM(DELP(I,J,LTOP:LM-2)) ) ! std dev
 
               L = LM-2
               do while (L.gt.LTOP)
@@ -2921,17 +2795,17 @@ contains
                     do while (Cn2(I,J,LMAX).gt.Cn2(I,J,LMAX-1) .and. LMAX.gt.LTOP) ! scan up for local min
                        LMAX = LMAX-1
                     end do
-                    b1 = Cn2(I,J,L)-Cn2(I,J,LMAX)
+                    a1 = Cn2(I,J,L)-Cn2(I,J,LMAX)
                     LMAX = L+1
                     do while (Cn2(I,J,LMAX).gt.Cn2(I,J,LMAX+1) .and. LMAX.lt.LM) ! scan down for local min
                        LMAX = LMAX+1
                     end do
-!                    b1 = 0.5*(b1 + Cn2(I,J,L)-Cn2(I,J,LMAX))   ! use the average up and down max-min difference
-                    b1 = SQRT(b1*(Cn2(I,J,L)-Cn2(I,J,LMAX)))   ! use geometric mean of up and down max-min difference
+!                    a1 = 0.5*(a1 + Cn2(I,J,L)-Cn2(I,J,LMAX))   ! use the average up and down max-min difference
+                    a1 = SQRT(a1*(Cn2(I,J,L)-Cn2(I,J,LMAX)))   ! use geometric mean of up and down max-min difference
 
-                    if (b1 .gt. 2.*b2 ) then  ! up/down max-min exceeds 2 std dev
+                    if (a1 .gt. 2.*a2 ) then  ! up/down max-min exceeds 2 std dev
                        ZPBLRWP(I,J) = ZLE(I,J,L)
-                       RWPSNR(I,J) = b1/b2
+                       RWPSNR(I,J) = a1/a2
                        exit
                     end if
 
@@ -2942,6 +2816,7 @@ contains
           end do ! J loop
         end do ! I loop
       end if   ! end ZPBLRWP calc
+
 
       if (CALC_TCZPBL) then
          TCZPBL = MAPL_UNDEF
@@ -3068,7 +2943,7 @@ contains
          ZPBLHTKE = MAPL_UNDEF
       end if ! ZPBLHTKE
 
-      ! TKE 
+      ! TKE
       if (associated(TKE)) then         ! Reminder: TKE is on model edges
         if (DO_SHOC /= 0) then
           TKE = TKESHOC
@@ -3096,8 +2971,8 @@ contains
                      ZPBLRI(I,J) = Z(I,J,L+1)+(ri_crit-RI(I,J,L))/(RI(I,J,L-1)-RI(I,J,L))*(Z(I,J,L)-Z(I,J,L+1))
                   end if
                end do
-            end do 
-         end do 
+            end do
+         end do
 
          where ( ZPBLRI .eq. MAPL_UNDEF ) ZPBLRI = Z(:,:,LM)
          ZPBLRI = MIN(ZPBLRI,Z(:,:,KPBLMIN))
@@ -3147,97 +3022,9 @@ contains
                   end if
                end do
 
-            end do 
-         end do 
+            end do
+         end do
       end if ! ZPBLTHV
-
-!=========================================================================
-!  ZPBL defined by minimum in vertical gradient of refractivity.
-!  As shown in Ao, et al, 2012: "Planetary boundary layer heights from
-!  GPS radio occultation refractivity and humidity profiles", Climate and
-!  Dynamics.  https://doi.org/10.1029/2012JD017598
-!=========================================================================                                                                                                     
-
-    if (associated(ZPBLRFRCT).or.associated(ZPBLRFRCTLOW).or.associated(ZPBLRFRCTHGH)) then
-
-      a1 = 0.776    ! K/Pa
-      a2 = 3.73e3   ! K2/Pa
-
-      WVP = Q * PLO / (Q*(1.-0.622)+0.622)  ! water vapor partial pressure
-  
-      ! Pressure gradient term
-      dum3d(:,:,2:LM-1) = (PLO(:,:,1:LM-2)-PLO(:,:,3:LM)) / (Z(:,:,1:LM-2)-Z(:,:,3:LM))
-      dum3d(:,:,1) = (PLO(:,:,1)-PLO(:,:,2)) / (Z(:,:,1)-Z(:,:,2))
-      dum3d(:,:,LM) = (PLO(:,:,LM-1)-PLO(:,:,LM)) / (Z(:,:,LM-1)-Z(:,:,LM))
-      tmp3d = a1 * dum3d / T
-
-      ! Add Temperature gradient term
-      dum3d(:,:,2:LM-1) = (T(:,:,1:LM-2)-T(:,:,3:LM)) / (Z(:,:,1:LM-2)-Z(:,:,3:LM))
-      dum3d(:,:,1) = (T(:,:,1)-T(:,:,2)) / (Z(:,:,1)-Z(:,:,2))
-      dum3d(:,:,LM) = (T(:,:,LM-1)-T(:,:,LM)) / (Z(:,:,LM-1)-Z(:,:,LM))
-      tmp3d = tmp3d - (a1*plo/T**2 + 2.*a2*WVP/T**3)*dum3d
-
-      ! Add vapor pressure gradient term
-      dum3d(:,:,2:LM-1) = (WVP(:,:,1:LM-2)-WVP(:,:,3:LM)) / (Z(:,:,1:LM-2)-Z(:,:,3:LM))
-      dum3d(:,:,1) = (WVP(:,:,1)-WVP(:,:,2)) / (Z(:,:,1)-Z(:,:,2))
-      dum3d(:,:,LM) = (WVP(:,:,LM-1)-WVP(:,:,LM)) / (Z(:,:,LM-1)-Z(:,:,LM))
-      tmp3d = tmp3d + (a2/T**2)*dum3d
-
-      ! ZPBL is height of minimum in refractivity (tmp3d)
-      ZPBLRFRCTLOW = 0.
-      ZPBLRFRCTHGH = 0.
-      DZ = ZLE(:,:,0:LM-1)-ZLE(:,:,1:LM)
-
-      do I = 1,IM
-        do J = 1,JM
-          LTOP = LM
-          do while (Z(I,J,LTOP).lt.6000.) ! exclude levels above 6 km
-             LTOP = LTOP-1
-          end do
-          LBOT = LM
-          !do while (Z(I,J,LBOT).lt.300.)  ! exclude levels below 300 m
-          !   LBOT = LBOT-1
-          !end do
-          KMIN = LTOP-1+MINLOC(tmp3d(I,J,LTOP:LBOT),DIM=1,BACK=.TRUE.)   ! return last index, if multiple
-          ZPBLRFRCT(I,J) = Z(I,J,KMIN)
-
-          ! Sharpness parameter: PBL top gradient divided by RMS gradients below 6 km
-          tmp1 = SQRT(SUM(tmp3d(I,J,LTOP:LBOT)**2)/FLOAT(LBOT-LTOP+1))
-          ZPBLRFRCTQP(I,J) = -1.*tmp3d(I,J,KMIN)/tmp1
-
-
-          K = LBOT
-          KMIN2 = 2   ! index for secondary minimum
-
-          tmp1 = SUM(DZ(I,J,LTOP:LBOT)*tmp3d(I,J,LTOP:LBOT))/SUM(DZ(I,J,LTOP:LBOT))  ! avg gradient below 6 km
-
-          do while (K.gt.LTOP)
-            if (tmp3d(I,J,K).lt.tmp3d(I,J,K+1) .and. tmp3d(I,J,K).lt.tmp3d(I,J,K-1) .and. & ! if local minimum...
-                tmp3d(I,J,K).lt.(0.25*tmp3d(I,J,KMIN)+0.75*tmp1) .and. &                    ! exceeds threshold...
-                K.ne.KMIN .and. &                                                           ! is not the overall minimum...
-                tmp3d(I,J,K).lt.tmp3d(I,J,KMIN2) ) then                                     ! and exceeds any previous local minimum
-               KMIN2 = K                                                                    ! then set as new secondary minimum
-            end if
-            K = K-1
-          end do
-          if (KMIN2.eq.2) then   ! no 2nd minimum was found
-            ZPBLRFRCTHGH(I,J) = Z(I,J,KMIN)
-            ZPBLRFRCTLOW(I,J) = Z(I,J,KMIN)
-          else
-            if (KMIN2.gt.KMIN) then              ! if 2nd minimum below primary, set as LOW
-              ZPBLRFRCTHGH(I,J) = Z(I,J,KMIN)
-              ZPBLRFRCTLOW(I,J) = Z(I,J,KMIN2)
-            else                                 ! if above primary, set as HGH
-              ZPBLRFRCTHGH(I,J) = Z(I,J,KMIN2)
-              ZPBLRFRCTLOW(I,J) = Z(I,J,KMIN)
-            end if
-          end if
-
-        end do
-      end do
-
-    end if  ! ZPBLRFRCT 
-
 
       SELECT CASE(PBLHT_OPTION)
 
@@ -3291,7 +3078,6 @@ contains
       ! ---------------------------------------------------------
 
       KH(:,:,LM) = CT * (PLE(:,:,LM)/(MAPL_RGAS * TV(:,:,LM))) / Z(:,:,LM)
-      TKH = KH
 
       ! Water vapor can differ at the surface
       !--------------------------------------
@@ -3303,7 +3089,7 @@ contains
       ! Second difference coefficients for winds
       ! EKV is saved to use in the frictional heating calc.
       ! ---------------------------------------------------
-      
+
       EKV(:,:,1:LM-1) = -KM(:,:,1:LM-1) * RDZ(:,:,1:LM-1)
       AKV(:,:,1     ) = 0.0
       AKV(:,:,2:LM  ) = EKV(:,:,1:LM-1) * DMI(:,:,2:LM  )
@@ -3317,7 +3103,6 @@ contains
       ! -------------------------------------------------------
 
       KM(:,:,LM) = CU * (PLE(:,:,LM)/(MAPL_RGAS * TV(:,:,LM))) / Z(:,:,LM)
-      TKM = KM
 
       ! Setup the tridiagonal matrix
       ! ----------------------------
@@ -3358,15 +3143,15 @@ contains
 !
 !   Orograpghic drag follows  Beljaars (2003):
 !   $$
-!   \frac{\partial}{\partial z}\frac{\tau}{\rho} = \frac{C_B}{\lambda_B} |U(z)| U(z) 
+!   \frac{\partial}{\partial z}\frac{\tau}{\rho} = \frac{C_B}{\lambda_B} |U(z)| U(z)
 !          e^{-\tilde{z}^\frac{3}{2}}\tilde{z}^{-1.2},
 !   $$
-!   where $z$ is the height above the surface in meters, 
+!   where $z$ is the height above the surface in meters,
 !   $\tilde{z}=\frac{z}{\lambda_B}$, $\tau$ is the orographic stress at $z$,
 !   $\rho$ is the air density, $U(z)$ is the wind velocity, and $\lambda_B$ is a vertical length scale.
 !   Beljaars uses $\lambda_B = 1500$m, for which the non-dimensional parameter $C_B = 2.5101471 \times 10^{-8}$.
 !   These are the default values, but both can be modified from the configuration. To avoid underflow.
-!   the tendency is set to zero once $\tilde{z}$ exceeds 4 (i.e., 6 km from the surface for default values). 
+!   the tendency is set to zero once $\tilde{z}$ exceeds 4 (i.e., 6 km from the surface for default values).
 !
 !EOP
 
@@ -3428,7 +3213,7 @@ contains
 
 !BOP
 
-! !CROUTINE: DIFFUSE -- Solves for semi-implicit diffusive tendencies assuming fixed surface conditions.  
+! !CROUTINE: DIFFUSE -- Solves for semi-implicit diffusive tendencies assuming fixed surface conditions.
 
 ! !INTERFACE:
 
@@ -3478,10 +3263,10 @@ contains
 ! AMM pointer to export of S after diffuse
     real, dimension(:,:,:), pointer     :: SAFDIFFUSE
 
-! Get the bundles containing the quantities to be diffused, 
+! Get the bundles containing the quantities to be diffused,
 !     their tendencies, their surface values, their surface
 !     fluxes, and the derivatives of their surface fluxes
-!     wrt the surface values. 
+!     wrt the surface values.
 !----------------------------------------------------------
 
     call ESMF_StateGet(IMPORT, 'TR' ,    TR,     RC=STATUS); VERIFY_(STATUS)
@@ -3578,7 +3363,7 @@ contains
 
 ! If the surface values does not exists, we assume zero flux.
 !------------------------------------------------------------
-       
+
        if(associated(SRG)) then
           SG => SRG
        else
@@ -3607,7 +3392,7 @@ contains
 
 ! Copy diffused quantity to temp buffer
 ! ------------------------------------------
-       
+
        SX = S
 
 ! Solve for semi-implicit changes. This modifies SX
@@ -3648,7 +3433,7 @@ contains
           S = SX
        end if
 !AMM sync up T and Q - so write on S after diffusion
-       if( TYPE=='S' ) then 
+       if( TYPE=='S' ) then
           if(associated(SAFDIFFUSE)) SAFDIFFUSE = SX
        endif
 
@@ -3687,14 +3472,14 @@ end subroutine RUN1
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional,   intent(  out) :: RC     ! Error code:
 
 ! !DESCRIPTION: Second run stage of {\tt GEOS\_TurbulenceGridComp} performs
-!    the updates due to changes in surface quantities. Its input are the changes in 
+!    the updates due to changes in surface quantities. Its input are the changes in
 !    surface quantities during the time step. It can also compute the frictional
 !    dissipation terms as exports, but these are not added to the temperatures.
 
@@ -3711,7 +3496,7 @@ end subroutine RUN1
 
     type (MAPL_MetaComp), pointer       :: MAPL
     type (ESMF_Config      )            :: CF
-    type (ESMF_State       )            :: INTERNAL 
+    type (ESMF_State       )            :: INTERNAL
 
 ! Local variables
 
@@ -3721,7 +3506,7 @@ end subroutine RUN1
     real, pointer, dimension(:,:)       :: VARFLT
     real, pointer, dimension(:,:)       :: LATS
 
-! Begin... 
+! Begin...
 !---------
 
 ! Get my name and set-up traceback handle
@@ -3795,12 +3580,12 @@ end subroutine RUN1
       integer,           intent(IN)       :: IM,JM,LM
       integer, optional, intent(OUT)      :: RC
 
-! !DESCRIPTION: 
+! !DESCRIPTION:
 !    Some description
 
 !EOP
-  
- 
+
+
       character(len=ESMF_MAXSTR)          :: IAm='Update'
       integer                             :: STATUS
 
@@ -3820,14 +3605,12 @@ end subroutine RUN1
       real, dimension(:,:  ), pointer     :: KETRB, KESRF, KETOP, KEINT
       real, dimension(:,:,:), pointer     :: DKS, DKV, DKQ, DKX, EKV, FKV
       real, dimension(:,:,:), pointer     :: DPDTTRB
-      real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, UFLXTRB, VFLXTRB, TKH, TKM, QTX, SLX
 
       integer                             :: KM, K, L, I, J
       logical                             :: FRIENDLY
       logical                             :: WEIGHTED
       real, dimension(IM,JM,LM)           :: DP, SX
       real, dimension(IM,JM,LM-1)         :: DF
-      real, dimension(IM,JM,LM)           :: QT,SL,U,V,ZLO
       integer, allocatable                :: KK(:)
 ! AMM pointer to export of S that update sees
       real, dimension(:,:,:), pointer     :: SAFUPDATE
@@ -3852,20 +3635,6 @@ end subroutine RUN1
       character(len=4)           :: imchar
       character(len=2)           :: dateline
       integer                    :: imsize,nn
-
-
-! Post-DIFFUSE conserved variables and flux diagnostics
-!-------------------------------------------------------
-
-      call MAPL_GetPointer(INTERNAL, TKH , 'TKH' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, TKM , 'TKM' , RC=STATUS); VERIFY_(STATUS)
-
-      call MAPL_GetPointer(EXPORT, QTX      , 'QT'       , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, SLX      , 'SL'       , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, QTFLXTRB , 'QTFLXTRB' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, SLFLXTRB , 'SLFLXTRB' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, UFLXTRB  , 'UFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, VFLXTRB  , 'VFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
 
 ! Pressure-weighted dissipation heating rates
 !--------------------------------------------
@@ -3926,7 +3695,7 @@ end subroutine RUN1
              imsize.le.800       ) scaling = 7.0  !  1.000-deg > Resolution >= 0.500-deg
          if( imsize.gt.800 .and. &
              imsize.le.1600      ) scaling = 7.0  !  0.500-deg > Resolution >= 0.250-deg
-         if( imsize.gt.1600      ) scaling = 7.0  !  0.250-deg > Resolution 
+         if( imsize.gt.1600      ) scaling = 7.0  !  0.250-deg > Resolution
       end if
 
 ! Get imports
@@ -3952,10 +3721,10 @@ end subroutine RUN1
       call MAPL_GetPointer(INTERNAL, SINC,  'SINC',    RC=STATUS)
       VERIFY_(STATUS)
 
-! Get the bundles containing the quantities to be diffused, 
+! Get the bundles containing the quantities to be diffused,
 !     their tendencies, their surface values, their surface
 !     fluxes, and the derivatives of their surface fluxes
-!     wrt the surface values. 
+!     wrt the surface values.
 !----------------------------------------------------------
 
       call ESMF_StateGet(IMPORT, 'TR' ,    TR,     RC=STATUS); VERIFY_(STATUS)
@@ -4027,12 +3796,7 @@ end subroutine RUN1
          endwhere
       enddo
 
-      if (associated(QTFLXTRB).or.associated(QTX)) QT = 0.0
-      if (associated(SLFLXTRB).or.associated(SLX)) SL = 0.0
-      if (associated(UFLXTRB))  U = 0.0
-      if (associated(VFLXTRB))  V = 0.0
-
-! Section 1 of 2. SHVC parameterization (W. Chao, J. Atmos. Sci., May 2012, P.1547) 
+! Section 1 of 2. SHVC parameterization (W. Chao, J. Atmos. Sci., May 2012, P.1547)
 !  Defining the top and bottom levels of the heat and moisture redistribution layer
 !----------------------------------------------------------------------------------
 
@@ -4067,12 +3831,12 @@ end subroutine RUN1
          STDV = sqrt(varflt*scaling)   ! Scaling VARFLT based on resolution
 
          where (STDV >=700.)
-            z1500 = SHVC_1500                   
+            z1500 = SHVC_1500
          endwhere
 
          where ( (STDV >300.) .and. (STDV <700.) )
             z1500 = 1500.+ (SHVC_1500-1500.)* (STDV - 300.)/400.
-         endwhere  
+         endwhere
 
          z7000 = z1500 + SHVC_ZDEPTH
 
@@ -4080,26 +3844,26 @@ end subroutine RUN1
 
          L500=1.
          do L=LM,2,-1
-            where (ZLE(:,:,L) <= z500 .and. ZLE(:,:,L-1) > z500)     
-               L500=L-1    
+            where (ZLE(:,:,L) <= z500 .and. ZLE(:,:,L-1) > z500)
+               L500=L-1
             endwhere
          enddo
 
          L1500=1.
          do L=LM,2,-1
-            where (ZLE(:,:,L) <= z1500 .and. ZLE(:,:,L-1) > z1500)    
+            where (ZLE(:,:,L) <= z1500 .and. ZLE(:,:,L-1) > z1500)
                L1500=L-1
             endwhere
          enddo
 
          L7000=1.
          do L=LM,2,-1
-            where (ZLE(:,:,L) <= z7000 .and. ZLE(:,:,L-1) > z7000)    
+            where (ZLE(:,:,L) <= z7000 .and. ZLE(:,:,L-1) > z7000)
                L7000=L-1
             endwhere
          enddo
 
-         LBOT  = L1500-1         
+         LBOT  = L1500-1
          LTOPS = L7000
          LTOPQ = L1500-(LM-L500)*2
 
@@ -4119,7 +3883,7 @@ end subroutine RUN1
 
 ! Get Kth field from bundle
 !--------------------------
-          
+
          call ESMF_FieldBundleGet(TR, K, FIELD, RC=STATUS)
          VERIFY_(STATUS)
 
@@ -4182,13 +3946,13 @@ end subroutine RUN1
          SX = S
 
          if(associated(DSG)) then
-            do L=1,LM 
-               SX(:,:,L) = SX(:,:,L) + DKX(:,:,L)*DSG 
+            do L=1,LM
+               SX(:,:,L) = SX(:,:,L) + DKX(:,:,L)*DSG
             end do
          end if
 
 ! Increment the dissipation
-!-------------------------- 
+!--------------------------
 
          if( TYPE=='U' ) then
             if(associated(KETRB )) KETRB  = 0.0
@@ -4268,7 +4032,7 @@ end subroutine RUN1
             endif
          end if
 
-! Section 2 of 2. SHVC parameterization   (W. Chao,  J. Atmos. Sci., 2012, p1547)   
+! Section 2 of 2. SHVC parameterization   (W. Chao,  J. Atmos. Sci., 2012, p1547)
 !  To use SHVC set SHVC_EFFECT in AGCM.rc to > 0.0.
 !--------------------------------------------------------------------------------
 
@@ -4305,7 +4069,7 @@ end subroutine RUN1
                               REDUFAC = max(min((STDV(I,J)-SHVC_CRIT)/100.,0.95),0.0)
                            end if
 
-                           REDUFAC = REDUFAC * SHVC_EFFECT  *lat_effect       
+                           REDUFAC = REDUFAC * SHVC_EFFECT  *lat_effect
 
                            SUMSOI = 0.
                            do L=L500(i,j),LM
@@ -4365,7 +4129,7 @@ end subroutine RUN1
             S = SX
          end if
 !AMM sync up T and Q - so write on S after diffusion
-       if( name=='S' ) then 
+       if( name=='S' ) then
           if(associated(SAFUPDATE)) SAFUPDATE = SX
        endif
 
@@ -4383,68 +4147,12 @@ end subroutine RUN1
             end if
          end if
 
-         if( name=='Q' .or. name=='QLLS' .or. name=='QLCN') then
-           if(associated(QTFLXTRB).or.associated(QTX)) QT = QT + SX
-         endif
-
-         if( name=='S' ) then
-           if(associated(SLFLXTRB).or.associated(SLX)) SL = SL + SX
-         end if
-
-         if( name=='QLLS' .or. name=='QLCN' ) then
-          if(associated(SLFLXTRB).or.associated(SLX)) SL = SL - MAPL_ALHL*SX
-         endif
-
-         if( name=='QILS' .or. name=='QICN' ) then
-          if(associated(SLFLXTRB).or.associated(SLX)) SL = SL - MAPL_ALHS*SX
-         endif
-
-         if( name=='U' ) then
-           if(associated(UFLXTRB)) U = U + SX
-         end if
-
-         if( name=='V' ) then
-           if(associated(VFLXTRB)) V = V + SX
-         end if
-
       enddo TRACERS
 
 ! End loop over all quantities to be diffused
 !--------------------------------------------
 
       deallocate(KK)
-
-      if (associated(QTX)) QTX = QT
-      if (associated(SLX)) SLX = SL
-
-      if (associated(QTFLXTRB).or.associated(SLFLXTRB).or.associated(UFLXTRB).or.associated(VFLXTRB)) then
-        ZLO = 0.5*(ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM))
-      end if
-
-      if (associated(QTFLXTRB)) then
-         QTFLXTRB(:,:,1:LM-1) = (QT(:,:,1:LM-1)-QT(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
-         QTFLXTRB(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*QTFLXTRB(:,:,1:LM-1)
-         QTFLXTRB(:,:,LM) = QTFLXTRB(:,:,LM-1)
-         QTFLXTRB(:,:,0) = 0.0
-      end if
-      if (associated(SLFLXTRB)) then
-         SLFLXTRB(:,:,1:LM-1) = (SL(:,:,1:LM-1)-SL(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
-         SLFLXTRB(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*SLFLXTRB(:,:,1:LM-1)
-         SLFLXTRB(:,:,LM) = SLFLXTRB(:,:,LM-1)
-         SLFLXTRB(:,:,0) = 0.0
-      end if
-      if (associated(UFLXTRB)) then
-         UFLXTRB(:,:,1:LM-1) = (U(:,:,1:LM-1)-U(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
-         UFLXTRB(:,:,1:LM-1) = -1.*TKM(:,:,1:LM-1)*UFLXTRB(:,:,1:LM-1)
-         UFLXTRB(:,:,LM) = UFLXTRB(:,:,LM-1)
-         UFLXTRB(:,:,0) = 0.0
-      end if
-      if (associated(VFLXTRB)) then
-         VFLXTRB(:,:,1:LM-1) = (V(:,:,1:LM-1)-V(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
-         VFLXTRB(:,:,1:LM-1) = -1.*TKM(:,:,1:LM-1)*VFLXTRB(:,:,1:LM-1)
-         VFLXTRB(:,:,LM) = VFLXTRB(:,:,LM-1)
-         VFLXTRB(:,:,0) = 0.0
-      end if
 
       RETURN_(ESMF_SUCCESS)
     end subroutine UPDATE
@@ -4468,7 +4176,7 @@ end subroutine RUN1
 
    subroutine LOUIS_KS(              &
          ZZ,ZE,PV,UU,VV,ZPBL,        &
-         KH,KM,RI,DU,                & 
+         KH,KM,RI,DU,                &
          LOUIS, MINSHEAR, MINTHICK,  &
          LAMBDAM, LAMBDAM2,          &
          LAMBDAH, LAMBDAH2,          &
@@ -4491,9 +4199,9 @@ end subroutine RUN1
       real,    intent(  OUT) ::   KH(:,:,:) ! Heat diffusivity at base of each layer  (m+2 s-1).
       real,    intent(  OUT) ::   RI(:,:,:) ! Richardson number
       real,    intent(  OUT) ::   DU(:,:,:) ! Magnitude of wind shear (s-1).
-   
+
       ! Diagnostic outputs
-      real,    pointer       ::  ALH_DIAG(:,:,:) ! Blackadar Length Scale diagnostic (m) [Optional] 
+      real,    pointer       ::  ALH_DIAG(:,:,:) ! Blackadar Length Scale diagnostic (m) [Optional]
       real,    pointer       :: KMLS_DIAG(:,:,:) ! Momentum diffusivity at base of each layer (m+2 s-1).
       real,    pointer       :: KHLS_DIAG(:,:,:) ! Heat diffusivity at base of each layer  (m+2 s-1).
 
@@ -4516,10 +4224,10 @@ end subroutine RUN1
 !                The Louis diffusivities for momentum, $K_m$, and for heat
 !   and moisture, $K_h$, are defined at the interior layer edges. For LM layers,
 !   we define diffusivities at the base of the top LM-1 layers. All indexing
-!   is from top to bottom of the atmosphere. 
+!   is from top to bottom of the atmosphere.
 !
 !
-!  The Richardson number, Ri, is defined at the same edges as the diffusivities. 
+!  The Richardson number, Ri, is defined at the same edges as the diffusivities.
 !  $$
 !  {\rm Ri}_l = \frac{ \frac{g}{\left(\overline{\theta_v}\right)_l}\left(\frac{\delta \theta_v}{\delta z}\right)_l }
 !                    { \left(\frac{\delta {\bf |V|}}{\delta z}\right)^2_l             }, \, \,  l=1,LM-1
@@ -4527,7 +4235,7 @@ end subroutine RUN1
 !  where $\theta_v=\theta(1+\epsilon q)$ is the virtual potential temperature,
 !  $\epsilon=\frac{M_a}{M_w}-1$, $M_a$ and $M_w$ are the molecular weights of
 !  dry air and water, and $q$ is the specific humidity.
-!  $\delta \theta_v$ is the difference of $\theta_v$ in the layers above and below the edge 
+!  $\delta \theta_v$ is the difference of $\theta_v$ in the layers above and below the edge
 !  at which Ri$_l$ is defined; $\overline{\theta_v}$ is their average.
 !
 !  The diffusivities at the layer edges have the form:
@@ -4538,15 +4246,15 @@ end subroutine RUN1
 !  $$
 !  K^h_l = (\ell^2_h)_l \left(\frac{\delta {\bf |V|}}{\delta z}\right)_l f_h({\rm Ri}_l),
 !  $$
-!  where $k$ is the Von Karman constant, and $\ell$ is the 
+!  where $k$ is the Von Karman constant, and $\ell$ is the
 !  Blackdar(1962) length scale, also defined at the layer edges.
 !
-!  Different turbulent length scales can be used for heat and momentum. 
+!  Different turbulent length scales can be used for heat and momentum.
 !  in both cases, we use the  traditional formulation:
 !  $$
 !  (\ell_{(m,h)})_l  = \frac{kz_l}{1 + \frac{kz_l}{\lambda_{(m,h)}}},
 !  $$
-!  where, near the surface, the scale is proportional to $z_l$, the height above 
+!  where, near the surface, the scale is proportional to $z_l$, the height above
 !  the surface of edge level $l$, and far from the surface it approaches $\lambda$.
 !  The length scale $\lambda$ is usually taken to be a constant (order 150 m), assuming
 !  the same scale for the outre boundary layer and the free atmosphere. We make it
@@ -4590,8 +4298,8 @@ end subroutine RUN1
 !  $$
 !  \psi =  \sqrt{1+d{\rm Ri}}.
 !  $$
-!  As in Louis et al (1982), the parameters appearing in these are taken  
-!  as $b = c = d = 5$. 
+!  As in Louis et al (1982), the parameters appearing in these are taken
+!  as $b = c = d = 5$.
 
 
 !EOP
@@ -4602,7 +4310,7 @@ end subroutine RUN1
       real, dimension(size(KM,1),size(KM,2)           ) :: pbllocal
 
       integer :: L, LM
-      !real    :: Zchoke 
+      !real    :: Zchoke
 
 ! Begin...
 !===>   Number of layers; edge levels will be one less (LM-1).
@@ -4665,10 +4373,10 @@ end subroutine RUN1
 !===>   Unstable case: Uses (3.14, 3.18, 3.27) in Louis-scheme
 !                      should approach (3.13) for small -RI.
 
-!===>   Choke off unstable KH below Zchoke (m). JTB 2/2/06    
+!===>   Choke off unstable KH below Zchoke (m). JTB 2/2/06
 !!!   Zchoke = 500.
-!!!   where( (RI < 0.0) .and. (ZE < Zchoke ) )  
-!!!      KH = KH * (( ZE / Zchoke )**3)            
+!!!   where( (RI < 0.0) .and. (ZE < Zchoke ) )
+!!!      KH = KH * (( ZE / Zchoke )**3)
 !!!   endwhere
 
 !===>   Stable case
@@ -4703,15 +4411,15 @@ end subroutine RUN1
 !
 !   Orographic drag follows  Beljaars (2003):
 !   $$
-!   \frac{\partial}{\partial z}\frac{\tau}{\rho} = \frac{C_B}{\lambda_B} |U(z)| U(z) 
+!   \frac{\partial}{\partial z}\frac{\tau}{\rho} = \frac{C_B}{\lambda_B} |U(z)| U(z)
 !          e^{-\tilde{z}^\frac{3}{2}}\tilde{z}^{-1.2},
 !   $$
-!   where $z$ is the height above the surface in meters, 
+!   where $z$ is the height above the surface in meters,
 !   $\tilde{z}=\frac{z}{\lambda_B}$, $\tau$ is the orographic stress at $z$,
 !   $\rho$ is the air density, $U(z)$ is the wind velocity, and $\lambda_B$ is a vertical length scale.
 !   Beljaars uses $\lambda_B = 1500$m, for which the non-dimensional parameter $C_B = 2.5101471 \times 10^{-8}$.
 !   These are the default values, but both can be modified from the configuration. To avoid underflow.
-!   the tendency is set to zero once $\tilde{z}$ exceeds 4 (i.e., 6 km from the surface for default values). 
+!   the tendency is set to zero once $\tilde{z}$ exceeds 4 (i.e., 6 km from the surface for default values).
 !
 !EOP
 
@@ -4747,8 +4455,8 @@ end subroutine RUN1
                   FKV(I,J,L) = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
                end if
             end do
-         end do 
-      end do 
+         end do
+      end do
 
    end subroutine BELJAARS
 
@@ -4819,7 +4527,7 @@ end subroutine RUN1
 ! \begin{array}{rcl}
 ! \hat{b}_1 & = & b_1, \\
 ! \hat{a}_k & = & \makebox[2 in][l]{$a_k / \hat{b}_{k-1}$,}  k=2, K, \\
-! \hat{b}_k & = & \makebox[2 in][l]{$b_k - c_{k-1} \hat{a}_k$,} k=2, K. 
+! \hat{b}_k & = & \makebox[2 in][l]{$b_k - c_{k-1} \hat{a}_k$,} k=2, K.
 ! \end{array}
 ! $$
 !EOP
@@ -4889,7 +4597,7 @@ end subroutine RUN1
     real,               dimension(:,:),    intent(IN)    ::  YG
 
 ! !DESCRIPTION: Solves tridiagonal system that has been LU decomposed
-!   $LU x = f$. This is done by first solving $L g = f$ for $g$, and 
+!   $LU x = f$. This is done by first solving $L g = f$ for $g$, and
 !   then solving $U x = g$ for $x$. The solutions are:
 ! $$
 ! \begin{array}{rcl}
@@ -4897,21 +4605,21 @@ end subroutine RUN1
 ! g_k & = & \makebox[2 in][l]{$f_k - g_{k-1} \hat{a}_{k}$,}  k=2, K, \\
 ! \end{array}
 ! $$
-! and  
+! and
 ! $$
 ! \begin{array}{rcl}
 ! x_K & = & g_K /\hat{b}_K, \\
 ! x_k & = & \makebox[2 in][l]{($g_k - c_k g_{k+1}) / \hat{b}_{k}$,}  k=K-1, 1 \\
 ! \end{array}
 ! $$
-!  
+!
 !  On input A contains the $\hat{a}_k$, the lower diagonal of $L$,
 !   B contains the $1/\hat{b}_k$, inverse of the  main diagonal of $U$,
 !   C contains the $c_k$, the upper diagonal of $U$. The forcing, $f_k$ is
-!   
+!
 !   It returns the
 !   solution in the r.h.s input vector, Y. A has the multiplier from the
-!   decomposition, B the 
+!   decomposition, B the
 !   matrix (U), and C the upper diagonal of the original matrix and of U.
 !   YG is the LM+1 (Ground) value of Y.
 
@@ -4944,4 +4652,3 @@ end subroutine RUN1
   end subroutine VTRISOLVE
 
 end module GEOS_TurbulenceGridCompMod
-
