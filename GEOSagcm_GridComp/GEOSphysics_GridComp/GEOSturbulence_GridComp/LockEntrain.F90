@@ -1391,7 +1391,7 @@ contains
       svpar   = svp
       h1      = zf(i,j,toplev)
       t1      = t(toplev)
-      entrate = 2.0/1000.
+      entrate = 1.0/1000.
 
       !search for level where parcel is warmer than env             
 

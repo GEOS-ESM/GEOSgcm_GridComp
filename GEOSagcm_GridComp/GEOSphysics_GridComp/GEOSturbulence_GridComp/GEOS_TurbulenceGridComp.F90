@@ -3624,11 +3624,12 @@ end if
 
 ! get updraft constants
     call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, MFPARAMS%DOTRACERS, "EDMF_DOTRACERS:",     default=.false., RC=STATUS)
-
+    MFPARAMS%DOTRACERS = .false.
+    
     if ( DOMF /= 0 ) then
       ! number of updrafts
       call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=10,    RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%DOTRACERS, "EDMF_DOTRACERS:",     default=.false., RC=STATUS)
 
       ! boundaries for the updraft area (min/max sigma of w pdf)
       call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.2,   RC=STATUS)
@@ -4490,7 +4491,6 @@ end if
                           w2,             &
                           w3,             &
                           w3canuto,       &
-!                          wqt,            &
                           wsl,            &
                           slqt,           &
                           qt2diag,        &
@@ -6368,7 +6368,7 @@ end subroutine RUN1
          tmp3d(:,:,0) = 0.0
          if (associated(SLFLXMF).and.MFPARAMS%IMPLICIT.eq.1) then
             SLFLXMF(:,:,1:LM-1) = SLFLXMF(:,:,1:LM-1)-MFAW(:,:,1:LM-1)*SL(:,:,1:LM-1)/MAPL_CP
-            SLFLXMF(:,:,LM) = 0. !SLFLXMF(:,:,LM-1)
+            SLFLXMF(:,:,LM) = 0.
             SLFLXMF(:,:,0) = 0.
          end if
          if (associated(SLFLXTRB)) SLFLXTRB = tmp3d/MAPL_CP + SLFLXMF
