@@ -474,7 +474,7 @@ do t = 1,ntsteps
       
       DWLAND = WCHANGE
       PRLAND = c_input%PCU+c_input%PLS+c_input%SNO &
-            + c_input%ICE +  + c_input%FRZR
+            + c_input%ICE 
       EVLAND = EVAPOUT-EVACC
       BFLOW  = BFLOW
       SPWATR = EVACC 
@@ -570,7 +570,7 @@ do t = 1,ntsteps
       
       DWLAND(:) = WCHANGE(tid:tid)
       PRLAND(:) = c_input(tid:tid)%PCU + c_input(tid:tid)%PLS + c_input(tid:tid)%SNO &
-            + c_input(tid:tid)%ICE +  + c_input(tid:tid)%FRZR
+            + c_input(tid:tid)%ICE
       EVLAND(:) = EVAPOUT(tid:tid)-EVACC(tid:tid)
       SPWATR(:) = EVACC(tid:tid)
       SUBLIM(:) = EVPICE(tid:tid)*(1./MAPL_ALHS)*FR(tid,4)
