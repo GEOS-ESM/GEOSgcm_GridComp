@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if [ $# -lt 1 ]; then
+        echo "no f90 specified"
+        exit
+fi
+
+string=$1
+array=(${string//./ })  
+
+FILENAME=${array[0]}
+
+NETCDF_PATH=/usr/local/other/GEOSpyD/23.5.2-0_py3.11/2023-11-02
+LD_LIBRARY_PATH=${NETCDF_PATH}/lib:$LD_LIBRARY_PATH
+
+ifort -diag-disable=10448 -qopenmp constant.f90 river_read.f90 k_module_cali.f90 ${FILENAME}.f90 -I$NETCDF_PATH/include -L$NETCDF_PATH/lib -lnetcdf -lnetcdff -o ${FILENAME}.out
+
+

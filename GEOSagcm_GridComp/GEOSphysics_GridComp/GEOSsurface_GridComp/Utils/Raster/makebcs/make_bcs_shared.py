@@ -172,6 +172,14 @@ else
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
 
+if(-d land/shared/river_input) then
+    echo "river_input already present in bcs dir."
+else
+    /bin/cp -rp /discover/nobackup/yzeng3/data/river_input land/shared/river_input
+    echo "Successfully copied river_input to bcs dir."
+endif
+
+
 # adjust permissions
 
 chmod +rX -R geometry land logs
