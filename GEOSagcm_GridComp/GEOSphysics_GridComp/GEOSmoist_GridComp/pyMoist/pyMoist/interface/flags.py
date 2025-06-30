@@ -103,10 +103,9 @@ class GFDL1MFlags:
     SEDI_TRANSPORT: bool = False
     DO_SEDI_W: bool = False
     DE_ICE: bool = False
-    ICLOUD_F: np.float32 = 0
-    IRAIN_F: np.float32 = 0
+    ICLOUD_F: np.int32 = 0
+    IRAIN_F: np.int32 = 0
     MP_PRINT: bool = False
-    MELTFRZ: bool = False
     USE_BERGERON: bool = False
     # Magic number
     mn_123456789: int = 0

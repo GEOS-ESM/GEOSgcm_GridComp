@@ -60,6 +60,12 @@ class Outputs:
     one_km_agl_reflectivity: Quantity
     echo_top_reflectivity: Quantity
     minus_10c_reflectivity: Quantity
+    deep_convective_precipitation: Quantity
+    anvil_precipitation: Quantity
+    shallow_convective_precipitation: Quantity
+    deep_convective_snow: Quantity
+    anvil_snow: Quantity
+    shallow_convective_snow: Quantity
 
     @classmethod
     def make(cls, quantity_factory: QuantityFactory):
@@ -117,6 +123,12 @@ class Outputs:
         one_km_agl_reflectivity = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         echo_top_reflectivity = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         minus_10c_reflectivity = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        deep_convective_precipitation = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        anvil_precipitation = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        shallow_convective_precipitation = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        deep_convective_snow = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        anvil_snow = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        shallow_convective_snow = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
 
         return cls(
             lower_tropospheric_stability,
@@ -173,4 +185,10 @@ class Outputs:
             one_km_agl_reflectivity,
             echo_top_reflectivity,
             minus_10c_reflectivity,
+            deep_convective_precipitation,
+            anvil_precipitation,
+            shallow_convective_precipitation,
+            deep_convective_snow,
+            anvil_snow,
+            shallow_convective_snow,
         )

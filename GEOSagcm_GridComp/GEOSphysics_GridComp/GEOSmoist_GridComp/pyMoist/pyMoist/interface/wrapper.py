@@ -263,36 +263,42 @@ class GEOSPyMoistWrapper:
         flags: GFDL1MFlags,
     ):
         from pyMoist.GFDL_1M.config import GFDL1MConfig
+        from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
 
         # Get namelist/non-constant parameters passed through the interface
         upper_case_dict = {}
         for field in dataclasses.fields(GFDL1MFlags):
-            upper_case_dict[field.name] = getattr(flags, field.name.lower())
+            # Don't bring the magic number
+            if field.name.upper() != "MN_123456789":
+                upper_case_dict[field.name] = getattr(flags, field.name.upper())
 
         # Get remaining required parameters from MAPL
         HYDROSTATIC = self._mapl_comp.get_resource("HYDROSTATIC:", bool, default=True)
         PHYS_HYDROSTATIC = self._mapl_comp.get_resource("PHYS_HYDROSTATIC:", bool, default=True)
         MELTFRZ = self._mapl_comp.get_resource("MELTFRZ:", bool, default=True)
         TURNRHCRIT = self._mapl_comp.get_resource("TURNRHCRIT:", np.float32, default=-9999.0)
-        PDF_SHAPE = self._mapl_comp.get_resource("PDFSHAPE:", np.int32, default=1)
+        # PDF_SHAPE = self._mapl_comp.get_resource("PDFSHAPE:", np.int32, default=1)
+        PDF_SHAPE = 1
         ANV_ICEFALL = self._mapl_comp.get_resource("ANV_ICEFALL:", np.float32, default=1.0)
         LS_ICEFALL = self._mapl_comp.get_resource("LS_ICEFALL:", np.float32, default=1.0)
-        LIQ_RADII_PARAM = self._mapl_comp.get_resource("LIQ_RADII_PARAM:", np.int32, default=2)
-        ICE_RADII_PARAM = self._mapl_comp.get_resource("ICE_RADII_PARAM:", np.int32, default=1)
+        # LIQ_RADII_PARAM = self._mapl_comp.get_resource("LIQ_RADII_PARAM:", np.int32, default=2)
+        LIQ_RADII_PARAM = 2
+        # ICE_RADII_PARAM = self._mapl_comp.get_resource("ICE_RADII_PARAM:", np.int32, default=1)
+        ICE_RADII_PARAM = 1
         FAC_RI = self._mapl_comp.get_resource("FAC_RI:", np.float32, default=1.0)
         MIN_RI = self._mapl_comp.get_resource("MIN_RI:", np.float32, default=5.0e-6)
         MAX_RI = self._mapl_comp.get_resource("MAX_RI:", np.float32, default=100.0e-6)
         FAC_RL = self._mapl_comp.get_resource("FAC_RL:", np.float32, default=1.0)
         MIN_RL = self._mapl_comp.get_resource("MIN_RL:", np.float32, default=2.5e-6)
         MAX_RL = self._mapl_comp.get_resource("MAX_RL:", np.float32, default=60.0e-6)
-        MAX_RL = self._mapl_comp.get_resource("CCW_EVAP_EFF:", np.float32, default=60.0e-6)
-        MAX_RL = self._mapl_comp.get_resource("CCI_EVAP_EFF:", np.float32, default=60.0e-6)
+        CCW_EVAP_EFF = self._mapl_comp.get_resource("CCW_EVAP_EFF:", np.float32, default=60.0e-6)
+        CCI_EVAP_EFF = self._mapl_comp.get_resource("CCI_EVAP_EFF:", np.float32, default=60.0e-6)
 
         self.GFDL_1M_config = GFDL1MConfig(
             HYDROSTATIC=HYDROSTATIC,
             PHYS_HYDROSTATIC=PHYS_HYDROSTATIC,
             MELTFRZ=MELTFRZ,
-            TURNRHCRIT=TURNRHCRIT,
+            TURNRHCRIT_PARAM=TURNRHCRIT,
             PDF_SHAPE=PDF_SHAPE,
             ANV_ICEFALL=ANV_ICEFALL,
             LS_ICEFALL=LS_ICEFALL,
@@ -304,42 +310,33 @@ class GEOSPyMoistWrapper:
             FAC_RL=FAC_RL,
             MIN_RL=MIN_RL,
             MAX_RL=MAX_RL,
+            CCW_EVAP_EFF=CCW_EVAP_EFF,
+            CCI_EVAP_EFF=CCI_EVAP_EFF,
             **upper_case_dict,
         )
 
-    def GFDL_1M_Microphysics(self):
-        from pyMoist.GFDL_1M.state import (
-            LiquidWaterStaticEnergy,
-            TotalWater,
-            VericalMotion,
-            MixingRatios,
-            CloudFractions,
-        )
-        from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
-
         # Initalize the module
-        gfdl_1m = GFDL1M(self.stencil_factory, self.quantity_factory, self.GFDL_1M_config)
+        self.gfdl_1m = GFDL1M(self.stencil_factory, self.quantity_factory, self.GFDL_1M_config)
 
         ##### Link Fortran memory to Python memory #####
-        ##### Fortran memory will only be modified if the __call__ function
+        ##### Fortran memory will only be modified if GFDL1M.__call__
         ##### is called from within a "with MAPLManagedMemory" statement #####
         ##### Not all linked fields are modified #####
-        self._mapl_import.register("Q", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("QRAIN", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("QSNOW", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("QGRAUPEL", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("QLCN", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("QICN", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("QLLS", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("QILS", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("CLCN", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("CLLS", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("NACTL", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("NACTI", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("Q", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("QRAIN", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("QSNOW", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("QGRAUPEL", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("QLCN", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("QICN", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("QLLS", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("QILS", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("CLCN", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("CLLS", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("NACTL", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_internal.register("NACTI", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_import.register("AREA", np.float32, [X_DIM, Y_DIM])
         self._mapl_import.register("PLE", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
         self._mapl_import.register("ZLE", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
-
         self._mapl_import.register("T", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_import.register("U", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_import.register("V", np.float32, [X_DIM, Y_DIM, Z_DIM])
@@ -357,56 +354,57 @@ class GEOSPyMoistWrapper:
         self._mapl_export.register("SRF_TYPE", np.float32, [X_DIM, Y_DIM])
         self._mapl_export.register("SHLW_PRC3", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("SHLW_SNO3", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("RHCRIT", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_export.register("RHCRIT", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
         self._mapl_export.register("RL", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("RI", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("EVAPC", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("SUBLC", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("PRCP_RAIN", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("PRCP_SNOW", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("PRCP_ICE", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("PRCP_GRAUPEL", np.float32, [X_DIM, Y_DIM])
+        self._mapl_export.register("PRCP_RAIN", np.float32, [X_DIM, Y_DIM], True)
+        self._mapl_export.register("PRCP_SNOW", np.float32, [X_DIM, Y_DIM], True)
+        self._mapl_export.register("PRCP_ICE", np.float32, [X_DIM, Y_DIM], True)
+        self._mapl_export.register("PRCP_GRAUPEL", np.float32, [X_DIM, Y_DIM], True)
         self._mapl_export.register("FCLD", np.float32, [X_DIM, Y_DIM, Z_DIM])
+
         self._mapl_export.register("QV", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("QL", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("QI", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("QR", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("QS", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("QG", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("LTS"), np.float32, [X_DIM, Y_DIM, Z_DIM]
-        self._mapl_export.register("EIS"), np.float32, [X_DIM, Y_DIM, Z_DIM]
-        self._mapl_export.register("ZLCL"), np.float32, [X_DIM, Y_DIM]
-        self._mapl_export.register("DUDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DTDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQLDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQIDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQADT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQRDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQSDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQGDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DUDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DTDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQLDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQIDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQADT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQRDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQSDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DQGDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("LS_PRCP", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("LS_SNR", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("ICE", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("FRZR", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("RHX", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("REV_LS", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("RSU_LS", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("PFL_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
-        self._mapl_export.register("PFI_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
-        self._mapl_export.register("PFL_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
-        self._mapl_export.register("PFI_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
+        self._mapl_export.register("LTS", np.float32, [X_DIM, Y_DIM], True)
+        self._mapl_export.register("EIS", np.float32, [X_DIM, Y_DIM], True)
+        self._mapl_export.register("ZLCL", np.float32, [X_DIM, Y_DIM])
+        self._mapl_export.register("DUDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DTDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQLDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQIDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQADT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQRDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQSDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQGDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DUDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DTDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQLDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQIDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQADT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQRDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQSDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("DQGDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("LS_PRCP", np.float32, [X_DIM, Y_DIM], True)
+        self._mapl_export.register("LS_SNR", np.float32, [X_DIM, Y_DIM], True)
+        self._mapl_export.register("ICE", np.float32, [X_DIM, Y_DIM], True)
+        self._mapl_export.register("FRZR", np.float32, [X_DIM, Y_DIM], True)
+        self._mapl_export.register("RHX", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("REV_LS", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("RSU_LS", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register("PFL_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
+        self._mapl_export.register("PFI_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
+        self._mapl_export.register("PFL_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
+        self._mapl_export.register("PFI_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
         self._mapl_export.register("DQRL", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("DBZ", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("DBZ_MAX", np.float32, [X_DIM, Y_DIM])
@@ -419,132 +417,136 @@ class GEOSPyMoistWrapper:
         self._mapl_export.register("CN_SNR", np.float32, [X_DIM, Y_DIM])
         self._mapl_export.register("AN_SNR", np.float32, [X_DIM, Y_DIM])
         self._mapl_export.register("SC_SNR", np.float32, [X_DIM, Y_DIM])
+        print("Successfully linked all variables in GFDL_1M")
 
-        with MAPLManagedMemory(self._mapl_import) as mapl_import, MAPLManagedMemory(
-            self._mapl_export
-        ) as mapl_export:
+    def GFDL_1M_Microphysics(self):
+        from pyMoist.GFDL_1M.state import (
+            LiquidWaterStaticEnergy,
+            TotalWater,
+            VericalMotion,
+            MixingRatios,
+            CloudFractions,
+        )
+
+        from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
+
+        with MAPLManagedMemory(self._mapl_internal) as mapl_internal, MAPLManagedMemory(
+            self._mapl_import
+        ) as mapl_import, MAPLManagedMemory(self._mapl_export) as mapl_export:
             # Pull the data from the linked Fortran memory
-            gfdl_1m.mixing_ratios = MixingRatios(
-                vapor=mapl_import.Q,
-                rain=mapl_import.QRAIN,
-                snow=mapl_import.QSNOW,
-                graupel=mapl_import.QGRAUPEL,
-                convective_liquid=mapl_import.QLCN,
-                convective_ice=mapl_import.QICN,
-                large_scale_liquid=mapl_import.QLLS,
-                large_scale_ice=mapl_import.QILS,
+            self.gfdl_1m.mixing_ratios = MixingRatios(
+                vapor=mapl_internal.Q,
+                rain=mapl_internal.QRAIN,
+                snow=mapl_internal.QSNOW,
+                graupel=mapl_internal.QGRAUPEL,
+                convective_liquid=mapl_internal.QLCN,
+                convective_ice=mapl_internal.QICN,
+                large_scale_liquid=mapl_internal.QLLS,
+                large_scale_ice=mapl_internal.QILS,
             )
-            gfdl_1m.cloud_fractions = CloudFractions(
-                convective=mapl_import.CLCN,
-                large_scale=mapl_import.CLLS,
+            self.gfdl_1m.cloud_fractions = CloudFractions(
+                convective=mapl_internal.CLCN,
+                large_scale=mapl_internal.CLLS,
             )
-            gfdl_1m.liquid_concentration = mapl_import.NACTL
-            gfdl_1m.ice_concentration = mapl_import.NACTI
-            gfdl_1m.area = mapl_import.AREA
-            gfdl_1m.geopotential_height_interface = mapl_import.ZLE
-            gfdl_1m.p_interface = mapl_import.PLE
-            gfdl_1m.t = mapl_import.T
-            gfdl_1m.u = mapl_import.U
-            gfdl_1m.v = mapl_import.V
-            gfdl_1m.land_fraction = mapl_import.FRLAND
-            gfdl_1m.vertical_motion = VericalMotion(
+
+            self.gfdl_1m.liquid_concentration = mapl_internal.NACTL
+            self.gfdl_1m.ice_concentration = mapl_internal.NACTI
+            self.gfdl_1m.area = mapl_import.AREA
+            self.gfdl_1m.geopotential_height_interface = mapl_import.ZLE
+            self.gfdl_1m.p_interface = mapl_import.PLE
+            self.gfdl_1m.t = mapl_import.T
+            self.gfdl_1m.u = mapl_import.U
+            self.gfdl_1m.v = mapl_import.V
+            self.gfdl_1m.land_fraction = mapl_import.FRLAND
+            self.gfdl_1m.vertical_motion = VericalMotion(
                 velocity=mapl_import.W,
                 variance=mapl_import.W2,
                 third_moment=mapl_import.W3,
             )
-            gfdl_1m.liquid_water_static_energy = LiquidWaterStaticEnergy(
+            self.gfdl_1m.liquid_water_static_energy = LiquidWaterStaticEnergy(
                 flux=mapl_import.WSL,
                 variance=mapl_import.SL2,
                 third_moment=mapl_import.SL3,
             )
-            gfdl_1m.total_water = TotalWater(
+            self.gfdl_1m.total_water = TotalWater(
                 flux=mapl_import.WQT,
                 variance=mapl_import.QT2,
                 third_moment=mapl_import.QT3,
             )
-            gfdl_1m.convection_fraction = mapl_export.CNV_FRC
-            gfdl_1m.surface_type = mapl_export.SRF_TYPE
-            gfdl_1m.shallow_convective_rain = mapl_export.SHLW_PRC3
-            gfdl_1m.shallow_convective_snow = mapl_export.SHLW_SNO3
-            gfdl_1m.rh_crit = mapl_export.RHCRIT
 
+            self.gfdl_1m.convection_fraction = mapl_export.CNV_FRC
+            self.gfdl_1m.surface_type = mapl_export.SRF_TYPE
+            self.gfdl_1m.shallow_convective_rain = mapl_export.SHLW_PRC3
+            self.gfdl_1m.shallow_convective_snow = mapl_export.SHLW_SNO3
+            self.gfdl_1m.rh_crit = mapl_export.RHCRIT
             # Outputs: model fields originating from within GFDL
-            gfdl_1m.outputs.liquid_radius = mapl_export.RL
-            gfdl_1m.outputs.ice_radius = mapl_export.RI
-            gfdl_1m.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_export.EVAPC
-            gfdl_1m.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_export.SUBLC
-            gfdl_1m.outputs.precipitated_rain = mapl_export.PRCP_RAIN
-            gfdl_1m.outputs.precipitated_snow = mapl_export.PRCP_SNOW
-            gfdl_1m.outputs.precipitated_ice = mapl_export.PRCP_ICE
-            gfdl_1m.outputs.precipitated_graupel = mapl_export.PRCP_GRAUPEL
+            self.gfdl_1m.outputs.liquid_radius = mapl_export.RL
+            self.gfdl_1m.outputs.ice_radius = mapl_export.RI
+            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_export.EVAPC
+            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_export.SUBLC
+            self.gfdl_1m.outputs.precipitated_rain = mapl_export.PRCP_RAIN
+            self.gfdl_1m.outputs.precipitated_snow = mapl_export.PRCP_SNOW
+            self.gfdl_1m.outputs.precipitated_ice = mapl_export.PRCP_ICE
+            self.gfdl_1m.outputs.precipitated_graupel = mapl_export.PRCP_GRAUPEL
 
             # Outputs: model fields originating from within GFDL; radiation fields
-            gfdl_1m.outputs.radiation_cloud_fraction = mapl_export.FCLD
-            gfdl_1m.outputs.radiation_vapor = mapl_export.QV
-            gfdl_1m.outputs.radiation_liquid = mapl_export.QL
-            gfdl_1m.outputs.radiation_ice = mapl_export.QI
-            gfdl_1m.outputs.radiation_rain = mapl_export.QR
-            gfdl_1m.outputs.radiation_snow = mapl_export.QS
-            gfdl_1m.outputs.radiation_graupel = mapl_export.QG
-            gfdl_1m.outputs.lower_tropospheric_stability = mapl_export.LTS
-            gfdl_1m.outputs.estimated_inversion_strength = mapl_export.EIS
-            gfdl_1m.outputs.z_lcl = mapl_export.ZLCL
+            self.gfdl_1m.outputs.radiation_cloud_fraction = mapl_export.FCLD
+            self.gfdl_1m.outputs.radiation_vapor = mapl_export.QV
+            self.gfdl_1m.outputs.radiation_liquid = mapl_export.QL
+            self.gfdl_1m.outputs.radiation_ice = mapl_export.QI
+            self.gfdl_1m.outputs.radiation_rain = mapl_export.QR
+            self.gfdl_1m.outputs.radiation_snow = mapl_export.QS
+            self.gfdl_1m.outputs.radiation_graupel = mapl_export.QG
+            self.gfdl_1m.outputs.lower_tropospheric_stability = mapl_export.LTS
+            self.gfdl_1m.outputs.estimated_inversion_strength = mapl_export.EIS
+            self.gfdl_1m.outputs.z_lcl = mapl_export.ZLCL
 
             # Outputs: model fields originating from within GFDL; macrophysics/microphysics tendencies
-            gfdl_1m.outputs.du_dt_macro = mapl_export.DUDT_macro
-            gfdl_1m.outputs.dv_dt_macro = mapl_export.DVDT_macro
-            gfdl_1m.outputs.dt_dt_macro = mapl_export.DTDT_macro
-            gfdl_1m.outputs.dvapor_dt_macro = mapl_export.DQVDT_macro
-            gfdl_1m.outputs.dliquid_dt_macro = mapl_export.DQLDT_macro
-            gfdl_1m.outputs.dice_dt_macro = mapl_export.DQIDT_macro
-            gfdl_1m.outputs.dcloud_fraction_dt_macro = mapl_export.DQADT_macro
-            gfdl_1m.outputs.drain_dt_macro = mapl_export.DQRDT_macro
-            gfdl_1m.outputs.dsnow_dt_macro = mapl_export.DQSDT_macro
-            gfdl_1m.outputs.dgraupel_dt_macro = mapl_export.DQGDT_macro
-            gfdl_1m.outputs.du_dt_micro = mapl_export.DUDT_micro
-            gfdl_1m.outputs.dv_dt_micro = mapl_export.DVDT_micro
-            gfdl_1m.outputs.dt_dt_micro = mapl_export.DTDT_micro
-            gfdl_1m.outputs.dvapor_dt_micro = mapl_export.DQVDT_micro
-            gfdl_1m.outputs.dliquid_dt_micro = mapl_export.DQLDT_micro
-            gfdl_1m.outputs.dice_dt_micro = mapl_export.DQIDT_micro
-            gfdl_1m.outputs.dcloud_fraction_dt_micro = mapl_export.DQADT_micro
-            gfdl_1m.outputs.drain_dt_micro = mapl_export.DQRDT_micro
-            gfdl_1m.outputs.dsnow_dt_micro = mapl_export.DQSDT_micro
-            gfdl_1m.outputs.dgraupel_dt_micro = mapl_export.DQGDT_micro
+            self.gfdl_1m.outputs.du_dt_macro = mapl_export.DUDT_macro
+            self.gfdl_1m.outputs.dv_dt_macro = mapl_export.DVDT_macro
+            self.gfdl_1m.outputs.dt_dt_macro = mapl_export.DTDT_macro
+            self.gfdl_1m.outputs.dvapor_dt_macro = mapl_export.DQVDT_macro
+            self.gfdl_1m.outputs.dliquid_dt_macro = mapl_export.DQLDT_macro
+            self.gfdl_1m.outputs.dice_dt_macro = mapl_export.DQIDT_macro
+            self.gfdl_1m.outputs.dcloud_fraction_dt_macro = mapl_export.DQADT_macro
+            self.gfdl_1m.outputs.drain_dt_macro = mapl_export.DQRDT_macro
+            self.gfdl_1m.outputs.dsnow_dt_macro = mapl_export.DQSDT_macro
+            self.gfdl_1m.outputs.dgraupel_dt_macro = mapl_export.DQGDT_macro
+            self.gfdl_1m.outputs.du_dt_micro = mapl_export.DUDT_micro
+            self.gfdl_1m.outputs.dv_dt_micro = mapl_export.DVDT_micro
+            self.gfdl_1m.outputs.dt_dt_micro = mapl_export.DTDT_micro
+            self.gfdl_1m.outputs.dvapor_dt_micro = mapl_export.DQVDT_micro
+            self.gfdl_1m.outputs.dliquid_dt_micro = mapl_export.DQLDT_micro
+            self.gfdl_1m.outputs.dice_dt_micro = mapl_export.DQIDT_micro
+            self.gfdl_1m.outputs.dcloud_fraction_dt_micro = mapl_export.DQADT_micro
+            self.gfdl_1m.outputs.drain_dt_micro = mapl_export.DQRDT_micro
+            self.gfdl_1m.outputs.dsnow_dt_micro = mapl_export.DQSDT_micro
+            self.gfdl_1m.outputs.dgraupel_dt_micro = mapl_export.DQGDT_micro
             # Outputs: Exports to be filled
-            gfdl_1m.outputs.large_scale_precip = mapl_export.LS_PRCP
-            gfdl_1m.outputs.large_scale_snow = mapl_export.LS_SNR
-            gfdl_1m.outputs.icefall = mapl_export.ICE
-            gfdl_1m.outputs.freezing_rainfall = mapl_export.FRZR
-            gfdl_1m.outputs.relative_humidity_after_pdf = mapl_export.RHX
-            gfdl_1m.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_export.REV_LS
-            gfdl_1m.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_export.RSU_LS
-            gfdl_1m.outputs.large_scale_nonanvil_liquid_flux = mapl_export.PFL_LS
-            gfdl_1m.outputs.large_scale_nonanvil_ice_flux = mapl_export.PFI_LS
-            gfdl_1m.outputs.anvil_liquid_flux = mapl_export.PFL_AN
-            gfdl_1m.outputs.anvil_ice_flux = mapl_export.PFI_AN
-            gfdl_1m.outputs.large_scale_rainwater_source = mapl_export.DQRL
-            gfdl_1m.outputs.simulated_reflectivity = mapl_export.DBZ
-            gfdl_1m.outputs.maximum_reflectivity = mapl_export.DBZ_MAX
-            gfdl_1m.outputs.one_km_agl_reflectivity = mapl_export.DBZ_1KM
-            gfdl_1m.outputs.echo_top_reflectivity = mapl_export.DBZ_TOP
-            gfdl_1m.outputs.minus_10c_reflectivity = mapl_export.DBZ_M10C
+            self.gfdl_1m.outputs.large_scale_precip = mapl_export.LS_PRCP
+            self.gfdl_1m.outputs.large_scale_snow = mapl_export.LS_SNR
+            self.gfdl_1m.outputs.icefall = mapl_export.ICE
+            self.gfdl_1m.outputs.freezing_rainfall = mapl_export.FRZR
+            self.gfdl_1m.outputs.relative_humidity_after_pdf = mapl_export.RHX
+            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_export.REV_LS
+            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_export.RSU_LS
+            self.gfdl_1m.outputs.large_scale_nonanvil_liquid_flux = mapl_export.PFL_LS
+            self.gfdl_1m.outputs.large_scale_nonanvil_ice_flux = mapl_export.PFI_LS
+            self.gfdl_1m.outputs.anvil_liquid_flux = mapl_export.PFL_AN
+            self.gfdl_1m.outputs.anvil_ice_flux = mapl_export.PFI_AN
+            self.gfdl_1m.outputs.large_scale_rainwater_source = mapl_export.DQRL
+            self.gfdl_1m.outputs.simulated_reflectivity = mapl_export.DBZ
+            self.gfdl_1m.outputs.maximum_reflectivity = mapl_export.DBZ_MAX
+            self.gfdl_1m.outputs.one_km_agl_reflectivity = mapl_export.DBZ_1KM
+            self.gfdl_1m.outputs.echo_top_reflectivity = mapl_export.DBZ_TOP
+            self.gfdl_1m.outputs.minus_10c_reflectivity = mapl_export.DBZ_M10C
             # Unused fields, force to zero
-            gfdl_1m.temporaries.all_zeros_3d = mapl_export.CN_PRCP
-            gfdl_1m.temporaries.all_zeros_3d = mapl_export.AN_PRCP
-            gfdl_1m.temporaries.all_zeros_3d = mapl_export.SC_PRCP
-            gfdl_1m.temporaries.all_zeros_3d = mapl_export.CN_SNR
-            gfdl_1m.temporaries.all_zeros_3d = mapl_export.AN_SNR
-            gfdl_1m.temporaries.all_zeros_3d = mapl_export.SC_SNR
+            self.gfdl_1m.outputs.deep_convective_precipitation = mapl_export.CN_PRCP
+            self.gfdl_1m.outputs.anvil_precipitation = mapl_export.AN_PRCP
+            self.gfdl_1m.outputs.shallow_convective_precipitation = mapl_export.SC_PRCP
+            self.gfdl_1m.outputs.deep_convective_snow = mapl_export.CN_SNR
+            self.gfdl_1m.outputs.anvil_snow = mapl_export.AN_SNR
+            self.gfdl_1m.outputs.shallow_convective_snow = mapl_export.SC_SNR
 
             # Call the module
-
-        # # __init__
-        # self._mapl_import.register("T", np.float32, [X_DIM, Y_DIM, Z_DIM])
-
-        # # __call__
-        # self._mapl_import.register("T", np.float32, [X_DIM, Y_DIM, Z_DIM])
-
-        # with MAPLManagedMemory(self._mapl_import) as mmm:
-        #     print(f"T From Python ({mmm.associated('T')}) = {mmm.T[7, 11, 29]}")
-        #     mmm.T[11, 8, 29] = -300.00
+            self.gfdl_1m()

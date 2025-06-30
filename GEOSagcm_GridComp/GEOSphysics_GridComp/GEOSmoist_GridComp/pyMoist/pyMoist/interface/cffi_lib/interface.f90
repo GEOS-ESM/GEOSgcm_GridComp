@@ -8,9 +8,7 @@ module pymoist_interface_mod
    public :: pymoist_interface_f_init
    public :: gfdl_1m_interface_f_init
    public :: pymoist_interface_f_run_AerActivation
-   public :: pymoist_interface_f_run_GFDL1M
    public :: pymoist_interface_f_run_GFDL_1M
-   public :: pymoist_interface_f_run_gfdl_1m_driver
    public :: pymoist_interface_f_finalize
    public :: make_moist_flags_C_interop
    public :: make_gfdl_1m_flags_C_interop
@@ -115,8 +113,9 @@ module pymoist_interface_mod
       logical(kind=c_bool) :: sedi_transport
       logical(kind=c_bool) :: do_sedi_w
       logical(kind=c_bool) :: de_ice
+      integer(kind=c_int) :: icloud_f
+      integer(kind=c_int) :: irain_f
       logical(kind=c_bool) :: mp_print
-      logical(kind=c_bool) :: meltfrz
       logical(kind=c_bool) :: use_bergeron
       ! Magic number
       integer(kind=c_int) :: make_flags_C_interop = 123456789
@@ -284,11 +283,11 @@ contains
       qc_crt, tau_g2v, tau_v2g, tau_s2v, tau_v2s, tau_revp, tau_frz, do_bigg, do_evap, do_subl, sat_adj0, &
       c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, &
       c_pgacs, c_pgaci, z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, preciprad, cld_min, &
-      use_ppm, mono_prof, do_sedi_heat, sedi_transport, do_sedi_w, de_ice, mp_print, &
-      meltfrz, use_bergeron, gfdl_1m_flags)
+      use_ppm, mono_prof, do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print, &
+      use_bergeron, gfdl_1m_flags)
 
       ! GFDL_1M driver
-      logical, intent(in) :: meltfrz, use_bergeron, do_qa, fix_negative, fast_sat_adj
+      logical, intent(in) :: use_bergeron, do_qa, fix_negative, fast_sat_adj
       logical, intent(in) :: const_vi, const_vs, const_vg, const_vr, use_ccn, do_bigg, do_evap
       logical, intent(in) :: do_subl, z_slope_liq, z_slope_ice, prog_ccn, preciprad, use_ppm
       logical, intent(in) :: mono_prof, do_sedi_heat, sedi_transport, do_sedi_w, de_ice, mp_print
@@ -300,6 +299,7 @@ contains
       real, intent(in) :: sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, tau_i2s
       real, intent(in) :: tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci, c_cracw
       real, intent(in) :: alin, clin, cld_min
+      integer, intent(in) :: icloud_f, irain_f
 
       type(gfdl_1m_flags_interface_type), intent(out) :: gfdl_1m_flags
 
@@ -381,8 +381,9 @@ contains
       gfdl_1m_flags%sedi_transport = sedi_transport
       gfdl_1m_flags%do_sedi_w = do_sedi_w
       gfdl_1m_flags%de_ice = de_ice
+      gfdl_1m_flags%icloud_f = icloud_f
+      gfdl_1m_flags%irain_f = irain_f
       gfdl_1m_flags%mp_print = mp_print
-      gfdl_1m_flags%meltfrz = meltfrz
       gfdl_1m_flags%use_bergeron = use_bergeron
 
    end subroutine make_gfdl_1m_flags_C_interop

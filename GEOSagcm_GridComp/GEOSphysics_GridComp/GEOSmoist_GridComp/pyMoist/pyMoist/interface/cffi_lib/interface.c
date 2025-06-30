@@ -36,32 +36,6 @@ extern int gfdl_1m_interface_c_init(gfdl_1m_flags_t *flags)
     }
 }
 
-void pymoist_interface_c_run_GFDL1M(
-    float dw_land, float dw_ocean, int PDFSHAPE, float TURNRHCRIT_PARAM,
-    float DT_MOIST, float CCW_EVAP_EFF, float CCI_EVAP_EFF,
-    int LMELTFRZ,
-    float *AREA, float *CNV_FRC, float *SRF_TYPE, // 2D...
-    int *KLCL,
-    float *EIS, float *PLmb, float *PLEmb, float *NACTL, float *NACTI, float *QST, // 3D...
-    float *T, float *Q, float *QLCN, float *QICN, float *QLLS, float *QILS, float *CLLS, float *CLCN,
-    float *SUBLC, float *EVAPC, float *RHX)
-{
-    printf("> C LMELTFRZ = %d\n", LMELTFRZ);
-    int return_code = pymoist_interface_py_run_GFDL1M(
-        dw_land, dw_ocean, PDFSHAPE, TURNRHCRIT_PARAM,
-        DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF,
-        LMELTFRZ != 0,
-        AREA, CNV_FRC, SRF_TYPE,
-        KLCL,
-        EIS, PLmb, PLEmb, NACTL, NACTI, QST,
-        T, Q, QLCN, QICN, QLLS, QILS, CLLS, CLCN,
-        SUBLC, EVAPC, RHX);
-    if (return_code < 0)
-    {
-        exit(return_code);
-    }
-}
-
 void pymoist_interface_c_run_GFDL_1M_driver(
     float *RAD_QV, float *RAD_QL, float *RAD_QR, float *RAD_QI, float *RAD_QS, float *RAD_QG, float *RAD_CF, float *NACTAll,
     float *DQVDTmic, float *DQLDTmic, float *DQRDTmic, float *DQIDTmic,

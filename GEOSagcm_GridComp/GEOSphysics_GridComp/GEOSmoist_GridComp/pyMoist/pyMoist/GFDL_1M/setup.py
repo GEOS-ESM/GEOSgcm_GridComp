@@ -352,8 +352,8 @@ class Setup:
             estimated_inversion_strength=outputs.estimated_inversion_strength,
         )
 
-        if associated_checker("SHLW_PRC3") == True:
-            mixing_ratios.rain = mixing_ratios.rain + shallow_convective_rain * self.GFDL_1M_config.DT_MOIST
+        # if associated_checker("SHLW_PRC3") == True:
+        #     mixing_ratios.rain = mixing_ratios.rain + shallow_convective_rain * self.GFDL_1M_config.DT_MOIST
 
-        if associated_checker("SHLW_SNO3") == True:
-            mixing_ratios.snow = mixing_ratios.snow + shallow_convective_snow * self.GFDL_1M_config.DT_MOIST
+        # if associated_checker("SHLW_SNO3") == True:
+        #     mixing_ratios.snow = mixing_ratios.snow + shallow_convective_snow * self.GFDL_1M_config.DT_MOIST

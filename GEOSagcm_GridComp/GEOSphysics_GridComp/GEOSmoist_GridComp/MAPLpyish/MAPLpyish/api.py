@@ -33,9 +33,7 @@ class MAPLBridge:
 
         # MAPLPy_ESMF_MethodExecute
         self.ffi.cdef(
-            "void MAPLPy_ESMF_MethodExecute("
-            "void* esmf_state_c_ptr, char* label_c_ptr, int label_len"
-            ");"
+            "void MAPLPy_ESMF_MethodExecute(" "void* esmf_state_c_ptr, char* label_c_ptr, int label_len" ");"
         )
 
         # MAPLpy_GetPointer_via_ESMFAttr
@@ -47,12 +45,12 @@ class MAPLBridge:
 
         # MAPLpy_GetPointer
         self.ffi.cdef(
-            "void* MAPLpy_GetPointer_3D("
+            "void* MAPLpy_GetPointer_2D("
             "void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool alloc"
             ");"
         )
         self.ffi.cdef(
-            "void* MAPLpy_GetPointer_2D("
+            "void* MAPLpy_GetPointer_3D("
             "void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool alloc"
             ");"
         )
@@ -87,7 +85,17 @@ class MAPLBridge:
         # ESMF_TimeIntervalGet
         self.ffi.cdef("void* MAPLpy_ESMF_TimeIntervalGet(void* esmf_time_state_c_ptr);")
 
-        self.ffi.cdef("bool MAPLpy_Associated(void*);")
+        self.ffi.cdef(
+            "bool MAPLpy_GetPointer_2D_associated"
+            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool alloc"
+            ");"
+        )
+
+        self.ffi.cdef(
+            "bool MAPLpy_GetPointer_3D_associated"
+            "(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool alloc"
+            ");"
+        )
 
     def __del__(self):
         self.ffi.dlclose(self.mapl_c_bridge)
@@ -112,17 +120,13 @@ class MAPLBridge:
             state, self.ffi.new("char[]", name.encode()), len(name)
         )
 
-    def MAPL_GetPointer_3D(
-        self, state: MAPLState, name: str, alloc: bool = False
-    ) -> CVoidPointer:
-        return self.mapl_c_bridge.MAPLpy_GetPointer_3D(  # type: ignore
+    def MAPL_GetPointer_2D(self, state: MAPLState, name: str, alloc: bool = False) -> CVoidPointer:
+        return self.mapl_c_bridge.MAPLpy_GetPointer_2D(  # type: ignore
             state, self.ffi.new("char[]", name.encode()), len(name), alloc
         )
 
-    def MAPL_GetPointer_2D(
-        self, state: MAPLState, name: str, alloc: bool = False
-    ) -> CVoidPointer:
-        return self.mapl_c_bridge.MAPLpy_GetPointer_2D(  # type: ignore
+    def MAPL_GetPointer_3D(self, state: MAPLState, name: str, alloc: bool = False) -> CVoidPointer:
+        return self.mapl_c_bridge.MAPLpy_GetPointer_3D(  # type: ignore
             state, self.ffi.new("char[]", name.encode()), len(name), alloc
         )
 
@@ -159,9 +163,10 @@ class MAPLBridge:
         self,
         time_state: MAPLState,
     ) -> np.float64:
-        return self.mapl_c_bridge.MAPLpy_ESMF_TimeIntervalGet(  # type: ignore
-            time_state
-        )
+        return self.mapl_c_bridge.MAPLpy_ESMF_TimeIntervalGet(time_state)  # type: ignore
 
-    def associated(self, ptr: CVoidPointer):
-        return self.mapl_c_bridge.MAPLpy_Associated(ptr)  # type: ignore
+    def associated_2d(self, state: MAPLState, name: str, alloc: bool = False) -> bool:
+        return self.mapl_c_bridge.MAPLpy_GetPointer_2D_associated(state, self.ffi.new("char[]", name.encode()), len(name), alloc)  # type: ignore
+
+    def associated_3d(self, state: MAPLState, name: str, alloc: bool = False) -> bool:
+        return self.mapl_c_bridge.MAPLpy_GetPointer_3D_associated(state, self.ffi.new("char[]", name.encode()), len(name), alloc)  # type: ignore

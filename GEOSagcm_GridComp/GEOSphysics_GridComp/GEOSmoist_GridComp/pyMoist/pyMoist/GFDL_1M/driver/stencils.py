@@ -56,7 +56,7 @@ def implicit_fall(
     reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
     Fortran author: Shian-Jiann Lin, 2016
     """
-    from __externals__ import dts, use_ppm
+    from __externals__ import dts
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:

@@ -145,17 +145,18 @@ def prepare_radiation_quantities(
     graupel: FloatField,
     radiation_graupel: FloatField,
 ):
-    # cloud fraction
-    radiation_cloud_fraction = min(convective_cloud_fraction + large_scale_cloud_fraction, 1.0)
-    # liquid
-    radiation_liquid = convective_liquid + large_scale_liquid
-    # ice
-    radiation_ice = convective_ice + large_scale_ice
-    # vapor
-    radiation_vapor = vapor
-    # RAIN
-    radiation_rain = rain
-    # snow
-    radiation_snow = snow
-    # graupel
-    radiation_graupel = graupel
+    with computation(PARALLEL), interval(...):
+        # cloud fraction
+        radiation_cloud_fraction = min(convective_cloud_fraction + large_scale_cloud_fraction, 1.0)
+        # liquid
+        radiation_liquid = convective_liquid + large_scale_liquid
+        # ice
+        radiation_ice = convective_ice + large_scale_ice
+        # vapor
+        radiation_vapor = vapor
+        # RAIN
+        radiation_rain = rain
+        # snow
+        radiation_snow = snow
+        # graupel
+        radiation_graupel = graupel

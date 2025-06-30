@@ -25,7 +25,7 @@ from pyMoist.interface.python_bridge import (
     pymoist_run_GFDL_1M_driver,
     pymoist_interface_GFDL_1M,
     pyMoist_finalize,
-    gfdl_1m_init
+    gfdl_1m_init,
 )
 import traceback
 
@@ -154,7 +154,9 @@ def pymoist_interface_py_finalize() -> int:
         return -1
     return 0
 
-""".format(TMPFILEBASE)
+""".format(
+    TMPFILEBASE
+)
 
 with open("moist.h") as f:
     data = "".join([line for line in f if not line.startswith("#")])
