@@ -232,6 +232,7 @@ module gfdl2_cloud_microphys_mod
     real :: c_psaci = 0.05  !< accretion: cloud ice to snow
     real :: c_pgacs = 0.01  !< accretion: snow to graupel
     real :: c_pgaci = 0.01  !< accretion: cloud ice to graupel
+    real :: c_pgacw = 0.01  !< accretion: cloud water to graupel
     !   Wet processes (liquid to/from frozen)
     real :: c_cracw = 1.00  !< accretion: cloud water to rain
 
@@ -294,7 +295,7 @@ module gfdl2_cloud_microphys_mod
         tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
-        tau_i2s, tau_l2r, qi_lim, c_paut, c_psaci, c_pgacs, c_pgaci,  &
+        tau_i2s, tau_l2r, qi_lim, c_paut, c_psaci, c_pgacs, c_pgaci, c_pgacw,  &
         z_slope_liq, z_slope_ice, c_cracw, alin, clin,              &
         preciprad, cld_min, use_ppm, mono_prof, in_cloud,         &
         do_icepsettle, &
@@ -309,7 +310,7 @@ module gfdl2_cloud_microphys_mod
         tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
-        tau_i2s, tau_l2r, qi_lim, c_paut, c_psaci, c_pgacs, c_pgaci,  &
+        tau_i2s, tau_l2r, qi_lim, c_paut, c_psaci, c_pgacs, c_pgaci, c_pgacw,  &
         z_slope_liq, z_slope_ice, c_cracw, alin, clin,              &
         preciprad, cld_min, use_ppm, mono_prof, in_cloud,         &
         do_icepsettle, &
@@ -849,7 +850,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         !
         ! if (id_droplets > 0) then
         ! do k = ktop, kbot
-        ! qn2 (i, j, k) = ccn (k)
+        ! qn2 (i, j, k) = ccn_l (k)
         ! enddo
         ! endif
 
@@ -996,7 +997,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            if (qadum(k) >= onemsig) then
             if (tz (k) > t_wfr) then
                 qc = fac_rc * ccn (k) / den (k)
                 dq = ql (k) - qc
@@ -1010,7 +1010,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                                                      max(qadum(k)*(qi (k)+ql (k)     ),qcmin) ) )
                 endif
             endif
-            endif
         enddo
         
     else
@@ -1022,7 +1021,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
 
         do k = ktop, kbot
-            if (qadum(k) >= onemsig) then
             if (tz (k) > t_wfr + dt_fr) then
                 dl (k) = min (max (qcmin, dl (k)), 0.5 * ql (k))
                 ! --------------------------------------------------------------------
@@ -1046,7 +1044,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     qa (k) = max(0.0,min(1.,qa (k) * max(qadum(k)*(qi (k)+ql (k)     ),0.0  ) / &
                                                      max(qadum(k)*(qi (k)+ql (k)+sink),qcmin) ) )
                 endif
-            endif
             endif
         enddo
 
@@ -1389,7 +1386,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
       else    
         qadum = 1.0
       endif
-      if (qadum >= onemsig) then
 
         ql = qlk (k)/qadum
         qi = qik (k)/qadum
@@ -1439,8 +1435,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
         ! Revert In-Cloud condensate
         qlk (k) = ql*qadum
         qik (k) = qi*qadum
-
-      endif
 
     enddo
 
@@ -1947,10 +1941,10 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         if (do_evap) then
            evap = 0.0
            subl = 0.0
+           qpz = qv (k) + ql (k) + qi (k)
            tin = tz (k) - (lhl (k) * (ql (k) + qi (k)) + lhi (k) * qi (k)) / (c_air + &
                  qpz * c_vap + qr (k) * c_liq + (qs (k) + qg (k)) * c_ice)
            if (tin > t_sub + 6.) then
-             qpz = qv (k) + ql (k) + qi (k)
              rh = qpz / iqs1 (tin, den (k))
              if (rh < rh_adj) then
                 ! instant evap of all liquid
@@ -3247,6 +3241,7 @@ subroutine setupm
     ! decreasing gcon will reduce accretion of graupel from cloud ice/water
     cgacw = pie * rnzg * gcon * gam350 / (4. * act (6) ** 0.875)
     cgaci = c_pgaci * cgacw
+    cgacw = c_pgacw * cgacw 
 
     ! subl and revp: five constants for three separate processes
 

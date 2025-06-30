@@ -399,6 +399,7 @@ module gfdl_mp_mod
     real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
     real :: tau_l2v  =  300.0 ! cloud water to water vapor evaporation time scale (s)
     real :: tau_revp =  600.0 ! rain evaporation time scale (s)
+    real :: tau_frez =  600.0 ! cloud liquid freezing time scale (s)
     real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
@@ -437,7 +438,7 @@ module gfdl_mp_mod
     real :: c_psacw = 1.0 ! cloud water to snow accretion efficiency
     real :: c_pracw = 1.0 ! cloud water to rain accretion efficiency
     real :: c_praci = 1.0 ! cloud ice to rain accretion efficiency
-    real :: c_pgacw = 1.0 ! cloud water to graupel accretion efficiency
+    real :: c_pgacw = 0.01! cloud water to graupel accretion efficiency
     real :: c_pracs = 1.0 ! snow to rain accretion efficiency
     real :: c_psacr = 1.0 ! rain to snow accretion efficiency
     real :: c_pgacr = 1.0 ! rain to graupel accretion efficiency
@@ -2422,10 +2423,7 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
     call terminal_fall (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vti, i1, pfi, u, v, w, dte, "qi")
 
-   !pfi (ks) = max (0.0, pfi (ks))
-   !do k = ke, ks + 1, - 1
-   !    pfi (k) = max (0.0, pfi (k) - pfi (k - 1))
-   !enddo
+    pfi (ks) = max (0.0, pfi (ks))
 
     ! -----------------------------------------------------------------------
     ! terminal fall and melting of falling snow into rain
@@ -2441,10 +2439,7 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
     call terminal_fall (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vts, s1, pfs, u, v, w, dte, "qs")
 
-   !pfs (ks) = max (0.0, pfs (ks))
-   !do k = ke, ks + 1, - 1
-   !    pfs (k) = max (0.0, pfs (k) - pfs (k - 1))
-   !enddo
+    pfs (ks) = max (0.0, pfs (ks))
 
     ! -----------------------------------------------------------------------
     ! terminal fall and melting of falling graupel into rain
@@ -2464,10 +2459,7 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
     call terminal_fall (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vtg, g1, pfg, u, v, w, dte, "qg")
 
-   !pfg (ks) = max (0.0, pfg (ks))
-   !do k = ke, ks + 1, - 1
-   !    pfg (k) = max (0.0, pfg (k) - pfg (k - 1))
-   !enddo
+    pfg (ks) = max (0.0, pfg (ks))
 
     ! -----------------------------------------------------------------------
     ! terminal fall of cloud water
@@ -2480,10 +2472,7 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         call terminal_fall (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
             vtw, w1, pfw, u, v, w, dte, "ql")
 
-       !pfw (ks) = max (0.0, pfw (ks))
-       !do k = ke, ks + 1, - 1
-       !    pfw (k) = max (0.0, pfw (k) - pfw (k - 1))
-       !enddo
+        pfw (ks) = max (0.0, pfw (ks))
 
     endif
 
@@ -2496,10 +2485,7 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
     call terminal_fall (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vtr, r1, pfr, u, v, w, dte, "qr")
 
-   !pfr (ks) = max (0.0, pfr (ks))
-   !do k = ke, ks + 1, - 1
-   !    pfr (k) = max (0.0, pfr (k) - pfr (k - 1))
-   !enddo
+    pfr (ks) = max (0.0, pfr (ks))
 
 end subroutine sedimentation
 
@@ -3486,9 +3472,10 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     integer :: k
 
     real :: ql, qi, qim, qadum, newliq, newice
-    real :: tmp, sink, fac_imlt
+    real :: tmp, sink, fac_imlt, fac_frez
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
+    fac_frez = 1. - exp (- dts / tau_frez)
 
     do k = ks, ke
 
@@ -3529,7 +3516,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
-            sink = min(ql, newice, ql * (tice - tz (k)) / icpk (k))
+            sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
@@ -3653,7 +3640,9 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     integer :: k
 
     real :: ql, qi, qadum, newice 
-    real :: tmp, sink, qim
+    real :: tmp, sink, qim, fac_frez
+
+    fac_frez = 1. - exp (- dts / tau_frez)
 
     do k = ks, ke
 
@@ -3670,7 +3659,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
-            sink = min(ql, newice, ql * (tice - tz (k)) / icpk (k))
+            sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
@@ -3810,9 +3799,6 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
     real :: tc, factor, sink, qden, dqdt, tin, dq, qsi
     real :: pgacw, pgacr
-    real :: cgacw_scale_aware
-
-    cgacw_scale_aware = cgacw * (1.e-4*(1.0-onemsig) + 1.e-2*onemsig)
 
     do k = ks, ke
 
@@ -3824,13 +3810,13 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
             qden = qg (k) * den (k)
             if (ql (k) .gt. qcmin) then
                 if (do_new_acc_water) then
-                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), cgacw_scale_aware, acco (:, 9), &
+                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), cgacw, acco (:, 9), &
                         acc (17), acc (18), den (k))
                 else
                     if (do_hail) then
-                        factor = acr2d (qden, cgacw_scale_aware, denfac (k), blinh, muh)
+                        factor = acr2d (qden, cgacw, denfac (k), blinh, muh)
                     else
-                        factor = acr2d (qden, cgacw_scale_aware, denfac (k), bling, mug)
+                        factor = acr2d (qden, cgacw, denfac (k), bling, mug)
                     endif
                     pgacw = factor / (1. + dts * factor) * ql (k)
                 endif
@@ -3838,7 +3824,7 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
             pgacr = 0.
             if (qr (k) .gt. qpmin) then
-                pgacr = min (acr3d (vtg (k), vtr (k), qr (k), qg (k), cgacw_scale_aware, acco (:, 3), &
+                pgacr = min (acr3d (vtg (k), vtr (k), qr (k), qg (k), cgacw, acco (:, 3), &
                     acc (5), acc (6), den (k)), qr (k) / dts)
             endif
 
@@ -3988,7 +3974,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             di  = max (di, qcmin)
             q_plus = qi + di
             ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * critical_qi_factor / den (k)
+            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * critical_qi_factor / qadum / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
@@ -4496,7 +4482,7 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
 
     integer :: k
 
-    real :: sink, tmp, tin, qpz, rh, dqdt, qsw, qsi, rh_adj
+    real :: sink, subl, tin, qpz, rh, dqdt, qsw, qsi, rh_adj
     real :: dq, factor, fac_l2v, rh_tem
 
     fac_l2v = 1. - exp (- dts / tau_l2v)
@@ -4536,7 +4522,7 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
             if (rh .lt. rh_adj) then
                 ! instant evap of all liquid & ice
                 sink = ql (k)
-                tmp = qi (k)
+                subl = qi (k)
             else
                 ! partial evap of liquid
                 tin = tz (k)
@@ -4555,17 +4541,17 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                    endif
                 endif
                 ! nothing for ice
-                tmp = 0.0
+                subl = 0.0
              endif
 
              sink = sink*onemsig ! resolution dependent evap 0:1 coarse:fine
-             tmp  = tmp*onemsig ! resolution dependent subl 0:1 coarse:fine
+             subl = subl*onemsig ! resolution dependent subl 0:1 coarse:fine
 
              mppe1 = mppe1 + sink * dp (k) * convt
-             mpps1 = mpps1 + tmp * dp (k) * convt
+             mpps1 = mpps1 + subl * dp (k) * convt
 
              call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                 sink + tmp, - sink, 0., - tmp, 0., 0., te8 (k), cvm (k), tz (k), &
+                 sink + subl, - sink, 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
                  lcpk (k), icpk (k), tcpk (k), tcp3 (k))
 
         endif
@@ -4684,16 +4670,14 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
 
     integer :: k
 
-    real :: sink, tc
+    real :: ifrac, sink
                 
     do k = ks, ke
 
-        tc = t_wfr - tz (k)
+        ifrac = ice_fraction(real(tz(k)),cnv_fraction,srf_type)
+        if (ifrac .eq. 1. .and. ql (k) .gt. qcmin) then
 
-        if (tc .gt. 0. .and. ql (k) .gt. qcmin) then
-
-            sink = ql (k) * tc / dt_fr
-            sink = min (ql (k), sink, tc / icpk (k))
+            sink = ql (k)
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
@@ -4886,7 +4870,7 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             tin = tz (k)
             qsi = iqs (tin, den (k), dqdt)
             dq = qv (k) - qsi
-            tmp = dq / (1. + tcpk (k) * dqdt)
+            tmp = min( qi (k), dq / (1. + tcpk (k) * dqdt) )
 
             if (qi (k) .gt. qcmin) then
                 if (do_psd_ice_num) then
