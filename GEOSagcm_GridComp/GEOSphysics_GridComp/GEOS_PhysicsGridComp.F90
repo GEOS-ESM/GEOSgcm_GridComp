@@ -549,6 +549,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME = 'TKESHOCIT',                                       &
+         LONG_NAME  = 'tendency_of_TKE_due_to_turbulence_transport',     &
+         UNITS      = 'm2 s-3',                                          &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationCenter,                              &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                                      &
          SHORT_NAME = 'TIF',                                         &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_friction', &
@@ -2240,7 +2249,7 @@ contains
 
    real, pointer, dimension(:,:,:)     :: DOXDTCHM
    real, pointer, dimension(:,:,:)     :: DQVDTMST, DQVDTTRB, DQVDTCHM
-   real, pointer, dimension(:,:,:)     :: DQLDTTRB, DQIDTTRB
+   real, pointer, dimension(:,:,:)     :: DQLDTTRB, DQIDTTRB, TKEIT
    real, pointer, dimension(:,:,:)     :: DQLDTSCL, DQIDTSCL, DQVDTSCL
    real, pointer, dimension(:,:,:)     :: DQLDTMST, DQIDTMST
    real, pointer, dimension(:,:,:)     :: DQRDTMST, DQSDTMST, DQGDTMST
@@ -2563,6 +2572,8 @@ contains
        call MAPL_GetPointer ( EXPORT,     DQLDTTRB, 'QLLSIT',   alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer ( EXPORT,     DQIDTTRB, 'QILSIT',   alloc=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer ( EXPORT,     TKEIT,   'TKESHOCIT', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer ( GEX(TURBL), DPDTTRB , 'DPDTTRB',  alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
