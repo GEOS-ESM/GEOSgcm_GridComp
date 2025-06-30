@@ -1,12 +1,11 @@
 from ndsl import Namelist, StencilFactory
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, GlobalTable, computation, interval
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.field_types import GlobalTable_saturaion_tables
-from pyMoist.saturation_tables.constants import TABLESIZE
 from pyMoist.saturation_tables.qsat_functions import (
     saturation_specific_humidity,
     saturation_specific_humidity_frozen_surface,

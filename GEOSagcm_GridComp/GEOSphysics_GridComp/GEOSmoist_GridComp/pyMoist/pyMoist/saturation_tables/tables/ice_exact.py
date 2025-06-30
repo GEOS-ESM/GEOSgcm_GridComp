@@ -3,13 +3,7 @@ from typing import Optional
 import numpy as np
 
 from ndsl.dsl.typing import Float
-from pyMoist.saturation_tables.constants import (
-    DELTA_T,
-    ERFAC,
-    ESFAC,
-    MAPL_TICE,
-    MAX_MIXING_RATIO,
-)
+from pyMoist.saturation_tables.constants import DELTA_T, ERFAC, ESFAC, MAPL_TICE, MAX_MIXING_RATIO
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.constants import IceExactConstatns
 
@@ -30,8 +24,7 @@ def _saturation_formulation(
                         * (
                             tt
                             * (
-                                tt
-                                * (tt * IceExactConstatns.S16 + IceExactConstatns.S15)
+                                tt * (tt * IceExactConstatns.S16 + IceExactConstatns.S15)
                                 + IceExactConstatns.S14
                             )
                             + IceExactConstatns.S13
@@ -43,9 +36,7 @@ def _saturation_formulation(
                 + IceExactConstatns.S10
             )
         elif tt >= IceExactConstatns.TSTARR1 and tt < IceExactConstatns.TSTARR2:
-            W = (IceExactConstatns.TSTARR2 - tt) / (
-                IceExactConstatns.TSTARR2 - IceExactConstatns.TSTARR1
-            )
+            W = (IceExactConstatns.TSTARR2 - tt) / (IceExactConstatns.TSTARR2 - IceExactConstatns.TSTARR1)
             ex = W * (
                 tt
                 * (
@@ -55,8 +46,7 @@ def _saturation_formulation(
                         * (
                             tt
                             * (
-                                tt
-                                * (tt * IceExactConstatns.S16 + IceExactConstatns.S15)
+                                tt * (tt * IceExactConstatns.S16 + IceExactConstatns.S15)
                                 + IceExactConstatns.S14
                             )
                             + IceExactConstatns.S13
@@ -75,8 +65,7 @@ def _saturation_formulation(
                         * (
                             tt
                             * (
-                                tt
-                                * (tt * IceExactConstatns.S26 + IceExactConstatns.S25)
+                                tt * (tt * IceExactConstatns.S26 + IceExactConstatns.S25)
                                 + IceExactConstatns.S24
                             )
                             + IceExactConstatns.S23
@@ -97,8 +86,7 @@ def _saturation_formulation(
                         * (
                             tt
                             * (
-                                tt
-                                * (tt * IceExactConstatns.S26 + IceExactConstatns.S25)
+                                tt * (tt * IceExactConstatns.S26 + IceExactConstatns.S25)
                                 + IceExactConstatns.S24
                             )
                             + IceExactConstatns.S23
@@ -110,9 +98,7 @@ def _saturation_formulation(
                 + IceExactConstatns.S20
             )
         elif tt >= IceExactConstatns.TSTARR3 and tt < IceExactConstatns.TSTARR4:
-            W = (IceExactConstatns.TSTARR4 - tt) / (
-                IceExactConstatns.TSTARR4 - IceExactConstatns.TSTARR3
-            )
+            W = (IceExactConstatns.TSTARR4 - tt) / (IceExactConstatns.TSTARR4 - IceExactConstatns.TSTARR3)
             ex = W * (
                 tt
                 * (
@@ -122,8 +108,7 @@ def _saturation_formulation(
                         * (
                             tt
                             * (
-                                tt
-                                * (tt * IceExactConstatns.S26 + IceExactConstatns.S25)
+                                tt * (tt * IceExactConstatns.S26 + IceExactConstatns.S25)
                                 + IceExactConstatns.S24
                             )
                             + IceExactConstatns.S23
@@ -142,8 +127,7 @@ def _saturation_formulation(
                         * (
                             tt
                             * (
-                                tt
-                                * (tt * IceExactConstatns.BI6 + IceExactConstatns.BI5)
+                                tt * (tt * IceExactConstatns.BI6 + IceExactConstatns.BI5)
                                 + IceExactConstatns.BI4
                             )
                             + IceExactConstatns.BI3
@@ -164,8 +148,7 @@ def _saturation_formulation(
                         * (
                             tt
                             * (
-                                tt
-                                * (tt * IceExactConstatns.BI6 + IceExactConstatns.BI5)
+                                tt * (tt * IceExactConstatns.BI6 + IceExactConstatns.BI5)
                                 + IceExactConstatns.BI4
                             )
                             + IceExactConstatns.BI3

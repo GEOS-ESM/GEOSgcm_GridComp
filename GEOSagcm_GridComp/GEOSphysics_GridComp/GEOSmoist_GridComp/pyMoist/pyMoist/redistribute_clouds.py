@@ -1,10 +1,9 @@
 from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
-import pyMoist.constants as constants
-from pyMoist.constants import ALHLBCP, ALHSBCP
-from ndsl import QuantityFactory, StencilFactory
+from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField
+from pyMoist.constants import ALHLBCP, ALHSBCP
 
 
 def redistribute_clouds(

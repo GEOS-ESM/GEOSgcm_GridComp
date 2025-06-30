@@ -1,21 +1,17 @@
-from ndsl import Namelist, StencilFactory, Quantity
-from ndsl.stencils.testing.grid import Grid
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.masks import Masks
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.GFDL_1M.temporaries import Temporaries
-from pyMoist.GFDL_1M.outputs import Outputs
-from pyMoist.GFDL_1M.finalize import Finalize
+from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float
-from pyMoist.GFDL_1M.stencils import update_tendencies
+from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
+from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.state import (
-    MixingRatios,
-    CloudFractions,
-)
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
+from pyMoist.GFDL_1M.finalize import Finalize
+from pyMoist.GFDL_1M.masks import Masks
+from pyMoist.GFDL_1M.outputs import Outputs
+from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
+from pyMoist.GFDL_1M.stencils import update_tendencies
+from pyMoist.GFDL_1M.temporaries import Temporaries
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
@@ -88,7 +84,7 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
         self.out_vars = self.in_vars["data_vars"].copy()
 
     def make_ijk_quantity(self, data, interface: bool = False) -> Quantity:
-        if interface == True:
+        if interface is True:
             quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
             quantity.view[:, :, :] = quantity.np.asarray(data[:, :, :])
             return quantity

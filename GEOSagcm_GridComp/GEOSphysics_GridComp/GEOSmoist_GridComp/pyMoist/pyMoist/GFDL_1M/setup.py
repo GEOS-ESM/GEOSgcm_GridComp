@@ -1,47 +1,30 @@
+from gt4py.cartesian.gtscript import THIS_K
+
 from ndsl import StencilFactory
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, IntFieldIJ, BoolFieldIJ
-from ndsl.dsl.gt4py import (
-    computation,
-    interval,
-    PARALLEL,
-    FORWARD,
-    function,
-    BACKWARD,
-)
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.field_types import GlobalTable_saturaion_tables
-from pyMoist.constants import (
-    MAPL_GRAV,
-)
-from pyMoist.interpolations import vertical_interpolation
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from pyMoist.GFDL_1M.masks import Masks
-from pyMoist.GFDL_1M.outputs import Outputs
-from pyMoist.GFDL_1M.temporaries import Temporaries
-from pyMoist.GFDL_1M.state import (
-    LiquidWaterStaticEnergy,
-    TotalWater,
-    VericalMotion,
-    MixingRatios,
-    CloudFractions,
-)
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, function, interval, log
+from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
 from pyMoist.constants import (
-    MAPL_GRAV,
-    MAPL_RGAS,
-    MAPL_RVAP,
-    MAPL_CPDRY,
-    MAPL_CPVAP,
-    MAPL_P00,
-    MAPL_KAPPA,
     MAPL_ALHL,
     MAPL_CP,
+    MAPL_CPDRY,
+    MAPL_CPVAP,
+    MAPL_GRAV,
+    MAPL_KAPPA,
+    MAPL_P00,
+    MAPL_RGAS,
+    MAPL_RVAP,
 )
-from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
-from pyMoist.redistribute_clouds import RedistributeClouds
-from pyMoist.radiation_coupling import GFDL1MRadiationCoupling
+from pyMoist.field_types import GlobalTable_saturaion_tables
+from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.getters_temporary import associated_checker
+from pyMoist.GFDL_1M.masks import Masks
+from pyMoist.GFDL_1M.outputs import Outputs
+from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
+from pyMoist.GFDL_1M.temporaries import Temporaries
+from pyMoist.interpolations import vertical_interpolation
+from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 def calculate_derived_states(
@@ -152,7 +135,7 @@ def find_klcl(
 
     # find nearest level <= LCL pressure
     with computation(BACKWARD), interval(...):
-        if found_level == False:
+        if found_level is False:
             k_lcl = THIS_K
         if p_mb <= plcl.at(K=k_end):
             found_level = True
@@ -304,7 +287,7 @@ class Setup:
             k_lcl=temporaries.k_lcl,
         )
 
-        if associated_checker("ZLCL") == True:
+        if associated_checker("ZLCL") is True:
             outputs.z_lcl = temporaries.layer_height_above_surface.field[
                 :, :, temporaries.k_lcl.field[:]
             ]  # bad but gets the point across: export height at lcl (should not execute in our test case)

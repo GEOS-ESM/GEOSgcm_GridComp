@@ -6,7 +6,6 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import bergeron_partition
-from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 

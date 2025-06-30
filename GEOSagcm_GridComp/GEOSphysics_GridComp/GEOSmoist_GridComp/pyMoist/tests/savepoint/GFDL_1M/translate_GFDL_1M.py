@@ -1,17 +1,17 @@
-from ndsl import Namelist, StencilFactory, Quantity
-from ndsl.stencils.testing.grid import Grid
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
+from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
+from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
 from pyMoist.GFDL_1M.state import (
+    CloudFractions,
     LiquidWaterStaticEnergy,
+    MixingRatios,
     TotalWater,
     VericalMotion,
-    MixingRatios,
-    CloudFractions,
 )
-from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
 
 
 class TranslateGFDL_1M(TranslateFortranData2Py):
@@ -126,7 +126,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         self.out_vars = self.in_vars["data_vars"].copy()
 
     def make_ijk_quantity(self, data, interface: bool = False) -> Quantity:
-        if interface == True:
+        if interface is True:
             quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
             quantity.view[:, :, :] = quantity.np.asarray(data[:, :, :])
             return quantity
@@ -250,7 +250,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         # Initalize the module
         gfdl_1m = GFDL1M(self.stencil_factory, self.quantity_factory, GFDL_1M_config)
 
-        ##### Being in fields from netcdf. This replicated the call to fortran memory. #####
+        # Being in fields from netcdf. This replicated the call to fortran memory.
         # Get model state
         gfdl_1m.mixing_ratios = MixingRatios(
             vapor=self.make_ijk_quantity(inputs.pop("Q")),

@@ -5,9 +5,9 @@ from types import ModuleType
 from typing import List, Optional, Tuple, TypeAlias
 
 import cffi
-from _cffi_backend import _CDataBase as CFFIObj
 import numpy as np
 import numpy.typing as npt
+from _cffi_backend import _CDataBase as CFFIObj
 
 from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
@@ -111,9 +111,7 @@ class FortranPythonConversion:
                 swap_axes,
             )
             self._current_stream = (
-                self._stream_A
-                if self._current_stream == self._stream_B
-                else self._stream_B
+                self._stream_A if self._current_stream == self._stream_B else self._stream_B
             )
             return final_array
 
@@ -169,9 +167,7 @@ class FortranPythonConversion:
                 device_array.astype(dtype).flatten(order="F"),
             )
             self._current_stream = (
-                self._stream_A
-                if self._current_stream == self._stream_B
-                else self._stream_B
+                self._stream_A if self._current_stream == self._stream_B else self._stream_B
             )
             return host_array
 

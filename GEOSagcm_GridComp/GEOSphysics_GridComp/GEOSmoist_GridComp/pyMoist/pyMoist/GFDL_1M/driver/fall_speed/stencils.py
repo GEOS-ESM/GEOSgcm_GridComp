@@ -1,7 +1,6 @@
-import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, log10, sqrt
 
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 
 
@@ -59,9 +58,11 @@ def fall_speed(
     reference Fortran: gfdl_cloud_microphys.F90: subroutines mpdrv and fall_speed
     """
     from __externals__ import (
+        anv_icefall,
         const_vg,
         const_vi,
         const_vs,
+        ls_icefall,
         p_nonhydro,
         vg_fac,
         vg_max,
@@ -69,8 +70,6 @@ def fall_speed(
         vi_max,
         vs_fac,
         vs_max,
-        anv_icefall,
-        ls_icefall,
     )
 
     with computation(PARALLEL), interval(...):

@@ -1,37 +1,20 @@
 from ndsl import StencilFactory
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField
-from ndsl.dsl.gt4py import (
-    computation,
-    interval,
-    PARALLEL,
-    FORWARD,
-    function,
-    sqrt,
-)
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.field_types import GlobalTable_saturaion_tables
-from pyMoist.constants import (
-    MAPL_GRAV,
-    MAPL_CP,
-)
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from pyMoist.constants import MAPL_CP, MAPL_GRAV
+from pyMoist.field_types import GlobalTable_saturaion_tables
+from pyMoist.GFDL_1M.calculate_dbz import CalculateDBZ
+from pyMoist.GFDL_1M.config import GFDL1MConfig
+from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.outputs import Outputs
+from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
 from pyMoist.GFDL_1M.temporaries import Temporaries
-from pyMoist.GFDL_1M.state import (
-    LiquidWaterStaticEnergy,
-    TotalWater,
-    VericalMotion,
-    MixingRatios,
-    CloudFractions,
-)
-from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
-from pyMoist.redistribute_clouds import RedistributeClouds
 from pyMoist.radiation_coupling import GFDL1MRadiationCoupling
-from pyMoist.GFDL_1M.getters_temporary import associated_checker
-from pyMoist.GFDL_1M.calculate_dbz import CalculateDBZ
+from pyMoist.redistribute_clouds import RedistributeClouds
+from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 @function
@@ -408,7 +391,7 @@ class Finalize:
             self.saturation_tables.esx,
         )
 
-        if self.GFDL_1M_config.DO_QA == True:
+        if self.GFDL_1M_config.DO_QA is True:
             self.fix_humidity(
                 relative_humidity=outputs.relative_humidity_after_pdf,
                 vapor=mixing_ratios.vapor,

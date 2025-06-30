@@ -5,11 +5,12 @@ Wraps pyMoist for GEOS interface use.
 import dataclasses
 import enum
 import logging
-import numpy as np
 import os
 from typing import Callable, Optional
 
+import numpy as np
 from gt4py.cartesian.config import build_settings as gt_build_settings
+from MAPLpyish import CVoidPointer
 from mpi4py import MPI
 
 from ndsl import (
@@ -36,13 +37,8 @@ from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
-from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
 from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
-from MAPLpyish import CVoidPointer
-from pyMoist.interface.mapl.memory_factory import (
-    MAPLMemoryRepository,
-    MAPLManagedMemory,
-)
+from pyMoist.interface.mapl.memory_factory import MAPLManagedMemory, MAPLMemoryRepository
 
 
 class MemorySpace(enum.Enum):
@@ -320,10 +316,10 @@ class GEOSPyMoistWrapper:
         # Initalize the module
         self.gfdl_1m = GFDL1M(self.stencil_factory, self.quantity_factory, self.GFDL_1M_config)
 
-        ##### Link Fortran memory to Python memory #####
-        ##### Fortran memory will only be modified if GFDL1M.__call__
-        ##### is called from within a "with MAPLManagedMemory" statement #####
-        ##### Not all linked fields are modified #####
+        # Link Fortran memory to Python memory #####
+        # Fortran memory will only be modified if GFDL1M.__call__
+        # is called from within a "with MAPLManagedMemory" statement #####
+        # Not all linked fields are modified #####
         self._mapl_internal.register("Q", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_internal.register("QRAIN", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_internal.register("QSNOW", np.float32, [X_DIM, Y_DIM, Z_DIM])
@@ -423,14 +419,12 @@ class GEOSPyMoistWrapper:
 
     def GFDL_1M_Microphysics(self):
         from pyMoist.GFDL_1M.state import (
+            CloudFractions,
             LiquidWaterStaticEnergy,
+            MixingRatios,
             TotalWater,
             VericalMotion,
-            MixingRatios,
-            CloudFractions,
         )
-
-        from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
 
         with MAPLManagedMemory(self._mapl_internal) as mapl_internal, MAPLManagedMemory(
             self._mapl_import

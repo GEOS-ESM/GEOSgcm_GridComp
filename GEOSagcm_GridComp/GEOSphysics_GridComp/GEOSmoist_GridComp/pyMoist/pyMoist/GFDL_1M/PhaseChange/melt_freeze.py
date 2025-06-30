@@ -23,10 +23,7 @@ def melt_freeze(
             liquid = liquid - d_qil
             t = (
                 t
-                + (
-                    constants.MAPL_LATENT_HEAT_SUBLIMATION
-                    - constants.MAPL_LATENT_HEAT_VAPORIZATION
-                )
+                + (constants.MAPL_LATENT_HEAT_SUBLIMATION - constants.MAPL_LATENT_HEAT_VAPORIZATION)
                 * d_qil
                 / constants.MAPL_CP
             )
@@ -37,10 +34,7 @@ def melt_freeze(
             liquid = liquid - d_qil
             t = (
                 t
-                + (
-                    constants.MAPL_LATENT_HEAT_SUBLIMATION
-                    - constants.MAPL_LATENT_HEAT_VAPORIZATION
-                )
+                + (constants.MAPL_LATENT_HEAT_SUBLIMATION - constants.MAPL_LATENT_HEAT_VAPORIZATION)
                 * d_qil
                 / constants.MAPL_CP
             )

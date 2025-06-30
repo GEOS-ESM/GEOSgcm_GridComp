@@ -33,12 +33,7 @@ def evaporate(
             * constants.RHO_W
             / (constants.K_COND * constants.MAPL_RVAP * (t ** 2))
         )
-        k2 = (
-            constants.MAPL_RVAP
-            * t
-            * constants.RHO_W
-            / (constants.DIFFU * (1000.0 / p_mb) * es)
-        )
+        k2 = constants.MAPL_RVAP * t * constants.RHO_W / (constants.DIFFU * (1000.0 / p_mb) * es)
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
         # for increased diffusivity at lower pressure
         if convective_cloud_fraction > 0.0 and convective_liquid > 0.0:
@@ -47,13 +42,7 @@ def evaporate(
             qcm = 0.0
         radius = cloud_effective_radius_liquid(p_mb, t, qcm, nactl)
         if rhx < rh_crit and radius > 0.0:
-            evap = (
-                CCW_EVAP_EFF
-                * convective_liquid
-                * DT_MOIST
-                * (rh_crit - rhx)
-                / ((k1 + k2) * radius ** 2)
-            )
+            evap = CCW_EVAP_EFF * convective_liquid * DT_MOIST * (rh_crit - rhx) / ((k1 + k2) * radius ** 2)
             evap = min(evap, convective_liquid)
         else:
             evap = 0.0

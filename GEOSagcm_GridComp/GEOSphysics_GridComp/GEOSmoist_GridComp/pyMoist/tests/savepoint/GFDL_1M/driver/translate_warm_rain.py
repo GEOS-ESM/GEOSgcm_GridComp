@@ -9,7 +9,6 @@ from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
-from ndsl.constants import X_DIM, Y_DIM
 
 
 class Translatewarm_rain(TranslateFortranData2Py):
@@ -203,12 +202,7 @@ class Translatewarm_rain(TranslateFortranData2Py):
             des2=self.sat_tables.des2,
             des3=self.sat_tables.des3,
             des4=self.sat_tables.des4,
-            fac_rc=fac_rc,
             **inputs,
         )
-        inputs.update(
-            {
-                "TEST_VAR_1": self.warm_rain.temporaries.test_var_1,
-            },
-        )
+
         return inputs

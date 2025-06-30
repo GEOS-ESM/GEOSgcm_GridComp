@@ -16,9 +16,7 @@ from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.constants import LiquidExactConstants
 
 
-def _saturation_formulation(
-    t: Float, formulation: SaturationFormulation = SaturationFormulation.Staars
-):
+def _saturation_formulation(t: Float, formulation: SaturationFormulation = SaturationFormulation.Staars):
     if formulation == SaturationFormulation.Staars:
         tt = t - MAPL_TICE
         ex = (
@@ -30,8 +28,7 @@ def _saturation_formulation(
                     * (
                         tt
                         * (
-                            tt
-                            * (tt * LiquidExactConstants.B6 + LiquidExactConstants.B5)
+                            tt * (tt * LiquidExactConstants.B6 + LiquidExactConstants.B5)
                             + LiquidExactConstants.B4
                         )
                         + LiquidExactConstants.B3
@@ -48,17 +45,10 @@ def _saturation_formulation(
             LiquidExactConstants.DL[0] * (tt - Float(1.0))
             + LiquidExactConstants.DL[1] * np.log10(tt)
             + LiquidExactConstants.DL[2]
-            * (
-                Float(10.0)
-                ** (LiquidExactConstants.DL[3] * (Float(1.0) - (Float(1.0) / tt)))
-                - Float(1.0)
-            )
+            * (Float(10.0) ** (LiquidExactConstants.DL[3] * (Float(1.0) - (Float(1.0) / tt))) - Float(1.0))
             / Float(10000000.0)
             + LiquidExactConstants.DL[4]
-            * (
-                Float(10.0) ** (LiquidExactConstants.DL[5] * (tt - Float(1.0)))
-                - Float(1.0)
-            )
+            * (Float(10.0) ** (LiquidExactConstants.DL[5] * (tt - Float(1.0))) - Float(1.0))
             / Float(1000.0)
             + LiquidExactConstants.LOGPS
             + Float(2.0)

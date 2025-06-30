@@ -1,90 +1,15 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import PARALLEL, computation, interval, log10
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
-import pyMoist.constants as constants
-from ndsl import QuantityFactory, StencilFactory
+from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField
+from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.shared_incloud_processes import (
     cloud_effective_radius_ice,
     cloud_effective_radius_liquid,
-    air_density,
     fix_up_clouds,
 )
-from pyMoist.field_types import GlobalTable_saturaion_tables
-
-# def _fix_up_clouds(
-#     vapor: FloatField,
-#     temperature: FloatField,
-#     large_scale_liquid: FloatField,
-#     large_scale_ice: FloatField,
-#     large_scale_cloud_fraction: FloatField,
-#     convective_liquid: FloatField,
-#     convective_ice: FloatField,
-#     convective_cloud_fraction: FloatField,
-# ) -> None:
-#     """
-#     Fix cloud variables to ensure physical consistency.
-#     """
-#     with computation(PARALLEL), interval(...):
-#         # Fix if Anvil cloud fraction too small
-#         if convective_cloud_fraction < 1.0e-5:
-#             vapor = vapor + convective_liquid + convective_ice
-#             temperature = (
-#                 temperature - (constants.ALHLBCP) * convective_liquid - (constants.ALHSBCP) * convective_ice
-#             )
-#             convective_cloud_fraction = 0.0
-#             convective_liquid = 0.0
-#             convective_ice = 0.0
-#         # Fix if LS cloud fraction too small
-#         if large_scale_cloud_fraction < 1.0e-5:
-#             vapor = vapor + large_scale_liquid + large_scale_ice
-#             temperature = (
-#                 temperature - (constants.ALHLBCP) * large_scale_liquid - (constants.ALHSBCP) * large_scale_ice
-#             )
-#             large_scale_cloud_fraction = 0.0
-#             large_scale_liquid = 0.0
-#             large_scale_ice = 0.0
-#         # LS LIQUID too small
-#         if large_scale_liquid < 1.0e-8:
-#             vapor = vapor + large_scale_liquid
-#             temperature = temperature - (constants.ALHLBCP) * large_scale_liquid
-#             large_scale_liquid = 0.0
-#         # LS ICE too small
-#         if large_scale_ice < 1.0e-8:
-#             vapor = vapor + large_scale_ice
-#             temperature = temperature - (constants.ALHSBCP) * large_scale_ice
-#             large_scale_ice = 0.0
-#         # Anvil LIQUID too small
-#         if convective_liquid < 1.0e-8:
-#             vapor = vapor + convective_liquid
-#             temperature = temperature - (constants.ALHLBCP) * convective_liquid
-#             convective_liquid = 0.0
-#         # Anvil ICE too small
-#         if convective_ice < 1.0e-8:
-#             vapor = vapor + convective_ice
-#             temperature = temperature - (constants.ALHSBCP) * convective_ice
-#             convective_ice = 0.0
-#         # Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
-#         if (convective_liquid + convective_ice) < 1.0e-8:
-#             vapor = vapor + convective_liquid + convective_ice
-#             temperature = (
-#                 temperature - (constants.ALHLBCP) * convective_liquid - (constants.ALHSBCP) * convective_ice
-#             )
-#             convective_cloud_fraction = 0.0
-#             convective_liquid = 0.0
-#             convective_ice = 0.0
-#         # Fix ALL cloud quants if LS cloud LIQUID+ICE too small
-#         if (large_scale_liquid + large_scale_ice) < 1.0e-8:
-#             vapor = vapor + large_scale_liquid + large_scale_ice
-#             temperature = (
-#                 temperature - (constants.ALHLBCP) * large_scale_liquid - (constants.ALHSBCP) * large_scale_ice
-#             )
-#             large_scale_cloud_fraction = 0.0
-#             large_scale_liquid = 0.0
-#             large_scale_ice = 0.0
 
 
 def _radiation_coupling(
@@ -116,7 +41,7 @@ def _radiation_coupling(
     Couple radiation with cloud variables to ensure physical consistency.
     """
 
-    from __externals__ import FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
+    from __externals__ import FAC_RI, FAC_RL, MAX_RI, MAX_RL, MIN_RI, MIN_RL
 
     with computation(PARALLEL), interval(...):
         # water vapor

@@ -1,8 +1,6 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import PARALLEL, computation, interval
-
 import pyMoist.constants as constants
-from ndsl.dsl.typing import Float, FloatField
+from ndsl.dsl.gt4py import PARALLEL, computation, interval
+from ndsl.dsl.typing import FloatField
 from pyMoist.shared_incloud_processes import cloud_effective_radius_ice
 
 
@@ -30,9 +28,9 @@ def sublimate(
         )  # (100s <-^ convert from mbar to Pa)
         rhx = min(vapor / qsat, 1.00)
         k1 = (
-            (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
+            (constants.MAPL_LATENT_HEAT_VAPORIZATION ** 2)
             * constants.RHO_I
-            / (constants.K_COND * constants.MAPL_RVAP * (t**2))
+            / (constants.K_COND * constants.MAPL_RVAP * (t ** 2))
         )
         k2 = constants.MAPL_RVAP * t * constants.RHO_I / (constants.DIFFU * (1000.0 / p_mb) * es)
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
@@ -43,7 +41,7 @@ def sublimate(
             qcm = 0.0
         radius = cloud_effective_radius_ice(p_mb, t, qcm)
         if rhx < rh_crit and radius > 0.0:
-            subl = CCI_EVAP_EFF * convective_ice * DT_MOIST * (rh_crit - rhx) / ((k1 + k2) * radius**2)
+            subl = CCI_EVAP_EFF * convective_ice * DT_MOIST * (rh_crit - rhx) / ((k1 + k2) * radius ** 2)
             subl = min(subl, convective_ice)
         else:
             subl = 0.0

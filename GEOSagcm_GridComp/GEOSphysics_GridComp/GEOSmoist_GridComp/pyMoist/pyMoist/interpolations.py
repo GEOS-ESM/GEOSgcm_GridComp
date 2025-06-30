@@ -1,6 +1,7 @@
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, BoolFieldIJ
-from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, BACKWARD, log, function
 from gt4py.cartesian.gtscript import THIS_K
+
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, interval, log
+from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ
 
 
 def vertical_interpolation(
@@ -38,14 +39,14 @@ def vertical_interpolation(
         p = log(p_interface_mb * 100)
 
     with computation(FORWARD), interval(-1, None):
-        if interface == True:
+        if interface is True:
             pb = p
     with computation(FORWARD), interval(-1, None):
-        if interface == False:
+        if interface is False:
             pb = 0.5 * (p[0, 0, -1] + p)
 
     with computation(BACKWARD), interval(0, -1):
-        if interface == True:
+        if interface is True:
             pt = p.at(K=THIS_K)
             if log(target_pressure) > pt and log(target_pressure) <= pb:
                 al = (pb - log(target_pressure)) / (pb - pt)
@@ -53,7 +54,7 @@ def vertical_interpolation(
             pb = pt
 
     with computation(BACKWARD), interval(1, -1):
-        if interface == False:
+        if interface is False:
             pt = 0.5 * (p.at(K=THIS_K - 1) + p.at(K=THIS_K))
             if log(target_pressure) > pt and log(target_pressure) <= pb:
                 al = (pb - log(target_pressure)) / (pb - pt)
@@ -62,14 +63,14 @@ def vertical_interpolation(
             pb = pt
 
     with computation(FORWARD), interval(-2, -1):
-        if interface == False:
+        if interface is False:
             pt = 0.5 * (p + p[0, 0, -1])
             pb = 0.5 * (p + p[0, 0, 1])
             if log(target_pressure) > pb and log(target_pressure) <= p[0, 0, 1]:
                 interpolated_field = field[0, 0, -1]
 
             # ensure every point was actually touched
-            if boolean_2d_mask == False:
+            if boolean_2d_mask is False:
                 interpolated_field = p
 
     # reset masks and temporaries for later use

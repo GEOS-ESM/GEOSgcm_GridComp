@@ -5,8 +5,8 @@ from gt4py.cartesian.gtscript import i32
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import PARALLEL, GlobalTable, computation, floor, function, interval
-from ndsl.dsl.typing import Float, FloatField, Int
+from ndsl.dsl.gt4py import PARALLEL, computation, floor, function, interval
+from ndsl.dsl.typing import Float, FloatField
 from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.constants import (
     DEGSUBS,
@@ -64,7 +64,7 @@ def saturation_specific_humidity_frozen_surface(
         ddq = ese.A[t_integer] - ese.A[t_integer - 1]  # type: ignore
         qs = (t - t_integer) * ddq + ese.A[t_integer - 1]  # type: ignore
 
-    if pressure_correction == True:
+    if pressure_correction is True:
         if p > qs:
             dd = ESFAC / (p - (1.0 - ESFAC) * qs)
             qs = qs * dd
@@ -109,12 +109,12 @@ def saturation_specific_humidity_liquid_surface(
     dqsat = 0.0
     if t <= TMINLQU:
         qsat = lqu
-        if compute_dq == True:
+        if compute_dq is True:
             ddq = 0.0
     elif t >= TMAXTBL:
         TABLESIZE_MINUS_1: i32 = TABLESIZE - 1
         qsat = esw.A[TABLESIZE_MINUS_1]  # type: ignore
-        if compute_dq == True:
+        if compute_dq is True:
             ddq = 0.0
     else:
         t = (t - TMINTBL) * DEGSUBS + 1
@@ -122,18 +122,18 @@ def saturation_specific_humidity_liquid_surface(
         ddq = esw.A[t_integer] - esw.A[t_integer - 1]  # type: ignore
         qsat = (t - t_integer) * ddq + esw.A[t_integer - 1]  # type: ignore
 
-    if pressure_correction == True:
+    if pressure_correction is True:
         if p > qsat:
             dd = ESFAC / (p - (1.0 - ESFAC) * qsat)
             qsat = qsat * dd
-            if compute_dq == True:
+            if compute_dq is True:
                 dqsat = ddq * ERFAC * p * dd * dd
         else:
             qsat = MAX_MIXING_RATIO
-            if compute_dq == True:
+            if compute_dq is True:
                 dqsat = 0.0
     else:
-        if compute_dq == True:
+        if compute_dq is True:
             dqsat = ddq
 
     return qsat, dqsat
@@ -167,7 +167,7 @@ def saturation_specific_humidity(
         qsat (out): saturation specific humidity
         dqsat (out): derivative saturation specific humidity with respect to temperature
     """
-    if use_ramp == True:
+    if use_ramp is True:
         uramp = -abs(ramp)
     else:
         uramp = TMIX
@@ -231,9 +231,7 @@ def QSat_FloatField(
 
         TI = (TI - TMINTBL) * DEGSUBS + 1
         IT = i32(floor(TI))
-        IT_MINUS_1: i32 = (
-            IT - 1
-        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        IT_MINUS_1: i32 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
 
         if URAMP == TMIX:
             DQ = esx[0][IT] - esx[0][IT_MINUS_1]  # type: ignore
@@ -286,9 +284,7 @@ class QSat:
         use_pascals: bool = False,
         fill_dqsat: bool = False,
     ) -> None:
-        self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(
-            quantity_factory
-        )
+        self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(quantity_factory)
 
         self.ese = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
         self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
@@ -350,6 +346,5 @@ class QSat:
 
         if not use_table_lookup:
             raise NotImplementedError(
-                "Saturation calculation: exact formulation not available,"
-                " only table look up"
+                "Saturation calculation: exact formulation not available," " only table look up"
             )

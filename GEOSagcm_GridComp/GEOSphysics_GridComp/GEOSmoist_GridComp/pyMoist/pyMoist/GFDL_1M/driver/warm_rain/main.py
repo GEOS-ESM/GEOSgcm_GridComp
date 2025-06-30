@@ -5,11 +5,7 @@ from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 from pyMoist.GFDL_1M.driver.stencils import implicit_fall
-from pyMoist.GFDL_1M.driver.warm_rain.stencils import (
-    update_outputs,
-    warm_rain_step_1,
-    warm_rain_step_2,
-)
+from pyMoist.GFDL_1M.driver.warm_rain.stencils import update_outputs, warm_rain_step_1, warm_rain_step_2
 from pyMoist.GFDL_1M.driver.warm_rain.temporaries import Temporaries
 
 
@@ -182,7 +178,7 @@ class WarmRain:
             des4,
             self.temporaries.test_var_1,
         )
-        if self.GFDL_1M_config.USE_PPM == False:
+        if self.GFDL_1M_config.USE_PPM is False:
             # NOTE: somehow errors pop up in rain1 and m1_sol within implicit fall, despite all of the
             # imputs being correct and implicit_fall verifying at three separate calls
             # within the terminal_fall module. May be a similar issue to the warm_rain_part_1 error

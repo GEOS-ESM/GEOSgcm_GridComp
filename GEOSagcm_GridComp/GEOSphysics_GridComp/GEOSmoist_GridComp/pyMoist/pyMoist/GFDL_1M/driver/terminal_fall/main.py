@@ -186,7 +186,7 @@ class TerminalFall:
                 precip_fall,
             )
 
-            if self.GFDL_1M_config.USE_PPM == False:
+            if self.GFDL_1M_config.USE_PPM is False:
                 self._implicit_fall(
                     qi1,
                     vti,
@@ -244,7 +244,7 @@ class TerminalFall:
             precip_fall,
         )
 
-        if self.GFDL_1M_config.USE_PPM == False:
+        if self.GFDL_1M_config.USE_PPM is False:
             self._implicit_fall(
                 qs1,
                 vts,
@@ -302,7 +302,7 @@ class TerminalFall:
             precip_fall,
         )
 
-        if self.GFDL_1M_config.USE_PPM == False:
+        if self.GFDL_1M_config.USE_PPM is False:
             self._implicit_fall(
                 qg1,
                 vtg,

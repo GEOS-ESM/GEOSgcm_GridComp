@@ -1,7 +1,7 @@
 from gt4py.cartesian.gtscript import PARALLEL, atan, computation, interval, sqrt, tan
 
 import pyMoist.constants as constants
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, IntFieldIJ
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
 def rh_calculations(

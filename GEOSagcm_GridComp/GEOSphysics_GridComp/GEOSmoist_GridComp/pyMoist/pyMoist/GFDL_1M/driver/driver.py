@@ -1,9 +1,9 @@
 """GFDL_1M driver"""
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
-from pyMoist.GFDL_1M.driver.check_flags import check_flags
+from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.config import GFDL1MConfig
+from pyMoist.GFDL_1M.driver.check_flags import check_flags
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.fall_speed.main import FallSpeed
 from pyMoist.GFDL_1M.driver.finish.main import Finish

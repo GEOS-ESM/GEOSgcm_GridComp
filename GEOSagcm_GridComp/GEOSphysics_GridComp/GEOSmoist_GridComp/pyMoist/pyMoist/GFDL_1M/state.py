@@ -1,5 +1,6 @@
-from ndsl import Quantity
 from dataclasses import dataclass
+
+from ndsl import Quantity
 
 
 @dataclass

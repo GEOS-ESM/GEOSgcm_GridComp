@@ -1,9 +1,5 @@
+from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
-from ndsl.dsl.gt4py import (
-    computation,
-    interval,
-    PARALLEL,
-)
 
 
 def prepare_tendencies(

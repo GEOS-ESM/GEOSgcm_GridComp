@@ -230,8 +230,7 @@ class PhaseChangeConstants:
     for i in range(1, 4):
         for k in range(1, 5):
             ACCO[i - 1, k - 1] = ACC[i - 1] / (
-                ACT[2 * k - 2] ** ((7 - i) * Float(0.25))
-                * ACT[2 * k - 1] ** (i * Float(0.25))
+                ACT[2 * k - 2] ** ((7 - i) * Float(0.25)) * ACT[2 * k - 1] ** (i * Float(0.25))
             )
 
     ACCO_00 = ACCO[0, 0]
@@ -273,6 +272,3 @@ class PhaseChangeConstants:
     ESBASW = Float(1013246.0)
     TBASW = TABLE_ICE + Float(100.0)
     ESBASI = Float(6107.1)
-
-
-constants = DriverConstants()

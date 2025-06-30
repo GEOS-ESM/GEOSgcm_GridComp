@@ -1,21 +1,9 @@
 from typing import Dict, Optional
 
-import numpy as np
-from gt4py.cartesian.gtscript import THIS_K
-
 from ndsl.boilerplate import get_factories_single_tile
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import PARALLEL, GlobalTable, computation, interval
-from ndsl.dsl.typing import Float, Int
-from pyMoist.field_types import GlobalTable_saturaion_tables
-from pyMoist.saturation_tables.constants import (
-    DELTA_T,
-    MAPL_TICE,
-    TABLESIZE,
-    TMINLQU,
-    TMINTBL,
-    TMIX,
-)
+from ndsl.constants import Z_DIM
+from ndsl.dsl.typing import Float
+from pyMoist.saturation_tables.constants import DELTA_T, MAPL_TICE, TABLESIZE, TMINLQU, TMINTBL, TMIX
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.ice_exact import ice_exact
 from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact
@@ -102,9 +90,7 @@ class SaturationVaporPressureTable:
 
 
 # Table needs to be calculated only once
-_cached_estimated_saturation: Dict[
-    SaturationFormulation, Optional[SaturationVaporPressureTable]
-] = {
+_cached_estimated_saturation: Dict[SaturationFormulation, Optional[SaturationVaporPressureTable]] = {
     SaturationFormulation.MurphyAndKoop: None,
     SaturationFormulation.CAM: None,
     SaturationFormulation.Staars: None,
@@ -116,7 +102,5 @@ def get_table(
     formulation: SaturationFormulation = SaturationFormulation.Staars,
 ) -> SaturationVaporPressureTable:
     if _cached_estimated_saturation[formulation] is None:
-        _cached_estimated_saturation[formulation] = SaturationVaporPressureTable(
-            backend, formulation
-        )
+        _cached_estimated_saturation[formulation] = SaturationVaporPressureTable(backend, formulation)
     return _cached_estimated_saturation[formulation]

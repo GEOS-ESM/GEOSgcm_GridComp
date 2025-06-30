@@ -1,15 +1,9 @@
-from ndsl import StencilFactory
-from ndsl.dsl.gt4py import (
-    computation,
-    interval,
-    PARALLEL,
-    exp,
-    tanh,
-    log10,
-)
 from gt4py.cartesian.gtscript import f64
+
+from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Int
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, interval, log10, tanh
+from ndsl.dsl.typing import FloatField
 
 
 def calculate_dbz(
@@ -25,31 +19,31 @@ def calculate_dbz(
     dbz: FloatField,
 ):
     from __externals__ import (
-        R1,
-        RON,
-        RON2,
-        SON,
-        GON,
-        RON_MIN,
-        RON_QR0,
-        RON_DELQR0,
-        RON_CONST1R,
-        RON_CONST2R,
-        RN0_R,
-        RN0_S,
-        RN0_G,
-        GAMMA_SEVEN,
-        RHOWAT,
-        RHO_R,
-        RHO_S,
-        RHO_G,
         ALPHA,
         CELKEL,
-        PI,
-        RD,
+        FACTOR_G,
         FACTOR_R,
         FACTOR_S,
-        FACTOR_G,
+        GAMMA_SEVEN,
+        GON,
+        PI,
+        R1,
+        RD,
+        RHO_G,
+        RHO_R,
+        RHO_S,
+        RHOWAT,
+        RN0_G,
+        RN0_R,
+        RN0_S,
+        RON,
+        RON2,
+        RON_CONST1R,
+        RON_CONST2R,
+        RON_DELQR0,
+        RON_MIN,
+        RON_QR0,
+        SON,
     )
 
     with computation(PARALLEL), interval(...):
@@ -64,7 +58,7 @@ def calculate_dbz(
         if graupel < 0:
             graupel = 0
 
-        if model_has_snow == False:
+        if model_has_snow is False:
             # COmpute snow based on rain and temperature
             if t < CELKEL:
                 snow = rain
@@ -76,7 +70,7 @@ def calculate_dbz(
         # Adjust factor for brightband, where snow or graupel particle
         # scatters like liquid water (alpha=1.0) because it is assumed to
         # have a liquid skin.
-        if iliqskin == True and t > CELKEL:
+        if iliqskin is True and t > CELKEL:
             FACTORB_S = FACTOR_S / ALPHA
             FACTORB_G = FACTOR_G / ALPHA
         else:
@@ -84,7 +78,7 @@ def calculate_dbz(
             FACTORB_G = FACTOR_G
 
         # Calculate variable intercept parameters
-        if ivarint == True:
+        if ivarint is True:
             temp_c = min(f64(-0.001), t - CELKEL)
             sonv = min(f64(2.0e8), f64(2.0e6) * exp(f64(-0.12e0) * temp_c))
             gonv = GON
