@@ -158,8 +158,6 @@ class MicrophysicsDriver:
         dt_dt: FloatField,
         du_dt: FloatField,
         dv_dt: FloatField,
-        anv_icefall: Float,
-        ls_icefall: Float,
     ):
         """
         Evaluate the microphysics driver. The driver call is broken into six parts:
@@ -278,8 +276,6 @@ class MicrophysicsDriver:
                 self.temporaries.vts,
                 self.temporaries.vtg,
                 convection_fraction,
-                anv_icefall,
-                ls_icefall,
             )
 
             self._terminal_fall(

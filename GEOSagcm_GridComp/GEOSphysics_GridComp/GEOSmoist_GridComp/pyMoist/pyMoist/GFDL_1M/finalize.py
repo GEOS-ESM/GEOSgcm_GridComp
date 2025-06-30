@@ -327,7 +327,6 @@ class Finalize:
         outputs: Outputs,
         temporaries: Temporaries,
         driver: MicrophysicsDriver,
-        saturation_tables: SaturationVaporPressureTable,
     ):
         self.redistribute_clouds(
             cloud_fraction=outputs.radiation_cloud_fraction,
@@ -405,8 +404,8 @@ class Finalize:
             outputs.liquid_radius,
             outputs.ice_radius,
             outputs.relative_humidity_after_pdf,
-            saturation_tables.ese,
-            saturation_tables.esx,
+            self.saturation_tables.ese,
+            self.saturation_tables.esx,
         )
 
         if self.GFDL_1M_config.DO_QA == True:

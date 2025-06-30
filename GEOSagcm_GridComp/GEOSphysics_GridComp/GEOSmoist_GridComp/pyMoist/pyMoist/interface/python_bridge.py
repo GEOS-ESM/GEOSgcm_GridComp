@@ -603,6 +603,8 @@ def pyMoist_init(
 def gfdl_1m_init(gfdl_1m_flags: cffi.FFI.CData) -> None:
     if not WRAPPER.ready:
         raise RuntimeError("[GFDL_1M WRAPPER] pyMoist_init needs to be called first")
-    WRAPPER.pymoist.init_gfdl_1m_configuration(
-        flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
-    )
+    if not WRAPPER.pymoist._GFDL_1M_ready:
+        WRAPPER.pymoist.init_gfdl_1m_configuration(
+            flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
+        )
+        WRAPPER.pymoist._GFDL_1M_ready = True

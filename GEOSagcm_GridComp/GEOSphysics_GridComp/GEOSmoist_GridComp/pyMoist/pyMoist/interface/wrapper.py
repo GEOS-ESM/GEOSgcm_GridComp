@@ -36,6 +36,7 @@ from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
+from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
 from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
 from MAPLpyish import CVoidPointer
 from pyMoist.interface.mapl.memory_factory import (
@@ -200,6 +201,7 @@ class GEOSPyMoistWrapper:
         # JIT system for the component of Moist
         self._aer_activation: Optional[AerActivation] = None
         self._GFDL_1M_driver: Optional[MicrophysicsDriver] = None
+        self._GFDL_1M_ready: Optional[bool] = False
 
         # Initalize MAPL Memory Respositories
         self._mapl_internal = MAPLMemoryRepository(

@@ -201,8 +201,6 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         )
 
         self.driver(
-            anv_icefall=self.GFDL_1M_config.ANV_ICEFALL,
-            ls_icefall=self.GFDL_1M_config.LS_ICEFALL,
             **inputs,
         )
 

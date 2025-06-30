@@ -38,6 +38,8 @@ class FallSpeed:
                 "vs_max": GFDL_1M_config.VS_MAX,
                 "vg_fac": GFDL_1M_config.VG_FAC,
                 "vg_max": GFDL_1M_config.VG_MAX,
+                "anv_icefall": GFDL_1M_config.ANV_ICEFALL,
+                "ls_icefall": GFDL_1M_config.LS_ICEFALL,
             },
         )
 
@@ -59,8 +61,6 @@ class FallSpeed:
         vts: FloatField,
         vtg: FloatField,
         cnv_frc: FloatFieldIJ,
-        anv_icefall: Float,
-        ls_icefall: Float,
     ):
         self._fall_speed_core(
             ql1,
@@ -78,6 +78,4 @@ class FallSpeed:
             vts,
             vtg,
             cnv_frc,
-            anv_icefall,
-            ls_icefall,
         )

@@ -250,8 +250,6 @@ class GFDL1M:
             dt_dt=self.temporaries.dt_dt,
             du_dt=self.temporaries.du_dt,
             dv_dt=self.temporaries.dv_dt,
-            anv_icefall=self.GFDL_1M_config.ANV_ICEFALL,
-            ls_icefall=self.GFDL_1M_config.LS_ICEFALL,
         )
 
         self.update_radiation_quantities(

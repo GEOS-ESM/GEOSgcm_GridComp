@@ -21,8 +21,6 @@ def fall_speed(
     vts: FloatField,
     vtg: FloatField,
     cnv_frc: FloatFieldIJ,
-    anv_icefall: Float,
-    lsc_icefall: Float,
 ):
     """
     calculate the vertical fall speed of precipitation
@@ -43,8 +41,6 @@ def fall_speed(
         vts (out): terminal fall speed for snow
         vtg (out): terminal fall speed for graupel
         cnv_frc (in): convection fraction
-        anv_icefall (in): details unknown
-        lsc_icefall (in): details unknown
 
     Externals:
         const_vg (bool): controls constant vs computed terminal velocity for graupel
@@ -57,6 +53,8 @@ def fall_speed(
         vi_max (Float): details unknown
         vs_fac (Float): details unknown
         vs_max (Float): details unknown
+        anv_icefall (in): details unknown
+        ls_icefall (in): details unknown
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutines mpdrv and fall_speed
     """
@@ -71,6 +69,8 @@ def fall_speed(
         vi_max,
         vs_fac,
         vs_max,
+        anv_icefall,
+        ls_icefall,
     )
 
     with computation(PARALLEL), interval(...):
@@ -101,7 +101,7 @@ def fall_speed(
                 # use deng and mace (2008, grl)
                 # https://doi.org/10.1029/2008GL035054
                 # -----------------------------------------------------------------------
-                viLSC = lsc_icefall * 10.0 ** (
+                viLSC = ls_icefall * 10.0 ** (
                     log10(IWC) * (tc * (constants.AAL * tc + constants.BBL) + constants.CCL)
                     + constants.DDL * tc
                     + constants.EEL
