@@ -1556,6 +1556,24 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
+        LONG_NAME          = 'ocean_icefall'            ,&
+        UNITS              = 'kg m-2 s-1'                ,&
+        SHORT_NAME         = 'ICEFOCN'                   ,&
+        DIMS               = MAPL_DimsHorzOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                               RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                     &
+        LONG_NAME          = 'ocean_snow_and_icefall'    ,&
+        UNITS              = 'kg m-2 s-1'                ,&
+        SHORT_NAME         = 'SPTOTOCN'                  ,&
+        DIMS               = MAPL_DimsHorzOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                               RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'ocean_rainfall'            ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'RAINOCN'                   ,&
@@ -5482,6 +5500,8 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: LWNDICE  => NULL()
     real, pointer, dimension(:,:) :: SWNDICE  => NULL()
     real, pointer, dimension(:,:) :: SNOWOCN  => NULL()
+    real, pointer, dimension(:,:) :: ICEFOCN  => NULL()
+    real, pointer, dimension(:,:) :: SPTOTOCN => NULL()
     real, pointer, dimension(:,:) :: RAINOCN  => NULL()
     real, pointer, dimension(:,:) :: TSKINW   => NULL()
     real, pointer, dimension(:,:) :: TSKINICE => NULL()
@@ -5800,6 +5820,8 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: LWNDICETILE    => NULL()
     real, pointer, dimension(:) :: SWNDICETILE    => NULL()
     real, pointer, dimension(:) :: SNOWOCNTILE    => NULL()
+    real, pointer, dimension(:) :: ICEFOCNTILE    => NULL()
+    real, pointer, dimension(:) ::SPTOTOCNTILE    => NULL()
     real, pointer, dimension(:) :: RAINOCNTILE    => NULL()
     real, pointer, dimension(:) ::  TSKINWTILE    => NULL()
     real, pointer, dimension(:) ::  TSKINICETILE  => NULL()
@@ -6401,8 +6423,8 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT, ICE , 'ICE' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FRZR, 'FRZR', alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
-! These are the precips exported by moist
-!----------------------------------------
+! These are the precips imported from moist
+!------------------------------------------
 
     call MAPL_GetPointer(IMPORT, PCU     , 'PCU'     ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PLS     , 'PLS'     ,  RC=STATUS); VERIFY_(STATUS)
@@ -6463,8 +6485,12 @@ module GEOS_SurfaceGridCompMod
        allocate( PRECSUM(IM,JM), stat=STATUS )
        VERIFY_(STATUS)
 
-       PRECSUM = RCU+RLS+SNO+ICE+FRZR
-
+       ! PRECSUM = uncorrected total precip
+       ! PTTe    = total precip from file
+       
+       PRECSUM = RCU+RLS+SNO+ICE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in RCU+RLS
+                                  ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025
+       
        where (PTTe == MAPL_UNDEF)
           RCU = PCU
           RLS = PLS
@@ -6708,6 +6734,8 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , LWNDICE   , 'LWNDICE'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SWNDICE   , 'SWNDICE'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SNOWOCN   , 'SNOWOCN'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , ICEFOCN   , 'ICEFOCN'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SPTOTOCN  , 'SPTOTOCN'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RAINOCN   , 'RAINOCN'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TSKINW    , 'TSKINW'    ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TSKINICE  , 'TSKINICE'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -7310,6 +7338,8 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(LWNDICE   ,LWNDICETILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SWNDICE   ,SWNDICETILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SNOWOCN   ,SNOWOCNTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(ICEFOCN   ,ICEFOCNTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(SPTOTOCN  ,SPTOTOCNTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RAINOCN   ,RAINOCNTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(TSKINW,   TSKINWTILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(TSKINICE, TSKINICETILE ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -7648,7 +7678,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
     if(PRECIP_FILE /= "null") then
-       TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE + FRZRFLTILE
+       TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in PCUTILE+PCSTILE
        call MAPL_LocStreamTransform( LOCSTREAM, PRECTOT, TMPTILE, RC=STATUS)
        VERIFY_(STATUS)
     else
@@ -8122,6 +8152,16 @@ module GEOS_SurfaceGridCompMod
 
     if(associated(  SNOWOCN)) then
        call MAPL_LocStreamTransform( LOCSTREAM, SNOWOCN,   SNOWOCNTILE, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+
+    if(associated(  ICEFOCN)) then
+       call MAPL_LocStreamTransform( LOCSTREAM, ICEFOCN,   ICEFOCNTILE, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+
+    if(associated( SPTOTOCN)) then
+       call MAPL_LocStreamTransform( LOCSTREAM, SPTOTOCN, SPTOTOCNTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
 
@@ -8893,6 +8933,8 @@ module GEOS_SurfaceGridCompMod
     if(associated(LWNDICETILE   )) deallocate(LWNDICETILE   )
     if(associated(SWNDICETILE   )) deallocate(SWNDICETILE   )
     if(associated(SNOWOCNTILE   )) deallocate(SNOWOCNTILE   )
+    if(associated(ICEFOCNTILE   )) deallocate(ICEFOCNTILE   )
+    if(associated(SPTOTOCNTILE  )) deallocate(SPTOTOCNTILE  )
     if(associated(RAINOCNTILE   )) deallocate(RAINOCNTILE   )
     if(associated(TSKINWTILE  )) deallocate(TSKINWTILE  )
     if(associated(TSKINICETILE  )) deallocate(TSKINICETILE  )
@@ -9480,6 +9522,10 @@ module GEOS_SurfaceGridCompMod
       call MAPL_GetPointer(GEX(type), dum, 'RAINOCN' , ALLOC=associated(RAINOCNTILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'SNOWOCN' , ALLOC=associated(SNOWOCNTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'ICEFOCN' , ALLOC=associated(ICEFOCNTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SPTOTOCN', ALLOC=associated(SPTOTOCNTILE), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'TSKINW', ALLOC=associated(TSKINWTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
@@ -10209,6 +10255,14 @@ module GEOS_SurfaceGridCompMod
       end if
       if(associated(SNOWOCNTILE)) then
          call FILLOUT_TILE(GEX(type), 'SNOWOCN',  SNOWOCNTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if(associated(ICEFOCNTILE)) then
+         call FILLOUT_TILE(GEX(type), 'ICEFOCN',  ICEFOCNTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if(associated(SPTOTOCNTILE)) then
+         call FILLOUT_TILE(GEX(type), 'SPTOTOCN', SPTOTOCNTILE,XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
 
