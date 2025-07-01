@@ -545,7 +545,7 @@ class GEOSPyMoistWrapper:
             else:
                 self.gfdl_1m.outputs.large_scale_rainwater_source = None
             if mapl_export.associated("DTDTFRIC"):
-                self.gfdl_1m.outputs.moist_friction_temperature_tendency = mapl_export.DTDTFIRC
+                self.gfdl_1m.outputs.moist_friction_temperature_tendency = mapl_export.DTDTFRIC
             else:
                 self.gfdl_1m.outputs.moist_friction_temperature_tendency = None
             if mapl_export.associated("DBZ"):
