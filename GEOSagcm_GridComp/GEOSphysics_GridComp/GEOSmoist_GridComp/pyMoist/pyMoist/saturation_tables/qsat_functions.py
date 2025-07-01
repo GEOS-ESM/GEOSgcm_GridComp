@@ -64,7 +64,7 @@ def saturation_specific_humidity_frozen_surface(
         ddq = ese.A[t_integer] - ese.A[t_integer - 1]  # type: ignore
         qs = (t - t_integer) * ddq + ese.A[t_integer - 1]  # type: ignore
 
-    if pressure_correction is True:
+    if pressure_correction == True:  # noqa
         if p > qs:
             dd = ESFAC / (p - (1.0 - ESFAC) * qs)
             qs = qs * dd
@@ -109,12 +109,12 @@ def saturation_specific_humidity_liquid_surface(
     dqsat = 0.0
     if t <= TMINLQU:
         qsat = lqu
-        if compute_dq is True:
+        if compute_dq == True:  # noqa
             ddq = 0.0
     elif t >= TMAXTBL:
         TABLESIZE_MINUS_1: i32 = TABLESIZE - 1
         qsat = esw.A[TABLESIZE_MINUS_1]  # type: ignore
-        if compute_dq is True:
+        if compute_dq == True:  # noqa
             ddq = 0.0
     else:
         t = (t - TMINTBL) * DEGSUBS + 1
@@ -122,18 +122,18 @@ def saturation_specific_humidity_liquid_surface(
         ddq = esw.A[t_integer] - esw.A[t_integer - 1]  # type: ignore
         qsat = (t - t_integer) * ddq + esw.A[t_integer - 1]  # type: ignore
 
-    if pressure_correction is True:
+    if pressure_correction == True:  # noqa
         if p > qsat:
             dd = ESFAC / (p - (1.0 - ESFAC) * qsat)
             qsat = qsat * dd
-            if compute_dq is True:
+            if compute_dq == True:  # noqa
                 dqsat = ddq * ERFAC * p * dd * dd
         else:
             qsat = MAX_MIXING_RATIO
-            if compute_dq is True:
+            if compute_dq == True:  # noqa
                 dqsat = 0.0
     else:
-        if compute_dq is True:
+        if compute_dq == True:  # noqa
             dqsat = ddq
 
     return qsat, dqsat
@@ -167,7 +167,7 @@ def saturation_specific_humidity(
         qsat (out): saturation specific humidity
         dqsat (out): derivative saturation specific humidity with respect to temperature
     """
-    if use_ramp is True:
+    if use_ramp == True:  # noqa
         uramp = -abs(ramp)
     else:
         uramp = TMIX

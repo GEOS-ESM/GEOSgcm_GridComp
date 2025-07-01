@@ -1,4 +1,4 @@
-from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, log10, sqrt
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, interval, log, log10, sqrt
 
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants

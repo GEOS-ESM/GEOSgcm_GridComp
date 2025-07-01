@@ -1,25 +1,12 @@
 from ndsl import QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.finalize import Finalize
-from pyMoist.GFDL_1M.getters_temporary import (
-    associated_checker,
-    esmf_placeholder,
-    mapl_get_pointer_placeholder,
-    mapl_get_resource_placeholder,
-)
 from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.outputs import Outputs
 from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
 from pyMoist.GFDL_1M.setup import Setup
-from pyMoist.GFDL_1M.state import (
-    CloudFractions,
-    LiquidWaterStaticEnergy,
-    MixingRatios,
-    TotalWater,
-    VericalMotion,
-)
 from pyMoist.GFDL_1M.stencils import (
     prepare_radiation_quantities,
     prepare_tendencies,
@@ -27,7 +14,6 @@ from pyMoist.GFDL_1M.stencils import (
     update_tendencies,
 )
 from pyMoist.GFDL_1M.temporaries import Temporaries
-from pyMoist.interface.mapl.memory_factory import MAPLMemoryRepository
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 

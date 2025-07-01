@@ -4,7 +4,6 @@ from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, s
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
 from pyMoist.field_types import GlobalTable_saturaion_tables
-from pyMoist.GFDL_1M.calculate_dbz import CalculateDBZ
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.masks import Masks
@@ -199,7 +198,6 @@ def dissipative_ke_heating(
     fpi: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(...):
-        t_tendency = 0.0
         # total KE dissipation estimate
         dts = dts - ((du_dt_macro + du_dt_micro) * u0 + (dv_dt_macro + dv_dt_micro) * v0) * mass
         # [sic] fpi needed for calcualtion of conversion to pot. energyintegrated
@@ -219,14 +217,13 @@ def dissipative_ke_heating(
         fpi = 0
 
 
-def export_maximum_reflectivity(
-    simluated_reflectivity: FloatField,
-    maximum_reflectivity: FloatFieldIJ,
+def update_rainwater_source(
+    large_scale_rainwater_source: FloatField,
+    drain_dt_macro: FloatField,
+    drain_dt_micro: FloatField,
 ):
-    with computation(FORWARD), interval(0, 1):
-        maximum_reflectivity = -9999.0
-    with computation(FORWARD), interval(...):
-        maximum_reflectivity = max(maximum_reflectivity, simluated_reflectivity)
+    with computation(PARALLEL), interval(...):
+        large_scale_rainwater_source = drain_dt_macro + drain_dt_micro
 
 
 class Finalize:
@@ -285,15 +282,13 @@ class Finalize:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self.dissipative_ke_heating = stencil_factory.from_dims_halo(
-            func=dissipative_ke_heating,
+        self.update_rainwater_source = stencil_factory.from_dims_halo(
+            func=update_rainwater_source,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self.calculate_dbz = CalculateDBZ(stencil_factory)
-
-        self.export_maximum_reflectivity = stencil_factory.from_dims_halo(
-            func=export_maximum_reflectivity,
+        self.dissipative_ke_heating = stencil_factory.from_dims_halo(
+            func=dissipative_ke_heating,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -510,53 +505,30 @@ class Finalize:
             dgraupel_dt=outputs.dgraupel_dt_micro,
         )
 
-        # if associated_checker(outputs.large_scale_rainwater_source) == True:
-        #     outputs.large_scale_rainwater_source = outputs.drain_dt_macro + outputs.drain_dt_micro
+        if outputs.large_scale_rainwater_source is not None:
+            self.update_rainwater_source(
+                outputs.large_scale_rainwater_source, outputs.drain_dt_macro, outputs.drain_dt_micro
+            )
 
-        # if associated_checker(outputs.moist_friction_temperature_tendency) == True:
-        #     self.dissipative_ke_heating(
-        #         mass=temporaries.mass,
-        #         u0=temporaries.u_unmodified,
-        #         v0=temporaries.v_unmodified,
-        #         du_dt_macro=outputs.du_dt_macro,
-        #         du_dt_micro=outputs.du_dt_micro,
-        #         dv_dt_macro=outputs.dv_dt_macro,
-        #         dv_dt_micro=outputs.dv_dt_micro,
-        #         t_tendency=outputs.moist_friction_temperature_tendency,
-        #         dts=temporaries.temporary_2d_1,
-        #         fpi=temporaries.temporary_2d_2,
-        #     )
+        if outputs.moist_friction_temperature_tendency is not None:
+            self.dissipative_ke_heating(
+                mass=temporaries.mass,
+                u0=temporaries.u_unmodified,
+                v0=temporaries.v_unmodified,
+                du_dt_macro=outputs.du_dt_macro,
+                du_dt_micro=outputs.du_dt_micro,
+                dv_dt_macro=outputs.dv_dt_macro,
+                dv_dt_micro=outputs.dv_dt_micro,
+                t_tendency=outputs.moist_friction_temperature_tendency,
+                dts=temporaries.temporary_2d_1,
+                fpi=temporaries.temporary_2d_2,
+            )
 
         # if (
-        #     associated_checker(outputs.simulated_reflectivity) == True
-        #     or associated_checker(outputs.maximum_reflectivity) == True
-        #     or associated_checker(outputs.one_km_agl_reflectivity) == True
-        #     or associated_checker(outputs.echo_top_reflectivity) == True
-        #     or associated_checker(outputs.minus_10c_reflectivity) == True
+        #     outputs.simulated_reflectivity is not None
+        #     or outputs.maximum_reflectivity is not None
+        #     or outputs.one_km_agl_reflectivity is not None
+        #     or outputs.echo_top_reflectivity is not None
+        #     or outputs.minus_10c_reflectivity is not None
         # ):
-        #     self.calculate_dbz(
-        #         p=temporaries.p_mb,
-        #         t=t,
-        #         vapor=mixing_ratios.vapor,
-        #         rain=mixing_ratios.rain,
-        #         snow=mixing_ratios.snow,
-        #         graupel=mixing_ratios.graupel,
-        #         rain_is_snow=True,
-        #         ivarint=False,
-        #         iliqskin=True,
-        #         dbz=outputs.simulated_reflectivity,
-        #     )
-        #     if associated_checker(outputs.simulated_reflectivity) == True:
-        #         self.export_maximum_reflectivity(
-        #             simulated_reflectivity=outputs.simulated_reflectivity,
-        #             maximum_reflectivity=outputs.maximum_reflectivity,
-        #         )
-
-        #     if associated_checker(outputs.one_km_agl_reflectivity) == True:
-        #         raise NotImplementedError("not done yet")
-
-        #     if associated_checker(outputs.echo_top_reflectivity) == True:
-        #         raise NotImplementedError("not done yet")
-
-        #     if associated_checker(outputs.minus_10c_reflectivity) == True:
-        #         raise NotImplementedError("not done yet")
+        #     raise NotImplementedError("Diagnostic radar output not implemented yet.")

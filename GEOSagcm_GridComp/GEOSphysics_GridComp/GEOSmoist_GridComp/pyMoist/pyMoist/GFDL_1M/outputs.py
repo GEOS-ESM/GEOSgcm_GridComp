@@ -7,7 +7,7 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 @dataclass
 class Outputs:
     lower_tropospheric_stability: Quantity
-    estimated_inversion_strength: Quantity
+    estimated_inversion_stregnth: Quantity
     z_lcl: Quantity
     du_dt_macro: Quantity
     dv_dt_macro: Quantity

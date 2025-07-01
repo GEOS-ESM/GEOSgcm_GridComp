@@ -404,6 +404,7 @@ class GEOSPyMoistWrapper:
         self._mapl_export.register("PFL_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
         self._mapl_export.register("PFI_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
         self._mapl_export.register("DQRL", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_export.register("DTDTFRIC", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("DBZ", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("DBZ_MAX", np.float32, [X_DIM, Y_DIM])
         self._mapl_export.register("DBZ_1KM", np.float32, [X_DIM, Y_DIM])
@@ -472,8 +473,14 @@ class GEOSPyMoistWrapper:
 
             self.gfdl_1m.convection_fraction = mapl_export.CNV_FRC
             self.gfdl_1m.surface_type = mapl_export.SRF_TYPE
-            self.gfdl_1m.shallow_convective_rain = mapl_export.SHLW_PRC3
-            self.gfdl_1m.shallow_convective_snow = mapl_export.SHLW_SNO3
+            if mapl_export.associated("SHLW_PRC3"):
+                self.gfdl_1m.shallow_convective_rain = mapl_export.SHLW_PRC3
+            else:
+                self.gfdl_1m.shallow_convective_rain = None
+            if mapl_export.associated("SHLW_SNO3"):
+                self.gfdl_1m.shallow_convective_snow = mapl_export.SHLW_SNO3
+            else:
+                self.gfdl_1m.shallow_convective_rain = None
             self.gfdl_1m.rh_crit = mapl_export.RHCRIT
             # Outputs: model fields originating from within GFDL
             self.gfdl_1m.outputs.liquid_radius = mapl_export.RL
@@ -495,7 +502,10 @@ class GEOSPyMoistWrapper:
             self.gfdl_1m.outputs.radiation_graupel = mapl_export.QG
             self.gfdl_1m.outputs.lower_tropospheric_stability = mapl_export.LTS
             self.gfdl_1m.outputs.estimated_inversion_strength = mapl_export.EIS
-            self.gfdl_1m.outputs.z_lcl = mapl_export.ZLCL
+            if mapl_export.associated("ZLCL"):
+                self.gfdl_1m.outputs.z_lcl = mapl_export.ZLCL
+            else:
+                self.gfdl_1m.outputs.z_lcl = None
 
             # Outputs: model fields originating from within GFDL; macrophysics/microphysics tendencies
             self.gfdl_1m.outputs.du_dt_macro = mapl_export.DUDT_macro
@@ -530,12 +540,34 @@ class GEOSPyMoistWrapper:
             self.gfdl_1m.outputs.large_scale_nonanvil_ice_flux = mapl_export.PFI_LS
             self.gfdl_1m.outputs.anvil_liquid_flux = mapl_export.PFL_AN
             self.gfdl_1m.outputs.anvil_ice_flux = mapl_export.PFI_AN
-            self.gfdl_1m.outputs.large_scale_rainwater_source = mapl_export.DQRL
-            self.gfdl_1m.outputs.simulated_reflectivity = mapl_export.DBZ
-            self.gfdl_1m.outputs.maximum_reflectivity = mapl_export.DBZ_MAX
-            self.gfdl_1m.outputs.one_km_agl_reflectivity = mapl_export.DBZ_1KM
-            self.gfdl_1m.outputs.echo_top_reflectivity = mapl_export.DBZ_TOP
-            self.gfdl_1m.outputs.minus_10c_reflectivity = mapl_export.DBZ_M10C
+            if mapl_export.associated("DQRL"):
+                self.gfdl_1m.outputs.large_scale_rainwater_source = mapl_export.DQRL
+            else:
+                self.gfdl_1m.outputs.large_scale_rainwater_source = None
+            if mapl_export.associated("DTDTFRIC"):
+                self.gfdl_1m.outputs.moist_friction_temperature_tendency = mapl_export.DTDTFIRC
+            else:
+                self.gfdl_1m.outputs.moist_friction_temperature_tendency = None
+            if mapl_export.associated("DBZ"):
+                self.gfdl_1m.outputs.simulated_reflectivity = mapl_export.DBZ
+            else:
+                self.gfdl_1m.outputs.simulated_reflectivity = None
+            if mapl_export.associated("DBZ_MAX"):
+                self.gfdl_1m.outputs.maximum_reflectivity = mapl_export.DBZ_MAX
+            else:
+                self.gfdl_1m.outputs.maximum_reflectivity = None
+            if mapl_export.associated("DBZ_1KM"):
+                self.gfdl_1m.outputs.one_km_agl_reflectivity = mapl_export.DBZ_1KM
+            else:
+                self.gfdl_1m.outputs.one_km_agl_reflectivity = None
+            if mapl_export.associated("DBZ_TOP"):
+                self.gfdl_1m.outputs.echo_top_reflectivity = mapl_export.DBZ_TOP
+            else:
+                self.gfdl_1m.outputs.echo_top_reflectivity = None
+            if mapl_export.associated("DBZ_M10C"):
+                self.gfdl_1m.outputs.minus_10c_reflectivity = mapl_export.DBZ_M10C
+            else:
+                self.gfdl_1m.outputs.minus_10c_reflectivity = None
             # Unused fields, force to zero
             self.gfdl_1m.outputs.deep_convective_precipitation = mapl_export.CN_PRCP
             self.gfdl_1m.outputs.anvil_precipitation = mapl_export.AN_PRCP

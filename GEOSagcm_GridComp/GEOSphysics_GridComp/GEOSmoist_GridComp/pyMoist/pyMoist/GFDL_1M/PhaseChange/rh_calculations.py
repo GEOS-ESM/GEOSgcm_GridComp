@@ -1,4 +1,4 @@
-from gt4py.cartesian.gtscript import PARALLEL, atan, computation, interval, sqrt, tan
+from ndsl.dsl.gt4py import PARALLEL, atan, computation, interval, sqrt, tan
 
 import pyMoist.constants as constants
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ

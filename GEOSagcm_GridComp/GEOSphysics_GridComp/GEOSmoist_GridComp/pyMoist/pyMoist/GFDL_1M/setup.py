@@ -17,7 +17,6 @@ from pyMoist.constants import (
 )
 from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.getters_temporary import associated_checker
 from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.outputs import Outputs
 from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
@@ -101,7 +100,7 @@ def find_tlcl(
     return tlcl
 
 
-def find_klcl(
+def find_k_lcl(
     t: FloatField,
     p_mb: FloatField,
     vapor: FloatField,
@@ -135,7 +134,7 @@ def find_klcl(
 
     # find nearest level <= LCL pressure
     with computation(BACKWARD), interval(...):
-        if found_level is False:
+        if found_level == False:  # noqa
             k_lcl = THIS_K
         if p_mb <= plcl.at(K=k_end):
             found_level = True
@@ -143,6 +142,15 @@ def find_klcl(
     # Reset mask for future use
     with computation(FORWARD), interval(0, 1):
         found_level = False
+
+
+def update_z_lcl(
+    layer_height_above_surface: FloatField,
+    k_lcl: FloatFieldIJ,
+    z_lcl: FloatFieldIJ,
+):
+    with computation(FORWARD), interval(0, 1):
+        z_lcl = layer_height_above_surface.at(K=k_lcl)
 
 
 def find_eis(
@@ -177,6 +185,16 @@ def find_eis(
         estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (z700 - zlcl)
 
 
+def update_precipitaiton(
+    mixing_ratio: FloatField,
+    shallow_convection_values: FloatField,
+):
+    from __externals__ import DT_MOIST
+
+    with computation(PARALLEL), interval(...):
+        mixing_ratio = mixing_ratio + shallow_convection_values * DT_MOIST
+
+
 class Setup:
     def __init__(
         self,
@@ -195,8 +213,13 @@ class Setup:
             compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
         )
 
-        self.find_klcl = stencil_factory.from_dims_halo(
-            func=find_klcl,
+        self.find_k_lcl = stencil_factory.from_dims_halo(
+            func=find_k_lcl,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self.update_z_lcl = stencil_factory.from_dims_halo(
+            func=update_z_lcl,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -208,6 +231,14 @@ class Setup:
         self.find_eis = stencil_factory.from_dims_halo(
             func=find_eis,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self.update_precipitaiton = stencil_factory.from_dims_halo(
+            func=update_precipitaiton,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "DT_MOIST": GFDL_1M_config.DT_MOIST,
+            },
         )
 
     def __call__(
@@ -277,7 +308,7 @@ class Setup:
             th=temporaries.th,
         )
 
-        self.find_klcl(
+        self.find_k_lcl(
             t=t,
             p_mb=temporaries.p_mb,
             vapor=mixing_ratios.vapor,
@@ -287,10 +318,12 @@ class Setup:
             k_lcl=temporaries.k_lcl,
         )
 
-        if associated_checker("ZLCL") is True:
-            outputs.z_lcl = temporaries.layer_height_above_surface.field[
-                :, :, temporaries.k_lcl.field[:]
-            ]  # bad but gets the point across: export height at lcl (should not execute in our test case)
+        if outputs.z_lcl is not None:
+            self.update_z_lcl(
+                temporaries.layer_height_above_surface,
+                temporaries.k_lcl,
+                outputs.z_lcl,
+            )
 
         self.vertical_interpolation(
             field=temporaries.th,
@@ -335,8 +368,8 @@ class Setup:
             estimated_inversion_strength=outputs.estimated_inversion_strength,
         )
 
-        # if associated_checker("SHLW_PRC3") == True:
-        #     mixing_ratios.rain = mixing_ratios.rain + shallow_convective_rain * self.GFDL_1M_config.DT_MOIST
+        if shallow_convective_rain is not None:
+            self.update_precipitaiton(mixing_ratios.rain, shallow_convective_rain)
 
-        # if associated_checker("SHLW_SNO3") == True:
-        #     mixing_ratios.snow = mixing_ratios.snow + shallow_convective_snow * self.GFDL_1M_config.DT_MOIST
+        if shallow_convective_snow is not None:
+            self.update_precipitaiton(mixing_ratios.snow, shallow_convective_snow)

@@ -39,14 +39,14 @@ def vertical_interpolation(
         p = log(p_interface_mb * 100)
 
     with computation(FORWARD), interval(-1, None):
-        if interface is True:
+        if interface == True:  # noqa
             pb = p
     with computation(FORWARD), interval(-1, None):
-        if interface is False:
+        if interface == False:  # noqa
             pb = 0.5 * (p[0, 0, -1] + p)
 
     with computation(BACKWARD), interval(0, -1):
-        if interface is True:
+        if interface == True:  # noqa
             pt = p.at(K=THIS_K)
             if log(target_pressure) > pt and log(target_pressure) <= pb:
                 al = (pb - log(target_pressure)) / (pb - pt)
@@ -54,7 +54,7 @@ def vertical_interpolation(
             pb = pt
 
     with computation(BACKWARD), interval(1, -1):
-        if interface is False:
+        if interface == False:  # noqa
             pt = 0.5 * (p.at(K=THIS_K - 1) + p.at(K=THIS_K))
             if log(target_pressure) > pt and log(target_pressure) <= pb:
                 al = (pb - log(target_pressure)) / (pb - pt)
@@ -63,14 +63,14 @@ def vertical_interpolation(
             pb = pt
 
     with computation(FORWARD), interval(-2, -1):
-        if interface is False:
+        if interface == False:  # noqa
             pt = 0.5 * (p + p[0, 0, -1])
             pb = 0.5 * (p + p[0, 0, 1])
             if log(target_pressure) > pb and log(target_pressure) <= p[0, 0, 1]:
                 interpolated_field = field[0, 0, -1]
 
             # ensure every point was actually touched
-            if boolean_2d_mask is False:
+            if boolean_2d_mask == False:  # noqa
                 interpolated_field = p
 
     # reset masks and temporaries for later use

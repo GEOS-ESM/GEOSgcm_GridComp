@@ -1,7 +1,7 @@
-from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, interval
 
 import pyMoist.constants as constants
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.shared_incloud_processes import ice_fraction
 
 

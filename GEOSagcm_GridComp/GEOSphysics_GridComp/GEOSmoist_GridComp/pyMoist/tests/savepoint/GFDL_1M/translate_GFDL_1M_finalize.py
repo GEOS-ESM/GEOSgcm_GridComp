@@ -31,7 +31,9 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {
             "T": grid.compute_dict(),
             "U": grid.compute_dict(),
+            "U0": grid.compute_dict(),
             "V": grid.compute_dict(),
+            "V0": grid.compute_dict(),
             "PLmb": grid.compute_dict(),
             "MASS": grid.compute_dict(),
             "RAD_CF": grid.compute_dict(),
@@ -82,9 +84,14 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
+        del (
+            self.out_vars["U0"],
+            self.out_vars["V0"],
+        )
+        self.out_vars.update({"DTDTFRIC": grid.compute_dict()})
 
     def make_ijk_quantity(self, data, interface: bool = False) -> Quantity:
-        if interface is True:
+        if interface == True:  # noqa
             quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
             quantity.view[:, :, :] = quantity.np.asarray(data[:, :, :])
             return quantity
@@ -216,7 +223,9 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
         # Make input quantities
         t = self.make_ijk_quantity(inputs.pop("T"))
         u = self.make_ijk_quantity(inputs.pop("U"))
+        temporaries.u_unmodified = self.make_ijk_quantity(inputs.pop("U0"))
         v = self.make_ijk_quantity(inputs.pop("V"))
+        temporaries.v_unmodified = self.make_ijk_quantity(inputs.pop("V0"))
         temporaries.p_mb = self.make_ijk_quantity(inputs.pop("PLmb"))
         temporaries.mass = self.make_ijk_quantity(inputs.pop("MASS"))
         ice_concentration = self.make_ijk_quantity(inputs.pop("NACTI"))
@@ -254,6 +263,14 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
         outputs.drain_dt_micro = self.make_ijk_quantity(inputs.pop("DQRDT_micro"))
         outputs.dsnow_dt_micro = self.make_ijk_quantity(inputs.pop("DQSDT_micro"))
         outputs.dgraupel_dt_micro = self.make_ijk_quantity(inputs.pop("DQGDT_micro"))
+
+        # Disable calculations not performed in test case
+        outputs.large_scale_rainwater_source = None
+        outputs.simulated_reflectivity = None
+        outputs.maximum_reflectivity = None
+        outputs.one_km_agl_reflectivity = None
+        outputs.echo_top_reflectivity = None
+        outputs.minus_10c_reflectivity = None
 
         # Spoof driver output with Fortran data
         driver = MicrophysicsDriver(
@@ -299,7 +316,6 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
             outputs=outputs,
             temporaries=temporaries,
             driver=driver,
-            saturation_tables=saturation_tables,
         )
 
         return {
@@ -353,4 +369,5 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
             "DUDT_micro": outputs.du_dt_micro.field,
             "DVDT_micro": outputs.dv_dt_micro.field,
             "DTDT_micro": outputs.dt_dt_micro.field,
+            "DTDTFRIC": outputs.moist_friction_temperature_tendency.field,
         }
