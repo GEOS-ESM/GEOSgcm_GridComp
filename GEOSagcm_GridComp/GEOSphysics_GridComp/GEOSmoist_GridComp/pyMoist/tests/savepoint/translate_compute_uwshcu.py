@@ -1,10 +1,14 @@
 from ndsl import Namelist, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
+from ndsl.dsl.typing import Float, Int, FloatField
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv
 from pyMoist.UW.config import UWConfiguration
+
+# For testing only
+import numpy as np
+import xarray as xr
 
 
 class TranslateComputeUwshcuInv(TranslateFortranData2Py):
@@ -120,6 +124,16 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "n/a",
         )
         qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
+        return qty
+
+    def make_ijk_field(self, data, dtype=FloatField) -> Quantity:
+        qty = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], "n/a", dtype=dtype)
+        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
+        return qty
+
+    def make_ij_field(self, data, dtype=FloatField) -> Quantity:
+        qty = self.quantity_factory.empty([X_DIM, Y_DIM], "n/a", dtype=dtype)
+        qty.view[:, :] = qty.np.asarray(data[:, :])
         return qty
 
     def compute(self, inputs):
@@ -333,6 +347,15 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
         )
 
+        # Test variables
+        testvar3D = QuantityFactory.zeros(
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
+        )
+
+        testvar2D = QuantityFactory.zeros(
+            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
+        )
+
         compute_uwshcu(
             # Field inputs
             pifc0_inv=pifc0_inv,
@@ -412,7 +435,81 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             qisub_inv=qisub_inv,
             tpert_out=tpert_out,
             qpert_out=qpert_out,
+            # Testvars
+            testvar3D=testvar3D,
+            testvar2D=testvar2D,
         )
+
+        # with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out2.nc") as ds:
+        #     # Load in netcdf test var
+        #     testvar = "qlten_det4"
+        #     var = testvar3D
+
+        #     testvar_nan = ds.variables[testvar].data[0, 1, :, :-1, 0, 0]
+        #     # Replace nans with zero
+        #     testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
+
+        #     # Reshape and make testvar quantity
+        #     i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
+        #     testvar_reshaped = np.reshape(testvar_zeros, (i, j, k)).astype(np.float32)
+        #     testvar_transposed = testvar_reshaped.transpose(1, 0, 2)
+        #     # testvar_out = self.make_zinterface_field(testvar_reshaped)
+        #     testvar_out = self.make_ijk_field(testvar_transposed)
+        #     # testvar_out = self.make_ntracers_ijk_field(testvar_reshaped)
+        #     # testvar_out = self.make_ntracers_zdim_field(testvar_reshaped)
+
+        # # Run translate test by hand
+        # print("TESTING: " + testvar)
+        # tot_indicies = 0
+        # failed_indicies = 0
+        # testing_variable = var
+        # reference_variable = testvar_out
+
+        # for i in range(testing_variable.view[:].shape[0]):
+        #     for j in range(testing_variable.view[:].shape[1]):
+        #         for k in range(testing_variable.view[:].shape[2]):
+        #             # for n in range(testing_variable.view[:].shape[3]):
+        #             diff = (
+        #                 testing_variable.view[i, j, k]
+        #                 - reference_variable.view[i, j, k]
+        #             )
+
+        #             rel_error = abs(diff / reference_variable.view[i, j, k])
+
+        #             tot_indicies = tot_indicies + 1
+        #             if (
+        #                 testing_variable.view[i, j, k]
+        #                 != reference_variable.view[i, j, k]
+        #             ):
+        #                 if abs(diff) != 0.0:
+        #                     failed_indicies = failed_indicies + 1
+        #                     print(
+        #                         "DIFF: ",
+        #                         i,
+        #                         j,
+        #                         k,
+        #                         "computed: ",
+        #                         testing_variable.view[i, j, k],
+        #                         "reference: ",
+        #                         reference_variable.view[i, j, k],
+        #                         "abs difference: ",
+        #                         testing_variable.view[i, j, k]
+        #                         - reference_variable.view[i, j, k],
+        #                         "rel difference: ",
+        #                         diff / reference_variable.view[i, j, k],
+        #                     )
+        # print(
+        #     "failures: ",
+        #     failed_indicies,
+        #     "/",
+        #     tot_indicies,
+        #     "(",
+        #     (failed_indicies / tot_indicies) * 100,
+        #     "%)",
+        # )
+
+        # print(testvar3D.view[7, 10, :])
+        # print(reference_variable.view[7, 10, :])
 
         return {
             "umf_inv": umf_inv.view[:],

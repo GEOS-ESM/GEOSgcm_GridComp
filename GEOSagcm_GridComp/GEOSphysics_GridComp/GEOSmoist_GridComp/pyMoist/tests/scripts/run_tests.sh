@@ -9,7 +9,7 @@ export FV3_DACEMODE=Python
 python -m pytest -s -v --disable-warnings --multimodal_metric \
     --data_path=/Users/kfandric/netcdf \
     --backend=debug\
-    --which_rank=0 \
+    --which_rank=1 \
     --which_modules=ComputeUwshcuInv \
     --grid=default \
    ..

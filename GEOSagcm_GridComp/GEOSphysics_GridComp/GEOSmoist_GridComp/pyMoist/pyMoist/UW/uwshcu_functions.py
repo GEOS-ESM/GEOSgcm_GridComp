@@ -84,33 +84,33 @@ def slope_mid(
     return slope
 
 
-@gtscript.function
-def slope_top(
-    max_k: Int,
-    field: FloatField,
-    p0: FloatField,
-):
-    """
-    Function that calculates slope at mid layers of a field.
+# @gtscript.function
+# def slope_top(
+#     max_k: Int,
+#     field: FloatField,
+#     p0: FloatField,
+# ):
+#     """
+#     Function that calculates slope at mid layers of a field.
 
-    Inputs:
-    max_k [Int]: Max k level (e.g., 71)
-    field [FloatField]: Field of interest [n/a]
-    p0 [FloatField]: Pressure [Pa]
+#     Inputs:
+#     max_k [Int]: Max k level (e.g., 71)
+#     field [FloatField]: Field of interest [n/a]
+#     p0 [FloatField]: Pressure [Pa]
 
-    Returns:
-    slope [Float]: Slope of the field of interest [n/a]
-    """
+#     Returns:
+#     slope [Float]: Slope of the field of interest [n/a]
+#     """
 
-    if THIS_K == max_k:
-        above_value = (field[0, 0, -1] - field) / (p0[0, 0, -1] - p0)
-        below_value = (field - field[0, 0, -2]) / (p0 - p0[0, 0, -2])
-        if above_value > 0.0:
-            slope = max(0.0, min(above_value, below_value))
-        else:
-            slope = min(0.0, max(above_value, below_value))
+#     if THIS_K == max_k:
+#         above_value = (field[0, 0, -1] - field) / (p0[0, 0, -1] - p0)
+#         below_value = (field - field[0, 0, -2]) / (p0 - p0[0, 0, -2])
+#         if above_value > 0.0:
+#             slope = max(0.0, min(above_value, below_value))
+#         else:
+#             slope = min(0.0, max(above_value, below_value))
 
-    return slope
+#     return slope
 
 
 @gtscript.function
