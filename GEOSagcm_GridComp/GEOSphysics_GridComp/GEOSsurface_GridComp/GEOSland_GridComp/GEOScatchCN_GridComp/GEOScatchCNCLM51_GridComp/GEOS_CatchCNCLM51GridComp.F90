@@ -5246,8 +5246,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! NOTE: In CNPhenologyMod.F90, init_gdd20 is always set to .false. as well. For GEOS-5 runs, need to discard at least the first 2 years.
     ! This is not a problem for offline runs because we always spin up the model whenever we change meterology. fzeng, July 2017 
     ! -------------------------------------------------------------------------------------------------------------------------------------- 
-    logical, parameter :: init_accum = .true.! jkolassa May 2023: needs to be set to true if no CNCLM51 restart is available
-    logical, parameter :: init_accum_365 = .true.! jkolassa May 2023: needs to be set to true if no CNCLM51 restart is available
+    logical, parameter :: init_accum = .false.! jkolassa May 2023: needs to be set to true if no CNCLM51 restart is available
+    logical, parameter :: init_accum_365 = .false.! jkolassa May 2023: needs to be set to true if no CNCLM51 restart is available
     integer, save :: istep                    ! model time step index
     integer, save :: istep_365                ! model time step index
     integer :: accper                         ! number of time steps accumulated in a period of XX days, increases from 1 to nXXd in the first XX days,
