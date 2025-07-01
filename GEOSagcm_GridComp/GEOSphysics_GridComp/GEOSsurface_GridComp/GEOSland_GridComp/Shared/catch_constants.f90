@@ -70,7 +70,11 @@ module catch_constants
        0.08,                                                                 &  ! m  top-layer target thickness
        1./(CATCH_N_SNOW-1.), 1./(CATCH_N_SNOW-1.)                            &  ! -  "sigma" distribution 
        /) 
-  
+  ! constants for urban
+  REAL,    PARAMETER, PUBLIC :: CATCH_EMIS_URBAN    = 0.95
+  REAL,    PARAMETER, PUBLIC :: CATCH_C_URBAN       = 120000.  ! J/K - heat capacity associated w/ urban  
+  REAL,    PARAMETER, PUBLIC :: CATCH_CH_URBAN      = 0.006    ! kg/m^2/s
+  REAL,    PARAMETER, PUBLIC :: AR_URBAN            = 0.3  
   ! ---------------------------------------------------------------------------
   !
   ! layer depth associated with snow-free land surface soil temperatures

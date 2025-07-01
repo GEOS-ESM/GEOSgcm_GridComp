@@ -76,7 +76,9 @@
            RGAS              => MAPL_RGAS,   &  ! J/(kg K)                
            SHW               => MAPL_CAPWTR, &  ! J/kg/K  spec heat of wat
            SHI               => MAPL_CAPICE, &  ! J/kg/K  spec heat of ice
-           EPSILON           => MAPL_EPSILON
+           EPSILON           => MAPL_EPSILON,&
+           CPM               => MAPL_CP,     &
+           stefan_boltzmann  => MAPL_STFBOL
       
       USE CATCH_CONSTANTS,   ONLY:                   &
            N_SNOW            => CATCH_N_SNOW,        &
@@ -90,7 +92,11 @@
            PHIGT             => CATCH_PHIGT,         &
            DZTSURF           => CATCH_DZTSURF,       &
            PEATCLSM_POROS_THRESHOLD,                 &
-           PEATCLSM_ZBARMAX_4_SYSOIL
+           PEATCLSM_ZBARMAX_4_SYSOIL,                &
+           EMIS_UR           => CATCH_EMIS_URBAN,    &
+           CSOIL_UR          => CATCH_C_URBAN,       &
+           CH_UR             => CATCH_CH_URBAN,      &
+           AR_UR             => AR_URBAN    
 
       USE SURFPARAMS,       ONLY:                    &
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
@@ -98,7 +104,7 @@
 
       USE lsm_routines, only :                       &
            INTERC, RZDRAIN, BASE, PARTITION, RZEQUIL,&
-           gndtp0, gndtmp,                           &
+           gndtp0, GNDTP0_UR, gndtmp,                           &
            catch_calc_soil_moist, catch_calc_zbar,   &
            catch_calc_wtotl, dampen_tc_oscillations, &
            SRUNOFF 
@@ -160,7 +166,9 @@
                      TCSORIG, TPSN1IN, TPSN1OUT, FSW_CHANGE, FICESOUT,         &
                      lonbeg,lonend,latbeg,latend,                              &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
-                     RCONSTIT, RMELT, TOTDEPOS )                                  ! OPTIONAL
+                     RCONSTIT, RMELT, TOTDEPOS, &
+                     SWNET_UR, RA_UR, QSAT_UR, DQS_UR,  &
+                     TC_UR, QA_UR )                                  ! OPTIONAL
 
       IMPLICIT NONE
 
@@ -192,6 +200,10 @@
       REAL,    INTENT(IN), DIMENSION(NCH)                      :: LONS, LATS
 
       REAL,    INTENT(IN), DIMENSION(NCH, N_Constit), OPTIONAL :: TOTDEPOS
+
+      REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: SWNET_UR, RA_UR, QSAT_UR, DQS_UR
+
+      REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: TC_UR, QA_UR
 
       LOGICAL, INTENT(IN) :: BUG
 
@@ -257,7 +269,9 @@
             prmcun,WTOT_ORIG,ENTOT_ORIG,HSNACC1,HSNACC2,HSNACC4,               &
             TC1_00, TC2_00, TC4_00, EACC_00,                                   &
               qa1_orig,qa2_orig,qa4_orig,tc1_orig,tc2_orig,tc4_orig,           &
-              tcs_orig
+              tcs_orig,                                                        &
+              ALW_UR, BLW_UR,TCSF_UR,HFTDS_UR,DHFT_UR,HSTURB_UR,DHSDTCX_UR,ETURB_UR,DEDQAX_UR,DEDTCX_U,&
+              EVAP_UR,SHFLUX_UR, HLWUP_UR, RX1_UR, RX2_UR, GHFLUX_UR, HSNACC_UR
 
 
       REAL, DIMENSION(N_GT) :: HT, TP, soilice
@@ -269,7 +283,7 @@
 
       REAL, DIMENSION(N_Constit)         :: RMELT1, TOTDEP1
 
-      REAL, DIMENSION(N_SM) :: T1, AREA, tkgnd, fhgnd
+      REAL, DIMENSION(N_SM) :: T1, T1_UR, AREA, tkgnd, fhgnd
 
       REAL :: EPFRC1, EPFRC2, EPFRC4, SUMEP, SUME, TC1SN, TC2SN, TC4SN,        &
               DTC1SN,DTC2SN,DTC4SN, RTBS1, RTBS2, RTBS4, ZBAR, THETAF,         &
@@ -286,6 +300,7 @@
               EVAPXS,SHFLUXXS,phi,rho_fs,sumdepth,                             &   
               sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
               mltwtr, wesnbot, dtss
+
 
 
 
@@ -716,6 +731,19 @@
         DHFT2(N)=-DFH21I
         DHFT4(N)=-DFH21D
 
+        if(AR_UR(N)>0.)then
+          T1_UR(1)=TC_UR(N)
+          T1_UR(2)=TC_UR(N)
+          T1_UR(3)=TC_UR(N)  
+          CALL GNDTP0_UR(                                               &
+                      T1_UR,phi,-1.*ZBAR,THETAF,                        &   ! note minus sign for zbar
+                      HT,                                            &
+                      fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp      &
+                     )  
+          HFTDS_UR(N)=-FH21D  
+          DHFT_UR(N)=-DFH21D              
+        endif
+
         ENDDO 
 
       IF (BUG) THEN
@@ -732,6 +760,7 @@
         TC1SF(N)  = TC1(N)
         TC2SF(N)  = TC2(N)
         TC4SF(N)  = TC4(N)
+        TCSF_UR(N)= TC_UR(N)
         ENDDO
 
       CALL RCUNST (                                                            &
@@ -793,6 +822,32 @@
         WRITE(*,*) 'ENERGY4 OK'
         ENDIF
 
+!**** 3. URBAN FRACTION
+!CC    print*,'energy4'
+      BLW_UR = EMIS_UR*stefan_boltzmann*TC_UR*TC_UR*TC_UR
+      ALW_UR = -3.0*BLW_UR*TC_UR
+      BLW_UR =  4.0*BLW_UR  
+      HSTURB_UR = CPM*CH_UR*(TC_UR-TM)
+      DHSDTCX_UR = CPM*CH_UR
+      DHSDQAX_UR = 0.
+      ETURB_UR = 0.
+      DEDQAX_UR = 0.
+      DEDTCX_UR = 0.
+
+      CALL ENERGY_URBAN (                                                                    &
+                   NCH, DTSTEP, ITYP,POROS, UM, RCST,                                        &
+                   ETURB_UR, DEDQAX_UR, DEDTCX_UR, HSTURB_UR, DHSDQAX_UR, DHSDTCX_UR,        &
+                   QM,     RA_UR,   SWNET_UR,  HLWDWN, PSUR,                                   &
+                   RDCX,   HFTDS_UR, DHFT_UR, QSAT_UR, DQS_UR, ALW_UR, BLW_UR,               &
+                   EMAXRT,CSOIL_UR,SWSRF4,POTFRC,.false., WPWET,                                &
+                   TCSF_UR, QA_UR,                                                           &
+                   EVAP_UR, SHFLUX_UR, HLWUP_UR, RX1_UR, RX2_UR, GHFLUX_UR, HSNACC_UR        &
+                  )
+
+      IF (BUG) THEN
+        WRITE(*,*) 'ENERGY_URBAN OK'
+        ENDIF
+
 !**** COMPUTE EIRFRC
       DO N=1,NCH
          
@@ -804,10 +859,15 @@
          
         RTBS4=RX14(N)*RX24(N)/(RX14(N)+RX24(N)+1.E-20)
         EPFRC4=POTFRC(N) * ( RA4(N) + RTBS4 ) / ( RA4(N) + POTFRC(N)*RTBS4 )
+
+        RTBS_UR=RX1_UR(N)*RX2_UR(N)/(RX1_UR(N)+RX2_UR(N)+1.E-20)
+        EPFRC_UR=POTFRC(N) * ( RA_UR(N) + RTBS_UR ) / ( RA_UR(N) + POTFRC(N)*RTBS_UR )        
          
         SUMEP=EPFRC1*EVAP1(N)*AR1(N)+EPFRC2*EVAP2(N)*AR2(N)+                   &
               EPFRC4*EVAP4(N)*AR4(N)
+        SUMEP = SUMEP*(1.-AR_UR(N)) + EPFRC_UR*EVAP_UR(N)*AR_UR(N)
         SUME=EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N)
+        SUME= SUME*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)
         
         !   "quick fix" gone wrong in global AMSR-E assimilation
         !   trying to correct while staying as close as possible to past fix
@@ -1006,7 +1066,9 @@
         TC1(N)=TC1SF(N)*(1.-AREASC)+TC1SN*AREASC
         TC2(N)=TC2SF(N)*(1.-AREASC)+TC2SN*AREASC
         TC4(N)=TC4SF(N)*(1.-AREASC)+TC4SN*AREASC
-        
+        TC_UR(N)=TCSF_UR(N)
+
+
         EVSNOW(N)=EVSN
         esno(n)=evsnow(n)*asnow(n)*DTSTEP ! to have esno in mm/20min (03-17-99)
         SHFLUXS(N)=SHFLS 
@@ -1025,25 +1087,33 @@
       DO N=1,NCH 
         LHFLUX(N)=(1.-ASNOW(N))*                                               &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))*ALHE           &
-              +ASNOW(N)*EVSNOW(N)*ALHS 
+              +ASNOW(N)*EVSNOW(N)*ALHS
+        LHFLUX(N) = LHFLUX(N)*(1.-AR_UR(N)) + EVAP_UR(N)*ALHE*AR_UR(N)
         EVAP(N)=(1.-ASNOW(N))*                                                 &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))                &
               +ASNOW(N)*EVSNOW(N) 
+        EVAP(N) = EVAP(N)*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)       
         EVAPFR(N)=(1.-ASNOW(N))*                                               &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))
+        EVAPFR(N) = EVAPFR(N)*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)      
         SHFLUX(N)=(1.-ASNOW(N))*                                               &
               (SHFLUX1(N)*AR1(N)+SHFLUX2(N)*AR2(N)+SHFLUX4(N)*AR4(N))          &
               +ASNOW(N)*SHFLUXS(N) 
+        SHFLUX(N)=SHFLUX(N)*(1.-AR_UR(N)) + SHFLUX_UR(N)*AR_UR(N)     
         HLWUP(N)=(1.-ASNOW(N))*                                                &
               (HLWUP1(N)*AR1(N)+HLWUP2(N)*AR2(N)+HLWUP4(N)*AR4(N))             &
               +ASNOW(N)*HLWUPS(N) 
+        HLWUP(N) = HLWUP(N)*(1.-AR_UR(N)) + HLWUP_UR(N)*AR_UR(N)
         SWLAND(N)=(1.-ASNOW(N))*SWNETF(N) + ASNOW(N)*SWNETS(N) 
+        SWLAND(N) = SWLAND(N)*(1.-AR_UR(N)) + SWNET_UR(N)*AR_UR(N)
         GHFLUX(N)=(1.-ASNOW(N))*                                               &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               +ASNOW(N)*GHFLUXS(N) 
+        GHFLUX(N)=GHFLUX(N)*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)      
         GHTSKIN(N)=(1.-ASNOW(N))*                                              &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               -ASNOW(N)*ghfluxsno(N)
+        GHTSKIN(N)=GHTSKIN(N)*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)      
         ENDDO 
 
 
@@ -2293,6 +2363,138 @@
 
       RETURN
       END SUBROUTINE energy4
+
+
+!**** -----------------------------------------------------------------
+!**** /////////////////////////////////////////////////////////////////
+!**** -----------------------------------------------------------------
+!****
+      SUBROUTINE energy_urban (                                                     &
+                       NCH, DTSTEP, ITYP, POROS,UM, RCIN,                      &
+                       ETURB,  DEDQA,  DEDTC,  HSTURB, DHSDQA, DHSDTC,         &
+                       QM,     RA,   SWNET,  HLWDWN, PSUR,                     &
+                       RDC,    HFTDS, DHFTDS,                                  &
+                       QSATTC, DQSDTC, ALWRAD, BLWRAD,                         &
+                       EMAXRT,CSOIL,SWSRF,POTFRC,BUG,WPWET,                    &
+                       TC, QA,                                                 &
+                       EVAP, SHFLUX, HLWUP, RX1, RX2, GHFLUX, HSNACC           &
+                         )
+
+      IMPLICIT NONE
+
+      INTEGER, INTENT(IN) :: NCH
+      INTEGER, INTENT(IN), DIMENSION(NCH) :: ITYP
+
+      REAL, INTENT(IN) :: DTSTEP
+      REAL, INTENT(IN), DIMENSION(NCH) :: UM, RCIN, ETURB, HSTURB, QM, RA,     &
+                SWNET, HLWDWN, PSUR, RDC, HFTDS, DHFTDS, QSATTC, DQSDTC,       &
+                ALWRAD, BLWRAD, EMAXRT, CSOIL, SWSRF, POTFRC, WPWET, DEDQA,    &
+                DEDTC, DHSDQA, DHSDTC, POROS
+      LOGICAL, INTENT(IN) ::  BUG
+
+      REAL, INTENT(INOUT), DIMENSION(NCH) :: TC, QA
+
+      REAL, INTENT(OUT), DIMENSION(NCH) :: EVAP, SHFLUX, HLWUP, RX1, RX2,      &
+                GHFLUX, HSNACC
+
+
+      INTEGER ChNo, N
+      REAL, DIMENSION(NCH) :: DEDEA, DHSDEA, EM, ESATTC, DESDTC, EA, RC,       &
+                DRCDTC, DRCDEA, SWSRF4
+      REAL  DELTC, DELEA
+
+!****
+      DATA DELTC /0.01/, DELEA /0.001/
+!****
+!**** --------------------------------------------------------------------- 
+!****
+!**** Expand data as specified by ITYP into arrays of size NCH.
+!****
+
+!****
+!**** Pre-process input arrays as necessary:
+
+      DO 100 ChNo = 1, NCH
+
+!      DEDQA(CHNO)  = AMAX1(  DEDQA(CHNO), 500./ALHE )
+!      DEDTC(CHNO)  = AMAX1(  DEDTC(CHNO),   0. )
+!      DHSDQA(CHNO) = AMAX1( DHSDQA(CHNO),   0. )
+!      DHSDTC(CHNO) = AMAX1( DHSDTC(CHNO), -10. )
+
+      EM(CHNO)     = QM(CHNO) * PSUR(CHNO) / EPSILON
+      EA(CHNO)     = QA(CHNO) * PSUR(CHNO) / EPSILON
+      ESATTC(CHNO) = QSATTC(CHNO) * PSUR(CHNO) / EPSILON
+      DESDTC(CHNO) = DQSDTC(CHNO) * PSUR(CHNO) / EPSILON
+      DEDEA(CHNO)  = DEDQA(CHNO) * EPSILON / PSUR(CHNO)
+      DHSDEA(CHNO) = DHSDQA(CHNO) * EPSILON / PSUR(CHNO)
+
+      SWSRF4(CHNO) = SWSRF(CHNO)
+
+
+ 100  CONTINUE
+
+!****
+!**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+!****       STEP 1: COMPUTE EFFECTIVE RESISTANCE RC FOR ENERGY BALANCE.
+!****          ( VPDFAC  computes the vapor pressure deficit stress term,
+!****           TMPFAC  computes the temperature stress term,
+!****           RSURFP  computes rc given a parallel resist. from the
+!****                   surface,
+!****           RCANOP  computes rc corrected for snow and interception.)
+!****
+
+      DO N=1,NCH
+        RC(N)=RCIN(N)
+        ENDDO
+
+      CALL RSURFP2 (                                                           &
+                   NCH, UM, RDC, SWSRF4, ESATTC, EA, WPWET,                     &
+                   RC,                                                         &
+                   RX1, RX2                                                    &
+                  )
+
+      CALL RCANOP (                                                            &
+                   NCH, RA, ETURB, POTFRC,                                     &
+                   RC                                                          &
+                  )
+
+!****
+!**** -    -    -    -    -    -    -    -    -    -    -    -    -    -
+!****
+!**** Compute DRC/DT and DRC/DEA using temperature, v.p. perturbations:
+!****
+
+      DO ChNo = 1, NCH
+        DRCDTC(CHNO)=0.
+        DRCDEA(CHNO)=0.
+        ENDDO
+
+!**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+!****       STEP 2: Solve the energy balance at the surface.
+!****
+      CALL FLUXES (                                                            &
+                      NCH,   ITYP, DTSTEP, ESATTC, DESDTC,                     &
+                    ETURB,  DEDEA,  DEDTC, HSTURB, DHSDEA, DHSDTC,             &
+                       RC, DRCDEA, DRCDTC,SWNET, HLWDWN, ALWRAD, BLWRAD,       &
+                       EM,  CSOIL,   PSUR, 0., HFTDS, DHFTDS,              &
+                       TC,     EA,                                             &
+                     EVAP, SHFLUX,  HLWUP, GHFLUX, HSNACC                      &
+                   )
+
+!****
+!****
+!**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+!****
+!****
+!**** Process data for return to GCM:
+
+      DO 2000 ChNo = 1, NCH
+      QA(CHNO) = EA(CHNO) * EPSILON / PSUR(CHNO)
+ 2000 CONTINUE
+!****
+
+      RETURN
+      END SUBROUTINE energy_urban
 
 !****
 !**** [ END CHIP ]

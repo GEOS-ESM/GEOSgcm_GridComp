@@ -52,7 +52,7 @@ MODULE lsm_routines
 
   PRIVATE
 
-  PUBLIC :: INTERC, SRUNOFF, RZDRAIN, BASE, PARTITION, RZEQUIL, gndtp0
+  PUBLIC :: INTERC, SRUNOFF, RZDRAIN, BASE, PARTITION, RZEQUIL, gndtp0, GNDTP0_UR
   PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_peatclsm_waterlevel
   PUBLIC :: catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
@@ -235,7 +235,8 @@ CONTAINS
            VGWMAX, RZEQ, POROS,                               &
            SRFEXC, RZEXC,                                     &
            RUNSRF,                                            &  ! [kg m-2 s-1]  (flux units)
-           QINFIL                                             &  ! [kg m-2 s-1]  (flux units)
+           QINFIL,                                            &  ! [kg m-2 s-1]  (flux units)
+           AR_UR &
            )
 
 !**** NOTE: Input throughfall is in volume units, as are calcs throughout this subroutine  [kg m-2]
@@ -248,7 +249,7 @@ CONTAINS
       INTEGER, INTENT(IN)                    :: NCH
       REAL,    INTENT(IN)                    :: DTSTEP, FWETC, FWETL
       LOGICAL, INTENT(IN)                    :: UFW4RO 
-      REAL,    INTENT(IN),    DIMENSION(NCH) :: AR1, AR2, AR4, FRICE, TP1, SRFMX
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: AR1, AR2, AR4,AR_UR, FRICE, TP1, SRFMX
       REAL,    INTENT(IN),    DIMENSION(NCH) :: VGWMAX, RZEQ, POROS
       REAL,    INTENT(IN),    DIMENSION(NCH) :: THRUL_VOL, THRUC_VOL              ! [kg m-2] 
       LOGICAL, INTENT(IN)                    :: BUG
@@ -285,7 +286,7 @@ CONTAINS
 
             IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                ! Non-peatland
-               frun=AR1(N)
+               frun=AR1(N)+AR_UR(N)
                srun0=PTOTAL*frun
 
                !**** Comment out this line in order to allow moisture
@@ -1251,6 +1252,158 @@ CONTAINS
 
       return
       end subroutine gndtp0
+
+
+!**** -----------------------------------------------------------------
+!**** /////////////////////////////////////////////////////////////////
+!**** -----------------------------------------------------------------
+
+
+      subroutine GNDTP0_UR(t1,phi,zbar,thetaf,ht,fh21w,fh21i,fh21d,                   &
+                      dfh21w,dfh21i,dfh21d,tp)
+
+! using a diffusion equation this code generates ground temperatures
+! with depth given t1 (soil surface temperature; see below)
+! gndtp0(): calculate heat fluxes between TSURF components and TP1; calculate derivatives
+! gndtmp(): calculate soil heat content and temperature profiles
+!             (layers 2-7: TP1, ..., TP6; GHTCNT1, ... GHTCNT6)
+!
+!            *****************************************
+!      input:
+!        t1      terrestrial (layer 1) surface temperature in deg C
+!                (TC1, TC2, TC4 in Catchment and TG1, TG2, TG4 in CatchmentCN)
+!        phi     porosity
+!        zbar    mean depth to the water table.
+!        thetaf  mean vadose zone soil moisture factor (0-1)
+!      output:
+!        ht      heat content in layers 2-7
+!        tp      ground temperatures in layers 2-7
+!        f21     heat flux between layer 2 and the terrestrial layer (1)
+!                   "w"=wet         =saturated   <=> AR1
+!                   "i"=intermediate=transpiring <=> AR2
+!                   "d"=dry         =wilting     <=> AR4
+!        df21    derivative of f21 with respect to temperature
+!             ***********************************
+
+      REAL, INTENT(IN) :: phi, ZBAR, THETAF
+      REAL, INTENT(IN), DIMENSION(*) :: HT
+      REAL, INTENT(IN), DIMENSION(N_SM) :: T1
+
+      REAL, INTENT(OUT) :: FH21W, FH21I, FH21D, DFH21W, DFH21I, DFH21D
+      REAL, INTENT(OUT), DIMENSION(*) :: TP
+
+      INTEGER L, K
+      REAL, DIMENSION(N_GT) :: FICE, SHC, ZC, XKLH
+      REAL, DIMENSION(N_GT+1) :: FH, ZB
+      REAL SHW0, SHI0, SHR0, WS, XW, A1, TK1, A2, TK2, TK3, TKSAT,         &
+           XWI, XD1, XD2, DENOM, XKLHW, TKDRY
+
+      !data dz/0.0988,0.1952,0.3859,0.7626,1.5071,10.0/
+      !DATA PHI/0.45/, FSN/3.34e+8/, SHR/2.4E6/
+
+!     initialize parameters
+      shw0=SHW*1000. ! PER M RATHER THAN PER KG
+      shi0=SHI*1000. ! PER M RATHER THAN PER KG
+      shr0=SHR*1000. ! PER M RATHER THAN PER KG [kg of water equivalent density]
+
+! calculate the boundaries, based on the layer thicknesses(DZGT)
+
+      zb(1)=-DZTSURF
+      zb(2)=zb(1)-DZGT(1)
+      shc(1)=shr0*(1.-phi)*DZGT(1)
+      zc(1)=0.5*(zb(1)+zb(2))
+
+! evaluates the temperatures in the soil layers based on the heat values.
+!             ***********************************
+!             input:
+!             xw - water in soil layers, m
+!             ht - heat in soil layers
+!             fsn - heat of fusion of water   J/m
+!             shc - specific heat capacity of soil
+!             shi - specific heat capacity of ice
+!             shw - specific heat capcity of water
+!             snowd - snow depth, equivalent water m
+!             output:
+!             tp - temperature of layers, c
+!             fice - fraction of ice of layers
+!             pre - extra precipitation, i.e. snowmelt, m s-1
+!             snowd - snow depth after melting, equivalent water m.
+!             ***********************************
+! determine fraction of ice and temp of soil layers based on layer
+! heat and water content
+
+      ws=phi*DZGT(1)  ! PORE SPACE IN LAYER 2
+      xw=0.5*ws     ! ASSUME FOR THESE CALCULATIONS THAT THE PORE SPACE
+                    ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE
+                    ! AMOUNT OF WATER IN THE LAYER.
+
+      tp(1)=0.
+      FICE(1) = AMAX1( 0., AMIN1( 1., -ht(1)/(fsn*xw) ) )
+
+      IF(FICE(1) .EQ. 1.) THEN
+          tp(1)=(ht(1)+xw*fsn)/(shc(1)+xw*shi0)
+        ELSEIF(FICE(1) .EQ. 0.) THEN
+          tp(1)=ht(1)/(shc(1)+xw*shw0)
+        ELSE
+          TP(1)=0.
+        ENDIF
+
+! evaluates:  layer thermal conductivities
+! *****************************************
+!             from farouki(cold regions sci and tech, 5, 1981,
+!             67-75) the values for tk1,tk2,tk3 are as follows:
+!             tk2=2.2**(phi(l,ibv)-xw), tk3=.57**xw, and
+!             tk1=3**(1-phi(l,ibv) for %sand<.5, and
+!             for computation purposes i have fit these eqs.
+!             to 2nd order polynomials.
+!             ***********************************
+!             input:
+!             sklh - soil heat conductivities of layers
+!             zb - soil layer boundaries, m
+!             zc - soil layer centers, m
+!             DZGT - layer thickness, m
+!             w - soil water content, m
+!             phi - soil porosity, dimensionless
+!             q - % sand, silt, clay, peat
+!             fice - fraction of ice in layers
+!             output:
+!             xklh - thermal conductivity, w m-2 k-1
+!             ***********************************
+! lets get the thermal conductivity for the layers
+
+      a1=1.-phi
+      tk1=1.01692+a1*(0.89865+1.06211*a1)
+      xw=phi*(1.-fice(1))
+      a2=phi-xw
+      tk2=1.00543+a2*(0.723371+.464342*a2)
+      tk3=0.998899+xw*(-0.548043+0.120291*xw)
+      tksat=tk1*tk2*tk3
+
+      xwi=1.0
+      if (zbar .le. zb(2))then
+            xwi=thetaf
+         elseif (zbar .ge. zb(2) .and. zbar .le. zb(1))then
+            xd1=zb(1)-zbar
+            xd2=zbar-zb(2)
+            xwi=((xd1*thetaf)+xd2)/(xd1+xd2)
+         endif
+
+      xwi=min(xwi,1.)
+      tkdry=0.9 ! Urban thermal conductivity
+      xklh(1)=(tksat-tkdry)*xwi + tkdry
+      xklhw=tksat
+
+      denom=-(DZTSURF*0.5)-zc(1)
+      fh21w=-xklhw  *(t1(1)-TF-tp(1))/denom
+      fh21i=-xklh(1)*(t1(2)-TF-tp(1))/denom
+      fh21d=-xklh(1)*(t1(3)-TF-tp(1))/denom
+      dfh21w=-xklhw/denom
+      dfh21i=-xklh(1)/denom
+      dfh21d=dfh21i
+
+
+      return
+      end subroutine GNDTP0_UR
 
 !
 ! -----------------------------------------------------------------------

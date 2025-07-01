@@ -51,8 +51,8 @@ module GEOS_CatchGridCompMod
        SNWALB_VISMAX  => CATCH_SNOW_VISMAX,    &
        SNWALB_NIRMAX  => CATCH_SNOW_NIRMAX,    &
        SLOPE          => CATCH_SNOW_SLOPE,     &
-       PEATCLSM_POROS_THRESHOLD
-
+       PEATCLSM_POROS_THRESHOLD,               &
+       CH_UR          => CATCH_CH_URBAN    
 
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel
 
@@ -244,7 +244,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    VERIFY_(STATUS)   
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_wind_speed'          ,&
@@ -1106,6 +1106,28 @@ subroutine SetServices ( GC, RC )
     FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'canopy_temperature_urban'        ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TC_UR'                        ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired       ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)  
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'canopy_specific_humidity_urban'  ,&
+    UNITS              = 'kg kg-1'                   ,&
+    SHORT_NAME         = 'QC_UR'                        ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
@@ -3100,7 +3122,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:),   pointer :: ITY
     real, dimension(:),   pointer :: PS
     real, dimension(:),   pointer :: TA
-    real, dimension(:),   pointer :: QA
+    real, dimension(:),   pointer :: QA   
     real, dimension(:),   pointer :: UU
     real, dimension(:),   pointer :: UWINDLMTILE
     real, dimension(:),   pointer :: VWINDLMTILE
@@ -3115,8 +3137,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! INTERNAL Pointers
 ! -----------------------------------------------------
 
-    real, dimension(:,:), pointer :: TC
-    real, dimension(:,:), pointer :: QC
+    real, dimension(:,:), pointer :: TC       
+    real, dimension(:,:), pointer :: QC    
     real, dimension(:,:), pointer :: CH
     real, dimension(:,:), pointer :: CM
     real, dimension(:,:), pointer :: CQ
@@ -3273,7 +3295,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(IMPORT,TA     , 'TA'     ,    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,QA     , 'QA'     ,    RC=STATUS)
-    VERIFY_(STATUS)
+    VERIFY_(STATUS)    
     call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,LAI    , 'LAI'    ,    RC=STATUS)
@@ -3293,7 +3315,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !----------------------
  
     call MAPL_GetPointer(INTERNAL,TC   , 'TC'     ,    RC=STATUS)
-    VERIFY_(STATUS)
+    VERIFY_(STATUS)       
     call MAPL_GetPointer(INTERNAL,QC   , 'QC'     ,    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,FR   , 'FR'     ,    RC=STATUS)
@@ -3892,6 +3914,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: atau
         real, dimension(:),   pointer :: btau
         real, dimension(:),   pointer :: old_ity
+        real, dimension(:), pointer :: TC_UR  
+        real, dimension(:), pointer :: QC_UR          
         real, dimension(:),   pointer :: capac
         real, dimension(:),   pointer :: catdef
         real, dimension(:),   pointer :: rzexc
@@ -3912,7 +3936,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: sndzn1
         real, dimension(:),   pointer :: sndzn2
         real, dimension(:),   pointer :: sndzn3
-        real, dimension(:,:), pointer :: tc
+        real, dimension(:,:), pointer :: tc             
         real, dimension(:,:), pointer :: qc
         real, dimension(:,:), pointer :: ch
         real, dimension(:,:), pointer :: cm
@@ -4066,6 +4090,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         real,pointer,dimension(:) :: DZSF_in_mm
         real,pointer,dimension(:) :: swnetfree
+        real,pointer,dimension(:) :: SWNET_UR  
+        real,pointer,dimension(:) :: RA_UR       
+        real,pointer,dimension(:) :: QSAT_UR 
+        real,pointer,dimension(:) :: DQS_UR       
         real,pointer,dimension(:) :: swnetsnow
         real,pointer,dimension(:) :: qa1
         real,pointer,dimension(:) :: qa2
@@ -4257,6 +4285,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: ldas_ens_id, ldas_first_ens_id
         integer                       :: NUM_LDAS_ENSEMBLE
 
+        real                          :: ALBVR_UR=0.15, ALBVF_UR=0.15, ALBNR_UR=0.15, ALBNF_UR=0.15
+
+
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4358,7 +4389,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call MAPL_GetPointer(IMPORT,PS     ,'PS'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,TA     ,'TA'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,QA     ,'QA'     ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,QA     ,'QA'     ,RC=STATUS); VERIFY_(STATUS)        
         call MAPL_GetPointer(IMPORT,UU     ,'UU'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DZ     ,'DZ'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,PCU    ,'PCU'    ,RC=STATUS); VERIFY_(STATUS)
@@ -4446,8 +4477,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,TSB2       ,'TSB2'       ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,ATAU       ,'ATAU'       ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,BTAU       ,'BTAU'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,TC         ,'TC'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TC         ,'TC'         ,RC=STATUS); VERIFY_(STATUS)                   
         call MAPL_GetPointer(INTERNAL,QC         ,'QC'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TC_UR         ,'TC_UR'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,QC_UR         ,'QC_UR'         ,RC=STATUS); VERIFY_(STATUS)         
         call MAPL_GetPointer(INTERNAL,CAPAC      ,'CAPAC'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,CATDEF     ,'CATDEF'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,RZEXC      ,'RZEXC'      ,RC=STATUS); VERIFY_(STATUS)
@@ -4622,6 +4655,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TILEZERO (NTILES))
         allocate(DZSF_in_mm(NTILES))
         allocate(SWNETFREE(NTILES))
+        allocate(SWNET_UR(NTILES))  
+        allocate(RA_UR(NTILES)) 
+        allocate(QSAT_UR(NTILES)) 
+        allocate(DQS_UR(NTILES))              
         allocate(SWNETSNOW(NTILES))
         allocate(VEG      (NTILES))  
         allocate(ZTH      (NTILES))  
@@ -5077,7 +5114,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if(associated(SWDOWNLAND)) SWDOWNLAND = DRPAR + DFPAR + DRUVR + DFUVR + DRNIR + DFNIR
 
-        SWNETFREE = (1.-ALBVR)*VSUVR + (1.-ALBVF)*VSUVF + (1.-ALBNR)*DRNIR + (1.-ALBNF)*DFNIR 
+        SWNETFREE = (1.-ALBVR)*VSUVR + (1.-ALBVF)*VSUVF + (1.-ALBNR)*DRNIR + (1.-ALBNF)*DFNIR
+        SWNET_UR  = (1.-ALBVR_UR)*VSUVR + (1.-ALBVF_UR)*VSUVF + (1.-ALBNR_UR)*DRNIR + (1.-ALBNF_UR)*DFNIR 
         SWNETSNOW = (1.-SNOVR)*VSUVR + (1.-SNOVF)*VSUVF + (1.-SNONR)*DRNIR + (1.-SNONF)*DFNIR 
 
         ! --------------------------------------------------------------------------
@@ -5119,7 +5157,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               DEVSBT(:,N) = CQ(:,N)
               BLWN(:,N) = EMIS*MAPL_STFBOL*TC(:,N)*TC(:,N)*TC(:,N)
               ALWN(:,N) = -3.0*BLWN(:,N)*TC(:,N)
-              BLWN(:,N) =  4.0*BLWN(:,N)
+              BLWN(:,N) =  4.0*BLWN(:,N)           
            end do
            if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1) then
               do N=1,NUM_SUBTILES
@@ -5159,6 +5197,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QC (:,N) = max(min(QA(:),QSAT(:,N)),QC(:,N))
            RA (:,N) = RHO/CH(:,N)
         end do
+        DQS_UR = GEOS_DQSAT ( TC_UR, PS, QSAT=QSAT_UR, PASCALS=.true., RAMP=0.0 )        
+        RA_UR = RHO/CH_UR
 
         QC(:,FSNW) = QSAT(:,FSNW)
         
@@ -5333,8 +5373,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_VarWrite(unit, tilegrid, TC(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, QC(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, QC(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, QC(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, CAPAC, mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, QC(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)                       
+           call MAPL_VarWrite(unit, tilegrid, CAPAC, mask=mask, rc=status); VERIFY_(STATUS) !debug
            call MAPL_VarWrite(unit, tilegrid, CATDEF, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, RZEXC, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, SRFEXC, mask=mask, rc=status); VERIFY_(STATUS)
@@ -5688,7 +5728,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              lonbeg,lonend,latbeg,latend                          ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
-             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS)
+             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
+             SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
+             TC_UR=TC_UR, QA_UR=QC_UR )
 
         end if
         
@@ -6061,6 +6103,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(TILEZERO )
         deallocate(DZSF_in_mm)
         deallocate(SWNETFREE)
+        deallocate(SWNET_UR)
+        deallocate(QSAT_UR)
+        deallocate(DQS_UR)
+        deallocate(RA_UR)                
         deallocate(SWNETSNOW)
         deallocate(VEG      )
         deallocate(ZTH      )
