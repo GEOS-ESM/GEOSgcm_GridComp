@@ -1090,7 +1090,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 !$ser data Q=Q T=T QLLS=QLLS QILS=QILS CLLS=CLLS QLCN=QLCN QICN=QICN CLCN=CLCN 
 !$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QI=RAD_QI RAD_QR=RAD_QR RAD_QS=RAD_QS
 !$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI RHX=RHX
-
+      
          call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QI, MASS, TMP2D)
@@ -1128,14 +1128,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
 
+        !$ser savepoint GFDL_1M_finalize-Out
+
         ! dissipative heating tendency from KE across the macro/micro physics
         call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) then
           call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
                                       DUDT_macro+DUDT_micro,&
                                       DVDT_macro+DVDT_micro,PTR3D)
+          !$ser data DTDTFRIC=PTR3D
         endif
-        !$ser data DTDTFRIC=PTR3D
 
         ! Compute DBZ radar reflectivity
         call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
