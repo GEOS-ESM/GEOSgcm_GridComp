@@ -1,6 +1,6 @@
-
-from ndsl.dsl.gt4py import exp, log, function
 from gt4py.cartesian.gtscript import f64
+
+from ndsl.dsl.gt4py import exp, function, log
 
 
 @function

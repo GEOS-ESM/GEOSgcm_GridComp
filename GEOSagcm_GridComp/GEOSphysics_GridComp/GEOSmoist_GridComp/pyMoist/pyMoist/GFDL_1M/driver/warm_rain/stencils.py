@@ -1,6 +1,6 @@
 import gt4py.cartesian.gtscript as gtscript
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log, max, sqrt
 
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log, max, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
@@ -359,17 +359,7 @@ def warm_rain_step_1(
     # evaporation and accretion of rain for the first 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (
-            t1,
-            qv1,
-            qr1,
-            ql1,
-            qi1,
-            qs1,
-            qg1,
-            qa1,
-            revap,
-        ) = revap_racc(
+        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
             t1,
             qv1,
             ql1,
@@ -480,17 +470,7 @@ def warm_rain_step_2(
     # evaporation and accretion of rain for the remaing 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (
-            t1,
-            qv1,
-            qr1,
-            ql1,
-            qi1,
-            qs1,
-            qg1,
-            qa1,
-            revap,
-        ) = revap_racc(
+        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
             t1,
             qv1,
             ql1,

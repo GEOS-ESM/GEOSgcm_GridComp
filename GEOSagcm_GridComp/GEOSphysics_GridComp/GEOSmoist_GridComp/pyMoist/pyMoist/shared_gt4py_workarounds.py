@@ -3,7 +3,6 @@ These functions manupilate data to formats more friendly to
 gt4py and/or deal with gt4py I/O shortcomings."""
 
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval
-
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
 

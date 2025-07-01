@@ -3,9 +3,9 @@ These functions evaluate various in-cloud microphysical
 processes/quantities."""
 
 import gt4py.cartesian.gtscript as gtscript
-from ndsl.dsl.gt4py import PARALLEL, computation, exp, interval, log10, sin
 
 import pyMoist.constants as constants
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, interval, log10, sin
 from ndsl.dsl.typing import Float, FloatField
 from pyMoist.shared_generic_math import air_density
 
@@ -16,7 +16,9 @@ def ice_fraction_modis(
 ):
     # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
     tc = max(-46.0, min(temp - constants.MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
-    ptc = 7.6725 + 1.0118 * tc + 0.1422 * tc**2 + 0.0106 * tc**3 + 0.000339 * tc**4 + 0.00000395 * tc**5
+    ptc = (
+        7.6725 + 1.0118 * tc + 0.1422 * tc ** 2 + 0.0106 * tc ** 3 + 0.000339 * tc ** 4 + 0.00000395 * tc ** 5
+    )
     ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
     return ice_frct
 
@@ -156,14 +158,14 @@ def cloud_effective_radius_ice(
             # the multiplication "-2.0 * log'd result" is performed differently (~60 ULP), despite the log
             # being correct. Needs to be looked into at some point, but not critital for overall performance.
         bb = min(max(bb, -6.0), -2.0)
-        radius = 377.4 + 203.3 * bb + 37.91 * bb**2 + 2.3696 * bb**3
+        radius = 377.4 + 203.3 * bb + 37.91 * bb ** 2 + 2.3696 * bb ** 3
         radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
         tc = temperature - constants.MAPL_TICE
         zfsr = 1.2351 + 0.0105 * tc
-        aa = 45.8966 * (wc**0.2214)
-        bb = 0.79570 * (wc**0.2535)
+        aa = 45.8966 * (wc ** 0.2214)
+        bb = 0.79570 * (wc ** 0.2535)
         radius = zfsr * (aa + bb * (temperature - 83.15))
         radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius * 0.64952))
     return radius

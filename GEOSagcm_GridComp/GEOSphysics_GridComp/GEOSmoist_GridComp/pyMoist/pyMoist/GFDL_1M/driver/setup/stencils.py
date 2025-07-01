@@ -1,6 +1,6 @@
 import gt4py.cartesian.gtscript as gtscript
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt
 
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.shared_generic_math import sigma

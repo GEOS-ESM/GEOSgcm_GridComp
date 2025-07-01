@@ -1,7 +1,6 @@
-from ndsl.dsl.gt4py import PARALLEL, computation, interval
-
 from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField
 from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
