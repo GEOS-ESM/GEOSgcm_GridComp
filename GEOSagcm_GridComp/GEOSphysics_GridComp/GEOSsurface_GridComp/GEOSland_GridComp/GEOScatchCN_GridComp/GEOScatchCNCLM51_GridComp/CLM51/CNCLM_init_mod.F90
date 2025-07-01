@@ -1,6 +1,6 @@
 #include "MAPL_Generic.h" 
 
-module CN_initMod
+module CNCLM_initMod
 
   use ESMF
 
@@ -385,6 +385,6 @@ module CN_initMod
   call update_rad_dtime(.true.)
 
  end subroutine CN_init
-end module CN_initMod
+end module CNCLM_initMod
 
 

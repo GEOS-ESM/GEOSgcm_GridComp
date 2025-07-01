@@ -36,7 +36,7 @@ module CNCLM_DriverMod
  use PhotosynthesisMod           
  use EnergyFluxType            
  use CNFireEmissionsMod        
- use CN_initMod                  
+ use CNCLM_initMod                  
  use CNVegCarbonFluxType        
  use CNVegCarbonStateType        
  use CNVegNitrogenFluxType      

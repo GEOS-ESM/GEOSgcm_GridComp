@@ -83,7 +83,7 @@ set (srcs
   CNFUNMod.F90
   CNGapMortalityMod.F90
   CNGRespMod.F90
-  CN_init_mod.F90
+  CNCLM_init_mod.F90
   CNMRespMod.F90
   CNNDynamicsMod.F90
   CNNStateUpdate1Mod.F90

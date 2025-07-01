@@ -37,7 +37,7 @@ module GEOS_CatchCNCLM51GridCompMod
   use CATCHMENT_CN_MODEL
   use CNCLM_DriverMod
   use CNCLM_Photosynthesis
-  use CN_initMod
+  use CNCLM_initMod
   USE STIEGLITZSNOW,   ONLY :                 &
        StieglitzSnow_snow_albedo, StieglitzSnow_calc_tpsnow, N_CONSTIT,   &
        NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
