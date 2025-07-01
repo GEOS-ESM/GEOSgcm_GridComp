@@ -1314,7 +1314,7 @@ contains
 
     call GetIds(lonc,latc,lonn,latt,id_loc, tid_offl, &
          CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
-         fveg_offl, ityp_offl)
+         fveg_offl, ityp_offl,.false.) ! jkolassa June 2023: hardocding to work for CatchCN4.0/4.5 for now (not 5.1), since this routine will be replaced by one that works for all CatchCN versions shortly.
     deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2,lonc,latc,lonn,latt)
  
      ! update id_glb in root
