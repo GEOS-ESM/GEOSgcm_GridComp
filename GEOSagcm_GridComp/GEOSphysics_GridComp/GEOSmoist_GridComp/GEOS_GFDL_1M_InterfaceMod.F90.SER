@@ -1015,7 +1015,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
 
      !$ser savepoint GFDL_1M_finalize-In
-      !$ser data T=T U=U V=V PLmb=PLmb RAD_CF=RAD_CF RAD_QI=RAD_QI RAD_QL=RAD_QL
+      !$ser data T=T U=U V=V PLmb=PLmb RAD_CF=RAD_CF RAD_QI=RAD_QI RAD_QL=RAD_QL U0=U0 V0=V0
       !$ser data RAD_QV=RAD_QV RAD_QR=RAD_QR RAD_QS=RAD_QS RAD_QG=RAD_QG MASS=MASS
       !$ser data CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS NACTI=NACTI NACTL=NACTL
       !$ser data Q=Q QRAIN=QRAIN QSNOW=QSNOW QGRAUPEL=QGRAUPEL REV_LS=REV_LS RSU_LS=RSU_LS
@@ -1123,6 +1123,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
         call MAPL_TimerOff(MAPL,"---CLDMICRO")
 
+        !$ser savepoint GFDL_1M_finalize-Out
+
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
 
@@ -1133,6 +1135,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                       DUDT_macro+DUDT_micro,&
                                       DVDT_macro+DVDT_micro,PTR3D)
         endif
+        !$ser data DTDTFRIC=PTR3D
 
         ! Compute DBZ radar reflectivity
         call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
@@ -1186,7 +1189,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         endif
 
-        !$ser savepoint GFDL_1M_finalize-Out
         !$ser data T=T U=U V=V PLmb=PLmb RAD_CF=RAD_CF RAD_QI=RAD_QI RAD_QL=RAD_QL
         !$ser data RAD_QV=RAD_QV RAD_QR=RAD_QR RAD_QS=RAD_QS RAD_QG=RAD_QG MASS=MASS
         !$ser data CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS NACTI=NACTI NACTL=NACTL
