@@ -242,6 +242,7 @@
 
 # ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation
 #
+#    Implemented only for CatchCNCLM40.  May not work!
 #
 #    0 : NO,  run CN Model interactively (default)
 #    1 : YES, prescribe interannually varying LAI and SAI
