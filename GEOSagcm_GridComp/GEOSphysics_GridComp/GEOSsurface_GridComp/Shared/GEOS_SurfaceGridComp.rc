@@ -69,6 +69,8 @@
 
 # ---- Formulation for turbulent roughness length (z0)
 #
+#    Choice implemented for Catch only.  Hardwired in CatchCN.
+#
 #    0 : Fortuna,      SMAP NRv3
 #    1 : Ganymed-4_1,  SMAP NRv4/NRv4.1
 #    2 : Heracles-4_3, Icarus (AGCM default)
