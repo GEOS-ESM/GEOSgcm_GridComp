@@ -2271,7 +2271,6 @@ contains
    real, pointer, dimension(:,:  )     :: KEPHY
    real, pointer, dimension(:,:  )     :: AREA
 
-   real*8, allocatable, dimension(:,:)   :: sumq
    real*8, allocatable, dimension(:,:,:) :: ple_new
 
    character(len=ESMF_MAXSTR), allocatable  :: NAMES(:)
@@ -2450,11 +2449,6 @@ contains
     allocate( TDPOLD(IM,JM,LM),stat=STATUS )
     VERIFY_(STATUS)
     TDPOLD = T(:,:,1:LM) / DPI
-
-   ! Create Old Dry Mass Variables
-   ! -----------------------------
-     allocate(   sumq( IM,JM ),    STAT=STATUS ) ; VERIFY_(STATUS)
-     allocate( ple_new(IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
 
 ! Pointers to Exports
 !--------------------
@@ -3224,8 +3218,9 @@ contains
     DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW
 
     if( DPEDT_PHYS ) then
-       allocate(sumdq(IM,JM))
-       allocate(  dpe(IM,JM))
+       allocate( ple_new(IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
+       allocate(   sumdq(IM,JM)     ,STAT=STATUS ) ; VERIFY_(STATUS)
+       allocate(     dpe(IM,JM)     ,STAT=STATUS ) ; VERIFY_(STATUS)
 
        call ESMF_StateGet (EXPORT, 'TRADV', BUNDLE, RC=STATUS )
        VERIFY_(STATUS)
@@ -3280,7 +3275,6 @@ contains
        deallocate( sumdq   )
        deallocate( dpe     )
        deallocate( names   )
-       deallocate( sumq    )
        deallocate( ple_new )
 
     else
