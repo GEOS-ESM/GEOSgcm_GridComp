@@ -40,8 +40,9 @@ MODULE lsm_routines
        SHR               => CATCH_SHR,           &
        N_SM              => CATCH_N_ZONES,       &
        PEATCLSM_POROS_THRESHOLD,                 &
-       PEATCLSM_ZBARMAX_4_SYSOIL
-  
+       PEATCLSM_ZBARMAX_4_SYSOIL,&
+       AR_UR             => AR_URBAN  
+ 
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, FLWALPHA
   
@@ -235,8 +236,7 @@ CONTAINS
            VGWMAX, RZEQ, POROS,                               &
            SRFEXC, RZEXC,                                     &
            RUNSRF,                                            &  ! [kg m-2 s-1]  (flux units)
-           QINFIL,                                            &  ! [kg m-2 s-1]  (flux units)
-           AR_UR &
+           QINFIL                                            &  ! [kg m-2 s-1]  (flux units)
            )
 
 !**** NOTE: Input throughfall is in volume units, as are calcs throughout this subroutine  [kg m-2]
@@ -249,7 +249,7 @@ CONTAINS
       INTEGER, INTENT(IN)                    :: NCH
       REAL,    INTENT(IN)                    :: DTSTEP, FWETC, FWETL
       LOGICAL, INTENT(IN)                    :: UFW4RO 
-      REAL,    INTENT(IN),    DIMENSION(NCH) :: AR1, AR2, AR4,AR_UR, FRICE, TP1, SRFMX
+      REAL,    INTENT(IN),    DIMENSION(NCH) :: AR1, AR2, AR4, FRICE, TP1, SRFMX
       REAL,    INTENT(IN),    DIMENSION(NCH) :: VGWMAX, RZEQ, POROS
       REAL,    INTENT(IN),    DIMENSION(NCH) :: THRUL_VOL, THRUC_VOL              ! [kg m-2] 
       LOGICAL, INTENT(IN)                    :: BUG
@@ -286,7 +286,7 @@ CONTAINS
 
             IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                ! Non-peatland
-               frun=AR1(N)+AR_UR(N)
+               frun=AR1(N)+AR_UR
                srun0=PTOTAL*frun
 
                !**** Comment out this line in order to allow moisture

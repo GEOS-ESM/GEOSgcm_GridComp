@@ -270,7 +270,7 @@
             TC1_00, TC2_00, TC4_00, EACC_00,                                   &
               qa1_orig,qa2_orig,qa4_orig,tc1_orig,tc2_orig,tc4_orig,           &
               tcs_orig,                                                        &
-              ALW_UR, BLW_UR,TCSF_UR,HFTDS_UR,DHFT_UR,HSTURB_UR,DHSDTCX_UR,ETURB_UR,DEDQAX_UR,DEDTCX_U,&
+              ALW_UR, BLW_UR,TCSF_UR,HFTDS_UR,DHFT_UR,HSTURB_UR,DHSDTCX_UR,ETURB_UR,DEDQAX_UR,DEDTCX_U,DHSDQAX_UR,DEDTCX_UR,&
               EVAP_UR,SHFLUX_UR, HLWUP_UR, RX1_UR, RX2_UR, GHFLUX_UR, HSNACC_UR
 
 
@@ -299,7 +299,8 @@
               SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,                              &
               EVAPXS,SHFLUXXS,phi,rho_fs,sumdepth,                             &   
               sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
-              mltwtr, wesnbot, dtss
+              mltwtr, wesnbot, dtss,&
+              RTBS_UR,EPFRC_UR
 
 
 
@@ -731,7 +732,7 @@
         DHFT2(N)=-DFH21I
         DHFT4(N)=-DFH21D
 
-        if(AR_UR(N)>0.)then
+        if(AR_UR>0.)then
           T1_UR(1)=TC_UR(N)
           T1_UR(2)=TC_UR(N)
           T1_UR(3)=TC_UR(N)  
@@ -865,9 +866,9 @@
          
         SUMEP=EPFRC1*EVAP1(N)*AR1(N)+EPFRC2*EVAP2(N)*AR2(N)+                   &
               EPFRC4*EVAP4(N)*AR4(N)
-        SUMEP = SUMEP*(1.-AR_UR(N)) + EPFRC_UR*EVAP_UR(N)*AR_UR(N)
+        SUMEP = SUMEP*(1.-AR_UR) + EPFRC_UR*EVAP_UR(N)*AR_UR
         SUME=EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N)
-        SUME= SUME*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)
+        SUME= SUME*(1.-AR_UR) + EVAP_UR(N)*AR_UR
         
         !   "quick fix" gone wrong in global AMSR-E assimilation
         !   trying to correct while staying as close as possible to past fix
@@ -1088,32 +1089,32 @@
         LHFLUX(N)=(1.-ASNOW(N))*                                               &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))*ALHE           &
               +ASNOW(N)*EVSNOW(N)*ALHS
-        LHFLUX(N) = LHFLUX(N)*(1.-AR_UR(N)) + EVAP_UR(N)*ALHE*AR_UR(N)
+        LHFLUX(N) = LHFLUX(N)*(1.-AR_UR) + EVAP_UR(N)*ALHE*AR_UR
         EVAP(N)=(1.-ASNOW(N))*                                                 &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))                &
               +ASNOW(N)*EVSNOW(N) 
-        EVAP(N) = EVAP(N)*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)       
+        EVAP(N) = EVAP(N)*(1.-AR_UR) + EVAP_UR(N)*AR_UR       
         EVAPFR(N)=(1.-ASNOW(N))*                                               &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))
-        EVAPFR(N) = EVAPFR(N)*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)      
+        EVAPFR(N) = EVAPFR(N)*(1.-AR_UR) + EVAP_UR(N)*AR_UR     
         SHFLUX(N)=(1.-ASNOW(N))*                                               &
               (SHFLUX1(N)*AR1(N)+SHFLUX2(N)*AR2(N)+SHFLUX4(N)*AR4(N))          &
               +ASNOW(N)*SHFLUXS(N) 
-        SHFLUX(N)=SHFLUX(N)*(1.-AR_UR(N)) + SHFLUX_UR(N)*AR_UR(N)     
+        SHFLUX(N)=SHFLUX(N)*(1.-AR_UR) + SHFLUX_UR(N)*AR_UR     
         HLWUP(N)=(1.-ASNOW(N))*                                                &
               (HLWUP1(N)*AR1(N)+HLWUP2(N)*AR2(N)+HLWUP4(N)*AR4(N))             &
               +ASNOW(N)*HLWUPS(N) 
-        HLWUP(N) = HLWUP(N)*(1.-AR_UR(N)) + HLWUP_UR(N)*AR_UR(N)
+        HLWUP(N) = HLWUP(N)*(1.-AR_UR) + HLWUP_UR(N)*AR_UR
         SWLAND(N)=(1.-ASNOW(N))*SWNETF(N) + ASNOW(N)*SWNETS(N) 
-        SWLAND(N) = SWLAND(N)*(1.-AR_UR(N)) + SWNET_UR(N)*AR_UR(N)
+        SWLAND(N) = SWLAND(N)*(1.-AR_UR) + SWNET_UR(N)*AR_UR
         GHFLUX(N)=(1.-ASNOW(N))*                                               &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               +ASNOW(N)*GHFLUXS(N) 
-        GHFLUX(N)=GHFLUX(N)*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)      
+        GHFLUX(N)=GHFLUX(N)*(1.-AR_UR) + GHFLUX_UR(N)*AR_UR     
         GHTSKIN(N)=(1.-ASNOW(N))*                                              &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               -ASNOW(N)*ghfluxsno(N)
-        GHTSKIN(N)=GHTSKIN(N)*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)      
+        GHTSKIN(N)=GHTSKIN(N)*(1.-AR_UR) + GHFLUX_UR(N)*AR_UR      
         ENDDO 
 
 
@@ -2388,8 +2389,9 @@
       REAL, INTENT(IN) :: DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: UM, RCIN, ETURB, HSTURB, QM, RA,     &
                 SWNET, HLWDWN, PSUR, RDC, HFTDS, DHFTDS, QSATTC, DQSDTC,       &
-                ALWRAD, BLWRAD, EMAXRT, CSOIL, SWSRF, POTFRC, WPWET, DEDQA,    &
+                ALWRAD, BLWRAD, EMAXRT, SWSRF, POTFRC, WPWET, DEDQA,    &
                 DEDTC, DHSDQA, DHSDTC, POROS
+      REAL, INTENT(IN) :: CSOIL 
       LOGICAL, INTENT(IN) ::  BUG
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: TC, QA
@@ -2400,7 +2402,7 @@
 
       INTEGER ChNo, N
       REAL, DIMENSION(NCH) :: DEDEA, DHSDEA, EM, ESATTC, DESDTC, EA, RC,       &
-                DRCDTC, DRCDEA, SWSRF4
+                DRCDTC, DRCDEA, SWSRF4, EMAXRT_UR, CSOIL_UR
       REAL  DELTC, DELEA
 
 !****
@@ -2468,7 +2470,8 @@
         DRCDTC(CHNO)=0.
         DRCDEA(CHNO)=0.
         ENDDO
-
+     EMAXRT_UR = 0.
+     CSOIL_UR = CSOIL 
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !****       STEP 2: Solve the energy balance at the surface.
 !****
@@ -2476,7 +2479,7 @@
                       NCH,   ITYP, DTSTEP, ESATTC, DESDTC,                     &
                     ETURB,  DEDEA,  DEDTC, HSTURB, DHSDEA, DHSDTC,             &
                        RC, DRCDEA, DRCDTC,SWNET, HLWDWN, ALWRAD, BLWRAD,       &
-                       EM,  CSOIL,   PSUR, 0., HFTDS, DHFTDS,              &
+                       EM,  CSOIL_UR,   PSUR, EMAXRT_UR, HFTDS, DHFTDS,              &
                        TC,     EA,                                             &
                      EVAP, SHFLUX,  HLWUP, GHFLUX, HSNACC                      &
                    )
