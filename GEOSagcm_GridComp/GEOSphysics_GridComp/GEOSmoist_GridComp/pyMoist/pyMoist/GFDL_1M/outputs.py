@@ -7,7 +7,7 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 @dataclass
 class Outputs:
     lower_tropospheric_stability: Quantity
-    estimated_inversion_stregnth: Quantity
+    estimated_inversion_strength: Quantity
     z_lcl: Quantity
     du_dt_macro: Quantity
     dv_dt_macro: Quantity
@@ -70,7 +70,7 @@ class Outputs:
     @classmethod
     def make(cls, quantity_factory: QuantityFactory):
         lower_tropospheric_stability = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        estimated_inversion_stregnth = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        estimated_inversion_strength = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         z_lcl = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         du_dt_macro = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         dv_dt_macro = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -132,7 +132,7 @@ class Outputs:
 
         return cls(
             lower_tropospheric_stability,
-            estimated_inversion_stregnth,
+            estimated_inversion_strength,
             z_lcl,
             du_dt_macro,
             dv_dt_macro,

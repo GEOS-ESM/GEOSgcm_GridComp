@@ -219,6 +219,7 @@ class TranslateGFDL_1M_setup(TranslateFortranData2Py):
         )
         shallow_convective_rain = self.make_ijk_quantity(inputs.pop("SHLW_PRC3"))
         shallow_convective_snow = self.make_ijk_quantity(inputs.pop("SHLW_SNO3"))
+        self.outputs.z_lcl = None
 
         # Construct stencils
         self.prepare_tendencies = self.stencil_factory.from_dims_halo(

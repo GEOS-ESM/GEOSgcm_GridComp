@@ -146,7 +146,7 @@ def find_k_lcl(
 
 def update_z_lcl(
     layer_height_above_surface: FloatField,
-    k_lcl: FloatFieldIJ,
+    k_lcl: IntFieldIJ,
     z_lcl: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(0, 1):
