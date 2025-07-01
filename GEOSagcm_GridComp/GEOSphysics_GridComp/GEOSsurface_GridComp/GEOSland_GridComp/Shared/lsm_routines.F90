@@ -1390,7 +1390,7 @@ CONTAINS
 
       xwi=min(xwi,1.)
       tkdry=0.9 ! Urban thermal conductivity
-      xklh(1)=(tksat-tkdry)*xwi + tkdry
+      xklh(1)=tkdry!(tksat-tkdry)*xwi + tkdry
       xklhw=tksat
 
       denom=-(DZTSURF*0.5)-zc(1)
@@ -2518,21 +2518,12 @@ CONTAINS
 
       Return
 
-      end subroutine gndtmp
+      end subroutine gndtmp 
 
  ! *******************************************************************
 
-  
 
-  
-
-
-
-
-
-    
-
- ! *******************************************************************
+ 
 
   subroutine catch_calc_tp( NTILES, poros, ghtcnt, tp, fice )
 

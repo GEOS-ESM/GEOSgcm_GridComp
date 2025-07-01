@@ -1244,6 +1244,72 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_1_urban' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT1_UR'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_2_urban' ,&
+    UNITS              = 'J_m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT2_UR'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_3_urban' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT3_UR'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_4_urban' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT4_UR'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_5_urban' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT5_UR'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_6_urban' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT6_UR'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'mean_catchment_temp_incl_snw',&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TSURF'                     ,&
@@ -2021,6 +2087,60 @@ subroutine SetServices ( GC, RC )
     LONG_NAME          = 'soil_temperature_layer_6'  ,&
     UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP6'                       ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'soil_temperature_layer_1_urban'  ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
+    SHORT_NAME         = 'TP1_UR'                       ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'soil_temperature_layer_2_urban'  ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
+    SHORT_NAME         = 'TP2_UR'                       ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'soil_temperature_layer_3_urban'  ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
+    SHORT_NAME         = 'TP3_UR'                       ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'soil_temperature_layer_4_urban'  ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
+    SHORT_NAME         = 'TP4_UR'                       ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'soil_temperature_layer_5_urban'  ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
+    SHORT_NAME         = 'TP5_UR'                       ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'soil_temperature_layer_6_urban'  ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
+    SHORT_NAME         = 'TP6_UR'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
@@ -3926,6 +4046,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ghtcnt4
         real, dimension(:),   pointer :: ghtcnt5
         real, dimension(:),   pointer :: ghtcnt6
+        real, dimension(:),   pointer :: GHTCNT1_UR
+        real, dimension(:),   pointer :: GHTCNT2_UR
+        real, dimension(:),   pointer :: GHTCNT3_UR
+        real, dimension(:),   pointer :: GHTCNT4_UR
+        real, dimension(:),   pointer :: GHTCNT5_UR
+        real, dimension(:),   pointer :: GHTCNT6_UR        
         real, dimension(:),   pointer :: tsurf
         real, dimension(:),   pointer :: wesnn1
         real, dimension(:),   pointer :: wesnn2
@@ -3998,6 +4124,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: tp4
         real, dimension(:),   pointer :: tp5
         real, dimension(:),   pointer :: tp6
+        real, dimension(:),   pointer :: TP1_UR
+        real, dimension(:),   pointer :: TP2_UR
+        real, dimension(:),   pointer :: TP3_UR
+        real, dimension(:),   pointer :: TP4_UR
+        real, dimension(:),   pointer :: TP5_UR
+        real, dimension(:),   pointer :: TP6_UR        
         real, dimension(:),   pointer :: emis
         real, dimension(:),   pointer :: albvr
         real, dimension(:),   pointer :: albvf
@@ -4125,6 +4257,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !       real*8,pointer,dimension(:) :: fsum
 
         real,pointer,dimension(:,:) :: ghtcnt
+        real,pointer,dimension(:,:) :: GHTCNT_UR        
         real,pointer,dimension(:,:) :: wesnn
         real,pointer,dimension(:,:) :: htsnnn
         real,pointer,dimension(:,:) :: sndzn
@@ -4491,6 +4624,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,GHTCNT4    ,'GHTCNT4'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,GHTCNT5    ,'GHTCNT5'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,GHTCNT6    ,'GHTCNT6'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT1_UR    ,'GHTCNT1_UR'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT2_UR    ,'GHTCNT2_UR'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT3_UR    ,'GHTCNT3_UR'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT4_UR    ,'GHTCNT4_UR'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT5_UR    ,'GHTCNT5_UR'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT6_UR    ,'GHTCNT6_UR'    ,RC=STATUS); VERIFY_(STATUS)        
         call MAPL_GetPointer(INTERNAL,TSURF      ,'TSURF'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,WESNN1     ,'WESNN1'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,WESNN2     ,'WESNN2'     ,RC=STATUS); VERIFY_(STATUS)
@@ -4567,6 +4706,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TP4,    'TP4'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP5,    'TP5'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP6,    'TP6'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,TP1_UR,    'TP1_UR'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,TP2_UR,    'TP2_UR'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,TP3_UR,    'TP3_UR'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,TP4_UR,    'TP4_UR'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,TP5_UR,    'TP5_UR'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,TP6_UR,    'TP6_UR'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)        
         call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVR,  'ALBVR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVF,  'ALBVF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -4647,6 +4792,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
 
         allocate(GHTCNT  (N_GT,  NTILES))
+        allocate(GHTCNT_UR  (N_GT,  NTILES))        
         allocate(WESNN   (N_SNOW,NTILES))
         allocate(HTSNNN  (N_SNOW,NTILES))
         allocate(SNDZN   (N_SNOW,NTILES))
@@ -4834,6 +4980,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         GHTCNT(4,:) = GHTCNT4
         GHTCNT(5,:) = GHTCNT5
         GHTCNT(6,:) = GHTCNT6
+        GHTCNT_UR(1,:) = GHTCNT1_UR
+        GHTCNT_UR(2,:) = GHTCNT2_UR
+        GHTCNT_UR(3,:) = GHTCNT3_UR
+        GHTCNT_UR(4,:) = GHTCNT4_UR
+        GHTCNT_UR(5,:) = GHTCNT5_UR
+        GHTCNT_UR(6,:) = GHTCNT6_UR        
 
         WESNN (1,:) = WESNN1
         WESNN (2,:) = WESNN2
@@ -5698,7 +5850,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              TC(:,FSAT), TC(:,FTRN), TC(:,FWLT)		          ,& 
              QC(:,FSAT), QC(:,FTRN), QC(:,FWLT)		          ,&
 
-             CAPAC, CATDEF, RZEXC, SRFEXC, GHTCNT, TSURF          ,&
+             CAPAC, CATDEF, RZEXC, SRFEXC, GHTCNT, GHTCNT_UR, TSURF          ,&
              WESNN, HTSNNN, SNDZN                                 ,&
 
              EVAPOUT, SHOUT, RUNOFF, EVPINT, EVPSOI, EVPVEG       ,&  ! EVAPOUT:                        kg/m2/s
@@ -5718,7 +5870,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              GHFLXTSKIN                                           ,&
              TC(:,FSNW)                                           ,&
              ASNOW                                                ,&
-             TP1, TP2, TP3, TP4, TP5, TP6,  SFMC, RZMC, PRMC      ,&
+             TP1, TP2, TP3, TP4, TP5, TP6,&
+             TP1_UR, TP2_UR, TP3_UR, TP4_UR, TP5_UR, TP6_UR       ,&
+             SFMC, RZMC, PRMC      ,&
              ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC                 ,&      
              EVACC                                                ,&  ! kg/m2/s 
              LHACC, SHACC                                         ,&  ! W/m2
@@ -5746,7 +5900,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         TP4 = TP4 + MAPL_TICE
         TP5 = TP5 + MAPL_TICE
         TP6 = TP6 + MAPL_TICE
-                
+        TP1_UR = TP1_UR + MAPL_TICE
+        TP2_UR = TP2_UR + MAPL_TICE
+        TP3_UR = TP3_UR + MAPL_TICE
+        TP4_UR = TP4_UR + MAPL_TICE
+        TP5_UR = TP5_UR + MAPL_TICE
+        TP6_UR = TP6_UR + MAPL_TICE                
         call MAPL_TimerOff ( MAPL, "-CATCH" )
 
         if (CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
@@ -6060,6 +6219,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         GHTCNT4 = GHTCNT(4,:)
         GHTCNT5 = GHTCNT(5,:)
         GHTCNT6 = GHTCNT(6,:)
+        GHTCNT1_UR = GHTCNT_UR(1,:)
+        GHTCNT2_UR = GHTCNT_UR(2,:)
+        GHTCNT3_UR = GHTCNT_UR(3,:)
+        GHTCNT4_UR = GHTCNT_UR(4,:)
+        GHTCNT5_UR = GHTCNT_UR(5,:)
+        GHTCNT6_UR = GHTCNT_UR(6,:)
 
         WESNN1  = WESNN (1,:)
         WESNN2  = WESNN (2,:)
@@ -6096,6 +6261,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
 
         deallocate(GHTCNT   )
+        deallocate(GHTCNT_UR   )        
         deallocate(WESNN    )
         deallocate(HTSNNN   )
         deallocate(SNDZN    )
