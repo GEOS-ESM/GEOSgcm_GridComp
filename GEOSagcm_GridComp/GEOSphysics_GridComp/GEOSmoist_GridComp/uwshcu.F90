@@ -66,7 +66,7 @@ module uwshcu
    real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
    real, parameter :: qcmin = 1.e-12 !< min value for cloud condensates
 
-   real, parameter :: mintracer = tiny(1.)
+   real, parameter :: mintracer = 0.0
 contains
 
    real function exnerfn(pressure)
@@ -638,7 +638,6 @@ contains
     real    trflx(0:k0,ncnst)                            !  Flux of
     real    trflx_d(0:k0)                                !  Adjustive
     real    trflx_u(0:k0)                                !  Adjustive
-    real    trmin
     real    pdelx, dum 
 
 ! Variables for temperature/moisture excess in source parcel
@@ -4030,16 +4029,6 @@ contains
 
 !         if( m .ne. ixnumliq .and. m .ne. ixnumice ) then
 
-           trmin = qcmin
-!#ifdef MODAL_AERO
-!           do mm = 1, ntot_amode
-!             if( m .eq. numptr_amode(mm) ) then
-!                 trmin = 1.e-5
-!                 goto 55
-!             endif              
-!           enddo
-!        55 continue
-!#endif 
            trflx_d(0:k0) = 0.
            trflx_u(0:k0) = 0.           
            do k = 1, k0-1
@@ -4049,7 +4038,7 @@ contains
 !                 pdelx = dpdry0(k)
 !             endif
              km1 = k - 1
-             dum = ( tr0(k,m) - trmin ) *  pdelx / g / dt + trflx(km1,m) - trflx(k,m) + trflx_d(km1)
+             dum = tr0(k,m) *  pdelx / g / dt + trflx(km1,m) - trflx(k,m) + trflx_d(km1)
              trflx_d(k) = min( 0., dum )
            enddo
            do k = k0, 2, -1
@@ -4059,7 +4048,7 @@ contains
 !                 pdelx = dpdry0(k)
 !             endif
              km1 = k - 1
-             dum = ( tr0(k,m) - trmin ) * pdelx / g / dt + trflx(km1,m) - trflx(k,m) + &
+             dum = tr0(k,m) * pdelx / g / dt + trflx(km1,m) - trflx(k,m) + &
                                                            trflx_d(km1) - trflx_d(k) - trflx_u(k) 
              trflx_u(km1) = max( 0., -dum ) 
            enddo

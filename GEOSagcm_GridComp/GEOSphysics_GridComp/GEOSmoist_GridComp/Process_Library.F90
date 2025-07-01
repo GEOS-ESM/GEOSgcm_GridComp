@@ -543,7 +543,7 @@ module GEOSmoist_Process_Library
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
         ICEFRCT_M = ICEFRCT_M**iICEFRPWR
-      else if (SRF_TYPE >= 1.0) then
+      else if (SRF_TYPE == 1.0) then
         ! Over Land
         ICEFRCT_M  = 0.00
         if ( TEMP <= lT_ICE_ALL ) then
