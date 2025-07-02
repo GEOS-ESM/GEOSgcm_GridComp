@@ -416,7 +416,6 @@ class GEOSPyMoistWrapper:
         self._mapl_export.register("CN_SNR", np.float32, [X_DIM, Y_DIM])
         self._mapl_export.register("AN_SNR", np.float32, [X_DIM, Y_DIM])
         self._mapl_export.register("SC_SNR", np.float32, [X_DIM, Y_DIM])
-        print("Successfully linked all variables in GFDL_1M")
 
     def GFDL_1M_Microphysics(self):
         from pyMoist.GFDL_1M.state import (
