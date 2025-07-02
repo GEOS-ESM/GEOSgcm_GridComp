@@ -6571,6 +6571,8 @@ def update_output_variables(
             qiten = 0.0
             qiten_sink = 0.0
             qlten = 0.0
+            umf_zint[0, 0, 1] = 0.0
+            zifc0 = 0.0
 
         if del_CIN <= 0.0:
             umf_outvar = umf_out
