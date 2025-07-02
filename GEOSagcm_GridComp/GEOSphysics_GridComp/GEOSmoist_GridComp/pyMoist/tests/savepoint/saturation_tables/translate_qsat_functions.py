@@ -1,3 +1,5 @@
+from typing import Any
+
 from ndsl import Namelist, StencilFactory
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -83,7 +85,7 @@ class Translateqsat_functions(TranslateFortranData2Py):
         }
 
         # Set Up Outputs
-        self.out_vars = {
+        self.out_vars: dict[str, Any] = {
             "SER_QSATLQU": {},
             "SER_QSATICE": {},
             "SER_DQSL": {},

@@ -1,3 +1,5 @@
+from typing import Any
+
 from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -14,7 +16,7 @@ class Translatesaturation_tables(TranslateFortranData2Py):
         self.max_error = 1e-9
 
         # Set Up Outputs
-        self.out_vars = {
+        self.out_vars: dict[str, Any] = {
             "ESTBLE": {},
             "ESTBLW": {},
             "ESTBLX": {},

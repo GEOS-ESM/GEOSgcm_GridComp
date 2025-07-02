@@ -49,20 +49,18 @@ def pdfcondensate(
 
     if pdfshape == 1:
         if (qtmean_64 + sigmaqt1_64) < qstar_64:
-            condensate: f64 = 0.0
+            return f64(0.0)
         elif qstar_64 > (qtmean_64 - sigmaqt1_64):
             if sigmaqt1_64 > 0.0:
-                condensate: f64 = (min(qtmean_64 + sigmaqt1_64 - qstar_64, 2.0 * sigmaqt1_64) ** 2) / (
-                    4.0 * sigmaqt1_64
+                return f64(
+                    (min(qtmean_64 + sigmaqt1_64 - qstar_64, 2.0 * sigmaqt1_64) ** 2) / (4.0 * sigmaqt1_64)
                 )
             else:
-                condensate: f64 = qtmean_64 - qstar_64
+                return qtmean_64 - qstar_64
         else:
-            condensate: f64 = qtmean_64 - qstar_64
+            return qtmean_64 - qstar_64
 
     # Above code only executes when pdfshape = 1. Fortran code exists for pdfshape = 2
-
-    return condensate
 
 
 @function
@@ -125,7 +123,8 @@ def bergeron_partition(
 
             if ni_x > 1.0 and large_scale_ice > 1.0e-10:
                 dc = max(
-                    (large_scale_ice / (ni_x * den_ice * constants.MAPL_PI)) ** 0.333, 20.0e-6
+                    (large_scale_ice / (ni_x * den_ice * constants.MAPL_PI)) ** 0.333,
+                    20.0e-6,
                 )  # Assumme monodisperse size dsitribution
             else:
                 dc = 20.0e-6
