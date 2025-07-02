@@ -3195,7 +3195,9 @@ def buoyancy_sorting(
                                     thlu = (thle + ssthl0 / fer - ssthl0 * dpe / 2.0) - (
                                         thle + ssthl0 * dpe / 2.0 - thlu[0, 0, -1] + ssthl0 / fer
                                     ) * exp(-fer * dpe)
-
+                                    qtu = (qte + ssqt0 / fer - ssqt0 * dpe / 2.0) - (
+                                        qte + ssqt0 * dpe / 2.0 - qtu[0, 0, -1] + ssqt0 / fer
+                                    ) * exp(-fer * dpe)
                                     uu = (ue + (1.0 - PGFc) * ssu0 / fer - ssu0 * dpe / 2.0) - (
                                         ue + ssu0 * dpe / 2.0 - uu[0, 0, -1] + (1.0 - PGFc) * ssu0 / fer
                                     ) * exp(-fer * dpe)
