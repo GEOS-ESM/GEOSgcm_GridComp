@@ -73,7 +73,7 @@ module catch_constants
   ! constants for urban
   REAL,    PARAMETER, PUBLIC :: CATCH_EMIS_URBAN    = 0.95
   REAL,    PARAMETER, PUBLIC :: CATCH_C_URBAN       = 120000.  ! J/K - heat capacity associated w/ urban  
-  REAL,    PARAMETER, PUBLIC :: CATCH_CH_URBAN      = 0.006    ! kg/m^2/s
+  REAL,    PARAMETER, PUBLIC :: CATCH_CH_URBAN      = 0.018    ! kg/m^2/s
   REAL,    PARAMETER, PUBLIC :: AR_URBAN            = 0.3  
   ! ---------------------------------------------------------------------------
   !
