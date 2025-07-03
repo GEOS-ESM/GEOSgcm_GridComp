@@ -1,12 +1,11 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import BoolField, BoolFieldIJ, FloatField, FloatFieldIJ
-from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
+from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.stencils import implicit_fall
 from pyMoist.GFDL_1M.driver.terminal_fall.stencils import (
     check_precip_get_zt,
-    melting_loop,
     reset,
     setup,
     update_dm,
@@ -28,7 +27,7 @@ class TerminalFall:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        GFDL_1M_config: MicrophysicsConfiguration,
+        GFDL_1M_config: GFDL1MConfig,
         config_dependent_constants: ConfigConstants,
     ):
 
@@ -61,11 +60,6 @@ class TerminalFall:
             },
         )
 
-        self._melting_loop = stencil_factory.from_dims_halo(
-            func=melting_loop,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
         self._update_dm = stencil_factory.from_dims_halo(
             func=update_dm,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -79,7 +73,6 @@ class TerminalFall:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
-                "use_ppm": GFDL_1M_config.USE_PPM,
             },
         )
 
@@ -146,6 +139,10 @@ class TerminalFall:
             self.temporaries.icpk,
             self.temporaries.cvm,
             is_frozen,
+            precip_rain,
+            precip_graupel,
+            precip_snow,
+            precip_ice,
         )
 
         # -----------------------------------------------------------------------
@@ -165,12 +162,6 @@ class TerminalFall:
                 precip_fall,
             )
 
-            # placeholder function. need the listed features to implement
-            self._melting_loop(
-                self.temporaries.need_2d_temporaries_feature,
-                self.temporaries.need_double_k_loop_feature,
-            )
-
             self._update_dm(
                 self.temporaries.dm,
                 dp1,
@@ -183,16 +174,17 @@ class TerminalFall:
                 precip_fall,
             )
 
-            self._implicit_fall(
-                qi1,
-                vti,
-                ze,
-                dp1,
-                self.temporaries.m1,
-                m1_sol,
-                precip_ice,
-                precip_fall,
-            )
+            if self.GFDL_1M_config.USE_PPM is False:
+                self._implicit_fall(
+                    qi1,
+                    vti,
+                    ze,
+                    dp1,
+                    self.temporaries.m1,
+                    m1_sol,
+                    precip_ice,
+                    precip_fall,
+                )
 
             self._update_w1(
                 w1,
@@ -222,12 +214,6 @@ class TerminalFall:
             precip_fall,
         )
 
-        # placeholder function. need the listed features to implement
-        self._melting_loop(
-            self.temporaries.need_2d_temporaries_feature,
-            self.temporaries.need_double_k_loop_feature,
-        )
-
         self._update_dm(
             self.temporaries.dm,
             dp1,
@@ -240,16 +226,17 @@ class TerminalFall:
             precip_fall,
         )
 
-        self._implicit_fall(
-            qs1,
-            vts,
-            ze,
-            dp1,
-            self.temporaries.m1,
-            m1_sol,
-            precip_snow,
-            precip_fall,
-        )
+        if self.GFDL_1M_config.USE_PPM is False:
+            self._implicit_fall(
+                qs1,
+                vts,
+                ze,
+                dp1,
+                self.temporaries.m1,
+                m1_sol,
+                precip_snow,
+                precip_fall,
+            )
 
         self._update_w1(
             w1,
@@ -279,12 +266,6 @@ class TerminalFall:
             precip_fall,
         )
 
-        # placeholder function. need the listed features to implement
-        self._melting_loop(
-            self.temporaries.need_2d_temporaries_feature,
-            self.temporaries.need_double_k_loop_feature,
-        )
-
         self._update_dm(
             self.temporaries.dm,
             dp1,
@@ -297,16 +278,17 @@ class TerminalFall:
             precip_fall,
         )
 
-        self._implicit_fall(
-            qg1,
-            vtg,
-            ze,
-            dp1,
-            self.temporaries.m1,
-            m1_sol,
-            precip_graupel,
-            precip_fall,
-        )
+        if self.GFDL_1M_config.USE_PPM is False:
+            self._implicit_fall(
+                qg1,
+                vtg,
+                ze,
+                dp1,
+                self.temporaries.m1,
+                m1_sol,
+                precip_graupel,
+                precip_fall,
+            )
 
         self._update_w1(
             w1,

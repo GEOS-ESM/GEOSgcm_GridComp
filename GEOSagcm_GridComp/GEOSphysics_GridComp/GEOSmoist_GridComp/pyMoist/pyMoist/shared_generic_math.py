@@ -3,9 +3,9 @@ These functions perform basic math and calculate fundamental
 meteorological quantities"""
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import exp
 
 import pyMoist.constants as constants
+from ndsl.dsl.gt4py import exp
 from ndsl.dsl.typing import Float
 
 

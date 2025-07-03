@@ -1,232 +1,295 @@
-"""This module is the wrapper for the GFDL_1M microphysics scheme (in progress).
-I/O and errorhandling is performed here.
-Calculations can be found in deeper functions."""
-
-from ndsl import QuantityFactory, StencilFactory, orchestrate
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
-from pyMoist.GFDL_1M.evap_subl_pdf_core import evaporate, hystpdf, initial_calc, melt_freeze, sublimate
-from pyMoist.saturation.formulation import SaturationFormulation
-from pyMoist.saturation.qsat import QSat
-from pyMoist.shared_gt4py_workarounds import get_last, hybrid_index_2dout
-from pyMoist.shared_incloud_processes import fix_up_clouds
+from pyMoist.GFDL_1M.config import GFDL1MConfig
+from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
+from pyMoist.GFDL_1M.finalize import Finalize
+from pyMoist.GFDL_1M.masks import Masks
+from pyMoist.GFDL_1M.outputs import Outputs
+from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
+from pyMoist.GFDL_1M.setup import Setup
+from pyMoist.GFDL_1M.stencils import (
+    prepare_radiation_quantities,
+    prepare_tendencies,
+    update_radiation_quantities,
+    update_tendencies,
+)
+from pyMoist.GFDL_1M.temporaries import Temporaries
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
-class GFDL_1M:
-    """This class is the wrapper for the GFDL_1M microphysics scheme. I/O and error handling
-    are perfromed at this level, all calculations are performed within deeper functions.
+class GFDL1M:
+    """
+    GFDL Single Moment microphysics
+
+    The primary purpose of this code is to compute macro/microphysical tendencies to be applied to state
+    variables (p, t, wind, etc.). This code requires all fields to be preloaded with Fortran memory or
+    otherwise supplied between the __init__ and __call__ steps.
+
+    Performs the following functions to achieve this goal:
+    __init__
+        - initalize saturaiton vapor pressure tables, initalize temporary/output fields, construct stencils
+        Arguments: StencilFactory, QuantityFactory, GFDL1MConfig
+
+    __call__
+        - setup: compute additional required fields, create pristine copies of input variables
+        - phase_change: create new condensates, perform phase change operations
+        - driver: precipitate condensates
+        - finalize: compute tendencies, prepare fields to be returned to the larger model
+        Arguments: none (data needs to be pre-loaded)
     """
 
     def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        formulation: SaturationFormulation = SaturationFormulation.Staars,
-        use_bergeron: bool = True,
+        self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, GFDL_1M_config: GFDL1MConfig
     ):
-        if use_bergeron is not True:
-            raise NotImplementedError(
-                "Untested option for use_bergeron. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
-            )
-
         self.stencil_factory = stencil_factory
+        if self.stencil_factory.grid_indexing.n_halo != 0:
+            raise ValueError("halo needs to be zero for GFDL Single Moment microphysics")
         self.quantity_factory = quantity_factory
+        self.GFDL_1M_config = GFDL_1M_config
 
-        # Initalize QSat tables for later calculations
-        self.qsat = QSat(
-            self.stencil_factory,
-            self.quantity_factory,
-            formulation=formulation,
+        # Initalize saturation tables
+        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+
+        # Initalize internal fields
+        self.masks = Masks.make(quantity_factory=quantity_factory)
+        self.outputs = Outputs.make(quantity_factory=quantity_factory)
+        self.temporaries = Temporaries.make(quantity_factory=quantity_factory)
+
+        # Construct stencils
+
+        self.prepare_tendencies = stencil_factory.from_dims_halo(
+            func=prepare_tendencies,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        orchestrate(obj=self, config=stencil_factory.config.dace_config)
-        self._get_last = self.stencil_factory.from_dims_halo(
-            func=get_last,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        self.setup = Setup(
+            stencil_factory=stencil_factory,
+            GFDL_1M_config=self.GFDL_1M_config,
+            saturation_tables=self.saturation_tables,
+            prepare_tendencies=self.prepare_tendencies,
         )
-        self._hybrid_index_2dout = self.stencil_factory.from_dims_halo(
-            func=hybrid_index_2dout,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+
+        self.phase_change = PhaseChange(
+            stencil_factory=self.stencil_factory,
+            quantity_factory=self.quantity_factory,
+            GFDL_1M_config=self.GFDL_1M_config,
         )
-        self._initial_calc = self.stencil_factory.from_dims_halo(
-            func=initial_calc,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-        # TODO: rename: is this "Hydrostatic PDF"?
-        self._hystpdf = self.stencil_factory.from_dims_halo(
-            func=hystpdf,
+
+        self.update_tendencies = stencil_factory.from_dims_halo(
+            func=update_tendencies,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "use_bergeron": use_bergeron,
+                "DT_MOIST": self.GFDL_1M_config.DT_MOIST,
             },
         )
-        self._meltfrz = self.stencil_factory.from_dims_halo(
-            func=melt_freeze,
+
+        self.prepare_radiation_quantities = stencil_factory.from_dims_halo(
+            func=prepare_radiation_quantities,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._evap = self.stencil_factory.from_dims_halo(
-            func=evaporate,
+
+        self.driver = MicrophysicsDriver(
+            self.stencil_factory,
+            self.quantity_factory,
+            self.GFDL_1M_config,
+        )
+
+        self.update_radiation_quantities = stencil_factory.from_dims_halo(
+            func=update_radiation_quantities,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-        self._subl = self.stencil_factory.from_dims_halo(
-            func=sublimate,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-        self._fix_up_clouds = self.stencil_factory.from_dims_halo(
-            func=fix_up_clouds,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-        self._tmp = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self._minrhcrit = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._PLEmb_top = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._PLmb_at_klcl = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self._halo = self.stencil_factory.grid_indexing.n_halo
-        self._k_mask = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._alpha = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.rhx = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.evapc = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.sublc = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        for i in range(0, self._k_mask.view[:].shape[0]):
-            for j in range(0, self._k_mask.view[:].shape[1]):
-                for k in range(0, self._k_mask.view[:].shape[2]):
-                    self._k_mask.view[i, j, k] = k + 1
-
-    def __call__(
-        self,
-        EIS: FloatFieldIJ,
-        dw_land: Float,
-        dw_ocean: Float,
-        PDFSHAPE: Float,
-        TURNRHCRIT_PARAM: Float,
-        PLmb: FloatField,
-        KLCL: FloatFieldIJ,
-        PLEmb: FloatField,
-        AREA: FloatFieldIJ,
-        DT_MOIST: Float,
-        CNV_FRC: FloatFieldIJ,
-        SRF_TYPE: FloatFieldIJ,
-        T: FloatField,
-        QLCN: FloatField,
-        QICN: FloatField,
-        QLLS: FloatField,
-        QILS: FloatField,
-        CCW_EVAP_EFF: Float,
-        CCI_EVAP_EFF: Float,
-        Q: FloatField,
-        CLLS: FloatField,
-        CLCN: FloatField,
-        NACTL: FloatField,
-        NACTI: FloatField,
-        QST: FloatField,
-        LMELTFRZ: bool = True,
-    ):
-        self.check_flags(LMELTFRZ, PDFSHAPE, CCW_EVAP_EFF, CCI_EVAP_EFF)
-
-        self._get_last(PLEmb, self._tmp, self._PLEmb_top)
-
-        self._hybrid_index_2dout(PLmb, self._k_mask, KLCL, self._PLmb_at_klcl)
-
-        self._initial_calc(
-            EIS,
-            dw_land,
-            dw_ocean,
-            TURNRHCRIT_PARAM,
-            self._minrhcrit,
-            self._PLmb_at_klcl,
-            PLmb,
-            self._PLEmb_top,
-            AREA,
-            self._alpha,
+            externals={
+                "DT_MOIST": GFDL_1M_config.DT_MOIST,
+            },
         )
 
-        self._hystpdf(
-            DT_MOIST,
-            self._alpha,
-            PDFSHAPE,
-            CNV_FRC,
-            SRF_TYPE,
-            PLmb,
-            Q,
-            QLLS,
-            QLCN,
-            QILS,
-            QICN,
-            T,
-            CLLS,
-            CLCN,
-            NACTL,
-            NACTI,
-            self.rhx,
-            self.qsat.ese,
-            self.qsat.esw,
-            self.qsat.esx,
-            self.qsat.esw.view[0][12316],
-            self.qsat.esw.view[0][8316],
+        self.finalize = Finalize(
+            stencil_factory=stencil_factory,
+            GFDL_1M_config=self.GFDL_1M_config,
+            saturation_tables=self.saturation_tables,
+            update_tendencies=self.update_tendencies,
         )
 
-        if LMELTFRZ:
-            self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN)
-            self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLLS, QILS)
+    def __call__(self):
+        self.setup(
+            geopotential_height_interface=self.geopotential_height_interface,
+            p_interface=self.p_interface,
+            t=self.t,
+            u=self.u,
+            v=self.v,
+            shallow_convective_rain=self.shallow_convective_rain,
+            shallow_convective_snow=self.shallow_convective_snow,
+            mixing_ratios=self.mixing_ratios,
+            cloud_fractions=self.cloud_fractions,
+            masks=self.masks,
+            outputs=self.outputs,
+            temporaries=self.temporaries,
+        )
 
-        if CCW_EVAP_EFF > 0.0:
-            self._evap(
-                DT_MOIST,
-                CCW_EVAP_EFF,
-                PLmb,
-                T,
-                Q,
-                QLCN,
-                QICN,
-                CLCN,
-                NACTL,
-                NACTI,
-                QST,
-                self.evapc,
-            )
+        self.phase_change(
+            estimated_inversion_strength=self.outputs.estimated_inversion_strength,
+            p_mb=self.temporaries.p_mb,
+            k_lcl=self.temporaries.k_lcl,
+            p_interface_mb=self.temporaries.p_interface_mb,
+            area=self.area,
+            convection_fraction=self.convection_fraction,
+            surface_type=self.surface_type,
+            t=self.t,
+            convective_liquid=self.mixing_ratios.convective_liquid,
+            convective_ice=self.mixing_ratios.convective_ice,
+            large_scale_liquid=self.mixing_ratios.large_scale_liquid,
+            large_scale_ice=self.mixing_ratios.large_scale_ice,
+            vapor=self.mixing_ratios.vapor,
+            large_scale_cloud_fraction=self.cloud_fractions.large_scale,
+            convective_cloud_fraction=self.cloud_fractions.convective,
+            nactl=self.liquid_concentration,
+            nacti=self.ice_concentration,
+            qsat=self.temporaries.qsat,
+        )
 
-        if CCI_EVAP_EFF > 0.0:
-            self._subl(
-                DT_MOIST,
-                CCW_EVAP_EFF,
-                PLmb,
-                T,
-                Q,
-                QLCN,
-                QICN,
-                CLCN,
-                NACTL,
-                NACTI,
-                QST,
-                self.sublc,
-            )
+        # pull rh_crit and rhx out of phase change component and send it back to the rest of the model
+        rh_crit = self.phase_change.outputs.rh_crit
+        self.outputs.relative_humidity_after_pdf = self.phase_change.outputs.rhx
 
-        self._fix_up_clouds(Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN)
+        self.update_tendencies(
+            u=self.u,
+            v=self.v,
+            t=self.t,
+            vapor=self.mixing_ratios.vapor,
+            rain=self.mixing_ratios.rain,
+            snow=self.mixing_ratios.snow,
+            graupel=self.mixing_ratios.graupel,
+            convective_liquid=self.mixing_ratios.convective_liquid,
+            convective_ice=self.mixing_ratios.convective_ice,
+            large_scale_liquid=self.mixing_ratios.large_scale_liquid,
+            large_scale_ice=self.mixing_ratios.large_scale_ice,
+            convective_cloud_fraction=self.cloud_fractions.convective,
+            large_scale_cloud_fraction=self.cloud_fractions.large_scale,
+            du_dt=self.outputs.du_dt_macro,
+            dv_dt=self.outputs.dv_dt_macro,
+            dt_dt=self.outputs.dt_dt_macro,
+            dvapor_dt=self.outputs.dvapor_dt_macro,
+            dliquid_dt=self.outputs.dliquid_dt_macro,
+            dice_dt=self.outputs.dice_dt_macro,
+            dcloud_fraction_dt=self.outputs.dcloud_fraction_dt_macro,
+            drain_dt=self.outputs.drain_dt_macro,
+            dsnow_dt=self.outputs.dsnow_dt_macro,
+            dgraupel_dt=self.outputs.dgraupel_dt_macro,
+        )
 
-    def check_flags(
-        self,
-        LMELTFRZ: bool,
-        PDFSHAPE: Float,
-        CCW_EVAP_EFF: Float,
-        CCI_EVAP_EFF: Float,
-    ):
-        if LMELTFRZ is not True:
-            raise NotImplementedError(
-                f"Untested option for LMELTFRZ={LMELTFRZ}. Code may be missing"
-                " or incomplete. Disable this error manually to continue."
-            )
-        if PDFSHAPE != 1:
-            raise NotImplementedError(
-                f"Untested option for PDFSHAPE={PDFSHAPE}. Code may be missing"
-                "  or incomplete. Disable this error manually to continue."
-            )
-        if CCW_EVAP_EFF <= 0:
-            raise NotImplementedError(
-                f"Untested option for CCW_EVAP_EFF={CCW_EVAP_EFF}. Code may be"
-                " missing or incomplete. Disable this error manually to continue."
-            )
-        if CCI_EVAP_EFF <= 0:
-            raise NotImplementedError(
-                f"Untested option for CCI_EVAP_EFF={CCI_EVAP_EFF}. Code may be"
-                " missing or incomplete. Disable this error manually to continue."
-            )
+        # prepare microphysics tendencies
+        self.prepare_tendencies(
+            u=self.u,
+            v=self.v,
+            t=self.t,
+            vapor=self.mixing_ratios.vapor,
+            rain=self.mixing_ratios.rain,
+            snow=self.mixing_ratios.snow,
+            graupel=self.mixing_ratios.graupel,
+            convective_liquid=self.mixing_ratios.convective_liquid,
+            convective_ice=self.mixing_ratios.convective_ice,
+            large_scale_liquid=self.mixing_ratios.large_scale_liquid,
+            large_scale_ice=self.mixing_ratios.large_scale_ice,
+            convective_cloud_fraction=self.cloud_fractions.convective,
+            large_scale_cloud_fraction=self.cloud_fractions.large_scale,
+            du_dt=self.outputs.du_dt_micro,
+            dv_dt=self.outputs.dv_dt_micro,
+            dt_dt=self.outputs.dt_dt_micro,
+            dvapor_dt=self.outputs.dvapor_dt_micro,
+            dliquid_dt=self.outputs.dliquid_dt_micro,
+            dice_dt=self.outputs.dice_dt_micro,
+            dcloud_fraction_dt=self.outputs.dcloud_fraction_dt_micro,
+            drain_dt=self.outputs.drain_dt_micro,
+            dsnow_dt=self.outputs.dsnow_dt_micro,
+            dgraupel_dt=self.outputs.dgraupel_dt_micro,
+        )
+
+        self.prepare_radiation_quantities(
+            convective_cloud_fraction=self.cloud_fractions.convective,
+            large_scale_cloud_fraction=self.cloud_fractions.large_scale,
+            radiation_cloud_fraction=self.outputs.radiation_cloud_fraction,
+            convective_liquid=self.mixing_ratios.convective_liquid,
+            large_scale_liquid=self.mixing_ratios.large_scale_liquid,
+            radiation_liquid=self.outputs.radiation_liquid,
+            convective_ice=self.mixing_ratios.convective_ice,
+            large_scale_ice=self.mixing_ratios.large_scale_ice,
+            radiation_ice=self.outputs.radiation_ice,
+            vapor=self.mixing_ratios.vapor,
+            radiation_vapor=self.outputs.radiation_vapor,
+            rain=self.mixing_ratios.rain,
+            radiation_rain=self.outputs.radiation_rain,
+            snow=self.mixing_ratios.snow,
+            radiation_snow=self.outputs.radiation_snow,
+            graupel=self.mixing_ratios.graupel,
+            radiation_graupel=self.outputs.radiation_graupel,
+        )
+
+        self.driver(
+            t=self.t,
+            w=self.vertical_motion.velocity,
+            u=self.u,
+            v=self.v,
+            dz=self.temporaries.layer_thickness_negative,
+            dp=self.temporaries.dp,
+            area=self.area,
+            land_fraction=self.land_fraction,
+            convection_fraction=self.convection_fraction,
+            surface_type=self.surface_type,
+            estimated_inversion_strength=self.outputs.estimated_inversion_strength,
+            rh_crit=rh_crit,
+            vapor=self.outputs.radiation_vapor,
+            liquid=self.outputs.radiation_liquid,
+            rain=self.outputs.radiation_rain,
+            ice=self.outputs.radiation_ice,
+            snow=self.outputs.radiation_snow,
+            graupel=self.outputs.radiation_graupel,
+            cloud_fraction=self.outputs.radiation_cloud_fraction,
+            ice_concentration=self.ice_concentration,
+            liquid_concentration=self.liquid_concentration,
+            dvapor_dt=self.temporaries.dvapor_dt,
+            dliquid_dt=self.temporaries.dliquid_dt,
+            drain_dt=self.temporaries.drain_dt,
+            dice_dt=self.temporaries.dice_dt,
+            dsnow_dt=self.temporaries.dsnow_dt,
+            dgraupel_dt=self.temporaries.dgraupel_dt,
+            dcloud_fraction_dt=self.temporaries.dcloud_fraction_dt,
+            dt_dt=self.temporaries.dt_dt,
+            du_dt=self.temporaries.du_dt,
+            dv_dt=self.temporaries.dv_dt,
+        )
+
+        self.update_radiation_quantities(
+            t=self.t,
+            u=self.u,
+            v=self.v,
+            radiation_cloud_fraction=self.outputs.radiation_cloud_fraction,
+            radiation_ice=self.outputs.radiation_ice,
+            radiation_liquid=self.outputs.radiation_liquid,
+            radiation_vapor=self.outputs.radiation_vapor,
+            radiation_rain=self.outputs.radiation_rain,
+            radiation_snow=self.outputs.radiation_snow,
+            radiation_graupel=self.outputs.radiation_graupel,
+            dcloud_fraction_dt=self.temporaries.dcloud_fraction_dt,
+            dt_dt=self.temporaries.dt_dt,
+            du_dt=self.temporaries.du_dt,
+            dv_dt=self.temporaries.dv_dt,
+            dice_dt=self.temporaries.dice_dt,
+            dliquid_dt=self.temporaries.dliquid_dt,
+            dvapor_dt=self.temporaries.dvapor_dt,
+            drain_dt=self.temporaries.drain_dt,
+            dsnow_dt=self.temporaries.dsnow_dt,
+            dgraupel_dt=self.temporaries.dgraupel_dt,
+        )
+
+        self.finalize(
+            t=self.t,
+            u=self.u,
+            v=self.v,
+            ice_concentration=self.ice_concentration,
+            liquid_concentration=self.liquid_concentration,
+            mixing_ratios=self.mixing_ratios,
+            cloud_fractions=self.cloud_fractions,
+            masks=self.masks,
+            outputs=self.outputs,
+            temporaries=self.temporaries,
+            driver=self.driver,
+        )
