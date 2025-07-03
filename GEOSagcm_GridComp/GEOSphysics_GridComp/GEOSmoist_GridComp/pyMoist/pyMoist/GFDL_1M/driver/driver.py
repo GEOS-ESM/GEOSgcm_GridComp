@@ -19,9 +19,7 @@ from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
 
 class MicrophysicsDriver:
     """
-    This class contains the GFDL single moment microphysics driver. The driver is broken
-    into six components: Setup, FallSpeed, TerminalFall, WarmRain, IceCloud, and Finish.
-
+    Computes precipitates and microphysics tendencies using the following functions:
     __init__:
         - checks validity of constants and trigger parameters for unimplemented options
         - initalizes internal fields
@@ -29,7 +27,13 @@ class MicrophysicsDriver:
         Arguments: StencilFactory, QuantityFactory, MicrophysicsConfiguration
 
     __call__:
-        - evaluates stencils
+        Evaluate the microphysics driver. The driver call is broken into six parts:
+        - Setup: fill temporaries, compute required intermediary fields from inputs
+        - FallSpeed: compute real fall speed of precipitates
+        - TerminalFall: compute terminal fall speed of precipitates
+        - WarmRain: warm rain cloud microphysics
+        - IceCloud: ice cloud microphysical processes
+        - Finish: compute output tendencies
         Arguments: various state fields (pressure, temperature, wind) and mixing ratios
     """
 
@@ -160,13 +164,6 @@ class MicrophysicsDriver:
         dv_dt: FloatField,
     ):
         """
-        Evaluate the microphysics driver. The driver call is broken into six parts:
-            - Setup: fill temporaries, compute required intermediary fields from inputs
-            - FallSpeed: compute real fall speed of precipitates
-            - TerminalFall: compute terminal fall speed of precipitates
-            - WarmRain: warm rain cloud microphysics
-            - IceCloud: ice cloud microphysical processes
-            - Finish: compute output tendencies
 
         Arguments:
             t (in): atmospheric temperature (K)

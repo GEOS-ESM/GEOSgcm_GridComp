@@ -25,6 +25,7 @@ class MoistFlags:
 @dataclass
 class GFDL1MFlags:
     # GFDL_1M driver configuration. Initial values are not true defaults.
+    # TODO: change default values to allign with Fortran defaults
     DT_MOIST: np.float32 = 0
     MP_TIME: np.float32 = 0
     T_MIN: np.float32 = 0

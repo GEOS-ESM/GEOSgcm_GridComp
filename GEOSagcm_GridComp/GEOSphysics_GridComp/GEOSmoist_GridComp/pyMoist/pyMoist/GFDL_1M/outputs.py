@@ -6,6 +6,10 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
 @dataclass
 class Outputs:
+    """
+    Collection of all fields computed locally and returned to the rest of the model
+    """
+
     lower_tropospheric_stability: Quantity
     estimated_inversion_strength: Quantity
     z_lcl: Quantity

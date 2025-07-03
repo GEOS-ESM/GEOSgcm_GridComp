@@ -122,7 +122,7 @@ class GFDL1MRadiationCoupling:
         MAX_RI: Float,
     ) -> None:
         """
-        Initialize GFDL radiation coupling class.
+        Initialize GFDL radiation coupling class
 
         Arguments:
             stencil_factory (StencilFactory): Factory to create stencils.
@@ -193,7 +193,7 @@ class GFDL1MRadiationCoupling:
         esx: GlobalTable_saturaion_tables,
     ):
         """
-        Perform the radiation coupling process.
+        Perform the radiation coupling process
 
         Arguments:
             vapor (inout): water vapor mixing ratio (kg/kg)

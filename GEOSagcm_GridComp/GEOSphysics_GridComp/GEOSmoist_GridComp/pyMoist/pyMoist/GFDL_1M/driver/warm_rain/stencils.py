@@ -161,7 +161,6 @@ def warm_rain_step_1(
     des2: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
-    test_var_1: FloatFieldIJ,
 ):
     """
     Warm rain cloud microphysics: evaporation, accretion
@@ -221,15 +220,11 @@ def warm_rain_step_1(
         ql1 = ql1 / qadum
         qi1 = qi1 / qadum
 
-        # test_var_1 = 0
-
         fac_rc = min(1.0, eis / 15.0) ** 2  # Estimated inversion strength determine stable regime
         fac_rc = constants.RC * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
         # NOTE: the multiplication "constants.RC * (result of parenthetical)" produces different results
         # in Fortran and Python, despite constants.RC and (result of parenthetical) being identical.
         # This creates errors later throughout warm_rain and the larger driver.
-    with computation(FORWARD), interval(0, 1):
-        test_var_1 = fac_rc
 
     with computation(PARALLEL), interval(...):
         if irain_f != 0:
@@ -359,7 +354,17 @@ def warm_rain_step_1(
     # evaporation and accretion of rain for the first 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
+        (
+            t1,
+            qv1,
+            qr1,
+            ql1,
+            qi1,
+            qs1,
+            qg1,
+            qa1,
+            revap,
+        ) = revap_racc(
             t1,
             qv1,
             ql1,
@@ -470,7 +475,17 @@ def warm_rain_step_2(
     # evaporation and accretion of rain for the remaing 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
+        (
+            t1,
+            qv1,
+            qr1,
+            ql1,
+            qi1,
+            qs1,
+            qg1,
+            qa1,
+            revap,
+        ) = revap_racc(
             t1,
             qv1,
             ql1,

@@ -185,6 +185,15 @@ def fix_radii(
             liquid_radius = 14.0e-6
 
 
+def update_rainwater_source(
+    large_scale_rainwater_source: FloatField,
+    drain_dt_macro: FloatField,
+    drain_dt_micro: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        large_scale_rainwater_source = drain_dt_macro + drain_dt_micro
+
+
 def dissipative_ke_heating(
     mass: FloatField,
     u0: FloatField,
@@ -217,16 +226,23 @@ def dissipative_ke_heating(
         fpi = 0
 
 
-def update_rainwater_source(
-    large_scale_rainwater_source: FloatField,
-    drain_dt_macro: FloatField,
-    drain_dt_micro: FloatField,
-):
-    with computation(PARALLEL), interval(...):
-        large_scale_rainwater_source = drain_dt_macro + drain_dt_micro
-
-
 class Finalize:
+    """
+    Computes tendencies and output diagnostic fields using the following functions:
+
+    redistribute_clouds: ensure in-cloud fields have physically reasonable values
+    finalize_precip: ensure precipitaiton values are physically readonable and have the correct units
+    radiation_coupling: send data to relevant fields for subsequent radiation calculations
+    fix_humidity (conditional): recompute humidity post phase_change and driver components
+    fix_mixing_ratio: remove negative mixing ratio values, maintaining mass conservation
+    minimum_mixing_ratio: enforce minimum mixing ratios
+    fix_radii: fix ice/liquid radii values where ice/liquid is absent
+    update_tendencies: update microphysics tendencies
+    large_scale_rainwater_source (conditional): update rainwater if output is enabled
+    dissipative_ke_heating (condtional): compute temperature tendency due to friction
+
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -524,11 +540,11 @@ class Finalize:
                 fpi=temporaries.temporary_2d_2,
             )
 
-        # if (
-        #     outputs.simulated_reflectivity is not None
-        #     or outputs.maximum_reflectivity is not None
-        #     or outputs.one_km_agl_reflectivity is not None
-        #     or outputs.echo_top_reflectivity is not None
-        #     or outputs.minus_10c_reflectivity is not None
-        # ):
-        #     raise NotImplementedError("Diagnostic radar output not implemented yet.")
+        if (
+            outputs.simulated_reflectivity is not None
+            or outputs.maximum_reflectivity is not None
+            or outputs.one_km_agl_reflectivity is not None
+            or outputs.echo_top_reflectivity is not None
+            or outputs.minus_10c_reflectivity is not None
+        ):
+            raise NotImplementedError("Diagnostic radar output not implemented yet.")

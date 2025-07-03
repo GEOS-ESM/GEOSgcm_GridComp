@@ -176,7 +176,6 @@ class WarmRain:
             des2,
             des3,
             des4,
-            self.temporaries.test_var_1,
         )
         if self.GFDL_1M_config.USE_PPM is False:
             # NOTE: somehow errors pop up in rain1 and m1_sol within implicit fall, despite all of the

@@ -18,6 +18,26 @@ from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 class GFDL1M:
+    """
+    GFDL Single Moment microphysics
+
+    The primary purpose of this code is to compute macro/microphysical tendencies to be applied to state
+    variables (p, t, wind, etc.). This code requires all fields to be preloaded with Fortran memory or
+    otherwise supplied between the __init__ and __call__ steps.
+
+    Performs the following functions to achieve this goal:
+    __init__
+        - initalize saturaiton vapor pressure tables, initalize temporary/output fields, construct stencils
+        Arguments: StencilFactory, QuantityFactory, GFDL1MConfig
+
+    __call__
+        - setup: compute additional required fields, create pristine copies of input variables
+        - phase_change: create new condensates, perform phase change operations
+        - driver: precipitate condensates
+        - finalize: compute tendencies, prepare fields to be returned to the larger model
+        Arguments: none (data needs to be pre-loaded)
+    """
+
     def __init__(
         self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, GFDL_1M_config: GFDL1MConfig
     ):

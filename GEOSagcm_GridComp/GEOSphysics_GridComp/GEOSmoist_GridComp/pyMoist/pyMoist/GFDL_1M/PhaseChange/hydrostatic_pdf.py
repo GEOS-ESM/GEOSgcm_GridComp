@@ -49,18 +49,20 @@ def pdfcondensate(
 
     if pdfshape == 1:
         if (qtmean_64 + sigmaqt1_64) < qstar_64:
-            return f64(0.0)
+            condensate: f64 = 0.0
         elif qstar_64 > (qtmean_64 - sigmaqt1_64):
             if sigmaqt1_64 > 0.0:
-                return f64(
-                    (min(qtmean_64 + sigmaqt1_64 - qstar_64, 2.0 * sigmaqt1_64) ** 2) / (4.0 * sigmaqt1_64)
+                condensate: f64 = (min(qtmean_64 + sigmaqt1_64 - qstar_64, 2.0 * sigmaqt1_64) ** 2) / (
+                    4.0 * sigmaqt1_64
                 )
             else:
-                return qtmean_64 - qstar_64
+                condensate: f64 = qtmean_64 - qstar_64
         else:
-            return qtmean_64 - qstar_64
+            condensate: f64 = qtmean_64 - qstar_64
 
     # Above code only executes when pdfshape = 1. Fortran code exists for pdfshape = 2
+
+    return condensate
 
 
 @function
@@ -179,10 +181,32 @@ def hydrostatic_pdf(
     estfrz: Float,
     estlqu: Float,
 ):
+    """
+    Hydrostatic PDF for use in the phase change section of GFDL_1M microphysics
+
+    Arguments:
+        alpha (in): details unknown
+        convection_fraction (in): grid cell convection fraction
+        surface_type (in): surface type
+        p_mb (in): pressure (millibars)
+        vapor (inout): water vapor mixing ratio (kg/kg)
+        large_scale_liquid (inout): large scale liquid mass fraction (unitless)
+        convective_liquid (inout): convective liquid mass fraction (unitless)
+        large_scale_ice (inout): large scale ice mass fraction (unitless)
+        convective_ice (inout): convective ice mass fraction (unitless)
+        t (inout): temperature
+        large_scale_cloud_fraction (inout): large scale cloud fraction
+        convective_cloud_fraction (inout): convective cloud fraction
+        nacti (in): ice concentration
+        rhx (inout): relative humidity after pdf
+        ese: saturation tables
+        esw: saturation tables
+        esx: saturation tables
+        estfrz: saturation table value at -40 C
+        estlqu: saturation table value at 0 C
+    """
     from __externals__ import DT_MOIST, FLOAT_TINY, PDF_SHAPE, USE_BERGERON
 
-    # Reference Fortran: Process_Library.F90: subroutine hystpdf
-    # with PDFSHAPE = 1, USE_BERGERON = True, and SC_ICE = False
     with computation(PARALLEL), interval(...):
         if convective_cloud_fraction < 1.0:
             inv_clcn = 1.0 / (1.0 - convective_cloud_fraction)

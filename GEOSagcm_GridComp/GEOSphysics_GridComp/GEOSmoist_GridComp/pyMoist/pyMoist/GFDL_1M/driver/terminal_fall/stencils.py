@@ -47,74 +47,6 @@ def check_precip_get_zt(
                 zt[0, 0, 1] = zt - constants.DZ_MIN
 
 
-def melting_loop(
-    # Features required before this can be implemented:
-    need_2d_temporaries_feature: FloatFieldIJ,
-    need_double_k_loop_feature: FloatField,
-):
-
-    with computation(BACKWARD), interval(...):
-        # NOTE: code is unfinished, not implemented. do not allow it to run
-        # this code should never execute anyway. It requries dts > 300
-        # and if this is true an error should be triggered
-        # in GFDL_1M that prevents execution
-        disable = True
-
-        if disable == False:  # noqa
-            skip_for_now = 1
-            """
-            # THIS HAS NEVER BEEN TESTED B/C DTS WAS LESS THAN 300 IN THE TEST CASE
-            if precip_fall == 1 and disable_melt == False:  # noqa
-                # only operate on melted layers
-                if melting_mask_1 == True and qg1 > constants.QPMIN:  # noqa
-                    # initalize exit trigger
-                    stop_melting = False
-                    m: i32 = 0
-                    while m < k_end and stop_melting == False:  # noqa
-                        mplus1: i32 = (
-                            m + 1
-                        )  # TODO remove this line only, replace with better solution
-                        # only opterate on previously iterated k-levels
-                        # if melting_mask_2 == True: #noqa
-                        #     if zt[0, 0, 1] >= ze.at(K=m):
-                        #         stop_melting = (
-                        #             True  # if true exit early for ONLY this k level
-                        #         )
-                        #     if stop_melting == False: #noqa
-                        #         dtime = min(dts, (ze.at(K=m) - ze.at(K=mplus1)) / vtg)
-                        #         if (
-                        #             zt < ze.at(K=mplus1)
-                        #             and t1.at(K=m) > driver_constants.tice
-                        #         ):
-                        #             dtime = min(1.0, dtime / tau_g2r)
-                        #             sink = min(
-                        #                 qg1 * dp1 / dp1.at(K=m),
-                        #                 dtime
-                        #                 * (t1.at(K=m) - driver_constants.tice)
-                        #                 / icpk.at(K=m),
-                        #             )
-                        #             offset = i32(m - current_k_level)
-                        #             hold_t1 = t1.at(K=m)
-                        #             t1[0, 0, offset] = hold_t1 - sink * icpk.at(K=m)
-                        #             qg1 = qg1 - sink * dp1.at(K=m) / dp1
-                        #             if zt < 0:
-                        #                 precip_rain = precip_rain + sink * dp1.at(
-                        #                     K=m
-                        #                 )  # precip as rain
-                        #             else:
-                        #                 # qr source here will fall next time step
-                        #                 # (therefore, can evap)
-                        #                 hold_qr1 = qr1.at(K=m)
-                        #                 qr1[0, 0, offset] = hold_qr1 + sink
-                        #     if stop_melting == False: #noqa
-                        #         if qg1 < driver_constants.qpmin:
-                        #             stop_melting = True
-                        m = m + 1
-                # set current layer as iterated layer
-                melting_mask_2 = True
-            """
-
-
 def update_dm(
     dm: FloatField,
     dp1: FloatField,
@@ -352,8 +284,3 @@ def update_outputs(
         graupel = graupel + precip_graupel
         snow = snow + precip_snow
         ice = ice + precip_ice
-
-        # precip_rain = 0
-        # precip_graupel = 0
-        # precip_snow = 0
-        # precip_ice = 0

@@ -6,7 +6,6 @@ from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.stencils import implicit_fall
 from pyMoist.GFDL_1M.driver.terminal_fall.stencils import (
     check_precip_get_zt,
-    melting_loop,
     reset,
     setup,
     update_dm,
@@ -59,11 +58,6 @@ class TerminalFall:
             externals={
                 "dts": config_dependent_constants.DTS,
             },
-        )
-
-        self._melting_loop = stencil_factory.from_dims_halo(
-            func=melting_loop,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self._update_dm = stencil_factory.from_dims_halo(
@@ -168,12 +162,6 @@ class TerminalFall:
                 precip_fall,
             )
 
-            # placeholder function. need the listed features to implement
-            self._melting_loop(
-                self.temporaries.need_2d_temporaries_feature,
-                self.temporaries.need_double_k_loop_feature,
-            )
-
             self._update_dm(
                 self.temporaries.dm,
                 dp1,
@@ -226,12 +214,6 @@ class TerminalFall:
             precip_fall,
         )
 
-        # placeholder function. need the listed features to implement
-        self._melting_loop(
-            self.temporaries.need_2d_temporaries_feature,
-            self.temporaries.need_double_k_loop_feature,
-        )
-
         self._update_dm(
             self.temporaries.dm,
             dp1,
@@ -282,12 +264,6 @@ class TerminalFall:
             zt,
             precip_graupel,
             precip_fall,
-        )
-
-        # placeholder function. need the listed features to implement
-        self._melting_loop(
-            self.temporaries.need_2d_temporaries_feature,
-            self.temporaries.need_double_k_loop_feature,
         )
 
         self._update_dm(

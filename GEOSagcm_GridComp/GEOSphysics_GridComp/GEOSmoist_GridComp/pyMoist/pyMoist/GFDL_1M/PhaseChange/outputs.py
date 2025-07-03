@@ -13,9 +13,7 @@ class Outputs:
 
     @classmethod
     def make(cls, quantity_factory: QuantityFactory):
-        # -----------------------------------------------------------------------
         # initialize precipitation outputs
-        # -----------------------------------------------------------------------
         rhx = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         evapc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         sublc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")

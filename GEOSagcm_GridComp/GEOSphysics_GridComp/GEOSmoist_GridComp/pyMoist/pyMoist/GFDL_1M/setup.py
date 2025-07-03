@@ -53,7 +53,7 @@ def calculate_derived_states(
     Computes derived state fields required for the rest of the GFDL single moment
     microphysics module.
 
-    This stencil MUST be built using Z_INTERFACE_DIM to funciton properly.
+    This stencil MUST be built using Z_INTERFACE_DIM to function properly.
     """
     from __externals__ import k_end
 
@@ -196,6 +196,17 @@ def update_precipitaiton(
 
 
 class Setup:
+    """
+    Perform the following functions to setup GFDL Single Moment microphysics:
+    
+    prepare_tendencies: preloads macrophysics tendencies for post-phase_change calculations
+    calculate_derived_states: computes fields required for the module but not provided by the module
+    find_k_lcl: identifies the LCL level
+    update_z_lcl (conditional): computes the geometric height of the LCL and returns it to the model
+    vertical_interpolation: interpolates various fields to the desired geometric height
+    find_eis: computes the estimated inversion strength
+    update_precipitation (conditional): updates precipitation (rain and snow) using shallow convection values
+    """
     def __init__(
         self,
         stencil_factory: StencilFactory,

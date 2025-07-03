@@ -9,7 +9,6 @@ from pyMoist.constants import FLOAT_TINY
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.PhaseChange.evaporate import evaporate
 from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
-from pyMoist.GFDL_1M.PhaseChange.masks import Masks
 from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 from pyMoist.GFDL_1M.PhaseChange.outputs import Outputs
 from pyMoist.GFDL_1M.PhaseChange.rh_calculations import rh_calculations
@@ -53,12 +52,6 @@ class PhaseChange:
         # -----------------------------------------------------------------------
 
         self.temporaries = Temporaries.make(quantity_factory)
-
-        # -----------------------------------------------------------------------
-        # initialize masks
-        # -----------------------------------------------------------------------
-
-        self.masks = Masks.make(quantity_factory)
 
         # -----------------------------------------------------------------------
         # Initalize QSat tables
