@@ -547,4 +547,6 @@ class Finalize:
             or outputs.echo_top_reflectivity is not None
             or outputs.minus_10c_reflectivity is not None
         ):
-            raise NotImplementedError("Diagnostic radar output not implemented yet.")
+            from ndsl import ndsl_log
+
+            ndsl_log.warning("Diagnostic radar output not implemented yet.")
