@@ -109,7 +109,6 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_ENSEMBLE
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 real,   parameter :: SAI4ZVG(NTYPS) = (/ 0.60653, 0.60653, 0.60653, 1.0, 1.0, 1.0 /)
@@ -201,8 +200,8 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    integer :: OFFLINE_MODE, RUN_IRRIG, ATM_CO2, N_CONST_LAND4SNWALB
-    integer :: RESTART, SNOW_ALBEDO_INFO
+    integer :: OFFLINE_MODE, RUN_IRRIG
+    integer :: RESTART
 
 ! Begin...
 ! --------
@@ -223,12 +222,9 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
 
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, _RC)
-    call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, _RC)
-    call MAPL_GetResource ( MAPL, ATM_CO2,      Label="ATM_CO2:", _RC)
-    call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB,   Label="N_CONST_LAND4SNWALB:", _RC)
+    OFFLINE_MODE = CATCH_INTERNAL_STATE%CATCH_OFFLINE    ! shorthand
+
     call MAPL_GetResource ( MAPL, RUN_IRRIG,   Label="RUN_IRRIG:", _RC)
-    call MAPL_GetResource ( MAPL, SNOW_ALBEDO_INFO,   Label="SNOW_ALBEDO_INFO:", _RC)
 
 ! Set the Run entry points
 ! ------------------------
@@ -430,8 +426,8 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    IF (ATM_CO2 == 4) THEN
-       call MAPL_AddImportSpec(GC,                              &
+    IF (catchcn_internal%ATM_CO2 == 4) THEN
+       call MAPL_AddImportSpec(GC,                                    &
             SHORT_NAME         = 'CO2SC',                             &
             LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
             UNITS              = '1e-6',                              &
@@ -1385,7 +1381,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (SNOW_ALBEDO_INFO == 1) then
+  if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
     call MAPL_AddInternalSpec(GC                  ,&
        LONG_NAME          = 'effective_snow_reflectivity',&
        UNITS              = '1'                         ,&
@@ -1942,7 +1938,7 @@ subroutine SetServices ( GC, RC )
     
   !---------- GOSWIM snow impurity related variables ----------
 
-  if (N_CONST_LAND4SNWALB /= 0) then 
+  if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then 
   
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
@@ -3997,7 +3993,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
     VERIFY_(status)
     catchcn_internal => wrap%ptr
-    OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
+    OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE          ! shorthand
 
     call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
     ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
@@ -5377,7 +5373,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
         VERIFY_(status)
         catchcn_internal => wrap%ptr
-        OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
+        OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE            ! shorthand
         ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
@@ -5428,7 +5424,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,QHATM  ,'QHATM'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,CTATM  ,'CTATM'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,CQATM  ,'CQATM'  ,RC=STATUS); VERIFY_(STATUS)        
-        IF (catchcn_internal%ATM_CO2 == 4) call MAPL_GetPointer(IMPORT,CO2SC  ,'CO2SC'  ,RC=STATUS); VERIFY_(STATUS)
+        IF (catchcn_internal%ATM_CO2 == 4) &
+             call MAPL_GetPointer(IMPORT,CO2SC  ,'CO2SC'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,LAI    ,'LAI'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,GRN    ,'GRN'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,ROOTL  ,'ROOTL'  ,RC=STATUS); VERIFY_(STATUS)
