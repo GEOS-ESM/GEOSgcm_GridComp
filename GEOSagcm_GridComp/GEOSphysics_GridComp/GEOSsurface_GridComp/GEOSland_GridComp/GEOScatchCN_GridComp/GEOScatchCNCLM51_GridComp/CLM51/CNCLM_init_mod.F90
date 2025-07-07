@@ -251,7 +251,10 @@ module CNCLM_initMod
 
     ! read parameters and configurations from namelist file
 
-    NLFilename = trim('/discover/nobackup/jkolassa/new/CatchCN5.1.nml')
+    !NLFilename = trim('/discover/nobackup/jkolassa/new/CatchCN5.1.nml')
+    NLFilename = trim('./CN_CLM51.nml')
+    inquire(file=NLFilename,exist=f_exist)
+    print *, 'NLFilename exists: ', f_exist
     call CNPhenologyReadNML       ( NLFilename )
     call dynSubgridControl_init   ( )
     call CNFireReadNML            ( NLFilename )

@@ -17,3 +17,10 @@ if (is_openmp)
   target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran)
 endif ()
 
+file(GLOB nml_files CN_CLM51.nml      )
+
+install(
+   FILES ${nml_files}
+   DESTINATION etc
+   )
+
