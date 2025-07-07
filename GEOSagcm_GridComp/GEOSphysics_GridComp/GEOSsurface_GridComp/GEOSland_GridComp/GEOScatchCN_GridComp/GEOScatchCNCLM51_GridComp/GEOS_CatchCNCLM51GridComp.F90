@@ -4475,11 +4475,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer :: IM,JM
     integer :: incl_Louis_extra_derivs
 
-    real                             :: SCALE4Z0
     real                             :: SCALE4ZVG
     real                             :: SCALE4Z0_u
     real                             :: MIN_VEG_HEIGHT
 
+    type(ESMF_VM)                      :: VM
+    type (T_CATCHCN_STATE), pointer    :: CATCHCN_INTERNAL
+    type (CATCHCN_WRAP)                :: wrap
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
 ! set-up traceback handle.
@@ -4495,16 +4497,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+     ! Get component's private internal state
+    call ESMF_UserCompGetInternalState(gc, 'CatchInternal', wrap, status)
+    VERIFY_(status)
+    CATCH_INTERNAL_STATE=>wrap%ptr
+
 ! Get parameters from generic state.
 !-----------------------------------
 
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_VMGetCurrent(VM,       rc=STATUS)
 
    select case (CATCHCN_INTERNAL%Z0_FORMULATION)
       case (0)  ! no scaled at all
@@ -6071,11 +6075,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if (CATCHCN_INTERNAL%Z0_FORMULATION == 4) then 
            ! make canopy height >= min veg height:
            Z2CH = max(Z2CH,MIN_VEG_HEIGHT)
-           ZVG  = fvg1*(Z2CH - SAI4ZVG(VEG1)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
-                  fvg2*(Z2CH - SAI4ZVG(VEG2)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))     
+           ZVG  = fveg1*(Z2CH - SAI4ZVG(VEG1)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
+                  fveg2*(Z2CH - SAI4ZVG(VEG2)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))     
         else 
-           ZVG  = fvg1*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
-                  fvg2*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))
+           ZVG  = fveg1*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
+                  fveg2*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))
         endif
 
         Z0   = Z0_BY_ZVEG*ZVG*SCALE4Z0_u
