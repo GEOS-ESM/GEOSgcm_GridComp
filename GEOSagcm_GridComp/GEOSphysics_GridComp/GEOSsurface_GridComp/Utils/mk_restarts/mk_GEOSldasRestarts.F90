@@ -51,8 +51,11 @@ PROGRAM mk_GEOSldasRestarts
   integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
   integer, parameter :: npft    = 19  
   integer, parameter :: npft_clm45    = 19
+  integer, parameter :: npft_clm51    = 15
   integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
   integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column
+  integer, parameter :: VAR_COL_CLM51 = 35 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM51 = 81 ! number of CN PFT variables per column
 
   real,    parameter :: nan = O'17760000000'
   real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
@@ -115,6 +118,7 @@ PROGRAM mk_GEOSldasRestarts
   CHARACTER( * ), PARAMETER :: LOWER_CASE = 'abcdefghijklmnopqrstuvwxyz'
   CHARACTER( * ), PARAMETER :: UPPER_CASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   logical             :: clm45 = .false.
+  logical             :: clm51 = .false.
   logical             :: second_visit
   integer :: zoom, k, n, infos
   character*100 :: InRestart
@@ -160,7 +164,7 @@ PROGRAM mk_GEOSldasRestarts
         print *,'(1) to create an initial catch(cn)_internal_rst file ready for an offline experiment :'
         print *,'--------------------------------------------------------------------------------------'
         print *,'(1.1) mpirun -np 1 bin/mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -m MODEL -s SURFLAY(20/50)'
-        print *,'where MODEL : catch, catchcnclm40, catchcnclm45'
+        print *,'where MODEL : catch, catchcnclm40, catchcnclm45, catchcnclm51'
         print *,'(1.2) sbatch mkLDAS.j'
         print *,'   '
         print *,'(2) to reorder an LDASsa restart file to the order of the BCs for use in an GCM experiment :'
@@ -205,6 +209,12 @@ PROGRAM mk_GEOSldasRestarts
        clm45 = .true.
        VAR_COL = VAR_COL_CLM45
        VAR_PFT = VAR_PFT_CLM45
+     endif
+    
+     if (index(model,'51') /=0) then
+       clm51 = .true.
+       VAR_COL = VAR_COL_CLM51
+       VAR_PFT = VAR_PFT_CLM51
      endif
      catch_scaler = 'Scale_CatchCN'
   else
@@ -378,11 +388,18 @@ contains
        call ldFmt%open(trim(rst_file) , pFIO_READ,__RC__)
        meta_data = ldFmt%read(__RC__)
        call ldFmt%close(__RC__)
-       if(meta_data%get_dimension('unknown_dim3',rc=status) == 105) then
+       if((meta_data%get_dimension('unknown_dim3',rc=status) == 105) .and. &
+          (meta_data%get_dimension('unknown_dim4',rc=status) == 900)) then
            clm45  = .true.
            VAR_COL = VAR_COL_CLM45 
            VAR_PFT = VAR_PFT_CLM45
            if (root_proc) print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
+       elseif((meta_data%get_dimension('unknown_dim3',rc=status) == 105) .and. & 
+              (meta_data%get_dimension('unknown_dim4',rc=status) == 972)) then
+           clm51  = .true.
+           VAR_COL = VAR_COL_CLM51
+           VAR_PFT = VAR_PFT_CLM51
+           if (root_proc) print *, 'Processing CLM51 restarts : ', VAR_COL, VAR_PFT, clm45
         else
            if (root_proc) print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
         endif
@@ -634,7 +651,7 @@ contains
 
         call GetIds(lonc,latc,lonn,latt,id_loc_cn, tid_offl, &
              CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
-             fveg_offl, ityp_offl)
+             fveg_offl, ityp_offl,.false.) !jkolassa June 2023: logical argument hardcoded at end means this code does not work for Catchment-CN5.1; acceptable since mk_GEOSldasRestarts.F90 will be replaced
 
         if(root_proc) allocate (id_glb_cn  (ntiles,nveg))
 
@@ -767,6 +784,11 @@ contains
            VAR_PFT = VAR_PFT_CLM45
            if ( .not. clm45) stop ' ERROR: Given clm45 restart, but the model is not clm45'
            if (root_proc) print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
+        elseif(meta_data%get_dimension('unknown_dim4',rc=status) == 972) then
+           VAR_COL = VAR_COL_CLM51
+           VAR_PFT = VAR_PFT_CLM51
+           if ( .not. clm51) stop ' ERROR: Given clm51 restart, but the model is not clm51'
+           if (root_proc) print *, 'Processing CLM51 restarts : ', VAR_COL, VAR_PFT, clm45
         else
            if (root_proc) print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
         endif
@@ -1312,6 +1334,8 @@ contains
     real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
     real, allocatable :: CLMC45_pf1(:), CLMC45_pf2(:), CLMC45_sf1(:), CLMC45_sf2(:)
     real, allocatable :: CLMC45_pt1(:), CLMC45_pt2(:), CLMC45_st1(:), CLMC45_st2(:)    
+    real, allocatable :: CLMC51_pf1(:), CLMC51_pf2(:), CLMC51_sf1(:), CLMC51_sf2(:)
+    real, allocatable :: CLMC51_pt1(:), CLMC51_pt2(:), CLMC51_st1(:), CLMC51_st2(:)
     real, allocatable :: BF1(:),   BF2(:),   BF3(:),  VGWMAX(:)
     real, allocatable :: CDCR1(:), CDCR2(:), PSIS(:), BEE(:) 
     real, allocatable :: POROS(:), WPWET(:), COND(:), GNU(:)
@@ -1348,8 +1372,11 @@ contains
     allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
     allocate (CLMC45_pf1(ntiles), CLMC45_pf2(ntiles), CLMC45_sf1(ntiles))
     allocate (CLMC45_sf2(ntiles), CLMC45_pt1(ntiles), CLMC45_pt2(ntiles))
+    allocate (CLMC51_pf1(ntiles), CLMC51_pf2(ntiles), CLMC51_sf1(ntiles))
+    allocate (CLMC51_sf2(ntiles), CLMC51_pt1(ntiles), CLMC51_pt2(ntiles))
     allocate (CLMC_st1(ntiles), CLMC_st2(ntiles))
     allocate (CLMC45_st1(ntiles), CLMC45_st2(ntiles))
+    allocate (CLMC51_st1(ntiles), CLMC51_st2(ntiles))
     allocate (hdm(ntiles), fc(ntiles), gdp(ntiles))
     allocate (peatf(ntiles), abm(ntiles), var1(ntiles), RITY(ntiles))
 
@@ -1426,6 +1453,14 @@ contains
             end do
             CLOSE (30, STATUS = 'KEEP')
           endif
+          if(clm51) then
+            open(unit=30, file=trim(DataDir)//'CLM5.1_abm_peatf_gdp_hdm_fc' ,form='formatted')
+            do n=1,ntiles
+              read (32, *) i, j, abm(n), peatf(n), &
+                     gdp(n), hdm(n), fc(n)
+            end do
+            CLOSE (32, STATUS = 'KEEP')
+          endif
        endif
 
       
@@ -1443,6 +1478,10 @@ contains
           if(clm45) then
              open(unit=29, file=trim(DataDir)//'CLM4.5_veg_typs_fracs',form='formatted')
              open(unit=30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
+          endif
+          if(clm51) then
+             open(unit=31, file=trim(DataDir)//'CLM5.1_veg_typs_fracs',form='formatted')
+             open(unit=32, file=trim(DataDir)//'CLM5.1_abm_peatf_gdp_hdm_fc' ,form='formatted')
           endif
        endif
 
@@ -1481,6 +1520,14 @@ contains
                 read (30, *) i, j, abm(n), peatf(n), &
                      gdp(n), hdm(n), fc(n)
              endif
+ 
+             if(clm51) then
+                read (31, *) i,j, CLMC51_pt1(n), CLMC51_pt2(n), CLMC51_st1(n), CLMC51_st2(n), &
+                     CLMC51_pf1(n), CLMC51_pf2(n), CLMC51_sf1(n), CLMC51_sf2(n)
+
+                read (32, *) i, j, abm(n), peatf(n), &
+                     gdp(n), hdm(n), fc(n)
+             endif
           endif          
        end do
        
@@ -1497,6 +1544,10 @@ contains
           if(clm45) then
              CLOSE (29, STATUS = 'KEEP')
              CLOSE (30, STATUS = 'KEEP')
+          endif
+          if(clm51) then
+             CLOSE (31, STATUS = 'KEEP')
+             CLOSE (32, STATUS = 'KEEP')
           endif
        endif
     endif
@@ -1586,6 +1637,36 @@ contains
              CLMC45_sf1(n) = fvg(3)
              CLMC45_sf2(n) = fvg(4)
           endif
+
+          if(CLM51) then
+             ! CLM 51
+
+             CLMC51_pf1(n) = CLMC51_pf1(n) / 100.
+             CLMC51_pf2(n) = CLMC45_pf2(n) / 100.
+             CLMC51_sf1(n) = CLMC51_sf1(n) / 100.
+             CLMC51_sf2(n) = CLMC51_sf2(n) / 100.
+
+             fvg(1) = CLMC51_pf1(n)
+             fvg(2) = CLMC51_pf2(n)
+             fvg(3) = CLMC51_sf1(n)
+             fvg(4) = CLMC51_sf2(n)
+
+             BARE = 1.
+
+             DO NV = 1, NVEG
+                BARE = BARE - FVG(NV)! subtract vegetated fractions 
+             END DO
+
+             if (BARE /= 0.) THEN
+                IB = MAXLOC(FVG(:),1)
+                FVG (IB) = FVG(IB) + BARE ! This also corrects all cases sum ne 0.
+             ENDIF
+
+             CLMC51_pf1(n) = fvg(1)
+             CLMC51_pf2(n) = fvg(2)
+             CLMC51_sf1(n) = fvg(3)
+             CLMC51_sf2(n) = fvg(4)
+          endif
        endif
     enddo
 
@@ -1670,6 +1751,45 @@ contains
                 CLMC45_sf2(n) = 0.
              endif
           endif
+
+          if (clm51) then
+             ! CLM51
+             if(CLMC51_pf1(n) <= 1.e-4) then
+                CLMC51_pf2(n) = CLMC51_pf2(n) + CLMC51_pf1(n)
+                CLMC51_pf1(n) = 0.
+             endif
+
+             if(CLMC51_pf2(n) <= 1.e-4) then
+                CLMC51_pf1(n) = CLMC51_pf1(n) + CLMC51_pf2(n)
+                CLMC51_pf2(n) = 0.
+             endif
+
+             if(CLMC51_sf1(n) <= 1.e-4) then
+                if(CLMC51_sf2(n) > 1.e-4) then
+                   CLMC51_sf2(n) = CLMC51_sf2(n) + CLMC51_sf1(n)
+                else if(CLMC51_pf2(n) > 1.e-4) then
+                   CLMC51_pf2(n) = CLMC51_pf2(n) + CLMC51_sf1(n)
+                else if(CLMC51_pf1(n) > 1.e-4) then
+                   CLMC51_pf1(n) = CLMC51_pf1(n) + CLMC51_sf1(n)
+                else
+                   stop 'fveg3'
+                endif
+                CLMC51_sf1(n) = 0.
+             endif
+
+             if(CLMC51_sf2(n) <= 1.e-4) then
+                if(CLMC51_sf1(n) > 1.e-4) then
+                   CLMC51_sf1(n) = CLMC51_sf1(n) + CLMC51_sf2(n)
+                else if(CLMC51_pf2(n) > 1.e-4) then
+                   CLMC51_pf2(n) = CLMC51_pf2(n) + CLMC51_sf2(n)
+                else if(CLMC51_pf1(n) > 1.e-4) then
+                   CLMC51_pf1(n) = CLMC51_pf1(n) + CLMC51_sf2(n)
+                else
+                   stop 'fveg4'
+                endif
+                CLMC51_sf2(n) = 0.
+             endif
+          endif
        end do
     endif
 
@@ -1740,7 +1860,7 @@ contains
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BGALBNR'), (/1/), (/NTILES/),BNIRDR)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BGALBNF'), (/1/), (/NTILES/),BNIRDF)
         
-        if(CLM45) then
+        if((CLM45) .or. (CLM51)) then
 
            STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'ABM'     ), (/1/), (/NTILES/),real(ABM))
            STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FIELDCAP'), (/1/), (/NTILES/),FC)
@@ -1966,7 +2086,7 @@ contains
 
     call GetIds(lonc,latc,lonn,latt,id_loc, tid_offl, &
          CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
-         fveg_offl, ityp_offl)
+         fveg_offl, ityp_offl,.false.) !jkolassa June 2023: logical input argument hardcoded at end means that this code does not work for Catchment-CN5.1, which is considered acceptable, since mk_GEOSldasRestarts.F90 is about to be replaced with code that doe swork for Catchment-CN5.1
       
     ! update id_glb in root
     
@@ -2255,6 +2375,14 @@ contains
                     var_pft_out(n, nz,nv,73) = max(var_pft_out(n, nz,nv,73),0.)  
                     var_pft_out(n, nz,nv,74) = max(var_pft_out(n, nz,nv,74),0.)  
                     if(clm45) var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)  
+                    if(clm51) then
+                       var_pft_out(n, nz,nv,76) = max(var_pft_out(n, nz,nv,76),0.)
+                       var_pft_out(n, nz,nv,77) = max(var_pft_out(n, nz,nv,77),0.)
+                       var_pft_out(n, nz,nv,78) = max(var_pft_out(n, nz,nv,78),0.)
+                       var_pft_out(n, nz,nv,79) = max(var_pft_out(n, nz,nv,79),0.)
+                       var_pft_out(n, nz,nv,80) = max(var_pft_out(n, nz,nv,80),0.)
+                       var_pft_out(n, nz,nv,81) = max(var_pft_out(n, nz,nv,81),0.)
+                    end if
                  endif
               end do NVLOOP3  ! end veg loop                 
            endif    ! end carbon check         
@@ -2458,6 +2586,15 @@ contains
               end do
            end do
         end do
+     elseif(clm51) then
+        do iv = 1,VAR_PFT
+           do nv = 1,nveg
+              do nz = 1,nzone
+                    STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_pft_out(:, nz,nv,iv))  ; VERIFY_(STATUS)
+                 i = i + 1
+              end do
+           end do
+        end do
      else
         do iv = 1,VAR_PFT
            do nv = 1,nveg
@@ -2495,6 +2632,20 @@ contains
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC10D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC60D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2M10D'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+     elseif(clm51) then
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'AR1M'    ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RAINFM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RHM'     ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RUNSRFM' ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SNOWFM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'WINDM'   ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC10D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC60D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2M10D'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RH30D'   ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TG10D'   ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2MMIN5D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SNDZM5D' ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      else                                                                                      
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SFMCM'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      endif
