@@ -111,8 +111,8 @@ integer,parameter :: NUM_SUBTILES=4
 integer           :: NUM_ENSEMBLE
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
+real,   parameter :: SAI4ZVG(NTYPS) = (/ 0.60653, 0.60653, 0.60653, 1.0, 1.0, 1.0 /)
 real,   parameter :: HPBL           = 1000.
-real,   parameter :: MIN_VEG_HEIGHT = 0.01
 real,   parameter :: Z0_BY_ZVEG     = 0.13
 real,   parameter :: D0_BY_ZVEG     = 0.66
 
@@ -3949,7 +3949,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: PSMB(:)
    real, allocatable              :: PSL(:)
    integer                        :: niter
+
+   integer                        :: CHOOSEZ0
    real                           :: SCALE4Z0
+   real                           :: SCALE4ZVG
+   real                           :: SCALE4Z0_u
+   real                           :: MIN_VEG_HEIGHT
 
 ! gkw: for CN model
 ! -----------------
@@ -3973,7 +3978,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    type(CATCHCN_WRAP)             :: wrap
    type(T_CATCHCN_STATE), pointer :: catchcn_internal
-   integer                        :: OFFLINE_MODE, CHOOSEZ0
+   integer                        :: OFFLINE_MODE
 
 !=============================================================================
 ! Begin...
@@ -4020,11 +4025,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
-    VERIFY_(STATUS)
-
+    VERIFY_(STATUS)     
+    call ESMF_VMGetCurrent(VM,       rc=STATUS)
+    VERIFY_(STATUS)     
+    
 ! Pointers to inputs
 !-------------------
 
@@ -4356,21 +4360,54 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated( MOU2M))  MOU2M = 0.0
    if(associated( MOV2M))  MOV2M = 0.0
 
+    select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
+       case (0)  ! no scaled at all
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 1
+          SCALE4Z0_u  = 1
+          MIN_VEG_HEIGHT = 0.01
+       case (1) ! This case is bugged
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 2
+          SCALE4Z0_u  = 1
+          MIN_VEG_HEIGHT = 0.01
+       case (2)
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 2
+          SCALE4Z0_u  = 2
+          MIN_VEG_HEIGHT = 0.01
+       case (3)
+          SCALE4ZVG   = 0.5
+          SCALE4Z0    = 1
+          SCALE4Z0_u  = 1
+          MIN_VEG_HEIGHT = 0.01
+       case (4)
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 2
+          SCALE4Z0_u  = 2
+          MIN_VEG_HEIGHT = 0.1
+    end select
+
    SUBTILES: do N=1,NUM_SUBTILES
 
-!  Effective vegetation height. In catchment, LAI dependence 
-!   includes the effect of partially vegetated areas,
-!   as well as the phenology of the deciduous types. These
-!   effects will be separated in future formulations.
-
-   ZVG  = fvg1*(Z2CH - SCALE4Z0*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
-          fvg2*(Z2CH - SCALE4Z0*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2)) 
-
+      ! jkolassa Jul 2025: For Z0-formulation == 4 use old (6-class) veg type
+      !                    and mix two veg types
+      !                    Consider updating to a 15-PFT resolution in the future
+      if (CATCH_INTERNAL_STATE%Z0_FORMULATION == 4) then
+         ! make canopy height >= min veg height:
+         Z2CH = max(Z2CH,MIN_VEG_HEIGHT)
+         ZVG  = fvg1*(Z2CH - SAI4ZVG(VEG1)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
+                fvg2*(Z2CH - SAI4ZVG(VEG2)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))
+      else
+         ZVG  = fvg1*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
+                fvg2*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))
+         !Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0 
+      endif
 
 !  For now roughnesses and displacement heights
 !   are the same for all subtiles.
 
-   Z0T(:,N)  = Z0_BY_ZVEG*ZVG
+      Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0
    IF (catchcn_internal%USE_ASCATZ0 == 1) THEN
       WHERE (NDVI <= 0.2)
          Z0T(:,N)  = ASCATZ0
