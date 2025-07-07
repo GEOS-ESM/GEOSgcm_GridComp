@@ -6944,10 +6944,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! "if(fveg(i)>1.e-4 .and. zth(i)>0.01)" branch in subroutine sibalb_vis is absent in the current subroutine sibalb.
 ! -----------------------------------------------------------------------------------------------------------------
 
-        call SIBALB(ntiles, ityp_tmp, elai(:,nv,nz), GRN, ZTH, &
-                    BGALBVR, BGALBVF, BGALBNR, BGALBNF,     &              ! gkw: MODIS soil background albedo
-                    ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )      ! instantaneous snow-free albedos on tiles
+        call SIBALB(ntiles, ityp_tmp, elai(:,nv,nz), GRN, ZTH,            &
+                    BGALBVR, BGALBVF, BGALBNR, BGALBNF,                   & ! gkw: MODIS soil background albedo
+                    ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )       ! instantaneous snow-free albedos on tiles
 
+        ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
+        
+        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP )    
+        TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
+        
         call StieglitzSnow_snow_albedo(ntiles, N_snow, catchcn_internal%N_CONST_LAND4SNWALB, ityp_tmp,   &
                     elai(:,nv,nz), ZTH,                                      &
                     RHOFS,                                                &   
@@ -7022,7 +7027,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
          ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
-
+    ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
+    
     call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP)
     TPSN1OUT1 =  TPSN1OUT1 + Tzero
 
