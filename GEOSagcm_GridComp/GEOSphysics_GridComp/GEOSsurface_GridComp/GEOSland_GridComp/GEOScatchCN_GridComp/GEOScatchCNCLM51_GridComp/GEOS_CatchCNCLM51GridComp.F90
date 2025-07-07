@@ -4590,7 +4590,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer :: IM,JM
     integer :: incl_Louis_extra_derivs
 
-    real    :: SCALE4Z0
+    real                             :: SCALE4Z0
+    real                             :: SCALE4ZVG
+    real                             :: SCALE4Z0_u
+    real                             :: MIN_VEG_HEIGHT
 
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
@@ -4617,6 +4620,29 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
     VERIFY_(STATUS)
+
+   select case (CATCHCN_INTERNAL%Z0_FORMULATION)
+      case (0)  ! no scaled at all
+         SCALE4ZVG   = 1
+         SCALE4Z0_u  = 1
+         MIN_VEG_HEIGHT = 0.01
+      case (1) ! This case is bugged
+         SCALE4ZVG   = 1
+         SCALE4Z0_u  = 1
+         MIN_VEG_HEIGHT = 0.01
+      case (2)
+         SCALE4ZVG   = 1
+         SCALE4Z0_u  = 2
+         MIN_VEG_HEIGHT = 0.01
+      case (3)
+         SCALE4ZVG   = 0.5
+         SCALE4Z0_u  = 1
+         MIN_VEG_HEIGHT = 0.01
+      case (4)
+         SCALE4ZVG   = 1
+         SCALE4Z0_u  = 2
+         MIN_VEG_HEIGHT = 0.1
+   end select
 
 ! ------------------------------------------------------------------------------
 ! If its time, recalculate the LSM tile routine
@@ -6177,15 +6203,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)
 
         ZTH = max(0.0,ZTH)
-        ZVG  = fveg1*(Z2CH - SCALE4Z0*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
-             fveg2*(Z2CH - SCALE4Z0*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2)) 
 
+        if (CATCHCN_INTERNAL%Z0_FORMULATION == 4) then 
+           ! make canopy height >= min veg height:
+           Z2CH = max(Z2CH,MIN_VEG_HEIGHT)
+           ZVG  = fvg1*(Z2CH - SAI4ZVG(VEG1)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
+                  fvg2*(Z2CH - SAI4ZVG(VEG2)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))     
+        else 
+           ZVG  = fvg1*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
+                  fvg2*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))
+        endif
 
-        !  For now roughnesses and displacement heights
-        !   are the same for all subtiles.
-        !---------------------------------------------------
-
-        Z0   = Z0_BY_ZVEG*ZVG
+        Z0   = Z0_BY_ZVEG*ZVG*SCALE4Z0_u
         IF (catchcn_internal%USE_ASCATZ0 == 1) WHERE (NDVI <= 0.2) Z0 = ASCATZ0        
         D0   = D0_BY_ZVEG*ZVG
 
