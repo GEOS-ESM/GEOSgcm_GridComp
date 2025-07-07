@@ -66,9 +66,7 @@ module GEOS_CatchCNCLM51GridCompMod
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size, get_nstep, is_first_step
   use pftconMod,        only: noveg
-  USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,            &
-       catch_calc_zbar, catch_calc_peatclsm_waterlevel, irrigation_rate, &
-       gndtmp
+  use lsm_routines,     only: sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel, catch_calc_zbar, gndtmp
 
   use update_model_para4cn, only : upd_curr_date_time
   use WaterType
@@ -200,7 +198,7 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    integer :: OFFLINE_MODE, RUN_IRRIG
+    integer :: OFFLINE_MODE
     integer :: RESTART
 
 ! Begin...
@@ -223,8 +221,6 @@ subroutine SetServices ( GC, RC )
     VERIFY_(status)
 
     OFFLINE_MODE = CATCH_INTERNAL_STATE%CATCH_OFFLINE    ! shorthand
-
-    call MAPL_GetResource ( MAPL, RUN_IRRIG,   Label="RUN_IRRIG:", _RC)
 
 ! Set the Run entry points
 ! ------------------------
@@ -2050,116 +2046,9 @@ subroutine SetServices ( GC, RC )
      
   endif
 
-! IRRIGATION MODEL INTERNAL
-
-  IF (RUN_IRRIG /= 0) THEN
-
-     call MAPL_AddInternalSpec(GC                  ,&
-          LONG_NAME          = 'fraction_of_irrigated_cropland',&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'IRRIGFRAC'                 ,&
-          FRIENDLYTO         = trim(COMP_NAME)             ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                  ,&
-          LONG_NAME          = 'fraction_of_paddy_cropland',&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'PADDYFRAC'                 ,&
-          FRIENDLYTO         = trim(COMP_NAME)             ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     
-     call MAPL_AddInternalSpec(GC                          ,&
-          LONG_NAME          = 'Maximum_LAI'               ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'LAIMAX'                    ,&
-          FRIENDLYTO         = trim(COMP_NAME)             ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                          ,&
-          LONG_NAME          = 'Minimum_LAI'               ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'LAIMIN'                    ,&
-          FRIENDLYTO         = trim(COMP_NAME)             ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                          ,&
-          LONG_NAME          = 'CLM_primary_type'          ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CLMPT'                     ,&
-          FRIENDLYTO         = trim(COMP_NAME)             ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                          ,&
-          LONG_NAME          = 'CLM_secondary_type'        ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CLMST'                     ,&
-          FRIENDLYTO         = trim(COMP_NAME)             ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                          ,&
-          LONG_NAME          = 'CLM_primary_fraction'      ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CLMPF'                     ,&
-          FRIENDLYTO         = trim(COMP_NAME)             ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                          ,&
-          LONG_NAME          = 'CLM_secondary_fraction'    ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CLMSF'                     ,&
-          FRIENDLYTO         = trim(COMP_NAME)             ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-  ENDIF
-
-
 !EOS
 
   !  EXPORT STATE:
-
-  IF (RUN_IRRIG /= 0) THEN
-     call MAPL_AddExportSpec(GC                            ,&
-          LONG_NAME          = 'irrigation_rate'           ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          SHORT_NAME         = 'IRRIGRATE'                 ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-  ENDIF
   
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'evaporation'               ,&
@@ -4850,14 +4739,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:), pointer :: RBC002
         real, dimension(:,:), pointer :: ROC001
         real, dimension(:,:), pointer :: ROC002
-        real, dimension(:),   pointer :: IRRIGFRAC
-        real, dimension(:),   pointer :: PADDYFRAC
-        real, dimension(:),   pointer :: LAIMAX
-        real, dimension(:),   pointer :: LAIMIN
-        real, dimension(:),   pointer :: CLMPT
-        real, dimension(:),   pointer :: CLMST
-        real, dimension(:),   pointer :: CLMPF
-        real, dimension(:),   pointer :: CLMSF
+
         real, dimension(:),   pointer :: T2M10D
         real, dimension(:),   pointer :: TG10D
         real, dimension(:),   pointer :: T2MMIN5D
@@ -5028,7 +4910,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTBC002
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
-        real, pointer, dimension(:)   :: IRRIGRATE
+        
         real, pointer, dimension(:)   :: PEATCLSM_WATERLEVEL
         real, pointer, dimension(:)   :: PEATCLSM_FSWCHANGE
 
@@ -5173,7 +5055,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! unadulterated TC's and QC's
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
         real, pointer               :: QA1_0(:), QA2_0(:),  QA4_0(:)
-        real, pointer               :: PLSIN(:)
 
         ! CATCHMENT_SPINUP
         integer                     :: CurrMonth, CurrDay, CurrHour, CurrMin, CurrSec
@@ -5575,17 +5456,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_GetPointer(INTERNAL,ROC002     ,'ROC002'     , RC=STATUS); VERIFY_(STATUS)
         endif
 
-        IF (catchcn_internal%RUN_IRRIG /= 0) THEN
-           call MAPL_GetPointer(INTERNAL,IRRIGFRAC ,'IRRIGFRAC' , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,PADDYFRAC ,'PADDYFRAC' , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,LAIMAX    ,'LAIMAX'    , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,LAIMIN    ,'LAIMIN'    , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CLMPT     ,'CLMPT'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CLMST     ,'CLMST'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CLMPF     ,'CLMPF'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CLMSF     ,'CLMSF'     , RC=STATUS); VERIFY_(STATUS)
-        ENDIF
-
         ! -----------------------------------------------------
         ! EXPORT POINTERS
         ! -----------------------------------------------------
@@ -5743,8 +5613,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTOC002         ,'RMELTOC002'           ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,PEATCLSM_WATERLEVEL,'PEATCLSM_WATERLEVEL'  ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,PEATCLSM_FSWCHANGE ,'PEATCLSM_FSWCHANGE'   ,           RC=STATUS); VERIFY_(STATUS)
-
-        IF (catchcn_internal%RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,           RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
         
@@ -5998,7 +5866,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(QA1_0    (NTILES))
         allocate(QA2_0    (NTILES))
         allocate(QA4_0    (NTILES))
-        allocate(PLSIN    (NTILES))
 
         allocate(TA_MIN   (NTILES))
         allocate(ta_count (NTILES))
@@ -7466,7 +7333,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         rcxdq(n) = 1.e3
       endif
 
-! compute deriviatives
+! compute derivatives
       drcudt(n) = (rcxdt(n) - rcuns(n)) / dtc
       drcudq(n) = (rcxdq(n) - rcuns(n)) / (0.622*dea/PS(n))
 
@@ -7478,28 +7345,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     endif ! end of check for zero tiles
 
 ! gkw: end of main CN block
-
-    PLSIN = PLS
-
-    ! --------------------------------------------------------------------------
-    ! Call Irrigation Model 
-    ! --------------------------------------------------------------------------
-    
-    IF ((catchcn_internal%RUN_IRRIG /= 0).AND.(ntiles >0))  THEN  
-       
-       CALL CATCH_CALC_SOIL_MOIST (                                            &
-            NTILES,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,               &
-            ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2,    &
-            srfexc,rzexc,catdef, CAR1, CAR2, CAR4, sfmc, rzmc, prmc)
-	    
-       call irrigation_rate (catchcn_internal%IRRIG_METHOD,                                 & 
-            NTILES, AGCM_HH, AGCM_MI, AGCM_S, lons, IRRIGFRAC, PADDYFRAC,  &
-            CLMPT,CLMST, CLMPF, CLMSF, LAIMAX, LAIMIN, LAI0,               &
-            POROS, WPWET, VGWMAX, RZMC, IRRIGRATE)
-       
-       PLSIN = PLS + IRRIGRATE
-       
-    ENDIF
 
 #ifdef DBG_CNLSM_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
@@ -7686,7 +7531,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            call CATCHCN ( NTILES, LONS, LATS, DT,catchcn_internal%USE_FWET_FOR_RUNOFF, &
                 catchcn_internal%FWETC, catchcn_internal%FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF     ,&
-                PCU      ,     PLSIN ,     SNO, ICE, FRZR            ,&
+                PCU      ,     PLS ,     SNO, ICE, FRZR              ,&
                 UUU                                                  ,&
 
                 EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
@@ -8263,7 +8108,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(      ht )
         deallocate(      tp )
         deallocate( soilice )
-        deallocate (PLSIN)
         deallocate(TA_MIN)
         deallocate(ta_count)
         call MAPL_TimerOff  ( MAPL, "-CATCHCNCLM51" )
