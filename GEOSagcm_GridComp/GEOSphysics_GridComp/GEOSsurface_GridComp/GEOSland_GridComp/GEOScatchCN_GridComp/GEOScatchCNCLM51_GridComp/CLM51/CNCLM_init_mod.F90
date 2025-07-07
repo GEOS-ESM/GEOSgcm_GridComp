@@ -94,49 +94,11 @@ module CNCLM_initMod
  implicit none 
  private 
 
- !type(photosyns_type), public            :: photosyns_inst
  class(nutrient_competition_method_type), public,  allocatable :: nutrient_competition_method
  class(fire_method_type),                          allocatable :: cnfire_method
- type(saturated_excess_runoff_type), public :: saturated_excess_runoff_inst
-! type(water_type),                   public :: water_inst
-! type(bounds_type), public                       :: bounds
-!  type(patch_type)                        :: patch
-!  type(column_type)                       :: col
-!  type(landunit_type)                     :: lun
-!  type(cnveg_nitrogenstate_type), public          :: cnveg_nitrogenstate_inst
-!  type(cnveg_carbonstate_type), public            :: cnveg_carbonstate_inst
-!  type(atm2lnd_type), public                      :: atm2lnd_inst
-!  type(temperature_type), public                  :: temperature_inst
-!  type(soilstate_type), public                    :: soilstate_inst
-!  type(waterdiagnosticbulk_type), public          :: waterdiagnosticbulk_inst
-!  type(wateratm2lnd_type), public                  :: wateratm2lnd_inst
- ! type(canopystate_type), public                   :: canopystate_inst
- ! type(solarabs_type), public                      :: solarabs_inst
-!  type(surfalb_type), public                       :: surfalb_inst
-!  type(ozone_base_type), public                    :: ozone_inst
-!  type(pftcon_type)                       :: pftcon
-  type(waterflux_type), public                     :: waterflux_inst
-!  type(soilbiogeochem_carbonstate_type), public    :: soilbiogeochem_carbonstate_inst
-!  type(soilbiogeochem_nitrogenstate_type), public  :: soilbiogeochem_nitrogenstate_inst
-!  type(cn_products_type), public                   :: c_products_inst
-!  type(cn_products_type), public                   :: n_products_inst
-!  type(soilbiogeochem_state_type), public          :: soilbiogeochem_state_inst
-!  type(cnveg_state_type), public                   :: cnveg_state_inst
-!  type(cnveg_carbonflux_type), public              :: cnveg_carbonflux_inst
-!  type(cnveg_nitrogenflux_type), public            :: cnveg_nitrogenflux_inst
-  !type(gridcell_type)                     :: grc
-!  type(soilbiogeochem_carbonflux_type), public     :: soilbiogeochem_carbonflux_inst
-!  type(soilbiogeochem_nitrogenflux_type), public   :: soilbiogeochem_nitrogenflux_inst
-!  type(ch4_type), public                           :: ch4_inst
-!  type(crop_type), public                          :: crop_inst
-!  type(dgvs_type), public                          :: dgvs_inst
-!  type(energyflux_type), public                    :: energyflux_inst
-!  type(waterstatebulk_type), public                :: waterstatebulk_inst
-!  type(waterstate_type), public                    :: waterstate_inst
-!  type(frictionvel_type), public                   :: frictionvel_inst
-!   type(cn_vegetation_type), public                :: bgc_vegetation_inst
-   type(waterfluxbulk_type), public                 :: waterfluxbulk_inst
- ! type(active_layer_type), public                  :: active_layer_inst
+ type(saturated_excess_runoff_type),      public               :: saturated_excess_runoff_inst
+ type(waterflux_type),                    public               :: waterflux_inst
+ type(waterfluxbulk_type),                public               :: waterfluxbulk_inst
 
 
 
@@ -164,46 +126,6 @@ module CNCLM_initMod
   type(cn_vegetation_type), intent(out)               :: bgc_vegetation_inst                                                                                                        
   !LOCAL
 
-!  type(bounds_type)                       :: bounds
-!!  type(patch_type)                        :: patch
-!!  type(column_type)                       :: col
-!!  type(landunit_type)                     :: lun
-!  type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
-!  type(cnveg_carbonstate_type)            :: cnveg_carbonstate_inst
-!  type(atm2lnd_type)                      :: atm2lnd_inst
-!  type(temperature_type)                  :: temperature_inst
-!  type(soilstate_type)                    :: soilstate_inst
-!  type(waterdiagnosticbulk_type)          :: waterdiagnosticbulk_inst
-!  type(wateratm2lndbulk_type)             :: wateratm2lndbulk_inst
-!  type(wateratm2lnd_type)                 :: wateratm2lnd_inst
-!  type(canopystate_type)                  :: canopystate_inst
-!  type(solarabs_type)                     :: solarabs_inst
-!  type(surfalb_type)                      :: surfalb_inst
-!  type(ozone_base_type)                   :: ozone_inst
-!!  type(pftcon_type)                       :: pftcon
-!  type(waterflux_type)                    :: waterflux_inst
-!  type(soilbiogeochem_carbonstate_type)   :: soilbiogeochem_carbonstate_inst
-!  type(soilbiogeochem_nitrogenstate_type) :: soilbiogeochem_nitrogenstate_inst
-!  type(cn_products_type)                  :: c_products_inst
-!  type(cn_products_type)                  :: n_products_inst
-!  type(soilbiogeochem_state_type)         :: soilbiogeochem_state_inst
-!  type(cnveg_state_type)                  :: cnveg_state_inst
-!  type(cnveg_carbonflux_type)             :: cnveg_carbonflux_inst
-!  type(cnveg_nitrogenflux_type)           :: cnveg_nitrogenflux_inst
-!  !type(gridcell_type)                     :: grc
-!  type(soilbiogeochem_carbonflux_type)    :: soilbiogeochem_carbonflux_inst
-!  type(soilbiogeochem_nitrogenflux_type)  :: soilbiogeochem_nitrogenflux_inst
-!  type(ch4_type)                          :: ch4_inst
-!  type(crop_type)                         :: crop_inst
-!  type(dgvs_type)                         :: dgvs_inst
-!  type(saturated_excess_runoff_type)      :: saturated_excess_runoff_inst
-!  type(energyflux_type)                   :: energyflux_inst
-!  type(waterstatebulk_type)               :: waterstatebulk_inst
-!  type(waterstate_type)                   :: waterstate_inst
-!  type(frictionvel_type)                  :: frictionvel_inst
-!   type(cn_vegetation_type)               :: bgc_vegetation_inst
-!  type(waterfluxbulk_type)                :: waterfluxbulk_inst
-!  type(active_layer_type)                 :: active_layer_inst
 
   character(300)     :: paramfile
   character(300)     :: NLFilename
@@ -251,10 +173,8 @@ module CNCLM_initMod
 
     ! read parameters and configurations from namelist file
 
-    !NLFilename = trim('/discover/nobackup/jkolassa/new/CatchCN5.1.nml')
     NLFilename = trim('./CN_CLM51.nml')
-    inquire(file=NLFilename,exist=f_exist)
-    print *, 'NLFilename exists: ', f_exist
+    
     call CNPhenologyReadNML       ( NLFilename )
     call dynSubgridControl_init   ( )
     call CNFireReadNML            ( NLFilename )
@@ -319,7 +239,6 @@ module CNCLM_initMod
 
     call cn_balance_inst%Init           (bounds)
 
-    ! calls to original CTSM initialization routines
 
     ! initialize rooting profile parameters from namelist
 
