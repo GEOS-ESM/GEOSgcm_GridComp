@@ -65,6 +65,7 @@ module GEOS_GFDL_1M_InterfaceMod
 #ifdef PYMOIST_INTEGRATION
   integer :: C_LMELTFRZ, C_LHYDROSTATIC, C_LPHYS_HYDROSTATIC
   logical :: USE_PYMOIST = .FALSE.
+  logical :: USE_PYMOIST_GFDL_1M = .FALSE.
   logical :: GFDL_1M_READY = .FALSE.
 #endif
 
@@ -413,7 +414,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 #ifdef PYMOIST_INTEGRATION
   IF (USE_PYMOIST_GFDL_1M) THEN
-    IF NOT (GFDL_1M_READY) THEN
+    IF (.NOT. GFDL_1M_READY) THEN
       CALL make_gfdl_1m_flags_C_interop(dt_moist, mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r, &
         dw_land, dw_ocean, vi_fac, vr_fac, vs_fac, vg_fac, ql_mlt, do_qa, fix_negative, vi_max, vs_max, &
         vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max, qi0_crt, qr0_crt, fast_sat_adj, rh_inc, &
