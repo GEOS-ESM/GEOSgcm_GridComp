@@ -220,7 +220,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
 
-    OFFLINE_MODE = CATCH_INTERNAL_STATE%CATCH_OFFLINE    ! shorthand
+    OFFLINE_MODE = CATCHCN_INTERNAL%CATCH_OFFLINE    ! shorthand
 
 ! Set the Run entry points
 ! ------------------------
