@@ -4360,7 +4360,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated( MOU2M))  MOU2M = 0.0
    if(associated( MOV2M))  MOV2M = 0.0
 
-    select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
+    select case (CATCHCN_INTERNAL%Z0_FORMULATION)
        case (0)  ! no scaled at all
           SCALE4ZVG   = 1
           SCALE4Z0    = 1
@@ -4393,7 +4393,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       ! jkolassa Jul 2025: For Z0-formulation == 4 use old (6-class) veg type
       !                    and mix two veg types
       !                    Consider updating to a 15-PFT resolution in the future
-      if (CATCH_INTERNAL_STATE%Z0_FORMULATION == 4) then
+      if (CATCHCN_INTERNAL%Z0_FORMULATION == 4) then
          ! make canopy height >= min veg height:
          Z2CH = max(Z2CH,MIN_VEG_HEIGHT)
          ZVG  = fvg1*(Z2CH - SAI4ZVG(VEG1)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
