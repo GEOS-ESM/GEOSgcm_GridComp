@@ -4498,9 +4498,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
      ! Get component's private internal state
-    call ESMF_UserCompGetInternalState(gc, 'CatchInternal', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
     VERIFY_(status)
-    CATCH_INTERNAL_STATE=>wrap%ptr
+    CATCHCN_INTERNAL=>wrap%ptr
 
 ! Get parameters from generic state.
 !-----------------------------------
