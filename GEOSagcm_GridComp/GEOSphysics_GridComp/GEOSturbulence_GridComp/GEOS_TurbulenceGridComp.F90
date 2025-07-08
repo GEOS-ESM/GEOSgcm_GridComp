@@ -371,6 +371,26 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME = 'QLLS',                                      &
+        LONG_NAME  = 'liquid_condensate_mixing_ratio',            &
+        UNITS      = 'kg kg-1',                                   &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME = 'QILS',                                      &
+        LONG_NAME  = 'frozen_condensate_mixing_ratio',            &
+        UNITS      = 'kg kg-1',                                   &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'QRTOT',                                     &
         LONG_NAME  = 'suspended_rain_mixing_ratio',               &
         UNITS      = 'kg kg-1',                                   &
@@ -2942,7 +2962,7 @@ end if
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: AREA, VARFLT
-     real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, QRTOT, QSTOT, QGTOT, FCLD
+     real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, QRTOT, QSTOT, QGTOT, FCLD, QLLS, QILS
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
 
@@ -3140,6 +3160,8 @@ end if
      call MAPL_GetPointer(IMPORT,  PREF,    'PREF', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, RADLW,   'RADLW', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,RADLWC,  'RADLWC', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,  QLLS,    'QLLS', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,  QILS,    'QILS', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, QLTOT,   'QLTOT', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, QITOT,   'QITOT', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, QRTOT,   'QRTOT', RC=STATUS); VERIFY_(STATUS) 
@@ -3620,7 +3642,7 @@ end if
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
     THL=TH-(MAPL_ALHL*QL+MAPL_ALHS*QI)/(MAPL_CP*EXF)
-    QT=Q+QL+QI
+    QT=Q+QLLS+QILS
 
 ! get updraft constants
     call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  RC=STATUS)

@@ -1183,7 +1183,7 @@ contains
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = [character(len=6) ::                        &
                          'QV','QLTOT','QITOT','QRTOT','QSTOT','QGTOT','FCLD', &
-                         'WTHV2','WQT_DC'],                        &
+                         'WTHV2','WQT_DC','QILS','QLLS'],          &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
