@@ -198,8 +198,13 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
+    type(T_CATCHCN_STATE), pointer :: CATCHCN_INTERNAL
+    class(T_CATCHCN_STATE), pointer :: statePtr
+    type(CATCHCN_WRAP) :: wrap
     integer :: OFFLINE_MODE
     integer :: RESTART
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)  
 
 ! Begin...
 ! --------
@@ -217,8 +222,17 @@ subroutine SetServices ( GC, RC )
 ! unusual to read resource file in SetServices, but we need to know
 ! at this stage where we are running Catch in the offline mode or not
 
+    allocate(CATCHCN_INTERNAL, stat=status)
+    VERIFY_(status)
+    statePtr => CATCHCN_INTERNAL
+
+    ! resource variables for offline GEOSldas; for documentation, see GEOSldas/src/Applications/LDAS_App/GEOSldas_LDAS.rc
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
+    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL%CATCH_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL%CATCH_SPINUP,  Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
 
     OFFLINE_MODE = CATCHCN_INTERNAL%CATCH_OFFLINE    ! shorthand
 
