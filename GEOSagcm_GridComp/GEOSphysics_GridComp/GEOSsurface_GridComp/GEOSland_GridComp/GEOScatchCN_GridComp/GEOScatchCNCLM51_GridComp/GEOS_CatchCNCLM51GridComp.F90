@@ -203,8 +203,6 @@ subroutine SetServices ( GC, RC )
     type(CATCHCN_WRAP) :: wrap
     integer :: OFFLINE_MODE
     integer :: RESTART
-    character(len=ESMF_MAXSTR)              :: SURFRC
-    type(ESMF_Config)  
 
 ! Begin...
 ! --------
