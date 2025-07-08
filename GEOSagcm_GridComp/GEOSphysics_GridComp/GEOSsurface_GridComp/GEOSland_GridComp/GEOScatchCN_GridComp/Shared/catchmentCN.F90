@@ -137,7 +137,7 @@ CONTAINS
   SUBROUTINE CATCHCN (                                           &
        NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &  ! LONS, LATS are in [radians] !!!
        ITYP1,ITYP2,FVEG1,FVEG2,                                  &
-       DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &  ! TFRZR=0 as of Jun 2025; needs attention if ever TFRZR/=0
+       DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &  ! DZSF in [mm]!!  TFRZR=0 as of Jun 2025; needs attention if ever TFRZR/=0
        ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
        ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
        ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
