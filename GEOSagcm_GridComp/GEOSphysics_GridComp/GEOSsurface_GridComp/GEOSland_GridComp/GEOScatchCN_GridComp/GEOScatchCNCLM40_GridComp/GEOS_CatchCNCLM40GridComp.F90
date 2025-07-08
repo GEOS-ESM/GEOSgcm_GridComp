@@ -7310,14 +7310,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                 TC(:,FSNW)                                           ,&
                 ASNOW                                                ,&
                 TP1, TP2, TP3, TP4, TP5, TP6,  SFMC, RZMC, PRMC      ,&
-                ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC, EVACC, SHACC   ,&
+                ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC, EVACC, LHACC, SHACC   ,&
                 TSURF                                                ,&
                 SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
                 LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
                 TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE, FICESOUT  ,&
                 TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
                 QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
-                RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
+                RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS)
 
            ! Change units of TP1, TP2, .., TP6 export variables from Celsius to Kelvin.
            ! This used to be done at the level the Surface GridComp.

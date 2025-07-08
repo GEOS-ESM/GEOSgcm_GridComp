@@ -7690,7 +7690,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------
         if (ntiles > 0) then
 
-           call CATCHCN ( NTILES, LONS, LATS, DT,catchcn_internal%USE_FWET_FOR_RUNOFF, &
+           call CATCHCN ( NTILES, LONS, LATS, DT,catchcn_internal%USE_FWET_FOR_RUNOFF, &                    ! LONS, LATS are in [radians] !!!
                 catchcn_internal%FWETC, catchcn_internal%FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF_in_mm,&
                 PCU      ,     PLS ,     SNO, ICE, FRZR              ,&
                 UUU                                                  ,&
@@ -7719,7 +7719,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                 QSAT(:,FWLT) ,    DQS(:,FWLT) ,   ALWN(:,3),    BLWN(:,3) ,&
                 QSAT(:,FSNW) ,    DQS(:,FSNW) ,   ALWN(:,4),    BLWN(:,4) ,&
 
-           RCSAT,DRCSDT,DRCSDQ,  RCUNS,DRCUDT,DRCUDQ,              &
+                RCSAT,DRCSDT,DRCSDQ,  RCUNS,DRCUDT,DRCUDQ,              &
                 BF1, BF2, BF3, VGWMAX, CDCR1, CDCR2, PSIS	          ,&
                 BEE, POROS, WPWET, COND, GNU	                  ,&
                 ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4	          ,&
