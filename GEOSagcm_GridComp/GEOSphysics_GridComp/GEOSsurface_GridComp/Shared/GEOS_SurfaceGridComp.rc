@@ -69,7 +69,7 @@
 
 # ---- Formulation for turbulent roughness length (z0)
 #
-#    Choice implemented for Catch only.  Hardwired in CatchCN.
+#    For CatchCNCLM40, Z0_FORMULATION=3 is hardwired.
 #
 #    0 : Fortuna,      SMAP NRv3
 #    1 : Ganymed-4_1,  SMAP NRv4/NRv4.1
