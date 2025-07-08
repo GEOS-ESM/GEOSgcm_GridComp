@@ -345,7 +345,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
     real, pointer, dimension(:,:)   :: AREA, PHIS, FRLAND, TS, DTSX, SH, EVAP, KPBLSC
-    real, pointer, dimension(:,:,:) :: SL2, SL3, QT2, QT3, W2, W3, SLQT, WQT, WQL, WSL, PDF_A
+    real, pointer, dimension(:,:,:) :: SL2, SL3, QT2, QT3, W2, W3, SLQT, WQT, WQL, WSL, PDF_A, S2, S3
     real, pointer, dimension(:,:,:) :: WTHV2
     real, pointer, dimension(:,:,:) :: OMEGA
     ! Local
@@ -551,6 +551,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, PFG_LS,   'PFG_LS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WTHV2,    'WTHV2'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQL,      'WQL'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, S2,      'S2'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, S3,      'S3'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PDFITERS, 'PDFITERS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VFALL_ICE,     'VFALL_ICE'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VFALL_SNOW,    'VFALL_SNOW'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -673,7 +675,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       WQL(I,J,L)     , &
                       .false.        , &
                       USE_BERGERON)
-             RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+               RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+               S2(I,J,L) = QT2(I,J,L)/QST3(I,J,L)**2
+               S3(I,J,L) = QT3(I,J,L)/QST3(I,J,L)**3
              if (LMELTFRZ) then
            ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &

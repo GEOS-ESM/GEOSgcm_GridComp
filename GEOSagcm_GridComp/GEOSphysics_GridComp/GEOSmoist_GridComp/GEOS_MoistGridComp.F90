@@ -915,6 +915,24 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'S2',                                                    &
+       LONG_NAME  = 'Subsaturation_variance',                                &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'S3',                                                    &
+       LONG_NAME  = 'Subsaturation_third_moment',                            &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
 
     call MAPL_AddExportSpec(GC,                             &
          SHORT_NAME = 'QCTOT',                                     &
