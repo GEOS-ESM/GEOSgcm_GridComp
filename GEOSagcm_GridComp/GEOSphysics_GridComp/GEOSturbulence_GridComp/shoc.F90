@@ -949,8 +949,9 @@ contains
 
         onemmf = 1.0 - MFFRC(:,:,k)
 
-        w2(:,:,k) = onemmf*0.667*TKE(:,:,k)
-
+!        w2(:,:,k) = onemmf*0.667*TKE(:,:,k)
+        w2(:,:,k) = 1./(1./(0.667*TKE(:,:,k))+100./zl(:,:,k))
+        
         hl2(:,:,k) = 0.5*( hl2_edge(:,:,kd) + hl2_edge(:,:,ku) )
         hl2diag(:,:,k) = 0.5*( hl2_edge_nomf(:,:,kd) + hl2_edge_nomf(:,:,ku) )
 
@@ -1000,7 +1001,7 @@ contains
        qt3 = max(MFQT3,0.) 
     end if
     pdf_a = min(0.5,max(0.,pdf_a))
-
+  
   if (DOCANUTO==0) then
     qt3 = ( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS )
     hl3 = MFHL3
