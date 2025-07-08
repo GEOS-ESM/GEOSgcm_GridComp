@@ -15,13 +15,8 @@ set (srcs
   abortutils.F90
   AnnualFluxDribbler.F90
   clm_time_manager.F90
-  clm_varcon.F90
-  clm_varctl.F90
-  clm_varpar.F90
-  CN2CLMType.F90
   CNAnnualUpdateMod.F90
   CNBalanceCheckMod.F90
-  CNCLM_Photosynthesis.F90
   ActiveLayerMod.F90
   atm2lndType.F90
   CanopyStateType.F90
@@ -37,7 +32,6 @@ set (srcs
   ColumnType.F90
   CropType.F90
   decompMod.F90
-  CNCLM_DriverMod.F90
   dynSubgridControlMod.F90
   EnergyFluxType.F90
   filterMod.F90
@@ -55,9 +49,7 @@ set (srcs
   SoilBiogeochemCompetitionMod.F90
   SoilBiogeochemDecompCascadeConType.F90
   SoilBiogeochemNitrogenFluxType.F90
-  SoilBiogeochemNitrogenStateType.F90
   SoilBiogeochemStateType.F90
-  SoilStateType.F90
   SolarAbsorbedType.F90
   SurfaceAlbedoType.F90
   TemperatureType.F90
@@ -76,20 +68,15 @@ set (srcs
   CNDriverMod.F90
   CNFireEmissionsMod.F90
   CNFireFactoryMod.F90
-  CNFireLi2014Mod.F90
-  CNFireLi2016Mod.F90
-  CNFireLi2021Mod.F90
   CNFireNoFireMod.F90
   CNFUNMod.F90
   CNGapMortalityMod.F90
   CNGRespMod.F90
-  CNCLM_init_mod.F90
   CNMRespMod.F90
   CNNDynamicsMod.F90
   CNNStateUpdate1Mod.F90
   CNNStateUpdate2Mod.F90
   CNNStateUpdate3Mod.F90
-  CNPhenologyMod.F90
   CNPrecisionControlMod.F90
   CNRootDynMod.F90
   CNSharedParamsMod.F90
