@@ -6022,8 +6022,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              CAPAC, CATDEF, RZEXC, SRFEXC, GHTCNT, TSURF          ,&
              WESNN, HTSNNN, SNDZN                                 ,&
 
-             EVAPOUT, SHOUT, RUNOFF, EVPINT, EVPSOI, EVPVEG       ,&  ! EVAPOUT:                        kg/m2/s
-             EVPICE                                               ,&  ! EVPINT, EVPSOI, EVPVEG, EVPICE: W/m2
+             EVAPOUT, SHOUT, RUNOFF                               ,&  ! EVAPOUT:                        kg/m2/s
+             EVPINT, EVPSOI, EVPVEG, EVPICE                       ,&  ! EVPINT, EVPSOI, EVPVEG, EVPICE: W/m2
              BFLOW                                                ,&
              RUNSURF                                              ,&
              SMELT                                                ,&

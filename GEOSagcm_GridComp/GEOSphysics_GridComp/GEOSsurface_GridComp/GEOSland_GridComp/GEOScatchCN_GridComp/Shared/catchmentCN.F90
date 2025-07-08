@@ -155,18 +155,21 @@ CONTAINS
        TG1, TG2, TG4,                                            &
        TC1, TC2, TC4, QA1, QA2, QA4, CAPAC,                      &
        CATDEF, RZEXC, srfexc, GHTCNT,                            &
-       WESNN, HTSNNN, SNDZN,     EVAP, SHFLUX, RUNOFF,           &
-       EINT, ESOI, EVEG, ESNO,  BFLOW,RUNSRF,SMELT,              &
-       HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &  ! HLWUP = *emitted* longwave only (excl reflected)
+       WESNN, HTSNNN, SNDZN,                                     &       
+       EVAP, SHFLUX, RUNOFF,                                     &  ! EVAP:                   kg/m2/s
+       EINT, ESOI, EVEG, ESNO,  BFLOW,RUNSRF,SMELT,              &  ! EINT, ESOI, EVEG, ESNO: W/m2
+       HLWUP,SWLAND,LHFLUX,QINFIL,AR1, AR2, RZEQ,                &  ! HLWUP = *emitted* longwave only (excl reflected)
        GHFLUX, GHFLUXSNO, GHTSKIN, TPSN1, ASNOW0,                &
        TP1, TP2, TP3, TP4, TP5, TP6,                             &
        sfmc, rzmc, prmc, entot, wtot, WCHANGE, ECHANGE, HSNACC,  &
-       EVACC, SHACC, TSURF,                                      &
+       EVACC,                                                    &  ! kg/m2/s
+       LHACC, SHACC,                                             &  ! W/m2
+       TSURF,                                                    &
        SH_SNOW, AVET_SNOW, WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL,   &
        LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
        TCSORIG, TPSN1IN, TPSN1OUT, FSW_CHANGE, FICESOUT,         &
        TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
-       RCONSTIT, RMELT, TOTDEPOS, LHACC                          &  ! OPTIONAL
+       RCONSTIT, RMELT, TOTDEPOS                                 &  ! OPTIONAL
        )
     
     IMPLICIT NONE
@@ -220,10 +223,10 @@ CONTAINS
     
     REAL, INTENT(OUT), DIMENSION(:) ::      EVAP, SHFLUX, RUNOFF,          &
          EINT, ESOI, EVEG, ESNO, BFLOW,RUNSRF,SMELT,               &
-         HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &
+         HLWUP,SWLAND,LHFLUX,QINFIL,AR1, AR2, RZEQ,                 &
          GHFLUX, TPSN1, ASNOW0, TP1, TP2, TP3, TP4, TP5, TP6,      &
          sfmc, rzmc, prmc, entot, wtot, tsurf, WCHANGE, ECHANGE,   &
-         HSNACC, EVACC, SHACC
+         HSNACC, EVACC, LHACC, SHACC
     REAL, INTENT(OUT), DIMENSION(:) :: GHFLUXSNO, GHTSKIN
     
     REAL, INTENT(OUT), DIMENSION(:) :: SH_SNOW, AVET_SNOW,         &
@@ -234,8 +237,6 @@ CONTAINS
          FSW_CHANGE
     
     REAL, INTENT(OUT), DIMENSION(:, :) :: FICESOUT
-    
-    REAL, INTENT(OUT), DIMENSION(:), OPTIONAL :: LHACC
     
     REAL, INTENT(OUT), DIMENSION(:), OPTIONAL :: TC1_0,TC2_0,TC4_0
     REAL, INTENT(OUT), DIMENSION(:), OPTIONAL :: QA1_0,QA2_0,QA4_0 	
@@ -287,7 +288,8 @@ CONTAINS
          SCLAI, tsn1, tsn2, tsn3, hold, hnew, dedtc0,                     &
          dhsdtc0, alhfsn, ADJ, raddn, zc1, tsnowsrf, dum, tsoil,          &
          QA1X, QA2X, QA4X, TC1X, TC2X, TC4X, TCSX,                        &
-         EVAPX1,EVAPX2,EVAPX4,SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,         &
+         EVAPX1,EVAPX2,EVAPX4,EVAPX124,                                   &
+         SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,                              &
          EVAPXS,SHFLUXXS,DTC1SN,DTC2SN,DTC4SN,TCANOP,                     &
          ZLAI0, phi,rho_fs,sumdepth,                                      &   
          sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
@@ -477,7 +479,7 @@ CONTAINS
          write (*,*)  RUNSRF(n_out)    
          write (*,*)  SMELT(n_out)  
          write (*,*)  HLWUP(n_out)    
-         write (*,*)  HLATN(n_out)    
+         write (*,*)  LHFLUX(n_out)    
          write (*,*)  QINFIL(n_out)    
          write (*,*)  AR1(n_out)    
          write (*,*)  AR2(n_out)    
@@ -568,8 +570,6 @@ CONTAINS
 !     in the heat content of deposited snow.
  
         HSNACC(N)=0.
-        EVACC(N)=0.
-        SHACC(N)=0.
         RUNSRF(N)=0.
 
 
@@ -999,7 +999,7 @@ CONTAINS
         ENDIF 
  
       DO N=1,NCH 
-        HLATN(N)=(1.-ASNOW(N))*                                                &
+        LHFLUX(N)=(1.-ASNOW(N))*                                               &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))*ALHE           &
               +ASNOW(N)*EVSNOW(N)*ALHS 
         EVAP(N)=(1.-ASNOW(N))*                                                 &
@@ -1100,7 +1100,7 @@ CONTAINS
         IF(ECORR(N) .GT. 0.) THEN
           SHFLUX(N)=SHFLUX(N)+ECORR(N)*ALHE
           EVAP(N)=EVAP(N)-ECORR(N)
-          HLATN(N)=ESOI(N)*ALHE + EVEG(N)*ALHE + EINT(N)*ALHE + ESNO(N)*ALHS
+          LHFLUX(N)=ESOI(N)*ALHE + EVEG(N)*ALHE + EINT(N)*ALHE + ESNO(N)*ALHS
           ENDIF
         ENDDO
 
@@ -1211,7 +1211,7 @@ CONTAINS
          if(werror(n) .gt. 0.) then
            edif=werror(n)/dtstep
            EVAP(N)=EVAP(N)-EDIF
-           HLATN(N)=HLATN(N)-EDIF*ALHE
+           LHFLUX(N)=LHFLUX(N)-EDIF*ALHE
            EVEGFRC=EVEG(N)/(EVEG(N)+ESOI(N)+1.E-20)
            EVEG(N)=EVEG(N)-EDIF*EVEGFRC
            ESOI(N)=ESOI(N)-EDIF*(1.-EVEGFRC)
@@ -1425,28 +1425,26 @@ CONTAINS
 ! fluxes, since the land model has to update those areas (based on the fluxes)
 ! as a matter of course.
 
+        ! evap (mass) flux (kg/m2/s)
+
         EVAPX1=ETURB1(N)+DEDQA1(N)*(QA1(N)-QA1_ORIG(N))
         EVAPX2=ETURB2(N)+DEDQA2(N)*(QA2(N)-QA2_ORIG(N))
         EVAPX4=ETURB4(N)+DEDQA4(N)*(QA4(N)-QA4_ORIG(N))
         EVAPXS=ETURBS(N)+DEDQAS(N)*DQSS(N)*(TPSN1(N)-TGS_ORIG(N))
-        EVACC(N)=        (1.-ASNOW0(N))*                                       &
-                        ( AR1(N)*EVAPX1+                                       &
-                          AR2(N)*EVAPX2+                                       &
-                          AR4(N)*EVAPX4 )                                      &
-                      +  ASNOW0(N)*EVAPXS
-        EVACC(N)=EVAP(N)-EVACC(N)
 
+        EVAPX124 = AR1(N)*EVAPX1 + AR2(N)*EVAPX2 + AR4(N)*EVAPX4 
 
-        ! added term for latent heat flux correction, reichle+qliu, 9 Oct 2008
+        EVACC(N)=EVAP(N)-(1.-ASNOW0(N))*EVAPX124-ASNOW0(N)*EVAPXS
 
-        if(present(lhacc)) then
-           LHACC(N)=  ALHE*(1.-ASNOW0(N))*                           &
-                ( AR1(N)*EVAPX1+                                     &
-                  AR2(N)*EVAPX2+                                     &
-                  AR4(N)*EVAPX4 )                                    &
-                + ALHS*ASNOW0(N)*EVAPXS
-           LHACC(N)=HLATN(N)-LHACC(N)
-           end if
+        ! latent heat (energy) flux (W/m2)
+        !
+        ! Note: Strictly speaking, the atmosphere does not receive the latent heat flux,
+        !       only the evap mass flux and the sensible heat flux.  For completeness, 
+        !       however, we also calculate a corresponding "accounting" (or "error") term.
+        
+        LHACC(N) = LHFLUX(N) - (1.-ASNOW0(N))*ALHE*EVAPX124 - ASNOW0(N)*ALHS*EVAPXS 
+
+        ! sensible heat (energy) flux (W/m2)
 
         SHFLUXX1=HSTURB1(N)+DHSDTC1(N)*(TC1(N)-TC1_ORIG(N))
         SHFLUXX2=HSTURB2(N)+DHSDTC2(N)*(TC2(N)-TC2_ORIG(N))
@@ -1624,7 +1622,7 @@ CONTAINS
          write (*,*)  RUNSRF(n_out)    
          write (*,*)  SMELT(n_out)  
          write (*,*)  HLWUP(n_out)    
-         write (*,*)  HLATN(n_out)    
+         write (*,*)  LHFLUX(n_out)    
          write (*,*)  QINFIL(n_out)    
          write (*,*)  AR1(n_out)    
          write (*,*)  AR2(n_out)    
