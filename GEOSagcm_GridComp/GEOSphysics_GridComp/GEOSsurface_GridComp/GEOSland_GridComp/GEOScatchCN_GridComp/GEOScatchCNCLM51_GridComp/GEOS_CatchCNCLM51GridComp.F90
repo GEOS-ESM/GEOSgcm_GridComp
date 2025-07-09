@@ -6293,7 +6293,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            
         end select
 
-        if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
+        if (CATCHCN_INTERNAL%N_CONST_LAND4SNWALB /= 0) then
         
 ! Convert the dimentions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
 ! Note: Explanations of each variable
