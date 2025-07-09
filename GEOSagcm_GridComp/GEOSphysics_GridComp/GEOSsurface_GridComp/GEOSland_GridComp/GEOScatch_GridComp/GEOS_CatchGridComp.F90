@@ -5533,9 +5533,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	      ! driver
 	      ! --------------------------------------------------------------------------
 
-        _ASSERT(count(PLS<0.)==0,'needs informative message')
-        _ASSERT(count(PCU<0.)==0,'needs informative message')
-        _ASSERT(count(SLDTOT<0.)==0,'needs informative message')
+        _ASSERT(count(PLS<0.)   ==0, 'encountered neg precip value (PLS)'   )
+        _ASSERT(count(PCU<0.)   ==0, 'encountered neg precip value (PCU)'   )
+        _ASSERT(count(SLDTOT<0.)==0, 'encountered neg precip value (SLDTOT)')
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)
