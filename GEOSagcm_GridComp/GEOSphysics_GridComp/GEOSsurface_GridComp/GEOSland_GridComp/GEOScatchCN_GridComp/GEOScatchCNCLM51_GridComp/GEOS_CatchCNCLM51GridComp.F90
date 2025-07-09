@@ -6016,17 +6016,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(DQS      (NTILES,NUM_SUBTILES))
         allocate(QSAT     (NTILES,NUM_SUBTILES))
         allocate(RA       (NTILES,NUM_SUBTILES))
-        allocate(RCONSTIT (NTILES,N_SNOW,N_constit))
-        allocate(TOTDEPOS (NTILES,N_constit))
-        allocate(RMELT    (NTILES,N_constit))
         allocate(ALWN     (NTILES,NUM_SUBTILES))
         allocate(BLWN     (NTILES,NUM_SUBTILES))
+        
         allocate(TC1_0    (NTILES))
         allocate(TC2_0    (NTILES))
         allocate(TC4_0    (NTILES))
         allocate(QA1_0    (NTILES))
         allocate(QA2_0    (NTILES))
         allocate(QA4_0    (NTILES))
+        allocate(RCONSTIT (NTILES,N_SNOW,N_constit))
+        allocate(TOTDEPOS (NTILES,N_constit))
+        allocate(RMELT    (NTILES,N_constit))
 
         allocate(TA_MIN   (NTILES))
         allocate(ta_count (NTILES))
@@ -6292,6 +6293,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            
         end select
 
+        if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
+        
 ! Convert the dimentions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
 ! Note: Explanations of each variable
 ! TOTDEPOS(:,1): Combined dust deposition from size bin 1 (dry, conv-scav, ls-scav, sed)
@@ -6310,7 +6313,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! TOTDEPOS(:,13): Combined sea salt deposition from size bin 3 (dry, conv-scav, ls-scav, sed)
 ! TOTDEPOS(:,14): Combined sea salt deposition from size bin 4 (dry, conv-scav, ls-scav, sed)
 ! TOTDEPOS(:,15): Combined sea salt deposition from size bin 5 (dry, conv-scav, ls-scav, sed)
-        if (N_CONSTIT > 0) then
+
            TOTDEPOS(:,1) = DUDP(:,1) + DUSV(:,1) + DUWT(:,1) + DUSD(:,1)
            TOTDEPOS(:,2) = DUDP(:,2) + DUSV(:,2) + DUWT(:,2) + DUSD(:,2)
            TOTDEPOS(:,3) = DUDP(:,3) + DUSV(:,3) + DUWT(:,3) + DUSD(:,3)
@@ -6320,7 +6323,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            TOTDEPOS(:,7) = BCDP(:,2) + BCSV(:,2) + BCWT(:,2) + BCSD(:,2)
            TOTDEPOS(:,8) = OCDP(:,1) + OCSV(:,1) + OCWT(:,1) + OCSD(:,1)
            TOTDEPOS(:,9) = OCDP(:,2) + OCSV(:,2) + OCWT(:,2) + OCSD(:,2)
-        endif
+
 !============================= Possible future applications ====================================
 !        TOTDEPOS(:,10) = SUDP(:,1) + SUSV(:,1) + SUWT(:,1) + SUSD(:,1)
 !        TOTDEPOS(:,11) = SSDP(:,1) + SSSV(:,1) + SSWT(:,1) + SSSD(:,1)
@@ -6330,8 +6333,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !        TOTDEPOS(:,15) = SSDP(:,5) + SSSV(:,5) + SSWT(:,5) + SSSD(:,5)
 
 ! --------------- GOSWIM PROGRNOSTICS ---------------------------
-
-        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
 
            ! Conversion of the masses of the snow impurities
            ! Note: Explanations of each variable
@@ -6352,7 +6353,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            ! RCONSTIT(NTILES,N,13): Sea salt mass from size bin 3 in layer N
            ! RCONSTIT(NTILES,N,14): Sea salt mass from size bin 4 in layer N
            ! RCONSTIT(NTILES,N,15): Sea salt mass from size bin 5 in layer N
-           if (N_CONSTIT > 0) then 
+           
               RCONSTIT(:,:,1) = RDU001(:,:)
               RCONSTIT(:,:,2) = RDU002(:,:)
               RCONSTIT(:,:,3) = RDU003(:,:)
@@ -6362,7 +6363,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               RCONSTIT(:,:,7) = RBC002(:,:)
               RCONSTIT(:,:,8) = ROC001(:,:)
               RCONSTIT(:,:,9) = ROC002(:,:)
-           endif
+
 !============================= Possible future applications ====================================
 !        RCONSTIT(:,:,10) = RSU003(:,:)
 !        RCONSTIT(:,:,11) = RSS001(:,:)
@@ -8144,7 +8145,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN2  = SNDZN (2,:)
         SNDZN3  = SNDZN (3,:)
 
-        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0 .and. N_CONSTIT > 0 ) then
+        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0 ) then
            RDU001(:,:) = RCONSTIT(:,:,1) 
            RDU002(:,:) = RCONSTIT(:,:,2) 
            RDU003(:,:) = RCONSTIT(:,:,3) 
