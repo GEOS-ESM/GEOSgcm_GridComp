@@ -36,6 +36,7 @@
 #
 #    Note: For *offline* simulations, optional use of extra MO derivatives is supported
 #          through rc parameter MOSFC_EXTRA_DERIVS_LAND (see catch_wrap_state.F90).
+#          (Not implemented for CatchCNCLM40.)
 #
 # GEOSagcm=>CHOOSEMOSFC:                  1
 # GEOSagcm=>MOSFC_EXTRA_DERIVS_OFFL_LAND: 0
