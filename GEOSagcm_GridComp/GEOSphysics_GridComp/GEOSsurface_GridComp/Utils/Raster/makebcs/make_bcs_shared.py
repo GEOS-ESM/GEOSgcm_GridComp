@@ -172,6 +172,14 @@ else
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
 
+# if necessary, copy resolution-independent CatchCN CLM5.1 file from MAKE_BCS_INPUT_DIR to bcs dir
+if(-f land/shared/ctsm51_params.c210923_forCNCLM.nc) then
+    echo "ctsm51_params.c210923_forCNCLM.nc already present in bcs dir."
+else
+    /bin/cp -p {MAKE_BCS_INPUT_DIR}/land/and/CLM/v1/ctsm51_params.c210923_forCNCLM.nc land/shared/ctsm51_params.c210923_forCNCLM.nc
+    echo "Successfully copied ctsm51_params.c210923_forCNCLM.nc to bcs dir."
+endif
+
 # adjust permissions
 
 chmod +rX -R geometry land logs
