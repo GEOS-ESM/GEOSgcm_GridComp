@@ -4032,9 +4032,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get parameters from generic state
 ! ---------------------------------
 
-    call MAPL_Get ( MAPL                          ,&
-            TILELATS  = LATS                             ,&
-            TILELONS  = LONS                             ,&
+    call MAPL_Get ( MAPL                                 ,&
+            TILELATS  = LATS                             ,&      ! [radians]
+            TILELONS  = LONS                             ,&      ! [radians]
             INTERNAL_ESMF_STATE = INTERNAL               ,&
             RC=STATUS )
     VERIFY_(STATUS)
@@ -5414,8 +5414,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_Get ( MAPL                 ,&
              RUNALARM  = ALARM                            ,&
              ORBIT     = ORBIT                            ,&
-             TILELATS  = LATS                             ,&
-             TILELONS  = LONS                             ,&
+             TILELATS  = LATS                             ,&      ! [radians]
+             TILELONS  = LONS                             ,&      ! [radians]
              INTERNAL_ESMF_STATE = INTERNAL               ,&
              RC=STATUS )
         VERIFY_(STATUS)
