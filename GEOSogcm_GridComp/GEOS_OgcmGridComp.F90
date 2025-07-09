@@ -848,7 +848,11 @@ contains
       call MAPL_TerminateImport    ( GC, ["DATA_KPAR "], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
     endif
   else
-    call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW'], [OCEAN, OCEAN], _RC)
+     if(DO_DATA_ATM4OCN) then
+       call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW', 'DISCHARGE', 'CALVING'], [OCEAN, OCEAN, OCEAN, OCEAN], _RC)
+    else
+       call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW'], [OCEAN, OCEAN], _RC)
+    endif
   endif
 
 ! Set the Profiling timers
@@ -1824,8 +1828,10 @@ contains
     VERIFY_(STATUS)
 
     if(DO_DATASEAONLY==0) then
-       call MAPL_LocStreamTransform( ExchGrid, DISCHARGEO, DISCHARGE, RC=STATUS) 
-       VERIFY_(STATUS)
+       if(.not. DO_DATA_ATM4OCN) then
+          call MAPL_LocStreamTransform( ExchGrid, DISCHARGEO, DISCHARGE, RC=STATUS)
+          VERIFY_(STATUS)
+       endif
      
        PENUVRM= PENUVRO
        PENUVFM= PENUVFO
