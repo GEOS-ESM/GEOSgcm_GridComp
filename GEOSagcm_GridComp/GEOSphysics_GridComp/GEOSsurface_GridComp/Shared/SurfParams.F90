@@ -54,6 +54,7 @@ contains
     if (LSM_CHOICE==1) then
        
        select case (LAND_PARAMS)
+          
        case ("Icarus")  ! "Old" LDASsa physics, current default for Icarus GCM
           LAND_FIX = .FALSE.
           CSOIL_2  = 200.
@@ -94,6 +95,7 @@ contains
     else if (LSM_CHOICE==2) then
        
        select case (LAND_PARAMS)
+          
        case ("CN_CLM40")  ! parameters to reproduce Fanwei Zeng's Catchment-CN.4.0 runs (e0004s_transientCO2_05) done with build /gpfsm/dnb31/fzeng/LDASsa_m3-16_0_p2_CatchCatchCN_for_MERRA3
           LAND_FIX        = .TRUE.
           CSOIL_2         = 70000. ! Post H5_0
@@ -110,6 +112,7 @@ contains
        end select
        
     else if (LSM_CHOICE==4) then
+       
        select case (LAND_PARAMS)
 
        case ("CN_CLM51")

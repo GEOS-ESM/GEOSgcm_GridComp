@@ -110,7 +110,7 @@ subroutine SetServices ( GC, RC )
         !catchcn_exxxx
         tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
     endif
-    if ( LSM_CHOICE == 2 ) then
+    if      ( LSM_CHOICE == 2 ) then
        CATCHCN = MAPL_AddChild('CATCHCNCLM40'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)
     else if ( LSM_CHOICE == 4 ) then
@@ -936,7 +936,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNROOT' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
-    if (LSM_CHOICE >= 3) then ! jkolassa: needed for CNCLM51
+    if (LSM_CHOICE >= 4) then ! jkolassa: needed for CNCLM51
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNFROOTC' ,  CHILD_ID = CATCHCN, RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNAR'   ,  CHILD_ID = CATCHCN, RC=STATUS  )

@@ -177,7 +177,7 @@ contains
           end do
        end if
        
-    CASE (2,3,4) 
+    CASE (2,4) 
        
        allocate (CATCHCN(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
@@ -972,7 +972,7 @@ contains
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        end if
 
-    CASE (2,3,4) 
+    CASE (2,4) 
        
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LST',      CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
@@ -1244,7 +1244,7 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNROOT' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
-       if (LSM_CHOICE >= 3) then
+       if (LSM_CHOICE >= 4) then
          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNFROOTC' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
          VERIFY_(STATUS)
          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNAR'   ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
@@ -1468,7 +1468,7 @@ contains
 !             VERIFY_(STATUS)            
 !          ENDIF
 
-       CASE (2,3,4)
+       CASE (2,4)
           call MAPL_AddConnectivity (                                    & 
             GC                                                 ,         &
             SHORT_NAME  = (/'LAI    ', 'GRN    ', 'ROOTL  ', 'Z2CH   ',  &
