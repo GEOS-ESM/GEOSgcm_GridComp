@@ -1161,7 +1161,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'ground_temperature'        ,&
+    LONG_NAME          = 'surface_layer_soil_temperature',&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'TG'                        ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -1656,7 +1656,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
   
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = 'CN sum for ground temp'    ,&
+       LONG_NAME          = 'CN sum for surface layer soil temperature',&
        UNITS              = 'K'                         ,&
        SHORT_NAME         = 'TGWM'                      ,&
        DIMS               = MAPL_DimsTileOnly           ,&
@@ -1906,7 +1906,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '10-day running mean of ground temperature',&
+       LONG_NAME          = '10-day running mean of surface layer soil temperature',&
        UNITS              = 'K'                         ,&
        SHORT_NAME         = 'TG10D'                    ,&
        DIMS               = MAPL_DimsTileOnly           ,&
