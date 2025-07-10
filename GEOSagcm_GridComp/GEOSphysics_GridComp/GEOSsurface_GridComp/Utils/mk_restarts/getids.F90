@@ -308,7 +308,7 @@ contains
       real, dimension (:), intent (in) :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
            CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
       real, dimension(:,:), intent (in)   :: fveg_offl, ityp_offl
-      logical, intent(in)                 :: isCLM51
+      logical, intent(in), optional       :: isCLM51
       logical                             :: tile_found
       logical, allocatable, dimension (:) :: mask
       integer, allocatable, dimension (:) :: sub_tid
