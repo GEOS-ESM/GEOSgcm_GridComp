@@ -57,7 +57,7 @@ Collections:
      template: ExtData/JRA55-DO/v1-5-0/licalvf_remap/%OCN_RES%/licalvf_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y40101-%y41231.nc
      valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   licalvf_remap_1_5_0_1:
-     template: ExtData/JRA55-DO/v1-5-0-1/licalvf_remap/%OCN_RES%/licalvf_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y40101-%y41231.nc
+     template: ExtData/JRA55-DO/v1-5-0-1/licalvf_remap/%OCN_RES%/licalvf_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y40101-%y41231.nc
      valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   prra_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/prra/prra_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010130-%y412312230.nc
@@ -110,10 +110,10 @@ Exports:
      - {starting: "1958-01-01T00:00:00", collection: friver_1_5_0, regrid: CONSERVE, sample: river_conserve_sample, variable: friver}
      - {starting: "2020-01-01T00:00:00", collection: friver_1_5_0_1, regrid: CONSERVE, sample: river_conserve_sample, variable: friver}
    DISCHARGE:
-     - {starting: "1958-01-01T00:00:00", collection: friver_remap_1_5_0, regrid: NEAREST_STOD, sample: river_conserve_sample, variable: friver}
+     - {starting: "1958-01-01T00:00:00", collection: friver_remap_1_5_0,   regrid: NEAREST_STOD, sample: river_conserve_sample, variable: friver}
      - {starting: "2020-01-01T00:00:00", collection: friver_remap_1_5_0_1, regrid: NEAREST_STOD, sample: river_conserve_sample, variable: friver}
    CALVING:
-     - {starting: "1958-01-01T00:00:00", collection: licalvf_remap_1_5_0, regrid: NEAREST_STOD, sample: river_conserve_sample, variable: licalvf}
+     - {starting: "1958-01-01T00:00:00", collection: licalvf_remap_1_5_0,   regrid: NEAREST_STOD, sample: river_conserve_sample, variable: licalvf}
      - {starting: "2020-01-01T00:00:00", collection: licalvf_remap_1_5_0_1, regrid: NEAREST_STOD, sample: river_conserve_sample, variable: licalvf}
    PCU:
      - {starting: "1958-01-01T00:00:00", collection: prra_1_5_0, regrid: CONSERVE, sample:  flux_conserve_sample, variable: prra}
