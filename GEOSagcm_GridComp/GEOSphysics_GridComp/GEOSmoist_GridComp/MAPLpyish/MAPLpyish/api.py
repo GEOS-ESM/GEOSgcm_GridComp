@@ -4,6 +4,7 @@ from MAPLpyish.types import MAPLState, CVoidPointer
 from typing import Any
 import numpy as np
 import numpy.typing as npt
+import platform
 
 
 class MAPLBridge:
@@ -19,7 +20,13 @@ class MAPLBridge:
 
         # FFI & C library setup
         self.ffi = cffi.FFI()
-        self.mapl_c_bridge = self.ffi.dlopen(f"{geos_dir}/lib/libMAPLpyish.dylib")
+        if platform.system() == "Linux":
+            ext = "so"
+        elif platform.system() == "Darwin":
+            ext = "dylib"
+        else:
+            raise SystemError(f"MAPLPyish unavailable on {platform.system()}")
+        self.mapl_c_bridge = self.ffi.dlopen(f"{geos_dir}/lib/libMAPLpyish.{ext}")
 
         # We use CFFI ABI mode, so we need to describe each function cdef
         # to the system
@@ -33,7 +40,9 @@ class MAPLBridge:
 
         # MAPLPy_ESMF_MethodExecute
         self.ffi.cdef(
-            "void MAPLPy_ESMF_MethodExecute(" "void* esmf_state_c_ptr, char* label_c_ptr, int label_len" ");"
+            "void MAPLPy_ESMF_MethodExecute("
+            "void* esmf_state_c_ptr, char* label_c_ptr, int label_len"
+            ");"
         )
 
         # MAPLpy_GetPointer_via_ESMFAttr
@@ -120,12 +129,16 @@ class MAPLBridge:
             state, self.ffi.new("char[]", name.encode()), len(name)
         )
 
-    def MAPL_GetPointer_2D(self, state: MAPLState, name: str, alloc: bool = False) -> CVoidPointer:
+    def MAPL_GetPointer_2D(
+        self, state: MAPLState, name: str, alloc: bool = False
+    ) -> CVoidPointer:
         return self.mapl_c_bridge.MAPLpy_GetPointer_2D(  # type: ignore
             state, self.ffi.new("char[]", name.encode()), len(name), alloc
         )
 
-    def MAPL_GetPointer_3D(self, state: MAPLState, name: str, alloc: bool = False) -> CVoidPointer:
+    def MAPL_GetPointer_3D(
+        self, state: MAPLState, name: str, alloc: bool = False
+    ) -> CVoidPointer:
         return self.mapl_c_bridge.MAPLpy_GetPointer_3D(  # type: ignore
             state, self.ffi.new("char[]", name.encode()), len(name), alloc
         )
@@ -134,7 +147,7 @@ class MAPLBridge:
         self,
         state: MAPLState,
         name: str,
-        default: npt.DTypeLike,
+        default: npt.DTypeLike | bool,
     ) -> Any:
         dtype = type(default)
         if dtype in [int, np.int64]:  # type: ignore
@@ -166,7 +179,17 @@ class MAPLBridge:
         return self.mapl_c_bridge.MAPLpy_ESMF_TimeIntervalGet(time_state)  # type: ignore
 
     def associated_2d(self, state: MAPLState, name: str, alloc: bool = False) -> bool:
-        return self.mapl_c_bridge.MAPLpy_GetPointer_2D_associated(state, self.ffi.new("char[]", name.encode()), len(name), alloc)  # type: ignore
+        return self.mapl_c_bridge.MAPLpy_GetPointer_2D_associated(  # type: ignore
+            state,
+            self.ffi.new("char[]", name.encode()),
+            len(name),
+            alloc,
+        )
 
     def associated_3d(self, state: MAPLState, name: str, alloc: bool = False) -> bool:
-        return self.mapl_c_bridge.MAPLpy_GetPointer_3D_associated(state, self.ffi.new("char[]", name.encode()), len(name), alloc)  # type: ignore
+        return self.mapl_c_bridge.MAPLpy_GetPointer_3D_associated(  # type: ignore
+            state,
+            self.ffi.new("char[]", name.encode()),
+            len(name),
+            alloc,
+        )

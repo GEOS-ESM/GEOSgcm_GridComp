@@ -27,7 +27,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLPy_ESMF_AttributeGet_1D_int(esmf_state_c_ptr, name_c_ptr, name_len) result(return_value) bind(c, name="MAPLPy_ESMF_AttributeGet_1D_int")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(c_ptr), intent(in), value :: esmf_state_c_ptr
         type(ESMF_State), pointer :: state
 
         ! Read in name
@@ -51,7 +51,7 @@ module C_BRIDGE_TO_MAPL
 
     subroutine MAPLPy_ESMF_MethodExecute(esmf_state_c_ptr, label_c_ptr, label_len) bind(c, name="MAPLPy_ESMF_MethodExecute")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(c_ptr), intent(in), value :: esmf_state_c_ptr
         type(ESMF_State), pointer :: state
 
         ! Read in name
@@ -71,7 +71,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_GetPointer_via_ESMFAttr(esmf_state_c_ptr, name_c_ptr, name_len) result(c_data_ptr) bind(c, name="MAPLpy_GetPointer_via_ESMFAttr")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(c_ptr), intent(in), value :: esmf_state_c_ptr
         type(ESMF_State), pointer :: state
 
         ! Read in name
@@ -98,7 +98,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_GetPointer_2D(esmf_state_c_ptr, name_c_ptr, name_len, alloc) result(c_data_ptr) bind(c, name="MAPLpy_GetPointer_2D")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(c_ptr), intent(in), value :: esmf_state_c_ptr
         type(ESMF_State), pointer :: state
 
         ! Read in name
@@ -126,7 +126,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_GetPointer_2D_associated(esmf_state_c_ptr, name_c_ptr, name_len, alloc) result(is_associated) bind(c, name="MAPLpy_GetPointer_2D_associated")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(c_ptr), intent(in), value :: esmf_state_c_ptr
         type(ESMF_State), pointer :: state
 
         ! Read in name
@@ -152,7 +152,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_GetPointer_3D(esmf_state_c_ptr, name_c_ptr, name_len, alloc) result(c_data_ptr) bind(c, name="MAPLpy_GetPointer_3D")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(c_ptr), intent(in), value :: esmf_state_c_ptr
         type(ESMF_State), pointer :: state
 
         ! Read in name
@@ -179,7 +179,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_GetPointer_3D_associated(esmf_state_c_ptr, name_c_ptr, name_len, alloc) result(is_associated) bind(c, name="MAPLpy_GetPointer_3D_associated")
         ! Read in STATE
-        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(c_ptr), intent(in), value :: esmf_state_c_ptr
         type(ESMF_State), pointer :: state
 
         ! Read in name
@@ -205,7 +205,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_Associated(pointer_to_test) result(result) bind(c, name="MAPLpy_Associated")
 
-        type(c_ptr), intent(in) :: pointer_to_test
+        type(c_ptr), intent(in), value :: pointer_to_test
         type(ESMF_TimeInterval), pointer :: state
         logical(c_bool) :: result
 
@@ -218,7 +218,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_GetResource_Float(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Float")
         ! Read in STATE
-        type(c_ptr), intent(in) :: state_c_ptr
+        type(c_ptr), intent(in), value :: state_c_ptr
         type(MAPL_MetaComp), pointer :: state
 
         ! Read in name
@@ -243,7 +243,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_GetResource_Bool(mapl_metacomp_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Bool")
         ! Read in STATE
-        type(c_ptr), intent(in) :: mapl_metacomp_c_ptr
+        type(c_ptr), intent(in), value :: mapl_metacomp_c_ptr
         type(MAPL_MetaComp), pointer :: state
 
         ! Read in name
@@ -270,7 +270,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_GetResource_Int32(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Int32")
         ! Read in STATE
-        type(c_ptr), intent(in) :: state_c_ptr
+        type(c_ptr), intent(in), value :: state_c_ptr
         type(MAPL_MetaComp), pointer :: state
 
         ! Read in name
@@ -295,7 +295,7 @@ module C_BRIDGE_TO_MAPL
 
     ! function MAPLpy_GetResource_Int64(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Int64")
     !     ! Read in STATE
-    !     type(c_ptr), intent(in) :: state_c_ptr
+    !     type(c_ptr), intent(in), value :: state_c_ptr
     !     type(ESMF_State), pointer :: state
 
     !     ! Read in name
@@ -319,7 +319,7 @@ module C_BRIDGE_TO_MAPL
 
     ! function MAPLpy_GetResource_Double(state_c_ptr, name_c_ptr, name_len, default) result(result) bind(c, name="MAPLpy_GetResource_Double")
     !     ! Read in STATE
-    !     type(c_ptr), intent(in) :: state_c_ptr
+    !     type(c_ptr), intent(in), value :: state_c_ptr
     !     type(ESMF_State), pointer :: state
 
     !     ! Read in name
@@ -343,7 +343,7 @@ module C_BRIDGE_TO_MAPL
 
     function MAPLpy_ESMF_TimeIntervalGet(time_state_c_ptr) result(result) bind(c, name="MAPLpy_ESMF_TimeIntervalGet")
         ! Read in STATE
-        type(c_ptr), intent(in) :: time_state_c_ptr
+        type(c_ptr), intent(in), value :: time_state_c_ptr
         type(ESMF_TimeInterval), pointer :: state
 
         ! Results
