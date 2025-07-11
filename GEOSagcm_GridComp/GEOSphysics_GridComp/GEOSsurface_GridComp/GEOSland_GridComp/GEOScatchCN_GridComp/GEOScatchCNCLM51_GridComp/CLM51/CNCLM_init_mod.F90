@@ -90,6 +90,7 @@ module CNCLM_initMod
                                 nlevgrnd, nlevsoi
 
   use MAPL             , only : NetCDF4_FileFormatter, pFIO_READ
+  use ESMF
 
  implicit none 
  private 
@@ -108,7 +109,7 @@ module CNCLM_initMod
  contains
 
 !------------------------------------------------------
- subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,dtcn,water_inst,bgc_vegetation_inst,cn5_cold_start)
+ subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,dtcn,paramfile,water_inst,bgc_vegetation_inst,cn5_cold_start)
 
   !ARGUMENTS
   implicit none
@@ -121,20 +122,17 @@ module CNCLM_initMod
   real,    dimension(nch),                         intent(in) :: lats  ! Catchment tile latitudes [rad]
   real,    dimension(nch),                         intent(in) :: lons  ! Catchment tile longitudes [rad]
   real,                                            intent(in) :: dtcn  ! Catchment-CN step size
+  character(len=ESMF_MAXSTR),                      intent(in) :: paramfile
   logical, optional,                               intent(in) :: cn5_cold_start  ! cold start for the CLM variables that are new in Catchment-CN5.0
   type(water_type), intent(out)                       :: water_inst
   type(cn_vegetation_type), intent(out)               :: bgc_vegetation_inst                                                                                                        
   !LOCAL
 
-
-  character(300)     :: paramfile
   character(300)     :: NLFilename
   type(Netcdf4_fileformatter) :: ncid
   integer            :: rc, status, ndt
 
   !-----------------------------------------
-
-   paramfile = '/discover/nobackup/jkolassa/CLM/parameter_files/ctsm51_params.c210923.nc'
 
 ! initialize CN step size
 

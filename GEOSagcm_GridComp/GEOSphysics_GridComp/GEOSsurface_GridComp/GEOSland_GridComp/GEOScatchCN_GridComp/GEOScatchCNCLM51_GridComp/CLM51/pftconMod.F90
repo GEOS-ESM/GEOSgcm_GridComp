@@ -11,6 +11,7 @@ module pftconMod
   use MAPL             , only : NetCDF4_FileFormatter, pFIO_READ
   use MAPL_ExceptionHandling
   use ncdio_pio        , only : ncd_io
+  use ESMF
 
   ! !PUBLIC TYPES:
   implicit none
@@ -307,7 +308,7 @@ type(pftcon_type), public, target, save :: pftcon
 contains
 
 !--------------------------------
-  subroutine init_pftcon_type(this)
+  subroutine init_pftcon_type(this,paramfile)
 
   ! !DESCRIPTION:
 ! Initialize CTSM PFT constants                                
@@ -318,6 +319,7 @@ contains
     implicit none
     !INPUT/OUTPUT
     class(pftcon_type) :: this
+    character(len=ESMF_MAXSTR), intent(in) :: paramfile
 
 
     integer            :: ierr, clm_varid,  status, m, n
@@ -329,7 +331,6 @@ contains
     integer , allocatable, dimension(:)   :: read_tmp_3
 
     character(len=512) :: msg
-    character(len=300) :: paramfile
 
 !---------------------------------------------------------
 
@@ -479,10 +480,6 @@ contains
     allocate( this%rstem_per_dbh (0:mxpft) ); this%rstem_per_dbh  (:) = nan  !#
     allocate( this%wood_density  (0:mxpft) ); this%wood_density   (:) = nan  !#
 
-    ! jkolassa, Dec 2021: read in parameters from CLM parameter file
-    ! TO DO: pass parameter file through rc files rather than hardcoding name here
-
-    paramfile = '/discover/nobackup/jkolassa/CLM/parameter_files/ctsm51_params.c210923.nc'
     call ncid%open(trim(paramfile),pFIO_READ, RC=status)
 
     call ncd_io('pftname',pftname, 'read', ncid, readvar=readv, posNOTonfile=.true.)
@@ -593,12 +590,6 @@ contains
     call ncd_io('fcur', this%fcur, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
 
-    do n = 0,mxpft
-       if (this%fcur(n)==0.) then
-          this%fcur(n) = 0.5     
-       end if 
-    end do
-
     call ncd_io('fcurdv', this%fcurdv, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
 
@@ -622,13 +613,6 @@ contains
 
     call ncd_io('leaf_long', this%leaf_long, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
-
-    do n = 0,mxpft
-       if (this%leaf_long(n) .lt. 1.) then
-          this%leaf_long(n) = 1.
-       end if
-    end do
-
 
     call ncd_io('evergreen', this%evergreen, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))

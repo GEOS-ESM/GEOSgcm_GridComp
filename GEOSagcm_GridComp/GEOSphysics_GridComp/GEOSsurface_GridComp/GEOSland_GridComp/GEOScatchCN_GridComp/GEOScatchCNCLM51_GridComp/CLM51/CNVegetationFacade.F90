@@ -39,6 +39,7 @@ module CNVegetationFacade
   !
   ! !USES:
 #include "shr_assert.h"
+  use ESMF
   use shr_kind_mod                    , only : r8 => shr_kind_r8
   use nanMod                          , only : nan 
   use shr_log_mod                     , only : errMsg => shr_log_errMsg
@@ -220,7 +221,7 @@ contains
     real, dimension(nch,NUM_VEG,NUM_ZON),         intent(in) :: fveg    ! PFT fraction
     real, dimension(nch,NUM_ZON,VAR_COL),         intent(in) :: cncol ! gkw: column CN restart
     real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
-    character(300),                               intent(in) :: paramfile
+    character(len=ESMF_MAXSTR),                   intent(in) :: paramfile
     logical, optional,                            intent(in) :: cn5_cold_start
     !    
     ! !LOCAL VARIABLES:

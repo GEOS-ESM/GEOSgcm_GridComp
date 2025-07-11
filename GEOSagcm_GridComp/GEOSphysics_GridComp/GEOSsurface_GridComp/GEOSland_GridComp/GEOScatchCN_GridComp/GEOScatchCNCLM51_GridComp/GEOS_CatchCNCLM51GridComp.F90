@@ -4044,6 +4044,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer(INT64), save :: istep_cn = 0 ! gkw: legacy variable from offline
     real :: ndt
     integer(INT64) :: nstep_cn
+    character(len=ESMF_MAXSTR) :: cnclm51_paramfile
 
   ! Offline mode
 
@@ -4387,10 +4388,16 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! --------------------------
   nstep_cn = get_nstep(istep_cn) 
 
+! read CNCLM51 parameter file
+!-----------------------------
+
+   call MAPL_GetResource (MAPL, cnclm51_paramfile, label = 'ctsm51_params.c210923_forCNCLM_FILE:', default = 'ctsm51_params.c210923_forCNCLM.nc', RC=STATUS )
+   VERIFY_(STATUS)
+
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,catchcn_internal%DTCN,water_inst,bgc_vegetation_inst,.true.) 
+      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,catchcn_internal%DTCN,cnclm51_paramfile,water_inst,bgc_vegetation_inst,.true.) 
       call get_CN_LAI(nt,ityp,fveg,elai,esai=esai)
       first = .false.
    endif
