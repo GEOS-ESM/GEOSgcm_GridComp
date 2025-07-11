@@ -68,7 +68,7 @@ module GEOS_GwdGridCompMod
       real :: TAU1
       real :: H0
       real :: HH
-      real, allocatable :: alpha(:) 
+      real, allocatable :: alpha(:)
       type(ThreadWorkspace), allocatable :: workspaces(:)
    end type GEOS_GwdGridComp
 
@@ -76,7 +76,7 @@ module GEOS_GwdGridCompMod
       type (GEOS_GwdGridComp), pointer     :: PTR
    end type wrap_
 
-   !logical, save      :: FIRST_RUN = .true.
+  logical :: DEBUG_GWD
 
 contains
 
@@ -113,7 +113,7 @@ contains
       type (ESMF_Config)                            :: myCF
 
       type (wrap_)                                :: wrap
-      type (GEOS_GwdGridComp), pointer               :: self
+      type (GEOS_GwdGridComp), pointer            :: self
       integer :: num_threads
 
       ! Begin...
@@ -147,6 +147,10 @@ contains
       !   set use_threads
       call MAPL%set_use_threads(use_threads)
       call ESMF_ConfigDestroy(myCF, _RC)
+
+      ! We need to get NCAR_NRDG because this is used in the GWD_Internal___.h auto-generated
+      ! code via the MAPL ACG
+      call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
 
       ! Set the state variable specs.
       ! -----------------------------
@@ -234,24 +238,26 @@ contains
       character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
       character(len=ESMF_MAXSTR)     :: ERRstring
 
-      logical :: JASON_BKG, JASON_ORO
-      logical :: NCAR_TAU_TOP_ZERO
-      real    :: NCAR_PRNDL
-      real    :: NCAR_QBO_HDEPTH_SCALING
-      integer :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
-      real    :: NCAR_ORO_GW_DC, NCAR_BKG_GW_DC
-      real    :: NCAR_ORO_FCRIT2, NCAR_BKG_FCRIT2
-      real    :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
-      real    :: NCAR_ORO_SOUTH_FAC
-      real    :: NCAR_ORO_TNDMAX
-      real    :: NCAR_BKG_TNDMAX
-      real    :: NCAR_HR_CF      ! Grid cell convective conversion factor
-      real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
-      logical :: NCAR_ET_USELATS  
-      logical :: NCAR_DC_BERES
-      integer :: GEOS_PGWV
-      real :: NCAR_EFFGWBKG
-      real :: NCAR_DC_BERES_SRC_LEVEL
+    logical :: JASON_BKG, JASON_ORO
+    real    :: NCAR_TAU_TOP_ZERO
+    real    :: NCAR_PRNDL
+    real    :: NCAR_QBO_HDEPTH_SCALING
+    integer :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
+    real    :: NCAR_ORO_GW_DC, NCAR_BKG_GW_DC
+    real    :: NCAR_ORO_FCRIT2, NCAR_BKG_FCRIT2
+    real    :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
+    real    :: NCAR_ORO_SOUTH_FAC
+    real    :: NCAR_ORO_TNDMAX
+    real    :: NCAR_BKG_TNDMAX
+    real    :: NCAR_HR_CF      ! Grid cell convective conversion factor
+    real    :: NCAR_TR_EFF     ! Convective region efficiency factor
+    real    :: NCAR_ET_EFF     ! Frontal region efficiency factor
+    real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
+    logical :: NCAR_ET_USE_DQCDT
+    logical :: NCAR_DC_BERES
+    integer :: GEOS_PGWV
+    real :: NCAR_EFFGWBKG
+    real :: NCAR_DC_BERES_SRC_LEVEL
 
       type (wrap_) :: wrap
       type (GEOS_GwdGridComp), pointer        :: self
@@ -304,20 +310,20 @@ contains
       ! ----------------------------
       call MAPL_GetResource(MAPL,JASON_BKG,'JASON_BKG:', default=(LM==72), _RC)
       if (JASON_BKG) then
-         GEOS_PGWV = 4
-         call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
-         call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, _RC)
-         call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
-         call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.000, _RC)
-         call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=172800., _RC)
+                                          GEOS_PGWV = 4
+        call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
+        call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, _RC)
+        call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.000, _RC)
+   !!   call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=172800., _RC)
+        call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.000, _RC)
       else
-         GEOS_PGWV = NINT(32*LM/181.0)
-         call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
-         call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, _RC)
-         call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, _RC)
-         self%NCAR_EFFGWBKG = 1.0 !(1.0 - 0.5*sigma)
-         call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=self%NCAR_EFFGWBKG, _RC)
-         call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.00, _RC)
+                                          GEOS_PGWV = NINT(32*LM/181.0)
+        call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
+        call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000 , _RC)
+        call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000 , _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.3125, _RC)
+        call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.000 , _RC)
       endif
 
       ! Orographic Gravity wave drag
@@ -327,10 +333,14 @@ contains
          call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.250, _RC)
          call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.000, _RC)
          call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
-      else  
-         call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
-         call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, _RC)
-         call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=16, _RC)
+      else
+        call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0,  _RC) ! use 0 [1:16] to disable [enable] ridge scheme
+        if (self%NCAR_NRDG == 16) then
+           call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, _RC)
+        else
+           call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.250, _RC)
+        endif
       endif
 
       ! Rayleigh friction
@@ -341,13 +351,13 @@ contains
          call MAPL_GetResource( MAPL, self%HH,   Label="RAYLEIGH_HH:",   default=7500.,   _RC)
       endif
 
-      ! NCAR GWD settings
-      ! -----------------
-      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., _RC)
+! NCAR GWD settings
+! -----------------
+      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=35.0, _RC) ! 0.35 hPa
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
-      NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.25*sigma
+                                   NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
-      NCAR_HR_CF = CEILING(30.0*sigma)
+                                   NCAR_HR_CF = CEILING(20.0*sigma)
       call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
 
       call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
@@ -363,9 +373,11 @@ contains
       call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,   _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=3.2,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USELATS,     Label="NCAR_ET_USELATS:",     default=.TRUE., _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=800.0,  _RC)
+      call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=6.4,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.FALSE.,_RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
       ! Beres DeepCu
       call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
@@ -373,37 +385,43 @@ contains
       num_threads = MAPL_get_num_threads()
       bounds = MAPL_find_bounds(JM, num_threads)
       do thread = 0, num_threads-1
-         JM_thread = bounds(thread+1)%max - bounds(thread+1)%min + 1
-         call gw_beres_init( BERES_FILE_NAME ,  &
-              self%workspaces(thread)%beres_band, &
-              self%workspaces(thread)%beres_dc_desc, &
-              NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
-              NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
-              1000.0, .TRUE., NCAR_ET_TAUBGND, NCAR_ET_USELATS, NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
-              IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
+            JM_thread = bounds(thread+1)%max - bounds(thread+1)%min + 1
+            call gw_beres_init( BERES_FILE_NAME ,  &
+                                self%workspaces(thread)%beres_band, &
+                                self%workspaces(thread)%beres_dc_desc, &
+                                NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
+                                NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
+                                1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, &
+                                NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
+                                IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
       end do
 
       ! Orographic Scheme
       call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5,  _RC)
-      call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, _RC)
       if (self%NCAR_NRDG > 0) then
-         ! Ridge Scheme
-         call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=400.0, _RC)
-         NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
-         do thread = 0, num_threads-1
-            call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
-         end do
+          call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2, Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX, Label="NCAR_ORO_TNDMAX:",     default=400.0,_RC)
+          NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
+        ! Ridge Scheme
+          do thread = 0, num_threads-1
+             call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
+          end do
       else
-         ! Old Scheme
-         call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  _RC)
-         do thread = 0, num_threads-1
-            call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
-                 NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
-                 NCAR_ORO_SOUTH_FAC )
-         end do
+        ! Old Scheme
+          call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=0.5,   _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0,   _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,     Label="NCAR_ORO_TNDMAX:",     default=400.0, _RC)
+          NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
+          do thread = 0, num_threads-1
+             call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
+                                NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
+                                NCAR_ORO_SOUTH_FAC, NCAR_ORO_TNDMAX )
+          end do
       endif
+
+      call MAPL_GetResource( MAPL, DEBUG_GWD,   Label="DEBUG_GWD:", default=.FALSE., _RC)
 
       allocate(self%alpha(LM+1), _STAT)
       call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
@@ -534,126 +552,120 @@ contains
          type (ESMF_TimeInterval)        :: TINT
 
 #include "GWD_DeclarePointer___.h"
-         
-         real, pointer, dimension(:,:,:)  :: TMP3D
-         real, pointer, dimension(:,:)    :: TMP2D
 
-         ! local variables
+      real, pointer, dimension(:,:,:)  :: TMP3D
+      real, pointer, dimension(:,:)    :: TMP2D
 
-         real,              dimension(IM,JM,LM  ) :: DQCDT_LS
-         real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
-         real,              dimension(IM,JM     ) :: a2, Hefold
-         real,              dimension(IM,JM,LM  ) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
-         real,              dimension(IM,JM,LM  ) :: DUDT_GWD, DVDT_GWD, DTDT_GWD
-         real,              dimension(IM,JM,LM  ) :: DUDT_RAH, DVDT_RAH, DTDT_RAH
-         real,              dimension(IM,JM,LM  ) :: DUDT_TOT, DVDT_TOT, DTDT_TOT
-         real,              dimension(IM,JM,LM+1) :: PILN,   ZI
-         real,              dimension(      LM  ) :: ZREF, KRAY
-         real,              dimension(IM,JM     ) :: GBXAR_TMP
-         real,              dimension(IM,JM     ) :: TAUXO_TMP, TAUYO_TMP
-         real,              dimension(IM,JM     ) :: TAUXB_TMP, TAUYB_TMP
-         real,              dimension(IM,JM,LM+1) :: TAUXO_3D , TAUYO_3D , FEO_3D, FEPO_3D
-         real,              dimension(IM,JM,LM+1) :: TAUXB_3D , TAUYB_3D , FEB_3D, FEPB_3D
-         real,              dimension(IM,JM,LM  ) :: DUBKGSRC , DVBKGSRC , DTBKGSRC
-         real,              dimension(IM,JM)      :: KEGWD_X, KEORO_X,  KERAY_X,  KEBKG_X, KERES_X
-         real,              dimension(IM,JM)      :: PEGWD_X, PEORO_X,  PERAY_X,  PEBKG_X, BKGERR_X
+! local variables
 
-         real,              dimension(IM,JM,LM  ) :: DUDT_GWD_GEOS , DVDT_GWD_GEOS , DTDT_GWD_GEOS
-         real,              dimension(IM,JM,LM  ) :: DUDT_ORG_GEOS , DVDT_ORG_GEOS , DTDT_ORG_GEOS
-         real,              dimension(IM,JM     ) :: TAUXB_TMP_GEOS, TAUYB_TMP_GEOS
-         real,              dimension(IM,JM     ) :: TAUXO_TMP_GEOS, TAUYO_TMP_GEOS
+      real,              dimension(IM,JM,LM  ) :: DQCDT_LS
+      real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
+      real,              dimension(IM,JM     ) :: a2, Hefold
+      real,              dimension(IM,JM,LM  ) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
+      real,              dimension(IM,JM,LM  ) :: DUDT_GWD, DVDT_GWD, DTDT_GWD
+      real,              dimension(IM,JM,LM  ) :: DUDT_RAH, DVDT_RAH, DTDT_RAH
+      real,              dimension(IM,JM,LM  ) :: DUDT_TOT, DVDT_TOT, DTDT_TOT
+      real,              dimension(IM,JM,LM+1) :: PILN,   ZI
+      real,              dimension(      LM  ) :: ZREF, KRAY
+      real,              dimension(IM,JM     ) :: GBXAR_TMP
+      real,              dimension(IM,JM     ) :: TAUXO_TMP, TAUYO_TMP
+      real,              dimension(IM,JM     ) :: TAUXB_TMP, TAUYB_TMP
+      real,              dimension(IM,JM,LM+1) :: TAUXO_3D , TAUYO_3D , FEO_3D, FEPO_3D
+      real,              dimension(IM,JM,LM+1) :: TAUXB_3D , TAUYB_3D , FEB_3D, FEPB_3D
+      real,              dimension(IM,JM,LM  ) :: DUBKGSRC , DVBKGSRC , DTBKGSRC
+      real,              dimension(IM,JM)      :: KEGWD_X, KEORO_X,  KERAY_X,  KEBKG_X, KERES_X
+      real,              dimension(IM,JM)      :: PEGWD_X, PEORO_X,  PERAY_X,  PEBKG_X, BKGERR_X
 
-         real,              dimension(IM,JM,LM  ) :: DUDT_GWD_NCAR , DVDT_GWD_NCAR , DTDT_GWD_NCAR
-         real,              dimension(IM,JM,LM  ) :: DUDT_ORG_NCAR , DVDT_ORG_NCAR , DTDT_ORG_NCAR
-         real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
-         real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
+      real,              dimension(IM,JM,LM  ) :: DUDT_GWD_GEOS , DVDT_GWD_GEOS , DTDT_GWD_GEOS
+      real,              dimension(IM,JM,LM  ) :: DUDT_ORG_GEOS , DVDT_ORG_GEOS , DTDT_ORG_GEOS
+      real,              dimension(IM,JM     ) :: TAUXB_TMP_GEOS, TAUYB_TMP_GEOS
+      real,              dimension(IM,JM     ) :: TAUXO_TMP_GEOS, TAUYO_TMP_GEOS
 
-         integer                                  :: J, K, L, nrdg, ikpbl
-         real(ESMF_KIND_R8)                       :: DT_R8
-         real                                     :: DT     ! time interval in sec
-         real                                     :: a1, wsp, var_temp
-         !real, allocatable :: THV(:,:,:)
-         real :: THV(IM,JM,LM)
+      real,              dimension(IM,JM,LM  ) :: DUDT_GWD_NCAR , DVDT_GWD_NCAR , DTDT_GWD_NCAR
+      real,              dimension(IM,JM,LM  ) :: DUDT_ORG_NCAR , DVDT_ORG_NCAR , DTDT_ORG_NCAR
+      real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
+      real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
 
-         integer           :: I,IRUN
-         type (ESMF_State) :: INTERNAL
+      REAL, ALLOCATABLE, TARGET, DIMENSION(:,:,:) :: scratch_ridge
 
-         !  Begin...
-         !----------
+      integer                                  :: J, K, L, nrdg, ikpbl
+      real(ESMF_KIND_R8)                       :: DT_R8
+      real                                     :: DT     ! time interval in sec
+      real                                     :: a1, wsp, var_temp
 
-         IAm = "Gwd_Driver"
+      integer           :: I,IRUN
+      type (ESMF_State) :: INTERNAL
 
-         ! Get time step
-         !-------------------------------------------------
+!  Begin...
+!----------
 
-         call ESMF_AlarmGet( ALARM, ringInterval=TINT,    _RC)
-         call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8,      _RC)
+      IAm = "Gwd_Driver"
 
-         DT = DT_R8
+! Get time step
+!-------------------------------------------------
 
-         ! Pointers to import, export and internal variables
-         call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
+      call ESMF_AlarmGet( ALARM, ringInterval=TINT,    _RC)
+      call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8,      _RC)
+
+      DT = DT_R8
+
+      ! Pointers to import, export and internal variables
+      call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
 #include "GWD_GetPointer___.h"
 
-         CALL PREGEO(IM*JM,   LM,   &
-              PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
+      CALL PREGEO(IM*JM,   LM,   &
+             PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
 
-         ! Compute ZM
-         !-------------
+! Compute ZM
+!-------------
 
-         call GEOPOTENTIAL( IM*JM, LM,                  &
-              PILN,  PMLN,  PLE,   PMID, PDEL, RPDEL,   &
-              T,     Q,     ZI,    ZM                   )
+      call GEOPOTENTIAL( IM*JM, LM,                  &
+           PILN,  PMLN,  PLE,   PMID, PDEL, RPDEL,   &
+           T,     Q,     ZI,    ZM                   )
 
-         ! Do gravity wave drag calculations on a list of soundings
-         !---------------------------------------------------------
+! Do gravity wave drag calculations on a list of soundings
+!---------------------------------------------------------
 
-         !call MAPL_TimerOn(MAPL,"-INTR")
+         if (self%NCAR_NRDG /= 0.0) then
 
-         GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
-         WHERE (ANGLL < -180)
-            ANGLL = 0.0
-         END WHERE
+            GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
+            WHERE (ANGLL < -180)
+               ANGLL = 0.0
+            END WHERE
 
-         do nrdg = 1, self%NCAR_NRDG
-            KWVRDG(:,:,nrdg) = 0.001/(HWDTH(:,:,nrdg)+0.001)
-            EFFRDG(:,:,nrdg) = self%NCAR_EFFGWORO*(HWDTH(:,:,nrdg)*CLNGT(:,:,nrdg))/GBXAR_TMP
-         enddo
+            do nrdg = 1, self%NCAR_NRDG
+               KWVRDG(:,:,nrdg) = 0.001/(HWDTH(:,:,nrdg)+0.001)
+               EFFRDG(:,:,nrdg) = self%NCAR_EFFGWORO*(HWDTH(:,:,nrdg)*CLNGT(:,:,nrdg))/GBXAR_TMP
+            enddo
 
-         !         if (FIRST_RUN) then
-         !           FIRST_RUN = .false.
-         !           call gw_newtonian_set(LM, PREF)
-         !!#ifdef DEBUG_GWD
-         !           if (self%NCAR_NRDG > 0) then
-         !            IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
-         !            call Write_Profile(GBXAR_TMP,         AREA, ESMFGRID, 'GBXAR')
-         !            do nrdg = 1, self%NCAR_NRDG
-         !             IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
-         !             call Write_Profile(MXDIS(:,:,nrdg),  AREA, ESMFGRID, 'MXDIS')
-         !             call Write_Profile(ANGLL(:,:,nrdg),  AREA, ESMFGRID, 'ANGLL')
-         !             call Write_Profile(ANIXY(:,:,nrdg),  AREA, ESMFGRID, 'ANIXY')
-         !             call Write_Profile(CLNGT(:,:,nrdg),  AREA, ESMFGRID, 'CLNGT')
-         !             call Write_Profile(HWDTH(:,:,nrdg),  AREA, ESMFGRID, 'HWDTH')
-         !             call Write_Profile(KWVRDG(:,:,nrdg), AREA, ESMFGRID, 'KWVRDG')
-         !             call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
-         !            enddo
-         !          endif
-         !!#endif
-         !         endif
+            ! pchakrab: Redundant code? Commenting out.
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
+            ! if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
+            ! if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', _RC)
+            ! if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', _RC)
+            ! if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', _RC)
+            ! if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
+            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', _RC)
+            ! if(associated(TMP2D)) TMP2D = GBXAR_TMP
 
-         ! pchakrab: Redundant code? Commenting out.
-         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
-         ! if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
-         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
-         ! if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
-         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', _RC)
-         ! if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
-         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', _RC)
-         ! if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
-         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', _RC)
-         ! if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
-         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', _RC)
-         ! if(associated(TMP2D)) TMP2D = GBXAR_TMP
+         else
+
+            allocate ( scratch_ridge(IM,JM,16) )
+            scratch_ridge = 0.0
+            MXDIS => scratch_ridge
+            HWDTH => scratch_ridge
+            CLNGT => scratch_ridge
+            ANGLL => scratch_ridge
+            ANIXY => scratch_ridge
+            KWVRDG => scratch_ridge
+            EFFRDG => scratch_ridge
+            GBXAR_TMP = 0.0
+
+         endif
 
          ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
          DUDT_GWD_NCAR = 0.0
@@ -747,7 +759,7 @@ contains
               DUDT_ORG, &
               DVDT_ORG, &
               DTDT_ORG, &
-              
+
               DUDT_TOT, &
               DVDT_TOT, &
               DTDT_TOT, &
@@ -815,22 +827,30 @@ contains
          !-----------------------------
          if(associated(TTMGW   )) TTMGW    = DTDT_TOT
 
-         ! Fille additional exports
-         !-------------------------
-         if(associated(    Q_EXP ))    Q_EXP = Q
-         if(associated(    U_EXP ))    U_EXP = U + DUDT_TOT*DT
-         if(associated(    V_EXP ))    V_EXP = V + DVDT_TOT*DT
-         if(associated(    T_EXP ))    T_EXP = T + DTDT_TOT*DT
-         if(associated( PREF_EXP )) PREF_EXP = PREF
-         if(associated(  SGH_EXP ))  SGH_EXP = SGH
-         if(associated(  PLE_EXP ))  PLE_EXP = PLE
+! Fill additional exports
+!-------------------------
+    if(associated(    Q_EXP ))    Q_EXP = Q
+    if(associated(    U_EXP ))    U_EXP = U + DUDT_TOT*DT
+    if(associated(    V_EXP ))    V_EXP = V + DVDT_TOT*DT
+    if(associated(    T_EXP ))    T_EXP = T + DTDT_TOT*DT
+    if(associated( PREF_EXP )) PREF_EXP = PREF
+    if(associated(  SGH_EXP ))  SGH_EXP = SGH
+    if(associated(  PLE_EXP ))  PLE_EXP = PLE
 
-         ! All done
-         !-----------
-         RETURN_(ESMF_SUCCESS)
-      end subroutine GWD_DRIVER
+    if (DEBUG_GWD) then
+       if(associated( T_EXP )) call MAPL_MaxMin('GWD: T_AF_GWD ', T_EXP)
+       if(associated( U_EXP )) call MAPL_MaxMin('GWD: U_AF_GWD ', U_EXP)
+       if(associated( V_EXP )) call MAPL_MaxMin('GWD: V_AF_GWD ', V_EXP)
+    endif
 
-   end subroutine RUN
+    if (allocated(scratch_ridge)) deallocate(scratch_ridge)
+
+! All done
+!-----------
+    RETURN_(ESMF_SUCCESS)
+   end subroutine GWD_DRIVER
+
+  end subroutine RUN
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -990,7 +1010,7 @@ contains
         dudt_org, &
         dvdt_org, &
         dtdt_org, &
-        
+
                                 ! Outputs
         dudt_tot, &
         dvdt_tot, &

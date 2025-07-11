@@ -1175,7 +1175,7 @@ contains
     type (ESMF_TimeInterval) :: timeStep
 
     real    :: DT,Fac0,Fac1,DTXX,RELAX_TO_OBS
-    real    :: OROGSGH
+    real    :: OROGSGH,SCMAREA
 
     real, dimension(:,:), allocatable :: F0
     real :: SCM_UG, SCM_VG
@@ -1387,6 +1387,11 @@ contains
     call ESMF_ConfigGetAttribute ( CF, OROGSGH,  Label="OROG_STDEV:", &
                                          DEFAULT=100.,  __RC__)
 
+    call ESMF_ConfigGetAttribute( cf, SCMAREA, label ='SCM_AREA:', &
+                                    DEFAULT=1e10, rc = status )
+
+   
+    
     if ( CFMIP .and. CFMIP2) then
             print *, " Error - SCM_CFMIP and SCM_CFMIP2 cannot be set at the same time  "  ! This should never happen
             RETURN_(ESMF_FAILURE)
@@ -1629,11 +1634,12 @@ contains
 ! whenever datmodyn starts using gocart, this will need to be a real value --
 ! see fvdycore for example
       if(associated(DUMMYAREA)) then
-          DUMMYAREA=1.0
+         DUMMYAREA = SCMAREA
+         print *,'SCM AREA = ',DUMMYAREA
       end if
 
       if(associated(DUMMYDXC)) then
-          DUMMYDXC=1.0
+          DUMMYDXC=sqrt(SCMAREA)
       end if
 
       if(associated(DUMMYW)) then
@@ -1645,7 +1651,7 @@ contains
       end if
 
       if(associated(DUMMYDYC)) then
-          DUMMYDYC=1.0
+          DUMMYDYC=sqrt(SCMAREA)
       end if
 
 ! added to satisfy desires of da
@@ -1837,6 +1843,14 @@ contains
           if ( SCM_CORIOLIS == 0 ) then
              UTDYN(:,:,l) = 0.
              VTDYN(:,:,l) = 0.
+          else if (SCM_CORIOLIS == -1 ) then
+             if (L.gt.110.) then
+               UTDYN(:,:,l) = F0*( V(:,:,l) - V(:,:,110) )
+               VTDYN(:,:,l) = -F0*( U(:,:,l) - U(:,:,110) )
+             else
+               UTDYN(:,:,l) = 0.
+               VTDYN(:,:,l) = 0.
+             end if
           else
              UTDYN(:,:,l) = F0*( V(:,:,l) - SCM_VG )
              VTDYN(:,:,l) = -F0*( U(:,:,l) - SCM_UG )
@@ -2025,7 +2039,7 @@ contains
          elseif (CFCSE .eq. 11) then
            zrel=2500.
            zrelp=3000.
-           qfloor=0.  !3.55e-3  ! not used in Blossey LES, but recommended for future
+           qfloor=3.55e-3  ! not used in Blossey LES, but recommended for future
          elseif (CFCSE .eq. 6) then
            zrel=4000.
            zrelp=4800.

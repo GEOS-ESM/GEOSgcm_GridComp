@@ -1,21 +1,19 @@
 import cffi  # type: ignore
 
-TMPFILEBASE = "pyMKIAU_interface_py"
+TMPFILEBASE = "pyMLINC_interface_py"
 
 ffi = cffi.FFI()
 
 source = """
 from {} import ffi
-from datetime import datetime
-from pyMKIAU.core import pyMKIAU_init, pyMKIAU_run #< User code starts here
+from pyMLINC.core import pyMLINC_init, pyMLINC_run # <-- User code starts here
 import traceback
 
 @ffi.def_extern()
-def pyMKIAU_interface_py_setservices() -> int:
-
+def pyMLINC_interface_init_py(magic_number) -> int:
     try:
         # Calling out off the bridge into the python
-        pyMKIAU_init()
+        pyMLINC_init(magic_number)
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())
@@ -23,11 +21,10 @@ def pyMKIAU_interface_py_setservices() -> int:
     return 0
 
 @ffi.def_extern()
-def pyMKIAU_interface_py_run(options, in_buffer, out_buffer) -> int:
-
+def pyMLINC_interface_run_py(xdim, ydim, zdim, u, v, t, qv, ql, qi, qr, qs, qg, ps, dtdt, magic_number) -> int:
     try:
         # Calling out off the bridge into the python
-        pyMKIAU_run(options, in_buffer, out_buffer)
+        pyMLINC_run(xdim, ydim, zdim, u, v, t, qv, ql, qi, qr, qs, qg, ps, dtdt, magic_number)
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())

@@ -51,7 +51,6 @@ module GEOS_MGB2_2M_InterfaceMod
   character(len=ESMF_MAXSTR)        :: COMP_NAME
 
   ! Local resource variables
-  integer :: imsize
   real    :: TURNRHCRIT, TURNRHCRIT_UP
   real    :: MINRHCRIT  
   real    :: CCW_EVAP_EFF
@@ -63,7 +62,6 @@ module GEOS_MGB2_2M_InterfaceMod
   real    :: FAC_RL
   real    :: MIN_RI
   real    :: MAX_RI
-  logical :: LHYDROSTATIC
   logical :: USE_AV_V
   logical :: SECOND_HYSTPDF 
   
@@ -80,7 +78,6 @@ module GEOS_MGB2_2M_InterfaceMod
 
   public :: MGB2_2M_Setup, MGB2_2M_Initialize, MGB2_2M_Run
   public :: MGVERSION
-  character(LEN=ESMF_MAXSTR):: CONVPAR_OPTION
 
 contains
 
@@ -97,8 +94,6 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
     Iam = trim(COMP_NAME) // Iam
     
     call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=3, __RC__)
-    call ESMF_ConfigGetAttribute( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', __RC__) ! Note: Default set in GEOS_GcmGridComp.F90
-
 
     ! !INTERNAL STATE:
 
@@ -143,8 +138,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          default    = 1.0e-6,                                      &
          RESTART    = MAPL_RestartRequired,                        &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                        &
          SHORT_NAME = 'QLLS',                                            &
@@ -152,8 +147,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                         &
          FRIENDLYTO = trim(FRIENDLIES%QLLS),                             &
          DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                       &
          SHORT_NAME = 'QLCN',                                           &
@@ -161,8 +156,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                        &
          FRIENDLYTO = trim(FRIENDLIES%QLCN),                            &
          DIMS       = MAPL_DimsHorzVert,                                &
-         VLOCATION  = MAPL_VLocationCenter,                  RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                  RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'CLLS',                                      &
@@ -170,8 +165,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = '1',                                         &
          FRIENDLYTO = trim(FRIENDLIES%CLLS),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'CLCN',                                      &
@@ -179,8 +174,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = '1',                                         &
          FRIENDLYTO = trim(FRIENDLIES%CLCN),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                     &
          SHORT_NAME = 'QILS',                                         &
@@ -188,8 +183,8 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                      &
          FRIENDLYTO = trim(FRIENDLIES%QILS),                          &
          DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                    &
          SHORT_NAME = 'QICN',                                        &
@@ -197,14 +192,15 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                     &
          FRIENDLYTO = trim(FRIENDLIES%QICN),                         &
          DIMS       = MAPL_DimsHorzVert,                             &
-         VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'QRAIN',                                     &
-         LONG_NAME  = 'mass_fraction_of_rain',                     & 
+         LONG_NAME  = 'mass_fraction_of_rain',                     &
          UNITS      = 'kg kg-1',                                   &
          FRIENDLYTO = trim(FRIENDLIES%QRAIN),                      &
+         default    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -214,6 +210,7 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          LONG_NAME  = 'mass_fraction_of_snow',                     &
          UNITS      = 'kg kg-1',                                   &
          FRIENDLYTO = trim(FRIENDLIES%QSNOW),                      &
+         default    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -223,6 +220,7 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          LONG_NAME  = 'mass_fraction_of_graupel',                  &
          UNITS      = 'kg kg-1',                                   &
          FRIENDLYTO = trim(FRIENDLIES%QGRAUPEL),                   &
+         default    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -261,25 +259,26 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          LONG_NAME  ='particle_number_for_snow',                   &
          UNITS      ='kg-1',                                       &
          FRIENDLYTO = trim(FRIENDLIES%NSNOW),                      &
+         DEFAULT    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter, RC=STATUS  )  
-                                                              
-     VERIFY_(STATUS)
-     
+         VLOCATION  = MAPL_VLocationCenter, RC=STATUS  )
+    VERIFY_(STATUS)
      
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME ='NGRAUPEL',                                   &
          LONG_NAME  ='particle_number_for_graupel',                &
          UNITS      ='kg-1',                                       &
          FRIENDLYTO = trim(FRIENDLIES%NGRAUPEL),                   &
+         DEFAULT    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,    RC=STATUS  )  
+         VLOCATION  = MAPL_VLocationCenter,    RC=STATUS  )
+    VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC,                               &
          SHORT_NAME = 'NACTL',                                  &
-         LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &           
+         LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &
          UNITS      = 'm-3',                                    &
-         RESTART    = MAPL_RestartSkip,                         &  
+         RESTART    = MAPL_RestartSkip,                         &
          DIMS       = MAPL_DimsHorzVert,                        &
          VLOCATION  = MAPL_VLocationCenter,     RC=STATUS  )
     VERIFY_(STATUS)
@@ -305,7 +304,6 @@ end subroutine  MGB2_2M_Setup
 subroutine MGB2_2M_Initialize (MAPL, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
     integer, optional                   :: RC  ! return code
-
     
     type (ESMF_State)                   :: INTERNAL
 
@@ -416,7 +414,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 1.0,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
     call MAPL_GetResource(MAPL, SECOND_HYSTPDF, 'SECOND_HYSTPDF:', DEFAULT= .TRUE. ,RC=STATUS) !drop vol radius in cnv
 
-
     mui_cnstr8 =  MUI_CST
     ncnstr8 = NC_CST
     if  (NC_CST .gt. 0.0)  nccons =.true.
@@ -424,7 +421,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     if  (NI_CST .gt. 0.0)  nicons =.true.
     ngnstr8 = NG_CST
     if  (NG_CST .gt. 0.0)  ngcons =.true.
-    
+   
     if  (MGVERSION .gt. 1) then
         do_graupel = .false.
         if (MGVERSION .gt. 2) do_graupel = .true.
@@ -435,11 +432,22 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
                        nccons, nicons, ncnstr8, ninstr8, 2.0)
     end if
    
-     call aer_cloud_init()
+    call aer_cloud_init()
+
+    call WRITE_PARALLEL ("INITIALIZED MGB2_2M microphysics in non-generic GC INIT")
+
+                                 CCW_EVAP_EFF = 4.e-3
+    call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
+
+                                 CCI_EVAP_EFF = 4.e-3
+    call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine MGB2_2M_Initialize
-
-
 
 subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
@@ -472,6 +480,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: ALH, RADLW, RADSW, WSUB_CLIM
     
     ! Local
+    real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, GZLO
     real, allocatable, dimension(:,:,:) :: DZET, DP, MASS, iMASS
@@ -496,6 +505,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
     real, pointer, dimension(:,:,:) :: PDF_A, PDFITERS
     real, pointer, dimension(:,:,:) :: RHCRIT
+    real, pointer, dimension(:,:  ) :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 #ifdef PDFDIAG
@@ -624,7 +634,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     allocate(ficer8(1,LM), __STAT__)
     allocate(qilsr8(1,LM), __STAT__)
     allocate(uwind_gw(1,LM), __STAT__)
-  
     allocate(ter8(1,LM), __STAT__)
     allocate(qvr8(1,LM), __STAT__)
     allocate(qcr8(1,LM), __STAT__)
@@ -818,7 +827,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     allocate(NCPL_CLDBASEX(IM,JM ), __STAT__)
     !allocate(TH(IM,JM,LM ), __STAT__)
 
-
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
@@ -955,6 +963,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PLEmb(IM,JM,0:LM) )
      ! Layer variables
+    ALLOCATE ( U0   (IM,JM,LM  ) )
+    ALLOCATE ( V0   (IM,JM,LM  ) )
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
     ALLOCATE ( DZET (IM,JM,LM  ) )
@@ -984,6 +994,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
     iMASS    = 1.0/MASS
+    U0       = U
+    V0       = V
     PK       = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
     TH1       = T/PK
     AIRDEN = 100.*PLmb/T/MAPL_RGAS
@@ -1278,16 +1290,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, PTR2D,  'AN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
     call MAPL_GetPointer(EXPORT, PTR2D,  'SC_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
     
-    call MAPL_GetPointer(EXPORT, PTR2D, 'ZLCL', RC=STATUS); VERIFY_(STATUS)
-    if (associated(PTR2D)) then
-      tmp2d = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
-      do J=1,JM
-         do I=1,IM
-           PTR2D(I,J) = ZL0(I,J,tmp2d(I,J))
-         end do
-      end do
-    endif
-
     call MAPL_TimerOn(MAPL,"---CLDMACRO")
     call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_macro, 'DQIDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -1587,7 +1589,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Update TH
     TH1 = T/PK
-    
+
     !initialize MG variables
      cldfr8 = 0.0_r8 
      prectr8 = 0.0_r8 
@@ -1696,7 +1698,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                liqcldfr8  =  cldfr8!*(qcr8/(qir8 + qcr8 + 1.e-12)) 
                icecldfr8  = cldfr8! max(cldfr8- liqcldfr8, 0.)                   
   
-
                ! Nucleation  tendencies 
                naair8(1,1:LM)     = max(( INC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - nir8(1,1:LM))/DT_MOIST, 0.0) 
                npccninr8(1,1:LM)  = max((CDNC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - ncr8(1,1:LM))/DT_MOIST, 0.0)
@@ -1874,7 +1875,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
     end if 
 
-
         IF (MGVERSION > 1) then 
 
                    RAD_QR(I,J,1:LM)  = max(RAD_QR(I,J,1:LM) + REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
@@ -1964,13 +1964,11 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                DNCAUTICE (I,J,1:LM)    = REAL(nprcior8(1,1:LM))  !ice number tendency from autoconversion
                DNCHMSPLIT(I,J,1:LM)    = REAL(nsacwior8(1,1:LM)) !ice number tendency from H-M process
     
-            
             enddo !I
          enddo !J
          !============================================Finish 2-moment micro implementation===========================
 
          !update water tracers
-       
        
           ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
@@ -1989,13 +1987,13 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                          PDFSHAPE , &
                          CNV_FRC(I, J)           , &
                          SRF_TYPE(I, J)          , &
-                         PLmb(I, J, K)            , &
-                         Q (I, J, K)            , &
+                         PLmb(I, J, K)           , &
+                         Q (I, J, K)             , &
                          QLLS(I, J, K)           , &
                          QLCN(I, J, K)           , &
                          QILS(I, J, K)           , &
                          QICN(I, J, K)           , &
-                         T(I, J, K)           , &
+                         T(I, J, K)              , &
                          CLLS(I, J, K)           , &
                          CLCN(I, J, K)           , &
                          SC_ICE(I, J, K)         , &
@@ -2328,28 +2326,103 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
            END WHERE          
          endif  
         
-        
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
 
-        ! Compute DBZ radar reflectivity
-        call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D) .OR. associated(PTR2D)) then
-           call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,1)
-           if (associated(PTR3D)) PTR3D = TMP3D
-           if (associated(PTR2D)) then
-              PTR2D=-9999.0
-              DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                 PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-              END DO ; END DO ; END DO
-           endif
+        ! dissipative heating tendency from KE across the macro/micro physics
+        call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
+        if(associated(PTR3D)) then
+          call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
+                                      DUDT_macro+DUDT_micro,&
+                                      DVDT_macro+DVDT_micro,PTR3D)
         endif
 
-   call MAPL_TimerOff(MAPL,"--MGB2_2M",__RC__)
+        ! Compute DBZ radar reflectivity
+        call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
+
+        if (associated(PTR3D) .OR. &
+            associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
+
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
+            if (associated(PTR3D)) PTR3D = TMP3D
+
+            if (associated(DBZ_MAX)) then
+               DBZ_MAX=-9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                  DBZ_MAX(I,J) = MAX(DBZ_MAX(I,J),TMP3D(I,J,L))
+               END DO ; END DO ; END DO
+            endif
+
+            if (associated(DBZ_1KM)) then
+               call cs_interpolator(1, IM, 1, JM, LM, TMP3D, 1000., ZLE0, DBZ_1KM, -20.)
+            endif
+
+            if (associated(DBZ_TOP)) then
+               DBZ_TOP=MAPL_UNDEF
+               DO J=1,JM ; DO I=1,IM
+                  DO L=LM,1,-1
+                     if (ZLE0(i,j,l) >= 25000.) continue
+                     if (TMP3D(i,j,l) >= 18.5 ) then
+                         DBZ_TOP(I,J) = ZLE0(I,J,L)
+                         exit
+                     endif
+                  END DO
+               END DO ; END DO
+            endif
+
+            if (associated(DBZ_M10C)) then
+               DBZ_M10C=MAPL_UNDEF
+               DO J=1,JM ; DO I=1,IM
+                  DO L=LM,1,-1
+                     if (ZLE0(i,j,l) >= 25000.) continue
+                     if (T(i,j,l) <= MAPL_TICE-10.0) then
+                         DBZ_M10C(I,J) = TMP3D(I,J,L)
+                         exit
+                     endif
+                  END DO
+               END DO ; END DO
+            endif
+
+        endif
+
+        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,0.0*QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
+             PTR2D=-9999.0
+             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+             END DO ; END DO ; END DO
+        endif
+        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_S' , RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
+             PTR2D=-9999.0
+             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+             END DO ; END DO ; END DO 
+        endif
+        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_G' , RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,0.0*QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
+             PTR2D=-9999.0
+             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+             END DO ; END DO ; END DO  
+        endif
+
+        call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = QRAIN
+        call MAPL_GetPointer(EXPORT, PTR3D, 'QSTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = QSNOW
+        call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = QGRAUPEL
+
+     call MAPL_TimerOff(MAPL,"--MGB2_2M",RC=STATUS)
 
 end subroutine MGB2_2M_Run
-
-
 
 end module GEOS_MGB2_2M_InterfaceMod

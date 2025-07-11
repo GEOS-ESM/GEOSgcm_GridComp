@@ -16,7 +16,7 @@
       public :: aerosol_activate
       public :: AerConversion	
       public :: AerProps
-      !public :: AerPropsNew
+      public :: AerPropsNew
       public :: getINsubset
       public :: init_Aer
       public :: aer_cloud_init
@@ -29,18 +29,18 @@
       integer, parameter :: nsmx_par = 20 !maximum number of modes allowed    
       integer, parameter :: npgauss  = 10
     
-      !type :: AerPropsNew
-      !sequence 
-      !real, dimension(:,:,:), pointer :: num !Num conc m-3
-      !real, dimension(:,:,:), pointer :: dpg !dry Geometric size, m
-      !real, dimension(:,:,:), pointer :: sig  !logarithm (base e) of the dry geometric disp
-      !real, dimension(:,:,:), pointer :: den  !dry density , Kg m-3
-      !real, dimension(:,:,:), pointer :: kap !Hygroscopicity parameter 
-      !real, dimension(:,:,:), pointer :: fdust! mass fraction of dust 
-      !real, dimension(:,:,:), pointer :: fsoot ! mass fraction of soot
-      !real, dimension(:,:,:), pointer :: forg ! mass fraction of organics
-      !integer :: nmods  ! total number of modes (nmods<nmodmax)
-      !end type AerPropsNew
+      type :: AerPropsNew
+      sequence 
+      real, dimension(:,:,:), allocatable :: num !Num conc m-3
+      real, dimension(:,:,:), allocatable :: dpg !dry Geometric size, m
+      real, dimension(:,:,:), allocatable :: sig  !logarithm (base e) of the dry geometric disp
+      real, dimension(:,:,:), allocatable :: den  !dry density , Kg m-3
+      real, dimension(:,:,:), allocatable :: kap !Hygroscopicity parameter 
+      real, dimension(:,:,:), allocatable :: fdust! mass fraction of dust 
+      real, dimension(:,:,:), allocatable :: fsoot ! mass fraction of soot
+      real, dimension(:,:,:), allocatable :: forg ! mass fraction of organics
+      integer :: nmods  ! total number of modes (nmods<nmodmax)
+      end type AerPropsNew
    
       type :: AerProps            
       sequence 
@@ -257,7 +257,7 @@
 
 !===================================================================================
 
-  
+ 
   subroutine aerosol_activate(tparc_in, pparc_in, sigwparc_in, wparc_ls,  Aer_Props, &                                           
 					   npre_in, dpre_in, ccn_diagr8,  &
 					   cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
@@ -271,35 +271,35 @@
 
 
   
-      type(AerProps),  intent(in) :: Aer_Props !Aerosol Properties
+      type(AerProps), intent(in) :: Aer_Props !Aerosol Properties
 	
       logical        ::   use_average_v
        
-      real, intent(in)   :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
-					   npre_in, dpre_in, fd_soot, fd_dust,  &
-                       frachet_dust, frachet_bc, frachet_org, frachet_ss
+      real,           intent(in) :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
+                                    npre_in, dpre_in, fd_soot, fd_dust,  &
+                                    frachet_dust, frachet_bc, frachet_org, frachet_ss
                        
-      integer,  intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
-            
-      real(r8), dimension(:), intent(inout) :: ccn_diagr8 
-      
+      integer,        intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
+     
+      real(r8), dimension(:), intent(inout) :: ccn_diagr8
+
      real, intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
 					   INimmr8, dINimmr8, Ncdepr8, sc_icer8, &
 					   ndust_immr8, ndust_depr8,  nlimr8
-                        
-      real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
 
-      type(AerProps) :: Aeraux       
-       
+      real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+   
+      type(AerProps) :: Aeraux
+
       !local 
       integer  ::  k, n,  I, J, naux, index      
      
       !Variables for liquid       
-       real*8 ::   nact, wparc, tparc,pparc,  accom,sigw, smax, antot, ccn_at_s, sigwparc
+      real*8 :: nact, wparc, tparc,pparc,  accom,sigw, smax, antot, ccn_at_s, sigwparc
       !variables for ice
         
-       real*8          :: nhet, nice, smaxice, nlim, air_den, &
-                        frac, norg, nbc, nhom, dorg, dbc, kappa, INimm, dINimm, aux
+      real*8 :: nhet, nice, smaxice, nlim, air_den, &
+                frac, norg, nbc, nhom, dorg, dbc, kappa, INimm, dINimm, aux
    
 !=============inputs================
       tparc=tparc_in      
@@ -1960,7 +1960,7 @@ END
                 gln=gammln(a)
                 b=x+1.-a
                ! Set up for evaluating continued fraction by modified
-               ! Lentz\u2019s method (§5.2) with b0 = 0.
+               ! Lentz 2019 method (5.2) with b0 = 0.
                 c=1./FPMIN
                 d=1./b
                 h=d
@@ -2254,7 +2254,7 @@ END
         FDS=1.d0
       
         sc_ice = 1.d0 !cloud can always grow on preexisting ice
-         !sc_ice = shom_ice + 1.d0
+        	 ! sc_ice = shom_ice + 1.d0
 
         !  sc_ice =  1.d0 + shom_ice*max(min((Thom - T_ice)/(Thom-210d0), 1.0d0), 0.0d0)
 
@@ -4024,32 +4024,31 @@ subroutine make_cnv_ice_drop_number(Nd, Ni, Nimm, Nad, z, zcb, T, cnvfice, g_sca
     real, parameter :: gamma =  1.0e-4
    
      
-      
   !make it simple
   
   Nd = b_scale*Nad*exp(-z/g_scale) 
   
   if (.false.) then 
-      ! print *, dqlcn
-      !========liquid droplet concentration
-      !Based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
-         Nd =  0.
-         Ni =  0.
-         Tx =  max(273.15, T)
-         alf=2.8915E-08*(Tx*Tx) - 2.1328E-05*Tx + 4.2523E-03
-         bet=exp(3.49996E-04*Tx*Tx - 2.27938E-01*Tx + 4.20901E+01)
-         gam_ad =  alf/bet
-         LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC 
+  ! print *, dqlcn
+  !========liquid droplet concentration
+  !Based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
+     Nd =  0.
+     Ni =  0.
+     Tx =  max(273.15, T)
+     alf=2.8915E-08*(Tx*Tx) - 2.1328E-05*Tx + 4.2523E-03
+     bet=exp(3.49996E-04*Tx*Tx - 2.27938E-01*Tx + 4.20901E+01)
+     gam_ad =  alf/bet
+     LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC 
+     
+      !r3ad = max(min(3.63e-4*LWCad*(rl_scale**3.)/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
 
-          !r3ad = max(min(3.63e-4*LWCad*(rl_scale**3.)/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
+     dZ12  =  4.8e-12*Nad/gam_ad !      
 
-         dZ12  =  4.8e-12*Nad/gam_ad !      
-
-         if (z-zcb .lt. dz12) then
-     	    Nd  = b_scale*Nad
-         else
-     	    Nd =  max(b_scale*Nad*(1-g_scale*((z-zcb) - dz12)), 1.0e3)
-         end if
+     if (z-zcb .lt. dz12) then
+     	Nd  = b_scale*Nad
+     else
+     	Nd =  max(b_scale*Nad*(1-g_scale*((z-zcb) - dz12)), 1.0e3)
+     end if
 
     end if 
      
@@ -4080,7 +4079,7 @@ end subroutine make_cnv_ice_drop_number
 subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, AREA) 
 
     real, dimension (:, :), intent(out) ::  QCVAR
-    real , dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
+    real, dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
     real, dimension (:, :), intent(in) :: AREA
     integer, intent(in) :: IM, JM, LM
     integer :: I, J, K    
@@ -4090,7 +4089,7 @@ subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, AREA)
     	DO J =  1, JM
             HMOIST_950 = 0.0
             HSMOIST_500 = 0.0
-            
+
             xscale =  min(max(SQRT(AREA(I, J))/1.0e10, 1.0), 200.)
             xscale =  xscale**(-0.6666)
 

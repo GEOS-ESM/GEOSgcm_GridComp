@@ -17,28 +17,28 @@ public :: gw_oro_init
 
 real,parameter :: PI      = 3.14159265358979323846  ! pi
 
-real :: gw_oro_south_fac
+real, protected :: gw_oro_south_fac
+real, protected :: gw_oro_tndmax
 
 contains
 
 !==========================================================================
 
 !------------------------------------
-subroutine gw_oro_init (band, gw_dc, fcrit2, wavelength, pgwv, oro_south_fac)
+subroutine gw_oro_init (band, gw_dc, fcrit2, wavelength, pgwv, oro_south_fac, oro_tndmax)
 #include <netcdf.inc>
 
   type(GWBand), intent(inout) :: band
-  real, intent(in) :: gw_dc,fcrit2,wavelength,oro_south_fac
+  real, intent(in) :: gw_dc,fcrit2,wavelength,oro_south_fac,oro_tndmax
   integer, intent(in)  :: pgwv
-
-  
 
 ! Need to call GWBand for oro waves
 
   band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
 
   gw_oro_south_fac = oro_south_fac
-  
+  gw_oro_tndmax = oro_tndmax
+ 
 end subroutine gw_oro_init
 
 !------------------------------------
@@ -246,7 +246,7 @@ subroutine gw_oro_ifc( band, &
 
    real,         intent(in) :: sgh(ncol)       ! subgrid orographic std dev (m)
    real,         intent(in) :: lats(ncol)      ! latitudes
-   real,         intent(in) :: alpha(:)
+   real,         intent(in) :: alpha(pver+1)
 
 
    real, intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
@@ -279,9 +279,6 @@ subroutine gw_oro_ifc( band, &
    real :: xv(ncol)
    real :: yv(ncol)
 
-   real :: pint_adj(ncol,pver+1)
-   real :: zfac_layer
- 
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -311,23 +308,17 @@ subroutine gw_oro_ifc( band, &
         end if
      end do
 
-!GEOS pressure scaling near model top
-     zfac_layer = 1000.0 ! 10mb
-     do k=1,pver+1
-       do i=1,ncol
-         pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
-       enddo
-     enddo
-
      ! Solve for the drag profile with orographic sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           c,         kvtt,  tau,  utgw,  vtgw, &
-          ttgw, gwut, alpha, tau_adjust=pint_adj)
+          ttgw, gwut, alpha)
+
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
-                        effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, tend_level)
+                        effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, tend_level, &
+                        tndmax_in=gw_oro_tndmax)
 
 end subroutine gw_oro_ifc
 

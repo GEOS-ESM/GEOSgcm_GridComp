@@ -33,7 +33,6 @@ module GEOS_GF_InterfaceMod
   type (FRIENDLIES_TYPE) FRIENDLIES
 
   integer :: USE_GF2020
-  logical :: LHYDROSTATIC
   logical :: STOCHASTIC_CNV
   real    :: STOCH_TOP, STOCH_BOT
   real    :: SCLM_DEEP
@@ -119,7 +118,6 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     endif
     IF (USE_GF2020==1) THEN
-      call MAPL_GetResource(MAPL, LHYDROSTATIC              , 'HYDROSTATIC:'           ,default=.TRUE., RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
@@ -128,22 +126,18 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)      , 'CLOSURE_SHALLOW:'       ,default= 7,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      if (ZERO_DIFF == 0) then
+      if (INT(ZERO_DIFF) == 0) then
         call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.3e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
-                                    SGS_W_TIMESCALE = 1
-                 if (LHYDROSTATIC)  SGS_W_TIMESCALE = 0
-        call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 4.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,RC=STATUS );VERIFY_(STATUS)
       else
         call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)  
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= 0     ,RC=STATUS );VERIFY_(STATUS)
       endif
       call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
@@ -172,18 +166,21 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, BETA_SH                   , 'BETA_SH:'               ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF       , 'USE_LINEAR_SUBCL_MF:'   ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CAP_MAXS                  , 'CAP_MAXS:'              ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'CURRENT', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
-      if (ZERO_DIFF == 0) then
+      if (INT(ZERO_DIFF) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 5400., RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
+                                     SGS_W_TIMESCALE = 3 ! Hours
+         call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default=  3600., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800., RC=STATUS );VERIFY_(STATUS)
       else
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,   RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= 0     ,RC=STATUS );VERIFY_(STATUS)
       endif
       call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -209,7 +206,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      if (ZERO_DIFF == 0) then
+      if (INT(ZERO_DIFF) == 0) then
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
@@ -313,7 +310,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     type (ESMF_State   )            :: INTERNAL
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
-    real                            :: GF_DT
+    real                            :: GF_DT, MOIST_DT
     type(ESMF_Alarm)                :: alarm
     logical                         :: alarm_is_ringing
 
@@ -368,9 +365,41 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: RSU_CN,REV_CN,PFL_CN,PFI_CN
     real, pointer, dimension(:,:  ) :: SIGMA_DEEP, SIGMA_MID
     real, pointer, dimension(:,:,:) :: ENTR, ENTR_DP, ENTR_MD, ENTR_SH
+    real, pointer, dimension(:,:,:) :: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH     
     real, pointer, dimension(:,:  ) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
+         CF       = CF,                &
+         LONS     = LONS,              &
+         LATS     = LATS,              &
+         INTERNAL_ESMF_STATE=INTERNAL, &
+         RUNALARM = ALARM,             &
+         RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    MOIST_DT = DT_R8
+
+    ! Internals
+    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
+    ! Imports
+    call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
+    ! Initialize tendencies
+    call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -388,20 +417,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Get my internal MAPL_Generic state
     !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
-
     call MAPL_TimerOn (MAPL,"--GF")
 
     ! Get parameters from generic state.
     !-----------------------------------
-
-    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
-         CF       = CF,                &
-         LONS     = LONS,              &
-         LATS     = LATS,              &
-         INTERNAL_ESMF_STATE=INTERNAL, &
-         RC=STATUS )
-    VERIFY_(STATUS)
 
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -519,32 +538,18 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQT_DC   ,'WQT_DC'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR,    'ENTR'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_DP, 'ENTR_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_MD, 'ENTR_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_SH, 'ENTR_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR     ,'ENTR'      ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_DP  ,'ENTR_DP'   ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_MD  ,'ENTR_MD'   ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_SH  ,'ENTR_SH'   ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetPointer(EXPORT, SGS_VVEL_DP, 'SGS_VVEL_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SGS_VVEL_MD, 'SGS_VVEL_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SGS_VVEL_SH, 'SGS_VVEL_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, CNV_TOPP_DP, 'CNV_TOPP_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_SH, 'CNV_TOPP_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-
-    call MAPL_GetPointer(EXPORT, ENTR,    'ENTR'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_DP, 'ENTR_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_MD, 'ENTR_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_SH, 'ENTR_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-
-    call MAPL_GetPointer(EXPORT, CNV_TOPP_DP, 'CNV_TOPP_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_TOPP_SH, 'CNV_TOPP_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-
-    ! Initialize tendencies
-    call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
     if (STOCHASTIC_CNV) then
        ! Create bit-processor-reproducible random white noise for convection [0:1]
@@ -577,7 +582,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     IF (USE_GF2020==1) THEN
          !- Determine which W is proper import
-         IF (LHYDROSTATIC) THEN
+         IF (all(W == 0.0)) THEN
             TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
          ELSE
             TMP3D = W
@@ -586,9 +591,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ! PLE and PL are passed in Pa
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
-                                 ,T, TH, Q, U, V, TMP3D, BYNCY, QLCN, QICN, QLLS, QILS, CNPCPRATE &
+                                 ,T, TH, Q, U, V, TMP3D, BYNCY, (QLCN+QLLS), (QICN+QILS), CNPCPRATE &
                                  ,CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM      &
-                                 ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN, CLLS     &
+                                 ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, (CLCN+CLLS)    &
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
                                  ,FRLAND, TMP2D, T2M           &
@@ -602,6 +607,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,REVSU, ENTR, ENTR_DP, ENTR_MD, ENTR_SH,  PRFIL    &
+                                 , SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH            &
                                  ,TPWI, TPWI_star, LFR_GF, CNV_TR)
     ELSE
          !- call GF/GEOS5 interface routine
@@ -625,14 +631,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,REVSU, PRFIL)
     ENDIF
 
-    ! add tendencies to the moist import state
-      U  = U  +  DUDT_DC*GF_DT
-      V  = V  +  DVDT_DC*GF_DT
-      Q  = Q  + DQVDT_DC*GF_DT
-      T  = T  +  DTDT_DC*GF_DT
-      TH = T/PK
     ! update DeepCu QL/QI/CF tendencies
-      fQi = ice_fraction( T, CNV_FRC, SRF_TYPE )
+      fQi = ice_fraction( T+DTDT_DC*GF_DT, CNV_FRC, SRF_TYPE )
       TMP3D    = CNV_DQCDT/MASS
       DQLDT_DC = (1.0-fQi)*TMP3D
       DQIDT_DC =      fQi *TMP3D
@@ -646,55 +646,27 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
            PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
       enddo
-    ! add QI/QL/CL tendencies
-      QLCN =         QLCN + DQLDT_DC*GF_DT
-      QICN =         QICN + DQIDT_DC*GF_DT
-      CLCN = MAX(MIN(CLCN + DQADT_DC*GF_DT, 1.0), 0.0)
     ! Export
       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR3D)) PTR3D = fQi
-    ! fix 'convective' cloud fraction
-      if (FIX_CNV_CLOUD) then
-      ! fix convective cloud
-      TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
-      TMP3D = QST3
-      WHERE (CLCN < 1.0)
-         TMP3D = ( Q - QST3 * CLCN )/(1.-CLCN)
-      END WHERE
-      minrhx = 0.001
-      WHERE ( (( TMP3D - minrhx*QST3 ) < 0.0 ) .AND. (CLCN > 0.0) )
-         CLCN = (Q  - minrhx*QST3 )/( QST3*(1.0-minrhx) )
-      END WHERE
-      ! If still cant make suitable env RH then destroy anvil
-      WHERE ( CLCN < 0.0 )
-         CLCN = 0.
-         DQLDT_DC = DQLDT_DC - (QLCN       )/GF_DT
-         DQIDT_DC = DQIDT_DC - (       QICN)/GF_DT
-         DQVDT_DC = DQVDT_DC + (QLCN + QICN)/GF_DT
-          Q       =  Q       + (QLCN + QICN)
-         TMP3D    = (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
-         DTDT_DC  = DTDT_DC  - TMP3D/GF_DT
-          T       =  T       - TMP3D
-          TH      =  T/PK
-         QLCN = 0.
-         QICN = 0.
-      END WHERE
-      endif
-
-      !--------------------------------------------------------------
-      !  For Now add DeepCu contribution to total/detraining mass flux exports
-      !--------------------------------------------------------------
-       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       PTR3D = PTR3D + UMF_DC
-       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       PTR3D = PTR3D + MFD_DC
-
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
+      call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
+      if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
     call MAPL_TimerOff (MAPL,"--GF")
 
     endif
+
+    ! add tendencies to the moist import state
+    U  = U  +  DUDT_DC*MOIST_DT
+    V  = V  +  DVDT_DC*MOIST_DT
+    Q  = Q  + DQVDT_DC*MOIST_DT
+    T  = T  +  DTDT_DC*MOIST_DT
+    ! add QI/QL/CL tendencies
+    QLCN =         QLCN + DQLDT_DC*MOIST_DT
+    QICN =         QICN + DQIDT_DC*MOIST_DT
+    CLCN = MAX(MIN(CLCN + DQADT_DC*MOIST_DT, 1.0), 0.0)
 
 end subroutine GF_Run
 
