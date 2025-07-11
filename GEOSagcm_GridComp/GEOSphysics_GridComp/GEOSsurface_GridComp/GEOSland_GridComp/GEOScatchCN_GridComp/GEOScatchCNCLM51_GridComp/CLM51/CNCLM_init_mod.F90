@@ -185,7 +185,7 @@ module CNCLM_initMod
 
     ! initialize states and fluxes
 
-    call pftcon%init_pftcon_type        ()
+    call pftcon%init_pftcon_type        (paramfile)
 
     call bgc_vegetation_inst%Init(bounds, NLFilename, nch, ityp, fveg, cncol, cnpft, paramfile, cn5_cold_start)
 
