@@ -116,7 +116,9 @@ class PYMOIST_WRAPPER:
                 ],
             )
 
-            frland = self.f_py.fortran_to_python(f_frland, [self.flags.npx, self.flags.npy])
+            frland = self.f_py.fortran_to_python(
+                f_frland, [self.flags.npx, self.flags.npy]
+            )
 
             t = self.f_py.fortran_to_python(f_t)
             plo = self.f_py.fortran_to_python(f_plo)
@@ -234,7 +236,6 @@ def pyMoist_finalize():
 def pyMoist_init(
     import_state: cffi.FFI.CData,
     export_state: cffi.FFI.CData,
-    internal_state: cffi.FFI.CData,
     mapl_comp: cffi.FFI.CData,
     pyMoist_flags: cffi.FFI.CData,
 ):
@@ -243,17 +244,25 @@ def pyMoist_init(
     if WRAPPER.ready:
         raise RuntimeError("[PYMOIST WRAPPER] Double init")
     WRAPPER.init(
-        mapl_states=MAPLStates(import_state, export_state, internal_state, mapl_comp),
+        mapl_states=MAPLStates(
+            import_=import_state,
+            export=export_state,
+            mapl_comp=mapl_comp,
+        ),
         pyMoist_flags=pyMoist_flags,
         backend=BACKEND,
     )
 
 
-def gfdl_1m_init(gfdl_1m_flags: cffi.FFI.CData) -> None:
+def gfdl_1m_init(
+    gfdl_1m_flags: cffi.FFI.CData,
+    internal_state: cffi.FFI.CData,
+) -> None:
     if not WRAPPER.ready:
         raise RuntimeError("[GFDL_1M WRAPPER] pyMoist_init needs to be called first")
     if not WRAPPER.pymoist._GFDL_1M_ready:
         WRAPPER.pymoist.init_gfdl_1m_configuration(
             flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
+            internal_state=internal_state,
         )
         WRAPPER.pymoist._GFDL_1M_ready = True

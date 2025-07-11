@@ -119,9 +119,9 @@ typedef union
 	void *comm_ptr;
 } MPI_Comm_t;
 
-extern int pymoist_interface_py_init(void *import, void *export, void *internal, void *mapl_comp, moist_flags_t *flags);
+extern int pymoist_interface_py_init(void *import, void *export, void *mapl_comp, moist_flags_t *flags);
 
-extern int gfdl_1m_interface_py_init(gfdl_1m_flags_t *flags);
+extern int gfdl_1m_interface_py_init(gfdl_1m_flags_t *flags, void *internal);
 
 extern int pymoist_interface_py_run_AerActivation(
 	// input

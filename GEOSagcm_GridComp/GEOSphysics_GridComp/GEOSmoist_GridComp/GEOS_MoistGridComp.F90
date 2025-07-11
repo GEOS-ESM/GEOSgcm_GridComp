@@ -5196,11 +5196,7 @@ contains
 
     type (MAPL_MetaComp), pointer   :: MAPL
     type (ESMF_Config  )            :: CF
-#ifdef PYMOIST_INTEGRATION
-    type (ESMF_State   ), TARGET    :: INTERNAL
-#else
     type (ESMF_State   )            :: INTERNAL
-#endif
     type (ESMF_Alarm   )            :: ALARM
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
@@ -5362,7 +5358,7 @@ contains
           ! disable trapping of FPEs temporarily, call the Python interface and resume trapping
           call ieee_get_halting_mode(ieee_all, halting_mode)
           call ieee_set_halting_mode(ieee_all, .false.)
-          call pymoist_interface_f_init(c_loc(IMPORT), c_loc(EXPORT), c_loc(INTERNAL), c_loc(MAPL), moist_flags)
+          call pymoist_interface_f_init(c_loc(IMPORT), c_loc(EXPORT), c_loc(MAPL), moist_flags)
           call ieee_set_halting_mode(ieee_all, halting_mode)
           call cpu_time(finish)
           if (rank == 0) print *, rank, ': pymoist_runtime_init: time taken = ', finish - start, 's'

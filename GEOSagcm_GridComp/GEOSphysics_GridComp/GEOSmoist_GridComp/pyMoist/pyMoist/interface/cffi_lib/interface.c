@@ -2,7 +2,7 @@
 #include <time.h>
 #include "moist.h"
 
-extern int pymoist_interface_c_init(void *import, void *export, void *internal, void *mapl_comp, moist_flags_t *flags)
+void pymoist_interface_c_init(void *import, void *export, void *mapl, moist_flags_t *flags)
 {
     // Check magic number
     if (flags->mn_123456789 != 123456789)
@@ -10,8 +10,7 @@ extern int pymoist_interface_c_init(void *import, void *export, void *internal, 
         printf("Magic number failed, pymoist interface is broken on the C side\n");
         exit(-1);
     }
-
-    int return_code = pymoist_interface_py_init(import, export, internal, mapl_comp, flags);
+    int return_code = pymoist_interface_py_init(import, export, mapl, flags);
 
     if (return_code < 0)
     {
@@ -19,7 +18,7 @@ extern int pymoist_interface_c_init(void *import, void *export, void *internal, 
     }
 }
 
-extern int gfdl_1m_interface_c_init(gfdl_1m_flags_t *flags)
+void gfdl_1m_interface_c_init(gfdl_1m_flags_t *flags, void *internal)
 {
     // Check magic number
     if (flags->mn_123456789 != 123456789)
@@ -28,7 +27,7 @@ extern int gfdl_1m_interface_c_init(gfdl_1m_flags_t *flags)
         exit(-1);
     }
 
-    int return_code = gfdl_1m_interface_py_init(flags);
+    int return_code = gfdl_1m_interface_py_init(flags, internal);
 
     if (return_code < 0)
     {

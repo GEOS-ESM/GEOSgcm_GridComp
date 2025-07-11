@@ -28,10 +28,10 @@ from pyMoist.interface.python_bridge import (
 import traceback
 
 @ffi.def_extern()
-def pymoist_interface_py_init(import_state, export_state, internal_state, mapl_comp, flags) -> int:
+def pymoist_interface_py_init(import_state, export_state, mapl_comp, flags) -> int:
 
     try:
-        pyMoist_init(import_state, export_state, internal_state, mapl_comp, flags)
+        pyMoist_init(import_state, export_state, mapl_comp, flags)
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())
@@ -39,10 +39,13 @@ def pymoist_interface_py_init(import_state, export_state, internal_state, mapl_c
     return 0
 
 @ffi.def_extern()
-def gfdl_1m_interface_py_init(flags) -> int:
+def gfdl_1m_interface_py_init(flags, internal) -> int:
 
     try:
-        gfdl_1m_init(flags)
+        gfdl_1m_init(
+            flags,
+            internal,
+        )
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())
@@ -92,9 +95,7 @@ def pymoist_interface_py_finalize() -> int:
         return -1
     return 0
 
-""".format(
-    TMPFILEBASE
-)
+""".format(TMPFILEBASE)
 
 with open("moist.h") as f:
     data = "".join([line for line in f if not line.startswith("#")])

@@ -1,5 +1,6 @@
 module pymoist_interface_mod
 
+   use ESMF
    use iso_c_binding, only: c_int, c_float, c_double, c_bool, c_ptr
 
    implicit none
@@ -14,6 +15,7 @@ module pymoist_interface_mod
    public :: make_gfdl_1m_flags_C_interop
    public :: moist_flags_interface_type
    public :: gfdl_1m_flags_interface_type
+   public :: gfdl_1m_interface_f_init_trampoline
 
    !-----------------------------------------------------------------------
    ! Shadow C interoperable config struct for FV. See `fv_arrays.f90` for
@@ -123,22 +125,23 @@ module pymoist_interface_mod
 
    interface
 
-      subroutine pymoist_interface_f_init(IMPORT, EXPORT, INTERNAL, MAPL_COMP, moist_flags) bind(c, name='pymoist_interface_c_init')
+      subroutine pymoist_interface_f_init(IMPORT, EXPORT, MAPL_COMP, moist_flags) bind(c, name='pymoist_interface_c_init')
 
          import c_ptr, c_int, c_float, c_double, c_bool, moist_flags_interface_type
 
          implicit none
          type(moist_flags_interface_type), intent(in) :: moist_flags
-         type(c_ptr), intent(in) :: IMPORT, EXPORT, INTERNAL, MAPL_COMP
+         type(c_ptr), intent(in), value :: IMPORT, EXPORT, MAPL_COMP
 
       end subroutine pymoist_interface_f_init
 
-      subroutine gfdl_1m_interface_f_init(gfdl_1m_flags) bind(c, name='gfdl_1m_interface_c_init')
+      subroutine gfdl_1m_interface_f_init(gfdl_1m_flags, INTERNAL) bind(c, name='gfdl_1m_interface_c_init')
 
-         import c_int, c_float, c_double, c_bool, gfdl_1m_flags_interface_type
+         import c_ptr, c_int, c_float, c_double, c_bool, gfdl_1m_flags_interface_type
 
          implicit none
          type(gfdl_1m_flags_interface_type), intent(in) :: gfdl_1m_flags
+         type(c_ptr), intent(in), value :: INTERNAL
 
       end subroutine gfdl_1m_interface_f_init
 
@@ -191,6 +194,14 @@ module pymoist_interface_mod
    end interface
 
 contains
+
+   subroutine gfdl_1m_interface_f_init_trampoline(gfdl_1m_flags, INTERNAL)
+      type(gfdl_1m_flags_interface_type), intent(in) :: gfdl_1m_flags
+      type(ESMF_State), intent(in), target, value :: INTERNAL
+
+      call gfdl_1m_interface_f_init(gfdl_1m_flags, c_loc(INTERNAL))
+
+   end subroutine gfdl_1m_interface_f_init_trampoline
 
    subroutine make_moist_flags_C_interop(npx, npy, npz , nx, ny, n_tiles, n_modes, moist_flags)
 
