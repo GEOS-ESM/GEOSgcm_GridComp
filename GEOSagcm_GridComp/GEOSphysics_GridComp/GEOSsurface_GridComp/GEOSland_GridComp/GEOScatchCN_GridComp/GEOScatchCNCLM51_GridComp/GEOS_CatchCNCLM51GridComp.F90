@@ -4391,7 +4391,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! read CNCLM51 parameter file
 !-----------------------------
 
-   call MAPL_GetResource (MAPL, cnclm51_paramfile, label = 'ctsm51_params.c210923_forCNCLM_FILE:', default = 'ctsm51_params.c210923_forCNCLM.nc', RC=STATUS )
+   call MAPL_GetResource (MAPL, cnclm51_paramfile, label = 'CNCLM51_PARAM_FILE:', default = 'ctsm51_params.c210923_forCNCLM.nc', RC=STATUS )
    VERIFY_(STATUS)
 
 ! initialize CN model and transfer restart variables on startup
