@@ -540,11 +540,13 @@ class Finalize:
                 fpi=temporaries.temporary_2d_2,
             )
 
-        # if (
-        #     outputs.simulated_reflectivity is not None
-        #     or outputs.maximum_reflectivity is not None
-        #     or outputs.one_km_agl_reflectivity is not None
-        #     or outputs.echo_top_reflectivity is not None
-        #     or outputs.minus_10c_reflectivity is not None
-        # ):
-        #     raise NotImplementedError("Diagnostic radar output not implemented yet.")
+        if (
+            outputs.simulated_reflectivity is not None
+            or outputs.maximum_reflectivity is not None
+            or outputs.one_km_agl_reflectivity is not None
+            or outputs.echo_top_reflectivity is not None
+            or outputs.minus_10c_reflectivity is not None
+        ):
+            from ndsl import ndsl_log
+
+            ndsl_log.warning("Diagnostic radar output not implemented yet.")
