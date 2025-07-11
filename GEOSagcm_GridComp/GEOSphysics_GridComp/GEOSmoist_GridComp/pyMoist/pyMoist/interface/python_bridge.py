@@ -116,9 +116,7 @@ class PYMOIST_WRAPPER:
                 ],
             )
 
-            frland = self.f_py.fortran_to_python(
-                f_frland, [self.flags.npx, self.flags.npy]
-            )
+            frland = self.f_py.fortran_to_python(f_frland, [self.flags.npx, self.flags.npy])
 
             t = self.f_py.fortran_to_python(f_t)
             plo = self.f_py.fortran_to_python(f_plo)

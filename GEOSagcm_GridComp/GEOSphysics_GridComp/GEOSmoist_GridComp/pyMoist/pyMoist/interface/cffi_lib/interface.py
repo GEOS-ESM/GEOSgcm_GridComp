@@ -95,7 +95,9 @@ def pymoist_interface_py_finalize() -> int:
         return -1
     return 0
 
-""".format(TMPFILEBASE)
+""".format(
+    TMPFILEBASE
+)
 
 with open("moist.h") as f:
     data = "".join([line for line in f if not line.startswith("#")])

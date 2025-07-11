@@ -37,6 +37,7 @@ from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
+from pyMoist.interface.cuda_profiler import TimedCUDAProfiler
 from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
 from pyMoist.interface.mapl.memory_factory import MAPLManagedMemory, MAPLMemoryRepository
 
@@ -105,7 +106,6 @@ class StencilBackendCompilerOverride:
 class MAPLStates:
     import_: CVoidPointer
     export: CVoidPointer
-    internal: CVoidPointer
     mapl_comp: CVoidPointer
 
 
@@ -145,11 +145,17 @@ class GEOSPyMoistWrapper:
             tile_partitioner=partitioner.tile,
             tile_rank=self.communicator.tile.rank,
         )
-        self.quantity_factory = QuantityFactory.from_backend(sizer=sizer, backend=backend)
-        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(self.quantity_factory)
+        self.quantity_factory = QuantityFactory.from_backend(
+            sizer=sizer, backend=backend
+        )
+        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
+            self.quantity_factory
+        )
 
         self.stencil_config = StencilConfig(
-            compilation_config=CompilationConfig(backend=backend, rebuild=False, validate_args=True),
+            compilation_config=CompilationConfig(
+                backend=backend, rebuild=False, validate_args=True
+            ),
         )
 
         # Build a DaCeConfig for orchestration.
@@ -165,15 +171,23 @@ class GEOSPyMoistWrapper:
 
         # TODO: Orchestrate all code called from this function
 
-        self._grid_indexing = GridIndexing.from_sizer_and_communicator(sizer=sizer, comm=self.communicator)
-        self.stencil_factory = StencilFactory(config=self.stencil_config, grid_indexing=self._grid_indexing)
+        self._grid_indexing = GridIndexing.from_sizer_and_communicator(
+            sizer=sizer, comm=self.communicator
+        )
+        self.stencil_factory = StencilFactory(
+            config=self.stencil_config, grid_indexing=self._grid_indexing
+        )
 
         self._fortran_mem_space = fortran_mem_space
-        self._pace_mem_space = MemorySpace.DEVICE if is_gpu_backend(backend) else MemorySpace.HOST
+        self._pace_mem_space = (
+            MemorySpace.DEVICE if is_gpu_backend(backend) else MemorySpace.HOST
+        )
 
         # Feedback information
         device_ordinal_info = (
-            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}\n" if is_gpu_backend(backend) else "N/A"
+            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}\n"
+            if is_gpu_backend(backend)
+            else "N/A"
         )
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = (
@@ -194,16 +208,15 @@ class GEOSPyMoistWrapper:
             f"     Nvidia MPS : {MPS_is_on}"
         )
 
+        # Timer result dict
+        self._timings = {}
+
         # JIT system for the component of Moist
         self._aer_activation: Optional[AerActivation] = None
         self._GFDL_1M_driver: Optional[MicrophysicsDriver] = None
         self._GFDL_1M_ready: Optional[bool] = False
 
         # Initalize MAPL Memory Respositories
-        self._mapl_internal = MAPLMemoryRepository(
-            mapl_states.internal,
-            self.quantity_factory,
-        )
         self._mapl_import = MAPLMemoryRepository(
             mapl_states.import_,
             self.quantity_factory,
@@ -259,10 +272,15 @@ class GEOSPyMoistWrapper:
     def init_gfdl_1m_configuration(
         self,
         flags: GFDL1MFlags,
+        internal_state: CVoidPointer,
     ):
         from pyMoist.GFDL_1M.config import GFDL1MConfig
         from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
 
+        self._mapl_internal = MAPLMemoryRepository(
+            internal_state,
+            self.quantity_factory,
+        )
         # Get namelist/non-constant parameters passed through the interface
         upper_case_dict = {}
         for field in dataclasses.fields(GFDL1MFlags):
@@ -272,13 +290,21 @@ class GEOSPyMoistWrapper:
 
         # Get remaining required parameters from MAPL
         HYDROSTATIC = self._mapl_comp.get_resource("HYDROSTATIC:", bool, default=True)
-        PHYS_HYDROSTATIC = self._mapl_comp.get_resource("PHYS_HYDROSTATIC:", bool, default=True)
+        PHYS_HYDROSTATIC = self._mapl_comp.get_resource(
+            "PHYS_HYDROSTATIC:", bool, default=True
+        )
         MELTFRZ = self._mapl_comp.get_resource("MELTFRZ:", bool, default=True)
-        TURNRHCRIT = self._mapl_comp.get_resource("TURNRHCRIT:", np.float32, default=-9999.0)
+        TURNRHCRIT = self._mapl_comp.get_resource(
+            "TURNRHCRIT:", np.float32, default=-9999.0
+        )
         # PDF_SHAPE = self._mapl_comp.get_resource("PDFSHAPE:", np.int32, default=1)
         PDF_SHAPE = 1
-        ANV_ICEFALL = self._mapl_comp.get_resource("ANV_ICEFALL:", np.float32, default=1.0)
-        LS_ICEFALL = self._mapl_comp.get_resource("LS_ICEFALL:", np.float32, default=1.0)
+        ANV_ICEFALL = self._mapl_comp.get_resource(
+            "ANV_ICEFALL:", np.float32, default=1.0
+        )
+        LS_ICEFALL = self._mapl_comp.get_resource(
+            "LS_ICEFALL:", np.float32, default=1.0
+        )
         # LIQ_RADII_PARAM = self._mapl_comp.get_resource("LIQ_RADII_PARAM:", np.int32, default=2)
         LIQ_RADII_PARAM = 2
         # ICE_RADII_PARAM = self._mapl_comp.get_resource("ICE_RADII_PARAM:", np.int32, default=1)
@@ -289,8 +315,12 @@ class GEOSPyMoistWrapper:
         FAC_RL = self._mapl_comp.get_resource("FAC_RL:", np.float32, default=1.0)
         MIN_RL = self._mapl_comp.get_resource("MIN_RL:", np.float32, default=2.5e-6)
         MAX_RL = self._mapl_comp.get_resource("MAX_RL:", np.float32, default=60.0e-6)
-        CCW_EVAP_EFF = self._mapl_comp.get_resource("CCW_EVAP_EFF:", np.float32, default=60.0e-6)
-        CCI_EVAP_EFF = self._mapl_comp.get_resource("CCI_EVAP_EFF:", np.float32, default=60.0e-6)
+        CCW_EVAP_EFF = self._mapl_comp.get_resource(
+            "CCW_EVAP_EFF:", np.float32, default=60.0e-6
+        )
+        CCI_EVAP_EFF = self._mapl_comp.get_resource(
+            "CCI_EVAP_EFF:", np.float32, default=60.0e-6
+        )
 
         self.GFDL_1M_config = GFDL1MConfig(
             HYDROSTATIC=HYDROSTATIC,
@@ -314,7 +344,13 @@ class GEOSPyMoistWrapper:
         )
 
         # Initalize the module
-        self.gfdl_1m = GFDL1M(self.stencil_factory, self.quantity_factory, self.GFDL_1M_config)
+        with StencilBackendCompilerOverride(
+            MPI.COMM_WORLD,
+            self.stencil_config.dace_config,
+        ):
+            self.gfdl_1m = GFDL1M(
+                self.stencil_factory, self.quantity_factory, self.GFDL_1M_config
+            )
 
         # Link Fortran memory to Python memory #####
         # Fortran memory will only be modified if GFDL1M.__call__
@@ -372,26 +408,66 @@ class GEOSPyMoistWrapper:
         self._mapl_export.register("LTS", np.float32, [X_DIM, Y_DIM], True)
         self._mapl_export.register("EIS", np.float32, [X_DIM, Y_DIM], True)
         self._mapl_export.register("ZLCL", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("DUDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DTDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQLDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQIDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQADT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQRDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQSDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQGDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DUDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DTDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQLDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQIDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQADT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQRDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQSDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQGDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
+        self._mapl_export.register(
+            "DUDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DTDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQLDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQIDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQADT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQRDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQSDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQGDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DUDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DTDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQLDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQIDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQADT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQRDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQSDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
+        self._mapl_export.register(
+            "DQGDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True
+        )
         self._mapl_export.register("LS_PRCP", np.float32, [X_DIM, Y_DIM], True)
         self._mapl_export.register("LS_SNR", np.float32, [X_DIM, Y_DIM], True)
         self._mapl_export.register("ICE", np.float32, [X_DIM, Y_DIM], True)
@@ -399,10 +475,18 @@ class GEOSPyMoistWrapper:
         self._mapl_export.register("RHX", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
         self._mapl_export.register("REV_LS", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
         self._mapl_export.register("RSU_LS", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("PFL_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
-        self._mapl_export.register("PFI_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
-        self._mapl_export.register("PFL_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
-        self._mapl_export.register("PFI_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
+        self._mapl_export.register(
+            "PFL_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True
+        )
+        self._mapl_export.register(
+            "PFI_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True
+        )
+        self._mapl_export.register(
+            "PFL_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True
+        )
+        self._mapl_export.register(
+            "PFI_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True
+        )
         self._mapl_export.register("DQRL", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("DTDTFRIC", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_export.register("DBZ", np.float32, [X_DIM, Y_DIM, Z_DIM])
@@ -426,9 +510,11 @@ class GEOSPyMoistWrapper:
             VericalMotion,
         )
 
-        with MAPLManagedMemory(self._mapl_internal) as mapl_internal, MAPLManagedMemory(
-            self._mapl_import
-        ) as mapl_import, MAPLManagedMemory(self._mapl_export) as mapl_export:
+        with (
+            MAPLManagedMemory(self._mapl_internal) as mapl_internal,
+            MAPLManagedMemory(self._mapl_import) as mapl_import,
+            MAPLManagedMemory(self._mapl_export) as mapl_export,
+        ):
             # Pull the data from the linked Fortran memory
             self.gfdl_1m.mixing_ratios = MixingRatios(
                 vapor=mapl_internal.Q,
@@ -484,8 +570,12 @@ class GEOSPyMoistWrapper:
             # Outputs: model fields originating from within GFDL
             self.gfdl_1m.outputs.liquid_radius = mapl_export.RL
             self.gfdl_1m.outputs.ice_radius = mapl_export.RI
-            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_export.EVAPC
-            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_export.SUBLC
+            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_evaporation = (
+                mapl_export.EVAPC
+            )
+            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_sublimation = (
+                mapl_export.SUBLC
+            )
             self.gfdl_1m.outputs.precipitated_rain = mapl_export.PRCP_RAIN
             self.gfdl_1m.outputs.precipitated_snow = mapl_export.PRCP_SNOW
             self.gfdl_1m.outputs.precipitated_ice = mapl_export.PRCP_ICE
@@ -533,8 +623,12 @@ class GEOSPyMoistWrapper:
             self.gfdl_1m.outputs.icefall = mapl_export.ICE
             self.gfdl_1m.outputs.freezing_rainfall = mapl_export.FRZR
             self.gfdl_1m.outputs.relative_humidity_after_pdf = mapl_export.RHX
-            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_evaporation = mapl_export.REV_LS
-            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_sublimation = mapl_export.RSU_LS
+            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_evaporation = (
+                mapl_export.REV_LS
+            )
+            self.gfdl_1m.outputs.large_scale_nonanvil_precipitation_sublimation = (
+                mapl_export.RSU_LS
+            )
             self.gfdl_1m.outputs.large_scale_nonanvil_liquid_flux = mapl_export.PFL_LS
             self.gfdl_1m.outputs.large_scale_nonanvil_ice_flux = mapl_export.PFI_LS
             self.gfdl_1m.outputs.anvil_liquid_flux = mapl_export.PFL_AN
@@ -544,7 +638,9 @@ class GEOSPyMoistWrapper:
             else:
                 self.gfdl_1m.outputs.large_scale_rainwater_source = None
             if mapl_export.associated("DTDTFRIC"):
-                self.gfdl_1m.outputs.moist_friction_temperature_tendency = mapl_export.DTDTFRIC
+                self.gfdl_1m.outputs.moist_friction_temperature_tendency = (
+                    mapl_export.DTDTFRIC
+                )
             else:
                 self.gfdl_1m.outputs.moist_friction_temperature_tendency = None
             if mapl_export.associated("DBZ"):
@@ -576,4 +672,5 @@ class GEOSPyMoistWrapper:
             self.gfdl_1m.outputs.shallow_convective_snow = mapl_export.SC_SNR
 
             # Call the module
-            self.gfdl_1m()
+            with TimedCUDAProfiler("GFDL 1M", self._timings, True):
+                self.gfdl_1m()
