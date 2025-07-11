@@ -2,15 +2,11 @@
 #                                                                                  #
 #    Resource file for surface parameters, *jointly* used by the GCM and GEOSldas. #     
 #                                                                                  #
-#    Different default values for the GCM and GEOSldas are supported as follows:   #
-#                                                                                  #
-#    - Lines that are NOT commented out can be used to specify GCM defaults as     #
-#        needed, because they are ignored by GEOSldas.                             #
-#                                                                                  #
-#    - The string "GEOSldas=>" identifies the GEOSldas default.                    # 
-#                                                                                  #
-#    This works because this resource file is processed by the GEOSldas            #
-#      script "ldas_setup".                                                        #
+#    Different default values for the GCM and GEOSldas are supported because       #
+#    because this resource file is processed by setup scripts (gcm_setup,          #
+#    fvsetup, ldas_setup).                                                         #
+#    The setup scripts uncomment the appropriate default values by removing the    #
+#    the appropriate '# GEOS[xxxx]=>' strings.                                     # 
 #                                                                                  #
 #    NOTE: For the GCM, there must NOT be white space between the resource         #
 #          parameter name and the colon.                                           #                                         
