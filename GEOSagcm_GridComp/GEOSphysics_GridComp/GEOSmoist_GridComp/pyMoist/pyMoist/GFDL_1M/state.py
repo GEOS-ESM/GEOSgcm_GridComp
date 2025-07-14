@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+import numpy.typing as npt
+
 from ndsl import Quantity
 
 
@@ -12,9 +14,9 @@ class LiquidWaterStaticEnergy:
         third_moment: K+3
     """
 
-    flux: Quantity
-    variance: Quantity
-    third_moment: Quantity
+    flux: Quantity | npt.NDArray
+    variance: Quantity | npt.NDArray
+    third_moment: Quantity | npt.NDArray
 
 
 @dataclass
@@ -31,14 +33,14 @@ class MixingRatios:
         large_scale_ice: kg kg-1
     """
 
-    vapor: Quantity
-    rain: Quantity
-    snow: Quantity
-    graupel: Quantity
-    convective_liquid: Quantity
-    convective_ice: Quantity
-    large_scale_liquid: Quantity
-    large_scale_ice: Quantity
+    vapor: Quantity | npt.NDArray
+    rain: Quantity | npt.NDArray
+    snow: Quantity | npt.NDArray
+    graupel: Quantity | npt.NDArray
+    convective_liquid: Quantity | npt.NDArray
+    convective_ice: Quantity | npt.NDArray
+    large_scale_liquid: Quantity | npt.NDArray
+    large_scale_ice: Quantity | npt.NDArray
 
 
 @dataclass
@@ -49,26 +51,28 @@ class CloudFractions:
         large_scale: 1
     """
 
-    convective: Quantity
-    large_scale: Quantity
+    convective: Quantity | npt.NDArray
+    large_scale: Quantity | npt.NDArray
 
 
 @dataclass
 class TotalWater:
     """
+    Optional outputs of Hydrostatic PDF for PDF_Shape=5
+
     Units:
         flux: kg kg-1 m s-1
         variance: 1
         third_moment: 1
     """
 
-    flux: Quantity
-    variance: Quantity
-    third_moment: Quantity
+    flux: Quantity | npt.NDArray
+    variance: Quantity | npt.NDArray
+    third_moment: Quantity | npt.NDArray
 
 
 @dataclass
-class VericalMotion:
+class VerticalMotion:
     """
     Units:
         velocity: m s-1
@@ -76,6 +80,6 @@ class VericalMotion:
         third_moment: m3 s-3
     """
 
-    velocity: Quantity
-    variance: Quantity
-    third_moment: Quantity
+    velocity: Quantity | npt.NDArray
+    variance: Quantity | npt.NDArray
+    third_moment: Quantity | npt.NDArray

@@ -36,7 +36,12 @@ def rh_calculations(
             rh_crit = minrhcrit + (1.0 - minrhcrit) / (19.0) * (
                 (
                     atan(
-                        (2.0 * (p_mb - turnrhcrit) / (p_interface_mb.at(K=k_end) - turnrhcrit) - 1.0)
+                        (
+                            2.0
+                            * (p_mb - turnrhcrit)
+                            / (p_interface_mb.at(K=k_end) - turnrhcrit)
+                            - 1.0
+                        )
                         * tan(20.0 * constants.MAPL_PI / 21.0 - 0.5 * constants.MAPL_PI)
                     )
                     + 0.5 * constants.MAPL_PI
@@ -54,4 +59,8 @@ def rh_calculations(
     with computation(PARALLEL), interval(...):
         # include grid cell area scaling and limit RHcrit to > 70%\
         alpha = max(0.0, min(0.30, (1.0 - rh_crit) * sqrt(sqrt(area / 1.0e10))))
+
+
+def compute_rh_crit_3D(alpha: FloatField, rh_crit_3d: FloatField):
+    with computation(PARALLEL), interval(...):
         rh_crit_3d = 1 - alpha

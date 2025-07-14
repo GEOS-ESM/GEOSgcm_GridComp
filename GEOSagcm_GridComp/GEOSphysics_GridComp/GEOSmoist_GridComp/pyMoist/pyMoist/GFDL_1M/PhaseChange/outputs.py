@@ -6,16 +6,12 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 @dataclass
 class Outputs:
-    rhx: Quantity
     evapc: Quantity
     sublc: Quantity
-    rh_crit: Quantity
 
     @classmethod
-    def make(cls, quantity_factory: QuantityFactory):
+    def zeros(cls, quantity_factory: QuantityFactory):
         # initialize precipitation outputs
-        rhx = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         evapc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         sublc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        rh_crit = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        return cls(rhx, evapc, sublc, rh_crit)
+        return cls(evapc, sublc)

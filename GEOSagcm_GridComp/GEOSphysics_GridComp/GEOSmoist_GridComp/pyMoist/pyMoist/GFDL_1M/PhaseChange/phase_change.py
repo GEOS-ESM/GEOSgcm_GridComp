@@ -11,12 +11,17 @@ from pyMoist.GFDL_1M.PhaseChange.evaporate import evaporate
 from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
 from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 from pyMoist.GFDL_1M.PhaseChange.outputs import Outputs
-from pyMoist.GFDL_1M.PhaseChange.rh_calculations import rh_calculations
+from pyMoist.GFDL_1M.PhaseChange.rh_calculations import (
+    rh_calculations,
+    compute_rh_crit_3D,
+)
 from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.GFDL_1M.PhaseChange.temporaries import Temporaries
+from pyMoist.GFDL_1M.state import TotalWater, LiquidWaterStaticEnergy
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared_incloud_processes import fix_up_clouds
+from typing import Optional
 
 
 class PhaseChange:
@@ -33,8 +38,20 @@ class PhaseChange:
     ):
         if GFDL_1M_config.USE_BERGERON is not True:
             raise NotImplementedError(
-                "Untested option for use_bergeron. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
+                "Untested option for use_bergeron. Code may be missing or incomplete. "
+                "Disable this error manually to continue."
+            )
+
+        if GFDL_1M_config.PDF_SHAPE >= 5:
+            raise NotImplementedError(
+                f"PDF_SHAPE={GFDL_1M_config.PDF_SHAPE} hasn't been ported"
+                "from the Fortran"
+            )
+
+        if GFDL_1M_config.PDF_SHAPE > 1 and GFDL_1M_config.PDF_SHAPE < 5:
+            raise NotImplementedError(
+                f"PDF_SHAPE={GFDL_1M_config.PDF_SHAPE} is ported but untested. "
+                "Disable this error manually to continue."
             )
 
         self.stencil_factory = stencil_factory
@@ -45,7 +62,7 @@ class PhaseChange:
         # initialize precipitation outputs
         # -----------------------------------------------------------------------
 
-        self.outputs = Outputs.make(quantity_factory)
+        self.outputs = Outputs.zeros(quantity_factory)
 
         # -----------------------------------------------------------------------
         # initialize temporaries
@@ -74,6 +91,11 @@ class PhaseChange:
                 "DW_OCEAN": GFDL_1M_config.DW_OCEAN,
                 "TURNRHCRIT_PARAM": GFDL_1M_config.TURNRHCRIT_PARAM,
             },
+        )
+
+        self._compute_rh_crit_3D = self.stencil_factory.from_dims_halo(
+            func=compute_rh_crit_3D,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self._hydrostatic_pdf = self.stencil_factory.from_dims_halo(
@@ -135,7 +157,37 @@ class PhaseChange:
         nactl: FloatField,
         nacti: FloatField,
         qsat: FloatField,
+        rhx: FloatField,
+        rh_crit: Optional[FloatField] = None,
+        total_water: TotalWater | None = None,
+        liquid_static_energy: LiquidWaterStaticEnergy | None = None,
     ):
+        """
+
+        Args:
+            (?) estimated_inversion_strength : ?
+            (?) p_mb : ?
+            (?) k_lcl : ?
+            (?) p_interface_mb : ?
+            (?) area : ?
+            (?) convection_fraction : ?
+            (?) surface_type : ?
+            (?) t : ?
+            (?) convective_liquid : ?
+            (?) convective_ice : ?
+            (?) large_scale_liquid : ?
+            (?) large_scale_ice : ?
+            (?) vapor : ?
+            (?) large_scale_cloud_fraction : ?
+            (?) convective_cloud_fraction : ?
+            (?) nactl : ?
+            (?) nacti : ?
+            (?) qsat : ?
+            (out) rhx : ?
+            (out) rh_crit: ?
+            (?) total_water : ?
+            (?) liquid_static_energy : ?
+        """
         self._rh_calculations(
             estimated_inversion_strength=estimated_inversion_strength,
             minrhcrit=self.temporaries.minrhcrit,
@@ -144,8 +196,11 @@ class PhaseChange:
             area=area,
             alpha=self.temporaries.alpha,
             k_lcl=k_lcl,
-            rh_crit_3d=self.outputs.rh_crit,
+            rh_crit_3d=rh_crit,
         )
+
+        if rh_crit is not None:
+            self._compute_rh_crit_3D(self.temporaries.alpha, rh_crit)
 
         self._hydrostatic_pdf(
             alpha=self.temporaries.alpha,
@@ -161,7 +216,7 @@ class PhaseChange:
             large_scale_cloud_fraction=large_scale_cloud_fraction,
             convective_cloud_fraction=convective_cloud_fraction,
             nacti=nacti,
-            rhx=self.outputs.rhx,
+            rhx=rhx,
             ese=self.tables.ese,
             esw=self.tables.esw,
             esx=self.tables.esx,
@@ -170,8 +225,20 @@ class PhaseChange:
         )
 
         if self.GFDL_1M_config.MELTFRZ:
-            self._meltfrz(convection_fraction, surface_type, t, convective_liquid, convective_ice)
-            self._meltfrz(convection_fraction, surface_type, t, large_scale_liquid, large_scale_ice)
+            self._meltfrz(
+                convection_fraction,
+                surface_type,
+                t,
+                convective_liquid,
+                convective_ice,
+            )
+            self._meltfrz(
+                convection_fraction,
+                surface_type,
+                t,
+                large_scale_liquid,
+                large_scale_ice,
+            )
 
         if self.GFDL_1M_config.CCW_EVAP_EFF > 0.0:
             self._evap(

@@ -27,7 +27,6 @@ def prepare_tendencies(
     dsnow_dt: FloatField,
     dgraupel_dt: FloatField,
 ):
-
     with computation(PARALLEL), interval(...):
         du_dt = u
         dv_dt = v
@@ -41,7 +40,7 @@ def prepare_tendencies(
         dgraupel_dt = graupel
 
 
-def update_radiation_quantities(
+def _update_radiation(
     t: FloatField,
     u: FloatField,
     v: FloatField,
@@ -115,14 +114,15 @@ def update_tendencies(
         dliquid_dt = ((convective_liquid + large_scale_liquid) - dliquid_dt) / DT_MOIST
         dice_dt = ((convective_ice + large_scale_ice) - dice_dt) / DT_MOIST
         dcloud_fraction_dt = (
-            (convective_cloud_fraction + large_scale_cloud_fraction) - dcloud_fraction_dt
+            (convective_cloud_fraction + large_scale_cloud_fraction)
+            - dcloud_fraction_dt
         ) / DT_MOIST
         drain_dt = (rain - drain_dt) / DT_MOIST
         dsnow_dt = (snow - dsnow_dt) / DT_MOIST
         dgraupel_dt = (graupel - dgraupel_dt) / DT_MOIST
 
 
-def prepare_radiation_quantities(
+def _prepare_radiation(
     convective_cloud_fraction: FloatField,
     large_scale_cloud_fraction: FloatField,
     radiation_cloud_fraction: FloatField,
@@ -143,7 +143,9 @@ def prepare_radiation_quantities(
 ):
     with computation(PARALLEL), interval(...):
         # cloud fraction
-        radiation_cloud_fraction = min(convective_cloud_fraction + large_scale_cloud_fraction, 1.0)
+        radiation_cloud_fraction = min(
+            convective_cloud_fraction + large_scale_cloud_fraction, 1.0
+        )
         # liquid
         radiation_liquid = convective_liquid + large_scale_liquid
         # ice
