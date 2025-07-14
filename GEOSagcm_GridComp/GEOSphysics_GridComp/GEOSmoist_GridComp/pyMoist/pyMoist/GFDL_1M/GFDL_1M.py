@@ -1,4 +1,4 @@
-from ndsl import QuantityFactory, StencilFactory
+from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
@@ -10,8 +10,8 @@ from pyMoist.GFDL_1M.setup import Setup
 from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios, VerticalMotion
 from pyMoist.GFDL_1M.stencils import (
     _prepare_radiation,
-    prepare_tendencies,
     _update_radiation,
+    prepare_tendencies,
     update_tendencies,
 )
 from pyMoist.GFDL_1M.temporaries import Temporaries
@@ -45,18 +45,24 @@ class GFDL1M:
         quantity_factory: QuantityFactory,
         GFDL_1M_config: GFDL1MConfig,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_compiletime_args=[
+                "mixing_ratios",
+                "cloud_fractions",
+                "vertical_motion",
+                "outputs",
+            ],
+        )
         self.stencil_factory = stencil_factory
         if self.stencil_factory.grid_indexing.n_halo != 0:
-            raise ValueError(
-                "halo needs to be zero for GFDL Single Moment microphysics"
-            )
+            raise ValueError("halo needs to be zero for GFDL Single Moment microphysics")
         self.quantity_factory = quantity_factory
         self.GFDL_1M_config = GFDL_1M_config
 
         # Initalize saturation tables
-        self.saturation_tables = SaturationVaporPressureTable(
-            self.stencil_factory.backend
-        )
+        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         # Initalize internal fields
         self.masks = Masks.make(quantity_factory=quantity_factory)

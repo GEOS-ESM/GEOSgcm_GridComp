@@ -1,5 +1,7 @@
 """GFDL_1M driver"""
 
+import dace
+
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.config import GFDL1MConfig
@@ -255,7 +257,7 @@ class MicrophysicsDriver:
             self.outputs.isubl,
         )
 
-        for n in range(self.config_dependent_constants.NTIMES):
+        for _ in dace.nounroll(range(self.config_dependent_constants.NTIMES)):
             self._fall_speed(
                 self.temporaries.ql1,
                 self.temporaries.qi1,

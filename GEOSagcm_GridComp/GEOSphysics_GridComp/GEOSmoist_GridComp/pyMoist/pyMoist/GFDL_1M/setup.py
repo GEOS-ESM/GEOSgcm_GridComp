@@ -1,17 +1,10 @@
 from typing import Optional
+
 from gt4py.cartesian.gtscript import THIS_K
 
-from ndsl import StencilFactory
+from ndsl import StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.gt4py import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    function,
-    interval,
-    log,
-)
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
 from pyMoist.constants import (
     MAPL_ALHL,
@@ -191,9 +184,7 @@ def find_eis(
             1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850))
         )
         gamma850 = MAPL_GRAV / MAPL_CP * (1.0 - gamma850)
-        estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (
-            z700 - zlcl
-        )
+        estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (z700 - zlcl)
 
 
 def update_precipitaiton(
@@ -218,6 +209,7 @@ class Setup:
     find_eis: computes the estimated inversion strength
     update_precipitation (conditional): updates precipitation (rain and snow) using shallow convection values
     """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -225,6 +217,17 @@ class Setup:
         saturation_tables: SaturationVaporPressureTable,
         prepare_tendencies,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_compiletime_args=[
+                "mixing_ratios",
+                "cloud_fractions",
+                "masks",
+                "outputs",
+                "temporaries",
+            ],
+        )
         self.GFDL_1M_config = GFDL_1M_config
         self.saturation_tables = saturation_tables
         self.prepare_tendencies = prepare_tendencies

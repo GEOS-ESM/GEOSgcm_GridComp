@@ -2,6 +2,8 @@
 I/O and errorhandling is performed here.
 Calculations can be found in deeper functions."""
 
+from typing import Optional
+
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
@@ -10,17 +12,13 @@ from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.PhaseChange.evaporate import evaporate
 from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
 from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
-from pyMoist.GFDL_1M.PhaseChange.rh_calculations import (
-    rh_calculations,
-    compute_rh_crit_3D,
-)
+from pyMoist.GFDL_1M.PhaseChange.rh_calculations import compute_rh_crit_3D, rh_calculations
 from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.GFDL_1M.PhaseChange.temporaries import Temporaries
-from pyMoist.GFDL_1M.state import TotalWater, LiquidWaterStaticEnergy
+from pyMoist.GFDL_1M.state import LiquidWaterStaticEnergy, TotalWater
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared_incloud_processes import fix_up_clouds
-from typing import Optional
 
 
 class PhaseChange:
@@ -35,6 +33,14 @@ class PhaseChange:
         GFDL_1M_config: GFDL1MConfig,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_compiletime_args=[
+                "total_water",
+                "liquid_static_energy",
+            ],
+        )
         if GFDL_1M_config.USE_BERGERON is not True:
             raise NotImplementedError(
                 "Untested option for use_bergeron. Code may be missing or incomplete. "
@@ -43,8 +49,7 @@ class PhaseChange:
 
         if GFDL_1M_config.PDF_SHAPE >= 5:
             raise NotImplementedError(
-                f"PDF_SHAPE={GFDL_1M_config.PDF_SHAPE} hasn't been ported"
-                "from the Fortran"
+                f"PDF_SHAPE={GFDL_1M_config.PDF_SHAPE} hasn't been ported" "from the Fortran"
             )
 
         if GFDL_1M_config.PDF_SHAPE > 1 and GFDL_1M_config.PDF_SHAPE < 5:
@@ -74,7 +79,6 @@ class PhaseChange:
         # -----------------------------------------------------------------------
         # Initalizse stencils
         # -----------------------------------------------------------------------
-        orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         self._rh_calculations = self.stencil_factory.from_dims_halo(
             func=rh_calculations,

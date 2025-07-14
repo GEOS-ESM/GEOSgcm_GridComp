@@ -13,6 +13,7 @@ from gt4py.cartesian.config import build_settings as gt_build_settings
 from MAPLpyish import CVoidPointer
 from mpi4py import MPI
 
+import pyMoist.GFDL_1M as pyGFDL_1M
 from ndsl import (
     CompilationConfig,
     CubedSphereCommunicator,
@@ -37,13 +38,9 @@ from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
-import pyMoist.GFDL_1M as pyGFDL_1M
 from pyMoist.interface.cuda_profiler import TimedCUDAProfiler
 from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
-from pyMoist.interface.mapl.memory_factory import (
-    MAPLManagedMemory,
-    MAPLMemoryRepository,
-)
+from pyMoist.interface.mapl.memory_factory import MAPLManagedMemory, MAPLMemoryRepository
 
 
 class MemorySpace(enum.Enum):

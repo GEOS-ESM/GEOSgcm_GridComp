@@ -1,5 +1,6 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import FORWARD, PARALLEL, THIS_K, computation, exp, interval, log, log10
+from mpi4py import MPI
 
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -204,6 +205,12 @@ class GFDL_driver_tables:
         self._des4 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._esupc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
+        # Cancel multi-node compile for tables
+        # TODO: this should come for free with the rewrite of the gt:X stencils
+        #       compilation mode
+        if MPI.COMM_WORLD.Get_rank() != 0:
+            MPI.COMM_WORLD.Barrier()
+
         compute_qs_table_1 = stencil_factory.from_origin_domain(
             func=qs_table_1,
             origin=(0, 0, 0),
@@ -245,6 +252,9 @@ class GFDL_driver_tables:
             self._table3,
             self._table4,
         )
+
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            MPI.COMM_WORLD.Barrier()
 
         self.table1 = self._table1.view[0, 0, :]
         self.table2 = self._table2.view[0, 0, :]

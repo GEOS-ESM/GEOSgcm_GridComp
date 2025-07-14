@@ -1,4 +1,4 @@
-from ndsl import StencilFactory
+from ndsl import StencilFactory, ndsl_log, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
@@ -98,12 +98,17 @@ def finalize_precip(
     with computation(PARALLEL), interval(1, None):
         # Redistribute precipitation fluxes for chemistry
         anvil_ice_flux = large_scale_nonanvil_ice_flux * min(
-            1.0, max(convective_ice[0, 0, -1] / max(ice_for_radiation[0, 0, -1], 1.0e-8), 0.0)
+            1.0,
+            max(convective_ice[0, 0, -1] / max(ice_for_radiation[0, 0, -1], 1.0e-8), 0.0),
         )
         large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux - anvil_ice_flux
 
         anvil_liquid_flux = large_scale_nonanvil_liquid_flux * min(
-            1.0, max(convective_liquid[0, 0, -1] / max(liquid_for_radiation[0, 0, -1], 1.0e-8), 0.0)
+            1.0,
+            max(
+                convective_liquid[0, 0, -1] / max(liquid_for_radiation[0, 0, -1], 1.0e-8),
+                0.0,
+            ),
         )
         large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux - anvil_liquid_flux
 
@@ -250,6 +255,19 @@ class Finalize:
         saturation_tables: SaturationVaporPressureTable,
         update_tendencies,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_compiletime_args=[
+                "mixing_ratios",
+                "cloud_fractions",
+                "masks",
+                "outputs",
+                "temporaries",
+                "driver",
+            ],
+        )
+
         self.update_tendencies = update_tendencies
         self.GFDL_1M_config = GFDL_1M_config
         self.saturation_tables = saturation_tables
@@ -523,7 +541,9 @@ class Finalize:
 
         if outputs.large_scale_rainwater_source is not None:
             self.update_rainwater_source(
-                outputs.large_scale_rainwater_source, outputs.drain_dt_macro, outputs.drain_dt_micro
+                outputs.large_scale_rainwater_source,
+                outputs.drain_dt_macro,
+                outputs.drain_dt_micro,
             )
 
         if outputs.moist_friction_temperature_tendency is not None:
@@ -547,6 +567,4 @@ class Finalize:
             or outputs.echo_top_reflectivity is not None
             or outputs.minus_10c_reflectivity is not None
         ):
-            from ndsl import ndsl_log
-
             ndsl_log.warning("Diagnostic radar output not implemented yet.")
