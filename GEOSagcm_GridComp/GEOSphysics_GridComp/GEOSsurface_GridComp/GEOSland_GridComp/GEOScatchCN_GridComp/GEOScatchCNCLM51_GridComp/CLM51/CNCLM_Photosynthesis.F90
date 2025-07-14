@@ -508,8 +508,8 @@
 
                  ! solar induced fluorescence
 
-                 sif_sun_out(nc,nv,nz) = sifsun(np)
-                 sif_sha_out(nc,nv,nz) = sifsha(np)
+                 sifsun_out(nc,nv,nz) = sifsun(np)
+                 sifsha_out(nc,nv,nz) = sifsha(np)
 
                 end if ! ityp = p
           end do !nv
