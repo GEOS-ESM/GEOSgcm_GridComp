@@ -122,10 +122,6 @@ class GFDL1M:
             update_tendencies=self.update_tendencies,
         )
 
-    def make_ouputs(self) -> Outputs:
-        """Helper function to allocate empty outputs"""
-        return Outputs.zeros(quantity_factory=self.quantity_factory)
-
     def __call__(
         self,
         geopotential_height_interface,
