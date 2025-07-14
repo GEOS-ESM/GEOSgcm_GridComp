@@ -151,11 +151,11 @@ class MAPLBridge:
     ) -> Any:
         dtype = type(default)
         if dtype in [int, np.int64]:  # type: ignore
-            return self.mapl_c_bridge.MAPLpy_GetResource_Int32(  # type: ignore
+            return self.mapl_c_bridge.MAPLpy_GetResource_Int64(  # type: ignore
                 state, self.ffi.new("char[]", name.encode()), len(name), default
             )
         elif dtype in [np.int32]:  # type: ignore
-            return self.mapl_c_bridge.MAPLpy_GetResource_Int64(  # type: ignore
+            return self.mapl_c_bridge.MAPLpy_GetResource_Int32(  # type: ignore
                 state, self.ffi.new("char[]", name.encode()), len(name), default
             )
         elif dtype in [np.float32]:  # type: ignore
