@@ -55,6 +55,8 @@ module  PhotosynthesisMod
   private :: fth            ! photosynthesis temperature inhibition
   private :: fth25          ! scaling factor for photosynthesis temperature inhibition
   ! For plant hydraulics approach
+  private :: fluorescence   ! fluorescence function based on the formulation by Jung-Eun Lee using van der Tol and Berry (2012)
+                            ! initially adapted to Catchment-CN by Greg Walker and adapted for CNCLM51 by jkolassa
   private :: hybrid_PHS     ! hybrid solver for ci
   private :: ci_func_PHS    ! ci function
   private :: brent_PHS      ! brent solver for root of a single variable function
@@ -2429,8 +2431,8 @@ contains
 
 ! !USES:
      implicit none
-     real, intent(in)    :: x       ! degree of light saturation
-     real, intent(out)   :: fs      ! fluorescence yield
+     real(r8), intent(in)    :: x       ! degree of light saturation
+     real(r8), intent(out)   :: fs      ! fluorescence yield
      real :: Kn      ! rate constant for non-photochemical quenching
      real :: Kf      ! rate constant for fluorescence
      real :: Kd      ! rate constant for thermal deactivation at Fm

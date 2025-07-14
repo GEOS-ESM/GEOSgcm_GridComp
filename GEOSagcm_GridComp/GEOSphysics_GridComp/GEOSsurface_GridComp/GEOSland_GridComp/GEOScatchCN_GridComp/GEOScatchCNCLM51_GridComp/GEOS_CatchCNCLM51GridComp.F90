@@ -5478,7 +5478,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:,:) :: tgw, rzm, sfm,rc00, rcdt,rcdq, totcolc, wtzone
     real, allocatable, dimension(:,:) :: btran_fire, bt
     real, allocatable, dimension(:,:,:) :: btran,elai,esai,fveg,tlai,psnsun,psnsha,laisun,laisha,lmrsun,lmrsha, &
-                                           sif
+                                           sifsun, sifsha
     integer, allocatable, dimension(:,:,:) :: ityp
     real, allocatable, dimension(:) :: car1, car2, car4
     real, allocatable, dimension(:) :: para
@@ -6949,7 +6949,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate( laisha(ntiles,nveg,nzone) )
     allocate( lmrsun(ntiles,nveg,nzone) )
     allocate( lmrsha(ntiles,nveg,nzone) )
-    allocate( sif(ntiles,nveg,nzone) )
+    allocate( sifsun(ntiles,nveg,nzone) )
+    allocate( sifsha(ntiles,nveg,nzone) )
     allocate(      ht(N_gt) )
     allocate(      tp(N_gt) )
     allocate( soilice(N_gt) )
@@ -8719,7 +8720,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(   ityp )
         deallocate(            lmrsun )
         deallocate(            lmrsha )
-        deallocate( sif )
+        deallocate( sifsun )
+        deallocate( sifsha )
         deallocate(      ht )
         deallocate(      tp )
         deallocate( soilice )
