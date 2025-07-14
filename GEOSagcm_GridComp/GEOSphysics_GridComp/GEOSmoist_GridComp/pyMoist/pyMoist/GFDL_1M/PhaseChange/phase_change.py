@@ -10,7 +10,6 @@ from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.PhaseChange.evaporate import evaporate
 from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
 from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
-from pyMoist.GFDL_1M.PhaseChange.outputs import Outputs
 from pyMoist.GFDL_1M.PhaseChange.rh_calculations import (
     rh_calculations,
     compute_rh_crit_3D,
@@ -57,12 +56,6 @@ class PhaseChange:
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
         self.GFDL_1M_config = GFDL_1M_config
-
-        # -----------------------------------------------------------------------
-        # initialize precipitation outputs
-        # -----------------------------------------------------------------------
-
-        self.outputs = Outputs.zeros(quantity_factory)
 
         # -----------------------------------------------------------------------
         # initialize temporaries
@@ -158,6 +151,8 @@ class PhaseChange:
         nacti: FloatField,
         qsat: FloatField,
         rhx: FloatField,
+        evapc: FloatField,
+        sublc: FloatField,
         rh_crit: Optional[FloatField] = None,
         total_water: TotalWater | None = None,
         liquid_static_energy: LiquidWaterStaticEnergy | None = None,
@@ -184,6 +179,8 @@ class PhaseChange:
             (?) nacti : ?
             (?) qsat : ?
             (out) rhx : ?
+            (out) evapc: ?
+            (out) sublc: ?
             (out) rh_crit: ?
             (?) total_water : ?
             (?) liquid_static_energy : ?
@@ -251,7 +248,7 @@ class PhaseChange:
                 nactl,
                 nacti,
                 qsat,
-                self.outputs.evapc,
+                evapc,
             )
 
         if self.GFDL_1M_config.CCI_EVAP_EFF > 0.0:
@@ -265,7 +262,7 @@ class PhaseChange:
                 nactl,
                 nacti,
                 qsat,
-                self.outputs.sublc,
+                sublc,
             )
 
         self._fix_up_clouds(

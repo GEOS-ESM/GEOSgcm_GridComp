@@ -139,8 +139,33 @@ class GFDL1M:
         vertical_motion: VerticalMotion,
         land_fraction,
         outputs: Outputs,
+        evapc,
+        sublc,
         rh_crit=None,
     ):
+        """
+        Args:
+            (?) geopotential_height_interface: ?
+            (?) p_interface: ?
+            (?) t: ?
+            (?) u: ?
+            (?) v: ?
+            (?) shallow_convective_rain: ?
+            (?) shallow_convective_snow: ?
+            (?) mixing_ratios: ?
+            (?) cloud_fractions: ?
+            (?) area: ?
+            (?) convection_fraction: ?
+            (?) surface_type: ?
+            (?) liquid_concentration: ?
+            (?) ice_concentration: ?
+            (?) vertical_motion: ?
+            (?) land_fraction: ?
+            (out) outputs: ?
+            (out) evapc: ?
+            (out) sublc: ?
+            (out | optional) rh_crit: ?
+        """
         self.setup(
             geopotential_height_interface=geopotential_height_interface,
             p_interface=p_interface,
@@ -177,6 +202,8 @@ class GFDL1M:
             qsat=self.temporaries.qsat,
             rhx=outputs.relative_humidity_after_pdf,
             rh_crit=rh_crit,
+            evapc=evapc,
+            sublc=sublc,
         )
 
         self.update_tendencies(
