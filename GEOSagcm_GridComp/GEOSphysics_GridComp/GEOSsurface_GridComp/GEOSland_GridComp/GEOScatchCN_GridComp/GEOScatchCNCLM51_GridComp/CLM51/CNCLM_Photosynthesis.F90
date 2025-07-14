@@ -36,7 +36,7 @@
             t10,tm,cond,psis,wet3,bee,capac,fwet,coszen,ityp,&
             pardir,pardif,albdir,albdif,dtc,dea,water_inst,bgc_vegetation_inst,rc,rc_dea,rc_dt,&
             laisun_out,laisha_out,psnsun_out,psnsha_out,lmrsun_out,&
-            lmrsha_out,parabs,btran_out)
+            lmrsha_out,parabs,btran_out,sifsun_out,sifsha_out)
 
  use MAPL_SatVaporMod
  use QSatMod              , only : QSat
@@ -82,25 +82,11 @@
  real, dimension(nch,num_veg,num_zon), intent(out) :: lmrsha_out
  real, dimension(nch,num_veg,num_zon), intent(out) :: parabs
  real, dimension(nch,num_veg,num_zon), intent(out) :: btran_out
+ real, dimension(nch,num_veg,num_zon), intent(out) :: sifsun_out
+ real, dimension(nch,num_veg,num_zon), intent(out) :: sifsha_out
+
 
 ! LOCAL
-
- ! CLM variables
-! type(bounds_type)              :: bounds
-! type(atm2lnd_type)             :: atm2lnd_inst
-! type(temperature_type)         :: temperature_inst
-! type(soilstate_type)           :: soilstate_inst
-! type(waterdiagnosticbulk_type) :: waterdiagnosticbulk_inst
-! type(surfalb_type)             :: surfalb_inst
-! type(solarabs_type)            :: solarabs_inst
-! type(canopystate_type)         :: canopystate_inst
-! type(ozone_base_type)          :: ozone_inst
-! type(photosyns_type)           :: photosyns_inst
-!  type(waterfluxbulk_type)       :: waterfluxbulk_inst
-! type(cnveg_nitrogenstate_type) :: cnveg_nitrogenstate_inst
-! type(cnveg_carbonstate_type)   :: cnveg_carbonstate_inst
-! type(waterstate_type)          :: waterstate_inst
-! type(clumpfilter)              :: filter
 
  ! temporary and loop variables                                                                                        
  integer :: n, p, pft_num, nv, nc, nz, np, ib, nl, iv
@@ -165,9 +151,11 @@
  integer, pointer :: filter_num_exposedvegp
 
  ! local outputs from Photosynthesis routine
-  real(r8)  , allocatable, dimension(:)   :: bsun        ! sunlit canopy transpiration wetness factor (0 to 1)
-  real(r8)  , allocatable, dimension(:)   :: bsha       ! shaded canopy transpiration wetness factor (0 to 1)
+  real(r8)  , allocatable, dimension(:)   :: bsun          ! sunlit canopy transpiration wetness factor (0 to 1)
+  real(r8)  , allocatable, dimension(:)   :: bsha          ! shaded canopy transpiration wetness factor (0 to 1)
   real(r8)  , allocatable, dimension(:)   :: btran         ! transpiration wetness factor (0 to 1) [pft]
+  real(r8)  , allocatable, dimension(:)   :: sifsun        ! sunlit solar induced fluorescence
+  real(r8)  , allocatable, dimension(:)   :: sifsha        ! shaded solar induced fluorescence
 
  ! associate variables
 
@@ -208,6 +196,8 @@
  allocate(bsun(bounds%begp:bounds%endp))
  allocate(bsha(bounds%begp:bounds%endp))
  allocate(btran(bounds%begp:bounds%endp))
+ allocate(sifsun(bounds%begp:bounds%endp))
+ allocate(sifsha(bounds%begp:bounds%endp))
 
 ! compute saturation vapor pressure
 ! ---------------------------------
@@ -404,7 +394,7 @@
        qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, water_inst%waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
-       photosyns_inst, water_inst%waterfluxbulk_inst, froot_carbon, croot_carbon)
+       photosyns_inst, water_inst%waterfluxbulk_inst, froot_carbon, croot_carbon, sifsun, sifsha)
  
   laisun_dea = canopystate_inst%laisun_patch
   laisha_dea = canopystate_inst%laisha_patch
@@ -423,7 +413,7 @@
        qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, water_inst%waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
-       photosyns_inst, water_inst%waterfluxbulk_inst, froot_carbon, croot_carbon)
+       photosyns_inst, water_inst%waterfluxbulk_inst, froot_carbon, croot_carbon, sifsun, sifsha)
 
   laisun_dt = canopystate_inst%laisun_patch
   laisha_dt = canopystate_inst%laisha_patch
@@ -441,7 +431,7 @@
        qsatl_clm, qaf_clm, &
        atm2lnd_inst, temperature_inst, soilstate_inst, water_inst%waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
-       photosyns_inst, water_inst%waterfluxbulk_inst, froot_carbon, croot_carbon)
+       photosyns_inst, water_inst%waterfluxbulk_inst, froot_carbon, croot_carbon, sifsun, sifsha)
  
   laisun = canopystate_inst%laisun_patch
   laisha = canopystate_inst%laisha_patch
@@ -516,6 +506,11 @@
 
                  btran_out(nc,nv,nz) = btran(np)
 
+                 ! solar induced fluorescence
+
+                 sif_sun_out(nc,nv,nz) = sifsun(np)
+                 sif_sha_out(nc,nv,nz) = sifsha(np)
+
                 end if ! ityp = p
           end do !nv
        end do ! p
@@ -534,6 +529,8 @@
  deallocate(bsun)
  deallocate(bsha)
  deallocate(btran)
+ deallocate(sifsun)
+ deallocate(sifsha)
 
  end subroutine catchcn_calc_rc
 

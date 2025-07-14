@@ -1276,7 +1276,7 @@ contains
        qsatl, qaf, &
        atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
-       photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
+       photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon, sif_sun, sif_sha)
     !
     ! !DESCRIPTION:
     ! Leaf photosynthesis and stomatal conductance calculation as described by
@@ -1327,6 +1327,9 @@ contains
     type(soilstate_type)   , intent(inout) :: soilstate_inst
     class(ozone_base_type) , intent(in)    :: ozone_inst
     type(photosyns_type)   , intent(inout) :: photosyns_inst
+
+    real(r8)               , intent(out)   :: sif_sun( bounds%begp: )    ! sunlit solar induced fluorescence; added by jkolassa Jul 2025
+    real(r8)               , intent(out)   :: sif_sha( bounds%begp: )    ! shaded solar induced fluores     cence; added by jkolassa Jul 2025
     !
     ! !LOCAL VARIABLES:
     !
@@ -1478,6 +1481,18 @@ contains
     real(r8), parameter :: croot_lateral_length = 0.25_r8   ! specified lateral coarse root length [m]
     real(r8), parameter :: c_to_b = 2.0_r8           !(g biomass /g C)
 !Note that root density is for dry biomass not carbon. CLM provides root biomass as carbon. The conversion is 0.5 g C / g biomass
+
+    ! variables for fluorescence calculations
+
+    real(r8) :: xn_sun                  ! sunlit ratio of actual electron transport to eletron transport
+    real(r8) :: xn_sha                  ! shaded ratio of actual electron transport to eletron transport
+    real(r8) :: fs_sun                  ! sunlit fluorescence yield
+    real(r8) :: fs_sha                  ! shaded fluorescence yield
+    real(r8) :: je_sun_act              ! sunlit actual electron transport (umol electrons/m**2/s)
+    real(r8) :: je_sha_act              ! shaded actual electron transport (umol electrons/m**2/s)
+    real(r8) :: ci_sun                  ! sunlit patch-level intracellular leaf CO2 (Pa)
+    real(r8) :: ci_sha                  ! shaded patch-level intracellular leaf CO2 (Pa)
+    real(r8) :: fsun                    ! patch-level sunlit fraction of canopy
 
     !------------------------------------------------------------------------------
 
@@ -2362,12 +2377,94 @@ contains
             btran(p) = bsun(p)
          end if
 
+        ! FLUORESCENCE: code from Jung-Eun Lee, originally implemented & modified by gkw 1/28/14
+        !               adapted for CNCLM51 by jkolassa Jul 2025
+        ! ------------
+  
+          ci_sun = 0.
+          ci_sha = 0.
+          fsun = 0.
+          do iv = 1, nrad(p)
+             ci_sun = ci_sun + ci_z_sun(p,iv)
+             ci_sha = ci_sha + ci_z_sha(p,iv)
+             fsun = fsun + surfalb_inst%fsun_z_patch(p,iv)
+          end do
+          ci_sun = ci_sun/nrad(p)
+          ci_sha = ci_sha/nrad(p)
+          fsun = fsun/nrad(p)
+
+           je_sun_act = max(psn_sun(p)*(ci_sun+2.*cp(p))/max(ci_sun+2.*cp(p)-3.*c3psn(patch%itype(p))*cp(p),1.e-8) , 0.)
+           je_sha_act = max(psn_sha(p)*(ci_sha+2.*cp(p))/max(ci_sha+2.*cp(p)-3.*c3psn(patch%itype(p))*cp(p),1.e-8) , 0.)
+
+           xn_sun=1.-je_sun_act/je_sun      ! gkw: 0.8 factor removed 20141108 (email from Jung-Eun)
+           xn_sun=max(xn_sun,0.)            ! gkw: added 1/31/14
+           xn_sha=1.-je_sha_act/je_sha      ! gkw: 0.8 factor removed 20141108 (email from Jung-Eun)
+           xn_sha=max(xn_sha,0.)            ! gkw: added 1/31/14
+
+           if (psn_wj_sun(p) <= 0.)  xn_sun=0.
+           call fluorescence(xn_sun,fs_sun)
+           sif_sun(p) = fs_sun*qabs
+
+           if (psn_wj_sha(p) <= 0.)  xn_sha=0.
+           call fluorescence(xn_sha,fs_sha)
+           sif_sha(p) = fs_sha*qabs
+
+           
+
       end do
 
     end associate
 
   end subroutine PhotosynthesisHydraulicStress
   !------------------------------------------------------------------------------
+!
+! !IROUTINE: Fluorescence
+!
+! !INTERFACE:
+   subroutine fluorescence(x,fs)
+!
+! !DESCRIPTION: 
+! Chlorophyll fluorescence
+! writen by Jung-Eun Lee using van der Tol and Berry (2012)
+
+! !USES:
+     implicit none
+     real, intent(in)    :: x       ! degree of light saturation
+     real, intent(out)   :: fs      ! fluorescence yield
+     real :: Kn      ! rate constant for non-photochemical quenching
+     real :: Kf      ! rate constant for fluorescence
+     real :: Kd      ! rate constant for thermal deactivation at Fm
+     real :: Kp      ! rate constant for photochemisty
+     real :: po0
+     real :: ps
+     real :: fo0
+     real :: fo      ! fluorescnce yield at Fo
+     real :: fm      ! fluorescnce yield at Fm
+     real :: fm0
+     real :: eta
+     real :: qQ
+     real :: qE
+
+     Kf          = 0.05                 ! rate constant for fluorescence
+     Kd          = 0.95                 ! rate constant for thermal deactivation at Fm
+     Kp          = 4.0                  ! rate constant for photochemisty
+
+     po0         = Kp/(Kf+Kd+Kp)        ! dark photochemistry fraction (Genty et al., 1989)
+     ps          = po0*(1.-x)           ! photochemical yield
+     Kn          = (6.2473 * x - 0.5944)*x ! empirical fit to Flexas' data
+!    Kn          = (3.9867 * x - 1.0589)*x ! empirical fit to Flexas, Daumard, Rascher, Berry data
+
+     fo0         = Kf/(Kf+Kp+Kd)        ! dark adapted fluorescence yield Fo
+     fo          = Kf/(Kf+Kp+Kd+Kn)     ! dark adapted fluorescence yield Fo
+     fm          = Kf/(Kf   +Kd+Kn)     ! light adapted fluorescence yield Fm
+     fm0         = Kf/(Kf   +Kd)        ! light adapted fluorescence yield Fm
+     fs          = fm*(1.-ps)           ! fluorescence as fraction of PAR
+     eta         = fs/fo0               ! fluorescence as fraction of dark adapted
+
+     qQ          = 1.-(fs-fo)/(fm-fo)   ! photochemical quenching
+     qE          = 1.-(fm-fo)/(fm0-fo0) !non-photochemical quenching
+
+  end subroutine fluorescence
 
   !--------------------------------------------------------------------------------
   subroutine hybrid_PHS(x0sun, x0sha, p, iv, c, g, gb_mol, bsun, bsha, jesun, jesha, &

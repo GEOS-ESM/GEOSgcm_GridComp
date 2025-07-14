@@ -3601,7 +3601,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'solar induced fluorescence',&
     UNITS              = 'umol m-2 sm s-1'           ,&
-    SHORT_NAME         = 'SIF'                       ,&
+    SHORT_NAME         = 'SIF'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
@@ -5477,7 +5477,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:,:) :: tcx, qax
     real, allocatable, dimension(:,:) :: tgw, rzm, sfm,rc00, rcdt,rcdq, totcolc, wtzone
     real, allocatable, dimension(:,:) :: btran_fire, bt
-    real, allocatable, dimension(:,:,:) :: btran,elai,esai,fveg,tlai,psnsun,psnsha,laisun,laisha,lmrsun,lmrsha
+    real, allocatable, dimension(:,:,:) :: btran,elai,esai,fveg,tlai,psnsun,psnsha,laisun,laisha,lmrsun,lmrsha, &
+                                           sif
     integer, allocatable, dimension(:,:,:) :: ityp
     real, allocatable, dimension(:) :: car1, car2, car4
     real, allocatable, dimension(:) :: para
@@ -6948,6 +6949,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate( laisha(ntiles,nveg,nzone) )
     allocate( lmrsun(ntiles,nveg,nzone) )
     allocate( lmrsha(ntiles,nveg,nzone) )
+    allocate( sif(ntiles,nveg,nzone) )
     allocate(      ht(N_gt) )
     allocate(      tp(N_gt) )
     allocate( soilice(N_gt) )
@@ -7324,6 +7326,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       ENDIF USE_CT_CO2
 
     if(associated(BTRANT)) btrant = 0. 
+    if(associated(SIF)) sif = 0.
 
 ! fraction of foliage that is wet  gkw 20140327
 ! -------------------------------
@@ -7389,7 +7392,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             T2M10D,TA,cond,psis,rzm,bee,capac,fwet,ZTH,ityp,&
             DRPAR,DFPAR,albdir,albdif,dtc,dea,water_inst,bgc_vegetation_inst,rc00,rcdq,rcdt,&
             laisun,laisha,psnsun,psnsha,lmrsun,lmrsha,parzone,&
-            btran)
+            btran,sifsun,sifsha)
   
       para(:) = 0. ! zero out absorbed PAR summing array
       do nz = 1,nzone
@@ -7399,6 +7402,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  para(n)     = para(n) + parzone(n,nv,nz)*wtzone(n,nz)*fveg(n,nv,nz)
                  if(associated(BTRANT)) then
                     btrant(n) = btrant(n) + btran(n,nv,nz)*fveg(n,nv,nz)*wtzone(n,nz)
+                    sif(n) = sif(n) + wtzone(n,nz)*fveg(n,nv,nz)*(sifsun(n,nv,nz)*laisun(n,nv,nz) + sifsha(n,nv,nz)*laisha(n,nv,nz))
                  end if 
                end if
             end do
@@ -8715,6 +8719,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(   ityp )
         deallocate(            lmrsun )
         deallocate(            lmrsha )
+        deallocate( sif )
         deallocate(      ht )
         deallocate(      tp )
         deallocate( soilice )
