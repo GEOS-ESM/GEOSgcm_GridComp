@@ -1,0 +1,27 @@
+site_name: pyMoist Documentation
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [..]  # Adjust this path to where your Python modules are
+          options:
+            show_source: false
+            show_root_heading: false
+
+nav:
+  - Home: index.md
+  - Top Level:
+    - "aer_activation": top/aer_activation.md
+    - "constants": top/constants.md
+    - "field_types": top/field_types.md
+    - "numerical_recipes": top/numerical_recipes.md
+    - "pyMoist_constants": top/pyMoist_constants.md
+    - "radiation_coupling": top/radiation_coupling.md
+    - "redistribute_clouds": top/redistribute_clouds.md
+    - "shared_generic_math": top/shared_generic_math.md
+    - "shared_gt4py_workarounds": top/shared_gt4py_workarounds.md
+    - "shared_incloud_processes": top/shared_incloud_processes.md
