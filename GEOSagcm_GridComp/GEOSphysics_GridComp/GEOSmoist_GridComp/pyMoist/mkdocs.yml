@@ -25,6 +25,22 @@ nav:
     - "shared_generic_math": top/shared_generic_math.md
     - "shared_gt4py_workarounds": top/shared_gt4py_workarounds.md
     - "shared_incloud_processes": top/shared_incloud_processes.md
+  - GFDL_1M:
+    - "GFDL_1M": GFDL_1M/GFDL_1M.md
+    - "evap_subl_pdf_core": GFDL_1M/evap_subl_pdf_core.md
+  - interface:
+    - "cuda_profiler": interface/cuda_profiler.md
+    - "f_py_conversion": interface/f_py_conversion.md
+    - "flags": interface/flags.md
+    - "python_bridge": interface/python_bridge.md
+    - "wrapper": interface/wrapper.md
+  - saturation:
+    - "constants": saturation/constants.md
+    - "formulation": saturation/formulation.md
+    - "qsat": saturation/qsat.md
+    - "qsat_ice": saturation/qsat_ice.md
+    - "qsat_liquid": saturation/qsat_liquid.md
+    - "table": saturation/table.md
   - UW:
     - "compute_uwshcu": UW/compute_uwshcu.md
     - "config": UW/config.md
