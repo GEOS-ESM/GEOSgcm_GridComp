@@ -7,7 +7,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [..]  # Adjust this path to where your Python modules are
+          paths: [.]  # Adjust this path to where your Python modules are
           options:
             show_source: false
             show_root_heading: false
