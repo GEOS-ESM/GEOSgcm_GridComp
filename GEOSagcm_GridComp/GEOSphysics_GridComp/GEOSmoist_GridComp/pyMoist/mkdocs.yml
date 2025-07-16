@@ -25,3 +25,8 @@ nav:
     - "shared_generic_math": top/shared_generic_math.md
     - "shared_gt4py_workarounds": top/shared_gt4py_workarounds.md
     - "shared_incloud_processes": top/shared_incloud_processes.md
+  - UW:
+    - "compute_uwshcu": UW/compute_uwshcu.md
+    - "config": UW/config.md
+    - "temporaries": UW/temporaries.md
+    - "uwshcu_functions": UW/uwshcu_functions.md
