@@ -427,7 +427,7 @@ module gfdl_mp_mod
     real :: qi0_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: qs0_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
-    real :: c_paut  = 1.0 ! cloud water to rain autoconversion efficiency
+    real :: c_paut  = 0.5 ! cloud water to rain autoconversion efficiency
 
     ! collection efficiencies for accretion
     !   Dry processes (frozen to/from frozen)
@@ -435,13 +435,13 @@ module gfdl_mp_mod
     real :: c_pgaci = 0.01 ! cloud ice to graupel accretion efficiency (was 0.1 in ZETAC)
     real :: c_pgacs = 0.01 ! snow to graupel accretion efficiency (was 0.1 in ZETAC)
     !   Wet processes (liquid to/from frozen)
-    real :: c_psacw = 1.0 ! cloud water to snow accretion efficiency
-    real :: c_pracw = 1.0 ! cloud water to rain accretion efficiency
-    real :: c_praci = 1.0 ! cloud ice to rain accretion efficiency
-    real :: c_pgacw = 0.01! cloud water to graupel accretion efficiency
-    real :: c_pracs = 1.0 ! snow to rain accretion efficiency
-    real :: c_psacr = 1.0 ! rain to snow accretion efficiency
-    real :: c_pgacr = 1.0 ! rain to graupel accretion efficiency
+    real :: c_psacw = 1.0  ! cloud water to snow accretion efficiency
+    real :: c_pracw = 1.0  ! cloud water to rain accretion efficiency
+    real :: c_praci = 1.0  ! cloud ice to rain accretion efficiency
+    real :: c_pgacw = 0.01 ! cloud water to graupel accretion efficiency
+    real :: c_pracs = 1.0  ! snow to rain accretion efficiency
+    real :: c_psacr = 1.0  ! rain to snow accretion efficiency
+    real :: c_pgacr = 0.01 ! rain to graupel accretion efficiency
 
     real :: is_fac = 0.2 ! cloud ice sublimation temperature factor
     real :: ss_fac = 0.2 ! snow sublimation temperature factor
@@ -3799,6 +3799,10 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
     real :: tc, factor, sink, qden, dqdt, tin, dq, qsi
     real :: pgacw, pgacr
+    real :: oms_cgacw, oms_cgacr
+
+    oms_cgacw = onemsig*cgacw
+    oms_cgacr = onemsig*cgacr
 
     do k = ks, ke
 
@@ -3810,13 +3814,13 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
             qden = qg (k) * den (k)
             if (ql (k) .gt. qcmin) then
                 if (do_new_acc_water) then
-                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), cgacw, acco (:, 9), &
+                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), oms_cgacw, acco (:, 9), &
                         acc (17), acc (18), den (k))
                 else
                     if (do_hail) then
-                        factor = acr2d (qden, cgacw, denfac (k), blinh, muh)
+                        factor = acr2d (qden, oms_cgacw, denfac (k), blinh, muh)
                     else
-                        factor = acr2d (qden, cgacw, denfac (k), bling, mug)
+                        factor = acr2d (qden, oms_cgacw, denfac (k), bling, mug)
                     endif
                     pgacw = factor / (1. + dts * factor) * ql (k)
                 endif
@@ -3824,7 +3828,7 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
             pgacr = 0.
             if (qr (k) .gt. qpmin) then
-                pgacr = min (acr3d (vtg (k), vtr (k), qr (k), qg (k), cgacw, acco (:, 3), &
+                pgacr = min (acr3d (vtg (k), vtr (k), qr (k), qg (k), oms_cgacr, acco (:, 3), &
                     acc (5), acc (6), den (k)), qr (k) / dts)
             endif
 
@@ -4277,6 +4281,10 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
 
     real :: tc, factor, sink, qden
     real :: pgacw, pgacr
+    real :: oms_cgacw, oms_cgacr
+        
+    oms_cgacw = onemsig*cgacw
+    oms_cgacr = onemsig*cgacr
 
     do k = ks, ke
 
@@ -4288,16 +4296,16 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
             if (ql (k) .gt. qcmin) then
                 qden = qg (k) * den (k)
                 if (do_hail) then
-                    factor = dts * acr2d (qden, cgacw, denfac (k), blinh, muh)
+                    factor = dts * acr2d (qden, oms_cgacw, denfac (k), blinh, muh)
                 else
-                    factor = dts * acr2d (qden, cgacw, denfac (k), bling, mug)
+                    factor = dts * acr2d (qden, oms_cgacw, denfac (k), bling, mug)
                 endif
                 pgacw = factor / (1. + factor) * ql (k)
             endif
 
             pgacr = 0.
             if (qr (k) .gt. qpmin) then
-                pgacr = min (dts * acr3d (vtg (k), vtr (k), qr (k), qg (k), cgacr, acco (:, 3), &
+                pgacr = min (dts * acr3d (vtg (k), vtr (k), qr (k), qg (k), oms_cgacr, acco (:, 3), &
                     acc (5), acc (6), den (k)), qr (k))
             endif
 
