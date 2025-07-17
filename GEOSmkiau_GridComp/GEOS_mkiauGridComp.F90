@@ -2709,87 +2709,40 @@ CONTAINS
 
 ! Locals
 ! ------
-      real pkea(im,jm,lm+1)
-      real pkeb(im,jm,lm+1)
-      real phia(im,jm,lm+1)
-      real phib(im,jm,lm+1)
-
-      real  thva(im,jm,lm)
-      real  thvb(im,jm,lm)
-      real   pka(im,jm,lm)
-      real   pkb(im,jm,lm)
-
       real pabove_BL,pbelow_BL
       real bl_press
 
-      real alf,eps,p
+      real alf,p
       integer i,j,L
-
-       eps = MAPL_RVAP/MAPL_RGAS-1.0
-      pkea = plea**MAPL_KAPPA
-      pkeb = pleb**MAPL_KAPPA
-
-      do L=1,lm
-       pka(:,:,L) = ( pkea(:,:,L+1)-pkea(:,:,L) ) / ( MAPL_KAPPA*log(plea(:,:,L+1)/plea(:,:,L)) )
-       pkb(:,:,L) = ( pkeb(:,:,L+1)-pkeb(:,:,L) ) / ( MAPL_KAPPA*log(pleb(:,:,L+1)/pleb(:,:,L)) )
-      thva(:,:,L) = ta(:,:,L)*(1.0+eps*qa(:,:,L)) / pka(:,:,L)
-      thvb(:,:,L) = tb(:,:,L)*(1.0+eps*qb(:,:,L)) / pkb(:,:,L)
-      enddo
-
-      phia(:,:,lm+1) = 0.0
-      phib(:,:,lm+1) = 0.0
-      do L=lm,1,-1
-      phia(:,:,L) = phia(:,:,L+1) + MAPL_CP*thva(:,:,L)*( pkea(:,:,L+1)-pkea(:,:,L) )
-      phib(:,:,L) = phib(:,:,L+1) + MAPL_CP*thvb(:,:,L)*( pkeb(:,:,L+1)-pkeb(:,:,L) )
-      enddo
 
       if ( pabove /= pbelow ) then
 
-! Blend mid-level u,v,q and o3
-! ----------------------------
-      do L=1,lm
-      do j=1,jm
-      do i=1,im
-         p = 0.5*( plea(i,j,L)+plea(i,j,L+1) )
-         if( p.le.pabove ) then
-             alf = 0.0
-         else if( p.gt.pabove .and. p.le.pbelow ) then
-             alf = (p-pabove)/(pbelow-pabove)
-         else
-             alf = 1.0
-         endif
-                                   ua(i,j,L) =   ub(i,j,L) + alf*(   ua(i,j,L)-  ub(i,j,L) )
-                                   va(i,j,L) =   vb(i,j,L) + alf*(   va(i,j,L)-  vb(i,j,L) )
-                                   oa(i,j,L) =   ob(i,j,L) + alf*(   oa(i,j,L)-  ob(i,j,L) )
-                                   qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
-      enddo
-      enddo
-      enddo
+           do j=1,jm
+           do i=1,im
+           do L=1,lm
+             p = 0.5*( plea(i,j,L)+plea(i,j,L+1) )
+             if( p.le.pabove ) then
+                 alf = 0.0   !  use the analysis value
+             else if( p.gt.pabove .and. p.le.pbelow ) then
+                 alf = ((LOG(p)     -LOG(pabove))/ &
+                        (LOG(pbelow)-LOG(pabove)))**3
+             else
+                 alf = 1.0   !  use the background value
+             endif
 
-! Blend edge-level phi
-! --------------------
-      do L=1,lm+1
-      do j=1,jm
-      do i=1,im
-         p = plea(i,j,L)
-         if( p.le.pabove ) then
-             alf = 0.0
-         else if( p.gt.pabove .and. p.le.pbelow ) then
-             alf = (p-pabove)/(pbelow-pabove)
-         else
-             alf = 1.0
-         endif
-         phia(i,j,L) = phib(i,j,L) + alf*( phia(i,j,L)-phib(i,j,L) )
-      enddo
-      enddo
-      enddo
+           plea(i,j,L) = pleb(i,j,L) + alf*( plea(i,j,L)- pleb(i,j,L) )
+             ua(i,j,L) =   ub(i,j,L) + alf*(   ua(i,j,L)-   ub(i,j,L) )
+             va(i,j,L) =   vb(i,j,L) + alf*(   va(i,j,L)-   vb(i,j,L) )
+             ta(i,j,L) =   tb(i,j,L) + alf*(   ta(i,j,L)-   tb(i,j,L) )
+             qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-   qb(i,j,L) )
+             oa(i,j,L) =   ob(i,j,L) + alf*(   oa(i,j,L)-   ob(i,j,L) )
 
-! Compute T based on blended phi
-! ------------------------------
-      do L=1,lm
-        ta(:,:,L) = ( phia(:,:,L)-phia(:,:,L+1) )/( pkea(:,:,L+1)-pkea(:,:,L) ) &
-                  / (MAPL_CP*(1.0+eps*qa(:,:,L))) * pka(:,:,L)
-      enddo
+           enddo
+           plea(i,j,LM+1) = pleb(i,j,LM+1)
+
+           enddo
+           enddo
+
       endif
 
 ! Blend from surface to blnpp
