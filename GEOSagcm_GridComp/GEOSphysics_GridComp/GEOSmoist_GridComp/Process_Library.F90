@@ -62,7 +62,7 @@ module GEOSmoist_Process_Library
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
-  real, parameter :: taufrz  =  450.0
+  real, parameter :: taufrz  =  150.0
   real, parameter :: dQCmax  =  1.e-4
   ! LDRADIUS4
   ! Jason
@@ -201,7 +201,6 @@ module GEOSmoist_Process_Library
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN
   real    :: CNV_FRACTION_MAX
-  real    :: CNV_FRACTION_EXP
 
   ! Storage of aerosol properties for activation
   type(AerPropsNew) :: AeroPropsNew(nsmx_par)
@@ -243,7 +242,7 @@ module GEOSmoist_Process_Library
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: SIGMA_DX, SIGMA_EXP
-  public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
+  public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX
   public :: SH_MD_DP, DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
   public :: update_cld, meltfrz_inst2M
@@ -524,21 +523,11 @@ module GEOSmoist_Process_Library
      ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
       if (SRF_TYPE >= 2.0) then
         ! Over snow (SRF_TYPE == 2.0) and ice (SRF_TYPE == 3.0)
-        if (ICE_RADII_PARAM == 1) then
-          ! Jason formula
-          ICEFRCT_M  = 0.00
-          if ( TEMP <= JiT_ICE_ALL ) then
-             ICEFRCT_M = 1.000
-          else if ( (TEMP > JiT_ICE_ALL) .AND. (TEMP <= JiT_ICE_MAX) ) then
-             ICEFRCT_M = 1.00 -  ( TEMP - JiT_ICE_ALL ) / ( JiT_ICE_MAX - JiT_ICE_ALL )
-          end if
-        else
-          ICEFRCT_M  = 0.00
-          if ( TEMP <= iT_ICE_ALL ) then
-             ICEFRCT_M = 1.000
-          else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-             ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
-          end if
+        ICEFRCT_M  = 0.00
+        if ( TEMP <= iT_ICE_ALL ) then
+           ICEFRCT_M = 1.000
+        else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
+           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
         end if
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
