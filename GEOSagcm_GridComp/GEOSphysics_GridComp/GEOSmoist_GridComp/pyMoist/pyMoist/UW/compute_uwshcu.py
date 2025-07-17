@@ -1632,7 +1632,6 @@ def compute_cin_cinlcl(
                             cin[0, 0, -1],
                             plfc[0, 0, -1],
                         )
-
                         if plfc > 0.0:
                             klfc = THIS_K
                             stop_cin = True
@@ -1732,7 +1731,6 @@ def compute_cin_cinlcl(
                         cin[0, 0, -1],
                         plfc[0, 0, -1],
                     )
-
                     if plfc > 0.0:
                         klfc = THIS_K
                         stop_cin = True
@@ -2899,7 +2897,6 @@ def buoyancy_sorting(
         # layer thickness. In future, we will use rei(k) = (0.5*rkm/z0(k)/rho/g).
         # In the premitive code,  'scaleh' was largely responsible for the jumping
         # variation of precipitation amount.
-
         if not condensation:
 
             scaleh = tscaleh
@@ -3011,6 +3008,8 @@ def buoyancy_sorting(
                 # of "qsat". But note normal argument of "qsat" is temperature.
 
                 thj, qvj, qlj, qij, qse, id_check = conden(pe, thle, qte, ese, esx)
+                # if iteration == i32(0) and iter_xc == 1:
+                #     testvar3D = qse
 
                 if id_check == 1:
                     condensation = True
@@ -3102,6 +3101,8 @@ def buoyancy_sorting(
                                     * exqi
                                 )
                             )
+                            # if iteration == i32(0) and iter_xc == 1:
+                            #     testvar3D = exql
 
                         thj, qvj, qlj, qij, qse, id_check = conden(
                             pe, thlue, qtue, ese, esx
@@ -3138,6 +3139,8 @@ def buoyancy_sorting(
                             qsat_arg = thlue * exne
                             qs, _ = QSat_Float(ese, esx, qsat_arg, qsat_pe / 100.0)
                             excessu = qtue - qs
+                            # if iteration == i32(0) and iter_xc == 1:
+                            #     testvar3D = exne
 
                             # Calculate critical mixing fraction, 'xc'. Mixture with
                             # mixing ratio smaller than 'xc' will be entrained into
@@ -3183,6 +3186,8 @@ def buoyancy_sorting(
                                         * (1.0 - thvj / thv0j),
                                     ),
                                 )
+                                # if iteration == i32(0) and iter_xc > 1:
+                                #     testvar3D = xc
 
                                 aquad = 0.0
                                 bquad = 0.0
@@ -3197,6 +3202,9 @@ def buoyancy_sorting(
                                 xsat = excessu / (excessu - excess0)
                                 thlxsat = thlue + xsat * (thle - thlue)
                                 qtxsat = qtue + xsat * (qte - qtue)
+
+                                # if iteration == i32(0) and iter_xc == 1:
+                                #     testvar3D = excess0
 
                                 thj, qvj, qlj, qij, qse, id_check = conden(
                                     pe, thlxsat, qtxsat, ese, esx
@@ -3294,12 +3302,16 @@ def buoyancy_sorting(
                                                 x_en = 1.0
 
                                         kk += 1
+                                    # if iteration == i32(1) and iter_xc == 1:
+                                    #     testvar3D = x_en
 
                                     if x_cu == xsat:
                                         xc = max(x_cu, x_en)
 
                                     else:
                                         xc = x_cu
+                                    # if iteration == i32(0) and iter_xc > 1:
+                                    #     testvar3D = xc
 
                             # Compute fractional lateral entrainment & detrainment rate
                             # in each layers. The unit of rei(k), fer(k), and fdr(k) is
@@ -3378,6 +3390,8 @@ def buoyancy_sorting(
                                     * dpe
                                     * min(1.0, max(0.0, xsat - xc))
                                 )
+                                # if iteration == i32(0) and iter_xc == 1:
+                                #     testvar3D = fdr
 
                                 # Compute cumulus updraft properties at the top
                                 # interface. Also use Tayler expansion in order to
@@ -3390,14 +3404,12 @@ def buoyancy_sorting(
                                         * fer
                                         * dpe
                                     )
-
                                     qtu = (
                                         qtu[0, 0, -1]
                                         + (qte + ssqt0 * dpe / 2.0 - qtu[0, 0, -1])
                                         * fer
                                         * dpe
                                     )
-
                                     uu = (
                                         uu[0, 0, -1]
                                         + (ue + ssu0 * dpe / 2.0 - uu[0, 0, -1])
@@ -3405,7 +3417,6 @@ def buoyancy_sorting(
                                         * dpe
                                         - PGFc * ssu0 * dpe
                                     )
-
                                     vu = (
                                         vu[0, 0, -1]
                                         + (ve + ssv0 * dpe / 2.0 - vu[0, 0, -1])
@@ -3449,7 +3460,6 @@ def buoyancy_sorting(
                                         - qtu[0, 0, -1]
                                         + ssqt0 / fer
                                     ) * exp(-fer * dpe)
-
                                     uu = (
                                         ue
                                         + (1.0 - PGFc) * ssu0 / fer
@@ -3530,6 +3540,8 @@ def buoyancy_sorting(
                                     esx,
                                 )
 
+                                # if iteration == i32(0) and iter_xc == 2:
+                                #     testvar3D = qlj
                                 if id_check == 1:
                                     condensation = True
                                     umf_out[0, 0, 1] = 0.0
@@ -3687,6 +3699,8 @@ def buoyancy_sorting(
                                             thlue = 0.5 * (thlu[0, 0, -1] + thlu)
                                             qtue = 0.5 * (qtu[0, 0, -1] + qtu)
                                             wue = 0.5 * sqrt(max(wtwb + wtw, 0.0))
+                                            # if iteration == i32(0) and iter_xc == 1:
+                                            #     testvar3D = qtue
 
                                         else:
                                             iter_xc = (

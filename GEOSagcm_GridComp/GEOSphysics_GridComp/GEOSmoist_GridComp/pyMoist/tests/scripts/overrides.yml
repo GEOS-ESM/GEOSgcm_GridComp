@@ -1,0 +1,6 @@
+ComputeUwshcuInv:
+ - backend: debug
+   multimodal:
+    absolute_eps: 1.00e-06
+    relative_fraction: 1.00e-03
+    ulp_threshold: 2000.0

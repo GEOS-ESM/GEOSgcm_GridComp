@@ -254,7 +254,7 @@ def conden(
             qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
             rvls = qs
             iteration += 1
-        qc = max(qt - qs, f64(0.0))
+        qc: f64 = max(qt - qs, f64(0.0))
         qv = qt - qc
         ql = qc * (f64(1.0) - nu)
         qi = nu * qc

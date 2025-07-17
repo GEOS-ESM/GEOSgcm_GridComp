@@ -442,10 +442,10 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
 
         # with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out2.nc") as ds:
         #     # Load in netcdf test var
-        #     testvar = "qlten_det4"
+        #     testvar = "dpe"
         #     var = testvar3D
 
-        #     testvar_nan = ds.variables[testvar].data[0, 1, :, :-1, 0, 0]
+        #     testvar_nan = ds.variables[testvar].data[0, 1, :, 0, :-1, 0]
         #     # Replace nans with zero
         #     testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
 
@@ -508,8 +508,8 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         #     "%)",
         # )
 
-        # print(testvar3D.view[7, 10, :])
-        # print(reference_variable.view[7, 10, :])
+        # print(testvar3D.view[15, 16, :])
+        # print(reference_variable.view[15, 16, :])
 
         return {
             "umf_inv": umf_inv.view[:],
