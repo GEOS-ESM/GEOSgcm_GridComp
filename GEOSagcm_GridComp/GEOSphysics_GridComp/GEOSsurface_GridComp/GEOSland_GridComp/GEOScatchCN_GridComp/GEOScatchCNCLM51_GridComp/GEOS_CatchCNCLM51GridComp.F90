@@ -3240,7 +3240,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
-    LONG_NAME          = 'CN_autotrophic_respiration' ,&
+    LONG_NAME          = 'CN_total_autotrophic_respiration' ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'CNAR'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -3249,7 +3249,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
-    LONG_NAME          = 'CN_heterotrophic_respiration' ,&
+    LONG_NAME          = 'CN_total_heterotrophic_respiration' ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'CNHR'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
