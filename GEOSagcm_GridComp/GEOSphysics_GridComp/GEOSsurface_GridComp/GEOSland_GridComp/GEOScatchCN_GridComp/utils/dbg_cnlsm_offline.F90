@@ -11,6 +11,8 @@ PROGRAM dbg_cnlsm_offline
 ! reading input variables from catchcn_inputs.data at every timestep. 
 ! - Sarith Mahanama (9-1-2018)
 !
+!THESE ROUTINES ARE SPECIFIC TO CATCHMENT-CN4.0 ONLY (jkolassa, Jul 2025)
+!
 use ESMF
 use MAPL_ConstantsMod
 use MAPL_ExceptionHandling
