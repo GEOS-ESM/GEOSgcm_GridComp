@@ -202,9 +202,6 @@ contains
            call MAPL_VarRead(formatter,"TPREC10D",catch%TPREC10D, __RC__)
            call MAPL_VarRead(formatter,"TPREC60D",catch%TPREC60D, __RC__)
         endif
-        do j=1,dim1
-           call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j, __RC__)
-        enddo
 
         call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL, __RC__)
 
@@ -229,8 +226,8 @@ contains
         call MAPL_VarRead(formatter,  "PSNSHAM", catch%psnsham,_RC) 
         call MAPL_VarRead(formatter,  "LMRSUNM", catch%lmrsunm,_RC)
         call MAPL_VarRead(formatter,  "LMRSHAM", catch%lmrsham,_RC)
-        call MAPL_VarRead(formatter,  "LAISUNM", catch%psnsunm,_RC)
-        call MAPL_VarRead(formatter,  "LAISHAM", catch%psnsham,_RC)
+        call MAPL_VarRead(formatter,  "LAISUNM", catch%laisunm,_RC)
+        call MAPL_VarRead(formatter,  "LAISHAM", catch%laisham,_RC)
         call MAPL_VarRead(formatter,  "RZMM",    catch%rzmm   ,_RC)
         call MAPL_VarRead(formatter,  "TGWM",    catch%tgwm   ,_RC)
      endif
@@ -713,8 +710,8 @@ contains
                                AGCM_MI, AGCM_S,  dofyr
 
      real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp, dummy_tmp
-     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:), &
-                          var_out_zone(:,:), var_lmr(:,:,:), var_lai(:,:,:)
+     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_tmp3d(:,:,:), &
+                          var_out_zone(:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs, npft_int
      logical :: root_proc
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft, nveg
@@ -974,7 +971,7 @@ contains
         allocate (var_off_col (1: in_ntiles, 1 : nzone,1 : var_col))
         allocate (var_off_pft (1: in_ntiles, 1 : nzone,1 : nveg, 1 : var_pft))
         allocate (var_out     (out_ntiles))
-        allocate (var_psn     (out_ntiles, nveg, nzone))
+        allocate (var_tmp3d   (out_ntiles, nveg, nzone))
         allocate (var_out_zone(out_ntiles, nzone))
 
         this%tile_id = [(i*1.0, i=1, out_ntiles)]
@@ -1003,45 +1000,45 @@ contains
         this%asnowm = var_out
         do nz = 1, nzone
            do nv = 1, nveg
-               var_psn(:,nv,nz) = this%psnsunm(this%id_glb(:), nv,nz)
+               var_tmp3d(:,nv,nz) = this%psnsunm(this%id_glb(:), nv,nz)
            enddo
         enddo
-        this%psnsunm= var_psn
+        this%psnsunm= var_tmp3d
 
         do nz = 1, nzone
            do nv = 1, nveg
-               var_psn(:,nv,nz) = this%psnsham(this%id_glb(:), nv,nz)
+               var_tmp3d(:,nv,nz) = this%psnsham(this%id_glb(:), nv,nz)
            enddo
         enddo
-        this%psnsham = var_psn
+        this%psnsham = var_tmp3d
 
         do nz = 1, nzone   
            do nv = 1, nveg 
-               var_lmr(:,nv,nz) = this%lmrsunm(this%id_glb(:), nv,nz)
+               var_tmp3d(:,nv,nz) = this%lmrsunm(this%id_glb(:), nv,nz)
            enddo
         enddo
-        this%lmrsunm= var_lmr
+        this%lmrsunm= var_tmp3d
 
         do nz = 1, nzone
            do nv = 1, nveg
-               var_lmr(:,nv,nz) = this%lmrsham(this%id_glb(:), nv,nz)
+               var_tmp3d(:,nv,nz) = this%lmrsham(this%id_glb(:), nv,nz)
            enddo
         enddo
-        this%lmrsham = var_lmr
+        this%lmrsham = var_tmp3d
 
         do nz = 1, nzone   
            do nv = 1, nveg 
-               var_lai(:,nv,nz) = this%laisunm(this%id_glb(:), nv,nz)
+               var_tmp3d(:,nv,nz) = this%laisunm(this%id_glb(:), nv,nz)
            enddo
         enddo
-        this%laisunm= var_lai
+        this%laisunm= var_tmp3d
 
         do nz = 1, nzone
            do nv = 1, nveg
-               var_lai(:,nv,nz) = this%laisham(this%id_glb(:), nv,nz)
+               var_tmp3d(:,nv,nz) = this%laisham(this%id_glb(:), nv,nz)
            enddo
         enddo
-        this%laisham = var_lai
+        this%laisham = var_tmp3d
 
 
         do nz = 1, nzone
