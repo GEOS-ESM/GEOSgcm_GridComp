@@ -1,0 +1,48 @@
+site_name: pyMoist Documentation
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]  # Adjust this path to where your Python modules are
+          options:
+            show_source: false
+            show_root_heading: false
+
+nav:
+  - Home: index.md
+  - Top Level:
+    - "aer_activation": top/aer_activation.md
+    - "constants": top/constants.md
+    - "field_types": top/field_types.md
+    - "numerical_recipes": top/numerical_recipes.md
+    - "pyMoist_constants": top/pyMoist_constants.md
+    - "radiation_coupling": top/radiation_coupling.md
+    - "redistribute_clouds": top/redistribute_clouds.md
+    - "shared_generic_math": top/shared_generic_math.md
+    - "shared_gt4py_workarounds": top/shared_gt4py_workarounds.md
+    - "shared_incloud_processes": top/shared_incloud_processes.md
+  - GFDL_1M:
+    - "GFDL_1M": GFDL_1M/GFDL_1M.md
+    - "evap_subl_pdf_core": GFDL_1M/evap_subl_pdf_core.md
+  - interface:
+    - "cuda_profiler": interface/cuda_profiler.md
+    - "f_py_conversion": interface/f_py_conversion.md
+    - "flags": interface/flags.md
+    - "python_bridge": interface/python_bridge.md
+    - "wrapper": interface/wrapper.md
+  - saturation:
+    - "constants": saturation/constants.md
+    - "formulation": saturation/formulation.md
+    - "qsat": saturation/qsat.md
+    - "qsat_ice": saturation/qsat_ice.md
+    - "qsat_liquid": saturation/qsat_liquid.md
+    - "table": saturation/table.md
+  - UW:
+    - "compute_uwshcu": UW/compute_uwshcu.md
+    - "config": UW/config.md
+    - "temporaries": UW/temporaries.md
+    - "uwshcu_functions": UW/uwshcu_functions.md
