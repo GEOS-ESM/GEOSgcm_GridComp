@@ -611,20 +611,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                UPU(K,I)=Un
                UPV(K,I)=Vn
                UPA(K,I)=UPA(K-1,I)
-
-               ! trisolver source terms due to condensation. assumes that condensation is responsible
-               ! for any increase in condesate flux with height. ignores lateral mixing.
-               tmp = max(0.,UPA(K,I)*(RHOE(K)*UPW(K,I)*UPQL(K,I)-RHOE(K-1)*UPW(K-1,I)*UPQL(K-1,I))) ! qlflx divergence
-               qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) + tmp
-               qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - tmp
-               ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp*MAPL_ALHL
-               tmp2 = max(0.,UPA(K,I)*(RHOE(K)*UPW(K,I)*UPQI(K,I)-RHOE(K-1)*UPW(K-1,I)*UPQI(K-1,I))) ! qiflx divergence
-               qisrc3(IH,JH,KTE+KTS-K) = qisrc3(IH,JH,KTE+KTS-K) + tmp2
-               tmp = max(0.,UPA(K,I)*(RHOE(K-1)*UPW(K-1,I)*UPQL(K-1,I)-RHOE(K)*UPW(K,I)*UPQL(K,I))) ! qlflx convergence
-               ! if ql convergence, assume ice came from ql, with remainder from qv
-               qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) - min(tmp,tmp2)
-               qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - (tmp2-min(tmp,tmp2))
-               ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp2*MAPL_ALHS
             ELSE
               UPW(K,I) = 0.
               UPA(K,I) = 0.
@@ -663,10 +649,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       UPA = factor*UPA
       QR  = factor*QR
       QS  = factor*QS
-      ssrc3 = factor*ssrc3
-      qvsrc3 = factor*qvsrc3
-      qlsrc3 = factor*qlsrc3
-      qisrc3 = factor*qisrc3
 
   ! Rescale UPA if MF TKE more than half of prognostic TKE near surface
   ! Prevents instability due to MF without KH
@@ -683,10 +665,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         UPA    = factor*UPA
         QR     = factor*QR
         QS     = factor*QS
-        ssrc3  = factor*ssrc3
-        qvsrc3 = factor*qvsrc3
-        qlsrc3 = factor*qlsrc3
-        qisrc3 = factor*qisrc3
       end if
 
       DO k=KTS,KTE
@@ -897,7 +875,20 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
           mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
         end if
-      ENDDO
+        ! trisolver source terms due to condensation. assumes that condensation is responsible 
+        ! for any increase in condesate flux with height. ignores lateral mixing.
+        tmp = max(0.,RHOE(K)*s_awql(K)-RHOE(K-1)*s_awql(K-1)) ! qlflx divergence                                                                                                                       
+        qlsrc3(IH,JH,KTE+KTS-K) = tmp
+        qvsrc3(IH,JH,KTE+KTS-K) = -1.*tmp
+        ssrc3(IH,JH,KTE+KTS-K)  = tmp*MAPL_ALHL
+        tmp2 = max(0.,RHOE(K)*s_awqi(K)-RHOE(K-1)*s_awqi(K-1)) ! qiflx divergence                                                                                                                      
+        qisrc3(IH,JH,KTE+KTS-K) = tmp2
+        tmp = max(0.,RHOE(K-1)*s_awqi(K-1)-RHOE(K)*s_awqi(K)) ! qlflx convergence                                                                                                                     
+        ! if ql convergence, assume ice came from ql, with remainder from qv
+        qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) - min(tmp,tmp2)
+        qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - (tmp2-min(tmp,tmp2))
+        ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp2*MAPL_ALHS
+     ENDDO
 
 
       where (UPA.eq.0.)

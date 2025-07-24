@@ -949,8 +949,9 @@ contains
 
         onemmf = 1.0 - MFFRC(:,:,k)
 
-        w2(:,:,k) = onemmf*0.667*TKE(:,:,k)
-
+!        w2(:,:,k) = onemmf*0.667*TKE(:,:,k)
+        w2(:,:,k) = 1./(1./(0.667*TKE(:,:,k))+100./zl(:,:,k))
+        
         hl2(:,:,k) = 0.5*( hl2_edge(:,:,kd) + hl2_edge(:,:,ku) )
         hl2diag(:,:,k) = 0.5*( hl2_edge_nomf(:,:,kd) + hl2_edge_nomf(:,:,ku) )
 
