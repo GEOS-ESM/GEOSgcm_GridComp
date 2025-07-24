@@ -207,6 +207,7 @@ class GEOSPyMoistWrapper:
 
         # Initalize flags later
         self.gfdl_microphysics_config = None
+        self.UW_config = None
 
     @property
     def driver(self) -> Callable:
