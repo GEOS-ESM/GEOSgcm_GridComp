@@ -139,7 +139,6 @@ set (srcs
   SurfaceAlbedoMod.F90
   SurfaceRadiationMod.F90
   TridiagonalMod.F90
-  update_model_para4cn.F90
   )
 
 list(APPEND srcs
