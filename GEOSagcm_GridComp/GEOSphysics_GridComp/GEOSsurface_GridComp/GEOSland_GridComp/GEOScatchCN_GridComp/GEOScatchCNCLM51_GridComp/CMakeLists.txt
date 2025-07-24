@@ -6,7 +6,6 @@ esma_add_subdirectories (CLM51)
 
 set (srcs
   GEOS_CatchCNCLM51GridComp.F90
-  update_model_para4cn.F90
   )
 
 esma_add_library (${this}
