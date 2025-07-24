@@ -7863,8 +7863,8 @@ class ComputeUwshcuInv:
         tpert_out: FloatFieldIJ,
         qpert_out: FloatFieldIJ,
         # Testvars
-        testvar3D: FloatField,
-        testvar2D: FloatFieldIJ,
+        # testvar3D: FloatField,
+        # testvar2D: FloatFieldIJ,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
         """
