@@ -726,8 +726,26 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQLDTTRBINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_liquid_water_tendency_due_to_turbulence',     &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+        
+    call MAPL_AddExportSpec(GC,                                                            &
          SHORT_NAME = 'DQLDTMSTINT',                                                       &
          LONG_NAME  = 'vertically_integrated_liquid_water_tendency_due_to_moist_processes',&
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQIDTTRBINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_ice_water_tendency_due_to_turbulence',        &
          UNITS      = 'kg m-2 s-1',                                                        &
          DIMS       = MAPL_DimsHorzOnly,                                                   &
          VLOCATION  = MAPL_VLocationNone,                                                  &
@@ -2272,7 +2290,7 @@ contains
 
    real, pointer, dimension(:,:  )     :: DQVDTPHYINT, DQLDTPHYINT, DQIDTPHYINT, DOXDTPHYINT
    real, pointer, dimension(:,:  )     :: DQRDTPHYINT, DQSDTPHYINT, DQGDTPHYINT
-   real, pointer, dimension(:,:  )     :: DQVDTTRBINT, DQVDTMSTINT, DQVDTCHMINT
+   real, pointer, dimension(:,:  )     :: DQVDTTRBINT, DQVDTMSTINT, DQVDTCHMINT, DQLDTTRBINT, DQIDTTRBINT
    real, pointer, dimension(:,:  )     :: DQLDTMSTINT, DQIDTMSTINT, DOXDTCHMINT
    real, pointer, dimension(:,:  )     :: DQRDTMSTINT, DQSDTMSTINT, DQGDTMSTINT
    real, pointer, dimension(:,:  )     :: PERAD,PETRB,PEMST,PEFRI,PEGWD,PECUF
@@ -2494,6 +2512,8 @@ contains
     call MAPL_GetPointer(EXPORT, DQGDTMSTINT, 'DQGDTMSTINT', RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, DQVDTTRBINT, 'DQVDTTRBINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLDTTRBINT, 'DQLDTTRBINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDTTRBINT, 'DQIDTTRBINT', RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, DQVDTCHMINT, 'DQVDTCHMINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DOXDTCHMINT, 'DOXDTCHMINT', RC=STATUS); VERIFY_(STATUS)
@@ -3476,6 +3496,20 @@ contains
        DQVDTTRBINT = 0.0
        do L=1,LM
        DQVDTTRBINT = DQVDTTRBINT + DQVDTTRB(:,:,L)*DM(:,:,L)
+       end do
+    end if
+
+        if(associated(DQLDTTRBINT)) then
+       DQLDTTRBINT = 0.0
+       do L=1,LM
+       DQLDTTRBINT = DQLDTTRBINT + DQLDTTRB(:,:,L)*DM(:,:,L)
+       end do
+    end if
+
+    if(associated(DQIDTTRBINT)) then
+       DQIDTTRBINT = 0.0
+       do L=1,LM
+       DQIDTTRBINT = DQIDTTRBINT + DQIDTTRB(:,:,L)*DM(:,:,L)
        end do
     end if
 
