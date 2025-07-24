@@ -808,8 +808,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         revap (i, j, :) = 0.
         isubl (i, j, :) = 0.
 
-        PRINT *, "README", ntimes
-        do n = 1, 12
+        do n = 1, ntimes
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_all_iterations .eqv. .true.) then
                     !$ser verbatim serialize_index = n
