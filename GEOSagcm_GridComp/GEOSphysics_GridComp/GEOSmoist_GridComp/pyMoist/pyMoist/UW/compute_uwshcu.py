@@ -283,7 +283,6 @@ def compute_thermodynamic_variables(
     from __externals__ import k_end, ncnst
 
     with computation(FORWARD), interval(...):
-
         # Initialize output variables defined for all grid points
         umf_out[0, 0, 1] = 0.0
         dcm_out = 0.0
@@ -2118,7 +2117,6 @@ def avg_initial_and_final_cin(
                 cbmflimit = 0.0
 
             else:  # When 'del_CIN < 0', use explicit CIN instead of implicit CIN.
-
                 # Identifier showing whether explicit or implicit CIN is used
                 ind_delcin = 1.0
 
@@ -2524,7 +2522,6 @@ def define_updraft_properties(
                 fdr_out = constants.MAPL_UNDEF
 
             if not condensation:
-
                 wlcl = sqrt(wtw)
                 ufrclcl = cbmf / wlcl / rho0inv
                 wrel = wlcl
@@ -2898,7 +2895,6 @@ def buoyancy_sorting(
         # In the premitive code,  'scaleh' was largely responsible for the jumping
         # variation of precipitation amount.
         if not condensation:
-
             scaleh = tscaleh
 
             if tscaleh <= 0.0:
@@ -3791,7 +3787,6 @@ def buoyancy_sorting(
                         fdr_out = constants.MAPL_UNDEF
 
                     if not condensation:
-
                         # Iteration end due to 'rmaxfrac' constraint
 
                         # Calculate updraft fractional area at the upper interface and
@@ -4435,7 +4430,6 @@ def calc_entrainment_mass_flux(
                             n += 1
 
                 else:
-
                     # Note we are coming down from the higher interfaces to the lower
                     # interfaces. Also note that 'emf < 0'. So, below operation is a
                     # summing not subtracting. In order to ensure numerical stability,
@@ -4445,7 +4439,6 @@ def calc_entrainment_mass_flux(
                     if (
                         use_cumpenent == 1
                     ):  # Original Cumulative Penetrative Entrainment
-
                         emf = max(
                             max(
                                 emf[0, 0, 1]
@@ -4606,7 +4599,6 @@ def calc_pbl_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             k_below = kinv - 1
             dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
 
@@ -7492,6 +7484,7 @@ class ComputeUwshcuInv:
         UW_config: UWConfiguration,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         # Initialize the ComputeUwshcu class
 
@@ -7771,6 +7764,12 @@ class ComputeUwshcuInv:
             [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
         )
 
+        self.qsat = QSat(
+            self.stencil_factory,
+            self.quantity_factory,
+            formulation=formulation,
+        )
+
     @staticmethod
     def make_ntracers_quantity_factory(
         ijk_quantity_factory: QuantityFactory,
@@ -7966,16 +7965,10 @@ class ComputeUwshcuInv:
         qpert_out [FloatFieldIJ]: Humidity perturbation
         """
 
-        self.qsat = QSat(
-            self.stencil_factory,
-            self.quantity_factory,
-            formulation=formulation,
-        )
-
         # Initialize masks, default for all masks is False.
-        self.condensation.view[:, :] = False
-        self.stop_cin.view[:, :] = False
-        self.stop_buoyancy_sort.view[:, :] = False
+        self.condensation.field[:] = False
+        self.stop_cin.field[:] = False
+        self.stop_buoyancy_sort.field[:] = False
 
         self._compute_uwshcu_invert_before(
             # Inputs
@@ -8336,7 +8329,7 @@ class ComputeUwshcuInv:
                 testvar3D=testvar3D,
                 testvar2D=testvar2D,
             )
-            if iteration != i32(0):
+            if iteration != 0:
                 self._avg_initial_and_final_cin(
                     condensation=self.condensation,
                     iteration=iteration,
