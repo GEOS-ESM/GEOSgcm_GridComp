@@ -1095,6 +1095,13 @@ CONTAINS
                      ECORR                                                     &
                     )
 
+      ! NOTE: The following update of the sensible heat flux is intentionally specific to CatchCN()
+      ! and does not appear in Catchment().  This is because CatchCN() has separate ground and veg
+      ! temperatures and a more complex resistance network that does not allow for the simpler
+      ! calculations applied in Catchment().  Note also that WUPDAT() differs between CatchCN() and
+      ! Catchment().
+      ! reichle, koster, kolassa - 24 July 2025
+      
 !**** UPDATE SENSIBLE HEAT IF WATER LIMITATIONS WERE IMPOSED:
       DO N=1,NCH
         IF(ECORR(N) .GT. 0.) THEN
