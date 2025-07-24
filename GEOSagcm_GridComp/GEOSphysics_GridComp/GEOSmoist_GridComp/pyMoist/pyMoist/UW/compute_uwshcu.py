@@ -7484,7 +7484,7 @@ class ComputeUwshcuInv:
         UW_config: UWConfiguration,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
-        orchestrate(obj=self, config=stencil_factory.config.dace_config)
+        # orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         # Initialize the ComputeUwshcu class
 

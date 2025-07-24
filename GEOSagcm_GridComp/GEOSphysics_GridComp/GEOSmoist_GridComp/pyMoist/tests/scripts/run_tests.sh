@@ -12,8 +12,8 @@ export GT4PY_EXTRA_COMPILE_OPT_FLAGS="-fbracket-depth=512"
 python -m pytest -s -v --disable-warnings --multimodal_metric \
     --data_path=/Users/kfandric/netcdf \
     --backend=debug\
-    --which_rank=5 \
+    --which_rank=0 \
     --which_modules=ComputeUwshcuInv \
     --grid=default \
-    --threshold_overrides_file=/Users/kfandric/GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/overrides.yml \
-   ..
+    ..
+   
