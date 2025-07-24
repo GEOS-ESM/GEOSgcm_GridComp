@@ -697,7 +697,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data DQSDT_macro=DQSDT_macro DQGDT_macro=DQGDT_macro
 
 
-    !$ser savepoint phase_change-In
+    !$ser savepoint GFDL_1M_phase_change-In
     !$ser data EIS=EIS CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE T=T Q=Q NACTL=NACTL NACTI=NACTI
     !$ser data QLCN=QLCN QICN=QICN QILS=QILS QLLS=QLLS CLLS=CLLS CLCN=CLCN KLCL=KLCL
     !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
@@ -744,7 +744,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               !$ser verbatim else
               !$ser verbatim   temporary_2 = 0
               !$ser verbatim endif
-              !$ser savepoint hydrostatic_pdf-In
+              !$ser savepoint GFDL_1M_hydrostatic_pdf-In
               !$ser data_buffered Dx=0 DT_MOIST=DT_MOIST PDFSHAPE=PDFSHAPE USE_BERGERON=temporary_2
               !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
               !$ser data_buffered Dx=3 ALPHA=ALPHA PLmb=PLmb(I,J,L) Q=Q(I,J,L)
@@ -802,12 +802,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       .false.        , &
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
-              !$ser savepoint hydrostatic_pdf-Out
+              !$ser savepoint GFDL_1M_hydrostatic_pdf-Out
               !$ser data_buffered Dx=3 Q=Q(I,J,L) QLLS=QLLS(I,J,L) QLCN=QLCN(I,J,L) QILS=QILS(I,J,L)
               !$ser data_buffered Dx=3 QICN=QICN(I,J,L) T=T(I,J,L) CLLS=CLLS(I,J,L) CLCN=CLCN(I,J,L)
               !$ser data_buffered Dx=3 RHX=RHX(I,J,L) PDFITERS=PDFITERS(I,J,L)
             endif
-            !$ser savepoint melt_freeze-In
+            !$ser savepoint GFDL_1M_melt_freeze-In
             !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
             !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
             !$ser data_buffered Dx=0 DT_MOIST=DT_MOIST
@@ -819,7 +819,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                             T(I,J,L)     , &
                             QLCN(I,J,L)  , &
                             QICN(I,J,L) )
-             !$ser savepoint melt_freeze-Out
+             !$ser savepoint GFDL_1M_melt_freeze-Out
              !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
              ! evaporation for CN
              call MELTFRZ ( DT_MOIST     , &
@@ -830,7 +830,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                             QILS(I,J,L) )
              endif
              if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
-             !$ser savepoint evaporate-In
+             !$ser savepoint GFDL_1M_evaporate-In
              !$ser data_buffered Dx=3 PLmb=PLmb(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L)
              !$ser data_buffered Dx=3 QICN=QICN(I,J,L) CLCN=CLCN(I,J,L) NACTL=NACTL(I,J,L)
              !$ser data_buffered Dx=3 NACTI=NACTI(I,J,L) QST3=QST3(I,J,L) EVAPC=EVAPC(I,J,L)
@@ -851,13 +851,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
-             !$ser savepoint evaporate-Out
+             !$ser savepoint GFDL_1M_evaporate-Out
              !$ser data_buffered Dx=3 EVAPC=EVAPC(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L)
              !$ser data_buffered Dx=3 QICN=QICN(I,J,L) CLCN=CLCN(I,J,L)
             endif
            ! sublimation for CN
              if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
-             !$ser savepoint sublimate-In
+             !$ser savepoint GFDL_1M_sublimate-In
              !$ser data_buffered Dx=3 PLmb=PLmb(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L)
              !$ser data_buffered Dx=3 QICN=QICN(I,J,L) CLCN=CLCN(I,J,L) NACTL=NACTL(I,J,L)
              !$ser data_buffered Dx=3 NACTI=NACTI(I,J,L) QST3=QST3(I,J,L) SUBLC=SUBLC(I,J,L)
@@ -878,7 +878,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
-             !$ser savepoint sublimate-Out
+             !$ser savepoint GFDL_1M_sublimate-Out
              !$ser data_buffered Dx=3 SUBLC=SUBLC(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L)
              !$ser data_buffered Dx=3 QICN=QICN(I,J,L) CLCN=CLCN(I,J,L)
             endif
@@ -887,7 +887,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
-    !$ser savepoint phase_change-Out
+    !$ser savepoint GFDL_1M_phase_change-Out
     !$ser data T=T Q=Q QLLS=QLLS QILS=QILS QLCN=QLCN QICN=QICN CLLS=CLLS CLCN=CLCN
     !$ser data RHX=RHX EVAPC=EVAPC SUBLC=SUBLC KLCL=KLCL RHCRIT3D=RHCRIT3D
 
@@ -1063,14 +1063,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
        timestep = timestep + 1
       !  print*, "TIMESTEP = ", timestep, ' rank = ', rank, ' do_qa = ', do_qa, "6 * rank + TIMESTEP = ", 6*rank+timestep
-!$ser savepoint GFDL_1M_radiation_coupling-In
-!$ser data Q=Q T=T QLLS=QLLS QILS=QILS CLLS=CLLS QLCN=QLCN QICN=QICN CLCN=CLCN
-!$ser data PLmb=PLmb QRAIN=QRAIN QSNOW=QSNOW QGRAUPEL=QGRAUPEL NACTL=NACTL NACTI=NACTI
-!$ser data FAC_RL=FAC_RL MIN_RL=MIN_RL MAX_RL=MAX_RL FAC_RI=FAC_RI MIN_RI=MIN_RI MAX_RI=MAX_RI
-!$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QI=RAD_QI RAD_QR=RAD_QR RAD_QS=RAD_QS
-!$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI RHX=RHX
-
-     ! Radiation Coupling
+    
+       ! Radiation Coupling
+         !$ser savepoint GFDL_1M_radiation_coupling-In
+         !$ser data Q=Q T=T QLLS=QLLS QILS=QILS CLLS=CLLS QLCN=QLCN QICN=QICN CLCN=CLCN
+         !$ser data PLmb=PLmb QRAIN=QRAIN QSNOW=QSNOW QGRAUPEL=QGRAUPEL NACTL=NACTL NACTI=NACTI
+         !$ser data FAC_RL=FAC_RL MIN_RL=MIN_RL MAX_RL=MAX_RL FAC_RI=FAC_RI MIN_RI=MIN_RI MAX_RI=MAX_RI
+         !$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QI=RAD_QI RAD_QR=RAD_QR RAD_QS=RAD_QS
+         !$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI RHX=RHX
          do L = 1, LM
            do J = 1, JM
              do I = 1, IM
@@ -1086,10 +1086,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             enddo
           enddo
          enddo
-!$ser savepoint GFDL_1M_radiation_coupling-Out
-!$ser data Q=Q T=T QLLS=QLLS QILS=QILS CLLS=CLLS QLCN=QLCN QICN=QICN CLCN=CLCN 
-!$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QI=RAD_QI RAD_QR=RAD_QR RAD_QS=RAD_QS
-!$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI RHX=RHX
+        !$ser savepoint GFDL_1M_radiation_coupling-Out
+        !$ser data Q=Q T=T QLLS=QLLS QILS=QILS CLLS=CLLS QLCN=QLCN QICN=QICN CLCN=CLCN 
+        !$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QI=RAD_QI RAD_QR=RAD_QR RAD_QS=RAD_QS
+        !$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI RHX=RHX
       
          call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
@@ -1127,8 +1127,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
-
-        !$ser savepoint GFDL_1M_finalize-Out
 
         ! dissipative heating tendency from KE across the macro/micro physics
         call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)

@@ -808,7 +808,8 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         revap (i, j, :) = 0.
         isubl (i, j, :) = 0.
 
-        do n = 1, ntimes
+        PRINT *, "README", ntimes
+        do n = 1, 12
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_all_iterations .eqv. .true.) then
                     !$ser verbatim serialize_index = n
@@ -822,7 +823,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint fall_speed-In
+                    !$ser savepoint GFDL_1M_fall_speed-In
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j, k, 1)
                         !$ser data_buffered Dx=3 p1_fall_speed=p1(k) den1_fall_speed=den(k) qs_fall_speed=qsz(k)
@@ -856,14 +857,14 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                              den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint fall_speed-Out
+                    !$ser savepoint GFDL_1M_fall_speed-Out
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j, k, 1)
                         !$ser data_buffered Dx=3 vts_fall_speed=vtsz(k) vti_fall_speed=vtiz(k) vtg_fall_speed=vtgz(k)
                         !$ser data_buffered Dx=3 dz1_fall_speed=dz1(k) den1_fall_speed=den(k) denfac_fall_speed=denfac(k)
                     !$ser verbatim enddo
                     
-                    !$ser savepoint terminal_fall-In
+                    !$ser savepoint GFDL_1M_terminal_fall-In
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j, k, 1)
                         !$ser data_buffered Dx=3 t1_terminal_fall=tz(k) qv_terminal_fall=qvz(k) ql_terminal_fall=qlz(k)
@@ -875,11 +876,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                         !$ser data_buffered Dx=2 rain_terminal_fall=rain(i) snow_terminal_fall=snow(i)
                         !$ser data_buffered Dx=2 graupel_terminal_fall=graupel(i) ice_terminal_fall=ice(i)
                     !$ser verbatim enddo
-                    !$ser verbatim call ser_set_indices(i, j, 1, 1)
-                    
-                    
-                    
-                    !$ser savepoint terminal_fall-Out
                 !$ser verbatim endif
             !$ser verbatim endif
             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
@@ -891,6 +887,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ice (i) = ice (i) + i1
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
+                    !$ser savepoint GFDL_1M_terminal_fall-Out
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j, k, 1)
                         !$ser data_buffered Dx=3 t1_terminal_fall=tz(k) qv_terminal_fall=qvz(k) ql_terminal_fall=qlz(k)
@@ -900,7 +897,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                         !$ser data_buffered Dx=2 rain_terminal_fall=rain(i) snow_terminal_fall=snow(i)
                         !$ser data_buffered Dx=2 graupel_terminal_fall=graupel(i) ice_terminal_fall=ice(i)
                     !$ser verbatim enddo
-                !$ser verbatim call ser_set_indices(i, j, 1, 1)
                 !$ser verbatim endif
             !$ser verbatim endif
 
@@ -917,7 +913,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint warm_rain-In
+                    !$ser savepoint GFDL_1M_warm_rain-In
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j ,k ,1)
                         !$ser data_buffered Dx=3 dp1_warm_rain=dp1(k) dz1_warm_rain=dz1(k) t1_warm_rain=tz(k)
@@ -931,8 +927,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                         !$ser data_buffered Dx=2 r1_warm_rain=r1 rain_warm_rain=rain(i)
                         !$ser data_buffered Dx=2 eis_warm_rain=eis(i) onemsig_warm_rain=onemsig
                     !$ser verbatim enddo
-                    !$ser savepoint warm_rain-Out
-                    !$ser verbatim call ser_set_indices(i,j,1,1)
                 !$ser verbatim endif
             !$ser verbatim endif
             call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
@@ -949,6 +943,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             enddo
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
+                    !$ser savepoint GFDL_1M_warm_rain-Out
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j ,k ,1)
                         !$ser data_buffered Dx=3 t1_warm_rain=tz(k)
@@ -969,7 +964,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
 
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint ice_cloud-In
+                    !$ser savepoint GFDL_1M_ice_cloud-In
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j, k, 1)
                         !$ser data_buffered Dx=3 t1_icloud=tz(k) p1_icloud=p1(k) dp1_icloud=dp1(k)
@@ -992,7 +987,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             enddo
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint ice_cloud-Out
+                    !$ser savepoint GFDL_1M_ice_cloud-Out
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j, k, 1)
                         !$ser data_buffered Dx=3 t1_icloud=tz(k)
