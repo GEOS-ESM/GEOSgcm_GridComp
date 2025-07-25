@@ -697,12 +697,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data DQSDT_macro=DQSDT_macro DQGDT_macro=DQGDT_macro
 
 
-    !$ser savepoint GFDL_1M_phase_change-In
-    !$ser data EIS=EIS CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE T=T Q=Q NACTL=NACTL NACTI=NACTI
-    !$ser data QLCN=QLCN QICN=QICN QILS=QILS QLLS=QLLS CLLS=CLLS CLCN=CLCN KLCL=KLCL
-    !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
+
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        !$ser savepoint GFDL_1M_phase_change-In
+        !$ser data EIS=EIS CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE T=T Q=Q NACTL=NACTL NACTI=NACTI
+        !$ser data QLCN=QLCN QICN=QICN QILS=QILS QLLS=QLLS CLLS=CLLS CLCN=CLCN KLCL=KLCL
+        !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
+        !$ser data EVAPC=EVAPC SUBLC=SUBLC RHX=RHX RHCRIT3D=RHCRIT3D
         !$ser verbatim call ser_set_Dx(IM, JM, LM, 1)
         do L=1,LM
           do J=1,JM
