@@ -112,9 +112,9 @@ Exports:
    DISCHARGE:
      - {starting: "1958-01-01T00:00:00", collection: friver_remap_1_5_0,   regrid: NEAREST_STOD, sample: river_conserve_sample, variable: friver}
      - {starting: "2020-01-01T00:00:00", collection: friver_remap_1_5_0_1, regrid: NEAREST_STOD, sample: river_conserve_sample, variable: friver}
-   CALVING:
-     - {starting: "1958-01-01T00:00:00", collection: licalvf_remap_1_5_0,   regrid: NEAREST_STOD, sample: river_conserve_sample, variable: licalvf}
-     - {starting: "2020-01-01T00:00:00", collection: licalvf_remap_1_5_0_1, regrid: NEAREST_STOD, sample: river_conserve_sample, variable: licalvf}
+   CALVING:  {collection: /dev/null}
+#  - {starting: "1958-01-01T00:00:00", collection: licalvf_remap_1_5_0,   regrid: NEAREST_STOD, sample: river_conserve_sample, variable: licalvf}
+#     - {starting: "2020-01-01T00:00:00", collection: licalvf_remap_1_5_0_1, regrid: NEAREST_STOD, sample: river_conserve_sample, variable: licalvf}
    PCU:
      - {starting: "1958-01-01T00:00:00", collection: prra_1_5_0, regrid: CONSERVE, sample:  flux_conserve_sample, variable: prra}
      - {starting: "2020-01-01T00:00:00", collection: prra_1_5_0_1, regrid: CONSERVE, sample: flux_conserve_sample, variable: prra}
