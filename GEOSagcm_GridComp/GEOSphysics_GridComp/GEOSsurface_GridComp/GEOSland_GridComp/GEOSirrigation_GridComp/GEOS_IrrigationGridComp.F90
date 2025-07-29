@@ -29,7 +29,7 @@ module GEOS_IrrigationGridCompMod
 !
 ! IMPORTS:   POROS, WPWET, VGWMAX, WCRZ, LAI\\
 !
-! EXPORTS:   IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY\\ 
+! EXPORTS:   IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY, IRRG_RATE_TOT\\ 
 !  
 ! INTERNALS: IRRG_IRRIGFRAC, IRRG_PADDYFRAC, IRRG_CROPIRRIGFRAC, IRRG_DOY_PLANT, IRRG_DOY_HARVEST,
 !            IRRG_TYPE, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW, IRRG_LAIMIN, IRRG_LAIMAX\\
@@ -398,6 +398,15 @@ contains
          VLOCATION  = MAPL_VLocationNone                      ,&
          RC=STATUS  )
     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC                                ,&
+         SHORT_NAME = 'IRRG_RATE_TOT'                         ,&
+         LONG_NAME  = 'irrigation_flux_total'                 ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
       
 ! -----------------------------------------------------------
 ! Import states
@@ -516,12 +525,13 @@ contains
     real, dimension(:,:),   pointer :: DRATE
     real, dimension(:,:),   pointer :: FRATE
 
-! EXPORT ponters
+! EXPORT pointers
     
     real, dimension(:),     pointer :: IRRG_RATE_SPR
     real, dimension(:),     pointer :: IRRG_RATE_DRP
     real, dimension(:),     pointer :: IRRG_RATE_FRW
     real, dimension(:),     pointer :: IRRG_RATE_PDY
+    real, dimension(:),     pointer :: IRRG_RATE_TOT
 
     type(irrigation_model), pointer :: IM
     type (IRRIG_wrap)               :: wrap
@@ -570,6 +580,7 @@ contains
     call MAPL_GetPointer(EXPORT, IRRG_RATE_DRP,       'IRRG_RATE_DRP', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, IRRG_RATE_FRW,       'IRRG_RATE_FRW', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY,       'IRRG_RATE_PDY', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_TOT,       'IRRG_RATE_TOT',               RC=STATUS) ; VERIFY_(STATUS)
 
     ! Update IRRG_IRRIGFRAC and IRRG_PADDYFRAC for applications that are run on regular tiles in 
     ! which IRRG_IRRIGFRAC and IRRG_PADDYFRAC in BCs are fractions.
@@ -618,6 +629,8 @@ contains
     IRRG_RATE_FRW = IRRG_RATE_FRW * IRRG_IRRIGFRAC 
     IRRG_RATE_PDY = IRRG_RATE_PDY * IRRG_PADDYFRAC 
 
+    if(associated(IRRG_RATE_TOT))  IRRG_RATE_TOT = IRRG_RATE_SPR + IRRG_RATE_FRW +IRRG_RATE_PDY + IRRG_RATE_DRP
+    
     call MAPL_TimerOff(MAPL,"INITIALIZE")
     RETURN_(ESMF_SUCCESS)
     
@@ -666,12 +679,13 @@ contains
     real, dimension(:,:),   pointer :: DRATE
     real, dimension(:,:),   pointer :: FRATE
 
-! EXPORT ponters
+! EXPORT pointers
     
     real, dimension(:),     pointer :: IRRG_RATE_SPR
     real, dimension(:),     pointer :: IRRG_RATE_DRP
     real, dimension(:),     pointer :: IRRG_RATE_FRW    
     real, dimension(:),     pointer :: IRRG_RATE_PDY    
+    real, dimension(:),     pointer :: IRRG_RATE_TOT
     
 ! IMPORT pointers
     
@@ -747,6 +761,7 @@ contains
     call MAPL_GetPointer(EXPORT, IRRG_RATE_DRP        ,'IRRG_RATE_DRP', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY        ,'IRRG_RATE_PDY', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, IRRG_RATE_FRW        ,'IRRG_RATE_FRW', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_TOT        ,'IRRG_RATE_TOT',               RC=STATUS) ; VERIFY_(STATUS)
   
     
     
@@ -859,7 +874,9 @@ contains
     IRRG_RATE_DRP = IRRG_RATE_DRP * IRRG_IRRIGFRAC 
     IRRG_RATE_FRW = IRRG_RATE_FRW * IRRG_IRRIGFRAC 
     IRRG_RATE_PDY = IRRG_RATE_PDY * IRRG_PADDYFRAC 
-
+    
+    if(associated(IRRG_RATE_TOT))  IRRG_RATE_TOT = IRRG_RATE_SPR + IRRG_RATE_FRW +IRRG_RATE_PDY + IRRG_RATE_DRP
+    
     deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF, IM)
 
     call MAPL_TimerOff(MAPL,"RUN")

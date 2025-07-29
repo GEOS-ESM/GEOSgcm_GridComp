@@ -556,11 +556,6 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
-            SHORT_NAME = 'IRRG_RATE_TOT', &
-            CHILD_ID = CATCH(1), &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SNOLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
@@ -1122,8 +1117,6 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PRLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_TOT',  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DRPARLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
@@ -1382,12 +1375,15 @@ contains
        endif
 
     END SELECT   ! LSM_CHOICE (Catch, CatchCN)
+
+    ! -------------------------------------------------------------------------------------------------------------------
     
     if (RUN_IRRIG /= 0) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_SPR', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_PDY', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_FRW', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_DRP', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_TOT', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
     end if
 
 
