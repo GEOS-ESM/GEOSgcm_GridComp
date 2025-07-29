@@ -32,7 +32,8 @@ MODULE IRRIGATION_MODULE
   !     1) IRRG_RATE_SPR  [kg m-2 s-1]
   !     2) IRRG_RATE_DRP  [kg m-2 s-1]
   !     3) IRRG_RATE_FRW  [kg m-2 s-1]   
-  !     4) IRRG_RATE_PDY  [kg m-2 s-1]    
+  !     4) IRRG_RATE_PDY  [kg m-2 s-1]
+  !     5) IRRG_RATE_TOT  [kg m-2 s-1]    (diagnostic only)
   !
   ! (2) IRRIGATED AND PADDY TILES:
   ! During land BC's generation, the fraction of irrigated crops and paddy is set to zero 
@@ -164,8 +165,8 @@ MODULE IRRIGATION_MODULE
      
      ! public
      procedure, public :: init_model
-     generic,   public :: run_model => irrigrate_lai_trigger, irrigrate_crop_calendar
-     generic,   public :: update_irates => update_irates_lai, update_irates_ccalendar
+     generic,   public :: run_model     => irrigrate_lai_trigger, irrigrate_crop_calendar
+     generic,   public :: update_irates => update_irates_lai,     update_irates_ccalendar
      
      ! private
      procedure, private :: irrigrate_lai_trigger
@@ -216,7 +217,7 @@ contains
   SUBROUTINE irrigrate_lai_trigger (this,IRRG_METHOD, local_hour,                                        &
             IRRG_IRRIGFRAC, IRRG_PADDYFRAC, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW,  &           
             SMWP, SMSAT, SMREF, SMCNT, LAI, IRRG_LAIMIN,IRRG_LAIMAX, RZDEF,                              &
-            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW,                                  &
+            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY,                                  &
             SRATE, DRATE, FRATE)
 
     implicit none
@@ -340,8 +341,8 @@ contains
 
     ! IRRGRR, this seems outdated: IRRG_RATE_PDY is weighted averaged over irrigated crops + paddy fractions.
         
-    call this%update_irates (IRRG_RATE_SPR, IRRG_RATE_DRP,IRRG_RATE_PDY, IRRG_RATE_FRW, &
-         IRRG_IRRIGFRAC,IRRG_PADDYFRAC,SRATE,DRATE,FRATE)
+    call this%update_irates( IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY, &
+         IRRG_IRRIGFRAC, IRRG_PADDYFRAC, SRATE, DRATE, FRATE )
     
   END SUBROUTINE irrigrate_lai_trigger
 
@@ -351,7 +352,7 @@ contains
        IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW,                        &
        IRRG_CROPIRRIGFRAC,IRRG_DOY_PLANT, IRRG_DOY_HARVEST, IRRG_TYPE ,  &
        SMWP,SMSAT,SMREF,SMCNT, RZDEF,                       &  
-       IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW, SRATE, DRATE, FRATE)
+       IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY, SRATE, DRATE, FRATE)
 
     implicit none
     class(irrigation_model),intent(inout):: this
@@ -487,29 +488,31 @@ contains
     ! Update IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY EXPORTS to be sent to land models
     ! They are weighted averaged over 26 crop fractions.
 
-    call this%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, &
-       IRRG_CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+    call this%update_irates( IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY, &
+         IRRG_CROPIRRIGFRAC, SRATE, DRATE, FRATE )
     
   END SUBROUTINE irrigrate_crop_calendar
 
   ! ----------------------------------------------------------------------------
 
-  SUBROUTINE update_irates_lai (this,IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, &
+  SUBROUTINE update_irates_lai (this,IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_FRW,IRRG_RATE_PDY, &
        IRRG_IRRIGFRAC,IRRG_PADDYFRAC,SRATE,DRATE,FRATE)
     
     implicit none
 
-    class(irrigation_model),intent(inout):: this
-    real, dimension (:), intent (in)     :: IRRG_IRRIGFRAC, IRRG_PADDYFRAC
-    real, dimension (:,:), intent (in)   :: SRATE, DRATE, FRATE
-    real, dimension (:),intent (inout)   :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
-    integer                              :: N, NT
+    class(irrigation_model),  intent(inout) :: this
+
+    real,    dimension(:),    intent(in)    :: IRRG_IRRIGFRAC, IRRG_PADDYFRAC
+    real,    dimension(:,:),  intent(in)    :: SRATE, DRATE, FRATE
+    real,    dimension(:),    intent(inout) :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
+
+    integer                                 :: N, NT
 
     ! INITIALIZE EXPORTS
     IRRG_RATE_SPR = 0.
     IRRG_RATE_DRP = 0.
-    IRRG_RATE_PDY = 0.
     IRRG_RATE_FRW = 0.
+    IRRG_RATE_PDY = 0.
 
     NT = size (IRRG_IRRIGFRAC)
 
@@ -528,35 +531,38 @@ contains
 
   !...............................................................................
   
-  SUBROUTINE update_irates_ccalendar(this,IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, &
+  SUBROUTINE update_irates_ccalendar(this,IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_FRW,IRRG_RATE_PDY, &
        IRRG_CROPIRRIGFRAC,SRATE,DRATE,FRATE)
 
     implicit none
-    class(irrigation_model),intent(inout):: this
-    real, dimension(:,:),  intent (in)   :: IRRG_CROPIRRIGFRAC ! IRRG_NCROPS
-    real, dimension (:,:), intent (in)   :: SRATE, DRATE, FRATE
-    real, dimension (:),intent (inout)   :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW
-    integer                              :: N, NT, crop
+    
+    class(irrigation_model), intent(inout)  :: this
+
+    real,    dimension(:,:), intent (in)    :: IRRG_CROPIRRIGFRAC ! IRRG_NCROPS
+    real,    dimension(:,:), intent (in)    :: SRATE, DRATE, FRATE
+    real,    dimension(:),   intent (inout) :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
+
+    integer                                 :: N, NT, crop
 
     ! INITIALIZE EXPORTS
     IRRG_RATE_SPR = 0.
     IRRG_RATE_DRP = 0.
-    IRRG_RATE_PDY = 0.
     IRRG_RATE_FRW = 0.
+    IRRG_RATE_PDY = 0.
 
     !_ASSERT(size (SRATE,2)==IRRG_NCROPS,'Irrigation model crop calendar trigger IRRG_NCROPS mismatch')
-   NT =  size (IRRG_RATE_SPR)
+    NT =  size (IRRG_RATE_SPR)
     DO N = 1, NT
        if(SUM(IRRG_CROPIRRIGFRAC(N,:)) > 0.) then
           DO crop = 1, IRRG_NCROPS
-             IRRG_RATE_SPR(N) = IRRG_RATE_SPR(N) + SRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
-             IRRG_RATE_DRP(N) = IRRG_RATE_DRP(N) + DRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
-          if (crop==3) then
-     ! If crop is rice (crop ==3) then use flood irrigation. Otherwise use furrow irrigation.
-             IRRG_RATE_PDY(N) = IRRG_RATE_PDY(N) + FRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
-          else 
-             IRRG_RATE_FRW(N) = IRRG_RATE_FRW(N) + FRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
-          endif
+             IRRG_RATE_SPR(N)    = IRRG_RATE_SPR(N) + SRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
+             IRRG_RATE_DRP(N)    = IRRG_RATE_DRP(N) + DRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
+             if (crop==3) then
+                ! If crop is rice (crop ==3) then use flood irrigation. Otherwise use furrow irrigation.
+                IRRG_RATE_PDY(N) = IRRG_RATE_PDY(N) + FRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
+             else 
+                IRRG_RATE_FRW(N) = IRRG_RATE_FRW(N) + FRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
+             endif
           END DO
        endif
     END DO

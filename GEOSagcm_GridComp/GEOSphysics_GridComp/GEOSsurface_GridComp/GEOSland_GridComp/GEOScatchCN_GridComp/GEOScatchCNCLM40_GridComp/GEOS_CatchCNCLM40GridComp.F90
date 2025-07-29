@@ -5177,8 +5177,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,IRRG_RATE_SPR,'IRRG_RATE_SPR',RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,IRRG_RATE_DRP,'IRRG_RATE_DRP',RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,IRRG_RATE_PDY,'IRRG_RATE_PDY',RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,IRRG_RATE_FRW,'IRRG_RATE_FRW',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,IRRG_RATE_PDY,'IRRG_RATE_PDY',RC=STATUS); VERIFY_(STATUS)
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -6962,11 +6962,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         where (IRRG_RATE_DRP > 0)
            RZEXC  = RZEXC  + IRRG_RATE_DRP * DT
         end where
-        where (IRRG_RATE_PDY > 0)
-           SRFEXC = SRFEXC + IRRG_RATE_PDY * DT
-        end where
         where (IRRG_RATE_FRW > 0)
            RZEXC  = RZEXC  + IRRG_RATE_FRW * DT
+        end where
+        where (IRRG_RATE_PDY > 0)
+           SRFEXC = SRFEXC + IRRG_RATE_PDY * DT
         end where
 
         ! IRRGRR: add call to catch_calc_soil_moist()

@@ -608,7 +608,7 @@ contains
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
        ! ============================================================
        
-       call IM%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, & 
+       call IM%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_FRW,IRRG_RATE_PDY, & 
             IRRG_IRRIGFRAC,IRRG_PADDYFRAC,SRATE,DRATE,FRATE)
        
     else
@@ -616,7 +616,7 @@ contains
        ! crop calendar based irrigation
        ! ==============================
 
-       call IM%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, &
+       call IM%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_FRW,IRRG_RATE_PDY, &
             IRRG_CROPIRRIGFRAC,SRATE,DRATE,FRATE)
        
     endif
@@ -629,7 +629,7 @@ contains
     IRRG_RATE_FRW = IRRG_RATE_FRW * IRRG_IRRIGFRAC 
     IRRG_RATE_PDY = IRRG_RATE_PDY * IRRG_PADDYFRAC 
 
-    if(associated(IRRG_RATE_TOT))  IRRG_RATE_TOT = IRRG_RATE_SPR + IRRG_RATE_FRW +IRRG_RATE_PDY + IRRG_RATE_DRP
+    if(associated(IRRG_RATE_TOT))  IRRG_RATE_TOT = IRRG_RATE_SPR + IRRG_RATE_DRP + IRRG_RATE_FRW +IRRG_RATE_PDY
     
     call MAPL_TimerOff(MAPL,"INITIALIZE")
     RETURN_(ESMF_SUCCESS)
@@ -759,8 +759,8 @@ contains
     ! -------------------------------
     call MAPL_GetPointer(EXPORT, IRRG_RATE_SPR        ,'IRRG_RATE_SPR', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, IRRG_RATE_DRP        ,'IRRG_RATE_DRP', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY        ,'IRRG_RATE_PDY', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, IRRG_RATE_FRW        ,'IRRG_RATE_FRW', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY        ,'IRRG_RATE_PDY', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, IRRG_RATE_TOT        ,'IRRG_RATE_TOT',               RC=STATUS) ; VERIFY_(STATUS)
   
     
@@ -850,7 +850,7 @@ contains
        call IM%run_model(IRRG_METHOD, local_hour,                                                       &
             IRRG_IRRIGFRAC, IRRG_PADDYFRAC, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW, &           
             SMWP,SMSAT,SMREF,SMCNT, LAI, IRRG_LAIMIN, IRRG_LAIMAX, RZDEF,                               &
-            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW,                                 &
+            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY,                                 &
             SRATE, DRATE, FRATE) 
        
     else
@@ -862,7 +862,7 @@ contains
             IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW,                                 &
             IRRG_CROPIRRIGFRAC,IRRG_DOY_PLANT,IRRG_DOY_HARVEST,IRRG_TYPE ,                              &
             SMWP,SMSAT,SMREF,SMCNT, RZDEF,                                                              & 
-            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW,                                 &
+            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY,                                 &
             SRATE, DRATE, FRATE) 
 
     endif
@@ -875,7 +875,7 @@ contains
     IRRG_RATE_FRW = IRRG_RATE_FRW * IRRG_IRRIGFRAC 
     IRRG_RATE_PDY = IRRG_RATE_PDY * IRRG_PADDYFRAC 
     
-    if(associated(IRRG_RATE_TOT))  IRRG_RATE_TOT = IRRG_RATE_SPR + IRRG_RATE_FRW +IRRG_RATE_PDY + IRRG_RATE_DRP
+    if(associated(IRRG_RATE_TOT))  IRRG_RATE_TOT = IRRG_RATE_SPR + IRRG_RATE_DRP + IRRG_RATE_FRW +IRRG_RATE_PDY
     
     deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF, IM)
 
@@ -885,3 +885,6 @@ contains
   end subroutine RUN
 
 end module GEOS_IrrigationGridCompMod
+
+
+! ========================= EOF ==================================================================================
