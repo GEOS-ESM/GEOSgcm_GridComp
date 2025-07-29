@@ -337,8 +337,6 @@ contains
     END DO TILE_LOOP
 
     ! Update IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY EXPORTS to be sent to land models.
-
-    ! IRRGRR, this seems outdated: IRRG_RATE_PDY is weighted averaged over irrigated crops + paddy fractions.
         
     call this%update_irates( IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY, &
          IRRG_IRRIGFRAC, IRRG_PADDYFRAC, SRATE, DRATE, FRATE )
