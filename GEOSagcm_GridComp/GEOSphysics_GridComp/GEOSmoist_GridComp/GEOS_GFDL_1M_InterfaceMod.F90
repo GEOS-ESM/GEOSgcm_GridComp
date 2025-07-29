@@ -16,7 +16,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
-  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail
+  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail, ifflag
 
   implicit none
 
@@ -228,6 +228,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     CHARACTER(len=ESMF_MAXSTR) :: errmsg
 
+    real                     :: cf_max
     real                     :: DBZ_DT
     type(ESMF_Calendar)      :: calendar
     type(ESMF_Alarm)         :: DBZ_RunAlarm
@@ -268,6 +269,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (DT_R8 < 300.0) then 
       do_hail = .true.
+      ifflag = 1
     endif
 
     if (GFDL_MP3) then
@@ -314,13 +316,12 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
                                  CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
-    if (DT_MOIST <= 300.0) then
-      call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
-    else
-      call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS); VERIFY_(STATUS)
-    endif
+    ! variations on max CAPE for convective fraction as timestep changes with resolution
+    cf_max = 100.0 * NINT( (1500.0+2500.0*(1-(DT_R8-30.0)/(900.0-30.0))**2) /100.0 )
+    if (cf_max < 1500.0) cf_max = 1500.0
+    if (cf_max > 4000.0) cf_max = 4000.0
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= cf_max, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, GFDL_MP_PLID    , 'GFDL_MP_PLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
 

@@ -88,7 +88,7 @@ module gfdl_mp_mod
     public :: c_liq, c_ice, rhow, wet_bulb
     public :: cv_air, cv_vap, mtetw, mte
     public :: hlv, hlf, tice
-    public :: do_hail
+    public :: do_hail, ifflag
 
     ! -----------------------------------------------------------------------
     ! precision definition
