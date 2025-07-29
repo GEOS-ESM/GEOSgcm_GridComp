@@ -160,15 +160,13 @@
 #--------------------------------------------------------#
 
 # ---- Run irrigation module
-
-#    NOTE: The irrigation model needs the irrigation parameter file ('irrigation_IMxJM_DL.dat') in BCSDIR to run the      model.
-#    0 : Do NOT run irrigation module (default)
-#    1 : YES, run irrigation module -
 #
+#    NOTE: The irrigation model needs the irrigation parameter file ('irrigation_IMxJM_DL.dat') in BCSDIR to run the model.
+#    0 : Do NOT run irrigation module (default)
+#    1 : YES, run irrigation module 
 #
 # GEOSagcm=>RUN_IRRIG: 0
-# GEOSldas=>RUN_IRRIG: 1
-#
+# GEOSldas=>RUN_IRRIG: 0
 #
 # ---- Irrigation trigger
 #
@@ -178,19 +176,19 @@
 # GEOSagcm=>IRRG_TRIGGER: 0
 # GEOSldas=>IRRG_TRIGGER: 0
 #
-# ---- Irrigation method (ONLY available with IRRG_TRIGGER: 0)
+# ---- Irrigation method
 #
-# While the crop calendar based trigger uses crop-specific irrigation methods, the LAI-based trigger (IRRG_TRIGGER:      0) offers below
-# 4 different irrigation methods to choose from:
-#    0 : CONCURRENTLY Sprinkler, Flood, and DRIP irrigation methods on method specific tile fractions (default) 
+# The LAI-based trigger (IRRG_TRIGGER: 0) offers 4 choices of irrigation method:
+#
+#    0 : CONCURRENT sprinkler, drip, and furrow irrigation for specified tile fractions (default) 
 #    1 : Sprinkler irrigation on entire tile
-#    2 : Drip irrigation on entire tile
-#    3 : Flood irrigation on entire tile
+#    2 : Drip      irrigation on entire tile
+#    3 : Furrow    irrigation on entire tile
 #
 # GEOSagcm=>IRRG_METHOD: 0
 # GEOSldas=>IRRG_METHOD: 0
 #
-# ----- Below default parameter values can also be changed via this resource file:
+# ----- Miscellaneous irrigation parameters
 #
 # GEOSldas=>IRRG_FRAC_THRES:  0.01 # threshold of tile fraction to turn the irrigation model on.
 # GEOSldas=>IRRG_LAI_THRES:   0.6  # threshold of LAI range to turn irrigation on
@@ -202,8 +200,8 @@
 # GEOSldas=>IRRG_FLD_STIME:   6.0  # flood irrigatrion start time [hours]
 # GEOSldas=>IRRG_FLD_DUR:     8.0  # flood irrigation duration [hours]
 # GEOSldas=>IRRG_FLD_THRES:   0.7  # soil moisture threshhold to trigger flood irrigation                                    IRRGRR: Units???
-# GEOSldas=>IRR_EFCOR:       25.0  # Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use )
-# GEOSldas=>MIDS_LENGTH:      0.6  # Mid-season length as a fraction of crop growing season length (to be used with IRRG_TRIGGER     : 1)
+# GEOSldas=>IRRG_EFCOR:      25.0  # efficiency correction (% water loss: efcor = 0% denotes 100% efficient water use )
+# GEOSldas=>IRRG_MIDS_LNGTH:  0.6  # mid-season length as a fraction of crop growing season length (to be used with IRRG_TRIGGER: 1)
 #                                  #   lengths of development and end seasons are assumed as (1 - MIDS_LENGTH) / 2.
 
 

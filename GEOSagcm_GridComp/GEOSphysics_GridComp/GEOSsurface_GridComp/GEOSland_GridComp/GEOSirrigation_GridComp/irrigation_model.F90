@@ -136,26 +136,25 @@ MODULE IRRIGATION_MODULE
 
      REAL :: irrig_thres      =   0.01 ! threshold of tile fraction to turn the irrigation model on. 
      REAL :: lai_thres        =   0.6  ! threshold of LAI range to turn irrigation on
-     REAL :: efcor            =  25.0  ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
-     REAL :: MIDS_LENGTH      =   0.6  ! Mid-season length as a fraction of crop growing season length (to be used with IRRG_TRIGGER: 1)
+     REAL :: efcor            =  25.0  ! efficiency correction (% water loss: efcor = 0% denotes 100% efficient water use)
+     REAL :: MIDS_LNGTH       =   0.6  ! Mid-season length as a fraction of crop growing season length (to be used with IRRG_TRIGGER: 1)
      
      ! Sprinkler parameters
      ! --------------------
-     REAL :: sprinkler_stime  =   6.0  ! sprinkler irrigatrion start time [hours]
-     REAL :: sprinkler_dur    =   4.0  ! sprinkler irrigation duration [hours]
-     REAL :: sprinkler_thres  =   0.7  ! soil moisture threshhold to trigger sprinkler irrigation
+     REAL :: sprinkler_stime  =   6.0  ! sprinkler irrigation start time (local)                  [hours]
+     REAL :: sprinkler_dur    =   4.0  ! sprinkler irrigation duration                            [hours]
+     REAL :: sprinkler_thres  =   0.7  ! soil moisture threshold to trigger sprinkler irrigation
      
      ! Drip parameters 
      ! ---------------
-     REAL :: drip_stime       =   8.0  ! drip irrigatrion start time [hours] 
-     REAL :: drip_dur         =   8.0  ! drip irrigation duration [hours]
+     REAL :: drip_stime       =   8.0  ! drip irrigation start time (local)                       [hours] 
+     REAL :: drip_dur         =   8.0  ! drip irrigation duration                                 [hours]
      
      ! Flood parameters
      ! ----------------
-     REAL :: flood_stime      =   6.0  ! flood irrigatrion start time [hours]
-     REAL :: flood_dur        =   8.0  ! flood irrigation duration [hours]
-     REAL :: flood_thres      =   0.6  ! soil moisture threshhold to trigger flood irrigation
-
+     REAL :: flood_stime      =   6.0  ! flood irrigation start time (local)                      [hours]
+     REAL :: flood_dur        =   8.0  ! flood irrigation duration                                [hours]
+     REAL :: flood_thres      =   0.6  ! soil moisture threshold to trigger flood irrigation
      
   end type irrig_params
   
@@ -204,9 +203,9 @@ contains
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_STIME:' , VALUE=IP%flood_stime,     DEFAULT=DP%flood_stime    , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_DUR:'   , VALUE=IP%flood_dur,       DEFAULT=DP%flood_dur      , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_THRES:' , VALUE=IP%flood_thres,     DEFAULT=DP%flood_thres    , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IP%efcor,           DEFAULT=DP%efcor          , __RC__ )    ! IRRGRR - revise rc param name
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_EFCOR:'     , VALUE=IP%efcor,           DEFAULT=DP%efcor          , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_LAI_THRES:' , VALUE=IP%lai_thres,       DEFAULT=DP%lai_thres      , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='MIDS_LENGTH:'    , VALUE=IP%MIDS_LENGTH,     DEFAULT=DP%MIDS_LENGTH    , __RC__ )    ! IRRGRR - revise rc param name
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_MIDS_LNGTH:', VALUE=IP%MIDS_LNGTH,      DEFAULT=DP%MIDS_LNGTH     , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FRAC_THRES:', VALUE=IP%irrig_thres,     DEFAULT=DP%irrig_thres    , __RC__ )
     CALL ESMF_ConfigDestroy      (SCF, __RC__)
 
@@ -401,7 +400,7 @@ contains
                             
                             ! IRRIGATED CROP: compute sum of irrigrates from 25 crops.
                             
-                            ROOTFRAC = CROP_SEASON_STAGE (this%MIDS_LENGTH, dofyr,NINT(IRRG_DOY_PLANT(N, sea, crop)),NINT(IRRG_DOY_HARVEST(N, sea, crop)))
+                            ROOTFRAC = CROP_SEASON_STAGE (this%MIDS_LNGTH, dofyr,NINT(IRRG_DOY_PLANT(N, sea, crop)),NINT(IRRG_DOY_HARVEST(N, sea, crop)))
                             if(SMREF(N) > SMWP(N))then
                                ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
                             else
