@@ -7,7 +7,7 @@ from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
-class Translatehydrostatic_pdf(TranslateFortranData2Py):
+class TranslateGFDL_1M_hydrostatic_pdf(TranslateFortranData2Py):
     def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
@@ -15,18 +15,18 @@ class Translatehydrostatic_pdf(TranslateFortranData2Py):
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
-            "cnv_frc": grid.compute_dict() | {"serialname": "CNV_FRC"},
-            "srf_type": grid.compute_dict() | {"serialname": "SRF_TYPE"},
+            "convection_fraction": grid.compute_dict() | {"serialname": "CNV_FRC"},
+            "surface_type": grid.compute_dict() | {"serialname": "SRF_TYPE"},
             "alpha": grid.compute_dict() | {"serialname": "ALPHA"},
             "p_mb": grid.compute_dict() | {"serialname": "PLmb"},
-            "q": grid.compute_dict() | {"serialname": "Q"},
-            "qlls": grid.compute_dict() | {"serialname": "QLLS"},
-            "qlcn": grid.compute_dict() | {"serialname": "QLCN"},
-            "qils": grid.compute_dict() | {"serialname": "QILS"},
-            "qicn": grid.compute_dict() | {"serialname": "QICN"},
+            "vapor": grid.compute_dict() | {"serialname": "Q"},
+            "large_scale_liquid": grid.compute_dict() | {"serialname": "QLLS"},
+            "convective_liquid": grid.compute_dict() | {"serialname": "QLCN"},
+            "large_scale_ice": grid.compute_dict() | {"serialname": "QILS"},
+            "convective_ice": grid.compute_dict() | {"serialname": "QICN"},
             "t": grid.compute_dict() | {"serialname": "T"},
-            "clls": grid.compute_dict() | {"serialname": "CLLS"},
-            "clcn": grid.compute_dict() | {"serialname": "CLCN"},
+            "large_scale_cloud_fraction": grid.compute_dict() | {"serialname": "CLLS"},
+            "convective_cloud_fraction": grid.compute_dict() | {"serialname": "CLCN"},
             "nacti": grid.compute_dict() | {"serialname": "NACTI"},
             "rhx": grid.compute_dict() | {"serialname": "RHX"},
         }
@@ -39,8 +39,8 @@ class Translatehydrostatic_pdf(TranslateFortranData2Py):
 
         self.out_vars = self.in_vars["data_vars"].copy()
         del (
-            self.out_vars["cnv_frc"],
-            self.out_vars["srf_type"],
+            self.out_vars["convection_fraction"],
+            self.out_vars["surface_type"],
             self.out_vars["alpha"],
             self.out_vars["p_mb"],
             self.out_vars["nacti"],
@@ -59,6 +59,14 @@ class Translatehydrostatic_pdf(TranslateFortranData2Py):
         )
 
         tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+
+        # NOTE errors in this test trace back to the saturation_specific_humidity call in the while loop,
+        # which returns errors < 5 ULP for dqs. These exist because the GEOS_DQSAT and GEOS_QSAT
+        # fortran functions were combined into a single saturation_specific_humidity NDSL function.
+        # The two fortran functions were nearly identical, but had slightly different order of operations,
+        # producing results which occasionally differ by a few ULP. These errors are considered acceptable
+        # because the absolute and relative errors are both extremely small
+        # (10-7-10-13 and 10-5, respectively)
 
         _hydrostatic_pdf(
             ese=tables.ese,

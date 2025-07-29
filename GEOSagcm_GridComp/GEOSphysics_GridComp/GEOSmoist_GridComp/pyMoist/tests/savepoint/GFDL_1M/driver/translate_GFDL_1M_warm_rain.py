@@ -11,7 +11,7 @@ from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
 
 
-class Translatewarm_rain(TranslateFortranData2Py):
+class TranslateGFDL_1M_warm_rain(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

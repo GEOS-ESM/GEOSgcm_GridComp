@@ -180,6 +180,11 @@ def hydrostatic_pdf(
     esx: GlobalTable_saturaion_tables,
     estfrz: Float,
     estlqu: Float,
+    debug_3d_1: FloatField,
+    debug_3d_2: FloatField,
+    debug_3d_3: FloatField,
+    debug_3d_4: FloatField,
+    debug_3d_5: FloatField,
 ):
     """
     Hydrostatic PDF for use in the phase change section of GFDL_1M microphysics
@@ -299,6 +304,8 @@ def hydrostatic_pdf(
                     + (qa_o - qa_x) * convective_cloud_fraction
                 )
             )
+            # if count == 1:
+            #     debug_3d_5 = t_n
 
             # NOTE Differences in constants between fortran and python cause
             # calculation of t_n to be slightly off (at order 10^-5), causing

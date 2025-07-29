@@ -4,14 +4,14 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
-from pyMoist.GFDL_1M.driver.fall_speed.main import FallSpeed
 from pyMoist.GFDL_1M.driver.masks import Masks
 from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.driver.temporaries import Temporaries
+from pyMoist.GFDL_1M.driver.terminal_fall.main import TerminalFall
 
 
-class Translatefall_speed(TranslateFortranData2Py):
+class TranslateGFDL_1M_terminal_fall(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -24,40 +24,38 @@ class Translatefall_speed(TranslateFortranData2Py):
 
         # grid.compute_dict is workaround to remove grid halo, which is hardcoded to 3
         self.in_vars["data_vars"] = {
-            "p_dry": grid.compute_dict() | {"serialname": "p1_fall_speed"},
-            "qs1": grid.compute_dict() | {"serialname": "qs_fall_speed"},
-            "qi1": grid.compute_dict() | {"serialname": "qi_fall_speed"},
-            "qg1": grid.compute_dict() | {"serialname": "qg_fall_speed"},
-            "ql1": grid.compute_dict() | {"serialname": "ql_fall_speed"},
-            "t": grid.compute_dict() | {"serialname": "t_fall_speed"},
-            "t1": grid.compute_dict() | {"serialname": "t1_fall_speed"},
-            "vts": grid.compute_dict() | {"serialname": "vts_fall_speed"},
-            "vti": grid.compute_dict() | {"serialname": "vti_fall_speed"},
-            "vtg": grid.compute_dict() | {"serialname": "vtg_fall_speed"},
-            "den": grid.compute_dict() | {"serialname": "den_fall_speed"},
-            "den1": grid.compute_dict() | {"serialname": "den1_fall_speed"},
-            "denfac": grid.compute_dict() | {"serialname": "denfac_fall_speed"},
-            "dz": grid.compute_dict() | {"serialname": "dz_fall_speed"},
-            "dz1": grid.compute_dict() | {"serialname": "dz1_fall_speed"},
-            "cnv_frc": grid.compute_dict() | {"serialname": "cnv_frc_fall_speed"},
+            "t1": grid.compute_dict() | {"serialname": "t1_terminal_fall"},
+            "qv1": grid.compute_dict() | {"serialname": "qv_terminal_fall"},
+            "ql1": grid.compute_dict() | {"serialname": "ql_terminal_fall"},
+            "qr1": grid.compute_dict() | {"serialname": "qr_terminal_fall"},
+            "qg1": grid.compute_dict() | {"serialname": "qg_terminal_fall"},
+            "qs1": grid.compute_dict() | {"serialname": "qs_terminal_fall"},
+            "qi1": grid.compute_dict() | {"serialname": "qi_terminal_fall"},
+            "m1_sol": grid.compute_dict() | {"serialname": "m1_sol_terminal_fall"},
+            "w1": grid.compute_dict() | {"serialname": "w1_terminal_fall"},
+            "dz1": grid.compute_dict() | {"serialname": "dz1_terminal_fall"},
+            "dp1": grid.compute_dict() | {"serialname": "dp1_terminal_fall"},
+            "vtg": grid.compute_dict() | {"serialname": "vtg_terminal_fall"},
+            "vts": grid.compute_dict() | {"serialname": "vts_terminal_fall"},
+            "vti": grid.compute_dict() | {"serialname": "vti_terminal_fall"},
+            "precip_rain": grid.compute_dict() | {"serialname": "r1_terminal_fall"},
+            "precip_graupel": grid.compute_dict() | {"serialname": "g1_terminal_fall"},
+            "precip_snow": grid.compute_dict() | {"serialname": "s1_terminal_fall"},
+            "precip_ice": grid.compute_dict() | {"serialname": "i1_terminal_fall"},
+            "rain": grid.compute_dict() | {"serialname": "rain_terminal_fall"},
+            "snow": grid.compute_dict() | {"serialname": "snow_terminal_fall"},
+            "graupel": grid.compute_dict() | {"serialname": "graupel_terminal_fall"},
+            "ice": grid.compute_dict() | {"serialname": "ice_terminal_fall"},
         }
-        self.in_vars["parameters"] = [
-            "anv_icefall_fall_speed",
-            "lsc_icefall_fall_speed",
-        ]
+        self.in_vars["parameters"] = []
 
         self.out_vars = self.in_vars["data_vars"].copy()
         del (
-            self.out_vars["p_dry"],
-            self.out_vars["den"],
-            self.out_vars["dz"],
-            self.out_vars["qs1"],
-            self.out_vars["qi1"],
-            self.out_vars["qg1"],
-            self.out_vars["ql1"],
-            self.out_vars["t"],
-            self.out_vars["t1"],
-            self.out_vars["cnv_frc"],
+            self.out_vars["dz1"],
+            self.out_vars["dp1"],
+            self.out_vars["vtg"],
+            self.out_vars["vts"],
+            self.out_vars["vti"],
         )
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -177,16 +175,18 @@ class Translatefall_speed(TranslateFortranData2Py):
         masks = Masks.make(self.quantity_factory)
 
         # Initalize object to be tested
-        self.fall_speed = FallSpeed(
+        self.terminal_fall = TerminalFall(
             self.stencil_factory,
             self.quantity_factory,
             self.GFDL_1M_config,
             self.config_dependent_constants,
         )
 
-        self.fall_speed(
-            anv_icefall=inputs.pop("anv_icefall_fall_speed"),
-            ls_icefall=inputs.pop("lsc_icefall_fall_speed"),
+        self.terminal_fall(
+            ze=temporaries.ze,
+            zt=temporaries.zt,
+            is_frozen=masks.is_frozen,
+            precip_fall=masks.precip_fall,
             **inputs
         )
         return inputs

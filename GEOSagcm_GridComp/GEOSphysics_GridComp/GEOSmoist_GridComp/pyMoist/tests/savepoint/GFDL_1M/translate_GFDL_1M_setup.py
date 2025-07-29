@@ -79,7 +79,7 @@ class TranslateGFDL_1M_setup(TranslateFortranData2Py):
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         # Initalize extra quantities
-        self.outputs = Outputs.make(self.quantity_factory)
+        self.internal_outputs = Outputs.zeros(self.quantity_factory)
         self.temporaries = Temporaries.make(self.quantity_factory)
         self.masks = Masks.make(self.quantity_factory)
 
@@ -219,7 +219,6 @@ class TranslateGFDL_1M_setup(TranslateFortranData2Py):
         )
         shallow_convective_rain = self.make_ijk_quantity(inputs.pop("SHLW_PRC3"))
         shallow_convective_snow = self.make_ijk_quantity(inputs.pop("SHLW_SNO3"))
-        self.outputs.z_lcl = None
 
         # Construct stencils
         self.prepare_tendencies = self.stencil_factory.from_dims_halo(
@@ -245,7 +244,7 @@ class TranslateGFDL_1M_setup(TranslateFortranData2Py):
             mixing_ratios=mixing_ratios,
             cloud_fractions=cloud_fractions,
             masks=self.masks,
-            outputs=self.outputs,
+            outputs=self.internal_outputs,
             temporaries=self.temporaries,
         )
 
@@ -263,18 +262,18 @@ class TranslateGFDL_1M_setup(TranslateFortranData2Py):
             "QST3": self.temporaries.qsat.field,
             "DQST3": self.temporaries.dqsat.field,
             "KLCL": self.temporaries.k_lcl.field + 1,  # add 1 b/c python indexing starts at 0
-            "LTS": self.outputs.lower_tropospheric_stability.field,
-            "EIS": self.outputs.estimated_inversion_strength.field,
+            "LTS": self.internal_outputs.lower_tropospheric_stability.field,
+            "EIS": self.internal_outputs.estimated_inversion_strength.field,
             "QRAIN": mixing_ratios.rain.field,
             "QSNOW": mixing_ratios.snow.field,
-            "DUDT_macro": self.outputs.du_dt_macro.field,
-            "DVDT_macro": self.outputs.dv_dt_macro.field,
-            "DTDT_macro": self.outputs.dt_dt_macro.field,
-            "DQVDT_macro": self.outputs.dvapor_dt_macro.field,
-            "DQLDT_macro": self.outputs.dliquid_dt_macro.field,
-            "DQIDT_macro": self.outputs.dice_dt_macro.field,
-            "DQADT_macro": self.outputs.dcloud_fraction_dt_macro.field,
-            "DQRDT_macro": self.outputs.drain_dt_macro.field,
-            "DQSDT_macro": self.outputs.dsnow_dt_macro.field,
-            "DQGDT_macro": self.outputs.dgraupel_dt_macro.field,
+            "DUDT_macro": self.internal_outputs.du_dt_macro.field,
+            "DVDT_macro": self.internal_outputs.dv_dt_macro.field,
+            "DTDT_macro": self.internal_outputs.dt_dt_macro.field,
+            "DQVDT_macro": self.internal_outputs.dvapor_dt_macro.field,
+            "DQLDT_macro": self.internal_outputs.dliquid_dt_macro.field,
+            "DQIDT_macro": self.internal_outputs.dice_dt_macro.field,
+            "DQADT_macro": self.internal_outputs.dcloud_fraction_dt_macro.field,
+            "DQRDT_macro": self.internal_outputs.drain_dt_macro.field,
+            "DQSDT_macro": self.internal_outputs.dsnow_dt_macro.field,
+            "DQGDT_macro": self.internal_outputs.dgraupel_dt_macro.field,
         }

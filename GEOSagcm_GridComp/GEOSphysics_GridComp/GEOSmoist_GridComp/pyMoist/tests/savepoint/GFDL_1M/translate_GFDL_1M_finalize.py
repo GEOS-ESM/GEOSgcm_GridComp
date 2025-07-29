@@ -216,7 +216,6 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         # Initalize extra quantities
-        outputs = Outputs.make(self.quantity_factory)
         temporaries = Temporaries.make(self.quantity_factory)
         masks = Masks.make(self.quantity_factory)
 
@@ -244,35 +243,8 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
             convective=self.make_ijk_quantity(inputs.pop("CLCN")),
             large_scale=self.make_ijk_quantity(inputs.pop("CLLS")),
         )
-        outputs.radiation_cloud_fraction = self.make_ijk_quantity(inputs.pop("RAD_CF"))
-        outputs.radiation_ice = self.make_ijk_quantity(inputs.pop("RAD_QI"))
-        outputs.radiation_liquid = self.make_ijk_quantity(inputs.pop("RAD_QL"))
-        outputs.radiation_vapor = self.make_ijk_quantity(inputs.pop("RAD_QV"))
-        outputs.radiation_rain = self.make_ijk_quantity(inputs.pop("RAD_QR"))
-        outputs.radiation_snow = self.make_ijk_quantity(inputs.pop("RAD_QS"))
-        outputs.radiation_graupel = self.make_ijk_quantity(inputs.pop("RAD_QG"))
-        outputs.liquid_radius = self.make_ijk_quantity(inputs.pop("CLDREFFL"))
-        outputs.ice_radius = self.make_ijk_quantity(inputs.pop("CLDREFFI"))
-        outputs.du_dt_micro = self.make_ijk_quantity(inputs.pop("DUDT_micro"))
-        outputs.dv_dt_micro = self.make_ijk_quantity(inputs.pop("DVDT_micro"))
-        outputs.dt_dt_micro = self.make_ijk_quantity(inputs.pop("DTDT_micro"))
-        outputs.dvapor_dt_micro = self.make_ijk_quantity(inputs.pop("DQVDT_micro"))
-        outputs.dliquid_dt_micro = self.make_ijk_quantity(inputs.pop("DQLDT_micro"))
-        outputs.dice_dt_micro = self.make_ijk_quantity(inputs.pop("DQIDT_micro"))
-        outputs.dcloud_fraction_dt_micro = self.make_ijk_quantity(inputs.pop("DQADT_micro"))
-        outputs.drain_dt_micro = self.make_ijk_quantity(inputs.pop("DQRDT_micro"))
-        outputs.dsnow_dt_micro = self.make_ijk_quantity(inputs.pop("DQSDT_micro"))
-        outputs.dgraupel_dt_micro = self.make_ijk_quantity(inputs.pop("DQGDT_micro"))
 
-        # Disable calculations not performed in test case
-        outputs.large_scale_rainwater_source = None
-        outputs.simulated_reflectivity = None
-        outputs.maximum_reflectivity = None
-        outputs.one_km_agl_reflectivity = None
-        outputs.echo_top_reflectivity = None
-        outputs.minus_10c_reflectivity = None
-
-        # Spoof driver output with Fortran data
+        # Put driver output where in expected locations
         driver = MicrophysicsDriver(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
@@ -286,6 +258,30 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
         driver.outputs.m2_sol = self.make_ijk_quantity(inputs.pop("PFI_LS"), interface=True)
         driver.outputs.revap = self.make_ijk_quantity(inputs.pop("REV_LS"))
         driver.outputs.isubl = self.make_ijk_quantity(inputs.pop("RSU_LS"))
+
+        # Initalize outputs to be overwritten with Fortran data
+        outputs = Outputs.zeros(self.quantity_factory)
+
+        # Bring in Fortran data from earlier in the component
+        outputs.liquid_radius.field[:] = inputs.pop("CLDREFFL")
+        outputs.ice_radius.field[:] = inputs.pop("CLDREFFI")
+        outputs.radiation_cloud_fraction.field[:] = inputs.pop("RAD_CF")
+        outputs.radiation_vapor.field[:] = inputs.pop("RAD_QV")
+        outputs.radiation_liquid.field[:] = inputs.pop("RAD_QL")
+        outputs.radiation_ice.field[:] = inputs.pop("RAD_QI")
+        outputs.radiation_rain.field[:] = inputs.pop("RAD_QR")
+        outputs.radiation_snow.field[:] = inputs.pop("RAD_QS")
+        outputs.radiation_graupel.field[:] = inputs.pop("RAD_QG")
+        outputs.du_dt_micro.field[:] = inputs.pop("DUDT_micro")
+        outputs.dv_dt_micro.field[:] = inputs.pop("DVDT_micro")
+        outputs.dt_dt_micro.field[:] = inputs.pop("DTDT_micro")
+        outputs.dvapor_dt_micro.field[:] = inputs.pop("DQVDT_micro")
+        outputs.dliquid_dt_micro.field[:] = inputs.pop("DQLDT_micro")
+        outputs.dice_dt_micro.field[:] = inputs.pop("DQIDT_micro")
+        outputs.dcloud_fraction_dt_micro.field[:] = inputs.pop("DQADT_micro")
+        outputs.drain_dt_micro.field[:] = inputs.pop("DQRDT_micro")
+        outputs.dsnow_dt_micro.field[:] = inputs.pop("DQSDT_micro")
+        outputs.dgraupel_dt_micro.field[:] = inputs.pop("DQGDT_micro")
 
         # Construct stencils
         self.update_tendencies = self.stencil_factory.from_dims_halo(

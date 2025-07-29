@@ -5,7 +5,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 
 
-class Translatemelt_freeze(TranslateFortranData2Py):
+class TranslateGFDL_1M_melt_freeze(TranslateFortranData2Py):
     def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
@@ -14,10 +14,10 @@ class Translatemelt_freeze(TranslateFortranData2Py):
         # FloatField Inputs
         self.in_vars["data_vars"] = {
             "t": grid.compute_dict() | {"serialname": "T"},
-            "cnv_frc": grid.compute_dict() | {"serialname": "CNV_FRC"},
-            "srf_type": grid.compute_dict() | {"serialname": "SRF_TYPE"},
-            "qlcn": grid.compute_dict() | {"serialname": "QLCN"},
-            "qicn": grid.compute_dict() | {"serialname": "QICN"},
+            "convection_fraction": grid.compute_dict() | {"serialname": "CNV_FRC"},
+            "surface_type": grid.compute_dict() | {"serialname": "SRF_TYPE"},
+            "liquid": grid.compute_dict() | {"serialname": "QLCN"},
+            "ice": grid.compute_dict() | {"serialname": "QICN"},
         }
 
         self.in_vars["parameters"] = [
@@ -26,8 +26,8 @@ class Translatemelt_freeze(TranslateFortranData2Py):
 
         self.out_vars = self.in_vars["data_vars"].copy()
         del (
-            self.out_vars["cnv_frc"],
-            self.out_vars["srf_type"],
+            self.out_vars["convection_fraction"],
+            self.out_vars["surface_type"],
         )
 
     def compute_from_storage(self, inputs):

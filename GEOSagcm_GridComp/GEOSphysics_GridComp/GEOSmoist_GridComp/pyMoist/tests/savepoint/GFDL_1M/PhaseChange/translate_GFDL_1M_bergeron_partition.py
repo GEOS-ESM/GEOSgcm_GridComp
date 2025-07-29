@@ -49,7 +49,7 @@ def _stencil(
         )
 
 
-class Translatebergeron_partition(TranslateFortranData2Py):
+class TranslateGFDL_1M_bergeron_partition(TranslateFortranData2Py):
     def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory

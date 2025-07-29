@@ -3,57 +3,64 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
+from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
+from pyMoist.GFDL_1M.driver.ice_cloud.main import IceCloud
+from pyMoist.GFDL_1M.driver.masks import Masks
+from pyMoist.GFDL_1M.driver.outputs import Outputs
+from pyMoist.GFDL_1M.driver.sat_tables import get_tables
+from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 
 
-class Translatephase_change(TranslateFortranData2Py):
-    def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
-        super().__init__(grid, stencil_factory)
+class TranslateGFDL_1M_ice_cloud(TranslateFortranData2Py):
+    def __init__(
+        self,
+        grid: Grid,
+        namelist: Namelist,
+        stencil_factory: StencilFactory,
+    ):
+        super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        # FloatField Inputs
+        # grid.compute_dict is workaround to remove grid halo, which is hardcoded to 3
         self.in_vars["data_vars"] = {
-            "estimated_inversion_strength": grid.compute_dict() | {"serialname": "EIS"},
-            "p_mb": grid.compute_dict() | {"serialname": "PLmb"},
-            "k_lcl": grid.compute_dict() | {"serialname": "KLCL"},
-            "p_interface_mb": grid.compute_dict() | {"serialname": "PLEmb"},
-            "area": grid.compute_dict() | {"serialname": "AREA"},
-            "convection_fraction": grid.compute_dict() | {"serialname": "CNV_FRC"},
-            "surface_type": grid.compute_dict() | {"serialname": "SRF_TYPE"},
-            "t": grid.compute_dict() | {"serialname": "T"},
-            "convective_liquid": grid.compute_dict() | {"serialname": "QLCN"},
-            "convective_ice": grid.compute_dict() | {"serialname": "QICN"},
-            "large_scale_liquid": grid.compute_dict() | {"serialname": "QLLS"},
-            "large_scale_ice": grid.compute_dict() | {"serialname": "QILS"},
-            "vapor": grid.compute_dict() | {"serialname": "Q"},
-            "large_scale_cloud_fraction": grid.compute_dict() | {"serialname": "CLLS"},
-            "convective_cloud_fraction": grid.compute_dict() | {"serialname": "CLCN"},
-            "nactl": grid.compute_dict() | {"serialname": "NACTL"},
-            "nacti": grid.compute_dict() | {"serialname": "NACTI"},
-            "qsat": grid.compute_dict() | {"serialname": "QST"},
+            "t1": grid.compute_dict() | {"serialname": "t1_icloud"},
+            "p_dry": grid.compute_dict() | {"serialname": "p1_icloud"},
+            "dp1": grid.compute_dict() | {"serialname": "dp1_icloud"},
+            "qv1": grid.compute_dict() | {"serialname": "qv_icloud"},
+            "ql1": grid.compute_dict() | {"serialname": "ql_icloud"},
+            "qr1": grid.compute_dict() | {"serialname": "qr_icloud"},
+            "qi1": grid.compute_dict() | {"serialname": "qi_icloud"},
+            "qs1": grid.compute_dict() | {"serialname": "qs_icloud"},
+            "qg1": grid.compute_dict() | {"serialname": "qg_icloud"},
+            "qa1": grid.compute_dict() | {"serialname": "qa_icloud"},
+            "vts": grid.compute_dict() | {"serialname": "vts_icloud"},
+            "vtg": grid.compute_dict() | {"serialname": "vtg_icloud"},
+            "vtr": grid.compute_dict() | {"serialname": "vtr_icloud"},
+            "den1": grid.compute_dict() | {"serialname": "den1_icloud"},
+            "denfac": grid.compute_dict() | {"serialname": "denfac_icloud"},
+            "subl1": grid.compute_dict() | {"serialname": "subl1_icloud"},
+            "rh_limited": grid.compute_dict() | {"serialname": "rh_limited_icloud"},
+            "ccn": grid.compute_dict() | {"serialname": "ccn_icloud"},
+            "cnv_frc": grid.compute_dict() | {"serialname": "cnv_frc_icloud"},
+            "srf_type": grid.compute_dict() | {"serialname": "srf_type_icloud"},
+            "isubl": grid.compute_dict() | {"serialname": "isubl_icloud"},
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
         del (
-            self.out_vars["estimated_inversion_strength"],
-            self.out_vars["p_mb"],
-            self.out_vars["k_lcl"],
-            self.out_vars["p_interface_mb"],
-            self.out_vars["area"],
-            self.out_vars["convection_fraction"],
-            self.out_vars["surface_type"],
-            self.out_vars["nactl"],
-            self.out_vars["nacti"],
-            self.out_vars["qsat"],
-        )
-        self.out_vars.update(
-            {
-                "RHX": grid.compute_dict(),
-                "EVAPC": grid.compute_dict(),
-                "SUBLC": grid.compute_dict(),
-                "RHCRIT3D": grid.compute_dict(),
-            }
+            self.out_vars["p_dry"],
+            self.out_vars["dp1"],
+            self.out_vars["vts"],
+            self.out_vars["vtg"],
+            self.out_vars["vtr"],
+            self.out_vars["den1"],
+            self.out_vars["denfac"],
+            self.out_vars["subl1"],
+            self.out_vars["rh_limited"],
+            self.out_vars["ccn"],
+            self.out_vars["cnv_frc"],
+            self.out_vars["srf_type"],
         )
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -162,22 +169,28 @@ class Translatephase_change(TranslateFortranData2Py):
             CCI_EVAP_EFF=self.constants["CCI_EVAP_EFF"],
         )
 
-        phase_change = PhaseChange(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            GFDL_1M_config=self.GFDL_1M_config,
+        self.config_dependent_constants = ConfigConstants.make(self.GFDL_1M_config)
+
+        # Initalize saturation tables
+        self.sat_tables = get_tables(self.stencil_factory.backend)
+
+        # Initalize extra quantities
+        temporaries = Temporaries.make(self.quantity_factory)
+        outputs = Outputs.make(self.quantity_factory)
+        masks = Masks.make(self.quantity_factory)
+
+        # Initalize object to be tested
+        self.ice_cloud = IceCloud(
+            self.stencil_factory,
+            self.GFDL_1M_config,
+            self.config_dependent_constants,
         )
 
-        phase_change(
+        self.ice_cloud(
+            table2=self.sat_tables.table2,
+            table3=self.sat_tables.table3,
+            des2=self.sat_tables.des2,
+            des3=self.sat_tables.des3,
             **inputs,
-        )
-
-        inputs.update(
-            {
-                "RHX": phase_change.outputs.rhx,
-                "EVAPC": phase_change.outputs.evapc,
-                "SUBLC": phase_change.outputs.sublc,
-                "RHCRIT3D": phase_change.outputs.rh_crit,
-            }
         )
         return inputs
