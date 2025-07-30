@@ -141,20 +141,23 @@ MODULE IRRIGATION_MODULE
      
      ! Sprinkler parameters
      ! --------------------
-     REAL :: sprinkler_stime  =   6.0  ! sprinkler irrigation start time (local)                  [hours]
-     REAL :: sprinkler_dur    =   4.0  ! sprinkler irrigation duration                            [hours]
-     REAL :: sprinkler_thres  =   0.7  ! soil moisture threshold to trigger sprinkler irrigation
+     REAL :: sprinkler_stime  =   6.0  ! sprinkler irrigation start time (local)                                         [hours]
+     REAL :: sprinkler_dur    =   4.0  ! sprinkler irrigation duration                                                   [hours]
+     REAL :: sprinkler_thres  =   0.7  ! threshold for soil moisture availability ("MA") to trigger sprinkler irrigation [dim-less]
      
      ! Drip parameters 
      ! ---------------
-     REAL :: drip_stime       =   8.0  ! drip irrigation start time (local)                       [hours] 
-     REAL :: drip_dur         =   8.0  ! drip irrigation duration                                 [hours]
+     REAL :: drip_stime       =   8.0  ! drip irrigation start time (local)                                              [hours] 
+     REAL :: drip_dur         =   8.0  ! drip irrigation duration                                                        [hours]
+     REAL :: drip_thres       =   0.7  ! threshold for soil moisture availability ("MA") to trigger drip      irrigation [dim-less]
      
      ! Flood parameters
      ! ----------------
-     REAL :: flood_stime      =   6.0  ! flood irrigation start time (local)                      [hours]
-     REAL :: flood_dur        =   8.0  ! flood irrigation duration                                [hours]
-     REAL :: flood_thres      =   0.6  ! soil moisture threshold to trigger flood irrigation
+     REAL :: flood_stime      =   6.0  ! flood irrigation start time (local)                                             [hours]
+     REAL :: flood_dur        =   8.0  ! flood irrigation duration                                                       [hours]
+     REAL :: flood_thres      =   0.6  ! threshold for soil moisture availability ("MA") to trigger flood     irrigation [dim-less]
+
+
      
   end type irrig_params
   
@@ -194,15 +197,21 @@ contains
     Iam='IRRIGATION_MODULE: init_model'
     
     SCF = ESMF_ConfigCreate(__RC__) 
+
     CALL ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_SPR_STIME:' , VALUE=IP%sprinkler_stime, DEFAULT=DP%sprinkler_stime, __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_SPR_DUR:'   , VALUE=IP%sprinkler_dur,   DEFAULT=DP%sprinkler_dur  , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_SPR_THRES:' , VALUE=IP%sprinkler_thres, DEFAULT=DP%sprinkler_thres, __RC__ )
+
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_DRP_STIME:' , VALUE=IP%drip_stime,      DEFAULT=DP%drip_stime     , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_DRP_DUR:'   , VALUE=IP%drip_dur,        DEFAULT=DP%drip_dur       , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_DRP_THRES:' , VALUE=IP%drip_thres,      DEFAULT=DP%drip_thres     , __RC__ )
+
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_STIME:' , VALUE=IP%flood_stime,     DEFAULT=DP%flood_stime    , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_DUR:'   , VALUE=IP%flood_dur,       DEFAULT=DP%flood_dur      , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_THRES:' , VALUE=IP%flood_thres,     DEFAULT=DP%flood_thres    , __RC__ )
+
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_EFCOR:'     , VALUE=IP%efcor,           DEFAULT=DP%efcor          , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_LAI_THRES:' , VALUE=IP%lai_thres,       DEFAULT=DP%lai_thres      , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_MIDS_LNGTH:', VALUE=IP%MIDS_LNGTH,      DEFAULT=DP%MIDS_LNGTH     , __RC__ )
@@ -596,7 +605,7 @@ contains
        ! DRIP IRRIGATION
        H1 = this%drip_stime
        H2 = this%drip_stime + this%drip_dur
-       IT = this%sprinkler_thres 
+       IT = this%drip_thres 
        if ((HC >= H1).AND.(HC < H2)) then
           ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
           ! Notice drip uses the same soil moisture threshold of sprinkler but with 10.% efficiency correction.

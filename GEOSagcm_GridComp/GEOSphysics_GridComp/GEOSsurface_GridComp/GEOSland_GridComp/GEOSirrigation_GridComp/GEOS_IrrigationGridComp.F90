@@ -280,9 +280,13 @@ contains
          RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)  
+
+    ! NOTE: UNGRIDDED_DIMS for SRATE, DRATE, and FRATE internal specs depends on IRRG_TRIGGER
     
     if (IRRG_TRIGGER == 0) then
-       ! only two crop types: irrigated crops and paddy in that order.
+
+       ! UNGRIDDED_DIMS = 2: irrigated crops (sprinkler/drip/furrow) and paddy (in order)
+
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'SRATE'                                 ,&
             LONG_NAME  ='crop_specific_irrigation_flux_sprinkler',&
@@ -320,6 +324,8 @@ contains
        VERIFY_(STATUS)
 
     elseif (IRRG_TRIGGER == 1) then
+
+       ! UNGRIDDED_DIMS = 26 crops of crop calendar
        
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'SRATE'                                 ,&
