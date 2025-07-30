@@ -696,6 +696,11 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'SPIRRG', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WESNN1', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
@@ -1173,6 +1178,8 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPWATR' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )              ! a.k.a. SPEVLAND
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPIRRG' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WESNN1' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)

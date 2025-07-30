@@ -3129,6 +3129,15 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'SPIRRG',                    &              
+    LONG_NAME          = 'Spurious_irrigation_flux',  &
+    UNITS              = 'kg m-2 s-1',                &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'vegetation_type'           ,&
     UNITS              = '1'                         ,&
@@ -4731,6 +4740,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: SPLAND
         real, dimension(:),   pointer :: SPWATR
         real, dimension(:),   pointer :: SPSNOW
+        real, dimension(:),   pointer :: SPIRRG
 
         real, dimension(:),   pointer :: CNLAI
         real, dimension(:),   pointer :: CNTLAI
@@ -4819,7 +4829,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	real,pointer,dimension(:) :: UUU, RHO
 	real,pointer,dimension(:) :: LAI0,GRN0,ZVG
 	real,pointer,dimension(:) :: Z0, D0
-	real,pointer,dimension(:) :: sfmc, rzmc, prmc, entot, wtot
+	real,pointer,dimension(:) :: sfmc, rzmc, prmc, werror, entot, wtot
 	real,pointer,dimension(:) :: ghflxsno, ghflxtskin
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
@@ -5373,6 +5383,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,SPLAND, 'SPLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPWATR, 'SPWATR' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPSNOW, 'SPSNOW' ,             RC=STATUS); VERIFY_(STATUS)
+        if(CATCHCN_INTERNAL%RUN_IRRIG /= 0) &
+             call MAPL_GetPointer(EXPORT,SPIRRG, 'SPIRRG' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNLAI,  'CNLAI'  ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNTLAI, 'CNTLAI' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNSAI,  'CNSAI'  ,             RC=STATUS); VERIFY_(STATUS)
@@ -5616,7 +5628,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	allocate(SFMC     (NTILES))
 	allocate(RZMC     (NTILES))
 	allocate(PRMC     (NTILES))
-	allocate(ENTOT    (NTILES))
+        allocate(werror   (NTILES))
+        allocate(ENTOT    (NTILES))
 	allocate(ghflxsno (NTILES))
 	allocate(ghflxtskin(NTILES))
 	allocate(WTOT     (NTILES))
@@ -6966,35 +6979,40 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Add irrigation model imports 
     ! --------------------------------------------------------------------------
     
-    IF ((catchcn_internal%RUN_IRRIG /= 0))  THEN  
-        where (IRRG_RATE_SPR > 0)
-           PLS_IN = PLS_IN + IRRG_RATE_SPR
-        end where
-        where (IRRG_RATE_DRP > 0)
-           RZEXC  = RZEXC  + IRRG_RATE_DRP * DT
-        end where
-        where (IRRG_RATE_FRW > 0)
-           RZEXC  = RZEXC  + IRRG_RATE_FRW * DT
-        end where
-        where (IRRG_RATE_PDY > 0)
-           SRFEXC = SRFEXC + IRRG_RATE_PDY * DT
-        end where
-
-        ! after application of irrigation water, make sure soil moisture prognostics
-        ! (srfexc, rzexc, catdef) remain valid
-        ! TO-DO IRRGRR: add optional werror to close water balance
+    IF ((CATCHCN_INTERNAL%RUN_IRRIG /= 0))  THEN  
+       
+       where (IRRG_RATE_SPR > 0)
+          PLS_IN = PLS_IN + IRRG_RATE_SPR
+       end where
+       where (IRRG_RATE_DRP > 0)
+          RZEXC  = RZEXC  + IRRG_RATE_DRP * DT
+       end where
+       where (IRRG_RATE_FRW > 0)
+          RZEXC  = RZEXC  + IRRG_RATE_FRW * DT
+       end where
+       where (IRRG_RATE_PDY > 0)
+          SRFEXC = SRFEXC + IRRG_RATE_PDY * DT
+       end where
+       
+       ! after application of irrigation water, make sure soil moisture prognostics
+       ! (srfexc, rzexc, catdef) remain valid;
+       ! werror accounts for excess irrigation that cannot be absorbed by the soil;
+       ! sfmc, rzmc, prmc here are dummies that are required to get werror
         
         allocate(ar4(NTILES))
            
         call catch_calc_soil_moist(                                                       &
              NTILES, dzsf_in_mm, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,           &
              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,  &
-             srfexc, rzexc, catdef, ar1, ar2, ar4 )
+             srfexc, rzexc, catdef, ar1, ar2, ar4,                                        &
+             sfmc, rzmc, prmc, werror )
         
         deallocate(ar4)
         
+        SPIRRG = -werror / DT                ! add excess irrigation into spurious term
+        
      ENDIF
-
+     
      
 #ifdef DBG_CNLSM_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)

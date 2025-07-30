@@ -1744,8 +1744,9 @@ CONTAINS
     ! On input, also check validity of prognostic excess/deficit variables
     ! and modify if necessary.  Perturbed or updated excess/deficit variables
     ! in data assimilation integrations may be unphysical.
+    !
     ! Optional output "werror" contains excess or missing water related
-    ! to inconsistency.
+    ! to inconsistency.  REQUIRES presence of optional "sfmc", "rzmc", and "prmc".
     !
     ! Optional outputs "smfcun", "rzmcun", "prmcun" are surface,
     ! root zone, and profile moisture content for unsaturated areas only,
