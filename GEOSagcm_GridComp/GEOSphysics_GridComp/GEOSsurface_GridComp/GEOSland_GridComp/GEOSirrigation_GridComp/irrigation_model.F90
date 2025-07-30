@@ -322,7 +322,7 @@ contains
                 H2 = this%flood_stime + this%flood_dur
                 if ((HC >= H1).AND.(HC < H2)) then
                    ! use RZDEF at H1 during H1 <= HC < H2 to compute irrigrate for paddy. 
-                   if(H1 == HC) FRATE (N,2) = RZDEF(N) *0.1/(H2 - H1)/ 3600.
+                   if(abs(H1 - HC) < 1./3600.) FRATE (N,2) = RZDEF(N) *0.1/(H2 - H1)/ 3600.
                 else
                    FRATE (N,2) = 0.
                 endif
@@ -401,7 +401,7 @@ contains
                             H2 = this%flood_stime + this%flood_dur
                             if ((HC >= H1).AND.(HC < H2)) then
                                ! use RZDEF at H1 during H1 <= HC < H2 to compute irrigrate. 
-                               if(H1 == HC) FRATE (N,crop) = RZDEF(N) /(H2 - H1)/ 3600.          
+                               if(abs(H1 - HC) < 1./3600.) FRATE (N,crop) = RZDEF(N) /(H2 - H1)/ 3600.          
                             else
                                FRATE (N,crop) = 0.
                             endif
@@ -599,7 +599,7 @@ contains
           ! The model uses rootzone soil moisture state at H1 to compute irrigation
           ! rates for the day and maintains the same rate through out the irrigation
           ! duration (H1 <= HC < H2).
-          if((ma <= IT).AND.(H1 == HC)) &
+          if((ma <= IT).AND.(abs(H1 - HC) < 1./3600.)) &
                SRATE = this%cwd (ROOTFRAC,SMCNT,SMREF,this%efcor)/(H2 - H1)/3600.
        else
           SRATE = 0.
@@ -614,7 +614,7 @@ contains
        if ((HC >= H1).AND.(HC < H2)) then
           ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
           ! Notice drip uses the same soil moisture threshold of sprinkler but with 10.% efficiency correction.
-          if((ma <= IT).AND.(H1 == HC)) &
+          if((ma <= IT).AND.(abs(H1 - HC) < 1./3600.)) &
                DRATE = this%cwd(ROOTFRAC,SMCNT,SMREF,10.)/(H2 - H1)/3600.
        else
           DRATE = 0.
@@ -631,7 +631,7 @@ contains
           ! Notice Furrow irrigation uses the same soil moisture threshold of sprinkler but with 
           ! the efficiency correction increased by 15 (e.g., Field application efficiency Sprinkler 75%, Surface Irrigation 60%.
           ! Source FAO)
-          if((ma <= IT).AND.(H1 == HC)) &
+          if((ma <= IT).AND.(abs(H1 - HC) < 1./3600.)) &
                FRATE = this%cwd (ROOTFRAC,SMCNT,SMREF,this%efcor+15.)/(H2 - H1)/3600.
        else
           FRATE = 0.
