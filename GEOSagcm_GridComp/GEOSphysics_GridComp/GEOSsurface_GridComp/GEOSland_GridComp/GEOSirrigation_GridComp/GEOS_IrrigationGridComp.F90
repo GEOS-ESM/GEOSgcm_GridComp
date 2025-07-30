@@ -795,8 +795,8 @@ contains
 				       dayOfYear = dofyr , &
 				       rc=status )
     VERIFY_(STATUS)
-
-    call MAPL_Get (MAPL, TILELONS = LONS,                  &
+    
+    call MAPL_Get (MAPL, TILELONS = LONS,                  &                               ! longitude in [radians]
          INTERNAL_ESMF_STATE = INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
     
@@ -822,7 +822,7 @@ contains
 
        ! local time [hour]
 
-       local_hour(n) = AGCM_HH + AGCM_MI / 60. + AGCM_S / 3600. + 12.* (lons(n)/MAPL_PI)
+       local_hour(n) = AGCM_HH + AGCM_MI / 60. + AGCM_S / 3600. + 12.* (lons(n)/MAPL_PI)   ! longitude in [radians]
        IF (local_hour(n) >= 24.) local_hour(n) = local_hour(n) - 24.
        IF (local_hour(n) <   0.) local_hour(n) = local_hour(n) + 24.
        T1 = CEILING (local_hour(n))     - DT/3600.
