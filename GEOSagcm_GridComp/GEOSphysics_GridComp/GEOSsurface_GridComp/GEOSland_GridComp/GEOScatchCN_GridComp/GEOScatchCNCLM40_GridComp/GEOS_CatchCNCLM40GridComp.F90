@@ -198,7 +198,7 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    integer :: OFFLINE_MODE, RUN_IRRIG, ATM_CO2, PRESCRIBE_DVG, N_CONST_LAND4SNWALB
+    integer :: OFFLINE_MODE, ATM_CO2, PRESCRIBE_DVG, N_CONST_LAND4SNWALB
     integer :: RESTART, SNOW_ALBEDO_INFO
 
 ! Begin...
@@ -219,7 +219,6 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, _RC)
     call MAPL_GetResource ( MAPL, ATM_CO2,      Label="ATM_CO2:", _RC)
     call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB,   Label="N_CONST_LAND4SNWALB:", _RC)
-    call MAPL_GetResource ( MAPL, RUN_IRRIG,   Label="RUN_IRRIG:", _RC)
     call MAPL_GetResource ( MAPL, PRESCRIBE_DVG,   Label="PRESCRIBE_DVG:", _RC)
     call MAPL_GetResource ( MAPL, SNOW_ALBEDO_INFO,   Label="SNOW_ALBEDO_INFO:", _RC)
 
