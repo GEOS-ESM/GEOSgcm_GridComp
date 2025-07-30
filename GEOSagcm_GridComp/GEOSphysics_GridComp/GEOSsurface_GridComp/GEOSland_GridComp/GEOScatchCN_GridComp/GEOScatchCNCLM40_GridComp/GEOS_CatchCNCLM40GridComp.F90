@@ -4829,7 +4829,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	real,pointer,dimension(:) :: UUU, RHO
 	real,pointer,dimension(:) :: LAI0,GRN0,ZVG
 	real,pointer,dimension(:) :: Z0, D0
-	real,pointer,dimension(:) :: sfmc, rzmc, prmc, werror, entot, wtot
+	real,pointer,dimension(:) :: sfmc, rzmc, prmc, entot, wtot
 	real,pointer,dimension(:) :: ghflxsno, ghflxtskin
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
@@ -4842,7 +4842,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	real,pointer,dimension(:) :: fveg1, fveg2
         real,pointer,dimension(:) :: FICE1TMP
         real,pointer,dimension(:) :: SLDTOT
-        real,pointer,dimension(:) :: PLS_IN
+        real,pointer,dimension(:) :: PLS_SPR
 !       real*8,pointer,dimension(:) :: fsum
 
         real,pointer,dimension(:,:) :: ghtcnt
@@ -4919,7 +4919,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                     :: NTILES
         integer                     :: I, J, K, N
 
-        real, dimension(:), allocatable :: AR4   ! for catch_calc_soil_moist() after irrigation application
+        real, dimension(:), allocatable :: AR4, werror   ! for catch_calc_soil_moist() after irrigation application
         
 	! dummy variables for call to get snow temp
 
@@ -5628,7 +5628,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	allocate(SFMC     (NTILES))
 	allocate(RZMC     (NTILES))
 	allocate(PRMC     (NTILES))
-        allocate(werror   (NTILES))
         allocate(ENTOT    (NTILES))
 	allocate(ghflxsno (NTILES))
 	allocate(ghflxtskin(NTILES))
@@ -5691,7 +5690,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(QA1_0    (NTILES))
         allocate(QA2_0    (NTILES))
         allocate(QA4_0    (NTILES))
-        allocate(PLS_IN   (NTILES))
+        allocate(PLS_SPR  (NTILES))
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         
@@ -6973,7 +6972,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! gkw: end of main CN block
 
-    PLS_IN = PLS     ! PLS_IN = large-scale precip plus sprinkler irrigation (if present, see below)
+    PLS_SPR = PLS     ! PLS_SPR = large-scale precip plus sprinkler irrigation (if present, see below)
     
     ! --------------------------------------------------------------------------
     ! Add irrigation model imports 
@@ -6982,16 +6981,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     IF ((CATCHCN_INTERNAL%RUN_IRRIG /= 0))  THEN  
        
        where (IRRG_RATE_SPR > 0)
-          PLS_IN = PLS_IN + IRRG_RATE_SPR
+          PLS_SPR = PLS_SPR + IRRG_RATE_SPR
        end where
        where (IRRG_RATE_DRP > 0)
-          RZEXC  = RZEXC  + IRRG_RATE_DRP * DT
+          RZEXC   = RZEXC   + IRRG_RATE_DRP * DT
        end where
        where (IRRG_RATE_FRW > 0)
-          RZEXC  = RZEXC  + IRRG_RATE_FRW * DT
+          RZEXC   = RZEXC   + IRRG_RATE_FRW * DT
        end where
        where (IRRG_RATE_PDY > 0)
-          SRFEXC = SRFEXC + IRRG_RATE_PDY * DT
+          SRFEXC  = SRFEXC  + IRRG_RATE_PDY * DT
        end where
        
        ! after application of irrigation water, make sure soil moisture prognostics
@@ -6999,17 +6998,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! werror accounts for excess irrigation that cannot be absorbed by the soil;
        ! sfmc, rzmc, prmc here are dummies that are required to get werror
         
-        allocate(ar4(NTILES))
-           
+        allocate(ar4(   NTILES))
+        allocate(werror(NTILES))
+        
         call catch_calc_soil_moist(                                                       &
              NTILES, dzsf_in_mm, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,           &
              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,  &
              srfexc, rzexc, catdef, ar1, ar2, ar4,                                        &
              sfmc, rzmc, prmc, werror )
         
-        deallocate(ar4)
-        
         SPIRRG = -werror / DT                ! add excess irrigation into spurious term
+
+        deallocate(ar4)
+        deallocate(werror)
         
      ENDIF
      
@@ -7031,12 +7032,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Inputs
 
-        call MAPL_VarWrite(unit, tilegrid, PCU, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, PLS_IN, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SNO, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ICE,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, FRZR, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, UUU, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PCU,            mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PLS_SPR,        mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SNO,            mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ICE,            mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, FRZR,           mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, UUU,            mask=mask, rc=status); VERIFY_(STATUS)
 
         call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
@@ -7200,7 +7201,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            call CATCHCN ( NTILES, LONS, LATS, DT,catchcn_internal%USE_FWET_FOR_RUNOFF, &                    ! LONS, LATS are in [radians] !!!
                 catchcn_internal%FWETC, catchcn_internal%FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF_IN_MM     ,&
-                PCU      ,     PLS_IN ,     SNO, ICE, FRZR            ,&
+                PCU      ,     PLS_SPR,    SNO, ICE, FRZR            ,&
                 UUU                                                  ,&
 
                 EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
@@ -7753,7 +7754,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(      ht )
         deallocate(      tp )
         deallocate( soilice )
-        deallocate (PLS_IN)
+        deallocate (PLS_SPR )
         call MAPL_TimerOff  ( MAPL, "-CATCHCNCLM40" )
 
         RETURN_(ESMF_SUCCESS)
