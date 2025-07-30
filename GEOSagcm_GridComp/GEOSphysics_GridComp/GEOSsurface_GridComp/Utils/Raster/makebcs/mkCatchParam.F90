@@ -1,3 +1,6 @@
+#define I_AM_MAIN
+#include "MAPL_ErrLog.h"
+
 PROGRAM mkCatchParam
 
 ! !INTERFACE:
@@ -18,11 +21,12 @@ PROGRAM mkCatchParam
 !  
 ! Sarith Mahanama - March 23, 2012 
 ! Email: sarith.p.mahanama@nasa.gov
-  use MAPL
-  use EASE_conv
+
+  use MAPL,                   ONLY: MAPL_ease_extent, MAPL_ReadTilingNC4 
   use rmTinyCatchParaMod 
   use process_hres_data
-  use module_irrig_params, ONLY : create_irrig_params
+  use MAPL_ExceptionHandling
+  use module_irrig_params,    ONLY : create_irrig_params
 
   implicit none
   
@@ -189,7 +193,7 @@ integer :: n_threads=1
   
    if (index(Gridname,'EASEv') /=0) then
       ! here Gridname has alias EASELabel
-      call ease_extent(Gridname, nc_ease, nr_ease )
+      call MAPL_ease_extent(Gridname, nc_ease, nr_ease, _RC)
       write(nc_string, '(i0)') nc_ease
       write(nr_string, '(i0)') nr_ease
       Gridname = trim(Gridname)//'_'//trim(nc_string)//'x'//trim(nr_string)
