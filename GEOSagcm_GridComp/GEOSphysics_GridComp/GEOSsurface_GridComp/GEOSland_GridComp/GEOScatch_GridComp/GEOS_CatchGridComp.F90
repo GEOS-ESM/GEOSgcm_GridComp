@@ -5613,7 +5613,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         TILEZERO = 0.0
 
-        PLS_IN   = PLS
+        PLS_IN   = PLS     ! PLS_IN = large-scale precip plus sprinkler irrigation (if present, see below)
 
         ! --------------------------------------------------------------------------
         ! Add irrigation model imports

@@ -5691,7 +5691,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(QA1_0    (NTILES))
         allocate(QA2_0    (NTILES))
         allocate(QA4_0    (NTILES))
-        allocate(PLS_IN    (NTILES))
+        allocate(PLS_IN   (NTILES))
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         
@@ -6973,8 +6973,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! gkw: end of main CN block
 
-    PLS_IN = PLS
-
+    PLS_IN = PLS     ! PLS_IN = large-scale precip plus sprinkler irrigation (if present, see below)
+    
     ! --------------------------------------------------------------------------
     ! Add irrigation model imports 
     ! --------------------------------------------------------------------------
