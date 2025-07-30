@@ -4811,7 +4811,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
 
         INTEGER,pointer,dimension(:) :: CAT_ID
-        real,pointer,dimension(:) :: dzsf
+        real,pointer,dimension(:) :: dzsf_in_mm
         real,pointer,dimension(:) :: swnetfree
         real,pointer,dimension(:) :: swnetsnow
         real,pointer,dimension(:) :: qa1
@@ -5599,7 +5599,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(FICESOUT(N_SNOW,NTILES))
 
 	allocate(TILEZERO (NTILES))
-	allocate(DZSF     (NTILES))
+	allocate(DZSF_IN_MM     (NTILES))
 	allocate(SWNETFREE(NTILES))
 	allocate(SWNETSNOW(NTILES))
 	allocate(VEG1     (NTILES))
@@ -5813,7 +5813,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! surface layer depth for soil moisture
         ! --------------------------------------------------------------------------
         
-        DZSF(    :) = catchcn_internal%SURFLAY
+        DZSF_IN_MM(    :) = catchcn_internal%SURFLAY       ! same as DZSF but in units of [mm]
 
         ! --------------------------------------------------------------------------
         ! build arrays from internal state
@@ -6278,7 +6278,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
-    call catch_calc_soil_moist( ntiles, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,      &
+    call catch_calc_soil_moist( ntiles, dzsf_in_mm, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,      &
          ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,              &
          srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc )
                               
@@ -7119,7 +7119,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_VarWrite(unit, tilegrid, VEG2,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, FVEG1, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, FVEG2, mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, DZSF,  mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, DZSF_IN_MM,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF1,   mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF2,   mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF3,   mask=mask, rc=status); VERIFY_(STATUS)
@@ -7199,7 +7199,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if (ntiles > 0) then
 
            call CATCHCN ( NTILES, LONS, LATS, DT,catchcn_internal%USE_FWET_FOR_RUNOFF, &                    ! LONS, LATS are in [radians] !!!
-                catchcn_internal%FWETC, catchcn_internal%FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF     ,&
+                catchcn_internal%FWETC, catchcn_internal%FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF_IN_MM     ,&
                 PCU      ,     PLS_IN ,     SNO, ICE, FRZR            ,&
                 UUU                                                  ,&
 
@@ -7599,7 +7599,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(SNDZN    )
         deallocate(FICESOUT )
         deallocate(TILEZERO )
-        deallocate(DZSF     )
+        deallocate(DZSF_IN_MM     )
         deallocate(SWNETFREE)
         deallocate(SWNETSNOW)
         deallocate(VEG1     )
@@ -7954,7 +7954,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   !! Miscellaneous
   integer :: ntiles, nv, nz
   real, allocatable :: dummy(:)
-  real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
+  real, allocatable :: dzsf_in_mm(:), ar1(:), ar2(:), wesnn(:,:)
   real, allocatable :: catdefcp(:), srfexccp(:), rzexccp(:)
   real, allocatable :: VEG1(:), VEG2(:)
   integer, allocatable :: ityp(:,:,:)
@@ -8162,14 +8162,14 @@ subroutine RUN0(gc, import, export, clock, rc)
   emis = emis*(1.-asnow) + EMSSNO*asnow
 
   ! Compute FR
-  ! Step 1: set dzsf
+  ! Step 1: set dzsf_in_mm
   ! Step 2: compute ar1, ar2 via call to catch_calc_soil_moist()
   ! Step 3: compute fr
 
   ! -step-1-
-  allocate(dzsf(ntiles), stat=status)
+  allocate(dzsf_in_mm(ntiles), stat=status)
   VERIFY_(status)
-  dzsf = catchcn_internal%SURFLAY
+  dzsf_in_mm = catchcn_internal%SURFLAY
 
   ! -step-2-
   allocate(ar1(ntiles), stat=status)
@@ -8189,7 +8189,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   rzexccp = rzexc
   call catch_calc_soil_moist(                                                   &
        ! intent(in)
-       ntiles, dzsf, vgwmax, cdcr1, cdcr2,                                      &
+       ntiles, dzsf_in_mm, vgwmax, cdcr1, cdcr2,                                      &
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
@@ -8222,7 +8222,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   if (allocated(srfexccp)) deallocate(srfexccp)
   if (allocated(rzexccp)) deallocate(rzexccp)
   if (allocated(dummy)) deallocate(dummy)
-  if (allocated(dzsf)) deallocate(dzsf)
+  if (allocated(dzsf_in_mm)) deallocate(dzsf_in_mm)
   if (allocated(ar1)) deallocate(ar1)
   if (allocated(ar2)) deallocate(ar2)
   if (allocated(wesnn)) deallocate(wesnn)
