@@ -197,12 +197,12 @@
 # GEOSldas=>IRRG_LAI_THRES:   0.6  # threshold of LAI range to turn irrigation on
 # GEOSldas=>IRRG_SPR_STIME:   6.0  # sprinkler irrigatrion start time [hours]
 # GEOSldas=>IRRG_SPR_DUR:     4.0  # sprinkler irrigation duration [hours]
-# GEOSldas=>IRRG_SPR_THRES:   0.7  # soil moisture threshhold to trigger sprinkler irrigation                                IRRGRR: Units???
+# GEOSldas=>IRRG_SPR_THRES:   0.7  # threshold for soil moisture availability ("MA", dim-less) to trigger sprinkler irrigation 
 # GEOSldas=>IRRG_DRP_STIME:   8.0  # drip irrigatrion start time [hours]
 # GEOSldas=>IRRG_DRP_DUR:     8.0  # drip irrigation duration [hours]
 # GEOSldas=>IRRG_FLD_STIME:   6.0  # flood irrigatrion start time [hours]
 # GEOSldas=>IRRG_FLD_DUR:     8.0  # flood irrigation duration [hours]
-# GEOSldas=>IRRG_FLD_THRES:   0.7  # soil moisture threshhold to trigger flood irrigation                                    IRRGRR: Units???
+# GEOSldas=>IRRG_FLD_THRES:   0.7  # threshold for soil moisture availability ("MA", dim-less) to trigger flood irrigation     
 # GEOSldas=>IRRG_EFCOR:      25.0  # efficiency correction (% water loss: efcor = 0% denotes 100% efficient water use )
 # GEOSldas=>IRRG_MIDS_LNGTH:  0.6  # mid-season length as a fraction of crop growing season length (to be used with IRRG_TRIGGER: 1)
 #                                  #   lengths of development and end seasons are assumed as (1 - MIDS_LENGTH) / 2.
