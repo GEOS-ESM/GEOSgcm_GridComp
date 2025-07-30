@@ -309,8 +309,7 @@ contains
                       
                    CASE DEFAULT
                       
-                      PRINT *, 'irrigrate_lai_trigger: IRRG_METHOD can be 0,1,2, or3'
-                      CALL EXIT(1)
+                      _ASSERT( .FALSE., 'irrigrate_lai_trigger(): IRRG_METHOD can only be 0, 1, 2, or 3')
                       
                    END SELECT
                 endif
