@@ -7260,8 +7260,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         where (IRRG_RATE_FRW > 0)
            RZEXC  = RZEXC + IRRG_RATE_FRW * DT
         end where
-
-        ! IRRGRR: add call to catch_calc_soil_moist()
         
      ENDIF
 
