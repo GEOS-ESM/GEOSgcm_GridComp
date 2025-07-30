@@ -141,6 +141,9 @@ contains
     if(RUN_IRRIG == 0) then
        RETURN_(ESMF_SUCCESS)
     endif
+
+    _ASSERT( 0 <= IRRG_TRIGGER .and. IRRG_TRIGGER <= 1, Iam // ' bad value for IRRG_TRIGGER' )
+    _ASSERT( 0 <= IRRG_METHOD  .and. IRRG_METHOD  <= 3, Iam // ' bad value for IRRG_METHOD'  )
     
 ! -----------------------------------------------------------
 ! Set the the Initialize and Run entry point
