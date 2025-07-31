@@ -32,6 +32,19 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Release
  # set_source_files_properties(GEOS_MGB2_2M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
 endif ()
 
+if (CMAKE_Fortran_COMPILER_ID MATCHES GNU AND CMAKE_BUILD_TYPE MATCHES Release)
+  set_source_files_properties(GEOS_BACM_1M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
+  # There is some odd interaction between GCC 15 and the GF code. FPEs
+  # that do not occur with GCC 14 or earlier. For now, we compile GF
+  # codes with -O1 which seems to avoid the bad instruction. Tests show
+  # not much of a speed difference with GCC 14
+  if (${CMAKE_Fortran_COMPILER_VERSION} VERSION_GREATER_EQUAL 15)
+    message (STATUS "[GCC15+] Setting GF Code to use -O1 for GCC 15")
+    set_source_files_properties(ConvPar_GF2020.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
+    set_source_files_properties(ConvPar_GF_GEOS5.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
+  endif()
+endif ()
+
 esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF)
