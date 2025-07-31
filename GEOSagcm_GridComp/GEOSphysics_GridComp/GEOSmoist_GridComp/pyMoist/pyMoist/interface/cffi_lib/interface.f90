@@ -1,7 +1,7 @@
 module pymoist_interface_mod
 
    use ESMF
-   use iso_c_binding, only: c_int, c_float, c_double, c_bool, c_ptr
+   use iso_c_binding, only: c_int, c_float, c_double, c_bool, c_ptr, c_loc
 
    implicit none
 
