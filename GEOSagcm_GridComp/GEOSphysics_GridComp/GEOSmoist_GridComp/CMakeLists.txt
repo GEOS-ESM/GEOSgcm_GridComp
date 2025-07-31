@@ -22,18 +22,7 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggress
 endif ()
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES GNU AND CMAKE_BUILD_TYPE MATCHES Release)
-   string (REPLACE "${FOPT3}" "${FOPT2}" CMAKE_Fortran_FLAGS_RELEASE ${CMAKE_Fortran_FLAGS_RELEASE})
-endif ()
-
-# Note For unknown reasons, BACM_1M_Interface takes 20 minutes to compile at O3
-#      and 10 minutes at O2. But only 7 seconds with O1. So we compile at O1
-if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Release)
-  set_source_files_properties(GEOS_BACM_1M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
- # set_source_files_properties(GEOS_MGB2_2M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
-endif ()
-
-if (CMAKE_Fortran_COMPILER_ID MATCHES GNU AND CMAKE_BUILD_TYPE MATCHES Release)
-  set_source_files_properties(GEOS_BACM_1M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
+  string (REPLACE "${FOPT3}" "${FOPT2}" CMAKE_Fortran_FLAGS_RELEASE ${CMAKE_Fortran_FLAGS_RELEASE})
   # There is some odd interaction between GCC 15 and the GF code. FPEs
   # that do not occur with GCC 14 or earlier. For now, we compile GF
   # codes with -O1 which seems to avoid the bad instruction. Tests show
@@ -43,6 +32,13 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES GNU AND CMAKE_BUILD_TYPE MATCHES Release)
     set_source_files_properties(ConvPar_GF2020.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
     set_source_files_properties(ConvPar_GF_GEOS5.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
   endif()
+endif ()
+
+# Note For unknown reasons, BACM_1M_Interface takes 20 minutes to compile at O3
+#      and 10 minutes at O2. But only 7 seconds with O1. So we compile at O1
+if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Release)
+  set_source_files_properties(GEOS_BACM_1M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
+ # set_source_files_properties(GEOS_MGB2_2M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
 endif ()
 
 esma_add_library (${this}
