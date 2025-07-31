@@ -404,7 +404,7 @@ def ice_exact(
         if dq != 1e15:
             dx = ddq * (1.0 / DELTA_T)
 
-    return ex  # , dx
+    return ex, dx
 
 
 def ice_exact_no_stencil(

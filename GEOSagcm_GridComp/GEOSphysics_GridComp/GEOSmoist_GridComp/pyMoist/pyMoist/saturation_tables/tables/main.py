@@ -101,63 +101,61 @@ def _compute_tables(ese: FloatField, esw: FloatField, esx: FloatField, formulati
 
     with computation(PARALLEL), interval(...):
         t = THIS_K * DELTA_T + TMINTBL
-        esw = (
-            liquid_exact(
-                t,
-                formulation,
-                B6,
-                B5,
-                B4,
-                B3,
-                B2,
-                B1,
-                B0,
-                BI6,
-                BI5,
-                BI4,
-                BI3,
-                BI2,
-                BI1,
-                BI0,
-                S16,
-                S15,
-                S14,
-                S13,
-                S12,
-                S11,
-                S10,
-                S26,
-                S25,
-                S24,
-                S23,
-                S22,
-                S21,
-                S20,
-                DL_0,
-                DL_1,
-                DL_2,
-                DL_3,
-                DL_4,
-                DL_5,
-                TS,
-                LOGPS,
-                CL_0,
-                CL_1,
-                CL_2,
-                CL_3,
-                CL_4,
-                CL_5,
-                CL_6,
-                CL_7,
-                CL_8,
-                CL_9,
-            ),
+        esw, _ = liquid_exact(
+            t,
+            formulation,
+            B6,
+            B5,
+            B4,
+            B3,
+            B2,
+            B1,
+            B0,
+            BI6,
+            BI5,
+            BI4,
+            BI3,
+            BI2,
+            BI1,
+            BI0,
+            S16,
+            S15,
+            S14,
+            S13,
+            S12,
+            S11,
+            S10,
+            S26,
+            S25,
+            S24,
+            S23,
+            S22,
+            S21,
+            S20,
+            DL_0,
+            DL_1,
+            DL_2,
+            DL_3,
+            DL_4,
+            DL_5,
+            TS,
+            LOGPS,
+            CL_0,
+            CL_1,
+            CL_2,
+            CL_3,
+            CL_4,
+            CL_5,
+            CL_6,
+            CL_7,
+            CL_8,
+            CL_9,
         )
 
         if t > MAPL_TICE:
             ese = esw
         else:
-            ese = ice_exact(
+            ese, _ = ice_exact(
                 t,
                 formulation,
                 TMINSTR,
@@ -197,7 +195,6 @@ def _compute_tables(ese: FloatField, esw: FloatField, esx: FloatField, formulati
                 BI1,
                 BI0,
             )
-
         t = t - MAPL_TICE
 
         if t >= TMIX and t < 0.0:
@@ -332,10 +329,9 @@ class SaturationVaporPressureTable:
         # compute_tables(self._estimated_ese, self._estimated_esw, self._estimated_esx, formulation_int)
         # NOTE This function will create the tables using gt4py stencils and functions.
         # This is turned off because they do not currently verify.
-        # Two reasons for failures:
-        #   - Need the ability to pass 32 OR 64 bit externals flexibly
-        #   - Need the ability to return multiple values from a function
-        #       (this has worked successfully before, but for some reason is triggering an error here)
+        # Does not verify because:
+        #   - Need the ability to pass 32 or 64 bit externals flexibly. Right now it appears they all
+        #       get forced to the same precision
 
         for i in range(TABLESIZE):
             t = Float(i * DELTA_T) + TMINTBL

@@ -336,7 +336,7 @@ def liquid_exact(
     elif dq != 1e15:
         dx = ddq * (1.0 / DELTA_T)
 
-    return ex  # , dx
+    return ex, dx
 
 
 def liquid_exact_no_stencil(
