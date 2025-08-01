@@ -1285,7 +1285,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'mean_catchment_temp_incl_snw',&
     UNITS              = 'K'                         ,&
-    SHORT_NAME         = 'TSURF'                     ,&
+    SHORT_NAME         = 'TSURF'                     ,&    ! legacy (and obsolete) internal spec w/ bad name; see ExportSpec TPSURF
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = RESTART                     ,&
