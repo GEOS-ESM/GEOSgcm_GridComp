@@ -686,11 +686,13 @@ contains
    subroutine re_tile(this, InTileFile, OutBcsDir, OutTileFile, surflay, rc)
      
      class(CatchmentCNRst), intent(inout) :: this
-     character(*), intent(in) :: InTileFile
-     character(*), intent(in) :: OutBcsDir
-     character(*), intent(in) :: OutTileFile
-     real, intent(in)         :: surflay
-     integer, optional, intent(out) :: rc
+     character(*),          intent(in)    :: InTileFile
+     character(*),          intent(in)    :: OutBcsDir
+     character(*),          intent(in)    :: OutTileFile
+     real,                  intent(in)    :: surflay
+     integer, optional,     intent(out)   :: rc
+
+     ! local variables
      
      real   , allocatable, dimension (:)   :: DAYX
      integer, allocatable, dimension (:)   :: low_ind, upp_ind, nt_local
@@ -706,7 +708,7 @@ contains
                           var_out_zone(:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs, npft_int
      logical :: root_proc
-     integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft, nveg
+     integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv, nz, jj, var_col, var_pft, nveg
      real, allocatable, dimension(:) :: lat_tmp
      type(MAPL_SunOrbit)         :: ORBIT
      type(ESMF_Time)             :: CURRENT_TIME
@@ -1162,7 +1164,7 @@ contains
       real, allocatable, dimension (:)    :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
            CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum
       real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:)
-      integer           :: N, STATUS, nv, nx, offl_cell, ityp_new, i, j, nz, iv
+      integer           :: N, STATUS, nv, nx, offl_cell, ityp_new, i, j, nz, iv, jj
       real              :: fveg_new
       character(256) :: Iam = "write_regridded_carbon"
       
