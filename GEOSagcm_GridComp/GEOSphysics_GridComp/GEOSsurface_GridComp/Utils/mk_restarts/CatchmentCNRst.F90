@@ -1,17 +1,17 @@
 #include "MAPL_Generic.h"
 
 module CatchmentCNRstMod
-  use mk_restarts_getidsMod, ONLY:      &
-       GetIds  
+
+  use mk_restarts_getidsMod, ONLY: GetIds  
   use mpi
   use ESMF
   use MAPL
-  use CatchmentRstMod, only : CatchmentRst
-  use clm_varpar_shared , only : nzone => NUM_ZON_CN, nveg_40 => NUM_VEG_CN, nveg_51 => NUM_VEG_CN51, &
-                                 VAR_COL_40, VAR_PFT_40, VAR_COL_45, VAR_PFT_45, &
-                                 VAR_COL_51, VAR_PFT_51, &
-                                 npft => numpft_CN, npft_51 => numpft_CN51
-  use nanMod         , only : nan
+  use CatchmentRstMod,       only : CatchmentRst
+  use clm_varpar_shared ,    only : nzone => NUM_ZON_CN, nveg_40 => NUM_VEG_CN, nveg_51 => NUM_VEG_CN51, &
+                                    VAR_COL_40, VAR_PFT_40, VAR_COL_45, VAR_PFT_45, &
+                                    VAR_COL_51, VAR_PFT_51, &
+                                    npft => numpft_CN, npft_51 => numpft_CN51
+  use nanMod,                only : nan
   
   implicit none
 
@@ -22,69 +22,84 @@ module CatchmentCNRstMod
   integer, dimension(:), allocatable :: iclass
 
   type, extends(CatchmentRst) :: CatchmentCNRst
+     
      logical :: isCLM45
-     logical :: isCLM51
      logical :: isCLM40
+     logical :: isCLM51
 
      integer :: VAR_COL
      integer :: VAR_PFT
      integer :: NVEG
-     real, allocatable ::    cnity(:,:)
-     real, allocatable ::    fvg(:,:)
-     real, allocatable ::    tg(:,:)
-     real, allocatable ::    tgwm(:,:)
-     real, allocatable ::    rzmm(:,:)
-     real, allocatable ::    sfmm(:,:)
-     real, allocatable ::    TILE_ID(:)
-     real, allocatable ::    ndep(:)
-     real, allocatable ::    t2(:)
-     real, allocatable ::    BGALBVR(:)
-     real, allocatable ::    BGALBVF(:)
-     real, allocatable ::    BGALBNR(:)
-     real, allocatable ::    BGALBNF(:)
+
+     ! within each block, field names are in order of "MAPL_AddInternalSpec()" calls in GEOS_CatchCNCLM*GridComp.F90
+     
+     ! common to CNCLM40 and CNCLM51
+     
+     real, allocatable ::    cnity(:,:)          ! need 2-dim veg class for CatchCN
+     real, allocatable ::      fvg(:,:)
+     real, allocatable ::       tg(:,:)
+     real, allocatable ::  TILE_ID(:)
+     real, allocatable ::     ndep(:)
+     real, allocatable ::  cli_t2m(:)            ! TMPRR: changed from "t2" to "cli_t2m" for consistency with InternalSpec name
+     real, allocatable ::  BGALBVR(:)
+     real, allocatable ::  BGALBVF(:)
+     real, allocatable ::  BGALBNR(:)
+     real, allocatable ::  BGALBNF(:)
      real, allocatable ::    CNCOL(:,:)
      real, allocatable ::    CNPFT(:,:)
-     real, allocatable ::    ABM     (:)
-     real, allocatable ::    FIELDCAP(:)
-     real, allocatable ::    HDM     (:)
-     real, allocatable ::    GDP     (:)
-     real, allocatable ::    PEATF   (:) 
+     real, allocatable ::     tgwm(:,:)
+     real, allocatable ::     rzmm(:,:)
+     real, allocatable ::   bflowm(:)
+     real, allocatable ::  totwatm(:)
+     real, allocatable ::    tairm(:)
+     real, allocatable ::      tpm(:)
+     real, allocatable ::    cnsum(:)
+     real, allocatable ::  psnsunm(:,:,:)
+     real, allocatable ::  psnsham(:,:,:)
+     real, allocatable ::    sndzm(:)
+     real, allocatable ::   asnowm(:)
+     
+     ! CNCLM40 only
 
-     real, allocatable :: bflowm(:)
-     real, allocatable :: totwatm(:)
-     real, allocatable :: tairm(:)
-     real, allocatable :: tpm(:)
-     real, allocatable :: cnsum(:)
-     real, allocatable :: sndzm(:)
-     real, allocatable :: asnowm(:)
-     real, allocatable :: ar1m(:)
-     real, allocatable :: rainfm(:)
-     real, allocatable :: rhm(:)
-     real, allocatable :: runsrfm(:)
-     real, allocatable :: snowfm(:)
-     real, allocatable :: windm(:)
+     real, allocatable ::    sfmcm(:)          ! 1-dim CN sum for sfc soil moist (CNCLM40)
+
+     ! CNCLM51 only
+     
+     real, allocatable ::     sfmm(:,:)        ! 2-dim CN sum for sfc soil moist (CNCLM51)
+     real, allocatable ::      ABM(:)
+     real, allocatable ::    PEATF(:)
+     real, allocatable ::      GDP(:)
+     real, allocatable ::      HDM(:)
+     real, allocatable :: FIELDCAP(:)
+     real, allocatable ::      rhm(:)
+     real, allocatable ::    windm(:)
+     real, allocatable ::   rainfm(:)
+     real, allocatable ::   snowfm(:)
+     real, allocatable ::  runsrfm(:)
+     real, allocatable ::     ar1m(:)
+     real, allocatable ::  lmrsunm(:,:,:)
+     real, allocatable ::  lmrsham(:,:,:)
+     real, allocatable ::  laisunm(:,:,:)
+     real, allocatable ::  laisham(:,:,:)
+     real, allocatable ::  sndzm5d(:)    
+     real, allocatable ::   t2m10d(:)
+     real, allocatable ::    tg10d(:)
+     real, allocatable :: t2mmin5d(:)
+     real, allocatable ::    rh30d(:) 
      real, allocatable :: tprec10d(:)
      real, allocatable :: tprec60d(:)
-     real, allocatable :: t2m10d(:)
-     real, allocatable :: sfmcm(:)
-     real, allocatable :: psnsunm(:,:,:)
-     real, allocatable :: psnsham(:,:,:)
-     real, allocatable :: lmrsunm(:,:,:)
-     real, allocatable :: lmrsham(:,:,:)
-     real, allocatable :: laisunm(:,:,:)
-     real, allocatable :: laisham(:,:,:)
-     real, allocatable :: rh30d(:) 
-     real, allocatable :: tg10d(:)
-     real, allocatable :: t2mmin5d(:)
-     real, allocatable :: sndzm5d(:)    
+     real, allocatable ::   et365d(:)     ! TMPRR: added for CNCLM51
+     real, allocatable ::  runsurf(:)     ! TMPRR: added for CNCLM51
      
-  contains
+   contains
+     
      procedure :: write_nc4
      procedure :: allocate_cn   
      procedure :: add_bcs_to_cnrst   
      procedure :: re_tile
+     
   endtype CatchmentCNRst
-
+ 
   interface CatchmentCNRst
      module procedure CatchmentCNRst_Create
   end interface
@@ -143,108 +158,92 @@ contains
      endif
 
      if (myid == 0) then
-        call catch%allocate_cn(__RC__)
+        
+        call catch%allocate_cn(               __RC__)
         call catch%read_shared_nc4(formatter, __RC__)
 
-        call MAPL_VarRead(formatter,"ITY",catch%cnity, __RC__)
-        call MAPL_VarRead(formatter,"FVG",catch%fvg, __RC__)
+        ! within each block, field names are in order of "MAPL_AddInternalSpec()" calls in GEOS_CatchCNCLM*GridComp.F90
+        
+        ! common to CNCLM40 and CNCLM51
+        
+        call MAPL_VarRead(    formatter, "ITY",      catch%cnity   , __RC__)
+        call MAPL_VarRead(    formatter, "FVG",      catch%fvg     , __RC__)
+        call MAPL_VarRead(    formatter, "TG",       catch%tg      , __RC__)
+        call MAPL_VarRead(    formatter, "TILE_ID",  catch%TILE_ID , __RC__)
+        call MAPL_VarRead(    formatter, "NDEP",     catch%ndep    , __RC__)
+        call MAPL_VarRead(    formatter, "CLI_T2M",  catch%cli_t2m , __RC__)
+        call MAPL_VarRead(    formatter, "BGALBVR",  catch%BGALBVR , __RC__)
+        call MAPL_VarRead(    formatter, "BGALBVF",  catch%BGALBVF , __RC__)
+        call MAPL_VarRead(    formatter, "BGALBNR",  catch%BGALBNR , __RC__)
+        call MAPL_VarRead(    formatter, "BGALBNF",  catch%BGALBNF , __RC__)
+        call MAPL_VarRead(    formatter, "CNCOL",    catch%CNCOL   , __RC__)
+        call MAPL_VarRead(    formatter, "CNPFT",    catch%CNPFT   , __RC__)
+        call MAPL_VarRead(    formatter, "TGWM",     catch%tgwm    , __RC__)
+        call MAPL_VarRead(    formatter, "RZMM",     catch%rzmm    , __RC__)
+        call MAPL_VarRead(    formatter, "BFLOWM",   catch%bflowm  , __RC__) 
+        call MAPL_VarRead(    formatter, "TOTWATM",  catch%totwatm , __RC__) 
+        call MAPL_VarRead(    formatter, "TAIRM",    catch%tairm   , __RC__) 
+        call MAPL_VarRead(    formatter, "TPM",      catch%tpm     , __RC__) 
+        call MAPL_VarRead(    formatter, "CNSUM",    catch%cnsum   , __RC__) 
+        call MAPL_VarRead(    formatter, "PSNSUNM",  catch%psnsunm , __RC__) 
+        call MAPL_VarRead(    formatter, "PSNSHAM",  catch%psnsham , __RC__) 
+        call MAPL_VarRead(    formatter, "SNDZM",    catch%sndzm   , __RC__) 
+        call MAPL_VarRead(    formatter, "ASNOWM",   catch%asnowm  , __RC__) 
 
-        call MAPL_VarRead(formatter,"TG",catch%tg, __RC__)
-        call MAPL_VarRead(formatter,"TILE_ID",catch%TILE_ID, __RC__)
-        call MAPL_VarRead(formatter,"NDEP",catch%ndep, __RC__)
-        call MAPL_VarRead(formatter,"CLI_T2M",catch%t2, __RC__)
-        call MAPL_VarRead(formatter,"BGALBVR",catch%BGALBVR, __RC__)
-        call MAPL_VarRead(formatter,"BGALBVF",catch%BGALBVF, __RC__)
-        call MAPL_VarRead(formatter,"BGALBNR",catch%BGALBNR, __RC__)
-        call MAPL_VarRead(formatter,"BGALBNF",catch%BGALBNF, __RC__)
+        ! specific to CNCLM40 or CNCLM51
+        
+        if    ( catch%isCLM40 ) then
 
-        if( catch%isCLM40 ) then
-           call MAPL_VarRead(formatter,"SFMCM",   catch%sfmcm , __RC__)
+           call MAPL_VarRead( formatter, "SFMCM",    catch%sfmcm   , __RC__)
+
+        elseif( catch%isCLM51 ) then
+
+           call MAPL_VarRead( formatter, "SFMM",     catch%sfmm    , __RC__)         ! TMPRR: added to branch for CLM51  
+           call MAPL_VarRead( formatter, "ABM",      catch%ABM     , __RC__)
+           call MAPL_VarRead( formatter, "PEATF",    catch%PEATF   , __RC__)           
+           call MAPL_VarRead( formatter, "GDP",      catch%GDP     , __RC__)
+           call MAPL_VarRead( formatter, "HDM",      catch%HDM     , __RC__)
+           call MAPL_VarRead( formatter, "FIELDCAP", catch%FIELDCAP, __RC__)
+           call MAPL_VarRead( formatter, "RHM",      catch%RHM     , __RC__)
+           call MAPL_VarRead( formatter, "WINDM",    catch%WINDM   , __RC__)
+           call MAPL_VarRead( formatter, "RAINFM",   catch%RAINFM  , __RC__)
+           call MAPL_VarRead( formatter, "SNOWFM",   catch%SNOWFM  , __RC__)
+           call MAPL_VarRead( formatter, "RUNSRFM",  catch%RUNSRFM , __RC__)
+           call MAPL_VarRead( formatter, "AR1M",     catch%AR1M    , __RC__)
+           call MAPL_VarRead( formatter, "LMRSUNM",  catch%lmrsunm , __RC__)
+           call MAPL_VarRead( formatter, "LMRSHAM",  catch%lmrsham , __RC__)
+           call MAPL_VarRead( formatter, "LAISUNM",  catch%laisunm , __RC__)
+           call MAPL_VarRead( formatter, "LAISHAM",  catch%laisham , __RC__)
+           call MAPL_VarRead( formatter, "SNDZM5D",  catch%SNDZM5D , __RC__)
+           call MAPL_VarRead( formatter, "T2M10D",   catch%T2M10D  , __RC__)
+           call MAPL_VarRead( formatter, "TG10D",    catch%TG10D   , __RC__)
+           call MAPL_VarRead( formatter, "T2MMIN5D", catch%T2MMIN5D, __RC__)
+           call MAPL_VarRead( formatter, "RH30D",    catch%RH30D   , __RC__)
+           call MAPL_VarRead( formatter, "TPREC10D", catch%TPREC10D, __RC__)
+           call MAPL_VarRead( formatter, "TPREC60D", catch%TPREC60D, __RC__)
+           call MAPL_VarRead( formatter, "ET365D",   catch%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
+           call MAPL_VarRead( formatter, "RUNSURF",  catch%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
+
         endif
 
-        if( catch%isCLM45 ) then
-           call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
-           call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
-           call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
-           call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
-           call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
-
-
-           call MAPL_VarRead(formatter,"RHM",       catch%rhm        , __RC__)
-           call MAPL_VarRead(formatter,"WINDM",     catch%windm      , __RC__)
-           call MAPL_VarRead(formatter,"RAINFM",    catch%rainfm     , __RC__)
-           call MAPL_VarRead(formatter,"SNOWFM",    catch%snowfm     , __RC__)
-           call MAPL_VarRead(formatter,"RUNSRFM",   catch%runsrfm    , __RC__)
-           call MAPL_VarRead(formatter,"AR1M",      catch%ar1m       , __RC__)
-           call MAPL_VarRead(formatter,"T2M10D",    catch%T2M10D     , __RC__)
-           call MAPL_VarRead(formatter,"TPREC10D",  catch%TPREC10D   , __RC__)
-           call MAPL_VarRead(formatter,"TPREC60D",  catch%TPREC60D   , __RC__)
-           call MAPL_VarRead(formatter,"SFMM",      catch%sfmm       , __RC__)
-        endif
-
-        if( catch%isCLM51) then
-           call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
-           call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
-           call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
-           call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
-           call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
-           call MAPL_VarRead(formatter,"RHM",     catch%RHM     , __RC__)
-           call MAPL_VarRead(formatter,"WINDM",   catch%WINDM   , __RC__)
-           call MAPL_VarRead(formatter,"RAINFM",  catch%RAINFM  , __RC__)
-           call MAPL_VarRead(formatter,"SNOWFM",  catch%SNOWFM  , __RC__)
-           call MAPL_VarRead(formatter,"RUNSRFM", catch%RUNSRFM, __RC__)
-           call MAPL_VarRead(formatter,"AR1M",    catch%AR1M    , __RC__)
-           call MAPL_VarRead(formatter,"SNDZM5D", catch%SNDZM5D , __RC__)
-           call MAPL_VarRead(formatter,"T2M10D",  catch%T2M10D  , __RC__)
-           call MAPL_VarRead(formatter,"T2MMIN5D",catch%T2MMIN5D, __RC__)
-           call MAPL_VarRead(formatter,"TG10D",   catch%TG10D   , __RC__)
-           call MAPL_VarRead(formatter,"RH30D",   catch%RH30D   , __RC__)
-           call MAPL_VarRead(formatter,"TPREC10D",catch%TPREC10D, __RC__)
-           call MAPL_VarRead(formatter,"TPREC60D",catch%TPREC60D, __RC__)
-        endif
-
-        call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL, __RC__)
-
-        ! The following three lines were added as a bug fix by smahanam on 5 Oct 2020
-        ! (to be merged into the "develop" branch in late 2020):
-        ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
-        ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
-        ! resulting in bad values in the "regridded" (re-tiled) restart file. 
-        ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
-        ! - reichle, 23 Nov 2020
-        call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT, __RC__)
-
-        ! more reading
-        call MAPL_VarRead(formatter,  "BFLOWM",  catch%bflowm ,_RC) 
-        call MAPL_VarRead(formatter,  "TOTWATM", catch%totwatm,_RC) 
-        call MAPL_VarRead(formatter,  "TAIRM",   catch%tairm  ,_RC) 
-        call MAPL_VarRead(formatter,  "TPM",     catch%tpm    ,_RC) 
-        call MAPL_VarRead(formatter,  "CNSUM",   catch%cnsum  ,_RC) 
-        call MAPL_VarRead(formatter,  "SNDZM",   catch%sndzm  ,_RC) 
-        call MAPL_VarRead(formatter,  "ASNOWM",  catch%asnowm ,_RC) 
-        call MAPL_VarRead(formatter,  "PSNSUNM", catch%psnsunm,_RC) 
-        call MAPL_VarRead(formatter,  "PSNSHAM", catch%psnsham,_RC) 
-        call MAPL_VarRead(formatter,  "LMRSUNM", catch%lmrsunm,_RC)
-        call MAPL_VarRead(formatter,  "LMRSHAM", catch%lmrsham,_RC)
-        call MAPL_VarRead(formatter,  "LAISUNM", catch%laisunm,_RC)
-        call MAPL_VarRead(formatter,  "LAISHAM", catch%laisham,_RC)
-        call MAPL_VarRead(formatter,  "RZMM",    catch%rzmm   ,_RC)
-        call MAPL_VarRead(formatter,  "TGWM",    catch%tgwm   ,_RC)
      endif
 
      call formatter%close()
 
      if (present(rc)) rc =0
+
    end function CatchmentCNRst_Create
 
-  function CatchmentCNRst_empty(meta, cnclm, time, rc) result (catch)
-    type(CatchmentCNRst) :: catch
-    type(FileMetadata), intent(in) :: meta
-    character(*), intent(in) :: cnclm
-    character(*), intent(in) :: time
-    integer, optional, intent(out) :: rc
-    integer :: status, myid, mpierr
-    character(len=256) :: Iam = "CatchmentCNRst_empty"
+   ! --------------------------------------------------------------------------------------------
+   
+   function CatchmentCNRst_empty(meta, cnclm, time, rc) result (catch)
+     type(CatchmentCNRst) :: catch
+     type(FileMetadata), intent(in) :: meta
+     character(*), intent(in) :: cnclm
+     character(*), intent(in) :: time
+     integer, optional, intent(out) :: rc
+     integer :: status, myid, mpierr
+     character(len=256) :: Iam = "CatchmentCNRst_empty"
 
      catch%isCLM45 = .false.
      catch%isCLM51 = .false.
@@ -274,6 +273,8 @@ contains
      if(present(rc)) rc = 0
    end function CatchmentCNRst_empty
 
+   ! --------------------------------------------------------------------------------------------
+
    subroutine write_nc4(this, filename, rc)
      class(CatchmentCNRst), intent(inout):: this
      character(*), intent(in) :: filename
@@ -294,90 +295,76 @@ contains
 
      call this%write_shared_nc4(formatter, __RC__)
 
-     call MAPL_VarWrite(formatter,"ITY",this%cnity)
-     call MAPL_VarWrite(formatter,"FVG",this%fvg)
-     call MAPL_VarWrite(formatter,"TG",this%tg)
+     ! within each block, field names are in order of "MAPL_AddInternalSpec()" calls in GEOS_CatchCNCLM*GridComp.F90
+     
+     ! common to CNCLM40 and CNCLM51
+     
+     call MAPL_VarWrite(    formatter, "ITY",      catch%cnity   , __RC__)
+     call MAPL_VarWrite(    formatter, "FVG",      catch%fvg     , __RC__)
+     call MAPL_VarWrite(    formatter, "TG",       catch%tg      , __RC__)
+     call MAPL_VarWrite(    formatter, "TILE_ID",  catch%TILE_ID , __RC__)
+     call MAPL_VarWrite(    formatter, "NDEP",     catch%ndep    , __RC__)
+     call MAPL_VarWrite(    formatter, "CLI_T2M",  catch%cli_t2m , __RC__)
+     call MAPL_VarWrite(    formatter, "BGALBVR",  catch%BGALBVR , __RC__)
+     call MAPL_VarWrite(    formatter, "BGALBVF",  catch%BGALBVF , __RC__)
+     call MAPL_VarWrite(    formatter, "BGALBNR",  catch%BGALBNR , __RC__)
+     call MAPL_VarWrite(    formatter, "BGALBNF",  catch%BGALBNF , __RC__)
+     call MAPL_VarWrite(    formatter, "CNCOL",    catch%CNCOL   , __RC__)
+     call MAPL_VarWrite(    formatter, "CNPFT",    catch%CNPFT   , __RC__)
+     call MAPL_VarWrite(    formatter, "TGWM",     catch%tgwm    , __RC__)
+     call MAPL_VarWrite(    formatter, "RZMM",     catch%rzmm    , __RC__)
+     call MAPL_VarWrite(    formatter, "BFLOWM",   catch%bflowm  , __RC__) 
+     call MAPL_VarWrite(    formatter, "TOTWATM",  catch%totwatm , __RC__) 
+     call MAPL_VarWrite(    formatter, "TAIRM",    catch%tairm   , __RC__) 
+     call MAPL_VarWrite(    formatter, "TPM",      catch%tpm     , __RC__) 
+     call MAPL_VarWrite(    formatter, "CNSUM",    catch%cnsum   , __RC__) 
+     call MAPL_VarWrite(    formatter, "PSNSUNM",  catch%psnsunm , __RC__) 
+     call MAPL_VarWrite(    formatter, "PSNSHAM",  catch%psnsham , __RC__) 
+     call MAPL_VarWrite(    formatter, "SNDZM",    catch%sndzm   , __RC__) 
+     call MAPL_VarWrite(    formatter, "ASNOWM",   catch%asnowm  , __RC__) 
 
-     call MAPL_VarWrite(formatter,"TILE_ID",this%TILE_ID)
-     call MAPL_VarWrite(formatter,"NDEP",this%NDEP)
-     call MAPL_VarWrite(formatter,"CLI_T2M",this%t2)
-     call MAPL_VarWrite(formatter,"BGALBVR",this%BGALBVR)
-     call MAPL_VarWrite(formatter,"BGALBVF",this%BGALBVF)
-     call MAPL_VarWrite(formatter,"BGALBNR",this%BGALBNR)
-     call MAPL_VarWrite(formatter,"BGALBNF",this%BGALBNF)
-     call MAPL_VarWrite(formatter,"CNCOL",this%CNCOL)
-     call MAPL_VarWrite(formatter,"CNPFT",this%CNPFT)
+     ! specific to CNCLM40 or CNCLM51
 
-     call MAPL_VarWrite(formatter,"BFLOWM", this%bflowm )
-     call MAPL_VarWrite(formatter,"TOTWATM",this%totwatm)
-     call MAPL_VarWrite(formatter,"TAIRM",  this%tairm  )
-     call MAPL_VarWrite(formatter,"TPM",    this%tpm    )
-     call MAPL_VarWrite(formatter,"CNSUM",  this%cnsum  )
-     call MAPL_VarWrite(formatter,"SNDZM",  this%sndzm  )
-     call MAPL_VarWrite(formatter,"ASNOWM", this%asnowm )
-     call MAPL_VarWrite(formatter,"TGWM",   this%tgwm)
-     call MAPL_VarWrite(formatter,"RZMM",   this%rzmm)
+     if    ( catch%isCLM40 ) then
 
-     if (this%isCLM45) then
-        call MAPL_VarWrite(formatter,"SFMM",  this%sfmm)
+        call MAPL_VarWrite(formatter, "SFMCM",     catch%sfmcm   , __RC__)
 
-        call MAPL_VarWrite(formatter,"ABM",     this%ABM, rc =rc     )
-        call MAPL_VarWrite(formatter,"FIELDCAP",this%FIELDCAP)
-        call MAPL_VarWrite(formatter,"HDM",     this%HDM     )
-        call MAPL_VarWrite(formatter,"GDP",     this%GDP     )
-        call MAPL_VarWrite(formatter,"PEATF",   this%PEATF   )
+     elseif( catch%isCLM51 ) then
 
-        call MAPL_VarWrite(formatter,"RHM",     this%rhm      )
-        call MAPL_VarWrite(formatter,"WINDM",   this%windm    )
-        call MAPL_VarWrite(formatter,"RAINFM",  this%rainfm   )
-        call MAPL_VarWrite(formatter,"SNOWFM",  this%snowfm   )
-        call MAPL_VarWrite(formatter,"RUNSRFM", this%runsrfm  )
-        call MAPL_VarWrite(formatter,"AR1M",    this%ar1m     )
-        call MAPL_VarWrite(formatter,"T2M10D",  this%t2m10d   )
-        call MAPL_VarWrite(formatter,"TPREC10D",this%tprec10d )
-        call MAPL_VarWrite(formatter,"TPREC60D",this%tprec60d )
-        call MAPL_VarWrite(formatter,"LMRSUNM", this%LMRSUNM )
-        call MAPL_VarWrite(formatter,"LMRSHAM", this%LMRSHAM )
-
-     elseif (this%isCLM51) then
-
-         call MAPL_VarWrite(formatter,"SFMM",  this%sfmm)
-
-          call MAPL_VarWrite(formatter,"ABM",     this%ABM, rc =rc     )
-          call MAPL_VarWrite(formatter,"FIELDCAP",this%FIELDCAP)
-          call MAPL_VarWrite(formatter,"HDM",     this%HDM     )
-          call MAPL_VarWrite(formatter,"GDP",     this%GDP     )
-          call MAPL_VarWrite(formatter,"PEATF",   this%PEATF   )
-          call MAPL_VarWrite(formatter,"RHM",     this%RHM)
-          call MAPL_VarWrite(formatter,"WINDM",   this%WINDM)
-          call MAPL_VarWrite(formatter,"RAINFM",  this%RAINFM)
-          call MAPL_VarWrite(formatter,"SNOWFM",  this%SNOWFM)
-          call MAPL_VarWrite(formatter,"RUNSRFM", this%RUNSRFM)
-          call MAPL_VarWrite(formatter,"AR1M",    this%AR1M)
-          call MAPL_VarWrite(formatter,"SNDZM5D", this%SNDZM5D)
-          call MAPL_VarWrite(formatter,"T2M10D",  this%T2M10D)
-          call MAPL_VarWrite(formatter,"T2MMIN5D",this%T2MMIN5D)
-          call MAPL_VarWrite(formatter,"TG10D",   this%TG10D)
-          call MAPL_VarWrite(formatter,"RH30D",   this%RH30D)
-          call MAPL_VarWrite(formatter,"TPREC10D",this%TPREC10D)
-          call MAPL_VarWrite(formatter,"TPREC60D",this%TPREC60D)
-          call MAPL_VarWrite(formatter,"LMRSUNM", this%LMRSUNM )
-          call MAPL_VarWrite(formatter,"LMRSHAM", this%LMRSHAM )
-          call MAPL_VarWrite(formatter,"LAISUNM", this%LAISUNM )
-          call MAPL_VarWrite(formatter,"LAISHAM", this%LAISHAM )
+        call MAPL_VarWrite( formatter, "SFMM",     catch%sfmm    , __RC__)         ! TMPRR: added to branch for CLM51  
+        call MAPL_VarWrite( formatter, "ABM",      catch%ABM     , __RC__)
+        call MAPL_VarWrite( formatter, "PEATF",    catch%PEATF   , __RC__)           
+        call MAPL_VarWrite( formatter, "GDP",      catch%GDP     , __RC__)
+        call MAPL_VarWrite( formatter, "HDM",      catch%HDM     , __RC__)
+        call MAPL_VarWrite( formatter, "FIELDCAP", catch%FIELDCAP, __RC__)
+        call MAPL_VarWrite( formatter, "RHM",      catch%RHM     , __RC__)
+        call MAPL_VarWrite( formatter, "WINDM",    catch%WINDM   , __RC__)
+        call MAPL_VarWrite( formatter, "RAINFM",   catch%RAINFM  , __RC__)
+        call MAPL_VarWrite( formatter, "SNOWFM",   catch%SNOWFM  , __RC__)
+        call MAPL_VarWrite( formatter, "RUNSRFM",  catch%RUNSRFM , __RC__)
+        call MAPL_VarWrite( formatter, "AR1M",     catch%AR1M    , __RC__)
+        call MAPL_VarWrite( formatter, "LMRSUNM",  catch%lmrsunm , __RC__)
+        call MAPL_VarWrite( formatter, "LMRSHAM",  catch%lmrsham , __RC__)
+        call MAPL_VarWrite( formatter, "LAISUNM",  catch%laisunm , __RC__)
+        call MAPL_VarWrite( formatter, "LAISHAM",  catch%laisham , __RC__)
+        call MAPL_VarWrite( formatter, "SNDZM5D",  catch%SNDZM5D , __RC__)
+        call MAPL_VarWrite( formatter, "T2M10D",   catch%T2M10D  , __RC__)
+        call MAPL_VarWrite( formatter, "TG10D",    catch%TG10D   , __RC__)
+        call MAPL_VarWrite( formatter, "T2MMIN5D", catch%T2MMIN5D, __RC__)
+        call MAPL_VarWrite( formatter, "RH30D",    catch%RH30D   , __RC__)
+        call MAPL_VarWrite( formatter, "TPREC10D", catch%TPREC10D, __RC__)
+        call MAPL_VarWrite( formatter, "TPREC60D", catch%TPREC60D, __RC__)
+        call MAPL_VarWrite( formatter, "ET365D",   catch%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
+        call MAPL_VarWrite( formatter, "RUNSURF",  catch%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
 
      endif
-
-     if (this%isCLM40)   call MAPL_VarWrite(formatter,"SFMCM",  this%sfmcm)
-
-     call MAPL_VarWrite(formatter,"PSNSUNM", this%PSNSUNM )
-     call MAPL_VarWrite(formatter,"PSNSHAM", this%PSNSHAM )
-
-     call formatter%close()
      
      _RETURN(_SUCCESS)
-   end subroutine write_nc4
 
+   end subroutine write_nc4
+   
+   ! --------------------------------------------------------------------------------------------
+   
    subroutine allocate_cn(this,rc)
      class(CatchmentCNRst), intent(inout) :: this
      integer, optional, intent(out):: rc
@@ -393,74 +380,70 @@ contains
      call this%CatchmentRst%allocate_catch(__RC__)
 
      ! W.Jiang notes : some varaiables are not allocated because they are set to zero directly during write
-     allocate(this%cnity(ntiles,nveg))
-     allocate(this%fvg(ntiles,nveg))
-     allocate(this%tg(ntiles,nveg))
-     allocate(this%TILE_ID(ntiles))
-     allocate(this%ndep(ntiles))
-     allocate(this%t2(ntiles))
-     allocate(this%BGALBVR(ntiles))
-     allocate(this%BGALBVF(ntiles))
-     allocate(this%BGALBNR(ntiles))
-     allocate(this%BGALBNF(ntiles))
-     allocate(this%CNCOL(ntiles,ncol))
-     allocate(this%CNPFT(ntiles,npft))
-     allocate(this%ABM(ntiles))
-     allocate(this%FIELDCAP(ntiles))
-     allocate(this%HDM(ntiles))
-     allocate(this%GDP(ntiles))
-     allocate(this%PEATF(ntiles))
 
-     allocate(this%bflowm  (ntiles))
-     allocate(this%totwatm (ntiles))
-     allocate(this%tairm   (ntiles))
-     allocate(this%tpm     (ntiles))
-     allocate(this%cnsum   (ntiles))
-     allocate(this%sndzm   (ntiles))
-     allocate(this%asnowm  (ntiles))
-     allocate(this%psnsunm(ntiles,nveg,nzone))
-     allocate(this%psnsham(ntiles,nveg,nzone))
-     allocate(this%lmrsunm(ntiles,nveg,nzone))
-     allocate(this%lmrsham(ntiles,nveg,nzone))
-     allocate(this%laisunm(ntiles,nveg,nzone))
-     allocate(this%laisham(ntiles,nveg,nzone))
-     allocate(this%rzmm   (ntiles,nzone))
-     allocate(this%tgwm   (ntiles,nzone))
+     allocate(   this%cnity   (ntiles,nveg))
+     allocate(   this%fvg     (ntiles,nveg))
+     allocate(   this%tg      (ntiles,nveg))
+     allocate(   this%TILE_ID (ntiles))
+     allocate(   this%ndep    (ntiles))
+     allocate(   this%cli_t2m (ntiles))
+     allocate(   this%BGALBVR (ntiles))
+     allocate(   this%BGALBVF (ntiles))
+     allocate(   this%BGALBNR (ntiles))
+     allocate(   this%BGALBNF (ntiles))
+     allocate(   this%CNCOL   (ntiles,ncol))
+     allocate(   this%CNPFT   (ntiles,npft))
+     allocate(   this%tgwm    (ntiles,nzone))
+     allocate(   this%rzmm    (ntiles,nzone))
+     allocate(   this%bflowm  (ntiles))
+     allocate(   this%totwatm (ntiles))
+     allocate(   this%tairm   (ntiles))
+     allocate(   this%tpm     (ntiles))
+     allocate(   this%cnsum   (ntiles))
+     allocate(   this%psnsunm (ntiles,nveg,nzone))
+     allocate(   this%psnsham (ntiles,nveg,nzone))
+     allocate(   this%sndzm   (ntiles))
+     allocate(   this%asnowm  (ntiles))
 
-     if (this%isCLM40) then
+     if      (this%isCLM40) then
+
         allocate(this%sfmcm   (ntiles))
-     endif
-     if (this%isCLM45) then
-        allocate(this%ar1m    (ntiles))
-        allocate(this%rainfm  (ntiles))
-        allocate(this%rhm     (ntiles))
-        allocate(this%runsrfm (ntiles))
-        allocate(this%snowfm  (ntiles))
-        allocate(this%windm   (ntiles))
-        allocate(this%tprec10d(ntiles))
-        allocate(this%tprec60d(ntiles))
-        allocate(this%t2m10d  (ntiles))
+        
+     else if (this%isCLM51) then
+
         allocate(this%sfmm    (ntiles,nzone))
-     endif
-     if (this%isCLM51) then
-        allocate(this%ar1m    (ntiles))
-        allocate(this%rainfm  (ntiles))
+        allocate(this%ABM     (ntiles))
+        allocate(this%PEATF   (ntiles))
+        allocate(this%GDP     (ntiles))
+        allocate(this%HDM     (ntiles))
+        allocate(this%FIELDCAP(ntiles))
         allocate(this%rhm     (ntiles))
-        allocate(this%runsrfm (ntiles))
-        allocate(this%snowfm  (ntiles))
         allocate(this%windm   (ntiles))
-        allocate(this%tprec10d(ntiles))
-        allocate(this%tprec60d(ntiles))
+        allocate(this%rainfm  (ntiles))
+        allocate(this%snowfm  (ntiles))
+        allocate(this%runsrfm (ntiles))
+        allocate(this%ar1m    (ntiles))
+        allocate(this%lmrsunm (ntiles,nveg,nzone))
+        allocate(this%lmrsham (ntiles,nveg,nzone))
+        allocate(this%laisunm (ntiles,nveg,nzone))
+        allocate(this%laisham (ntiles,nveg,nzone))
+        allocate(this%sndzm5d (ntiles))        
         allocate(this%t2m10d  (ntiles))
-        allocate(this%sfmm    (ntiles,nzone))
-        allocate(this%rh30d   (ntiles))
         allocate(this%tg10d   (ntiles))
         allocate(this%t2mmin5d(ntiles))
-        allocate(this%sndzm5d (ntiles))
+        allocate(this%rh30d   (ntiles))
+        allocate(this%tprec10d(ntiles))
+        allocate(this%tprec60d(ntiles))
+        allocate(this%et365d  (ntiles))
+        allocate(this%runsurf (ntiles))
+        
      endif
 
      _RETURN(_SUCCESS)
+
    end subroutine allocate_cn
+   
+   ! --------------------------------------------------------------------------------------------
 
    SUBROUTINE add_bcs_to_cnrst (this, SURFLAY, OutBcsDir,rc)
     class(CatchmentCNRst), intent(inout) :: this
@@ -470,7 +453,7 @@ contains
     real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
     real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
     real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
-    real, allocatable :: T2(:), hdm(:), fc(:), gdp(:), peatf(:)
+    real, allocatable :: CLI_T2M(:), hdm(:), fc(:), gdp(:), peatf(:)
     integer, allocatable :: ity(:), abm (:)
     integer       :: STATUS, ntiles, unit27, unit28, unit29, unit30
     integer       :: idum, i,j,n, ib, nv, nveg
@@ -492,7 +475,7 @@ contains
     !call this%CatchmentRst%add_bcs_to_rst(surflay, OutBcsDir, __RC__)
 
     allocate (BVISDR(ntiles),  BVISDF(ntiles),  BNIRDR(ntiles)  )
-    allocate (BNIRDF(ntiles),      T2(ntiles),    NDEP(ntiles)  )    
+    allocate (BNIRDF(ntiles),  CLI_T2M(ntiles),    NDEP(ntiles)  )    
     allocate (CLMC_pf1(ntiles), CLMC_pf2(ntiles), CLMC_sf1(ntiles))
     allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
     allocate (CLMC_st1(ntiles), CLMC_st2(ntiles))
@@ -504,22 +487,26 @@ contains
     _ASSERT(Newland, "catchcn should get bc from newland")
 
     if(file_exists) then
-       call CatchCNFmt%Open(trim(OutBcsDir)//'/clsm/catchcn_params.nc4', pFIO_READ, __RC__)    
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF, __RC__)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR, __RC__)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF, __RC__)
-       call MAPL_VarRead ( CatchCNFmt ,'BGALBVR', BVISDR, __RC__)
-       call MAPL_VarRead ( CatchCNFmt ,'NDEP', NDEP, __RC__)
-       call MAPL_VarRead ( CatchCNFmt ,'T2_M', T2, __RC__)
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt1,offset1=1, __RC__)     !  30
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt2,offset1=2, __RC__)     !  31
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st1,offset1=3, __RC__)     !  32
-       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st2,offset1=4, __RC__)     !  33
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf1,offset1=1, __RC__)     !  34
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf2,offset1=2, __RC__)     !  35
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3, __RC__)     !  36
-       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4, __RC__)     !  37
+
+       call CatchCNFmt%Open(trim(OutBcsDir)//'/clsm/catchcn_params.nc4', pFIO_READ, __RC__)
+       
+       call MAPL_VarRead( CatchCNFmt, 'BGALBNF', BNIRDF,              __RC__)
+       call MAPL_VarRead( CatchCNFmt, 'BGALBNR', BNIRDR,              __RC__)
+       call MAPL_VarRead( CatchCNFmt, 'BGALBVF', BVISDF,              __RC__)
+       call MAPL_VarRead( CatchCNFmt, 'BGALBVR', BVISDR,              __RC__)
+       call MAPL_VarRead( CatchCNFmt, 'NDEP',    NDEP,                __RC__)
+       call MAPL_VarRead( CatchCNFmt, 'T2_M',    CLI_T2M,             __RC__)
+       call MAPL_VarRead( CatchCNFmt, 'ITY',     CLMC_pt1, offset1=1, __RC__)     !  30
+       call MAPL_VarRead( CatchCNFmt, 'ITY',     CLMC_pt2, offset1=2, __RC__)     !  31
+       call MAPL_VarRead( CatchCNFmt, 'ITY',     CLMC_st1, offset1=3, __RC__)     !  32
+       call MAPL_VarRead( CatchCNFmt, 'ITY',     CLMC_st2, offset1=4, __RC__)     !  33
+       call MAPL_VarRead( CatchCNFmt, 'FVG',     CLMC_pf1, offset1=1, __RC__)     !  34
+       call MAPL_VarRead( CatchCNFmt, 'FVG',     CLMC_pf2, offset1=2, __RC__)     !  35
+       call MAPL_VarRead( CatchCNFmt, 'FVG',     CLMC_sf1, offset1=3, __RC__)     !  36
+       call MAPL_VarRead( CatchCNFmt, 'FVG',     CLMC_sf2, offset1=4, __RC__)     !  37
+
        call CatchCNFmt%close()
+
     else
 
        open(newunit=unit27, file=trim(OutBcsDir)//'/clsm/CLM_veg_typs_fracs'   ,form='formatted')
@@ -529,7 +516,7 @@ contains
           read (unit27, *) i,j, CLMC_pt1(n), CLMC_pt2(n), CLMC_st1(n), CLMC_st2(n), &
                 CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
              
-          read (unit28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
+          read (unit28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), CLI_T2M(n) ! MERRA-2 Annual Mean Temp is default.
        end do
        
        CLOSE (unit27, STATUS = 'KEEP')
@@ -548,6 +535,7 @@ contains
     endif
     
     do n=1,ntiles
+       
       BVISDR(n) = amax1(1.e-6, BVISDR(n))
       BVISDF(n) = amax1(1.e-6, BVISDF(n))
       BNIRDR(n) = amax1(1.e-6, BNIRDR(n))
@@ -669,7 +657,7 @@ contains
      endif 
 
      this%ndep = ndep
-     this%t2   = t2
+     this%cli_t2m   = CLI_T2M
      this%BGALBVR = BVISDR
      this%BGALBVF = BVISDF
      this%BGALBNR = BNIRDR
@@ -684,14 +672,17 @@ contains
      endif
 
      deallocate (BVISDR,  BVISDF,  BNIRDR  )
-     deallocate (BNIRDF,      T2,    NDEP  )    
+     deallocate (BNIRDF,  CLI_T2M,    NDEP  )    
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1)
      deallocate (CLMC_sf2, CLMC_pt1, CLMC_pt2)
      deallocate (CLMC_st1,CLMC_st2)
 
      _RETURN(_SUCCESS)
+     
    end subroutine add_bcs_to_cnrst
 
+   ! -------------------------------------------------------------------------------------------------
+   
    subroutine re_tile(this, InTileFile, OutBcsDir, OutTileFile, surflay, rc)
      class(CatchmentCNRst), intent(inout) :: this
      character(*), intent(in) :: InTileFile
@@ -790,12 +781,12 @@ contains
         call ESMF_CalendarSetDefault ( ESMF_CALKIND_GREGORIAN, rc=status )
 
         call ESMF_TimeSet  ( CURRENT_TIME, YY = AGCM_YY,       &
-                                            MM = AGCM_MM,       &
-                                            DD = AGCM_DD,       &
-                                            H  = AGCM_HR,       &
-                                            M  = AGCM_MI,       &
-                                            S  = AGCM_S ,       &
-                                            rc=status )
+                                           MM = AGCM_MM,       &
+                                           DD = AGCM_DD,       &
+                                           H  = AGCM_HR,       &
+                                           M  = AGCM_MI,       &
+                                           S  = AGCM_S ,       &
+                                           rc=status )
          VERIFY_(STATUS)
 
         !2) create a clock
@@ -876,19 +867,19 @@ contains
            l   = nt_local(i+1)
            tag = i*numprocs
            if ((this%isCLM40) .or. (this%isCLM45)) then
-              call MPI_send(this%cnity(st,1),l, MPI_REAL, i, tag, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%cnity(st,1),l, MPI_REAL, i, tag,   MPI_COMM_WORLD, mpierr)
               call MPI_send(this%cnity(st,2),l, MPI_REAL, i, tag+1, MPI_COMM_WORLD, mpierr)
               call MPI_send(this%cnity(st,3),l, MPI_REAL, i, tag+2, MPI_COMM_WORLD, mpierr)
               call MPI_send(this%cnity(st,4),l, MPI_REAL, i, tag+3, MPI_COMM_WORLD, mpierr)
-              call MPI_send(this%fvg(st,1),l,   MPI_REAL, i, tag+4, MPI_COMM_WORLD, mpierr)
-              call MPI_send(this%fvg(st,2),l,   MPI_REAL, i, tag+5, MPI_COMM_WORLD, mpierr)
-              call MPI_send(this%fvg(st,3),l,   MPI_REAL, i, tag+6, MPI_COMM_WORLD, mpierr)
-              call MPI_send(this%fvg(st,4),l,   MPI_REAL, i, tag+7, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(  st,1),l, MPI_REAL, i, tag+4, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(  st,2),l, MPI_REAL, i, tag+5, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(  st,3),l, MPI_REAL, i, tag+6, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(  st,4),l, MPI_REAL, i, tag+7, MPI_COMM_WORLD, mpierr)
             else if (this%isCLM51) then
-              call MPI_send(this%cnity(st,1),l, MPI_REAL, i, tag, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%cnity(st,1),l, MPI_REAL, i, tag,   MPI_COMM_WORLD, mpierr)
               call MPI_send(this%cnity(st,2),l, MPI_REAL, i, tag+1, MPI_COMM_WORLD, mpierr)
-              call MPI_send(this%fvg(st,1),l,   MPI_REAL, i, tag+2, MPI_COMM_WORLD, mpierr)
-              call MPI_send(this%fvg(st,2),l,   MPI_REAL, i, tag+3, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(  st,1),l, MPI_REAL, i, tag+2, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(  st,2),l, MPI_REAL, i, tag+3, MPI_COMM_WORLD, mpierr)
             endif 
         enddo
         st  = low_ind(1)
@@ -899,20 +890,20 @@ contains
            CLMC_pt2 = this%cnity(st:ed,2)
            CLMC_st1 = this%cnity(st:ed,3)
            CLMC_st2 = this%cnity(st:ed,4)
-           CLMC_pf1 = this%fvg(st:ed,1)
-           CLMC_pf2 = this%fvg(st:ed,2)
-           CLMC_sf1 = this%fvg(st:ed,3)
-           CLMC_sf2 = this%fvg(st:ed,4)
+           CLMC_pf1 = this%fvg(  st:ed,1)
+           CLMC_pf2 = this%fvg(  st:ed,2)
+           CLMC_sf1 = this%fvg(  st:ed,3)
+           CLMC_sf2 = this%fvg(  st:ed,4)
         elseif (this%isCLM51) then
            CLMC_pt1 = this%cnity(st:ed,1)
            CLMC_st1 = this%cnity(st:ed,2)
-           CLMC_pf1 = this%fvg(st:ed,1)
-           CLMC_sf1 = this%fvg(st:ed,2)
+           CLMC_pf1 = this%fvg(  st:ed,1)
+           CLMC_sf1 = this%fvg(  st:ed,2)
         endif 
      else
         tag = myid*numprocs
         if ((this%isCLM40) .or. (this%isCLM45)) then
-           call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, tag,  MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, tag,   MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
            call MPI_RECV(CLMC_pt2,nt_local(myid+1) , MPI_REAL, 0, tag+1, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
            call MPI_RECV(CLMC_st1,nt_local(myid+1) , MPI_REAL, 0, tag+2, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
            call MPI_RECV(CLMC_st2,nt_local(myid+1) , MPI_REAL, 0, tag+3, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
@@ -921,7 +912,7 @@ contains
            call MPI_RECV(CLMC_sf1,nt_local(myid+1) , MPI_REAL, 0, tag+6, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
            call MPI_RECV(CLMC_sf2,nt_local(myid+1) , MPI_REAL, 0, tag+7, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
         elseif (this%isCLM51) then
-           call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, tag,  MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, tag,   MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
            call MPI_RECV(CLMC_st1,nt_local(myid+1) , MPI_REAL, 0, tag+1, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
            call MPI_RECV(CLMC_pf1,nt_local(myid+1) , MPI_REAL, 0, tag+2, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
            call MPI_RECV(CLMC_sf1,nt_local(myid+1) , MPI_REAL, 0, tag+3, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
@@ -1125,7 +1116,10 @@ contains
     _RETURN(_SUCCESS)
 
   contains
-     SUBROUTINE regrid_carbon (NTILES, in_ntiles, id_glb, &
+
+    ! -------------------------------------------------------------------------------------------------
+    
+    SUBROUTINE regrid_carbon (NTILES, in_ntiles, id_glb, &
         DAYX, var_off_col, var_off_pft, ityp_offl, fveg_offl,iclass_in)
 
      ! write out regridded carbon variables
@@ -1622,7 +1616,9 @@ contains
 
     end subroutine regrid_carbon
 
-
   end subroutine re_tile
 
 end module CatchmentCNRstMod
+
+
+! ==================== EOF ========================================================================================================
