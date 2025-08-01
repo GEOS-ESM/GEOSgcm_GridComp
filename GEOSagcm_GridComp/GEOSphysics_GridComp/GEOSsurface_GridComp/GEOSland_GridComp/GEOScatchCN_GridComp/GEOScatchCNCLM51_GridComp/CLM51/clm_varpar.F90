@@ -10,10 +10,13 @@ module clm_varpar
 !
 ! !USES:
 !
- use clm_varpar_shared, only : VAR_COL =>VAR_COL_51, VAR_PFT => VAR_PFT_51, &
-                               numpft => numpft_CN51, NUM_ZON => NUM_ZON_CN, &
-                               NUM_VEG => NUM_VEG_CN51
-
+  use clm_varpar_shared, only :    &
+       VAR_COL => VAR_COL_51,      &
+       VAR_PFT => VAR_PFT_51,      &
+       NUM_PFT => NUM_PFT_CN_51,   &
+       NUM_ZON => NUM_ZON_CN,      &
+       NUM_VEG => NUM_VEG_CN_51
+  
 ! !PUBLIC TYPES:
   implicit none
   save
@@ -25,7 +28,7 @@ module clm_varpar
   integer, parameter :: nlevsno     =   0     ! maximum number of snow layers
   integer, public    :: nlevurb     =   0     ! number of urban layers; jk Oct 2021: using CTSM5.1 value of 5 for now; jkolassa Aug 2022: changed because having more urban than ground layers caused and issue with the initialization of the soil layers in column type
   integer, public    :: nlevmaxurbgrnd        ! maximum of the number of ground and urban layers
-  integer, public, parameter :: nlayer      =   3     ! number of VIC soil layer --Added by AWang
+  integer, public, parameter :: nlayer  =   3     ! number of VIC soil layer --Added by AWang
 
   integer, public    :: nlevlak               ! number of lake layers
   integer, public    :: nlevdecomp            ! number of biogeochemically active soil layers
@@ -41,7 +44,7 @@ module clm_varpar
 
   integer, parameter :: mxpft          = 15      !
   integer, public    :: maxveg                   ! # of pfts + cfts
-  integer, public    :: maxsoil_patches = numpft + 1  ! # of pfts + cfts + bare ground; replaces maxpatch_pft, which is obsolete
+  integer, public    :: maxsoil_patches = NUM_PFT + 1  ! # of pfts + cfts + bare ground; replaces maxpatch_pft, which is obsolete
   integer, public    :: natpft_lb      = 0       ! In PATCH arrays, lower bound of Patches on the natural veg landunit (i.e., bare ground index)
 
   integer, public, parameter :: nvariants   =   2     ! number of variants of PFT constants
@@ -53,7 +56,7 @@ module clm_varpar
   integer, public, parameter :: nvegwcs     =   4     ! number of vegetation water conductance segments
 
   real, parameter, PUBLIC, dimension(NUM_ZON) :: CN_zone_weight = (/0.10,0.45,0.45/) ! gkw: tunable; must sum to 1
-  integer, parameter, PUBLIC :: map_cat(0:numpft) = (/4,3,3,3,1,1,2,2,2,5,5,6,4,4,4,4/)
+  integer, parameter, PUBLIC :: map_cat(0:NUM_PFT) = (/4,3,3,3,1,1,2,2,2,5,5,6,4,4,4,4/)
 
   ! constants for decomposition cascade
 

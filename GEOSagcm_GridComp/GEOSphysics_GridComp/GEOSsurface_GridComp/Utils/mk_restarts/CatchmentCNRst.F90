@@ -10,12 +10,12 @@ module CatchmentCNRstMod
 
   use clm_varpar_shared ,    only :                &
        nzone                    => NUM_ZON_CN,     &
-       nveg_40                  => NUM_VEG_CN,     &
-       nveg_51                  => NUM_VEG_CN51,   &
+       nveg_40                  => NUM_VEG_CN_40,  &
+       nveg_51                  => NUM_VEG_CN_51,  &
        VAR_COL_40, VAR_PFT_40,                     &
        VAR_COL_51, VAR_PFT_51,                     &
-       npft                     => numpft_CN,      &
-       npft_51                  => numpft_CN51
+       npft_40                  => NUM_PFT_CN_40,  &
+       npft_51                  => NUM_PFT_CN_51
 
   use nanMod,                only : nan
   
@@ -23,7 +23,7 @@ module CatchmentCNRstMod
 
   real,    parameter :: fmin = 1.e-4  ! ignore vegetation fractions at or below this value
 
-  integer            :: iclass_40(npft)    = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
+  integer            :: iclass_40(npft_40) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
   integer            :: iclass_51(npft_51) = (/1,1,2,3,3,4,5,5,6,7,  9,10,11,   11,   11   /)
 
   integer, dimension(:), allocatable :: iclass
@@ -372,10 +372,11 @@ contains
      integer  :: ncol,npft, ntiles, nveg
     
      
-     nveg = this%NVEG
+     nveg   = this%NVEG
      ntiles = this%ntiles
-     ncol = nzone* this%VAR_COL 
-     npft = nzone*nveg*this%VAR_PFT
+     
+     ncol   = nzone*     this%VAR_COL 
+     npft   = nzone*nveg*this%VAR_PFT
 
      call this%CatchmentRst%allocate_catch(__RC__)
 
@@ -458,7 +459,7 @@ contains
     integer       :: STATUS, ntiles, unit27, unit28, unit29, unit30
     integer       :: idum, i,j,n, ib, nv, nveg
     real          :: rdum, zdep1, zdep2, zdep3, zmet, term1, term2, bare,fvg(4)
-    integer, dimension(npft) :: map_pft
+    integer, dimension(npft_40) :: map_pft
     logical       :: NEWLAND
     logical       :: file_exists
 
@@ -817,7 +818,7 @@ contains
         fveg_offl = this%fvg
 
         if     (this%isCLM40) then
-            npft_int = npft
+            npft_int = npft_40
         elseif (this%isCLM51) then
             npft_int = npft_51
         endif
@@ -1118,7 +1119,7 @@ contains
        print *, 'calculating regridded carbn'
 
        if     (this%isCLM40) then
-          allocate(iclass(1:npft))
+          allocate(iclass(1:npft_40))
           iclass = iclass_40
        elseif (this%isCLM51) then 
           allocate(iclass(1:npft_51))

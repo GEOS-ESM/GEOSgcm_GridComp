@@ -293,13 +293,19 @@ contains
          CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
          fveg_offl, ityp_offl,isCLM51)
 
-    use clm_varpar_shared , only : nveg_40 => NUM_VEG_CN, nveg_51 => NUM_VEG_CN51, &
-                                 npft => numpft_CN, npft_51 => numpft_CN51
+      use clm_varpar_shared , only : &
+           nveg_40 => NUM_VEG_CN_40, &
+           nveg_51 => NUM_VEG_CN_51, &
+           npft_40 => NUM_PFT_CN_40, &
+           npft_51 => NUM_PFT_CN_51
+
       implicit none
       integer :: nveg
       real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
-      integer :: iclass_40_45(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
-      integer :: iclass_51(npft_51) = (/1,1,2,3,3,4,5,5,6,7,9,10,11,11,11/)
+
+      integer :: iclass_40(npft_40) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
+      integer :: iclass_51(npft_51) = (/1,1,2,3,3,4,5,5,6,7,  9,10,11,   11,   11   /)
+
       integer, dimension(:), allocatable :: iclass
       integer :: NT_IN, NT_OUT, n, i, nplus,nv, nx, ityp_new 
       integer, dimension (:), intent (in) :: tid_in 
@@ -322,12 +328,12 @@ contains
       if (isCLM51) then
          allocate(iclass(1:npft_51))
          iclass = iclass_51
-         nveg = nveg_51   
+         nveg   = nveg_51   
       elseif (.not.isCLM51) then
-        allocate(iclass(1:npft))
-        iclass = iclass_40_45
-        nveg = nveg_40
-      end if 
+         allocate(iclass(1:npft_40))
+         iclass = iclass_40
+         nveg   = nveg_40
+      end if
       
       allocate (mask   (1:  NT_IN))
       
