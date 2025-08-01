@@ -299,63 +299,63 @@ contains
      
      ! common to CNCLM40 and CNCLM51
      
-     call MAPL_VarWrite(    formatter, "ITY",      catch%cnity   , __RC__)
-     call MAPL_VarWrite(    formatter, "FVG",      catch%fvg     , __RC__)
-     call MAPL_VarWrite(    formatter, "TG",       catch%tg      , __RC__)
-     call MAPL_VarWrite(    formatter, "TILE_ID",  catch%TILE_ID , __RC__)
-     call MAPL_VarWrite(    formatter, "NDEP",     catch%ndep    , __RC__)
-     call MAPL_VarWrite(    formatter, "CLI_T2M",  catch%cli_t2m , __RC__)
-     call MAPL_VarWrite(    formatter, "BGALBVR",  catch%BGALBVR , __RC__)
-     call MAPL_VarWrite(    formatter, "BGALBVF",  catch%BGALBVF , __RC__)
-     call MAPL_VarWrite(    formatter, "BGALBNR",  catch%BGALBNR , __RC__)
-     call MAPL_VarWrite(    formatter, "BGALBNF",  catch%BGALBNF , __RC__)
-     call MAPL_VarWrite(    formatter, "CNCOL",    catch%CNCOL   , __RC__)
-     call MAPL_VarWrite(    formatter, "CNPFT",    catch%CNPFT   , __RC__)
-     call MAPL_VarWrite(    formatter, "TGWM",     catch%tgwm    , __RC__)
-     call MAPL_VarWrite(    formatter, "RZMM",     catch%rzmm    , __RC__)
-     call MAPL_VarWrite(    formatter, "BFLOWM",   catch%bflowm  , __RC__) 
-     call MAPL_VarWrite(    formatter, "TOTWATM",  catch%totwatm , __RC__) 
-     call MAPL_VarWrite(    formatter, "TAIRM",    catch%tairm   , __RC__) 
-     call MAPL_VarWrite(    formatter, "TPM",      catch%tpm     , __RC__) 
-     call MAPL_VarWrite(    formatter, "CNSUM",    catch%cnsum   , __RC__) 
-     call MAPL_VarWrite(    formatter, "PSNSUNM",  catch%psnsunm , __RC__) 
-     call MAPL_VarWrite(    formatter, "PSNSHAM",  catch%psnsham , __RC__) 
-     call MAPL_VarWrite(    formatter, "SNDZM",    catch%sndzm   , __RC__) 
-     call MAPL_VarWrite(    formatter, "ASNOWM",   catch%asnowm  , __RC__) 
+     call MAPL_VarWrite(    formatter, "ITY",      this%cnity   , __RC__)
+     call MAPL_VarWrite(    formatter, "FVG",      this%fvg     , __RC__)
+     call MAPL_VarWrite(    formatter, "TG",       this%tg      , __RC__)
+     call MAPL_VarWrite(    formatter, "TILE_ID",  this%TILE_ID , __RC__)
+     call MAPL_VarWrite(    formatter, "NDEP",     this%ndep    , __RC__)
+     call MAPL_VarWrite(    formatter, "CLI_T2M",  this%cli_t2m , __RC__)
+     call MAPL_VarWrite(    formatter, "BGALBVR",  this%BGALBVR , __RC__)
+     call MAPL_VarWrite(    formatter, "BGALBVF",  this%BGALBVF , __RC__)
+     call MAPL_VarWrite(    formatter, "BGALBNR",  this%BGALBNR , __RC__)
+     call MAPL_VarWrite(    formatter, "BGALBNF",  this%BGALBNF , __RC__)
+     call MAPL_VarWrite(    formatter, "CNCOL",    this%CNCOL   , __RC__)
+     call MAPL_VarWrite(    formatter, "CNPFT",    this%CNPFT   , __RC__)
+     call MAPL_VarWrite(    formatter, "TGWM",     this%tgwm    , __RC__)
+     call MAPL_VarWrite(    formatter, "RZMM",     this%rzmm    , __RC__)
+     call MAPL_VarWrite(    formatter, "BFLOWM",   this%bflowm  , __RC__) 
+     call MAPL_VarWrite(    formatter, "TOTWATM",  this%totwatm , __RC__) 
+     call MAPL_VarWrite(    formatter, "TAIRM",    this%tairm   , __RC__) 
+     call MAPL_VarWrite(    formatter, "TPM",      this%tpm     , __RC__) 
+     call MAPL_VarWrite(    formatter, "CNSUM",    this%cnsum   , __RC__) 
+     call MAPL_VarWrite(    formatter, "PSNSUNM",  this%psnsunm , __RC__) 
+     call MAPL_VarWrite(    formatter, "PSNSHAM",  this%psnsham , __RC__) 
+     call MAPL_VarWrite(    formatter, "SNDZM",    this%sndzm   , __RC__) 
+     call MAPL_VarWrite(    formatter, "ASNOWM",   this%asnowm  , __RC__) 
 
      ! specific to CNCLM40 or CNCLM51
 
-     if    ( catch%isCLM40 ) then
+     if    ( this%isCLM40 ) then
 
-        call MAPL_VarWrite(formatter, "SFMCM",     catch%sfmcm   , __RC__)
+        call MAPL_VarWrite(formatter, "SFMCM",     this%sfmcm   , __RC__)
 
-     elseif( catch%isCLM51 ) then
+     elseif( this%isCLM51 ) then
 
-        call MAPL_VarWrite( formatter, "SFMM",     catch%sfmm    , __RC__)         ! TMPRR: added to branch for CLM51  
-        call MAPL_VarWrite( formatter, "ABM",      catch%ABM     , __RC__)
-        call MAPL_VarWrite( formatter, "PEATF",    catch%PEATF   , __RC__)           
-        call MAPL_VarWrite( formatter, "GDP",      catch%GDP     , __RC__)
-        call MAPL_VarWrite( formatter, "HDM",      catch%HDM     , __RC__)
-        call MAPL_VarWrite( formatter, "FIELDCAP", catch%FIELDCAP, __RC__)
-        call MAPL_VarWrite( formatter, "RHM",      catch%RHM     , __RC__)
-        call MAPL_VarWrite( formatter, "WINDM",    catch%WINDM   , __RC__)
-        call MAPL_VarWrite( formatter, "RAINFM",   catch%RAINFM  , __RC__)
-        call MAPL_VarWrite( formatter, "SNOWFM",   catch%SNOWFM  , __RC__)
-        call MAPL_VarWrite( formatter, "RUNSRFM",  catch%RUNSRFM , __RC__)
-        call MAPL_VarWrite( formatter, "AR1M",     catch%AR1M    , __RC__)
-        call MAPL_VarWrite( formatter, "LMRSUNM",  catch%lmrsunm , __RC__)
-        call MAPL_VarWrite( formatter, "LMRSHAM",  catch%lmrsham , __RC__)
-        call MAPL_VarWrite( formatter, "LAISUNM",  catch%laisunm , __RC__)
-        call MAPL_VarWrite( formatter, "LAISHAM",  catch%laisham , __RC__)
-        call MAPL_VarWrite( formatter, "SNDZM5D",  catch%SNDZM5D , __RC__)
-        call MAPL_VarWrite( formatter, "T2M10D",   catch%T2M10D  , __RC__)
-        call MAPL_VarWrite( formatter, "TG10D",    catch%TG10D   , __RC__)
-        call MAPL_VarWrite( formatter, "T2MMIN5D", catch%T2MMIN5D, __RC__)
-        call MAPL_VarWrite( formatter, "RH30D",    catch%RH30D   , __RC__)
-        call MAPL_VarWrite( formatter, "TPREC10D", catch%TPREC10D, __RC__)
-        call MAPL_VarWrite( formatter, "TPREC60D", catch%TPREC60D, __RC__)
-        call MAPL_VarWrite( formatter, "ET365D",   catch%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
-        call MAPL_VarWrite( formatter, "RUNSURF",  catch%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
+        call MAPL_VarWrite( formatter, "SFMM",     this%sfmm    , __RC__)         ! TMPRR: added to branch for CLM51  
+        call MAPL_VarWrite( formatter, "ABM",      this%ABM     , __RC__)
+        call MAPL_VarWrite( formatter, "PEATF",    this%PEATF   , __RC__)           
+        call MAPL_VarWrite( formatter, "GDP",      this%GDP     , __RC__)
+        call MAPL_VarWrite( formatter, "HDM",      this%HDM     , __RC__)
+        call MAPL_VarWrite( formatter, "FIELDCAP", this%FIELDCAP, __RC__)
+        call MAPL_VarWrite( formatter, "RHM",      this%RHM     , __RC__)
+        call MAPL_VarWrite( formatter, "WINDM",    this%WINDM   , __RC__)
+        call MAPL_VarWrite( formatter, "RAINFM",   this%RAINFM  , __RC__)
+        call MAPL_VarWrite( formatter, "SNOWFM",   this%SNOWFM  , __RC__)
+        call MAPL_VarWrite( formatter, "RUNSRFM",  this%RUNSRFM , __RC__)
+        call MAPL_VarWrite( formatter, "AR1M",     this%AR1M    , __RC__)
+        call MAPL_VarWrite( formatter, "LMRSUNM",  this%lmrsunm , __RC__)
+        call MAPL_VarWrite( formatter, "LMRSHAM",  this%lmrsham , __RC__)
+        call MAPL_VarWrite( formatter, "LAISUNM",  this%laisunm , __RC__)
+        call MAPL_VarWrite( formatter, "LAISHAM",  this%laisham , __RC__)
+        call MAPL_VarWrite( formatter, "SNDZM5D",  this%SNDZM5D , __RC__)
+        call MAPL_VarWrite( formatter, "T2M10D",   this%T2M10D  , __RC__)
+        call MAPL_VarWrite( formatter, "TG10D",    this%TG10D   , __RC__)
+        call MAPL_VarWrite( formatter, "T2MMIN5D", this%T2MMIN5D, __RC__)
+        call MAPL_VarWrite( formatter, "RH30D",    this%RH30D   , __RC__)
+        call MAPL_VarWrite( formatter, "TPREC10D", this%TPREC10D, __RC__)
+        call MAPL_VarWrite( formatter, "TPREC60D", this%TPREC60D, __RC__)
+        call MAPL_VarWrite( formatter, "ET365D",   this%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
+        call MAPL_VarWrite( formatter, "RUNSURF",  this%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
 
      endif
      
