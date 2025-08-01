@@ -12,9 +12,7 @@ class TranslateQSat(TranslateFortranData2Py):
         self._grid = grid
         self.max_error = 1e-9
 
-        self.nmodes_quantity_factory = QSat.make_extra_dim_quantity_factory(
-            self.quantity_factory
-        )
+        self.nmodes_quantity_factory = QSat.make_extra_dim_quantity_factory(self.quantity_factory)
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {

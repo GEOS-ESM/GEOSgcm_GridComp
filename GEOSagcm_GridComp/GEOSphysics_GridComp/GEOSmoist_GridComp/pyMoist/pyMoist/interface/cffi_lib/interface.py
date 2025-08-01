@@ -525,7 +525,9 @@ def compute_uwshcu_py_run(
     return 0
 
 
-""".format(TMPFILEBASE)
+""".format(
+    TMPFILEBASE
+)
 
 with open("moist.h") as f:
     data = "".join([line for line in f if not line.startswith("#")])

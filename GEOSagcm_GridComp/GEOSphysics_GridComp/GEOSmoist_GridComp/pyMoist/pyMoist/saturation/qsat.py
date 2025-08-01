@@ -60,9 +60,7 @@ def QSat_Float_Liquid(
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
         IT = i32(TT)
-        IT_MINUS_1 = (
-            IT - 1
-        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        IT_MINUS_1 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
         DDQ = esw[0][IT] - esw[0][IT_MINUS_1]  # type: ignore
         QS = (TT - IT) * DDQ + esw[0][IT_MINUS_1]  # type: ignore
 
@@ -104,9 +102,7 @@ def QSat_Float_Ice(
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
         IT = i32(floor(TT))
-        IT_MINUS_1 = (
-            IT - 1
-        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        IT_MINUS_1 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
         DDQ = ese[0][IT] - ese[0][IT_MINUS_1]  # type: ignore
         QS = (TT - IT) * DDQ + ese[0][IT_MINUS_1]  # type: ignore
 
@@ -159,9 +155,7 @@ def QSat_Float(
 
     TI = (TI - TMINTBL) * DEGSUBS + 1
     IT = i32(floor(TI))
-    IT_MINUS_1 = (
-        IT - 1
-    )  # dace backend does not allow for [IT - 1] indexing because of cast to int
+    IT_MINUS_1 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
 
     if URAMP == TMIX:
         DQ = esx[0][IT] - esx[0][IT_MINUS_1]  # type: ignore
@@ -219,9 +213,7 @@ def QSat_FloatField(
 
         TI = (TI - TMINTBL) * DEGSUBS + 1
         IT = i32(floor(TI))
-        IT_MINUS_1 = (
-            IT - 1
-        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        IT_MINUS_1 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
 
         if URAMP == TMIX:
             DQ = esx[0][IT] - esx[0][IT_MINUS_1]  # type: ignore
@@ -274,9 +266,7 @@ class QSat:
         use_pascals: bool = False,
         fill_dqsat: bool = False,
     ) -> None:
-        self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(
-            quantity_factory
-        )
+        self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(quantity_factory)
 
         self.ese = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
         self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
@@ -338,6 +328,5 @@ class QSat:
 
         if not use_table_lookup:
             raise NotImplementedError(
-                "Saturation calculation: exact formulation not available,"
-                " only table look up"
+                "Saturation calculation: exact formulation not available," " only table look up"
             )
