@@ -7,7 +7,7 @@
 
 ! import packing and redistribution
 
-   numUsedImp = 34  ! should match the number of imports used in this subroutine + 2 (for LATS and LONS)
+   numUsedImp = 36  ! should match the number of imports used in this subroutine + 2 (for LATS and LONS)
 
 !  Allocate the buffer that will hold all balanced variables. The
 !   dimension of its 1D representation must ne NUMMAX---the larger of the
@@ -101,6 +101,18 @@
       LN = L1 + NUMMAX - 1
       PTR1(1:NUMMAX) => BUFIMP(L1:LN)
       SNO =>  PTR1(1:NT)
+      L1 = LN + 1
+      call MAPL_GetPointer(IMPORT,PTR1,'ICE', _RC)
+      call CICEReorder(BUFIMP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,PACKIT)
+      LN = L1 + NUMMAX - 1
+      PTR1(1:NUMMAX) => BUFIMP(L1:LN)
+      ICEF =>  PTR1(1:NT)
+      L1 = LN + 1
+      call MAPL_GetPointer(IMPORT,PTR1,'FRZR', _RC)
+      call CICEReorder(BUFIMP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,PACKIT)
+      LN = L1 + NUMMAX - 1
+      PTR1(1:NUMMAX) => BUFIMP(L1:LN)
+      FRZR =>  PTR1(1:NT)
       L1 = LN + 1
       call MAPL_GetPointer(IMPORT,PTR1,'PLS', _RC) 
       call CICEReorder(BUFIMP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,PACKIT)

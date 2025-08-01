@@ -18,7 +18,7 @@ module mk_restarts_getidsMod
 
 contains
 
-   subroutine ReadTileFile_IntLatLon(Tf,Pf,Id,lon,lat,zoom,mask)
+   subroutine ReadTileFile_IntLatLon(Tf, ntiles, zoom, lon_int, lat_int, mask)
    
      ! Read *.til tile definition file, return integer lat/lon for fast but inaccurate processing.
      ! Can handle "old" format of *.til files, but that is probably obsolete as of March 2020 and
@@ -27,77 +27,32 @@ contains
      !          that is read into "Pf" depends on whether the file is for EASE or cube-sphere grid tiles!
      ! - reichle, 4 Mar 2020
      
-     character*(*), intent(IN) :: Tf
-     integer, pointer          :: Pf(:), Id(:), lon(:), lat(:)
-     integer, intent(in)       :: zoom
+     character*(*), intent(IN)  :: Tf
+     integer, intent(out)       :: ntiles
+     integer, intent(in)        :: zoom
+     integer, pointer, optional :: lon_int(:), lat_int(:)
      integer, optional, intent(IN) :: mask
-   
-     integer, allocatable :: Pf1(:), Id1(:), ln1(:), lt1(:)
-     integer :: k, i, nt, pfs, ids,n,msk, umask
+  
+     real, pointer :: xlon(:), xlat(:)
+ 
      real    :: dum(4),dum1,lnn,ltt
      integer :: de, ce, st
-     logical :: old
    
-     de=180*zoom
-     ce=360*zoom
-     st=2*zoom
-     if(present(mask)) then
-        umask = mask
+  
+     if (present(lon_int) .and. present(lat_int)) then
+        de=180*zoom
+        ce=360*zoom
+        call ReadTileFile_RealLatLon(Tf, ntiles, xlon=xlon, xlat=xlat, mask=mask)
+        allocate(lon_int(ntiles), lat_int(ntiles))
+        lon_int = nint(xlon*zoom)
+        lat_int = max(min(nint(xlat*zoom),90*zoom),-90*zoom)
+        where(lon_int<-de) lon_int = lon_int + ce
+        where(lon_int> de) lon_int = lon_int - ce
+        deallocate(xlon, xlat)
      else
-        umask = 100
+        call ReadTileFile_RealLatLon(Tf, ntiles, mask=mask)
      endif
-   
-     print *, "Reading tilefile ",trim(Tf)
-   
-     open(unit=20,file=trim(Tf),form='formatted')
-   
-     read(20,*,iostat=n) Nt,i,k
-     old=n<0
-     close(20)
-   
-     open(unit=20,file=trim(Tf),form='formatted')
-   
-     read(20,*) Nt
-   
-     do i=1,7
-        read(20,*)
-     enddo
-   
-     allocate(Pf1(Nt),Id1(Nt),ln1(Nt),lt1(Nt))
-   
-     n=0
-     do i=1,Nt
-        if(old) then
-           read(20,*,end=200) msk, Pfs, lnn, ltt
-           ids = 0
-        else
-           read(20,*,end=200) msk, dum1, lnn, ltt, dum, Pfs, Ids
-        end if
-        if(msk/=umask) cycle
-        n = n+1
-        pf1(n) = pfs
-        Id1(n) = ids
-        ln1(n) = nint(lnn*zoom)
-        Lt1(n)=max(min(nint(ltt*zoom),90*zoom),-90*zoom)
-        if(ln1(n)<-de) ln1(n) = ln1(n) + ce
-        if(ln1(n)> de) ln1(n) = ln1(n) - ce
-     enddo
-   
-   200 continue
-   
-     close(20)
-   
-     Nt=n
-     print *, "Found ",nt," land tiles."
-   
-     allocate(Pf(Nt),Id(Nt),lon(Nt),lat(Nt))
-     Pf  = Pf1(:Nt)
-     Id  = Id1(:Nt)
-     lon = ln1(:Nt)
-     lat = lt1(:Nt)
-     deallocate(Pf1,Id1,ln1,lt1)
-   
-     return
+
    end subroutine ReadTileFile_IntLatLon
    
    subroutine GetStencil(ii,jj,st)
@@ -535,69 +490,99 @@ contains
       
       ! *****************************************************************************
    
-      subroutine ReadTileFile_RealLatLon (InCNTileFile, ntiles, xlon, xlat,mask)
+      subroutine ReadTileFile_RealLatLon (InCNTileFile, ntiles, xlon, xlat, mask)
    
         ! read *.til tile definition file, return *real* lat/lon for slow but accurate processing
       
         implicit none
         character(*), intent (in) :: InCNTileFile
-        integer , intent (inout)  :: ntiles
-        real, pointer, dimension (:)    :: xlon, xlat
+        integer , intent (out)  :: ntiles
+        real, pointer, optional, dimension (:) :: xlon, xlat
         integer, optional, intent(IN) :: mask
         integer :: n,icnt,ityp, nt, umask, i, header
         real    :: xval,yval, pf
-        real,  allocatable :: ln1(:), lt1(:)
-      
-      if(present(mask)) then
-        umask = mask
-      else
-        umask = 100
-      endif
+        real,  allocatable   :: ln1(:), lt1(:)
+        real,  pointer       :: AVR(:,:)
+        integer              :: filetype, k
+        integer, allocatable :: indices(:), indices_tmp(:)
+        logical :: isNC4     
+ 
+        if(present(mask)) then
+          umask = mask
+        else
+          umask = 100
+        endif
    
-      open(11,file=InCNTileFile, &
-           form='formatted',action='read',status='old')
+        call MAPL_NCIOGetFileType(InCNTileFile, filetype)
+        isNC4   = (filetype == MAPL_FILETYPE_NC4)
 
-      ! first read number of lines in the til file header
-      ! -------------------------------------------------
-      header = 5
-      read (11,*, iostat=n) Nt
-      do i = 1, header -1
-         read (11,*)
-      end do
-      read (11,*,IOSTAT=n)ityp,pf,xval, yval
-      if(n /= 0) header = 8
+        if (isNC4) then
+          call MAPL_ReadTilingNC4(InCNTileFile, AVR=AVR)
+          allocate(indices_tmp(size(AVR,1)))
+          k = 0
+          do i = 1, size(AVR,1)
+            if( int(AVR(i,1)) == umask) then
+              k = k+1
+              indices_tmp(k) = i
+            endif
+          enddo
+          indices = indices_tmp(1:k)
+          Ntiles  = k
+          if ( present(xlon) .and. present(xlat)) then
+            if(.not.associated (xlon)) allocate(xlon(Ntiles))
+            if(.not.associated (xlat)) allocate(xlat(Ntiles))
+            xlon = AVR(indices, 3)
+            xlat = AVR(indices, 4)
+          endif
+          deallocate(AVR) 
+        else
 
-      rewind (11)
+          open(11,file=InCNTileFile, form='formatted',action='read',status='old')
 
-      ! read the tile file
-      !-------------------
-      read (11,*, iostat=n) Nt
+          ! first read number of lines in the til file header
+          ! -------------------------------------------------
+          header = 5
+          read (11,*, iostat=n) Nt
+          do i = 1, header -1
+             read (11,*)
+          end do
+          read (11,*,IOSTAT=n)ityp,pf,xval, yval
+          if(n /= 0) header = 8
+
+          rewind (11)
+
+          ! read the tile file
+          !-------------------
+          read (11,*, iostat=n) Nt
    
-      allocate(ln1(Nt),lt1(Nt))
+          allocate(ln1(Nt),lt1(Nt))
 
-      do n = 1,header-1 ! skip header
-         read(11,*)
-      end do
+          do n = 1,header-1 ! skip header
+             read(11,*)
+          end do
      
-      icnt = 0
+          icnt = 0
    
-      do i=1,Nt
-         read(11,*) ityp,pf,xval,yval
-         if(ityp == umask) then
-            icnt = icnt + 1
-            ln1(icnt) = xval
-            Lt1(icnt) = yval
-         endif
-      end do
+          do i=1,Nt
+             read(11,*) ityp,pf,xval,yval
+             if(ityp == umask) then
+                icnt = icnt + 1
+                ln1(icnt) = xval
+                Lt1(icnt) = yval
+             endif
+          end do
    
-      close(11)
-       
-      Ntiles = icnt
-      if(.not.associated (xlon)) allocate(xlon(Ntiles))
-      if(.not.associated (xlat)) allocate(xlat(Ntiles))
-      xlon = ln1(:Ntiles)
-      xlat = lt1(:Ntiles) 
-   
+          close(11)
+           
+          Ntiles = icnt
+          if ( present(xlon) .and. present(xlat)) then
+             if(.not.associated (xlon)) allocate(xlon(Ntiles))
+             if(.not.associated (xlat)) allocate(xlat(Ntiles))
+             xlon = ln1(:Ntiles)
+             xlat = lt1(:Ntiles)
+          endif
+        endif !isNC4
+ 
       end subroutine ReadTileFile_RealLatLon
 
 end module mk_restarts_getidsMod
