@@ -967,16 +967,17 @@ contains
        !
        ! (excludes time-invariant or climatological parameters, which should come directly from bcs)
               
-       allocate (var_off_col (1: in_ntiles, 1 : nzone,1 : var_col))
-       allocate (var_off_pft (1: in_ntiles, 1 : nzone,1 : nveg, 1 : var_pft))
-       allocate (var_out     (out_ntiles))
-       allocate (var_tmp3d   (out_ntiles, nveg, nzone))
-       allocate (var_out_zone(out_ntiles, nzone))
+       allocate (var_off_col (1:in_ntiles, 1:nzone, 1:var_col           ))
+       allocate (var_off_pft (1:in_ntiles, 1:nzone, 1:nveg,   1:var_pft ))
 
+       allocate (var_out     (out_ntiles              ))
+       allocate (var_tmp3d   (out_ntiles, nveg, nzone ))
+       allocate (var_out_zone(out_ntiles,       nzone ))
+       
        this%tile_id = [(i*1.0, i=1, out_ntiles)]
-
+       
        ! in order of MAPL_AddInternalSpec() calls in GEOS_CatchCNCLM*GridComp.F90
-
+       
        !                    cnity(:,:)          ! done in subroutine regrid_carbon()
        !                      fvg(:,:)          ! done in subroutine regrid_carbon()
        
@@ -998,12 +999,12 @@ contains
        !                    CNPFT(:,:)          ! done in subroutine regrid_carbon()
 
        do nz = 1, nzone
-          var_out_zone(:,nz) = this%tgwm(this%id_glb(:), nz)
+          var_out_zone(:,nz)       = this%tgwm(this%id_glb(:), nz)
        enddo
        this%tgwm = var_out_zone
 
        do nz = 1, nzone
-          var_out_zone(:,nz) = this%rzmm(this%id_glb(:), nz)
+          var_out_zone(:,nz)       = this%rzmm(this%id_glb(:), nz)
        enddo
        this%rzmm = var_out_zone
        
@@ -1011,33 +1012,33 @@ contains
        var_out =    this%totwatm(this%id_glb(:));  this%totwatm   = var_out
        var_out =    this%tairm  (this%id_glb(:));  this%tairm     = var_out
        var_out =    this%tpm    (this%id_glb(:));  this%tpm       = var_out
-       var_out =    this%cnsum  (this%id_glb(:));  this%cnsum  = var_out
+       var_out =    this%cnsum  (this%id_glb(:));  this%cnsum     = var_out
                     
        do nz = 1, nzone
           do nv = 1, nveg
-             var_tmp3d(:,nv,nz) = this%psnsunm(this%id_glb(:), nv,nz)
+             var_tmp3d(:,nv,nz)    = this%psnsunm(this%id_glb(:), nv,nz)
           enddo
        enddo
        this%psnsunm= var_tmp3d
        
        do nz = 1, nzone
           do nv = 1, nveg
-             var_tmp3d(:,nv,nz) = this%psnsham(this%id_glb(:), nv,nz)
+             var_tmp3d(:,nv,nz)    = this%psnsham(this%id_glb(:), nv,nz)
           enddo
        enddo
        this%psnsham = var_tmp3d
        
-       var_out =    this%sndzm   (this%id_glb(:));  this%sndzm      = var_out
-       var_out =    this%asnowm  (this%id_glb(:));  this%asnowm     = var_out
+       var_out =    this%sndzm   (this%id_glb(:));  this%sndzm    = var_out
+       var_out =    this%asnowm  (this%id_glb(:));  this%asnowm   = var_out
        
        if     (this%isCLM40) then
           
-          var_out = this%sfmcm   (this%id_glb(:));  this%sfmcm = var_out
+          var_out = this%sfmcm   (this%id_glb(:));  this%sfmcm    = var_out
           
        elseif (this%isCLM51) then
           
           do nz = 1, nzone
-             var_out_zone(:,nz) = this%sfmm(this%id_glb(:), nz)
+             var_out_zone(:,nz)    = this%sfmm(this%id_glb(:), nz)
           enddo
           this%sfmm = var_out_zone
 
@@ -1047,12 +1048,12 @@ contains
           !                      HDM(:)            ! not done (parameter)
           !                 FIELDCAP(:)            ! not done (parameter)
           
-          var_out = this%rhm     (this%id_glb(:));  this%rhm     = var_out
-          var_out = this%windm   (this%id_glb(:));  this%windm   = var_out
-          var_out = this%rainfm  (this%id_glb(:));  this%rainfm  = var_out
-          var_out = this%snowfm  (this%id_glb(:));  this%snowfm  = var_out
-          var_out = this%runsrfm (this%id_glb(:));  this%runsrfm = var_out          
-          var_out = this%ar1m    (this%id_glb(:));  this%ar1m    = var_out          
+          var_out = this%rhm     (this%id_glb(:));  this%rhm      = var_out
+          var_out = this%windm   (this%id_glb(:));  this%windm    = var_out
+          var_out = this%rainfm  (this%id_glb(:));  this%rainfm   = var_out
+          var_out = this%snowfm  (this%id_glb(:));  this%snowfm   = var_out
+          var_out = this%runsrfm (this%id_glb(:));  this%runsrfm  = var_out          
+          var_out = this%ar1m    (this%id_glb(:));  this%ar1m     = var_out          
           
           do nz = 1, nzone   
              do nv = 1, nveg 
@@ -1082,15 +1083,15 @@ contains
           enddo
           this%laisham = var_tmp3d
           
-          var_out = this%sndzm5d (this%id_glb(:));  this%sndzm5d = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
-          var_out = this%t2m10d  (this%id_glb(:));  this%t2m10d  = var_out
-          var_out = this%tg10d   (this%id_glb(:));  this%tg10d   = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
-          var_out = this%t2mmin5d(this%id_glb(:));  this%t2mmin5d= var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51
-          var_out = this%rh30d   (this%id_glb(:));  this%rh30d   = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51
-          var_out = this%tprec10d(this%id_glb(:));  this%tprec10d= var_out
-          var_out = this%tprec60d(this%id_glb(:));  this%tprec60d= var_out
-          var_out = this%et365d  (this%id_glb(:));  this%et365d  = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
-          var_out = this%runsurf (this%id_glb(:));  this%runsurf = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
+          var_out = this%sndzm5d (this%id_glb(:));  this%sndzm5d  = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
+          var_out = this%t2m10d  (this%id_glb(:));  this%t2m10d   = var_out
+          var_out = this%tg10d   (this%id_glb(:));  this%tg10d    = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
+          var_out = this%t2mmin5d(this%id_glb(:));  this%t2mmin5d = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51
+          var_out = this%rh30d   (this%id_glb(:));  this%rh30d    = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51
+          var_out = this%tprec10d(this%id_glb(:));  this%tprec10d = var_out
+          var_out = this%tprec60d(this%id_glb(:));  this%tprec60d = var_out
+          var_out = this%et365d  (this%id_glb(:));  this%et365d   = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
+          var_out = this%runsurf (this%id_glb(:));  this%runsurf  = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
 
 
        endif      ! CNCLM40 or CNCLM51
@@ -1098,11 +1099,11 @@ contains
        i = 1
        do jj = 1,VAR_COL
           do nz = 1,nzone
-             var_off_col(:,nz,jj) = this%cncol(:,i)            ! TMPRR: will be inverted again in regrid_carbon() below
+             var_off_col(:,nz,jj)  = this%cncol(:,i)           ! TMPRR: will be inverted again in regrid_carbon() below
              i = i + 1
           end do
        end do
-
+       
        i = 1
        do iv = 1,VAR_PFT
           do nv = 1,nveg
