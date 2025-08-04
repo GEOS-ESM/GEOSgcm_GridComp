@@ -46,7 +46,8 @@ MODULE process_hres_data
   public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
   public :: histogram, create_mapping, esa2mosaic , esa2clm
   public :: grid2tile_ndep_t2m_alb, map_country_codes, get_country_codes
-  public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi, grid2tile_glass,  open_landparam_nc4_files
+  public :: CLM45_fixed_parameters, CLM45_clim_parameters                         ! for CatchCNCLM45 and CatchCNCLM51
+  public :: gimms_clim_ndvi, grid2tile_glass,  open_landparam_nc4_files
 
   integer, parameter :: nc_esa             = 129600   ! # columns in 10-arcsec GEOS5_10arcsec_mask* file
   integer, parameter :: nr_esa             =  64800   ! # rows    in 10-arcsec GEOS5_10arcsec_mask* file
@@ -3862,7 +3863,7 @@ contains
 
     ! ----------------------------------------------------------------------------
 
-    ! compute peat fraction on tile for CLM45+ (for fires?)
+    ! compute peat fraction on tile for CatchCNCLM[45,51] (for fires?)
 
     allocate(pmap  (1:n_land))
     !allocate(count_soil(1:n_land))            ! already allocated above
@@ -5557,11 +5558,10 @@ contains
   ! -------------------------------------------------------------------------------------------------------------------------------
   
   SUBROUTINE CLM45_fixed_parameters (nc,nr, ntiles, tile_id)
-
+    
     implicit none
 
-    ! producing  CLM4.5 fixed parameters :
-
+    ! producing  CLM4.5 & CTSM5.1 fixed parameters :
 
     ! 1) Population density /discover/nobackup/fzeng/clm4-to-clm4.5/data/firedata4.5/clmforc.Li_2012_hdm_0.5x0.5_AVHRR_simyr1850-2010_c130401.nc
     ! Use 2010       
@@ -5721,6 +5721,8 @@ contains
 
   SUBROUTINE CLM45_clim_parameters (nc,nr, ntiles, tile_id)
 
+    ! producing  CLM4.5 & CTSM5.1 clim parameters :
+    
     implicit none
     ! Producing :  lightening frequency HRMC_COM_FR /gpfsm/dnb31/fzeng/clm4-to-clm4.5/data/firedata4.5/LISOTD_HRMC_V2.3.2014.hdf
     !  12 values per tile

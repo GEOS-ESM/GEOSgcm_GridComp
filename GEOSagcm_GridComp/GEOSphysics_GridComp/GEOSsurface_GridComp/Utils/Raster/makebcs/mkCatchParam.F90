@@ -739,7 +739,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '       
        
-       tmpstring = 'Step 11: CatchCNCLM45 abm peatf gdp hdm fc parameters'
+       tmpstring = 'Step 11: CatchCNCLM[45,51] abm peatf gdp hdm fc parameters'
        fname_tmp = 'clsm/CLM4.5_abm_peatf_gdp_hdm_fc'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
@@ -755,7 +755,7 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
        
-       tmpstring = 'Step 12: CatchCNCLM45 lightning frequency'
+       tmpstring = 'Step 12: CatchCNCLM[45,51] lightning frequency'
        fname_tmp = 'clsm/lnfm.dat'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        inquire(file=trim(fname_tmp), exist=file_exists)
