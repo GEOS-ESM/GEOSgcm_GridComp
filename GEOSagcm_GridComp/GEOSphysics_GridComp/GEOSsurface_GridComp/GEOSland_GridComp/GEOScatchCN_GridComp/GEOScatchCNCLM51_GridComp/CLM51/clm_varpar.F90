@@ -13,7 +13,7 @@ module clm_varpar
   use clm_varpar_shared, only :    &
        VAR_COL => VAR_COL_51,      &
        VAR_PFT => VAR_PFT_51,      &
-       NUM_PFT => NUM_PFT_CN_51,   &
+       numpft  => NUM_PFT_CN_51,   &
        NUM_ZON => NUM_ZON_CN,      &
        NUM_VEG => NUM_VEG_CN_51
   
@@ -44,7 +44,7 @@ module clm_varpar
 
   integer, parameter :: mxpft          = 15      !
   integer, public    :: maxveg                   ! # of pfts + cfts
-  integer, public    :: maxsoil_patches = NUM_PFT + 1  ! # of pfts + cfts + bare ground; replaces maxpatch_pft, which is obsolete
+  integer, public    :: maxsoil_patches = numpft + 1  ! # of pfts + cfts + bare ground; replaces maxpatch_pft, which is obsolete
   integer, public    :: natpft_lb      = 0       ! In PATCH arrays, lower bound of Patches on the natural veg landunit (i.e., bare ground index)
 
   integer, public, parameter :: nvariants   =   2     ! number of variants of PFT constants
@@ -56,7 +56,7 @@ module clm_varpar
   integer, public, parameter :: nvegwcs     =   4     ! number of vegetation water conductance segments
 
   real, parameter, PUBLIC, dimension(NUM_ZON) :: CN_zone_weight = (/0.10,0.45,0.45/) ! gkw: tunable; must sum to 1
-  integer, parameter, PUBLIC :: map_cat(0:NUM_PFT) = (/4,3,3,3,1,1,2,2,2,5,5,6,4,4,4,4/)
+  integer, parameter, PUBLIC :: map_cat(0:numpft) = (/4,3,3,3,1,1,2,2,2,5,5,6,4,4,4,4/)
 
   ! constants for decomposition cascade
 
