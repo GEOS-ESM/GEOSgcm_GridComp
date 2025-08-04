@@ -46,7 +46,7 @@ module CatchmentCNRstMod
      real, allocatable ::       tg(:,:)
      real, allocatable ::  TILE_ID(:)
      real, allocatable ::     ndep(:)
-     real, allocatable ::  cli_t2m(:)            ! TMPRR: changed from "t2" to "cli_t2m" for consistency with InternalSpec name
+     real, allocatable ::  cli_t2m(:)            !  changed from "t2" to "cli_t2m" for consistency with InternalSpec name
      real, allocatable ::  BGALBVR(:)
      real, allocatable ::  BGALBVF(:)
      real, allocatable ::  BGALBNR(:)
@@ -94,8 +94,8 @@ module CatchmentCNRstMod
      real, allocatable ::    rh30d(:) 
      real, allocatable :: tprec10d(:)
      real, allocatable :: tprec60d(:)
-     real, allocatable ::   et365d(:)     ! TMPRR: added for CNCLM51
-     real, allocatable ::  runsurf(:)     ! TMPRR: added for CNCLM51
+     real, allocatable ::   et365d(:)
+     real, allocatable ::  runsurf(:)
      
    contains
      
@@ -200,9 +200,9 @@ contains
 
         elseif( catch%isCLM51 ) then
 
-           call MAPL_VarRead( formatter, "SFMM",     catch%sfmm    , __RC__)         ! TMPRR: added to branch for CLM51  
+           call MAPL_VarRead( formatter, "SFMM",     catch%sfmm    , __RC__)   ! rreichle, bug fix 4 Aug 2025: added for CLM51  
            call MAPL_VarRead( formatter, "ABM",      catch%ABM     , __RC__)
-           call MAPL_VarRead( formatter, "PEATF",    catch%PEATF   , __RC__)           
+           call MAPL_VarRead( formatter, "PEATF",    catch%PEATF   , __RC__)     
            call MAPL_VarRead( formatter, "GDP",      catch%GDP     , __RC__)
            call MAPL_VarRead( formatter, "HDM",      catch%HDM     , __RC__)
            call MAPL_VarRead( formatter, "FIELDCAP", catch%FIELDCAP, __RC__)
@@ -223,8 +223,8 @@ contains
            call MAPL_VarRead( formatter, "RH30D",    catch%RH30D   , __RC__)
            call MAPL_VarRead( formatter, "TPREC10D", catch%TPREC10D, __RC__)
            call MAPL_VarRead( formatter, "TPREC60D", catch%TPREC60D, __RC__)
-           call MAPL_VarRead( formatter, "ET365D",   catch%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
-           call MAPL_VarRead( formatter, "RUNSURF",  catch%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
+           call MAPL_VarRead( formatter, "ET365D",   catch%ET365D  , __RC__)   ! rreichle, bug fix 4 Aug 2025: added for CLM51  
+           call MAPL_VarRead( formatter, "RUNSURF",  catch%ET365D  , __RC__)   ! rreichle, bug fix 4 Aug 2025: added for CLM51  
 
         endif
 
@@ -331,7 +331,7 @@ contains
 
      elseif( this%isCLM51 ) then
 
-        call MAPL_VarWrite( formatter, "SFMM",     this%sfmm    , __RC__)         ! TMPRR: added to branch for CLM51  
+        call MAPL_VarWrite( formatter, "SFMM",     this%sfmm    , __RC__)
         call MAPL_VarWrite( formatter, "ABM",      this%ABM     , __RC__)
         call MAPL_VarWrite( formatter, "PEATF",    this%PEATF   , __RC__)           
         call MAPL_VarWrite( formatter, "GDP",      this%GDP     , __RC__)
@@ -354,8 +354,8 @@ contains
         call MAPL_VarWrite( formatter, "RH30D",    this%RH30D   , __RC__)
         call MAPL_VarWrite( formatter, "TPREC10D", this%TPREC10D, __RC__)
         call MAPL_VarWrite( formatter, "TPREC60D", this%TPREC60D, __RC__)
-        call MAPL_VarWrite( formatter, "ET365D",   this%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
-        call MAPL_VarWrite( formatter, "RUNSURF",  this%ET365D  , __RC__)         ! TMPRR: added to branch for CLM51  
+        call MAPL_VarWrite( formatter, "ET365D",   this%ET365D  , __RC__)
+        call MAPL_VarWrite( formatter, "RUNSURF",  this%ET365D  , __RC__)
 
      endif
      
@@ -384,7 +384,7 @@ contains
 
      allocate(   this%cnity   (ntiles,nveg))
      allocate(   this%fvg     (ntiles,nveg))
-     allocate(   this%tg      (ntiles,nzone))
+     allocate(   this%tg      (ntiles,nzone))                   ! rreichle, bug fix 4 Aug 2025: "nveg" -> "nzone"
      allocate(   this%TILE_ID (ntiles))
      allocate(   this%ndep    (ntiles))
      allocate(   this%cli_t2m (ntiles))
@@ -981,7 +981,7 @@ contains
        !                      fvg(:,:)          ! done in subroutine regrid_carbon()
        
        allocate (tg_tmp(out_ntiles, 4),source = 0.)
-       do i = 1, 3                                  ! TMPRR: why 3??  tg is allocated ntiles-by-nveg, and nveg=4 for CNCLM40, nveg=2 for CNCLM51 !?!?
+       do i = 1, nzone                                ! rreichle, bug fix 4 Aug 2025: "3" -> "nzone"
           tg_tmp(:,i) = this%tg(this%id_glb(:),i)
        enddo
        this%tg = tg_tmp
@@ -1082,15 +1082,15 @@ contains
           enddo
           this%laisham = var_tmp3d
           
-          var_out = this%sndzm5d (this%id_glb(:));  this%sndzm5d = var_out            ! TMPRR: added for CNCLM51 
+          var_out = this%sndzm5d (this%id_glb(:));  this%sndzm5d = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
           var_out = this%t2m10d  (this%id_glb(:));  this%t2m10d  = var_out
-          var_out = this%tg10d   (this%id_glb(:));  this%tg10d   = var_out            ! TMPRR: added for CNCLM51 
-          var_out = this%t2mmin5d(this%id_glb(:));  this%t2mmin5d= var_out            ! TMPRR: added for CNCLM51
-          var_out = this%rh30d   (this%id_glb(:));  this%rh30d   = var_out            ! TMPRR: added for CNCLM51
+          var_out = this%tg10d   (this%id_glb(:));  this%tg10d   = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
+          var_out = this%t2mmin5d(this%id_glb(:));  this%t2mmin5d= var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51
+          var_out = this%rh30d   (this%id_glb(:));  this%rh30d   = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51
           var_out = this%tprec10d(this%id_glb(:));  this%tprec10d= var_out
           var_out = this%tprec60d(this%id_glb(:));  this%tprec60d= var_out
-          var_out = this%et365d  (this%id_glb(:));  this%et365d  = var_out            ! TMPRR: added for CNCLM51 
-          var_out = this%runsurf (this%id_glb(:));  this%runsurf = var_out            ! TMPRR: added for CNCLM51 
+          var_out = this%et365d  (this%id_glb(:));  this%et365d  = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
+          var_out = this%runsurf (this%id_glb(:));  this%runsurf = var_out   ! rreichle, bug fix 4 Aug 2025: added for CNCLM51 
 
 
        endif      ! CNCLM40 or CNCLM51
