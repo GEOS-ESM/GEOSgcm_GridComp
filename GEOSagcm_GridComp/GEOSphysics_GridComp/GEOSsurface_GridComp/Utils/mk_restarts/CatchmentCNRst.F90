@@ -384,7 +384,7 @@ contains
 
      allocate(   this%cnity   (ntiles,nveg))
      allocate(   this%fvg     (ntiles,nveg))
-     allocate(   this%tg      (ntiles,nveg))
+     allocate(   this%tg      (ntiles,nzone))
      allocate(   this%TILE_ID (ntiles))
      allocate(   this%ndep    (ntiles))
      allocate(   this%cli_t2m (ntiles))
