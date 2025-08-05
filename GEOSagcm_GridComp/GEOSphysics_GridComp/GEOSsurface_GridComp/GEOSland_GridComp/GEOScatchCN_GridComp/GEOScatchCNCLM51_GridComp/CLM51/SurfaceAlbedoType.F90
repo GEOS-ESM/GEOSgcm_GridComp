@@ -1,6 +1,6 @@
 module SurfaceAlbedoType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use shr_kind_mod     , only : r8 => shr_kind_r8
   use nanMod           , only : nan
   use clm_varpar       , only : numrad, nlevcan, nlevsno, numpft, num_zon, num_veg, &
                                 var_col, var_pft

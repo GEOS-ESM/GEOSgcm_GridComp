@@ -1,6 +1,6 @@
  module SoilBiogeochemNitrogenStateType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use shr_kind_mod     , only : r8 => shr_kind_r8
   use shr_log_mod      , only : errMsg => shr_log_errMsg
   use abortutils       , only : endrun
   use nanMod           , only : nan

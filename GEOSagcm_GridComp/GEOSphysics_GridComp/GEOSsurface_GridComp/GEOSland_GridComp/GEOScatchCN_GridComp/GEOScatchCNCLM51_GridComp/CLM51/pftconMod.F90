@@ -2,7 +2,7 @@
 
 module pftconMod
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use shr_kind_mod     , only: r8 => shr_kind_r8
   use nanMod           , only : nan, bigint
   use clm_varpar       , only : mxpft, numrad,nvariants, ivis, inir
   use clm_varctl       , only : use_flexibleCN, use_cndv

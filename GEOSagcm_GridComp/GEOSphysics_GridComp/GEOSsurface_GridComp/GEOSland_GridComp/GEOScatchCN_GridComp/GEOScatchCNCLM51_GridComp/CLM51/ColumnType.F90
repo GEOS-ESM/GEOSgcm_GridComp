@@ -19,9 +19,9 @@ module ColumnType
   !   75 => (icol_road_perv)   urban pervious road
 
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
-  use nanMod           , only : nan
-  use decompMod       , only : bounds_type
+  use shr_kind_mod   , only : r8 => shr_kind_r8
+  use nanMod         , only : nan
+  use decompMod      , only : bounds_type
   use clm_varcon     , only : zsoi, dzsoi, zisoi, dzsoi_decomp, spval, ispval
   use clm_varctl     , only : use_fates
   use clm_varpar     , only : nlevsno, nlevgrnd, nlevlak, nlevmaxurbgrnd,nlevurb, &

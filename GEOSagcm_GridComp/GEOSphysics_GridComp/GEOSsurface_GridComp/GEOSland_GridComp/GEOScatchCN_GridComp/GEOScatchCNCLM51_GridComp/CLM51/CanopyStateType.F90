@@ -2,7 +2,7 @@
 
 module CanopyStateType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use shr_kind_mod     , only : r8 => shr_kind_r8
   use clm_varpar       , only : nlevcan, nvegwcs, numpft, num_zon, num_veg, &
                                 var_col, var_pft
   use clm_varcon       , only : spval

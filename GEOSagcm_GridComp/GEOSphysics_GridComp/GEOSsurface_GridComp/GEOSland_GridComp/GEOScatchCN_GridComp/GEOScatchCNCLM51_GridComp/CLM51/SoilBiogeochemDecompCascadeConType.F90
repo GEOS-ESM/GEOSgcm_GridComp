@@ -1,7 +1,7 @@
 module SoilBiogeochemDecompCascadeConType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
-  use nanMod           , only : nan
+  use shr_kind_mod   , only : r8 => shr_kind_r8
+  use nanMod         , only : nan
   use clm_varpar     , only : ndecomp_cascade_transitions, ndecomp_pools, nlevdecomp, &
                               ndecomp_cascade_outtransitions
   use clm_varctl     , only : use_soil_matrixcn, iulog

@@ -9,7 +9,7 @@ module clm_varctl
 ! Module containing run control variables
 !
 ! !USES:
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use shr_kind_mod, only: r8 => shr_kind_r8
 !
 ! !PUBLIC MEMBER FUNCTIONS:
   implicit none

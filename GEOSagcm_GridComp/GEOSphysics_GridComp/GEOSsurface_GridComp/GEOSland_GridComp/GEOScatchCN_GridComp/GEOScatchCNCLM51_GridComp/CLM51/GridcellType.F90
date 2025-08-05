@@ -1,6 +1,7 @@
 module GridcellType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8,  MAPL_PI
+  use MAPL_Constants   , ONLY : MAPL_PI
+  use shr_kind_mod     , only : r8 => shr_kind_r8
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
   use clm_varcon       , only : ispval, max_lunit

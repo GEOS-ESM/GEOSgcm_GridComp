@@ -2,7 +2,7 @@ module CNVegCarbonStateType
 
 #include "shr_assert.h"
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use shr_kind_mod     , only : r8 => shr_kind_r8
   use clm_varctl       , only : iulog, use_cndv, use_crop, use_matrixcn
   use clm_varpar       , only : numpft, num_zon, num_veg, &
                                 var_col, var_pft, CN_zone_weight

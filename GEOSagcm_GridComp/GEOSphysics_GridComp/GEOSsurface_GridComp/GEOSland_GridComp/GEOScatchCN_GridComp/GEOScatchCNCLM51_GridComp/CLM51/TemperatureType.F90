@@ -1,6 +1,6 @@
 module TemperatureType
 
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+  use shr_kind_mod     , only : r8 => shr_kind_r8
   use clm_varpar       , only : nlevsno, nlevgrnd, nlevlak, nlevurb, nlevmaxurbgrnd
   use clm_varctl       , only : use_fates, use_luna
   use clm_varcon       , only : spval, ispval

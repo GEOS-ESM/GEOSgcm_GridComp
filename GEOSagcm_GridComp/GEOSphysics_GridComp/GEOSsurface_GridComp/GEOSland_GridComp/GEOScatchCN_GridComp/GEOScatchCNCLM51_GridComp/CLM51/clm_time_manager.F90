@@ -4,7 +4,7 @@ module clm_time_manager
 #include "shr_assert.h"
 
    use, intrinsic :: iso_fortran_env, only: INT64
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
+   use shr_kind_mod        , only: r8 => shr_kind_r8
    use update_model_para4cn, only: curr_year,curr_month,curr_day,curr_dofyr,curr_hour,curr_min,curr_sec, &
                                    prev_year,prev_month,prev_day,prev_dofyr,prev_hour,prev_min,prev_sec
    use clm_varctl  , only: iulog
