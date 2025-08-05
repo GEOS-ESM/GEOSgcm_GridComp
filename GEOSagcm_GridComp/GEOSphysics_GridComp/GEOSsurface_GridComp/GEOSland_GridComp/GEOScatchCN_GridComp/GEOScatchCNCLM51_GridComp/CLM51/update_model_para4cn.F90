@@ -11,23 +11,23 @@ MODULE update_model_para4cn
        prev_year,prev_month,prev_day,prev_dofyr,prev_hour,prev_min,prev_sec, &
        LocalTileID
 
-  public :: upd_curr_date_time, upd_tileid
+  public :: upd_curr_date_time   ! , upd_tileid
 
   contains
 
    ! ---------------------------------------
 
-    subroutine upd_tileid (tileid)
-
-      implicit none
-      integer    :: NT
-      integer, intent (in) :: tileid (:)
-
-      NT = size (tileid)
-      allocate (LocalTileID(1:NT))
-      LocalTileID = tileid
-
-    end subroutine upd_tileid
+!    subroutine upd_tileid (tileid)
+!
+!      implicit none
+!      integer    :: NT
+!      integer, intent (in) :: tileid (:)
+!
+!      NT = size (tileid)
+!      allocate (LocalTileID(1:NT))
+!      LocalTileID = tileid
+!
+!    end subroutine upd_tileid
 
     ! ---------------------------------------
     
