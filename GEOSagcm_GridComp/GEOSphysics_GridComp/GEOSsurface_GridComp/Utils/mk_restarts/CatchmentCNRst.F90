@@ -1099,7 +1099,7 @@ contains
        i = 1
        do jj = 1,VAR_COL
           do nz = 1,nzone
-             var_off_col(:,nz,jj)  = this%cncol(:,i)           ! TMPRR: will be inverted again in regrid_carbon() below
+             var_off_col(:,nz,jj)  = this%cncol(:,i)           ! note: will be inverted again in regrid_carbon() below
              i = i + 1
           end do
        end do
@@ -1108,14 +1108,14 @@ contains
        do iv = 1,VAR_PFT
           do nv = 1,nveg
              do nz = 1,nzone
-                var_off_pft(:, nz,nv,iv) = this%cnpft(:,i)     ! TMPRR: will be inverted again in regrid_carbon() below
+                var_off_pft(:, nz,nv,iv) = this%cnpft(:,i)     ! note: will be inverted again in regrid_carbon() below
                 i = i + 1
              end do
           end do
        end do
 
        where(isnan(var_off_pft))          var_off_pft = 0.
-       where(var_off_pft /= var_off_pft)  var_off_pft = 0.     ! TMPRR: does this do anything? 
+       where(var_off_pft /= var_off_pft)  var_off_pft = 0.     ! should do same as previous line, but keep for now just in case
 
        print *, 'calculating regridded carbn'
 
