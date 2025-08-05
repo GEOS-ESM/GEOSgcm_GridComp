@@ -4,7 +4,7 @@ from gt4py.cartesian.gtscript import (
     PARALLEL,
     computation,
     exp,
-    f64,
+    float64,
     interval,
     log,
     sqrt,
@@ -19,46 +19,48 @@ from pyMoist.numerical_recipes import Erf
 
 
 # 64 bit
-ZERO_PAR = f64(1.0e-6)  # small non-zero value
-AI = f64(0.0000594)
-BI = f64(3.33)
-CI = f64(0.0264)
-DI = f64(0.0033)
+ZERO_PAR = float64(1.0e-6)  # small non-zero value
+AI = float64(0.0000594)
+BI = float64(3.33)
+CI = float64(0.0264)
+DI = float64(0.0033)
 
-BETAAI = f64(-2.262e3)
-GAMAI = f64(5.113e6)
-DELTAAI = f64(2.809e3)
-DENSIC = f64(917.0)  # Ice crystal density in kgm-3
+BETAAI = float64(-2.262e3)
+GAMAI = float64(5.113e6)
+DELTAAI = float64(2.809e3)
+DENSIC = float64(917.0)  # Ice crystal density in kgm-3
 
 # Default precision
 NN_MIN = 100.0e6
 NN_MAX = 1000.0e6
 
 # ACTFRAC_Mat constants - all 64 bit
-PI = f64(3.141592653589793e00)
-TWOPI = f64(2.0e00) * PI
-SQRT2 = f64(1.414213562e00)
-THREESQRT2BY2 = f64(1.5e00) * SQRT2
+PI = float64(3.141592653589793e00)
+TWOPI = float64(2.0e00) * PI
+SQRT2 = float64(1.414213562e00)
+THREESQRT2BY2 = float64(1.5e00) * SQRT2
 
-AVGNUM = f64(6.0221367e23)  # [1/mol]
-RGASJMOL = f64(8.31451e00)  # [j/mol/k]
-WMOLMASS = f64(18.01528e-03)  # molar mass of h2o [kg/mol]
-AMOLMASS = f64(28.966e-03)  # molar mass of air     [kg/mol]
-ASMOLMSS = f64(132.1406e-03)  # molar mass of nh42so4 [kg/mol]
-DENH2O = f64(1.00e03)  # density of water [kg/m^3]
-DENAMSUL = f64(1.77e03)  # density of pure ammonium sulfate [kg/m^3]
-XNUAMSUL = f64(3.00e00)  # number of ions formed when the salt is dissolved in water [1]
-PHIAMSUL = f64(1.000e00)  # osmotic coefficient value in a-r 1998. [1]
-GRAVITY = f64(9.81e00)  # grav. accel. at the earth's surface [m/s/s]
-HEATVAP = f64(40.66e03) / WMOLMASS  # latent heat of vap. for water and tnbp [j/kg]
-CPAIR = f64(1006.0e00)  # heat capacity of air [j/kg/k]
-T0DIJ = f64(273.15e00)  # reference temp. for dv [k]
-P0DIJ = f64(101325.0e00)  # reference pressure for dv [pa]
-DIJH2O0 = f64(0.211e-04)  # reference value of dv [m^2/s] (p&k,2nd ed., p.503)
-DELTAV = f64(1.096e-07)  # vapor jump length [m]
-DELTAT = f64(2.160e-07)  # thermal jump length [m]
-ALPHAC = f64(1.000e00)  # condensation mass accommodation coefficient [1]
-ALPHAT = f64(0.960e00)  # thermal accommodation coefficient [1]
+AVGNUM = float64(6.0221367e23)  # [1/mol]
+RGASJMOL = float64(8.31451e00)  # [j/mol/k]
+WMOLMASS = float64(18.01528e-03)  # molar mass of h2o [kg/mol]
+AMOLMASS = float64(28.966e-03)  # molar mass of air     [kg/mol]
+ASMOLMSS = float64(132.1406e-03)  # molar mass of nh42so4 [kg/mol]
+DENH2O = float64(1.00e03)  # density of water [kg/m^3]
+DENAMSUL = float64(1.77e03)  # density of pure ammonium sulfate [kg/m^3]
+XNUAMSUL = float64(
+    3.00e00
+)  # number of ions formed when the salt is dissolved in water [1]
+PHIAMSUL = float64(1.000e00)  # osmotic coefficient value in a-r 1998. [1]
+GRAVITY = float64(9.81e00)  # grav. accel. at the earth's surface [m/s/s]
+HEATVAP = float64(40.66e03) / WMOLMASS  # latent heat of vap. for water and tnbp [j/kg]
+CPAIR = float64(1006.0e00)  # heat capacity of air [j/kg/k]
+T0DIJ = float64(273.15e00)  # reference temp. for dv [k]
+P0DIJ = float64(101325.0e00)  # reference pressure for dv [pa]
+DIJH2O0 = float64(0.211e-04)  # reference value of dv [m^2/s] (p&k,2nd ed., p.503)
+DELTAV = float64(1.096e-07)  # vapor jump length [m]
+DELTAT = float64(2.160e-07)  # thermal jump length [m]
+ALPHAC = float64(1.000e00)  # condensation mass accommodation coefficient [1]
+ALPHAT = float64(0.960e00)  # thermal accommodation coefficient [1]
 
 
 def aer_activation_stencil(
@@ -193,24 +195,26 @@ def aer_activation_stencil(
             # a-z et al. 1998 figure 5.
 
             # tuned to approximate the results in figures 1-5 in a-z et al. 1998.
-            rdrp = f64(0.105e-06)  # [m]
+            rdrp = float64(0.105e-06)  # [m]
 
             # These variables are common to all modes and need only be computed once.
             dv = (
-                DIJH2O0 * (P0DIJ / plo) * (tk / T0DIJ) ** f64(1.94e00)
+                DIJH2O0 * (P0DIJ / plo) * (tk / T0DIJ) ** float64(1.94e00)
             )  # [m^2/s] (p&k,2nd ed., p.503)
-            surten = f64(76.10e-3) - f64(0.155e-3) * (tk - f64(273.15e00))  # [j/m^2]
+            surten = float64(76.10e-3) - float64(0.155e-3) * (
+                tk - float64(273.15e00)
+            )  # [j/m^2]
             wpe = exp(
-                f64(77.34491296)
-                - f64(7235.424651) / tk
-                - f64(8.2) * log(tk)
-                + tk * f64(5.7113e-3)
+                float64(77.34491296)
+                - float64(7235.424651) / tk
+                - float64(8.2) * log(tk)
+                + tk * float64(5.7113e-3)
             )  # [pa]
             dumw = sqrt(TWOPI * WMOLMASS / RGASJMOL / tk)  # [s/m]
             dvprime = dv / (
                 (rdrp / (rdrp + DELTAV)) + (dv * dumw / (rdrp * ALPHAC))
             )  # [m^2/s] - eq. (17)
-            xka = (f64(5.69) + f64(0.017) * (tk - f64(273.15))) * f64(
+            xka = (float64(5.69) + float64(0.017) * (tk - float64(273.15))) * float64(
                 418.4e-5
             )  # [j/m/s/k] (0.0238 j/m/s/k at 273.15 k)
             duma = sqrt(TWOPI * AMOLMASS / RGASJMOL / tk)  # [s/m]
@@ -218,12 +222,12 @@ def aer_activation_stencil(
                 (rdrp / (rdrp + DELTAT))
                 + (xka * duma / (rdrp * ALPHAT * DENH2O * CPAIR))
             )  # [j/m/s/k]
-            g = f64(1.0) / (
+            g = float64(1.0) / (
                 (DENH2O * RGASJMOL * tk) / (wpe * dvprime * WMOLMASS)
                 + ((HEATVAP * DENH2O) / (xkaprime * tk))
-                * ((HEATVAP * WMOLMASS) / (RGASJMOL * tk) - f64(1.0))
+                * ((HEATVAP * WMOLMASS) / (RGASJMOL * tk) - float64(1.0))
             )  # [m^2/s]
-            a = (f64(2.0) * surten * WMOLMASS) / (DENH2O * RGASJMOL * tk)  # [m]
+            a = (float64(2.0) * surten * WMOLMASS) / (DENH2O * RGASJMOL * tk)  # [m]
             alpha = (GRAVITY / (RGASJMOL * tk)) * (
                 (WMOLMASS * HEATVAP) / (CPAIR * tk) - AMOLMASS
             )  # [1/m]
@@ -233,44 +237,46 @@ def aer_activation_stencil(
                 CPAIR * plo * AMOLMASS * tk
             )  # [m^3/kg]
             dum = sqrt(alpha * wupdraft / g)  # [1/m]
-            zeta = f64(2.0) * a * dum / f64(3.0)  # [1]
+            zeta = float64(2.0) * a * dum / float64(3.0)  # [1]
 
             # These variables must be computed for each mode
             n = 0
             while n < constants.N_MODES:
                 xlogsigm = log(sig0[0, 0, 0][n])  # [1]
-                smax = f64(0.0)  # [1]
-                sm = (f64(2.0) / sqrt(bibar[0, 0, 0][n])) * (
+                smax = float64(0.0)  # [1]
+                sm = (float64(2.0) / sqrt(bibar[0, 0, 0][n])) * (
                     a / (3.0 * rg[0, 0, 0][n])
-                ) ** f64(
+                ) ** float64(
                     1.5
                 )  # [1]
-                eta = dum ** 3 / (TWOPI * DENH2O * gamma * ni[0, 0, 0][n])  # [1]
-                f1 = f64(0.5) * exp(2.50 * xlogsigm ** 2)  # [1]
-                f2 = f64(1.0) + 0.25 * xlogsigm  # [1]
+                eta = dum**3 / (TWOPI * DENH2O * gamma * ni[0, 0, 0][n])  # [1]
+                f1 = float64(0.5) * exp(2.50 * xlogsigm**2)  # [1]
+                f2 = float64(1.0) + 0.25 * xlogsigm  # [1]
                 smax = (
                     smax
                     + (
-                        f1 * (zeta / eta) ** f64(1.5)
-                        + f2 * (sm ** 2 / (eta + f64(3.0) * zeta)) ** f64(0.75)
+                        f1 * (zeta / eta) ** float64(1.5)
+                        + f2 * (sm**2 / (eta + float64(3.0) * zeta)) ** float64(0.75)
                     )
-                    / sm ** 2
+                    / sm**2
                 )  # [1] - eq. (6)
                 n += 1
 
-            smax = f64(1.0e00) / sqrt(smax)  # [1]
+            smax = float64(1.0e00) / sqrt(smax)  # [1]
             n = 0
-            u: f64 = f64(0.0)
+            u: float64 = float64(0.0)
             while n < constants.N_MODES:
-                sm = (f64(2.0) / sqrt(bibar[0, 0, 0][n])) * (
+                sm = (float64(2.0) / sqrt(bibar[0, 0, 0][n])) * (
                     a / (3.0 * rg[0, 0, 0][n])
-                ) ** f64(
+                ) ** float64(
                     1.5
                 )  # [1]
                 xlogsigm = log(sig0[0, 0, 0][n])  # [1]
-                ac = rg[0, 0, 0][n] * (sm / smax) ** f64(0.66666666666666667)  # [um]
+                ac = rg[0, 0, 0][n] * (sm / smax) ** float64(
+                    0.66666666666666667
+                )  # [um]
                 u = log(ac / rg[0, 0, 0][n]) / (SQRT2 * xlogsigm)  # [1]
-                fracactn = f64(0.5) * (f64(1.0) - Erf(u))  # [1]
+                fracactn = float64(0.5) * (float64(1.0) - Erf(u))  # [1]
                 nact[0, 0, 0][n] = fracactn * ni[0, 0, 0][n]  # [#/m^3]
                 n += 1
 

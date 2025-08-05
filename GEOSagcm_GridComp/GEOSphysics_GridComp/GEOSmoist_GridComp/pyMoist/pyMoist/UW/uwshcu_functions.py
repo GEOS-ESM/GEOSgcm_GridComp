@@ -1,5 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import THIS_K, erfc, exp, f32, f64, log, sin, sqrt
+from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, sqrt
 
 import pyMoist.constants as constants
 import pyMoist.pyMoist_constants as py_constants
@@ -45,7 +45,7 @@ def slope_bot(
     Returns:
     slope (Float): Slope of the field of interest [N/A]
     """
-    if THIS_K == 0:
+    if K == 0:
         value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
         if value > 0.0:
             slope = max(0.0, value)
@@ -73,7 +73,7 @@ def slope_mid(
     slope [Float]: Slope of the field of interest [n/a]
     """
 
-    if THIS_K > 0 and THIS_K < max_k:
+    if K > 0 and K < max_k:
         above_value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
         below_value = (field - field[0, 0, -1]) / (p0 - p0[0, 0, -1])
         if above_value > 0.0:
@@ -102,7 +102,7 @@ def slope_mid(
 #     slope [Float]: Slope of the field of interest [n/a]
 #     """
 
-#     if THIS_K == max_k:
+#     if K == max_k:
 #         above_value = (field[0, 0, -1] - field) / (p0[0, 0, -1] - p0)
 #         below_value = (field - field[0, 0, -2]) / (p0 - p0[0, 0, -2])
 #         if above_value > 0.0:
@@ -223,24 +223,24 @@ def conden(
     (0 for no condensation, 1 for condensation).
     """
 
-    tc: f64 = f32(thl) * exnerfn(p)
+    tc: float64 = float32(thl) * exnerfn(p)
 
-    nu: f64 = ice_fraction(f32(tc), 0.0, 0.0)
-    leff: f64 = (f64(1.0) - nu) * constants.MAPL_LATENT_HEAT_VAPORIZATION + (
+    nu: float64 = ice_fraction(float32(tc), 0.0, 0.0)
+    leff: float64 = (float64(1.0) - nu) * constants.MAPL_LATENT_HEAT_VAPORIZATION + (
         nu * constants.MAPL_LATENT_HEAT_SUBLIMATION
     )
-    temps: f32 = tc
-    ps: f32 = p
+    temps: float32 = tc
+    ps: float32 = p
     qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
-    rvls: f32 = f64(qs)
+    rvls: float32 = float64(qs)
 
     if qs >= qt:  # no condensation
         id_check = 0
-        qv: f32 = qt
-        qc: f64 = 0.0
-        ql: f32 = 0.0
-        qi: f32 = 0.0
-        th: f32 = thl
+        qv: float32 = qt
+        qc: float64 = 0.0
+        ql: float32 = 0.0
+        qi: float32 = 0.0
+        th: float32 = thl
     else:  # condensation
         iteration = 0
         while iteration < 10:
@@ -254,17 +254,17 @@ def conden(
             qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
             rvls = qs
             iteration += 1
-        qc: f64 = max(qt - qs, f64(0.0))
+        qc: float64 = max(qt - qs, float64(0.0))
         qv = qt - qc
-        ql = qc * (f64(1.0) - nu)
+        ql = qc * (float64(1.0) - nu)
         qi = nu * qc
         th = temps / exnerfn(p)
-        if abs((temps - (leff / constants.MAPL_CP) * qc) - tc) >= f64(1.0):
+        if abs((temps - (leff / constants.MAPL_CP) * qc) - tc) >= float64(1.0):
             id_check = 1
         else:
             id_check = 0
 
-    return f32(th), f32(qv), f32(ql), f32(qi), f32(rvls), id_check
+    return float32(th), float32(qv), float32(ql), float32(qi), float32(rvls), id_check
 
 
 @gtscript.function
@@ -284,9 +284,9 @@ def compute_alpha(
     compute_alpha [Float]: Proportionality factor for CIN calculation [unitless]
     """
 
-    x0: f64 = f64(0.0)
-    del_CIN8_f64: f64 = f64(del_CIN)
-    ke8_f64: f64 = ke
+    x0: float64 = float64(0.0)
+    del_CIN8_f64: float64 = float64(del_CIN)
+    ke8_f64: float64 = ke
     iteration = 0
     while iteration < 10:
         x1 = x0 - (exp(-x0 * ke8_f64 * del_CIN8_f64) - x0) / (
@@ -295,7 +295,7 @@ def compute_alpha(
         x0 = x1
         iteration += 1
 
-    compute_alpha = f32(x0)
+    compute_alpha = float32(x0)
 
     return compute_alpha
 
@@ -320,25 +320,25 @@ def compute_mumin2(
 
     """
 
-    x0: f64 = mulow
+    x0: float64 = mulow
     iteration = 0
     while iteration < 10:
-        ex: f64 = exp(-(x0**2))
-        ef: f64 = erfc(x0)  # Complimentary error fraction function
-        exf: f64 = ex / ef
-        f: f64 = (
-            f64(0.5) * exf**2
-            - f64(0.5) * (ex / f64(2.0) / rmaxfrax) ** 2
-            - (mulcl * f64(2.5066) / f64(2.0)) ** 2
+        ex: float64 = exp(-(x0**2))
+        ef: float64 = erfc(x0)  # Complimentary error fraction function
+        exf: float64 = ex / ef
+        f: float64 = (
+            float64(0.5) * exf**2
+            - float64(0.5) * (ex / float64(2.0) / rmaxfrax) ** 2
+            - (mulcl * float64(2.5066) / float64(2.0)) ** 2
         )
-        fs: f64 = (f64(2.0) * exf**2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
-            f64(0.5) * x0 * ex**2
-        ) / (rmaxfrax**2)
-        x1: f64 = x0 - f / fs
+        fs: float64 = (float64(2.0) * exf**2) * (
+            exf / sqrt(constants.MAPL_PI) - x0
+        ) + (float64(0.5) * x0 * ex**2) / (rmaxfrax**2)
+        x1: float64 = x0 - f / fs
         x0 = x1
         iteration += 1
 
-    compute_mumin2 = f32(x0)
+    compute_mumin2 = float32(x0)
 
     return compute_mumin2
 
@@ -371,39 +371,39 @@ def compute_ppen(
     """
 
     # Buoyancy slope
-    SB: f64 = (bogtop - bogbot) / dpen
+    SB: float64 = (bogtop - bogbot) / dpen
 
     # Sign of slope, 'f' at x = 0
     # If 's00>0', 'w' increases with height.
-    s00: f64 = bogbot / rho0j - drag * wtwb
+    s00: float64 = bogbot / rho0j - drag * wtwb
 
-    if drag * dpen < f64(1.0e-4):
-        if s00 >= f64(0.0):
-            x0: f64 = dpen
+    if drag * dpen < float64(1.0e-4):
+        if s00 >= float64(0.0):
+            x0: float64 = dpen
         else:
-            x0 = max(f64(0.0), min(dpen, f64(-0.5) * wtwb / s00))
+            x0 = max(float64(0.0), min(dpen, float64(-0.5) * wtwb / s00))
     else:
-        if s00 >= f64(0.0):
+        if s00 >= float64(0.0):
             x0 = dpen
         else:
-            x0 = f64(0.0)
+            x0 = float64(0.0)
 
         iteration = 0
         while iteration < 5:
-            aux: f64 = min(max(f64(-2.0) * drag * x0, -20.0), 20.0)
+            aux: float64 = min(max(float64(-2.0) * drag * x0, -20.0), 20.0)
 
-            f: f64 = exp(aux) * (
+            f: float64 = exp(aux) * (
                 wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)
             ) + (SB * x0 + bogbot - SB / (2.0 * drag)) / (drag * rho0j)
-            fs: f64 = -2.0 * drag * exp(aux) * (
+            fs: float64 = -2.0 * drag * exp(aux) * (
                 wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)
             ) + (SB) / (drag * rho0j)
 
-            x1: f64 = x0 - f / fs
+            x1: float64 = x0 - f / fs
             x0 = x1
             iteration += 1
 
-    compute_ppen = -max(f64(0.0), min(dpen, x0))
+    compute_ppen = -max(float64(0.0), min(dpen, x0))
 
     return compute_ppen
 
@@ -504,57 +504,61 @@ def qsinvert(
     qsinvert [Float]: Saturation pressure [Pa]
     """
 
-    psmin: f64 = f64(
+    psmin: float64 = float64(
         10000.0
     )  # Default saturation pressure [Pa] if iteration does not converge
-    dpsmax: f64 = f64(1.0)  # Tolerance [Pa] for convergence of iteration
+    dpsmax: float64 = float64(1.0)  # Tolerance [Pa] for convergence of iteration
     p00 = 1e5
     rovcp = constants.MAPL_RDRY / constants.MAPL_CP
 
     # Calculate best initial guess of pLCL
-    Ti: f64 = thl * (ps_in / p00) ** rovcp
-    Tgeos: f32 = Ti
-    Pgeos: f32 = f32(ps_in)
+    Ti: float64 = thl * (ps_in / p00) ** rovcp
+    Tgeos: float32 = Ti
+    Pgeos: float32 = float32(ps_in)
     qs, dqsdT = QSat_Float(ese, esx, Tgeos, Pgeos / 100.0)
-    es: f64 = ps_in * qs / (py_constants.ep2 + (f64(1.0) - py_constants.ep2) * f64(qs))
-    rhi: f64 = qt / f64(qs)
+    es: float64 = (
+        ps_in
+        * qs
+        / (py_constants.ep2 + (float64(1.0) - py_constants.ep2) * float64(qs))
+    )
+    rhi: float64 = qt / float64(qs)
 
-    if rhi <= f64(0.01):
-        qsinvert: f32 = psmin
+    if rhi <= float64(0.01):
+        qsinvert: float32 = psmin
 
     else:
 
-        TLCL: f64 = f64(55.0) + f64(1.0) / (
-            f64(1.0) / (Ti - f64(55.0)) - log(rhi) / f64(2840.0)
+        TLCL: float64 = float64(55.0) + float64(1.0) / (
+            float64(1.0) / (Ti - float64(55.0)) - log(rhi) / float64(2840.0)
         )  # Bolton's formula. MWR.1980.Eq.(22)
-        PiLCL: f64 = TLCL / thl
-        ps: f64 = p00 * (PiLCL) ** (f64(1.0) / rovcp)
+        PiLCL: float64 = TLCL / thl
+        ps: float64 = p00 * (PiLCL) ** (float64(1.0) / rovcp)
 
         iteration = 0
         while iteration < 10:
-            Pis: f64 = (ps / p00) ** rovcp  # Exner function
-            Ts: f64 = thl * Pis
+            Pis: float64 = (ps / p00) ** rovcp  # Exner function
+            Ts: float64 = thl * Pis
             Tgeos = Ts
             Pgeos = ps
             qs, dqsdT = QSat_Float(ese, esx, Tgeos, Pgeos / 100.0, DQSAT_trigger=True)
-            gam: f64 = (
+            gam: float64 = (
                 constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP
-            ) * f64(dqsdT)
-            err: f64 = qt - qs
-            nu: f64 = ice_fraction(f32(Ts), 0.0, 0.0)
-            leff: f64 = (
-                (f64(1.0) - nu) * constants.MAPL_LATENT_HEAT_VAPORIZATION
+            ) * float64(dqsdT)
+            err: float64 = qt - qs
+            nu: float64 = ice_fraction(float32(Ts), 0.0, 0.0)
+            leff: float64 = (
+                (float64(1.0) - nu) * constants.MAPL_LATENT_HEAT_VAPORIZATION
                 + nu * constants.MAPL_LATENT_HEAT_SUBLIMATION
             )
-            dlnqsdT: f64 = gam * (constants.MAPL_CP / leff) / qs
-            dTdPis: f64 = thl
-            dPisdps: f64 = rovcp * Pis / ps
-            dlnqsdps: f64 = f64(-1.0) / (ps - (1.0 - py_constants.ep2) * es)
-            derrdps: f64 = -qs * (dlnqsdT * dTdPis * dPisdps + dlnqsdps)
-            dps: f64 = -err / derrdps
+            dlnqsdT: float64 = gam * (constants.MAPL_CP / leff) / qs
+            dTdPis: float64 = thl
+            dPisdps: float64 = rovcp * Pis / ps
+            dlnqsdps: float64 = float64(-1.0) / (ps - (1.0 - py_constants.ep2) * es)
+            derrdps: float64 = -qs * (dlnqsdT * dTdPis * dPisdps + dlnqsdps)
+            dps: float64 = -err / derrdps
             ps = ps + dps
 
-            if ps < f64(0.0):
+            if ps < float64(0.0):
                 qsinvert = psmin
                 iteration = 10
 
@@ -567,7 +571,7 @@ def qsinvert(
 
             iteration += 1
 
-    return f32(qsinvert)
+    return float32(qsinvert)
 
 
 @gtscript.function

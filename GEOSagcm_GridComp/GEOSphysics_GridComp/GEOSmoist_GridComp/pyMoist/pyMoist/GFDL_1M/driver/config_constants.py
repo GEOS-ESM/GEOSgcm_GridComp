@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
-from gt4py.cartesian.gtscript import i32
+from gt4py.cartesian.gtscript import int32
 
 from ndsl.dsl.typing import Float
 from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
