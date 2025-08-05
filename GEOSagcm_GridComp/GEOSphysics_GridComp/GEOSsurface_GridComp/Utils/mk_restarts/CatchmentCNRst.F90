@@ -1403,6 +1403,7 @@ contains
                      var_pft_out(n, nz,nv,74) = max(var_pft_out(n, nz,nv,74),0.)
                      !if(this%isCLM45) var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)
                      if(this%isCLM51) then
+                        var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)
                         var_pft_out(n, nz,nv,76) = max(var_pft_out(n, nz,nv,76),0.)
                         var_pft_out(n, nz,nv,77) = max(var_pft_out(n, nz,nv,77),0.)
                         var_pft_out(n, nz,nv,78) = max(var_pft_out(n, nz,nv,78),0.)
