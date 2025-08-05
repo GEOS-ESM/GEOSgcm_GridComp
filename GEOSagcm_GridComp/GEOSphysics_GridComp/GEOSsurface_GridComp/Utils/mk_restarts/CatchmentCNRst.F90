@@ -1428,161 +1428,132 @@ contains
 
          ! call NCDF_reshape_getOput (OutID,N,var_col_out,var_pft_out,.false.)  
 
-         ! column vars clm40                         clm45
+         ! column vars clm40                         ctsm51
          ! -----------------                         ---------------------
-         !  1 clm3%g%l%c%ccs%col_ctrunc            !  1 ccs%col_ctrunc_vr   (:,1)              
-         !  2 clm3%g%l%c%ccs%cwdc            !  2 ccs%decomp_cpools_vr(:,1,4)   ! cwdc        
-         !  3 clm3%g%l%c%ccs%litr1c                 !  3 ccs%decomp_cpools_vr(:,1,1)   ! litr1c 
-         !  4 clm3%g%l%c%ccs%litr2c             !  4 ccs%decomp_cpools_vr(:,1,2)   ! litr2c 
-         !  5 clm3%g%l%c%ccs%litr3c             !  5 ccs%decomp_cpools_vr(:,1,3)   ! litr3c 
-         !  6 clm3%g%l%c%ccs%pcs_a%totvegc          !  6 ccs%totvegc_col                        
-         !  7 clm3%g%l%c%ccs%prod100c              !  7 ccs%prod100c                           
-         !  8 clm3%g%l%c%ccs%prod10c            !  8 ccs%prod10c                            
-         !  9 clm3%g%l%c%ccs%seedc                  !  9 ccs%seedc                              
-         ! 10 clm3%g%l%c%ccs%soil1c                 ! 10 ccs%decomp_cpools_vr(:,1,5)   ! soil1c 
-         ! 11 clm3%g%l%c%ccs%soil2c                 ! 11 ccs%decomp_cpools_vr(:,1,6)   ! soil2c 
-         ! 12 clm3%g%l%c%ccs%soil3c                 ! 12 ccs%decomp_cpools_vr(:,1,7)   ! soil3c 
-         ! 13 clm3%g%l%c%ccs%soil4c                 ! 13 ccs%decomp_cpools_vr(:,1,8)   ! soil4c 
-         ! 14 clm3%g%l%c%ccs%totcolc                ! 14 ccs%totcolc                            
-         ! 15 clm3%g%l%c%ccs%totlitc                ! 15 ccs%totlitc                            
-         ! 16 clm3%g%l%c%cns%col_ntrunc            ! 16 cns%col_ntrunc_vr   (:,1)              
-         ! 17 clm3%g%l%c%cns%cwdn            ! 17 cns%decomp_npools_vr(:,1,4)   ! cwdn        
-         ! 18 clm3%g%l%c%cns%litr1n                 ! 18 cns%decomp_npools_vr(:,1,1)   ! litr1n 
-         ! 19 clm3%g%l%c%cns%litr2n             ! 19 cns%decomp_npools_vr(:,1,2)   ! litr2n 
-         ! 20 clm3%g%l%c%cns%litr3n             ! 20 cns%decomp_npools_vr(:,1,3)   ! litr3n 
-         ! 21 clm3%g%l%c%cns%prod100n              ! 21 cns%prod100n                           
-         ! 22 clm3%g%l%c%cns%prod10n                ! 22 cns%prod10n                            
-         ! 23 clm3%g%l%c%cns%seedn                  ! 23 cns%seedn                              
-         ! 24 clm3%g%l%c%cns%sminn                  ! 24 cns%sminn_vr        (:,1)              
-         ! 25 clm3%g%l%c%cns%soil1n                 ! 25 cns%decomp_npools_vr(:,1,5)   ! soil1n 
-         ! 26 clm3%g%l%c%cns%soil2n                 ! 26 cns%decomp_npools_vr(:,1,6)   ! soil2n 
-         ! 27 clm3%g%l%c%cns%soil3n                 ! 27 cns%decomp_npools_vr(:,1,7)   ! soil3n 
-         ! 28 clm3%g%l%c%cns%soil4n                 ! 28 cns%decomp_npools_vr(:,1,8)   ! soil4n 
-         ! 29 clm3%g%l%c%cns%totcoln                ! 29 cns%totcoln                            
-         ! 30 clm3%g%l%c%cps%ann_farea_burned       ! 30 cps%fpg                                
-         ! 31 clm3%g%l%c%cps%annsum_counter         ! 31 cps%annsum_counter                     
-         ! 32 clm3%g%l%c%cps%cannavg_t2m              ! 32 cps%cannavg_t2m                             
-         ! 33 clm3%g%l%c%cps%cannsum_npp              ! 33 cps%cannsum_npp                             
-         ! 34 clm3%g%l%c%cps%farea_burned           ! 34 cps%farea_burned                            
-         ! 35 clm3%g%l%c%cps%fire_prob             ! 35 cps%fpi_vr          (:,1)              
-         ! 36 clm3%g%l%c%cps%fireseasonl              ! OLD           ! 30 cps%altmax                   
-         ! 37 clm3%g%l%c%cps%fpg                     ! OLD           ! 31 cps%annsum_counter            
-         ! 38 clm3%g%l%c%cps%fpi                     ! OLD           ! 32 cps%cannavg_t2m               
-         ! 39 clm3%g%l%c%cps%me                      ! OLD           ! 33 cps%cannsum_npp          
-         ! 40 clm3%g%l%c%cps%mean_fire_prob         ! OLD           ! 34 cps%farea_burned         
-         ! OLD           ! 35 cps%altmax_lastyear      
-         ! OLD           ! 36 cps%altmax_indx          
-         ! OLD           ! 37 cps%fpg                  
-         ! OLD           ! 38 cps%fpi_vr          (:,1)
-         ! OLD           ! 39 cps%altmax_lastyear_indx 
+         !  1 clm3%g%l%c%ccs%col_ctrunc            !  1 soilbiogeochem_carbonstate_inst%ctrunc_vr_col(n,1)            
+         !  2 clm3%g%l%c%ccs%cwdc                  !  2 soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(n,1,4) ! cwdc
+         !  3 clm3%g%l%c%ccs%litr1c                !  3 soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(n,1,1)   ! litr1c 
+         !  4 clm3%g%l%c%ccs%litr2c                !  4 soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(n,1,2)   ! litr2c 
+         !  5 clm3%g%l%c%ccs%litr3c                !  5 soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(n,1,3)   ! litr3c 
+         !  6 clm3%g%l%c%ccs%pcs_a%totvegc         !  6 bgc_vegetation_inst%cnveg_carbonstate_inst%totvegc_col(n)                        
+         !  7 clm3%g%l%c%ccs%prod100c              !  7 bgc_vegetation_inst%c_products_inst%prod100_grc(nc)*CN_zone_weight(nz)
+         !  8 clm3%g%l%c%ccs%prod10c               !  8 bgc_vegetation_inst%c_products_inst%prod100_grc(nc)*CN_zone_weight(nz)                 
+         !  9 clm3%g%l%c%ccs%seedc                 !  9 bgc_vegetation_inst%cnveg_carbonstate_inst%seedc_grc(nc)*CN_zone_weight(nz)            
+         ! 10 clm3%g%l%c%ccs%soil1c                ! 10 soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(n,1,5)   ! soil1c 
+         ! 11 clm3%g%l%c%ccs%soil2c                ! 11 soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(n,1,6)   ! soil2c 
+         ! 12 clm3%g%l%c%ccs%soil3c                ! 12 soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(n,1,7)   ! soil3c 
+         ! 13 clm3%g%l%c%ccs%soil4c                ! 13 soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(n,1,8)   ! soil4c 
+         ! 14 clm3%g%l%c%ccs%totcolc               ! 14 bgc_vegetation_inst%cnveg_carbonstate_inst%totc_col(n)                           
+         ! 15 clm3%g%l%c%ccs%totlitc               ! 15 soilbiogeochem_carbonstate_inst%totlitc_col(n)                        
+         ! 16 clm3%g%l%c%cns%col_ntrunc            ! 16 soilbiogeochem_nitrogenstate_inst%ntrunc_vr_col(n,1)
+         ! 17 clm3%g%l%c%cns%cwdn                  ! 17 soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col(n,1,4)  ! cwdn        
+         ! 18 clm3%g%l%c%cns%litr1n                ! 18 soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col(n,1,1)   ! litr1n 
+         ! 19 clm3%g%l%c%cns%litr2n                ! 19 soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col(n,1,2)   ! litr2n 
+         ! 20 clm3%g%l%c%cns%litr3n                ! 20 soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col(n,1,3)   ! litr3n 
+         ! 21 clm3%g%l%c%cns%prod100n              ! 21 bgc_vegetation_inst%n_products_inst%prod100_grc(nc)*CN_zone_weight(nz)        
+         ! 22 clm3%g%l%c%cns%prod10n               ! 22 bgc_vegetation_inst%n_products_inst%prod100_grc(nc)*CN_zone_weight(nz)               
+         ! 23 clm3%g%l%c%cns%seedn                 ! 23 bgc_vegetation_inst%cnveg_nitrogenstate_inst%seedn_grc(nc)*CN_zone_weight(nz)
+         ! 24 clm3%g%l%c%cns%sminn                 ! 24 soilbiogeochem_nitrogenstate_inst%sminn_vr_col(n,1)            
+         ! 25 clm3%g%l%c%cns%soil1n                ! 25 soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col(n,1,5)  ! soil1n 
+         ! 26 clm3%g%l%c%cns%soil2n                ! 26 soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col(n,1,6)   ! soil2n 
+         ! 27 clm3%g%l%c%cns%soil3n                ! 27 soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col(n,1,7)   ! soil3n 
+         ! 28 clm3%g%l%c%cns%soil4n                ! 28 soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col(n,1,8)   ! soil4n 
+         ! 29 clm3%g%l%c%cns%totcoln               ! 29 bgc_vegetation_inst%cnveg_nitrogenstate_inst%totn_col(n)          
+         ! 30 clm3%g%l%c%cps%ann_farea_burned      ! 30 soilbiogeochem_state_inst%fpg_col(n)                             
+         ! 31 clm3%g%l%c%cps%annsum_counter        ! 31 bgc_vegetation_inst%cnveg_state_inst%annsum_counter_col(n)                
+         ! 32 clm3%g%l%c%cps%cannavg_t2m           ! 32 bgc_vegetation_inst%cnveg_state_inst%annavg_t2m_col(n)                             
+         ! 33 clm3%g%l%c%cps%cannsum_npp           ! 33 bgc_vegetation_inst%cnveg_carbonflux_inst%annsum_npp_col(n)
+         ! 34 clm3%g%l%c%cps%farea_burned          ! 34 bgc_vegetation_inst%cnveg_state_inst%farea_burned_col(n)                         
+         ! 35 clm3%g%l%c%cps%fire_prob             ! 35 soilbiogeochem_state_inst%fpi_col(n)
+         ! 36 clm3%g%l%c%cps%fireseasonl           ! 36 soilbiogeochem_nitrogenstate_inst%smin_no3_col(n)                   
+         ! 37 clm3%g%l%c%cps%fpg                   ! 37 soilbiogeochem_nitrogenstate_inst%smin_nh4_col(n)          
+         ! 38 clm3%g%l%c%cps%fpi                    
+         ! 39 clm3%g%l%c%cps%me                 
+         ! 40 clm3%g%l%c%cps%mean_fire_prob            
 
-         ! PFT vars CLM40                                CLM45    
+         ! PFT vars CLM40                                CTSM5.1   
          ! --------------                                -----
-         !  1 clm3%g%l%c%p%pcs%cpool                    !  1 pcs%cpool                           
-         !  2 clm3%g%l%c%p%pcs%deadcrootc             !  2 pcs%deadcrootc                      
-         !  3 clm3%g%l%c%p%pcs%deadcrootc_storage      !  3 pcs%deadcrootc_storage              
-         !  4 clm3%g%l%c%p%pcs%deadcrootc_xfer              !  4 pcs%deadcrootc_xfer                 
-         !  5 clm3%g%l%c%p%pcs%deadstemc              !  5 pcs%deadstemc                       
-         !  6 clm3%g%l%c%p%pcs%deadstemc_storage       !  6 pcs%deadstemc_storage               
-         !  7 clm3%g%l%c%p%pcs%deadstemc_xfer               !  7 pcs%deadstemc_xfer                  
-         !  8 clm3%g%l%c%p%pcs%frootc                      !  8 pcs%frootc                          
-         !  9 clm3%g%l%c%p%pcs%frootc_storage               !  9 pcs%frootc_storage                  
-         ! 10 clm3%g%l%c%p%pcs%frootc_xfer                  ! 10 pcs%frootc_xfer                     
-         ! 11 clm3%g%l%c%p%pcs%gresp_storage                ! 11 pcs%gresp_storage                   
-         ! 12 clm3%g%l%c%p%pcs%gresp_xfer             ! 12 pcs%gresp_xfer                      
-         ! 13 clm3%g%l%c%p%pcs%leafc                    ! 13 pcs%leafc                           
-         ! 14 clm3%g%l%c%p%pcs%leafc_storage             ! 14 pcs%leafc_storage                   
-         ! 15 clm3%g%l%c%p%pcs%leafc_xfer             ! 15 pcs%leafc_xfer                      
-         ! 16 clm3%g%l%c%p%pcs%livecrootc        ! 16 pcs%livecrootc                      
-         ! 17 clm3%g%l%c%p%pcs%livecrootc_storage      ! 17 pcs%livecrootc_storage              
-         ! 18 clm3%g%l%c%p%pcs%livecrootc_xfer              ! 18 pcs%livecrootc_xfer                 
-         ! 19 clm3%g%l%c%p%pcs%livestemc              ! 19 pcs%livestemc                       
-         ! 20 clm3%g%l%c%p%pcs%livestemc_storage       ! 20 pcs%livestemc_storage               
-         ! 21 clm3%g%l%c%p%pcs%livestemc_xfer               ! 21 pcs%livestemc_xfer                  
-         ! 22 clm3%g%l%c%p%pcs%pft_ctrunc             ! 22 pcs%pft_ctrunc                      
-         ! 23 clm3%g%l%c%p%pcs%xsmrpool                     ! 23 pcs%xsmrpool                        
-         ! 24 clm3%g%l%c%p%pepv%annavg_t2m                  ! 24 pepv%annavg_t2m                     
-         ! 25 clm3%g%l%c%p%pepv%annmax_retransn             ! 25 pepv%annmax_retransn                
-         ! 26 clm3%g%l%c%p%pepv%annsum_npp                  ! 26 pepv%annsum_npp                     
-         ! 27 clm3%g%l%c%p%pepv%annsum_potential_gpp        ! 27 pepv%annsum_potential_gpp           
-         ! 28 clm3%g%l%c%p%pepv%dayl                    ! 28 pepv%dayl                           
-         ! 29 clm3%g%l%c%p%pepv%days_active                 ! 29 pepv%days_active                    
-         ! 30 clm3%g%l%c%p%pepv%dormant_flag                ! 30 pepv%dormant_flag                   
-         ! 31 clm3%g%l%c%p%pepv%offset_counter              ! 31 pepv%offset_counter                 
-         ! 32 clm3%g%l%c%p%pepv%offset_fdd                  ! 32 pepv%offset_fdd                     
-         ! 33 clm3%g%l%c%p%pepv%offset_flag                 ! 33 pepv%offset_flag                    
-         ! 34 clm3%g%l%c%p%pepv%offset_swi                  ! 34 pepv%offset_swi                     
-         ! 35 clm3%g%l%c%p%pepv%onset_counter               ! 35 pepv%onset_counter                  
-         ! 36 clm3%g%l%c%p%pepv%onset_fdd             ! 36 pepv%onset_fdd      
-         ! 37 clm3%g%l%c%p%pepv%onset_flag                  ! 37 pepv%onset_flag                     
-         ! 38 clm3%g%l%c%p%pepv%onset_gdd             ! 38 pepv%onset_gdd                      
-         ! 39 clm3%g%l%c%p%pepv%onset_gddflag               ! 39 pepv%onset_gddflag                  
-         ! 40 clm3%g%l%c%p%pepv%onset_swi             ! 40 pepv%onset_swi                      
-         ! 41 clm3%g%l%c%p%pepv%prev_frootc_to_litter       ! 41 pepv%prev_frootc_to_litter          
-         ! 42 clm3%g%l%c%p%pepv%prev_leafc_to_litter        ! 42 pepv%prev_leafc_to_litter           
-         ! 43 clm3%g%l%c%p%pepv%tempavg_t2m                 ! 43 pepv%tempavg_t2m                    
-         ! 44 clm3%g%l%c%p%pepv%tempmax_retransn       ! 44 pepv%tempmax_retransn               
-         ! 45 clm3%g%l%c%p%pepv%tempsum_npp                 ! 45 pepv%tempsum_npp                    
-         ! 46 clm3%g%l%c%p%pepv%tempsum_potential_gpp       ! 46 pepv%tempsum_potential_gpp          
-         ! 47 clm3%g%l%c%p%pepv%xsmrpool_recover       ! 47 pepv%xsmrpool_recover               
-         ! 48 clm3%g%l%c%p%pns%deadcrootn             ! 48 pns%deadcrootn                      
-         ! 49 clm3%g%l%c%p%pns%deadcrootn_storage      ! 49 pns%deadcrootn_storage              
-         ! 50 clm3%g%l%c%p%pns%deadcrootn_xfer              ! 50 pns%deadcrootn_xfer                 
-         ! 51 clm3%g%l%c%p%pns%deadstemn              ! 51 pns%deadstemn                       
-         ! 52 clm3%g%l%c%p%pns%deadstemn_storage       ! 52 pns%deadstemn_storage               
-         ! 53 clm3%g%l%c%p%pns%deadstemn_xfer               ! 53 pns%deadstemn_xfer                  
-         ! 54 clm3%g%l%c%p%pns%frootn                      ! 54 pns%frootn                          
-         ! 55 clm3%g%l%c%p%pns%frootn_storage               ! 55 pns%frootn_storage                  
-         ! 56 clm3%g%l%c%p%pns%frootn_xfer                  ! 56 pns%frootn_xfer                     
-         ! 57 clm3%g%l%c%p%pns%leafn                    ! 57 pns%leafn                           
-         ! 58 clm3%g%l%c%p%pns%leafn_storage                ! 58 pns%leafn_storage                   
-         ! 59 clm3%g%l%c%p%pns%leafn_xfer             ! 59 pns%leafn_xfer                      
-         ! 60 clm3%g%l%c%p%pns%livecrootn             ! 60 pns%livecrootn                      
-         ! 61 clm3%g%l%c%p%pns%livecrootn_storage      ! 61 pns%livecrootn_storage              
-         ! 62 clm3%g%l%c%p%pns%livecrootn_xfer              ! 62 pns%livecrootn_xfer                 
-         ! 63 clm3%g%l%c%p%pns%livestemn              ! 63 pns%livestemn                       
-         ! 64 clm3%g%l%c%p%pns%livestemn_storage       ! 64 pns%livestemn_storage               
-         ! 65 clm3%g%l%c%p%pns%livestemn_xfer               ! 65 pns%livestemn_xfer                  
-         ! 66 clm3%g%l%c%p%pns%npool                    ! 66 pns%npool                           
-         ! 67 clm3%g%l%c%p%pns%pft_ntrunc        ! 67 pns%pft_ntrunc                      
-         ! 68 clm3%g%l%c%p%pns%retransn                    ! 68 pns%retransn                        
-         ! 69 clm3%g%l%c%p%pps%elai                     ! 69 pps%elai                            
-         ! 70 clm3%g%l%c%p%pps%esai                     ! 70 pps%esai                            
-         ! 71 clm3%g%l%c%p%pps%hbot                     ! 71 pps%hbot                            
-         ! 72 clm3%g%l%c%p%pps%htop                     ! 72 pps%htop                            
-         ! 73 clm3%g%l%c%p%pps%tlai                     ! 73 pps%tlai                            
-         ! 74 clm3%g%l%c%p%pps%tsai                     ! 74 pps%tsai                            
-         ! 75 pepv%plant_ndemand                  
-         ! OLD           ! 75 pps%gddplant        
-         ! OLD           ! 76 pps%gddtsoi         
-         ! OLD           ! 77 pps%peaklai         
-         ! OLD           ! 78 pps%idop            
-         ! OLD           ! 79 pps%aleaf           
-         ! OLD           ! 80 pps%aleafi          
-         ! OLD           ! 81 pps%astem           
-         ! OLD           ! 82 pps%astemi          
-         ! OLD           ! 83 pps%htmx            
-         ! OLD           ! 84 pps%hdidx           
-         ! OLD           ! 85 pps%vf              
-         ! OLD           ! 86 pps%cumvd           
-         ! OLD           ! 87 pps%croplive        
-         ! OLD           ! 88 pps%cropplant       
-         ! OLD           ! 89 pps%harvdate        
-         ! OLD           ! 90 pps%gdd1020         
-         ! OLD           ! 91 pps%gdd820          
-         ! OLD           ! 92 pps%gdd020          
-         ! OLD           ! 93 pps%gddmaturity     
-         ! OLD           ! 94 pps%huileaf         
-         ! OLD           ! 95 pps%huigrain        
-         ! OLD           ! 96 pcs%grainc          
-         ! OLD           ! 97 pcs%grainc_storage  
-         ! OLD           ! 98 pcs%grainc_xfer     
-         ! OLD           ! 99 pns%grainn          
-         ! OLD           !100 pns%grainn_storage  
-         ! OLD           !101 pns%grainn_xfer     
-         ! OLD           !102 pepv%fert_counter   
-         ! OLD           !103 pnf%fert            
-         ! OLD           !104 pepv%grain_flag     
+         !  1 clm3%g%l%c%p%pcs%cpool                    !  1 bgc_vegetation_inst%cnveg_carbonstate_inst%cpool_patch                           
+         !  2 clm3%g%l%c%p%pcs%deadcrootc               !  2 bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_patch                      
+         !  3 clm3%g%l%c%p%pcs%deadcrootc_storage       !  3 bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_storage_patch              
+         !  4 clm3%g%l%c%p%pcs%deadcrootc_xfer          !  4 bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_xfer_patch              
+         !  5 clm3%g%l%c%p%pcs%deadstemc                !  5 bgc_vegetation_inst%cnveg_carbonstate_inst%deadstemc_patch                       
+         !  6 clm3%g%l%c%p%pcs%deadstemc_storage        !  6 bgc_vegetation_inst%cnveg_carbonstate_inst%deadstemc_storage_patch               
+         !  7 clm3%g%l%c%p%pcs%deadstemc_xfer           !  7 bgc_vegetation_inst%cnveg_carbonstate_inst%deadstemc_xfer_patch                  
+         !  8 clm3%g%l%c%p%pcs%frootc                   !  8 bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_patch                          
+         !  9 clm3%g%l%c%p%pcs%frootc_storage           !  9 bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_storage_patch                  
+         ! 10 clm3%g%l%c%p%pcs%frootc_xfer              ! 10 bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_xfer_patch                     
+         ! 11 clm3%g%l%c%p%pcs%gresp_storage            ! 11 bgc_vegetation_inst%cnveg_carbonstate_inst%gresp_storage_patch                
+         ! 12 clm3%g%l%c%p%pcs%gresp_xfer               ! 12 bgc_vegetation_inst%cnveg_carbonstate_inst%gresp_xfer_patch                      
+         ! 13 clm3%g%l%c%p%pcs%leafc                    ! 13 bgc_vegetation_inst%cnveg_carbonstate_inst%leafc_patch                           
+         ! 14 clm3%g%l%c%p%pcs%leafc_storage            ! 14 bgc_vegetation_inst%cnveg_carbonstate_inst%leafc_storage_patch                   
+         ! 15 clm3%g%l%c%p%pcs%leafc_xfer               ! 15 bgc_vegetation_inst%cnveg_carbonstate_inst%leafc_xfer_patch                     
+         ! 16 clm3%g%l%c%p%pcs%livecrootc               ! 16 bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_patch                    
+         ! 17 clm3%g%l%c%p%pcs%livecrootc_storage       ! 17 bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_storage_patch              
+         ! 18 clm3%g%l%c%p%pcs%livecrootc_xfer          ! 18 bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_xfer_patch                 
+         ! 19 clm3%g%l%c%p%pcs%livestemc                ! 19 bgc_vegetation_inst%cnveg_carbonstate_inst%livestemc_patch                     
+         ! 20 clm3%g%l%c%p%pcs%livestemc_storage        ! 20 bgc_vegetation_inst%cnveg_carbonstate_inst%livestemc_storage_patch              
+         ! 21 clm3%g%l%c%p%pcs%livestemc_xfer           ! 21 bgc_vegetation_inst%cnveg_carbonstate_inst%livestemc_xfer_patch                  
+         ! 22 clm3%g%l%c%p%pcs%pft_ctrunc               ! 22 bgc_vegetation_inst%cnveg_carbonstate_inst%ctrunc_patch                      
+         ! 23 clm3%g%l%c%p%pcs%xsmrpool                 ! 23 bgc_vegetation_inst%cnveg_carbonstate_inst%xsmrpool_patch                        
+         ! 24 clm3%g%l%c%p%pepv%annavg_t2m              ! 24 bgc_vegetation_inst%cnveg_state_inst%annavg_t2m_patch                    
+         ! 25 clm3%g%l%c%p%pepv%annmax_retransn         ! 25 bgc_vegetation_inst%cnveg_state_inst%annmax_retransn_patch                
+         ! 26 clm3%g%l%c%p%pepv%annsum_npp              ! 26 bgc_vegetation_inst%cnveg_carbonflux_inst%annsum_npp_patch                     
+         ! 27 clm3%g%l%c%p%pepv%annsum_potential_gpp    ! 27 bgc_vegetation_inst%cnveg_state_inst%annsum_potential_gpp_patch           
+         ! 28 clm3%g%l%c%p%pepv%dayl                    ! 28 grc%dayl(nc)                           
+         ! 29 clm3%g%l%c%p%pepv%days_active             ! 29 bgc_vegetation_inst%cnveg_state_inst%days_active_patch                    
+         ! 30 clm3%g%l%c%p%pepv%dormant_flag            ! 30 bgc_vegetation_inst%cnveg_state_inst%dormant_flag_patch                 
+         ! 31 clm3%g%l%c%p%pepv%offset_counter          ! 31 bgc_vegetation_inst%cnveg_state_inst%offset_counter_patch                
+         ! 32 clm3%g%l%c%p%pepv%offset_fdd              ! 32 bgc_vegetation_inst%cnveg_state_inst%offset_fdd_patch                    
+         ! 33 clm3%g%l%c%p%pepv%offset_flag             ! 33 bgc_vegetation_inst%cnveg_state_inst%offset_flag_patch                 
+         ! 34 clm3%g%l%c%p%pepv%offset_swi              ! 34 bgc_vegetation_inst%cnveg_state_inst%offset_swi_patch                   
+         ! 35 clm3%g%l%c%p%pepv%onset_counter           ! 35 bgc_vegetation_inst%cnveg_state_inst%onset_counter_patch                  
+         ! 36 clm3%g%l%c%p%pepv%onset_fdd               ! 36 bgc_vegetation_inst%cnveg_state_inst%onset_fdd_patch     
+         ! 37 clm3%g%l%c%p%pepv%onset_flag              ! 37 bgc_vegetation_inst%cnveg_state_inst%onset_flag_patch                     
+         ! 38 clm3%g%l%c%p%pepv%onset_gdd               ! 38 bgc_vegetation_inst%cnveg_state_inst%onset_gdd_patch                      
+         ! 39 clm3%g%l%c%p%pepv%onset_gddflag           ! 39 bgc_vegetation_inst%cnveg_state_inst%onset_gddflag_patch                 
+         ! 40 clm3%g%l%c%p%pepv%onset_swi               ! 40 bgc_vegetation_inst%cnveg_state_inst%onset_swi_patch                     
+         ! 41 clm3%g%l%c%p%pepv%prev_frootc_to_litter   ! 41 bgc_vegetation_inst%cnveg_carbonflux_inst%prev_frootc_to_litter_patch         
+         ! 42 clm3%g%l%c%p%pepv%prev_leafc_to_litter    ! 42 bgc_vegetation_inst%cnveg_carbonflux_inst%prev_leafc_to_litter_patch         
+         ! 43 clm3%g%l%c%p%pepv%tempavg_t2m             ! 43 bgc_vegetation_inst%cnveg_state_inst%tempavg_t2m_patch                     
+         ! 44 clm3%g%l%c%p%pepv%tempmax_retransn        ! 44 bgc_vegetation_inst%cnveg_state_inst%tempmax_retransn_patch           
+         ! 45 clm3%g%l%c%p%pepv%tempsum_npp             ! 45 bgc_vegetation_inst%cnveg_carbonflux_inst%tempsum_npp_patch                    
+         ! 46 clm3%g%l%c%p%pepv%tempsum_potential_gpp   ! 46 bgc_vegetation_inst%cnveg_state_inst%tempsum_potential_gpp_patch          
+         ! 47 clm3%g%l%c%p%pepv%xsmrpool_recover        ! 47 bgc_vegetation_inst%cnveg_carbonflux_inst%xsmrpool_recover_patch               
+         ! 48 clm3%g%l%c%p%pns%deadcrootn               ! 48 bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadcrootn_patch
+         ! 49 clm3%g%l%c%p%pns%deadcrootn_storage       ! 49 bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadcrootn_storage_patch
+         ! 50 clm3%g%l%c%p%pns%deadcrootn_xfer          ! 50 bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadcrootn_xfer_patch
+         ! 51 clm3%g%l%c%p%pns%deadstemn                ! 51 bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadstemn_patch                     
+         ! 52 clm3%g%l%c%p%pns%deadstemn_storage        ! 52 bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadstemn_storage_patch   
+         ! 53 clm3%g%l%c%p%pns%deadstemn_xfer           ! 53 bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadstemn_xfer_patch                 
+         ! 54 clm3%g%l%c%p%pns%frootn                   ! 54 bgc_vegetation_inst%cnveg_nitrogenstate_inst%frootn_patch      
+         ! 55 clm3%g%l%c%p%pns%frootn_storage           ! 55 bgc_vegetation_inst%cnveg_nitrogenstate_inst%frootn_storage_patch             
+         ! 56 clm3%g%l%c%p%pns%frootn_xfer              ! 56 bgc_vegetation_inst%cnveg_nitrogenstate_inst%frootn_xfer_patch  
+         ! 57 clm3%g%l%c%p%pns%leafn                    ! 57 bgc_vegetation_inst%cnveg_nitrogenstate_inst%leafn_patch          
+         ! 58 clm3%g%l%c%p%pns%leafn_storage            ! 58 bgc_vegetation_inst%cnveg_nitrogenstate_inst%leafn_storage_patch                  
+         ! 59 clm3%g%l%c%p%pns%leafn_xfer               ! 59 bgc_vegetation_inst%cnveg_nitrogenstate_inst%leafn_xfer_patch                   
+         ! 60 clm3%g%l%c%p%pns%livecrootn               ! 60 bgc_vegetation_inst%cnveg_nitrogenstate_inst%livecrootn_patch                   
+         ! 61 clm3%g%l%c%p%pns%livecrootn_storage       ! 61 bgc_vegetation_inst%cnveg_nitrogenstate_inst%livecrootn_storage_patch
+         ! 62 clm3%g%l%c%p%pns%livecrootn_xfer          ! 62 bgc_vegetation_inst%cnveg_nitrogenstate_inst%livecrootn_xfer_patch             
+         ! 63 clm3%g%l%c%p%pns%livestemn                ! 63 bgc_vegetation_inst%cnveg_nitrogenstate_inst%livestemn_patch                     
+         ! 64 clm3%g%l%c%p%pns%livestemn_storage        ! 64 bgc_vegetation_inst%cnveg_nitrogenstate_inst%livestemn_storage_patch         
+         ! 65 clm3%g%l%c%p%pns%livestemn_xfer           ! 65 bgc_vegetation_inst%cnveg_nitrogenstate_inst%livestemn_xfer_patch             
+         ! 66 clm3%g%l%c%p%pns%npool                    ! 66 bgc_vegetation_inst%cnveg_nitrogenstate_inst%npool_patch            
+         ! 67 clm3%g%l%c%p%pns%pft_ntrunc               ! 67 bgc_vegetation_inst%cnveg_nitrogenstate_inst%ntrunc_patch                    
+         ! 68 clm3%g%l%c%p%pns%retransn                 ! 68 bgc_vegetation_inst%cnveg_nitrogenstate_inst%retransn_patch               
+         ! 69 clm3%g%l%c%p%pps%elai                     ! 69 canopystate_inst%elai_patch
+         ! 70 clm3%g%l%c%p%pps%esai                     ! 70 canopystate_inst%esai_patch                            
+         ! 71 clm3%g%l%c%p%pps%hbot                     ! 71 canopystate_inst%hbot_patch         
+         ! 72 clm3%g%l%c%p%pps%htop                     ! 72 canopystate_inst%htop_patch         
+         ! 73 clm3%g%l%c%p%pps%tlai                     ! 73 canopystate_inst%tlai_patch         
+         ! 74 clm3%g%l%c%p%pps%tsai                     ! 74 canopystate_inst%tsai_patch         
+                                                        ! 75 bgc_vegetation_inst%cnveg_nitrogenflux_inst%plant_ndemand_patch
+                                                        ! 76 canopystate_inst%vegwp_patch(np,1)
+                                                        ! 77 canopystate_inst%vegwp_patch(np,2)
+                                                        ! 78 canopystate_inst%vegwp_patch(np,3)
+                                                        ! 79 canopystate_inst%vegwp_patch(np,4)
+                                                        ! 80 bgc_vegetation_inst%cnveg_carbonflux_inst%annsum_litfall_patch
+                                                        ! 81 bgc_vegetation_inst%cnveg_carbonflux_inst%tempsum_litfall_patch
 
       end do OUT_TILE
 
