@@ -1,10 +1,8 @@
-from gt4py.cartesian.gtscript import f64
-
-from ndsl.dsl.gt4py import exp, function, log
+from ndsl.dsl.gt4py import exp, function, log, float64
 
 
 @function
-def GammLn(xx: f64) -> f64:
+def GammLn(xx: float64) -> float64:
     """
     See numerical recipes, w. press et al., 2nd edition.
 
@@ -17,26 +15,26 @@ def GammLn(xx: f64) -> f64:
     Returns:
     Float: The natural logarithm of the gamma function value for the input xx.
     """
-    stp = f64(2.5066282746310005)
+    stp = float64(2.5066282746310005)
 
     x = xx
     y = x
-    tmp = x + f64(5.5)
-    tmp = (x + f64(0.5)) * log(tmp) - tmp
-    ser = f64(1.000000000190015)
+    tmp = x + float64(5.5)
+    tmp = (x + float64(0.5)) * log(tmp) - tmp
+    ser = float64(1.000000000190015)
 
-    ser += f64(76.18009172947146) / (y + 1)
-    ser += f64(-86.50532032941677) / (y + 1)
-    ser += f64(24.01409824083091) / (y + 1)
-    ser += f64(-1.231739572450155) / (y + 1)
-    ser += f64(0.001208650973866179) / (y + 1)
-    ser += f64(-0.000005395239384953) / (y + 1)
+    ser += float64(76.18009172947146) / (y + 1)
+    ser += float64(-86.50532032941677) / (y + 1)
+    ser += float64(24.01409824083091) / (y + 1)
+    ser += float64(-1.231739572450155) / (y + 1)
+    ser += float64(0.001208650973866179) / (y + 1)
+    ser += float64(-0.000005395239384953) / (y + 1)
 
     return tmp + log(stp * ser / x)
 
 
 @function
-def gser(a: f64, x: f64, gln: f64) -> f64:
+def gser(a: float64, x: float64, gln: float64) -> float64:
     """
     See numerical recipes, w. press et al., 2nd edition.
 
@@ -50,23 +48,23 @@ def gser(a: f64, x: f64, gln: f64) -> f64:
     Returns:
     Float: The series representation of the incomplete gamma function.
     """
-    eps = f64(3.0e-9)  # was eps=3.0d-07 in press et al.
+    eps = float64(3.0e-9)  # was eps=3.0d-07 in press et al.
     itmax = 10000  # was itmax=100   in press et al.
     gln = GammLn(a)
-    gamser: f64 = f64(0.0)
-    if x <= f64(0):
+    gamser: float64 = float64(0.0)
+    if x <= float64(0):
         # Fortran messages here x < 0 in gser
         # TODO: Allow print in GT4Py
         # if x < 0:
         # raise ValueError('aero_actv: subroutine gser: x < 0 in gser')
-        gamser = f64(0.0)
+        gamser = float64(0.0)
     else:
         ap = a
-        sum_ = f64(1.0) / a
+        sum_ = float64(1.0) / a
         del_ = sum_
         n = 0
         while n < itmax:
-            ap += f64(1.0)
+            ap += float64(1.0)
             del_ *= x / ap
             sum_ += del_
             if abs(del_) < abs(sum_) * eps:
@@ -78,7 +76,7 @@ def gser(a: f64, x: f64, gln: f64) -> f64:
 
 
 @function
-def gcf_matrix(a: f64, x: f64, gln: f64) -> f64:
+def gcf_matrix(a: float64, x: float64, gln: float64) -> float64:
     """
     See numerical recipes, w. press et al., 2nd edition.
 
@@ -93,35 +91,35 @@ def gcf_matrix(a: f64, x: f64, gln: f64) -> f64:
     Float: The continued fraction representation of the incomplete gamma function.
     """
     itmax = 10000
-    eps: f64 = f64(3.0e-7)
-    fpmin: f64 = f64(1.0e-30)
+    eps: float64 = float64(3.0e-7)
+    fpmin: float64 = float64(1.0e-30)
     gln = GammLn(a)
-    b: f64 = x + f64(1.0) - a
-    c: f64 = f64(1.0) / fpmin
-    d: f64 = f64(1.0) / b
-    h: f64 = d
+    b: float64 = x + float64(1.0) - a
+    c: float64 = float64(1.0) / fpmin
+    d: float64 = float64(1.0) / b
+    h: float64 = d
 
     i = 1
     while i <= itmax:
         an = -i * (i - a)
-        b += f64(2.0)
+        b += float64(2.0)
         d = an * d + b
         if abs(d) < fpmin:
             d = fpmin
         c = b + an / c
         if abs(c) < fpmin:
             c = fpmin
-        d = f64(1.0) / d
+        d = float64(1.0) / d
         del_ = d * c
         h *= del_
-        if abs(del_ - f64(1.0)) < eps:
+        if abs(del_ - float64(1.0)) < eps:
             i = itmax + 1
         i += 1
     return exp(-x + a * log(x) - gln) * h
 
 
 @function
-def GammP(a: f64, x: f64) -> f64:
+def GammP(a: float64, x: float64) -> float64:
     """
     See numerical recipes, w. press et al., 2nd edition.
 
@@ -139,15 +137,15 @@ def GammP(a: f64, x: f64) -> f64:
     # if (x < 0.0) or (a <= 0.0):
     #    raise ValueError("aero_actv: function gammp: bad arguments")
     gln = GammLn(a)
-    if x < a + f64(1.0):
+    if x < a + float64(1.0):
         gammp = gser(a, x, gln)
     else:
-        gammp = f64(1.0) - gcf_matrix(a, x, gln)
+        gammp = float64(1.0) - gcf_matrix(a, x, gln)
     return gammp
 
 
 @function
-def Erf(x: f64) -> f64:
+def Erf(x: float64) -> float64:
     """
     See numerical recipes, w. press et al., 2nd edition.
 
@@ -159,9 +157,9 @@ def Erf(x: f64) -> f64:
     Returns:
     Float: The error function value for the input x.
     """
-    erf: f64 = f64(0.0)
-    if x < f64(0.0e00):
-        erf = f64(-1.0) * GammP(f64(0.5), x ** 2)
+    erf: float64 = float64(0.0)
+    if x < float64(0.0e00):
+        erf = float64(-1.0) * GammP(float64(0.5), x**2)
     else:
-        erf = GammP(f64(0.5), x ** 2)
+        erf = GammP(float64(0.5), x**2)
     return erf

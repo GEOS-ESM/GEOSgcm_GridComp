@@ -1,5 +1,3 @@
-from gt4py.cartesian.gtscript import THIS_K
-
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ
 

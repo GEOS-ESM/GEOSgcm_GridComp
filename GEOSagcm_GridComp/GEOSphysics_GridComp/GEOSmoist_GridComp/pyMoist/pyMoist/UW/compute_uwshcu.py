@@ -1,16 +1,16 @@
 import copy
 
-from gt4py.cartesian.gtscript import (
+from ndsl.dsl.gt4py import (
     BACKWARD,
     FORWARD,
     PARALLEL,
-    THIS_K,
+    K,
     computation,
     erfc,
     exp,
     f32,
-    f64,
-    i32,
+    float64,
+    int32,
     i64,
     interval,
     isnan,
@@ -88,7 +88,7 @@ def compute_uwshcu_invert_before(
 
     with computation(PARALLEL), interval(...):
         # Flip mid-level variables
-        k_inv = k_end - THIS_K
+        k_inv = k_end - K
         pmid0_in = pmid0_inv.at(K=k_inv)
         u0_in = u0_inv.at(K=k_inv)
         v0_in = v0_inv.at(K=k_inv)
@@ -112,7 +112,7 @@ def compute_uwshcu_invert_before(
 
     with computation(FORWARD), interval(...):
         # Flip interface variables
-        k_inv = k0 - THIS_K
+        k_inv = k0 - K
         tke_in[0, 0, 1] = tke_inv.at(K=k_inv)
         tke_in = tke_inv.at(K=k_inv)
         pifc0_in[0, 0, 1] = pifc0_inv.at(K=k_inv)
@@ -731,7 +731,7 @@ def compute_thv0_thvl0(
 
 
 def find_pbl_height(
-    iteration: i32,
+    iteration: int32,
     kpbl_in: IntFieldIJ,
     k0: Int,
     condensation: BoolFieldIJ,
@@ -751,7 +751,7 @@ def find_pbl_height(
     layer index having PBLH as a lower interface.
 
     Inputs:
-    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
     kpbl_in [IntFieldIJ]: Height of PBL [m]
     k0 [Int]: Number of levels
 
@@ -771,7 +771,7 @@ def find_pbl_height(
     """
     with computation(FORWARD), interval(...):
         if not condensation:
-            if iteration != i32(0):
+            if iteration != int32(0):
                 tscaleh = cush
 
     with computation(FORWARD), interval(...):
@@ -877,7 +877,7 @@ def find_pbl_averages(
     vavg: FloatField,
     thvlavg: FloatField,
     qtavg: FloatField,
-    iteration: i32,
+    iteration: int32,
 ):
     with computation(FORWARD), interval(0, 1):
         if not condensation:
@@ -889,7 +889,7 @@ def find_pbl_averages(
 
     with computation(FORWARD), interval(1, None):
         if not condensation:
-            if THIS_K <= (kinv - 2):
+            if K <= (kinv - 2):
                 thvlmin = min(
                     thvlmin[0, 0, -1],
                     min(thvl0bot, thvl0top),
@@ -975,7 +975,7 @@ def find_cumulus_characteristics(
     vsrc: FloatField,
     tpert_out: FloatFieldIJ,
     qpert_out: FloatFieldIJ,
-    iteration: i32,
+    iteration: int32,
 ):
     """
     Stencil to find characteristics of cumulus source air:
@@ -1009,7 +1009,7 @@ def find_cumulus_characteristics(
     pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
     dotransport [Int]: Transport tracers [1 true]
     tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
 
     Outputs:
     trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
@@ -1035,7 +1035,7 @@ def find_cumulus_characteristics(
                 qpert_out = 0.0
                 tpert_out = 0.0
                 if wstar > 0.001:
-                    wstar = 1.0 * wstar ** 0.3333
+                    wstar = 1.0 * wstar**0.3333
                     tpert_out = thlsrc_fac * shfx / (zrho * wstar * constants.MAPL_CP)  # K
                     qpert_out = qtsrc_fac * evap / (zrho * wstar)  # kg kg-1
                     qpert_out = max(min(qpert_out, 0.02 * qt0.at(K=0)), 0.0)  # limit to 1% of QT
@@ -1311,7 +1311,7 @@ def compute_cin_cinlcl(
     thvubot: FloatField,
     thvutop: FloatField,
     k0: Int,
-    iteration: i32,
+    iteration: int32,
     rbuoy: Float,
     rkfre: FloatFieldIJ,
     tkeavg: FloatField,
@@ -1371,7 +1371,7 @@ def compute_cin_cinlcl(
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
-        if iteration != i32(0):
+        if iteration != int32(0):
             stop_cin = False  # Indicates if CIN calcuation is done (e.g., Fortran go to 35)
             cin_IJ = 0.0
             cinlcl_IJ = 0.0
@@ -1384,7 +1384,7 @@ def compute_cin_cinlcl(
         cinlcl = 0.0
         plfc = 0.0
         if not condensation and klcl >= kinv - 1 and not stop_cin:
-            if not stop_cin and THIS_K >= kinv - 1 and THIS_K < klcl:
+            if not stop_cin and K >= kinv - 1 and K < klcl:
                 thvubot = thvlsrc
                 thvutop = thvlsrc
                 cin = cin[0, 0, -1] + single_cin(
@@ -1396,7 +1396,7 @@ def compute_cin_cinlcl(
                     thvutop,
                 )
 
-            elif not stop_cin and THIS_K == klcl:
+            elif not stop_cin and K == klcl:
                 # ----- Bottom to LCL
                 thvubot = thvlsrc
                 thvutop = thvlsrc
@@ -1412,7 +1412,14 @@ def compute_cin_cinlcl(
                 cin = cinlcl
 
                 # ----- LCL to Top
-                (thj, qvj, qlj, qij, qse, id_check,) = conden(
+                (
+                    thj,
+                    qvj,
+                    qlj,
+                    qij,
+                    qse,
+                    id_check,
+                ) = conden(
                     pifc0[0, 0, 1],
                     thlsrc,
                     qtsrc,
@@ -1458,13 +1465,20 @@ def compute_cin_cinlcl(
                     )
 
                     if plfc > 0.0:
-                        klfc = THIS_K
+                        klfc = K
                         stop_cin = True
 
             else:
-                if not condensation and THIS_K > klcl and not stop_cin:
+                if not condensation and K > klcl and not stop_cin:
                     thvubot = thvutop[0, 0, -1]
-                    (thj, qvj, qlj, qij, qse, id_check,) = conden(
+                    (
+                        thj,
+                        qvj,
+                        qlj,
+                        qij,
+                        qse,
+                        id_check,
+                    ) = conden(
                         pifc0[0, 0, 1],
                         thlsrc,
                         qtsrc,
@@ -1509,14 +1523,21 @@ def compute_cin_cinlcl(
                         )
 
                         if plfc > 0.0:
-                            klfc = THIS_K
+                            klfc = K
                             stop_cin = True
 
     with computation(FORWARD), interval(1, -1):
         # Case 2. LCL height is lower than PBL interface ( 'pLCL > ps0(kinv-1)')
         if not condensation and klcl < kinv - 1 and not stop_cin:
-            if not stop_cin and THIS_K >= kinv - 1:
-                (thj, qvj, qlj, qij, qse, id_check,) = conden(
+            if not stop_cin and K >= kinv - 1:
+                (
+                    thj,
+                    qvj,
+                    qlj,
+                    qij,
+                    qse,
+                    id_check,
+                ) = conden(
                     pifc0,
                     thlsrc,
                     qtsrc,
@@ -1549,7 +1570,14 @@ def compute_cin_cinlcl(
 
                 if not condensation and not stop_cin:
                     thvubot = thj * (1.0 + zvir * qvj - qlj - qij)
-                    (thj, qvj, qlj, qij, qse, id_check,) = conden(
+                    (
+                        thj,
+                        qvj,
+                        qlj,
+                        qij,
+                        qse,
+                        id_check,
+                    ) = conden(
                         pifc0[0, 0, 1],
                         thlsrc,
                         qtsrc,
@@ -1595,7 +1623,7 @@ def compute_cin_cinlcl(
                     )
 
                     if plfc > 0.0:
-                        klfc = THIS_K
+                        klfc = K
                         stop_cin = True
 
     with computation(FORWARD), interval(1, None):
@@ -1641,7 +1669,7 @@ def compute_cin_cinlcl(
             # calculated 'cin' and 'cinlcl', and other related variables. These will
             # be restored after calculating implicit CIN.
 
-            if iteration == i32(0):
+            if iteration == int32(0):
                 cin_i = cin_IJ
                 cinlcl_i = cinlcl_IJ
                 ke = rbuoy / (rkfre * tkeavg + epsvarw)
@@ -1668,10 +1696,10 @@ def compute_cin_cinlcl(
 
 def avg_initial_and_final_cin(
     condensation: BoolFieldIJ,
-    iteration: i32,
+    iteration: int32,
     cin_IJ: FloatFieldIJ,
     cinlcl_IJ: FloatFieldIJ,
-    use_CINcin: i32,
+    use_CINcin: int32,
     cin_i: FloatFieldIJ,
     cinlcl_i: FloatFieldIJ,
     ke: FloatFieldIJ,
@@ -1979,7 +2007,7 @@ def avg_initial_and_final_cin(
                 # Restore original output values of "iter_cin = 1" and exit
 
                 umf_out[0, 0, 1] = umf_s[0, 0, 1]
-                if THIS_K >= 0 and THIS_K <= (kinv - 1):
+                if K >= 0 and K <= (kinv - 1):
                     umf_out = umf_s.at(K=kinv - 1) * zifc0 / zifc0.at(K=kinv - 1)
 
                 dcm_out = dcm_s
@@ -2017,7 +2045,7 @@ def avg_initial_and_final_cin(
 
 def define_prel_krel(
     condensation: BoolFieldIJ,
-    iteration: i32,
+    iteration: int32,
     klcl: IntField,
     kinv: IntField,
     pifc0: FloatField,
@@ -2047,7 +2075,7 @@ def define_prel_krel(
             # Note that even when 'prel' is located above the PBL top height, we
             # still have cumulus convection between PBL top height and 'prel':
             # we simply assume that no lateral mixing occurs in this range.
-            if iteration != i32(0):
+            if iteration != int32(0):
                 kinv = kinv + 1  # Adjust kinv
 
             if klcl < kinv - 1:
@@ -2062,8 +2090,8 @@ def define_prel_krel(
 
 def calc_cumulus_base_mass_flux(
     condensation: BoolFieldIJ,
-    iteration: i32,
-    use_CINcin: i32,
+    iteration: int32,
+    use_CINcin: int32,
     cin_IJ: FloatFieldIJ,
     rbuoy: Float,
     cinlcl_IJ: FloatFieldIJ,
@@ -2139,8 +2167,8 @@ def calc_cumulus_base_mass_flux(
     updraft is unsaturated.
 
     Inputs:
-    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
-    use_CINcin [i32]: if true, calc CIN thru L..
+    iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    use_CINcin [int32]: if true, calc CIN thru L..
     cin_IJ [FloatFieldIJ]: Convective inhibition [J/kg]
     rbuoy [Float]: Non-hydro pressure effect on updraft
     cinlcl_IJ [FloatFieldIJ]: Convective inhibition at LCL [J/kg]
@@ -2174,7 +2202,7 @@ def calc_cumulus_base_mass_flux(
     """
     with computation(FORWARD), interval(...):
         if not condensation:
-            if use_CINcin == i32(1):
+            if use_CINcin == int32(1):
                 wcrit = sqrt(2.0 * cin_IJ * rbuoy)
             else:
                 wcrit = sqrt(2.0 * cinlcl_IJ * rbuoy)
@@ -2210,7 +2238,7 @@ def calc_cumulus_base_mass_flux(
                 rho0inv = pifc0.at(K=kbelow) / (
                     constants.MAPL_RDRY * thv0top.at(K=kbelow - 1) * exnifc0.at(K=kbelow)
                 )
-                cbmf = (rho0inv * sigmaw / 2.5066) * exp(-(mu ** 2))
+                cbmf = (rho0inv * sigmaw / 2.5066) * exp(-(mu**2))
 
                 # 1. 'cbmf' constraint
                 cbmflimit = 0.9 * dp0.at(K=kbelow - 1) / constants.MAPL_GRAV / dt
@@ -2226,7 +2254,7 @@ def calc_cumulus_base_mass_flux(
                 mulclstar = sqrt(
                     max(
                         0.0,
-                        2.0 * (exp(-(mu ** 2)) / 2.5066) ** 2 * (1.0 / erfc(mu) ** 2 - 0.25 / rmaxfrac ** 2),
+                        2.0 * (exp(-(mu**2)) / 2.5066) ** 2 * (1.0 / erfc(mu) ** 2 - 0.25 / rmaxfrac**2),
                     )
                 )
 
@@ -2240,14 +2268,14 @@ def calc_cumulus_base_mass_flux(
             # Note that final 'cbmf' here is obtained in such that 'ufrcinv' and
             # 'ufrclcl' are smaller than ufrcmax with no instability.
 
-            cbmf = rkfre * (rho0inv * sigmaw / 2.5066) * exp((-(mu ** 2)))
-            winv = sigmaw * (2.0 / 2.5066) * exp(-(mu ** 2)) / erfc(mu)
+            cbmf = rkfre * (rho0inv * sigmaw / 2.5066) * exp((-(mu**2)))
+            winv = sigmaw * (2.0 / 2.5066) * exp(-(mu**2)) / erfc(mu)
             ufrcinv = cbmf / winv / rho0inv
 
 
 def define_updraft_properties(
     condensation: BoolFieldIJ,
-    iteration: i32,
+    iteration: int32,
     winv: FloatField,
     cinlcl_IJ: FloatFieldIJ,
     rbuoy: Float,
@@ -2288,7 +2316,7 @@ def define_updraft_properties(
     this again in the below block. If 'ufrclcl < 0.1%', just exit.
 
     Inputs:
-    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
     winv [FloatField]: Mean vertical velocity of cumulus updraft at PBL top interface [m/s]
     cinlcl_IJ [FloatFieldIJ]: Convective inhibition at LCL [J/kg]
     rbuoy [Float]: Non-hydro pressure effect on updraft
@@ -2378,7 +2406,7 @@ def define_updraft_properties(
                     fdr_out = constants.MAPL_UNDEF
 
                 if not condensation:
-                    if THIS_K == (krel - 1):
+                    if K == (krel - 1):
                         ufrc[0, 0, 1] = ufrclcl
 
     with computation(FORWARD), interval(...):
@@ -2400,11 +2428,11 @@ def define_updraft_properties(
             # the convective updrafts. Thus, diabatic convective momentum transport
             # vertically redistributes environmental horizontal momentum.
 
-            if THIS_K >= (kinv - 2) and THIS_K <= (krel - 1):
+            if K >= (kinv - 2) and K <= (krel - 1):
                 umf_zint = cbmf
                 wu = winv
 
-            if THIS_K == (krel - 1):
+            if K == (krel - 1):
                 emf = 0.0
                 umf_zint = cbmf
                 wu = wrel
@@ -2437,13 +2465,13 @@ def define_updraft_properties(
                 fdr_out = constants.MAPL_UNDEF
 
             if not condensation:
-                if THIS_K == (krel - 1):
+                if K == (krel - 1):
                     thvu = thj * (1.0 + zvir * qvj - qlj - qij)
 
 
 def define_env_properties(
     condensation: BoolFieldIJ,
-    iteration: i32,
+    iteration: int32,
     krel: IntField,
     kinv: IntField,
     PGFc: Float,
@@ -2491,7 +2519,7 @@ def define_env_properties(
 
     Inputs:
     condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
-    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
     krel [IntField]: Release layer where buoyancy sorting first occurs
     kinv [IntField]: Inversion layer with PBL top interface as lower interface
     PGFc [Float]: Pressure gradient force
@@ -2545,7 +2573,7 @@ def define_env_properties(
                 vplus = PGFc * ssv0.at(K=kinv - 1) * (prel - pifc0.at(K=kinv - 1))
 
             else:
-                if THIS_K >= kinv - 1 and THIS_K <= max(krel - 1, kinv - 1):
+                if K >= kinv - 1 and K <= max(krel - 1, kinv - 1):
                     uplus_3D = uplus + PGFc * ssu0 * (pifc0[0, 0, 1] - pifc0)
                     vplus_3D = vplus + PGFc * ssv0 * (pifc0[0, 0, 1] - pifc0)
 
@@ -2555,14 +2583,14 @@ def define_env_properties(
                 uplus = uplus + PGFc * ssu0.at(K=krel) * (prel - pifc0.at(K=krel))
                 vplus = vplus + PGFc * ssv0.at(K=krel) * (prel - pifc0.at(K=krel))
 
-            if THIS_K == (krel - 1):
+            if K == (krel - 1):
                 uu = usrc + uplus
                 vu = vsrc + vplus
 
             if dotransport == 1:
                 n = 0
                 while n < ncnst:
-                    if THIS_K == krel - 1:
+                    if K == krel - 1:
                         tru[0, 0, 0][n] = trsrc[0, 0][n]
                     n += 1
 
@@ -2670,7 +2698,7 @@ def buoyancy_sorting(
     dcm: FloatField,
     xco: FloatField,
     stop_buoyancy_sort: BoolFieldIJ,
-    iteration: i32,
+    iteration: int32,
     cush_inout: FloatFieldIJ,
 ):
     """
@@ -2792,12 +2820,12 @@ def buoyancy_sorting(
             # want, but a sample test indicated that about 3 - 5 iterations  produced
             # satisfactory converent solution. Finally, identify 'kbup' and 'kpen'.
 
-            if iteration != i32(0):
+            if iteration != int32(0):
                 stop_buoyancy_sort = False  # Indicates that buoyancy sorting processes are done
                 # (e.g., Fortran go to 45)
 
     with computation(FORWARD), interval(1, -2):
-        if THIS_K >= krel and THIS_K < k0 - 1 and not stop_buoyancy_sort and not condensation:
+        if K >= krel and K < k0 - 1 and not stop_buoyancy_sort and not condensation:
             thlue = thlu[0, 0, -1]
             qtue = qtu[0, 0, -1]
             wue = wu[0, 0, -1]
@@ -2960,7 +2988,7 @@ def buoyancy_sorting(
                                         * rbuoy
                                         * constants.MAPL_GRAV
                                         * cridis
-                                        / wue ** 2.0
+                                        / wue**2.0
                                         * (1.0 - thvj / thv0j),
                                     ),
                                 )
@@ -3020,7 +3048,7 @@ def buoyancy_sorting(
                                                 (1.0 / (1.0 - xsat)) * thvxsat
                                             )
 
-                                        aquad = wue ** 2
+                                        aquad = wue**2
                                         bquad = (
                                             2.0
                                             * rbuoy
@@ -3028,7 +3056,7 @@ def buoyancy_sorting(
                                             * cridis
                                             * (thv_x1 - thv_x0)
                                             / thv0j
-                                            - 2.0 * wue ** 2
+                                            - 2.0 * wue**2
                                         )
                                         cquad = (
                                             2.0
@@ -3037,10 +3065,10 @@ def buoyancy_sorting(
                                             * cridis
                                             * (thv_x0 - thv0j)
                                             / thv0j
-                                            + wue ** 2
+                                            + wue**2
                                         )
                                         if kk == 1:
-                                            if (bquad ** 2 - 4.0 * aquad * cquad) >= 0.0:
+                                            if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
                                                 xs1, xs2, status = roots(aquad, bquad, cquad)
                                                 x_cu = min(
                                                     1.0,
@@ -3053,7 +3081,7 @@ def buoyancy_sorting(
                                                 x_cu = xsat
 
                                         else:
-                                            if (bquad ** 2 - 4.0 * aquad * cquad) >= 0.0:
+                                            if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
                                                 xs1, xs2, status = roots(aquad, bquad, cquad)
                                                 x_en = min(
                                                     1.0,
@@ -3087,8 +3115,8 @@ def buoyancy_sorting(
                             # being, I came back to the original limiter.
 
                             if not condensation:
-                                ee2 = xc ** 2
-                                ud2 = 1.0 - 2.0 * xc + xc ** 2
+                                ee2 = xc**2
+                                ud2 = 1.0 - 2.0 * xc + xc**2
                                 if min(scaleh, mixscale) != 0.0:
                                     rei = (
                                         (
@@ -3172,7 +3200,7 @@ def buoyancy_sorting(
                                                 tru[0, 0, -1][n]
                                                 + (
                                                     tre[0, 0][n]
-                                                    + sstr0.at(K=THIS_K, ddim=[n]) * dpe / 2.0
+                                                    + sstr0.at(K=K, ddim=[n]) * dpe / 2.0
                                                     - tru[0, 0, -1][n]
                                                 )
                                                 * fer
@@ -3447,10 +3475,10 @@ def buoyancy_sorting(
                 # in order to describe shallow continental cumulus convection.
 
                 if bogtop > 0.0 and wtw > 0.0:
-                    kbup_IJ = THIS_K
+                    kbup_IJ = K
 
                 if wtw <= 0.0:
-                    kpen_IJ = THIS_K
+                    kpen_IJ = K
                     stop_buoyancy_sort = True  # Done calculating updraft properties, break out of loop
 
                 if not stop_buoyancy_sort:
@@ -3674,7 +3702,7 @@ def recalc_condensate(
     xco: FloatField,
     cush: FloatFieldIJ,
     cush_inout: FloatFieldIJ,
-    iteration: i32,
+    iteration: int32,
 ):
     """
     Re-calculate the amount of expelled condensate from cloud updraft
@@ -3707,7 +3735,7 @@ def recalc_condensate(
     umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
     emf [FloatField]: [?]
     ufrc [FloatField]: Cumulus updraft fraction [fraction]
-    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
 
     Inouts:
     condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
@@ -3793,7 +3821,7 @@ def recalc_condensate(
                 rovcp = constants.MAPL_RGAS / constants.MAPL_CP
                 exntop = ((pifc0.at(K=kpen) + ppen) / p00) ** rovcp
                 if (qlj + qij) > criqc:
-                    if THIS_K == kpen:
+                    if K == kpen:
                         dwten = ((qlj + qij) - criqc) * qlj / (qlj + qij)
                         diten = ((qlj + qij) - criqc) * qij / (qlj + qij)
 
@@ -3810,7 +3838,7 @@ def recalc_condensate(
                         )
                     )
                 else:
-                    if THIS_K == kpen:
+                    if K == kpen:
                         dwten = 0.0
                         diten = 0.0
 
@@ -3888,12 +3916,12 @@ def recalc_condensate(
                     # umf(kpen)=emf(kpen)=ufrc(kpen)=0, in consistent  with wtw < 0
                     # at the top interface of 'kpen' layer. However, we still have
                     # non-zero expelled cloud condensate in the 'kpen' layer.
-                    if THIS_K >= kpen - 1 and THIS_K <= k0:
+                    if K >= kpen - 1 and K <= k0:
                         umf_zint[0, 0, 1] = 0.0
                         emf[0, 0, 1] = 0.0
-                    if THIS_K >= kpen and THIS_K <= k0:
+                    if K >= kpen and K <= k0:
                         ufrc[0, 0, 1] = 0.0
-                    if THIS_K >= kpen + 1 and THIS_K < k0:
+                    if K >= kpen + 1 and K < k0:
                         dwten = 0.0
                         diten = 0.0
                         fer = 0.0
@@ -3945,7 +3973,7 @@ def calc_entrainment_mass_flux(
     uu_emf: FloatField,
     vu_emf: FloatField,
     emf: FloatField,
-    iteration: i32,
+    iteration: int32,
 ):
     """
     Calculate downward penetrative entrainment mass flux, 'emf(k) < 0',  and
@@ -4014,7 +4042,7 @@ def calc_entrainment_mass_flux(
     tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
     sstr0 [FloatField_NTracers]: Convective tracer [?]
     use_cumpenent [Int]: Cumulative penetrative entrainment
-    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
 
     Outputs:
     tru_emf [FloatField_NTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
@@ -4040,12 +4068,12 @@ def calc_entrainment_mass_flux(
 
     with computation(BACKWARD), interval(...):
         if not condensation:
-            if THIS_K <= kpen - 1 and THIS_K >= kbup:  # Here, 'k' is an interface index at which
+            if K <= kpen - 1 and K >= kbup:  # Here, 'k' is an interface index at which
                 rhoifc0j = pifc0[0, 0, 1] / (
                     constants.MAPL_RDRY * 0.5 * (thv0bot[0, 0, 1] + thv0top) * exnifc0[0, 0, 1]
                 )
 
-                if THIS_K == (kpen - 1):
+                if K == (kpen - 1):
                     # Note that 'ppen' has already been calculated in the above
                     # 'iter_scaleh' loop assuming zero lateral entrainmentin the
                     # layer 'kpen'.
@@ -4187,7 +4215,7 @@ def calc_pbl_fluxes(
     sstr0: FloatField_NTracers,
     trflx: FloatField_NTracers,
     xflx_ndim: FloatField_NTracers,
-    iteration: i32,
+    iteration: int32,
 ):
     from __externals__ import ncnst
 
@@ -4237,18 +4265,18 @@ def calc_pbl_fluxes(
 
             # Compute turbulent fluxes.
             # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
-            if THIS_K < k_below + 1:
+            if K < k_below + 1:
                 xflx[0, 0, 1] = (
                     cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                 )
 
-            if THIS_K == k_below + 1:
+            if K == k_below + 1:
                 if rr <= 1:
                     xflx = xflx - (1.0 - rr) * cbmf * (xtop_ori - xbot_ori)
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            if THIS_K <= kinv:
+            if K <= kinv:
                 qtflx = xflx
 
             xsrc = thlsrc
@@ -4289,18 +4317,18 @@ def calc_pbl_fluxes(
 
             # Compute turbulent fluxes.
             # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
-            if THIS_K < k_below + 1:
+            if K < k_below + 1:
                 xflx[0, 0, 1] = (
                     cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                 )
 
-            if THIS_K == k_below + 1:
+            if K == k_below + 1:
                 if rr <= 1:
                     xflx = xflx - (1.0 - rr) * cbmf * (xtop_ori - xbot_ori)
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            if THIS_K <= kinv:
+            if K <= kinv:
                 slflx = constants.MAPL_CP * exnifc0 * xflx
 
             xsrc = usrc
@@ -4341,17 +4369,17 @@ def calc_pbl_fluxes(
 
             # Compute turbulent fluxes.
             # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
-            if THIS_K < k_below + 1:
+            if K < k_below + 1:
                 xflx[0, 0, 1] = (
                     cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                 )
 
-            if THIS_K == k_below + 1:
+            if K == k_below + 1:
                 if rr <= 1:
                     xflx = xflx - (1.0 - rr) * cbmf * (xtop_ori - xbot_ori)
     with computation(FORWARD), interval(...):
         if not condensation:
-            if THIS_K <= kinv:
+            if K <= kinv:
                 uflx = xflx
 
             xsrc = vsrc
@@ -4392,18 +4420,18 @@ def calc_pbl_fluxes(
 
             # Compute turbulent fluxes.
             # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
-            if THIS_K < k_below + 1:
+            if K < k_below + 1:
                 xflx[0, 0, 1] = (
                     cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                 )
 
-            if THIS_K == k_below + 1:
+            if K == k_below + 1:
                 if rr <= 1:
                     xflx = xflx - (1.0 - rr) * cbmf * (xtop_ori - xbot_ori)
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            if THIS_K <= kinv:
+            if K <= kinv:
                 vflx = xflx
 
     with computation(FORWARD), interval(...):
@@ -4456,18 +4484,18 @@ def calc_pbl_fluxes(
                     # Compute turbulent fluxes.
                     # Below two cases exactly converges at 'kinv-1' interface when
                     # rr = 1.
-                    if THIS_K < k_below + 1:
+                    if K < k_below + 1:
                         xflx_ndim[0, 0, 1][n] = (
                             cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                         )
 
-                    if THIS_K == k_below + 1:
+                    if K == k_below + 1:
                         if rr <= 1:
                             xflx_ndim[0, 0, 0][n] = xflx_ndim[0, 0, 0][n] - (1.0 - rr) * cbmf * (
                                 xtop_ori - xbot_ori
                             )
 
-                    if THIS_K <= kinv:
+                    if K <= kinv:
                         trflx[0, 0, 0][n] = xflx_ndim[0, 0, 0][n]
 
                     n += 1
@@ -4550,7 +4578,7 @@ def non_buoyancy_sorting_fluxes(
         if not condensation:
             uplus = 0.0
             vplus = 0.0
-            if THIS_K >= kinv and THIS_K < (krel - 1):
+            if K >= kinv and K < (krel - 1):
                 qtflx[0, 0, 1] = cbmf * (
                     qtsrc - (qt0[0, 0, 1] + ssqt0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
@@ -4607,7 +4635,7 @@ def buoyancy_sorting_fluxes(
     uflx: FloatField,
     vflx: FloatField,
     slflx: FloatField,
-    iteration: i32,
+    iteration: int32,
 ):
     """
     3. Calculate buoyancy sorting fluxes : krel <= k <= kbup - 1
@@ -4636,7 +4664,7 @@ def buoyancy_sorting_fluxes(
     ssu0 [FloatField]: [?]
     ssv0 [FloatField]: [?]
     dotransport [Int]: Transport tracers [1 true]
-    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
     tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
     tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
     sstr0 [FloatField_NTracers]: Convective tracer [?]
@@ -4652,7 +4680,7 @@ def buoyancy_sorting_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            if THIS_K >= krel and THIS_K <= (kbup - 1):
+            if K >= krel and K <= (kbup - 1):
                 slflx[0, 0, 1] = (
                     constants.MAPL_CP
                     * exnifc0[0, 0, 1]
@@ -4728,7 +4756,7 @@ def penetrative_entrainment_fluxes(
     qlten_sink: FloatField,
     qiten_sink: FloatField,
     cush_inout: FloatFieldIJ,
-    iteration: i32,
+    iteration: int32,
 ):
     """
     4. Penetrative entrainment fluxes : kbup <= k <= kpen - 1
@@ -4790,7 +4818,7 @@ def penetrative_entrainment_fluxes(
     dt [Float]: Timestep [s]
     ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
     esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    iteration [i32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+    iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
 
     Inouts:
     condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
@@ -4815,7 +4843,7 @@ def penetrative_entrainment_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            if THIS_K >= kbup and THIS_K <= kpen - 1:
+            if K >= kbup and K <= kpen - 1:
                 slflx[0, 0, 1] = (
                     constants.MAPL_CP
                     * exnifc0[0, 0, 1]
@@ -4844,24 +4872,24 @@ def penetrative_entrainment_fluxes(
             # Condensate tendency by compensating subsidence/upwelling
             uemf[0, 0, 1] = 0.0
 
-            if THIS_K >= 0 and THIS_K <= (kinv - 2):  # Assume linear updraft mass flux within the PBL.
+            if K >= 0 and K <= (kinv - 2):  # Assume linear updraft mass flux within the PBL.
                 uemf[0, 0, 1] = cbmf * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pifc0.at(K=kinv))
 
-            if THIS_K >= (kinv - 1) and THIS_K <= (krel - 1):
+            if K >= (kinv - 1) and K <= (krel - 1):
                 uemf[0, 0, 1] = cbmf
-            if THIS_K >= krel and THIS_K <= (kbup - 1):
+            if K >= krel and K <= (kbup - 1):
                 uemf[0, 0, 1] = umf_zint
-            if THIS_K >= kbup and THIS_K <= (kpen - 1):
+            if K >= kbup and K <= (kpen - 1):
                 uemf[0, 0, 1] = emf  # Only use penetrative entrainment flux consistently.
 
             comsub = 0.0
 
-            if THIS_K <= kpen:
+            if K <= kpen:
                 comsub = 0.5 * (uemf[0, 0, 1] + uemf)  # comsub defined on interfaces
 
     with computation(FORWARD), interval(0, 1):
         if not condensation:
-            if THIS_K <= kpen:
+            if K <= kpen:
                 if comsub < 0.0:
                     thlten_sub = 0.0
                     qtten_sub = 0.0
@@ -4872,7 +4900,7 @@ def penetrative_entrainment_fluxes(
 
     with computation(FORWARD), interval(0, -1):
         if not condensation:
-            if THIS_K <= kpen:
+            if K <= kpen:
                 if comsub >= 0.0:
                     thlten_sub = (
                         constants.MAPL_GRAV * comsub * (thl0[0, 0, 1] - thl0) / (pmid0 - pmid0[0, 0, 1])
@@ -4883,7 +4911,7 @@ def penetrative_entrainment_fluxes(
 
     with computation(FORWARD), interval(1, None):
         if not condensation:
-            if THIS_K <= kpen:
+            if K <= kpen:
                 if comsub < 0.0:
                     thlten_sub = (
                         constants.MAPL_GRAV * comsub * (thl0 - thl0[0, 0, -1]) / (pmid0[0, 0, -1] - pmid0)
@@ -4900,9 +4928,9 @@ def penetrative_entrainment_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            if THIS_K <= kpen:
+            if K <= kpen:
                 if comsub >= 0.0:
-                    if THIS_K == k0 - 1:
+                    if K == k0 - 1:
                         thlten_sub = 0.0
                         qtten_sub = 0.0
                         qlten_sub = 0.0
@@ -4912,7 +4940,7 @@ def penetrative_entrainment_fluxes(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            if THIS_K <= kpen:
+            if K <= kpen:
                 thl_prog = thl0 + thlten_sub * dt
                 qt_prog = max(qt0 + qtten_sub * dt, 1.0e-12)
                 thj, qvj, qlj, qij, qse, id_check = conden(pmid0, thl_prog, qt_prog, ese, esx)
@@ -4988,7 +5016,7 @@ def calc_momentum_tendency(
         if not condensation:
             # Calculate convective tendencies at each layer
             # Momentum tendency
-            if THIS_K <= kpen:
+            if K <= kpen:
                 uten = (uflx - uflx[0, 0, 1]) * constants.MAPL_GRAV / dp0
                 vten = (vflx - vflx[0, 0, 1]) * constants.MAPL_GRAV / dp0
                 uf = u0 + uten * dt
@@ -5132,7 +5160,7 @@ def calc_thermodynamic_tendencies(
         if not condensation:
             umf_zint[0, 0, 1] = umf_temp[0, 0, 1]  # Update umf
 
-            if THIS_K <= kpen:
+            if K <= kpen:
                 # Compute 'slten', 'qtten', 'qvten', 'qlten', 'qiten', and 'sten'
 
                 # Key assumptions made in this 'cumulus scheme' are :
@@ -5197,28 +5225,28 @@ def calc_thermodynamic_tendencies(
 
                 slten = (slflx - slflx[0, 0, 1]) * constants.MAPL_GRAV / dp0
 
-                if THIS_K == 0:
+                if K == 0:
                     slten = slten - constants.MAPL_GRAV / 4.0 / dp0 * (
                         uflx[0, 0, 1] * (uf[0, 0, 1] - uf + u0[0, 0, 1] - u0)
                         + vflx[0, 0, 1] * (vf[0, 0, 1] - vf + v0[0, 0, 1] - v0)
                     )
 
-                elif THIS_K >= 1 and THIS_K <= (kpen - 1):
+                elif K >= 1 and K <= (kpen - 1):
                     slten = slten - constants.MAPL_GRAV / 4.0 / dp0 * (
                         (
                             uflx[0, 0, 1] * (uf[0, 0, 1] - uf + u0[0, 0, 1] - u0)
-                            + uflx * (uf - uf.at(K=THIS_K - 1) + u0 - u0.at(K=THIS_K - 1))
+                            + uflx * (uf - uf.at(K=K - 1) + u0 - u0.at(K=K - 1))
                         )
                         + (
                             vflx[0, 0, 1] * (vf[0, 0, 1] - vf + v0[0, 0, 1] - v0)
-                            + vflx * (vf - vf.at(K=THIS_K - 1) + v0 - v0.at(K=THIS_K - 1))
+                            + vflx * (vf - vf.at(K=K - 1) + v0 - v0.at(K=K - 1))
                         )
                     )
 
-                elif THIS_K == kpen:
+                elif K == kpen:
                     slten = slten - constants.MAPL_GRAV / 4.0 / dp0 * (
-                        uflx * (uf - uf.at(K=THIS_K - 1) + u0 - u0.at(K=THIS_K - 1))
-                        + vflx * (vf - vf.at(K=THIS_K - 1) + v0 - v0.at(K=THIS_K - 1))
+                        uflx * (uf - uf.at(K=K - 1) + u0 - u0.at(K=K - 1))
+                        + vflx * (vf - vf.at(K=K - 1) + v0 - v0.at(K=K - 1))
                     )
 
                 qtten = (qtflx - qtflx[0, 0, 1]) * constants.MAPL_GRAV / dp0
@@ -5230,14 +5258,14 @@ def calc_thermodynamic_tendencies(
                 # air is assumed not to contain any condensate.
 
                 # Compute in-cumulus condensate at the layer mid-point.
-                if THIS_K < krel or THIS_K > kpen:
+                if K < krel or K > kpen:
                     qlu_mid = 0.0
                     qiu_mid = 0.0
                     qlj_2D = 0.0
                     qij_2D = 0.0
-                elif THIS_K == krel:
+                elif K == krel:
                     thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
-                        prel, thlu.at(K=THIS_K - 1), qtu.at(K=THIS_K - 1), ese, esx
+                        prel, thlu.at(K=K - 1), qtu.at(K=K - 1), ese, esx
                     )
 
                     if id_check == 1:
@@ -5298,7 +5326,7 @@ def calc_thermodynamic_tendencies(
                                 0.5 * (qiubelow + qij_2D) * (prel - pifc0[0, 0, 1]) / (pifc0 - pifc0[0, 0, 1])
                             )
 
-                elif THIS_K == kpen:
+                elif K == kpen:
                     if not condensation:
                         thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
                             pifc0 + ppen, thlu_top, qtu_top, ese, esx
@@ -5372,7 +5400,7 @@ def calc_thermodynamic_tendencies(
                     qc_i = (1.0 - frc_rasn) * diten  # [ kg/kg/s ]
 
                     # 2. Detrained Condensate
-                    if THIS_K <= kbup:
+                    if K <= kbup:
                         qc_l = (
                             qc_l + constants.MAPL_GRAV * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * fdr * qlu_mid
                         )  # [ kg/kg/s ]
@@ -5389,7 +5417,7 @@ def calc_thermodynamic_tendencies(
                         nc_im = 0.0
 
                     # 3. Detached Updraft
-                    if THIS_K == kbup:
+                    if K == kbup:
                         qc_l = qc_l + constants.MAPL_GRAV * umf_zint[0, 0, 1] * qlj_2D / (
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
@@ -5407,7 +5435,7 @@ def calc_thermodynamic_tendencies(
                     # layer. Explicitly compute the properties detrained penetrative
                     # entrained airs in k = kbup layer.
 
-                if THIS_K == kbup:
+                if K == kbup:
                     thj, qvj, ql_emf_kbup, qi_emf_kbup, qse, id_check = conden(
                         pmid0,
                         thlu_emf,
@@ -5522,8 +5550,8 @@ def prevent_negative_condensate(
         if not condensation:
             ixcldice = 1
             ixcldliq = 2
-            dql: f64 = max(f64(0.0), f64(1.0) * qmin.at(K=ixcldliq) - ql0_star)
-            dqi: f64 = max(f64(0.0), f64(1.0) * qmin.at(K=ixcldice) - qi0_star)
+            dql: float64 = max(float64(0.0), float64(1.0) * qmin.at(K=ixcldliq) - ql0_star)
+            dqi: float64 = max(float64(0.0), float64(1.0) * qmin.at(K=ixcldice) - qi0_star)
             qlten = qlten + dql / dt
             qiten = qiten + dqi / dt
             qvten = qvten - (dql + dqi) / dt
@@ -5562,16 +5590,16 @@ def prevent_negative_condensate(
             # Extra moisture used to satisfy 'qv(i,1)=qvmin' is proportionally
             # extracted from all the layers that has 'qv > 2*qvmin'. This fully
             # preserves column moisture.
-            if dqv > f64(1.0e-20):
-                sum: f64 = 0.0
-                if THIS_K <= k0:
-                    if qv0_star > f64(2.0) * qmin.at(K=0):
+            if dqv > float64(1.0e-20):
+                sum: float64 = 0.0
+                if K <= k0:
+                    if qv0_star > float64(2.0) * qmin.at(K=0):
                         sum = sum + qv0_star * dp0
-                aa: f64 = dqv * dp0.at(K=1) / max(f64(1.0e-20), sum)
-                if aa < f64(0.5):
-                    if THIS_K <= k0 - 1:
-                        if qv0_star > f64(2.0) * qmin.at(K=0):
-                            dum: f64 = aa * qv0_star
+                aa: float64 = dqv * dp0.at(K=1) / max(float64(1.0e-20), sum)
+                if aa < float64(0.5):
+                    if K <= k0 - 1:
+                        if qv0_star > float64(2.0) * qmin.at(K=0):
+                            dum: float64 = aa * qv0_star
                             qv0_star = qv0_star - dum
                             qvten = qvten - dum / dt
 
@@ -5600,7 +5628,7 @@ def calc_tracer_tendencies(
     tr0: FloatField_NTracers,
     trflx: FloatField_NTracers,
     trten: FloatField_NTracers,
-    iteration: i32,
+    iteration: int32,
 ):
     from __externals__ import ncnst
 
@@ -5843,13 +5871,13 @@ def calc_cumulus_condensate_at_interface(
     """
     with computation(FORWARD), interval(...):
         if not condensation:
-            if THIS_K >= krel and THIS_K <= kpen:
+            if K >= krel and K <= kpen:
                 if not condensation:
                     # Calculate cumulus condensate at the upper interface of each layer.
                     # Note 'ppen < 0' and at 'k=kpen' layer, I used 'thlu_top'&'qtu_top'
                     # which explicitly considered zero or non-zero 'fer(kpen)'.
 
-                    if THIS_K == kpen:
+                    if K == kpen:
                         thj, qvj, qlj, qij, qse, id_check = conden(pifc0 + ppen, thlu_top, qtu_top, ese, esx)
                     else:
                         thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thlu, qtu, ese, esx)
@@ -5892,11 +5920,11 @@ def calc_cumulus_condensate_at_interface(
                         qiu = 0.5 * (qiubelow + qij)
                         cufrc = ufrc + ufrc[0, 0, 1]
 
-                        if THIS_K == krel:
+                        if K == krel:
                             cufrc = (
                                 (ufrclcl + ufrc[0, 0, 1]) * (prel - pifc0[0, 0, 1]) / (pifc0 - pifc0[0, 0, 1])
                             )
-                        elif THIS_K == kpen:
+                        elif K == kpen:
                             cufrc = (ufrc + 0.0) * (-ppen) / (pifc0 - pifc0[0, 0, 1])
                             if (qlj + qij) > criqc:
                                 qcu = 0.5 * (qcubelow + criqc)
@@ -6576,7 +6604,7 @@ def update_output_variables(
         if del_CIN > 0.0:
             umf_outvar = umf_zint
 
-            if THIS_K <= kinv - 1:
+            if K <= kinv - 1:
                 umf_outvar = umf_zint.at(K=kinv) * zifc0 / zifc0.at(K=kinv)
 
             dcm_outvar = dcm
@@ -6594,7 +6622,7 @@ def update_output_variables(
             qidet_outvar = qiten_det
             qlsub_outvar = qlten_sink
             qisub_outvar = qiten_sink
-            ndrop_out = qlten_det / (4188.787 * rdrop ** 3)
+            ndrop_out = qlten_det / (4188.787 * rdrop**3)
             nice_out = qiten_det / (3.0e-10)
             qtflx_outvar = qtflx
             slflx_outvar = slflx
@@ -6611,7 +6639,7 @@ def update_output_variables(
             # # analysis of cumulus scheme
             fer_outvar = constants.MAPL_UNDEF
             fdr_outvar = constants.MAPL_UNDEF
-            if THIS_K <= kpen:
+            if K <= kpen:
                 fer_outvar = fer
                 fdr_outvar = fdr
 
@@ -6675,7 +6703,7 @@ def compute_uwshcu_invert_after(
 
     with computation(FORWARD), interval(...):
         # Revert interface variables
-        k_inv = k0 - THIS_K
+        k_inv = k0 - K
         umf_inv = umf_outvar.at(K=k_inv)
         qtflx_inv = qtflx_outvar.at(K=k_inv)
         slflx_inv = slflx_outvar.at(K=k_inv)
@@ -6684,7 +6712,7 @@ def compute_uwshcu_invert_after(
 
     with computation(FORWARD), interval(...):
         # Revert mid-level variables
-        k_inv = k0 - THIS_K - 1
+        k_inv = k0 - K - 1
         dcm_inv = dcm_outvar.at(K=k_inv)
         qvten_inv = qvten_outvar.at(K=k_inv)
         qlten_inv = qlten_outvar.at(K=k_inv)
@@ -6712,7 +6740,7 @@ def compute_uwshcu_invert_after(
                 CNV_Tracers[0, 0, 0][n] = tr0.at(K=k_inv, ddim=[n])
                 n += 1
 
-        if THIS_K == k_end:
+        if K == k_end:
             dcm_inv = 0.0
 
         # Re-scale liquid/ice water sub-tendencies to enforce conservation
@@ -7025,7 +7053,7 @@ class ComputeUwshcuInv:
         frc_rasn: Float,
         rbuoy: Float,
         epsvarw: Float,
-        use_CINcin: i32,
+        use_CINcin: int32,
         mumin1: Float,
         rmaxfrac: Float,
         PGFc: Float,
@@ -7043,7 +7071,7 @@ class ComputeUwshcuInv:
         rpen: Float,
         use_momenflx: Int,
         rdrop: Float,
-        iter_cin: i32,
+        iter_cin: int32,
         # Outputs
         umf_inv: FloatField,
         dcm_inv: FloatField,
@@ -7321,7 +7349,7 @@ class ComputeUwshcuInv:
         # even at interfaces below PBL top height through 'fluxbelowinv' calculation.
 
         for iteration in range(iter_cin):
-            iteration = i32(iteration)
+            iteration = int32(iteration)
 
             self._find_pbl_height(
                 iteration=iteration,
@@ -7481,7 +7509,7 @@ class ComputeUwshcuInv:
                 cinlcl=self.temporaries.cinlcl,
                 cush_inout=self.temporaries.cush_inout,
             )
-            if iteration != i32(0):
+            if iteration != int32(0):
                 self._avg_initial_and_final_cin(
                     condensation=self.condensation,
                     iteration=iteration,

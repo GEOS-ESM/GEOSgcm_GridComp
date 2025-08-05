@@ -1,11 +1,10 @@
 import copy
 from typing import Optional
 
-from gt4py.cartesian.gtscript import i32
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import PARALLEL, computation, floor, function, interval
+from ndsl.dsl.gt4py import PARALLEL, computation, floor, function, interval, int32
 from ndsl.dsl.typing import Float, FloatField
 from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.constants import (
@@ -112,7 +111,7 @@ def saturation_specific_humidity_liquid_surface(
         if compute_dq == True:  # noqa
             ddq = 0.0
     elif t >= TMAXTBL:
-        TABLESIZE_MINUS_1: i32 = TABLESIZE - 1
+        TABLESIZE_MINUS_1: int32 = TABLESIZE - 1
         qsat = esw.A[TABLESIZE_MINUS_1]  # type: ignore
         if compute_dq == True:  # noqa
             ddq = 0.0
@@ -178,7 +177,7 @@ def saturation_specific_humidity(
         t = TMAXTBL - 0.001
 
     t = (t - TMINTBL) * DEGSUBS + 1
-    t_integer = i32(floor(t))
+    t_integer = int32(floor(t))
     IT_MINUS_1 = t_integer - 1
 
     if uramp == TMIX:
@@ -230,8 +229,8 @@ def QSat_FloatField(
             TI = T
 
         TI = (TI - TMINTBL) * DEGSUBS + 1
-        IT = i32(floor(TI))
-        IT_MINUS_1: i32 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        IT = int32(floor(TI))
+        IT_MINUS_1: int32 = IT - 1  # dace backend does not allow for [IT - 1] indexing because of cast to int
 
         if URAMP == TMIX:
             DQ = esx[0][IT] - esx[0][IT_MINUS_1]  # type: ignore

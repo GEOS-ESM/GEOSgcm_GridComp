@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
-from gt4py.cartesian.gtscript import i32
+from ndsl.dsl.gt4py import int32
 
 from ndsl.dsl.typing import Float
 from pyMoist.GFDL_1M.config import GFDL1MConfig
@@ -115,7 +115,7 @@ class ConfigConstants:
 
         MPDT = min(GFDL_1M_config.DT_MOIST, GFDL_1M_config.MP_TIME)
         RDT = Float(1.0) / GFDL_1M_config.DT_MOIST
-        NTIMES = i32(np.round(GFDL_1M_config.DT_MOIST / MPDT))
+        NTIMES = int32(np.round(GFDL_1M_config.DT_MOIST / MPDT))
 
         # small time step:
         DTS = GFDL_1M_config.DT_MOIST / Float(NTIMES)

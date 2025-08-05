@@ -1,6 +1,4 @@
-import gt4py.cartesian.gtscript as gtscript
-
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, interval
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, function
 from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 
@@ -100,7 +98,7 @@ def reset(
         m1 = 0.0
 
 
-@gtscript.function
+@function
 def prefall_melting(
     t: Float,
     qv: Float,

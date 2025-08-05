@@ -1,7 +1,5 @@
-from gt4py.cartesian.gtscript import f64
-
 import pyMoist.constants as constants
-from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, sqrt
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, sqrt, float64
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.qsat_functions import (
@@ -42,23 +40,23 @@ def pdfcondensate(
     sigmaqt2: Float,
     qstar: Float,
 ):
-    qtmean_64: f64 = qtmean
-    sigmaqt1_64: f64 = sigmaqt1
-    sigmaqt2_64: f64 = sigmaqt2
-    qstar_64: f64 = qstar
+    qtmean_64: float64 = qtmean
+    sigmaqt1_64: float64 = sigmaqt1
+    sigmaqt2_64: float64 = sigmaqt2
+    qstar_64: float64 = qstar
 
     if pdfshape == 1:
         if (qtmean_64 + sigmaqt1_64) < qstar_64:
-            condensate: f64 = 0.0
+            condensate: float64 = 0.0
         elif qstar_64 > (qtmean_64 - sigmaqt1_64):
             if sigmaqt1_64 > 0.0:
-                condensate: f64 = (min(qtmean_64 + sigmaqt1_64 - qstar_64, 2.0 * sigmaqt1_64) ** 2) / (
+                condensate: float64 = (min(qtmean_64 + sigmaqt1_64 - qstar_64, 2.0 * sigmaqt1_64) ** 2) / (
                     4.0 * sigmaqt1_64
                 )
             else:
-                condensate: f64 = qtmean_64 - qstar_64
+                condensate: float64 = qtmean_64 - qstar_64
         else:
-            condensate: f64 = qtmean_64 - qstar_64
+            condensate: float64 = qtmean_64 - qstar_64
 
     # Above code only executes when pdfshape = 1. Fortran code exists for pdfshape = 2
 

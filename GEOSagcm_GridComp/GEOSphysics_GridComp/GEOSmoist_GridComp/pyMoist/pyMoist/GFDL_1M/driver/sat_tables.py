@@ -1,5 +1,4 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import FORWARD, PARALLEL, THIS_K, computation, exp, interval, log, log10
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, interval, log, log10, GlobalTable
 from mpi4py import MPI
 
 from ndsl.boilerplate import get_factories_single_tile
@@ -10,7 +9,7 @@ from pyMoist.shared_incloud_processes import ice_fraction
 
 
 # Workaround to create a 1d off-grid axis that can be written to
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(constants.LENGTH)))]
+GlobalTable_driver_qsat = GlobalTable[(Float, (int(constants.LENGTH)))]
 
 
 def qs_table_1(length: Int, table1: FloatField, esupc: FloatField):
@@ -24,7 +23,7 @@ def qs_table_1(length: Int, table1: FloatField, esupc: FloatField):
         # -----------------------------------------------------------------------
         # compute es over ice between - 160 deg c and 0 deg c.
         # -----------------------------------------------------------------------
-        tem = constants.TMIN + constants.DELT * THIS_K
+        tem = constants.TMIN + constants.DELT * K
         fac0 = (tem - constants.T_ICE) / (tem * constants.T_ICE)
         fac1 = fac0 * constants.LI2
         fac2 = (constants.D2ICE * log(tem / constants.T_ICE) + fac1) / constants.RVGAS
@@ -34,12 +33,12 @@ def qs_table_1(length: Int, table1: FloatField, esupc: FloatField):
         # -----------------------------------------------------------------------
         # compute es over water between - 40 deg c and 102 deg c.
         # -----------------------------------------------------------------------
-        tem = 233.16 + constants.DELT * THIS_K
+        tem = 233.16 + constants.DELT * K
         fac0 = (tem - constants.T_ICE) / (tem * constants.T_ICE)
         fac1 = fac0 * constants.LV0
         fac2 = (constants.DC_VAP * log(tem / constants.T_ICE) + fac1) / constants.RVGAS
         esh40 = constants.E_00 * exp(fac2)
-        if THIS_K < 400:
+        if K < 400:
             esupc = esh40
 
     with computation(PARALLEL), interval(400 + 1200, 1421 + 1200):
@@ -50,7 +49,7 @@ def qs_table_1(length: Int, table1: FloatField, esupc: FloatField):
         # derive blended es over ice and supercooled
         # water between - 40 deg c and 0 deg c
         # -----------------------------------------------------------------------
-        tem = 233.16 + constants.DELT * (THIS_K - 1200)
+        tem = 233.16 + constants.DELT * (K - 1200)
         # GEOS ! WMP impose CALIPSO ice polynomial from 0 C to -40 C
         wice = ice_fraction(tem, 0.0, 0.0)
         wh2o = 1.0 - wice
@@ -65,7 +64,7 @@ def qs_table_2(length: Int, table2: FloatField):
     reference Fortran: gfdl_cloud_microphys.F90: subroutine qs_tablew
     """
     with computation(PARALLEL), interval(...):
-        tem = constants.TMIN + constants.DELT * THIS_K
+        tem = constants.TMIN + constants.DELT * K
         fac0 = (tem - constants.T_ICE) / (tem * constants.T_ICE)
         fac1 = fac0 * constants.LV0
         fac2 = (constants.DC_VAP * log(tem / constants.T_ICE) + fac1) / constants.RVGAS
@@ -80,9 +79,9 @@ def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
     reference Fortran: gfdl_cloud_microphys.F90: subroutine qs_table2
     """
     with computation(PARALLEL), interval(...):
-        tem0 = constants.TMIN + constants.DELT * THIS_K
+        tem0 = constants.TMIN + constants.DELT * K
         fac0 = (tem0 - constants.T_ICE) / (tem0 * constants.T_ICE)
-        if THIS_K < 1600:
+        if K < 1600:
             # -----------------------------------------------------------------------
             # compute es over ice between - 160 deg c and 0 deg c.
             # -----------------------------------------------------------------------
@@ -100,11 +99,11 @@ def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
         # -----------------------------------------------------------------------
         # smoother around 0 deg c
         # -----------------------------------------------------------------------
-        if THIS_K == 1599:
+        if K == 1599:
             t0 = 0.25 * (table3[0, 0, -1] + 2.0 * table1 + table3[0, 0, 1])
             t1 = 0.25 * (table3 + 2.0 * table1[0, 0, 1] + table3[0, 0, 2])
             table3 = t0
-        elif THIS_K == 1600:
+        elif K == 1600:
             table3 = t1  # type: ignore
 
 
@@ -116,8 +115,8 @@ def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
     reference Fortran: gfdl_cloud_microphys.F90: subroutine qs_table3
     """
     with computation(PARALLEL), interval(...):
-        tem = constants.TMIN + constants.DELT * THIS_K
-        if THIS_K < 1580:  # change to - 2 c
+        tem = constants.TMIN + constants.DELT * K
+        if K < 1580:  # change to - 2 c
             # -----------------------------------------------------------------------
             # compute es over ice between - 160 deg c and 0 deg c.
             # see smithsonian meteorological tables page 350.
@@ -143,11 +142,11 @@ def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
         # -----------------------------------------------------------------------
         # smoother around - 2 deg c
         # -----------------------------------------------------------------------
-        if THIS_K == 1579:
+        if K == 1579:
             t0 = 0.25 * (table4[0, 0, -1] + 2.0 * table1 + table4[0, 0, 1])
             t1 = 0.25 * (table4 + 2.0 * table1[0, 0, 1] + table4[0, 0, 2])
             table4 = t0
-        elif THIS_K == 1580:
+        elif K == 1580:
             table4 = t1  # type: ignore
 
 

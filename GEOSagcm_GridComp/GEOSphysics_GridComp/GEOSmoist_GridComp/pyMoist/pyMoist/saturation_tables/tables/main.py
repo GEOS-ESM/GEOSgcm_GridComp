@@ -3,12 +3,11 @@ from typing import Dict, Optional
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, Int
-from ndsl.dsl.gt4py import computation, PARALLEL, interval
+from ndsl.dsl.gt4py import computation, PARALLEL, interval, K
 from pyMoist.saturation_tables.constants import DELTA_T, MAPL_TICE, TABLESIZE, TMINLQU, TMINTBL, TMIX
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.ice_exact import ice_exact_no_stencil, ice_exact
 from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact_no_stencil, liquid_exact
-from gt4py.cartesian.gtscript import THIS_K
 from pyMoist.saturation_tables.tables.constants import IceExactConstatns
 from pyMoist.saturation_tables.tables.constants import LiquidExactConstants
 
@@ -100,7 +99,7 @@ def _compute_tables(ese: FloatField, esw: FloatField, esx: FloatField, formulati
     )
 
     with computation(PARALLEL), interval(...):
-        t = THIS_K * DELTA_T + TMINTBL
+        t = K * DELTA_T + TMINTBL
         esw, _ = liquid_exact(
             t,
             formulation,

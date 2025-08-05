@@ -1,10 +1,8 @@
 from typing import Optional
 
-from gt4py.cartesian.gtscript import THIS_K
-
 from ndsl import StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, function, interval, log
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, function, interval, log, K
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
 from pyMoist.constants import (
     MAPL_ALHL,
@@ -137,7 +135,7 @@ def find_k_lcl(
     # find nearest level <= LCL pressure
     with computation(BACKWARD), interval(...):
         if found_level == False:  # noqa
-            k_lcl = THIS_K
+            k_lcl = K
         if p_mb <= plcl.at(K=k_end):
             found_level = True
 
