@@ -1195,12 +1195,9 @@ contains
       elseif (this%isCLM51) then
          
          CLMC_pt1 = this%cnity(:,1)
-         CLMC_st1 = this%cnity(:,3)
-         CLMC_st2 = this%cnity(:,4)
+         CLMC_st1 = this%cnity(:,2)
          CLMC_pf1 = this%fvg(  :,1)
-         CLMC_pf2 = this%fvg(  :,2)
-         CLMC_sf1 = this%fvg(  :,3)
-         CLMC_sf2 = this%fvg(  :,4)
+         CLMC_sf1 = this%fvg(  :,2)
          
       end if
       
