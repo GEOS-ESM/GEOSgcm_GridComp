@@ -585,7 +585,7 @@ def compute_thv0_thvl0(
     ssv0_o [FloatField]: [?]
     cush_inout [FloatFieldIJ]: Convective scale height [m]
     """
-    # from __externals__ import ncnst
+    from __externals__ import ncnst
 
     with computation(PARALLEL), interval(...):
         pmid0 = pmid0_in
@@ -611,186 +611,182 @@ def compute_thv0_thvl0(
 
     with computation(FORWARD), interval(...):
         if id_check == 1:
-            # condensation = (
-            #     True  # Indicates if condensation has occurred (e.g., Fortran go to 333)
-            # )
-            # umf_out[0, 0, 1] = 0.0
+            condensation = True  # Indicates if condensation has occurred (e.g., Fortran go to 333)
+            umf_out[0, 0, 1] = 0.0
             dcm_out = 0.0
-        # qvten_out = 0.0
-        # qlten_out = 0.0
-        # qiten_out = 0.0
-        # sten_out = 0.0
-        # uten_out = 0.0
-        # vten_out = 0.0
-        # qrten_out = 0.0
-        # qsten_out = 0.0
-        # cufrc_out = 0.0
-        # cush_inout = -1.0
-        # qldet_out = 0.0
-        # qidet_out = 0.0
-        # qtflx_out[0, 0, 1] = 0.0
-        # slflx_out[0, 0, 1] = 0.0
-        # uflx_out[0, 0, 1] = 0.0
-        # vflx_out[0, 0, 1] = 0.0
-        # fer_out = constants.MAPL_UNDEF
-        # fdr_out = constants.MAPL_UNDEF
+            qvten_out = 0.0
+            qlten_out = 0.0
+            qiten_out = 0.0
+            sten_out = 0.0
+            uten_out = 0.0
+            vten_out = 0.0
+            qrten_out = 0.0
+            qsten_out = 0.0
+            cufrc_out = 0.0
+            cush_inout = -1.0
+            qldet_out = 0.0
+            qidet_out = 0.0
+            qtflx_out[0, 0, 1] = 0.0
+            slflx_out[0, 0, 1] = 0.0
+            uflx_out[0, 0, 1] = 0.0
+            vflx_out[0, 0, 1] = 0.0
+            fer_out = constants.MAPL_UNDEF
+            fdr_out = constants.MAPL_UNDEF
 
-    # with computation(PARALLEL), interval(...):
-    #     if not condensation:
-    #         thv0bot = thj * (1.0 + zvir * qvj - qlj - qij)
-    #         thvl0bot = thl0bot * (1.0 + zvir * qt0bot)
+    with computation(PARALLEL), interval(...):
+        if not condensation:
+            thv0bot = thj * (1.0 + zvir * qvj - qlj - qij)
+            thvl0bot = thl0bot * (1.0 + zvir * qt0bot)
 
-    #         thl0top = thl0 + ssthl0 * (pifc0_in[0, 0, 1] - pmid0)
-    #         qt0top = qt0 + ssqt0 * (pifc0_in[0, 0, 1] - pmid0)
+            thl0top = thl0 + ssthl0 * (pifc0_in[0, 0, 1] - pmid0)
+            qt0top = qt0 + ssqt0 * (pifc0_in[0, 0, 1] - pmid0)
 
-    # with computation(PARALLEL), interval(0, -1):
-    #     if not condensation:
-    #         thj, qvj, qlj, qij, qse, id_check = conden(
-    #             pifc0_in[0, 0, 1], thl0top, qt0top, ese, esx
-    #         )
+    with computation(PARALLEL), interval(0, -1):
+        if not condensation:
+            thj, qvj, qlj, qij, qse, id_check = conden(pifc0_in[0, 0, 1], thl0top, qt0top, ese, esx)
 
-    # with computation(FORWARD), interval(0, -1):
-    #     if not condensation:
-    #         if id_check == 1:
-    #             condensation = True
-    #             umf_out[0, 0, 1] = 0.0
-    #             dcm_out = 0.0
-    #             qvten_out = 0.0
-    #             qlten_out = 0.0
-    #             qiten_out = 0.0
-    #             sten_out = 0.0
-    #             uten_out = 0.0
-    #             vten_out = 0.0
-    #             qrten_out = 0.0
-    #             qsten_out = 0.0
-    #             cufrc_out = 0.0
-    #             cush_inout = -1.0
-    #             qldet_out = 0.0
-    #             qidet_out = 0.0
-    #             qtflx_out[0, 0, 1] = 0.0
-    #             slflx_out[0, 0, 1] = 0.0
-    #             uflx_out[0, 0, 1] = 0.0
-    #             vflx_out[0, 0, 1] = 0.0
-    #             fer_out = constants.MAPL_UNDEF
-    #             fdr_out = constants.MAPL_UNDEF
+    with computation(FORWARD), interval(0, -1):
+        if not condensation:
+            if id_check == 1:
+                condensation = True
+                umf_out[0, 0, 1] = 0.0
+                dcm_out = 0.0
+                qvten_out = 0.0
+                qlten_out = 0.0
+                qiten_out = 0.0
+                sten_out = 0.0
+                uten_out = 0.0
+                vten_out = 0.0
+                qrten_out = 0.0
+                qsten_out = 0.0
+                cufrc_out = 0.0
+                cush_inout = -1.0
+                qldet_out = 0.0
+                qidet_out = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
+                fer_out = constants.MAPL_UNDEF
+                fdr_out = constants.MAPL_UNDEF
 
-    # with computation(PARALLEL), interval(0, -1):
-    #     if not condensation:
-    #         thv0top = thj * (1.0 + zvir * qvj - qlj - qij)
-    #         thvl0top = thl0top * (1.0 + zvir * qt0top)
+    with computation(PARALLEL), interval(0, -1):
+        if not condensation:
+            thv0top = thj * (1.0 + zvir * qvj - qlj - qij)
+            thvl0top = thl0top * (1.0 + zvir * qt0top)
 
-    # with computation(PARALLEL), interval(-1, None):
-    #     if not condensation:
-    #         thv0top = thv0bot
-    #         thvl0top = thvl0bot
+    with computation(PARALLEL), interval(-1, None):
+        if not condensation:
+            thv0top = thv0bot
+            thvl0top = thvl0bot
 
-    # with computation(PARALLEL), interval(...):
-    #     if not condensation:
-    #         # Save input and related environmental thermodynamic variables
-    #         # for use at "iter_cin=2" when "del_CIN >= 0"
-    #         qv0_o = qv0
-    #         ql0_o = ql0
-    #         qi0_o = qi0
-    #         t0_o = t0
-    #         s0_o = s0
-    #         u0_o = u0_in
-    #         v0_o = v0_in
-    #         qt0_o = qt0
-    #         thl0_o = thl0
-    #         thvl0_o = thvl0
-    #         ssthl0_o = ssthl0
-    #         ssqt0_o = ssqt0
-    #         thv0bot_o = thv0bot
-    #         thv0top_o = thv0top
-    #         thvl0bot_o = thvl0bot
-    #         thvl0top_o = thvl0top
-    #         ssu0_o = ssu0
-    #         ssv0_o = ssv0
+    with computation(PARALLEL), interval(...):
+        if not condensation:
+            # Save input and related environmental thermodynamic variables
+            # for use at "iter_cin=2" when "del_CIN >= 0"
+            qv0_o = qv0
+            ql0_o = ql0
+            qi0_o = qi0
+            t0_o = t0
+            s0_o = s0
+            u0_o = u0_in
+            v0_o = v0_in
+            qt0_o = qt0
+            thl0_o = thl0
+            thvl0_o = thvl0
+            ssthl0_o = ssthl0
+            ssqt0_o = ssqt0
+            thv0bot_o = thv0bot
+            thv0top_o = thv0top
+            thvl0bot_o = thvl0bot
+            thvl0top_o = thvl0top
+            ssu0_o = ssu0
+            ssv0_o = ssv0
 
-    #         if dotransport == 1:
-    #             n = 0
-    #             while n < ncnst:
-    #                 tr0_o[0, 0, 0][n] = tr0[0, 0, 0][n]
-    #                 sstr0_o[0, 0, 0][n] = sstr0[0, 0, 0][n]
-    #                 n += 1
+            if dotransport == 1:
+                n = 0
+                while n < ncnst:
+                    tr0_o[0, 0, 0][n] = tr0[0, 0, 0][n]
+                    sstr0_o[0, 0, 0][n] = sstr0[0, 0, 0][n]
+                    n += 1
 
-    # with computation(FORWARD), interval(...):
-    #     if not condensation:
-    #         # Initialize output variables at each grid point
-    #         umf_zint[0, 0, 1] = 0.0
-    #         dcm = 0.0
-    #         emf[0, 0, 1] = 0.0
-    #         slflx[0, 0, 1] = 0.0
-    #         qtflx[0, 0, 1] = 0.0
-    #         uflx[0, 0, 1] = 0.0
-    #         vflx[0, 0, 1] = 0.0
-    #         qvten = 0.0
-    #         qlten = 0.0
-    #         qiten = 0.0
-    #         sten = 0.0
-    #         uten = 0.0
-    #         vten = 0.0
-    #         qrten = 0.0
-    #         qsten = 0.0
-    #         dwte = 0.0
-    #         diten = 0.0
-    #         cufrc = 0.0
-    #         qcu = 0.0
-    #         qlu = 0.0
-    #         qiu = 0.0
-    #         fer = 0.0
-    #         fdr = 0.0
-    #         xco = 0.0
-    #         cin = 0.0
-    #         cinlcl = 0.0
-    #         cbmf = 0.0
-    #         qc = 0.0
-    #         qc_l = 0.0
-    #         qc_i = 0.0
-    #         cnt = float32(k0)
-    #         cnb = 0.0
-    #         qtten = 0.0
-    #         slten = 0.0
-    #         ufrc = 0.0
+    with computation(FORWARD), interval(...):
+        if not condensation:
+            # Initialize output variables at each grid point
+            umf_zint[0, 0, 1] = 0.0
+            dcm = 0.0
+            emf[0, 0, 1] = 0.0
+            slflx[0, 0, 1] = 0.0
+            qtflx[0, 0, 1] = 0.0
+            uflx[0, 0, 1] = 0.0
+            vflx[0, 0, 1] = 0.0
+            qvten = 0.0
+            qlten = 0.0
+            qiten = 0.0
+            sten = 0.0
+            uten = 0.0
+            vten = 0.0
+            qrten = 0.0
+            qsten = 0.0
+            dwte = 0.0
+            diten = 0.0
+            cufrc = 0.0
+            qcu = 0.0
+            qlu = 0.0
+            qiu = 0.0
+            fer = 0.0
+            fdr = 0.0
+            xco = 0.0
+            cin = 0.0
+            cinlcl = 0.0
+            cbmf = 0.0
+            qc = 0.0
+            qc_l = 0.0
+            qc_i = 0.0
+            cnt = float32(k0)
+            cnb = 0.0
+            qtten = 0.0
+            slten = 0.0
+            ufrc = 0.0
 
-    #         thlu = constants.MAPL_UNDEF
-    #         thlu[0, 0, 1] = constants.MAPL_UNDEF
-    #         qtu = constants.MAPL_UNDEF
-    #         qtu[0, 0, 1] = constants.MAPL_UNDEF
-    #         uu[0, 0, 1] = constants.MAPL_UNDEF
-    #         uu = constants.MAPL_UNDEF
-    #         vu[0, 0, 1] = constants.MAPL_UNDEF
-    #         vu = constants.MAPL_UNDEF
-    #         wu[0, 0, 1] = constants.MAPL_UNDEF
-    #         thvu[0, 0, 1] = constants.MAPL_UNDEF
-    #         thlu_emf[0, 0, 1] = constants.MAPL_UNDEF
-    #         thlu_emf = constants.MAPL_UNDEF
-    #         qtu_emf[0, 0, 1] = constants.MAPL_UNDEF
-    #         qtu_emf = constants.MAPL_UNDEF
-    #         uu_emf[0, 0, 1] = constants.MAPL_UNDEF
-    #         uu_emf = constants.MAPL_UNDEF
-    #         vu_emf[0, 0, 1] = constants.MAPL_UNDEF
-    #         vu_emf = constants.MAPL_UNDEF
+            thlu = constants.MAPL_UNDEF
+            thlu[0, 0, 1] = constants.MAPL_UNDEF
+            qtu = constants.MAPL_UNDEF
+            qtu[0, 0, 1] = constants.MAPL_UNDEF
+            uu[0, 0, 1] = constants.MAPL_UNDEF
+            uu = constants.MAPL_UNDEF
+            vu[0, 0, 1] = constants.MAPL_UNDEF
+            vu = constants.MAPL_UNDEF
+            wu[0, 0, 1] = constants.MAPL_UNDEF
+            thvu[0, 0, 1] = constants.MAPL_UNDEF
+            thlu_emf[0, 0, 1] = constants.MAPL_UNDEF
+            thlu_emf = constants.MAPL_UNDEF
+            qtu_emf[0, 0, 1] = constants.MAPL_UNDEF
+            qtu_emf = constants.MAPL_UNDEF
+            uu_emf[0, 0, 1] = constants.MAPL_UNDEF
+            uu_emf = constants.MAPL_UNDEF
+            vu_emf[0, 0, 1] = constants.MAPL_UNDEF
+            vu_emf = constants.MAPL_UNDEF
 
-    #         ufrclcl = 0.0
-    #         wlcl = 0.0
-    #         cbmflimit = 0.0
+            ufrclcl = 0.0
+            wlcl = 0.0
+            cbmflimit = 0.0
 
-    #         uemf[0, 0, 1] = 0.0
-    #         comsub = 0.0
-    #         qlten_sink = 0.0
-    #         qiten_sink = 0.0
-    #         qlten_det = 0.0
-    #         qiten_det = 0.0
+            uemf[0, 0, 1] = 0.0
+            comsub = 0.0
+            qlten_sink = 0.0
+            qiten_sink = 0.0
+            qlten_det = 0.0
+            qiten_det = 0.0
 
-    #         if dotransport == 1:
-    #             n = 0
-    #             while n < ncnst:
-    #                 trflx[0, 0, 1][n] = 0.0
-    #                 trten[0, 0, 0][n] = 0.0
-    #                 tru[0, 0, 1][n] = 0.0
-    #                 tru_emf[0, 0, 1][n] = 0.0
-    #                 n += 1
+            if dotransport == 1:
+                n = 0
+                while n < ncnst:
+                    trflx[0, 0, 1][n] = 0.0
+                    trten[0, 0, 0][n] = 0.0
+                    tru[0, 0, 1][n] = 0.0
+                    tru_emf[0, 0, 1][n] = 0.0
+                    n += 1
 
 
 def find_pbl_height(
@@ -866,14 +862,14 @@ def find_pbl_height(
             # of 5 [m] in the below 'kinv' finding block.
 
             # Invert kpbl index
-            if kpbl_in > i64(k0 / 2):
+            if kpbl_in > int64(k0 / 2):
                 kinv = k0 - kpbl_in + 1
             else:
                 kinv = 5
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            if kinv <= i64(1):
+            if kinv <= int64(1):
                 condensation = True
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
@@ -897,7 +893,7 @@ def find_pbl_height(
                 fdr_out = constants.MAPL_UNDEF
 
             if not condensation:
-                if kinv >= i64(k0 / 4):
+                if kinv >= int64(k0 / 4):
                     condensation = True
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
@@ -1026,9 +1022,9 @@ def find_pbl_averages(
                 lev += 1
             if lev > 0:
                 kbelow = lev - 1
-                qtavg = qt0.at(K=kbelow) * (zmid0.at(K=lev) - qtsrchgt) + qt0.at(
-                    K=lev
-                ) * (qtsrchgt - zmid0.at(K=kbelow))
+                qtavg = qt0.at(K=kbelow) * (zmid0.at(K=lev) - qtsrchgt) + qt0.at(K=lev) * (
+                    qtsrchgt - zmid0.at(K=kbelow)
+                )
                 qtavg = qtavg / (zmid0.at(K=lev) - zmid0.at(K=kbelow))
 
             else:
@@ -1120,25 +1116,17 @@ def find_cumulus_characteristics(
             if windsrcavg == 1:
                 # Caution: This code has not been tested, since windsrcavg is 0
                 # An error will be raised if windsrcavg == 1
-                zrho = pifc0.at(K=0) / (
-                    287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0)))
-                )
-                buoyflx = (
-                    -shfx / constants.MAPL_CP - 0.608 * t0.at(K=0) * evap
-                ) / zrho  # K m s-1
+                zrho = pifc0.at(K=0) / (287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0))))
+                buoyflx = (-shfx / constants.MAPL_CP - 0.608 * t0.at(K=0) * evap) / zrho  # K m s-1
                 delzg = (50.0) * constants.MAPL_GRAV  # assume 50m surface scale
                 wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=0))  # m3 s-3
                 qpert_out = 0.0
                 tpert_out = 0.0
                 if wstar > 0.001:
                     wstar = 1.0 * wstar**0.3333
-                    tpert_out = (
-                        thlsrc_fac * shfx / (zrho * wstar * constants.MAPL_CP)
-                    )  # K
+                    tpert_out = thlsrc_fac * shfx / (zrho * wstar * constants.MAPL_CP)  # K
                     qpert_out = qtsrc_fac * evap / (zrho * wstar)  # kg kg-1
-                    qpert_out = max(
-                        min(qpert_out, 0.02 * qt0.at(K=0)), 0.0
-                    )  # limit to 1% of QT
+                    qpert_out = max(min(qpert_out, 0.02 * qt0.at(K=0)), 0.0)  # limit to 1% of QT
                     tpert_out = 0.1 + max(min(tpert_out, 1.0), 0.0)  # limit to 1K
                     qtsrc = qtavg + qpert_out
                     thvlsrc = thvlmin + tpert_out * (1.0 + zvir * qtsrc)
@@ -1151,12 +1139,8 @@ def find_cumulus_characteristics(
                 thlsrc = thvlsrc / (1.0 + zvir * qtsrc)
                 kbelow = kinv - 2
                 kbelow_zdim = kinv - 1
-                usrc = u0.at(K=kbelow) + ssu0.at(K=kbelow) * (
-                    pifc0.at(K=kbelow_zdim) - pmid0.at(K=kbelow)
-                )
-                vsrc = v0.at(K=kbelow) + ssv0.at(K=kbelow) * (
-                    pifc0.at(K=kbelow_zdim) - pmid0.at(K=kbelow)
-                )
+                usrc = u0.at(K=kbelow) + ssu0.at(K=kbelow) * (pifc0.at(K=kbelow_zdim) - pmid0.at(K=kbelow))
+                vsrc = v0.at(K=kbelow) + ssv0.at(K=kbelow) * (pifc0.at(K=kbelow_zdim) - pmid0.at(K=kbelow))
 
             if dotransport == 1:
                 n = 0
@@ -1356,13 +1340,9 @@ def find_klcl(
                 # that 'thv0lcl' is calculated first by calculating  'thl0lcl'
                 # and 'qt0lcl' at the LCL, and performing 'conden' afterward,
                 # in fully consistent with the other parts of the code.
-                thl0lcl = thl0.at(K=klcl) + ssthl0.at(K=klcl) * (
-                    plcl - pmid0.at(K=klcl)
-                )
+                thl0lcl = thl0.at(K=klcl) + ssthl0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
                 qt0lcl = qt0.at(K=klcl) + ssqt0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
-                thj, qvj, qlj, qij, qse, id_check = conden(
-                    plcl, thl0lcl, qt0lcl, ese, esx
-                )
+                thj, qvj, qlj, qij, qse, id_check = conden(plcl, thl0lcl, qt0lcl, ese, esx)
 
                 if id_check == 1:
                     condensation = True
@@ -1485,9 +1465,7 @@ def compute_cin_cinlcl(
 
     with computation(FORWARD), interval(...):
         if iteration != int32(0):
-            stop_cin = (
-                False  # Indicates if CIN calcuation is done (e.g., Fortran go to 35)
-            )
+            stop_cin = False  # Indicates if CIN calcuation is done (e.g., Fortran go to 35)
             cin_IJ = 0.0
             cinlcl_IJ = 0.0
             plfc_IJ = 0.0
@@ -2380,9 +2358,7 @@ def calc_cumulus_base_mass_flux(
             if not condensation:
                 kbelow = kinv - 1
                 rho0inv = pifc0.at(K=kbelow) / (
-                    constants.MAPL_RDRY
-                    * thv0top.at(K=kbelow - 1)
-                    * exnifc0.at(K=kbelow)
+                    constants.MAPL_RDRY * thv0top.at(K=kbelow - 1) * exnifc0.at(K=kbelow)
                 )
                 cbmf = (rho0inv * sigmaw / 2.5066) * exp(-(mu**2))
 
@@ -2400,9 +2376,7 @@ def calc_cumulus_base_mass_flux(
                 mulclstar = sqrt(
                     max(
                         0.0,
-                        2.0
-                        * (exp(-(mu**2)) / 2.5066) ** 2
-                        * (1.0 / erfc(mu) ** 2 - 0.25 / rmaxfrac**2),
+                        2.0 * (exp(-(mu**2)) / 2.5066) ** 2 * (1.0 / erfc(mu) ** 2 - 0.25 / rmaxfrac**2),
                     )
                 )
 
@@ -2726,12 +2700,8 @@ def define_env_properties(
 
             else:
                 if K >= kinv - 1 and K <= max(krel - 1, kinv - 1):
-                    uplus_3D = uplus_3D[0, 0, -1] + PGFc * ssu0 * (
-                        pifc0[0, 0, 1] - pifc0
-                    )
-                    vplus_3D = vplus_3D[0, 0, -1] + PGFc * ssv0 * (
-                        pifc0[0, 0, 1] - pifc0
-                    )
+                    uplus_3D = uplus_3D[0, 0, -1] + PGFc * ssu0 * (pifc0[0, 0, 1] - pifc0)
+                    vplus_3D = vplus_3D[0, 0, -1] + PGFc * ssv0 * (pifc0[0, 0, 1] - pifc0)
 
                 uplus = uplus_3D.at(K=max(krel - 1, kinv - 1))
                 vplus = vplus_3D.at(K=max(krel - 1, kinv - 1))
@@ -2765,9 +2735,9 @@ def define_env_properties(
             if dotransport == 1:
                 n = 0
                 while n < ncnst:
-                    tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
-                        K=krel, ddim=[n]
-                    ) * (pe - pmid0.at(K=krel))
+                    tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(K=krel, ddim=[n]) * (
+                        pe - pmid0.at(K=krel)
+                    )
                     n += 1
 
 
@@ -2958,9 +2928,9 @@ def buoyancy_sorting(
             if dotransport == 1:
                 n = 0
                 while n < ncnst:
-                    tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
-                        K=krel, ddim=[n]
-                    ) * (pe - pmid0.at(K=krel))
+                    tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(K=krel, ddim=[n]) * (
+                        pe - pmid0.at(K=krel)
+                    )
                     n += 1
 
             # Cumulus rises upward from 'prel' ( or base interface of  'krel' layer )
@@ -2981,9 +2951,7 @@ def buoyancy_sorting(
             # satisfactory converent solution. Finally, identify 'kbup' and 'kpen'.
 
             if iteration != int32(0):
-                stop_buoyancy_sort = (
-                    False  # Indicates that buoyancy sorting processes are done
-                )
+                stop_buoyancy_sort = False  # Indicates that buoyancy sorting processes are done
                 # (e.g., Fortran go to 45)
 
     with computation(FORWARD), interval(1, -2):
@@ -3037,9 +3005,7 @@ def buoyancy_sorting(
                     qs, _ = QSat_Float(ese, esx, qsat_arg, qsat_pe / 100.0)
                     excess0 = qte - qs
 
-                    thj, qvj, qlj, qij, qse, id_check = conden(
-                        pe, thlue, qtue, ese, esx
-                    )
+                    thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, ese, esx)
 
                     if id_check == 1:
                         condensation = True
@@ -3081,28 +3047,15 @@ def buoyancy_sorting(
                             thlue = (
                                 thlue
                                 + (
-                                    (
-                                        constants.MAPL_LATENT_HEAT_VAPORIZATION
-                                        / constants.MAPL_CP
-                                        / exne
-                                    )
+                                    (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP / exne)
                                     * exql
                                 )
-                                + (
-                                    (
-                                        constants.MAPL_LATENT_HEAT_SUBLIMATION
-                                        / constants.MAPL_CP
-                                        / exne
-                                    )
-                                    * exqi
-                                )
+                                + ((constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP / exne) * exqi)
                             )
                             # if iteration == int32(0) and iter_xc == 1:
                             #     testvar3D = exql
 
-                        thj, qvj, qlj, qij, qse, id_check = conden(
-                            pe, thlue, qtue, ese, esx
-                        )
+                        thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, ese, esx)
 
                         if id_check == 1:
                             condensation = True
@@ -3129,9 +3082,7 @@ def buoyancy_sorting(
 
                         if not condensation:
                             thvj = thj * (1.0 + zvir * qvj - qlj - qij)
-                            tj = (
-                                thj * exne
-                            )  # This 'tj' is used for computing thermo. coeffs. below
+                            tj = thj * exne  # This 'tj' is used for computing thermo. coeffs. below
                             qsat_arg = thlue * exne
                             qs, _ = QSat_Float(ese, esx, qsat_arg, qsat_pe / 100.0)
                             excessu = qtue - qs
@@ -3166,9 +3117,7 @@ def buoyancy_sorting(
                             # saturated.
                             xsat = 0.0
 
-                            if (excessu <= 0.0 and excess0 <= 0.0) or (
-                                excessu >= 0.0 and excess0 >= 0.0
-                            ):
+                            if (excessu <= 0.0 and excess0 <= 0.0) or (excessu >= 0.0 and excess0 >= 0.0):
                                 xc = min(
                                     1.0,
                                     max(
@@ -3202,9 +3151,7 @@ def buoyancy_sorting(
                                 # if iteration == int32(0) and iter_xc == 1:
                                 #     testvar3D = excess0
 
-                                thj, qvj, qlj, qij, qse, id_check = conden(
-                                    pe, thlxsat, qtxsat, ese, esx
-                                )
+                                thj, qvj, qlj, qij, qse, id_check = conden(pe, thlxsat, qtxsat, ese, esx)
 
                                 if id_check == 1:
                                     condensation = True
@@ -3239,9 +3186,7 @@ def buoyancy_sorting(
                                             xsat = 1.0 + 1e-6
                                         if kk == 1:
                                             thv_x0 = thvj
-                                            thv_x1 = (1.0 - 1.0 / xsat) * thvj + (
-                                                1.0 / xsat
-                                            ) * thvxsat
+                                            thv_x1 = (1.0 - 1.0 / xsat) * thvj + (1.0 / xsat) * thvxsat
                                         else:
                                             thv_x1 = thv0j
                                             thv_x0 = ((xsat / (xsat - 1.0)) * thv0j) + (
@@ -3269,9 +3214,7 @@ def buoyancy_sorting(
                                         )
                                         if kk == 1:
                                             if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
-                                                xs1, xs2, status = roots(
-                                                    aquad, bquad, cquad
-                                                )
+                                                xs1, xs2, status = roots(aquad, bquad, cquad)
                                                 x_cu = min(
                                                     1.0,
                                                     max(
@@ -3284,9 +3227,7 @@ def buoyancy_sorting(
 
                                         else:
                                             if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
-                                                xs1, xs2, status = roots(
-                                                    aquad, bquad, cquad
-                                                )
+                                                xs1, xs2, status = roots(aquad, bquad, cquad)
                                                 x_en = min(
                                                     1.0,
                                                     max(
@@ -3341,24 +3282,13 @@ def buoyancy_sorting(
                                     )
 
                                 else:
-                                    rei = (
-                                        (0.5 * rkm)
-                                        / zmid0
-                                        / constants.MAPL_GRAV
-                                        / rhomid0j
-                                    )
+                                    rei = (0.5 * rkm) / zmid0 / constants.MAPL_GRAV / rhomid0j
 
                                 if xc > 0.5:
                                     rei = min(
                                         rei,
                                         0.9
-                                        * log(
-                                            dp0
-                                            / constants.MAPL_GRAV
-                                            / dt
-                                            / umf_zint[0, 0, -1]
-                                            + 1.0
-                                        )
+                                        * log(dp0 / constants.MAPL_GRAV / dt / umf_zint[0, 0, -1] + 1.0)
                                         / dpe
                                         / (2.0 * xc - 1.0),
                                     )
@@ -3396,28 +3326,19 @@ def buoyancy_sorting(
                                 if fer * dpe < 1.0e-4:
                                     thlu = (
                                         thlu[0, 0, -1]
-                                        + (thle + ssthl0 * dpe / 2.0 - thlu[0, 0, -1])
-                                        * fer
-                                        * dpe
+                                        + (thle + ssthl0 * dpe / 2.0 - thlu[0, 0, -1]) * fer * dpe
                                     )
                                     qtu = (
-                                        qtu[0, 0, -1]
-                                        + (qte + ssqt0 * dpe / 2.0 - qtu[0, 0, -1])
-                                        * fer
-                                        * dpe
+                                        qtu[0, 0, -1] + (qte + ssqt0 * dpe / 2.0 - qtu[0, 0, -1]) * fer * dpe
                                     )
                                     uu = (
                                         uu[0, 0, -1]
-                                        + (ue + ssu0 * dpe / 2.0 - uu[0, 0, -1])
-                                        * fer
-                                        * dpe
+                                        + (ue + ssu0 * dpe / 2.0 - uu[0, 0, -1]) * fer * dpe
                                         - PGFc * ssu0 * dpe
                                     )
                                     vu = (
                                         vu[0, 0, -1]
-                                        + (ve + ssv0 * dpe / 2.0 - vu[0, 0, -1])
-                                        * fer
-                                        * dpe
+                                        + (ve + ssv0 * dpe / 2.0 - vu[0, 0, -1]) * fer * dpe
                                         - PGFc * ssv0 * dpe
                                     )
 
@@ -3428,9 +3349,7 @@ def buoyancy_sorting(
                                                 tru[0, 0, -1][n]
                                                 + (
                                                     tre[0, 0][n]
-                                                    + sstr0.at(K=K, ddim=[n])
-                                                    * dpe
-                                                    / 2.0
+                                                    + sstr0.[0, 0, -1][n] * dpe / 2.0
                                                     - tru[0, 0, -1][n]
                                                 )
                                                 * fer
@@ -3439,48 +3358,20 @@ def buoyancy_sorting(
                                             n += 1
 
                                 else:
-                                    thlu = (
-                                        thle + ssthl0 / fer - ssthl0 * dpe / 2.0
-                                    ) - (
-                                        thle
-                                        + ssthl0 * dpe / 2.0
-                                        - thlu[0, 0, -1]
-                                        + ssthl0 / fer
-                                    ) * exp(
-                                        -fer * dpe
-                                    )
+                                    thlu = (thle + ssthl0 / fer - ssthl0 * dpe / 2.0) - (
+                                        thle + ssthl0 * dpe / 2.0 - thlu[0, 0, -1] + ssthl0 / fer
+                                    ) * exp(-fer * dpe)
 
                                     qtu = (qte + ssqt0 / fer - ssqt0 * dpe / 2.0) - (
-                                        qte
-                                        + ssqt0 * dpe / 2.0
-                                        - qtu[0, 0, -1]
-                                        + ssqt0 / fer
+                                        qte + ssqt0 * dpe / 2.0 - qtu[0, 0, -1] + ssqt0 / fer
                                     ) * exp(-fer * dpe)
-                                    uu = (
-                                        ue
-                                        + (1.0 - PGFc) * ssu0 / fer
-                                        - ssu0 * dpe / 2.0
-                                    ) - (
-                                        ue
-                                        + ssu0 * dpe / 2.0
-                                        - uu[0, 0, -1]
-                                        + (1.0 - PGFc) * ssu0 / fer
-                                    ) * exp(
-                                        -fer * dpe
-                                    )
+                                    uu = (ue + (1.0 - PGFc) * ssu0 / fer - ssu0 * dpe / 2.0) - (
+                                        ue + ssu0 * dpe / 2.0 - uu[0, 0, -1] + (1.0 - PGFc) * ssu0 / fer
+                                    ) * exp(-fer * dpe)
 
-                                    vu = (
-                                        ve
-                                        + (1.0 - PGFc) * ssv0 / fer
-                                        - ssv0 * dpe / 2.0
-                                    ) - (
-                                        ve
-                                        + ssv0 * dpe / 2.0
-                                        - vu[0, 0, -1]
-                                        + (1.0 - PGFc) * ssv0 / fer
-                                    ) * exp(
-                                        -fer * dpe
-                                    )
+                                    vu = (ve + (1.0 - PGFc) * ssv0 / fer - ssv0 * dpe / 2.0) - (
+                                        ve + ssv0 * dpe / 2.0 - vu[0, 0, -1] + (1.0 - PGFc) * ssv0 / fer
+                                    ) * exp(-fer * dpe)
 
                                     if dotransport == 1:
                                         n = 0
@@ -3671,17 +3562,11 @@ def buoyancy_sorting(
                                         if drage * dpe > 1.0e-3:
                                             wtw = wtw * expfac + (
                                                 delbog
-                                                + (1.0 - expfac)
-                                                * (
-                                                    bogbot
-                                                    + delbog / (-2.0 * drage * dpe)
-                                                )
+                                                + (1.0 - expfac) * (bogbot + delbog / (-2.0 * drage * dpe))
                                             ) / (rhomid0j * drage)
 
                                         else:
-                                            wtw = (
-                                                wtw + dpe * (bogbot + bogtop) / rhomid0j
-                                            )
+                                            wtw = wtw + dpe * (bogbot + bogtop) / rhomid0j
 
                                         # Force the plume rise at least to klfc of the
                                         # undiluted plume. Because even the below is
@@ -3699,9 +3584,7 @@ def buoyancy_sorting(
                                             #     testvar3D = qtue
 
                                         else:
-                                            iter_xc = (
-                                                niter_xc + 1
-                                            )  # Break out of iter_xc loop
+                                            iter_xc = niter_xc + 1  # Break out of iter_xc loop
 
                 iter_xc += 1  # end iter_xc loop
 
@@ -3727,16 +3610,11 @@ def buoyancy_sorting(
             if not condensation:
                 if use_self_detrain == 1:
                     autodet = min(
-                        0.5
-                        * constants.MAPL_GRAV
-                        * (bogbot + bogtop)
-                        / (max(wtw, 0.0) + 1.0e-4),
+                        0.5 * constants.MAPL_GRAV * (bogbot + bogtop) / (max(wtw, 0.0) + 1.0e-4),
                         0.0,
                     )
 
-                    umf_zint = umf_zint * exp(
-                        0.637 * (dpe / rhomid0j / constants.MAPL_GRAV) * autodet
-                    )
+                    umf_zint = umf_zint * exp(0.637 * (dpe / rhomid0j / constants.MAPL_GRAV) * autodet)
 
                 if umf_zint == 0.0:
                     wtw = -1.0
@@ -3756,9 +3634,7 @@ def buoyancy_sorting(
 
                 if wtw <= 0.0:
                     kpen_IJ = K
-                    stop_buoyancy_sort = (
-                        True  # Done calculating updraft properties, break out of loop
-                    )
+                    stop_buoyancy_sort = True  # Done calculating updraft properties, break out of loop
 
                 if not stop_buoyancy_sort:
                     wu = sqrt(wtw)
@@ -3807,10 +3683,7 @@ def buoyancy_sorting(
                         # iteration loop.
 
                         rhoifc0j = pifc0[0, 0, 1] / (
-                            constants.MAPL_RDRY
-                            * 0.5
-                            * (thv0bot[0, 0, 1] + thv0top)
-                            * exnifc0[0, 0, 1]
+                            constants.MAPL_RDRY * 0.5 * (thv0bot[0, 0, 1] + thv0top) * exnifc0[0, 0, 1]
                         )
 
                         ufrc[0, 0, 1] = umf_zint / (rhoifc0j * wu)
@@ -3934,9 +3807,7 @@ def calc_ppen(
                     ppen = -1 * dp0.at(K=kpen)
 
             else:
-                ppen = compute_ppen(
-                    wtwb, drage, bogbot, bogtop, rhomid0j, dp0.at(K=kpen)
-                )
+                ppen = compute_ppen(wtwb, drage, bogbot, bogtop, rhomid0j, dp0.at(K=kpen))
 
 
 def recalc_condensate(
@@ -4045,20 +3916,14 @@ def recalc_condensate(
         if not condensation:
             if fer.at(K=kpen) * (-ppen) < 1.0e-4:
                 thlu_top = thlu.at(K=kpen - 1) + (
-                    thl0.at(K=kpen)
-                    + ssthl0.at(K=kpen) * (-ppen) / 2.0
-                    - thlu.at(K=kpen - 1)
+                    thl0.at(K=kpen) + ssthl0.at(K=kpen) * (-ppen) / 2.0 - thlu.at(K=kpen - 1)
                 ) * fer.at(K=kpen) * (-ppen)
                 qtu_top = qtu.at(K=kpen - 1) + (
-                    qt0.at(K=kpen)
-                    + ssqt0.at(K=kpen) * (-ppen) / 2.0
-                    - qtu.at(K=kpen - 1)
+                    qt0.at(K=kpen) + ssqt0.at(K=kpen) * (-ppen) / 2.0 - qtu.at(K=kpen - 1)
                 ) * fer.at(K=kpen) * (-ppen)
             else:
                 thlu_top = (
-                    thl0.at(K=kpen)
-                    + ssthl0.at(K=kpen) / fer.at(K=kpen)
-                    - ssthl0.at(K=kpen) * (-ppen) / 2.0
+                    thl0.at(K=kpen) + ssthl0.at(K=kpen) / fer.at(K=kpen) - ssthl0.at(K=kpen) * (-ppen) / 2.0
                 ) - (
                     thl0.at(K=kpen)
                     + ssthl0.at(K=kpen) * (-ppen) / 2.0
@@ -4068,9 +3933,7 @@ def recalc_condensate(
                     -fer.at(K=kpen) * (-ppen)
                 )
                 qtu_top = (
-                    qt0.at(K=kpen)
-                    + ssqt0.at(K=kpen) / fer.at(K=kpen)
-                    - ssqt0.at(K=kpen) * (-ppen) / 2.0
+                    qt0.at(K=kpen) + ssqt0.at(K=kpen) / fer.at(K=kpen) - ssqt0.at(K=kpen) * (-ppen) / 2.0
                 ) - (
                     qt0.at(K=kpen)
                     + ssqt0.at(K=kpen) * (-ppen) / 2.0
@@ -4080,9 +3943,7 @@ def recalc_condensate(
                     -fer.at(K=kpen) * (-ppen)
                 )
 
-            thj, qvj, qlj, qij, qse, id_check = conden(
-                pifc0.at(K=kpen) + ppen, thlu_top, qtu_top, ese, esx
-            )
+            thj, qvj, qlj, qij, qse, id_check = conden(pifc0.at(K=kpen) + ppen, thlu_top, qtu_top, ese, esx)
 
             if id_check == 1:
                 condensation = True
@@ -4120,19 +3981,11 @@ def recalc_condensate(
                     thlu_top = (
                         thlu_top
                         + (
-                            (
-                                constants.MAPL_LATENT_HEAT_VAPORIZATION
-                                / constants.MAPL_CP
-                                / exntop
-                            )
+                            (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP / exntop)
                             * dwten.at(K=kpen)
                         )
                         + (
-                            (
-                                constants.MAPL_LATENT_HEAT_SUBLIMATION
-                                / constants.MAPL_CP
-                                / exntop
-                            )
+                            (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP / exntop)
                             * diten.at(K=kpen)
                         )
                     )
@@ -4369,10 +4222,7 @@ def calc_entrainment_mass_flux(
         if not condensation:
             if K <= kpen - 1 and K >= kbup:  # Here, 'k' is an interface index at which
                 rhoifc0j = pifc0[0, 0, 1] / (
-                    constants.MAPL_RDRY
-                    * 0.5
-                    * (thv0bot[0, 0, 1] + thv0top)
-                    * exnifc0[0, 0, 1]
+                    constants.MAPL_RDRY * 0.5 * (thv0bot[0, 0, 1] + thv0top) * exnifc0[0, 0, 1]
                 )
 
                 if K == (kpen - 1):
@@ -4406,25 +4256,17 @@ def calc_entrainment_mass_flux(
                         ),
                         -0.9 * dp0.at(K=kpen) / constants.MAPL_GRAV / dt,
                     )
-                    thlu_emf = thl0.at(K=kpen) + ssthl0.at(K=kpen) * (
-                        pifc0[0, 0, 1] - pmid0.at(K=kpen)
-                    )
-                    qtu_emf = qt0.at(K=kpen) + ssqt0.at(K=kpen) * (
-                        pifc0[0, 0, 1] - pmid0.at(K=kpen)
-                    )
-                    uu_emf = u0.at(K=kpen) + ssu0.at(K=kpen) * (
-                        pifc0[0, 0, 1] - pmid0.at(K=kpen)
-                    )
-                    vu_emf = v0.at(K=kpen) + ssv0.at(K=kpen) * (
-                        pifc0[0, 0, 1] - pmid0.at(K=kpen)
-                    )
+                    thlu_emf = thl0.at(K=kpen) + ssthl0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
+                    qtu_emf = qt0.at(K=kpen) + ssqt0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
+                    uu_emf = u0.at(K=kpen) + ssu0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
+                    vu_emf = v0.at(K=kpen) + ssv0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
 
                     if dotransport == 1:
                         n = 0
                         while n < ncnst:
-                            tru_emf[0, 0, 0][n] = tr0.at(K=kpen, ddim=[n]) + sstr0.at(
-                                K=kpen, ddim=[n]
-                            ) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
+                            tru_emf[0, 0, 0][n] = tr0.at(K=kpen, ddim=[n]) + sstr0.at(K=kpen, ddim=[n]) * (
+                                pifc0[0, 0, 1] - pmid0.at(K=kpen)
+                            )
                             n += 1
 
                 else:
@@ -4434,33 +4276,26 @@ def calc_entrainment_mass_flux(
                     # I imposed a modified correct limit of '-0.9*dp0(k+1)/g/dt' on
                     # emf(k).
 
-                    if (
-                        use_cumpenent == 1
-                    ):  # Original Cumulative Penetrative Entrainment
+                    if use_cumpenent == 1:  # Original Cumulative Penetrative Entrainment
                         emf = max(
                             max(
-                                emf[0, 0, 1]
-                                - umf_zint * dp0[0, 0, 1] * rei[0, 0, 1] * rpen,
+                                emf[0, 0, 1] - umf_zint * dp0[0, 0, 1] * rei[0, 0, 1] * rpen,
                                 -0.1 * rhoifc0j,
                             ),
                             -0.9 * dp0[0, 0, 1] / constants.MAPL_GRAV / dt,
                         )
                         if abs(emf) > abs(emf[0, 0, 1]):
                             thlu_emf = (
-                                thlu_emf[0, 0, 1] * emf[0, 0, 1]
-                                + thl0[0, 0, 1] * (emf - emf[0, 0, 1])
+                                thlu_emf[0, 0, 1] * emf[0, 0, 1] + thl0[0, 0, 1] * (emf - emf[0, 0, 1])
                             ) / emf
                             qtu_emf = (
-                                qtu_emf[0, 0, 1] * emf[0, 0, 1]
-                                + qt0[0, 0, 1] * (emf - emf[0, 0, 1])
+                                qtu_emf[0, 0, 1] * emf[0, 0, 1] + qt0[0, 0, 1] * (emf - emf[0, 0, 1])
                             ) / emf
                             uu_emf = (
-                                uu_emf[0, 0, 1] * emf[0, 0, 1]
-                                + u0[0, 0, 1] * (emf - emf[0, 0, 1])
+                                uu_emf[0, 0, 1] * emf[0, 0, 1] + u0[0, 0, 1] * (emf - emf[0, 0, 1])
                             ) / emf
                             vu_emf = (
-                                vu_emf[0, 0, 1] * emf[0, 0, 1]
-                                + v0[0, 0, 1] * (emf - emf[0, 0, 1])
+                                vu_emf[0, 0, 1] * emf[0, 0, 1] + v0[0, 0, 1] * (emf - emf[0, 0, 1])
                             ) / emf
 
                             if dotransport == 1:
@@ -4583,12 +4418,8 @@ def calc_pbl_fluxes(
             kinv = kinv - 1  # Adjust kinv by 1
             xsrc = qtsrc
             xmean = qt0.at(K=kinv)
-            xtop = qt0.at(K=kinv + 1) + ssqt0.at(K=kinv + 1) * (
-                pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1)
-            )
-            xbot = qt0.at(K=kinv - 1) + ssqt0.at(K=kinv - 1) * (
-                pifc0.at(K=kinv) - pmid0.at(K=kinv - 1)
-            )
+            xtop = qt0.at(K=kinv + 1) + ssqt0.at(K=kinv + 1) * (pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1))
+            xbot = qt0.at(K=kinv - 1) + ssqt0.at(K=kinv - 1) * (pifc0.at(K=kinv) - pmid0.at(K=kinv - 1))
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -4603,9 +4434,7 @@ def calc_pbl_fluxes(
             # Compute reconstructed inversion height
             xtop_ori = xtop
             xbot_ori = xbot
-            rcbmf = (
-                cbmf * constants.MAPL_GRAV * dt
-            ) / dp  # Can be larger than 1 : 'OK'
+            rcbmf = (cbmf * constants.MAPL_GRAV * dt) / dp  # Can be larger than 1 : 'OK'
 
             if xbot >= xtop:
                 rpeff = (xmean - xtop) / max(1.0e-20, xbot - xtop)
@@ -4627,10 +4456,7 @@ def calc_pbl_fluxes(
             # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
             if K < k_below + 1:
                 xflx[0, 0, 1] = (
-                    cbmf
-                    * (xsrc - xbot)
-                    * (pifc0.at(K=0) - pifc0[0, 0, 1])
-                    / (pifc0.at(K=0) - pinv)
+                    cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                 )
 
             if K == k_below + 1:
@@ -4644,12 +4470,8 @@ def calc_pbl_fluxes(
 
             xsrc = thlsrc
             xmean = thl0.at(K=kinv)
-            xtop = thl0.at(K=kinv + 1) + ssthl0.at(K=kinv + 1) * (
-                pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1)
-            )
-            xbot = thl0.at(K=kinv - 1) + ssthl0.at(K=kinv - 1) * (
-                pifc0.at(K=kinv) - pmid0.at(K=kinv - 1)
-            )
+            xtop = thl0.at(K=kinv + 1) + ssthl0.at(K=kinv + 1) * (pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1))
+            xbot = thl0.at(K=kinv - 1) + ssthl0.at(K=kinv - 1) * (pifc0.at(K=kinv) - pmid0.at(K=kinv - 1))
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -4665,9 +4487,7 @@ def calc_pbl_fluxes(
             # Compute reconstructed inversion height
             xtop_ori = xtop
             xbot_ori = xbot
-            rcbmf = (
-                cbmf * constants.MAPL_GRAV * dt
-            ) / dp  # Can be larger than 1 : 'OK'
+            rcbmf = (cbmf * constants.MAPL_GRAV * dt) / dp  # Can be larger than 1 : 'OK'
 
             if xbot >= xtop:
                 rpeff = (xmean - xtop) / max(1.0e-20, xbot - xtop)
@@ -4689,10 +4509,7 @@ def calc_pbl_fluxes(
             # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
             if K < k_below + 1:
                 xflx[0, 0, 1] = (
-                    cbmf
-                    * (xsrc - xbot)
-                    * (pifc0.at(K=0) - pifc0[0, 0, 1])
-                    / (pifc0.at(K=0) - pinv)
+                    cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                 )
 
             if K == k_below + 1:
@@ -4706,12 +4523,8 @@ def calc_pbl_fluxes(
 
             xsrc = usrc
             xmean = u0.at(K=kinv)
-            xtop = u0.at(K=kinv + 1) + ssu0.at(K=kinv + 1) * (
-                pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1)
-            )
-            xbot = u0.at(K=kinv - 1) + ssu0.at(K=kinv - 1) * (
-                pifc0.at(K=kinv) - pmid0.at(K=kinv - 1)
-            )
+            xtop = u0.at(K=kinv + 1) + ssu0.at(K=kinv + 1) * (pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1))
+            xbot = u0.at(K=kinv - 1) + ssu0.at(K=kinv - 1) * (pifc0.at(K=kinv) - pmid0.at(K=kinv - 1))
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -4727,9 +4540,7 @@ def calc_pbl_fluxes(
             # Compute reconstructed inversion height
             xtop_ori = xtop
             xbot_ori = xbot
-            rcbmf = (
-                cbmf * constants.MAPL_GRAV * dt
-            ) / dp  # Can be larger than 1 : 'OK'
+            rcbmf = (cbmf * constants.MAPL_GRAV * dt) / dp  # Can be larger than 1 : 'OK'
 
             if xbot >= xtop:
                 rpeff = (xmean - xtop) / max(1.0e-20, xbot - xtop)
@@ -4751,10 +4562,7 @@ def calc_pbl_fluxes(
             # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
             if K < k_below + 1:
                 xflx[0, 0, 1] = (
-                    cbmf
-                    * (xsrc - xbot)
-                    * (pifc0.at(K=0) - pifc0[0, 0, 1])
-                    / (pifc0.at(K=0) - pinv)
+                    cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                 )
 
             if K == k_below + 1:
@@ -4767,12 +4575,8 @@ def calc_pbl_fluxes(
 
             xsrc = vsrc
             xmean = v0.at(K=kinv)
-            xtop = v0.at(K=kinv + 1) + ssv0.at(K=kinv + 1) * (
-                pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1)
-            )
-            xbot = v0.at(K=kinv - 1) + ssv0.at(K=kinv - 1) * (
-                pifc0.at(K=kinv) - pmid0.at(K=kinv - 1)
-            )
+            xtop = v0.at(K=kinv + 1) + ssv0.at(K=kinv + 1) * (pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1))
+            xbot = v0.at(K=kinv - 1) + ssv0.at(K=kinv - 1) * (pifc0.at(K=kinv) - pmid0.at(K=kinv - 1))
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -4788,9 +4592,7 @@ def calc_pbl_fluxes(
             # Compute reconstructed inversion height
             xtop_ori = xtop
             xbot_ori = xbot
-            rcbmf = (
-                cbmf * constants.MAPL_GRAV * dt
-            ) / dp  # Can be larger than 1 : 'OK'
+            rcbmf = (cbmf * constants.MAPL_GRAV * dt) / dp  # Can be larger than 1 : 'OK'
 
             if xbot >= xtop:
                 rpeff = (xmean - xtop) / max(1.0e-20, xbot - xtop)
@@ -4812,10 +4614,7 @@ def calc_pbl_fluxes(
             # Below two cases exactly converges at 'kinv-1' interface when rr = 1.
             if K < k_below + 1:
                 xflx[0, 0, 1] = (
-                    cbmf
-                    * (xsrc - xbot)
-                    * (pifc0.at(K=0) - pifc0[0, 0, 1])
-                    / (pifc0.at(K=0) - pinv)
+                    cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                 )
 
             if K == k_below + 1:
@@ -4843,12 +4642,12 @@ def calc_pbl_fluxes(
                 while n < ncnst:
                     xsrc = trsrc[0, 0][n]
                     xmean = tr0.at(K=kinv, ddim=[n])
-                    xtop = tr0.at(K=kinv + 1, ddim=[n]) + sstr0.at(
-                        K=kinv + 1, ddim=[n]
-                    ) * (pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1))
-                    xbot = tr0.at(K=kinv - 1, ddim=[n]) + sstr0.at(
-                        K=kinv - 1, ddim=[n]
-                    ) * (pifc0.at(K=kinv) - pmid0.at(K=kinv - 1))
+                    xtop = tr0.at(K=kinv + 1, ddim=[n]) + sstr0.at(K=kinv + 1, ddim=[n]) * (
+                        pifc0.at(K=kinv + 1) - pmid0.at(K=kinv + 1)
+                    )
+                    xbot = tr0.at(K=kinv - 1, ddim=[n]) + sstr0.at(K=kinv - 1, ddim=[n]) * (
+                        pifc0.at(K=kinv) - pmid0.at(K=kinv - 1)
+                    )
 
                     k_below = kinv - 1
                     dp = pifc0.at(K=k_below + 1) - pifc0.at(K=kinv + 1)
@@ -4856,9 +4655,7 @@ def calc_pbl_fluxes(
                     # Compute reconstructed inversion height
                     xtop_ori = xtop
                     xbot_ori = xbot
-                    rcbmf = (
-                        cbmf * constants.MAPL_GRAV * dt
-                    ) / dp  # Can be larger than 1 : 'OK'
+                    rcbmf = (cbmf * constants.MAPL_GRAV * dt) / dp  # Can be larger than 1 : 'OK'
 
                     if xbot >= xtop:
                         rpeff = (xmean - xtop) / max(1.0e-20, xbot - xtop)
@@ -4871,9 +4668,7 @@ def calc_pbl_fluxes(
                         xtop = xmean
 
                     rr = rpeff / rcbmf
-                    pinv = (
-                        pifc0.at(K=k_below + 1) - rpeff * dp
-                    )  # "pinv" before detraining mass
+                    pinv = pifc0.at(K=k_below + 1) - rpeff * dp  # "pinv" before detraining mass
                     pinv_eff = (
                         pifc0.at(K=k_below + 1) + (rcbmf - rpeff) * dp
                     )  # Effective "pinv" after detraining mass
@@ -4883,17 +4678,14 @@ def calc_pbl_fluxes(
                     # rr = 1.
                     if K < k_below + 1:
                         xflx_ndim[0, 0, 1][n] = (
-                            cbmf
-                            * (xsrc - xbot)
-                            * (pifc0.at(K=0) - pifc0[0, 0, 1])
-                            / (pifc0.at(K=0) - pinv)
+                            cbmf * (xsrc - xbot) * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pinv)
                         )
 
                     if K == k_below + 1:
                         if rr <= 1:
-                            xflx_ndim[0, 0, 0][n] = xflx_ndim[0, 0, 0][n] - (
-                                1.0 - rr
-                            ) * cbmf * (xtop_ori - xbot_ori)
+                            xflx_ndim[0, 0, 0][n] = xflx_ndim[0, 0, 0][n] - (1.0 - rr) * cbmf * (
+                                xtop_ori - xbot_ori
+                            )
 
                     if K <= kinv:
                         trflx[0, 0, 0][n] = xflx_ndim[0, 0, 0][n]
@@ -4987,21 +4779,11 @@ def non_buoyancy_sorting_fluxes(
         if not condensation:
             if K >= kinv and K <= (krel - 1):
                 qtflx[0, 0, 1] = cbmf * (
-                    qtsrc
-                    - (
-                        qt0[0, 0, 1]
-                        + ssqt0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])
-                    )
+                    qtsrc - (qt0[0, 0, 1] + ssqt0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
                 slflx[0, 0, 1] = (
                     cbmf
-                    * (
-                        thlsrc
-                        - (
-                            thl0[0, 0, 1]
-                            + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])
-                        )
-                    )
+                    * (thlsrc - (thl0[0, 0, 1] + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])))
                     * constants.MAPL_CP
                     * exnifc0[0, 0, 1]
                 )
@@ -5009,24 +4791,17 @@ def non_buoyancy_sorting_fluxes(
                 uplus = uplus + PGFc * ssu0 * (pifc0[0, 0, 1] - pifc0)
                 vplus = vplus + PGFc * ssv0 * (pifc0[0, 0, 1] - pifc0)
                 uflx[0, 0, 1] = cbmf * (
-                    usrc
-                    + uplus
-                    - (u0[0, 0, 1] + ssu0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
+                    usrc + uplus - (u0[0, 0, 1] + ssu0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
                 vflx[0, 0, 1] = cbmf * (
-                    vsrc
-                    + vplus
-                    - (v0[0, 0, 1] + ssv0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
+                    vsrc + vplus - (v0[0, 0, 1] + ssv0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
                 if dotransport == 1:
                     n = 0
                     while n < ncnst:
                         trflx[0, 0, 1][n] = cbmf * (
                             trsrc[0, 0][n]
-                            - (
-                                tr0[0, 0, 1][n]
-                                + sstr0[0, 0, 1][n] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])
-                            )
+                            - (tr0[0, 0, 1][n] + sstr0[0, 0, 1][n] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                         )
                         n += 1
 
@@ -5111,28 +4886,16 @@ def buoyancy_sorting_fluxes(
                     constants.MAPL_CP
                     * exnifc0[0, 0, 1]
                     * umf_zint
-                    * (
-                        thlu
-                        - (
-                            thl0[0, 0, 1]
-                            + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])
-                        )
-                    )
+                    * (thlu - (thl0[0, 0, 1] + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])))
                 )
                 qtflx[0, 0, 1] = umf_zint * (
-                    qtu
-                    - (
-                        qt0[0, 0, 1]
-                        + ssqt0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])
-                    )
+                    qtu - (qt0[0, 0, 1] + ssqt0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
                 uflx[0, 0, 1] = umf_zint * (
-                    uu
-                    - (u0[0, 0, 1] + ssu0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
+                    uu - (u0[0, 0, 1] + ssu0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
                 vflx[0, 0, 1] = umf_zint * (
-                    vu
-                    - (v0[0, 0, 1] + ssv0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
+                    vu - (v0[0, 0, 1] + ssv0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
 
                 if dotransport == 1:
@@ -5140,10 +4903,7 @@ def buoyancy_sorting_fluxes(
                     while n < ncnst:
                         trflx[0, 0, 1][n] = umf_zint * (
                             tru[0, 0, 0][n]
-                            - (
-                                tr0[0, 0, 1][n]
-                                + sstr0[0, 0, 1][n] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])
-                            )
+                            - (tr0[0, 0, 1][n] + sstr0[0, 0, 1][n] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                         )
                         n += 1
 
@@ -5293,9 +5053,7 @@ def penetrative_entrainment_fluxes(
                     * (thlu_emf - (thl0 + ssthl0 * (pifc0[0, 0, 1] - pmid0)))
                 )
 
-                qtflx[0, 0, 1] = emf * (
-                    qtu_emf - (qt0 + ssqt0 * (pifc0[0, 0, 1] - pmid0))
-                )
+                qtflx[0, 0, 1] = emf * (qtu_emf - (qt0 + ssqt0 * (pifc0[0, 0, 1] - pmid0)))
                 uflx[0, 0, 1] = emf * (uu_emf - (u0 + ssu0 * (pifc0[0, 0, 1] - pmid0)))
                 vflx[0, 0, 1] = emf * (vu_emf - (v0 + ssv0 * (pifc0[0, 0, 1] - pmid0)))
                 if dotransport == 1:
@@ -5303,10 +5061,7 @@ def penetrative_entrainment_fluxes(
                     while n < ncnst:
                         trflx[0, 0, 1][n] = emf * (
                             tru_emf[0, 0, 0][n]
-                            - (
-                                tr0[0, 0, 0][n]
-                                + sstr0[0, 0, 0][n] * (pifc0[0, 0, 1] - pmid0)
-                            )
+                            - (tr0[0, 0, 0][n] + sstr0[0, 0, 0][n] * (pifc0[0, 0, 1] - pmid0))
                         )
                         n += 1
 
@@ -5320,23 +5075,15 @@ def penetrative_entrainment_fluxes(
             # Condensate tendency by compensating subsidence/upwelling
             uemf[0, 0, 1] = 0.0
 
-            if K >= 0 and K <= (
-                kinv - 2
-            ):  # Assume linear updraft mass flux within the PBL.
-                uemf[0, 0, 1] = (
-                    cbmf
-                    * (pifc0.at(K=0) - pifc0[0, 0, 1])
-                    / (pifc0.at(K=0) - pifc0.at(K=kinv))
-                )
+            if K >= 0 and K <= (kinv - 2):  # Assume linear updraft mass flux within the PBL.
+                uemf[0, 0, 1] = cbmf * (pifc0.at(K=0) - pifc0[0, 0, 1]) / (pifc0.at(K=0) - pifc0.at(K=kinv))
 
             if K >= (kinv - 1) and K <= (krel - 1):
                 uemf[0, 0, 1] = cbmf
             if K >= krel and K <= (kbup - 1):
                 uemf[0, 0, 1] = umf_zint
             if K >= kbup and K <= (kpen - 1):
-                uemf[0, 0, 1] = (
-                    emf  # Only use penetrative entrainment flux consistently.
-                )
+                uemf[0, 0, 1] = emf  # Only use penetrative entrainment flux consistently.
 
             comsub = 0.0
 
@@ -5359,57 +5106,27 @@ def penetrative_entrainment_fluxes(
             if K <= kpen:
                 if comsub >= 0.0:
                     thlten_sub = (
-                        constants.MAPL_GRAV
-                        * comsub
-                        * (thl0[0, 0, 1] - thl0)
-                        / (pmid0 - pmid0[0, 0, 1])
+                        constants.MAPL_GRAV * comsub * (thl0[0, 0, 1] - thl0) / (pmid0 - pmid0[0, 0, 1])
                     )
-                    qtten_sub = (
-                        constants.MAPL_GRAV
-                        * comsub
-                        * (qt0[0, 0, 1] - qt0)
-                        / (pmid0 - pmid0[0, 0, 1])
-                    )
-                    qlten_sub = (
-                        constants.MAPL_GRAV
-                        * comsub
-                        * (ql0[0, 0, 1] - ql0)
-                        / (pmid0 - pmid0[0, 0, 1])
-                    )
-                    qiten_sub = (
-                        constants.MAPL_GRAV
-                        * comsub
-                        * (qi0[0, 0, 1] - qi0)
-                        / (pmid0 - pmid0[0, 0, 1])
-                    )
+                    qtten_sub = constants.MAPL_GRAV * comsub * (qt0[0, 0, 1] - qt0) / (pmid0 - pmid0[0, 0, 1])
+                    qlten_sub = constants.MAPL_GRAV * comsub * (ql0[0, 0, 1] - ql0) / (pmid0 - pmid0[0, 0, 1])
+                    qiten_sub = constants.MAPL_GRAV * comsub * (qi0[0, 0, 1] - qi0) / (pmid0 - pmid0[0, 0, 1])
 
     with computation(FORWARD), interval(1, None):
         if not condensation:
             if K <= kpen:
                 if comsub < 0.0:
                     thlten_sub = (
-                        constants.MAPL_GRAV
-                        * comsub
-                        * (thl0 - thl0[0, 0, -1])
-                        / (pmid0[0, 0, -1] - pmid0)
+                        constants.MAPL_GRAV * comsub * (thl0 - thl0[0, 0, -1]) / (pmid0[0, 0, -1] - pmid0)
                     )
                     qtten_sub = (
-                        constants.MAPL_GRAV
-                        * comsub
-                        * (qt0 - qt0[0, 0, -1])
-                        / (pmid0[0, 0, -1] - pmid0)
+                        constants.MAPL_GRAV * comsub * (qt0 - qt0[0, 0, -1]) / (pmid0[0, 0, -1] - pmid0)
                     )
                     qlten_sub = (
-                        constants.MAPL_GRAV
-                        * comsub
-                        * (ql0 - ql0[0, 0, -1])
-                        / (pmid0[0, 0, -1] - pmid0)
+                        constants.MAPL_GRAV * comsub * (ql0 - ql0[0, 0, -1]) / (pmid0[0, 0, -1] - pmid0)
                     )
                     qiten_sub = (
-                        constants.MAPL_GRAV
-                        * comsub
-                        * (qi0 - qi0[0, 0, -1])
-                        / (pmid0[0, 0, -1] - pmid0)
+                        constants.MAPL_GRAV * comsub * (qi0 - qi0[0, 0, -1]) / (pmid0[0, 0, -1] - pmid0)
                     )
 
     with computation(FORWARD), interval(...):
@@ -5429,9 +5146,7 @@ def penetrative_entrainment_fluxes(
             if K <= kpen:
                 thl_prog = thl0 + thlten_sub * dt
                 qt_prog = max(qt0 + qtten_sub * dt, 1.0e-12)
-                thj, qvj, qlj, qij, qse, id_check = conden(
-                    pmid0, thl_prog, qt_prog, ese, esx
-                )
+                thj, qvj, qlj, qij, qse, id_check = conden(pmid0, thl_prog, qt_prog, ese, esx)
 
                 if id_check == 1:
                     condensation = True
@@ -5693,19 +5408,11 @@ def calc_thermodynamic_tendencies(
                 # umf(kpen)=0.
 
                 dwten = (
-                    dwten_temp
-                    * 0.5
-                    * (umf_zint + umf_zint[0, 0, 1])
-                    * constants.MAPL_GRAV
-                    / dp0
+                    dwten_temp * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * constants.MAPL_GRAV / dp0
                 )  # [ kg/kg/s ]
 
                 diten = (
-                    diten_temp
-                    * 0.5
-                    * (umf_zint + umf_zint[0, 0, 1])
-                    * constants.MAPL_GRAV
-                    / dp0
+                    diten_temp * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * constants.MAPL_GRAV / dp0
                 )  # [ kg/kg/s ]
 
                 # 'qrten(k)','qsten(k)' : Production rate of rain and snow within the
@@ -5797,9 +5504,7 @@ def calc_thermodynamic_tendencies(
                     if not condensation:
                         qlubelow = qlj_2D
                         qiubelow = qij_2D
-                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
-                            pifc0[0, 0, 1], thlu, qtu, ese, esx
-                        )
+                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0[0, 0, 1], thlu, qtu, ese, esx)
 
                         if id_check == 1:
                             condensation = True
@@ -5826,16 +5531,10 @@ def calc_thermodynamic_tendencies(
 
                         if not condensation:
                             qlu_mid = (
-                                0.5
-                                * (qlubelow + qlj_2D)
-                                * (prel - pifc0[0, 0, 1])
-                                / (pifc0 - pifc0[0, 0, 1])
+                                0.5 * (qlubelow + qlj_2D) * (prel - pifc0[0, 0, 1]) / (pifc0 - pifc0[0, 0, 1])
                             )
                             qiu_mid = (
-                                0.5
-                                * (qiubelow + qij_2D)
-                                * (prel - pifc0[0, 0, 1])
-                                / (pifc0 - pifc0[0, 0, 1])
+                                0.5 * (qiubelow + qij_2D) * (prel - pifc0[0, 0, 1]) / (pifc0 - pifc0[0, 0, 1])
                             )
 
                 elif K == kpen:
@@ -5867,27 +5566,15 @@ def calc_thermodynamic_tendencies(
                             fer_out = constants.MAPL_UNDEF
                             fdr_out = constants.MAPL_UNDEF
                         if not condensation:
-                            qlu_mid = (
-                                0.5
-                                * (qlubelow + qlj_2D)
-                                * (-ppen)
-                                / (pifc0 - pifc0[0, 0, 1])
-                            )
+                            qlu_mid = 0.5 * (qlubelow + qlj_2D) * (-ppen) / (pifc0 - pifc0[0, 0, 1])
 
-                            qiu_mid = (
-                                0.5
-                                * (qiubelow + qij_2D)
-                                * (-ppen)
-                                / (pifc0 - pifc0[0, 0, 1])
-                            )
+                            qiu_mid = 0.5 * (qiubelow + qij_2D) * (-ppen) / (pifc0 - pifc0[0, 0, 1])
                             qlu_top = qlj_2D
                             qiu_top = qij_2D
 
                 else:
                     if not condensation:
-                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
-                            pifc0[0, 0, 1], thlu, qtu, ese, esx
-                        )
+                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0[0, 0, 1], thlu, qtu, ese, esx)
 
                         if id_check == 1:
                             condensation = True
@@ -5926,35 +5613,13 @@ def calc_thermodynamic_tendencies(
                     # 2. Detrained Condensate
                     if K <= kbup:
                         qc_l = (
-                            qc_l
-                            + constants.MAPL_GRAV
-                            * 0.5
-                            * (umf_zint + umf_zint[0, 0, 1])
-                            * fdr
-                            * qlu_mid
+                            qc_l + constants.MAPL_GRAV * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * fdr * qlu_mid
                         )  # [ kg/kg/s ]
                         qc_i = (
-                            qc_i
-                            + constants.MAPL_GRAV
-                            * 0.5
-                            * (umf_zint + umf_zint[0, 0, 1])
-                            * fdr
-                            * qiu_mid
+                            qc_i + constants.MAPL_GRAV * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * fdr * qiu_mid
                         )  # [ kg/kg/s ]
-                        qc_lm = (
-                            -constants.MAPL_GRAV
-                            * 0.5
-                            * (umf_zint + umf_zint[0, 0, 1])
-                            * fdr
-                            * ql0
-                        )
-                        qc_im = (
-                            -constants.MAPL_GRAV
-                            * 0.5
-                            * (umf_zint + umf_zint[0, 0, 1])
-                            * fdr
-                            * qi0
-                        )
+                        qc_lm = -constants.MAPL_GRAV * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * fdr * ql0
+                        qc_im = -constants.MAPL_GRAV * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * fdr * qi0
 
                     else:
                         qc_lm = 0.0
@@ -5964,24 +5629,16 @@ def calc_thermodynamic_tendencies(
 
                     # 3. Detached Updraft
                     if K == kbup:
-                        qc_l = qc_l + constants.MAPL_GRAV * umf_zint[
-                            0, 0, 1
-                        ] * qlj_2D / (
+                        qc_l = qc_l + constants.MAPL_GRAV * umf_zint[0, 0, 1] * qlj_2D / (
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
-                        qc_i = qc_i + constants.MAPL_GRAV * umf_zint[
-                            0, 0, 1
-                        ] * qij_2D / (
+                        qc_i = qc_i + constants.MAPL_GRAV * umf_zint[0, 0, 1] * qij_2D / (
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
-                        qc_lm = qc_lm - constants.MAPL_GRAV * umf_zint[
-                            0, 0, 1
-                        ] * ql0 / (
+                        qc_lm = qc_lm - constants.MAPL_GRAV * umf_zint[0, 0, 1] * ql0 / (
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
-                        qc_im = qc_im - constants.MAPL_GRAV * umf_zint[
-                            0, 0, 1
-                        ] * qi0 / (
+                        qc_im = qc_im - constants.MAPL_GRAV * umf_zint[0, 0, 1] * qi0 / (
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
 
@@ -6028,14 +5685,10 @@ def calc_thermodynamic_tendencies(
                         if qi_emf_kbup < 0.0:
                             ni_emf_kbup = 0.0
 
-                        qc_lm = qc_lm - constants.MAPL_GRAV * emf * (
-                            ql_emf_kbup - ql0
-                        ) / (
+                        qc_lm = qc_lm - constants.MAPL_GRAV * emf * (ql_emf_kbup - ql0) / (
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
-                        qc_im = qc_im - constants.MAPL_GRAV * emf * (
-                            qi_emf_kbup - qi0
-                        ) / (
+                        qc_im = qc_im - constants.MAPL_GRAV * emf * (qi_emf_kbup - qi0) / (
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
 
@@ -6062,11 +5715,7 @@ def calc_thermodynamic_tendencies(
 
                     qvten = qtten - qlten - qiten
 
-                    sten = (
-                        slten
-                        + constants.MAPL_ALHL * qlten
-                        + constants.MAPL_ALHS * qiten
-                    )
+                    sten = slten + constants.MAPL_ALHL * qlten + constants.MAPL_ALHS * qiten
 
                     qc = qc_l + qc_i
 
@@ -6074,19 +5723,9 @@ def calc_thermodynamic_tendencies(
                     qiten = qiten - qsten
                     qtten = qlten + qiten + qvten
 
-                    slten = (
-                        sten - constants.MAPL_ALHL * qlten - constants.MAPL_ALHS * qiten
-                    )
-                    slten = (
-                        slten
-                        + constants.MAPL_ALHL * qrten
-                        + constants.MAPL_ALHS * qsten
-                    )
-                    sten = (
-                        slten
-                        + constants.MAPL_ALHL * qlten
-                        + constants.MAPL_ALHS * qiten
-                    )
+                    slten = sten - constants.MAPL_ALHL * qlten - constants.MAPL_ALHS * qiten
+                    slten = slten + constants.MAPL_ALHL * qrten + constants.MAPL_ALHS * qsten
+                    sten = slten + constants.MAPL_ALHL * qlten + constants.MAPL_ALHS * qiten
 
 
 def prevent_negative_condensate(
@@ -6145,12 +5784,8 @@ def prevent_negative_condensate(
         if not condensation:
             ixcldice = 1
             ixcldliq = 2
-            dql: float64 = max(
-                float64(0.0), float64(1.0) * qmin.at(K=ixcldliq) - ql0_star
-            )
-            dqi: float64 = max(
-                float64(0.0), float64(1.0) * qmin.at(K=ixcldice) - qi0_star
-            )
+            dql: float64 = max(float64(0.0), float64(1.0) * qmin.at(K=ixcldliq) - ql0_star)
+            dqi: float64 = max(float64(0.0), float64(1.0) * qmin.at(K=ixcldice) - qi0_star)
             qlten = qlten + dql / dt
             qiten = qiten + dqi / dt
             qvten = qvten - (dql + dqi) / dt
@@ -6272,10 +5907,7 @@ def calc_tracer_tendencies(
                 while n < ncnst:
                     pdelx = dp0
                     dum = (
-                        (tr0[0, 0, 0][n] - trmin[0, 0][n])
-                        * pdelx
-                        / constants.MAPL_GRAV
-                        / dt
+                        (tr0[0, 0, 0][n] - trmin[0, 0][n]) * pdelx / constants.MAPL_GRAV / dt
                         + trflx[0, 0, 0][n]
                         - trflx[0, 0, 1][n]
                         + trflx_d[0, 0, -1][n]
@@ -6290,10 +5922,7 @@ def calc_tracer_tendencies(
                 while n < ncnst:
                     pdelx = dp0
                     dum = (
-                        (tr0[0, 0, 0][n] - trmin[0, 0][n])
-                        * pdelx
-                        / constants.MAPL_GRAV
-                        / dt
+                        (tr0[0, 0, 0][n] - trmin[0, 0][n]) * pdelx / constants.MAPL_GRAV / dt
                         + trflx[0, 0, 0][n]
                         - trflx[0, 0, 1][n]
                         + trflx_d[0, 0, -1][n]
@@ -6499,13 +6128,9 @@ def calc_cumulus_condensate_at_interface(
                     # which explicitly considered zero or non-zero 'fer(kpen)'.
 
                     if K == kpen:
-                        thj, qvj, qlj, qij, qse, id_check = conden(
-                            pifc0 + ppen, thlu_top, qtu_top, ese, esx
-                        )
+                        thj, qvj, qlj, qij, qse, id_check = conden(pifc0 + ppen, thlu_top, qtu_top, ese, esx)
                     else:
-                        thj, qvj, qlj, qij, qse, id_check = conden(
-                            pifc0[0, 0, 1], thlu, qtu, ese, esx
-                        )
+                        thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thlu, qtu, ese, esx)
 
                     if id_check == 1:
                         condensation = True
@@ -6547,9 +6172,7 @@ def calc_cumulus_condensate_at_interface(
 
                         if K == krel:
                             cufrc = (
-                                (ufrclcl + ufrc[0, 0, 1])
-                                * (prel - pifc0[0, 0, 1])
-                                / (pifc0 - pifc0[0, 0, 1])
+                                (ufrclcl + ufrc[0, 0, 1]) * (prel - pifc0[0, 0, 1]) / (pifc0 - pifc0[0, 0, 1])
                             )
                         elif K == kpen:
                             cufrc = (ufrc + 0.0) * (-ppen) / (pifc0 - pifc0[0, 0, 1])
@@ -6558,29 +6181,11 @@ def calc_cumulus_condensate_at_interface(
                                 qlu = 0.5 * (qlubelow + criqc * qlj / (qlj + qij))
                                 qiu = 0.5 * (qiubelow + criqc * qij / (qlj + qij))
 
-                        rcwp = (
-                            rcwp
-                            + (qlu + qiu)
-                            * (pifc0 - pifc0[0, 0, 1])
-                            / constants.MAPL_GRAV
-                            * cufrc
-                        )
+                        rcwp = rcwp + (qlu + qiu) * (pifc0 - pifc0[0, 0, 1]) / constants.MAPL_GRAV * cufrc
 
-                        rlwp = (
-                            rlwp
-                            + qlu
-                            * (pifc0 - pifc0[0, 0, 1])
-                            / constants.MAPL_GRAV
-                            * cufrc
-                        )
+                        rlwp = rlwp + qlu * (pifc0 - pifc0[0, 0, 1]) / constants.MAPL_GRAV * cufrc
 
-                        riwp = (
-                            riwp
-                            + qiu
-                            * (pifc0 - pifc0[0, 0, 1])
-                            / constants.MAPL_GRAV
-                            * cufrc
-                        )
+                        riwp = riwp + qiu * (pifc0 - pifc0[0, 0, 1]) / constants.MAPL_GRAV * cufrc
 
                         qcubelow = qlj + qij
                         qlubelow = qlj
@@ -7009,9 +6614,7 @@ def recalc_environmental_variables(
 
                 thl0top = thl0 + ssthl0 * (pifc0[0, 0, 1] - pmid0)
                 qt0top = qt0 + ssqt0 * (pifc0[0, 0, 1] - pmid0)
-                thj, qvj, qlj, qij, qse, id_check = conden(
-                    pifc0[0, 0, 1], thl0top, qt0top, ese, esx
-                )
+                thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thl0top, qt0top, ese, esx)
 
                 if id_check == 1:
                     condensation = True
@@ -7292,9 +6895,7 @@ def update_output_variables(
             if dotransport == 1:
                 n = 0
                 while n < ncnst:
-                    tr0_inoutvar[0, 0, 0][n] = (
-                        tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
-                    )
+                    tr0_inoutvar[0, 0, 0][n] = tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
                     n += 1
 
             # # Below are specific diagnostic output for detailed
@@ -7515,8 +7116,7 @@ class ComputeUwshcuInv:
 
         if self.UW_config.windsrcavg != 0:
             raise NotImplementedError(
-                f"Coding limitation: windsrcavg is {self.UW_config.windsrcavg}"
-                f"expected 0"
+                f"Coding limitation: windsrcavg is {self.UW_config.windsrcavg}" f"expected 0"
             )
 
         self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
@@ -7537,220 +7137,186 @@ class ComputeUwshcuInv:
             externals={"ncnst": UW_config.NCNST},
         )
 
-        # self._find_pbl_height = self.stencil_factory.from_dims_halo(
-        #     func=find_pbl_height,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._find_pbl_height = self.stencil_factory.from_dims_halo(
+            func=find_pbl_height,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._find_pbl_averages = self.stencil_factory.from_dims_halo(
-        #     func=find_pbl_averages,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._find_pbl_averages = self.stencil_factory.from_dims_halo(
+            func=find_pbl_averages,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._find_cumulus_characteristics = self.stencil_factory.from_dims_halo(
-        #     func=find_cumulus_characteristics,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._find_cumulus_characteristics = self.stencil_factory.from_dims_halo(
+            func=find_cumulus_characteristics,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._find_klcl = self.stencil_factory.from_dims_halo(
-        #     func=find_klcl,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._find_klcl = self.stencil_factory.from_dims_halo(
+            func=find_klcl,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._compute_cin_cinlcl = self.stencil_factory.from_dims_halo(
-        #     func=compute_cin_cinlcl,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._compute_cin_cinlcl = self.stencil_factory.from_dims_halo(
+            func=compute_cin_cinlcl,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._avg_initial_and_final_cin = self.stencil_factory.from_dims_halo(
-        #     func=avg_initial_and_final_cin,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._avg_initial_and_final_cin = self.stencil_factory.from_dims_halo(
+            func=avg_initial_and_final_cin,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._define_prel_krel = self.stencil_factory.from_dims_halo(
-        #     func=define_prel_krel,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._define_prel_krel = self.stencil_factory.from_dims_halo(
+            func=define_prel_krel,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._calc_cumulus_base_mass_flux = self.stencil_factory.from_dims_halo(
-        #     func=calc_cumulus_base_mass_flux,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._calc_cumulus_base_mass_flux = self.stencil_factory.from_dims_halo(
+            func=calc_cumulus_base_mass_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._define_updraft_properties = self.stencil_factory.from_dims_halo(
-        #     func=define_updraft_properties,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._define_updraft_properties = self.stencil_factory.from_dims_halo(
+            func=define_updraft_properties,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._define_env_properties = self.stencil_factory.from_dims_halo(
-        #     func=define_env_properties,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._define_env_properties = self.stencil_factory.from_dims_halo(
+            func=define_env_properties,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._buoyancy_sorting = self.stencil_factory.from_dims_halo(
-        #     func=buoyancy_sorting,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._buoyancy_sorting = self.stencil_factory.from_dims_halo(
+            func=buoyancy_sorting,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._calc_ppen = self.stencil_factory.from_dims_halo(
-        #     func=calc_ppen,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._calc_ppen = self.stencil_factory.from_dims_halo(
+            func=calc_ppen,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._recalc_condensate = self.stencil_factory.from_dims_halo(
-        #     func=recalc_condensate,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._recalc_condensate = self.stencil_factory.from_dims_halo(
+            func=recalc_condensate,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._calc_entrainment_mass_flux = self.stencil_factory.from_dims_halo(
-        #     func=calc_entrainment_mass_flux,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._calc_entrainment_mass_flux = self.stencil_factory.from_dims_halo(
+            func=calc_entrainment_mass_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._calc_pbl_fluxes = self.stencil_factory.from_dims_halo(
-        #     func=calc_pbl_fluxes,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._calc_pbl_fluxes = self.stencil_factory.from_dims_halo(
+            func=calc_pbl_fluxes,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._non_buoyancy_sorting_fluxes = self.stencil_factory.from_dims_halo(
-        #     func=non_buoyancy_sorting_fluxes,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._non_buoyancy_sorting_fluxes = self.stencil_factory.from_dims_halo(
+            func=non_buoyancy_sorting_fluxes,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._buoyancy_sorting_fluxes = self.stencil_factory.from_dims_halo(
-        #     func=buoyancy_sorting_fluxes,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._buoyancy_sorting_fluxes = self.stencil_factory.from_dims_halo(
+            func=buoyancy_sorting_fluxes,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._penetrative_entrainment_fluxes = self.stencil_factory.from_dims_halo(
-        #     func=penetrative_entrainment_fluxes,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._penetrative_entrainment_fluxes = self.stencil_factory.from_dims_halo(
+            func=penetrative_entrainment_fluxes,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._calc_momentum_tendency = self.stencil_factory.from_dims_halo(
-        #     func=calc_momentum_tendency,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._calc_momentum_tendency = self.stencil_factory.from_dims_halo(
+            func=calc_momentum_tendency,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._calc_thermodynamic_tendencies = self.stencil_factory.from_dims_halo(
-        #     func=calc_thermodynamic_tendencies,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._calc_thermodynamic_tendencies = self.stencil_factory.from_dims_halo(
+            func=calc_thermodynamic_tendencies,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._prevent_negative_condensate = self.stencil_factory.from_dims_halo(
-        #     func=prevent_negative_condensate,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._prevent_negative_condensate = self.stencil_factory.from_dims_halo(
+            func=prevent_negative_condensate,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._calc_tracer_tendencies = self.stencil_factory.from_dims_halo(
-        #     func=calc_tracer_tendencies,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._calc_tracer_tendencies = self.stencil_factory.from_dims_halo(
+            func=calc_tracer_tendencies,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._compute_diagnostic_outputs = self.stencil_factory.from_dims_halo(
-        #     func=compute_diagnostic_outputs,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        # )
+        self._compute_diagnostic_outputs = self.stencil_factory.from_dims_halo(
+            func=compute_diagnostic_outputs,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._calc_cumulus_condensate_at_interfaces = (
-        #     self.stencil_factory.from_dims_halo(
-        #         func=calc_cumulus_condensate_at_interface,
-        #         compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     )
-        # )
+        self._calc_cumulus_condensate_at_interfaces = self.stencil_factory.from_dims_halo(
+            func=calc_cumulus_condensate_at_interface,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        # self._adjust_implicit_CIN_inputs = self.stencil_factory.from_dims_halo(
-        #     func=adjust_implicit_CIN_inputs,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._adjust_implicit_CIN_inputs = self.stencil_factory.from_dims_halo(
+            func=adjust_implicit_CIN_inputs,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._recalc_environmental_variables = self.stencil_factory.from_dims_halo(
-        #     func=recalc_environmental_variables,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._recalc_environmental_variables = self.stencil_factory.from_dims_halo(
+            func=recalc_environmental_variables,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._update_output_variables = self.stencil_factory.from_dims_halo(
-        #     func=update_output_variables,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._update_output_variables = self.stencil_factory.from_dims_halo(
+            func=update_output_variables,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
-        # self._compute_uwshcu_invert_after = self.stencil_factory.from_dims_halo(
-        #     func=compute_uwshcu_invert_after,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={"ncnst": UW_config.NCNST},
-        # )
+        self._compute_uwshcu_invert_after = self.stencil_factory.from_dims_halo(
+            func=compute_uwshcu_invert_after,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
 
         # Create masks
         # Mask that indicates if condensation has occurred (e.g., Fortran goto 333)
-        self.condensation = self.quantity_factory.zeros(
-            [X_DIM, Y_DIM], "n/a", dtype=bool
-        )
+        self.condensation = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
         self.stop_cin = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
-        self.stop_buoyancy_sort = self.quantity_factory.zeros(
-            [X_DIM, Y_DIM], "n/a", dtype=bool
-        )
+        self.stop_buoyancy_sort = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
 
         self.ntracers_quantity_factory = self.make_ntracers_quantity_factory(
             self.quantity_factory,
         )
 
         # Create tracer fields
-        self.trsrc = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, "ntracers"], "n/a"
-        )
-        self.trsrc_o = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, "ntracers"], "n/a"
-        )
-        self.tre = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, "ntracers"], "n/a"
-        )
-        self.trmin = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, "ntracers"], "n/a"
-        )
-        self.sstr0 = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
-        )
-        self.tr0 = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
-        )
-        self.tr0_o = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
-        )
-        self.sstr0_o = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
-        )
-        self.trten = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
-        )
-        self.tr0_s = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
-        )
-        self.tr0_inoutvar = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
-        )
-        self.tr0_inout = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a"
-        )
-        self.trflx = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
-        )
-        self.tru = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
-        )
+        self.trsrc = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
+        self.trsrc_o = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
+        self.tre = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
+        self.trmin = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
+        self.sstr0 = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0 = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0_o = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.sstr0_o = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.trten = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0_s = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0_inoutvar = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0_inout = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.trflx = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
+        self.tru = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
         self.tru_emf = self.ntracers_quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
         )
@@ -8154,1238 +7720,1238 @@ class ComputeUwshcuInv:
             testvar3D=testvar3D,
         )
 
-        # # This 'iteration' loop is for implicit CIN closure
+        # This 'iteration' loop is for implicit CIN closure
 
-        # # It is important to note that this iterative cin loop is located at the outer
-        # # shell of the code. Thus, source air properties can also be changed during the
-        # # iterative cin calculation, because cumulus convection induces non-zero fluxes
-        # # even at interfaces below PBL top height through 'fluxbelowinv' calculation.
+        # It is important to note that this iterative cin loop is located at the outer
+        # shell of the code. Thus, source air properties can also be changed during the
+        # iterative cin calculation, because cumulus convection induces non-zero fluxes
+        # even at interfaces below PBL top height through 'fluxbelowinv' calculation.
 
-        # for iteration in range(iter_cin):
-        #     iteration = int32(iteration)
+        for iteration in range(iter_cin):
+            iteration = int32(iteration)
 
-        #     self._find_pbl_height(
-        #         iteration=iteration,
-        #         kpbl_in=self.temporaries.kpbl_in,
-        #         k0=k0,
-        #         condensation=self.condensation,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx,
-        #         vflx_out=self.temporaries.vflx,
-        #         kinv=self.temporaries.kinv,
-        #         cush=cush,
-        #         tscaleh=self.temporaries.tscaleh,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         testvar3D=testvar3D,
-        #     )
+            self._find_pbl_height(
+                iteration=iteration,
+                kpbl_in=self.temporaries.kpbl_in,
+                k0=k0,
+                condensation=self.condensation,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx,
+                vflx_out=self.temporaries.vflx,
+                kinv=self.temporaries.kinv,
+                cush=cush,
+                tscaleh=self.temporaries.tscaleh,
+                cush_inout=self.temporaries.cush_inout,
+                testvar3D=testvar3D,
+            )
 
-        #     self._find_pbl_averages(
-        #         condensation=self.condensation,
-        #         thvl0bot=self.temporaries.thvl0bot,
-        #         thvl0top=self.temporaries.thvl0top,
-        #         kinv=self.temporaries.kinv,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         tke_in=self.temporaries.tke_in,
-        #         u0=self.temporaries.u0_in,
-        #         v0=self.temporaries.v0_in,
-        #         thvl0=self.temporaries.thvl0,
-        #         zmid0=self.temporaries.zmid0_in,
-        #         qtsrchgt=qtsrchgt,
-        #         qt0=self.temporaries.qt0,
-        #         thvlmin=self.temporaries.thvlmin,
-        #         tkeavg=self.temporaries.tkeavg,
-        #         uavg=self.temporaries.uavg,
-        #         vavg=self.temporaries.vavg,
-        #         thvlavg=self.temporaries.thvlavg,
-        #         qtavg=self.temporaries.qtavg,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._find_pbl_averages(
+                condensation=self.condensation,
+                thvl0bot=self.temporaries.thvl0bot,
+                thvl0top=self.temporaries.thvl0top,
+                kinv=self.temporaries.kinv,
+                pifc0=self.temporaries.pifc0_in,
+                tke_in=self.temporaries.tke_in,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                thvl0=self.temporaries.thvl0,
+                zmid0=self.temporaries.zmid0_in,
+                qtsrchgt=qtsrchgt,
+                qt0=self.temporaries.qt0,
+                thvlmin=self.temporaries.thvlmin,
+                tkeavg=self.temporaries.tkeavg,
+                uavg=self.temporaries.uavg,
+                vavg=self.temporaries.vavg,
+                thvlavg=self.temporaries.thvlavg,
+                qtavg=self.temporaries.qtavg,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._find_cumulus_characteristics(
-        #         condensation=self.condensation,
-        #         windsrcavg=windsrcavg,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         t0=self.temporaries.t0,
-        #         qv0=self.temporaries.qv0,
-        #         shfx=shfx,
-        #         evap=evap,
-        #         thlsrc_fac=thlsrc_fac,
-        #         qtsrc_fac=qtsrc_fac,
-        #         qt0=self.temporaries.qt0,
-        #         qtavg=self.temporaries.qtavg,
-        #         thvlmin=self.temporaries.thvlmin,
-        #         uavg=self.temporaries.uavg,
-        #         vavg=self.temporaries.vavg,
-        #         kinv=self.temporaries.kinv,
-        #         u0=self.temporaries.u0_in,
-        #         v0=self.temporaries.v0_in,
-        #         ssu0=self.temporaries.ssu0,
-        #         ssv0=self.temporaries.ssv0,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         dotransport=dotransport,
-        #         tr0=self.tr0,
-        #         trsrc=self.trsrc,
-        #         qtsrc=self.temporaries.qtsrc,
-        #         thvlsrc=self.temporaries.thvlsrc,
-        #         thlsrc=self.temporaries.thlsrc,
-        #         usrc=self.temporaries.usrc,
-        #         vsrc=self.temporaries.vsrc,
-        #         tpert_out=tpert_out,
-        #         qpert_out=qpert_out,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._find_cumulus_characteristics(
+                condensation=self.condensation,
+                windsrcavg=windsrcavg,
+                pifc0=self.temporaries.pifc0_in,
+                t0=self.temporaries.t0,
+                qv0=self.temporaries.qv0,
+                shfx=shfx,
+                evap=evap,
+                thlsrc_fac=thlsrc_fac,
+                qtsrc_fac=qtsrc_fac,
+                qt0=self.temporaries.qt0,
+                qtavg=self.temporaries.qtavg,
+                thvlmin=self.temporaries.thvlmin,
+                uavg=self.temporaries.uavg,
+                vavg=self.temporaries.vavg,
+                kinv=self.temporaries.kinv,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                pmid0=self.temporaries.pmid0_in,
+                dotransport=dotransport,
+                tr0=self.tr0,
+                trsrc=self.trsrc,
+                qtsrc=self.temporaries.qtsrc,
+                thvlsrc=self.temporaries.thvlsrc,
+                thlsrc=self.temporaries.thlsrc,
+                usrc=self.temporaries.usrc,
+                vsrc=self.temporaries.vsrc,
+                tpert_out=tpert_out,
+                qpert_out=qpert_out,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._find_klcl(
-        #         condensation=self.condensation,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         qtsrc=self.temporaries.qtsrc,
-        #         thlsrc=self.temporaries.thlsrc,
-        #         ese=self.qsat.ese,
-        #         esx=self.qsat.esx,
-        #         k0=k0,
-        #         thl0=self.temporaries.thl0,
-        #         ssthl0=self.temporaries.ssthl0,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         qt0=self.temporaries.qt0,
-        #         ssqt0=self.temporaries.ssqt0,
-        #         plcl=self.temporaries.plcl,
-        #         klcl=self.temporaries.klcl,
-        #         thl0lcl=self.temporaries.thl0lcl,
-        #         qt0lcl=self.temporaries.qt0lcl,
-        #         thv0lcl=self.temporaries.thv0lcl,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._find_klcl(
+                condensation=self.condensation,
+                pifc0=self.temporaries.pifc0_in,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                qtsrc=self.temporaries.qtsrc,
+                thlsrc=self.temporaries.thlsrc,
+                ese=self.qsat.ese,
+                esx=self.qsat.esx,
+                k0=k0,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pmid0=self.temporaries.pmid0_in,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                plcl=self.temporaries.plcl,
+                klcl=self.temporaries.klcl,
+                thl0lcl=self.temporaries.thl0lcl,
+                qt0lcl=self.temporaries.qt0lcl,
+                thv0lcl=self.temporaries.thv0lcl,
+                cush_inout=self.temporaries.cush_inout,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._compute_cin_cinlcl(
-        #         condensation=self.condensation,
-        #         stop_cin=self.stop_cin,
-        #         klcl=self.temporaries.klcl,
-        #         kinv=self.temporaries.kinv,
-        #         thvlsrc=self.temporaries.thvlsrc,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         thv0bot=self.temporaries.thv0bot,
-        #         thv0top=self.temporaries.thv0top,
-        #         plcl=self.temporaries.plcl,
-        #         thv0lcl=self.temporaries.thv0lcl,
-        #         thlsrc=self.temporaries.thlsrc,
-        #         qtsrc=self.temporaries.qtsrc,
-        #         ese=self.qsat.ese,
-        #         esx=self.qsat.esx,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         cin_IJ=self.temporaries.cin_IJ,
-        #         cinlcl_IJ=self.temporaries.cinlcl_IJ,
-        #         plfc_IJ=self.temporaries.plfc_IJ,
-        #         klfc_IJ=self.temporaries.klfc_IJ,
-        #         plfc=self.temporaries.plfc,
-        #         klfc=self.temporaries.klfc,
-        #         cin=self.temporaries.cin,
-        #         thvubot=self.temporaries.thvubot,
-        #         thvutop=self.temporaries.thvutop,
-        #         k0=k0,
-        #         iteration=iteration,
-        #         rbuoy=rbuoy,
-        #         rkfre=rkfre,
-        #         tkeavg=self.temporaries.tkeavg,
-        #         epsvarw=epsvarw,
-        #         thvlmin=self.temporaries.thvlmin,
-        #         usrc=self.temporaries.usrc,
-        #         vsrc=self.temporaries.vsrc,
-        #         dotransport=dotransport,
-        #         trsrc=self.trsrc,
-        #         trsrc_o=self.trsrc_o,
-        #         cin_i=self.temporaries.cin_i,
-        #         cinlcl_i=self.temporaries.cinlcl_i,
-        #         ke=self.temporaries.ke,
-        #         kinv_o=self.temporaries.kinv_o,
-        #         klcl_o=self.temporaries.klcl_o,
-        #         klfc_o=self.temporaries.klfc_o,
-        #         plcl_o=self.temporaries.plcl_o,
-        #         plfc_o=self.temporaries.plfc_o,
-        #         tkeavg_o=self.temporaries.tkeavg_o,
-        #         thvlmin_o=self.temporaries.thvlmin_o,
-        #         qtsrc_o=self.temporaries.qtsrc_o,
-        #         thvlsrc_o=self.temporaries.thvlsrc_o,
-        #         thlsrc_o=self.temporaries.thlsrc_o,
-        #         usrc_o=self.temporaries.usrc_o,
-        #         vsrc_o=self.temporaries.vsrc_o,
-        #         thv0lcl_o=self.temporaries.thv0lcl_o,
-        #         cinlcl=self.temporaries.cinlcl,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         testvar3D=testvar3D,
-        #         testvar2D=testvar2D,
-        #     )
-        #     if iteration != 0:
-        #         self._avg_initial_and_final_cin(
-        #             condensation=self.condensation,
-        #             iteration=iteration,
-        #             cin_IJ=self.temporaries.cin_IJ,
-        #             cinlcl_IJ=self.temporaries.cinlcl_IJ,
-        #             use_CINcin=use_CINcin,
-        #             cin_i=self.temporaries.cin_i,
-        #             cinlcl_i=self.temporaries.cinlcl_i,
-        #             ke=self.temporaries.ke,
-        #             dotransport=dotransport,
-        #             trsrc=self.trsrc,
-        #             trsrc_o=self.trsrc_o,
-        #             tr0=self.tr0,
-        #             tr0_o=self.tr0_o,
-        #             sstr0=self.sstr0,
-        #             sstr0_o=self.sstr0_o,
-        #             kinv_o=self.temporaries.kinv_o,
-        #             klcl_o=self.temporaries.klcl_o,
-        #             klfc_o=self.temporaries.klfc_o,
-        #             plcl_o=self.temporaries.plcl_o,
-        #             plfc_o=self.temporaries.plfc_o,
-        #             tkeavg_o=self.temporaries.tkeavg_o,
-        #             thvlmin_o=self.temporaries.thvlmin_o,
-        #             qtsrc_o=self.temporaries.qtsrc_o,
-        #             thvlsrc_o=self.temporaries.thvlsrc_o,
-        #             thlsrc_o=self.temporaries.thlsrc_o,
-        #             usrc_o=self.temporaries.usrc_o,
-        #             vsrc_o=self.temporaries.vsrc_o,
-        #             thv0lcl_o=self.temporaries.thv0lcl_o,
-        #             qv0_o=self.temporaries.qv0_o,
-        #             ql0_o=self.temporaries.ql0_o,
-        #             qi0_o=self.temporaries.qi0_o,
-        #             t0_o=self.temporaries.t0_o,
-        #             s0_o=self.temporaries.s0_o,
-        #             u0_o=self.temporaries.u0_o,
-        #             v0_o=self.temporaries.v0_o,
-        #             qt0_o=self.temporaries.qt0_o,
-        #             thl0_o=self.temporaries.thl0_o,
-        #             thvl0_o=self.temporaries.thvl0_o,
-        #             ssthl0_o=self.temporaries.ssthl0_o,
-        #             ssqt0_o=self.temporaries.ssqt0_o,
-        #             thv0bot_o=self.temporaries.thv0bot_o,
-        #             thv0top_o=self.temporaries.thv0top_o,
-        #             thvl0bot_o=self.temporaries.thvl0bot_o,
-        #             thvl0top_o=self.temporaries.thvl0top_o,
-        #             ssu0_o=self.temporaries.ssu0_o,
-        #             ssv0_o=self.temporaries.ssv0_o,
-        #             thvlmin_IJ=self.temporaries.thvlmin_IJ,
-        #             umf_zint=self.temporaries.umf_zint,
-        #             emf=self.temporaries.emf,
-        #             slflx=self.temporaries.slflx,
-        #             qtflx=self.temporaries.qtflx,
-        #             uflx=self.temporaries.uflx,
-        #             vflx=self.temporaries.vflx,
-        #             k0=k0,
-        #             ufrc=self.temporaries.ufrc,
-        #             thlu=self.temporaries.thlu,
-        #             qtu=self.temporaries.qtu,
-        #             uu=self.temporaries.uu,
-        #             vu=self.temporaries.vu,
-        #             wu=self.temporaries.wu,
-        #             thvu=self.temporaries.thvu,
-        #             thlu_emf=self.temporaries.thlu_emf,
-        #             qtu_emf=self.temporaries.qtu_emf,
-        #             uu_emf=self.temporaries.uu_emf,
-        #             vu_emf=self.temporaries.vu_emf,
-        #             trflx=self.trflx,
-        #             trten=self.trten,
-        #             tru=self.tru,
-        #             tru_emf=self.tru_emf,
-        #             umf_s=self.temporaries.umf_s,
-        #             zifc0=self.temporaries.zifc0_in,
-        #             dcm_s=self.temporaries.dcm_s,
-        #             qvten_s=self.temporaries.qvten_s,
-        #             qlten_s=self.temporaries.qlten_s,
-        #             qiten_s=self.temporaries.qiten_s,
-        #             sten_s=self.temporaries.sten_s,
-        #             uten_s=self.temporaries.uten_s,
-        #             vten_s=self.temporaries.vten_s,
-        #             qrten_s=self.temporaries.qrten_s,
-        #             qsten_s=self.temporaries.qsten_s,
-        #             qldet_s=self.temporaries.qldet_s,
-        #             qidet_s=self.temporaries.qidet_s,
-        #             qlsub_s=self.temporaries.qlsub_s,
-        #             qisub_s=self.temporaries.qisub_s,
-        #             cush_s=self.temporaries.cush_s,
-        #             cufrc_s=self.temporaries.cufrc_s,
-        #             qtflx_out=self.temporaries.qtflx_out,
-        #             qtflx_s=self.temporaries.qtflx_s,
-        #             slflx_out=self.temporaries.slflx_out,
-        #             slflx_s=self.temporaries.slflx_s,
-        #             uflx_out=self.temporaries.uflx_out,
-        #             uflx_s=self.temporaries.uflx_s,
-        #             vflx_out=self.temporaries.vflx_out,
-        #             vflx_s=self.temporaries.vflx_s,
-        #             fer_s=self.temporaries.fer_s,
-        #             fdr_s=self.temporaries.fdr_s,
-        #             umf_out=self.temporaries.umf_out,
-        #             kinv=self.temporaries.kinv,
-        #             klcl=self.temporaries.klcl,
-        #             plcl=self.temporaries.plcl,
-        #             thv0bot=self.temporaries.thv0bot,
-        #             thv0lcl=self.temporaries.thv0lcl,
-        #             thv0top=self.temporaries.thv0top,
-        #             thlsrc=self.temporaries.thlsrc,
-        #             qtsrc=self.temporaries.qtsrc,
-        #             thl0=self.temporaries.thl0,
-        #             ssthl0=self.temporaries.ssthl0,
-        #             ssqt0=self.temporaries.ssqt0,
-        #             ssu0=self.temporaries.ssu0,
-        #             ssv0=self.temporaries.ssv0,
-        #             qt0=self.temporaries.qt0,
-        #             u0=self.temporaries.u0_in,
-        #             v0=self.temporaries.v0_in,
-        #             qi0=self.temporaries.qi0,
-        #             ql0=self.temporaries.ql0,
-        #             qv0=self.temporaries.qv0,
-        #             s0=self.temporaries.s0,
-        #             qvten_out=self.temporaries.qvten_out,
-        #             dcm_out=self.temporaries.dcm_out,
-        #             qlten_out=self.temporaries.qlten_out,
-        #             qiten_out=self.temporaries.qiten_out,
-        #             del_CIN=self.temporaries.del_CIN,
-        #             dcm=self.temporaries.dcm,
-        #             sten_out=self.temporaries.sten_out,
-        #             uten_out=self.temporaries.uten_out,
-        #             vten_out=self.temporaries.vten_out,
-        #             qrten_out=self.temporaries.qrten_out,
-        #             qsten_out=self.temporaries.qsten_out,
-        #             cufrc_out=self.temporaries.cufrc_out,
-        #             cush_inout=self.temporaries.cush_inout,
-        #             qldet_out=self.temporaries.qldet_out,
-        #             qidet_out=self.temporaries.qidet_out,
-        #             qlsub_out=self.temporaries.qlsub_out,
-        #             qisub_out=self.temporaries.qisub_out,
-        #             fdr_out=self.temporaries.fdr_out,
-        #             fer_out=self.temporaries.fer_out,
-        #             vten=self.temporaries.vten,
-        #             uten=self.temporaries.uten,
-        #             qvten=self.temporaries.qvten,
-        #             fdr=self.temporaries.fdr,
-        #             fer=self.temporaries.fer,
-        #             cufrc=self.temporaries.cufrc,
-        #             testvar3D=testvar3D,
-        #         )
+            self._compute_cin_cinlcl(
+                condensation=self.condensation,
+                stop_cin=self.stop_cin,
+                klcl=self.temporaries.klcl,
+                kinv=self.temporaries.kinv,
+                thvlsrc=self.temporaries.thvlsrc,
+                pifc0=self.temporaries.pifc0_in,
+                thv0bot=self.temporaries.thv0bot,
+                thv0top=self.temporaries.thv0top,
+                plcl=self.temporaries.plcl,
+                thv0lcl=self.temporaries.thv0lcl,
+                thlsrc=self.temporaries.thlsrc,
+                qtsrc=self.temporaries.qtsrc,
+                ese=self.qsat.ese,
+                esx=self.qsat.esx,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                cin_IJ=self.temporaries.cin_IJ,
+                cinlcl_IJ=self.temporaries.cinlcl_IJ,
+                plfc_IJ=self.temporaries.plfc_IJ,
+                klfc_IJ=self.temporaries.klfc_IJ,
+                plfc=self.temporaries.plfc,
+                klfc=self.temporaries.klfc,
+                cin=self.temporaries.cin,
+                thvubot=self.temporaries.thvubot,
+                thvutop=self.temporaries.thvutop,
+                k0=k0,
+                iteration=iteration,
+                rbuoy=rbuoy,
+                rkfre=rkfre,
+                tkeavg=self.temporaries.tkeavg,
+                epsvarw=epsvarw,
+                thvlmin=self.temporaries.thvlmin,
+                usrc=self.temporaries.usrc,
+                vsrc=self.temporaries.vsrc,
+                dotransport=dotransport,
+                trsrc=self.trsrc,
+                trsrc_o=self.trsrc_o,
+                cin_i=self.temporaries.cin_i,
+                cinlcl_i=self.temporaries.cinlcl_i,
+                ke=self.temporaries.ke,
+                kinv_o=self.temporaries.kinv_o,
+                klcl_o=self.temporaries.klcl_o,
+                klfc_o=self.temporaries.klfc_o,
+                plcl_o=self.temporaries.plcl_o,
+                plfc_o=self.temporaries.plfc_o,
+                tkeavg_o=self.temporaries.tkeavg_o,
+                thvlmin_o=self.temporaries.thvlmin_o,
+                qtsrc_o=self.temporaries.qtsrc_o,
+                thvlsrc_o=self.temporaries.thvlsrc_o,
+                thlsrc_o=self.temporaries.thlsrc_o,
+                usrc_o=self.temporaries.usrc_o,
+                vsrc_o=self.temporaries.vsrc_o,
+                thv0lcl_o=self.temporaries.thv0lcl_o,
+                cinlcl=self.temporaries.cinlcl,
+                cush_inout=self.temporaries.cush_inout,
+                testvar3D=testvar3D,
+                testvar2D=testvar2D,
+            )
+            if iteration != 0:
+                self._avg_initial_and_final_cin(
+                    condensation=self.condensation,
+                    iteration=iteration,
+                    cin_IJ=self.temporaries.cin_IJ,
+                    cinlcl_IJ=self.temporaries.cinlcl_IJ,
+                    use_CINcin=use_CINcin,
+                    cin_i=self.temporaries.cin_i,
+                    cinlcl_i=self.temporaries.cinlcl_i,
+                    ke=self.temporaries.ke,
+                    dotransport=dotransport,
+                    trsrc=self.trsrc,
+                    trsrc_o=self.trsrc_o,
+                    tr0=self.tr0,
+                    tr0_o=self.tr0_o,
+                    sstr0=self.sstr0,
+                    sstr0_o=self.sstr0_o,
+                    kinv_o=self.temporaries.kinv_o,
+                    klcl_o=self.temporaries.klcl_o,
+                    klfc_o=self.temporaries.klfc_o,
+                    plcl_o=self.temporaries.plcl_o,
+                    plfc_o=self.temporaries.plfc_o,
+                    tkeavg_o=self.temporaries.tkeavg_o,
+                    thvlmin_o=self.temporaries.thvlmin_o,
+                    qtsrc_o=self.temporaries.qtsrc_o,
+                    thvlsrc_o=self.temporaries.thvlsrc_o,
+                    thlsrc_o=self.temporaries.thlsrc_o,
+                    usrc_o=self.temporaries.usrc_o,
+                    vsrc_o=self.temporaries.vsrc_o,
+                    thv0lcl_o=self.temporaries.thv0lcl_o,
+                    qv0_o=self.temporaries.qv0_o,
+                    ql0_o=self.temporaries.ql0_o,
+                    qi0_o=self.temporaries.qi0_o,
+                    t0_o=self.temporaries.t0_o,
+                    s0_o=self.temporaries.s0_o,
+                    u0_o=self.temporaries.u0_o,
+                    v0_o=self.temporaries.v0_o,
+                    qt0_o=self.temporaries.qt0_o,
+                    thl0_o=self.temporaries.thl0_o,
+                    thvl0_o=self.temporaries.thvl0_o,
+                    ssthl0_o=self.temporaries.ssthl0_o,
+                    ssqt0_o=self.temporaries.ssqt0_o,
+                    thv0bot_o=self.temporaries.thv0bot_o,
+                    thv0top_o=self.temporaries.thv0top_o,
+                    thvl0bot_o=self.temporaries.thvl0bot_o,
+                    thvl0top_o=self.temporaries.thvl0top_o,
+                    ssu0_o=self.temporaries.ssu0_o,
+                    ssv0_o=self.temporaries.ssv0_o,
+                    thvlmin_IJ=self.temporaries.thvlmin_IJ,
+                    umf_zint=self.temporaries.umf_zint,
+                    emf=self.temporaries.emf,
+                    slflx=self.temporaries.slflx,
+                    qtflx=self.temporaries.qtflx,
+                    uflx=self.temporaries.uflx,
+                    vflx=self.temporaries.vflx,
+                    k0=k0,
+                    ufrc=self.temporaries.ufrc,
+                    thlu=self.temporaries.thlu,
+                    qtu=self.temporaries.qtu,
+                    uu=self.temporaries.uu,
+                    vu=self.temporaries.vu,
+                    wu=self.temporaries.wu,
+                    thvu=self.temporaries.thvu,
+                    thlu_emf=self.temporaries.thlu_emf,
+                    qtu_emf=self.temporaries.qtu_emf,
+                    uu_emf=self.temporaries.uu_emf,
+                    vu_emf=self.temporaries.vu_emf,
+                    trflx=self.trflx,
+                    trten=self.trten,
+                    tru=self.tru,
+                    tru_emf=self.tru_emf,
+                    umf_s=self.temporaries.umf_s,
+                    zifc0=self.temporaries.zifc0_in,
+                    dcm_s=self.temporaries.dcm_s,
+                    qvten_s=self.temporaries.qvten_s,
+                    qlten_s=self.temporaries.qlten_s,
+                    qiten_s=self.temporaries.qiten_s,
+                    sten_s=self.temporaries.sten_s,
+                    uten_s=self.temporaries.uten_s,
+                    vten_s=self.temporaries.vten_s,
+                    qrten_s=self.temporaries.qrten_s,
+                    qsten_s=self.temporaries.qsten_s,
+                    qldet_s=self.temporaries.qldet_s,
+                    qidet_s=self.temporaries.qidet_s,
+                    qlsub_s=self.temporaries.qlsub_s,
+                    qisub_s=self.temporaries.qisub_s,
+                    cush_s=self.temporaries.cush_s,
+                    cufrc_s=self.temporaries.cufrc_s,
+                    qtflx_out=self.temporaries.qtflx_out,
+                    qtflx_s=self.temporaries.qtflx_s,
+                    slflx_out=self.temporaries.slflx_out,
+                    slflx_s=self.temporaries.slflx_s,
+                    uflx_out=self.temporaries.uflx_out,
+                    uflx_s=self.temporaries.uflx_s,
+                    vflx_out=self.temporaries.vflx_out,
+                    vflx_s=self.temporaries.vflx_s,
+                    fer_s=self.temporaries.fer_s,
+                    fdr_s=self.temporaries.fdr_s,
+                    umf_out=self.temporaries.umf_out,
+                    kinv=self.temporaries.kinv,
+                    klcl=self.temporaries.klcl,
+                    plcl=self.temporaries.plcl,
+                    thv0bot=self.temporaries.thv0bot,
+                    thv0lcl=self.temporaries.thv0lcl,
+                    thv0top=self.temporaries.thv0top,
+                    thlsrc=self.temporaries.thlsrc,
+                    qtsrc=self.temporaries.qtsrc,
+                    thl0=self.temporaries.thl0,
+                    ssthl0=self.temporaries.ssthl0,
+                    ssqt0=self.temporaries.ssqt0,
+                    ssu0=self.temporaries.ssu0,
+                    ssv0=self.temporaries.ssv0,
+                    qt0=self.temporaries.qt0,
+                    u0=self.temporaries.u0_in,
+                    v0=self.temporaries.v0_in,
+                    qi0=self.temporaries.qi0,
+                    ql0=self.temporaries.ql0,
+                    qv0=self.temporaries.qv0,
+                    s0=self.temporaries.s0,
+                    qvten_out=self.temporaries.qvten_out,
+                    dcm_out=self.temporaries.dcm_out,
+                    qlten_out=self.temporaries.qlten_out,
+                    qiten_out=self.temporaries.qiten_out,
+                    del_CIN=self.temporaries.del_CIN,
+                    dcm=self.temporaries.dcm,
+                    sten_out=self.temporaries.sten_out,
+                    uten_out=self.temporaries.uten_out,
+                    vten_out=self.temporaries.vten_out,
+                    qrten_out=self.temporaries.qrten_out,
+                    qsten_out=self.temporaries.qsten_out,
+                    cufrc_out=self.temporaries.cufrc_out,
+                    cush_inout=self.temporaries.cush_inout,
+                    qldet_out=self.temporaries.qldet_out,
+                    qidet_out=self.temporaries.qidet_out,
+                    qlsub_out=self.temporaries.qlsub_out,
+                    qisub_out=self.temporaries.qisub_out,
+                    fdr_out=self.temporaries.fdr_out,
+                    fer_out=self.temporaries.fer_out,
+                    vten=self.temporaries.vten,
+                    uten=self.temporaries.uten,
+                    qvten=self.temporaries.qvten,
+                    fdr=self.temporaries.fdr,
+                    fer=self.temporaries.fer,
+                    cufrc=self.temporaries.cufrc,
+                    testvar3D=testvar3D,
+                )
 
-        #     self._define_prel_krel(
-        #         condensation=self.condensation,
-        #         iteration=iteration,
-        #         klcl=self.temporaries.klcl,
-        #         kinv=self.temporaries.kinv,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         thv0bot=self.temporaries.thv0bot,
-        #         plcl=self.temporaries.plcl,
-        #         thv0lcl=self.temporaries.thv0lcl,
-        #         krel=self.temporaries.krel,
-        #         prel=self.temporaries.prel,
-        #         thv0rel=self.temporaries.thv0rel,
-        #         testvar3D=testvar3D,
-        #     )
+            self._define_prel_krel(
+                condensation=self.condensation,
+                iteration=iteration,
+                klcl=self.temporaries.klcl,
+                kinv=self.temporaries.kinv,
+                pifc0=self.temporaries.pifc0_in,
+                thv0bot=self.temporaries.thv0bot,
+                plcl=self.temporaries.plcl,
+                thv0lcl=self.temporaries.thv0lcl,
+                krel=self.temporaries.krel,
+                prel=self.temporaries.prel,
+                thv0rel=self.temporaries.thv0rel,
+                testvar3D=testvar3D,
+            )
 
-        #     self._calc_cumulus_base_mass_flux(
-        #         condensation=self.condensation,
-        #         iteration=iteration,
-        #         use_CINcin=use_CINcin,
-        #         cin_IJ=self.temporaries.cin_IJ,
-        #         rbuoy=rbuoy,
-        #         cinlcl_IJ=self.temporaries.cinlcl_IJ,
-        #         rkfre=rkfre,
-        #         tkeavg=self.temporaries.tkeavg,
-        #         epsvarw=epsvarw,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         kinv=self.temporaries.kinv,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         thv0top=self.temporaries.thv0top,
-        #         exnifc0=self.temporaries.exnifc0_in,
-        #         dp0=self.temporaries.dp0_in,
-        #         dt=dt,
-        #         mumin1=mumin1,
-        #         rmaxfrac=rmaxfrac,
-        #         winv=self.temporaries.winv,
-        #         cbmf=self.temporaries.cbmf,
-        #         rho0inv=self.temporaries.rho0inv,
-        #         ufrcinv=self.temporaries.ufrcinv,
-        #         wcrit=self.temporaries.wcrit,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         testvar3D=testvar3D,
-        #         testvar2D=testvar2D,
-        #     )
+            self._calc_cumulus_base_mass_flux(
+                condensation=self.condensation,
+                iteration=iteration,
+                use_CINcin=use_CINcin,
+                cin_IJ=self.temporaries.cin_IJ,
+                rbuoy=rbuoy,
+                cinlcl_IJ=self.temporaries.cinlcl_IJ,
+                rkfre=rkfre,
+                tkeavg=self.temporaries.tkeavg,
+                epsvarw=epsvarw,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                kinv=self.temporaries.kinv,
+                pifc0=self.temporaries.pifc0_in,
+                thv0top=self.temporaries.thv0top,
+                exnifc0=self.temporaries.exnifc0_in,
+                dp0=self.temporaries.dp0_in,
+                dt=dt,
+                mumin1=mumin1,
+                rmaxfrac=rmaxfrac,
+                winv=self.temporaries.winv,
+                cbmf=self.temporaries.cbmf,
+                rho0inv=self.temporaries.rho0inv,
+                ufrcinv=self.temporaries.ufrcinv,
+                wcrit=self.temporaries.wcrit,
+                cush_inout=self.temporaries.cush_inout,
+                testvar3D=testvar3D,
+                testvar2D=testvar2D,
+            )
 
-        #     self._define_updraft_properties(
-        #         condensation=self.condensation,
-        #         iteration=iteration,
-        #         winv=self.temporaries.winv,
-        #         cinlcl_IJ=self.temporaries.cinlcl_IJ,
-        #         rbuoy=rbuoy,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         cbmf=self.temporaries.cbmf,
-        #         rho0inv=self.temporaries.rho0inv,
-        #         krel=self.temporaries.krel,
-        #         ufrc=self.temporaries.ufrc,
-        #         ufrcinv=self.temporaries.ufrcinv,
-        #         kinv=self.temporaries.kinv,
-        #         umf_zint=self.temporaries.umf_zint,
-        #         wu=self.temporaries.wu,
-        #         emf=self.temporaries.emf,
-        #         thlu=self.temporaries.thlu,
-        #         qtu=self.temporaries.qtu,
-        #         thlsrc=self.temporaries.thlsrc,
-        #         qtsrc=self.temporaries.qtsrc,
-        #         prel=self.temporaries.prel,
-        #         ese=self.qsat.ese,
-        #         esx=self.qsat.esx,
-        #         thvu=self.temporaries.thvu,
-        #         wlcl=self.temporaries.wlcl,
-        #         ufrclcl=self.temporaries.ufrclcl,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         testvar3D=testvar3D,
-        #     )
+            self._define_updraft_properties(
+                condensation=self.condensation,
+                iteration=iteration,
+                winv=self.temporaries.winv,
+                cinlcl_IJ=self.temporaries.cinlcl_IJ,
+                rbuoy=rbuoy,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                cbmf=self.temporaries.cbmf,
+                rho0inv=self.temporaries.rho0inv,
+                krel=self.temporaries.krel,
+                ufrc=self.temporaries.ufrc,
+                ufrcinv=self.temporaries.ufrcinv,
+                kinv=self.temporaries.kinv,
+                umf_zint=self.temporaries.umf_zint,
+                wu=self.temporaries.wu,
+                emf=self.temporaries.emf,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                thlsrc=self.temporaries.thlsrc,
+                qtsrc=self.temporaries.qtsrc,
+                prel=self.temporaries.prel,
+                ese=self.qsat.ese,
+                esx=self.qsat.esx,
+                thvu=self.temporaries.thvu,
+                wlcl=self.temporaries.wlcl,
+                ufrclcl=self.temporaries.ufrclcl,
+                cush_inout=self.temporaries.cush_inout,
+                testvar3D=testvar3D,
+            )
 
-        #     self._define_env_properties(
-        #         condensation=self.condensation,
-        #         iteration=iteration,
-        #         krel=self.temporaries.krel,
-        #         kinv=self.temporaries.kinv,
-        #         PGFc=PGFc,
-        #         ssu0=self.temporaries.ssu0,
-        #         ssv0=self.temporaries.ssv0,
-        #         prel=self.temporaries.prel,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         uu=self.temporaries.uu,
-        #         vu=self.temporaries.vu,
-        #         usrc=self.temporaries.usrc,
-        #         vsrc=self.temporaries.vsrc,
-        #         dotransport=dotransport,
-        #         tru=self.tru,
-        #         trsrc=self.trsrc,
-        #         thv0rel=self.temporaries.thv0rel,
-        #         thl0=self.temporaries.thl0,
-        #         ssthl0=self.temporaries.ssthl0,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         qt0=self.temporaries.qt0,
-        #         ssqt0=self.temporaries.ssqt0,
-        #         u0=self.temporaries.u0_in,
-        #         v0=self.temporaries.v0_in,
-        #         tre=self.tre,
-        #         tr0=self.tr0,
-        #         sstr0=self.sstr0,
-        #         uplus=self.temporaries.uplus,
-        #         vplus=self.temporaries.vplus,
-        #         uplus_3D=self.temporaries.uplus_3D,
-        #         vplus_3D=self.temporaries.vplus_3D,
-        #         qsat_pe=self.temporaries.qsat_pe,
-        #         pe=self.temporaries.pe,
-        #         thle=self.temporaries.thle,
-        #         qte=self.temporaries.qte,
-        #         dpe=self.temporaries.dpe,
-        #         exne=self.temporaries.exne,
-        #         thvebot=self.temporaries.thvebot,
-        #         ue=self.temporaries.ue,
-        #         ve=self.temporaries.ve,
-        #         testvar3D=testvar3D,
-        #     )
+            self._define_env_properties(
+                condensation=self.condensation,
+                iteration=iteration,
+                krel=self.temporaries.krel,
+                kinv=self.temporaries.kinv,
+                PGFc=PGFc,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                prel=self.temporaries.prel,
+                pifc0=self.temporaries.pifc0_in,
+                uu=self.temporaries.uu,
+                vu=self.temporaries.vu,
+                usrc=self.temporaries.usrc,
+                vsrc=self.temporaries.vsrc,
+                dotransport=dotransport,
+                tru=self.tru,
+                trsrc=self.trsrc,
+                thv0rel=self.temporaries.thv0rel,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pmid0=self.temporaries.pmid0_in,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                tre=self.tre,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
+                uplus=self.temporaries.uplus,
+                vplus=self.temporaries.vplus,
+                uplus_3D=self.temporaries.uplus_3D,
+                vplus_3D=self.temporaries.vplus_3D,
+                qsat_pe=self.temporaries.qsat_pe,
+                pe=self.temporaries.pe,
+                thle=self.temporaries.thle,
+                qte=self.temporaries.qte,
+                dpe=self.temporaries.dpe,
+                exne=self.temporaries.exne,
+                thvebot=self.temporaries.thvebot,
+                ue=self.temporaries.ue,
+                ve=self.temporaries.ve,
+                testvar3D=testvar3D,
+            )
 
-        #     self._buoyancy_sorting(
-        #         condensation=self.condensation,
-        #         tscaleh=self.temporaries.tscaleh,
-        #         krel=self.temporaries.krel,
-        #         wlcl=self.temporaries.wlcl,
-        #         prel=self.temporaries.prel,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         thv0rel=self.temporaries.thv0rel,
-        #         thl0=self.temporaries.thl0,
-        #         ssthl0=self.temporaries.ssthl0,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         qt0=self.temporaries.qt0,
-        #         ssqt0=self.temporaries.ssqt0,
-        #         u0=self.temporaries.u0_in,
-        #         v0=self.temporaries.v0_in,
-        #         ssu0=self.temporaries.ssu0,
-        #         ssv0=self.temporaries.ssv0,
-        #         dotransport=dotransport,
-        #         tre=self.tre,
-        #         tr0=self.tr0,
-        #         sstr0=self.sstr0,
-        #         k0=k0,
-        #         thlu=self.temporaries.thlu,
-        #         qtu=self.temporaries.qtu,
-        #         wu=self.temporaries.wu,
-        #         niter_xc=niter_xc,
-        #         ese=self.qsat.ese,
-        #         esx=self.qsat.esx,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         qsat_pe=self.temporaries.qsat_pe,
-        #         criqc=criqc,
-        #         cridist_opt=cridist_opt,
-        #         rle=rle,
-        #         zifc0=self.temporaries.zifc0_in,
-        #         rbuoy=rbuoy,
-        #         mixscale=mixscale,
-        #         rkm=rkm,
-        #         zmid0=self.temporaries.zmid0_in,
-        #         detrhgt=detrhgt,
-        #         thlue=self.temporaries.thlue,
-        #         qtue=self.temporaries.qtue,
-        #         wue=self.temporaries.wue,
-        #         wtwb=self.temporaries.wtwb,
-        #         dp0=self.temporaries.dp0_in,
-        #         dt=dt,
-        #         thv0bot=self.temporaries.thv0bot,
-        #         exnmid0=self.temporaries.exnmid0_in,
-        #         rmaxfrac=rmaxfrac,
-        #         thv0top=self.temporaries.thv0top,
-        #         exnifc0=self.temporaries.exnifc0_in,
-        #         use_self_detrain=use_self_detrain,
-        #         rdrag=rdrag,
-        #         PGFc=PGFc,
-        #         tru=self.tru,
-        #         umf_zint=self.temporaries.umf_zint,
-        #         emf=self.temporaries.emf,
-        #         thvu=self.temporaries.thvu,
-        #         rei=self.temporaries.rei,
-        #         uu=self.temporaries.uu,
-        #         vu=self.temporaries.vu,
-        #         ufrc=self.temporaries.ufrc,
-        #         pe=self.temporaries.pe,
-        #         thle=self.temporaries.thle,
-        #         qte=self.temporaries.qte,
-        #         dpe=self.temporaries.dpe,
-        #         exne=self.temporaries.exne,
-        #         thvebot=self.temporaries.thvebot,
-        #         ue=self.temporaries.ue,
-        #         ve=self.temporaries.ve,
-        #         drage=self.temporaries.drage,
-        #         bogbot=self.temporaries.bogbot,
-        #         bogtop=self.temporaries.bogtop,
-        #         kpen_IJ=self.temporaries.kpen_IJ,
-        #         rhomid0j=self.temporaries.rhomid0j,
-        #         kbup_IJ=self.temporaries.kbup_IJ,
-        #         fer=self.temporaries.fer,
-        #         fdr=self.temporaries.fdr,
-        #         dwten=self.temporaries.dwten,
-        #         diten=self.temporaries.diten,
-        #         dcm=self.temporaries.dcm,
-        #         xco=self.temporaries.xco,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         stop_buoyancy_sort=self.stop_buoyancy_sort,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #         testvar2D=testvar2D,
-        #     )
+            self._buoyancy_sorting(
+                condensation=self.condensation,
+                tscaleh=self.temporaries.tscaleh,
+                krel=self.temporaries.krel,
+                wlcl=self.temporaries.wlcl,
+                prel=self.temporaries.prel,
+                pifc0=self.temporaries.pifc0_in,
+                thv0rel=self.temporaries.thv0rel,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pmid0=self.temporaries.pmid0_in,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                dotransport=dotransport,
+                tre=self.tre,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
+                k0=k0,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                wu=self.temporaries.wu,
+                niter_xc=niter_xc,
+                ese=self.qsat.ese,
+                esx=self.qsat.esx,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                qsat_pe=self.temporaries.qsat_pe,
+                criqc=criqc,
+                cridist_opt=cridist_opt,
+                rle=rle,
+                zifc0=self.temporaries.zifc0_in,
+                rbuoy=rbuoy,
+                mixscale=mixscale,
+                rkm=rkm,
+                zmid0=self.temporaries.zmid0_in,
+                detrhgt=detrhgt,
+                thlue=self.temporaries.thlue,
+                qtue=self.temporaries.qtue,
+                wue=self.temporaries.wue,
+                wtwb=self.temporaries.wtwb,
+                dp0=self.temporaries.dp0_in,
+                dt=dt,
+                thv0bot=self.temporaries.thv0bot,
+                exnmid0=self.temporaries.exnmid0_in,
+                rmaxfrac=rmaxfrac,
+                thv0top=self.temporaries.thv0top,
+                exnifc0=self.temporaries.exnifc0_in,
+                use_self_detrain=use_self_detrain,
+                rdrag=rdrag,
+                PGFc=PGFc,
+                tru=self.tru,
+                umf_zint=self.temporaries.umf_zint,
+                emf=self.temporaries.emf,
+                thvu=self.temporaries.thvu,
+                rei=self.temporaries.rei,
+                uu=self.temporaries.uu,
+                vu=self.temporaries.vu,
+                ufrc=self.temporaries.ufrc,
+                pe=self.temporaries.pe,
+                thle=self.temporaries.thle,
+                qte=self.temporaries.qte,
+                dpe=self.temporaries.dpe,
+                exne=self.temporaries.exne,
+                thvebot=self.temporaries.thvebot,
+                ue=self.temporaries.ue,
+                ve=self.temporaries.ve,
+                drage=self.temporaries.drage,
+                bogbot=self.temporaries.bogbot,
+                bogtop=self.temporaries.bogtop,
+                kpen_IJ=self.temporaries.kpen_IJ,
+                rhomid0j=self.temporaries.rhomid0j,
+                kbup_IJ=self.temporaries.kbup_IJ,
+                fer=self.temporaries.fer,
+                fdr=self.temporaries.fdr,
+                dwten=self.temporaries.dwten,
+                diten=self.temporaries.diten,
+                dcm=self.temporaries.dcm,
+                xco=self.temporaries.xco,
+                cush_inout=self.temporaries.cush_inout,
+                stop_buoyancy_sort=self.stop_buoyancy_sort,
+                iteration=iteration,
+                testvar3D=testvar3D,
+                testvar2D=testvar2D,
+            )
 
-        #     self._calc_ppen(
-        #         condensation=self.condensation,
-        #         drage=self.temporaries.drage,
-        #         bogbot=self.temporaries.bogbot,
-        #         bogtop=self.temporaries.bogtop,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         kpen_IJ=self.temporaries.kpen_IJ,
-        #         kpen=self.temporaries.kpen,
-        #         wu=self.temporaries.wu,
-        #         rhomid0j=self.temporaries.rhomid0j,
-        #         dp0=self.temporaries.dp0_in,
-        #         wtwb=self.temporaries.wtwb,
-        #         ppen=self.temporaries.ppen,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._calc_ppen(
+                condensation=self.condensation,
+                drage=self.temporaries.drage,
+                bogbot=self.temporaries.bogbot,
+                bogtop=self.temporaries.bogtop,
+                pifc0=self.temporaries.pifc0_in,
+                kpen_IJ=self.temporaries.kpen_IJ,
+                kpen=self.temporaries.kpen,
+                wu=self.temporaries.wu,
+                rhomid0j=self.temporaries.rhomid0j,
+                dp0=self.temporaries.dp0_in,
+                wtwb=self.temporaries.wtwb,
+                ppen=self.temporaries.ppen,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._recalc_condensate(
-        #         condensation=self.condensation,
-        #         fer=self.temporaries.fer,
-        #         kpen=self.temporaries.kpen,
-        #         ppen=self.temporaries.ppen,
-        #         thlu=self.temporaries.thlu,
-        #         thl0=self.temporaries.thl0,
-        #         ssthl0=self.temporaries.ssthl0,
-        #         qtu=self.temporaries.qtu,
-        #         qt0=self.temporaries.qt0,
-        #         ssqt0=self.temporaries.ssqt0,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         ese=self.qsat.ese,
-        #         esx=self.qsat.esx,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         criqc=criqc,
-        #         thv0bot=self.temporaries.thv0bot,
-        #         thv0top=self.temporaries.thv0top,
-        #         exnifc0=self.temporaries.exnifc0_in,
-        #         zifc0=self.temporaries.zifc0_in,
-        #         kbup_IJ=self.temporaries.kbup_IJ,
-        #         kbup=self.temporaries.kbup,
-        #         krel=self.temporaries.krel,
-        #         k0=k0,
-        #         umf_zint=self.temporaries.umf_zint,
-        #         emf=self.temporaries.emf,
-        #         ufrc=self.temporaries.ufrc,
-        #         dwten=self.temporaries.dwten,
-        #         diten=self.temporaries.diten,
-        #         dwten_temp=self.temporaries.dwten_temp,
-        #         diten_temp=self.temporaries.diten_temp,
-        #         thlu_top=self.temporaries.thlu_top,
-        #         qtu_top=self.temporaries.qtu_top,
-        #         cldhgt=self.temporaries.cldhgt,
-        #         fdr=self.temporaries.fdr,
-        #         umf_temp=self.temporaries.umf_temp,
-        #         xco=self.temporaries.xco,
-        #         cush=cush,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._recalc_condensate(
+                condensation=self.condensation,
+                fer=self.temporaries.fer,
+                kpen=self.temporaries.kpen,
+                ppen=self.temporaries.ppen,
+                thlu=self.temporaries.thlu,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                qtu=self.temporaries.qtu,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                pifc0=self.temporaries.pifc0_in,
+                ese=self.qsat.ese,
+                esx=self.qsat.esx,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                criqc=criqc,
+                thv0bot=self.temporaries.thv0bot,
+                thv0top=self.temporaries.thv0top,
+                exnifc0=self.temporaries.exnifc0_in,
+                zifc0=self.temporaries.zifc0_in,
+                kbup_IJ=self.temporaries.kbup_IJ,
+                kbup=self.temporaries.kbup,
+                krel=self.temporaries.krel,
+                k0=k0,
+                umf_zint=self.temporaries.umf_zint,
+                emf=self.temporaries.emf,
+                ufrc=self.temporaries.ufrc,
+                dwten=self.temporaries.dwten,
+                diten=self.temporaries.diten,
+                dwten_temp=self.temporaries.dwten_temp,
+                diten_temp=self.temporaries.diten_temp,
+                thlu_top=self.temporaries.thlu_top,
+                qtu_top=self.temporaries.qtu_top,
+                cldhgt=self.temporaries.cldhgt,
+                fdr=self.temporaries.fdr,
+                umf_temp=self.temporaries.umf_temp,
+                xco=self.temporaries.xco,
+                cush=cush,
+                cush_inout=self.temporaries.cush_inout,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._calc_entrainment_mass_flux(
-        #         condensation=self.condensation,
-        #         k0=k0,
-        #         thlu=self.temporaries.thlu,
-        #         qtu=self.temporaries.qtu,
-        #         uu=self.temporaries.uu,
-        #         vu=self.temporaries.vu,
-        #         tru=self.tru,
-        #         dotransport=dotransport,
-        #         tru_emf=self.tru_emf,
-        #         kpen=self.temporaries.kpen,
-        #         kbup=self.temporaries.kbup,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         thv0bot=self.temporaries.thv0bot,
-        #         thv0top=self.temporaries.thv0top,
-        #         exnifc0=self.temporaries.exnifc0_in,
-        #         umf_zint=self.temporaries.umf_zint,
-        #         ppen=self.temporaries.ppen,
-        #         rei=self.temporaries.rei,
-        #         rpen=rpen,
-        #         dp0=self.temporaries.dp0_in,
-        #         dt=dt,
-        #         thl0=self.temporaries.thl0,
-        #         ssthl0=self.temporaries.ssthl0,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         qt0=self.temporaries.qt0,
-        #         ssqt0=self.temporaries.ssqt0,
-        #         u0=self.temporaries.u0_in,
-        #         ssu0=self.temporaries.ssu0,
-        #         v0=self.temporaries.v0_in,
-        #         ssv0=self.temporaries.ssv0,
-        #         tr0=self.tr0,
-        #         sstr0=self.sstr0,
-        #         use_cumpenent=use_cumpenent,
-        #         thlu_emf=self.temporaries.thlu_emf,
-        #         qtu_emf=self.temporaries.qtu_emf,
-        #         uu_emf=self.temporaries.uu_emf,
-        #         vu_emf=self.temporaries.vu_emf,
-        #         emf=self.temporaries.emf,
-        #         iteration=iteration,
-        #     )
+            self._calc_entrainment_mass_flux(
+                condensation=self.condensation,
+                k0=k0,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                uu=self.temporaries.uu,
+                vu=self.temporaries.vu,
+                tru=self.tru,
+                dotransport=dotransport,
+                tru_emf=self.tru_emf,
+                kpen=self.temporaries.kpen,
+                kbup=self.temporaries.kbup,
+                pifc0=self.temporaries.pifc0_in,
+                thv0bot=self.temporaries.thv0bot,
+                thv0top=self.temporaries.thv0top,
+                exnifc0=self.temporaries.exnifc0_in,
+                umf_zint=self.temporaries.umf_zint,
+                ppen=self.temporaries.ppen,
+                rei=self.temporaries.rei,
+                rpen=rpen,
+                dp0=self.temporaries.dp0_in,
+                dt=dt,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pmid0=self.temporaries.pmid0_in,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                u0=self.temporaries.u0_in,
+                ssu0=self.temporaries.ssu0,
+                v0=self.temporaries.v0_in,
+                ssv0=self.temporaries.ssv0,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
+                use_cumpenent=use_cumpenent,
+                thlu_emf=self.temporaries.thlu_emf,
+                qtu_emf=self.temporaries.qtu_emf,
+                uu_emf=self.temporaries.uu_emf,
+                vu_emf=self.temporaries.vu_emf,
+                emf=self.temporaries.emf,
+                iteration=iteration,
+            )
 
-        #     self._calc_pbl_fluxes(
-        #         condensation=self.condensation,
-        #         qtsrc=self.temporaries.qtsrc,
-        #         qt0=self.temporaries.qt0,
-        #         ssqt0=self.temporaries.ssqt0,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         kinv=self.temporaries.kinv,
-        #         cbmf=self.temporaries.cbmf,
-        #         dt=dt,
-        #         xflx=self.temporaries.xflx,
-        #         qtflx=self.temporaries.qtflx,
-        #         thlsrc=self.temporaries.thlsrc,
-        #         thl0=self.temporaries.thl0,
-        #         ssthl0=self.temporaries.ssthl0,
-        #         exnifc0=self.temporaries.exnifc0_in,
-        #         usrc=self.temporaries.usrc,
-        #         u0=self.temporaries.u0_in,
-        #         ssu0=self.temporaries.ssu0,
-        #         vsrc=self.temporaries.vsrc,
-        #         v0=self.temporaries.v0_in,
-        #         ssv0=self.temporaries.ssv0,
-        #         dotransport=dotransport,
-        #         trsrc=self.trsrc,
-        #         tr0=self.tr0,
-        #         sstr0=self.sstr0,
-        #         trflx=self.trflx,
-        #         uflx=self.temporaries.uflx,
-        #         vflx=self.temporaries.vflx,
-        #         slflx=self.temporaries.slflx,
-        #         iteration=iteration,
-        #         xflx_ndim=self.xflx_ndim,
-        #         testvar3D=testvar3D,
-        #     )
+            self._calc_pbl_fluxes(
+                condensation=self.condensation,
+                qtsrc=self.temporaries.qtsrc,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                pifc0=self.temporaries.pifc0_in,
+                pmid0=self.temporaries.pmid0_in,
+                kinv=self.temporaries.kinv,
+                cbmf=self.temporaries.cbmf,
+                dt=dt,
+                xflx=self.temporaries.xflx,
+                qtflx=self.temporaries.qtflx,
+                thlsrc=self.temporaries.thlsrc,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                exnifc0=self.temporaries.exnifc0_in,
+                usrc=self.temporaries.usrc,
+                u0=self.temporaries.u0_in,
+                ssu0=self.temporaries.ssu0,
+                vsrc=self.temporaries.vsrc,
+                v0=self.temporaries.v0_in,
+                ssv0=self.temporaries.ssv0,
+                dotransport=dotransport,
+                trsrc=self.trsrc,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
+                trflx=self.trflx,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                slflx=self.temporaries.slflx,
+                iteration=iteration,
+                xflx_ndim=self.xflx_ndim,
+                testvar3D=testvar3D,
+            )
 
-        #     self._non_buoyancy_sorting_fluxes(
-        #         condensation=self.condensation,
-        #         kinv=self.temporaries.kinv,
-        #         krel=self.temporaries.krel,
-        #         cbmf=self.temporaries.cbmf,
-        #         qtsrc=self.temporaries.qtsrc,
-        #         qt0=self.temporaries.qt0,
-        #         ssqt0=self.temporaries.ssqt0,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         thlsrc=self.temporaries.thlsrc,
-        #         thl0=self.temporaries.thl0,
-        #         ssthl0=self.temporaries.ssthl0,
-        #         PGFc=PGFc,
-        #         exnifc0=self.temporaries.exnifc0_in,
-        #         ssu0=self.temporaries.ssu0,
-        #         ssv0=self.temporaries.ssv0,
-        #         u0=self.temporaries.u0_in,
-        #         v0=self.temporaries.v0_in,
-        #         usrc=self.temporaries.usrc,
-        #         vsrc=self.temporaries.vsrc,
-        #         dotransport=dotransport,
-        #         trflx=self.trflx,
-        #         trsrc=self.trsrc,
-        #         tr0=self.tr0,
-        #         sstr0=self.sstr0,
-        #         uflx=self.temporaries.uflx,
-        #         vflx=self.temporaries.vflx,
-        #         slflx=self.temporaries.slflx,
-        #         qtflx=self.temporaries.qtflx,
-        #         uplus=self.temporaries.uplus,
-        #         vplus=self.temporaries.vplus,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._non_buoyancy_sorting_fluxes(
+                condensation=self.condensation,
+                kinv=self.temporaries.kinv,
+                krel=self.temporaries.krel,
+                cbmf=self.temporaries.cbmf,
+                qtsrc=self.temporaries.qtsrc,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                pifc0=self.temporaries.pifc0_in,
+                pmid0=self.temporaries.pmid0_in,
+                thlsrc=self.temporaries.thlsrc,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                PGFc=PGFc,
+                exnifc0=self.temporaries.exnifc0_in,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                usrc=self.temporaries.usrc,
+                vsrc=self.temporaries.vsrc,
+                dotransport=dotransport,
+                trflx=self.trflx,
+                trsrc=self.trsrc,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                slflx=self.temporaries.slflx,
+                qtflx=self.temporaries.qtflx,
+                uplus=self.temporaries.uplus,
+                vplus=self.temporaries.vplus,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._buoyancy_sorting_fluxes(
-        #         condensation=self.condensation,
-        #         kbup=self.temporaries.kbup,
-        #         krel=self.temporaries.krel,
-        #         exnifc0=self.temporaries.exnifc0_in,
-        #         umf_zint=self.temporaries.umf_zint,
-        #         thlu=self.temporaries.thlu,
-        #         thl0=self.temporaries.thl0,
-        #         ssthl0=self.temporaries.ssthl0,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         qtu=self.temporaries.qtu,
-        #         qt0=self.temporaries.qt0,
-        #         ssqt0=self.temporaries.ssqt0,
-        #         uu=self.temporaries.uu,
-        #         u0=self.temporaries.u0_in,
-        #         v0=self.temporaries.v0_in,
-        #         vu=self.temporaries.vu,
-        #         ssu0=self.temporaries.ssu0,
-        #         ssv0=self.temporaries.ssv0,
-        #         dotransport=dotransport,
-        #         trflx=self.trflx,
-        #         tru=self.tru,
-        #         tr0=self.tr0,
-        #         sstr0=self.sstr0,
-        #         qtflx=self.temporaries.qtflx,
-        #         vflx=self.temporaries.vflx,
-        #         uflx=self.temporaries.uflx,
-        #         slflx=self.temporaries.slflx,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._buoyancy_sorting_fluxes(
+                condensation=self.condensation,
+                kbup=self.temporaries.kbup,
+                krel=self.temporaries.krel,
+                exnifc0=self.temporaries.exnifc0_in,
+                umf_zint=self.temporaries.umf_zint,
+                thlu=self.temporaries.thlu,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pifc0=self.temporaries.pifc0_in,
+                pmid0=self.temporaries.pmid0_in,
+                qtu=self.temporaries.qtu,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                uu=self.temporaries.uu,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                vu=self.temporaries.vu,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                dotransport=dotransport,
+                trflx=self.trflx,
+                tru=self.tru,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
+                qtflx=self.temporaries.qtflx,
+                vflx=self.temporaries.vflx,
+                uflx=self.temporaries.uflx,
+                slflx=self.temporaries.slflx,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._penetrative_entrainment_fluxes(
-        #         condensation=self.condensation,
-        #         kbup=self.temporaries.kbup,
-        #         kpen=self.temporaries.kpen,
-        #         exnifc0=self.temporaries.exnifc0_in,
-        #         emf=self.temporaries.emf,
-        #         thlu_emf=self.temporaries.thlu_emf,
-        #         thl0=self.temporaries.thl0,
-        #         ssthl0=self.temporaries.ssthl0,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         qtu_emf=self.temporaries.qtu_emf,
-        #         qt0=self.temporaries.qt0,
-        #         ssqt0=self.temporaries.ssqt0,
-        #         uu_emf=self.temporaries.uu_emf,
-        #         vu_emf=self.temporaries.vu_emf,
-        #         u0=self.temporaries.u0_in,
-        #         v0=self.temporaries.v0_in,
-        #         ssu0=self.temporaries.ssu0,
-        #         ssv0=self.temporaries.ssv0,
-        #         dotransport=dotransport,
-        #         trflx=self.trflx,
-        #         tru_emf=self.tru_emf,
-        #         tr0=self.tr0,
-        #         sstr0=self.sstr0,
-        #         use_momenflx=use_momenflx,
-        #         cbmf=self.temporaries.cbmf,
-        #         uflx=self.temporaries.uflx,
-        #         vflx=self.temporaries.vflx,
-        #         qtflx=self.temporaries.qtflx,
-        #         slflx=self.temporaries.slflx,
-        #         uemf=self.temporaries.uemf,
-        #         kinv=self.temporaries.kinv,
-        #         krel=self.temporaries.krel,
-        #         umf_zint=self.temporaries.umf_zint,
-        #         k0=k0,
-        #         ql0=self.temporaries.ql0,
-        #         qi0=self.temporaries.qi0,
-        #         dt=dt,
-        #         ese=self.qsat.ese,
-        #         esx=self.qsat.esx,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         qlten_sink=self.temporaries.qlten_sink,
-        #         qiten_sink=self.temporaries.qiten_sink,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._penetrative_entrainment_fluxes(
+                condensation=self.condensation,
+                kbup=self.temporaries.kbup,
+                kpen=self.temporaries.kpen,
+                exnifc0=self.temporaries.exnifc0_in,
+                emf=self.temporaries.emf,
+                thlu_emf=self.temporaries.thlu_emf,
+                thl0=self.temporaries.thl0,
+                ssthl0=self.temporaries.ssthl0,
+                pifc0=self.temporaries.pifc0_in,
+                pmid0=self.temporaries.pmid0_in,
+                qtu_emf=self.temporaries.qtu_emf,
+                qt0=self.temporaries.qt0,
+                ssqt0=self.temporaries.ssqt0,
+                uu_emf=self.temporaries.uu_emf,
+                vu_emf=self.temporaries.vu_emf,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                ssu0=self.temporaries.ssu0,
+                ssv0=self.temporaries.ssv0,
+                dotransport=dotransport,
+                trflx=self.trflx,
+                tru_emf=self.tru_emf,
+                tr0=self.tr0,
+                sstr0=self.sstr0,
+                use_momenflx=use_momenflx,
+                cbmf=self.temporaries.cbmf,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                qtflx=self.temporaries.qtflx,
+                slflx=self.temporaries.slflx,
+                uemf=self.temporaries.uemf,
+                kinv=self.temporaries.kinv,
+                krel=self.temporaries.krel,
+                umf_zint=self.temporaries.umf_zint,
+                k0=k0,
+                ql0=self.temporaries.ql0,
+                qi0=self.temporaries.qi0,
+                dt=dt,
+                ese=self.qsat.ese,
+                esx=self.qsat.esx,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                qlten_sink=self.temporaries.qlten_sink,
+                qiten_sink=self.temporaries.qiten_sink,
+                cush_inout=self.temporaries.cush_inout,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._calc_momentum_tendency(
-        #         condensation=self.condensation,
-        #         kpen=self.temporaries.kpen,
-        #         uflx=self.temporaries.uflx,
-        #         vflx=self.temporaries.vflx,
-        #         dp0=self.temporaries.dp0_in,
-        #         u0=self.temporaries.u0_in,
-        #         v0=self.temporaries.v0_in,
-        #         dt=dt,
-        #         uten=self.temporaries.uten,
-        #         vten=self.temporaries.vten,
-        #         uf=self.temporaries.uf,
-        #         vf=self.temporaries.vf,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._calc_momentum_tendency(
+                condensation=self.condensation,
+                kpen=self.temporaries.kpen,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                dp0=self.temporaries.dp0_in,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                dt=dt,
+                uten=self.temporaries.uten,
+                vten=self.temporaries.vten,
+                uf=self.temporaries.uf,
+                vf=self.temporaries.vf,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._calc_thermodynamic_tendencies(
-        #         condensation=self.condensation,
-        #         kpen=self.temporaries.kpen,
-        #         umf_zint=self.temporaries.umf_zint,
-        #         dp0=self.temporaries.dp0_in,
-        #         frc_rasn=frc_rasn,
-        #         slflx=self.temporaries.slflx,
-        #         uflx=self.temporaries.uflx,
-        #         vflx=self.temporaries.vflx,
-        #         u0=self.temporaries.u0_in,
-        #         v0=self.temporaries.v0_in,
-        #         uf=self.temporaries.uf,
-        #         vf=self.temporaries.vf,
-        #         dwten=self.temporaries.dwten,
-        #         diten=self.temporaries.diten,
-        #         dwten_temp=self.temporaries.dwten_temp,
-        #         diten_temp=self.temporaries.diten_temp,
-        #         umf_temp=self.temporaries.umf_temp,
-        #         qtflx=self.temporaries.qtflx,
-        #         krel=self.temporaries.krel,
-        #         prel=self.temporaries.prel,
-        #         thlu=self.temporaries.thlu,
-        #         qtu=self.temporaries.qtu,
-        #         ese=self.qsat.ese,
-        #         esx=self.qsat.esx,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         ppen=self.temporaries.ppen,
-        #         thlu_top=self.temporaries.thlu_top,
-        #         qtu_top=self.temporaries.qtu_top,
-        #         qlubelow=self.temporaries.qlubelow,
-        #         qiubelow=self.temporaries.qiubelow,
-        #         qlj_2D=self.temporaries.qlj_2D,
-        #         qij_2D=self.temporaries.qij_2D,
-        #         fdr=self.temporaries.fdr,
-        #         ql0=self.temporaries.ql0,
-        #         qi0=self.temporaries.qi0,
-        #         kbup=self.temporaries.kbup,
-        #         pmid0=self.temporaries.pmid0_in,
-        #         thlu_emf=self.temporaries.thlu_emf,
-        #         qtu_emf=self.temporaries.qtu_emf,
-        #         emf=self.temporaries.emf,
-        #         qlten_sink=self.temporaries.qlten_sink,
-        #         qiten_sink=self.temporaries.qiten_sink,
-        #         dt=dt,
-        #         qrten=self.temporaries.qrten,
-        #         qsten=self.temporaries.qsten,
-        #         qvten=self.temporaries.qvten,
-        #         qlten=self.temporaries.qlten,
-        #         sten=self.temporaries.sten,
-        #         qiten=self.temporaries.qiten,
-        #         qc=self.temporaries.qc,
-        #         slten=self.temporaries.slten,
-        #         qlten_det=self.temporaries.qlten_det,
-        #         qiten_det=self.temporaries.qiten_det,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._calc_thermodynamic_tendencies(
+                condensation=self.condensation,
+                kpen=self.temporaries.kpen,
+                umf_zint=self.temporaries.umf_zint,
+                dp0=self.temporaries.dp0_in,
+                frc_rasn=frc_rasn,
+                slflx=self.temporaries.slflx,
+                uflx=self.temporaries.uflx,
+                vflx=self.temporaries.vflx,
+                u0=self.temporaries.u0_in,
+                v0=self.temporaries.v0_in,
+                uf=self.temporaries.uf,
+                vf=self.temporaries.vf,
+                dwten=self.temporaries.dwten,
+                diten=self.temporaries.diten,
+                dwten_temp=self.temporaries.dwten_temp,
+                diten_temp=self.temporaries.diten_temp,
+                umf_temp=self.temporaries.umf_temp,
+                qtflx=self.temporaries.qtflx,
+                krel=self.temporaries.krel,
+                prel=self.temporaries.prel,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                ese=self.qsat.ese,
+                esx=self.qsat.esx,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                pifc0=self.temporaries.pifc0_in,
+                ppen=self.temporaries.ppen,
+                thlu_top=self.temporaries.thlu_top,
+                qtu_top=self.temporaries.qtu_top,
+                qlubelow=self.temporaries.qlubelow,
+                qiubelow=self.temporaries.qiubelow,
+                qlj_2D=self.temporaries.qlj_2D,
+                qij_2D=self.temporaries.qij_2D,
+                fdr=self.temporaries.fdr,
+                ql0=self.temporaries.ql0,
+                qi0=self.temporaries.qi0,
+                kbup=self.temporaries.kbup,
+                pmid0=self.temporaries.pmid0_in,
+                thlu_emf=self.temporaries.thlu_emf,
+                qtu_emf=self.temporaries.qtu_emf,
+                emf=self.temporaries.emf,
+                qlten_sink=self.temporaries.qlten_sink,
+                qiten_sink=self.temporaries.qiten_sink,
+                dt=dt,
+                qrten=self.temporaries.qrten,
+                qsten=self.temporaries.qsten,
+                qvten=self.temporaries.qvten,
+                qlten=self.temporaries.qlten,
+                sten=self.temporaries.sten,
+                qiten=self.temporaries.qiten,
+                qc=self.temporaries.qc,
+                slten=self.temporaries.slten,
+                qlten_det=self.temporaries.qlten_det,
+                qiten_det=self.temporaries.qiten_det,
+                cush_inout=self.temporaries.cush_inout,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._prevent_negative_condensate(
-        #         condensation=self.condensation,
-        #         qv0=self.temporaries.qv0,
-        #         dt=dt,
-        #         qvten=self.temporaries.qvten,
-        #         ql0=self.temporaries.ql0,
-        #         qlten=self.temporaries.qlten,
-        #         qi0=self.temporaries.qi0,
-        #         s0=self.temporaries.s0,
-        #         sten=self.temporaries.sten,
-        #         dp0=self.temporaries.dp0_in,
-        #         qiten=self.temporaries.qiten,
-        #         k0=k0,
-        #         qmin=self.temporaries.qmin,
-        #         iteration=iteration,
-        #         testvar3D=testvar3D,
-        #     )
+            self._prevent_negative_condensate(
+                condensation=self.condensation,
+                qv0=self.temporaries.qv0,
+                dt=dt,
+                qvten=self.temporaries.qvten,
+                ql0=self.temporaries.ql0,
+                qlten=self.temporaries.qlten,
+                qi0=self.temporaries.qi0,
+                s0=self.temporaries.s0,
+                sten=self.temporaries.sten,
+                dp0=self.temporaries.dp0_in,
+                qiten=self.temporaries.qiten,
+                k0=k0,
+                qmin=self.temporaries.qmin,
+                iteration=iteration,
+                testvar3D=testvar3D,
+            )
 
-        #     self._calc_tracer_tendencies(
-        #         condensation=self.condensation,
-        #         dotransport=dotransport,
-        #         k0=k0,
-        #         dt=dt,
-        #         dp0=self.temporaries.dp0_in,
-        #         trflx_d=self.trflx_d,
-        #         trflx_u=self.trflx_u,
-        #         trmin=self.trmin,
-        #         tr0=self.tr0,
-        #         trflx=self.trflx,
-        #         trten=self.trten,
-        #         iteration=iteration,
-        #     )
+            self._calc_tracer_tendencies(
+                condensation=self.condensation,
+                dotransport=dotransport,
+                k0=k0,
+                dt=dt,
+                dp0=self.temporaries.dp0_in,
+                trflx_d=self.trflx_d,
+                trflx_u=self.trflx_u,
+                trmin=self.trmin,
+                tr0=self.tr0,
+                trflx=self.trflx,
+                trten=self.trten,
+                iteration=iteration,
+            )
 
-        #     self._compute_diagnostic_outputs(
-        #         condensation=self.condensation,
-        #         prel=self.temporaries.prel,
-        #         thlu=self.temporaries.thlu,
-        #         qtu=self.temporaries.qtu,
-        #         krel=self.temporaries.krel,
-        #         ese=self.qsat.ese,
-        #         esx=self.qsat.esx,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         qcubelow=self.temporaries.qcubelow,
-        #         qlubelow=self.temporaries.qlubelow,
-        #         qiubelow=self.temporaries.qiubelow,
-        #         rcwp=self.temporaries.rcwp,
-        #         rlwp=self.temporaries.rlwp,
-        #         riwp=self.temporaries.riwp,
-        #         cush_inout=self.temporaries.cush_inout,
-        #     )
+            self._compute_diagnostic_outputs(
+                condensation=self.condensation,
+                prel=self.temporaries.prel,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                krel=self.temporaries.krel,
+                ese=self.qsat.ese,
+                esx=self.qsat.esx,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                qcubelow=self.temporaries.qcubelow,
+                qlubelow=self.temporaries.qlubelow,
+                qiubelow=self.temporaries.qiubelow,
+                rcwp=self.temporaries.rcwp,
+                rlwp=self.temporaries.rlwp,
+                riwp=self.temporaries.riwp,
+                cush_inout=self.temporaries.cush_inout,
+            )
 
-        #     self._calc_cumulus_condensate_at_interfaces(
-        #         condensation=self.condensation,
-        #         krel=self.temporaries.krel,
-        #         kpen=self.temporaries.kpen,
-        #         pifc0=self.temporaries.pifc0_in,
-        #         ppen=self.temporaries.ppen,
-        #         thlu_top=self.temporaries.thlu_top,
-        #         qtu_top=self.temporaries.qtu_top,
-        #         thlu=self.temporaries.thlu,
-        #         qtu=self.temporaries.qtu,
-        #         ese=self.qsat.ese,
-        #         esx=self.qsat.esx,
-        #         umf_out=self.temporaries.umf_out,
-        #         qtflx_out=self.temporaries.qtflx_out,
-        #         slflx_out=self.temporaries.slflx_out,
-        #         uflx_out=self.temporaries.uflx_out,
-        #         vflx_out=self.temporaries.vflx_out,
-        #         ufrc=self.temporaries.ufrc,
-        #         ufrclcl=self.temporaries.ufrclcl,
-        #         prel=self.temporaries.prel,
-        #         criqc=criqc,
-        #         qcubelow=self.temporaries.qcubelow,
-        #         qlubelow=self.temporaries.qlubelow,
-        #         qiubelow=self.temporaries.qiubelow,
-        #         qcu=self.temporaries.qcu,
-        #         qlu=self.temporaries.qlu,
-        #         qiu=self.temporaries.qiu,
-        #         rcwp=self.temporaries.rcwp,
-        #         rlwp=self.temporaries.rlwp,
-        #         riwp=self.temporaries.riwp,
-        #         cufrc=self.temporaries.cufrc,
-        #         cush_inout=self.temporaries.cush_inout,
-        #         testvar3D=testvar3D,
-        #         iteration=iteration,
-        #     )
+            self._calc_cumulus_condensate_at_interfaces(
+                condensation=self.condensation,
+                krel=self.temporaries.krel,
+                kpen=self.temporaries.kpen,
+                pifc0=self.temporaries.pifc0_in,
+                ppen=self.temporaries.ppen,
+                thlu_top=self.temporaries.thlu_top,
+                qtu_top=self.temporaries.qtu_top,
+                thlu=self.temporaries.thlu,
+                qtu=self.temporaries.qtu,
+                ese=self.qsat.ese,
+                esx=self.qsat.esx,
+                umf_out=self.temporaries.umf_out,
+                qtflx_out=self.temporaries.qtflx_out,
+                slflx_out=self.temporaries.slflx_out,
+                uflx_out=self.temporaries.uflx_out,
+                vflx_out=self.temporaries.vflx_out,
+                ufrc=self.temporaries.ufrc,
+                ufrclcl=self.temporaries.ufrclcl,
+                prel=self.temporaries.prel,
+                criqc=criqc,
+                qcubelow=self.temporaries.qcubelow,
+                qlubelow=self.temporaries.qlubelow,
+                qiubelow=self.temporaries.qiubelow,
+                qcu=self.temporaries.qcu,
+                qlu=self.temporaries.qlu,
+                qiu=self.temporaries.qiu,
+                rcwp=self.temporaries.rcwp,
+                rlwp=self.temporaries.rlwp,
+                riwp=self.temporaries.riwp,
+                cufrc=self.temporaries.cufrc,
+                cush_inout=self.temporaries.cush_inout,
+                testvar3D=testvar3D,
+                iteration=iteration,
+            )
 
-        #     if iteration != iter_cin:
-        #         self._adjust_implicit_CIN_inputs(
-        #             condensation=self.condensation,
-        #             qv0=self.temporaries.qv0,
-        #             qvten=self.temporaries.qvten,
-        #             dt=dt,
-        #             ql0=self.temporaries.ql0,
-        #             qlten=self.temporaries.qlten,
-        #             qi0=self.temporaries.qi0,
-        #             qiten=self.temporaries.qiten,
-        #             s0=self.temporaries.s0,
-        #             sten=self.temporaries.sten,
-        #             u0=self.temporaries.u0_in,
-        #             uten=self.temporaries.uten,
-        #             v0=self.temporaries.v0_in,
-        #             vten=self.temporaries.vten,
-        #             t0=self.temporaries.t0,
-        #             dotransport=dotransport,
-        #             tr0_s=self.tr0_s,
-        #             tr0=self.tr0,
-        #             trten=self.trten,
-        #             umf_s=self.temporaries.umf_s,
-        #             umf_zint=self.temporaries.umf_zint,
-        #             dcm=self.temporaries.dcm,
-        #             qrten=self.temporaries.qrten,
-        #             qsten=self.temporaries.qsten,
-        #             cush=cush,
-        #             cufrc=self.temporaries.cufrc,
-        #             slflx_s=self.temporaries.slflx_s,
-        #             slflx=self.temporaries.slflx,
-        #             qtflx_s=self.temporaries.qtflx_s,
-        #             qtflx=self.temporaries.qtflx,
-        #             uflx_s=self.temporaries.uflx_s,
-        #             uflx=self.temporaries.uflx,
-        #             vflx_s=self.temporaries.vflx_s,
-        #             vflx=self.temporaries.vflx,
-        #             qcu=self.temporaries.qcu,
-        #             qlu=self.temporaries.qlu,
-        #             qiu=self.temporaries.qiu,
-        #             fer=self.temporaries.fer,
-        #             fdr=self.temporaries.fdr,
-        #             xco=self.temporaries.xco,
-        #             cin_IJ=self.temporaries.cin_IJ,
-        #             cinlcl_IJ=self.temporaries.cinlcl_IJ,
-        #             cbmf=self.temporaries.cbmf,
-        #             qc=self.temporaries.qc,
-        #             qlten_det=self.temporaries.qlten_det,
-        #             qiten_det=self.temporaries.qiten_det,
-        #             qlten_sink=self.temporaries.qlten_sink,
-        #             qiten_sink=self.temporaries.qiten_sink,
-        #             ufrc_s=self.temporaries.ufrc_s,
-        #             ufrc=self.temporaries.ufrc,
-        #             qv0_s=self.temporaries.qv0_s,
-        #             ql0_s=self.temporaries.ql0_s,
-        #             qi0_s=self.temporaries.qi0_s,
-        #             s0_s=self.temporaries.s0_s,
-        #             t0_s=self.temporaries.t0_s,
-        #             dcm_s=self.temporaries.dcm_s,
-        #             qvten_s=self.temporaries.qvten_s,
-        #             qlten_s=self.temporaries.qlten_s,
-        #             qiten_s=self.temporaries.qiten_s,
-        #             sten_s=self.temporaries.sten_s,
-        #             uten_s=self.temporaries.uten_s,
-        #             vten_s=self.temporaries.vten_s,
-        #             qrten_s=self.temporaries.qrten_s,
-        #             qsten_s=self.temporaries.qsten_s,
-        #             qldet_s=self.temporaries.qldet_s,
-        #             qidet_s=self.temporaries.qidet_s,
-        #             qlsub_s=self.temporaries.qlsub_s,
-        #             qisub_s=self.temporaries.qisub_s,
-        #             cush_s=self.temporaries.cush_s,
-        #             cufrc_s=self.temporaries.cufrc_s,
-        #             fer_s=self.temporaries.fer_s,
-        #             fdr_s=self.temporaries.fdr_s,
-        #             iteration=iteration,
-        #             testvar3D=testvar3D,
-        #         )
+            if iteration != iter_cin:
+                self._adjust_implicit_CIN_inputs(
+                    condensation=self.condensation,
+                    qv0=self.temporaries.qv0,
+                    qvten=self.temporaries.qvten,
+                    dt=dt,
+                    ql0=self.temporaries.ql0,
+                    qlten=self.temporaries.qlten,
+                    qi0=self.temporaries.qi0,
+                    qiten=self.temporaries.qiten,
+                    s0=self.temporaries.s0,
+                    sten=self.temporaries.sten,
+                    u0=self.temporaries.u0_in,
+                    uten=self.temporaries.uten,
+                    v0=self.temporaries.v0_in,
+                    vten=self.temporaries.vten,
+                    t0=self.temporaries.t0,
+                    dotransport=dotransport,
+                    tr0_s=self.tr0_s,
+                    tr0=self.tr0,
+                    trten=self.trten,
+                    umf_s=self.temporaries.umf_s,
+                    umf_zint=self.temporaries.umf_zint,
+                    dcm=self.temporaries.dcm,
+                    qrten=self.temporaries.qrten,
+                    qsten=self.temporaries.qsten,
+                    cush=cush,
+                    cufrc=self.temporaries.cufrc,
+                    slflx_s=self.temporaries.slflx_s,
+                    slflx=self.temporaries.slflx,
+                    qtflx_s=self.temporaries.qtflx_s,
+                    qtflx=self.temporaries.qtflx,
+                    uflx_s=self.temporaries.uflx_s,
+                    uflx=self.temporaries.uflx,
+                    vflx_s=self.temporaries.vflx_s,
+                    vflx=self.temporaries.vflx,
+                    qcu=self.temporaries.qcu,
+                    qlu=self.temporaries.qlu,
+                    qiu=self.temporaries.qiu,
+                    fer=self.temporaries.fer,
+                    fdr=self.temporaries.fdr,
+                    xco=self.temporaries.xco,
+                    cin_IJ=self.temporaries.cin_IJ,
+                    cinlcl_IJ=self.temporaries.cinlcl_IJ,
+                    cbmf=self.temporaries.cbmf,
+                    qc=self.temporaries.qc,
+                    qlten_det=self.temporaries.qlten_det,
+                    qiten_det=self.temporaries.qiten_det,
+                    qlten_sink=self.temporaries.qlten_sink,
+                    qiten_sink=self.temporaries.qiten_sink,
+                    ufrc_s=self.temporaries.ufrc_s,
+                    ufrc=self.temporaries.ufrc,
+                    qv0_s=self.temporaries.qv0_s,
+                    ql0_s=self.temporaries.ql0_s,
+                    qi0_s=self.temporaries.qi0_s,
+                    s0_s=self.temporaries.s0_s,
+                    t0_s=self.temporaries.t0_s,
+                    dcm_s=self.temporaries.dcm_s,
+                    qvten_s=self.temporaries.qvten_s,
+                    qlten_s=self.temporaries.qlten_s,
+                    qiten_s=self.temporaries.qiten_s,
+                    sten_s=self.temporaries.sten_s,
+                    uten_s=self.temporaries.uten_s,
+                    vten_s=self.temporaries.vten_s,
+                    qrten_s=self.temporaries.qrten_s,
+                    qsten_s=self.temporaries.qsten_s,
+                    qldet_s=self.temporaries.qldet_s,
+                    qidet_s=self.temporaries.qidet_s,
+                    qlsub_s=self.temporaries.qlsub_s,
+                    qisub_s=self.temporaries.qisub_s,
+                    cush_s=self.temporaries.cush_s,
+                    cufrc_s=self.temporaries.cufrc_s,
+                    fer_s=self.temporaries.fer_s,
+                    fdr_s=self.temporaries.fdr_s,
+                    iteration=iteration,
+                    testvar3D=testvar3D,
+                )
 
-        #         self._recalc_environmental_variables(
-        #             condensation=self.condensation,
-        #             qv0_s=self.temporaries.qv0_s,
-        #             ql0_s=self.temporaries.ql0_s,
-        #             qi0_s=self.temporaries.qi0_s,
-        #             s0_s=self.temporaries.s0_s,
-        #             t0_s=self.temporaries.t0_s,
-        #             exnmid0=self.temporaries.exnmid0_in,
-        #             pmid0=self.temporaries.pmid0_in,
-        #             dotransport=dotransport,
-        #             sstr0=self.sstr0,
-        #             tr0=self.tr0,
-        #             u0=self.temporaries.u0_in,
-        #             v0=self.temporaries.v0_in,
-        #             pifc0=self.temporaries.pifc0_in,
-        #             ese=self.qsat.ese,
-        #             esx=self.qsat.esx,
-        #             umf_out=self.temporaries.umf_out,
-        #             slflx_out=self.temporaries.slflx_out,
-        #             qtflx_out=self.temporaries.qtflx_out,
-        #             uflx_out=self.temporaries.uflx_out,
-        #             vflx_out=self.temporaries.vflx_out,
-        #             thvl0bot=self.temporaries.thvl0bot,
-        #             thv0bot=self.temporaries.thv0bot,
-        #             thvl0top=self.temporaries.thvl0top,
-        #             thv0top=self.temporaries.thv0top,
-        #             thl0=self.temporaries.thl0,
-        #             qt0=self.temporaries.qt0,
-        #             thvl0=self.temporaries.thvl0,
-        #             ssthl0=self.temporaries.ssthl0,
-        #             ssu0=self.temporaries.ssu0,
-        #             ssv0=self.temporaries.ssv0,
-        #             ssqt0=self.temporaries.ssqt0,
-        #             qv0=self.temporaries.qv0,
-        #             ql0=self.temporaries.ql0,
-        #             qi0=self.temporaries.qi0,
-        #             s0=self.temporaries.s0,
-        #             t0=self.temporaries.t0,
-        #             tr0_temp=self.temporaries.tr0_temp,
-        #             cush_inout=self.temporaries.cush_inout,
-        #             iteration=iteration,
-        #             testvar3D=testvar3D,
-        #         )
+                self._recalc_environmental_variables(
+                    condensation=self.condensation,
+                    qv0_s=self.temporaries.qv0_s,
+                    ql0_s=self.temporaries.ql0_s,
+                    qi0_s=self.temporaries.qi0_s,
+                    s0_s=self.temporaries.s0_s,
+                    t0_s=self.temporaries.t0_s,
+                    exnmid0=self.temporaries.exnmid0_in,
+                    pmid0=self.temporaries.pmid0_in,
+                    dotransport=dotransport,
+                    sstr0=self.sstr0,
+                    tr0=self.tr0,
+                    u0=self.temporaries.u0_in,
+                    v0=self.temporaries.v0_in,
+                    pifc0=self.temporaries.pifc0_in,
+                    ese=self.qsat.ese,
+                    esx=self.qsat.esx,
+                    umf_out=self.temporaries.umf_out,
+                    slflx_out=self.temporaries.slflx_out,
+                    qtflx_out=self.temporaries.qtflx_out,
+                    uflx_out=self.temporaries.uflx_out,
+                    vflx_out=self.temporaries.vflx_out,
+                    thvl0bot=self.temporaries.thvl0bot,
+                    thv0bot=self.temporaries.thv0bot,
+                    thvl0top=self.temporaries.thvl0top,
+                    thv0top=self.temporaries.thv0top,
+                    thl0=self.temporaries.thl0,
+                    qt0=self.temporaries.qt0,
+                    thvl0=self.temporaries.thvl0,
+                    ssthl0=self.temporaries.ssthl0,
+                    ssu0=self.temporaries.ssu0,
+                    ssv0=self.temporaries.ssv0,
+                    ssqt0=self.temporaries.ssqt0,
+                    qv0=self.temporaries.qv0,
+                    ql0=self.temporaries.ql0,
+                    qi0=self.temporaries.qi0,
+                    s0=self.temporaries.s0,
+                    t0=self.temporaries.t0,
+                    tr0_temp=self.temporaries.tr0_temp,
+                    cush_inout=self.temporaries.cush_inout,
+                    iteration=iteration,
+                    testvar3D=testvar3D,
+                )
 
-        # self._update_output_variables(
-        #     del_CIN=self.temporaries.del_CIN,
-        #     umf_zint=self.temporaries.umf_zint,
-        #     zifc0=self.temporaries.zifc0_in,
-        #     kinv=self.temporaries.kinv,
-        #     dcm=self.temporaries.dcm,
-        #     qvten=self.temporaries.qvten,
-        #     qlten=self.temporaries.qlten,
-        #     qiten=self.temporaries.qiten,
-        #     sten=self.temporaries.sten,
-        #     uten=self.temporaries.uten,
-        #     vten=self.temporaries.vten,
-        #     qrten=self.temporaries.qrten,
-        #     qsten=self.temporaries.qsten,
-        #     cufrc=self.temporaries.cufrc,
-        #     cush=cush,
-        #     qlten_det=self.temporaries.qlten_det,
-        #     qiten_det=self.temporaries.qiten_det,
-        #     qlten_sink=self.temporaries.qlten_sink,
-        #     qiten_sink=self.temporaries.qiten_sink,
-        #     rdrop=rdrop,
-        #     qtflx=self.temporaries.qtflx,
-        #     slflx=self.temporaries.slflx,
-        #     uflx=self.temporaries.uflx,
-        #     vflx=self.temporaries.vflx,
-        #     dotransport=dotransport,
-        #     trten=self.trten,
-        #     dt=dt,
-        #     fer=self.temporaries.fer,
-        #     fdr=self.temporaries.fdr,
-        #     kpen=self.temporaries.kpen,
-        #     umf_out=self.temporaries.umf_out,
-        #     dcm_out=self.temporaries.dcm_out,
-        #     qvten_out=self.temporaries.qvten_out,
-        #     qlten_out=self.temporaries.qlten_out,
-        #     qiten_out=self.temporaries.qiten_out,
-        #     sten_out=self.temporaries.sten_out,
-        #     uten_out=self.temporaries.uten_out,
-        #     vten_out=self.temporaries.vten_out,
-        #     qrten_out=self.temporaries.qrten_out,
-        #     qsten_out=self.temporaries.qsten_out,
-        #     cufrc_out=self.temporaries.cufrc_out,
-        #     cush_inout=self.temporaries.cush_inout,
-        #     qldet_out=self.temporaries.qldet_out,
-        #     qidet_out=self.temporaries.qidet_out,
-        #     qlsub_out=self.temporaries.qlsub_out,
-        #     qisub_out=self.temporaries.qisub_out,
-        #     ndrop_out=self.temporaries.ndrop_out,
-        #     nice_out=self.temporaries.nice_out,
-        #     qtflx_out=self.temporaries.qtflx_out,
-        #     slflx_out=self.temporaries.slflx_out,
-        #     uflx_out=self.temporaries.uflx_out,
-        #     vflx_out=self.temporaries.vflx_out,
-        #     tr0_inout=self.tr0_inout,
-        #     fer_out=self.temporaries.fer_out,
-        #     umf_outvar=self.temporaries.umf_outvar,
-        #     dcm_outvar=self.temporaries.dcm_outvar,
-        #     qvten_outvar=self.temporaries.qvten_outvar,
-        #     qlten_outvar=self.temporaries.qlten_outvar,
-        #     qiten_outvar=self.temporaries.qiten_outvar,
-        #     sten_outvar=self.temporaries.sten_outvar,
-        #     uten_outvar=self.temporaries.uten_outvar,
-        #     vten_outvar=self.temporaries.vten_outvar,
-        #     qrten_outvar=self.temporaries.qrten_outvar,
-        #     qsten_outvar=self.temporaries.qsten_outvar,
-        #     cufrc_outvar=self.temporaries.cufrc_outvar,
-        #     cush_inoutvar=self.temporaries.cush_inoutvar,
-        #     qldet_outvar=self.temporaries.qldet_outvar,
-        #     qidet_outvar=self.temporaries.qidet_outvar,
-        #     qlsub_outvar=self.temporaries.qlsub_outvar,
-        #     qisub_outvar=self.temporaries.qisub_outvar,
-        #     qtflx_outvar=self.temporaries.qtflx_outvar,
-        #     slflx_outvar=self.temporaries.slflx_outvar,
-        #     uflx_outvar=self.temporaries.uflx_outvar,
-        #     vflx_outvar=self.temporaries.vflx_outvar,
-        #     fdr_out=self.temporaries.fdr_out,
-        #     fer_outvar=self.temporaries.fer_outvar,
-        #     fdr_outvar=self.temporaries.fdr_outvar,
-        #     tr0_inoutvar=self.tr0_inoutvar,
-        #     testvar3D=testvar3D,
-        #     condensation=self.condensation,
-        # )
+        self._update_output_variables(
+            del_CIN=self.temporaries.del_CIN,
+            umf_zint=self.temporaries.umf_zint,
+            zifc0=self.temporaries.zifc0_in,
+            kinv=self.temporaries.kinv,
+            dcm=self.temporaries.dcm,
+            qvten=self.temporaries.qvten,
+            qlten=self.temporaries.qlten,
+            qiten=self.temporaries.qiten,
+            sten=self.temporaries.sten,
+            uten=self.temporaries.uten,
+            vten=self.temporaries.vten,
+            qrten=self.temporaries.qrten,
+            qsten=self.temporaries.qsten,
+            cufrc=self.temporaries.cufrc,
+            cush=cush,
+            qlten_det=self.temporaries.qlten_det,
+            qiten_det=self.temporaries.qiten_det,
+            qlten_sink=self.temporaries.qlten_sink,
+            qiten_sink=self.temporaries.qiten_sink,
+            rdrop=rdrop,
+            qtflx=self.temporaries.qtflx,
+            slflx=self.temporaries.slflx,
+            uflx=self.temporaries.uflx,
+            vflx=self.temporaries.vflx,
+            dotransport=dotransport,
+            trten=self.trten,
+            dt=dt,
+            fer=self.temporaries.fer,
+            fdr=self.temporaries.fdr,
+            kpen=self.temporaries.kpen,
+            umf_out=self.temporaries.umf_out,
+            dcm_out=self.temporaries.dcm_out,
+            qvten_out=self.temporaries.qvten_out,
+            qlten_out=self.temporaries.qlten_out,
+            qiten_out=self.temporaries.qiten_out,
+            sten_out=self.temporaries.sten_out,
+            uten_out=self.temporaries.uten_out,
+            vten_out=self.temporaries.vten_out,
+            qrten_out=self.temporaries.qrten_out,
+            qsten_out=self.temporaries.qsten_out,
+            cufrc_out=self.temporaries.cufrc_out,
+            cush_inout=self.temporaries.cush_inout,
+            qldet_out=self.temporaries.qldet_out,
+            qidet_out=self.temporaries.qidet_out,
+            qlsub_out=self.temporaries.qlsub_out,
+            qisub_out=self.temporaries.qisub_out,
+            ndrop_out=self.temporaries.ndrop_out,
+            nice_out=self.temporaries.nice_out,
+            qtflx_out=self.temporaries.qtflx_out,
+            slflx_out=self.temporaries.slflx_out,
+            uflx_out=self.temporaries.uflx_out,
+            vflx_out=self.temporaries.vflx_out,
+            tr0_inout=self.tr0_inout,
+            fer_out=self.temporaries.fer_out,
+            umf_outvar=self.temporaries.umf_outvar,
+            dcm_outvar=self.temporaries.dcm_outvar,
+            qvten_outvar=self.temporaries.qvten_outvar,
+            qlten_outvar=self.temporaries.qlten_outvar,
+            qiten_outvar=self.temporaries.qiten_outvar,
+            sten_outvar=self.temporaries.sten_outvar,
+            uten_outvar=self.temporaries.uten_outvar,
+            vten_outvar=self.temporaries.vten_outvar,
+            qrten_outvar=self.temporaries.qrten_outvar,
+            qsten_outvar=self.temporaries.qsten_outvar,
+            cufrc_outvar=self.temporaries.cufrc_outvar,
+            cush_inoutvar=self.temporaries.cush_inoutvar,
+            qldet_outvar=self.temporaries.qldet_outvar,
+            qidet_outvar=self.temporaries.qidet_outvar,
+            qlsub_outvar=self.temporaries.qlsub_outvar,
+            qisub_outvar=self.temporaries.qisub_outvar,
+            qtflx_outvar=self.temporaries.qtflx_outvar,
+            slflx_outvar=self.temporaries.slflx_outvar,
+            uflx_outvar=self.temporaries.uflx_outvar,
+            vflx_outvar=self.temporaries.vflx_outvar,
+            fdr_out=self.temporaries.fdr_out,
+            fer_outvar=self.temporaries.fer_outvar,
+            fdr_outvar=self.temporaries.fdr_outvar,
+            tr0_inoutvar=self.tr0_inoutvar,
+            testvar3D=testvar3D,
+            condensation=self.condensation,
+        )
 
-        # self._compute_uwshcu_invert_after(
-        #     # Inputs
-        #     k0=k0,
-        #     umf_outvar=self.temporaries.umf_outvar,
-        #     qtflx_outvar=self.temporaries.qtflx_outvar,
-        #     slflx_outvar=self.temporaries.slflx_outvar,
-        #     uflx_outvar=self.temporaries.uflx_outvar,
-        #     vflx_outvar=self.temporaries.vflx_outvar,
-        #     dcm_outvar=self.temporaries.dcm_outvar,
-        #     qvten_outvar=self.temporaries.qvten_outvar,
-        #     qlten_outvar=self.temporaries.qlten_outvar,
-        #     qiten_outvar=self.temporaries.qiten_outvar,
-        #     sten_outvar=self.temporaries.sten_outvar,
-        #     uten_outvar=self.temporaries.uten_outvar,
-        #     vten_outvar=self.temporaries.vten_outvar,
-        #     qrten_outvar=self.temporaries.qrten_outvar,
-        #     qsten_outvar=self.temporaries.qsten_outvar,
-        #     cufrc_outvar=self.temporaries.cufrc_outvar,
-        #     qldet_outvar=self.temporaries.qldet_outvar,
-        #     qidet_outvar=self.temporaries.qidet_outvar,
-        #     qlsub_outvar=self.temporaries.qlsub_outvar,
-        #     qisub_outvar=self.temporaries.qisub_outvar,
-        #     fer_outvar=self.temporaries.fer_outvar,
-        #     fdr_outvar=self.temporaries.fdr_outvar,
-        #     ndrop_out=self.temporaries.ndrop_out,
-        #     nice_out=self.temporaries.nice_out,
-        #     tr0=self.tr0,
-        #     tr0_inoutvar=self.tr0_inoutvar,
-        #     CNV_Tracers=CNV_Tracers,
-        #     # Outputs
-        #     umf_inv=umf_inv,
-        #     dcm_inv=dcm_inv,
-        #     qtflx_inv=qtflx_inv,
-        #     slflx_inv=slflx_inv,
-        #     uflx_inv=uflx_inv,
-        #     vflx_inv=vflx_inv,
-        #     qvten_inv=qvten_inv,
-        #     qlten_inv=qlten_inv,
-        #     qiten_inv=qiten_inv,
-        #     tten_inv=tten_inv,
-        #     uten_inv=uten_inv,
-        #     vten_inv=vten_inv,
-        #     qrten_inv=qrten_inv,
-        #     qsten_inv=qsten_inv,
-        #     cufrc_inv=cufrc_inv,
-        #     fer_inv=fer_inv,
-        #     fdr_inv=fdr_inv,
-        #     ndrop_inv=ndrop_inv,
-        #     nice_inv=nice_inv,
-        #     qldet_inv=qldet_inv,
-        #     qlsub_inv=qlsub_inv,
-        #     qidet_inv=qidet_inv,
-        #     qisub_inv=qisub_inv,
-        #     dotransport=dotransport,
-        # )
+        self._compute_uwshcu_invert_after(
+            # Inputs
+            k0=k0,
+            umf_outvar=self.temporaries.umf_outvar,
+            qtflx_outvar=self.temporaries.qtflx_outvar,
+            slflx_outvar=self.temporaries.slflx_outvar,
+            uflx_outvar=self.temporaries.uflx_outvar,
+            vflx_outvar=self.temporaries.vflx_outvar,
+            dcm_outvar=self.temporaries.dcm_outvar,
+            qvten_outvar=self.temporaries.qvten_outvar,
+            qlten_outvar=self.temporaries.qlten_outvar,
+            qiten_outvar=self.temporaries.qiten_outvar,
+            sten_outvar=self.temporaries.sten_outvar,
+            uten_outvar=self.temporaries.uten_outvar,
+            vten_outvar=self.temporaries.vten_outvar,
+            qrten_outvar=self.temporaries.qrten_outvar,
+            qsten_outvar=self.temporaries.qsten_outvar,
+            cufrc_outvar=self.temporaries.cufrc_outvar,
+            qldet_outvar=self.temporaries.qldet_outvar,
+            qidet_outvar=self.temporaries.qidet_outvar,
+            qlsub_outvar=self.temporaries.qlsub_outvar,
+            qisub_outvar=self.temporaries.qisub_outvar,
+            fer_outvar=self.temporaries.fer_outvar,
+            fdr_outvar=self.temporaries.fdr_outvar,
+            ndrop_out=self.temporaries.ndrop_out,
+            nice_out=self.temporaries.nice_out,
+            tr0=self.tr0,
+            tr0_inoutvar=self.tr0_inoutvar,
+            CNV_Tracers=CNV_Tracers,
+            # Outputs
+            umf_inv=umf_inv,
+            dcm_inv=dcm_inv,
+            qtflx_inv=qtflx_inv,
+            slflx_inv=slflx_inv,
+            uflx_inv=uflx_inv,
+            vflx_inv=vflx_inv,
+            qvten_inv=qvten_inv,
+            qlten_inv=qlten_inv,
+            qiten_inv=qiten_inv,
+            tten_inv=tten_inv,
+            uten_inv=uten_inv,
+            vten_inv=vten_inv,
+            qrten_inv=qrten_inv,
+            qsten_inv=qsten_inv,
+            cufrc_inv=cufrc_inv,
+            fer_inv=fer_inv,
+            fdr_inv=fdr_inv,
+            ndrop_inv=ndrop_inv,
+            nice_inv=nice_inv,
+            qldet_inv=qldet_inv,
+            qlsub_inv=qlsub_inv,
+            qidet_inv=qidet_inv,
+            qisub_inv=qisub_inv,
+            dotransport=dotransport,
+        )
