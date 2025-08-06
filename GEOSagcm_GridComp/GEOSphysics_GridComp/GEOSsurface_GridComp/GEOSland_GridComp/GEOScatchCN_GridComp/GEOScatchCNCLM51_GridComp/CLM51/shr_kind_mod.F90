@@ -1,11 +1,11 @@
 MODULE shr_kind_mod
 
   use MAPL_ConstantsMod, ONLY:  &
-       MAPL_R8                  &
-       MAPL_R4                  &
-       MAPL_RN                  &
-       MAPL_I8                  &
-       MAPL_I4                  &
+       MAPL_R8,                 &
+       MAPL_R4,                 &
+       MAPL_RN,                 &
+       MAPL_I8,                 &
+       MAPL_I4,                 &
        MAPL_IN                
   
   !----------------------------------------------------------------------------
