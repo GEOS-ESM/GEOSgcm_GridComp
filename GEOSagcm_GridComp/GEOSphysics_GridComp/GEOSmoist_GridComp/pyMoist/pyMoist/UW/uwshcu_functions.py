@@ -1,5 +1,15 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, sqrt
+from gt4py.cartesian.gtscript import (
+    K,
+    erfc,
+    exp,
+    float32,
+    float64,
+    log,
+    sin,
+    sqrt,
+    int32,
+)
 
 import pyMoist.constants as constants
 import pyMoist.pyMoist_constants as py_constants
@@ -264,7 +274,14 @@ def conden(
         else:
             id_check = 0
 
-    return float32(th), float32(qv), float32(ql), float32(qi), float32(rvls), id_check
+    return (
+        float32(th),
+        float32(qv),
+        float32(ql),
+        float32(qi),
+        float32(rvls),
+        int32(id_check),
+    )
 
 
 @gtscript.function

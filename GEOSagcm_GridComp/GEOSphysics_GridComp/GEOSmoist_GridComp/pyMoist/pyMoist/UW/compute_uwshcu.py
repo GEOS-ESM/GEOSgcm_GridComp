@@ -517,7 +517,8 @@ def compute_thv0_thvl0(
     trflx [FloatField_NTracers]: Tracer PBL flux [?]
     trten [FloatField_NTracers]: Tendency of [?]
     tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
-    tru_emf [FloatField_NTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
+    tru_emf [FloatField_NTracers]: Penetrative Downdraft tracers at entraining interfaces [
+    #, kg/kg]
     umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
     emf [FloatField]: Penetrative [?]
     slflx [FloatField]: Sensible heat flux [?]
@@ -530,7 +531,8 @@ def compute_thv0_thvl0(
     vu [FloatField]: Updraft meridional wind at the interface [m/s]
     wu [FloatField]: Updraft vertical velocity at the interface [m/s]
     thvu [FloatField]: Updraft virtual potential temperature at the interface [m/s]
-    thlu_emf [FloatField]: Penetrative downdraft liquid potential temperature at entraining interfaces [K]
+    thlu_emf [FloatField]: Penetrative downdraft liquid potential temperature at entraining
+    interfaces [K]
     qtu_emf [FloatField]: Penetrative downdraft total water at entraining interfaces [kg/kg]
     uu_emf [FloatField]: Penetrative downdraft zonal wind at entraining interfaces [m/s]
     vu_emf [FloatField]: Penetrative downdraft meridional wind at entraining interfaces [m/s]
@@ -548,14 +550,17 @@ def compute_thv0_thvl0(
     uten [FloatField]: Tendency of zonal wind [m/s2]
     vten [FloatField]: Tendency of meridional wind [m/s2]
     s0 [FloatField]: Environmental dry static energy [J/kg]
-    qcu [FloatField]: Condensate water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
-    qlu [FloatField]: Liquid water specific humidity within cumulus updraft at the layer mid-point [kg/kg]
+    qcu [FloatField]: Condensate water specific humidity within cumulus updraft at the layer
+    mid-point [kg/kg]
+    qlu [FloatField]: Liquid water specific humidity within cumulus updraft at the layer mid-point
+    [kg/kg]
     qiu [FloatField]: Ice specific humidity within cumulus updraft at the layer mid-point [kg/kg]
     cufrc [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
     ufrc [FloatField]: Cumulus updraft fraction [fraction]
     qlten_det [FloatField]: [?]
     qiten_det [FloatField]: [?]
-    qlten_sink [FloatField]: Liquid condensate tendency by compensating subsidence/upwelling [kg/kg/s]
+    qlten_sink [FloatField]: Liquid condensate tendency by compensating subsidence/upwelling
+    [kg/kg/s]
     qiten_sink [FloatField]: Ice condensate tendency by compensating subsidence/upwelling [kg/kg/s]
     sten [FloatField]: Tendency of dry static energy [J/kg/s]
     slten [FloatField]: Tendency of [?]
@@ -580,7 +585,7 @@ def compute_thv0_thvl0(
     ssv0_o [FloatField]: [?]
     cush_inout [FloatFieldIJ]: Convective scale height [m]
     """
-    from __externals__ import ncnst
+    # from __externals__ import ncnst
 
     with computation(PARALLEL), interval(...):
         pmid0 = pmid0_in
@@ -606,186 +611,186 @@ def compute_thv0_thvl0(
 
     with computation(FORWARD), interval(...):
         if id_check == 1:
-            condensation = (
-                True  # Indicates if condensation has occurred (e.g., Fortran go to 333)
-            )
-            umf_out[0, 0, 1] = 0.0
+            # condensation = (
+            #     True  # Indicates if condensation has occurred (e.g., Fortran go to 333)
+            # )
+            # umf_out[0, 0, 1] = 0.0
             dcm_out = 0.0
-            qvten_out = 0.0
-            qlten_out = 0.0
-            qiten_out = 0.0
-            sten_out = 0.0
-            uten_out = 0.0
-            vten_out = 0.0
-            qrten_out = 0.0
-            qsten_out = 0.0
-            cufrc_out = 0.0
-            cush_inout = -1.0
-            qldet_out = 0.0
-            qidet_out = 0.0
-            qtflx_out[0, 0, 1] = 0.0
-            slflx_out[0, 0, 1] = 0.0
-            uflx_out[0, 0, 1] = 0.0
-            vflx_out[0, 0, 1] = 0.0
-            fer_out = constants.MAPL_UNDEF
-            fdr_out = constants.MAPL_UNDEF
+        # qvten_out = 0.0
+        # qlten_out = 0.0
+        # qiten_out = 0.0
+        # sten_out = 0.0
+        # uten_out = 0.0
+        # vten_out = 0.0
+        # qrten_out = 0.0
+        # qsten_out = 0.0
+        # cufrc_out = 0.0
+        # cush_inout = -1.0
+        # qldet_out = 0.0
+        # qidet_out = 0.0
+        # qtflx_out[0, 0, 1] = 0.0
+        # slflx_out[0, 0, 1] = 0.0
+        # uflx_out[0, 0, 1] = 0.0
+        # vflx_out[0, 0, 1] = 0.0
+        # fer_out = constants.MAPL_UNDEF
+        # fdr_out = constants.MAPL_UNDEF
 
-    with computation(PARALLEL), interval(...):
-        if not condensation:
-            thv0bot = thj * (1.0 + zvir * qvj - qlj - qij)
-            thvl0bot = thl0bot * (1.0 + zvir * qt0bot)
+    # with computation(PARALLEL), interval(...):
+    #     if not condensation:
+    #         thv0bot = thj * (1.0 + zvir * qvj - qlj - qij)
+    #         thvl0bot = thl0bot * (1.0 + zvir * qt0bot)
 
-            thl0top = thl0 + ssthl0 * (pifc0_in[0, 0, 1] - pmid0)
-            qt0top = qt0 + ssqt0 * (pifc0_in[0, 0, 1] - pmid0)
+    #         thl0top = thl0 + ssthl0 * (pifc0_in[0, 0, 1] - pmid0)
+    #         qt0top = qt0 + ssqt0 * (pifc0_in[0, 0, 1] - pmid0)
 
-    with computation(PARALLEL), interval(0, -1):
-        if not condensation:
-            thj, qvj, qlj, qij, qse, id_check = conden(
-                pifc0_in[0, 0, 1], thl0top, qt0top, ese, esx
-            )
+    # with computation(PARALLEL), interval(0, -1):
+    #     if not condensation:
+    #         thj, qvj, qlj, qij, qse, id_check = conden(
+    #             pifc0_in[0, 0, 1], thl0top, qt0top, ese, esx
+    #         )
 
-    with computation(FORWARD), interval(0, -1):
-        if not condensation:
-            if id_check == 1:
-                condensation = True
-                umf_out[0, 0, 1] = 0.0
-                dcm_out = 0.0
-                qvten_out = 0.0
-                qlten_out = 0.0
-                qiten_out = 0.0
-                sten_out = 0.0
-                uten_out = 0.0
-                vten_out = 0.0
-                qrten_out = 0.0
-                qsten_out = 0.0
-                cufrc_out = 0.0
-                cush_inout = -1.0
-                qldet_out = 0.0
-                qidet_out = 0.0
-                qtflx_out[0, 0, 1] = 0.0
-                slflx_out[0, 0, 1] = 0.0
-                uflx_out[0, 0, 1] = 0.0
-                vflx_out[0, 0, 1] = 0.0
-                fer_out = constants.MAPL_UNDEF
-                fdr_out = constants.MAPL_UNDEF
+    # with computation(FORWARD), interval(0, -1):
+    #     if not condensation:
+    #         if id_check == 1:
+    #             condensation = True
+    #             umf_out[0, 0, 1] = 0.0
+    #             dcm_out = 0.0
+    #             qvten_out = 0.0
+    #             qlten_out = 0.0
+    #             qiten_out = 0.0
+    #             sten_out = 0.0
+    #             uten_out = 0.0
+    #             vten_out = 0.0
+    #             qrten_out = 0.0
+    #             qsten_out = 0.0
+    #             cufrc_out = 0.0
+    #             cush_inout = -1.0
+    #             qldet_out = 0.0
+    #             qidet_out = 0.0
+    #             qtflx_out[0, 0, 1] = 0.0
+    #             slflx_out[0, 0, 1] = 0.0
+    #             uflx_out[0, 0, 1] = 0.0
+    #             vflx_out[0, 0, 1] = 0.0
+    #             fer_out = constants.MAPL_UNDEF
+    #             fdr_out = constants.MAPL_UNDEF
 
-    with computation(PARALLEL), interval(0, -1):
-        if not condensation:
-            thv0top = thj * (1.0 + zvir * qvj - qlj - qij)
-            thvl0top = thl0top * (1.0 + zvir * qt0top)
+    # with computation(PARALLEL), interval(0, -1):
+    #     if not condensation:
+    #         thv0top = thj * (1.0 + zvir * qvj - qlj - qij)
+    #         thvl0top = thl0top * (1.0 + zvir * qt0top)
 
-    with computation(PARALLEL), interval(-1, None):
-        if not condensation:
-            thv0top = thv0bot
-            thvl0top = thvl0bot
+    # with computation(PARALLEL), interval(-1, None):
+    #     if not condensation:
+    #         thv0top = thv0bot
+    #         thvl0top = thvl0bot
 
-    with computation(PARALLEL), interval(...):
-        if not condensation:
-            # Save input and related environmental thermodynamic variables
-            # for use at "iter_cin=2" when "del_CIN >= 0"
-            qv0_o = qv0
-            ql0_o = ql0
-            qi0_o = qi0
-            t0_o = t0
-            s0_o = s0
-            u0_o = u0_in
-            v0_o = v0_in
-            qt0_o = qt0
-            thl0_o = thl0
-            thvl0_o = thvl0
-            ssthl0_o = ssthl0
-            ssqt0_o = ssqt0
-            thv0bot_o = thv0bot
-            thv0top_o = thv0top
-            thvl0bot_o = thvl0bot
-            thvl0top_o = thvl0top
-            ssu0_o = ssu0
-            ssv0_o = ssv0
+    # with computation(PARALLEL), interval(...):
+    #     if not condensation:
+    #         # Save input and related environmental thermodynamic variables
+    #         # for use at "iter_cin=2" when "del_CIN >= 0"
+    #         qv0_o = qv0
+    #         ql0_o = ql0
+    #         qi0_o = qi0
+    #         t0_o = t0
+    #         s0_o = s0
+    #         u0_o = u0_in
+    #         v0_o = v0_in
+    #         qt0_o = qt0
+    #         thl0_o = thl0
+    #         thvl0_o = thvl0
+    #         ssthl0_o = ssthl0
+    #         ssqt0_o = ssqt0
+    #         thv0bot_o = thv0bot
+    #         thv0top_o = thv0top
+    #         thvl0bot_o = thvl0bot
+    #         thvl0top_o = thvl0top
+    #         ssu0_o = ssu0
+    #         ssv0_o = ssv0
 
-            if dotransport == 1:
-                n = 0
-                while n < ncnst:
-                    tr0_o[0, 0, 0][n] = tr0[0, 0, 0][n]
-                    sstr0_o[0, 0, 0][n] = sstr0[0, 0, 0][n]
-                    n += 1
+    #         if dotransport == 1:
+    #             n = 0
+    #             while n < ncnst:
+    #                 tr0_o[0, 0, 0][n] = tr0[0, 0, 0][n]
+    #                 sstr0_o[0, 0, 0][n] = sstr0[0, 0, 0][n]
+    #                 n += 1
 
-    with computation(FORWARD), interval(...):
-        if not condensation:
-            # Initialize output variables at each grid point
-            umf_zint[0, 0, 1] = 0.0
-            dcm = 0.0
-            emf[0, 0, 1] = 0.0
-            slflx[0, 0, 1] = 0.0
-            qtflx[0, 0, 1] = 0.0
-            uflx[0, 0, 1] = 0.0
-            vflx[0, 0, 1] = 0.0
-            qvten = 0.0
-            qlten = 0.0
-            qiten = 0.0
-            sten = 0.0
-            uten = 0.0
-            vten = 0.0
-            qrten = 0.0
-            qsten = 0.0
-            dwte = 0.0
-            diten = 0.0
-            cufrc = 0.0
-            qcu = 0.0
-            qlu = 0.0
-            qiu = 0.0
-            fer = 0.0
-            fdr = 0.0
-            xco = 0.0
-            cin = 0.0
-            cinlcl = 0.0
-            cbmf = 0.0
-            qc = 0.0
-            qc_l = 0.0
-            qc_i = 0.0
-            cnt = float32(k0)
-            cnb = 0.0
-            qtten = 0.0
-            slten = 0.0
-            ufrc = 0.0
+    # with computation(FORWARD), interval(...):
+    #     if not condensation:
+    #         # Initialize output variables at each grid point
+    #         umf_zint[0, 0, 1] = 0.0
+    #         dcm = 0.0
+    #         emf[0, 0, 1] = 0.0
+    #         slflx[0, 0, 1] = 0.0
+    #         qtflx[0, 0, 1] = 0.0
+    #         uflx[0, 0, 1] = 0.0
+    #         vflx[0, 0, 1] = 0.0
+    #         qvten = 0.0
+    #         qlten = 0.0
+    #         qiten = 0.0
+    #         sten = 0.0
+    #         uten = 0.0
+    #         vten = 0.0
+    #         qrten = 0.0
+    #         qsten = 0.0
+    #         dwte = 0.0
+    #         diten = 0.0
+    #         cufrc = 0.0
+    #         qcu = 0.0
+    #         qlu = 0.0
+    #         qiu = 0.0
+    #         fer = 0.0
+    #         fdr = 0.0
+    #         xco = 0.0
+    #         cin = 0.0
+    #         cinlcl = 0.0
+    #         cbmf = 0.0
+    #         qc = 0.0
+    #         qc_l = 0.0
+    #         qc_i = 0.0
+    #         cnt = float32(k0)
+    #         cnb = 0.0
+    #         qtten = 0.0
+    #         slten = 0.0
+    #         ufrc = 0.0
 
-            thlu = constants.MAPL_UNDEF
-            thlu[0, 0, 1] = constants.MAPL_UNDEF
-            qtu = constants.MAPL_UNDEF
-            qtu[0, 0, 1] = constants.MAPL_UNDEF
-            uu[0, 0, 1] = constants.MAPL_UNDEF
-            uu = constants.MAPL_UNDEF
-            vu[0, 0, 1] = constants.MAPL_UNDEF
-            vu = constants.MAPL_UNDEF
-            wu[0, 0, 1] = constants.MAPL_UNDEF
-            thvu[0, 0, 1] = constants.MAPL_UNDEF
-            thlu_emf[0, 0, 1] = constants.MAPL_UNDEF
-            thlu_emf = constants.MAPL_UNDEF
-            qtu_emf[0, 0, 1] = constants.MAPL_UNDEF
-            qtu_emf = constants.MAPL_UNDEF
-            uu_emf[0, 0, 1] = constants.MAPL_UNDEF
-            uu_emf = constants.MAPL_UNDEF
-            vu_emf[0, 0, 1] = constants.MAPL_UNDEF
-            vu_emf = constants.MAPL_UNDEF
+    #         thlu = constants.MAPL_UNDEF
+    #         thlu[0, 0, 1] = constants.MAPL_UNDEF
+    #         qtu = constants.MAPL_UNDEF
+    #         qtu[0, 0, 1] = constants.MAPL_UNDEF
+    #         uu[0, 0, 1] = constants.MAPL_UNDEF
+    #         uu = constants.MAPL_UNDEF
+    #         vu[0, 0, 1] = constants.MAPL_UNDEF
+    #         vu = constants.MAPL_UNDEF
+    #         wu[0, 0, 1] = constants.MAPL_UNDEF
+    #         thvu[0, 0, 1] = constants.MAPL_UNDEF
+    #         thlu_emf[0, 0, 1] = constants.MAPL_UNDEF
+    #         thlu_emf = constants.MAPL_UNDEF
+    #         qtu_emf[0, 0, 1] = constants.MAPL_UNDEF
+    #         qtu_emf = constants.MAPL_UNDEF
+    #         uu_emf[0, 0, 1] = constants.MAPL_UNDEF
+    #         uu_emf = constants.MAPL_UNDEF
+    #         vu_emf[0, 0, 1] = constants.MAPL_UNDEF
+    #         vu_emf = constants.MAPL_UNDEF
 
-            ufrclcl = 0.0
-            wlcl = 0.0
-            cbmflimit = 0.0
+    #         ufrclcl = 0.0
+    #         wlcl = 0.0
+    #         cbmflimit = 0.0
 
-            uemf[0, 0, 1] = 0.0
-            comsub = 0.0
-            qlten_sink = 0.0
-            qiten_sink = 0.0
-            qlten_det = 0.0
-            qiten_det = 0.0
+    #         uemf[0, 0, 1] = 0.0
+    #         comsub = 0.0
+    #         qlten_sink = 0.0
+    #         qiten_sink = 0.0
+    #         qlten_det = 0.0
+    #         qiten_det = 0.0
 
-            if dotransport == 1:
-                n = 0
-                while n < ncnst:
-                    trflx[0, 0, 1][n] = 0.0
-                    trten[0, 0, 0][n] = 0.0
-                    tru[0, 0, 1][n] = 0.0
-                    tru_emf[0, 0, 1][n] = 0.0
-                    n += 1
+    #         if dotransport == 1:
+    #             n = 0
+    #             while n < ncnst:
+    #                 trflx[0, 0, 1][n] = 0.0
+    #                 trten[0, 0, 0][n] = 0.0
+    #                 tru[0, 0, 1][n] = 0.0
+    #                 tru_emf[0, 0, 1][n] = 0.0
+    #                 n += 1
 
 
 def find_pbl_height(
