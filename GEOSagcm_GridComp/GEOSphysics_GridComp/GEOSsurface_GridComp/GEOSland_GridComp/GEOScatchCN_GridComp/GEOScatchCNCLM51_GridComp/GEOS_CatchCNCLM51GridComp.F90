@@ -4397,7 +4397,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,catchcn_internal%DTCN,cnclm51_paramfile,water_inst,bgc_vegetation_inst,.true.) 
+      call CN_init(catchcn_internal%CN_CLM51_NML_FILE,nt,ityp,fveg,cncol,cnpft,lats,lons,catchcn_internal%DTCN,cnclm51_paramfile,water_inst,bgc_vegetation_inst,.true.) 
       call get_CN_LAI(nt,ityp,fveg,elai,esai=esai)
       first = .false.
    endif

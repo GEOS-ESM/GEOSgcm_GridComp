@@ -109,26 +109,26 @@ module CNCLM_initMod
  contains
 
 !------------------------------------------------------
- subroutine CN_init(nch,ityp,fveg,cncol,cnpft,lats,lons,dtcn,paramfile,water_inst,bgc_vegetation_inst,cn5_cold_start)
+ subroutine CN_init(NLFilename, nch,ityp,fveg,cncol,cnpft,lats,lons,dtcn,paramfile,water_inst,bgc_vegetation_inst,cn5_cold_start)
 
   !ARGUMENTS
   implicit none
   !INPUT/OUTPUT
-  integer,                                         intent(in) :: nch   ! number of tiles
-  integer, dimension(nch,num_veg,num_zon),         intent(in) :: ityp  ! PFT index
-  real,    dimension(nch,num_veg,num_zon),         intent(in) :: fveg  ! PFT fraction
-  real,    dimension(nch,num_zon,var_col),         intent(in) :: cncol ! column-level CN restart variables
-  real,    dimension(nch,num_zon,num_veg,var_pft), intent(in) :: cnpft ! patch/pft-level CN restart variables
-  real,    dimension(nch),                         intent(in) :: lats  ! Catchment tile latitudes [rad]
-  real,    dimension(nch),                         intent(in) :: lons  ! Catchment tile longitudes [rad]
-  real,                                            intent(in) :: dtcn  ! Catchment-CN step size
-  character(len=ESMF_MAXSTR),                      intent(in) :: paramfile
-  logical, optional,                               intent(in) :: cn5_cold_start  ! cold start for the CLM variables that are new in Catchment-CN5.0
-  type(water_type), intent(out)                       :: water_inst
-  type(cn_vegetation_type), intent(out)               :: bgc_vegetation_inst                                                                                                        
+  character(256),                                  intent(in)  :: NLFilename      ! len=256 for consistency with SHR_KIND_CL of CLM51/shr_kind_mod.F90
+  integer,                                         intent(in)  :: nch             ! number of tiles
+  integer, dimension(nch,num_veg,num_zon),         intent(in)  :: ityp            ! PFT index
+  real,    dimension(nch,num_veg,num_zon),         intent(in)  :: fveg            ! PFT fraction
+  real,    dimension(nch,num_zon,var_col),         intent(in)  :: cncol           ! column-level CN restart variables
+  real,    dimension(nch,num_zon,num_veg,var_pft), intent(in)  :: cnpft           ! patch/pft-level CN restart variables
+  real,    dimension(nch),                         intent(in)  :: lats            ! Catchment tile latitudes [rad]
+  real,    dimension(nch),                         intent(in)  :: lons            ! Catchment tile longitudes [rad]
+  real,                                            intent(in)  :: dtcn            ! Catchment-CN step size
+  character(len=ESMF_MAXSTR),                      intent(in)  :: paramfile
+  logical,                               optional, intent(in)  :: cn5_cold_start  ! cold start for the CLM variables that are new in Catchment-CN5.0
+  type(water_type),                                intent(out) :: water_inst
+  type(cn_vegetation_type),                        intent(out) :: bgc_vegetation_inst                                                                                                        
   !LOCAL
              
-  character(256)              :: NLFilename         ! length of 256 for consistency with SHR_KIND_CL of CLM51/shr_kind_mod.F90
   type(Netcdf4_fileformatter) :: ncid
   integer                     :: rc, status, ndt
 
@@ -170,9 +170,6 @@ module CNCLM_initMod
     call allocFilters                  (bounds, nch, ityp, fveg)
 
     ! read parameters and configurations from namelist file
-
-    call MAPL_GetResource( MAPL, NLFilename, Label="CN_CLM51_NML_FILE:", DEFAULT='./CN_CLM51.nml', RC=STATUS)
-    VERIFY_(STATUS)
     
     call CNPhenologyReadNML       ( NLFilename )
     call dynSubgridControl_init   ( )
