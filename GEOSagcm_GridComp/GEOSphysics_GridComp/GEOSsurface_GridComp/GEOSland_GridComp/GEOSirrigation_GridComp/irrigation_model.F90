@@ -187,10 +187,13 @@ contains
   SUBROUTINE init_model (IP, SURFRC)
 
     implicit none
+    
     class (irrigation_model), intent(inout) :: IP
+    CHARACTER(*),             INTENT(IN)    :: SURFRC
+
     type(irrig_params)                      :: DP
-    CHARACTER(*), INTENT(IN)                :: SURFRC
     type(ESMF_Config)                       :: SCF
+    
     integer                                 :: status, RC
     character(len=ESMF_MAXSTR)              :: Iam
 
@@ -229,18 +232,33 @@ contains
             SRATE, DRATE, FRATE)
 
     implicit none
-    class (irrigation_model), intent(inout) :: this
-    integer, intent (in)                    :: IRRG_METHOD
-    real, dimension (:), intent (in)        :: local_hour
-    real, dimension (:), intent (in)        :: IRRG_IRRIGFRAC, IRRG_PADDYFRAC, IRRG_IRRIGFRAC_SPR, &
-         IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW, SMWP, SMSAT, SMREF, SMCNT, LAI, IRRG_LAIMIN, IRRG_LAIMAX, RZDEF
-    real, dimension (:), intent (inout)     :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
-    real, dimension (:,:),intent (inout)    :: SRATE, DRATE, FRATE
-    INTEGER                                 :: NTILES, N, crop
-    REAL                                    :: ma, H1, H2, HC, IT, ROOTFRAC, LAITHRES
-    logical                                 :: season_end
+
+    class (irrigation_model), intent(inout)  :: this
+
+    integer,                  intent (in)    :: IRRG_METHOD
+
+    real, dimension (:),      intent (in)    :: local_hour
+    real, dimension (:),      intent (in)    :: IRRG_IRRIGFRAC, IRRG_PADDYFRAC, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW
+    real, dimension (:),      intent (in)    :: SMWP, SMSAT, SMREF, SMCNT, LAI, IRRG_LAIMIN, IRRG_LAIMAX, RZDEF
+
+    real, dimension (:),      intent (inout) :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
+    real, dimension (:,:),    intent (inout) :: SRATE, DRATE, FRATE
+
+    ! local variables 
+    
+    INTEGER                    :: NTILES, N, crop
+    REAL                       :: ma, H1, H2, HC, IT, ROOTFRAC, LAITHRES
+    logical                    :: season_end
+    
+    integer                    :: status, RC                                 ! required for _ASSERT macro
+    character(len=ESMF_MAXSTR) :: Iam    
+    
+    ! ------------------------------------------------------
+
+    Iam='IRRIGATION_MODULE: irrigrate_lai_trigger'
     
     NTILES = SIZE (IRRG_IRRIGFRAC)
+    
     TILE_LOOP : DO N = 1, NTILES
        IF(IRRG_LAIMAX (N) > IRRG_LAIMIN (N)) THEN
           LAITHRES = IRRG_LAIMIN (N) + this%lai_thres * (IRRG_LAIMAX (N) - IRRG_LAIMIN (N))          
@@ -358,28 +376,40 @@ contains
 
   ! ----------------------------------------------------------------------------
 
-  SUBROUTINE irrigrate_crop_calendar(this,dofyr,local_hour, &
+  SUBROUTINE irrigrate_crop_calendar(this,dofyr,local_hour,                               &
        IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW,                        &
-       IRRG_CROPIRRIGFRAC,IRRG_DOY_PLANT, IRRG_DOY_HARVEST, IRRG_TYPE ,  &
-       SMWP,SMSAT,SMREF,SMCNT, RZDEF,                       &  
+       IRRG_CROPIRRIGFRAC,IRRG_DOY_PLANT, IRRG_DOY_HARVEST, IRRG_TYPE ,                   &
+       SMWP,SMSAT,SMREF,SMCNT, RZDEF,                                                     &  
        IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY, SRATE, DRATE, FRATE)
 
     implicit none
-    class(irrigation_model),intent(inout):: this
-    integer, intent (in)                 :: dofyr
-    real, dimension (:),   intent (in)   :: local_hour, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW
-    real, dimension (:),   intent (in)   :: SMWP, SMSAT, SMREF, SMCNT, RZDEF
-    real, dimension(:,:),  intent (in)   :: IRRG_CROPIRRIGFRAC                                             ! IRRG_NCROPS
-    real, dimension(:,:),  intent (in)   :: IRRG_TYPE                                                      ! IRRG_NCROPS
-    real, dimension(:,:,:),intent (in)   :: IRRG_DOY_PLANT                                                 ! IRRG_NSEASONS, IRRG_NCROPS
-    real, dimension(:,:,:),intent (in)   :: IRRG_DOY_HARVEST                                               ! IRRG_NSEASONS, IRRG_NCROPS
-    real, dimension (:),intent (inout)   :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
-    real, dimension (:,:),intent (inout) :: SRATE, DRATE, FRATE
-    INTEGER                              :: NTILES, N, crop, sea, ITYPE, I
-    REAL                                 :: ma, H1, H2, HC, IT, ROOTFRAC, void_frac
-    logical                              :: season_end (IRRG_NCROPS)
+    
+    class(irrigation_model),   intent(inout) :: this
+    integer,                   intent(in)    :: dofyr
+    real,    dimension(:),     intent(in)    :: local_hour, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW
+    real,    dimension(:),     intent(in)    :: SMWP, SMSAT, SMREF, SMCNT, RZDEF
+    real,    dimension(:,:),   intent(in)    :: IRRG_CROPIRRIGFRAC                                             ! IRRG_NCROPS
+    real,    dimension(:,:),   intent(in)    :: IRRG_TYPE                                                      ! IRRG_NCROPS
+    real,    dimension(:,:,:), intent(in)    :: IRRG_DOY_PLANT                                                 ! IRRG_NSEASONS, IRRG_NCROPS
+    real,    dimension(:,:,:), intent(in)    :: IRRG_DOY_HARVEST                                               ! IRRG_NSEASONS, IRRG_NCROPS
+    real,    dimension(:),     intent(inout) :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
+    real,    dimension(:,:),   intent(inout) :: SRATE, DRATE, FRATE
+
+    ! local variables 
+
+    INTEGER                    :: NTILES, N, crop, sea, ITYPE, I
+    REAL                       :: ma, H1, H2, HC, IT, ROOTFRAC, void_frac
+    logical                    :: season_end (IRRG_NCROPS)
+
+    integer                    :: status, RC                                  ! required for _ASSERT macro
+    character(len=ESMF_MAXSTR) :: Iam    
+
+    ! ----------------------------------------------------------
+    
+    Iam='IRRIGATION_MODULE: irrigrate_crop_calendar'
+
     NTILES = SIZE (local_hour)
-         
+
     TILE_LOOP : DO N = 1, NTILES
        HC = local_hour(n)
        IF_IRR: if(SUM(IRRG_CROPIRRIGFRAC(N,:)) > 0.) then
@@ -516,8 +546,15 @@ contains
     real,    dimension(:,:),  intent(in)    :: SRATE, DRATE, FRATE
     real,    dimension(:),    intent(inout) :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
 
-    integer                                 :: N, NT
+    ! local variables
+    
+    integer                    :: N, NT
 
+    integer                    :: status, RC                                 ! required for _ASSERT macro
+    character(len=ESMF_MAXSTR) :: Iam    
+
+    Iam='IRRIGATION_MODULE: update_irates_lai'
+    
     ! INITIALIZE EXPORTS
     IRRG_RATE_SPR = 0.
     IRRG_RATE_DRP = 0.
@@ -526,7 +563,7 @@ contains
 
     NT = size (IRRG_IRRIGFRAC)
 
-    !_ASSERT(size (SRATE,2)==IRRG_NCROPS,'Irrigation model LAI trigger irrig tile types mismatch')
+    _ASSERT( size(SRATE,2)==IRRG_NCROPS, 'SRATE dimension mismatch')
     
     DO N = 1, NT
        IF ((IRRG_IRRIGFRAC(N) + IRRG_PADDYFRAC(N))  > 0.) THEN
@@ -552,15 +589,23 @@ contains
     real,    dimension(:,:), intent (in)    :: SRATE, DRATE, FRATE
     real,    dimension(:),   intent (inout) :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
 
-    integer                                 :: N, NT, crop
+    ! local variables
+    
+    integer                    :: N, NT, crop
 
+    integer                    :: status, RC                                 ! required for _ASSERT macro
+    character(len=ESMF_MAXSTR) :: Iam
+
+    Iam='IRRIGATION_MODULE: update_irates_ccalendar'
+    
     ! INITIALIZE EXPORTS
     IRRG_RATE_SPR = 0.
     IRRG_RATE_DRP = 0.
     IRRG_RATE_FRW = 0.
     IRRG_RATE_PDY = 0.
 
-    !_ASSERT(size (SRATE,2)==IRRG_NCROPS,'Irrigation model crop calendar trigger IRRG_NCROPS mismatch')
+    _ASSERT( size (SRATE,2)==IRRG_NCROPS, 'SRATE dimension mismatch')
+
     NT =  size (IRRG_RATE_SPR)
     DO N = 1, NT
        if(SUM(IRRG_CROPIRRIGFRAC(N,:)) > 0.) then
@@ -585,8 +630,8 @@ contains
 
     implicit none
     class (irrigation_model), intent(inout) :: this
-    REAL, intent (in)                       :: HC, ma, ROOTFRAC,SMCNT, SMREF
-    REAL, optional, intent (inout)          :: SRATE, DRATE, FRATE 
+    REAL,                     intent(in)    :: HC, ma, ROOTFRAC,SMCNT, SMREF
+    REAL, optional,           intent(inout) :: SRATE, DRATE, FRATE 
     REAL                                    :: H1, H2, IT
 
     if(present (SRATE)) then

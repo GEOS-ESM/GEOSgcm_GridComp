@@ -6638,7 +6638,7 @@ subroutine RUN0(gc, import, export, clock, rc)
 
   !! ESMF/MAPL variables
   type(MAPL_MetaComp), pointer :: MAPL
-  type(ESMF_State) :: INTERNAL
+  type(ESMF_State)             :: INTERNAL
 
   !! IMPORT pointers
   real, pointer :: ity(:)=>null()
