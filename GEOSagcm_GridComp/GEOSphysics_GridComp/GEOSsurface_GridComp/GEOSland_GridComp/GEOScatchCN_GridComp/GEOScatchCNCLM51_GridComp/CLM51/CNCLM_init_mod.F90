@@ -81,15 +81,15 @@ module CNCLM_initMod
   use CNFUNMod                           , only : readCNFUNParams                        => readParams, &
                                                   CNFUNInit
   use CNNDynamicsMod                     , only : CNNDynamicsReadNML
-  use SurfaceAlbedoMod                   , only: SurfaceAlbedo_readnl
-  use SoilBiogeochemPrecisionControlMod  , only: SoilBiogeochemPrecisionControlInit
+  use SurfaceAlbedoMod                   , only : SurfaceAlbedo_readnl
+  use SoilBiogeochemPrecisionControlMod  , only : SoilBiogeochemPrecisionControlInit
   use SoilBiogeochemNitrifDenitrifMod    , only : readSoilBiogeochemNitrifDenitrifParams => readParams 
   use SoilStateInitTimeConstMod          , only : readParams_SoilStateInitTimeConst      => readParams, &
                                                   SoilStateInitTimeConst
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
 
-  use MAPL             , only : NetCDF4_FileFormatter, pFIO_READ
+  use MAPL                                              !  , only : NetCDF4_FileFormatter, pFIO_READ
   use ESMF
 
  implicit none 
@@ -127,10 +127,10 @@ module CNCLM_initMod
   type(water_type), intent(out)                       :: water_inst
   type(cn_vegetation_type), intent(out)               :: bgc_vegetation_inst                                                                                                        
   !LOCAL
-
-  character(300)     :: NLFilename
+             
+  character(256)              :: NLFilename         ! length of 256 for consistency with SHR_KIND_CL of CLM51/shr_kind_mod.F90
   type(Netcdf4_fileformatter) :: ncid
-  integer            :: rc, status, ndt
+  integer                     :: rc, status, ndt
 
   !-----------------------------------------
 
@@ -171,7 +171,8 @@ module CNCLM_initMod
 
     ! read parameters and configurations from namelist file
 
-    NLFilename = trim('./CN_CLM51.nml')
+    call MAPL_GetResource( MAPL, NLFilename, Label="CN_CLM51_NML_FILE:", DEFAULT='./CN_CLM51.nml', RC=STATUS)
+    VERIFY_(STATUS)
     
     call CNPhenologyReadNML       ( NLFilename )
     call dynSubgridControl_init   ( )

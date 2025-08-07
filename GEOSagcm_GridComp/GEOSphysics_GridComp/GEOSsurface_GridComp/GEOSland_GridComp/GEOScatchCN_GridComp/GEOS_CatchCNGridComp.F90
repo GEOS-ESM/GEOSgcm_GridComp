@@ -48,12 +48,12 @@ subroutine SetServices ( GC, RC )
 
 ! Local Variables
 
-    type(MAPL_MetaComp), pointer :: MAPL=>null()
-    character(len=ESMF_MAXSTR)   :: CATCHCN_VERSION
-    type(ESMF_GridComp), pointer :: gcs(:)
-    type(T_CATCHCN_STATE), pointer :: CATCHCN_INTERNAL_STATE
-    class(T_CATCH_STATE),  pointer :: statePtr
-    type(CATCHCN_WRAP)             :: wrap
+    type(MAPL_MetaComp),            pointer :: MAPL=>null()
+    character(len=ESMF_MAXSTR)              :: CATCHCN_VERSION
+    type(ESMF_GridComp),            pointer :: gcs(:)
+    type(T_CATCHCN_STATE),          pointer :: CATCHCN_INTERNAL_STATE
+    class(T_CATCH_STATE),           pointer :: statePtr
+    type(CATCHCN_WRAP)                      :: wrap
 
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF, CF
@@ -96,6 +96,8 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigDestroy(SCF, _RC)
 
     call MAPL_Get (MAPL, CF=CF, _RC)
+
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%CN_CLM51_NML_FILE,   Label='CN_CLM51_NML_FILE:',   _RC)
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%ATM_CO2,             Label='ATM_CO2:',             _RC)
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB, Label='N_CONST_LAND4SNWALB:', _RC)
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%RUN_IRRIG,           Label='RUN_IRRIG:',           _RC)
@@ -105,11 +107,13 @@ subroutine SetServices ( GC, RC )
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
+
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
         !catchcn_exxxx
         tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
-    endif
+     endif
+     
     if      ( LSM_CHOICE == 2 ) then
        CATCHCN = MAPL_AddChild('CATCHCNCLM40'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)
@@ -117,7 +121,7 @@ subroutine SetServices ( GC, RC )
        CATCHCN = MAPL_AddChild('CATCHCNCLM51'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM51_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)
     else
-       _ASSERT( .false., " LSM_CHOICE should equal 2 (CLM40) or 4 (CLM51)")
+       _ASSERT( .false., " LSM_CHOICE for CatchCN should equal 2 (CLM40) or 4 (CLM51)")
     endif
 
     wrap%ptr =>CATCHCN_INTERNAL_STATE
