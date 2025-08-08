@@ -325,30 +325,33 @@ class SaturationVaporPressureTable:
             },
         )
 
-        # compute_tables(self._estimated_ese, self._estimated_esw, self._estimated_esx, formulation_int)
-        # NOTE This function will create the tables using gt4py stencils and functions.
+        NDSL_tables = False
+        # NOTE Setting NDSL_tables to True will the tables using gt4py stencils and functions.
         # This is turned off because they do not currently verify.
         # Does not verify because:
         #   - Need the ability to pass 32 or 64 bit externals flexibly. Right now it appears they all
         #       get forced to the same precision
 
-        for i in range(TABLESIZE):
-            t = Float(i * DELTA_T) + TMINTBL
-            self._estimated_esw.field[0, 0, i], _ = liquid_exact_no_stencil(t, formulation)
+        if NDSL_tables == True:
+            compute_tables(self._estimated_ese, self._estimated_esw, self._estimated_esx, formulation_int)
+        else:
+            for i in range(TABLESIZE):
+                t = Float(i * DELTA_T) + TMINTBL
+                self._estimated_esw.field[0, 0, i], _ = liquid_exact_no_stencil(t, formulation)
 
-            if t > MAPL_TICE:
-                self._estimated_ese.field[0, 0, i] = self._estimated_esw.field[0, 0, i]
-            else:
-                self._estimated_ese.field[0, 0, i], _ = ice_exact_no_stencil(t, formulation)
+                if t > MAPL_TICE:
+                    self._estimated_ese.field[0, 0, i] = self._estimated_esw.field[0, 0, i]
+                else:
+                    self._estimated_ese.field[0, 0, i], _ = ice_exact_no_stencil(t, formulation)
 
-            t = t - MAPL_TICE
+                t = t - MAPL_TICE
 
-            if t >= TMIX and t < 0.0:
-                self._estimated_esx.field[0, 0, i] = (t / TMIX) * (
-                    self._estimated_ese.field[0, 0, i] - self._estimated_esw.field[0, 0, i]
-                ) + self._estimated_esw.field[0, 0, i]
-            else:
-                self._estimated_esx.field[0, 0, i] = self._estimated_ese.field[0, 0, i]
+                if t >= TMIX and t < 0.0:
+                    self._estimated_esx.field[0, 0, i] = (t / TMIX) * (
+                        self._estimated_ese.field[0, 0, i] - self._estimated_esw.field[0, 0, i]
+                    ) + self._estimated_esw.field[0, 0, i]
+                else:
+                    self._estimated_esx.field[0, 0, i] = self._estimated_ese.field[0, 0, i]
 
         self._estimated_frz, _ = liquid_exact_no_stencil(MAPL_TICE, formulation)
         self._estimated_lqu, _ = liquid_exact_no_stencil(TMINLQU, formulation)
