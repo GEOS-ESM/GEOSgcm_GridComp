@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 
-from ndsl.dsl.typing import Float
+from ndsl.dsl.typing import Float, Int
 
 
 @dataclass
-class MicrophysicsConfiguration:
+class GFDL1MConfig:
     PHYS_HYDROSTATIC: bool
     HYDROSTATIC: bool
     DT_MOIST: Float
@@ -88,3 +88,19 @@ class MicrophysicsConfiguration:
     ICLOUD_F: Float
     IRAIN_F: Float
     MP_PRINT: bool
+    MELTFRZ: bool
+    USE_BERGERON: bool
+    TURNRHCRIT_PARAM: Float
+    PDF_SHAPE: Int
+    ANV_ICEFALL: Float
+    LS_ICEFALL: Float
+    LIQ_RADII_PARAM: Int
+    ICE_RADII_PARAM: Int
+    FAC_RI: Float
+    MIN_RI: Float
+    MAX_RI: Float
+    FAC_RL: Float
+    MIN_RL: Float
+    MAX_RL: Float
+    CCW_EVAP_EFF: Float
+    CCI_EVAP_EFF: Float

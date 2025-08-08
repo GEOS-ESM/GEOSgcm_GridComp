@@ -64,9 +64,9 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: LMELTFRZ
 #ifdef PYMOIST_INTEGRATION
   integer :: C_LMELTFRZ, C_LHYDROSTATIC, C_LPHYS_HYDROSTATIC
-  logical :: USE_PYMOIST_GFDL1M_EVAP = .FALSE. ! Replace EVAP with pyMoist port
-  logical :: USE_PYMOIST_GFDL1M_DRIVER = .FALSE. ! Replace Aer Activation with pyMoist port
   logical :: USE_PYMOIST = .FALSE.
+  logical :: USE_PYMOIST_GFDL_1M = .FALSE.
+  logical :: GFDL_1M_READY = .FALSE.
 #endif
 
 public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
@@ -299,8 +299,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 #ifdef PYMOIST_INTEGRATION
-    call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M_EVAP, 'USE_PYMOIST_GFDL1M_EVAP:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
-    call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M_DRIVER, 'USE_PYMOIST_GFDL1M_DRIVER:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
+    call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL_1M, 'USE_PYMOIST_GFDL_1M:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
     call MAPL_GetResource(MAPL, USE_PYMOIST, 'USE_PYMOIST:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
 #endif
 
@@ -384,6 +383,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     logical                               :: halting_mode(5)
     real                                  :: start, finish
     integer                               :: comm, rank, mpierr
+    ! fixing issue passing logical 4 to logical 1 at interface to python
 #endif
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS )
@@ -408,9 +408,27 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     VERIFY_(STATUS)
 
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
-
+#ifdef PYMOIST_INTEGRATION
+    IF (USE_PYMOIST_GFDL_1M) THEN
+      IF (.NOT. GFDL_1M_READY) THEN
+        CALL make_gfdl_1m_flags_C_interop(dt_moist, mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r, &
+          dw_land, dw_ocean, vi_fac, vr_fac, vs_fac, vg_fac, ql_mlt, do_qa, fix_negative, vi_max, vs_max, &
+          vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max, qi0_crt, qr0_crt, fast_sat_adj, rh_inc, &
+          rh_ins, rh_inr, const_vi, const_vs, const_vg, const_vr, use_ccn, rthreshu, rthreshs, ccn_l, ccn_o, &
+          qc_crt, tau_g2v, tau_v2g, tau_s2v, tau_v2s, tau_revp, tau_frz, do_bigg, do_evap, do_subl, sat_adj0, &
+          c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, &
+          c_pgacs, c_pgaci, z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, preciprad, cld_min, &
+          use_ppm, mono_prof, do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print, &
+          use_bergeron, gfdl_1m_flags)
+        CALL gfdl_1m_interface_f_init_trampoline(gfdl_1m_flags, INTERNAL)
+        GFDL_1M_READY = .TRUE.
+      ENDIF
+      CALL pymoist_interface_f_run_GFDL_1M()
+    ELSE
+#endif
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QSNOW,    'QSNOW'   , RC=STATUS); VERIFY_(STATUS)
@@ -606,19 +624,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         endif
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-#ifdef PYMOIST_INTEGRATION
-      IF (USE_PYMOIST_GFDL1M_EVAP) THEN
-        call pymoist_interface_f_run_GFDL1M( &
-          dw_land, dw_ocean, PDFSHAPE, TURNRHCRIT_PARAM, &
-          DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF, &
-          C_LMELTFRZ, &
-          AREA, CNV_FRC, SRF_TYPE, &
-          KLCL, &
-          EIS, PLmb, PLEmb, NACTL, NACTI, QST3, &
-          T, Q, QLCN, QICN, QLLS, QILS, CLLS, CLCN, &
-          SUBLC, EVAPC, RHX)
-      ELSE
-#endif
         do L=1,LM
           do J=1,JM
            do I=1,IM
@@ -763,10 +768,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          end do ! JM loop
        end do ! LM loop
 
-#ifdef PYMOIST_INTEGRATION
-      endif
-#endif
-
     ! Update macrophysics tendencies
      DUDT_macro=( U         - DUDT_macro)/DT_MOIST
      DVDT_macro=( V         - DVDT_macro)/DT_MOIST
@@ -836,47 +837,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! GRAUPEL
          RAD_QG = QGRAUPEL
         ! Run the driver
-#ifdef PYMOIST_INTEGRATION
-        if (USE_PYMOIST .and. init_gfdl_1m_flags) then
-            init_gfdl_1m_flags = .false.
-            call make_gfdl_1m_flags_C_interop(LPHYS_HYDROSTATIC, LHYDROSTATIC, do_qa, fix_negative, fast_sat_adj, &
-                const_vi, const_vs, const_vg, const_vr, use_ccn, do_bigg, do_evap, &
-                do_subl, z_slope_liq, z_slope_ice, prog_ccn, preciprad, use_ppm, &
-                mono_prof, do_sedi_heat, sedi_transport, do_sedi_w, de_ice, mp_print, &
-                dt_moist, mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r, &
-                dw_land, dw_ocean, vi_fac, vr_fac, vs_fac, vg_fac, ql_mlt, vi_max, &
-                vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max, &
-                qi0_crt, qr0_crt, rh_inc, rh_ins, rh_inr, rthreshu, rthreshs, ccn_l, &
-                ccn_o, qc_crt, tau_g2v, tau_v2g, tau_s2v, tau_v2s, tau_revp, tau_frz, &
-                sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, tau_i2s, &
-                tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci, c_cracw, &
-                alin, clin, cld_min, icloud_f, irain_f, gfdl_1m_flags)
-            call gfdl_1m_interface_f_init(gfdl_1m_flags)
-        endif
-        IF (USE_PYMOIST_GFDL1M_DRIVER) THEN
-            C_LHYDROSTATIC = LHYDROSTATIC
-            C_LPHYS_HYDROSTATIC = LPHYS_HYDROSTATIC
-            call pymoist_interface_f_run_GFDL_1M_driver( &
-              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
-              RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI), &
-              ! Output tendencies
-              DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
-              DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, &
-              ! Input fields
-              T, W, U, V, DUDTmic, DVDTmic, DZ, DP, &
-              ! constant inputs
-              AREA, DT_MOIST, FRLAND, CNV_FRC, SRF_TYPE, EIS, &
-              RHCRIT3D, ANV_ICEFALL, LS_ICEFALL, &
-              ! Output rain re-evaporation and sublimation
-              REV_LS, RSU_LS, &
-              ! Output precipitates
-              PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, &
-              ! Output mass flux during sedimentation (Pa kg/kg)
-              PFL_LS(:,:,1:LM), PFI_LS(:,:,1:LM), &
-              ! constant grid/time information
-              C_LHYDROSTATIC, C_LPHYS_HYDROSTATIC)
-        ELSE
-#endif
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI), &
@@ -897,9 +857,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! constant grid/time information
                                LHYDROSTATIC, LPHYS_HYDROSTATIC, &
                                1,IM, 1,JM, 1,LM, 1, LM)
-#ifdef PYMOIST_INTEGRATION
-        ENDIF ! USE_PYMOIST_GFDL1M_DRIVER
-#endif
      ! Apply tendencies
          T = T + DTDTmic * DT_MOIST
          U = U + DUDTmic * DT_MOIST
@@ -1052,6 +1009,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         endif
 
+#ifdef PYMOIST_INTEGRATION
+  ENDIF
+#endif
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
 end subroutine GFDL_1M_Run

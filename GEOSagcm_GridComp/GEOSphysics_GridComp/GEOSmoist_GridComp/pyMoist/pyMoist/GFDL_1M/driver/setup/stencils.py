@@ -1,6 +1,4 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, interval, sqrt
-
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt, function
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.shared_generic_math import sigma
@@ -17,7 +15,8 @@ def init_temporaries(
     qs: FloatField,
     qg: FloatField,
     qa: FloatField,
-    qn: FloatField,
+    ice_conentration: FloatField,
+    liquid_concentration: FloatField,
     qv0: FloatField,
     ql0: FloatField,
     qr0: FloatField,
@@ -118,7 +117,7 @@ def init_temporaries(
         w1 = w
 
         # ccn needs units #/m^3
-        ccn = qn
+        ccn = ice_conentration + liquid_concentration
         c_praut = cpaut * (ccn * constants.RHOR) ** (-1.0 / 3.0)
 
         # Reset precipitation aggregates to zero
@@ -139,7 +138,7 @@ def init_temporaries(
         ice = 0
 
 
-@gtscript.function
+@function
 def fix_negative_core(
     t: Float,
     qv: Float,

@@ -1,144 +1,143 @@
-from gt4py.cartesian.gtscript import PARALLEL, computation, interval
-
-import pyMoist.constants as constants
-from ndsl import QuantityFactory, StencilFactory
+from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
+from pyMoist.constants import ALHLBCP, ALHSBCP
 
 
-def redist_clouds(
-    CF: FloatField,
-    QL: FloatField,
-    QI: FloatField,
-    CLCN: FloatField,
-    CLLS: FloatField,
-    QLCN: FloatField,
-    QLLS: FloatField,
-    QICN: FloatField,
-    QILS: FloatField,
-    QV: FloatField,
-    TE: FloatField,
+def redistribute_clouds(
+    cloud_fraction: FloatField,
+    convective_cloud_fraction: FloatField,
+    large_scale_cloud_fraction: FloatField,
+    liquid: FloatField,
+    convective_liquid: FloatField,
+    large_scale_liquid: FloatField,
+    ice: FloatField,
+    convective_ice: FloatField,
+    large_scale_ice: FloatField,
+    vapor: FloatField,
+    temperature: FloatField,
 ):
     with computation(PARALLEL), interval(...):
-        # Constants from MAPL.h
-        alhlbcp = constants.ALHLBCP
-        alhsbcp = constants.ALHSBCP
-
-        # Define FCN as a 3-d array
-        FCN = CF
 
         # Fix cloud quants if too small
-        if QL + QI < 1e-8:
-            QV = QV + QL + QI
-            TE = TE - alhlbcp * QL - alhsbcp * QI
-            CF = 0.0
-            QL = 0.0
-            QI = 0.0
+        if liquid + ice < 1e-8:
+            vapor = vapor + liquid + ice
+            temperature = temperature - ALHLBCP * liquid - ALHSBCP * ice
+            cloud_fraction = 0.0
+            liquid = 0.0
+            ice = 0.0
 
-        if CF < 1e-5:
-            QV = QV + QL + QI
-            TE = TE - (alhlbcp * QL) - (alhsbcp * QI)
-            CF = 0.0
-            QL = 0.0
-            QI = 0.0
+        if cloud_fraction < 1e-5:
+            vapor = vapor + liquid + ice
+            temperature = temperature - (ALHLBCP * liquid) - (ALHSBCP * ice)
+            cloud_fraction = 0.0
+            liquid = 0.0
+            ice = 0.0
 
         # Redistribute liquid CN/LS portions based on prior fractions
-        FCN = 0.0
-        if QLCN + QLLS > 0.0:
-            FCN = min(max(QLCN / (QLCN + QLLS), 0.0), 1.0)
+        local_cloud_fraction = 0.0
+        if convective_liquid + large_scale_liquid > 0.0:
+            local_cloud_fraction = min(
+                max(convective_liquid / (convective_liquid + large_scale_liquid), 0.0), 1.0
+            )
 
         # Put all new condensate into LS
-        DQC = QL - (QLCN + QLLS)
-        if DQC > 0.0:
-            QLLS = QLLS + DQC
-            DQC = 0.0
+        dqc = liquid - (convective_liquid + large_scale_liquid)
+        if dqc > 0.0:
+            large_scale_liquid = large_scale_liquid + dqc
+            dqc = 0.0
 
         # Any loss of condensate uses the FCN ratio
-        QLCN = QLCN + DQC * FCN
-        QLLS = QLLS + DQC * (1.0 - FCN)
+        convective_liquid = convective_liquid + dqc * local_cloud_fraction
+        large_scale_liquid = large_scale_liquid + dqc * (1.0 - local_cloud_fraction)
 
         # Redistribute ice CN/LS portions based on prior fractions
-        FCN = 0.0
-        if QICN + QILS > 0.0:
-            FCN = min(max(QICN / (QICN + QILS), 0.0), 1.0)
+        local_cloud_fraction = 0.0
+        if convective_ice + large_scale_ice > 0.0:
+            local_cloud_fraction = min(max(convective_ice / (convective_ice + large_scale_ice), 0.0), 1.0)
 
         # Put all new condensate into LS
-        DQC = QI - (QICN + QILS)
-        if DQC > 0.0:
-            QILS = QILS + DQC
-            DQC = 0.0
+        dqc = ice - (convective_ice + large_scale_ice)
+        if dqc > 0.0:
+            large_scale_ice = large_scale_ice + dqc
+            dqc = 0.0
 
         # Any loss of condensate uses the FCN ratio
-        QICN = QICN + DQC * FCN
-        QILS = QILS + DQC * (1.0 - FCN)
+        convective_ice = convective_ice + dqc * local_cloud_fraction
+        large_scale_ice = large_scale_ice + dqc * (1.0 - local_cloud_fraction)
 
         # Redistribute cloud-fraction CN/LS portions based on prior fractions
-        FCN = 0.0
-        if CLCN + CLLS > 0.0:
-            FCN = min(max(CLCN / (CLCN + CLLS), 0.0), 1.0)
+        local_cloud_fraction = 0.0
+        if convective_cloud_fraction + large_scale_cloud_fraction > 0.0:
+            local_cloud_fraction = min(
+                max(
+                    convective_cloud_fraction / (convective_cloud_fraction + large_scale_cloud_fraction), 0.0
+                ),
+                1.0,
+            )
 
         # Put all new condensate into LS
-        DQC = CF - (CLCN + CLLS)
-        if DQC > 0.0:
-            CLLS = CLLS + DQC
-            DQC = 0.0
+        dqc = cloud_fraction - (convective_cloud_fraction + large_scale_cloud_fraction)
+        if dqc > 0.0:
+            large_scale_cloud_fraction = large_scale_cloud_fraction + dqc
+            dqc = 0.0
 
         # Any loss of condensate uses the FCN ratio
-        CLCN = CLCN + DQC * FCN
-        CLLS = CLLS + DQC * (1.0 - FCN)
+        convective_cloud_fraction = convective_cloud_fraction + dqc * local_cloud_fraction
+        large_scale_cloud_fraction = large_scale_cloud_fraction + dqc * (1.0 - local_cloud_fraction)
 
 
 class RedistributeClouds:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
     ) -> None:
-        self._redist_clouds = stencil_factory.from_dims_halo(
-            func=redist_clouds,
+        self._redistribute_clouds = stencil_factory.from_dims_halo(
+            func=redistribute_clouds,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
     def __call__(
         self,
-        RAD_CF: FloatField,
-        RAD_QL: FloatField,
-        RAD_QI: FloatField,
-        CLCN: FloatField,
-        CLLS: FloatField,
-        QLCN: FloatField,
-        QLLS: FloatField,
-        QICN: FloatField,
-        QILS: FloatField,
-        RAD_QV: FloatField,
-        T: FloatField,
+        cloud_fraction: FloatField,
+        convective_cloud_fraction: FloatField,
+        large_scale_cloud_fraction: FloatField,
+        liquid: FloatField,
+        convective_liquid: FloatField,
+        large_scale_liquid: FloatField,
+        ice: FloatField,
+        convective_ice: FloatField,
+        large_scale_ice: FloatField,
+        vapor: FloatField,
+        temperature: FloatField,
     ):
         """
-        Perform the redistribute clouds process.
+        Redistribute non-physical in-cloud quantities.
 
         Parameters:
-        RAD_CF (3D inout): Radiation cloud fraction.
-        RAD_QL (3D inout): Radiation liquid cloud mixing ratio.
-        RAD_QI (3D inout): Radiation ice cloud mixing ratio.
-        CLCN (3D inout): Cloud fraction (anvil).
-        CLLS (3D inout): Cloud fraction (large-scale).
-        QLCN (3D inout): Liquid cloud mixing ratio (anvil).
-        QLLS (3D inout): Liquid cloud mixing ratio (large-scale).
-        QICN (3D inout): Ice cloud mixing ratio (anvil).
-        QILS (3D inout): Ice cloud mixing ratio (large-scale).
-        RAD_QV (3D inout): Radiation water vapor mixing ratio.
-        T (3D inout): Temperature.
+        cloud_fraction (3D inout): total cloud fraction (unitless)
+        convective_cloud_fraction (3D inout): convective cloud fraction (unitless)
+        large_scale_cloud_fraction (3D inout): large scale cloud fraction (unitless)
+        liquid (3D inout): in-cloud liquid mixing ratio (kg/kg)
+        convective_liquid (3D inout): convective cloud liquid mixing ratio (unitless)
+        large_scale_liquid (3D inout): large scale cloud liquid mixing ratio (unitless)
+        ice (3D inout): in-cloud liquid mixing ratio (kg/kg)
+        convective_ice (3D inout): convective cloud ice mixing ratio (unitless)
+        large_scale_ice (3D inout): large scale cloud liquid mixing ratio (unitless)
+        vapor (3D inout): water vapor mixing ratio (kg/kg)
+        temperature (3D inout): temperature (Kelvin)
         """
-        self._redist_clouds(
-            CF=RAD_CF,
-            QL=RAD_QL,
-            QI=RAD_QI,
-            CLCN=CLCN,
-            CLLS=CLLS,
-            QLCN=QLCN,
-            QLLS=QLLS,
-            QICN=QICN,
-            QILS=QILS,
-            QV=RAD_QV,
-            TE=T,
+        self._redistribute_clouds(
+            cloud_fraction=cloud_fraction,
+            convective_cloud_fraction=convective_cloud_fraction,
+            large_scale_cloud_fraction=large_scale_cloud_fraction,
+            liquid=liquid,
+            convective_liquid=convective_liquid,
+            large_scale_liquid=large_scale_liquid,
+            ice=ice,
+            convective_ice=convective_ice,
+            large_scale_ice=large_scale_ice,
+            vapor=vapor,
+            temperature=temperature,
         )

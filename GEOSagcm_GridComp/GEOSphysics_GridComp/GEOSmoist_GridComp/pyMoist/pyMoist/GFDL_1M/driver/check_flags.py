@@ -1,9 +1,9 @@
 from ndsl.dsl.typing import Float
-from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
+from pyMoist.GFDL_1M.config import GFDL1MConfig
 
 
 def check_flags(
-    GFDL_1M_config: MicrophysicsConfiguration,
+    GFDL_1M_config: GFDL1MConfig,
     dts: Float,
 ):
     """

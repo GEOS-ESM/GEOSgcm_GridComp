@@ -1,5 +1,4 @@
-from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, interval, sqrt
-
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 
@@ -39,16 +38,56 @@ def update_tendencies(
     dp: FloatField,
     dp1: FloatField,
     m1: FloatField,
-    rain: FloatFieldIJ,  # strict output
-    snow: FloatFieldIJ,  # strict output
-    ice: FloatFieldIJ,  # strict output
-    graupel: FloatFieldIJ,  # strict output
+    rain: FloatFieldIJ,
+    snow: FloatFieldIJ,
+    ice: FloatFieldIJ,
+    graupel: FloatFieldIJ,
 ):
     """
     Compute output tendencies of the microphysics driver
 
+    Arguments:
+        qv0 (in): water vapor mixing ratio, unmodified within driver (kg/kg)
+        ql0 (in): in cloud liquid water, unmodified within driver (kg/kg)
+        qr0 (in): falling rain, unmodified within driver (kg/kg)
+        qi0 (in): in cloud frozen water, unmodified within driver (kg/kg)
+        qs0 (in): in cloud snow, unmodified within driver (kg/kg)
+        qg0 (in): in cloud graupel, unmodified within driver (kg/kg)
+        qa0 (in): cloud fraction (convective + large scale), unmodified within driver
+        qv1 (in): water vapor mixing ratio, driver modified
+        ql1 (in): in cloud liquid water, driver modified
+        qr1 (in): falling rain mixing ratio, driver modified
+        qi1 (in): in cloud frozen water, driver modified
+        qs1 (in): in cloud snow, driver modified
+        qg1 (in): in cloud graupel, driver modified
+        qv_dt (out): water vapor tendency
+        ql_dt (out): in cloud liquid water tendency
+        qr_dt (out): falling rain tendency
+        qi_dt (out): in cloud frozen water tendency
+        qs_dt (out): in cloud snow tendency
+        qg_dt (out): in cloud graupel tendency
+        qa_dt (out): cloud fraction (convective + large scale) tendency
+        t (in): atmospheric temperature, unmodified within driver (K)
+        t1 (in): atmospheric temperature, driver modified (K)
+        t_dt (out): atmospheric temperature tendency
+        w (in): vertical velocity, unmodified within driver (m/s)
+        w1 (in): vertical velocity, driver modified (m/s)
+        uin (in): eastward winds, unmodified within driver (m/s)
+        u1: eastward winds, driver modified (m/s)
+        udt: eastward wind tendency
+        vin: northward winds, unmodified within driver (m/s)
+        v1: northward winds, driver modified (m/s)
+        vdt: northward wind tendency
+        dp: change in pressure between model levels, unmodified by driver (mb)
+        dp1: change in pressure between model levels, driver modified (mb)
+        m1: details unknown
+        rain: precipitated rain at surface (kg/m^2/s)
+        snow: precipitated snow at surface (kg/m^2/s)
+        ice: precipitated ice at surface (kg/m^2/s)
+        graupel: precipitated graupel at surface (kg/m^2/s)
+
     reference Fortran: gfdl_cloud_microphys.F90:
-    subroutine mpdrv, subroutine gfdl_cloud_microphys_driver
+    subroutines mpdrv, gfdl_cloud_microphys_driver
     """
     from __externals__ import c_air, c_vap, do_qa, do_sedi_w, rdt, sedi_transport
 

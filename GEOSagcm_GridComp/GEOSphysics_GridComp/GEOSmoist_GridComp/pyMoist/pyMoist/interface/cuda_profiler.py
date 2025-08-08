@@ -58,10 +58,16 @@ class CUDAProfiler:
 
 
 class TimedCUDAProfiler(CUDAProfiler):
-    def __init__(self, label: str, timings: Dict[str, List[float]]) -> None:
+    def __init__(
+        self,
+        label: str,
+        timings: Dict[str, List[float]],
+        print_: bool = False,
+    ) -> None:
         super().__init__(label)
         self._start_time = 0
         self._timings = timings
+        self._print = print_
 
     def __enter__(self):
         super().__enter__()
@@ -74,3 +80,5 @@ class TimedCUDAProfiler(CUDAProfiler):
             self._timings[self.label] = [t]
         else:
             self._timings[self.label].append(t)
+        if self._print:
+            print(f"NDSL Timer - {self.label}: {t:.3}s")

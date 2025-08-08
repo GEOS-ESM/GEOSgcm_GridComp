@@ -36,6 +36,7 @@ module GEOS_MoistGridCompMod
 #ifdef PYMOIST_INTEGRATION
   use pymoist_interface_mod
   use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
+  use iso_c_binding, only: c_loc
 #endif
 
   implicit none
@@ -5167,8 +5168,13 @@ contains
     ! !ARGUMENTS:
 
     type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+#ifdef PYMOIST_INTEGRATION
+    type(ESMF_State),    intent(inout), TARGET :: IMPORT ! Import state
+    type(ESMF_State),    intent(inout), TARGET :: EXPORT ! Export state
+#else
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+#endif
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional,   intent(  out) :: RC     ! Error code:
 
@@ -5211,7 +5217,11 @@ contains
     real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
     real, pointer, dimension(:,:)   :: SH, TS, EVAP, KPBL
     real, pointer, dimension(:,:,:) :: KH, TKE, OMEGA
+#ifdef PYMOIST_INTEGRATION
+    type(ESMF_State), TARGET        :: AERO
+#else
     type(ESMF_State)                :: AERO
+#endif
     type(ESMF_FieldBundle)          :: TR
     ! Exports
     real, pointer, dimension(:,:,:) :: DQDT, DQADT, DQIDT, DQLDT, DQRDT, DQSDT, DQGDT
@@ -5348,7 +5358,7 @@ contains
           ! disable trapping of FPEs temporarily, call the Python interface and resume trapping
           call ieee_get_halting_mode(ieee_all, halting_mode)
           call ieee_set_halting_mode(ieee_all, .false.)
-          call pymoist_interface_f_init(moist_flags)
+          call pymoist_interface_f_init(c_loc(IMPORT), c_loc(EXPORT), c_loc(MAPL), moist_flags)
           call ieee_set_halting_mode(ieee_all, halting_mode)
           call cpu_time(finish)
           if (rank == 0) print *, rank, ': pymoist_runtime_init: time taken = ', finish - start, 's'

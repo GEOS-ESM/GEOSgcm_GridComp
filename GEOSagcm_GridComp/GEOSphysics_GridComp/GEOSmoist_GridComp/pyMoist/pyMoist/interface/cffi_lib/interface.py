@@ -21,18 +21,17 @@ from mpi4py import MPI
 from pyMoist.interface.python_bridge import (
     pyMoist_init,
     pyMoist_run_AerActivation,
-    pyMoist_run_GFDL_1M_evap_subl_hystpdf,
-    pymoist_run_GFDL_1M_driver,
+    pymoist_interface_GFDL_1M,
     pyMoist_finalize,
-    gfdl_1m_init
+    gfdl_1m_init,
 )
 import traceback
 
 @ffi.def_extern()
-def pymoist_interface_py_init(flags) -> int:
+def pymoist_interface_py_init(import_state, export_state, mapl_comp, flags) -> int:
 
     try:
-        pyMoist_init(flags)
+        pyMoist_init(import_state, export_state, mapl_comp, flags)
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())
@@ -40,10 +39,13 @@ def pymoist_interface_py_init(flags) -> int:
     return 0
 
 @ffi.def_extern()
-def gfdl_1m_interface_py_init(flags) -> int:
+def gfdl_1m_interface_py_init(flags, internal) -> int:
 
     try:
-        gfdl_1m_init(flags)
+        gfdl_1m_init(
+            flags,
+            internal,
+        )
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())
@@ -74,64 +76,14 @@ def pymoist_interface_py_run_AerActivation(
     return 0
 
 @ffi.def_extern()
-def pymoist_interface_py_run_GFDL1M(
-    dw_land, dw_ocean, PDFSHAPE, TURNRHCRIT_PARAM,
-    DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF,
-    LMELTFRZ,
-    AREA, CNV_FRC, SRF_TYPE,
-    KLCL,
-    EIS, PLmb, PLEmb, NACTL, NACTI, QST,
-    T, Q, QLCN, QICN, QLLS, QILS, CLLS, CLCN,
-    SUBLC, EVAPC, RHX):
-
+def pymoist_interface_py_run_GFDL_1M() -> int:
     try:
-        pyMoist_run_GFDL_1M_evap_subl_hystpdf(
-            dw_land, dw_ocean, PDFSHAPE, TURNRHCRIT_PARAM,
-            DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF,
-            LMELTFRZ,
-            AREA, CNV_FRC, SRF_TYPE,
-            KLCL,
-            EIS, PLmb, PLEmb, NACTL, NACTI, QST,
-            T, Q, QLCN, QICN, QLLS, QILS, CLLS, CLCN,
-            SUBLC, EVAPC, RHX
-        )
+        pymoist_interface_GFDL_1M()
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())
         return -1
     return 0
-
-@ffi.def_extern()
-def pymoist_interface_py_run_GFDL_1M_driver(
-        RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTAll,
-        DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic,
-        DQSDTmic, DQGDTmic, DQADTmic, DTDTmic,
-        T, W, U, V, DUDTmic, DVDTmic, DZ, DP,
-        AREA, FRLAND, CNV_FRC, SRF_TYPE, EIS, RHCRIT3D,
-        DT_MOIST, ANV_ICEFALL, LS_ICEFALL,
-        REV_LS, RSU_LS,
-        PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, PFL_LS, PFI_LS,
-        LHYDROSTATIC, LPHYS_HYDROSTATIC
-    ):
-
-        try:
-            pymoist_run_GFDL_1M_driver(
-                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF,
-                NACTAll,
-                DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic,
-                DQSDTmic, DQGDTmic, DQADTmic, DTDTmic,
-                T, W, U, V, DUDTmic, DVDTmic, DZ, DP,
-                AREA, FRLAND, CNV_FRC, SRF_TYPE, EIS, RHCRIT3D,
-                DT_MOIST, ANV_ICEFALL, LS_ICEFALL,
-                REV_LS, RSU_LS,
-                PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, PFL_LS, PFI_LS,
-                LHYDROSTATIC, LPHYS_HYDROSTATIC
-            )
-        except Exception as err:
-            print("Error in Python:")
-            print(traceback.format_exc())
-            return -1
-        return 0
 
 @ffi.def_extern()
 def pymoist_interface_py_finalize() -> int:
