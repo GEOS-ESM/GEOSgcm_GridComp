@@ -2084,6 +2084,43 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'surface_reflectivity_visible_beam_snowfree',&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'ALBVRSF'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'surface_reflectivity_visible_diffuse_snowfree',&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'ALBVFSF'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'surface_reflectivity_near_infrared_beam_snowfree',&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'ALBNRSF'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'surface_reflectivity_near_infrared_diffuse_snowfree',&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'ALBNFSF'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+
+  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'change_surface_skin_temperature',&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'DELTS'                     ,&
@@ -4209,6 +4246,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: albvf
         real, dimension(:),   pointer :: albnr
         real, dimension(:),   pointer :: albnf
+        real, dimension(:),   pointer :: albvrsf
+        real, dimension(:),   pointer :: albvfsf
+        real, dimension(:),   pointer :: albnrsf
+        real, dimension(:),   pointer :: albnfsf
+
         real, dimension(:),   pointer :: delts
         real, dimension(:),   pointer :: delqs
         real, dimension(:),   pointer :: delevap
@@ -4780,6 +4822,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,ALBVF,  'ALBVF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBNR,  'ALBNR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBNF,  'ALBNF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,ALBVRSF,  'ALBVRSF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,ALBVFSF,  'ALBVFSF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,ALBNRSF,  'ALBNRSF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,ALBNFSF,  'ALBNFSF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DELTS,  'DELTS'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DELQS,  'DELQS'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TST  ,  'TST'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -5276,7 +5322,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
                        VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+                       ALBVRSF, ALBNRSF, ALBVFSF, ALBNFSF  ) ! instantaneous snow-free albedos on tiles
 
         ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
 
@@ -5289,7 +5335,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
-                 ALBVR, ALBNR, ALBVF, ALBNF, &  ! instantaneous snow-free albedos on tiles
+                 ALBVRSF, ALBNRSF, ALBVFSF, ALBNFSF, &  ! instantaneous snow-free albedos on tiles
                  SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow      albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
 
@@ -5318,7 +5364,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if(associated(SWDOWNLAND)) SWDOWNLAND = DRPAR + DFPAR + DRUVR + DFUVR + DRNIR + DFNIR
 
-        SWNETFREE = (1.-ALBVR)*VSUVR + (1.-ALBVF)*VSUVF + (1.-ALBNR)*DRNIR + (1.-ALBNF)*DFNIR 
+        SWNETFREE = (1.-ALBVRSF)*VSUVR + (1.-ALBVFSF)*VSUVF + (1.-ALBNRSF)*DRNIR + (1.-ALBNFSF)*DFNIR 
         SWNETSNOW = (1.-SNOVR)*VSUVR + (1.-SNOVF)*VSUVF + (1.-SNONR)*DRNIR + (1.-SNONF)*DFNIR 
 
         ! --------------------------------------------------------------------------
@@ -6113,7 +6159,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_TimerOn(MAPL,"-ALBEDO")
         call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
                        VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+                       ALBVRSF, ALBNRSF, ALBVFSF, ALBNFSF  ) ! instantaneous snow-free albedos on tiles
 
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP )
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
@@ -6122,7 +6168,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
-                 ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
+                 ALBVRSF, ALBNRSF, ALBVFSF, ALBNFSF, & ! instantaneous snow-free albedos on tiles
                  SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
 
@@ -6140,10 +6186,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         endif
 
-        ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
-        ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
-        ALBNR   = ALBNR    *(1.-ASNOW) + SNONR    *ASNOW
-        ALBNF   = ALBNF    *(1.-ASNOW) + SNONF    *ASNOW
+        ALBVR   = ALBVRSF    *(1.-ASNOW) + SNOVR    *ASNOW
+        ALBVF   = ALBVFSF    *(1.-ASNOW) + SNOVF    *ASNOW
+        ALBNR   = ALBNRSF    *(1.-ASNOW) + SNONR    *ASNOW
+        ALBNF   = ALBNFSF    *(1.-ASNOW) + SNONF    *ASNOW
         call MAPL_TimerOff(MAPL,"-ALBEDO")
 
         LWNDSRF = LWDNSRF - HLWUP

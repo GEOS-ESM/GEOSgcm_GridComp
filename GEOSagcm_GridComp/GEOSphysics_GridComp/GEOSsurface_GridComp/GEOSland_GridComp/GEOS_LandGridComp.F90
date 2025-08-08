@@ -281,6 +281,26 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'ALBVRSF', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'ALBVFSF', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'ALBNRSF', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'ALBNFSF', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EMIS', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
@@ -991,6 +1011,14 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBNR',    CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBNF',    CHILD_ID = CATCHCN(1), RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBVRSF',    CHILD_ID = CATCHCN(1), RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBVFSF',    CHILD_ID = CATCHCN(1), RC=STATUS  )
+       VERIFY_(STATUS) 
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBNRSF',    CHILD_ID = CATCHCN(1), RC=STATUS  )
+       VERIFY_(STATUS) 
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBNFSF',    CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EMIS',     CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
