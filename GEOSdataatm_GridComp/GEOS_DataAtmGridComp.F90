@@ -484,6 +484,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    logical :: firsttime = .false.
 
    real :: TAU_TS
+   real :: REF_HEIGHT
    real :: DT
 
    integer :: year, month, day, hr, mn, se
@@ -525,6 +526,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, HEARTBEAT = DT, __RC__)
     call MAPL_GetResource ( MAPL, DT, Label="DT:", DEFAULT=DT, __RC__)
     call MAPL_GetResource ( MAPL, TAU_TS, Label="TAU_TS:", DEFAULT=7200.0, __RC__)
+    call MAPL_GetResource ( MAPL, REF_HEIGHT, Label="REFERENCE_HEIGHT:", DEFAULT=10.0, __RC__)
 
 ! Pointers to Imports
 !--------------------
@@ -601,7 +603,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), __STAT__)
 
     call MAPL_GetPointer(SurfImport, DZ, 'DZ', __RC__)
-    DZ = 50.0 ! meters
+    DZ = REF_HEIGHT
 
 ! River runoff    
 !   call ReadForcingData(impName='DISCHARGE', frcName='RR', default=0., __RC__)
