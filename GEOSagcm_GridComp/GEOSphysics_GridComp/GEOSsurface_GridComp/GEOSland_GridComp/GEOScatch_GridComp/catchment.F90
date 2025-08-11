@@ -829,7 +829,7 @@
         WRITE(*,*) 'ENERGY4 OK'
         ENDIF
 
-!**** 3. URBAN FRACTION
+!**** 4. URBAN FRACTION
 !CC    print*,'energy urban'
       BLW_UR = EMIS_UR*stefan_boltzmann*TC_UR*TC_UR*TC_UR
       ALW_UR = -3.0*BLW_UR*TC_UR
@@ -844,9 +844,9 @@
       CALL ENERGY_URBAN (                                                                    &
                    NCH, DTSTEP, ITYP,POROS, UM, RCST,                                        &
                    ETURB_UR, DEDQAX_UR, DEDTCX_UR, HSTURB_UR, DHSDQAX_UR, DHSDTCX_UR,        &
-                   QM,     RA_UR,   SWNET_UR,  HLWDWN, PSUR,                                   &
+                   QM,     RA_UR,   SWNET_UR,  HLWDWN, PSUR,                                 &
                    RDCX,   HFTDS_UR, DHFT_UR, QSAT_UR, DQS_UR, ALW_UR, BLW_UR,               &
-                   EMAXRT,CSOIL_UR,SWSRF4,POTFRC,.false., WPWET,                                &
+                   EMAXRT,CSOIL_UR,SWSRF4,POTFRC,.false., WPWET,                             &
                    TCSF_UR, QA_UR,                                                           &
                    EVAP_UR, SHFLUX_UR, HLWUP_UR, RX1_UR, RX2_UR, GHFLUX_UR, HSNACC_UR        &
                   )
@@ -1116,7 +1116,7 @@
         GHFLUX(N)=(1.-ASNOW(N))*                                               &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               +ASNOW(N)*GHFLUXS(N) 
-        !GHFLUX(N)=GHFLUX(N)*(1.-AR_UR) + GHFLUX_UR(N)*AR_UR     
+        GHFLUX(N)=GHFLUX(N)*(1.-AR_UR) + GHFLUX_UR(N)*AR_UR     
         GHTSKIN(N)=(1.-ASNOW(N))*                                              &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               -ASNOW(N)*ghfluxsno(N)
@@ -1170,26 +1170,25 @@
         frice(n)=xfice
 
         if(AR_UR>0.)then
+        !  DO LAYER=1,6
+        !    HT(LAYER)=GHTCNT_UR(LAYER,N)
+        !  ENDDO          
+        !  FH21=-GHFLUX_UR(N)
+        !  CALL GNDTMP(                                 &
+        !      phi, -1.*zbar,                           &   
+        !      ht,                                      &
+        !      xfice, tp, soilice_UR,                   &
+        !      DTS=dtstep, THETAF=thetaf, FH21=fh21)
           DO LAYER=1,6
-            HT(LAYER)=GHTCNT_UR(LAYER,N)
-          ENDDO          
-          FH21=-GHFLUX_UR(N)
-          CALL GNDTMP(                                   &
-              phi, -1.*zbar,                           &   ! note minus sign for zbar
-              ht,                                      &
-              xfice, tp, soilice_UR,                      &
-              DTS=dtstep, THETAF=thetaf, FH21=fh21)
-          DO LAYER=1,6
-            GHTCNT_UR(LAYER,N)=HT(LAYER)
+            GHTCNT_UR(LAYER,N)=GHTCNT(LAYER,N)
           ENDDO
-          TP1_UR(n)=tp(1)
-          TP2_UR(n)=tp(2)
-          TP3_UR(n)=tp(3)
-          TP4_UR(n)=tp(4)
-          TP5_UR(n)=tp(5)
-          TP6_UR(n)=tp(6)
-          frice_UR(n)=xfice
-             
+          TP1_UR(n)=tp1(n)
+          TP2_UR(n)=tp2(n)
+          TP3_UR(n)=tp3(n)
+          TP4_UR(n)=tp4(n)
+          TP5_UR(n)=tp5(n)
+          TP6_UR(n)=tp6(n)
+          frice_UR(n)=frice(n)            
         endif
 
          
