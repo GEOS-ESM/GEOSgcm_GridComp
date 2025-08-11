@@ -318,10 +318,10 @@ def compute_thermodynamic_variables(
         qt0 = qv0 + ql0 + qi0
         exnmid0 = exnmid0_in
         t0 = th0_in * exnmid0
-        thl0 = (
+        thl0: float32 = (
             t0
-            - ((constants.MAPL_ALHL * ql0) / constants.MAPL_CP)
-            - ((constants.MAPL_ALHS * qi0) / constants.MAPL_CP)
+            - (constants.MAPL_ALHL * ql0) / constants.MAPL_CP
+            - (constants.MAPL_ALHS * qi0) / constants.MAPL_CP
         ) / exnmid0
 
         if dotransport == 1:
@@ -583,26 +583,27 @@ def compute_thv0_thvl0(
     from __externals__ import ncnst
 
     with computation(PARALLEL), interval(...):
-        pmid0 = pmid0_in
+        pmid0: float32 = pmid0_in
         exnmid0 = exnmid0_in
         qv0 = qv0_in
         ql0 = ql0_in
         qi0 = qi0_in
-        qt0 = qv0 + ql0 + qi0
+        qt0: float32 = qv0 + ql0 + qi0
         t0 = th0_in * exnmid0
-        s0 = constants.MAPL_GRAV * zmid0 + constants.MAPL_CP * t0
-        thl0 = (
+        s0: float32 = constants.MAPL_GRAV * zmid0 + constants.MAPL_CP * t0
+        thl0: float32 = (
             t0
-            - constants.MAPL_LATENT_HEAT_VAPORIZATION * ql0 / constants.MAPL_CP
-            - constants.MAPL_LATENT_HEAT_SUBLIMATION * qi0 / constants.MAPL_CP
+            - constants.MAPL_ALHL * ql0 / constants.MAPL_CP
+            - constants.MAPL_ALHS * qi0 / constants.MAPL_CP
         ) / exnmid0
-        thvl0 = (1.0 + zvir * qt0) * thl0
-        pifc0 = pifc0_in
+        thvl0: float32 = (1.0 + zvir * qt0) * thl0
+        pifc0: float32 = pifc0_in
 
-        thl0bot = thl0 + ssthl0 * (pifc0 - pmid0)
-        qt0bot = qt0 + ssqt0 * (pifc0 - pmid0)
+        thl0bot: float32 = thl0 + ssthl0 * (pifc0 - pmid0)
+        qt0bot: float32 = qt0 + ssqt0 * (pifc0 - pmid0)
 
         thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, ese, esx)
+        # testvar3D: float32 = thl0bot
 
     with computation(FORWARD), interval(...):
         if id_check == 1:
@@ -1479,7 +1480,7 @@ def compute_cin_cinlcl(
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
-        if iteration != i32(0):
+        if iteration != int32(0):
             stop_cin = (
                 False  # Indicates if CIN calcuation is done (e.g., Fortran go to 35)
             )
@@ -2720,7 +2721,7 @@ def define_env_properties(
                 vplus = PGFc * ssv0.at(K=kinv - 1) * (prel - pifc0.at(K=kinv - 1))
 
             else:
-                if THIS_K >= kinv - 1 and THIS_K <= max(krel - 1, kinv - 1):
+                if K >= kinv - 1 and K <= max(krel - 1, kinv - 1):
                     uplus_3D = uplus_3D[0, 0, -1] + PGFc * ssu0 * (
                         pifc0[0, 0, 1] - pifc0
                     )
@@ -2975,7 +2976,7 @@ def buoyancy_sorting(
             # want, but a sample test indicated that about 3 - 5 iterations  produced
             # satisfactory converent solution. Finally, identify 'kbup' and 'kpen'.
 
-            if iteration != i32(0):
+            if iteration != int32(0):
                 stop_buoyancy_sort = (
                     False  # Indicates that buoyancy sorting processes are done
                 )
@@ -3428,9 +3429,7 @@ def buoyancy_sorting(
                                                 tru[0, 0, -1][n]
                                                 + (
                                                     tre[0, 0][n]
-                                                    + sstr0.at(K=THIS_K, ddim=[n])
-                                                    * dpe
-                                                    / 2.0
+                                                    + sstr0[0, 0, -1][n] * dpe / 2.0
                                                     - tru[0, 0, -1][n]
                                                 )
                                                 * fer
@@ -3755,7 +3754,7 @@ def buoyancy_sorting(
                     kbup_IJ = THIS_K
 
                 if wtw <= 0.0:
-                    kpen_IJ = THIS_K
+                    kpen_IJ = K
                     stop_buoyancy_sort = (
                         True  # Done calculating updraft properties, break out of loop
                     )
@@ -5322,7 +5321,7 @@ def penetrative_entrainment_fluxes(
             # Condensate tendency by compensating subsidence/upwelling
             uemf[0, 0, 1] = 0.0
 
-            if THIS_K >= 0 and THIS_K <= (
+            if K >= 0 and K <= (
                 kinv - 2
             ):  # Assume linear updraft mass flux within the PBL.
                 uemf[0, 0, 1] = (
@@ -5335,7 +5334,7 @@ def penetrative_entrainment_fluxes(
                 uemf[0, 0, 1] = cbmf
             if THIS_K >= krel and THIS_K <= (kbup - 1):
                 uemf[0, 0, 1] = umf_zint
-            if THIS_K >= kbup and THIS_K <= (kpen - 1):
+            if K >= kbup and K <= (kpen - 1):
                 uemf[0, 0, 1] = (
                     emf  # Only use penetrative entrainment flux consistently.
                 )
@@ -5967,7 +5966,7 @@ def calc_thermodynamic_tendencies(
                         nc_im = 0.0
 
                     # 3. Detached Updraft
-                    if THIS_K == kbup:
+                    if K == kbup:
                         qc_l = qc_l + constants.MAPL_GRAV * umf_zint[
                             0, 0, 1
                         ] * qlj_2D / (
@@ -6149,8 +6148,12 @@ def prevent_negative_condensate(
         if not condensation:
             ixcldice = 1
             ixcldliq = 2
-            dql: f64 = max(f64(0.0), f64(1.0) * qmin.at(K=ixcldliq) - ql0_star)
-            dqi: f64 = max(f64(0.0), f64(1.0) * qmin.at(K=ixcldice) - qi0_star)
+            dql: float64 = max(
+                float64(0.0), float64(1.0) * qmin.at(K=ixcldliq) - ql0_star
+            )
+            dqi: float64 = max(
+                float64(0.0), float64(1.0) * qmin.at(K=ixcldice) - qi0_star
+            )
             qlten = qlten + dql / dt
             qiten = qiten + dqi / dt
             qvten = qvten - (dql + dqi) / dt
@@ -6498,7 +6501,7 @@ def calc_cumulus_condensate_at_interface(
                     # Note 'ppen < 0' and at 'k=kpen' layer, I used 'thlu_top'&'qtu_top'
                     # which explicitly considered zero or non-zero 'fer(kpen)'.
 
-                    if THIS_K == kpen:
+                    if K == kpen:
                         thj, qvj, qlj, qij, qse, id_check = conden(
                             pifc0 + ppen, thlu_top, qtu_top, ese, esx
                         )

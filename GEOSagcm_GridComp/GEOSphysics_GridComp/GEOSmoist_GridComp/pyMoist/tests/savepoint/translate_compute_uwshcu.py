@@ -9,6 +9,7 @@ from pyMoist.UW.config import UWConfiguration
 # For testing only
 import numpy as np
 import xarray as xr
+import sys
 
 
 class TranslateComputeUwshcuInv(TranslateFortranData2Py):
@@ -436,16 +437,16 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             tpert_out=tpert_out,
             qpert_out=qpert_out,
             # Testvars
-            testvar3D=testvar3D,
-            testvar2D=testvar2D,
+            # testvar3D=testvar3D,
+            # testvar2D=testvar2D,
         )
 
         # with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out2.nc") as ds:
         #     # Load in netcdf test var
-        #     testvar = "dpe"
+        #     testvar = "thl0bot"
         #     var = testvar3D
 
-        #     testvar_nan = ds.variables[testvar].data[0, 1, :, 0, :-1, 0]
+        #     testvar_nan = ds.variables[testvar].data[0, 1, :, :-1, 0, 0]
         #     # Replace nans with zero
         #     testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
 
@@ -510,6 +511,8 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
 
         # print(testvar3D.view[15, 16, :])
         # print(reference_variable.view[15, 16, :])
+
+        # sys.exit()
 
         return {
             "umf_inv": umf_inv.view[:],
