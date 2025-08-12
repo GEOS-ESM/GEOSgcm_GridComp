@@ -1,4 +1,4 @@
-! It is a proxy of clm 4.0 and clm 4.5
+! It is a proxy of CNCLM40 and CNCLM51
 
 #include "MAPL_Generic.h"
 
@@ -102,7 +102,7 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB, Label='N_CONST_LAND4SNWALB:', _RC)
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%RUN_IRRIG,           Label='RUN_IRRIG:',           _RC)
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%PRESCRIBE_DVG,       Label='PRESCRIBE_DVG:',       _RC)
-    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%SNOW_ALBEDO_INFO,    Label='SNOW_ALBEDO_INFO:',    _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%SNOW_ALBEDO_INFO,    Label='SNOW_ALBEDO_INFO:',    _RC)  
     call MAPL_Set (MAPL, CF=CF, _RC)
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
@@ -131,13 +131,13 @@ subroutine SetServices ( GC, RC )
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN1, RC=STATUS )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        RUN1,       RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN2, RC=STATUS )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        RUN2,       RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE, Finalize, RC=status)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,   Finalize,   RC=status)
     VERIFY_(status)
 
 ! Set the state variable specs. ( should be the combinations of clm4.0 and clm4.5
