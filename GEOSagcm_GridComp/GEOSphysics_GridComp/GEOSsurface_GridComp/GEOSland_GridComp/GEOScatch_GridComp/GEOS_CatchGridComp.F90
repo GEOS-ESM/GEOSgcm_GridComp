@@ -187,11 +187,12 @@ subroutine SetServices ( GC, RC )
 
     OFFLINE_MODE = CATCH_INTERNAL_STATE%CATCH_OFFLINE    ! shorthand
 
-    ! resource variables from GEOS_SurfaceGridComp.rc
+    ! put resource variables from rc file into SCF config object (GCM: SURFRC=GEOS_SurfaceGridComp.rc, LDAS: SURFRC=LDAS.rc)
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
+    ! assemble internal state from SCF config object
     call surface_params_to_wrap_state(statePtr, SCF, _RC)
 
     call ESMF_ConfigDestroy(SCF, _RC)

@@ -200,12 +200,10 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    type(T_CATCHCN_STATE), pointer :: CATCHCN_INTERNAL
-    class(T_CATCHCN_STATE), pointer :: statePtr
-    type(CATCHCN_WRAP) :: wrap
-    integer :: OFFLINE_MODE
-    integer :: RESTART
 
+    integer :: OFFLINE_MODE, ATM_CO2, SNOW_ALBEDO_INFO, MOSFC_EXTRA_DERIVS_OFFL_LAND, N_CONST_LAND4SNWALB
+    integer :: RESTART
+    
 ! Begin...
 ! --------
 
@@ -221,20 +219,20 @@ subroutine SetServices ( GC, RC )
 ! it in the private internal state of the GridComp. It is a little
 ! unusual to read resource file in SetServices, but we need to know
 ! at this stage where we are running Catch in the offline mode or not
-
-    allocate(CATCHCN_INTERNAL, stat=status)
-    VERIFY_(status)
-    statePtr => CATCHCN_INTERNAL
-
+    
     ! resource variables for offline GEOSldas; for documentation, see GEOSldas/src/Applications/LDAS_App/GEOSldas_LDAS.rc
+    !
+    ! NOTE: In SetServices(), the internal state ("catchcn_internal") has not yet been passed down from the parent (CatchCN),
+    !       so it should not be used.
+    
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
-    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL%CATCH_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL%CATCH_SPINUP,  Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
 
-    OFFLINE_MODE = CATCHCN_INTERNAL%CATCH_OFFLINE    ! shorthand
+    call MAPL_GetResource ( MAPL, OFFLINE_MODE,                 Label="CATCHMENT_OFFLINE:",            DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, ATM_CO2,                      Label="ATM_CO2:",                      DEFAULT=2, _RC)
+    call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB,          Label="N_CONST_LAND4SNWALB:",          DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, SNOW_ALBEDO_INFO,             Label="SNOW_ALBEDO_INFO:",             DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, MOSFC_EXTRA_DERIVS_OFFL_LAND, Label="MOSFC_EXTRA_DERIVS_OFFL_LAND:", DEFAULT=0, _RC)   ! 0 is default for GCM only!
 
 ! Set the Run entry points
 ! ------------------------
@@ -436,7 +434,7 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    IF (catchcn_internal%ATM_CO2 == 4) THEN
+    IF (ATM_CO2 == 4) THEN
        call MAPL_AddImportSpec(GC,                                    &
             SHORT_NAME         = 'CO2SC',                             &
             LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
@@ -1391,7 +1389,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
+  if (SNOW_ALBEDO_INFO == 1) then
     call MAPL_AddInternalSpec(GC                  ,&
        LONG_NAME          = 'effective_snow_reflectivity',&
        UNITS              = '1'                         ,&
@@ -1459,7 +1457,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
-  if     (CATCHCN_INTERNAL%MOSFC_EXTRA_DERIVS_OFFL_LAND == 1) then
+  if     (MOSFC_EXTRA_DERIVS_OFFL_LAND == 1) then
      
      ! for *analytical* extra derivatives in louissurface
      
@@ -1485,7 +1483,7 @@ subroutine SetServices ( GC, RC )
           RC=STATUS  )
      VERIFY_(STATUS)
 
-  elseif (CATCHCN_INTERNAL%MOSFC_EXTRA_DERIVS_OFFL_LAND >= 2) then 
+  elseif (MOSFC_EXTRA_DERIVS_OFFL_LAND >= 2) then 
      
      ! for *numerical* extra derivatives in helfsurface and louissurface
      
@@ -1980,7 +1978,7 @@ subroutine SetServices ( GC, RC )
     
   !---------- GOSWIM snow impurity related variables ----------
 
-  if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then 
+  if (N_CONST_LAND4SNWALB /= 0) then 
   
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
