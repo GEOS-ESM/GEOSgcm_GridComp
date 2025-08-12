@@ -95,25 +95,30 @@ subroutine SetServices ( GC, RC )
     call surface_params_to_wrap_state(statePtr, SCF,  _RC)
 
     call ESMF_ConfigDestroy(SCF, _RC)
-
-    ! add select rc variables to the CF config object within MAPL and (again) into the internal state
-    call MAPL_Get (MAPL, CF=CF, _RC)
-    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%CN_CLM51_NML_FILE,   Label='CN_CLM51_NML_FILE:',   _RC)
-    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%ATM_CO2,             Label='ATM_CO2:',             _RC)
-    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB, Label='N_CONST_LAND4SNWALB:', _RC)
-    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%RUN_IRRIG,           Label='RUN_IRRIG:',           _RC)
-    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%PRESCRIBE_DVG,       Label='PRESCRIBE_DVG:',       _RC)
-    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%SNOW_ALBEDO_INFO,    Label='SNOW_ALBEDO_INFO:',    _RC)  
-    call MAPL_Set (MAPL, CF=CF, _RC)
-
+    
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
+    
+    ! Add select rc variables to [the CF config object within] MAPL so that the Children GridComps (CNCLM40 and CNCLM51) can get
+    !   them in SetServices() from MAPL.  In the Children's SetServices(), "catchcn_internal" is not yet available.
+    call MAPL_Get (MAPL, CF=CF, _RC)
+    call    ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%ATM_CO2,                      Label='ATM_CO2:',                      _RC)
+    call    ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB,          Label='N_CONST_LAND4SNWALB:',          _RC)
+    call    ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%SNOW_ALBEDO_INFO,             Label='SNOW_ALBEDO_INFO:',             _RC)  
+    if     (LSM_CHOICE==2) then
+       call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%RUN_IRRIG,                    Label='RUN_IRRIG:',                    _RC)
+       call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%PRESCRIBE_DVG,                Label='PRESCRIBE_DVG:',                _RC)
+    elseif (LSM_CHOICE==4) then
+       call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_OFFL_LAND, Label='MOSFC_EXTRA_DERIVS_OFFL_LAND:', _RC)
+    end if
+    call MAPL_Set (MAPL, CF=CF, _RC)
 
+    ! prep CatchCN ensemble and Children
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
-        !catchcn_exxxx
-        tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
-     endif
+       !catchcn_exxxx
+       tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
+    endif
      
     if      ( LSM_CHOICE == 2 ) then
        CATCHCN = MAPL_AddChild('CATCHCNCLM40'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
