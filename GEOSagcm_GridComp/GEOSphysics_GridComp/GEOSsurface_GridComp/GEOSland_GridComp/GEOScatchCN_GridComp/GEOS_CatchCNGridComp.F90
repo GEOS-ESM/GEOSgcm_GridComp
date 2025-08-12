@@ -86,17 +86,18 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCH_SPINUP,  Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    ! resource variables from GEOS_SurfaceGridComp.rc
+    ! put resource variables from rc file into SCF config object (GCM: SURFRC=GEOS_SurfaceGridComp.rc, LDAS: SURFRC=LDAS.rc)
     call MAPL_GetResource ( MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
+    ! assemble internal state from SCF config object
     call surface_params_to_wrap_state(statePtr, SCF,  _RC)
 
     call ESMF_ConfigDestroy(SCF, _RC)
 
+    ! add select rc variables to the CF config object within MAPL and (again) into the internal state
     call MAPL_Get (MAPL, CF=CF, _RC)
-
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%CN_CLM51_NML_FILE,   Label='CN_CLM51_NML_FILE:',   _RC)
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%ATM_CO2,             Label='ATM_CO2:',             _RC)
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB, Label='N_CONST_LAND4SNWALB:', _RC)
