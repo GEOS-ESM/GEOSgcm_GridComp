@@ -95,7 +95,6 @@
            PEATCLSM_ZBARMAX_4_SYSOIL,                &
            EMIS_UR           => CATCH_EMIS_URBAN,    &
            CSOIL_UR          => CATCH_C_URBAN,       &
-           CH_UR             => CATCH_CH_URBAN,      &
            AR_UR             => AR_URBAN    
 
       USE SURFPARAMS,       ONLY:                    &
@@ -169,7 +168,7 @@
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
                      RCONSTIT, RMELT, TOTDEPOS, &
                      SWNET_UR, RA_UR, QSAT_UR, DQS_UR,  &
-                     TC_UR, QA_UR )                                  ! OPTIONAL
+                     TC_UR, QA_UR, CH_UR )                                  ! OPTIONAL
 
       IMPLICIT NONE
 
@@ -204,7 +203,7 @@
 
       REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: SWNET_UR, RA_UR, QSAT_UR, DQS_UR
 
-      REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: TC_UR, QA_UR
+      REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: TC_UR, QA_UR, CH_UR
 
       LOGICAL, INTENT(IN) :: BUG
 
