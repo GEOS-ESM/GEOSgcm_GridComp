@@ -899,189 +899,14 @@
 
       DO N=1,NCH
 
-        TS     = TM(N) 
-        T1(1)  = TC1(N)-TF 
-        T1(2)  = TC2(N)-TF 
-        T1(3)  = TC4(N)-TF 
-        ! MB: avoid division by zero (AR1=0) in PEATCLSM equations
-        IF(POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
-           AREA(1)= amax1(AR1(N),2.E-20)
-        ELSE
-           AREA(1) = AR1(N)
-        END IF
-        AREA(2)= AR2(N) 
-        AREA(3)= AR4(N) 
-        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
-        snowf  = tsnow(n)+tice(n)+tfrzr(n)
-        dedea  = dedqas(n)*epsilon/psur(n) 
-        dhsdea = dhsdqas(n)*epsilon/psur(n) 
-        ea     = qm(n)*psur(n)/epsilon 
-        esattc = qsats(n)*psur(n)/epsilon 
-        desdtc = dqss(n)*psur(n)/epsilon 
-        dedtc0  = dedtcs(n) + dedea*desdtc 
-        dhsdtc0 = dhsdtcs(n) + dhsdea*desdtc 
-        hsturb=hsturbs(n) 
-        tkgnd(1)=1.8      !STEPH  
-        tkgnd(2)=1.8 
-        tkgnd(3)=1.8 
-        raddn=hlwdwn(n)+swnets(n) 
-        zc1=-(DZTSURF*0.5)
-        hups=0.0 
- 
-!**** 1. RUN SNOW MODEL: 
- 
-        do i=1,N_SNOW
-          wesn(i)=wesnn(i,n)
-          htsnn(i)=htsnnn(i,n) 
-          sndz(i)=sndzn(i,n) 
-          tpsn(i)=0.0
-          if (present(rconstit)) then
-                DO K=1,N_Constit
-                   RCONSTIT1(I,K)=RCONSTIT(N,I,K)
-                   TOTDEP1 (K)   = totdepos(N,K)
-                   ENDDO
-             else
-                DO K=1,N_Constit
-                   RCONSTIT1(I,K)=0.
-		   RMELT1(K)   = 0.
-                   TOTDEP1 (K) = 0.
-                   ENDDO
-             endif
-          enddo 
+        call CAL_SNOW(DTSTEP,TM(N),TC1(N),TC2(N),TC4(N),POROS(N),AR1(N),AR2(N),AR4(N),&
+              trainc(N),trainl(N),tsnow(N),tice(N),tfrzr(N),dedqas(N),psur(N),dhsdqas(N),qm(N),qsats(N),dqss(N),dedtcs(N),dhsdtcs(N),hsturbs(N),hlwdwn(N),swnets(N),&
+              wesnn(:,N),htsnnn(:,N),sndzn(:,N),tc1_orig(N),tc2_orig(N),tc4_orig(N),ALWS(N),BLWS(N),tpsn1(N),LONS(N),LATS(N),eturbs(N),&
+              HSNACC(N),HSNACC1(N),HSNACC2(N),HSNACC4(N),HFTDS1(N),HFTDS2(N),HFTDS4(N),DHFT1(N),DHFT2(N),DHFT4(N),CSOIL(N),TC1SF(N),TC2SF(N),TC4SF(N),&
+              esno(N),SHFLUXS(N),HLWUPS(N),GHFLUXS(N),EVSNOW(N),FICESOUT(:,N),LH_SNOW(N),SH_SNOW(N),LWUP_SNOW(N),LWDOWN_SNOW(N),NETSW_SNOW(N),&
+              tpsn1out(N),TPSNB(N),SMELT(N),asnow(N),asnow0(N),tcsorig(N),tpsn1in(N),traincx(N),trainlx(N),tcs_orig(N),ghfluxsno(N),&
+              totdepos(N,:),rconstit(N,:,:),RMELT(N,:))
 
-!     TPSN1 is used as input here, contradicts "declaration" as output only.
-!     EnKF has been using tpsn1 as part of state vector, which should fix this.
-!     reichle, 18 Nov 02
-
-!     Removed tpsn1 from state vector, now compute tpsn1 from prognostics
-!     in process
-!     reichle, 29 May 03
-
-        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum,.true.)
-        tcs_orig(n)=tsnowsrf+tf
-        if(wesn(1)+wesn(2)+wesn(3) .eq. 0.) tcs_orig(n)=                       &
-                  amin1( tf, tc1_orig(n)*ar1(n)+tc2_orig(n)*ar2(n)+            &
-                  tc4_orig(n)*(1.-ar1(n)-ar2(n)) )
-
-        hlwtc=ALWS(N) + BLWS(N)*(TSNOWSRF+TF) 
-        dhlwtc=BLWS(N)
-        hcorr=0.
-
-!! the field tpsn1(n) contains the value of TC(snow tile) that
-!! came in from the catch grid comp, and catch internal state
-!! spit it out here as a diagnostic
-!! also spit out here the value of tsnowsrf+tf which is used
-!! as the "original" value of TC for purposes of LW and turb fluxes
-
-        tcsorig(N) = tcs_orig(n)
-        tpsn1in(n) = tpsn1(n)    ! tpsn1 is "intent(out)", should NOT be used here, use catch_calc_tpsnow instead?  shouldn't this be the same as tcs_orig?  - reichle, 8/8/2014
-
-        sumdepth=sum(sndz)
-        
-        CALL StieglitzSnow_snowrt(                                             &
-                   LONS(N), LATS(N),                                           &  ! in    [radians]  !!!
-                   N_sm, N_snow, MAPL_Land,                                    &  ! in   
-                   CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
-                   t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
-                   eturbs(n), dedtc0, hsturb, dhsdtc0, hlwtc, dhlwtc,          &  ! in   
-                   raddn, zc1, totdep1,                                        &  ! in   
-                   wesn, htsnn, sndz, RCONSTIT1,                               &  ! inout
-                   hups, fices, tpsn, RMELT1,                                  &  ! out  
-                   areasc, areasc0, pre, fhgnd,                                &  ! out  
-                   EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &  ! out  
-                   sndzsc, wesnprec, sndzprec, sndz1perc,                      &  ! out     
-                   wesnperc, wesndens, wesnrepar, mltwtr,                      &  ! out     
-                   excs, drho0, wesnbot, tksno, dtss     )                        ! out     
-
-        FICESOUT(:,N)  = fices
-
-        LH_SNOW(N)     = areasc*EVSN*ALHS
-        SH_SNOW(N)     = areasc*SHFLS
-        LWUP_SNOW(N)   = areasc*HUPS
-        LWDOWN_SNOW(N) = areasc*HLWDWN(N)
-        NETSW_SNOW(N)  = areasc*SWNETS(N)
- 
-        TPSN1(N) = TPSN(1)+TF 
-
-        tpsn1out(n) = tpsn1(n)     ! why is tpsn1out needed?  same as tpsn1, reichle, 8/8/2014
-
-        ! removed TPSN2 (never needed);
-        ! renamed TPSN3 to TPSNB (bottom-layer snow temperature) 
-        !  (for consistency with use of "N_snow" layers)
-        ! reichle+koster, 12 Aug 2014 
-
-        TPSNB(N) = TPSN(N_snow)+TF 
-        SMELT(N) = PRE+sum(EXCS)            
-        fh31w=fhgnd(1) 
-        fh31i=fhgnd(2) 
-        fh31d=fhgnd(3) 
-        asnow(n) = areasc 
-        asnow0(n)= areasc0 
-        HSNACC(N) = HSNACC(N) + (1.-ASNOW(N))*                                 &
-             (HSNACC1(N)*AR1(N)+HSNACC2(N)*AR2(N)+HSNACC4(N)*AR4(N))           &
-             + hcorr
- 
-
-        do i=1,N_SNOW 
-          wesnn(i,n)=wesn(i) 
-          htsnnn(i,n)=htsnn(i) 
-          sndzn(i,n)=sndz(i)
-          if(present(rconstit)) then
-             DO K=1,N_Constit
-                RCONSTIT(N,I,K)=RCONSTIT1(I,K)
-		RMELT (N,K) = RMELT1(K)
-                ENDDO
-             endif
-          enddo 
- 
-        traincx(n)= trainc(n)*(1.-areasc) 
-        trainlx(n)= trainl(n)*(1.-areasc)
-
-!**** 2. UPDATE SURFACE TEMPERATURE
-
-        DTC1SN=((-(FH31W/(area(1)+1.e-20))-HFTDS1(N))*DTSTEP/CSOIL(N))/        &
-                  (1.+DHFT1(N)*DTSTEP/CSOIL(N))
-        DTC2SN=((-(FH31I/(area(2)+1.e-20))-HFTDS2(N))*DTSTEP/CSOIL(N))/        &
-                  (1.+DHFT2(N)*DTSTEP/CSOIL(N))
-        DTC4SN=((-(FH31D/(area(3)+1.e-20))-HFTDS4(N))*DTSTEP/CSOIL(N))/        &
-                  (1.+DHFT4(N)*DTSTEP/CSOIL(N))
-
-        TC1SN=TC1(N)+DTC1SN
-        IF((TC1SN-TPSNB(N))*(TC1(N)-TPSNB(N)) .LT. 0.) THEN
-          HSNACC(N)=HSNACC(N)+AREASC*AREA(1)*                                 &
-                 (TC1SN-TPSNB(N))*CSOIL(N)/DTSTEP
-          TC1SN=TPSNB(N)
-          ENDIF
-
-        TC2SN=TC2(N)+DTC2SN
-        IF((TC2SN-TPSNB(N))*(TC2(N)-TPSNB(N)) .LT. 0.) THEN
-          HSNACC(N)=HSNACC(N)+AREASC*AREA(2)*                                 &
-                 (TC2SN-TPSNB(N))*CSOIL(N)/DTSTEP
-          TC2SN=TPSNB(N)
-          ENDIF
-
-        TC4SN=TC4(N)+DTC4SN
-        IF((TC4SN-TPSNB(N))*(TC4(N)-TPSNB(N)) .LT. 0.) THEN
-          HSNACC(N)=HSNACC(N)+AREASC*AREA(3)*                                 &
-                 (TC4SN-TPSNB(N))*CSOIL(N)/DTSTEP
-          TC4SN=TPSNB(N)
-          ENDIF
-
-
-
-        TC1(N)=TC1SF(N)*(1.-AREASC)+TC1SN*AREASC
-        TC2(N)=TC2SF(N)*(1.-AREASC)+TC2SN*AREASC
-        TC4(N)=TC4SF(N)*(1.-AREASC)+TC4SN*AREASC
-        TC_UR(N)=TCSF_UR(N)
-
-
-        EVSNOW(N)=EVSN
-        esno(n)=evsnow(n)*asnow(n)*DTSTEP ! to have esno in mm/20min (03-17-99)
-        SHFLUXS(N)=SHFLS 
-        HLWUPS(N) =HUPS 
-        GHFLUXS(N)=AREA(1)*(HFTDS1(N)+DHFT1(N)*DTC1SN) +                       &
-                   AREA(2)*(HFTDS2(N)+DHFT2(N)*DTC2SN) +                       &
-                   AREA(3)*(HFTDS4(N)+DHFT4(N)*DTC4SN)
         ENDDO 
  
 
@@ -1764,6 +1589,237 @@
 
       RETURN
       END SUBROUTINE CATCHMENT
+
+!**** ===================================================
+!**** ///////////////////////////////////////////////////
+!**** ===================================================
+!****
+!**** [ BEGIN CAL_SNOW ]
+!****
+
+      subroutine CAL_SNOW(DTSTEP,TM,TC1,TC2,TC4,POROS,AR1,AR2,AR4,&
+                          trainc,trainl,tsnow,tice,tfrzr,dedqas,psur,dhsdqas,qm,qsats,dqss,dedtcs,dhsdtcs,hsturbs,hlwdwn,swnets,&
+                          wesnn,htsnnn,sndzn,tc1_orig,tc2_orig,tc4_orig,ALWS,BLWS,tpsn1,LONS,LATS,eturbs,&
+                          HSNACC,HSNACC1,HSNACC2,HSNACC4,HFTDS1,HFTDS2,HFTDS4,DHFT1,DHFT2,DHFT4,CSOIL,TC1SF,TC2SF,TC4SF,&
+                          esno,SHFLUXS,HLWUPS,GHFLUXS,EVSNOW,FICESOUT,LH_SNOW,SH_SNOW,LWUP_SNOW,LWDOWN_SNOW,NETSW_SNOW,&
+                          tpsn1out,TPSNB,SMELT,asnow,asnow0,tcsorig,tpsn1in,traincx,trainlx,tcs_orig,ghfluxsno,&
+                          totdepos,rconstit,RMELT)
+      implicit none
+
+        real,intent(in) :: DTSTEP
+        real,intent(in) :: TM,POROS,AR1,AR2,AR4
+        real,intent(in) :: trainc,trainl,tsnow,tice,tfrzr,dedqas,psur,dhsdqas,qm,qsats,dqss,dedtcs,dhsdtcs,hsturbs,hlwdwn,swnets,&
+                         tc1_orig,tc2_orig,tc4_orig,ALWS,BLWS,LONS,LATS,eturbs,&
+                         HSNACC1,HSNACC2,HSNACC4,HFTDS1,HFTDS2,HFTDS4,DHFT1,DHFT2,DHFT4,CSOIL,TC1SF,TC2SF,TC4SF,
+        real,intent(inout) :: TC1,TC2,TC4,HSNACC,wesnn(N_SNOW),htsnnn(N_SNOW),sndzn(N_SNOW),tpsn1    
+        real,intent(out) :: esno,SHFLUXS,HLWUPS,GHFLUXS,EVSNOW,FICESOUT(N_SNOW),LH_SNOW,SH_SNOW,LWUP_SNOW,LWDOWN_SNOW,NETSW_SNOW,&
+                            tpsn1out,TPSNB,SMELT,asnow,asnow0,tcsorig,tpsn1in,traincx,trainlx,tcs_orig,ghfluxsno
+        real,intent(in) ,  OPTIONAL :: totdepos(N_Constit)
+        real,intent(inout),OPTIONAL :: rconstit(N_SNOW,N_Constit)
+        real,intent(out) ,  OPTIONAL :: RMELT(N_Constit)
+
+        real :: TS,T1(3),AREA(3),pr,snowf,dedea,dhsdea,ea,esattc,desdtc,dedtc0,dhsdtc0,hsturb,tkgnd(3),raddn
+        real :: zc1,hups,wesn(N_SNOW),htsnn(N_SNOW),sndz(N_SNOW),tpsn(N_SNOW)
+        real :: RCONSTIT1(N_SNOW,N_Constit),TOTDEP1(N_Constit),RMELT1(N_Constit)
+        real :: tsnowsrf,hlwtc,dhlwtc,hcorr,sumdepth
+        real :: fices(N_SNOW),areasc, areasc0,pre,fhgnd(3)
+        real :: alhfsn,SHFLS,EVSN,wesnprec,sndzsc,sndzprec,sndz1perc
+        real :: wesnperc(N_snow),wesndens(N_snow),wesnrepar(N_snow),mltwtr,excs(N_snow),drho0(N_snow)
+        real :: wesnbot,tksno(N_snow),dtss,fh31w,fh31i,fh31d
+        real :: TC1SN,TC2SN,TC4SN,DTC1SN,DTC2SN,DTC4SN
+     
+
+        logical :: ldum
+        real    :: dum
+        integer :: i,k
+
+        TS     = TM
+        T1(1)  = TC1-TF 
+        T1(2)  = TC2-TF 
+        T1(3)  = TC4-TF 
+        ! MB: avoid division by zero (AR1=0) in PEATCLSM equations
+        IF(POROS >= PEATCLSM_POROS_THRESHOLD) THEN
+           AREA(1)= amax1(AR1,2.E-20)
+        ELSE
+           AREA(1) = AR1
+        END IF
+        AREA(2)= AR2 
+        AREA(3)= AR4 
+        pr     = trainc+trainl+tsnow+tice+tfrzr
+        snowf  = tsnow+tice+tfrzr
+        dedea  = dedqas*epsilon/psur 
+        dhsdea = dhsdqas*epsilon/psur 
+        ea     = qm*psur/epsilon 
+        esattc = qsats*psur/epsilon 
+        desdtc = dqss*psur/epsilon 
+        dedtc0  = dedtcs + dedea*desdtc 
+        dhsdtc0 = dhsdtcs + dhsdea*desdtc 
+        hsturb=hsturbs 
+        tkgnd(1)=1.8      !STEPH  
+        tkgnd(2)=1.8 
+        tkgnd(3)=1.8 
+        raddn=hlwdwn+swnets 
+        zc1=-(DZTSURF*0.5)
+        hups=0.0 
+ 
+!**** 1. RUN SNOW MODEL: 
+ 
+        do i=1,N_SNOW
+          wesn(i)=wesnn(i)
+          htsnn(i)=htsnnn(i) 
+          sndz(i)=sndzn(i) 
+          tpsn(i)=0.0
+          if (present(rconstit)) then
+                DO K=1,N_Constit
+                   RCONSTIT1(I,K)=RCONSTIT(I,K)
+                   TOTDEP1 (K)   = totdepos(K)
+                   ENDDO
+             else
+                DO K=1,N_Constit
+                   RCONSTIT1(I,K)=0.
+       RMELT1(K)   = 0.
+                   TOTDEP1 (K) = 0.
+                   ENDDO
+             endif
+          enddo 
+
+!     TPSN1 is used as input here, contradicts "declaration" as output only.
+!     EnKF has been using tpsn1 as part of state vector, which should fix this.
+!     reichle, 18 Nov 02
+
+!     Removed tpsn1 from state vector, now compute tpsn1 from prognostics
+!     in process
+!     reichle, 29 May 03
+
+        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum,.true.)
+        tcs_orig=tsnowsrf+tf
+        if(wesn(1)+wesn(2)+wesn(3) .eq. 0.) tcs_orig=                       &
+                  amin1( tf, tc1_orig*ar1+tc2_orig*ar2+            &
+                  tc4_orig*(1.-ar1-ar2 ) )
+
+        hlwtc=ALWS + BLWS*(TSNOWSRF+TF) 
+        dhlwtc=BLWS
+        hcorr=0.
+
+!! the field tpsn1(n) contains the value of TC(snow tile) that
+!! came in from the catch grid comp, and catch internal state
+!! spit it out here as a diagnostic
+!! also spit out here the value of tsnowsrf+tf which is used
+!! as the "original" value of TC for purposes of LW and turb fluxes
+
+        tcsorig = tcs_orig
+        tpsn1in = tpsn1    ! tpsn1 is "intent(out)", should NOT be used here, use catch_calc_tpsnow instead?  shouldn't this be the same as tcs_orig?  - reichle, 8/8/2014
+
+        sumdepth=sum(sndz)
+        
+        CALL StieglitzSnow_snowrt(                                             &
+                   LONS, LATS,                                           &  ! in    [radians]  !!!
+                   N_sm, N_snow, MAPL_Land,                                    &  ! in   
+                   CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
+                   t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
+                   eturbs, dedtc0, hsturb, dhsdtc0, hlwtc, dhlwtc,          &  ! in   
+                   raddn, zc1, totdep1,                                        &  ! in   
+                   wesn, htsnn, sndz, RCONSTIT1,                               &  ! inout
+                   hups, fices, tpsn, RMELT1,                                  &  ! out  
+                   areasc, areasc0, pre, fhgnd,                                &  ! out  
+                   EVSN, SHFLS, alhfsn, hcorr, ghfluxsno,                   &  ! out  
+                   sndzsc, wesnprec, sndzprec, sndz1perc,                      &  ! out     
+                   wesnperc, wesndens, wesnrepar, mltwtr,                      &  ! out     
+                   excs, drho0, wesnbot, tksno, dtss     )                        ! out     
+
+        FICESOUT(:)  = fices
+
+        LH_SNOW     = areasc*EVSN*ALHS
+        SH_SNOW     = areasc*SHFLS
+        LWUP_SNOW   = areasc*HUPS
+        LWDOWN_SNOW = areasc*HLWDWN
+        NETSW_SNOW  = areasc*SWNETS
+ 
+        TPSN1 = TPSN(1)+TF 
+
+        tpsn1out = tpsn1     ! why is tpsn1out needed?  same as tpsn1, reichle, 8/8/2014
+
+        ! removed TPSN2 (never needed);
+        ! renamed TPSN3 to TPSNB (bottom-layer snow temperature) 
+        !  (for consistency with use of "N_snow" layers)
+        ! reichle+koster, 12 Aug 2014 
+
+        TPSNB = TPSN(N_snow)+TF 
+        SMELT = PRE+sum(EXCS)            
+        fh31w=fhgnd(1) 
+        fh31i=fhgnd(2) 
+        fh31d=fhgnd(3) 
+        asnow = areasc 
+        asnow0= areasc0 
+        HSNACC = HSNACC + (1.-ASNOW)*                                 &
+             (HSNACC1*AR1+HSNACC2*AR2+HSNACC4*AR4)           &
+             + hcorr
+ 
+
+        do i=1,N_SNOW 
+          wesnn(i)=wesn(i) 
+          htsnnn(i)=htsnn(i) 
+          sndzn(i)=sndz(i)
+          if(present(rconstit)) then
+             DO K=1,N_Constit
+                RCONSTIT(I,K)=RCONSTIT1(I,K)
+    RMELT (K) = RMELT1(K)
+                ENDDO
+             endif
+          enddo 
+ 
+        traincx= trainc*(1.-areasc) 
+        trainlx= trainl*(1.-areasc)
+
+!**** 2. UPDATE SURFACE TEMPERATURE
+
+        DTC1SN=((-(FH31W/(area(1)+1.e-20))-HFTDS1)*DTSTEP/CSOIL)/        &
+                  (1.+DHFT1*DTSTEP/CSOIL)
+        DTC2SN=((-(FH31I/(area(2)+1.e-20))-HFTDS2)*DTSTEP/CSOIL)/        &
+                  (1.+DHFT2*DTSTEP/CSOIL)
+        DTC4SN=((-(FH31D/(area(3)+1.e-20))-HFTDS4)*DTSTEP/CSOIL)/        &
+                  (1.+DHFT4*DTSTEP/CSOIL)
+
+        TC1SN=TC1+DTC1SN
+        IF((TC1SN-TPSNB)*(TC1-TPSNB) .LT. 0.) THEN
+          HSNACC=HSNACC+AREASC*AREA(1)*                                 &
+                 (TC1SN-TPSNB)*CSOIL/DTSTEP
+          TC1SN=TPSNB
+          ENDIF
+
+        TC2SN=TC2+DTC2SN
+        IF((TC2SN-TPSNB)*(TC2-TPSNB) .LT. 0.) THEN
+          HSNACC=HSNACC+AREASC*AREA(2)*                                 &
+                 (TC2SN-TPSNB)*CSOIL/DTSTEP
+          TC2SN=TPSNB
+          ENDIF
+
+        TC4SN=TC4+DTC4SN
+        IF((TC4SN-TPSNB)*(TC4-TPSNB) .LT. 0.) THEN
+          HSNACC=HSNACC+AREASC*AREA(3)*                                 &
+                 (TC4SN-TPSNB)*CSOIL/DTSTEP
+          TC4SN=TPSNB
+          ENDIF
+
+
+
+        TC1=TC1SF*(1.-AREASC)+TC1SN*AREASC
+        TC2=TC2SF*(1.-AREASC)+TC2SN*AREASC
+        TC4=TC4SF*(1.-AREASC)+TC4SN*AREASC
+        !TC_UR(N)=TCSF_UR(N)
+
+
+        EVSNOW=EVSN
+        esno=evsnow*asnow*DTSTEP ! to have esno in mm/20min (03-17-99)
+        SHFLUXS=SHFLS 
+        HLWUPS =HUPS 
+        GHFLUXS=AREA(1)*(HFTDS1+DHFT1*DTC1SN) +                       &
+                AREA(2)*(HFTDS2+DHFT2*DTC2SN) +                       &
+                AREA(3)*(HFTDS4+DHFT4*DTC4SN)
+
+
+      return
+      end subroutine CAL_SNOW      
 
 !**** ===================================================
 !**** ///////////////////////////////////////////////////

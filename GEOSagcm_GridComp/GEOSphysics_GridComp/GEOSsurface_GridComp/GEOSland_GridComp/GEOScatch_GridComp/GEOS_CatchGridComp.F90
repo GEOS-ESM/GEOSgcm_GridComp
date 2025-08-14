@@ -3357,11 +3357,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real,   allocatable :: Z0T_UR(:,:)  
     real,   allocatable :: D0T_UR(:)
     real,   allocatable :: DZE_UR(:) 
-    real,   allocatable :: WW_UR(:,:)        
+    real,   allocatable :: WW_UR(:,:),CM0_UR(:,:),CH0_UR(:,:),CQ0_UR(:,:)        
     real,   allocatable :: TC0_UR(:,:) 
     real,   allocatable :: QC0_UR(:,:) 
     real,   allocatable :: CN_UR(:),RIB_UR(:),ZT_UR(:),ZQ_UR(:),UUU_UR(:),UCN_UR(:),RE_UR(:)  
-    real,   allocatable :: RHOH_UR(:),VKH_UR(:),VKM_UR(:),USTAR_UR(:),XX_UR(:),YY_UR(:),CU_UR(:),CT_UR(:),RIB_UR(:),ZETA_UR(:),WS_UR(:)
+    real,   allocatable :: RHOH_UR(:),VKH_UR(:),VKM_UR(:),USTAR_UR(:),XX_UR(:),YY_UR(:),CU_UR(:),CT_UR(:),ZETA_UR(:),WS_UR(:)
     real,   allocatable :: t2m_UR(:),q2m_UR(:),u2m_UR(:),v2m_UR(:),t10m_UR(:),q10m_UR(:),u10m_UR(:),v10m_UR(:),u50m_UR(:),v50m_UR(:)            
     real,   allocatable :: U50M (:)
     real,   allocatable :: V50M (:)
@@ -3490,7 +3490,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)    
     call MAPL_GetPointer(INTERNAL,FR   , 'FR'     ,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,CH_UR   , 'CM_UR'   ,RC=STATUS)
+    call MAPL_GetPointer(INTERNAL,CM_UR   , 'CM_UR'   ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,CH_UR   , 'CH_UR'   ,RC=STATUS)
     VERIFY_(STATUS)
@@ -3583,17 +3583,17 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS) 
     allocate(DZE_UR(NT),STAT=STATUS)
     VERIFY_(STATUS)  
-    allocate(WW_UR(NT,NUM_SUBTILES),STAT=STATUS)
+    allocate(WW_UR(NT,NUM_SUBTILES),CM0_UR(NT,NUM_SUBTILES),CH0_UR(NT,NUM_SUBTILES),CQ0_UR(NT,NUM_SUBTILES),STAT=STATUS)
     VERIFY_(STATUS)                
     allocate(TC0_UR(NT,NUM_SUBTILES),STAT=STATUS)
     VERIFY_(STATUS) 
     allocate(QC0_UR(NT,NUM_SUBTILES),STAT=STATUS)
     VERIFY_(STATUS)  
-    allocate(CN_UR(NT),RIB_UR(NT),ZT_UR(NT),ZQ_UR(NT),UUU_UR(NT),UCN_UR(NT),RE_UR(NT),STAT=STAT_STATUS)
+    allocate(CN_UR(NT),RIB_UR(NT),ZT_UR(NT),ZQ_UR(NT),UUU_UR(NT),UCN_UR(NT),RE_UR(NT),STAT=STATUS)
     VERIFY_(STATUS) 
-    allocate( RHOH_UR(NT),VKH_UR(NT),VKM_UR(NT),USTAR_UR(NT),XX_UR(NT),YY_UR(NT),CU_UR(NT),CT_UR(NT),RIB_UR(NT),ZETA_UR(NT),WS_UR(NT), STAT=STAT_STATUS)
+    allocate( RHOH_UR(NT),VKH_UR(NT),VKM_UR(NT),USTAR_UR(NT),XX_UR(NT),YY_UR(NT),CU_UR(NT),CT_UR(NT),ZETA_UR(NT),WS_UR(NT), STAT=STATUS)
     VERIFY_(STATUS)
-    allocate( t2m_UR(NT),q2m_UR(NT),u2m_UR(NT),v2m_UR(NT),t10m_UR(NT),q10m_UR(NT),u10m_UR(NT),v10m_UR(NT),u50m_UR(NT),v50m_UR(NT),STAT=STAT_STATUS) 
+    allocate( t2m_UR(NT),q2m_UR(NT),u2m_UR(NT),v2m_UR(NT),t10m_UR(NT),q10m_UR(NT),u10m_UR(NT),v10m_UR(NT),u50m_UR(NT),v50m_UR(NT),STAT=STATUS) 
     VERIFY_(STATUS)
     allocate(D0T(NT),STAT=STATUS)
     VERIFY_(STATUS)
@@ -3828,11 +3828,15 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     DZE_UR = max(DZ - D0T_UR, 10.)
     if(CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.0) then
         WW_UR(:,1) = 0.
-        CM_UR(:,1) = 0.
+        CM0_UR(:,1) = 0.
         TC0_UR(:,1) = TC_UR
         QC0_UR(:,1) = QC_UR
 
-        call louissurface(3,1,UU,WW_UR,PS,TA,TC0_UR,QA,QC0_UR,PCU,LAI,Z0T_UR,DZE_UR,CM_UR,CN_UR,RIB_UR,ZT_UR,ZQ_UR,CH_UR,CQ_UR,UUU_UR,UCN_UR,RE_UR)
+        call louissurface(3,1,UU,WW_UR,PS,TA,TC0_UR,QA,QC0_UR,PCU,LAI,Z0T_UR,DZE_UR,CM0_UR,CN_UR,RIB_UR,ZT_UR,ZQ_UR,CH0_UR,CQ0_UR,UUU_UR,UCN_UR,RE_UR)
+
+        CM_UR = CM0_UR(:,1)
+        CH_UR = CH0_UR(:,1)
+        CQ_UR = CQ0_UR(:,1)
 
       elseif (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.1)then
   
@@ -3872,11 +3876,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(Z0T_UR) 
     deallocate(D0T_UR)
     deallocate(DZE_UR)
-    deallocate(WW_UR)       
+    deallocate(WW_UR,CM0_UR,CH0_UR,CQ0_UR)       
     deallocate(TC0_UR)
     deallocate(QC0_UR)
     deallocate(CN_UR,RIB_UR,ZT_UR,ZQ_UR,UUU_UR,UCN_UR,RE_UR)
-    deallocate(RHOH_UR,VKH_UR,VKM_UR,USTAR_UR,XX_UR,YY_UR,CU_UR,CT_UR,RIB_UR,ZETA_UR,WS_UR)
+    deallocate(RHOH_UR,VKH_UR,VKM_UR,USTAR_UR,XX_UR,YY_UR,CU_UR,CT_UR,ZETA_UR,WS_UR)
     deallocate(t2m_UR,q2m_UR,u2m_UR,v2m_UR,t10m_UR,q10m_UR,u10m_UR,v10m_UR,u50m_UR,v50m_UR)   
     deallocate(D0T)
     deallocate(CHX)
@@ -6002,7 +6006,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
              SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
-             TC_UR=TC_UR, QA_UR=QC_UR, CH_UR=CH_UR )
+             TC_UR=TC_UR, QA_UR=QC_UR, CH_UR=CH_UR)
 
         end if
         
