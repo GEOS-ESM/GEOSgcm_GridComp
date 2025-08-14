@@ -1610,7 +1610,7 @@
         real,intent(in) :: TM,POROS,AR1,AR2,AR4
         real,intent(in) :: trainc,trainl,tsnow,tice,tfrzr,dedqas,psur,dhsdqas,qm,qsats,dqss,dedtcs,dhsdtcs,hsturbs,hlwdwn,swnets,&
                          tc1_orig,tc2_orig,tc4_orig,ALWS,BLWS,LONS,LATS,eturbs,&
-                         HSNACC1,HSNACC2,HSNACC4,HFTDS1,HFTDS2,HFTDS4,DHFT1,DHFT2,DHFT4,CSOIL,TC1SF,TC2SF,TC4SF,
+                         HSNACC1,HSNACC2,HSNACC4,HFTDS1,HFTDS2,HFTDS4,DHFT1,DHFT2,DHFT4,CSOIL,TC1SF,TC2SF,TC4SF
         real,intent(inout) :: TC1,TC2,TC4,HSNACC,wesnn(N_SNOW),htsnnn(N_SNOW),sndzn(N_SNOW),tpsn1    
         real,intent(out) :: esno,SHFLUXS,HLWUPS,GHFLUXS,EVSNOW,FICESOUT(N_SNOW),LH_SNOW,SH_SNOW,LWUP_SNOW,LWDOWN_SNOW,NETSW_SNOW,&
                             tpsn1out,TPSNB,SMELT,asnow,asnow0,tcsorig,tpsn1in,traincx,trainlx,tcs_orig,ghfluxsno
@@ -1677,7 +1677,7 @@
              else
                 DO K=1,N_Constit
                    RCONSTIT1(I,K)=0.
-       RMELT1(K)   = 0.
+                   RMELT1(K)   = 0.
                    TOTDEP1 (K) = 0.
                    ENDDO
              endif
@@ -1763,7 +1763,7 @@
           if(present(rconstit)) then
              DO K=1,N_Constit
                 RCONSTIT(I,K)=RCONSTIT1(I,K)
-    RMELT (K) = RMELT1(K)
+                RMELT (K) = RMELT1(K)
                 ENDDO
              endif
           enddo 
