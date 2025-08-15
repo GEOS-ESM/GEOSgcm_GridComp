@@ -907,6 +907,8 @@
               tpsn1out(N),TPSNB(N),SMELT(N),asnow(N),asnow0(N),tcsorig(N),tpsn1in(N),traincx(N),trainlx(N),tcs_orig(N),ghfluxsno(N),&
               totdepos(N,:),rconstit(N,:,:),RMELT(N,:))
 
+        TC_UR(N)=TCSF_UR(N)
+        
         ENDDO 
  
 
