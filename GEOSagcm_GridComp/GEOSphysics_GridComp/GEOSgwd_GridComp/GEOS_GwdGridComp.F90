@@ -45,7 +45,7 @@ module GEOS_GwdGridCompMod
    use mapl3g_generic, only: MAPL_GridCompGetResource
    use mapl3g_generic, only: MAPL_GridCompGetInternalState
    use mapl3g_generic, only: MAPL_GridCompAddSpec
-   use mapl3g_generic, only: MAPL_RESTART_SKIP
+   use mapl3g_RestartModes, only: MAPL_RESTART_SKIP
    use mapl3g_VerticalStaggerLoc, only: VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE
    use mapl3g_UngriddedDims, only: UngriddedDims
    use mapl3g_Geom_API, only: MAPL_GridGet
@@ -96,7 +96,6 @@ module GEOS_GwdGridCompMod
    end type wrap_
 
    !logical, save      :: FIRST_RUN = .true.
-   logical, parameter :: MAPL_RestartSkip = .true.
 
 contains
 
