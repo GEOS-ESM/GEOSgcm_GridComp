@@ -57,6 +57,7 @@ category: EXPORT
  RDG1_GBXAR |          | km^2     | xy   | N    | ridge1_gridbox_area
  SGH        | SGH_EXP  | m        | xy   | N    | standard_deviation_of_topography
  PREF       | PREF_EXP | Pa       |   z  | E    | reference_air_pressure
+ DQCDT_LS   |          | kg kg-1 s-1 | xyz  | C    | total_condensate_tendency_for_frontal_GWD_forcing
  DTDT       |          | Pa K s-1 | xyz  | C    | mass_weighted_air_temperature_tendency_due_to_GWD
  TTMGW      |          | K s-1    | xyz  | C    | air_temperature_tendency_due_to_GWD
  DUDT       |          | m s-2    | xyz  | C    | tendency_of_eastward_wind_due_to_GWD

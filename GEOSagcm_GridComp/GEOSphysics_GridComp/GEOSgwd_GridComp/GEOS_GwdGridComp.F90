@@ -558,7 +558,6 @@ contains
 
 ! local variables
 
-      real,              dimension(IM,JM,LM  ) :: DQCDT_LS
       real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
       real,              dimension(IM,JM     ) :: a2, Hefold
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
