@@ -2585,7 +2585,7 @@ module GEOSmoist_Process_Library
       ! freeze liquid first
       if ( TE <= MAPL_TICE ) then
          fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
-         dQil = Ql *(1.0 - EXP( -Dt * fQi / taufrz ) )
+         dQil = Ql *(1.0 - EXP( -Dt * fQi / max(DT,taufrz) ) )
          dQil = max(  0., dQil )
          Qi   = Qi + dQil
          Ql   = Ql - dQil
