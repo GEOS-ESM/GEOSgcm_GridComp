@@ -3112,8 +3112,6 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
         ! rain evaporation
         ! -----------------------------------------------------------------------
 
-        rh_tem = qpz / qsat
-
         if (dqv .gt. 0.0 .and. qsat .gt. q_minus) then
 
             if (qsat .gt. q_plus) then
@@ -3125,6 +3123,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             t2 = tin * tin
             sink = psub (t2, dq, qden, qsat, crevp, den (k), denfac (k), blinr, mur, lcpk (k), cvm (k))
             sink = min (qr (k), dts * fac_revp * sink, dqv / (1. + lcpk (k) * dqdt))
+            rh_tem = qpz / qsat
             if (use_rhc_revap .and. rh_tem .ge. rhc_revap) then
                 sink = 0.0
             endif
