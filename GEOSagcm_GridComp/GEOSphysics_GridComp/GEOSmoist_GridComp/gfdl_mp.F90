@@ -3091,6 +3091,8 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
 
     do k = ks, ke
 
+      if (tz (k) .gt. t_wfr .and. qr (k) .gt. qpmin) then
+
         tin = (tz (k) * cvm (k) - lv00 * ql (k)) / mhc (qv (k) + ql (k), qr (k), q_sol (k))
 
         ! -----------------------------------------------------------------------
@@ -3112,7 +3114,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
 
         rh_tem = qpz / qsat
 
-        if (tz (k) .gt. t_wfr .and. qr (k) .gt. qpmin .and. dqv .gt. 0.0 .and. qsat .gt. q_minus) then
+        if (dqv .gt. 0.0 .and. qsat .gt. q_minus) then
 
             if (qsat .gt. q_plus) then
                 dq = qsat - qpz
@@ -3140,6 +3142,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k))
 
         endif
+      endif
 
     enddo ! k loop
 
