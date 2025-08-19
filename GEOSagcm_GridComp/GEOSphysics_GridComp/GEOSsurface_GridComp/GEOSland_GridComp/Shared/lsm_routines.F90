@@ -41,7 +41,8 @@ MODULE lsm_routines
        N_SM              => CATCH_N_ZONES,       &
        PEATCLSM_POROS_THRESHOLD,                 &
        PEATCLSM_ZBARMAX_4_SYSOIL,&
-       AR_UR             => AR_URBAN  
+       AR_UR             => AR_URBAN,            & 
+       fac_im_UR         => factor_impervious_URBAN
  
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, FLWALPHA
@@ -286,7 +287,7 @@ CONTAINS
 
             IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                ! Non-peatland
-               frun=AR1(N)+AR_UR
+               frun=AR1(N)+AR_UR*fac_im_UR
                srun0=PTOTAL*frun
 
                !**** Comment out this line in order to allow moisture

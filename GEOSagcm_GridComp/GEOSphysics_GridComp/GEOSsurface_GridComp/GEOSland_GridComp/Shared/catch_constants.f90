@@ -77,6 +77,7 @@ module catch_constants
   REAL,    PARAMETER, PUBLIC :: AR_URBAN            = 0.3  
   REAL,    PARAMETER, PUBLIC :: CATCH_Z0_URBAN      = 1.5     !m
   REAL,    PARAMETER, PUBLIC :: CATCH_D0_URBAN      = 10.0    !m  
+  REAL,    PARAMETER, PUBLIC :: factor_impervious_URBAN = 1.0 
   ! ---------------------------------------------------------------------------
   !
   ! layer depth associated with snow-free land surface soil temperatures
