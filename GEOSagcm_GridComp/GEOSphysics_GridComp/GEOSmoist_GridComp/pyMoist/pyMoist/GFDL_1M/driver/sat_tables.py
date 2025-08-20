@@ -1,14 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    FORWARD,
-    PARALLEL,
-    THIS_K,
-    computation,
-    exp,
-    interval,
-    log,
-    log10,
-)
+from gt4py.cartesian.gtscript import FORWARD, PARALLEL, THIS_K, computation, exp, interval, log, log10
 
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -95,17 +86,13 @@ def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
             # compute es over ice between - 160 deg c and 0 deg c.
             # -----------------------------------------------------------------------
             fac1 = fac0 * constants.LI2
-            fac2 = (
-                constants.D2ICE * log(tem0 / constants.T_ICE) + fac1
-            ) / constants.RVGAS
+            fac2 = (constants.D2ICE * log(tem0 / constants.T_ICE) + fac1) / constants.RVGAS
         else:
             # -----------------------------------------------------------------------
             # compute es over water between 0 deg c and 102 deg c.
             # -----------------------------------------------------------------------
             fac1 = fac0 * constants.LV0
-            fac2 = (
-                constants.DC_VAP * log(tem0 / constants.T_ICE) + fac1
-            ) / constants.RVGAS
+            fac2 = (constants.DC_VAP * log(tem0 / constants.T_ICE) + fac1) / constants.RVGAS
         table3 = constants.E_00 * exp(fac2)
 
     with computation(FORWARD), interval(1599, 1601):

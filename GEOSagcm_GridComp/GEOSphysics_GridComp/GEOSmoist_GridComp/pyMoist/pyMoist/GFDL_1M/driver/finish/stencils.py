@@ -81,12 +81,7 @@ def update_tendencies(
         qi_dt = qi_dt + rdt * (qi1 - qi0) * omq
         qs_dt = qs_dt + rdt * (qs1 - qs0) * omq
         qg_dt = qg_dt + rdt * (qg1 - qg0) * omq
-        cvm = (
-            c_air
-            + qv1 * c_vap
-            + (qr1 + ql1) * constants.C_LIQ
-            + (qi1 + qs1 + qg1) * constants.C_ICE
-        )
+        cvm = c_air + qv1 * c_vap + (qr1 + ql1) * constants.C_LIQ + (qi1 + qs1 + qg1) * constants.C_ICE
         t_dt = t_dt + rdt * (t1 - t) * cvm / constants.CP_AIR
 
         # -----------------------------------------------------------------------

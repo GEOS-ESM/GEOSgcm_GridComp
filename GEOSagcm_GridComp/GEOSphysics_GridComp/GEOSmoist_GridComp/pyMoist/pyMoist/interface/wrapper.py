@@ -136,17 +136,11 @@ class GEOSPyMoistWrapper:
             tile_partitioner=partitioner.tile,
             tile_rank=self.communicator.tile.rank,
         )
-        self.quantity_factory = QuantityFactory.from_backend(
-            sizer=sizer, backend=backend
-        )
-        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
-            self.quantity_factory
-        )
+        self.quantity_factory = QuantityFactory.from_backend(sizer=sizer, backend=backend)
+        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(self.quantity_factory)
 
         self.stencil_config = StencilConfig(
-            compilation_config=CompilationConfig(
-                backend=backend, rebuild=False, validate_args=True
-            ),
+            compilation_config=CompilationConfig(backend=backend, rebuild=False, validate_args=True),
         )
 
         # Build a DaCeConfig for orchestration.
@@ -162,23 +156,15 @@ class GEOSPyMoistWrapper:
 
         # TODO: Orchestrate all code called from this function
 
-        self._grid_indexing = GridIndexing.from_sizer_and_communicator(
-            sizer=sizer, comm=self.communicator
-        )
-        self.stencil_factory = StencilFactory(
-            config=self.stencil_config, grid_indexing=self._grid_indexing
-        )
+        self._grid_indexing = GridIndexing.from_sizer_and_communicator(sizer=sizer, comm=self.communicator)
+        self.stencil_factory = StencilFactory(config=self.stencil_config, grid_indexing=self._grid_indexing)
 
         self._fortran_mem_space = fortran_mem_space
-        self._pace_mem_space = (
-            MemorySpace.DEVICE if is_gpu_backend(backend) else MemorySpace.HOST
-        )
+        self._pace_mem_space = MemorySpace.DEVICE if is_gpu_backend(backend) else MemorySpace.HOST
 
         # Feedback information
         device_ordinal_info = (
-            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}\n"
-            if is_gpu_backend(backend)
-            else "N/A"
+            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}\n" if is_gpu_backend(backend) else "N/A"
         )
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = (

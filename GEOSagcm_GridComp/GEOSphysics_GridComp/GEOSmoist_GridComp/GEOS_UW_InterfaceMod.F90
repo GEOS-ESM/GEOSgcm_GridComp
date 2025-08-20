@@ -216,8 +216,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     integer                         :: I, J, L, k, k_inv, mm
     integer                         :: IM,JM,LM
-    
-    
+    integer                         :: ii
 
 #ifdef PYMOIST_INTEGRATION
     integer                         :: ncnst
@@ -459,22 +458,16 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 #endif
       !  Call UW shallow convection
       !----------------------------------------------------------------
-
-      do ii =1,10
-        print *, perturb
-      end do
+      ! do ii =1,5
+      !   print *, perturb
+      ! end do
       
-      if (perturb .eqv. .true.) then
-        U = U + 100
-        V = V + 100
-        Q = Q + 100
-        PL = PL + 100
-        ZL0 = ZL0 + 100
-        PK = PK + 1e-08
-        PLE = PLE + 1e-08
-        ZLE0 = ZLE0 + 1e-08
-        PKE = PKE + 1e-08
-      end if
+      ! if (perturb .eqv. .true.) then
+      !   U = U + 4.56e-04
+      !   V = V + 4.56e-04
+      !   Q = Q + 4.56e-04
+      !   T = T + 4.56e-04
+      ! end if
 
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
@@ -590,7 +583,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
   endif
 
-  perturb = .false.
+  ! perturb = .false.
 
 end subroutine UW_Run
 

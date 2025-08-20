@@ -1,15 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    exp,
-    interval,
-    log,
-    max,
-    sqrt,
-)
+from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log, max, sqrt
 
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -109,15 +99,11 @@ def revap_racc(
                 * (crevp_1 * sqrt(qden) + crevp_2 * exp(0.725 * log(qden)))
                 / (crevp_3 * t2 + crevp_4 * qsat * den1)
             )
-            evap = min(
-                qr1, min(0.5 * dts * fac_revp * evap, dqv / (1.0 + lcpk * dqsdt))
-            )
+            evap = min(qr1, min(0.5 * dts * fac_revp * evap, dqv / (1.0 + lcpk * dqsdt)))
             qr1 = qr1 - evap
             qv1 = qv1 + evap
             q_liq = q_liq - evap
-            cvm = (
-                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
-            )
+            cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             t1 = t1 - evap * lhl / cvm
             revap = evap / (0.5 * dts)
 
@@ -230,9 +216,7 @@ def warm_rain_step_1(
         ql1 = ql1 / qadum
         qi1 = qi1 / qadum
 
-        fac_rc = (
-            min(1.0, eis / 15.0) ** 2
-        )  # Estimated inversion strength determine stable regime
+        fac_rc = min(1.0, eis / 15.0) ** 2  # Estimated inversion strength determine stable regime
         fac_rc = constants.RC * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
 
     with computation(PARALLEL), interval(...):
@@ -321,13 +305,7 @@ def warm_rain_step_1(
                         # revised continuous form: linearly decays
                         # (with subgrid dl) to zero at qc == ql + dl
                         # --------------------------------------------------------------------
-                        sink = (
-                            min(1.0, dq / dl)
-                            * dts
-                            * c_praut
-                            * den1
-                            * exp(constants.SO3 * log(ql1))
-                        )
+                        sink = min(1.0, dq / dl) * dts * c_praut * den1 * exp(constants.SO3 * log(ql1))
                         sink = min(ql0_max, min(ql1, max(0.0, sink)))
                         ql1 = ql1 - sink
                         qr1 = qr1 + sink * qadum

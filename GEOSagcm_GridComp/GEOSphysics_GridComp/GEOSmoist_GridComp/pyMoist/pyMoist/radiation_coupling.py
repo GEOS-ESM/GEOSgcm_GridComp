@@ -48,9 +48,7 @@ def cloud_effective_radius_ice(
     Float: Effective radius of ice clouds.
     """
     # Calculate ice water content
-    WC = (
-        1.0e3 * air_density(PL, TE) * QC
-    )  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
+    WC = 1.0e3 * air_density(PL, TE) * QC  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
     # Calculate radius in meters [m]
     if constants.ICE_RADII_PARAM == 1:
         # Ice cloud effective radius -- [klaus wyser, 1998]
@@ -95,9 +93,7 @@ def cloud_effective_radius_liquid(
     Float: Effective radius of liquid clouds.
     """
     # Calculate liquid water content
-    WC = (
-        1.0e3 * air_density(PL, TE) * QC
-    )  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
+    WC = 1.0e3 * air_density(PL, TE) * QC  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
     # Calculate cloud drop number concentration from the aerosol model + ....
     NNX = max(NNL * 1.0e-6, 10.0)
     # Calculate Radius in meters [m]
@@ -107,11 +103,7 @@ def cloud_effective_radius_liquid(
             60.0e-6,
             max(
                 2.5e-6,
-                1.0e-6
-                * constants.BX
-                * (WC / NNX) ** constants.R13BBETA
-                * constants.ABETA
-                * 6.92,
+                1.0e-6 * constants.BX * (WC / NNX) ** constants.R13BBETA * constants.ABETA * 6.92,
             ),
         )
     else:
@@ -331,8 +323,7 @@ class RadiationCoupling:
         if self.do_qa:
             # RHX = Q/GEOS_QSAT( T, PLmb)
             raise NotImplementedError(
-                "[Radiation Coupling] Diagnostic (do_qa) not implemented."
-                "(GEOS_QSAT missing)"
+                "[Radiation Coupling] Diagnostic (do_qa) not implemented." "(GEOS_QSAT missing)"
             )
 
     def __call__(

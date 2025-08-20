@@ -274,9 +274,7 @@ class QSat:
         use_pascals: bool = False,
         fill_dqsat: bool = False,
     ) -> None:
-        self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(
-            quantity_factory
-        )
+        self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(quantity_factory)
 
         self.ese = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
         self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
@@ -338,6 +336,5 @@ class QSat:
 
         if not use_table_lookup:
             raise NotImplementedError(
-                "Saturation calculation: exact formulation not available,"
-                " only table look up"
+                "Saturation calculation: exact formulation not available," " only table look up"
             )

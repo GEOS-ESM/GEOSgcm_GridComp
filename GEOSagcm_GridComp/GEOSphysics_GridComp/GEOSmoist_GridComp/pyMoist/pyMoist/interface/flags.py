@@ -126,9 +126,7 @@ def moist_flags_f_to_python(
     f_flags: cffi.FFI.CData,
 ) -> MoistFlags:
     if f_flags.mn_123456789 != 123456789:
-        raise RuntimeError(
-            "Magic number failed, pyMoist interface is broken on the python side"
-        )
+        raise RuntimeError("Magic number failed, pyMoist interface is broken on the python side")
 
     py_flags = MoistFlags()
     _generic_config_bridge(py_flags, f_flags)
@@ -139,9 +137,7 @@ def gfdl_1m_flags_f_to_python(
     f_flags: cffi.FFI.CData,
 ) -> GFDL1MFlags:
     if f_flags.mn_123456789 != 123456789:
-        raise RuntimeError(
-            "Magic number failed, pyMoist interface is broken on the python side"
-        )
+        raise RuntimeError("Magic number failed, pyMoist interface is broken on the python side")
 
     py_flags = GFDL1MFlags()
     _generic_config_bridge(py_flags, f_flags)

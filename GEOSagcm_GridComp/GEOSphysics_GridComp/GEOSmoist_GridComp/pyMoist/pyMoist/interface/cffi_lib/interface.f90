@@ -24,7 +24,7 @@ module pymoist_interface_mod
    public :: gfdl_1m_flags_interface_type
 
    !!-----------------------------------------------------------------------
-   !! Type structs                                                        !! 
+   !! Type structs                                                        !!
    !!-----------------------------------------------------------------------
    type, bind(c) :: moist_flags_interface_type
       ! Grid information
@@ -132,7 +132,7 @@ module pymoist_interface_mod
    interface
 
       !!-----------------------------------------------------------------------
-      !! Interface: pyMoist                                                  !! 
+      !! Interface: pyMoist                                                  !!
       !!-----------------------------------------------------------------------
       subroutine pymoist_interface_f_init(moist_flags) bind(c, name='pymoist_interface_c_init')
 
@@ -147,7 +147,7 @@ module pymoist_interface_mod
       end subroutine pymoist_interface_f_finalize
 
       !!-----------------------------------------------------------------------
-      !! Interface: GFDL One moment microphysics                             !! 
+      !! Interface: GFDL One moment microphysics                             !!
       !!-----------------------------------------------------------------------
 
       subroutine gfdl_1m_interface_f_init(gfdl_1m_flags) bind(c, name='gfdl_1m_interface_c_init')
@@ -225,7 +225,7 @@ module pymoist_interface_mod
       end subroutine pymoist_interface_f_run_GFDL_1M_driver
 
       !!-----------------------------------------------------------------------
-      !! Interface: Aerosol Activation                                       !! 
+      !! Interface: Aerosol Activation                                       !!
       !!-----------------------------------------------------------------------
 
       subroutine pymoist_interface_f_run_AerActivation( &
@@ -269,7 +269,7 @@ module pymoist_interface_mod
       end subroutine pymoist_interface_f_run_AerActivation
 
       !!-----------------------------------------------------------------------
-      !! Interface: UW Shallow Convection                                    !! 
+      !! Interface: UW Shallow Convection                                    !!
       !!-----------------------------------------------------------------------
 
       subroutine compute_uwshcu_f_init( &

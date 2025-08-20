@@ -139,11 +139,7 @@ def ice_fraction(
         icefrct_c = sin(
             0.5
             * constants.MAPL_PI
-            * (
-                1.00
-                - (temp - constants.JaT_ICE_ALL)
-                / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)
-            )
+            * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL))
         )
     else:
         icefrct_c = 0.00
@@ -166,11 +162,7 @@ def ice_fraction(
             icefrct_m = sin(
                 0.5
                 * constants.MAPL_PI
-                * (
-                    1.00
-                    - (temp - constants.lT_ICE_ALL)
-                    / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)
-                )
+                * (1.00 - (temp - constants.lT_ICE_ALL) / (constants.lT_ICE_MAX - constants.lT_ICE_ALL))
             )
         else:
             icefrct_m = 0.00
@@ -182,11 +174,7 @@ def ice_fraction(
             icefrct_m = sin(
                 0.5
                 * constants.MAPL_PI
-                * (
-                    1.00
-                    - (temp - constants.oT_ICE_ALL)
-                    / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)
-                )
+                * (1.00 - (temp - constants.oT_ICE_ALL) / (constants.oT_ICE_MAX - constants.oT_ICE_ALL))
             )
         else:
             icefrct_m = 0.00
@@ -246,10 +234,7 @@ def conden(
         while iteration < 10:
             temps = temps + ((tc - temps) * constants.MAPL_CP / leff + qt - rvls) / (
                 constants.MAPL_CP / leff
-                + constants.EPSILON
-                * leff
-                * rvls
-                / (constants.MAPL_RGAS * temps * temps)
+                + constants.EPSILON * leff * rvls / (constants.MAPL_RGAS * temps * temps)
             )
             qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
             rvls = qs
@@ -448,26 +433,18 @@ def getbuoy(
     if thvubot > thv0bot and thvutop > thv0top:
         plfc = pbot
     elif thvubot <= thv0bot and thvutop <= thv0top:
-        cin = cin_in - ((thvubot / thv0bot - 1.0) + (thvutop / thv0top - 1.0)) * (
-            pbot - ptop
-        ) / (
+        cin = cin_in - ((thvubot / thv0bot - 1.0) + (thvutop / thv0top - 1.0)) * (pbot - ptop) / (
             pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
             + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
     elif thvubot > thv0bot and thvutop <= thv0top:
-        frc = (thvutop / thv0top - 1.0) / (
-            (thvutop / thv0top - 1.0) - (thvubot / thv0bot - 1.0)
-        )
-        cin = cin_in - (thvutop / thv0top - 1.0) * (
-            (ptop + frc * (pbot - ptop)) - ptop
-        ) / (
+        frc = (thvutop / thv0top - 1.0) / ((thvutop / thv0top - 1.0) - (thvubot / thv0bot - 1.0))
+        cin = cin_in - (thvutop / thv0top - 1.0) * ((ptop + frc * (pbot - ptop)) - ptop) / (
             pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
             + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
     else:
-        frc = (thvubot / thv0bot - 1.0) / (
-            (thvubot / thv0bot - 1.0) - (thvutop / thv0top - 1.0)
-        )
+        frc = (thvubot / thv0bot - 1.0) / ((thvubot / thv0bot - 1.0) - (thvutop / thv0top - 1.0))
         plfc = pbot - frc * (pbot - ptop)
         cin = cin_in - ((thvubot / thv0bot - 1.0) * (pbot - plfc)) / (
             (

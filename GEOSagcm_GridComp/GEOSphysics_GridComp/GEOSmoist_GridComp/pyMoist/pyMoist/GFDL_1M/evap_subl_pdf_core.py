@@ -3,15 +3,7 @@ called before the GFDL_1M driver in the Fortran. Functions in this file are
 unique to GFDL_1M and need not be visible to the rest pyMoist."""
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    atan,
-    computation,
-    exp,
-    interval,
-    sqrt,
-    tan,
-)
+from gt4py.cartesian.gtscript import PARALLEL, atan, computation, exp, interval, sqrt, tan
 
 import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
@@ -38,9 +30,7 @@ def pdffrac(
             clfrac = 0.0
         else:
             if sigmaqt1 > 0.0:
-                clfrac = min((qtmean + sigmaqt1 - qstar), 2.0 * sigmaqt1) / (
-                    2.0 * sigmaqt1
-                )
+                clfrac = min((qtmean + sigmaqt1 - qstar), 2.0 * sigmaqt1) / (2.0 * sigmaqt1)
             else:
                 clfrac = 1.0
 
@@ -63,9 +53,7 @@ def pdfcondensate(
             condensate = 0.0
         elif qstar > (qtmean - sigmaqt1):
             if sigmaqt1 > 0.0:
-                condensate = (min(qtmean + sigmaqt1 - qstar, 2.0 * sigmaqt1) ** 2) / (
-                    4.0 * sigmaqt1
-                )
+                condensate = (min(qtmean + sigmaqt1 - qstar, 2.0 * sigmaqt1) ** 2) / (4.0 * sigmaqt1)
             else:
                 condensate = qtmean - qstar
         else:
@@ -125,9 +113,7 @@ def bergeron_partition(
             # Calculate deposition onto preexisting ice
 
             DIFF = (
-                (0.211 * 1013.25 / (PL + 0.1))
-                * (((TE + 0.1) / constants.MAPL_TICE) ** 1.94)
-                * 1e-4
+                (0.211 * 1013.25 / (PL + 0.1)) * (((TE + 0.1) / constants.MAPL_TICE) ** 1.94) * 1e-4
             )  # From Seinfeld and Pandis 2006
             DENAIR = PL * 100.0 / constants.MAPL_RDRY / TE
             DENICE = 1000.0 * (0.9167 - 1.75e-4 * TC - 5.0e-7 * TC * TC)  # From PK 97
@@ -142,9 +128,7 @@ def bergeron_partition(
             else:
                 DC = 20.0e-6
 
-            TEFF = (
-                NIX * DENAIR * 2.0 * constants.MAPL_PI * DIFF * DC / LHcorr
-            )  # 1/Dep time scale
+            TEFF = NIX * DENAIR * 2.0 * constants.MAPL_PI * DIFF * DC / LHcorr  # 1/Dep time scale
 
             DEP = 0.0
             if TEFF > 0.0 and QILS > 1.0e-14:
@@ -164,9 +148,7 @@ def bergeron_partition(
                     DQL = DQALL  # could happen because the PDF allows
                     # condensation in subsaturated conditions
                     DQI = 0.0
-            if (
-                DQALL < 0.0
-            ):  # net evaporation. Water evaporates first regaardless of DEP
+            if DQALL < 0.0:  # net evaporation. Water evaporates first regaardless of DEP
                 DQL = max(DQALL, -QLLS / DTIME)
                 DQI = max(DQALL - DQL, -QILS / DTIME)
             if DQALL != 0.0:
@@ -194,9 +176,7 @@ def initial_calc(
         minrhcrit = (1.0 - dw_ocean) * (1.0 - facEIS) + (1.0 - dw_land) * facEIS
         # determine the turn pressure using the LCL
         if TURNRHCRIT_PARAM <= 0:
-            turnrhcrit = (
-                PLmb_at_klcl - 250
-            )  # implementation of for loop needs to go here
+            turnrhcrit = PLmb_at_klcl - 250  # implementation of for loop needs to go here
         else:
             turnrhcrit = TURNRHCRIT_PARAM
 
@@ -265,9 +245,7 @@ def hystpdf(
             tmpARR = 1.0 / (1.0 - CLCN)
         else:
             tmpARR = 0.0
-        if (
-            CLCN > 0.0
-        ):  # need to make sure this is equivilant to fortran CLCN > tiny(0.0)
+        if CLCN > 0.0:  # need to make sure this is equivilant to fortran CLCN > tiny(0.0)
             QAx = (QLCN + QICN) / CLCN
         else:
             QAx = 0.0
@@ -300,9 +278,7 @@ def hystpdf(
 
             if use_bergeron:
                 DQALL = QCn - QCp
-                Nfac = (
-                    100.0 * PL * constants.R_AIR / TEn
-                )  # density times conversion factor
+                Nfac = 100.0 * PL * constants.R_AIR / TEn  # density times conversion factor
                 NIv = NI / Nfac
                 fQi, DQALL = bergeron_partition(
                     DT_MOIST,
@@ -415,9 +391,7 @@ def hystpdf(
         Q = Q - (dQICN + dQILS + dQLCN + dQLLS)
         TE = (
             TE
-            + constants.MAPL_LATENT_HEAT_VAPORIZATION
-            / constants.MAPL_CPDRY
-            * (dQICN + dQILS + dQLCN + dQLLS)
+            + constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CPDRY * (dQICN + dQILS + dQLCN + dQLLS)
             + constants.MAPL_LATENT_HEAT_FUSION / constants.MAPL_CPDRY * (dQICN + dQILS)
         )
 
@@ -460,10 +434,7 @@ def melt_freeze(
             QLCN = QLCN - dQil
             T = (
                 T
-                + (
-                    constants.MAPL_LATENT_HEAT_SUBLIMATION
-                    - constants.MAPL_LATENT_HEAT_VAPORIZATION
-                )
+                + (constants.MAPL_LATENT_HEAT_SUBLIMATION - constants.MAPL_LATENT_HEAT_VAPORIZATION)
                 * dQil
                 / constants.MAPL_CP
             )
@@ -474,10 +445,7 @@ def melt_freeze(
             QLCN = QLCN - dQil
             T = (
                 T
-                + (
-                    constants.MAPL_LATENT_HEAT_SUBLIMATION
-                    - constants.MAPL_LATENT_HEAT_VAPORIZATION
-                )
+                + (constants.MAPL_LATENT_HEAT_SUBLIMATION - constants.MAPL_LATENT_HEAT_VAPORIZATION)
                 * dQil
                 / constants.MAPL_CP
             )
@@ -511,12 +479,7 @@ def evaporate(
             * constants.RHO_W
             / (constants.K_COND * constants.MAPL_RVAP * (T ** 2))
         )
-        K2 = (
-            constants.MAPL_RVAP
-            * T
-            * constants.RHO_W
-            / (constants.DIFFU * (1000.0 / PLmb) * ES)
-        )
+        K2 = constants.MAPL_RVAP * T * constants.RHO_W / (constants.DIFFU * (1000.0 / PLmb) * ES)
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
         # for increased diffusivity at lower pressure
         if CLCN > 0.0 and QLCN > 0.0:
@@ -525,13 +488,7 @@ def evaporate(
             QCm = 0.0
         RADIUS = cloud_effective_radius_liquid(PLmb, T, QCm, NACTL, NACTI)
         if RHx < RHCRIT and RADIUS > 0.0:
-            EVAP = (
-                CCW_EVAP_EFF
-                * QLCN
-                * DT_MOIST
-                * (RHCRIT - RHx)
-                / ((K1 + K2) * RADIUS ** 2)
-            )
+            EVAP = CCW_EVAP_EFF * QLCN * DT_MOIST * (RHCRIT - RHx) / ((K1 + K2) * RADIUS ** 2)
             EVAP = min(EVAP, QLCN)
         else:
             EVAP = 0.0
@@ -572,12 +529,7 @@ def sublimate(
             * constants.RHO_I
             / (constants.K_COND * constants.MAPL_RVAP * (T ** 2))
         )
-        K2 = (
-            constants.MAPL_RVAP
-            * T
-            * constants.RHO_I
-            / (constants.DIFFU * (1000.0 / PLmb) * ES)
-        )
+        K2 = constants.MAPL_RVAP * T * constants.RHO_I / (constants.DIFFU * (1000.0 / PLmb) * ES)
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
         # for increased diffusivity at lower pressure
         if CLCN > 0.0 and QICN > 0.0:
@@ -586,13 +538,7 @@ def sublimate(
             QCm = 0.0
         radius = cloud_effective_radius_ice(PLmb, T, QCm, NACTL, NACTI)
         if RHx < RHCRIT and radius > 0.0:
-            SUBL = (
-                CCI_EVAP_EFF
-                * QICN
-                * DT_MOIST
-                * (RHCRIT - RHx)
-                / ((K1 + K2) * radius ** 2)
-            )
+            SUBL = CCI_EVAP_EFF * QICN * DT_MOIST * (RHCRIT - RHx) / ((K1 + K2) * radius ** 2)
             SUBL = min(SUBL, QICN)
         else:
             SUBL = 0.0
