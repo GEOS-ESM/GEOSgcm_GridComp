@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 #
+# run as ./make_topo.py
+# NOTE: running c5760 and c270 requires 2 nodes and 4h 
 #
 import os
 import subprocess
@@ -9,23 +11,35 @@ import shutil
 import questionary
 import pathlib
 
-smoothmap ={ 'C12'  : 773.91,
-             'C24'  : 386.52,
-             'C48'  : 193.07,
-             'C90'  : 102.91,
-             'C180' : 51.44,
-             'C270' : 40,
-             'C360' : 25.71,
-             'C540' : 19,
-             'C720' : 12.86,
-             'C1080': 10,
+#Bigger smoothing_scale ⇒ stronger smoothing ⇒ smaller GWD (less roughness).
+smoothmap ={ 
+#  # uniform
+             'C12'  : 608.4,
+             'C24'  : 365.94,
+             'C48'  : 216.31,
+             'C90'  : 96.2,
+             'C180' : 51.21,
+             'C360' : 28.95,
+             'C720' : 19.5,
              'C1120': 8.26,
-             'C1440': 6.43,
-             'C1536': 6,
-             'C2160': 5,
-             'C2880': 3.21,
-             'C5760': 1.61
+             'C1440': 12.0,
+             'C2880': 3.285,
+             'C5760': 3.0, 
+#  # stretched (SG001/SG002)
+             'C270' : 100.0,
+             'C540' : 53.3,
+             'C1080': 17.0,
+             'C1536': 29.0,
+             'C2160': 3.0
             }
+## Tuning parameter for GWD amplitude for stretched grids this affects step in laplacian iterations.
+alpha ={ 'C270' : 2.7,
+         'C540' : 2.73,
+         'C1080': 7.0,
+         'C1536': 11.7,
+         'C2160': 14.3,
+         # regular grids do not use alpha!!!
+        }
 
 def get_script_topo(answers) :
   head =  """#!/bin/csh -x
@@ -38,7 +52,7 @@ def get_script_topo(answers) :
 #SBATCH --job-name=topo_{res_tag}.j
 """
 
-  constraint = '#SBATCH --constraint="[mil|cas]"'
+  constraint = '#SBATCH --constraint="[mil]"'
 
   if len(answers['resolutions']) == 1:
       res_tag = answers['resolutions'][0].lower()
@@ -94,7 +108,7 @@ _EOF_
   bin/bin_to_cube.x
 endif
 
-# Generate high-resolution intermediate cube (3000) for all other resolutions (except 5760)
+# Generate high-resolution intermediate cube (3000) for all other resolutions
 if ($highres == 1) then
 cat << _EOF_ > bin_to_cube.nl
 &binparams
@@ -114,6 +128,8 @@ foreach im ($resolutions)
   if ( ! -e $output_dir ) then
     mkdir $output_dir
   endif
+  set alpha     = ""
+  set ALPHALINE = ""
 
   set DO_SCHMIDT = ''
   set TARGET_LON = ''
@@ -144,6 +160,23 @@ foreach im ($resolutions)
   set config_file = GenScrip.yaml
   set output_grid = PE${{im}}x${{jm}}-CF
   set scriptfile  = ${{output_grid}}.nc4
+  set smoothing_scale = ${{smooths[$count]}}
+
+   if ( $im == 5760 ) then
+        set extra_cli = "-l 13"   # run the Laplacian for 13 cycles
+   else
+        set extra_cli = ""
+   endif
+
+   # fill alpha only for stretched cases (injected switch from Python)
+   {alpha_switch}
+
+   # after your alpha_switch and smoothing_scale logic
+   if ( "$alpha" == "" ) then
+     set ALPHALINE = ''
+   else
+     set ALPHALINE = "ALPHA: $alpha"
+   endif
 
 cat << _EOF_ > ${{config_file}}
 CUBE_DIM: $im
@@ -153,6 +186,7 @@ ${{DO_SCHMIDT}}
 ${{TARGET_LON}}
 ${{TARGET_LAT}}
 ${{STRETCH_FACTOR}}
+${{ALPHALINE}}
 _EOF_
 
    cat ${{config_file}}
@@ -187,12 +221,6 @@ _EOF_
           set rrfac = "--rrfac_max=1"
       endif
 
-      if ($im == 5760) then
-          set smoothing_scale = 0.0
-      else
-          set smoothing_scale = ${{smooths[$count]}}
-      endif
-
         bin/cube_to_target.x \
             --grid_descriptor_file=$scriptfile \
             --intermediate_cs_name=$intermediate_cube \
@@ -202,7 +230,7 @@ _EOF_
             --fine_radius=0 \
             --output_grid=$output_grid \
             --source_data_identifier=gmted_intel \
-            $rrfac
+            $rrfac $extra_cli
 
       # Safety check after cube_to_target.x
       if ( $status != 0 ) then
@@ -217,22 +245,27 @@ _EOF_
       endif
 
 
-   #rm $scriptfile
-   rm ${{config_file}}
+      #rm $scriptfile
+      rm ${{config_file}}
 
-   #convert to gmao
-   cd $output_dir
-   set arr = `ls *.nc`
-   echo $arr
-
-   if ( "$grid_type" != "" ) then
-     ../bin/scrip_to_restart_topo.py -i $arr -o gwd_internal_rst -g $grid_type
-   else
-     ../bin/scrip_to_restart_topo.py -i $arr -o gwd_internal_rst
-   endif   
-
-   ../bin/convert_to_gmao_output_topo.x -i $arr --im $im
-   cd ..
+     # convert to gmao
+     cd $output_dir
+     
+     # choose exactly the PE* file (ignore any topo_smooth*.nc written by -z)
+     set pe = `ls -1t PE${{im}}x${{jm}}*.nc | head -1`
+     if ( "$pe" == "" ) then
+       echo "ERROR: no PE file found for IM=$im JM=$jm"
+       exit 1
+     endif
+     
+     if ( "$grid_type" != "" ) then
+       ../bin/scrip_to_restart_topo.py -i $pe -o gwd_internal_rst -g $grid_type
+     else
+       ../bin/scrip_to_restart_topo.py -i $pe -o gwd_internal_rst
+     endif
+     
+     ../bin/convert_to_gmao_output_topo.x -i $pe --im $im
+     cd ..
    @ count = $count + 1
 end
 """
@@ -240,17 +273,30 @@ end
   SMOOTHMAP = '( '
   RESOLUTIONS = '( '
   for res in answers['resolutions']:
-      SMOOTHMAP = SMOOTHMAP + str(smoothmap[res]) + ' '
-      RESOLUTIONS = RESOLUTIONS + str(res)[1:] + ' '
-
+      SMOOTHMAP += str(smoothmap[res]) + ' '
+      RESOLUTIONS += str(res)[1:] + ' '
   SMOOTHMAP   = SMOOTHMAP + ' )'
   RESOLUTIONS = RESOLUTIONS + ' )'
+
+  # Explicit csh switch-case for alpha per resolution
+  alpha_switch = "switch ($im)\n"
+  for res in answers['resolutions']:
+      numeric_res = res[1:]  # Remove leading "C"
+      if res in alpha:
+          alpha_switch += f"  case {numeric_res}:\n"
+          alpha_switch += f"    set alpha = {alpha[res]}\n"
+          alpha_switch += "    breaksw\n"
+  alpha_switch += "  default:\n"
+  alpha_switch += "    set alpha = ''\n"
+  alpha_switch += "endsw\n"  
+  
 
   script_string = topo_template.format(\
        account = account, \
        bin_dir = answers['bin_dir'], \
        raw_latlon_data = answers['path_latlon']+ "/gmted_fixed_anartica_superior_caspian.nc4", \
        SMOOTHMAP   = SMOOTHMAP, \
+       alpha_switch = alpha_switch, \
        RESOLUTIONS = RESOLUTIONS, \
        res_tag = res_tag )
   out_dir = answers['out_dir']
@@ -262,13 +308,11 @@ end
 
   topojob = f"{out_dir}/topo_{res_tag}.j"
 
-#  topojob = out_dir+'/topo.j'
   topo_job = open(topojob,'wt')
   topo_job.write(script_string)
   topo_job.close()
   subprocess.call(['chmod', '755', topojob])
 
-#  print("\nJob script topo.j has been generated in "  + out_dir + "\n")
   print(f"\nJob script {os.path.basename(topojob)} has been generated in {out_dir}\n")
 
 
