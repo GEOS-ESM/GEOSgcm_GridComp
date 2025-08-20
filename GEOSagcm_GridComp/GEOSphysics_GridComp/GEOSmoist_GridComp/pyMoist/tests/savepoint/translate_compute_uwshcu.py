@@ -6,11 +6,6 @@ from ndsl.utils import safe_assign_array
 from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv
 from pyMoist.UW.config import UWConfiguration
 
-# For testing only
-import numpy as np
-import xarray as xr
-import sys
-
 
 class TranslateComputeUwshcuInv(TranslateFortranData2Py):
     def __init__(
