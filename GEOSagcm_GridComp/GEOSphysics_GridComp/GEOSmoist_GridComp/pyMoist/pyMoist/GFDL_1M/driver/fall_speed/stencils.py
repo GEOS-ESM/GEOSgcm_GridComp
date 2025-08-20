@@ -1,5 +1,13 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, log10, sqrt
+from gt4py.cartesian.gtscript import (
+    PARALLEL,
+    computation,
+    exp,
+    interval,
+    log,
+    log10,
+    sqrt,
+)
 
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -23,7 +31,17 @@ def get_top_speed(
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine fall_speed
     """
-    from __externals__ import const_vg, const_vi, const_vs, vg_fac, vg_max, vi_fac, vi_max, vs_fac, vs_max
+    from __externals__ import (
+        const_vg,
+        const_vi,
+        const_vs,
+        vg_fac,
+        vg_max,
+        vi_fac,
+        vi_max,
+        vs_fac,
+        vs_max,
+    )
 
     rhof = sqrt(min(10.0, constants.SFCRHO / den))
     if const_vi == True:  # noqa
@@ -70,7 +88,12 @@ def get_top_speed(
         if qs < constants.THS:
             vts = constants.VF_MIN
         else:
-            vts = vs_fac * constants.VCONS * rhof * exp(0.0625 * log(qs * den / constants.NORMS))
+            vts = (
+                vs_fac
+                * constants.VCONS
+                * rhof
+                * exp(0.0625 * log(qs * den / constants.NORMS))
+            )
             vts = min(vs_max, max(constants.VF_MIN, vts))
 
     # -----------------------------------------------------------------------
@@ -83,7 +106,12 @@ def get_top_speed(
         if qg < constants.THG:
             vtg = constants.VF_MIN
         else:
-            vtg = vg_fac * constants.VCONG * rhof * sqrt(sqrt(sqrt(qg * den / constants.NORMG)))
+            vtg = (
+                vg_fac
+                * constants.VCONG
+                * rhof
+                * sqrt(sqrt(sqrt(qg * den / constants.NORMG)))
+            )
             vtg = min(vg_max, max(constants.VF_MIN, vtg))
 
     return vti, vts, vtg
@@ -128,4 +156,6 @@ def fall_speed_core(
             den1 = den * dz / dz1
             denfac = sqrt(constants.SFCRHO / den1)
 
-        vti, vts, vtg = get_top_speed(p_dry, cnv_frc, anv_icefall, lsc_icefall, den1, qs1, qi1, qg1, ql1, t1)
+        vti, vts, vtg = get_top_speed(
+            p_dry, cnv_frc, anv_icefall, lsc_icefall, den1, qs1, qi1, qg1, ql1, t1
+        )

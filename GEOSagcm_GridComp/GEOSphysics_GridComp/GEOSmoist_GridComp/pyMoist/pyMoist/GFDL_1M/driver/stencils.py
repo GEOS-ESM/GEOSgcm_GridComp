@@ -1,5 +1,12 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, i32, interval, trunc
+from gt4py.cartesian.gtscript import (
+    FORWARD,
+    PARALLEL,
+    computation,
+    int32,
+    interval,
+    trunc,
+)
 
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -30,12 +37,18 @@ def wqs2(
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
-    it = i32(trunc(ap1))
+    it = int32(trunc(ap1))
     es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
     qsat = es / (constants.RVGAS * ta * den)
-    it = i32(trunc(ap1 - 0.5))  # check if this rounds or truncates. need truncation here
+    it = int32(
+        trunc(ap1 - 0.5)
+    )  # check if this rounds or truncates. need truncation here
     # finite diff, del_t = 0.1:
-    dqdt = 10.0 * (des2.A[it - 1] + (ap1 - it) * (des2.A[it] - des2.A[it - 1])) / (constants.RVGAS * ta * den)
+    dqdt = (
+        10.0
+        * (des2.A[it - 1] + (ap1 - it) * (des2.A[it] - des2.A[it - 1]))
+        / (constants.RVGAS * ta * den)
+    )
 
     return qsat, dqdt
 

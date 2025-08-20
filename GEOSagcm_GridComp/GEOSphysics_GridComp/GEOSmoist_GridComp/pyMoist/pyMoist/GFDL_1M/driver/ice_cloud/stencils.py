@@ -1,5 +1,16 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, exp, i32, interval, log, max, sqrt, trunc
+from gt4py.cartesian.gtscript import (
+    FORWARD,
+    PARALLEL,
+    computation,
+    exp,
+    int32,
+    interval,
+    log,
+    max,
+    sqrt,
+    trunc,
+)
 
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -136,7 +147,9 @@ def acr3d(
     t1 = sqrt(q1 * rho)
     s1 = sqrt(q2 * rho)
     s2 = sqrt(s1)  # s1 = s2 ** 2
-    acr3d = c * abs(v1 - v2) * q1 * s2 * (cac_1 * t1 + cac_2 * sqrt(t1) * s2 + cac_3 * s1)
+    acr3d = (
+        c * abs(v1 - v2) * q1 * s2 * (cac_1 * t1 + cac_2 * sqrt(t1) * s2 + cac_3 * s1)
+    )
 
     return acr3d
 
@@ -163,7 +176,7 @@ def smow_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function smlt
     """
     smow_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qsrho) + c_3 * qsrho ** 0.65625 * sqrt(rhofac)
+        c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
     ) + c_4 * tc * (psacw + psacr)
 
     return smow_melt
@@ -190,7 +203,7 @@ def graupel_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function gmlt
     """
     graupel_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qgrho) + c_3 * qgrho ** 0.6875 / rho ** 0.25
+        c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
     ) + c_4 * tc * (pgacw + pgacr)
 
     return graupel_melt
@@ -371,7 +384,9 @@ def snow_graupel_coldrain(
             # sjl, 20170321:
             q_liq = q_liq + sink
             q_sol = q_sol - sink
-            cvm = c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t2 = t2 - sink * lhi / cvm
             tc = t2 - constants.TICE
 
@@ -439,7 +454,9 @@ def snow_graupel_coldrain(
             qr2 = qr2 + pgmlt
             q_liq = q_liq + pgmlt
             q_sol = q_sol - pgmlt
-            cvm = c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t2 = t2 - pgmlt * lhi / cvm
 
     else:
@@ -458,7 +475,9 @@ def snow_graupel_coldrain(
                 # sjl added (following lin eq. 23) the temperature dependency
                 # to reduce accretion, use esi = exp (0.05 * tc) as in hong et al 2004
                 # -----------------------------------------------------------------------
-                factor = dts * denfac * csaci * exp(0.05 * tc + 0.8125 * log(qs2 * den1))
+                factor = (
+                    dts * denfac * csaci * exp(0.05 * tc + 0.8125 * log(qs2 * den1))
+                )
                 psaci = factor / (1.0 + factor) * qi2
             else:
                 psaci = 0.0
@@ -501,7 +520,9 @@ def snow_graupel_coldrain(
                 0.0,
                 min(
                     1.0,
-                    qa1 * max(qi2 + ql2 - sink + tmp, 0.0) / max(qi2 + ql2, constants.QCMIN),
+                    qa1
+                    * max(qi2 + ql2 - sink + tmp, 0.0)
+                    / max(qi2 + ql2, constants.QCMIN),
                 ),
             )
 
@@ -564,7 +585,13 @@ def snow_graupel_coldrain(
             # pgfr: rain freezing -- > graupel
             # -----------------------------------------------------------------------
 
-            pgfr = dts * cgfr_0 / den1 * (exp(-cgfr_1 * tc) - 1.0) * exp(1.75 * log(qr2 * den1))
+            pgfr = (
+                dts
+                * cgfr_0
+                / den1
+                * (exp(-cgfr_1 * tc) - 1.0)
+                * exp(1.75 * log(qr2 * den1))
+            )
 
             # -----------------------------------------------------------------------
             # total sink to qr
@@ -582,7 +609,9 @@ def snow_graupel_coldrain(
             qg2 = qg2 + pgfr
             q_liq = q_liq - sink
             q_sol = q_sol + sink
-            cvm = c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t2 = t2 + sink * lhi / cvm
 
         # # -----------------------------------------------------------------------
@@ -682,7 +711,9 @@ def snow_graupel_coldrain(
             ql2 = ql2 - pgacw
             q_liq = q_liq - sink
             q_sol = q_sol + sink
-            cvm = c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t2 = t2 + sink * lhi / cvm
 
     t1 = t2
@@ -739,7 +770,7 @@ def iqs1(
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
-    it = i32(trunc(ap1))
+    it = int32(trunc(ap1))
     es = table3.A[it - 1] + (ap1 - it) * des3.A[it - 1]
     iqs1 = es / (constants.RVGAS * ta * den)
 
@@ -769,11 +800,15 @@ def iqs2(
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
-    it = i32(trunc(ap1))
+    it = int32(trunc(ap1))
     es = table3.A[it - 1] + (ap1 - it) * des3.A[it - 1]
     iqs2 = es / (constants.RVGAS * ta * den)
-    it = i32(trunc(ap1 - 0.5))
-    dqdt = 10.0 * (des3.A[it - 1] + (ap1 - it) * (des3.A[it] - des3.A[it - 1])) / (constants.RVGAS * ta * den)
+    it = int32(trunc(ap1 - 0.5))
+    dqdt = (
+        10.0
+        * (des3.A[it - 1] + (ap1 - it) * (des3.A[it] - des3.A[it - 1]))
+        / (constants.RVGAS * ta * den)
+    )
 
     return iqs2, dqdt
 
@@ -800,7 +835,7 @@ def wqs1(
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
-    it = i32(trunc(ap1))
+    it = int32(trunc(ap1))
     es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
     wqs1 = es / (constants.RVGAS * ta * den)
 
@@ -959,7 +994,9 @@ def subgrid_z_proc(
             qv1 = qv1 + evap
             ql1 = ql1 - evap
             q_liq = q_liq - evap
-            cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t1 = t1 - evap * lhl / cvm
 
         # -----------------------------------------------------------------------
@@ -980,7 +1017,9 @@ def subgrid_z_proc(
             qi1 = qi1 + sink
             q_liq = q_liq - sink
             q_sol = q_sol + sink
-            cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t1 = t1 + sink * lhi / cvm
 
         # -----------------------------------------------------------------------
@@ -996,13 +1035,23 @@ def subgrid_z_proc(
 
         tc = constants.TICE - t1
         if do_bigg == True and ql1 > constants.QCMIN and tc > 0.0:  # noqa
-            sink = fac_frz * (100.0 / constants.RHOR / ccn) * dts * (exp(0.66 * tc) - 1.0) * den1 * ql1 * ql1
+            sink = (
+                fac_frz
+                * (100.0 / constants.RHOR / ccn)
+                * dts
+                * (exp(0.66 * tc) - 1.0)
+                * den1
+                * ql1
+                * ql1
+            )
             sink = min(ql1, min(tc / icpk, sink))
             ql1 = ql1 - sink
             qi1 = qi1 + sink
             q_liq = q_liq - sink
             q_sol = q_sol + sink
-            cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t1 = t1 + sink * lhi / cvm
             # significant ql existed
 
@@ -1032,7 +1081,10 @@ def subgrid_z_proc(
                     * dq
                     * 349138.78
                     * exp(0.875 * log(qi1 * den1))
-                    / (qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1 ** 2) + 4.42478e4)
+                    / (
+                        qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1**2)
+                        + 4.42478e4
+                    )
                 )
             else:
                 pidep = 0.0
@@ -1065,7 +1117,9 @@ def subgrid_z_proc(
             qv1 = qv1 - sink
             qi1 = qi1 + sink
             q_sol = q_sol + sink
-            cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t1 = t1 + sink * (lhl + lhi) / cvm
 
         # -----------------------------------------------------------------------
@@ -1111,7 +1165,9 @@ def subgrid_z_proc(
             qs1 = qs1 - pssub
             qv1 = qv1 + pssub
             q_sol = q_sol - pssub
-            cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t1 = t1 - pssub * (lhl + lhi) / cvm
 
         # -----------------------------------------------------------------------
@@ -1153,7 +1209,9 @@ def subgrid_z_proc(
             qg1 = qg1 + pgsub
             qv1 = qv1 - pgsub
             q_sol = q_sol + pgsub
-            cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             t1 = t1 + pgsub * (lhl + lhi) / cvm
 
             # Fortran ifdef USE_MIN_EVAP goes in here.
@@ -1234,7 +1292,10 @@ def subgrid_z_proc(
                         constants.QCMIN,
                         min(
                             1.0,
-                            qa1 + (q_plus - qstar) * (q_plus - qstar) / ((q_plus - q_minus) * (q_plus - qpz)),
+                            qa1
+                            + (q_plus - qstar)
+                            * (q_plus - qstar)
+                            / ((q_plus - q_minus) * (q_plus - qpz)),
                         ),
                     )
                 elif q_minus <= qstar and qstar < qpz:  # partial cloud cover
@@ -1245,7 +1306,9 @@ def subgrid_z_proc(
                             qa1
                             + 1.0
                             - (
-                                (qstar - q_minus) * (qstar - q_minus) / ((q_plus - q_minus) * (qpz - q_minus))
+                                (qstar - q_minus)
+                                * (qstar - q_minus)
+                                / ((q_plus - q_minus) * (qpz - q_minus))
                             ),
                         ),
                     )
@@ -1336,7 +1399,9 @@ def icloud_core(
         if z_slope_ice == True:  # noqa
             q_linear_prof = qi1
             h_var_linear_prof = rh_limited
-            dm_linear_prof = q_linear_prof  # initalized here to ensure it is created as a 3d field
+            dm_linear_prof = (
+                q_linear_prof  # initalized here to ensure it is created as a 3d field
+            )
 
     with computation(FORWARD), interval(1, None):
         if z_slope_ice == True:  # noqa
@@ -1351,10 +1416,14 @@ def icloud_core(
 
     with computation(FORWARD), interval(1, -1):
         if z_slope_ice == True:  # noqa
-            dm_linear_prof = 0.5 * min(abs(dq_linear_prof + dq_linear_prof[0, 0, 1]), 0.5 * q_linear_prof)
+            dm_linear_prof = 0.5 * min(
+                abs(dq_linear_prof + dq_linear_prof[0, 0, 1]), 0.5 * q_linear_prof
+            )
             if dq_linear_prof * dq_linear_prof[0, 0, 1] <= 0.0:
                 if dq_linear_prof > 0.0:  # local max
-                    dm_linear_prof = min(dm_linear_prof, min(dq_linear_prof, -dq_linear_prof[0, 0, 1]))
+                    dm_linear_prof = min(
+                        dm_linear_prof, min(dq_linear_prof, -dq_linear_prof[0, 0, 1])
+                    )
                 else:
                     dm_linear_prof = 0.0
 
