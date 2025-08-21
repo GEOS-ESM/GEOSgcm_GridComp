@@ -29,15 +29,15 @@ smoothmap ={
              'C270' : 100.0,
              'C540' : 53.3,
              'C1080': 17.0,
-             'C1536': 29.0,
-             'C2160': 3.0
+             'C1536': 26.8,
+             'C2160': 2.98
             }
 ## Tuning parameter for GWD amplitude for stretched grids this affects step in laplacian iterations.
-alpha ={ 'C270' : 2.7,
+alpha ={ 'C270' : 2.9,
          'C540' : 2.73,
          'C1080': 7.0,
-         'C1536': 11.7,
-         'C2160': 14.3,
+         'C1536': 12.1,
+         'C2160': 14.25,
          # regular grids do not use alpha!!!
         }
 

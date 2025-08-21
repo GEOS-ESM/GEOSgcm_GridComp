@@ -49,20 +49,18 @@
     character(len=ESMF_MAXSTR)        :: gridname, FMT, title
     integer                           :: myTile
     integer                           :: tmp, mpiC
-    integer                           :: IG, JG, rrfac_max
+    integer                           :: rrfac_max
     logical                           :: do_schmidt
     logical, allocatable              :: fallback_mask(:)
-    integer                           :: start_mask(1), cnt_mask(1)
     integer                           :: varid_mask_fallback  
     integer, allocatable              :: mask_fallback(:)     
     real(ESMF_KIND_R8)                :: p1(2),p2(2),p3(2),p4(2)
-    real(ESMF_KIND_R8)                :: local_max_length, max_length, local_min_length, min_length
+    real(ESMF_KIND_R8)                :: local_max_length, local_min_length 
     real(ESMF_KIND_R4)                :: target_lon, target_lat, stretch_factor
     type(ESMF_HConfig)                :: CF
     integer                           :: status
     character(len=ESMF_MAXPATHLEN)    :: output_scrip, output_geos
     integer                           :: failed_cells
-    real(ESMF_KIND_R8)                :: max_area
     real(ESMF_KIND_R8), allocatable   :: local_max_length_all(:), local_min_length_all(:)
     integer, allocatable              :: localDEList(:)
     integer                           :: cell, num_cells
@@ -80,50 +78,40 @@
     real(ESMF_KIND_R8)                :: tiny_dlon, tiny_dlat
     real(ESMF_KIND_R8)                :: clon, clat, area_signed
     real(ESMF_KIND_R8)                :: global_max_length, global_min_length, min_allowed_length
-    real(ESMF_KIND_R8)                :: max_rrfac
     real(ESMF_KIND_R8)                :: midpoint_lon, midpoint_lat
     real(ESMF_KIND_R8)                :: dist, min_dist_local, min_dist_global, lon_diff, lat_diff
     real(ESMF_KIND_R8)                :: chosen_center_lon, chosen_center_lat
     real(ESMF_KIND_R8)                :: global_chosen_lon, global_chosen_lat
     real(ESMF_KIND_R8), parameter     :: min_length_threshold = 1.0d-12
     integer           , parameter     :: grid_corners = 4
-    logical                           :: panel_found 
     integer                           :: num_rrfac_max
     integer                           :: j_offset, jc_offset
     integer                           :: num_local_cells, n_start
-    integer                           :: kk
     integer                           :: best_idx
     integer                           :: num_cells_global
     integer                           :: n_end
-    integer                           :: i_local, j_local
     integer                           :: num_rrfac_max_local
-    integer                           :: local_idx_max_rrfac, global_idx_max_rrfac
+    integer                           :: global_idx_max_rrfac
     integer                           :: valid_count_local
-    integer                           :: n_midpoint
     integer                           :: cornerdimID
-    integer                           :: local_idx_in_slice
     integer                           :: clamp_count_local, clamp_count_global
     integer                           :: fallback_count_local, fallback_count_global
     integer                           :: owner_pet
     integer                           :: start_file, cnt_file, mem_start, mem_end
     integer                           :: j_offset_chosen
-    integer                           :: pet
     real(ESMF_KIND_R8)                :: local_max_rrfac, global_max_rrfac
     real(ESMF_KIND_R8)                :: global_lon_max_rrfac, global_lat_max_rrfac
     real(ESMF_KIND_R8)                :: eps
     logical                           :: found_degenerate
     logical                           :: bad_corner
-    logical                           :: has_midpoint
     real(ESMF_KIND_R8)                :: epsilon
     integer                           :: l
     real(ESMF_KIND_R8)                :: global_max_area, global_min_area,ratio
     real(ESMF_KIND_R8), allocatable   :: my_corner_lat(:,:), my_corner_lon(:,:)
     real(ESMF_KIND_R8), allocatable   :: A_uniform(:)
-    real(ESMF_KIND_R8)                :: lon_tmp(4), lat_tmp(4)
-    real(ESMF_KIND_R8)                :: max_rrfac_allowed, rrfac_tmp
+    real(ESMF_KIND_R8)                :: max_rrfac_allowed 
     real(ESMF_KIND_R8)                :: midpoint_lon_deg, midpoint_lat_deg
     real(ESMF_KIND_R8)                :: max_area_local, min_area_local
-    real(ESMF_KIND_R8), dimension(2)  :: local_val_idx, global_val_idx    
     real(ESMF_KIND_R8)                :: local_min_rrfac, global_min_rrfac_print, global_max_rrfac_print
     real(ESMF_KIND_R8)                :: owner_lon, owner_lat
     real(ESMF_KIND_R8)                :: u1(2), u2(2), u3(2), u4(2)
@@ -135,7 +123,6 @@
     real(ESMF_KIND_R8)                :: tmp_len
     real(ESMF_KIND_R8)                :: dummy_max, dummy_min
     real(ESMF_KIND_R8)                :: max_len_local, min_len_local
-    character(len=3)                  :: orient
 
 
     call ESMF_Initialize(logKindFlag=ESMF_LOGKIND_NONE,rc=status)
@@ -1241,7 +1228,6 @@ subroutine points_hull_2d ( node_num, node_xy, hull_num, hull )
   real(REAL64) p_xy(2)
   real(REAL64) q_xy(2)
   real(REAL64) r_xy(2)
-  real(REAL64) centroid(2)
   logical :: polar_cell
   integer :: node_num_unique
   real(REAL64), allocatable :: unique_xy(:,:)
