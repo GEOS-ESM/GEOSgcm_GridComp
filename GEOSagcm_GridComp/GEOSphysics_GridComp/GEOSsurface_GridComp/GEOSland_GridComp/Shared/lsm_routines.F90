@@ -41,7 +41,7 @@ MODULE lsm_routines
        N_SM              => CATCH_N_ZONES,       &
        PEATCLSM_POROS_THRESHOLD,                 &
        PEATCLSM_ZBARMAX_4_SYSOIL,&
-       AR_UR             => AR_URBAN,            & 
+       AR_UR0            => AR_URBAN,            & 
        fac_im_UR         => factor_impervious_URBAN
  
   USE SURFPARAMS,        ONLY:                   &
@@ -263,7 +263,7 @@ CONTAINS
       INTEGER              :: N
       REAL                 :: deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil
       REAL                 :: srunc, srunl, ptotal, excess, totcapac, watadd
-      REAL, DIMENSION(NCH) :: THRUL, THRUC
+      REAL, DIMENSION(NCH) :: THRUL, THRUC, AR_UR
 
       ! constants for PEATCLSM piecewise linear relationship between surface runoff and AR1
       
@@ -278,7 +278,8 @@ CONTAINS
       THRUC  = THRUC_VOL   
       
       RUNSRF = RUNSRF * DTSTEP  ! convert input surface runoff from flux to "volume" units
-      
+      AR_UR  = AR_UR0
+
       DO N=1,NCH
 
          if(.not.UFW4RO) then
@@ -287,7 +288,7 @@ CONTAINS
 
             IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                ! Non-peatland
-               frun=AR1(N)+AR_UR*fac_im_UR
+               frun=AR1(N)+AR_UR(N)*fac_im_UR
                srun0=PTOTAL*frun
 
                !**** Comment out this line in order to allow moisture
@@ -360,7 +361,7 @@ CONTAINS
             IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                 !non-peatland
                deficit=srfmx(n)-srfexc(n)
-               srunl=AR1(n)*THRUL(n)
+               srunl=(AR1(n)+AR_UR(N)*fac_im_UR)*THRUL(n)
                qinfil_l=(1.-ar1(n))*THRUL(n)
                qcapac=deficit*FWETL
 
@@ -370,7 +371,7 @@ CONTAINS
                   qinfil_l=qinfil_l-excess_infil
                endif
 
-               srunc=AR1(n)*THRUC(n)
+               srunc=(AR1(n)+AR_UR(N)*fac_im_UR)*THRUC(n)
                qinfil_c=(1.-ar1(n))*THRUC(n)
                qcapac=deficit*FWETC
 

@@ -95,7 +95,7 @@
            PEATCLSM_ZBARMAX_4_SYSOIL,                &
            EMIS_UR           => CATCH_EMIS_URBAN,    &
            CSOIL_UR          => CATCH_C_URBAN,       &
-           AR_UR             => AR_URBAN    
+           AR_UR0             => AR_URBAN    
 
       USE SURFPARAMS,       ONLY:                    &
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
@@ -244,7 +244,7 @@
                      FSW_CHANGE
 
       REAL, INTENT(OUT), DIMENSION(N_SNOW, NCH)   :: FICESOUT
-      
+    
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: TC1_0,TC2_0,TC4_0
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: QA1_0,QA2_0,QA4_0 	
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: EACC_0 
@@ -270,10 +270,10 @@
             DEDQA4X, DEDTC4X, DHSDQA4X, DHSDTC4X, werror, sfmcun, rzmcun,      &
             prmcun,WTOT_ORIG,ENTOT_ORIG,HSNACC1,HSNACC2,HSNACC4,               &
             TC1_00, TC2_00, TC4_00, EACC_00,                                   &
-              qa1_orig,qa2_orig,qa4_orig,tc1_orig,tc2_orig,tc4_orig,           &
-              tcs_orig,                                                        &
-              ALW_UR, BLW_UR,TCSF_UR,HFTDS_UR,DHFT_UR,HSTURB_UR,DHSDTCX_UR,ETURB_UR,DEDQAX_UR,DEDTCX_U,DHSDQAX_UR,DEDTCX_UR,&
-              EVAP_UR,SHFLUX_UR, HLWUP_UR, RX1_UR, RX2_UR, GHFLUX_UR, HSNACC_UR
+            qa1_orig,qa2_orig,qa4_orig,tc1_orig,tc2_orig,tc4_orig,tcur_orig,   &
+            tcs_orig,                                                          &
+            ALW_UR, BLW_UR,TCSF_UR,HFTDS_UR,DHFT_UR,HSTURB_UR,DHSDTCX_UR,ETURB_UR,DEDQAX_UR,DEDTCX_U,DHSDQAX_UR,DEDTCX_UR,&
+            EVAP_UR,SHFLUX_UR, HLWUP_UR, RX1_UR, RX2_UR, GHFLUX_UR, HSNACC_UR, AR_UR
 
 
       REAL, DIMENSION(N_GT) :: HT, TP, soilice,soilice_UR
@@ -562,6 +562,7 @@
         tc1_orig(n)=tc1(n)
         tc2_orig(n)=tc2(n)
         tc4_orig(n)=tc4(n)
+        tcur_orig(n)=TC_UR(n)
         
         ! Removed an #ifdef LAND_UPD [if (LAND_FIX)] block from here that constrained qa
         ! between qm and qsat.
@@ -660,7 +661,7 @@
                       SRFEXC,CATDEF,RUNSRF,                                    &
                       AR1, AR2, AR4,srfmx,srfmn,  SWSRF1,SWSRF2,SWSRF4,RZI     &
                      )
-
+      AR_UR = AR_UR0
 
       DO N=1,NCH
          TSOIL=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
@@ -734,7 +735,7 @@
         DHFT2(N)=-DFH21I
         DHFT4(N)=-DFH21D
 
-        if(AR_UR>0.)then
+        if(AR_UR(N)>0.)then
           T1_UR(1)=TC_UR(N)
           T1_UR(2)=TC_UR(N)
           T1_UR(3)=TC_UR(N) 
@@ -871,9 +872,9 @@
          
         SUMEP=EPFRC1*EVAP1(N)*AR1(N)+EPFRC2*EVAP2(N)*AR2(N)+                   &
               EPFRC4*EVAP4(N)*AR4(N)
-        SUMEP = SUMEP*(1.-AR_UR) + EPFRC_UR*EVAP_UR(N)*AR_UR
+        SUMEP = SUMEP*(1.-AR_UR(N)) + EPFRC_UR*EVAP_UR(N)*AR_UR(N)
         SUME=EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N)
-        SUME= SUME*(1.-AR_UR) + EVAP_UR(N)*AR_UR
+        SUME= SUME*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)
         
         !   "quick fix" gone wrong in global AMSR-E assimilation
         !   trying to correct while staying as close as possible to past fix
@@ -899,15 +900,13 @@
 
       DO N=1,NCH
 
-        call CAL_SNOW(DTSTEP,TM(N),TC1(N),TC2(N),TC4(N),POROS(N),AR1(N),AR2(N),AR4(N),&
+        call CAL_SNOW(DTSTEP,TM(N),TC1(N),TC2(N),TC4(N),TC_UR(N),POROS(N),AR1(N),AR2(N),AR4(N),AR_UR(N),&
               trainc(N),trainl(N),tsnow(N),tice(N),tfrzr(N),dedqas(N),psur(N),dhsdqas(N),qm(N),qsats(N),dqss(N),dedtcs(N),dhsdtcs(N),hsturbs(N),hlwdwn(N),swnets(N),&
-              wesnn(:,N),htsnnn(:,N),sndzn(:,N),tc1_orig(N),tc2_orig(N),tc4_orig(N),ALWS(N),BLWS(N),tpsn1(N),LONS(N),LATS(N),eturbs(N),&
-              HSNACC(N),HSNACC1(N),HSNACC2(N),HSNACC4(N),HFTDS1(N),HFTDS2(N),HFTDS4(N),DHFT1(N),DHFT2(N),DHFT4(N),CSOIL(N),TC1SF(N),TC2SF(N),TC4SF(N),&
+              wesnn(:,N),htsnnn(:,N),sndzn(:,N),tc1_orig(N),tc2_orig(N),tc4_orig(N),tcur_orig(N),ALWS(N),BLWS(N),tpsn1(N),LONS(N),LATS(N),eturbs(N),&
+              HSNACC(N),HSNACC1(N),HSNACC2(N),HSNACC4(N),HSNACC_UR(N),HFTDS1(N),HFTDS2(N),HFTDS4(N),HFTDS_UR(N),DHFT1(N),DHFT2(N),DHFT4(N),DHFT_UR(N),CSOIL(N),TC1SF(N),TC2SF(N),TC4SF(N),TCSF_UR(N),&
               esno(N),SHFLUXS(N),HLWUPS(N),GHFLUXS(N),EVSNOW(N),FICESOUT(:,N),LH_SNOW(N),SH_SNOW(N),LWUP_SNOW(N),LWDOWN_SNOW(N),NETSW_SNOW(N),&
               tpsn1out(N),TPSNB(N),SMELT(N),asnow(N),asnow0(N),tcsorig(N),tpsn1in(N),traincx(N),trainlx(N),tcs_orig(N),ghfluxsno(N),&
               totdepos(N,:),rconstit(N,:,:),RMELT(N,:))
-
-        TC_UR(N)=TCSF_UR(N)
 
         ENDDO 
  
@@ -921,32 +920,32 @@
         LHFLUX(N)=(1.-ASNOW(N))*                                               &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))*ALHE           &
               +ASNOW(N)*EVSNOW(N)*ALHS
-        LHFLUX(N) = LHFLUX(N)*(1.-AR_UR) + EVAP_UR(N)*ALHE*AR_UR
+        LHFLUX(N) = LHFLUX(N)*(1.-AR_UR(N)) + EVAP_UR(N)*ALHE*AR_UR(N)
         EVAP(N)=(1.-ASNOW(N))*                                                 &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))                &
               +ASNOW(N)*EVSNOW(N) 
-        EVAP(N) = EVAP(N)*(1.-AR_UR) + EVAP_UR(N)*AR_UR       
+        EVAP(N) = EVAP(N)*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)       
         EVAPFR(N)=(1.-ASNOW(N))*                                               &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))
-        EVAPFR(N) = EVAPFR(N)*(1.-AR_UR) + EVAP_UR(N)*AR_UR     
+        EVAPFR(N) = EVAPFR(N)*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)     
         SHFLUX(N)=(1.-ASNOW(N))*                                               &
               (SHFLUX1(N)*AR1(N)+SHFLUX2(N)*AR2(N)+SHFLUX4(N)*AR4(N))          &
               +ASNOW(N)*SHFLUXS(N) 
-        SHFLUX(N)=SHFLUX(N)*(1.-AR_UR) + SHFLUX_UR(N)*AR_UR     
+        SHFLUX(N)=SHFLUX(N)*(1.-AR_UR(N)) + SHFLUX_UR(N)*AR_UR(N)     
         HLWUP(N)=(1.-ASNOW(N))*                                                &
               (HLWUP1(N)*AR1(N)+HLWUP2(N)*AR2(N)+HLWUP4(N)*AR4(N))             &
               +ASNOW(N)*HLWUPS(N) 
-        HLWUP(N) = HLWUP(N)*(1.-AR_UR) + HLWUP_UR(N)*AR_UR
+        HLWUP(N) = HLWUP(N)*(1.-AR_UR(N)) + HLWUP_UR(N)*AR_UR(N)
         SWLAND(N)=(1.-ASNOW(N))*SWNETF(N) + ASNOW(N)*SWNETS(N) 
-        SWLAND(N) = SWLAND(N)*(1.-AR_UR) + SWNET_UR(N)*AR_UR
+        SWLAND(N) = SWLAND(N)*(1.-AR_UR(N)) + SWNET_UR(N)*AR_UR(N)
         GHFLUX(N)=(1.-ASNOW(N))*                                               &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               +ASNOW(N)*GHFLUXS(N) 
-        GHFLUX(N)=GHFLUX(N)*(1.-AR_UR) + GHFLUX_UR(N)*AR_UR     
+        GHFLUX(N)=GHFLUX(N)*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)     
         GHTSKIN(N)=(1.-ASNOW(N))*                                              &
               (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
               -ASNOW(N)*ghfluxsno(N)
-        GHTSKIN(N)=GHTSKIN(N)*(1.-AR_UR) + GHFLUX_UR(N)*AR_UR      
+        GHTSKIN(N)=GHTSKIN(N)*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)      
         ENDDO 
 
 
@@ -995,7 +994,7 @@
         tp6(n)=tp(6)
         frice(n)=xfice
 
-        if(AR_UR>0.)then
+        if(AR_UR(N)>0.)then
         !  DO LAYER=1,6
         !    HT(LAYER)=GHTCNT_UR(LAYER,N)
         !  ENDDO          
@@ -1599,46 +1598,52 @@
 !**** [ BEGIN CAL_SNOW ]
 !****
 
-      subroutine CAL_SNOW(DTSTEP,TM,TC1,TC2,TC4,POROS,AR1,AR2,AR4,&
+      subroutine CAL_SNOW(DTSTEP,TM,TC1,TC2,TC4,TC_UR,POROS,AR10,AR20,AR40,AR_UR,&
                           trainc,trainl,tsnow,tice,tfrzr,dedqas,psur,dhsdqas,qm,qsats,dqss,dedtcs,dhsdtcs,hsturbs,hlwdwn,swnets,&
-                          wesnn,htsnnn,sndzn,tc1_orig,tc2_orig,tc4_orig,ALWS,BLWS,tpsn1,LONS,LATS,eturbs,&
-                          HSNACC,HSNACC1,HSNACC2,HSNACC4,HFTDS1,HFTDS2,HFTDS4,DHFT1,DHFT2,DHFT4,CSOIL,TC1SF,TC2SF,TC4SF,&
+                          wesnn,htsnnn,sndzn,tc1_orig,tc2_orig,tc4_orig,tcur_orig,ALWS,BLWS,tpsn1,LONS,LATS,eturbs,&
+                          HSNACC,HSNACC1,HSNACC2,HSNACC4,HSNACC_UR,HFTDS1,HFTDS2,HFTDS4,HFTDS_UR,DHFT1,DHFT2,DHFT4,DHFT_UR,CSOIL,TC1SF,TC2SF,TC4SF,TCSF_UR,&
                           esno,SHFLUXS,HLWUPS,GHFLUXS,EVSNOW,FICESOUT,LH_SNOW,SH_SNOW,LWUP_SNOW,LWDOWN_SNOW,NETSW_SNOW,&
                           tpsn1out,TPSNB,SMELT,asnow,asnow0,tcsorig,tpsn1in,traincx,trainlx,tcs_orig,ghfluxsno,&
                           totdepos,rconstit,RMELT)
       implicit none
 
         real,intent(in) :: DTSTEP
-        real,intent(in) :: TM,POROS,AR1,AR2,AR4
+        real,intent(in) :: TM,POROS,AR10,AR20,AR40,AR_UR
         real,intent(in) :: trainc,trainl,tsnow,tice,tfrzr,dedqas,psur,dhsdqas,qm,qsats,dqss,dedtcs,dhsdtcs,hsturbs,hlwdwn,swnets,&
-                         tc1_orig,tc2_orig,tc4_orig,ALWS,BLWS,LONS,LATS,eturbs,&
-                         HSNACC1,HSNACC2,HSNACC4,HFTDS1,HFTDS2,HFTDS4,DHFT1,DHFT2,DHFT4,CSOIL,TC1SF,TC2SF,TC4SF
-        real,intent(inout) :: TC1,TC2,TC4,HSNACC,wesnn(N_SNOW),htsnnn(N_SNOW),sndzn(N_SNOW),tpsn1    
+                         tc1_orig,tc2_orig,tc4_orig,tcur_orig,ALWS,BLWS,LONS,LATS,eturbs,&
+                         HSNACC1,HSNACC2,HSNACC4,HSNACC_UR,HFTDS1,HFTDS2,HFTDS4,HFTDS_UR,DHFT1,DHFT2,DHFT4,DHFT_UR,CSOIL,TC1SF,TC2SF,TC4SF,TCSF_UR
+        real,intent(inout) :: TC1,TC2,TC4,TC_UR,HSNACC,wesnn(N_SNOW),htsnnn(N_SNOW),sndzn(N_SNOW),tpsn1    
         real,intent(out) :: esno,SHFLUXS,HLWUPS,GHFLUXS,EVSNOW,FICESOUT(N_SNOW),LH_SNOW,SH_SNOW,LWUP_SNOW,LWDOWN_SNOW,NETSW_SNOW,&
                             tpsn1out,TPSNB,SMELT,asnow,asnow0,tcsorig,tpsn1in,traincx,trainlx,tcs_orig,ghfluxsno
         real,intent(in) ,  OPTIONAL :: totdepos(N_Constit)
         real,intent(inout),OPTIONAL :: rconstit(N_SNOW,N_Constit)
         real,intent(out) ,  OPTIONAL :: RMELT(N_Constit)
 
-        real :: TS,T1(3),AREA(3),pr,snowf,dedea,dhsdea,ea,esattc,desdtc,dedtc0,dhsdtc0,hsturb,tkgnd(3),raddn
+        real :: AR1,AR2,AR4
+        real :: TS,T1(4),AREA(4),pr,snowf,dedea,dhsdea,ea,esattc,desdtc,dedtc0,dhsdtc0,hsturb,tkgnd(4),raddn
         real :: zc1,hups,wesn(N_SNOW),htsnn(N_SNOW),sndz(N_SNOW),tpsn(N_SNOW)
         real :: RCONSTIT1(N_SNOW,N_Constit),TOTDEP1(N_Constit),RMELT1(N_Constit)
         real :: tsnowsrf,hlwtc,dhlwtc,hcorr,sumdepth
-        real :: fices(N_SNOW),areasc, areasc0,pre,fhgnd(3)
+        real :: fices(N_SNOW),areasc, areasc0,pre,fhgnd(4)
         real :: alhfsn,SHFLS,EVSN,wesnprec,sndzsc,sndzprec,sndz1perc
         real :: wesnperc(N_snow),wesndens(N_snow),wesnrepar(N_snow),mltwtr,excs(N_snow),drho0(N_snow)
-        real :: wesnbot,tksno(N_snow),dtss,fh31w,fh31i,fh31d
-        real :: TC1SN,TC2SN,TC4SN,DTC1SN,DTC2SN,DTC4SN
+        real :: wesnbot,tksno(N_snow),dtss,fh31w,fh31i,fh31d,fh31u
+        real :: TC1SN,TC2SN,TC4SN,TCUSN,DTC1SN,DTC2SN,DTC4SN,DTCUSN
      
 
         logical :: ldum
         real    :: dum
         integer :: i,k
 
+        AR1=AR10*(1.-AR_UR)
+        AR2=AR20*(1.-AR_UR)
+        AR4=AR40*(1.-AR_UR)
+
         TS     = TM
         T1(1)  = TC1-TF 
         T1(2)  = TC2-TF 
         T1(3)  = TC4-TF 
+        T1(4)  = TC_UR-TF
         ! MB: avoid division by zero (AR1=0) in PEATCLSM equations
         IF(POROS >= PEATCLSM_POROS_THRESHOLD) THEN
            AREA(1)= amax1(AR1,2.E-20)
@@ -1646,7 +1651,8 @@
            AREA(1) = AR1
         END IF
         AREA(2)= AR2 
-        AREA(3)= AR4 
+        AREA(3)= AR4
+        AREA(4)= AR_UR
         pr     = trainc+trainl+tsnow+tice+tfrzr
         snowf  = tsnow+tice+tfrzr
         dedea  = dedqas*epsilon/psur 
@@ -1660,6 +1666,7 @@
         tkgnd(1)=1.8      !STEPH  
         tkgnd(2)=1.8 
         tkgnd(3)=1.8 
+        tkgnd(4)=1.8
         raddn=hlwdwn+swnets 
         zc1=-(DZTSURF*0.5)
         hups=0.0 
@@ -1697,7 +1704,7 @@
         tcs_orig=tsnowsrf+tf
         if(wesn(1)+wesn(2)+wesn(3) .eq. 0.) tcs_orig=                       &
                   amin1( tf, tc1_orig*ar1+tc2_orig*ar2+            &
-                  tc4_orig*(1.-ar1-ar2 ) )
+                  tc4_orig*ar4+tcur_orig*(1.-ar1-ar2-ar4 ) )
 
         hlwtc=ALWS + BLWS*(TSNOWSRF+TF) 
         dhlwtc=BLWS
@@ -1716,7 +1723,7 @@
         
         CALL StieglitzSnow_snowrt(                                             &
                    LONS, LATS,                                           &  ! in    [radians]  !!!
-                   N_sm, N_snow, MAPL_Land,                                    &  ! in   
+                   N_sm+1, N_snow, MAPL_Land,                                    &  ! in   
                    CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
                    t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
                    eturbs, dedtc0, hsturb, dhsdtc0, hlwtc, dhlwtc,          &  ! in   
@@ -1751,10 +1758,11 @@
         fh31w=fhgnd(1) 
         fh31i=fhgnd(2) 
         fh31d=fhgnd(3) 
+        fh31u=fhgnd(4)
         asnow = areasc 
         asnow0= areasc0 
         HSNACC = HSNACC + (1.-ASNOW)*                                 &
-             (HSNACC1*AR1+HSNACC2*AR2+HSNACC4*AR4)           &
+             (HSNACC1*AR1+HSNACC2*AR2+HSNACC4*AR4+HSNACC_UR*AR_UR)           &
              + hcorr
  
 
@@ -1781,6 +1789,8 @@
                   (1.+DHFT2*DTSTEP/CSOIL)
         DTC4SN=((-(FH31D/(area(3)+1.e-20))-HFTDS4)*DTSTEP/CSOIL)/        &
                   (1.+DHFT4*DTSTEP/CSOIL)
+        DTCUSN=((-(FH31U/(area(4)+1.e-20))-HFTDS_UR)*DTSTEP/CSOIL)/        &
+                  (1.+DHFT_UR*DTSTEP/CSOIL)                  
 
         TC1SN=TC1+DTC1SN
         IF((TC1SN-TPSNB)*(TC1-TPSNB) .LT. 0.) THEN
@@ -1803,12 +1813,17 @@
           TC4SN=TPSNB
           ENDIF
 
-
+        TCUSN=TC_UR+DTCUSN
+        IF((TCUSN-TPSNB)*(TC_UR-TPSNB) .LT. 0.) THEN
+          HSNACC=HSNACC+AREASC*AREA(4)*                                 &
+                 (TCUSN-TPSNB)*CSOIL/DTSTEP
+          TCUSN=TPSNB
+          ENDIF
 
         TC1=TC1SF*(1.-AREASC)+TC1SN*AREASC
         TC2=TC2SF*(1.-AREASC)+TC2SN*AREASC
         TC4=TC4SF*(1.-AREASC)+TC4SN*AREASC
-        !TC_UR(N)=TCSF_UR(N)
+        TC_UR=TCSF_UR*(1.-AREASC)+TCUSN*AREASC
 
 
         EVSNOW=EVSN
@@ -1817,8 +1832,9 @@
         HLWUPS =HUPS 
         GHFLUXS=AREA(1)*(HFTDS1+DHFT1*DTC1SN) +                       &
                 AREA(2)*(HFTDS2+DHFT2*DTC2SN) +                       &
-                AREA(3)*(HFTDS4+DHFT4*DTC4SN)
-
+                AREA(3)*(HFTDS4+DHFT4*DTC4SN) +                       &
+                AREA(4)*(HFTDS_UR+DHFT_UR*DTCUSN)
+ 
 
       return
       end subroutine CAL_SNOW      
