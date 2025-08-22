@@ -2591,7 +2591,7 @@ def calc_cumulus_base_mass_flux(
                         0.0,
                         2.0
                         * (exp(-(mu**2)) / 2.5066) ** 2
-                        * (1.0 / erfc(mu) ** 2 - 0.25 / rmaxfrac**2),
+                        * (1.0 / float32(erfc(mu)) ** 2 - 0.25 / rmaxfrac**2),
                     )
                 )
 
@@ -2606,7 +2606,7 @@ def calc_cumulus_base_mass_flux(
             # 'ufrclcl' are smaller than ufrcmax with no instability.
 
             cbmf = rkfre * (rho0inv * sigmaw / 2.5066) * exp((-(mu**2)))
-            winv = sigmaw * (2.0 / 2.5066) * exp(-(mu**2)) / erfc(mu)
+            winv = sigmaw * (2.0 / 2.5066) * exp(-(mu**2)) / float32(erfc(mu))
             ufrcinv = cbmf / winv / rho0inv
 
 
@@ -3149,7 +3149,7 @@ def buoyancy_sorting(
                 while n < ncnst:
                     tre[0, 0][n] = tr0.at(K=krel, ddim=[n]) + sstr0.at(
                         K=krel, ddim=[n]
-                    ) * (pe - pmid0.at(K=krel, ddim=[n]))
+                    ) * (pe - pmid0.at(K=krel))
                     n += 1
 
             # Cumulus rises upward from 'prel' ( or base interface of  'krel' layer )
