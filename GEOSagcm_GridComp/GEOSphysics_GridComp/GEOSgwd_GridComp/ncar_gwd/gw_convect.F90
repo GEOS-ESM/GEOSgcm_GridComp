@@ -484,8 +484,8 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! Find largest condensate change level, for frontal detection
           ! condensate tendencies from microphysics will be negative
            q0(i) = 0.0
-           do k = pver, desc%k(i), -1 ! tend-level to top of atmosphere
-             if (dqcdt(i,k) < q0(i)) then ! Find largest negative DQCDT tendency
+           do k = desc%k(i), 1, -1 ! tend-level to the surface [avoid convective overlap]
+             if (dqcdt(i,k) > q0(i)) then ! Find largest positive DQCDT tendency
                 q0(i) = dqcdt(i,k)
              endif
            end do
@@ -493,7 +493,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! Set the phase speeds and wave numbers in the direction of the source wind.
           ! Set the source stress magnitude (positive only, note that the sign of the 
           ! stress is the same as (c-u).
-           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * MIN(10.0,MAX(1.0,abs(q0(i)/1.e-8)))
+           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * MIN(10.0,MAX(1.0,abs(q0(i)/1.e-9)))
            topi(i) = desc%k(i)
         endif
 

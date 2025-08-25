@@ -88,7 +88,7 @@ module gfdl_mp_mod
     public :: c_liq, c_ice, rhow, wet_bulb
     public :: cv_air, cv_vap, mtetw, mte
     public :: hlv, hlf, tice
-    public :: do_hail
+    public :: do_hail, ifflag
 
     ! -----------------------------------------------------------------------
     ! precision definition
@@ -3091,6 +3091,8 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
 
     do k = ks, ke
 
+      if (tz (k) .gt. t_wfr .and. qr (k) .gt. qpmin) then
+
         tin = (tz (k) * cvm (k) - lv00 * ql (k)) / mhc (qv (k) + ql (k), qr (k), q_sol (k))
 
         ! -----------------------------------------------------------------------
@@ -3110,9 +3112,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
         ! rain evaporation
         ! -----------------------------------------------------------------------
 
-        rh_tem = qpz / qsat
-
-        if (tz (k) .gt. t_wfr .and. qr (k) .gt. qpmin .and. dqv .gt. 0.0 .and. qsat .gt. q_minus) then
+        if (dqv .gt. 0.0 .and. qsat .gt. q_minus) then
 
             if (qsat .gt. q_plus) then
                 dq = qsat - qpz
@@ -3123,6 +3123,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             t2 = tin * tin
             sink = psub (t2, dq, qden, qsat, crevp, den (k), denfac (k), blinr, mur, lcpk (k), cvm (k))
             sink = min (qr (k), dts * fac_revp * sink, dqv / (1. + lcpk (k) * dqdt))
+            rh_tem = qpz / qsat
             if (use_rhc_revap .and. rh_tem .ge. rhc_revap) then
                 sink = 0.0
             endif
@@ -3140,6 +3141,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k))
 
         endif
+      endif
 
     enddo ! k loop
 
