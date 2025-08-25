@@ -56,7 +56,7 @@ module GEOS_RouteGridCompMod
      type (ESMF_RouteHandle) :: routeHandle
      type (ESMF_Field)       :: field
      type (RES_STATE)        :: reservoir
-     integer :: nTiles
+     integer :: n_pfaf_local
      integer :: nt_global
      integer :: nt_local
      integer :: comm
@@ -64,7 +64,6 @@ module GEOS_RouteGridCompMod
      integer :: myPe
      integer :: minCatch
      integer :: maxCatch
-     integer, pointer :: pfaf(:)           => NULL()
      real,    pointer :: tile_area(:)      => NULL()  ! m2
      integer, pointer :: nsub(:)           => NULL()
      integer, pointer :: subi(:,:)         => NULL()
@@ -243,6 +242,23 @@ contains
          RC=STATUS  ) 
     VERIFY_(STATUS)
 
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'area_of_catchment'        ,&
+         UNITS              = 'km+2'                     ,&
+         SHORT_NAME         = 'AREACAT'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         RC=STATUS  )
+
+
+   call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'wstream wstream mmm'     ,&
+         UNITS              = 'm3'                     ,&
+         SHORT_NAME         = 'WSTREAM'                 ,&
+         DIMS               = MAPL_DimsTileOnly         ,&
+         VLOCATION          = MAPL_VLocationNone        ,&
+                                         RC=STATUS  )
 !EOS
 
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
@@ -310,43 +326,35 @@ contains
 ! -----------------------------------------------------------
 ! Locals
 ! -----------------------------------------------------------
-
     type (ESMF_VM) :: VM
     integer        :: comm
     integer        :: nDEs
     integer        :: myPE
-    integer        :: beforeMe, minCatch, maxCatch, pf, i
-    integer        :: ntiles, nt_global
+    integer        :: beforeMe, minCatch, maxCatch, i
+    integer        :: n_pfaf_local, nt_global
 
     type(ESMF_Grid)     :: tileGrid
-    type(ESMF_Grid)     :: newTileGrid
-    type(ESMF_Grid)     :: catchGrid
+    type(ESMF_Grid)     :: newTileGrid, catchGrid
     type(ESMF_DistGrid) :: distGrid
-    type(ESMF_Field)    :: field, field0
+    type(ESMF_Field)    :: field_src
 
     type(MAPL_MetaComp), pointer   :: MAPL
-    type(MAPL_LocStream)           :: locstream
+    type(MAPL_LocStream)           :: locstream, catch_LocStream
 
     character(len=ESMF_MAXSTR)     :: River_RoutingFile    
     character(len=ESMF_MAXSTR)     :: gridname    
     type(ESMF_Grid)  :: agrid 
     
     integer, pointer :: ims(:) => NULL()
-    integer, pointer :: pfaf(:) => NULL()
-    integer, pointer :: arbSeq(:) => NULL()
-    integer, pointer :: arbSeq_pf(:) => NULL()    
-    integer, pointer :: arbSeq_ori(:) => NULL()    
-    integer, allocatable :: arbIndex(:,:)
-    real,    pointer :: tile_area_src(:) => NULL()
+    integer, allocatable :: arbIndex(:,:), arbSeq(:)
+    real,    pointer :: ptr(:)
+    real(kind=8), pointer :: centers(:,:)
     integer, pointer :: local_id(:)  => NULL()
     real,    pointer :: tile_area_local(:) => NULL(), tile_area_global(:) => NULL()
-    real,    pointer :: tile_area(:) => NULL()    
-    real,    pointer :: ptr2(:) => NULL()
 
     real,    pointer :: subarea_global(:,:)=> NULL(),subarea(:,:)=> NULL() ! Arrays for sub-area and fractions
     integer, pointer :: subi_global(:,:)=> NULL(),subi(:,:)=> NULL()
     integer, pointer :: nsub_global(:)=> NULL(),nsub(:)=> NULL()
-    real,    pointer :: area_cat_global(:)=> NULL(),area_cat(:)=> NULL()
     integer, pointer :: scounts(:)=>NULL()
     integer, pointer :: scounts_global(:)=>NULL(),rdispls_global(:)=>NULL()
     integer, pointer :: scounts_cat(:)=>NULL(),rdispls_cat(:)=>NULL()    
@@ -355,10 +363,12 @@ contains
     real,    pointer :: lengsc_global(:)=>NULL(), lengsc(:)=>NULL(), buff_global(:)=>NULL()
     integer, pointer :: downid_global(:)=>NULL(), downid(:)=>NULL()
     integer, pointer :: upid_global(:,:)=>NULL(), upid(:,:)=>NULL()    
-
+    integer, pointer :: pfaf_index(:)
+    integer, pointer :: mask(:)
+    integer, allocatable :: global_pfaf_index(:), global_id(:)
+    logical, allocatable :: msk(:)
     real,    pointer :: wstream(:)=>NULL(),wriver(:)=>NULL(),wres(:)=>NULL()
     real,    pointer :: wstream_global(:)=>NULL(),wriver_global(:)=>NULL(),wres_global(:)=>NULL()    
-    
     type (T_RROUTE_STATE), pointer :: route => null()
     type (RES_STATE),      pointer :: res => NULL()
     type (RROUTE_wrap)             :: wrap
@@ -369,12 +379,17 @@ contains
     character(len=2) :: mon_s,day_s    
     character(len=3) :: resname
 
-    real, pointer    :: dataPtr(:)
-    integer          :: j,nt_local,mpierr,it
+    
+    integer          :: j,nt_local,mpierr,it, nTiles
 
     ! ------------------
     ! begin
 
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+    ! get LocStream
+    call MAPL_Get(MAPL, LocStream = locstream, RC=status)
+    VERIFY_(STATUS) 
     
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)
@@ -389,8 +404,6 @@ contains
     call ESMF_VMGet       (VM, localpet=MYPE, petcount=nDEs,  RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
 
     route%comm = comm
     route%ndes = ndes
@@ -403,14 +416,7 @@ contains
     beforeMe = sum(ims(1:mype))
     minCatch = beforeMe + 1
     maxCatch = beforeMe + ims(myPe+1)
-    ! get LocStream
-    call MAPL_Get(MAPL, LocStream = locstream, RC=status)
-    VERIFY_(STATUS) 
-    ! extract Pfaf (TILEI on the "other" grid)    
-    call MAPL_LocStreamGet(locstream, &
-         tileGrid=tilegrid, nt_global=nt_global, RC=status)
-    VERIFY_(STATUS)     
-    route%nt_global = nt_global
+    
     ! Get grid info from the gridcomp
     call ESMF_GridCompGet(gc, grid=agrid, rc=status)
     VERIFY_(status)
@@ -430,19 +436,131 @@ contains
           stop
        endif
     endif
-    ! exchange Pfaf across PEs
-    call MAPL_LocStreamGet(locstream, TILEAREA = tile_area_src, LOCAL_ID=local_id, RC=status)
-    VERIFY_(STATUS) 
-    nt_local=size(tile_area_src,1) 
-    route%nt_local=nt_local       
-    ntiles = maxCatch-minCatch+1
-    allocate(arbSeq_pf(maxCatch-minCatch+1))
-    arbSeq_pf = [(i, i = minCatch, maxCatch)]   
-    route%pfaf => arbSeq_pf
-    route%ntiles = ntiles  
-    route%minCatch = minCatch
-    route%maxCatch = maxCatch 
 
+    call MAPL_LocStreamGet(locstream, &
+         tileGrid=tilegrid, nt_local=nt_local, nt_global=nt_global, pfaf_index=pfaf_index, &
+         LOCAL_ID=local_id, RC=status)
+    VERIFY_(STATUS)
+
+    route%nt_global   = nt_global
+    route%nt_local    = nt_local       
+    n_pfaf_local      = maxCatch-minCatch+1
+    route%n_pfaf_local= n_pfaf_local  
+    route%minCatch    = minCatch
+    route%maxCatch    = maxCatch 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    allocate(global_pfaf_index(nt_global))
+    allocate(global_id(nt_global))
+    
+    call MAPL_TileMaskGet(tilegrid, mask, _RC)
+    _VERIFY(STATUS)
+    call ArrayGather(pfaf_index, global_pfaf_index, tilegrid, mask=mask, _RC)
+    call MAPL_CommsBcast(vm, DATA = global_pfaf_index, N = nt_global,ROOT= MAPL_ROOT, _RC) 
+
+    msk    = global_pfaf_index >= minCatch .and. global_pfaf_index <=maxCatch
+    nTiles = count(msk)
+
+    call ArrayGather(local_id, global_id, tilegrid, mask=mask, _RC)
+    call MAPL_CommsBcast(vm, DATA= global_id, N = nt_global,ROOT= MAPL_ROOT, _RC) 
+    allocate(arbSeq(nTiles))
+    arbSeq = pack(global_id, msk)
+    
+    distgrid = ESMF_DistGridCreate(arbSeqIndexList=arbSeq, rc=status)
+    VERIFY_(STATUS)
+
+    newTileGRID = ESMF_GridEmptyCreate(rc=status)
+    VERIFY_(STATUS)
+
+    allocate(arbIndex(nTiles,1), stat=status)
+    VERIFY_(STATUS)
+
+    arbIndex(:,1) = arbSeq
+    call ESMF_GridSet(newTileGrid,                       &
+       name='redist_tile_grid_for_'//trim(COMP_NAME),    &
+       distgrid=distgrid,                                &
+       gridMemLBound=(/1/),                              &
+       indexFlag=ESMF_INDEX_USER,                        &
+       distDim = (/1/),                                  &
+       localArbIndexCount=nTiles,                        &
+       localArbIndex=arbIndex,                           &
+       minIndex=(/1/),                                   &
+       maxIndex=(/NT_GLOBAL/),                           &
+       rc=status)
+    VERIFY_(STATUS)
+    deallocate(arbIndex, arbSeq)
+    call ESMF_GridCommit(newTileGrid, rc=status)
+    VERIFY_(STATUS)
+
+    ! here we create a field with the value of pfaf_index, 
+    ! which can be verified after being redistributed.
+    field_src = ESMF_FieldCreate(grid=tilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
+         farrayPtr = pfaf_index, RC=STATUS)
+    VERIFY_(STATUS)
+
+    allocate(ptr(nTiles), source = 0.)
+    route%field = ESMF_FieldCreate(grid=newtilegrid, datacopyflag=ESMF_DATACOPY_VALUE,&
+            farrayPtr = ptr, RC=STATUS)
+    deallocate(ptr)
+    ! create routehandle
+    call ESMF_FieldRedistStore(srcField=field_src, dstField=route%field, &
+                routehandle=route%routehandle, rc=status)
+    VERIFY_(STATUS)
+
+    call ESMF_FieldRedist(srcField=field_src, dstField=route%field, &
+         routehandle=route%routehandle, rc=status)
+    VERIFY_(STATUS)
+    call ESMF_FieldGet(route%field, farrayPtr=ptr, _RC)
+
+    !verification, all the tiles are redistributed to pfaf space 
+    do i = 1, nTiles
+       _ASSERT( minCatch <= ptr(i) .and. ptr(i) <= maxcatch, "The redistribution of the handler is wrong")
+    enddo
+
+    call ESMF_FieldDestroy(field_src, rc=status)
+    VERIFY_(STATUS)
+
+    ! create catcment grid then its tilegrid for 
+    ! internal and export state
+
+    catchGrid = ESMF_GridCreate(         &
+        name='CATCHMENT_GRID',         &
+        countsPerDEDim1=IMs,           &
+        countsPerDEDim2=[1],           &
+        indexFlag=ESMF_INDEX_DELOCAL, &
+        coordDep1 = (/1,2/),           &
+        coordDep2 = (/1,2/),           &
+        gridEdgeLWidth = (/0,0/),      &
+        gridEdgeUWidth = (/0,0/),      &
+        _RC)
+   ! coord and centers are required for a valid grid
+   ! even their values don't make sense
+   ! later on the coord will be set to catchment's lat lon
+   call ESMF_GridAddCoord(catchGrid, rc=status)
+      _VERIFY(status)
+
+   call ESMF_GridGetCoord(catchGrid, coordDim=1, localDE=0, &
+         staggerloc=ESMF_STAGGERLOC_CENTER, &
+         farrayPtr=centers, _RC)
+    centers = 0 ! ?? just assign
+    call ESMF_GridGetCoord(catchGrid, coordDim=2, localDE=0, &
+       staggerloc=ESMF_STAGGERLOC_CENTER, &
+         farrayPtr=centers, _RC)
+    centers = 0 ! 
+
+    call MAPL%grid%set(catchGrid, _RC)
+
+    call ESMF_GridCompSet(gc, grid=catchGrid, RC=status)
+    VERIFY_(STATUS)
+
+    call MAPL_LocstreamCreate(catch_Locstream, catchGrid, rc=status)
+    VERIFY_(STATUS)
+    call MAPL_set(MAPL, locstream = catch_locstream, rc=status)
+    VERIFY_(STATUS)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     call MAPL_GetResource (MAPL, River_RoutingFile, label = 'River_Routing_FILE:',  default = 'river_input', RC=STATUS )
 
@@ -450,7 +568,7 @@ contains
     allocate(nsub_global(N_pfaf_g),subarea_global(nmax,N_pfaf_g))
     open(77,file=trim(River_RoutingFile)//"/Pfaf_nsub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)nsub_global; close(77)
     open(77,file=trim(River_RoutingFile)//"/Pfaf_asub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)subarea_global; close(77)       
-    allocate(nsub(ntiles),subarea(nmax,ntiles))
+    allocate(nsub(n_pfaf_local),subarea(nmax,n_pfaf_local))
     nsub=nsub_global(minCatch:maxCatch)
     subarea=subarea_global(:,minCatch:maxCatch)
     subarea=subarea*1.e6 !km2->m2
@@ -459,7 +577,7 @@ contains
     route%nsub    => nsub
     route%subarea => subarea
 
-    allocate(subi_global(nmax,N_pfaf_g),subi(nmax,ntiles))
+    allocate(subi_global(nmax,N_pfaf_g),subi(nmax,n_pfaf_local))
     open(77,file=trim(River_RoutingFile)//"/Pfaf_isub_"//trim(resname)//".txt",status="old",action="read");read(77,*)subi_global;close(77)
     subi=subi_global(:,minCatch:maxCatch)
     route%subi => subi
@@ -480,7 +598,7 @@ contains
 
     allocate(scounts(ndes),scounts_cat(ndes),rdispls_cat(ndes))
     scounts=0
-    scounts(mype+1)=ntiles  
+    scounts(mype+1)=n_pfaf_local  
     call MPI_Allgather(scounts(mype+1), 1, MPI_INTEGER, scounts_cat, 1, MPI_INTEGER, route%comm, mpierr) 
     rdispls_cat(1)=0
     do i=2,nDes
@@ -501,9 +619,9 @@ contains
     route%tile_area => tile_area_local
     deallocate(tile_area_global)
 
-    allocate(areacat(1:ntiles))
+    allocate(areacat(1:n_pfaf_local))
     areacat=0. 
-    do i=1,ntiles
+    do i=1,n_pfaf_local
        do j=1,nmax
           it=route%subi(j,i) 
           if(it>0)then 
@@ -515,19 +633,19 @@ contains
     route%areacat=>areacat
 
     ! Read river network-realated data
-    allocate(lengsc_global(N_pfaf_g),lengsc(ntiles))   
+    allocate(lengsc_global(N_pfaf_g),lengsc(n_pfaf_local))   
     open(77,file=trim(River_RoutingFile)//"/Pfaf_lriv_PR.txt",status="old",action="read");read(77,*)lengsc_global;close(77)
     lengsc=lengsc_global(minCatch:maxCatch)*1.e3 !km->m
     route%lengsc=>lengsc
     deallocate(lengsc_global)
 
-    allocate(downid_global(N_pfaf_g),downid(ntiles))
+    allocate(downid_global(N_pfaf_g),downid(n_pfaf_local))
     open(77,file=trim(River_RoutingFile)//"/downstream_1D_new_noadj.txt",status="old",action="read");read(77,*)downid_global;close(77)    
     downid=downid_global(minCatch:maxCatch)
     route%downid=>downid
     deallocate(downid_global)
 
-    allocate(upid_global(upmax,N_pfaf_g),upid(upmax,ntiles))   
+    allocate(upid_global(upmax,N_pfaf_g),upid(upmax,n_pfaf_local))   
     open(77,file=trim(River_RoutingFile)//"/upstream_1D.txt",status="old",action="read");read(77,*)upid_global;close(77)  
     upid=upid_global(:,minCatch:maxCatch)   
     route%upid=>upid
@@ -540,7 +658,7 @@ contains
     write(mon_s,'(I2.2)')MM
     write(day_s,'(I2.2)')DD    
     if(mapl_am_I_root())print *, "init time is ", YY, "/", MM, "/", DD, " ", HH, ":", MMM, ":", SS    
-    allocate(wriver(ntiles),wstream(ntiles),wres(ntiles))
+    allocate(wriver(n_pfaf_local),wstream(n_pfaf_local),wres(n_pfaf_local))
     allocate(wriver_global(N_pfaf_g),wstream_global(N_pfaf_g),wres_global(N_pfaf_g))
     open(77,file="../input/restart/river_storage_rs_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",status="old",action="read",iostat=status)
     if(status==0)then
@@ -611,7 +729,7 @@ contains
     route%reservoir%Wr_res=>wres
 
     ! accumulated variables for output 
-    allocate(route%wriver_acc(ntiles),route%wstream_acc(ntiles),route%qoutflow_acc(ntiles),route%qsflow_acc(ntiles),route%reservoir%qres_acc(ntiles))
+    allocate(route%wriver_acc(n_pfaf_local),route%wstream_acc(n_pfaf_local),route%qoutflow_acc(n_pfaf_local),route%qsflow_acc(n_pfaf_local),route%reservoir%qres_acc(n_pfaf_local))
     route%wriver_acc=0.
     route%wstream_acc=0.
     route%qoutflow_acc=0.
@@ -619,39 +737,39 @@ contains
     route%reservoir%qres_acc=0.
 
     !Read input specially for geometry hydraulic (not required by linear model)
-    allocate(buff_global(N_pfaf_g),route%lstr(ntiles))   
+    allocate(buff_global(N_pfaf_g),route%lstr(n_pfaf_local))   
     open(77,file=trim(River_RoutingFile)//"/Pfaf_lstr_PR.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%lstr=buff_global(minCatch:maxCatch)*1.e3 !km->m
     deallocate(buff_global)   
 
-    allocate(buff_global(N_pfaf_g),route%K(ntiles))   
+    allocate(buff_global(N_pfaf_g),route%K(n_pfaf_local))   
     open(77,file=trim(River_RoutingFile)//"/Pfaf_Kv_PR_0p35_0p45_0p2_n0p2.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%K=buff_global(minCatch:maxCatch) 
     deallocate(buff_global)  
 
-    allocate(buff_global(N_pfaf_g),route%Kstr(ntiles))   
+    allocate(buff_global(N_pfaf_g),route%Kstr(n_pfaf_local))   
     open(77,file=trim(River_RoutingFile)//"/Pfaf_Kstr_PR_fac1_0p35_0p45_0p2_n0p2.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%Kstr=buff_global(minCatch:maxCatch)
     deallocate(buff_global)     
 
-    allocate(buff_global(N_pfaf_g),route%qri_clmt(ntiles))   
+    allocate(buff_global(N_pfaf_g),route%qri_clmt(n_pfaf_local))   
     open(77,file=trim(River_RoutingFile)//"/Pfaf_qri.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%qri_clmt=buff_global(minCatch:maxCatch) !m3/s
     deallocate(buff_global)      
 
-    allocate(buff_global(N_pfaf_g),route%qin_clmt(ntiles))   
+    allocate(buff_global(N_pfaf_g),route%qin_clmt(n_pfaf_local))   
     open(77,file=trim(River_RoutingFile)//"/Pfaf_qin.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%qin_clmt=buff_global(minCatch:maxCatch) !m3/s
     deallocate(buff_global)  
 
-    allocate(buff_global(N_pfaf_g),route%qstr_clmt(ntiles))   
+    allocate(buff_global(N_pfaf_g),route%qstr_clmt(n_pfaf_local))   
     open(77,file=trim(River_RoutingFile)//"/Pfaf_qstr.txt",status="old",action="read");read(77,*)buff_global;close(77)
     route%qstr_clmt=buff_global(minCatch:maxCatch) !m3/s
     deallocate(buff_global) 
 
     !Initial reservoir module
     res => route%reservoir
-    call res_init(River_RoutingFile,N_pfaf_g,ntiles,minCatch,maxCatch,use_res,res%active_res,res%type_res,res%cap_res,res%fld_res,res%Qfld_thres,res%cat2res,res%wid_res)
+    call res_init(River_RoutingFile,N_pfaf_g,n_pfaf_local,minCatch,maxCatch,use_res,res%active_res,res%type_res,res%cap_res,res%fld_res,res%Qfld_thres,res%cat2res,res%wid_res)
     if(mapl_am_I_root()) print *,"reservoir init success" 
 
     !if (mapl_am_I_root())then
@@ -659,7 +777,7 @@ contains
     !  open(89,file="subarea.txt",action="write")
     !  open(90,file="subi.txt",action="write")
     !  open(91,file="tile_area.txt",action="write")
-    !  do i=1,nTiles
+    !  do i=1,n_pfaf_local
     !    write(88,*)route%nsub(i)
     !    write(89,'(150(1x,f10.4))')route%subarea(:,i)
     !    write(90,'(150(i7))')route%subi(:,i)
@@ -718,18 +836,15 @@ contains
 ! -----------------------------------------------------------
 ! Locals
 ! -----------------------------------------------------------
-
-    type (MAPL_MetaComp),     pointer   :: MAPL
     type (ESMF_State       )            :: INTERNAL
+    type (MAPL_MetaComp),     pointer   :: MAPL
 !    type(ESMF_Alarm)                    :: ALARM
     type (ESMF_Config )                 :: CF
-    type(ESMF_VM)                       :: VM
 
 ! -----------------------------------------------------
 ! IMPORT pointers
 ! ----------------------------------------------------- 
 
-    real, dimension(:), pointer :: RUNOFF 
     real, dimension(:), pointer :: RUNOFF_SRC0   
 
 ! -----------------------------------------------------
@@ -748,7 +863,7 @@ contains
 ! EXPORT pointers 
 ! -----------------------------------------------------
 
-    real, dimension(:), pointer :: QSFLOW
+    real, dimension(:,:), pointer :: QSFLOW
     real, dimension(:), pointer :: QINFLOW
     real, dimension(:), pointer :: QOUTFLOW
   
@@ -761,30 +876,22 @@ contains
     type(ESMF_Grid)                    :: TILEGRID
     type (MAPL_LocStream)              :: LOCSTREAM
  
-    integer                            :: NTILES, N_CatL, N_CYC
+    integer                            :: n_pfaf_local, N_CYC
     logical, save                      :: FirstTime=.true.
-    real, pointer, dimension(:)    :: tile_area
-    integer, pointer, dimension(:) :: pfaf_code
 
-    INTEGER, DIMENSION(:,:), POINTER, SAVE   :: AllActive,DstCatchID 
-    INTEGER, DIMENSION(:), ALLOCATABLE, SAVE :: srcProcsID, LocDstCatchID  
-    integer, dimension (:),allocatable, SAVE :: GlbActive
-    INTEGER, SAVE                            :: N_Active, ThisCycle=1  
-    INTEGER                                  :: Local_Min, Local_Max
-    integer                                  :: K, N, I, req
-    REAL                                     :: mm2m3, rbuff, HEARTBEAT 
-    REAL, ALLOCATABLE, DIMENSION(:)          :: RUNOFF_CATCH, RUNOFF_ACT,AREACAT_ACT,& 
+    INTEGER, SAVE                            :: ThisCycle=1  
+    integer                                  :: I
+    REAL                                     :: HEARTBEAT 
+    REAL, ALLOCATABLE, DIMENSION(:)          :: RUNOFF_ACT,AREACAT_ACT,& 
          LENGSC_ACT, QSFLOW_ACT,QOUTFLOW_ACT,QRES_ACT,QOUT_CAT
-    INTEGER, ALLOCATABLE, DIMENSION(:)       :: tmp_index
     type(ESMF_Field) :: runoff_src
 
     integer                                :: ndes, mype
     type (T_RROUTE_STATE), pointer         :: route => null()
     type (RROUTE_wrap)                     :: wrap
-    INTEGER, DIMENSION(:)  ,ALLOCATABLE  :: scounts, scounts_global,rdispls, rcounts  
-    real, dimension(:), pointer :: runoff_global,runoff_local,area_local,runoff_cat_global    
+    real, dimension(:), pointer :: runoff_global
 
-    integer :: mpierr, nt_global,nt_local, it, j, upid,cid,temp(1),tid,istat
+    integer :: mpierr, nt_global,nt_local, it, j, upid,istat
     integer,save :: nstep_per_day
 
     type(ESMF_Time) :: CurrentTime, nextTime
@@ -797,9 +904,8 @@ contains
     real,             pointer     :: WRIVER_ACT(:) =>NULL()
     type (RES_STATE), pointer     :: res => NULL()    
 
-    real,             allocatable :: runoff_save_m3(:),runoff_global_m3(:),QOUTFLOW_GLOBAL(:),Qres_global(:)
-    real,             allocatable :: WTOT_BEFORE(:),WTOT_AFTER(:),QINFLOW_LOCAL(:),UNBALANCE(:),UNBALANCE_GLOBAL(:),ERROR(:),ERROR_GLOBAL(:)
-    real,             allocatable :: QFLOW_SINK(:),QFLOW_SINK_GLOBAL(:),WTOT_BEFORE_GLOBAL(:),WTOT_AFTER_GLOBAL(:)
+    real,             allocatable :: QOUTFLOW_GLOBAL(:),Qres_global(:)
+    real,             allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:)
     real,             allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:),wres_global(:)
     
     ! ------------------
@@ -823,9 +929,18 @@ contains
     call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, RC=STATUS)
     VERIFY_(STATUS)
     !if (mapl_am_I_root()) print *, "HEARTBEAT=",HEARTBEAT 
+
+    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetPointer(INTERNAL, AREACAT,'AREACAT', RC=STATUS); VERIFY_(STATUS)
+
+    !call MAPL_GetPointer(EXPORT, QSFLOW, 'QSFLOW', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, WSTREAM,'WSTREAM', RC=STATUS); VERIFY_(STATUS)
+
+    AREACAT = route%areacat
 ! Start timers
 ! ------------
-
     call MAPL_TimerOn(MAPL,"RUN2")
 ! Get parameters from generic state
 ! ---------------------------------
@@ -835,13 +950,13 @@ contains
 ! get pointers to inputs variables
 ! ----------------------------------
 
-    ndes        =  route%ndes
-    mype        =  route%mype  
-    ntiles      =  route%ntiles  
-    nt_global   =  route%nt_global  
-    runoff_save => route%runoff_save
-    nt_local    =  route%nt_local
-    res         => route%reservoir
+    ndes          =  route%ndes
+    mype          =  route%mype  
+    n_pfaf_local  =  route%n_pfaf_local  
+    nt_global     =  route%nt_global  
+    runoff_save   => route%runoff_save
+    nt_local      =  route%nt_local
+    res           => route%reservoir
 
     ! get the field from IMPORT
     call ESMF_StateGet(IMPORT, 'RUNOFF', field=runoff_src, RC=STATUS)
@@ -881,9 +996,9 @@ contains
 
        !Distribute runoff from tile space to catchment space
        if(FirstTime.and.mapl_am_I_root()) print *,"nmax=",nmax
-       allocate(RUNOFF_ACT(ntiles))
+       allocate(RUNOFF_ACT(n_pfaf_local))
        RUNOFF_ACT=0.
-       do i=1,ntiles
+       do i=1,n_pfaf_local
           do j=1,nmax
              it=route%subi(j,i) 
              if(it>0)then
@@ -896,10 +1011,10 @@ contains
        deallocate(runoff_global) 
 
        ! Prepares to conduct routing model
-       allocate (AREACAT_ACT (ntiles))       
-       allocate (LENGSC_ACT  (ntiles))
-       allocate (QSFLOW_ACT  (ntiles))
-       allocate (QOUTFLOW_ACT(ntiles),QRES_ACT(ntiles),QOUT_CAT(ntiles))  
+       allocate (AREACAT_ACT (n_pfaf_local))       
+       allocate (LENGSC_ACT  (n_pfaf_local))
+       allocate (QSFLOW_ACT  (n_pfaf_local))
+       allocate (QOUTFLOW_ACT(n_pfaf_local),QRES_ACT(n_pfaf_local),QOUT_CAT(n_pfaf_local))  
 
        QRES_ACT=0.
        LENGSC_ACT=route%lengsc/1.e3 !m->km
@@ -909,22 +1024,22 @@ contains
        WRIVER_ACT => route%wriver
 
 
-       allocate(WTOT_BEFORE(ntiles))
+       allocate(WTOT_BEFORE(n_pfaf_local))
        WTOT_BEFORE=WSTREAM_ACT+WRIVER_ACT+res%Wr_res
 
        ! Call river_routing_model
        ! ------------------------     
-       !CALL RIVER_ROUTING_LIN  (ntiles, RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,  &
+       !CALL RIVER_ROUTING_LIN  (n_pfaf_local, RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,  &
        !     WSTREAM_ACT,WRIVER_ACT, QSFLOW_ACT,QOUTFLOW_ACT) 
 
-       CALL RIVER_ROUTING_HYD  (ntiles, &
+       CALL RIVER_ROUTING_HYD  (n_pfaf_local, &
             RUNOFF_ACT, route%lengsc, route%lstr, &
             route%qstr_clmt, route%qri_clmt, route%qin_clmt, &
             route%K, route%Kstr, &
             WSTREAM_ACT,WRIVER_ACT, &
             QSFLOW_ACT,QOUTFLOW_ACT)  
        ! Call reservoir module        
-       do i=1,ntiles
+       do i=1,n_pfaf_local
           call res_cal(res%active_res(i),QOUTFLOW_ACT(i),res%type_res(i),res%cat2res(i),&
                QRES_ACT(i),res%wid_res(i),res%fld_res(i),res%Wr_res(i),res%Qfld_thres(i),res%cap_res(i),real(route_dt))
        enddo
@@ -939,9 +1054,9 @@ contains
             route%comm, mpierr)      
 
        ! Linking discharge as inflow to downstream catchment to adjust river storage
-       allocate(QINFLOW_LOCAL(ntiles))
+       allocate(QINFLOW_LOCAL(n_pfaf_local))
        QINFLOW_LOCAL=0.
-       do i=1,nTiles
+       do i=1,n_pfaf_local
           do j=1,upmax
              if(route%upid(j,i)>0)then
                 upid=route%upid(j,i)
@@ -954,7 +1069,7 @@ contains
        enddo
 
        ! Check balance if needed
-       !call check_balance(route,ntiles,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
+       !call check_balance(route,n_pfaf_local,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
 
        ! Update accumulated variables for output
        if(FirstTime) nstep_per_day = 86400/route_dt
@@ -1042,6 +1157,7 @@ contains
        !write restart
        if(MM_next/=MM)then
           allocate(wriver_global(N_pfaf_g),wstream_global(N_pfaf_g))
+          if (associated(WSTREAM)) WSTREAM = route%wstream
           call MPI_allgatherv  (                          &
                route%wstream,  route%scounts_cat(mype+1)      ,MPI_REAL, &
                wstream_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
@@ -1109,12 +1225,12 @@ contains
   
   ! -------------------------------------------------------------------------------------------------------
 
-  subroutine check_balance(route,ntiles,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUTFLOW_ACT,FirstTime,yr_s,mon_s)
+  subroutine check_balance(route,n_pfaf_local,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUTFLOW_ACT,FirstTime,yr_s,mon_s)
     
     type(T_RROUTE_STATE), intent(in) :: route 
-    integer,              intent(in) :: ntiles,nt_local
-    real,                 intent(in) :: runoff_save(nt_local),WRIVER_ACT(ntiles),WSTREAM_ACT(ntiles),WTOT_BEFORE(ntiles),RUNOFF_ACT(ntiles)
-    real,                 intent(in) :: QINFLOW_LOCAL(ntiles),QOUTFLOW_ACT(ntiles)
+    integer,              intent(in) :: n_pfaf_local,nt_local
+    real,                 intent(in) :: runoff_save(nt_local),WRIVER_ACT(n_pfaf_local),WSTREAM_ACT(n_pfaf_local),WTOT_BEFORE(n_pfaf_local),RUNOFF_ACT(n_pfaf_local)
+    real,                 intent(in) :: QINFLOW_LOCAL(n_pfaf_local),QOUTFLOW_ACT(n_pfaf_local)
     logical,              intent(in) :: FirstTime
     character(len=*),     intent(in) :: yr_s,mon_s
 
@@ -1131,9 +1247,9 @@ contains
     nt_global = route%nt_global
     mype = route%mype   
 
-    allocate(WTOT_AFTER(ntiles),UNBALANCE(ntiles),UNBALANCE_GLOBAL(N_pfaf_g),runoff_cat_global(N_pfaf_g))
-    allocate(QFLOW_SINK(ntiles),QFLOW_SINK_GLOBAL(N_pfaf_g),WTOT_BEFORE_GLOBAL(N_pfaf_g),WTOT_AFTER_GLOBAL(N_pfaf_g))
-    allocate(runoff_save_m3(nt_local),runoff_global_m3(nt_global),ERROR(ntiles),ERROR_GLOBAL(N_pfaf_g))
+    allocate(WTOT_AFTER(n_pfaf_local),UNBALANCE(n_pfaf_local),UNBALANCE_GLOBAL(N_pfaf_g),runoff_cat_global(N_pfaf_g))
+    allocate(QFLOW_SINK(n_pfaf_local),QFLOW_SINK_GLOBAL(N_pfaf_g),WTOT_BEFORE_GLOBAL(N_pfaf_g),WTOT_AFTER_GLOBAL(N_pfaf_g))
+    allocate(runoff_save_m3(nt_local),runoff_global_m3(nt_global),ERROR(n_pfaf_local),ERROR_GLOBAL(N_pfaf_g))
 
     WTOT_AFTER=WRIVER_ACT+WSTREAM_ACT+route%reservoir%Wr_res
     ERROR = WTOT_AFTER - (WTOT_BEFORE + RUNOFF_ACT*route_dt + QINFLOW_LOCAL*route_dt - QOUTFLOW_ACT*route_dt)
@@ -1143,7 +1259,7 @@ contains
     !     UNBALANCE_GLOBAL, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
     !     route%comm, mpierr)           
     QFLOW_SINK=0.
-    do i=1,ntiles
+    do i=1,n_pfaf_local
        if(route%downid(i)==-1)then
           QFLOW_SINK(i) = QOUTFLOW_ACT(i)
        endif
