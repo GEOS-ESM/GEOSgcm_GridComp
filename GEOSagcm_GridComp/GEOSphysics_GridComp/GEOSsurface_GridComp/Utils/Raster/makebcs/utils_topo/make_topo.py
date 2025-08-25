@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 #
 # run as ./make_topo.py
-# NOTE: running c5760 and c270 requires 2 nodes and 4h 
+#
+# NOTE run time setups:
+# c180, c360, c720, c1080, c1440, c2880, c1536, c1120, c2160 all need 1 node : 1h
+# c5760, c540, c270 and c48 require 2 nodes :  4h 
+# c90 1 node  : 3h
+# c24 2 nodes : 8h
+# c12 2 nodes : 19h - has to be run with qos=long
 #
 import os
 import subprocess
 import shlex
-import ruamel.yaml
-import shutil
 import questionary
 import pathlib
 
 #Bigger smoothing_scale ⇒ stronger smoothing ⇒ smaller GWD (less roughness).
 smoothmap ={ 
 #  # uniform
-             'C12'  : 608.4,
-             'C24'  : 365.94,
-             'C48'  : 216.31,
+             'C12'  : 512.0,
+             'C24'  : 305.0,
+             'C48'  : 166.0,
              'C90'  : 96.2,
              'C180' : 51.21,
              'C360' : 28.95,
@@ -79,37 +83,13 @@ if ( ! -e landm_coslat.nc ) then
 endif
 
 set source_topo = gmted_intel
-set cutoff = 50
 set smooths = {SMOOTHMAP}
 set resolutions = {RESOLUTIONS}
-set lowres  = 0
-set highres = 0
 set SG001 = ( 270 540 1080 2160 )
 set SG002 = ( 1536 )
 
-# Update flags based on requested resolutions
-foreach res ($resolutions)
-  if ($res < $cutoff) then
-    set lowres = 1
-  else if ($res >= $cutoff) then
-    set highres = 1
-  endif
-end
-
-# Generate low-resolution intermediate cube (360) for c12, c24, c48
-if ($lowres == 1) then
-cat << _EOF_ > bin_to_cube.nl
-&binparams
-  raw_latlon_data_file='{raw_latlon_data}'
-  output_file='c360.gmted_fixedanarticasuperior.nc'
-  ncube=360
-/
-_EOF_
-  bin/bin_to_cube.x
-endif
-
-# Generate high-resolution intermediate cube (3000) for all other resolutions
-if ($highres == 1) then
+# Generate a single high-resolution intermediate cube (3000) for ALL resolutions
+if ( ! -e c3000.gmted_fixedanarticasuperior.nc ) then
 cat << _EOF_ > bin_to_cube.nl
 &binparams
   raw_latlon_data_file='{raw_latlon_data}'
@@ -118,6 +98,14 @@ cat << _EOF_ > bin_to_cube.nl
 /
 _EOF_
   bin/bin_to_cube.x
+else
+  echo "Reusing existing c3000.gmted_fixedanarticasuperior.nc"
+endif
+
+# Use the same intermediate for all resolutions
+set intermediate_cube = c3000.gmted_fixedanarticasuperior.nc
+if ( ! -e $intermediate_cube ) then
+  echo "ERROR: Missing $intermediate_cube after generation"; exit 2
 endif
 
 @ count = 1
@@ -202,12 +190,8 @@ _EOF_
        exit 1
    endif
 
-   if ( $im < $cutoff ) then
-       set intermediate_cube = c360.gmted_fixedanarticasuperior.nc
-   else
-       set intermediate_cube = c3000.gmted_fixedanarticasuperior.nc
-   endif
-
+   echo "IM=$im  -> using intermediate: $intermediate_cube"
+  
    #--------------------------------------------------------
    # Build jmax/rrfac flags
    #--------------------------------------------------------
@@ -229,7 +213,7 @@ _EOF_
             --name_email_of_creator=gmao \
             --fine_radius=0 \
             --output_grid=$output_grid \
-            --source_data_identifier=gmted_intel \
+            --source_data_identifier=$source_topo \
             $rrfac $extra_cli
 
       # Safety check after cube_to_target.x
