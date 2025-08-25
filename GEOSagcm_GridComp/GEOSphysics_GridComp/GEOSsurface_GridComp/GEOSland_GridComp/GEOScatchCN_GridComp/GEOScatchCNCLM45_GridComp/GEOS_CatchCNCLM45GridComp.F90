@@ -4445,7 +4445,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(MAPL_MetaComp),pointer     :: MAPL
     type(ESMF_Alarm)                :: ALARM
     integer :: IM,JM
-    integer :: incl_Louis_extra_derivs
 
     real    :: SCALE4Z0
 
@@ -4470,8 +4469,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -6015,9 +6012,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         !--------------- GOSWIM IMPORTS FROM GOCART ---------------
         ! Initialization 
-        RCONSTIT(:,:,:)  = 0.0
-        TOTDEPOS(:,:) = 0.0
-        RMELT(:,:)  = 0.0
+        if (N_constit>0) then
+           RCONSTIT(:,:,:)  = 0.0
+           TOTDEPOS(:,:) = 0.0
+           RMELT(:,:)  = 0.0
+        end if
         !------------------------------------------------------------------
 
         ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
@@ -6057,6 +6056,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            
         end select
 
+        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
+        
 ! Convert the dimentions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
 ! Note: Explanations of each variable
 ! TOTDEPOS(:,1): Combined dust deposition from size bin 1 (dry, conv-scav, ls-scav, sed)
@@ -6094,8 +6095,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !        TOTDEPOS(:,15) = SSDP(:,5) + SSSV(:,5) + SSWT(:,5) + SSSD(:,5)
 
 ! --------------- GOSWIM PROGRNOSTICS ---------------------------
-
-        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
 
            ! Conversion of the masses of the snow impurities
            ! Note: Explanations of each variable
@@ -6183,7 +6182,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ALWN(:,N) = -3.0*BLWN(:,N)*TC(:,N)
               BLWN(:,N) =  4.0*BLWN(:,N)
            end do
-           if(catchcn_internal%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1) then
+           if(catchcn_internal%CHOOSEMOSFC==0 .and. catchcn_internal%MOSFC_EXTRA_DERIVS_OFFL_LAND==1) then
               do N=1,NUM_SUBTILES
                  DEVSBT(:,N)=CQ(:,N)+max(0.0,-DCQ(:,N)*MAPL_VIREPS*TC(:,N)*(QC(:,N)-QA))
                  DEDTC(:,N) =max(0.0,-DCQ(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(QC(:,N)-QA))
@@ -6223,8 +6222,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! get total solid precip
         ! --------------------------------------------------------------------------
 
-        SLDTOT = SNO+ICE+FRZR
+        SLDTOT = SNO+ICE      ! do *not* add FRZR (freezing rain) to solid precip, see comment below
 
+        ! FRZR (freezing rain) is rain that falls as super-cooled liquid water, which freezes upon
+        !      impact on a sufficiently cold surface.  As such, FRZR is *not* solid precipitation
+        !      and should be considered rainfall.
+        !
+        ! As of Jun 2025, FRZR is identical to 0 and can be ignored.  Looking ahead, make sure to
+        !      account correctly for FRZR in the input precipitation variables.  Once it's filled
+        !      with non-zero values, FRZR will (probably) be included in PLS+PCU.  It is (probably)
+        !      better to replace PCU & PLS with RAIN and FRZR, where RAIN (probably) does *not*
+        !      include FRZR and PCU+PLS=RAIN+FRZR (TO BE CONFIRMED!).
+        !
+        ! - reichle, 6/6/2025
+        
 	! --------------------------------------------------------------------------
 	! protect the forcing from unsavory values, as per practice in offline
 	! driver
@@ -7800,15 +7811,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(FICE2 )) FICE2  = max( min( FICESOUT(2,:),1.0 ), 0.0 )
         if(associated(FICE3 )) FICE3  = max( min( FICESOUT(3,:),1.0 ), 0.0 )
 
-        if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
-        if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
-        if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
-        if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
-        if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
-        if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
-        if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
-        if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
-        if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        if (N_constit>0) then
+           if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
+           if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
+           if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
+           if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
+           if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
+           if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
+           if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
+           if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
+           if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9)
+        end if
+
         if(associated(PEATCLSM_FSWCHANGE )) then
            where (POROS >= PEATCLSM_POROS_THRESHOLD)
               PEATCLSM_FSWCHANGE = FSW_CHANGE

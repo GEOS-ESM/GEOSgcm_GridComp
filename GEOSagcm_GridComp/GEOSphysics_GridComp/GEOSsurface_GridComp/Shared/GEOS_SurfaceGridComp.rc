@@ -2,15 +2,11 @@
 #                                                                                  #
 #    Resource file for surface parameters, *jointly* used by the GCM and GEOSldas. #     
 #                                                                                  #
-#    Different default values for the GCM and GEOSldas are supported as follows:   #
-#                                                                                  #
-#    - Lines that are NOT commented out can be used to specify GCM defaults as     #
-#        needed, because they are ignored by GEOSldas.                             #
-#                                                                                  #
-#    - The string "GEOSldas=>" identifies the GEOSldas default.                    # 
-#                                                                                  #
-#    This works because this resource file is processed by the GEOSldas            #
-#      script "ldas_setup".                                                        #
+#    Different default values for the GCM and GEOSldas are supported because       #
+#    because this resource file is processed by setup scripts (gcm_setup,          #
+#    fvsetup, ldas_setup).                                                         #
+#    The setup scripts uncomment the appropriate default values by removing the    #
+#    the appropriate '# GEOS[xxxx]=>' strings.                                     # 
 #                                                                                  #
 #    NOTE: For the GCM, there must NOT be white space between the resource         #
 #          parameter name and the colon.                                           #                                         
@@ -29,13 +25,20 @@
 #                                                                                  #
 #################################################################################### 
 
-# ---- Surface layer turbulence scheme
+# ---- Monin-Obukhov (MO) surface layer turbulence scheme
 #
 #    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2/8.1/9.1/10.0)
-#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
+#    1 : Helfand                (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
 #
-# GEOSagcm=>CHOOSEMOSFC: 1
-# GEOSldas=>CHOOSEMOSFC: 0
+#    Note: For *offline* simulations, optional use of extra MO derivatives is supported
+#          through rc parameter MOSFC_EXTRA_DERIVS_LAND (see catch_wrap_state.F90).
+#
+# GEOSagcm=>CHOOSEMOSFC:                  1
+# GEOSagcm=>MOSFC_EXTRA_DERIVS_OFFL_LAND: 0
+#
+# GEOSldas=>CHOOSEMOSFC:                  0
+# GEOSldas=>MOSFC_EXTRA_DERIVS_OFFL_LAND: 1
+
 
 # ---- Thickness of surface layer for soil moisture [mm]
 #
@@ -120,7 +123,7 @@
 #           - backfilled with global land average snow albedo where unavailable
 #           - must use compatible bcs version that includes MODIS-based snow albedo (e.g., v06, v08, v09, ...)
 #           - NOTE: bcs v06, v08, and v09 used approximate averaging of MODIS-based snow albedo to tile space;
-#                   bcs v11 and v12 employ more accurate, raster-based averaging.
+#                   bcs v11, v12 and v13  employ more accurate, raster-based averaging.
 #
 # GEOSagcm=>SNOW_ALBEDO_INFO: 0
 # GEOSldas=>SNOW_ALBEDO_INFO: 0
@@ -129,13 +132,15 @@
 #    GOSWIM aerosol deposition on surface snow           #
 #--------------------------------------------------------#
 
+# *** NOTE: GOSWIM is DISABLED via hardcoded N_constit=0 in StieglitzSnow.F90 *** 
+
 # ---- Aerosol deposition on snow (available only with MERRA-2 forcings)
 #
 #    0 : GOCART aerosol are NOT used (default)
-#    1 : Use all GOCART aerosol data 
-#    2 : Use GOCART aerosols *except* dust 
-#    3 : Use GOCART aerosols *except* black carbon 
-#    4 : Use GOCART aerosols *except* organic carbon
+#    DISABLED: 1 : Use all GOCART aerosol data 
+#    DISABLED: 2 : Use GOCART aerosols *except* dust 
+#    DISABLED: 3 : Use GOCART aerosols *except* black carbon 
+#    DISABLED: 4 : Use GOCART aerosols *except* organic carbon
 #
 # GEOSagcm=>AEROSOL_DEPOSITION: 0
 # GEOSldas=>AEROSOL_DEPOSITION: 0
@@ -145,7 +150,7 @@
 # NOTE: There are separate parameters for LAND and LANDICE
 #
 #    0 : Default, GOSWIM snow albedo scheme is turned OFF for land/landice
-#    9 : GOSWIM snow albedo scheme is turned ON for land/landice
+#    DISABLED: 9 : GOSWIM snow albedo scheme is turned ON for land/landice
 #
 # GEOSagcm=>N_CONST_LAND4SNWALB: 0
 # GEOSldas=>N_CONST_LAND4SNWALB: 0
