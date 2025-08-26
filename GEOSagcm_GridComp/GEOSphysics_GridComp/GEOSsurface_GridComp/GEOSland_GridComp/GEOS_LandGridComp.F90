@@ -14,12 +14,14 @@ module GEOS_LandGridCompMod
 ! to determine relevant time-dependent land-surface characteristics.
 ! All parameters calculated in VegdynGridComp are required by CatchGridComp.
 ! Furthermore, several exports of the Vegdyn routines are also exports
-! from the Land composite, for use in other modules, such as the case
-! for lai and grn needed in radiation.  Vegdyn will be updated first.
-! Then the catchment call will be issued.  The composite exports
-! consist of the union of the catchment exports with a subset of the 
-! vegdyn exports.  All imports and exports are on the prescribed tile
-! grid in the (IM, JM)=(NTILES, 1) convention.  
+! from the Land composite, for use in other modules.  For example,
+! lai and grn are needed in radiation.  Vegdyn will be updated first.
+! Then the Catch[CN] Phase=1 call will be issued.  IrrigationGridComp
+! computes the irrigation rate IMPORT required by Catch[CN], 
+! followed by Catch[CN] Phase=2 (incl. application of irrigation).
+! The composite exports consist of the union of the catchment exports with a 
+! subset of the vegdyn and Irrigation exports.  All imports and exports are 
+! on the prescribed tile grid in the (IM, JM)=(NTILES, 1) convention.  
 
 !
 ! !USES:
@@ -27,11 +29,12 @@ module GEOS_LandGridCompMod
   use ESMF
   use MAPL
 
-  use GEOS_VegdynGridCompMod,  only : VegdynSetServices   => SetServices
-  use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
-  use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
-  use GEOS_IgniGridCompMod,    only : IgniSetServices     => SetServices
-!  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
+  use GEOS_VegdynGridCompMod,     only : VegdynSetServices     => SetServices
+  use GEOS_CatchGridCompMod,      only : CatchSetServices      => SetServices
+  use GEOS_CatchCNGridCompMod,    only : CatchCNSetServices    => SetServices
+  use GEOS_IgniGridCompMod,       only : IgniSetServices       => SetServices
+  use GEOS_IrrigationGridCompMod, only : IrrigationSetServices => SetServices
+  !  use GEOS_RouteGridCompMod,   only : RouteSetServices      => SetServices
 
   implicit none
   private
@@ -45,8 +48,8 @@ module GEOS_LandGridCompMod
 
 
   integer                                 :: VEGDYN
-  integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
-  integer                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
+  integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:), IRRIGATION(:)
+  integer                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM, RUN_IRRIG
   integer                                 :: IGNI
   logical                                 :: DO_FIRE_DANGER
 
@@ -65,10 +68,11 @@ contains
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
     integer, optional                  :: RC  ! return code
 
-! !DESCRIPTION:  The SetServices for the Physics GC needs to register its
+! !DESCRIPTION:  The SetServices for the Land GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
 !   state specs and couplings among its children.  In addition, it creates the   
-!   children GCs (VegDyn, Catch, CatchCN, Route) and runs their respective SetServices.
+!   children GCs (VegDyn, Catch, CatchCN, Irrigation, Route) and runs their 
+!   respective SetServices.
 
 !EOP
 
@@ -102,7 +106,7 @@ contains
     call ESMF_GridCompGet(GC                                 ,&
                           NAME=COMP_NAME	             ,&
                           CONFIG=CF                          ,&
-                                                    RC=STATUS )
+                          RC=STATUS )
     VERIFY_(STATUS)
 
     Iam = trim(COMP_NAME) // 'SetServices'
@@ -114,7 +118,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, ens_id_width,      Label="ENS_ID_WIDTH:",      DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     tmp = ''
@@ -129,9 +133,9 @@ contains
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
     VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run1, RC=STATUS )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run1,              RC=STATUS )
     VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run2, RC=STATUS )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run2,              RC=STATUS )
     VERIFY_(STATUS)
 
     call ESMF_ConfigGetAttribute ( CF, NUM_CATCH, Label="NUM_CATCH_ENSEMBLES:", default=1, RC=STATUS)
@@ -149,15 +153,20 @@ contains
 ! and Runoff Routing Model (0: OFF, 1: ON)
 ! -------------------------------------------------------
 
-    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource (MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1,                         RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC,     Label = 'SURFRC:',   DEFAULT='GEOS_SurfaceGridComp.rc', RC=STATUS)
+    VERIFY_(STATUS)
+
+    SCF = ESMF_ConfigCreate(            rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call MAPL_GetResource (SCF, RUN_ROUTE, label='RUN_ROUTE:',           DEFAULT=0, __RC__ )
-    call MAPL_GetResource (SCF, DO_GOSWIM, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
-    call MAPL_GetResource (SCF, DO_FIRE_DANGER, label='FIRE_DANGER:',    DEFAULT=.false., __RC__ )
-    call ESMF_ConfigDestroy      (SCF, __RC__)
+
+    call MAPL_GetResource (SCF, RUN_ROUTE,      label='RUN_ROUTE:',           DEFAULT=0,       __RC__ )
+    call MAPL_GetResource (SCF, RUN_IRRIG,      label='RUN_IRRIG:',           DEFAULT=0,       __RC__ )
+    call MAPL_GetResource (SCF, DO_GOSWIM,      label='N_CONST_LAND4SNWALB:', DEFAULT=0,       __RC__ )
+    call MAPL_GetResource (SCF, DO_FIRE_DANGER, label='FIRE_DANGER:',         DEFAULT=.false., __RC__ )
+
+    call ESMF_ConfigDestroy(SCF, __RC__)
 
     SELECT CASE (LSM_CHOICE)
 
@@ -193,7 +202,23 @@ contains
           end do
        end if
        
-    END SELECT
+    END SELECT  ! LSM_CHOICE
+
+    if(RUN_IRRIG /= 0) then
+       allocate (IRRIGATION(NUM_CATCH), stat=status)
+       VERIFY_(STATUS)
+       if (NUM_CATCH == 1) then
+          IRRIGATION(1) = MAPL_AddChild(GC, NAME='IRRIGATION'//trim(tmp), SS=IrrigationSetServices, RC=STATUS)
+          VERIFY_(STATUS)
+       else
+           do I = 1, NUM_CATCH
+              WRITE(TMP,'(I3.3)') I
+              GCName  = 'ens' // trim(TMP) // ':IRRIGATION'
+              IRRIGATION(I) = MAPL_AddChild(GC, NAME=GCName, SS=IrrigationSetServices, RC=STATUS)
+              VERIFY_(STATUS)
+           end do
+       end if
+    end if
 
 !    IF(RUN_ROUTE == 1) THEN
 !       if (NUM_CATCH == 1) then
@@ -667,6 +692,11 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SPSNOW', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'SPIRRG', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
        VERIFY_(STATUS)
@@ -1149,6 +1179,8 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPIRRG' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WESNN1' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WESNN2' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
@@ -1349,7 +1381,18 @@ contains
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        endif
 
-    END SELECT
+    END SELECT   ! LSM_CHOICE (Catch, CatchCN)
+
+    ! -------------------------------------------------------------------------------------------------------------------
+    
+    if (RUN_IRRIG /= 0) then
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_SPR', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_DRP', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_FRW', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_PDY', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_TOT', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+    end if
+
 
 ! These are from RUN1 of vegdyn and the first catchment instance
     call MAPL_AddExportSpec ( GC, &
@@ -1377,6 +1420,7 @@ contains
                               CHILD_ID = VEGDYN,&
                               RC=STATUS  )
     VERIFY_(STATUS) 
+
 !    IF(RUN_ROUTE == 1) THEN
 !       call MAPL_AddExportSpec ( GC, &
 !            SHORT_NAME = 'QOUTFLOW', &
@@ -1385,7 +1429,7 @@ contains
 !       VERIFY_(STATUS)       
 !    ENDIF
 
-
+    
     if (DO_FIRE_DANGER) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC',        CHILD_ID = IGNI,  __RC__ )
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GFMC',        CHILD_ID = IGNI,  __RC__ )
@@ -1453,6 +1497,26 @@ contains
               VERIFY_(STATUS)
           end if
 
+          if (RUN_IRRIG /= 0) then
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME  = (/'POROS   ', 'WPWET   '                        ,&
+                                  'VGWMAX  ', 'WCRZ    '/)                      ,&
+                  SRC_ID =  CATCH(I)                                            ,&
+                  DST_ID =  IRRIGATION(I)                                       ,&
+                  RC = STATUS )
+             VERIFY_(STATUS)
+
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME = (/'IRRG_RATE_SPR', 'IRRG_RATE_DRP'               ,&
+                                 'IRRG_RATE_FRW', 'IRRG_RATE_PDY'/)             ,&
+                  SRC_ID =  IRRIGATION(I)                                       ,&
+                  DST_ID =  CATCH(I)                                            ,&
+                  RC = STATUS )
+             VERIFY_(STATUS)
+          end if
+
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
 !                  GC                                                 ,&
@@ -1485,6 +1549,26 @@ contains
                 RC = STATUS )
               VERIFY_(STATUS)
           end if
+          
+          if (RUN_IRRIG /= 0) then
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME  = (/'POROS   ', 'WPWET   '                        ,&
+                                  'VGWMAX  ', 'WCRZ    '/)                      ,&
+                  SRC_ID =  CATCH(I)                                            ,&
+                  DST_ID =  IRRIGATION(I)                                       ,&
+                  RC=STATUS )
+             VERIFY_(STATUS)
+
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME = (/'IRRG_RATE_SPR', 'IRRG_RATE_DRP'               ,&
+                                 'IRRG_RATE_FRW', 'IRRG_RATE_PDY'/)             ,&
+                  SRC_ID =  IRRIGATION(I)                                       ,&
+                  DST_ID =  CATCH(I)                                            ,&
+                  RC=STATUS )
+             VERIFY_(STATUS)
+          end if
 
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
@@ -1497,6 +1581,17 @@ contains
 !             VERIFY_(STATUS)            
 !          ENDIF
        END SELECT
+
+       if (RUN_IRRIG /= 0) then
+          call MAPL_AddConnectivity (                              &
+               GC                                                 ,&
+               SHORT_NAME  = (/'LAI  '/)                          ,&
+               SRC_ID =  VEGDYN                                   ,&
+               DST_ID =  IRRIGATION(I)                            ,&
+               RC=STATUS )
+          VERIFY_(STATUS)            
+       end if
+
     END DO
 
 
@@ -1511,8 +1606,9 @@ contains
     call MAPL_GenericSetServices(GC, RC=STATUS )
     VERIFY_(STATUS)
 
-    if (allocated(CATCH)) deallocate(CATCH)
-    if (allocated(CATCHCN)) deallocate(CATCHCN)
+    if (allocated(CATCH))      deallocate(CATCH)
+    if (allocated(CATCHCN))    deallocate(CATCHCN)
+    if (allocated(IRRIGATION)) deallocate(IRRIGATION)
 
     RETURN_(ESMF_SUCCESS)
   
@@ -1550,14 +1646,14 @@ contains
     
 ! Local derived type aliases
 
-    type (MAPL_MetaComp    ), pointer       :: MAPL
-    type (MAPL_MetaComp    ), pointer       :: CHILD_MAPL 
-    type (MAPL_LocStream       )            :: LOCSTREAM
-    type (ESMF_DELayout        )            :: LAYOUT
-    type (ESMF_Config          )            :: CF
-    type (ESMF_GridComp        ), pointer   :: GCS(:)
+    type (MAPL_MetaComp    ), pointer    :: MAPL
+    type (MAPL_MetaComp    ), pointer    :: CHILD_MAPL 
+    type (MAPL_LocStream   )             :: LOCSTREAM
+    type (ESMF_DELayout    )             :: LAYOUT
+    type (ESMF_Config      )             :: CF
+    type (ESMF_GridComp    ), pointer    :: GCS(:)
   
-    integer                                 :: I
+    integer                              :: I
 
 !=============================================================================
 
@@ -1577,7 +1673,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_TimerOn(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
-    call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOn(MAPL,"TOTAL",      RC=STATUS ); VERIFY_(STATUS)
 
 ! Get the land tilegrid and the child components
 !----------------------------------------------- 
@@ -1623,8 +1719,8 @@ contains
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
   integer, optional,   intent(  out) :: RC     ! Error code
 
-! !DESCRIPTION: This first run method calls the children's
-!   first run methods. VEGDYN has only one, and it is called here.
+! !DESCRIPTION: This first run method calls the children's first run methods.
+!   VEGDYN and Irrigation have only one run method, which is called here.
 !EOP
 
 ! ErrLog Variables
@@ -1660,13 +1756,13 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
-    call MAPL_TimerOn(MAPL,"RUN1", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOn(MAPL,"RUN1",  RC=STATUS ); VERIFY_(STATUS)
 
     call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCnames=GCnames,rc=STATUS)
     VERIFY_(STATUS)
 
-! Call the children's RUN methods
-!--------------------------------
+! Call the children's RUN methods (PHASE=1)
+!------------------------------------------
 
     DO I = 1, size(GCS)
        call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
@@ -1676,7 +1772,7 @@ contains
        call MAPL_TimerOff(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
     END DO
 
-    call MAPL_TimerOff(MAPL,"RUN1", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"RUN1",  RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
@@ -1734,13 +1830,13 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
-    call MAPL_TimerOn(MAPL,"RUN2", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOn(MAPL,"RUN2",  RC=STATUS ); VERIFY_(STATUS)
 
     call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCnames=GCnames,rc=STATUS)
     VERIFY_(STATUS)
 
-! Call the children's RUN methods
-!--------------------------------
+! Call the children's RUN methods (PHASE=2)
+!------------------------------------------
     DO I=1,size(GCS)
        if (I == VEGDYN) cycle
        call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
@@ -1750,7 +1846,7 @@ contains
        call MAPL_TimerOff(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
     END DO
 
-    call MAPL_TimerOff(MAPL,"RUN2", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"RUN2",  RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
     
     RETURN_(ESMF_SUCCESS)

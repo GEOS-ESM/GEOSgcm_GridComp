@@ -61,6 +61,7 @@ module rmTinyCatchParaMod
   
   logical,      public, save :: use_PEATMAP = .false.
   logical,      public, save :: jpl_height  = .false.
+  logical,      public, save :: IRRIGBCS    = .false.
   character*8,  public, save :: LAIBCS      = 'UNDEF'
   character*6,  public, save :: SOILBCS     = 'UNDEF'
   character*6,  public, save :: MODALB      = 'UNDEF'
@@ -241,6 +242,17 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
+
+     case ("v14")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD_b'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061v2'
+       OUTLETV = "v2"
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .true.
+       IRRIGBCS    = .true.
 
     case default
        
