@@ -62,7 +62,8 @@ module GEOSmoist_Process_Library
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
-  real, parameter :: taufrz  =  150.0
+  real, parameter :: taufrz  =  600.0
+  real, parameter :: taumlt  =  300.0 
   real, parameter :: dQCmax  =  1.e-4
   ! LDRADIUS4
   ! Jason
@@ -2585,15 +2586,15 @@ module GEOSmoist_Process_Library
       ! freeze liquid first
       if ( TE <= MAPL_TICE ) then
          fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
-         dQil = Ql *(1.0 - EXP( -Dt * fQi / max(DT,taufrz) ) )
+         dQil = Ql *(1.0 - EXP( -DT * fQi / max(DT,taufrz) ) )
          dQil = max(  0., dQil )
          Qi   = Qi + dQil
          Ql   = Ql - dQil
          TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
       end if
-      ! melt ice instantly above 0^C
+      ! melt ice above 0^C
       if ( TE > MAPL_TICE ) then
-         dQil = -Qi
+         dQil = -Qi *(1.0 - EXP( -DT / max(DT,taumlt) ) )
          dQil = min(  0., dQil )
          Qi   = Qi + dQil
          Ql   = Ql - dQil
@@ -3584,40 +3585,25 @@ subroutine update_cld( &
       ! Liquid
       QLLS = QLLS + (QL - (QLCN+QLLS))
       WHERE (QLLS < 0.0)
-        QLCN = QLCN + QLLS
+        QLCN = max(0.0,QLCN + QLLS)
         QLLS = 0.0
       END WHERE            
-      WHERE (QLCN < 1.E-8)
-       ! QLCN is negative so the signs here -/+ are reversed
-        QV = QV - QLCN
-        TE = TE + (alhlbcp)*QLCN
-        QLCN = 0.0
-      END WHERE
 
       ! Ice
       QILS = QILS + (QI - (QICN+QILS))
       WHERE (QILS < 0.0)
-        QICN = QICN + QILS
+        QICN = max(0.0,QICN + QILS)
         QILS = 0.0
-      END WHERE
-      WHERE (QICN < 1.E-8)
-       ! QLCN is negative so the signs here -/+ are reversed
-        QV = QV - QICN
-        TE = TE + (alhsbcp)*QICN
-        QICN = 0.0
       END WHERE
 
       ! Cloud
       CLLS = min(1.0,CLLS + (CF - (CLCN+CLLS)))
       WHERE (CLLS < 0.0)
-        CLCN = min(1.0,CLCN + CLLS)
+        CLCN = max(0.0,min(1.0,CLCN + CLLS))
         CLLS = 0.0
       END WHERE
-      WHERE (CLCN < 1.E-8)
-        CLCN = 0.
-      END WHERE
 
-      ! Evaporate liquid/ice where clouds are gone
+      ! Evaporate/Sublimate liquid/ice where clouds are gone
       WHERE (CLLS < 1.E-8)
         QV = QV + QLLS + QILS
         TE = TE - (alhlbcp)*QLLS - (alhsbcp)*QILS
