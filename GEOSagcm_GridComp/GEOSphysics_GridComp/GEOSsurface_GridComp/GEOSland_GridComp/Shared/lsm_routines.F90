@@ -2725,7 +2725,7 @@ CONTAINS
 
     integer, intent(in)            :: Z0_FORM
     real,    intent(out)           :: MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0
-    integer, intent(out), optional :: rc                                      ! needed for _ASSERT()
+    integer, intent(out), optional :: rc                                      ! needed for ASSERT()
     
     ! -------------------------------------------------
     
