@@ -68,7 +68,7 @@ module GEOS_CatchCNCLM51GridCompMod
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI, MAPL_RHOWTR 
   use clm_time_manager, only: get_days_per_year, get_step_size, get_nstep, is_first_step
   use pftconMod,        only: noveg
-  use lsm_routines,     only: sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel, catch_calc_zbar, gndtmp
+  use lsm_routines,     only: sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel, catch_calc_zbar, gndtmp, get_Z0_FORMULATION_params
 
   use update_model_para4cn, only : upd_curr_date_time
   use WaterType

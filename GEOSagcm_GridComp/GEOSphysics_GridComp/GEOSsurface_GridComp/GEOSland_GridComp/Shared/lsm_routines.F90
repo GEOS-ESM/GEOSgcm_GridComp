@@ -1,3 +1,5 @@
+#include "MAPL_Generic.h"
+
 MODULE lsm_routines
 
   ! The module contains subroutines that are shared by Catchment and CatchmentCN.
@@ -21,8 +23,7 @@ MODULE lsm_routines
   !                        large-scale throughfalls. FWETC and FWETL are now passed through the resource file.
   ! reichle, 27 Jan 2022 - moved "public" constants & subroutine echo_catch_constants() to catch_constants.f90
   
-  use MAPL, ONLY:                                &
-       MAPL_UNDEF
+  use MAPL
 
   USE MAPL_ConstantsMod, ONLY:                   &
        PIE               => MAPL_PI,             &  ! -
@@ -56,6 +57,7 @@ MODULE lsm_routines
   PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_peatclsm_waterlevel
   PUBLIC :: catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
+  PUBLIC :: get_Z0_FORMULATION_params
   PUBLIC :: dampen_tc_oscillations, irrigation_rate
 
   INTERFACE catch_calc_zbar

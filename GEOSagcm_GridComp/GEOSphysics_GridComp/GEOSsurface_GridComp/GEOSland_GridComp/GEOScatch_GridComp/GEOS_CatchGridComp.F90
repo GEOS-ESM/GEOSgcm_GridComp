@@ -55,7 +55,7 @@ module GEOS_CatchGridCompMod
        PEATCLSM_POROS_THRESHOLD
 
 
-  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel
+  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel, get_Z0_FORMULATION_params
 
 !#for_ldas_coupling 
   use catch_incr
