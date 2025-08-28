@@ -242,6 +242,21 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
+    case ("v14_BETA")  
+
+       ! "v14", "v13", and "v12" are identical except for:
+       ! - topography used for the atm (processed outside of make_bcs)
+       ! - v14 is used for coupled atm-ocean-seaice with v2 (OM4) ocean bathymetry
+
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD_b'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061v2'
+       OUTLETV = "v2"
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .true.
+
     case default
        
        print *,'init_bcs_config(): unknown land boundary conditions version (LBCSV)'
