@@ -398,6 +398,26 @@ contains
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+      call MAPL_AddImportSpec(GC,                                 &
+         SHORT_NAME = 'TOTABCKTOA',                               &
+         LONG_NAME  = 'total_attenuated_backscatter_toa',         &
+         UNITS      = '1',                                        &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationCenter,                       &
+         RESTART    = MAPL_RestartSkip,                           &
+                                                        RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                                 &
+         SHORT_NAME = 'TOTABCKSFC',                               &
+         LONG_NAME  = 'total_attenuated_backscatter_surface',     &
+         UNITS      = '1',                                        &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationCenter,                       &
+         RESTART    = MAPL_RestartSkip,                           &
+                                                        RC=STATUS  )
+      VERIFY_(STATUS)      
+     
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'CT',                                &
         LONG_NAME          = 'surface_heat_exchange_coefficient', &
@@ -1662,6 +1682,42 @@ end if
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+   call MAPL_AddExportSpec(GC,                                               &
+       LONG_NAME  = 'planetary_boundary_layer_height_atb_gradient_toa',      &
+       SHORT_NAME = 'ZPBLATBGRAD',                                           &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'planetary_boundary_layer_height_atb_threshold_toa',     &
+       SHORT_NAME = 'ZPBLATBTHRESH',                                         &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'planetary_boundary_layer_height_atb_gradient_sfc',      &
+       SHORT_NAME = 'ZPBLATBSFC',                                            &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'lidar_backscatter_pbl_height_error_estimate',           &
+       SHORT_NAME = 'ZPBLATBERR',                                            &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+    
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'transcom_planetary_boundary_layer_height',              &
        SHORT_NAME = 'TCZPBL',                                                &
@@ -2576,6 +2632,7 @@ end if
     real, dimension(:,:,:), pointer     :: AKV, BKV, CKV, DKV, EKV, FKV
     real, dimension(:,:,:), pointer     :: PLE, ZLE, SINC
     real, dimension(:,:,:), pointer     :: ZLS, ZLES
+    real, dimension(:,:,:), pointer     :: TOTABCKTOA, TOTABCKSFC
     real, dimension(:,:  ), pointer     :: CU, CT, CQ, ZPBL, PHIS
     integer                             :: IM, JM, LM
     real                                :: DT
@@ -2672,6 +2729,14 @@ end if
      call MAPL_GetPointer(IMPORT,  ZLE,   'ZLE',     RC=STATUS)
      VERIFY_(STATUS)
 
+! Get attenuated backscatter profiles for PBLH
+!---------------------------------------------
+
+     call MAPL_GetPointer(IMPORT, TOTABCKTOA, 'TOTABCKTOA', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, TOTABCKSFC, 'TOTABCKSFC', RC=STATUS)
+     VERIFY_(STATUS)
+     
 ! Get surface exchange coefficients
 !----------------------------------
 
@@ -2948,6 +3013,10 @@ end if
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
      real, dimension(:,:  ), pointer     :: ZPBLQV => null()
      real, dimension(:,:  ), pointer     :: ZPBLRFRCT => null()
+     real, dimension(:,:  ), pointer     :: ZPBLATBTHRESH => null()
+     real, dimension(:,:  ), pointer     :: ZPBLATBGRAD => null()
+     real, dimension(:,:  ), pointer     :: ZPBLATBSFC => null()
+     real, dimension(:,:  ), pointer     :: ZPBLATBERR => null()
      real, dimension(:,:  ), pointer     :: SBIFRQ => null()
      real, dimension(:,:  ), pointer     :: SBITOP => null()
      real, dimension(:,:  ), pointer     :: KPBL => null()
@@ -3058,9 +3127,9 @@ end if
                                     mfsl3, mfqt2, mfsl2,   &
                                     mfslqt, edmf_ent !mfwhl, edmf_ent
 
-     real                                :: a1,a2
+     real                                :: a1,a2,tmp1
      real,               dimension(IM,JM,LM) :: dum3d,tmp3d,WVP
-     real,               dimension(LM+1) :: temparray, htke
+     real,               dimension(LM+1) :: temparray, htke, delz
      real,               dimension(IM,JM,LM  ) :: tcrib !TransCom bulk Ri
      real,               dimension(LM+1) :: thetav
      real,               dimension(IM,JM,LM+1) :: tmp3de
@@ -3266,14 +3335,22 @@ end if
      call MAPL_GetPointer(EXPORT,    ZPBLRI2,  'ZPBLRI2',           RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           RC=STATUS)
+     VERIFY_(STATUS)     
+     call MAPL_GetPointer(EXPORT,    ZPBLQV,  'ZPBLQV',             RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLQV,  'ZPBLQV',           RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLRFRCT, 'ZPBLRFRCT',        RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLRFRCT, 'ZPBLRFRCT',           RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLATBTHRESH, 'ZPBLATBTHRESH', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    SBIFRQ,  'SBIFRQ',           RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLATBGRAD,  'ZPBLATBGRAD',   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    SBITOP,  'SBITOP',           RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLATBSFC,  'ZPBLATBSFC',     RC=STATUS)
+     VERIFY_(STATUS)     
+     call MAPL_GetPointer(EXPORT,    ZPBLATBERR,  'ZPBLATBERR',     RC=STATUS)
+     VERIFY_(STATUS)     
+     call MAPL_GetPointer(EXPORT,    SBIFRQ,  'SBIFRQ',             RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    SBITOP,  'SBITOP',             RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,   LWCRT,   'LWCRT', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -4653,6 +4730,88 @@ end if
 
     end if  ! ZPBLRFRCT 
 
+
+      ! ATB-based PBLH using threshold algorithm
+      if (associated(ZPBLATBTHRESH)) then
+
+        ZPBLATBTHRESH = MAPL_UNDEF
+
+        do I = 1,IM
+          do J = 1,JM
+            ! avg ATB 200-400 above surface
+            L = LM
+            do while (Z(I,J,L).lt.200.)
+              L = L-1
+            end do
+            K = L  ! first level above 200m
+            tmp1 = 0.
+            do while (Z(I,J,K).lt.400.)
+              tmp1 = tmp1 + TOTABCKTOA(I,J,K)
+              K = K-1
+            end do
+            tmp1 = tmp1/FLOAT(L-K) ! avg ATB
+        
+!            if (tmp1 .gt. 1e-3) then
+              ! scan upward until ATB(K) and ATB(K-1) < 0.85*ATB300.
+              ! interpolate to find height where ATB = threshold
+              K = L ! start just above 200m 
+              do while ( Z(I,J,K).lt.5000. )
+                if (TOTABCKTOA(I,J,K).lt.0.85*tmp1 .and. TOTABCKTOA(I,J,K-1).lt.0.85*tmp1) then
+                   ZPBLATBTHRESH(I,J) = Z(I,J,K)-(TOTABCKTOA(I,J,K)-0.85*tmp1)*(Z(I,J,K)-Z(I,J,K+1))/(TOTABCKTOA(I,J,K)-TOTABCKTOA(I,J,K+1))
+                   exit
+                end if
+                K = K-1
+              end do
+!            end if
+
+          end do  ! JM
+        end do    ! IM
+
+      end if  ! ATB THRESH
+
+      ! ATB-based PBLH using gradient algorithm      
+      if (associated(ZPBLATBGRAD)) then
+        if (associated(ZPBLATBSFC)) ZPBLATBSFC = MAPL_UNDEF
+        ZPBLATBGRAD = MAPL_UNDEF
+        do I = 1,IM
+           do J = 1,JM
+             delz = ZL0(I,J,0:LM-1)-ZL0(I,J,1:LM)
+             temparray(:) = 0.
+             LTOP = LM
+             do while (Z(I,J,LTOP).lt.6000.) 
+                temparray(LTOP) = -1.*(TOTABCKTOA(I,J,LTOP)-TOTABCKTOA(I,J,LTOP-1)) / (Z(I,J,LTOP)-Z(I,J,LTOP-1))
+                LTOP = LTOP - 1
+             end do
+             temparray(LM) = 0.5*temparray(LM)  ! rescale shallowest gradient to reduce false positives
+             
+             locmax = MAXLOC(temparray,1)
+             ZPBLATBGRAD(I,J) = ZL0(I,J,locmax-1)  ! use edge height btwn TOA values
+
+             ! Uncertainty given by Sum( dz*(z-zmin)*(grad(z)/gradmin) ), including only pts where grad(z)>0.5*gradmin
+!             if (associated(ZPBLATBERR)) ZPBLATBERR(I,J) = SUM( DELZ(LTOP+1:LM)*ABS(ZL0(I,J,LTOP:LM-1)-ZPBLATBGRAD(I,J))*(temparray(LTOP+1:LM)/temparray(locmax))**2)/SUM(DELZ(LTOP+1:LM))
+             if (associated(ZPBLATBERR)) ZPBLATBERR(I,J) = SUM( ABS(ZL0(I,J,LTOP:LM-1)-ZPBLATBGRAD(I,J))*2.*max(0.,temparray(LTOP+1:LM)/temparray(locmax)-0.5) )
+
+             ! "quality parameter": the minimum gradient vs the RMS of local gradients below 6 km 
+!             tmp1 = SQRT(SUM(temparray(LTOP:LM)**2)/FLOAT(LM-LTOP+1))
+!             if (associated(ZPBLATBQP)) ZPBLATBQP(I,J) = MAXVAL(temparray) * (LM-locmax) / SUM(ABS(temparray(locmax+1:LM)))
+!             if (associated(ZPBLATBEQP)) ZPBLATBQP(I,J) = MAXVAL(temparray) / tmp1
+
+             if (associated(ZPBLATBSFC)) then
+                temparray(:) = 0.
+                L = LM
+                do while (Z(I,J,L).lt.6000.) 
+                   temparray(L) = -1.*(TOTABCKSFC(I,J,L)-TOTABCKSFC(I,J,L-1)) / (Z(I,J,L)-Z(I,J,L-1))
+                   L = L - 1
+                end do
+                temparray(LM) = 0.5*temparray(LM)  ! rescale
+                locmax = MAXLOC(temparray,1)
+                ZPBLATBSFC(I,J) = ZL0(I,J,locmax-1)  ! use edge height btwn TOA values
+             end if
+          end do  ! JM
+        end do   ! IM
+
+      end if
+    
 
       ! PBL height diagnostic based on specific humidity gradient
       ! PBLH defined as level with minimum QV gradient
