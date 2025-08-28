@@ -13,8 +13,8 @@ export FV3_DACEMODE=Python
 export GT4PY_EXTRA_COMPILE_OPT_FLAGS='-fconstexpr-ops-limit=1000000000'
 python -m pytest -s -v --disable-warnings --multimodal_metric \
     --data_path=/Users/kfandric/netcdf \
-    --backend=debug\
-    --which_rank=0 \
+    --backend=dace:cpu\
+    --which_rank=5 \
     --which_modules=ComputeUwshcuInv \
     --grid=default \
     ..
