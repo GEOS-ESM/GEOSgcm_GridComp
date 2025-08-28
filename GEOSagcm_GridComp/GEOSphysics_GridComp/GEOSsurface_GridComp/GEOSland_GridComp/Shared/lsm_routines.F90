@@ -2720,11 +2720,13 @@ CONTAINS
   ! *******************************************************************
   
   subroutine get_Z0_FORMULATION_params( Z0_FORM, &
-       MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0 )
+       MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0,      &
+       rc )
 
-    integer, intent(in)  :: Z0_FORM
-    real,    intent(out) :: MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0
-
+    integer, intent(in)            :: Z0_FORM
+    real,    intent(out)           :: MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0
+    integer, intent(out), optional :: rc                                      ! needed for _ASSERT()
+    
     ! -------------------------------------------------
     
     select case (Z0_FORM)
