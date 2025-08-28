@@ -8,14 +8,14 @@ category: INTERNAL
  NAME   | UNITS   | DIMS | VLOC | UNGRIDDED  | LONG NAME
 #--------------------------------------------------------------------------------------------------------------------
  SGH30  | m       | xy   | N    |            | standard deviation of 30s elevation from 3km cube
- KWVRDG | km      | xy   | N    | [16]       | horizonal wwavenumber of mountain ridges
- EFFRDG | km      | xy   | N    | [16]       | efficiency of mountain ridge scheme
+ KWVRDG | km      | xy   | N    | ungrd_16   | horizonal wwavenumber of mountain ridges
+ EFFRDG | km      | xy   | N    | ungrd_16   | efficiency of mountain ridge scheme
  GBXAR  | NA      | xy   | N    |            | grid box area
- HWDTH  | km      | xy   | N    | [16]       | width of mountain ridges
- CLNGT  | km      | xy   | N    | [16]       | width of mountain ridges
- MXDIS  | NA      | xy   | N    | [16]       | NA
- ANGLL  | NA      | xy   | N    | [16]       | NA
- ANIXY  | NA      | xy   | N    | [16]       | NA
+ HWDTH  | km      | xy   | N    | ungrd_16   | width of mountain ridges
+ CLNGT  | km      | xy   | N    | ungrd_16   | width of mountain ridges
+ MXDIS  | NA      | xy   | N    | ungrd_16   | NA
+ ANGLL  | NA      | xy   | N    | ungrd_16   | NA
+ ANIXY  | NA      | xy   | N    | ungrd_16   | NA
 
 category: IMPORT
 #-------------------------------------------------------------------------------------------------------
