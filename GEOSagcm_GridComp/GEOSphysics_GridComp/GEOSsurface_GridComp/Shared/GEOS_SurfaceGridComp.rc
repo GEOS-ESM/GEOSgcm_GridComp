@@ -69,11 +69,11 @@
 #    For CatchCNCLM40, Z0_FORMULATION=3 is hardwired.
 #
 #    0 : Fortuna,      SMAP NRv3
-#    1 : Ganymed-4_1,  SMAP NRv4/NRv4.1
+#   [1 : Ganymed-4_1,  SMAP NRv4/NRv4.1]         --> DISABLED, 28 Aug 2025     
 #    2 : Heracles-4_3, Icarus (AGCM default)
 #    3 :               SMAP NRv5/NRv7.2
 #    4 : Icarus-NLv3 (f525_fp, f527_fp, f529_fp)
-#                      SMAP NRv8.1, NRv9.1, NRv10.0
+#                      SMAP NRv8.1, NRv9.1, NRv10.0, NRv11.4
 #
 # GEOSagcm=>Z0_FORMULATION: 4
 # GEOSldas=>Z0_FORMULATION: 4

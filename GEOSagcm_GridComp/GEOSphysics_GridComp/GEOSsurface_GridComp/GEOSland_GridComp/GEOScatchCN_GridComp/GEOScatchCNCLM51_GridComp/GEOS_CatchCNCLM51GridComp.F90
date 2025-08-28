@@ -4007,7 +4007,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer                        :: CHOOSEZ0
    real                           :: SCALE4Z0
    real                           :: SCALE4ZVG
-   real                           :: SCALE4Z0_u
    real                           :: MIN_VEG_HEIGHT
 
    ! ------------------------------------- 
@@ -4464,36 +4463,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated( MOU2M))  MOU2M = 0.0
    if(associated( MOV2M))  MOV2M = 0.0
 
-    select case (CATCHCN_INTERNAL%Z0_FORMULATION)
-       case (0)  ! no scaled at all
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 1
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01
-       case (1) ! This case is bugged
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 2
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01
-       case (2)
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 2
-          SCALE4Z0_u  = 2
-          MIN_VEG_HEIGHT = 0.01
-       case (3)
-          SCALE4ZVG   = 0.5
-          SCALE4Z0    = 1
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01
-       case (4)
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 2
-          SCALE4Z0_u  = 2
-          MIN_VEG_HEIGHT = 0.1
-    end select
-
-    SUBTILES: do N=1,NUM_SUBTILES
-
+   call get_Z0_FORMULATION_params( CATCHCN_INTERNAL%Z0_FORMULATION, &
+        MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0 )
+   
+   SUBTILES: do N=1,NUM_SUBTILES
+      
       ! jkolassa Jul 2025: For Z0-formulation == 4 use old (6-class) veg type
       !                    and mix two veg types
       !                    Consider updating to a 15-PFT resolution in the future
@@ -4505,21 +4479,21 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       else
          ZVG  = fvg1*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
                 fvg2*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))
-         !Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0 
       endif
-
-!  For now roughnesses and displacement heights
-!   are the same for all subtiles.
-
+      
+      !  For now roughnesses and displacement heights are the same for all subtiles.
+      
       Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0
-   IF (catchcn_internal%USE_ASCATZ0 == 1) THEN
-      WHERE (NDVI <= 0.2)
-         Z0T(:,N)  = ASCATZ0
-      END WHERE
-   ENDIF
-   D0T  = D0_BY_ZVEG*ZVG
+      
+      IF (catchcn_internal%USE_ASCATZ0 == 1) THEN
+         WHERE (NDVI <= 0.2)
+            Z0T(:,N)  = ASCATZ0
+         END WHERE
+      ENDIF
+      
+      D0T  = D0_BY_ZVEG*ZVG
 
-   DZE  = max(DZ - D0T, 10.)
+      DZE  = max(DZ - D0T, 10.)
 
    if(associated(Z0 )) Z0  = Z0T(:,N)
    if(associated(D0 )) D0  = D0T
@@ -4841,7 +4815,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                          :: IM,JM
 
     real                             :: SCALE4ZVG
-    real                             :: SCALE4Z0_u
+    real                             :: SCALE4Z0
     real                             :: MIN_VEG_HEIGHT
 
     type(ESMF_VM)                    :: VM
@@ -4874,29 +4848,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
-
-   select case (CATCHCN_INTERNAL%Z0_FORMULATION)
-      case (0)  ! no scaled at all
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01
-      case (1) ! This case is bugged
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01
-      case (2)
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.01
-      case (3)
-         SCALE4ZVG   = 0.5
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01
-      case (4)
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.1
-   end select
+    
+    call get_Z0_FORMULATION_params( CATCHCN_INTERNAL%Z0_FORMULATION, &
+         MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0 )
 
 ! ------------------------------------------------------------------------------
 ! If its time, recalculate the LSM tile routine
@@ -6489,8 +6443,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                   fveg2*(Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI2))
         endif
 
-        Z0   = Z0_BY_ZVEG*ZVG*SCALE4Z0_u
+        !  For now roughnesses and displacement heights are the same for all subtiles.
+        
+        Z0   = Z0_BY_ZVEG*ZVG*SCALE4Z0
+
         IF (catchcn_internal%USE_ASCATZ0 == 1) WHERE (NDVI <= 0.2) Z0 = ASCATZ0        
+
         D0   = D0_BY_ZVEG*ZVG
 
         UUU = max(UU,MAPL_USMIN) * (log((ZVG-D0+Z0)/Z0) &

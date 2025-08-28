@@ -2369,18 +2369,6 @@ CONTAINS
 
  ! *******************************************************************
 
-  
-
-  
-
-
-
-
-
-    
-
- ! *******************************************************************
-
   subroutine catch_calc_tp( NTILES, poros, ghtcnt, tp, fice )
 
     ! Diagnose soil temperatures tp (all_layers, all tiles) from
@@ -2516,8 +2504,6 @@ CONTAINS
     end do
 
   end subroutine catch_calc_wtotl
-
-  ! *******************************************************************
 
   ! *******************************************************************
 
@@ -2728,6 +2714,52 @@ CONTAINS
     end if
 
   end subroutine dampen_tc_oscillations
+
+  ! *******************************************************************
+  
+  subroutine get_Z0_FORMULATION_params( Z0_FORM, &
+       MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0 )
+
+    integer, intent(in)  :: Z0_FORM
+    real,    intent(out) :: MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0
+
+    ! -------------------------------------------------
+    
+    select case (Z0_FORM)
+       
+    case (0)                   ! not scaled at all
+       SCALE4ZVG      = 1
+       SCALE4Z0       = 1
+       MIN_VEG_HEIGHT = 0.01
+       
+       !case (1) ! This case is bugged; was used in Ganymed-4_1, SMAP NRv4/NRv4.1; DISABLED 28 Aug 2025
+       !   SCALE4ZVG      = 1
+       !   SCALE4Z0       = 2          ! was used in RUN1()
+       !   SCALE4Z0_u     = 1          ! was used in RUN2(), inconsistent with RUN1()
+       !   MIN_VEG_HEIGHT = 0.01         
+       
+    case (2)
+       SCALE4ZVG      = 1
+       SCALE4Z0       = 2
+       MIN_VEG_HEIGHT = 0.01         
+
+    case (3)
+       SCALE4ZVG      = 0.5
+       SCALE4Z0       = 1
+       MIN_VEG_HEIGHT = 0.01         
+
+    case (4) 
+       SCALE4ZVG      = 1
+       SCALE4Z0       = 2
+       MIN_VEG_HEIGHT = 0.1
+
+    case default
+
+       _ASSERT(.FALSE., 'unknown Z0_FORMULATION')
+
+    end select
+
+  end subroutine get_Z0_FORMULATION_params
 
   ! ********************************************************************
 

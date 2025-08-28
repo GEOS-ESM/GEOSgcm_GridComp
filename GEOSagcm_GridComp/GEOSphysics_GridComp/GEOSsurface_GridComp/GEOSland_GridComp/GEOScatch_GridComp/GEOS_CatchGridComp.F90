@@ -3246,7 +3246,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer             :: CHOOSEZ0
     real                :: SCALE4Z0
     real                :: SCALE4ZVG
-    real                :: SCALE4Z0_u
     real                :: MIN_VEG_HEIGHT 
 
     ! ------------------------------------- 
@@ -3560,35 +3559,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated( MOQ2M))  MOQ2M = 0.0
     if(associated( MOU2M))  MOU2M = 0.0
     if(associated( MOV2M))  MOV2M = 0.0
-
-    select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
-       case (0)  ! no scaled at all
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 1
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01
-       case (1) ! This case is bugged
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 2
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01         
-       case (2)
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 2
-          SCALE4Z0_u  = 2
-          MIN_VEG_HEIGHT = 0.01         
-       case (3)
-          SCALE4ZVG   = 0.5
-          SCALE4Z0    = 1
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01         
-       case (4) 
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 2
-          SCALE4Z0_u  = 2
-          MIN_VEG_HEIGHT = 0.1
-    end select
-
+    
+    call get_Z0_FORMULATION_params( CATCH_INTERNAL_STATE%Z0_FORMULATION, &
+         MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0 )
+    
     SUBTILES: do N=1,NUM_SUBTILES
 
 !  Effective vegetation height. In catchment, LAI dependence 
@@ -3602,18 +3576,18 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          ZVG  = Z2CH - SAI4ZVG(VEG)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
       else
          ZVG  = Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
-         !Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0 
       endif
-
-!  For now roughnesses and displacement heights
-!   are the same for all subtiles.
-
+      
+      !  For now roughnesses and displacement heights are the same for all subtiles.
+      
       Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0
+      
       IF (CATCH_INTERNAL_STATE%USE_ASCATZ0 == 1) THEN
          WHERE (NDVI <= 0.2)
             Z0T(:,N)  = ASCATZ0
          END WHERE
       ENDIF
+      
       D0T  = D0_BY_ZVEG*ZVG
 
       DZE  = max(DZ - D0T, 10.)
@@ -3930,7 +3904,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                          :: IM,JM
 
     real                             :: SCALE4ZVG
-    real                             :: SCALE4Z0_u
+    real                             :: SCALE4Z0
     real                             :: MIN_VEG_HEIGHT
     type(ESMF_VM)                    :: VM
     type (T_CATCH_STATE), pointer    :: CATCH_INTERNAL_STATE
@@ -3964,28 +3938,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
 
-   select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
-      case (0)  ! no scaled at all
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01
-      case (1) ! This case is bugged
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01         
-      case (2)
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.01         
-      case (3)
-         SCALE4ZVG   = 0.5
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01         
-      case (4) 
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.1
-   end select
+    call get_Z0_FORMULATION_params( CATCH_INTERNAL_STATE%Z0_FORMULATION, &
+         MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0 )
     
 ! ------------------------------------------------------------------------------
 ! If its time, recalculate the LSM tile routine
@@ -5132,13 +5086,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ZVG  = Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
      endif
 
-     Z0   = Z0_BY_ZVEG*ZVG*SCALE4Z0_u
+     !  For now roughnesses and displacement heights are the same for all subtiles.
 
-     !  For now roughnesses and displacement heights
-     !   are the same for all subtiles.
-     !---------------------------------------------------
+     Z0   = Z0_BY_ZVEG*ZVG*SCALE4Z0
      
      IF (CATCH_INTERNAL_STATE%USE_ASCATZ0 == 1) WHERE (NDVI <= 0.2) Z0 = ASCATZ0
+
      D0   = D0_BY_ZVEG*ZVG
 
      UUU = max(UU,MAPL_USMIN) * (log((ZVG-D0+Z0)/Z0) &
