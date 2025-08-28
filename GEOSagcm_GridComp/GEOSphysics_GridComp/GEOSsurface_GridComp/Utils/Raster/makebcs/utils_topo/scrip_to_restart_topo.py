@@ -72,25 +72,59 @@ if haveRdg:
 
 exclude = ['lon','lat']
 for var in ncFid.variables:
-    if var not in exclude:
-        temp = ncFid.variables[var][:]
-        dim_size =len(temp.shape)
-        
-        if dim_size == 2:
-            tout = ncFidOut.createVariable(var,'f8',('unknown_dim1','lat','lon'),fill_value=1.0e15)
-            for att in ncFid.variables[var].ncattrs():
-                if att != "_FillValue":
-                   setattr(ncFidOut.variables[var],att,getattr(ncFid.variables[var],att))
-            temp2d = numpy.reshape(temp,[rdgSize,cRes*6,cRes])
-            tout[:,:,:] = temp2d[:,:,:]
+    if var in exclude:
+        continue
 
-        elif dim_size == 1:
-            tout = ncFidOut.createVariable(var,'f8',('lat','lon'),fill_value=1.0e15)
-            for att in ncFid.variables[var].ncattrs():
-                if att != "_FillValue":
-                   setattr(ncFidOut.variables[var],att,getattr(ncFid.variables[var],att))
-            temp1d = numpy.reshape(temp,[cRes*6,cRes])
-            tout[:,:] = temp1d[:,:]
+    invar = ncFid.variables[var]
+    temp = invar[:]
+    dim_size = temp.ndim
+
+    # choose dims and create output var with the input _FillValue if present
+    fillv_in = getattr(invar, '_FillValue', 1.0e15)
+    if dim_size == 2:
+        tout = ncFidOut.createVariable(var, 'f8', ('unknown_dim1','lat','lon'), fill_value=fillv_in)
+    elif dim_size == 1:
+        tout = ncFidOut.createVariable(var, 'f8', ('lat','lon'), fill_value=fillv_in)
+    else:
+        # unexpected shape: skip
+        continue
+
+    for att in invar.ncattrs():
+        if att != "_FillValue":
+            setattr(ncFidOut.variables[var], att, getattr(invar, att))
+
+    # reshape into (6*cRes, cRes) [and lead nrdg dim if present]
+    if dim_size == 2:
+        data = numpy.reshape(temp, [rdgSize, 6*cRes, cRes]).astype('f8')
+    else:
+        data = numpy.reshape(temp, [6*cRes, cRes]).astype('f8')
+
+    # --- variance -> std dev for SGH/SGH30 ---
+    if var.lower() in ('sgh','sgh30'):
+        miss_in = getattr(invar, 'missing_value', None)
+        # build mask for invalids and non-physical values
+        mask = ~numpy.isfinite(data) | (data < 0.0)
+        if miss_in is not None:
+            mask |= (data == miss_in)
+        if fillv_in is not None:
+            mask |= (data == fillv_in)
+
+        out = numpy.empty_like(data)
+        out[~mask] = numpy.sqrt(data[~mask])
+        out[mask]  = fillv_in
+
+        # write converted values
+        if dim_size == 2:
+            tout[:,:,:] = out
+        else:
+            tout[:,:] = out
+    else:
+        # passthrough
+        if dim_size == 2:
+            tout[:,:,:] = data
+        else:
+            tout[:,:] = data
+
 #-----------------
 # Closing the file
 #----------------
