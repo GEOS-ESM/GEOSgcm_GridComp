@@ -54,6 +54,7 @@ contains
     if (LSM_CHOICE==1) then
        
        select case (LAND_PARAMS)
+          
        case ("Icarus")  ! "Old" LDASsa physics, current default for Icarus GCM
           LAND_FIX = .FALSE.
           CSOIL_2  = 200.
@@ -94,6 +95,7 @@ contains
     else if (LSM_CHOICE==2) then
        
        select case (LAND_PARAMS)
+          
        case ("CN_CLM40")  ! parameters to reproduce Fanwei Zeng's Catchment-CN.4.0 runs (e0004s_transientCO2_05) done with build /gpfsm/dnb31/fzeng/LDASsa_m3-16_0_p2_CatchCatchCN_for_MERRA3
           LAND_FIX        = .TRUE.
           CSOIL_2         = 70000. ! Post H5_0
@@ -109,23 +111,24 @@ contains
           _ASSERT(.FALSE.,'LAND_PARAMS not valid or incompatible with LSM_CHOICE')
        end select
        
-!    else if (LSM_CHOICE==3) then
-!       select case (LAND_PARAMS)      
-!          
-!       case ("CN_CLM45")  ! parameters to reproduce Eunjee Lee's Catchment-CN4.5 fire carbon emission simulations
-!          LAND_FIX 	= .TRUE.
-!          CSOIL_2  	= 70000. ! Post H5_0
-!          WEMIN    	= 13.
-!          AICEV    	= 0.107
-!          AICEN    	= 19.893
-!          FLWALPHA 	= 0.005
-!          ASTRFR   	= 0.333  ! reverted
-!          STEXP    	= 1.     ! reverted
-!          RSWILT   	= 2000.
-!          
-!       case DEFAULT
-!          _ASSERT(.FALSE.,'LAND_PARAMS not valid or incompatible with LSM_CHOICE')
-!       end select
+    else if (LSM_CHOICE==4) then
+       
+       select case (LAND_PARAMS)
+
+       case ("CN_CLM51")
+          LAND_FIX      = .TRUE.
+          CSOIL_2       = 70000. ! Post H5_0
+          WEMIN         = 13.
+          AICEV         = 0.107
+          AICEN         = 19.893
+          FLWALPHA      = 0.04
+          ASTRFR        = 0.333  ! reverted
+          STEXP         = 1.     ! reverted
+          RSWILT        = 2000.
+
+       case DEFAULT
+          _ASSERT(.FALSE.,'LAND_PARAMS not valid or incompatible with LSM_CHOICE')
+       end select
 
     else
        _ASSERT(.FALSE.,'land model choice not valid')
