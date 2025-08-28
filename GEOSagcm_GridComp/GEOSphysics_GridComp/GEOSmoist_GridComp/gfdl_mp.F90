@@ -88,7 +88,7 @@ module gfdl_mp_mod
     public :: c_liq, c_ice, rhow, wet_bulb
     public :: cv_air, cv_vap, mtetw, mte
     public :: hlv, hlf, tice
-    public :: do_hail
+    public :: do_hail, ifflag
 
     ! -----------------------------------------------------------------------
     ! precision definition
@@ -1710,8 +1710,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! momentum transportation during sedimentation
         ! update temperature before delp and q update
         ! -----------------------------------------------------------------------
-
-        if (do_sedi_uv) then
+        if (do_sedi_uv .and. do_sedi_heat) then
             do k = ks, ke
                 c8 = mhc (qvz (k), qlz (k), qrz (k), qiz (k), qsz (k), qgz (k)) * c_air
                 tzuv (k) = 0.5 * (ua (i, k) ** 2 + va (i, k) ** 2 - (u (k) ** 2 + v (k) ** 2)) / c8
@@ -1719,7 +1718,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             enddo
         endif
 
-        if (do_sedi_w) then
+        if (do_sedi_w .and. do_sedi_heat) then
             do k = ks, ke
                 c8 = mhc (qvz (k), qlz (k), qrz (k), qiz (k), qsz (k), qgz (k)) * c_air
                 tzw (k) = 0.5 * (wa (i, k) ** 2 - w (k) ** 2) / c8
@@ -1807,7 +1806,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
 
         if (do_sedi_uv) then
-            do k = ks, ke
+            if (do_sedi_heat) then
+              do k = ks, ke
                 tz (k) = tz (k) - tzuv (k)
                 q_liq (k) = qlz (k) + qrz (k)
                 q_sol (k) = qiz (k) + qsz (k) + qgz (k)
@@ -1817,7 +1817,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 tzuv (k) = (0.5 * (ua (i, k) ** 2 + va (i, k) ** 2) * dp0 (k) - &
                     0.5 * (u (k) ** 2 + v (k) ** 2) * dp (k)) / c8 / dp (k)
                 tz (k) = tz (k) + tzuv (k)
-            enddo
+              enddo
+            endif
             do k = ks, ke
 ! Don't update the state
 !               ua (i, k) = u (k)
@@ -1829,7 +1830,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         endif
 
         if (do_sedi_w) then
-            do k = ks, ke
+            if (do_sedi_heat) then
+              do k = ks, ke
                 tz (k) = tz (k) - tzw (k)
                 q_liq (k) = qlz (k) + qrz (k)
                 q_sol (k) = qiz (k) + qsz (k) + qgz (k)
@@ -1839,7 +1841,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 tzw (k) = (0.5 * (wa (i, k) ** 2) * dp0 (k) - &
                     0.5 * (w (k) ** 2) * dp (k)) / c8 / dp (k)
                 tz (k) = tz (k) + tzw (k)
-            enddo
+              enddo
+            endif
             do k = ks, ke
 ! Don't update the state
 !               wa (i, k) = w (k)
@@ -3091,6 +3094,8 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
 
     do k = ks, ke
 
+      if (tz (k) .gt. t_wfr .and. qr (k) .gt. qpmin) then
+
         tin = (tz (k) * cvm (k) - lv00 * ql (k)) / mhc (qv (k) + ql (k), qr (k), q_sol (k))
 
         ! -----------------------------------------------------------------------
@@ -3110,9 +3115,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
         ! rain evaporation
         ! -----------------------------------------------------------------------
 
-        rh_tem = qpz / qsat
-
-        if (tz (k) .gt. t_wfr .and. qr (k) .gt. qpmin .and. dqv .gt. 0.0 .and. qsat .gt. q_minus) then
+        if (dqv .gt. 0.0 .and. qsat .gt. q_minus) then
 
             if (qsat .gt. q_plus) then
                 dq = qsat - qpz
@@ -3123,6 +3126,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             t2 = tin * tin
             sink = psub (t2, dq, qden, qsat, crevp, den (k), denfac (k), blinr, mur, lcpk (k), cvm (k))
             sink = min (qr (k), dts * fac_revp * sink, dqv / (1. + lcpk (k) * dqdt))
+            rh_tem = qpz / qsat
             if (use_rhc_revap .and. rh_tem .ge. rhc_revap) then
                 sink = 0.0
             endif
@@ -3140,6 +3144,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k))
 
         endif
+      endif
 
     enddo ! k loop
 
@@ -4524,6 +4529,10 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
 
         if (tin .gt. t_sub + 6.) then
 
+            ! initialize to 0s
+            sink = 0.0
+            subl = 0.0
+
             rh_adj = 1. - h_var(k) - rh_inc
             qsi = iqs (tin, den (k), dqdt)
             rh = qpz / qsi
@@ -4609,6 +4618,7 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
     do k = ks, ke
 
+        sink = 0.0
         tin = tz (k)
         qsw = wqs (tin, den (k), dqdt)
         qpz = qv (k) + ql (k) + qi (k)

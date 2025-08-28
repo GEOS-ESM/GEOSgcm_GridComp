@@ -16,7 +16,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
-  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail
+  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail, ifflag
 
   implicit none
 
@@ -228,6 +228,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     CHARACTER(len=ESMF_MAXSTR) :: errmsg
 
+    real                     :: cf_max
     real                     :: DBZ_DT
     type(ESMF_Calendar)      :: calendar
     type(ESMF_Alarm)         :: DBZ_RunAlarm
@@ -268,6 +269,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (DT_R8 < 300.0) then 
       do_hail = .true.
+      ifflag = 1
     endif
 
     if (GFDL_MP3) then
@@ -314,13 +316,12 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
                                  CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
-    if (DT_MOIST <= 300.0) then
-      call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
-    else
-      call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS); VERIFY_(STATUS)
-    endif
+    ! variations on max CAPE for convective fraction as timestep changes with resolution
+    cf_max = 100.0 * NINT( (1500.0+2500.0*(1-(DT_R8-30.0)/(900.0-30.0))**2) /100.0 )
+    if (cf_max < 1500.0) cf_max = 1500.0
+    if (cf_max > 4000.0) cf_max = 4000.0
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= cf_max, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, GFDL_MP_PLID    , 'GFDL_MP_PLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
 
@@ -370,6 +371,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: TMP2D
     real, allocatable, dimension(:)     :: TMP1D
     ! Exports
+    real, pointer, dimension(:,:  ) :: LONS, LATS
     real, pointer, dimension(:,:,:) :: NACTR
     real, pointer, dimension(:,:  ) :: PRCP_WATER, PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
     real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, ICE, FRZR, CNV_FRC, SRF_TYPE
@@ -415,6 +417,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !-----------------------------------
 
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
+         LATS     = LATS,              & ! These are in radians
+         LONS     = LONS,              & ! These are in radians
          RUNALARM = ALARM,             &
          CF       = CF,                &
          INTERNAL_ESMF_STATE=INTERNAL, &
@@ -871,8 +875,20 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
+     ! CleanUp Negative Water Vapor, cloud liquid/ice, and condensates
+         call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QI, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QR, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QS, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QG, MASS, TMP2D)
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
+     ! Fill vapor/rain/snow/graupel state
+         Q        = RAD_QV
+         QRAIN    = RAD_QR
+         QSNOW    = RAD_QS
+         QGRAUPEL = RAD_QG
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_WATER   = MAX(PRCP_WATER   / 86400.0, 0.0)
          PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
@@ -891,14 +907,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          TMP3D =  MIN(1.0,MAX(QICN/MAX(RAD_QI,1.E-8),0.0))
          PFI_AN(:,:,1:LM) = (PFI_LS(:,:,1:LM)+PFS_LS(:,:,1:LM)+PFG_LS(:,:,1:LM)) * TMP3D
          PFI_LS(:,:,1:LM) = (PFI_LS(:,:,1:LM)+PFS_LS(:,:,1:LM)+PFG_LS(:,:,1:LM)) - PFI_AN(:,:,1:LM)
-     ! cleanup suspended precipitation condensates
-         call FIX_NEGATIVE_PRECIP(RAD_QR, RAD_QS, RAD_QG)
-     ! Fill vapor/rain/snow/graupel state
-         Q        = RAD_QV
-         QRAIN    = RAD_QR
-         QSNOW    = RAD_QS
-         QGRAUPEL = RAD_QG
-     ! Radiation Coupling
+     ! MeltFreeze and FixUp
          do L = 1, LM
            do J = 1, JM
              do I = 1, IM
@@ -922,14 +931,24 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
                                                        QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
                                                        REMOVE_CLOUDS=(L < KLID) )
+              ! Debug large temperature values
+               if (T(I,J,L) > 330.0) then
+                 print *, "Temperature spike detected: ", T(I,J,L)
+                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI 
+                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
+                 print *, "  Pressure (mb)  =", PLmb(I,J,L)
+                 print *, "                       CLLS=",  CLLS(I,J,L),             "CLCN=", CLCN(I,J,L)
+                 print *, "  QV=",     Q(I,J,L), "  QL=",  QLLS(I,J,L)+QLCN(I,J,L), "  QI=", QLLS(I,J,L)+QLCN(I,J,L)
+                 print *, "  QR=", QRAIN(I,J,L), "  QS=", QSNOW(I,J,L),             "  QG=", QGRAUPEL(I,J,L)
+               endif
               ! get radiative properties
                call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
                      RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
                      CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                      FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
-            enddo
-          enddo
+             enddo
+           enddo
          enddo
          call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
