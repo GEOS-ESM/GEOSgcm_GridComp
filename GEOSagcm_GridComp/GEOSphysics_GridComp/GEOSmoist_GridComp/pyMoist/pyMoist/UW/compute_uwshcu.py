@@ -1,5 +1,6 @@
 import copy
 
+from dace import nounroll
 from gt4py.cartesian.gtscript import (
     BACKWARD,
     FORWARD,
@@ -19,7 +20,7 @@ from gt4py.cartesian.gtscript import (
 )
 
 import pyMoist.constants as constants
-from ndsl import QuantityFactory, StencilFactory
+from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import (
     BoolFieldIJ,
@@ -7699,8 +7700,6 @@ class ComputeUwshcuInv:
         UW_config: UWConfiguration,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
-        # orchestrate(obj=self, config=stencil_factory.config.dace_config)
-
         # Initialize the ComputeUwshcu class
 
         # Parameters:
@@ -7710,13 +7709,12 @@ class ComputeUwshcuInv:
         # constants.
         # formulation: Saturation Formulation used for QSat.
 
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
+
         self.UW_config = UW_config
         self.temporaries = Temporaries.make(quantity_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
-        grid_indexing = stencil_factory.grid_indexing
-
-        print("THIS IS NCNST:", self.UW_config.NCNST)
 
         if constants.NCNST != self.UW_config.NCNST:
             raise NotImplementedError(
@@ -8378,11 +8376,10 @@ class ComputeUwshcuInv:
         # iterative cin calculation, because cumulus convection induces non-zero fluxes
         # even at interfaces below PBL top height through 'fluxbelowinv' calculation.
 
-        for iteration in range(iter_cin):
-            iteration = int32(iteration)
-
+        for iteration in nounroll(range(iter_cin)):
+            it = iteration
             self._find_pbl_height(
-                iteration=iteration,
+                iteration=it,
                 kpbl_in=self.temporaries.kpbl_in,
                 k0=k0,
                 condensation=self.condensation,
@@ -8417,7 +8414,7 @@ class ComputeUwshcuInv:
                 vavg=self.temporaries.vavg,
                 thvlavg=self.temporaries.thvlavg,
                 qtavg=self.temporaries.qtavg,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -8452,7 +8449,7 @@ class ComputeUwshcuInv:
                 vsrc=self.temporaries.vsrc,
                 tpert_out=tpert_out,
                 qpert_out=qpert_out,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -8480,7 +8477,7 @@ class ComputeUwshcuInv:
                 qt0lcl=self.temporaries.qt0lcl,
                 thv0lcl=self.temporaries.thv0lcl,
                 cush_inout=self.temporaries.cush_inout,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -8514,7 +8511,7 @@ class ComputeUwshcuInv:
                 thvubot=self.temporaries.thvubot,
                 thvutop=self.temporaries.thvutop,
                 k0=k0,
-                iteration=iteration,
+                iteration=it,
                 rbuoy=rbuoy,
                 rkfre=rkfre,
                 tkeavg=self.temporaries.tkeavg,
@@ -8549,7 +8546,7 @@ class ComputeUwshcuInv:
             if iteration != 0:
                 self._avg_initial_and_final_cin(
                     condensation=self.condensation,
-                    iteration=iteration,
+                    iteration=it,
                     cin_IJ=self.temporaries.cin_IJ,
                     cinlcl_IJ=self.temporaries.cinlcl_IJ,
                     use_CINcin=use_CINcin,
@@ -8695,7 +8692,7 @@ class ComputeUwshcuInv:
 
             self._define_prel_krel(
                 condensation=self.condensation,
-                iteration=iteration,
+                iteration=it,
                 klcl=self.temporaries.klcl,
                 kinv=self.temporaries.kinv,
                 pifc0=self.temporaries.pifc0_in,
@@ -8710,7 +8707,7 @@ class ComputeUwshcuInv:
 
             self._calc_cumulus_base_mass_flux(
                 condensation=self.condensation,
-                iteration=iteration,
+                iteration=it,
                 use_CINcin=use_CINcin,
                 cin_IJ=self.temporaries.cin_IJ,
                 rbuoy=rbuoy,
@@ -8743,7 +8740,7 @@ class ComputeUwshcuInv:
 
             self._define_updraft_properties(
                 condensation=self.condensation,
-                iteration=iteration,
+                iteration=it,
                 winv=self.temporaries.winv,
                 cinlcl_IJ=self.temporaries.cinlcl_IJ,
                 rbuoy=rbuoy,
@@ -8777,7 +8774,7 @@ class ComputeUwshcuInv:
 
             self._define_env_properties(
                 condensation=self.condensation,
-                iteration=iteration,
+                iteration=it,
                 krel=self.temporaries.krel,
                 kinv=self.temporaries.kinv,
                 PGFc=PGFc,
@@ -8906,7 +8903,7 @@ class ComputeUwshcuInv:
                 xco=self.temporaries.xco,
                 cush_inout=self.temporaries.cush_inout,
                 stop_buoyancy_sort=self.stop_buoyancy_sort,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
                 # testvar2D=testvar2D,
             )
@@ -8924,7 +8921,7 @@ class ComputeUwshcuInv:
                 dp0=self.temporaries.dp0_in,
                 wtwb=self.temporaries.wtwb,
                 ppen=self.temporaries.ppen,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -8971,7 +8968,7 @@ class ComputeUwshcuInv:
                 xco=self.temporaries.xco,
                 cush=cush,
                 cush_inout=self.temporaries.cush_inout,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -9014,7 +9011,7 @@ class ComputeUwshcuInv:
                 uu_emf=self.temporaries.uu_emf,
                 vu_emf=self.temporaries.vu_emf,
                 emf=self.temporaries.emf,
-                iteration=iteration,
+                iteration=it,
             )
 
             self._calc_pbl_fluxes(
@@ -9047,7 +9044,7 @@ class ComputeUwshcuInv:
                 uflx=self.temporaries.uflx,
                 vflx=self.temporaries.vflx,
                 slflx=self.temporaries.slflx,
-                iteration=iteration,
+                iteration=it,
                 xflx_ndim=self.xflx_ndim,
                 # testvar3D=testvar3D,
             )
@@ -9084,7 +9081,7 @@ class ComputeUwshcuInv:
                 qtflx=self.temporaries.qtflx,
                 uplus=self.temporaries.uplus,
                 vplus=self.temporaries.vplus,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -9117,7 +9114,7 @@ class ComputeUwshcuInv:
                 vflx=self.temporaries.vflx,
                 uflx=self.temporaries.uflx,
                 slflx=self.temporaries.slflx,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -9170,7 +9167,7 @@ class ComputeUwshcuInv:
                 qlten_sink=self.temporaries.qlten_sink,
                 qiten_sink=self.temporaries.qiten_sink,
                 cush_inout=self.temporaries.cush_inout,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -9187,7 +9184,7 @@ class ComputeUwshcuInv:
                 vten=self.temporaries.vten,
                 uf=self.temporaries.uf,
                 vf=self.temporaries.vf,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -9251,7 +9248,7 @@ class ComputeUwshcuInv:
                 qlten_det=self.temporaries.qlten_det,
                 qiten_det=self.temporaries.qiten_det,
                 cush_inout=self.temporaries.cush_inout,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -9269,7 +9266,7 @@ class ComputeUwshcuInv:
                 qiten=self.temporaries.qiten,
                 k0=k0,
                 qmin=self.temporaries.qmin,
-                iteration=iteration,
+                iteration=it,
                 # testvar3D=testvar3D,
             )
 
@@ -9285,7 +9282,7 @@ class ComputeUwshcuInv:
                 tr0=self.tr0,
                 trflx=self.trflx,
                 trten=self.trten,
-                iteration=iteration,
+                iteration=it,
             )
 
             self._compute_diagnostic_outputs(
@@ -9343,7 +9340,7 @@ class ComputeUwshcuInv:
                 cufrc=self.temporaries.cufrc,
                 cush_inout=self.temporaries.cush_inout,
                 # testvar3D=testvar3D,
-                iteration=iteration,
+                iteration=it,
             )
 
             if iteration != iter_cin:
@@ -9420,7 +9417,7 @@ class ComputeUwshcuInv:
                     cufrc_s=self.temporaries.cufrc_s,
                     fer_s=self.temporaries.fer_s,
                     fdr_s=self.temporaries.fdr_s,
-                    iteration=iteration,
+                    iteration=it,
                     # testvar3D=testvar3D,
                 )
 
@@ -9464,7 +9461,7 @@ class ComputeUwshcuInv:
                     t0=self.temporaries.t0,
                     tr0_temp=self.temporaries.tr0_temp,
                     cush_inout=self.temporaries.cush_inout,
-                    iteration=iteration,
+                    iteration=it,
                     # testvar3D=testvar3D,
                 )
 
