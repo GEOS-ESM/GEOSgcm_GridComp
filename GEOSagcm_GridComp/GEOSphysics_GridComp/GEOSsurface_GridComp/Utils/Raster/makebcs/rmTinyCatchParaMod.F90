@@ -226,28 +226,14 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
-    case ("v12","v13")  
+    case ("v12","v13","v14")  
 
-       ! "v12" and "v13" are identical except for:
+       ! "v12", "v13", and "v14" are identical except for:
        ! - topography used for the atm (processed outside of make_bcs)
        ! - bug fix for land elevation in catchment.def file
        ! - generation of nc4-formatted tile file
+       ! - v14 is used for coupled atm-ocean-seaice with MOM6/v2 (OM4) ocean bathymetry
  
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD_b'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "v2"       
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
-
-    case ("v14")  
-
-       ! "v14", "v13", and "v12" are identical except for:
-       ! - topography used for the atm (processed outside of make_bcs)
-       ! - v14 is used for coupled atm-ocean-seaice with v2 (OM4) ocean bathymetry
-
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
