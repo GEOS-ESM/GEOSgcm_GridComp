@@ -50,6 +50,7 @@ module GEOS_GwdGridCompMod
    use mapl3g_UngriddedDims, only: UngriddedDims
    use mapl3g_Geom_API, only: MAPL_GridGet
    use mapl3g_State_API, only: MAPL_StateGetPointer
+   use mapl3g_UngriddedDim, only: UngriddedDim
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
@@ -130,6 +131,7 @@ contains
 
       type (wrap_)                                :: wrap
       type (GEOS_GwdGridComp), pointer               :: self
+      type(UngriddedDim) :: ungrd_16
       integer :: num_threads
 
       ! Begin...
@@ -161,6 +163,7 @@ contains
 
       ! Set the state variable specs.
       ! -----------------------------
+      ungrd_16 = UngriddedDim(16, name="sixteen", units="1")
 #include "GWD_Import___.h"
 #include "GWD_Export___.h"
 #include "GWD_Internal___.h"
