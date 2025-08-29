@@ -79,51 +79,45 @@ for var in ncFid.variables:
     temp = invar[:]
     dim_size = temp.ndim
 
-    # choose dims and create output var with the input _FillValue if present
-    fillv_in = getattr(invar, '_FillValue', 1.0e15)
     if dim_size == 2:
-        tout = ncFidOut.createVariable(var, 'f8', ('unknown_dim1','lat','lon'), fill_value=fillv_in)
+        tout = ncFidOut.createVariable(var, 'f8', ('unknown_dim1','lat','lon'), fill_value=1.0e15)
     elif dim_size == 1:
-        tout = ncFidOut.createVariable(var, 'f8', ('lat','lon'), fill_value=fillv_in)
+        tout = ncFidOut.createVariable(var, 'f8', ('lat','lon'), fill_value=1.0e15)
     else:
-        # unexpected shape: skip
         continue
 
+    # copy all attrs except _FillValue
     for att in invar.ncattrs():
         if att != "_FillValue":
             setattr(ncFidOut.variables[var], att, getattr(invar, att))
 
-    # reshape into (6*cRes, cRes) [and lead nrdg dim if present]
     if dim_size == 2:
         data = numpy.reshape(temp, [rdgSize, 6*cRes, cRes]).astype('f8')
     else:
         data = numpy.reshape(temp, [6*cRes, cRes]).astype('f8')
 
-    # --- variance -> std dev for SGH/SGH30 ---
+    # sqrt ONLY for SGH / SGH30; preserve sentinels
     if var.lower() in ('sgh','sgh30'):
         miss_in = getattr(invar, 'missing_value', None)
-        # build mask for invalids and non-physical values
-        mask = ~numpy.isfinite(data) | (data < 0.0)
+        fill_in = getattr(invar, '_FillValue', None)
+        out = data.copy()
+        mask = numpy.zeros_like(out, dtype=bool)
         if miss_in is not None:
             mask |= (data == miss_in)
-        if fillv_in is not None:
-            mask |= (data == fillv_in)
-
-        out = numpy.empty_like(data)
-        out[~mask] = numpy.sqrt(data[~mask])
-        out[mask]  = fillv_in
-
-        # write converted values
+        if fill_in is not None:
+            mask |= (data == fill_in)
+        mask |= (data < 0.0)  # guard against tiny negative variances
+        out[~mask] = numpy.sqrt(out[~mask])
         if dim_size == 2:
-            tout[:,:,:] = out
+            tout[:, :, :] = out
         else:
-            tout[:,:] = out
+            tout[:, :] = out
     else:
         # passthrough
         if dim_size == 2:
-            tout[:,:,:] = data
+            tout[:, :, :] = data
         else:
-            tout[:,:] = data
+            tout[:, :] = data
 
 #-----------------
 # Closing the file
