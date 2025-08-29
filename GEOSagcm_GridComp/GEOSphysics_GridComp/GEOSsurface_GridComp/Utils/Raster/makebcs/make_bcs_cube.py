@@ -8,16 +8,19 @@ from make_bcs_shared import *
 
 cube_template = """
 
-if ({lbcsv} == "v14_BETA")
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v2/1440x1080 data/MOM6/1440x1080
+if ({lbcsv} == "v14")
+    {ocean_bathy_version} = "v2"
 else
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v1/72x36 data/MOM6/72x36
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v1/540x458 data/MOM6/540x458
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v1/1440x1080 data/MOM6/1440x1080
+    {ocean_bathy_version} = "v1"
 endif
+
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{ocean_bathy_version}/72x36 data/MOM6/72x36
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{ocean_bathy_version}/540x458 data/MOM6/540x458
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{ocean_bathy_version}/1440x1080 data/MOM6/1440x1080
+
 
 if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
 
