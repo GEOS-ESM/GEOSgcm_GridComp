@@ -226,18 +226,19 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
-    case ("v12","v13")  
+    case ("v12","v13","v14")  
 
-       ! "v12" and "v13" are identical except for:
+       ! "v12", "v13", and "v14" are identical except for:
        ! - topography used for the atm (processed outside of make_bcs)
        ! - bug fix for land elevation in catchment.def file
        ! - generation of nc4-formatted tile file
+       ! - v14 is used for coupled atm-ocean-seaice with MOM6/v2 (OM4) ocean bathymetry
  
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
-       OUTLETV = "v2"       
+       OUTLETV = "v2"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
@@ -5514,10 +5515,10 @@ contains
     REAL*8 b(m),u(m,n),v(n,n),w(n),x(n) 
     PARAMETER (NMAX=500)  !Maximum anticipated value of n
     !------------------------------------------------------------------------------------------- 
-    ! Solves A · X = B for a vector X, where A is specified by the arrays u, w, v as returned by 
+    ! Solves A "A^" . X = B for a vector X, where A is specified by the arrays u, w, v as returned by 
     ! svdcmp. m and n are the dimensions of a, and will be equal for square matrices. b(1:m) is 
     ! the input right-hand side. x(1:n) is the output solution vector. No input quantities are 
-    ! destroyed, so the routine may be called sequentially with different b’s. 
+    ! destroyed, so the routine may be called sequentially with different b's. 
     !-------------------------------------------------------------------------------------------
 
     INTEGER i,j,jj 
@@ -5552,7 +5553,7 @@ contains
     PARAMETER (NMAX=500)  !Maximum anticipated value of n. 
     !-------------------------------------------------------------------------------------- 
     ! Given a matrix A(1:m,1:n), this routine computes its singular value decomposition, 
-    ! A = U · W · Vt. The matrix U replaces A on output. The diagonal matrix of singular 
+    ! A = U . W . Vt. The matrix U replaces A on output. The diagonal matrix of singular 
     ! values W is output as a vector W(1:n). The matrix V (not the transpose Vt) is output 
     ! as V(1:n,1:n). 
     !--------------------------------------------------------------------------------------
