@@ -174,6 +174,14 @@ def ask_questions(default_grid="Cubed-Sphere"):
    ocean resolution. ",
             "choices": ["No", "Yes"],
         },
+   
+        {"type": "select",
+         "name": "ocean_bathy_version",
+         "message": "Select ocean bathymetry version in coupled mode.",
+         "choices": [ \
+    "v1  : MOM5 bathymetries and MOM6 bathymetries with v1 ocean grids",\
+    "v2  : MOM6 bathymetries with OM4  ocean grids. For now, only  available at 1440x1080. Select v14 for next question"],  
+        }, 
 
         {
             "type": "select",
@@ -199,7 +207,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
    "v11 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2", \
    "v12 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix", \
    "v13 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix + mean land elevation fix", \
-   "v14_BETA : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix + mean land elevation fix + v2 (OM4) ocean-seaice bathymetry", \
+   "v14 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix + mean land elevation fix + v2 (OM4) ocean-seaice bathymetry", \
    "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
    "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
    "F25 : Fortuna-2_5   (archived*: n/a)"], 
