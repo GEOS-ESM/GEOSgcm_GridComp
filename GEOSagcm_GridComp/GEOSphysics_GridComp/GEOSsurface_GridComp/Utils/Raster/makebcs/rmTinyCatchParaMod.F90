@@ -5567,7 +5567,7 @@ contains
     PARAMETER (NMAX=500)  !Maximum anticipated value of n. 
     !-------------------------------------------------------------------------------------- 
     ! Given a matrix A(1:m,1:n), this routine computes its singular value decomposition, 
-    ! A = U · W · Vt. The matrix U replaces A on output. The diagonal matrix of singular 
+    ! A = U . W . Vt. The matrix U replaces A on output. The diagonal matrix of singular 
     ! values W is output as a vector W(1:n). The matrix V (not the transpose Vt) is output 
     ! as V(1:n,1:n). 
     !--------------------------------------------------------------------------------------
