@@ -403,7 +403,7 @@ module GEOSmoist_Process_Library
       ICEFRCT_C = MAX(ICEFRCT_C,0.00)
       ICEFRCT_C = ICEFRCT_C**aICEFRPWR
      ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-      if (SRF_TYPE >= 2.0) then
+      if (nint(SRF_TYPE) >= 2) then
         ! Over snow (SRF_TYPE == 2.0) and ice (SRF_TYPE == 3.0)
         if (ICE_RADII_PARAM == 1) then
           ! Jason formula
@@ -424,7 +424,7 @@ module GEOSmoist_Process_Library
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
         ICEFRCT_M = ICEFRCT_M**iICEFRPWR
-      else if (SRF_TYPE == 1.0) then
+      else if (nint(SRF_TYPE) == 1) then
         ! Over Land
         ICEFRCT_M  = 0.00
         if ( TEMP <= lT_ICE_ALL ) then
