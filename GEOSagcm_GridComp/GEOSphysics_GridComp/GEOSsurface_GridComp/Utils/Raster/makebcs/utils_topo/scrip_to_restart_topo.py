@@ -72,53 +72,25 @@ if haveRdg:
 
 exclude = ['lon','lat']
 for var in ncFid.variables:
-    if var in exclude:
-        continue
-
-    invar = ncFid.variables[var]
-    temp = invar[:]
-    dim_size = temp.ndim
-
-    if dim_size == 2:
-        tout = ncFidOut.createVariable(var, 'f8', ('unknown_dim1','lat','lon'), fill_value=1.0e15)
-    elif dim_size == 1:
-        tout = ncFidOut.createVariable(var, 'f8', ('lat','lon'), fill_value=1.0e15)
-    else:
-        continue
-
-    # copy all attrs except _FillValue
-    for att in invar.ncattrs():
-        if att != "_FillValue":
-            setattr(ncFidOut.variables[var], att, getattr(invar, att))
-
-    if dim_size == 2:
-        data = numpy.reshape(temp, [rdgSize, 6*cRes, cRes]).astype('f8')
-    else:
-        data = numpy.reshape(temp, [6*cRes, cRes]).astype('f8')
-
-    # sqrt ONLY for SGH / SGH30; preserve sentinels
-    if var.lower() in ('sgh','sgh30'):
-        miss_in = getattr(invar, 'missing_value', None)
-        fill_in = getattr(invar, '_FillValue', None)
-        out = data.copy()
-        mask = numpy.zeros_like(out, dtype=bool)
-        if miss_in is not None:
-            mask |= (data == miss_in)
-        if fill_in is not None:
-            mask |= (data == fill_in)
-        mask |= (data < 0.0)  # guard against tiny negative variances
-        out[~mask] = numpy.sqrt(out[~mask])
+    if var not in exclude:
+        temp = ncFid.variables[var][:]
+        dim_size =len(temp.shape)
+        
         if dim_size == 2:
-            tout[:, :, :] = out
-        else:
-            tout[:, :] = out
-    else:
-        # passthrough
-        if dim_size == 2:
-            tout[:, :, :] = data
-        else:
-            tout[:, :] = data
+            tout = ncFidOut.createVariable(var,'f8',('unknown_dim1','lat','lon'),fill_value=1.0e15)
+            for att in ncFid.variables[var].ncattrs():
+                if att != "_FillValue":
+                   setattr(ncFidOut.variables[var],att,getattr(ncFid.variables[var],att))
+            temp2d = numpy.reshape(temp,[rdgSize,cRes*6,cRes])
+            tout[:,:,:] = temp2d[:,:,:]
 
+        elif dim_size == 1:
+            tout = ncFidOut.createVariable(var,'f8',('lat','lon'),fill_value=1.0e15)
+            for att in ncFid.variables[var].ncattrs():
+                if att != "_FillValue":
+                   setattr(ncFidOut.variables[var],att,getattr(ncFid.variables[var],att))
+            temp1d = numpy.reshape(temp,[cRes*6,cRes])
+            tout[:,:] = temp1d[:,:]
 #-----------------
 # Closing the file
 #----------------

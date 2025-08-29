@@ -85,114 +85,154 @@ fsbin = Istr//'x'//Jstr//'.data'
 !   endif
 !end if
    
+! --- DYN (mean elevation in meters) -----------------------------------------
+fonc4 = "gmted_DYN_ave_"//trim(fsnc4)
+fobin = "gmted_DYN_ave_"//trim(fsbin)
 
-! mean height
-fonc4="gmted_DYN_ave_"//trim(fsnc4)
-fobin="gmted_DYN_ave_"//trim(fsbin)
-call check(nf90_create(fonc4, IOR(NF90_CLOBBER,NF90_NETCDF4),ncid),"error")
-open(file=fobin,unit=21,form='unformatted')
-call check(nf90_def_dim(ncid,"lon",im_world,lonid),"error")
-call check(nf90_def_dim(ncid,"lat",jm_world,latid),"error")
-call check(nf90_def_var(ncid,"z",NF90_FLOAT,(/lonid,latid/),varid),"error")
-call check(nf90_enddef(ncid),"error")
+call check(nf90_create(fonc4, IOR(NF90_CLOBBER, NF90_NETCDF4), ncid), "create dyn")
+open(file=fobin, unit=21, form='unformatted')
 
-nc=0
-do j=1,jm_world
-do i=1,im_world
-   nc=nc+1
-   !ncar program outputs PHIS, divide by g
-   a(i,j)=z1d(nc)/g
-enddo
-enddo
+call check(nf90_def_dim(ncid, "lon", im_world, lonid), "defdim lon dyn")
+call check(nf90_def_dim(ncid, "lat", jm_world, latid), "defdim lat dyn")
+call check(nf90_def_var(ncid, "z", NF90_FLOAT, (/lonid, latid/), varid), "defvar z")
+
+call check(nf90_put_att(ncid, varid, "long_name",     "mean elevation"), "att z long_name")
+call check(nf90_put_att(ncid, varid, "units",         "m"),               "att z units")
+! optional nicety:
+ call check(nf90_put_att(ncid, varid, "standard_name","surface_altitude"), "att z stdname")
+
+call check(nf90_enddef(ncid), "enddef dyn")
+
+nc = 0
+do j = 1, jm_world
+  do i = 1, im_world
+    nc = nc + 1
+    ! NCAR writes PHIS (m^2 s^-2); convert to meters. Guard sentinels if present.
+    if (z1d(nc) < 0.9e36) then
+      a(i,j) = z1d(nc) / g
+    else
+        a(i,j) = 0.0   ! or 1.0e36 if you decide to add _FillValue  
+    end if
+  end do
+end do
 
 if (isLL) then
-   asum=0.0
-   do i=1,im_world
-      asum=asum+a(i,1)
-   enddo
-   a(:,1)=asum/float(im_world)
-   asum=0.0
-   do i=1,im_world
-      asum=asum+a(i,jm_world)
-   enddo
-   a(:,jm_world)=asum/float(im_world)
+  asum = 0.0
+  do i = 1, im_world
+    asum = asum + a(i,1)
+  end do
+  a(:,1) = asum / float(im_world)
+
+  asum = 0.0
+  do i = 1, im_world
+    asum = asum + a(i,jm_world)
+  end do
+  a(:,jm_world) = asum / float(im_world)
 end if
 
-call check(nf90_put_var(ncid,varid,a),"error")
-call check(nf90_close(ncid),"error")
-
-write(21)a
+call check(nf90_put_var(ncid, varid, a), "putvar z")
+call check(nf90_close(ncid), "close dyn")
+write(21) a
 close(21)
 
-! GWD
-fonc4="gmted_GWD_var_"//trim(fsnc4)
-fobin="gmted_GWD_var_"//trim(fsbin)
-call check(nf90_create(fonc4, IOR(NF90_CLOBBER,NF90_NETCDF4),ncid),"error")
-open(file=fobin,unit=21,form='unformatted')
-call check(nf90_def_dim(ncid,"lon",im_world,lonid),"error")
-call check(nf90_def_dim(ncid,"lat",jm_world,latid),"error")
-call check(nf90_def_var(ncid,"gwd",NF90_FLOAT,(/lonid,latid/),varid),"error")
-call check(nf90_enddef(ncid),"error")
-nc=0
-do j=1,jm_world
-do i=1,im_world
-   nc=nc+1
-   a(i,j)=gwd1d(nc)
-enddo
-enddo
+! --- GWD (write variance m^2) ----------------------------------------------
+fonc4 = "gmted_GWD_var_"//trim(fsnc4)
+fobin = "gmted_GWD_var_"//trim(fsbin)
+
+call check(nf90_create(fonc4, IOR(NF90_CLOBBER, NF90_NETCDF4), ncid), "create gwd")
+open(file=fobin, unit=21, form='unformatted')
+
+call check(nf90_def_dim(ncid, "lon", im_world, lonid), "defdim lon gwd")
+call check(nf90_def_dim(ncid, "lat", jm_world, latid), "defdim lat gwd")
+call check(nf90_def_var(ncid, "gwd", NF90_FLOAT, (/lonid, latid/), varid), "defvar gwd")
+
+call check(nf90_put_att(ncid, varid, "long_name", "variance of subgrid orography for GWD"), "att gwd long_name")
+call check(nf90_put_att(ncid, varid, "units",     "m2"),                                   "att gwd units")
+
+call check(nf90_enddef(ncid), "enddef gwd")
+
+nc = 0
+do j = 1, jm_world
+  do i = 1, im_world
+    nc = nc + 1
+    ! Square std dev (m) from PE file to variance (m^2) here.
+    ! Guard against sentinels/negatives so we don't square 1e36.
+    if (gwd1d(nc) >= 0.0 .and. gwd1d(nc) < 0.9e36) then
+      a(i,j) = gwd1d(nc) * gwd1d(nc)
+    else
+      a(i,j) = 1.0e36
+    end if
+  end do
+end do
+
 if (isLL) then
-   asum=0.0
-   do i=1,im_world
-      asum=asum+a(i,1)
-   enddo
-   a(:,1)=asum/float(im_world)
-   asum=0.0
-   do i=1,im_world
-      asum=asum+a(i,jm_world)
-   enddo
-   a(:,jm_world)=asum/float(im_world)
+  asum = 0.0
+  do i = 1, im_world
+    asum = asum + a(i,1)
+  end do
+  a(:,1) = asum / float(im_world)
+
+  asum = 0.0
+  do i = 1, im_world
+    asum = asum + a(i,jm_world)
+  end do
+  a(:,jm_world) = asum / float(im_world)
 end if
 
-call check(nf90_put_var(ncid,varid,a),"error")
-call check(nf90_close(ncid),"error")
-
-write(21)a
+call check(nf90_put_var(ncid, varid, a), "putvar gwd")
+call check(nf90_close(ncid), "close gwd")
+write(21) a
 close(21)
 
-! TURB
-fonc4="gmted_TRB_var_"//trim(fsnc4)
-fobin="gmted_TRB_var_"//trim(fsbin)
-call check(nf90_create(fonc4, IOR(NF90_CLOBBER,NF90_NETCDF4),ncid),"error")
-open(file=fobin,unit=21,form='unformatted')
-call check(nf90_def_dim(ncid,"lon",im_world,lonid),"error")
-call check(nf90_def_dim(ncid,"lat",jm_world,latid),"error")
-call check(nf90_def_var(ncid,"trb",NF90_FLOAT,(/lonid,latid/),varid),"error")
-call check(nf90_enddef(ncid),"error")
-nc=0
-do j=1,jm_world
-do i=1,im_world
-   nc=nc+1
-   a(i,j)=turb1d(nc)
-enddo
-enddo
+! --- TURB (write variance m^2) ----------------------------------------------
+fonc4 = "gmted_TRB_var_"//trim(fsnc4)
+fobin = "gmted_TRB_var_"//trim(fsbin)
+
+call check(nf90_create(fonc4, IOR(NF90_CLOBBER, NF90_NETCDF4), ncid), "create trb")
+open(file=fobin, unit=21, form='unformatted')
+
+call check(nf90_def_dim(ncid, "lon", im_world, lonid), "defdim lon trb")
+call check(nf90_def_dim(ncid, "lat", jm_world, latid), "defdim lat trb")
+call check(nf90_def_var(ncid, "trb", NF90_FLOAT, (/lonid, latid/), varid), "defvar trb")
+
+call check(nf90_put_att(ncid, varid, "long_name", "variance of subgrid orography for TRB"), "att trb long_name")
+call check(nf90_put_att(ncid, varid, "units",     "m2"),                                    "att trb units")
+
+call check(nf90_enddef(ncid), "enddef trb")
+
+nc = 0
+do j = 1, jm_world
+  do i = 1, im_world
+    nc = nc + 1
+    ! Square std dev (m) from PE file to variance (m^2) here.
+    ! Guard against sentinels/negatives so we don't square 1e36.
+    if (turb1d(nc) >= 0.0 .and. turb1d(nc) < 0.9e36) then
+      a(i,j) = turb1d(nc) * turb1d(nc)
+    else
+      a(i,j) = 1.0e36
+    end if
+  end do
+end do
+
 if (isLL) then
-   asum=0.0
-   do i=1,im_world
-      asum=asum+a(i,1)
-   enddo
-   a(:,1)=asum/float(im_world)
-   asum=0.0
-   do i=1,im_world
-      asum=asum+a(i,jm_world)
-   enddo
-   a(:,jm_world)=asum/float(im_world)
+  asum = 0.0
+  do i = 1, im_world
+    asum = asum + a(i,1)
+  end do
+  a(:,1) = asum / float(im_world)
+
+  asum = 0.0
+  do i = 1, im_world
+    asum = asum + a(i,jm_world)
+  end do
+  a(:,jm_world) = asum / float(im_world)
 end if
 
-call check(nf90_put_var(ncid,varid,a),"error")
-call check(nf90_close(ncid),"error")
-
-write(21)a
+call check(nf90_put_var(ncid, varid, a), "putvar trb")
+call check(nf90_close(ncid), "close trb")
+write(21) a
 close(21)
+! ---------------------------------------------------------------------------
 
 contains
 
