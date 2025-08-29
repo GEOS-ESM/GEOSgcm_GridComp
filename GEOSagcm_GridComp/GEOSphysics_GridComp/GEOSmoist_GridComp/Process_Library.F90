@@ -62,9 +62,9 @@ module GEOSmoist_Process_Library
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
-  real, parameter :: taufrz  =  600.0
-  real, parameter :: taumlt  =  300.0 
-  real, parameter :: dQCmax  =  1.e-4
+  real, parameter :: taufrz  =  600.0     ! timescale for freezing
+  real, parameter :: taumlt  =  300.0     ! timescale for melting
+  real, parameter :: QCMIN   =  1.e-8     ! minimum condensate values
   ! LDRADIUS4
   ! Jason
   real, parameter :: abeta = 0.07
@@ -1074,29 +1074,29 @@ module GEOSmoist_Process_Library
       RAD_CF = MAX(MIN(CF+AF,1.0),0.0)
       if ( RAD_CF >= 1.e-5 ) then
         ! Total In-cloud liquid
-        if ( (QClLS + QClAN) >= 1.e-8 ) then
+        if ( (QClLS + QClAN) >= QCMIN ) then
            RAD_QL = ( QClLS + QClAN ) / RAD_CF
         else
            RAD_QL = 0.0
         end if
         ! Total In-cloud ice
-        if ( (QCiLS + QCiAN) >= 1.e-8 ) then
+        if ( (QCiLS + QCiAN) >= QCMIN ) then
            RAD_QI = ( QCiLS + QCiAN ) / RAD_CF
         else
            RAD_QI = 0.0
         end if
         ! Total In-cloud precipitation
-        if (QRN_ALL >= 1.e-8 ) then
+        if (QRN_ALL >= QCMIN ) then
            RAD_QR = ( QRN_ALL ) / RAD_CF
         else
            RAD_QR = 0.0
         end if
-        if (QSN_ALL >= 1.e-8 ) then
+        if (QSN_ALL >= QCMIN ) then
            RAD_QS = ( QSN_ALL ) / RAD_CF
         else
            RAD_QS = 0.0
         end if
-        if (QGR_ALL >= 1.e-8 ) then
+        if (QGR_ALL >= QCMIN ) then
            RAD_QG = ( QGR_ALL ) / RAD_CF
         else
            RAD_QG = 0.0
@@ -1117,7 +1117,7 @@ module GEOSmoist_Process_Library
       RAD_QG = MIN( RAD_QG, 0.01 )
 
      ! LIQUID RADII
-      if (RAD_QL > 1.e-8) then
+      if (RAD_QL > QCMIN) then
         !-BRAMS formulation
         RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NL,NI,1)
         ! apply limits
@@ -1127,7 +1127,7 @@ module GEOSmoist_Process_Library
       end if
 
     ! ICE RADII
-      if (RAD_QI > 1.e-8) then
+      if (RAD_QI > QCMIN) then
         !-BRAMS formulation
         RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2)
         ! apply limits
@@ -1157,7 +1157,7 @@ module GEOSmoist_Process_Library
                                   RM_CLDS = .false.
       if (present(REMOVE_CLOUDS)) RM_CLDS = REMOVE_CLOUDS
 
-      if (RM_CLDS) then
+      if (RM_CLDS .AND. (QLA+QIA+QLC+QIC > QCMIN)) then
 
       ! Remove ALL cloud quants above the klid
          QV = QV + QLA + QIA + QLC + QIC
@@ -1179,7 +1179,7 @@ module GEOSmoist_Process_Library
       end if
 
       ! Fix if Anvil cloud fraction too small
-      if (AF < 1.E-5) then
+      if ( (AF == 0.0) .AND. (QLA+QIA > QCMIN) ) then
          QV  = QV + QLA + QIA
          TE  = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
          AF  = 0.
@@ -1188,50 +1188,7 @@ module GEOSmoist_Process_Library
       end if
 
       ! Fix if LS cloud fraction too small
-      if ( CF < 1.E-5 ) then
-         QV = QV + QLC + QIC
-         TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
-         CF  = 0.
-         QLC = 0.
-         QIC = 0.
-      end if
-
-      ! LS LIQUID too small
-      if ( QLC  < 1.E-8 ) then
-         QV = QV + QLC
-         TE = TE - (alhlbcp)*QLC
-         QLC = 0.
-      end if
-      ! LS ICE too small
-      if ( QIC  < 1.E-8 ) then
-         QV = QV + QIC
-         TE = TE - (alhsbcp)*QIC
-         QIC = 0.
-      end if
-
-      ! Anvil LIQUID too small
-      if ( QLA  < 1.E-8 ) then
-         QV = QV + QLA
-         TE = TE - (alhlbcp)*QLA
-         QLA = 0.
-      end if
-      ! Anvil ICE too small
-      if ( QIA  < 1.E-8 ) then
-         QV = QV + QIA
-         TE = TE - (alhsbcp)*QIA
-         QIA = 0.
-      end if
-
-      ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
-      if ( ( QLA + QIA ) < 1.E-8 ) then
-         QV = QV + QLA + QIA
-         TE = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
-         AF  = 0.
-         QLA = 0.
-         QIA = 0.
-      end if
-      ! Ditto if LS cloud LIQUID+ICE too small
-      if ( ( QLC + QIC ) < 1.E-8 ) then
+      if ( (CF == 0.0) .AND. (QLC+QIC > QCMIN) ) then
          QV = QV + QLC + QIC
          TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
          CF  = 0.
@@ -2626,13 +2583,13 @@ module GEOSmoist_Process_Library
     TPWC= 0.0
     TPW1 = SUM( Q*MASS, 3 )
 
-    WHERE (Q < 0.0)
+    WHERE (Q < QCMIN)
        Q=0.0
     END WHERE
 
     TPW2 = SUM( Q*MASS, 3 )
 
-    WHERE (TPW2 > 0.0)
+    WHERE (TPW2 > QCMIN)
        TPWC=(TPW2-TPW1)/TPW2
     END WHERE
 
@@ -3565,15 +3522,15 @@ subroutine update_cld( &
       subroutine FIX_NEGATIVE_PRECIP(QRAIN, QSNOW, QGRAUPEL)
           real, dimension(:,:,:), intent(inout) :: QRAIN, QSNOW, QGRAUPEL
 
-          WHERE (QRAIN < 1.e-8)
+          WHERE (QRAIN < QCMIN)
             QRAIN = 0.0
           END WHERE
 
-          WHERE (QSNOW < 1.e-8)
+          WHERE (QSNOW < QCMIN)
             QSNOW = 0.0
           END WHERE
 
-          WHERE (QGRAUPEL < 1.e-8)
+          WHERE (QGRAUPEL < QCMIN)
             QGRAUPEL = 0.0
           END WHERE
 
@@ -3604,14 +3561,14 @@ subroutine update_cld( &
       END WHERE
 
       ! Evaporate/Sublimate liquid/ice where clouds are gone
-      WHERE (CLLS < 1.E-8)
+      WHERE ( (CLLS == 0.0) .AND. (QLLS+QILS > 0.0) )
         QV = QV + QLLS + QILS
         TE = TE - (alhlbcp)*QLLS - (alhsbcp)*QILS
         CLLS = 0.
         QLLS = 0.
         QILS = 0.
       END WHERE
-      WHERE (CLCN < 1.E-8)
+      WHERE ( (CLCN == 0.0) .AND. (QLCN+QICN > 0.0) )
         QV = QV + QLCN + QICN
         TE = TE - (alhlbcp)*QLCN - (alhsbcp)*QICN
         CLCN = 0.

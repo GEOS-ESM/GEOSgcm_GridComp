@@ -239,7 +239,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
-    DBZ_DT = max(DT_MOIST,300.0)
+    DBZ_DT = max(DT_MOIST,900.0)
     call MAPL_GetResource(MAPL, DBZ_DT, 'DBZ_DT:', default=DBZ_DT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_ClockGet(CLOCK, calendar=calendar, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalSet(ringInterval, S=nint(DBZ_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
@@ -267,7 +267,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    if (DT_R8 < 300.0) then 
+    if (DT_R8 <= 150.0) then 
       do_hail = .true.
       ifflag = 1
     endif
@@ -619,6 +619,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         do L=1,LM
           do J=1,JM
            do I=1,IM
+           ! Debug large temperature values
+             if (T(I,J,L) > 333.0) then
+                 print *, "Temperature spike detected : ", T(I,J,L)
+                 print *, "    BEFORE any GFDL Procsess "
+                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
+                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
+                 print *, "  Pressure (mb)  =", PLmb(I,J,L)
+                 print *, "                       CLLS=",  CLLS(I,J,L),             "CLCN=", CLCN(I,J,L)
+                 print *, "  QV=",     Q(I,J,L), "  QL=",  QLLS(I,J,L)+QLCN(I,J,L), "  QI=", QLLS(I,J,L)+QLCN(I,J,L)
+                 print *, "  QR=", QRAIN(I,J,L), "  QS=", QSNOW(I,J,L),             "  QG=", QGRAUPEL(I,J,L)
+             endif
            ! Send the condensates through the pdf after convection [0:1 , unstable:stable]
              facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
            ! determine combined minrhcrit in unstable/stable regimes
@@ -737,6 +748,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
                                                      QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), & 
                                                      REMOVE_CLOUDS=(L < KLID) )
+             if (T(I,J,L) > 333.0) then
+                 print *, "Temperature spike detected : ", T(I,J,L)
+                 print *, "    AFTER cldmacro in GFDL-MP "
+                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI           
+                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI 
+                 print *, "  Pressure (mb)  =", PLmb(I,J,L)   
+                 print *, "                       CLLS=",  CLLS(I,J,L),             "CLCN=", CLCN(I,J,L)
+                 print *, "  QV=",     Q(I,J,L), "  QL=",  QLLS(I,J,L)+QLCN(I,J,L), "  QI=", QLLS(I,J,L)+QLCN(I,J,L)
+                 print *, "  QR=", QRAIN(I,J,L), "  QS=", QSNOW(I,J,L),             "  QG=", QGRAUPEL(I,J,L)
+             endif
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
@@ -931,22 +952,23 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
                                                        QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
                                                        REMOVE_CLOUDS=(L < KLID) )
-              ! Debug large temperature values
-               if (T(I,J,L) > 330.0) then
-                 print *, "Temperature spike detected: ", T(I,J,L)
-                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI 
-                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
-                 print *, "  Pressure (mb)  =", PLmb(I,J,L)
-                 print *, "                       CLLS=",  CLLS(I,J,L),             "CLCN=", CLCN(I,J,L)
-                 print *, "  QV=",     Q(I,J,L), "  QL=",  QLLS(I,J,L)+QLCN(I,J,L), "  QI=", QLLS(I,J,L)+QLCN(I,J,L)
-                 print *, "  QR=", QRAIN(I,J,L), "  QS=", QSNOW(I,J,L),             "  QG=", QGRAUPEL(I,J,L)
-               endif
               ! get radiative properties
                call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
                      RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
                      CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                      FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
+              ! Debug large temperature values
+               if (T(I,J,L) > 333.0) then
+                 print *, "Temperature spike detected : ", T(I,J,L)
+                 print *, "    GFDL-MP Temp Increment : ", DTDTmic(I,J,L) * DT_MOIST
+                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
+                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
+                 print *, "  Pressure (mb)  =", PLmb(I,J,L)
+                 print *, "                       CLLS=",  CLLS(I,J,L),             "CLCN=", CLCN(I,J,L)
+                 print *, "  QV=",     Q(I,J,L), "  QL=",  QLLS(I,J,L)+QLCN(I,J,L), "  QI=", QLLS(I,J,L)+QLCN(I,J,L)
+                 print *, "  QR=", QRAIN(I,J,L), "  QS=", QSNOW(I,J,L),             "  QG=", QGRAUPEL(I,J,L)
+               endif
              enddo
            enddo
          enddo
