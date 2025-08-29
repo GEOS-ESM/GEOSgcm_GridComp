@@ -5532,7 +5532,7 @@ contains
     ! Solves A · X = B for a vector X, where A is specified by the arrays u, w, v as returned by 
     ! svdcmp. m and n are the dimensions of a, and will be equal for square matrices. b(1:m) is 
     ! the input right-hand side. x(1:n) is the output solution vector. No input quantities are 
-    ! destroyed, so the routine may be called sequentially with different b?s. 
+    ! destroyed, so the routine may be called sequentially with different b's. 
     !-------------------------------------------------------------------------------------------
 
     INTEGER i,j,jj 
