@@ -242,7 +242,7 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
-    case ("v14_BETA")  
+    case ("v14")  
 
        ! "v14", "v13", and "v12" are identical except for:
        ! - topography used for the atm (processed outside of make_bcs)
