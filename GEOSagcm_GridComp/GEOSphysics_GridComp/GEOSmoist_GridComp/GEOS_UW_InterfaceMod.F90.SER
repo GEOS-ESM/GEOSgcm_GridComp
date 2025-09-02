@@ -361,7 +361,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !$ser data tten_inv=DTDT_SC uten_inv=DUDT_SC vten_inv=DVDT_SC qrten_inv=DQRDT_SC 
       !$ser data qsten_inv=DQSDT_SC cufrc_inv=CUFRC_SC fer_inv=ENTR_SC fdr_inv=DETR_SC 
       !$ser data qldet_inv=QLDET_SC qidet_inv=QIDET_SC qlsub_inv=QLSUB_SC qisub_inv=QISUB_SC 
-      !$ser data ndrop_inv=SC_NDROP nice_inv=SC_NICE        
+      !$ser data ndrop_inv=SC_NDROP nice_inv=SC_NICE cush=CUSH        
       !$ser data qtflx_inv=QTFLX_SC slflx_inv=SLFLX_SC uflx_inv=UFLX_SC vflx_inv=VFLX_SC  
       !$ser data tpert_out=TPERT_SC qpert_out=QPERT_SC
       !$ser data dotransport=USE_TRACER_TRANSP_UW   
