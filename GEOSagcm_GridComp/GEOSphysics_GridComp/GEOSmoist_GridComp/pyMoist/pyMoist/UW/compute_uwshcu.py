@@ -91,7 +91,6 @@ def compute_uwshcu_invert_before(
     exnifc0_in: FloatField,
     kpbl_in: IntFieldIJ,
     cnvtrmax: FloatFieldIJ,
-    testvar3D: FloatField,
 ):
     """
     Stencil to invert k levels for all inputs of ComputeUwshcu.
@@ -182,7 +181,6 @@ def compute_uwshcu_invert_before(
         exnifc0_in[0, 0, 1] = exnifc0_inv.at(K=0)
 
     with computation(FORWARD), interval(...):
-        # testvar3D = pifc0_in.at(K=1)
         cnvtrmax = min(1e-5, max(0.0, cnvtr))
         if frland > 0.5:
             cnvtrmax = 0.0
@@ -232,7 +230,6 @@ def compute_thermodynamic_variables(
     fdr_out: FloatField,
     tpert_out: FloatFieldIJ,
     qpert_out: FloatFieldIJ,
-    # testvar3D: FloatField,
 ):
     """
     Start of Main Calculation.
@@ -524,7 +521,6 @@ def compute_thv0_thvl0(
     ssu0_o: FloatField,
     ssv0_o: FloatField,
     cush_inout: FloatFieldIJ,
-    testvar3D: FloatField,
 ):
     """
     Stencil to compute internal environmental variables
@@ -769,7 +765,6 @@ def compute_thv0_thvl0(
         qt0bot: float32 = qt0 + ssqt0 * (pifc0 - pmid0)
 
         thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, ese, esx)
-        # testvar3D: float32 = thl0bot
 
     with computation(FORWARD), interval(...):
         if id_check == 1:
@@ -969,7 +964,6 @@ def find_pbl_height(
     cush: FloatFieldIJ,
     cush_inout: FloatFieldIJ,
     tscaleh: FloatFieldIJ,
-    testvar3D: FloatField,
 ):
     """
     Stencil to find PBL top height interface index, 'kinv-1' where 'kinv' is the layer
@@ -1103,7 +1097,6 @@ def find_pbl_averages(
     thvlavg: FloatField,
     qtavg: FloatField,
     iteration: int32,
-    testvar3D: FloatField,
 ):
     """
     Stencil to find PBL averaged tke ('tkeavg') and minimum 'thvl' ('thvlmin')
@@ -1229,7 +1222,6 @@ def find_cumulus_characteristics(
     tpert_out: FloatFieldIJ,
     qpert_out: FloatFieldIJ,
     iteration: int32,
-    testvar3D: FloatField,
 ):
     """
     Stencil to find characteristics of cumulus source air:
@@ -1352,7 +1344,6 @@ def find_klcl(
     thv0lcl: FloatField,
     cush_inout: FloatFieldIJ,
     iteration: int32,
-    testvar3D: FloatField,
 ):
     """
     Find LCL of the source air and a layer index containing LCL (klcl)
@@ -1403,8 +1394,6 @@ def find_klcl(
         if not condensation:
             if pifc0.at(K=0) < 70000 or pifc0.at(K=0) > 115000.0:
                 condensation = True
-                # if iteration == int32(0):
-                #     testvar3D = pifc0.at(K=0)
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -1615,8 +1604,6 @@ def compute_cin_cinlcl(
     thv0lcl_o: FloatField,
     cinlcl: FloatField,
     cush_inout: FloatFieldIJ,
-    # testvar3D: FloatField,
-    # testvar2D: FloatFieldIJ,
 ):
     """
     Compute Convective Inhibition, 'cin' & 'cinlcl' [J/kg]=[m2/s2] TKE unit.
@@ -2386,7 +2373,6 @@ def define_prel_krel(
     krel: IntField,
     prel: FloatField,
     thv0rel: FloatField,
-    testvar3D: FloatField,
 ):
     """
     Stencil to define a release level, 'prel' and release layer, 'krel'
@@ -2468,8 +2454,6 @@ def calc_cumulus_base_mass_flux(
     ufrcinv: FloatField,
     wcrit: FloatFieldIJ,
     cush_inout: FloatFieldIJ,
-    # testvar3D: FloatField,
-    # testvar2D: FloatFieldIJ,
 ):
     """
     Calculate cumulus base mass flux ('cbmf'), fractional area ('ufrcinv'),
@@ -2694,7 +2678,6 @@ def define_updraft_properties(
     wlcl: FloatField,
     ufrclcl: FloatField,
     cush_inout: FloatFieldIJ,
-    # testvar3D: FloatField,
 ):
     """
     Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top,
@@ -2901,7 +2884,6 @@ def define_env_properties(
     thvebot: FloatFieldIJ,
     ue: FloatFieldIJ,
     ve: FloatFieldIJ,
-    # testvar3D: FloatField,
 ):
     """
     Define environmental properties at the level where buoyancy sorting occurs
@@ -3101,8 +3083,6 @@ def buoyancy_sorting(
     stop_buoyancy_sort: BoolFieldIJ,
     iteration: int32,
     cush_inout: FloatFieldIJ,
-    # testvar3D: FloatField,
-    # testvar2D: FloatFieldIJ,
 ):
     """
     Buoyancy-Sorting Mixing
@@ -3246,8 +3226,6 @@ def buoyancy_sorting(
                 # of "qsat". But note normal argument of "qsat" is temperature.
 
                 thj, qvj, qlj, qij, qse, id_check = conden(pe, thle, qte, ese, esx)
-                # if iteration == int32(0) and iter_xc == 1:
-                #     testvar3D = qse
 
                 if id_check == 1:
                     condensation = True
@@ -3339,8 +3317,6 @@ def buoyancy_sorting(
                                     * exqi
                                 )
                             )
-                            # if iteration == int32(0) and iter_xc == 1:
-                            #     testvar3D = exql
 
                         thj, qvj, qlj, qij, qse, id_check = conden(
                             pe, thlue, qtue, ese, esx
@@ -3377,8 +3353,6 @@ def buoyancy_sorting(
                             qsat_arg = thlue * exne
                             qs, _ = QSat_Float(ese, esx, qsat_arg, qsat_pe / 100.0)
                             excessu = qtue - qs
-                            # if iteration == int32(0) and iter_xc == 1:
-                            #     testvar3D = exne
 
                             # Calculate critical mixing fraction, 'xc'. Mixture with
                             # mixing ratio smaller than 'xc' will be entrained into
@@ -3424,8 +3398,6 @@ def buoyancy_sorting(
                                         * (1.0 - thvj / thv0j),
                                     ),
                                 )
-                                # if iteration == int32(0) and iter_xc > 1:
-                                #     testvar3D = xc
 
                                 aquad = 0.0
                                 bquad = 0.0
@@ -3440,9 +3412,6 @@ def buoyancy_sorting(
                                 xsat = excessu / (excessu - excess0)
                                 thlxsat = thlue + xsat * (thle - thlue)
                                 qtxsat = qtue + xsat * (qte - qtue)
-
-                                # if iteration == int32(0) and iter_xc == 1:
-                                #     testvar3D = excess0
 
                                 thj, qvj, qlj, qij, qse, id_check = conden(
                                     pe, thlxsat, qtxsat, ese, esx
@@ -3540,16 +3509,12 @@ def buoyancy_sorting(
                                                 x_en = 1.0
 
                                         kk += 1
-                                    # if iteration == int32(1) and iter_xc == 1:
-                                    #     testvar3D = x_en
 
                                     if x_cu == xsat:
                                         xc = max(x_cu, x_en)
 
                                     else:
                                         xc = x_cu
-                                    # if iteration == int32(0) and iter_xc > 1:
-                                    #     testvar3D = xc
 
                             # Compute fractional lateral entrainment & detrainment rate
                             # in each layers. The unit of rei(k), fer(k), and fdr(k) is
@@ -3628,8 +3593,6 @@ def buoyancy_sorting(
                                     * dpe
                                     * min(1.0, max(0.0, xsat - xc))
                                 )
-                                # if iteration == int32(0) and iter_xc == 1:
-                                #     testvar3D = fdr
 
                                 # Compute cumulus updraft properties at the top
                                 # interface. Also use Tayler expansion in order to
@@ -3776,8 +3739,6 @@ def buoyancy_sorting(
                                     esx,
                                 )
 
-                                # if iteration == int32(0) and iter_xc == 2:
-                                #     testvar3D = qlj
                                 if id_check == 1:
                                     condensation = True
                                     umf_out[0, 0, 1] = 0.0
@@ -3934,8 +3895,6 @@ def buoyancy_sorting(
                                             thlue = 0.5 * (thlu[0, 0, -1] + thlu)
                                             qtue = 0.5 * (qtu[0, 0, -1] + qtu)
                                             wue = 0.5 * sqrt(max(wtwb + wtw, 0.0))
-                                            # if iteration == int32(0) and iter_xc == 1:
-                                            #     testvar3D = qtue
 
                                         else:
                                             iter_xc = (
@@ -4090,7 +4049,6 @@ def calc_ppen(
     dp0: FloatField,
     wtwb: FloatFieldIJ,
     ppen: FloatFieldIJ,
-    # testvar3D: FloatField,
     iteration: int32,
 ):
     """
@@ -4222,7 +4180,6 @@ def recalc_condensate(
     cush: FloatFieldIJ,
     cush_inout: FloatFieldIJ,
     iteration: int32,
-    # testvar3D: FloatField,
 ):
     """
     Re-calculate the amount of expelled condensate from cloud updraft
@@ -4772,7 +4729,6 @@ def calc_pbl_fluxes(
     trflx: FloatField_NTracers,
     xflx_ndim: FloatField_NTracers,
     iteration: int32,
-    testvar3D: FloatField,
 ):
     """
     Stencil to compute turbulent heat, moisture, momentum flux at all interfaces.
@@ -5170,7 +5126,6 @@ def non_buoyancy_sorting_fluxes(
     uplus: FloatFieldIJ,
     vplus: FloatFieldIJ,
     iteration: int32,
-    testvar3D: FloatField,
 ):
     """
     2. Calculate non-buoyancy sorting fluxes : kinv <= k <= krel - 1
@@ -5298,7 +5253,6 @@ def buoyancy_sorting_fluxes(
     vflx: FloatField,
     slflx: FloatField,
     iteration: int32,
-    testvar3D: FloatField,
 ):
     """
     3. Calculate buoyancy sorting fluxes : krel <= k <= kbup - 1
@@ -5435,7 +5389,6 @@ def penetrative_entrainment_fluxes(
     qiten_sink: FloatField,
     cush_inout: FloatFieldIJ,
     iteration: int32,
-    testvar3D: FloatField,
 ):
     """
     4. Penetrative entrainment fluxes : kbup <= k <= kpen - 1
@@ -5717,7 +5670,6 @@ def calc_momentum_tendency(
     uten: FloatField,
     vten: FloatField,
     iteration: int32,
-    # testvar3D: FloatField,
 ):
     """
     Stencil to calculate momentum tendency at each layer.
@@ -5810,7 +5762,6 @@ def calc_thermodynamic_tendencies(
     slten: FloatField,
     cush_inout: FloatFieldIJ,
     iteration: int32,
-    # testvar3D: FloatField,
 ):
     """
     Tendencies of thermodynamic variables.
@@ -6341,7 +6292,6 @@ def prevent_negative_condensate(
     k0: Int,
     qmin: FloatField,
     iteration: int32,
-    # testvar3D: FloatField,
 ):
     """
     Stencil to prevent the onset-of negative condensate at the next time step.
@@ -6718,7 +6668,6 @@ def calc_cumulus_condensate_at_interface(
     riwp: FloatFieldIJ,
     cufrc: FloatField,
     cush_inout: FloatFieldIJ,
-    # testvar3D: FloatField,
     iteration: int32,
 ):
     """
@@ -6940,7 +6889,6 @@ def adjust_implicit_CIN_inputs(
     fer_s: FloatField,
     fdr_s: FloatField,
     iteration: int32,
-    testvar3D: FloatField,
 ):
     """
     Stencil to adjust the original input profiles for implicit CIN
@@ -7122,7 +7070,6 @@ def recalc_environmental_variables(
     tr0_temp: FloatField,
     cush_inout: FloatFieldIJ,
     iteration: int32,
-    # testvar3D: FloatField,
 ):
     """
     Stencil to update environmental variables after first iteration
@@ -7392,7 +7339,6 @@ def update_output_variables(
     ndrop_out: FloatField,
     nice_out: FloatField,
     tr0_inoutvar: FloatField_NTracers,
-    testvar3D: FloatField,
     condensation: BoolFieldIJ,
 ):
     """
@@ -7694,12 +7640,20 @@ def compute_uwshcu_invert_after(
 
     with computation(FORWARD), interval(...):
         # Revert interface variables
-        k_inv = k0 - K
+        k_inv = k_end + 1 - K
         umf_inv = umf_outvar.at(K=k_inv)
         qtflx_inv = qtflx_outvar.at(K=k_inv)
         slflx_inv = slflx_outvar.at(K=k_inv)
         uflx_inv = uflx_outvar.at(K=k_inv)
         vflx_inv = vflx_outvar.at(K=k_inv)
+
+    with computation(FORWARD), interval(-1, None):
+        # Revert interface variables
+        umf_inv[0, 0, 1] = umf_outvar.at(K=0)
+        qtflx_inv[0, 0, 1] = qtflx_outvar.at(K=0)
+        slflx_inv[0, 0, 1] = slflx_outvar.at(K=0)
+        uflx_inv[0, 0, 1] = uflx_outvar.at(K=0)
+        vflx_inv[0, 0, 1] = vflx_outvar.at(K=0)
 
     with computation(FORWARD), interval(...):
         # Revert mid-level variables
@@ -8148,9 +8102,6 @@ class ComputeUwshcuInv:
         qisub_inv: FloatField,
         tpert_out: FloatFieldIJ,
         qpert_out: FloatFieldIJ,
-        # Testvars
-        testvar3D: FloatField,
-        # testvar2D: FloatFieldIJ,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
         """
@@ -8295,7 +8246,6 @@ class ComputeUwshcuInv:
             exnifc0_in=self.temporaries.exnifc0_in,
             kpbl_in=self.temporaries.kpbl_in,
             cnvtrmax=self.temporaries.cnvtrmax,
-            testvar3D=testvar3D,
         )
 
         self._compute_thermodynamic_variables(
@@ -8340,7 +8290,6 @@ class ComputeUwshcuInv:
             fdr_out=self.temporaries.fdr_out,
             tpert_out=tpert_out,
             qpert_out=qpert_out,
-            # testvar3D=testvar3D,
         )
 
         self._compute_thv0_thvl0(
@@ -8438,7 +8387,6 @@ class ComputeUwshcuInv:
             ssu0_o=self.temporaries.ssu0_o,
             ssv0_o=self.temporaries.ssv0_o,
             cush_inout=self.temporaries.cush_inout,
-            testvar3D=testvar3D,
         )
 
         # This 'iteration' loop is for implicit CIN closure
@@ -8465,7 +8413,6 @@ class ComputeUwshcuInv:
                 cush=cush,
                 tscaleh=self.temporaries.tscaleh,
                 cush_inout=self.temporaries.cush_inout,
-                testvar3D=testvar3D,
             )
 
             self._find_pbl_averages(
@@ -8488,7 +8435,6 @@ class ComputeUwshcuInv:
                 thvlavg=self.temporaries.thvlavg,
                 qtavg=self.temporaries.qtavg,
                 iteration=iteration,
-                testvar3D=testvar3D,
             )
 
             self._find_cumulus_characteristics(
@@ -8523,7 +8469,6 @@ class ComputeUwshcuInv:
                 tpert_out=tpert_out,
                 qpert_out=qpert_out,
                 iteration=iteration,
-                testvar3D=testvar3D,
             )
 
             self._find_klcl(
@@ -8551,7 +8496,6 @@ class ComputeUwshcuInv:
                 thv0lcl=self.temporaries.thv0lcl,
                 cush_inout=self.temporaries.cush_inout,
                 iteration=iteration,
-                testvar3D=testvar3D,
             )
 
             self._compute_cin_cinlcl(
@@ -8613,8 +8557,6 @@ class ComputeUwshcuInv:
                 thv0lcl_o=self.temporaries.thv0lcl_o,
                 cinlcl=self.temporaries.cinlcl,
                 cush_inout=self.temporaries.cush_inout,
-                # testvar3D=testvar3D,
-                # testvar2D=testvar2D,
             )
             if iteration != 0:
                 self._compute_del_CIN(
@@ -8816,7 +8758,6 @@ class ComputeUwshcuInv:
                 krel=self.temporaries.krel,
                 prel=self.temporaries.prel,
                 thv0rel=self.temporaries.thv0rel,
-                testvar3D=testvar3D,
             )
 
             self._calc_cumulus_base_mass_flux(
@@ -8848,8 +8789,6 @@ class ComputeUwshcuInv:
                 ufrcinv=self.temporaries.ufrcinv,
                 wcrit=self.temporaries.wcrit,
                 cush_inout=self.temporaries.cush_inout,
-                # testvar3D=testvar3D,
-                # testvar2D=testvar2D,
             )
 
             self._define_updraft_properties(
@@ -8883,7 +8822,6 @@ class ComputeUwshcuInv:
                 wlcl=self.temporaries.wlcl,
                 ufrclcl=self.temporaries.ufrclcl,
                 cush_inout=self.temporaries.cush_inout,
-                # testvar3D=testvar3D,
             )
 
             self._define_env_properties(
@@ -8927,7 +8865,6 @@ class ComputeUwshcuInv:
                 thvebot=self.temporaries.thvebot,
                 ue=self.temporaries.ue,
                 ve=self.temporaries.ve,
-                # testvar3D=testvar3D,
             )
 
             self._buoyancy_sorting(
@@ -9018,8 +8955,6 @@ class ComputeUwshcuInv:
                 cush_inout=self.temporaries.cush_inout,
                 stop_buoyancy_sort=self.stop_buoyancy_sort,
                 iteration=iteration,
-                # testvar3D=testvar3D,
-                # testvar2D=testvar2D,
             )
 
             self._calc_ppen(
@@ -9036,7 +8971,6 @@ class ComputeUwshcuInv:
                 wtwb=self.temporaries.wtwb,
                 ppen=self.temporaries.ppen,
                 iteration=iteration,
-                # testvar3D=testvar3D,
             )
 
             self._recalc_condensate(
@@ -9083,7 +9017,6 @@ class ComputeUwshcuInv:
                 cush=cush,
                 cush_inout=self.temporaries.cush_inout,
                 iteration=iteration,
-                # testvar3D=testvar3D,
             )
 
             self._calc_entrainment_mass_flux(
@@ -9160,7 +9093,6 @@ class ComputeUwshcuInv:
                 slflx=self.temporaries.slflx,
                 iteration=iteration,
                 xflx_ndim=self.xflx_ndim,
-                testvar3D=testvar3D,
             )
 
             self._non_buoyancy_sorting_fluxes(
@@ -9196,7 +9128,6 @@ class ComputeUwshcuInv:
                 uplus=self.temporaries.uplus,
                 vplus=self.temporaries.vplus,
                 iteration=iteration,
-                testvar3D=testvar3D,
             )
 
             self._buoyancy_sorting_fluxes(
@@ -9229,7 +9160,6 @@ class ComputeUwshcuInv:
                 uflx=self.temporaries.uflx,
                 slflx=self.temporaries.slflx,
                 iteration=iteration,
-                testvar3D=testvar3D,
             )
 
             self._penetrative_entrainment_fluxes(
@@ -9282,7 +9212,6 @@ class ComputeUwshcuInv:
                 qiten_sink=self.temporaries.qiten_sink,
                 cush_inout=self.temporaries.cush_inout,
                 iteration=iteration,
-                testvar3D=testvar3D,
             )
 
             self._calc_momentum_tendency(
@@ -9299,7 +9228,6 @@ class ComputeUwshcuInv:
                 uf=self.temporaries.uf,
                 vf=self.temporaries.vf,
                 iteration=iteration,
-                # testvar3D=testvar3D,
             )
 
             self._calc_thermodynamic_tendencies(
@@ -9363,7 +9291,6 @@ class ComputeUwshcuInv:
                 qiten_det=self.temporaries.qiten_det,
                 cush_inout=self.temporaries.cush_inout,
                 iteration=iteration,
-                # testvar3D=testvar3D,
             )
 
             self._prevent_negative_condensate(
@@ -9381,7 +9308,6 @@ class ComputeUwshcuInv:
                 k0=k0,
                 qmin=self.temporaries.qmin,
                 iteration=iteration,
-                # testvar3D=testvar3D,
             )
 
             self._calc_tracer_tendencies(
@@ -9453,7 +9379,6 @@ class ComputeUwshcuInv:
                 riwp=self.temporaries.riwp,
                 cufrc=self.temporaries.cufrc,
                 cush_inout=self.temporaries.cush_inout,
-                # testvar3D=testvar3D,
                 iteration=iteration,
             )
 
@@ -9532,7 +9457,6 @@ class ComputeUwshcuInv:
                     fer_s=self.temporaries.fer_s,
                     fdr_s=self.temporaries.fdr_s,
                     iteration=iteration,
-                    testvar3D=testvar3D,
                 )
 
                 self._recalc_environmental_variables(
@@ -9576,7 +9500,6 @@ class ComputeUwshcuInv:
                     tr0_temp=self.temporaries.tr0_temp,
                     cush_inout=self.temporaries.cush_inout,
                     iteration=iteration,
-                    # testvar3D=testvar3D,
                 )
 
         self._update_output_variables(
@@ -9658,7 +9581,6 @@ class ComputeUwshcuInv:
             fer_outvar=self.temporaries.fer_outvar,
             fdr_outvar=self.temporaries.fdr_outvar,
             tr0_inoutvar=self.tr0_inoutvar,
-            testvar3D=testvar3D,
             condensation=self.condensation,
         )
 

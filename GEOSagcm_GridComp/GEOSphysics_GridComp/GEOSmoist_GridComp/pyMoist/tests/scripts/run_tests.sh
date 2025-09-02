@@ -15,6 +15,7 @@ python -m pytest -s -v --disable-warnings --multimodal_metric \
     --data_path=/Users/kfandric/netcdf \
     --backend=dace:cpu\
     --which_rank=5 \
+    --which_savepoint=0\
     --which_modules=ComputeUwshcuInv \
     --grid=default \
     ..
