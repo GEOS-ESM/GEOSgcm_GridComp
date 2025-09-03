@@ -3245,9 +3245,11 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.0,  RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 5.0 , RC=STATUS); VERIFY_(STATUS)
+     else
+       call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0 , RC=STATUS); VERIFY_(STATUS)
      end if
 
-     call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOPROGQT2,  'DOPROGQT2:',  DEFAULT = 1     , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 4.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -3624,12 +3626,11 @@ end if
 
 ! get updraft constants
     call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  RC=STATUS)
-    MFPARAMS%DOTRACERS = .false.
     
     if ( DOMF /= 0 ) then
       ! number of updrafts
       call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=10,    RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%DOTRACERS, "EDMF_DOTRACERS:",     default=.false., RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%DOTRACERS, "EDMF_DOTRACERS:",     default=.true., RC=STATUS)
 
       ! boundaries for the updraft area (min/max sigma of w pdf)
       call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.2,   RC=STATUS)
@@ -3675,7 +3676,8 @@ end if
 !      call MAPL_GetResource (MAPL, NumUpQ, "EDMF_NumUpQ:", default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=100.,  RC=STATUS)
     else
-      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=0.,    RC=STATUS)
+       MFPARAMS%TREFF = 0.
+       MFPARAMS%DOTRACERS = .false.
     end if
 
     call MAPL_GetResource(MAPL, SCM_SL,        'SCM_SL:',        DEFAULT=0 )
@@ -4983,7 +4985,7 @@ end if
    YS(:,:,LM)  = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWS3(:,:,LM-1) + SSRC(:,:,LM) )
    YQV(:,:,LM) = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWQV3(:,:,LM-1) + QVSRC(:,:,LM) )
    YQL(:,:,LM) = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWQL3(:,:,LM-1) + QLSRC(:,:,LM) )
-   YQI(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQI3(:,:,LM-1)
+   YQI(:,:,LM) = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWQI3(:,:,LM-1) + QISRC(:,:,LM) )
    YU(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWU3(:,:,LM-1)
    YV(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWV3(:,:,LM-1)
 
@@ -5082,29 +5084,6 @@ end if
       AKV = AKX
       BKV = BKX
 
- !
- ! LU decomposition for the mass-flux variables
- !     
-     AKX=AKSS
-     BKX=BKSS
-     call VTRILU(AKX,BKX,CKSS)
-     BKSS=BKX
-     AKSS=AKX
-     
-     AKX=AKQQ
-     BKX=BKQQ
-     call VTRILU(AKX,BKX,CKQQ)
-     BKQQ=BKX
-     AKQQ=AKX  
-
-     AKX=AKUU
-     BKX=BKUU
-     call VTRILU(AKX,BKX,CKUU)
-     BKUU=BKX
-     AKUU=AKX  
-
-
-
 ! Get the sensitivity of solution to a unit
 ! change in the surface value. B and C are
 ! not modified.
@@ -5113,6 +5092,27 @@ end if
       call VTRISOLVESURF(BKS,CKS,DKS)
       call VTRISOLVESURF(BKQ,CKQ,DKQ)
       call VTRISOLVESURF(BKV,CKV,DKV)
+
+ !
+ ! LU decomposition for the mass-flux variables
+ !     
+      AKX=AKSS
+      BKX=BKSS
+      call VTRILU(AKX,BKX,CKSS)
+      BKSS=BKX
+      AKSS=AKX
+     
+      AKX=AKQQ
+      BKX=BKQQ
+      call VTRILU(AKX,BKX,CKQQ)
+      BKQQ=BKX
+      AKQQ=AKX  
+
+      AKX=AKUU
+      BKX=BKUU
+      call VTRILU(AKX,BKX,CKUU)
+      BKUU=BKX
+      AKUU=AKX  
 
       call MAPL_TimerOff(MAPL,"---DECOMP")
 
