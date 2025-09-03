@@ -112,6 +112,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "qsten_inv": self.grid.compute_dict(),
             "tpert_out": self.grid.compute_dict(),
             "qpert_out": self.grid.compute_dict(),
+            "cush": self.grid.compute_dict(),
         }
 
     def make_ntracers_ijk_field(self, data) -> Quantity:
@@ -460,4 +461,5 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "tpert_out": tpert_out.view[:],
             "qpert_out": qpert_out.view[:],
             "dotransport": dotransport,
+            "cush": cush.view[:],
         }

@@ -7447,6 +7447,7 @@ def update_output_variables(
             qlten = 0.0
             umf_zint[0, 0, 1] = 0.0
             zifc0 = 0.0
+            cush = -1.0
 
         if del_CIN <= 0.0:
             umf_outvar = umf_out
@@ -7550,6 +7551,7 @@ def compute_uwshcu_invert_after(
     nice_out: FloatField,
     tr0: FloatField_NTracers,
     tr0_inoutvar: FloatField_NTracers,
+    cush_inoutvar: FloatFieldIJ,
     # Outputs
     umf_inv: FloatField,
     dcm_inv: FloatField,
@@ -7576,6 +7578,7 @@ def compute_uwshcu_invert_after(
     qisub_inv: FloatField,
     CNV_Tracers: FloatField_NTracers,
     dotransport: Int,
+    cush: FloatFieldIJ,
 ):
     """
     Stencil to revert k levels for all ComputeUwshcu outputs
@@ -7639,6 +7642,7 @@ def compute_uwshcu_invert_after(
     from __externals__ import k_end, ncnst
 
     with computation(FORWARD), interval(...):
+        cush = cush_inoutvar
         # Revert interface variables
         k_inv = k_end + 1 - K
         umf_inv = umf_outvar.at(K=k_inv)
@@ -9517,12 +9521,12 @@ class ComputeUwshcuInv:
             qrten=self.temporaries.qrten,
             qsten=self.temporaries.qsten,
             cufrc=self.temporaries.cufrc,
-            cush=cush,
             qlten_det=self.temporaries.qlten_det,
             qiten_det=self.temporaries.qiten_det,
             qlten_sink=self.temporaries.qlten_sink,
             qiten_sink=self.temporaries.qiten_sink,
             rdrop=rdrop,
+            cush=cush,
             qtflx=self.temporaries.qtflx,
             slflx=self.temporaries.slflx,
             uflx=self.temporaries.uflx,
@@ -9613,6 +9617,7 @@ class ComputeUwshcuInv:
             tr0=self.tr0,
             tr0_inoutvar=self.tr0_inoutvar,
             CNV_Tracers=CNV_Tracers,
+            cush_inoutvar=self.temporaries.cush_inoutvar,
             # Outputs
             umf_inv=umf_inv,
             dcm_inv=dcm_inv,
@@ -9638,4 +9643,5 @@ class ComputeUwshcuInv:
             qidet_inv=qidet_inv,
             qisub_inv=qisub_inv,
             dotransport=dotransport,
+            cush=cush,
         )
