@@ -466,13 +466,14 @@ contains
       type (ESMF_Alarm       )            :: ALARM
       type (ESMF_Grid        )            :: ESMFGRID
 
+      integer                             :: I, J, L
       integer                             :: IM, JM, LM
       !integer                             :: pgwv
       real                                :: tcrib
       !real                                :: effgworo, effgwbkg
       !real                                :: CDMBGWD1, CDMBGWD2
       !real                                :: bgstressmax
-      real, pointer, dimension(:,:)       :: LATS
+      real, pointer, dimension(:,:)       :: LONS, LATS
 
       ! Rayleigh friction parameters
 
@@ -520,7 +521,7 @@ contains
 
       call MAPL_Get(MAPL, &
            IM=IM, JM=JM, LM=LM,        &
-           RUNALARM=ALARM, LATS=LATS,  &
+           RUNALARM=ALARM, LONS=LONS, LATS=LATS,  &
            _RC )
 
       ! If its time, recalculate the GWD tendency
@@ -831,6 +832,30 @@ contains
     endif
 
     if (allocated(scratch_ridge)) deallocate(scratch_ridge)
+
+    if(associated(    T_EXP )) then
+        do L=1,LM
+          do J=1,JM
+           do I=1,IM
+             if (T_EXP(I,J,L) > 333.0) then
+                 print *, "Temperature spike detected : ", T_EXP(I,J,L)
+                 print *, "    GWD TOT Temp Increment : ", DTDT_TOT(I,J,L)*DT
+                 print *, "    GWD BKG Temp Increment : ", DTDT_BKG(I,J,L)*DT
+                 print *, "    GWD ORO Temp Increment : ", DTDT_ORO(I,J,L)*DT
+                 print *, "    GWD RAH Temp Increment : ", DTDT_RAH(I,J,L)*DT
+                 print *, "    AFTER GWD Parameterization"
+                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
+                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
+                 print *, "  Pressure (mb)  =", PMID(I,J,L)/100.0
+                 if (associated(U_EXP) .AND. associated(V_EXP)) then
+                 print *, "            UWND =", U_EXP(I,J,L)
+                 print *, "            VWND =", V_EXP(I,J,L)
+                 endif
+             endif 
+           end do ! IM loop
+         end do ! JM loop
+       end do ! LM loop
+    endif
 
 ! All done
 !-----------

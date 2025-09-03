@@ -4688,14 +4688,16 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
 
     integer :: k
 
-    real :: ifrac, sink
+    real :: fac_frez, ifrac, sink
+
+    fac_frez = 1. - exp (- dts / tau_frez)
                 
     do k = ks, ke
 
         ifrac = ice_fraction(real(tz(k)),cnv_fraction,srf_type)
         if (ifrac .eq. 1. .and. ql (k) .gt. qcmin) then
 
-            sink = ql (k)
+            sink = fac_frez * min(ql (k), ql (k) * (tice - tz (k)) / icpk (k))
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &

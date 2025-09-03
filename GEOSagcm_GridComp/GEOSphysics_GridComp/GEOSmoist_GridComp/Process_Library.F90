@@ -19,6 +19,8 @@ module GEOSmoist_Process_Library
   character(len=ESMF_MAXSTR)              :: IAm="GEOSmoist_Process_Library"
   integer                                 :: STATUS
 
+  logical :: DEBUG_TQ_ERRORS
+
   interface MELTFRZ
     module procedure MELTFRZ_3D
     module procedure MELTFRZ_2D
@@ -227,13 +229,14 @@ module GEOSmoist_Process_Library
   end type CNV_Tracer_Type
   type(CNV_Tracer_Type), allocatable :: CNV_Tracers(:)
 
+  public :: DEBUG_TQ_ERRORS
   public :: AeroProps
   public :: AeroPropsNew
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
-  public :: FILLQ2ZERO, FILLQ2ZERO1
+  public :: FILLQ2ZERO
   public :: MELTFRZ
   public :: DIAGNOSE_PRECIP_TYPE
   public :: VertInterp, cs_interpolator
@@ -1225,6 +1228,7 @@ module GEOSmoist_Process_Library
       real, dimension(:,:,:),   intent(in)     :: MASS
       real, dimension(:,:),     intent(  out)  :: TMP2D
       integer :: IM, JM, LM
+      integer :: STATUS
 
       real, parameter  :: qmin  = 1.0e-12
       real, parameter :: cfmin  = 1.0e-4
@@ -1329,16 +1333,16 @@ module GEOSmoist_Process_Library
       where (QG .le. qmin) NG = 0.
 
       ! need to clean up small negative values. MG does can't handle them
-          call FILLQ2ZERO( QV, MASS, TMP2D) 
-          call FILLQ2ZERO( QG, MASS, TMP2D) 
-          call FILLQ2ZERO( QR, MASS, TMP2D) 
-          call FILLQ2ZERO( QS, MASS, TMP2D) 
-          call FILLQ2ZERO( QLC, MASS, TMP2D)
-          call FILLQ2ZERO( QLA, MASS, TMP2D)  
-          call FILLQ2ZERO( QIC, MASS, TMP2D)
-          call FILLQ2ZERO( QIA, MASS, TMP2D)
-          call FILLQ2ZERO( CF, MASS, TMP2D)
-          call FILLQ2ZERO( AF, MASS, TMP2D)
+          call FILLQ2ZERO( QV, MASS, RC=STATUS) 
+          call FILLQ2ZERO( QG, MASS, RC=STATUS) 
+          call FILLQ2ZERO( QR, MASS, RC=STATUS) 
+          call FILLQ2ZERO( QS, MASS, RC=STATUS) 
+          call FILLQ2ZERO( QLC, MASS, RC=STATUS)
+          call FILLQ2ZERO( QLA, MASS, RC=STATUS)  
+          call FILLQ2ZERO( QIC, MASS, RC=STATUS)
+          call FILLQ2ZERO( QIA, MASS, RC=STATUS)
+          call FILLQ2ZERO( CF, MASS, RC=STATUS)
+          call FILLQ2ZERO( AF, MASS, RC=STATUS)
 
    end subroutine fix_up_clouds_2M
 
@@ -2559,7 +2563,7 @@ module GEOSmoist_Process_Library
       end if
    end subroutine MELTFRZ_SC
 
-  subroutine FILLQ2ZERO( Q, MASS, FILLQ  )
+  subroutine FILLQ2ZERO( Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC )
 
     ! New algorithm to fill the negative q values in a mass conserving way.
     ! Conservation of TPW was checked. Donifan Barahona
@@ -2567,76 +2571,80 @@ module GEOSmoist_Process_Library
 
     real, dimension(:,:,:),   intent(inout)  :: Q
     real, dimension(:,:,:),   intent(in)     :: MASS
-    real, dimension(:,:),     intent(  out)  :: FILLQ
+    real, optional,           intent(in)     :: DT
+    real, optional, pointer,  intent(out)    :: DQDT(:,:,:)
+    character(*), optional,   intent(in)     :: WARNING_LABEL
+    type( ESMF_VM ), optional,intent(in)     :: VM
+    integer,                  intent(out)    :: RC
+    ! Locals
     real, dimension(:,:), allocatable        :: TPW1, TPW2, TPWC
     integer                                  :: IM,JM,LM, l
+    integer                                  :: RANK
+    integer :: neg_count, total_count, I1D(2)
+    character(len=ESMF_MAXSTR)               :: IAm="FILLQ2ZERO"
+    integer                                  :: STATUS
+
+    if (PRESENT(WARNING_LABEL) .AND. PRESENT(VM)) then
+      ! Calculate local statistics
+      if (any(Q < 0.0)) then
+        neg_count = count(Q < 0.0)
+      else
+        neg_count = 0
+      endif
+      total_count = size(Q)
+      if (PRESENT(VM)) then
+        call ESMF_VmGet(VM, localPet=RANK, rc=STATUS)
+        VERIFY_(STATUS)
+        call ESMF_VMAllReduce(VM, sendData=[neg_count,total_count], &
+                              recvData=I1D, count=2, &
+                              reduceflag=ESMF_REDUCE_SUM, rc=STATUS)
+        VERIFY_(STATUS)
+        if ((RANK==0) .AND. (I1D(1)>0) .AND. (I1D(2)>0)) &
+        write(*,'(A,A,A,/,2X,A,I0,A,I0,A,F5.1,A)') &
+              'WARNING: Negative values filled in ', trim(WARNING_LABEL), ':', &
+              'Count: ', I1D(1), '/', I1D(2), ' (', &
+                (real(I1D(1))/real(I1D(2)))*100.0, '%)'
+      endif
+    endif
 
     IM = SIZE( Q, 1 )
     JM = SIZE( Q, 2 )
     LM = SIZE( Q, 3 )
-
+   
     ALLOCATE(TPW1(IM, JM))
     ALLOCATE(TPW2(IM, JM))
     ALLOCATE(TPWC(IM, JM))
+  
+    TPW2 =0.0 
+    TPWC= 0.0                     
+    TPW1 = SUM( Q*MASS, 3 )       
 
-    TPW2 =0.0
-    TPWC= 0.0
-    TPW1 = SUM( Q*MASS, 3 )
-
-    WHERE (Q < QCMIN)
+    if (PRESENT(DQDT) .AND. PRESENT(DT)) then
+       if (ASSOCIATED(DQDT)) DQDT = Q 
+    endif
+ 
+    WHERE (Q < 1.e-15)    
        Q=0.0
     END WHERE
 
     TPW2 = SUM( Q*MASS, 3 )
-
-    WHERE (TPW2 > QCMIN)
+  
+    WHERE (TPW2 > 1.e-15)
        TPWC=(TPW2-TPW1)/TPW2
     END WHERE
-
+  
     do l=1,LM
        Q(:, :, l)= Q(:, :, l)*(1.0-TPWC) !reduce Q proportionally to the increase in TPW
     end do
-
-    FILLQ = TPW2-TPW1
+  
+    if (PRESENT(DQDT) .AND. PRESENT(DT)) then
+       if (ASSOCIATED(DQDT)) DQDT = (Q - DQDT)/DT
+    endif
 
     DEALLOCATE(TPW1)
     DEALLOCATE(TPW2)
     DEALLOCATE(TPWC)
   end subroutine FILLQ2ZERO
-
-  subroutine FILLQ2ZERO1( Q, MASS, FILLQ  )
-    real, dimension(:,:,:),   intent(inout)  :: Q
-    real, dimension(:,:,:),   intent(in)     :: MASS
-    real, dimension(:,:),     intent(  out)  :: FILLQ
-    integer                                  :: IM,JM,LM
-    integer                                  :: I,J,K,L
-    real                                     :: TPW, NEGTPW
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! Fills in negative q values in a mass conserving way.
-    ! Conservation of TPW was checked.
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    IM = SIZE( Q, 1 )
-    JM = SIZE( Q, 2 )
-    LM = SIZE( Q, 3 )
-    do j=1,JM
-       do i=1,IM
-          TPW = SUM( Q(i,j,:)*MASS(i,j,:) )
-          NEGTPW = 0.
-          do l=1,LM
-             if ( Q(i,j,l) < 0.0 ) then
-                NEGTPW   = NEGTPW + ( Q(i,j,l)*MASS( i,j,l ) )
-                Q(i,j,l) = 0.0
-             endif
-          enddo
-          do l=1,LM
-             if ( Q(i,j,l) >= 0.0 ) then
-                Q(i,j,l) = Q(i,j,l)*( 1.0+NEGTPW/(TPW-NEGTPW) )
-             endif
-          enddo
-          FILLQ(i,j) = -NEGTPW
-       end do
-    end do
-  end subroutine FILLQ2ZERO1
 
   subroutine DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR, PTYPE, PLE, TH, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
     integer,                        intent(in   )  :: IM, JM, LM

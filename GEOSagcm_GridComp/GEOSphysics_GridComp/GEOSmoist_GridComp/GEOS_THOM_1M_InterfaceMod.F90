@@ -995,13 +995,13 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             enddo
           enddo
          enddo
-         call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QI, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QR, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QS, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QG, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_CF, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QV, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QL, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QI, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QR, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QS, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QG, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_CF, MASS, RC=STATUS); VERIFY_(STATUS)
          where (RAD_QI .le. 0.0)
             CLDREFFI = MAPL_UNDEF
          end where
