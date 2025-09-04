@@ -7,6 +7,8 @@ module abortutils
   ! Abort the model for abnormal termination
   !-----------------------------------------------------------------------
 
+  use ESMF
+  
   private
   save
 
@@ -20,7 +22,7 @@ module abortutils
 CONTAINS
 
   !-----------------------------------------------------------------------
-  subroutine endrun_vanilla(msg, additional_msg)
+  subroutine endrun_vanilla(msg, additional_msg, rc)
 
     !-----------------------------------------------------------------------
     ! !DESCRIPTION:
@@ -39,6 +41,7 @@ CONTAINS
     ! and then just assert against msg.
     character(len=*), intent(in), optional :: msg            ! string to be passed to shr_sys_abort
     character(len=*), intent(in), optional :: additional_msg ! string to be printed, but not passed to shr_sys_abort
+    integer,          intent(out),optional :: rc             ! return code
     !-----------------------------------------------------------------------
 
     if (present (additional_msg)) then
@@ -47,12 +50,14 @@ CONTAINS
        write(iulog,*)'ENDRUN:'
     end if
 
-    call shr_sys_abort(msg)
+    call shr_sys_abort(msg,rc)
+
+    RETURN_(ESMF_SUCCESS)
 
   end subroutine endrun_vanilla
 
   !-----------------------------------------------------------------------
-  subroutine endrun_globalindex(decomp_index, clmlevel, msg, additional_msg)
+  subroutine endrun_globalindex(decomp_index, clmlevel, msg, additional_msg, rc)
 
     !-----------------------------------------------------------------------
     ! Description:
@@ -74,6 +79,7 @@ CONTAINS
     ! and then just assert against msg.
     character(len=*), intent(in), optional :: msg            ! string to be passed to shr_sys_abort
     character(len=*), intent(in), optional :: additional_msg ! string to be printed, but not passed to shr_sys_abort
+    integer,          intent(out),optional :: rc             ! return code    
     !
     ! Local Variables:
     integer :: igrc, ilun, icol 
@@ -88,8 +94,10 @@ CONTAINS
        write(iulog,*)'ENDRUN:'
     end if
 
-    call shr_sys_abort(msg)
+    call shr_sys_abort(msg, rc)
 
+    RETURN_(ESMF_SUCCESS)
+    
   end subroutine endrun_globalindex
 
 end module abortutils

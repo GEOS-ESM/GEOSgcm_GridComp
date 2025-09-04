@@ -5,6 +5,9 @@ module CNBalanceCheckMod
   ! Module for carbon/nitrogen mass balance checking.
   !
   ! !USES:
+
+  use ESMF
+  
   use shr_kind_mod                    , only : r8 => shr_kind_r8
   use nanMod                          , only : nan
   use shr_log_mod                     , only : errMsg => shr_log_errMsg
@@ -220,6 +223,7 @@ contains
     real(r8) :: som_c_leached_grc(bounds%begg:bounds%endg)
     real(r8) :: hrv_xsmrpool_amount_left_to_dribble(bounds%begg:bounds%endg)
     real(r8) :: dwt_conv_cflux_amount_left_to_dribble(bounds%begg:bounds%endg)
+    integer  :: rc       
     !-----------------------------------------------------------------------
 
     associate(                                                                            & 
@@ -307,7 +311,7 @@ contains
          write(iulog,*)'wood_harvestc            = ',wood_harvestc(c)*dt
          write(iulog,*)'grainc_to_cropprodc      = ',grainc_to_cropprodc(c)*dt
          write(iulog,*)'-1*som_c_leached         = ',som_c_leached(c)*dt
-         call endrun(msg=errMsg(sourcefile, __LINE__))
+         call endrun(msg=errMsg(sourcefile, __LINE__),rc)
       end if
 
       ! Repeat error check at the gridcell level
@@ -379,11 +383,13 @@ contains
          write(iulog,*)'dwt_seedc_to_deadstem_grc =', dwt_seedc_to_deadstem_grc(g) * dt
          write(iulog,*)'--- Outputs ---'
          write(iulog,*)'-1*som_c_leached_grc    = ', som_c_leached_grc(g) * dt
-         call endrun(msg=errMsg(sourcefile, __LINE__))
+         call endrun(msg=errMsg(sourcefile, __LINE__),rc)
       end if
 
     end associate
 
+    RETURN_(ESMF_SUCCESS)
+    
   end subroutine CBalanceCheck
 
   !-----------------------------------------------------------------------
@@ -426,6 +432,7 @@ contains
     real(r8):: grc_ninputs(bounds%begg:bounds%endg)
     real(r8):: grc_noutputs(bounds%begg:bounds%endg)
     real(r8):: grc_errnb(bounds%begg:bounds%endg)
+    integer :: rc
     !-----------------------------------------------------------------------
 
     associate(                                                                             & 
@@ -545,7 +552,7 @@ contains
         
          
          
-         call endrun(msg=errMsg(sourcefile, __LINE__))
+         call endrun(msg=errMsg(sourcefile, __LINE__),rc)
       end if
 
       ! Repeat error check at the gridcell level
@@ -619,11 +626,13 @@ contains
          write(iulog,*) 'grc_noutputs_partial     =', grc_noutputs_partial(g) * dt
          write(iulog,*) 'dwt_conv_nflux_grc       =', dwt_conv_nflux_grc(g) * dt
          write(iulog,*) 'product_loss_grc         =', product_loss_grc(g) * dt
-         call endrun(msg=errMsg(sourcefile, __LINE__))
+         call endrun(msg=errMsg(sourcefile, __LINE__),rc)
       end if
 
     end associate
 
+    RETURN_(ESMF_SUCCESS)    
+    
   end subroutine NBalanceCheck
 
 end module CNBalanceCheckMod

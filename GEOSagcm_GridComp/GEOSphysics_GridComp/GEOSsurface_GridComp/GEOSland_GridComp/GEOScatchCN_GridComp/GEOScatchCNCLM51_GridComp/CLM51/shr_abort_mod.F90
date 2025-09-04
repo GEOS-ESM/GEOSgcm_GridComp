@@ -11,9 +11,10 @@ module shr_abort_mod
 
   use, intrinsic :: iso_fortran_env, only: output_unit, error_unit
 
+  use ESMF
   use MAPL_ExceptionHandling
   use shr_kind_mod, only : shr_kind_in, shr_kind_cx
-!  use shr_mpi_mod , only : shr_mpi_initialized, shr_mpi_abort
+  !use shr_mpi_mod , only : shr_mpi_initialized, shr_mpi_abort
   use shr_log_mod , only : s_logunit => shr_log_Unit
 
 !#ifdef CPRNAG
@@ -33,20 +34,25 @@ module shr_abort_mod
   ! (shr_sys_abort, shr_sys_backtrace). (This is for consistency with older code, from
   ! when these routines were defined in shr_sys_mod.)
   public :: shr_abort_abort     ! abort a program
-  ! public :: shr_abort_backtrace ! print a backtrace, if possible
+  !public :: shr_abort_backtrace ! print a backtrace, if possible
 
 contains
 
   !===============================================================================
-  subroutine shr_abort_abort(string, ec, rc)
-    !----- arguments -----
-    character(len=*),     intent(in),  optional :: string
-    integer(shr_kind_in), intent(in),  optional :: ec
-    integer(shr_kind_in), intent(out), optional :: rc
+  subroutine shr_abort_abort(string,rc)
+    ! Consistent stopping mechanism
 
+    !----- arguments -----
+    character(len=*)    , intent(in) , optional :: string  ! error message string
+    integer(shr_kind_in), intent(out), optional :: rc      ! return code
+    
     !----- local -----
+    !logical :: flag
+
+    ! Local version of the string.
+    ! (Gets a default value if string is not present.)
     character(len=shr_kind_cx) :: local_string
-    integer :: exit_code
+    !-------------------------------------------------------------------------------
 
     if (present(string)) then
        local_string = trim(string)
@@ -54,16 +60,22 @@ contains
        local_string = "Unknown error submitted to shr_abort_abort."
     end if
 
-    ! Log to stdout/stderr and flush.
     call print_error_to_logs("ERROR", local_string)
 
-    exit_code = 1
-    if (present(ec)) exit_code = ec
-    if (present(rc)) rc = exit_code
+    !call shr_abort_backtrace()
 
-    error stop "shr_abort_abort: hard abort"   ! prints and exits nonzero
+    !call shr_mpi_initialized(flag)
+
+    _ASSERT(.FALSE.,trim(local_string))
+
+    ! A compiler's abort method may print a backtrace or do other nice
+    ! things, but in fact we can rarely leverage this, because MPI_Abort
+    ! usually sends SIGTERM to the process, and we don't catch that signal.
+    !call abort()
+    
+    RETURN_(ESMF_SUCCESS)
+    
   end subroutine shr_abort_abort
-
   !===============================================================================
 
   !===============================================================================
