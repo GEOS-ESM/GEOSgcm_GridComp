@@ -924,21 +924,21 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          U = U + DUDTmic * DT_MOIST
          V = V + DVDTmic * DT_MOIST
      ! Apply moist/cloud species tendencies
-         RAD_QV = RAD_QV + DQVDTmic * DT_MOIST
-         RAD_QL = RAD_QL + DQLDTmic * DT_MOIST
-         RAD_QR = RAD_QR + DQRDTmic * DT_MOIST
-         RAD_QI = RAD_QI + DQIDTmic * DT_MOIST
-         RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
-         RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
+         RAD_QV = MAX(RAD_QV + DQVDTmic * DT_MOIST, 1.e-12)
+         RAD_QL = MAX(RAD_QL + DQLDTmic * DT_MOIST, 0.0)
+         RAD_QR = MAX(RAD_QR + DQRDTmic * DT_MOIST, 0.0)
+         RAD_QI = MAX(RAD_QI + DQIDTmic * DT_MOIST, 0.0)
+         RAD_QS = MAX(RAD_QS + DQSDTmic * DT_MOIST, 0.0)
+         RAD_QG = MAX(RAD_QG + DQGDTmic * DT_MOIST, 0.0)
          RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
      ! CleanUp Negative Water Vapor, cloud liquid/ice, and condensates
-         call FILLQ2ZERO(RAD_QV, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QL, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QI, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QR, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QS, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QG, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_CF, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QV, MASS, WARNING_LABEL="QV   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QL, MASS, WARNING_LABEL="QL   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QI, MASS, WARNING_LABEL="QI   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QR, MASS, WARNING_LABEL="QR   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QS, MASS, WARNING_LABEL="QS   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QG, MASS, WARNING_LABEL="QG   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_CF, MASS, WARNING_LABEL="QA   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Fill vapor/rain/snow/graupel state

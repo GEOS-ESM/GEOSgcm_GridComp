@@ -2624,7 +2624,7 @@ module GEOSmoist_Process_Library
     endif
  
     WHERE (Q < 1.e-15)    
-       Q=0.0
+       Q=1.e-15
     END WHERE
 
     TPW2 = SUM( Q*MASS, 3 )
