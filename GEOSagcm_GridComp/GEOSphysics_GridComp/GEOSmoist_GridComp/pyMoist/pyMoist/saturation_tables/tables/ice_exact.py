@@ -5,7 +5,7 @@ import numpy as np
 from ndsl.dsl.typing import Float, Int
 from pyMoist.saturation_tables.constants import DELTA_T, ERFAC, ESFAC, MAPL_TICE, MAX_MIXING_RATIO
 from pyMoist.saturation_tables.formulation import SaturationFormulation
-from pyMoist.saturation_tables.tables.constants import IceExactConstatns
+from pyMoist.saturation_tables.tables.constants import IceExactConstants
 from ndsl.dsl.gt4py import function, exp, log
 
 
@@ -82,7 +82,7 @@ def _saturation_formulation_no_stencil(
 ):
     if formulation == SaturationFormulation.Staars:
         tt = t - MAPL_TICE
-        if tt < IceExactConstatns.TSTARR1:
+        if tt < IceExactConstants.TSTARR1:
             ex = (
                 tt
                 * (
@@ -92,19 +92,19 @@ def _saturation_formulation_no_stencil(
                         * (
                             tt
                             * (
-                                tt * (tt * IceExactConstatns.S16 + IceExactConstatns.S15)
-                                + IceExactConstatns.S14
+                                tt * (tt * IceExactConstants.S16 + IceExactConstants.S15)
+                                + IceExactConstants.S14
                             )
-                            + IceExactConstatns.S13
+                            + IceExactConstants.S13
                         )
-                        + IceExactConstatns.S12
+                        + IceExactConstants.S12
                     )
-                    + IceExactConstatns.S11
+                    + IceExactConstants.S11
                 )
-                + IceExactConstatns.S10
+                + IceExactConstants.S10
             )
-        elif tt >= IceExactConstatns.TSTARR1 and tt < IceExactConstatns.TSTARR2:
-            W = (IceExactConstatns.TSTARR2 - tt) / (IceExactConstatns.TSTARR2 - IceExactConstatns.TSTARR1)
+        elif tt >= IceExactConstants.TSTARR1 and tt < IceExactConstants.TSTARR2:
+            W = (IceExactConstants.TSTARR2 - tt) / (IceExactConstants.TSTARR2 - IceExactConstants.TSTARR1)
             ex = W * (
                 tt
                 * (
@@ -114,16 +114,16 @@ def _saturation_formulation_no_stencil(
                         * (
                             tt
                             * (
-                                tt * (tt * IceExactConstatns.S16 + IceExactConstatns.S15)
-                                + IceExactConstatns.S14
+                                tt * (tt * IceExactConstants.S16 + IceExactConstants.S15)
+                                + IceExactConstants.S14
                             )
-                            + IceExactConstatns.S13
+                            + IceExactConstants.S13
                         )
-                        + IceExactConstatns.S12
+                        + IceExactConstants.S12
                     )
-                    + IceExactConstatns.S11
+                    + IceExactConstants.S11
                 )
-                + IceExactConstatns.S10
+                + IceExactConstants.S10
             ) + (Float(1.0) - W) * (
                 tt
                 * (
@@ -133,18 +133,18 @@ def _saturation_formulation_no_stencil(
                         * (
                             tt
                             * (
-                                tt * (tt * IceExactConstatns.S26 + IceExactConstatns.S25)
-                                + IceExactConstatns.S24
+                                tt * (tt * IceExactConstants.S26 + IceExactConstants.S25)
+                                + IceExactConstants.S24
                             )
-                            + IceExactConstatns.S23
+                            + IceExactConstants.S23
                         )
-                        + IceExactConstatns.S22
+                        + IceExactConstants.S22
                     )
-                    + IceExactConstatns.S21
+                    + IceExactConstants.S21
                 )
-                + IceExactConstatns.S20
+                + IceExactConstants.S20
             )
-        elif tt >= IceExactConstatns.TSTARR2 and tt < IceExactConstatns.TSTARR3:
+        elif tt >= IceExactConstants.TSTARR2 and tt < IceExactConstants.TSTARR3:
             ex = (
                 tt
                 * (
@@ -154,19 +154,19 @@ def _saturation_formulation_no_stencil(
                         * (
                             tt
                             * (
-                                tt * (tt * IceExactConstatns.S26 + IceExactConstatns.S25)
-                                + IceExactConstatns.S24
+                                tt * (tt * IceExactConstants.S26 + IceExactConstants.S25)
+                                + IceExactConstants.S24
                             )
-                            + IceExactConstatns.S23
+                            + IceExactConstants.S23
                         )
-                        + IceExactConstatns.S22
+                        + IceExactConstants.S22
                     )
-                    + IceExactConstatns.S21
+                    + IceExactConstants.S21
                 )
-                + IceExactConstatns.S20
+                + IceExactConstants.S20
             )
-        elif tt >= IceExactConstatns.TSTARR3 and tt < IceExactConstatns.TSTARR4:
-            W = (IceExactConstatns.TSTARR4 - tt) / (IceExactConstatns.TSTARR4 - IceExactConstatns.TSTARR3)
+        elif tt >= IceExactConstants.TSTARR3 and tt < IceExactConstants.TSTARR4:
+            W = (IceExactConstants.TSTARR4 - tt) / (IceExactConstants.TSTARR4 - IceExactConstants.TSTARR3)
             ex = W * (
                 tt
                 * (
@@ -176,16 +176,16 @@ def _saturation_formulation_no_stencil(
                         * (
                             tt
                             * (
-                                tt * (tt * IceExactConstatns.S26 + IceExactConstatns.S25)
-                                + IceExactConstatns.S24
+                                tt * (tt * IceExactConstants.S26 + IceExactConstants.S25)
+                                + IceExactConstants.S24
                             )
-                            + IceExactConstatns.S23
+                            + IceExactConstants.S23
                         )
-                        + IceExactConstatns.S22
+                        + IceExactConstants.S22
                     )
-                    + IceExactConstatns.S21
+                    + IceExactConstants.S21
                 )
-                + IceExactConstatns.S20
+                + IceExactConstants.S20
             ) + (Float(1.0) - W) * (
                 tt
                 * (
@@ -195,16 +195,16 @@ def _saturation_formulation_no_stencil(
                         * (
                             tt
                             * (
-                                tt * (tt * IceExactConstatns.BI6 + IceExactConstatns.BI5)
-                                + IceExactConstatns.BI4
+                                tt * (tt * IceExactConstants.BI6 + IceExactConstants.BI5)
+                                + IceExactConstants.BI4
                             )
-                            + IceExactConstatns.BI3
+                            + IceExactConstants.BI3
                         )
-                        + IceExactConstatns.BI2
+                        + IceExactConstants.BI2
                     )
-                    + IceExactConstatns.BI1
+                    + IceExactConstants.BI1
                 )
-                + IceExactConstatns.BI0
+                + IceExactConstants.BI0
             )
         else:
             ex = (
@@ -216,32 +216,32 @@ def _saturation_formulation_no_stencil(
                         * (
                             tt
                             * (
-                                tt * (tt * IceExactConstatns.BI6 + IceExactConstatns.BI5)
-                                + IceExactConstatns.BI4
+                                tt * (tt * IceExactConstants.BI6 + IceExactConstants.BI5)
+                                + IceExactConstants.BI4
                             )
-                            + IceExactConstatns.BI3
+                            + IceExactConstants.BI3
                         )
-                        + IceExactConstatns.BI2
+                        + IceExactConstants.BI2
                     )
-                    + IceExactConstatns.BI1
+                    + IceExactConstants.BI1
                 )
-                + IceExactConstatns.BI0
+                + IceExactConstants.BI0
             )
     elif formulation == SaturationFormulation.CAM:
         tt = MAPL_TICE / t
-        ex = IceExactConstatns.DI[0] * np.exp(
+        ex = IceExactConstants.DI[0] * np.exp(
             -(
-                IceExactConstatns.DI[1] / tt
-                + IceExactConstatns.DI[2] * np.log(tt)
-                + IceExactConstatns.DI[3] * tt
+                IceExactConstants.DI[1] / tt
+                + IceExactConstants.DI[2] * np.log(tt)
+                + IceExactConstants.DI[3] * tt
             )
         )
     elif formulation == SaturationFormulation.MurphyAndKoop:
         ex = np.exp(
-            IceExactConstatns.CI[0]
-            + IceExactConstatns.CI[1] / t
-            + IceExactConstatns.CI[2] * np.log(t)
-            + IceExactConstatns.CI[3] * t
+            IceExactConstants.CI[0]
+            + IceExactConstants.CI[1] / t
+            + IceExactConstants.CI[2] * np.log(t)
+            + IceExactConstants.CI[3] * t
         )
     return Float(ex)
 
@@ -414,8 +414,8 @@ def ice_exact_no_stencil(
     dq: Optional[Float] = None,
 ):
     """Reference Fortran: QSATICE0 w/ UTBL=False"""
-    if t_in < IceExactConstatns.TMINICE:
-        t = IceExactConstatns.TMINICE
+    if t_in < IceExactConstants.TMINICE:
+        t = IceExactConstants.TMINICE
     elif t_in > MAPL_TICE:
         t = MAPL_TICE
     else:
@@ -425,7 +425,7 @@ def ice_exact_no_stencil(
     ex = _saturation_formulation_no_stencil(t=t, formulation=formulation)
 
     if dq is not None:
-        if t_in < IceExactConstatns.TMINICE:
+        if t_in < IceExactConstants.TMINICE:
             ddq = Float(0.0)
         elif t_in > MAPL_TICE:
             ddq = Float(0.0)
