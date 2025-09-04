@@ -597,7 +597,7 @@ contains
          end if
 
          if (abs(grc_errnb(g)) > this%nwarning) then
-            write(iulog,*) 'nbalance warning at g =', g, grc_errnb(g), grc_endnb(g)
+            !write(iulog,*) 'nbalance warning at g =', g, grc_errnb(g), grc_endnb(g)
          end if
       end do
 
