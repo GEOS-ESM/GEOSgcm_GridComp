@@ -2,7 +2,16 @@ from typing import Optional
 
 from ndsl import StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, function, interval, log, K
+from ndsl.dsl.gt4py import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    function,
+    interval,
+    log,
+    K,
+)
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
 from pyMoist.constants import (
     MAPL_ALHL,
@@ -21,7 +30,10 @@ from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.outputs import Outputs
 from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
 from pyMoist.GFDL_1M.temporaries import Temporaries
-from pyMoist.interpolations import vertical_interpolation
+from pyMoist.interpolations import (
+    vertical_interpolation,
+    vertical_interpolation_interface,
+)
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
@@ -59,10 +71,14 @@ def calculate_derived_states(
 
     with computation(PARALLEL), interval(...):
         p_interface_mb = p_interface * 0.01
-        edge_height_above_surface = geopotential_height_interface - geopotential_height_interface.at(K=k_end)
+        edge_height_above_surface = (
+            geopotential_height_interface - geopotential_height_interface.at(K=k_end)
+        )
     with computation(FORWARD), interval(0, -1):
         p_mb = 0.5 * (p_interface_mb + p_interface_mb[0, 0, 1])
-        layer_height_above_surface = 0.5 * (edge_height_above_surface + edge_height_above_surface[0, 0, 1])
+        layer_height_above_surface = 0.5 * (
+            edge_height_above_surface + edge_height_above_surface[0, 0, 1]
+        )
         layer_thickness = edge_height_above_surface - edge_height_above_surface[0, 0, 1]
         layer_thinkness_negative = -1.0 * layer_thickness
         dp = p_interface[0, 0, 1] - p_interface
@@ -182,7 +198,9 @@ def find_eis(
             1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850))
         )
         gamma850 = MAPL_GRAV / MAPL_CP * (1.0 - gamma850)
-        estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (z700 - zlcl)
+        estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (
+            z700 - zlcl
+        )
 
 
 def update_precipitaiton(
@@ -248,7 +266,7 @@ class Setup:
 
         self.vertical_interpolation = stencil_factory.from_dims_halo(
             func=vertical_interpolation,
-            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self.find_eis = stencil_factory.from_dims_halo(
@@ -366,6 +384,7 @@ class Setup:
             pt=temporaries.temporary_2d_2,
             boolean_2d_mask=masks.boolean_2d_mask,
         )
+
         self.vertical_interpolation(
             field=temporaries.layer_height_above_surface,
             interpolated_field=temporaries.z700,
