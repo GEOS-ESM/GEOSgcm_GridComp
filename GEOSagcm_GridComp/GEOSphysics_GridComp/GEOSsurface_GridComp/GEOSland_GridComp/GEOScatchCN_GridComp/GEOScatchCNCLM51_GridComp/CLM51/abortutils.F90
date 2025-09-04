@@ -7,8 +7,6 @@ module abortutils
   ! Abort the model for abnormal termination
   !-----------------------------------------------------------------------
 
-  use ESMF
-  
   private
   save
 
@@ -22,7 +20,7 @@ module abortutils
 CONTAINS
 
   !-----------------------------------------------------------------------
-  subroutine endrun_vanilla(msg, additional_msg, rc)
+  subroutine endrun_vanilla(msg, additional_msg)
 
     !-----------------------------------------------------------------------
     ! !DESCRIPTION:
@@ -41,7 +39,6 @@ CONTAINS
     ! and then just assert against msg.
     character(len=*), intent(in), optional :: msg            ! string to be passed to shr_sys_abort
     character(len=*), intent(in), optional :: additional_msg ! string to be printed, but not passed to shr_sys_abort
-    integer,          intent(out),optional :: rc             ! return code
     !-----------------------------------------------------------------------
 
     if (present (additional_msg)) then
@@ -50,14 +47,12 @@ CONTAINS
        write(iulog,*)'ENDRUN:'
     end if
 
-    call shr_sys_abort(msg,rc)
-
-    RETURN_(ESMF_SUCCESS)
+    call shr_sys_abort(msg)
 
   end subroutine endrun_vanilla
 
   !-----------------------------------------------------------------------
-  subroutine endrun_globalindex(decomp_index, clmlevel, msg, additional_msg, rc)
+  subroutine endrun_globalindex(decomp_index, clmlevel, msg, additional_msg)
 
     !-----------------------------------------------------------------------
     ! Description:
@@ -65,7 +60,7 @@ CONTAINS
     !
     use shr_sys_mod       , only: shr_sys_abort
     use clm_varctl        , only: iulog
-   ! use GetGlobalValuesMod, only: GetGlobalWrite
+    !use GetGlobalValuesMod, only: GetGlobalWrite
     !
     ! Arguments:
     implicit none
@@ -79,14 +74,13 @@ CONTAINS
     ! and then just assert against msg.
     character(len=*), intent(in), optional :: msg            ! string to be passed to shr_sys_abort
     character(len=*), intent(in), optional :: additional_msg ! string to be printed, but not passed to shr_sys_abort
-    integer,          intent(out),optional :: rc             ! return code    
     !
     ! Local Variables:
     integer :: igrc, ilun, icol 
     !-----------------------------------------------------------------------
 
-   ! write(6,*)'calling getglobalwrite with decomp_index= ',decomp_index,' and clmlevel= ',trim(clmlevel)
-   ! call GetGlobalWrite(decomp_index, clmlevel)
+    !write(6,*)'calling getglobalwrite with decomp_index= ',decomp_index,' and clmlevel= ',trim(clmlevel)
+    !call GetGlobalWrite(decomp_index, clmlevel)
 
     if (present (additional_msg)) then
        write(iulog,*)'ENDRUN: ', additional_msg
@@ -94,10 +88,8 @@ CONTAINS
        write(iulog,*)'ENDRUN:'
     end if
 
-    call shr_sys_abort(msg, rc)
+    call shr_sys_abort(msg)
 
-    RETURN_(ESMF_SUCCESS)
-    
   end subroutine endrun_globalindex
 
 end module abortutils
