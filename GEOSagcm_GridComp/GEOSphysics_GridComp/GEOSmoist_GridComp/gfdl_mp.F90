@@ -193,7 +193,7 @@ module gfdl_mp_mod
     ! namelist parameters
     ! -----------------------------------------------------------------------
 
-    integer :: ntimes = 1 ! cloud microphysics sub cycles
+    integer :: ntimes = 2 ! cloud microphysics sub cycles
 
     integer :: nconds = 1 ! condensation sub cycles
 
@@ -1485,9 +1485,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 con_r8 = one_r8 - qvz (k)
             endif
 
+            ! dp0: original moist air_mass
             dp0 (k) = delp (i, k)
+            ! dp: dry air_mass
             dp (k) = delp (i, k) * con_r8
             con_r8 = one_r8 / con_r8
+
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1736,6 +1739,10 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 graupel (i), 0.0, 0.0, dtm, te_end_d (i, :), tw_end_d (i, :), &
                 te_b_end_d (i), tw_b_end_d (i), .false., hydrostatic, te_loss (i))
         endif
+
+        if (fix_negative) &
+            call neg_adj (ks, ke, tz, dp, qaz, qvz, qlz, qrz, qiz, qsz, qgz, mppcw (i), &
+                mppfr (i), convt) 
 
         do k = ks, ke
 
@@ -4688,14 +4695,16 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
 
     integer :: k
 
-    real :: ifrac, sink
-                
+    real :: fac_frez, ifrac, sink
+
+    fac_frez = 1. - exp (- dts / tau_frez)
+
     do k = ks, ke
 
         ifrac = ice_fraction(real(tz(k)),cnv_fraction,srf_type)
         if (ifrac .eq. 1. .and. ql (k) .gt. qcmin) then
 
-            sink = ql (k)
+            sink = fac_frez * min(ql (k), ql (k) * (tice - tz (k)) / icpk (k))
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &

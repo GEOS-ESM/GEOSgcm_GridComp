@@ -367,8 +367,15 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: ENTR, ENTR_DP, ENTR_MD, ENTR_SH
     real, pointer, dimension(:,:,:) :: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH     
     real, pointer, dimension(:,:  ) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
+    real, pointer, dimension(:,:,:) ::   DQVDT_FILL
+    real, pointer, dimension(:,:,:) :: DQLLSDT_FILL
+    real, pointer, dimension(:,:,:) :: DQLCNDT_FILL
+    real, pointer, dimension(:,:,:) :: DQILSDT_FILL
+    real, pointer, dimension(:,:,:) :: DQICNDT_FILL
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+
+    type( ESMF_VM )                 :: VMG
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
@@ -383,15 +390,23 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     MOIST_DT = DT_R8
 
+    call ESMF_GridCompGet ( GC, VM=VMG, RC=STATUS )
+    VERIFY_(STATUS) 
+
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , RC=STATUS); VERIFY_(STATUS)  
     call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
     ! Imports
     call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,RC=STATUS); VERIFY_(STATUS)
     ! Initialize tendencies
     call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -400,17 +415,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-
-    call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
-    alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
-
-    if (alarm_is_ringing) then
-
-!!! call WRITE_PARALLEL('GF is Running')
-    call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
-    GF_DT = DT_R8
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ); VERIFY_(STATUS)
 
@@ -422,21 +426,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Get parameters from generic state.
     !-----------------------------------
 
-    ! Internals
-    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
-
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, AREA      ,'AREA'      ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
@@ -492,6 +485,17 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     TH       = T/PK
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+
+    call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
+    alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+
+    if (alarm_is_ringing) then
+
+!!! call WRITE_PARALLEL('GF is Running')
+    call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    GF_DT = DT_R8
 
     ! Required Exports (connectivities to moist siblings)
     call MAPL_GetPointer(EXPORT, MFD_DC,     'MFD_DC'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -654,8 +658,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
-    call MAPL_TimerOff (MAPL,"--GF")
-
     endif
 
     ! add tendencies to the moist import state
@@ -667,6 +669,40 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     QLCN =         QLCN + DQLDT_DC*MOIST_DT
     QICN =         QICN + DQIDT_DC*MOIST_DT
     CLCN = MAX(MIN(CLCN + DQADT_DC*MOIST_DT, 1.0), 0.0)
+
+! Cleanup negative water species
+! ------------------------------
+    call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_DC', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_DC', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_DC', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_DC', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_DC', RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+
+    if (DEBUG_TQ_ERRORS) then
+        do L=1,LM
+          do J=1,JM
+           do I=1,IM
+             if (T(I,J,L) > 333.0) then
+                 print *, "Temperature spike detected : ", T(I,J,L)
+                 print *, "         GF Temp Increment : ", DTDT_DC(I,J,L)*MOIST_DT
+                 print *, "    AFTER Grell-Freitas DeepCu"
+                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
+                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
+                 print *, "  Pressure (mb)  =", 0.5*(PLE(I,J,L-1) + PLE(I,J,L))/100.0
+                 print *, "                       CLLS=",  CLLS(I,J,L),             "CLCN=", CLCN(I,J,L)
+                 print *, "  QV=",     Q(I,J,L), "  QL=",  QLLS(I,J,L)+QLCN(I,J,L), "  QI=", QILS(I,J,L)+QICN(I,J,L)
+             endif
+           end do ! IM loop
+         end do ! JM loop
+       end do ! LM loop
+    endif
+
+    call MAPL_TimerOff (MAPL,"--GF")
 
 end subroutine GF_Run
 
