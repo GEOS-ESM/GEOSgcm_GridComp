@@ -29,14 +29,11 @@ def vertical_interpolation_interface(
     with computation(FORWARD), interval(0, 1):
         boolean_2d_mask = False
 
-    with computation(PARALLEL), interval(...):
-        p = log(p_interface_mb * 100)
-
     with computation(FORWARD), interval(-1, None):
-        pb = p
+        pb = log(p_interface_mb * 100)
 
     with computation(BACKWARD), interval(0, -1):
-        pt = p
+        pt = log(p_interface_mb * 100)
         if log(target_pressure) > pt and log(target_pressure) <= pb:
             al = (pb - log(target_pressure)) / (pb - pt)
             interpolated_field = field * al + field[0, 0, 1] * (1.0 - al)
