@@ -71,14 +71,10 @@ def calculate_derived_states(
 
     with computation(PARALLEL), interval(...):
         p_interface_mb = p_interface * 0.01
-        edge_height_above_surface = (
-            geopotential_height_interface - geopotential_height_interface.at(K=k_end)
-        )
+        edge_height_above_surface = geopotential_height_interface - geopotential_height_interface.at(K=k_end)
     with computation(FORWARD), interval(0, -1):
         p_mb = 0.5 * (p_interface_mb + p_interface_mb[0, 0, 1])
-        layer_height_above_surface = 0.5 * (
-            edge_height_above_surface + edge_height_above_surface[0, 0, 1]
-        )
+        layer_height_above_surface = 0.5 * (edge_height_above_surface + edge_height_above_surface[0, 0, 1])
         layer_thickness = edge_height_above_surface - edge_height_above_surface[0, 0, 1]
         layer_thinkness_negative = -1.0 * layer_thickness
         dp = p_interface[0, 0, 1] - p_interface
@@ -198,9 +194,7 @@ def find_eis(
             1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850))
         )
         gamma850 = MAPL_GRAV / MAPL_CP * (1.0 - gamma850)
-        estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (
-            z700 - zlcl
-        )
+        estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (z700 - zlcl)
 
 
 def update_precipitaiton(
