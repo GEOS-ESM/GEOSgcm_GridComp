@@ -239,7 +239,7 @@ def conden(
             qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
             rvls = qs
             iteration += 1
-        qc: float64 = max(qt - qs, float64(0.0))
+        qc = max(qt - qs, float64(0.0))
         qv = qt - qc
         ql = qc * (float64(1.0) - nu)
         qi = nu * qc
@@ -308,17 +308,17 @@ def compute_mumin2(
     x0: float64 = mulow
     iteration = 0
     while iteration < 10:
-        ex: float64 = exp(-(x0**2))
+        ex: float64 = exp(-(x0 ** 2))
         ef: float64 = erfc(x0)  # Complimentary error fraction function
         exf: float64 = ex / ef
         f: float64 = (
-            float64(0.5) * exf**2
+            float64(0.5) * exf ** 2
             - float64(0.5) * (ex / float64(2.0) / rmaxfrax) ** 2
             - (mulcl * float64(2.5066) / float64(2.0)) ** 2
         )
-        fs: float64 = (float64(2.0) * exf**2) * (
-            exf / sqrt(constants.MAPL_PI) - x0
-        ) + (float64(0.5) * x0 * ex**2) / (rmaxfrax**2)
+        fs: float64 = (float64(2.0) * exf ** 2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
+            float64(0.5) * x0 * ex ** 2
+        ) / (rmaxfrax ** 2)
         x1: float64 = x0 - f / fs
         x0 = x1
         iteration += 1
@@ -377,12 +377,12 @@ def compute_ppen(
         while iteration < 5:
             aux: float64 = min(max(float64(-2.0) * drag * x0, -20.0), 20.0)
 
-            f: float64 = exp(aux) * (
-                wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)
-            ) + (SB * x0 + bogbot - SB / (2.0 * drag)) / (drag * rho0j)
-            fs: float64 = -2.0 * drag * exp(aux) * (
-                wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)
-            ) + (SB) / (drag * rho0j)
+            f: float64 = exp(aux) * (wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)) + (
+                SB * x0 + bogbot - SB / (2.0 * drag)
+            ) / (drag * rho0j)
+            fs: float64 = -2.0 * drag * exp(aux) * (wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)) + (
+                SB
+            ) / (drag * rho0j)
 
             x1: float64 = x0 - f / fs
             x0 = x1
@@ -481,9 +481,7 @@ def qsinvert(
     qsinvert [Float]: Saturation pressure [Pa]
     """
 
-    psmin: float64 = float64(
-        10000.0
-    )  # Default saturation pressure [Pa] if iteration does not converge
+    psmin: float64 = float64(10000.0)  # Default saturation pressure [Pa] if iteration does not converge
     dpsmax: float64 = float64(1.0)  # Tolerance [Pa] for convergence of iteration
     p00 = 1e5
     rovcp = constants.MAPL_RDRY / constants.MAPL_CP
@@ -493,11 +491,7 @@ def qsinvert(
     Tgeos: float32 = Ti
     Pgeos: float32 = float32(ps_in)
     qs, dqsdT = QSat_Float(ese, esx, Tgeos, Pgeos / 100.0)
-    es: float64 = (
-        ps_in
-        * qs
-        / (py_constants.ep2 + (float64(1.0) - py_constants.ep2) * float64(qs))
-    )
+    es: float64 = ps_in * qs / (py_constants.ep2 + (float64(1.0) - py_constants.ep2) * float64(qs))
     rhi: float64 = qt / float64(qs)
 
     if rhi <= float64(0.01):
@@ -518,15 +512,12 @@ def qsinvert(
             Tgeos = Ts
             Pgeos = ps
             qs, dqsdT = QSat_Float(ese, esx, Tgeos, Pgeos / 100.0, DQSAT_trigger=True)
-            gam: float64 = (
-                constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP
-            ) * float64(dqsdT)
+            gam: float64 = (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * float64(dqsdT)
             err: float64 = qt - qs
             nu: float64 = ice_fraction(float32(Ts), 0.0, 0.0)
             leff: float64 = (
-                (float64(1.0) - nu) * constants.MAPL_LATENT_HEAT_VAPORIZATION
-                + nu * constants.MAPL_LATENT_HEAT_SUBLIMATION
-            )
+                float64(1.0) - nu
+            ) * constants.MAPL_LATENT_HEAT_VAPORIZATION + nu * constants.MAPL_LATENT_HEAT_SUBLIMATION
             dlnqsdT: float64 = gam * (constants.MAPL_CP / leff) / qs
             dTdPis: float64 = thl
             dPisdps: float64 = rovcp * Pis / ps
@@ -613,10 +604,10 @@ def roots(
                 r1 = sqrt(-c / a)
             r2 = -r1
         else:  # Form a*x**2 + b*x + c = 0
-            if (b**2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
+            if (b ** 2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
                 status = 3
             else:
-                q = -0.5 * (b + sign(1.0, b) * sqrt(b**2 - 4.0 * a * c))
+                q = -0.5 * (b + sign(1.0, b) * sqrt(b ** 2 - 4.0 * a * c))
                 r1 = q / a
                 r2 = c / q
 

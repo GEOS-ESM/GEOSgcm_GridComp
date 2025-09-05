@@ -185,28 +185,13 @@ class ConfigConstants:
         CREVP = np.zeros(5)
 
         CSSUB[0] = (
-            Float(2.0)
-            * constants.PIE
-            * constants.VDIFU
-            * constants.TCOND
-            * constants.RVGAS
-            * constants.RNZS
+            Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZS
         )
         CGSUB[0] = (
-            Float(2.0)
-            * constants.PIE
-            * constants.VDIFU
-            * constants.TCOND
-            * constants.RVGAS
-            * constants.RNZG
+            Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZG
         )
         CREVP[0] = (
-            Float(2.0)
-            * constants.PIE
-            * constants.VDIFU
-            * constants.TCOND
-            * constants.RVGAS
-            * constants.RNZR
+            Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZR
         )
         CSSUB[1] = Float(0.78) / np.sqrt(constants.ACT[0], dtype=Float)
         CGSUB[1] = Float(0.78) / np.sqrt(constants.ACT[5], dtype=Float)
@@ -269,20 +254,9 @@ class ConfigConstants:
         # smlt: five constants (lin et al. 1983)
 
         CSMLT = np.zeros(5)
-        CSMLT[0] = (
-            Float(2.0)
-            * constants.PIE
-            * constants.TCOND
-            * constants.RNZS
-            / constants.HLTF
-        )
+        CSMLT[0] = Float(2.0) * constants.PIE * constants.TCOND * constants.RNZS / constants.HLTF
         CSMLT[1] = (
-            Float(2.0)
-            * constants.PIE
-            * constants.VDIFU
-            * constants.RNZS
-            * constants.HLTC
-            / constants.HLTF
+            Float(2.0) * constants.PIE * constants.VDIFU * constants.RNZS * constants.HLTC / constants.HLTF
         )
         CSMLT[2] = CSSUB[1]
         CSMLT[3] = CSSUB[2]
@@ -297,20 +271,9 @@ class ConfigConstants:
         # gmlt: five constants
 
         CGMLT = np.zeros(5)
-        CGMLT[0] = (
-            Float(2.0)
-            * constants.PIE
-            * constants.TCOND
-            * constants.RNZG
-            / constants.HLTF
-        )
+        CGMLT[0] = Float(2.0) * constants.PIE * constants.TCOND * constants.RNZG / constants.HLTF
         CGMLT[1] = (
-            Float(2.0)
-            * constants.PIE
-            * constants.VDIFU
-            * constants.RNZG
-            * constants.HLTC
-            / constants.HLTF
+            Float(2.0) * constants.PIE * constants.VDIFU * constants.RNZG * constants.HLTC / constants.HLTF
         )
         CGMLT[2] = CGSUB[1]
         CGMLT[3] = CGSUB[2]

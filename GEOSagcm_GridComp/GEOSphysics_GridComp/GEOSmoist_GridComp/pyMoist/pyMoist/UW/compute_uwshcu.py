@@ -371,7 +371,7 @@ def compute_thermodynamic_variables(
         qt0 = qv0 + ql0 + qi0
         exnmid0 = exnmid0_in
         t0 = th0_in * exnmid0
-        thl0: float32 = (
+        thl0 = (
             t0
             - (constants.MAPL_ALHL * ql0) / constants.MAPL_CP
             - (constants.MAPL_ALHS * qi0) / constants.MAPL_CP
@@ -750,15 +750,15 @@ def compute_thv0_thvl0(
         qv0 = qv0_in
         ql0 = ql0_in
         qi0 = qi0_in
-        qt0: float32 = qv0 + ql0 + qi0
+        qt0 = qv0 + ql0 + qi0
         t0 = th0_in * exnmid0
-        s0: float32 = constants.MAPL_GRAV * zmid0 + constants.MAPL_CP * t0
-        thl0: float32 = (
+        s0 = constants.MAPL_GRAV * zmid0 + constants.MAPL_CP * t0
+        thl0 = (
             t0
             - constants.MAPL_ALHL * ql0 / constants.MAPL_CP
             - constants.MAPL_ALHS * qi0 / constants.MAPL_CP
         ) / exnmid0
-        thvl0: float32 = (1.0 + zvir * qt0) * thl0
+        thvl0 = (1.0 + zvir * qt0) * thl0
         pifc0: float32 = pifc0_in
 
         thl0bot: float32 = thl0 + ssthl0 * (pifc0 - pmid0)
