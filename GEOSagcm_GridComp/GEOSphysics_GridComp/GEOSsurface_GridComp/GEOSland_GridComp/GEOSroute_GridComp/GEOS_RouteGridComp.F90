@@ -54,6 +54,7 @@ module GEOS_RouteGridCompMod
   type T_RROUTE_STATE !routing related variables
      private
      type (ESMF_RouteHandle) :: routeHandle
+     type (ESMF_Field)       :: field_src
      type (ESMF_Field)       :: field
      type (RES_STATE)        :: reservoir
      integer :: n_pfaf_local
@@ -95,6 +96,10 @@ module GEOS_RouteGridCompMod
      real,    pointer :: K(:)              => NULL()
      real,    pointer :: Kstr(:)           => NULL()
 
+     integer, allocatable :: re_order(:), to_down(:)
+     integer, allocatable :: send_count(:), displ_send(:)
+     integer, allocatable :: recv_count(:), displ_recv(:)
+     integer              :: total_send, total_recv
   end type T_RROUTE_STATE
 
 
@@ -194,7 +199,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN2, RC=STATUS )
     VERIFY_(STATUS)
-
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE, Finalize, RC=status)
+    VERIFY_(status)
     
 ! -----------------------------------------------------------
 ! Get the configuration
@@ -334,9 +340,7 @@ contains
     integer        :: n_pfaf_local, nt_global
 
     type(ESMF_Grid)     :: tileGrid
-    type(ESMF_Grid)     :: newTileGrid, catchGrid
-    type(ESMF_DistGrid) :: distGrid
-    type(ESMF_Field)    :: field_src
+    type(ESMF_Grid)     :: newTileGrid, catch_grid
 
     type(MAPL_MetaComp), pointer   :: MAPL
     type(MAPL_LocStream)           :: locstream, catch_LocStream
@@ -346,9 +350,6 @@ contains
     type(ESMF_Grid)  :: agrid 
     
     integer, pointer :: ims(:) => NULL()
-    integer, allocatable :: arbIndex(:,:), arbSeq(:)
-    real,    pointer :: ptr(:)
-    real(kind=8), pointer :: centers(:,:)
     integer, pointer :: local_id(:)  => NULL()
     real,    pointer :: tile_area_local(:) => NULL(), tile_area_global(:) => NULL()
 
@@ -363,10 +364,6 @@ contains
     real,    pointer :: lengsc_global(:)=>NULL(), lengsc(:)=>NULL(), buff_global(:)=>NULL()
     integer, pointer :: downid_global(:)=>NULL(), downid(:)=>NULL()
     integer, pointer :: upid_global(:,:)=>NULL(), upid(:,:)=>NULL()    
-    integer, pointer :: pfaf_index(:)
-    integer, pointer :: mask(:)
-    integer, allocatable :: global_pfaf_index(:), global_id(:)
-    logical, allocatable :: msk(:)
     real,    pointer :: wstream(:)=>NULL(),wriver(:)=>NULL(),wres(:)=>NULL()
     real,    pointer :: wstream_global(:)=>NULL(),wriver_global(:)=>NULL(),wres_global(:)=>NULL()    
     type (T_RROUTE_STATE), pointer :: route => null()
@@ -380,7 +377,7 @@ contains
     character(len=3) :: resname
 
     
-    integer          :: j,nt_local,mpierr,it, nTiles
+    integer          :: j,nt_local,mpierr,it
 
     ! ------------------
     ! begin
@@ -438,7 +435,7 @@ contains
     endif
 
     call MAPL_LocStreamGet(locstream, &
-         tileGrid=tilegrid, nt_local=nt_local, nt_global=nt_global, pfaf_index=pfaf_index, &
+         tileGrid=tilegrid, nt_local=nt_local, nt_global=nt_global, &
          LOCAL_ID=local_id, RC=status)
     VERIFY_(STATUS)
 
@@ -448,119 +445,6 @@ contains
     route%n_pfaf_local= n_pfaf_local  
     route%minCatch    = minCatch
     route%maxCatch    = maxCatch 
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    allocate(global_pfaf_index(nt_global))
-    allocate(global_id(nt_global))
-    
-    call MAPL_TileMaskGet(tilegrid, mask, _RC)
-    _VERIFY(STATUS)
-    call ArrayGather(pfaf_index, global_pfaf_index, tilegrid, mask=mask, _RC)
-    call MAPL_CommsBcast(vm, DATA = global_pfaf_index, N = nt_global,ROOT= MAPL_ROOT, _RC) 
-
-    msk    = global_pfaf_index >= minCatch .and. global_pfaf_index <=maxCatch
-    nTiles = count(msk)
-
-    call ArrayGather(local_id, global_id, tilegrid, mask=mask, _RC)
-    call MAPL_CommsBcast(vm, DATA= global_id, N = nt_global,ROOT= MAPL_ROOT, _RC) 
-    allocate(arbSeq(nTiles))
-    arbSeq = pack(global_id, msk)
-    
-    distgrid = ESMF_DistGridCreate(arbSeqIndexList=arbSeq, rc=status)
-    VERIFY_(STATUS)
-
-    newTileGRID = ESMF_GridEmptyCreate(rc=status)
-    VERIFY_(STATUS)
-
-    allocate(arbIndex(nTiles,1), stat=status)
-    VERIFY_(STATUS)
-
-    arbIndex(:,1) = arbSeq
-    call ESMF_GridSet(newTileGrid,                       &
-       name='redist_tile_grid_for_'//trim(COMP_NAME),    &
-       distgrid=distgrid,                                &
-       gridMemLBound=(/1/),                              &
-       indexFlag=ESMF_INDEX_USER,                        &
-       distDim = (/1/),                                  &
-       localArbIndexCount=nTiles,                        &
-       localArbIndex=arbIndex,                           &
-       minIndex=(/1/),                                   &
-       maxIndex=(/NT_GLOBAL/),                           &
-       rc=status)
-    VERIFY_(STATUS)
-    deallocate(arbIndex, arbSeq)
-    call ESMF_GridCommit(newTileGrid, rc=status)
-    VERIFY_(STATUS)
-
-    ! here we create a field with the value of pfaf_index, 
-    ! which can be verified after being redistributed.
-    field_src = ESMF_FieldCreate(grid=tilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
-         farrayPtr = pfaf_index, RC=STATUS)
-    VERIFY_(STATUS)
-
-    allocate(ptr(nTiles), source = 0.)
-    route%field = ESMF_FieldCreate(grid=newtilegrid, datacopyflag=ESMF_DATACOPY_VALUE,&
-            farrayPtr = ptr, RC=STATUS)
-    deallocate(ptr)
-    ! create routehandle
-    call ESMF_FieldRedistStore(srcField=field_src, dstField=route%field, &
-                routehandle=route%routehandle, rc=status)
-    VERIFY_(STATUS)
-
-    call ESMF_FieldRedist(srcField=field_src, dstField=route%field, &
-         routehandle=route%routehandle, rc=status)
-    VERIFY_(STATUS)
-    call ESMF_FieldGet(route%field, farrayPtr=ptr, _RC)
-
-    !verification, all the tiles are redistributed to pfaf space 
-    do i = 1, nTiles
-       _ASSERT( minCatch <= ptr(i) .and. ptr(i) <= maxcatch, "The redistribution of the handler is wrong")
-    enddo
-
-    call ESMF_FieldDestroy(field_src, rc=status)
-    VERIFY_(STATUS)
-
-    ! create catcment grid then its tilegrid for 
-    ! internal and export state
-
-    catchGrid = ESMF_GridCreate(         &
-        name='CATCHMENT_GRID',         &
-        countsPerDEDim1=IMs,           &
-        countsPerDEDim2=[1],           &
-        indexFlag=ESMF_INDEX_DELOCAL, &
-        coordDep1 = (/1,2/),           &
-        coordDep2 = (/1,2/),           &
-        gridEdgeLWidth = (/0,0/),      &
-        gridEdgeUWidth = (/0,0/),      &
-        _RC)
-   ! coord and centers are required for a valid grid
-   ! even their values don't make sense
-   ! later on the coord will be set to catchment's lat lon
-   call ESMF_GridAddCoord(catchGrid, rc=status)
-      _VERIFY(status)
-
-   call ESMF_GridGetCoord(catchGrid, coordDim=1, localDE=0, &
-         staggerloc=ESMF_STAGGERLOC_CENTER, &
-         farrayPtr=centers, _RC)
-    centers = 0 ! ?? just assign
-    call ESMF_GridGetCoord(catchGrid, coordDim=2, localDE=0, &
-       staggerloc=ESMF_STAGGERLOC_CENTER, &
-         farrayPtr=centers, _RC)
-    centers = 0 ! 
-
-    call MAPL%grid%set(catchGrid, _RC)
-
-    call ESMF_GridCompSet(gc, grid=catchGrid, RC=status)
-    VERIFY_(STATUS)
-
-    call MAPL_LocstreamCreate(catch_Locstream, catchGrid, rc=status)
-    VERIFY_(STATUS)
-    call MAPL_set(MAPL, locstream = catch_locstream, rc=status)
-    VERIFY_(STATUS)
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     call MAPL_GetResource (MAPL, River_RoutingFile, label = 'River_Routing_FILE:',  default = 'river_input', RC=STATUS )
 
@@ -786,11 +670,231 @@ contains
     !  stop
     !endif
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    call create_catchment_grid(catch_grid, catch_locstream, _RC)
+
+    call create_mapping_handler('../run/EASEv2_M36_Pfaf.txt', _RC)
+
+    call MAPL%grid%set(catch_grid, _RC)
+
+    call ESMF_GridCompSet(gc, grid=catch_grid, RC=status)
+    VERIFY_(STATUS)
+
+    call MAPL_set(MAPL, locstream = catch_locstream, rc=status)
+    VERIFY_(STATUS)
+
+    call setup_exchange_cat(_RC)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
 
-    RETURN_(ESMF_SUCCESS)      
+    RETURN_(ESMF_SUCCESS)
+    contains
+       subroutine create_catchment_grid(catch_Grid, catch_Locstream, rc)
+          type (ESMF_Grid), intent(out)  :: catch_grid
+          type (MAPL_LocStream), intent(out) :: catch_Locstream
+          integer, optional, intent(out) :: rc
+          integer :: status
+          real(kind=8), pointer :: centers(:,:)
+          ! create catchment grid and it is tile space
+          catch_Grid = ESMF_GridCreate(               &
+                      name='CATCHMENT_GRID',         &
+                      countsPerDEDim1=IMs,           &
+                      countsPerDEDim2=[1],           &
+                      indexFlag=ESMF_INDEX_DELOCAL,  &
+                      coordDep1 = (/1,2/),           &
+                      coordDep2 = (/1,2/),           &
+                      gridEdgeLWidth = (/0,0/),      &
+                      gridEdgeUWidth = (/0,0/),      &
+                      _RC)
+          ! coord and centers are required for a valid grid
+          ! even their values don't make sense
+          ! later on the coord will be set to catchment's lat lon
+          call ESMF_GridAddCoord(catch_Grid, _RC)
+          _VERIFY(status)
+
+          call ESMF_GridGetCoord(catch_Grid, coordDim=1, localDE=0, &
+                 staggerloc=ESMF_STAGGERLOC_CENTER, &
+                 farrayPtr=centers, _RC)
+          centers = 0 ! ?? just assign
+          call ESMF_GridGetCoord(catch_Grid, coordDim=2, localDE=0, &
+               staggerloc=ESMF_STAGGERLOC_CENTER, &
+                 farrayPtr=centers, _RC)
+          centers = 0 ! 
+
+          call MAPL_LocstreamCreate(catch_Locstream, catch_Grid, rc=status)
+          _VERIFY(STATUS)
+          _RETURN(_SUCCESS)
+       end subroutine create_catchment_grid
+
+       subroutine create_mapping_handler(route_file, rc)
+          character(*),      intent(in)  :: route_file
+          integer, optional, intent(out) :: rc
+          integer :: status, nWeights, nLocal_weights
+          integer, allocatable :: global_id(:)
+          real, pointer :: ptr(:)
+          logical, allocatable :: mask(:)
+          integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:)
+          real,    allocatable :: mapping(:,:), weights(:)
+          integer, allocatable :: local_src(:), local_dst(:)
+          type (ESMF_DELayout) :: layout
+          type (ESMF_DistGrid) :: dist_grid
+
+
+          ! create source for orignal tile space
+          allocate(ptr(nt_local), source = 0.)
+          route%field_src = ESMF_FieldCreate(grid=tilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
+               farrayPtr = ptr, RC=STATUS)
+          VERIFY_(STATUS)
+          deallocate(ptr)
+
+          call MAPL_LocStreamGet(catch_LocStream, TILEGRID=newtilegrid, RC=status)
+          allocate(ptr(n_pfaf_local), source =0.0)
+          route%field = ESMF_FieldCreate(grid=newtilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
+               farrayPtr = ptr, RC=STATUS)
+          VERIFY_(STATUS)
+          deallocate(ptr)
+
+          call ESMF_GridGet(agrid,   distGrid=dist_grid, _RC)
+          call ESMF_DistGridGet(dist_grid, delayout=layout, _RC)
+
+          call MAPL_ReadRouteASCII(layout, route_file, nWeights, mapping, _RC)
+          ! get local  number of weight         
+          allocate(mask(nWeights))
+          mask = minCatch <= mapping(:,2) .and. mapping(:,2) <=maxCatch
+          local_src = nint(pack(mapping(:,1), mask))
+          local_dst = nint(pack(mapping(:,2), mask))
+          weights   = pack(mapping(:,3), mask)
+          
+          ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
+          allocate(global_id(nt_global))
+          call ArrayGather(local_id, global_id, tilegrid,  _RC)
+          call MAPL_CommsBcast(vm, DATA= global_id, N = nt_global,ROOT= MAPL_ROOT, _RC)
+
+          ! mapping form local to global index
+          nLocal_weights = size(weights)
+          allocate(srcIndices(nLocal_weights))
+          do i =1, nLocal_weights
+             positions = pack([(j, j=1, nt_global)], global_id == local_src(i))
+             srcIndices(i) = positions(1)
+          enddo
+
+          allocate(factorIndexList(2, nlocal_weights))
+          factorIndexList(1,:) = srcIndices
+          factorIndexList(2,:) = local_dst
+          call ESMF_FieldSMMStore(route%field_src, route%field, &
+                               routeHandle=route%routeHandle, &
+                               factorList=weights, &
+                               factorIndexList= factorIndexList, &
+                               _RC)
+
+          ! testing
+          !call ESMF_FieldGet(route%field_src, farrayPtr=ptr, rc=status)
+          !VERIFY_(STATUS)
+          !ptr(:) = 1.
+
+          !call ESMF_FieldSMM(route%field_src, route%Field, &
+          !             route%routeHandle, rc=status)
+          !VERIFY_(STATUS)
+
+          !call ESMF_FieldGet(route%Field, farrayPtr=ptr, rc=status)
+          !VERIFY_(STATUS)
+          ! after remapping, all values should be 1
+          !if (route%mype == 20) then
+          !  do i = 1, n_pfaf_local
+          !    print* , 'ptr(i): ',i,  ptr(i)
+          !  enddo
+          !endif
+         _RETURN(_SUCCESS)
+       end subroutine
+       
+       subroutine setup_exchange_cat(rc)
+          integer, optional, intent(out) :: rc
+          integer :: pf, down_id, rank
+          integer, allocatable :: cat_to_ranks_global(:)
+          integer, allocatable :: cat_to_ranks_local(:)
+          integer :: status, mype, mpierr, k
+          integer, allocatable :: to_downstream(:), positions(:)
+ 
+          mype = route%mype
+          allocate(cat_to_ranks_local(route%n_pfaf_local))
+          allocate(cat_to_ranks_global(n_pfaf_g))
+          cat_to_ranks_local = mype
+          
+          call MPI_allgatherv  (                          &
+            cat_to_ranks_local,  route%scounts_cat(mype+1)           ,MPI_INTEGER, &
+            cat_to_ranks_global, route%scounts_cat, route%rdispls_cat,MPI_INTEGER, &
+            route%comm, status)
+          VERIFY_(STATUS)
+
+          allocate(route%send_count(route%ndes), source=0)
+          allocate(route%recv_count(route%ndes), source=0)
+
+          do pf = 1, route%n_pfaf_local
+             down_id = route%downid(pf)
+             if (down_id == -1) cycle
+             ! down stream is not in the process
+             if (down_id < minCatch .or. maxCatch < down_id) then
+               rank = cat_to_ranks_global(down_id)
+               route%send_count(rank+1) = route%send_count(rank+1) + 1
+             endif
+          enddo
+          
+          call MPI_AlltoALL(route%send_count, 1, MPI_INTEGER,  &
+                            route%recv_count, 1, MPI_INTEGER, route%comm, status)
+          VERIFY_(STATUS)
+
+          allocate(route%displ_send(ndes), source = 0)
+          allocate(route%displ_recv(ndes), source = 0)
+          do rank = 1, ndes-1
+             route%displ_send(rank+1) = route%displ_send(rank) + route%send_count(rank)
+             route%displ_recv(rank+1) = route%displ_recv(rank) + route%recv_count(rank)
+          enddo 
+          k = sum(route%send_count)
+          route%total_send = k
+          allocate(to_downstream(k))
+          allocate(route%re_order(k))
+          allocate(positions(ndes), source = route%displ_send )
+          positions = positions + 1
+          k = 0
+          do pf = 1, route%n_pfaf_local
+             down_id = route%downid(pf)
+             if (down_id == -1) cycle
+             if (down_id < minCatch .or. maxCatch < down_id) then
+               rank = cat_to_ranks_global(down_id)
+               k    = k + 1
+               to_downstream(k) = down_id
+               route%re_order(k)= positions(rank+1)
+               positions(rank+1)= positions(rank+1) + 1
+             endif
+          enddo
+          if (route%total_send > 0) then
+             to_downstream = to_downstream(route%re_order)
+          endif
+          k = sum(route%recv_count)
+          route%total_recv = k
+          allocate(route%to_down(k))
+          call MPI_AllToAllv(to_downstream, route%send_count, route%displ_send, MPI_Integer,  &
+                             route%to_down, route%recv_count, route%displ_recv, MPI_INTEGER, &
+                             route%comm, status)
+
+         ! testing
+          do i = 1, route%total_recv
+             down_id = route%to_down(i)
+             if (down_id < minCatch .or. maxCatch < down_id) then
+               _ASSERT(.false., "Got the down_id that does not belong to me")
+             endif
+          enddo
+
+          _VERIFY(STATUS)
+          _RETURN(_SUCCESS)
+       end subroutine
+
   end subroutine INITIALIZE
 
   ! --------------------------------------------------------------------------------  
@@ -899,13 +1003,15 @@ contains
     character(len=4) :: yr_s
     character(len=2) :: mon_s,day_s
 
+    real,             pointer     :: runoff_act_new(:)=>NULL()
+    real,             pointer     :: runoff_save_new(:)=>NULL()
     real,             pointer     :: runoff_save(:)=>NULL()
     real,             pointer     :: WSTREAM_ACT(:)=>NULL()
     real,             pointer     :: WRIVER_ACT(:) =>NULL()
     type (RES_STATE), pointer     :: res => NULL()    
 
     real,             allocatable :: QOUTFLOW_GLOBAL(:),Qres_global(:)
-    real,             allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:)
+    real,             allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:), tmp_local(:)
     real,             allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:),wres_global(:)
     
     ! ------------------
@@ -963,7 +1069,6 @@ contains
     VERIFY_(STATUS)    
     call ESMF_FieldGet(runoff_src, farrayPtr=RUNOFF_SRC0, rc=status)   
     VERIFY_(STATUS) 
-    
     call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
     VERIFY_(STATUS)   
     call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
@@ -986,7 +1091,7 @@ contains
        write(yr_s, '(I4.4)')YY
        write(mon_s,'(I2.2)')MM
        write(day_s,'(I2.2)')DD
-       
+
        !Collect runoff from all processors
        allocate(runoff_global(nt_global))
        call MPI_allgatherv  (                          &
@@ -997,16 +1102,32 @@ contains
        !Distribute runoff from tile space to catchment space
        if(FirstTime.and.mapl_am_I_root()) print *,"nmax=",nmax
        allocate(RUNOFF_ACT(n_pfaf_local))
+
        RUNOFF_ACT=0.
        do i=1,n_pfaf_local
           do j=1,nmax
              it=route%subi(j,i) 
              if(it>0)then
-                RUNOFF_ACT(i)=RUNOFF_ACT(i)+route%subarea(j,i)*runoff_global(it)/1000.   
+                RUNOFF_ACT(i)=RUNOFF_ACT(i)+route%subarea(j,i)*runoff_global(it)/1000. 
              endif
              if(it==0)exit
           enddo
        enddo
+
+       call ESMF_FieldGet(route%field_src, farrayPtr=RUNOFF_SAVE_new, rc=status)
+       VERIFY_(STATUS)
+       Runoff_save_new(:) = runoff_save(:)
+       call ESMF_FieldSMM(srcField=route%field_src, dstField=route%Field, &
+                       routeHandle=route%routeHandle, rc=rc)
+       call ESMF_FieldGet(route%field, farrayPtr=RUNOFF_ACT_new, rc=status)
+       VERIFY_(STATUS)
+       RUNOFF_ACT_new = RUNOFF_ACT_new * route%areacat/1000.
+       !print out for the accuracy
+       !if (MAPL_AM_I_ROOT()) then 
+       !  do i = 1, n_pfaf_local
+       !    print*, "i, RUNOFF_ACT(i), RUNOFF_ACT_new(i): ", i, RUNOFF_ACT(i), RUNOFF_ACT_new(i)
+       !  enddo
+       !endif
        
        deallocate(runoff_global) 
 
@@ -1067,6 +1188,18 @@ contains
              endif
           enddo
        enddo
+
+       allocate(tmp_local(n_pfaf_local))
+       call collect_cat(QOUT_CAT, tmp_local, _RC)
+       do i = 1, n_pfaf_local
+          if (route%downid(i) == -1) cycle
+          ! WY note: nothing is printed, it is zero-diff
+          if( (QINFLOW_LOCAL(i)- tmp_local(i)) /=0.) then
+             print*, "The answer is wrong"
+             print*, i, QINFLOW_LOCAL(i), tmp_local(i)
+          endif
+       enddo
+       deallocate(tmp_local)
 
        ! Check balance if needed
        !call check_balance(route,n_pfaf_local,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
@@ -1219,8 +1352,50 @@ contains
     call MAPL_TimerOff(MAPL,"RUN2")
     !call MPI_Barrier(route%comm, mpierr)
 
-
     RETURN_(ESMF_SUCCESS)
+    contains
+
+      subroutine collect_cat(cat_out, cat_in, rc)
+        real, intent(in)  :: cat_out(:)
+        real, intent(out) :: cat_in(:)
+        integer, optional, intent(out) :: rc
+
+        integer :: status
+        real, allocatable :: send_data(:), recv_data(:)
+        integer :: pf, down_id, k, pos, total_send, total_recv, mpierr
+
+        cat_in = 0.0
+        total_send = route%total_send
+        allocate(send_data(total_send))
+        pos = 0
+        do pf = 1, route%n_pfaf_local
+          down_id = route%downid(pf)
+          if (down_id == -1) cycle
+          if (route%minCatch <= down_id .and. down_id <= route%maxCatch) then
+             ! from local
+             k = down_id - route%minCatch + 1
+             cat_in(k) = cat_in(k) + cat_out(pf)
+          else ! from the other process
+             pos = pos + 1
+             send_data(pos) = cat_out(pf)
+          endif
+        enddo
+        if (total_send > 0) then
+          send_data = send_data(route%re_order)
+        endif
+        total_recv = route%total_recv
+        allocate(recv_data(total_recv))
+        call MPI_AllToAllv(send_data, route%send_count, route%displ_send, MPI_REAL, &
+                           recv_data, route%recv_count, route%displ_recv, MPI_REAL, &
+                           route%comm, mpierr)
+        do i = 1, total_recv
+          down_id = route%to_down(i)
+          k = down_id - route%minCatch + 1
+          cat_in(k) = cat_in(k) + recv_data(i)
+        enddo
+        RETURN_(ESMF_SUCCESS)
+      end subroutine collect_cat
+
   end subroutine RUN2
   
   ! -------------------------------------------------------------------------------------------------------
@@ -1339,6 +1514,40 @@ contains
 
   end subroutine check_balance
 
+  subroutine Finalize(gc, import, export, clock, rc)
+    type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
+    type(ESMF_State),    intent(inout) :: import ! Import state
+    type(ESMF_State),    intent(inout) :: export ! Export state
+    type(ESMF_Clock),    intent(inout) :: clock  ! The clock
+    integer, optional,   intent(  out) :: rc     ! Error code
+  
+    ! !DESCRIPTION:
+    ! Clean-up.
+    !EOP
+    ! ErrLog variables
+    integer :: status
+    character(len=ESMF_MAXSTR) :: Iam
+    character(len=ESMF_MAXSTR) :: comp_name
+    type (T_RROUTE_STATE), pointer         :: route => null()
+    type (RROUTE_wrap)                     :: wrap
+
+    ! Begin...
+    ! Get component's name and setup traceback handle
+    call ESMF_GridCompget(gc, name=comp_name, rc=status)
+    VERIFY_(status)
+    Iam = trim(comp_name) // "::Finalize"
+
+    call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap, _RC)
+    route => wrap%ptr    
+
+    CALL ESMF_RouteHandleDestroy(route%routeHandle, _RC)
+
+    ! Call Finalize for every child
+    call MAPL_GenericFinalize(gc, import, export, clock, _RC)
+    ! End
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine Finalize
 
 end module GEOS_RouteGridCompMod
 
