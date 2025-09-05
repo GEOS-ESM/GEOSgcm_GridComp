@@ -839,10 +839,9 @@ contains
            do I=1,IM
              if (T_EXP(I,J,L) > 333.0) then
                  print *, "Temperature spike detected : ", T_EXP(I,J,L)
-                 print *, "    GWD TOT Temp Increment : ", DTDT_TOT(I,J,L)*DT
-                 print *, "    GWD BKG Temp Increment : ", DTDT_BKG(I,J,L)*DT
-                 print *, "    GWD ORO Temp Increment : ", DTDT_ORO(I,J,L)*DT
-                 print *, "    GWD RAH Temp Increment : ", DTDT_RAH(I,J,L)*DT
+                 print *, "    GWD TOT Temp Increment : ", DTDT_GWD(I,J,L)*DT
+                 print *, "    GWD ORO Temp Increment : ", DTDT_ORG(I,J,L)*DT
+                 print *, "    GWD BKG Temp Increment : ", (DTDT_GWD(I,J,L)-DTDT_ORG(I,J,L))*DT
                  print *, "    AFTER GWD Parameterization"
                  print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
                  print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
