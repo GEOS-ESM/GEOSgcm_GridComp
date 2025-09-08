@@ -224,6 +224,21 @@ type(cnveg_carbonstate_type), public, target, save :: cnveg_carbonstate_inst
        __FILE__
 
 contains
+     pure elemental logical function valid(v)
+     use shr_kind_mod, only : r8 => shr_kind_r8
+     use clm_varcon  , only : spval
+     real(r8), intent(in) :: v
+     real(r8), parameter :: CF_FILL = 9.96921e36_r8
+     real(r8), parameter :: BADHUGE = 1.0e20_r8   ! tighten from 1.0e30
+     valid = (v == v) .and. (abs(v) < BADHUGE) .and. &
+             (abs(v - spval)   > 1.0e-6_r8*max(1._r8,abs(spval))) .and. &
+             (abs(v - CF_FILL) > 1.0e-6_r8*max(1._r8,abs(CF_FILL)))
+   end function valid
+
+   pure elemental real(r8) function safe(v)
+     real(r8), intent(in) :: v
+     safe = merge(v, 0._r8, valid(v))
+   end function safe
 
 !----------------------------------------------
   subroutine Init(this, bounds, NLFilename, nch, ityp, fveg, cncol, cnpft)
@@ -449,8 +464,8 @@ contains
     allocate(this%deadstemc_col            (begc:endc)) ; this%deadstemc_col            (:) = nan                            
     allocate(this%fuelc_col                (begc:endc)) ; this%fuelc_col                (:) = nan 
     allocate(this%fuelc_crop_col           (begc:endc)) ; this%fuelc_crop_col           (:) = nan                            
-                                                                                                                             
-    allocate(this%totvegc_patch            (begp:endp)) ; this%totvegc_patch            (:) = spval                            
+    ! totvegc_patch set to zero so non visited patches don’t print CF_FILL.
+    allocate(this%totvegc_patch            (begp:endp)) ; this%totvegc_patch            (:) = 0._r8
     allocate(this%totvegc_col              (begc:endc)) ; this%totvegc_col              (:) = nan                            
                                                                                                                              
     allocate(this%totc_p2c_col             (begc:endc)) ; this%totc_p2c_col             (:) = nan                            
@@ -469,7 +484,8 @@ contains
           n = n + 1
 
           this%totvegc_col(n)  = cncol(nc,nz, 6)
-          this%seedc_grc  (nc) = this%seedc_grc(nc) + cncol(nc,nz,9)*CN_zone_weight(nz) 
+          this%seedc_grc(nc)  = this%seedc_grc(nc) + safe( real(cncol(nc,nz, 9),  r8) )
+
           this%totc_col   (n)  = cncol(nc,nz,14)  
  
           do p = 0,numpft  ! PFT index loop
@@ -532,6 +548,8 @@ contains
   end do ! nc                                                                                                         
 
   call this%InitReadNML  ( NLFilename )
+  
+  ! ---------------------------------------------------------------------------
 
   end subroutine Init
 
@@ -632,7 +650,12 @@ contains
     SHR_ASSERT_ALL_FL((ubound(soilbiogeochem_totsomc_col) == (/bounds%endc/)), sourcefile, __LINE__)
     SHR_ASSERT_ALL_FL((ubound(soilbiogeochem_ctrunc_col)  == (/bounds%endc/)), sourcefile, __LINE__)
 
-    ! calculate patch -level summary of carbon state
+    ! --- make non visited patches safe
+    this%dispvegc_patch(bounds%begp:bounds%endp) = 0._r8
+    this%storvegc_patch(bounds%begp:bounds%endp) = 0._r8
+    this%totvegc_patch(bounds%begp:bounds%endp) = 0._r8
+    this%totc_patch   (bounds%begp:bounds%endp) = 0._r8
+    this%woodc_patch  (bounds%begp:bounds%endp) = 0._r8    
 
     do fp = 1,num_soilp
        p = filter_soilp(fp)

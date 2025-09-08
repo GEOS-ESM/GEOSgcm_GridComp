@@ -74,7 +74,21 @@ module CNProductsMod
        __FILE__
 
 contains
+     pure elemental logical function valid(v)
+     use shr_kind_mod, only : r8 => shr_kind_r8
+     use clm_varcon  , only : spval
+     real(r8), intent(in) :: v
+     real(r8), parameter :: CF_FILL = 9.96921e36_r8
+     real(r8), parameter :: BADHUGE = 1.0e20_r8   ! tighten from 1.0e30
+     valid = (v == v) .and. (abs(v) < BADHUGE) .and. &
+             (abs(v - spval)   > 1.0e-6_r8*max(1._r8,abs(spval))) .and. &
+             (abs(v - CF_FILL) > 1.0e-6_r8*max(1._r8,abs(CF_FILL)))
+   end function valid
 
+   pure elemental real(r8) function safe(v)
+     real(r8), intent(in) :: v
+     safe = merge(v, 0._r8, valid(v))
+   end function safe
 !--------------------------------------------------------------
   subroutine Init(this, bounds, nch, cncol, species, rc)
 
@@ -147,11 +161,11 @@ contains
        do nz = 1,num_zon    ! CN zone loop
 
           if (trim(species) == 'C') then
-             this%prod100_grc(nc) = this%prod100_grc(nc) + cncol(nc,nz,7)*CN_zone_weight(nz)
-             this%prod10_grc(nc)  = this%prod10_grc(nc) + cncol(nc,nz,8)*CN_zone_weight(nz)
+             this%prod100_grc(nc) = this%prod100_grc(nc) + safe( real(cncol(nc,nz, 7), r8) )
+             this%prod10_grc (nc) = this%prod10_grc (nc) + safe( real(cncol(nc,nz, 8), r8) )
           elseif (trim(species) == 'N') then
-             this%prod100_grc(nc) = this%prod100_grc(nc) + cncol(nc,nz,21)*CN_zone_weight(nz)
-             this%prod10_grc(nc)  = this%prod10_grc(nc) + cncol(nc,nz,22)*CN_zone_weight(nz)
+            this%prod100_grc(nc) = this%prod100_grc(nc) + safe( real(cncol(nc,nz,21), r8) )
+            this%prod10_grc (nc) = this%prod10_grc (nc) + safe( real(cncol(nc,nz,22), r8) )
           else
              _ASSERT(.FALSE.,'unknown species')
           end if 

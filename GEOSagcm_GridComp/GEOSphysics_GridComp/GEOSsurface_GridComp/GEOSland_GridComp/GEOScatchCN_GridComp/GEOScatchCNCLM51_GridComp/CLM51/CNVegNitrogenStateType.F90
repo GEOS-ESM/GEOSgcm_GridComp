@@ -4,6 +4,7 @@ module CNVegNitrogenStateType
   use MAPL_ExceptionHandling
   use clm_varctl       , only : use_matrixcn, use_crop
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp
+  use clm_varctl       , only : iulog
   use clm_varpar       , only : NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT, &
                                 numpft, CN_zone_weight
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
@@ -213,6 +214,21 @@ end type cnveg_nitrogenstate_type
 type(cnveg_nitrogenstate_type), public, target, save :: cnveg_nitrogenstate_inst
 
 contains
+     pure elemental logical function valid(v)
+     use shr_kind_mod, only : r8 => shr_kind_r8
+     use clm_varcon  , only : spval
+     real(r8), intent(in) :: v
+     real(r8), parameter :: CF_FILL = 9.96921e36_r8
+     real(r8), parameter :: BADHUGE = 1.0e20_r8   ! tighten from 1.0e30
+     valid = (v == v) .and. (abs(v) < BADHUGE) .and. &
+             (abs(v - spval)   > 1.0e-6_r8*max(1._r8,abs(spval))) .and. &
+             (abs(v - CF_FILL) > 1.0e-6_r8*max(1._r8,abs(CF_FILL)))
+   end function valid
+
+   pure elemental real(r8) function safe(v)
+     real(r8), intent(in) :: v
+     safe = merge(v, 0._r8, valid(v))
+   end function safe
 
 !-------------------------------------------------------------
   subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft)
@@ -445,35 +461,40 @@ contains
        do nz = 1,NUM_ZON    ! CN zone loop
           n = n + 1
 
-          this%seedn_grc(nc) = this%seedn_grc(nc) + cncol(nc,nz,23)*CN_zone_weight(nz)
-          this%totn_col(n) = cncol(nc,nz,29)
+          this%seedn_grc(nc) = this%seedn_grc(nc) + safe( real(cncol(nc,nz,23), r8) )
+
+          ! Slot 29 in CNCOL is an aggregate diagnostic - total column N and is where all junk shows up this avoids hard coding
+            this%totn_col(n) = spval
+          ! this%totn_col(n)   = safe( real(cncol(nc,nz,29), r8) )   ! produces large values and if we do not wish to hard code
+          ! solution is NOT to ingest the restart aggregate; we'll anyway recompute in subroutine Summary_nitrogenstate at line:
+          ! this%totn_col(c) = this%totn_p2c_col(c) + cwdn + totlitn + totsomn + sminn + ntrunc
                                                                         
           do p = 0,numpft  ! PFT index loop                                                                        
              np = np + 1
              do nv = 1,NUM_VEG ! defined veg loop                                                                      
                 if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
 
-                     this%deadcrootn_patch         (np) = cnpft(nc,nz,nv, 48)
-                     this%deadcrootn_storage_patch (np) = cnpft(nc,nz,nv, 49)
-                     this%deadcrootn_xfer_patch    (np) = cnpft(nc,nz,nv, 50)
-                     this%deadstemn_patch          (np) = cnpft(nc,nz,nv, 51)
-                     this%deadstemn_storage_patch  (np) = cnpft(nc,nz,nv, 52)
-                     this%deadstemn_xfer_patch     (np) = cnpft(nc,nz,nv, 53)
-                     this%frootn_patch             (np) = cnpft(nc,nz,nv, 54)
-                     this%frootn_storage_patch     (np) = cnpft(nc,nz,nv, 55)
-                     this%frootn_xfer_patch        (np) = cnpft(nc,nz,nv, 56)
-                     this%leafn_patch              (np) = cnpft(nc,nz,nv, 57)
-                     this%leafn_storage_patch      (np) = cnpft(nc,nz,nv, 58)
-                     this%leafn_xfer_patch         (np) = cnpft(nc,nz,nv, 59)
-                     this%livecrootn_patch         (np) = cnpft(nc,nz,nv, 60)
-                     this%livecrootn_storage_patch (np) = cnpft(nc,nz,nv, 61)
-                     this%livecrootn_xfer_patch    (np) = cnpft(nc,nz,nv, 62)
-                     this%livestemn_patch          (np) = cnpft(nc,nz,nv, 63)
-                     this%livestemn_storage_patch  (np) = cnpft(nc,nz,nv, 64)
-                     this%livestemn_xfer_patch     (np) = cnpft(nc,nz,nv, 65)
-                     this%npool_patch              (np) = cnpft(nc,nz,nv, 66)
-                     this%ntrunc_patch             (np) = cnpft(nc,nz,nv, 67)
-                     this%retransn_patch           (np) = cnpft(nc,nz,nv, 68)
+                     this%deadcrootn_patch         (np) = safe( real(cnpft(nc,nz,nv, 48), r8) )
+                     this%deadcrootn_storage_patch (np) = safe( real(cnpft(nc,nz,nv, 49), r8) )
+                     this%deadcrootn_xfer_patch    (np) = safe( real(cnpft(nc,nz,nv, 50), r8) )
+                     this%deadstemn_patch          (np) = safe( real(cnpft(nc,nz,nv, 51), r8) )
+                     this%deadstemn_storage_patch  (np) = safe( real(cnpft(nc,nz,nv, 52), r8) )
+                     this%deadstemn_xfer_patch     (np) = safe( real(cnpft(nc,nz,nv, 53), r8) )
+                     this%frootn_patch             (np) = safe( real(cnpft(nc,nz,nv, 54), r8) )
+                     this%frootn_storage_patch     (np) = safe( real(cnpft(nc,nz,nv, 55), r8) )
+                     this%frootn_xfer_patch        (np) = safe( real(cnpft(nc,nz,nv, 56), r8) )
+                     this%leafn_patch              (np) = safe( real(cnpft(nc,nz,nv, 57), r8) )
+                     this%leafn_storage_patch      (np) = safe( real(cnpft(nc,nz,nv, 58), r8) )
+                     this%leafn_xfer_patch         (np) = safe( real(cnpft(nc,nz,nv, 59), r8) )
+                     this%livecrootn_patch         (np) = safe( real(cnpft(nc,nz,nv, 60), r8) )
+                     this%livecrootn_storage_patch (np) = safe( real(cnpft(nc,nz,nv, 61), r8) )
+                     this%livecrootn_xfer_patch    (np) = safe( real(cnpft(nc,nz,nv, 62), r8) )
+                     this%livestemn_patch          (np) = safe( real(cnpft(nc,nz,nv, 63), r8) )
+                     this%livestemn_storage_patch  (np) = safe( real(cnpft(nc,nz,nv, 64), r8) )
+                     this%livestemn_xfer_patch     (np) = safe( real(cnpft(nc,nz,nv, 65), r8) )
+                     this%npool_patch              (np) = safe( real(cnpft(nc,nz,nv, 66), r8) )
+                     this%ntrunc_patch             (np) = safe( real(cnpft(nc,nz,nv, 67), r8) )
+                     this%retransn_patch           (np) = safe( real(cnpft(nc,nz,nv, 68), r8) )                     
 
                 end if
               end do !nv                                                                                            
@@ -591,14 +612,12 @@ contains
             this%totvegn_col(c)
 
        ! total column nitrogen, including patch (TOTCOLN)
-
        this%totn_col(c) = this%totn_p2c_col(c)               + &
             soilbiogeochem_nitrogenstate_inst%cwdn_col(c)    + &
             soilbiogeochem_nitrogenstate_inst%totlitn_col(c) + &
             soilbiogeochem_nitrogenstate_inst%totsomn_col(c) + &
             soilbiogeochem_nitrogenstate_inst%sminn_col(c)   + &
             soilbiogeochem_nitrogenstate_inst%ntrunc_col(c)
-
     end do
 
   end subroutine Summary_nitrogenstate

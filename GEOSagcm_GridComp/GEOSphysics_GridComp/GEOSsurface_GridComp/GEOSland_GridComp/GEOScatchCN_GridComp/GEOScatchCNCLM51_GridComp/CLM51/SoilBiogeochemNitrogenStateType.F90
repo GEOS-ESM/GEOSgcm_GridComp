@@ -8,7 +8,7 @@
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
                                 NUM_ZON, VAR_COL
   use clm_varcon       , only : spval, dzsoi_decomp, zisoi
-  use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp, use_soil_matrixcn
+  use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp, use_soil_matrixcn, iulog
   use decompMod        , only : bounds_type
   use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
   use LandunitType                       , only : lun
@@ -22,6 +22,9 @@
 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
+
+    ! limit against corrupted restart values
+    real(r8), parameter :: N_MAX = 1.0e5_r8   ! any plausible pool, sanitaze monster values
 
   type, public :: soilbiogeochem_nitrogenstate_type
 
@@ -71,6 +74,7 @@
     ! type(sparse_matrix_type) :: AKXnacc                          ! col (gN/m3/yr) accumulated N transfers from j to i (col,i,j) per year in dimension(col,nlev*npools,nlev*npools) in sparse matrix type
     ! type(vector_type) :: matrix_Ninter                           ! col (gN/m3) vertically-resolved decomposing (litter, cwd, soil) N pools in dimension(col,nlev*npools) in vector type
 
+
   contains
    
      procedure , public :: Summary
@@ -84,6 +88,31 @@
        __FILE__
 
 contains
+
+  pure elemental logical function valid(v)
+    use shr_kind_mod, only : r8 => shr_kind_r8
+    use clm_varcon  , only : spval
+    real(r8), intent(in) :: v
+    real(r8), parameter :: CF_FILL = 9.96921e36_r8
+    real(r8), parameter :: BADHUGE = 1.0e20_r8   ! tighten from 1.0e30
+    valid = (v == v) .and. (abs(v) < BADHUGE) .and. &
+            (abs(v - spval)   > 1.0e-6_r8*max(1._r8,abs(spval))) .and. &
+            (abs(v - CF_FILL) > 1.0e-6_r8*max(1._r8,abs(CF_FILL)))
+  end function valid
+
+  pure elemental real(r8) function safe(v)
+    real(r8), intent(in) :: v
+    safe = merge(v, 0._r8, valid(v))
+  end function safe
+
+  pure elemental real(r8) function clamp_nonneg(v) result(out)
+    real(r8), intent(in) :: v
+    real(r8) :: x
+    x = safe(v)              ! NaN/CF-fill/SPVAL -> 0 (via safe), else pass through
+    if (x < 0._r8) x = 0._r8 ! pools are nonnegative
+    if (x > N_MAX) x = 0._r8 ! treat absurd values as missing
+    out = x
+  end function clamp_nonneg  
 
 !-------------------------------------------
  subroutine Init(this, bounds, nch, cncol)
@@ -162,31 +191,38 @@ contains
  ! initialize variables from restart file or set to cold start value
    n = 0
    do nc = 1,nch        ! catchment tile loop
-      do nz = 1,num_zon    ! CN zone loop
+      do nz = 1,NUM_ZON    ! CN zone loop
           n = n + 1
-
-          this%ntrunc_vr_col (n,1:nlevdecomp_full) = cncol(nc,nz,16)
+          
+          ! 1) ntrunc can be ± (sink), just scrub NaN/fill
+          this%ntrunc_vr_col(n,1:nlevdecomp_full) = safe( real(cncol(nc,nz,16), r8) )
+          
+          ! 2) total mineral N
           ! jkolassa May 2022: for now nlevdecomp_full = 1; will need to add loop if we introduce more soil layers
-          this%sminn_vr_col  (n,1:nlevdecomp_full) = cncol(nc,nz,24)
-          this%sminn_col  (n) = this%sminn_vr_col(n,1)
-
+          this%sminn_vr_col(n,1:nlevdecomp_full)  = clamp_nonneg( real(cncol(nc,nz,24), r8) )
+          this%sminn_col(n)                        = this%sminn_vr_col(n,1)
+          
+          ! 3) split into NO3/NH4
           if (no_cn51_rst) then ! jkolassa Nov 2024: when no CN51 restart file is available compute NO3 and NH4 from N
-             this%smin_no3_col(n) = (1.25/2.25)*this%sminn_col(n)
-             this%smin_nh4_col(n) = this%sminn_col(n)/2.25
+            ! derive split if no CN51 restart present
+            this%smin_no3_col(n) = clamp_nonneg( (1.25_r8/2.25_r8)*this%sminn_col(n) )
+            this%smin_nh4_col(n) = clamp_nonneg(  this%sminn_col(n)/2.25_r8         )
           else
-             this%smin_no3_col(n) = cncol(nc,nz,36);
-             this%smin_nh4_col(n) = cncol(nc,nz,37);
+            this%smin_no3_col(n) = clamp_nonneg( real(cncol(nc,nz,36), r8) )
+            this%smin_nh4_col(n) = clamp_nonneg( real(cncol(nc,nz,37), r8) )
           end if
-
+          
+          ! 4) mirror scalars into vertically-resolved arrays (nlevdecomp_full is 1 today, but this stays valid if >1 later)
           this%smin_no3_vr_col(n,1:nlevdecomp_full) = this%smin_no3_col(n)
-          this%smin_nh4_vr_col(n,1:nlevdecomp_full) = this%smin_nh4_col(n)
+          this%smin_nh4_vr_col(n,1:nlevdecomp_full) = this%smin_nh4_col(n)            
 
           do np = 1,ndecomp_pools
              ! jkolassa May 2022: accounting for fact that pool order in CNCOL is different from CTSM
-             this%decomp_npools_col    (n,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
-             this%decomp_npools_1m_col (n,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
+             this%decomp_npools_col   (n,np) = clamp_nonneg( real(cncol(nc,nz,decomp_npool_cncol_index(np)), r8) )
+             this%decomp_npools_1m_col(n,np) = this%decomp_npools_col(n,np)
              ! jkolassa May 2022: loop has to be added below if we add more biogeochemical (or soil) layers
-             this%decomp_npools_vr_col (n,1,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
+             this%decomp_npools_vr_col(n,1,np) = this%decomp_npools_col(n,np)
+
           end do !np
       end do !nz
    end do 
@@ -204,9 +240,6 @@ contains
 
        end if
     end do
-
-
-
 
  end subroutine Init
 

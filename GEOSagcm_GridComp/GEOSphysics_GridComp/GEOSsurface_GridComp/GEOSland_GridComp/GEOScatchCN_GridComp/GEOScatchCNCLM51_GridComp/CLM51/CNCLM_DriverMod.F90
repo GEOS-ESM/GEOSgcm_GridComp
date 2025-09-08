@@ -548,6 +548,9 @@ contains
   integer, dimension(8) :: decomp_cpool_cncol_index = (/ 3, 4, 5, 2, 10, 11, 12, 13 /)
   integer, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17,25, 26, 27, 28 /)
   !----------------
+  ! Clean slate: zero arrays so any unassigned slots are safe in the restart
+  cncol(:,:,:)   = 0.0
+  cnpft(:,:,:,:) = 0.0
 
   n = 0
   np = 0

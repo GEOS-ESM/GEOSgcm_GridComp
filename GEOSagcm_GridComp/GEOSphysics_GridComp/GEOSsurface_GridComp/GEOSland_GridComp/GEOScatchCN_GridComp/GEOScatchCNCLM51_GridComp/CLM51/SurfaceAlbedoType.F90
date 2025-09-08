@@ -72,7 +72,7 @@ type(surfalb_type), public, target, save :: surfalb_inst
 contains
 
 !---------------------------------------------------
-  subroutine Init(this, bounds, nch, cncol, cnpft)
+  subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft)  
 
   ! !DESCRIPTION:
 ! Initialize CTSM surface albedo needed for calling CTSM routines                                 
@@ -86,12 +86,15 @@ contains
     integer,                                      intent(in) :: nch    ! number of Catchment tiles
     real, dimension(nch,num_zon,var_col),         intent(in) :: cncol  ! column-level restart variable array 
     real, dimension(nch,num_zon,num_veg,var_pft), intent(in) :: cnpft  ! pft-level (patch-level) restart variable array
+    integer, dimension(nch,num_veg,num_zon),      intent(in) :: ityp
+    real, dimension(nch,num_veg,num_zon),         intent(in) :: fveg
     class(surfalb_type)                                      :: this
 
     ! LOCAL
     integer :: begp, endp
     integer :: begc, endc
     integer :: np, nc, nz, p, nv, n
+    real, parameter :: fmin = 1.0e-4  ! Ignore vegetation fractions at or below this value
     !-------------------------------
 
     begp = bounds%begp ; endp = bounds%endp
@@ -153,18 +156,17 @@ contains
              this%nrad_patch(np) = 1
 
              do nv = 1,num_veg ! defined veg loop
-                do n = 1,nlevcan
-                   this%tlai_z_patch(np,n) = cnpft(nc,nz,nv, 73)
-                   if (isnan(this%tlai_z_patch(np,n))) then
-                      this%tlai_z_patch(np,n) = 0.
-                   end if
-                   this%tsai_z_patch(np,n) = cnpft(nc,nz,nv, 74)
-                   if (isnan(this%tsai_z_patch(np,n))) then
-                      this%tsai_z_patch(np,n) = 0.
-                   end if
-                   this%vcmaxcintsha_patch(np) = 1._r8
-                   this%vcmaxcintsun_patch(np) = 1._r8
-                end do
+              if (ityp(nc,nv,nz) == p .and. fveg(nc,nv,nz) > fmin) then  
+               ! without this if loop we are overwriting each patch multiple times because we loop nv=1:num_veg without 
+               ! checking which nv corresponds to the active PFT for patch p.
+                 do n = 1, nlevcan
+                   this%tlai_z_patch(np,n) = cnpft(nc,nz,nv,73); if (isnan(this%tlai_z_patch(np,n))) this%tlai_z_patch(np,n)=0._r8
+                   this%tsai_z_patch(np,n) = cnpft(nc,nz,nv,74); if (isnan(this%tsai_z_patch(np,n))) this%tsai_z_patch(np,n)=0._r8
+                 end do
+                 this%vcmaxcintsun_patch(np) = 1._r8
+                 this%vcmaxcintsha_patch(np) = 1._r8
+                 exit   ! <- stop after filling the matching nv for this patch
+              end if ! ityp =p               
              end do !nv
           end do ! p
        end do ! nz

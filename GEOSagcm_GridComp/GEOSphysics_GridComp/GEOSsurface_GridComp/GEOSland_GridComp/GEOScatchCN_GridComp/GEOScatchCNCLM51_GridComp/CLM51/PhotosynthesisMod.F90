@@ -379,17 +379,11 @@ contains
     do nz = 1,num_zon    ! CN zone loop
        do p = 0,numpft  ! PFT index loop
           np = np + 1
-          do nv = 1,num_veg ! defined veg loop
-             if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
-                if (cold_start) then
-                   this%alphapsnsun_patch(np) = spval
-                   this%alphapsnsha_patch(np) = spval
-                else if (cold_start.eqv..false.) then
-                    this%alphapsnsun_patch(np) = cnpft(nc,nz,nv, 76)
-                    this%alphapsnsha_patch(np) = cnpft(nc,nz,nv, 77)
-                end if
-              end if ! ityp =p  
-          end do !nv
+          ! Using 0._r8 is safer than spval, because spval value can propagate if any path uses alpha before it’s overwritten.
+          ! If someday we do want alpha to persist across restarts, we  need to: (1) pick free indices, (2) write them in CN_exit, and (3) read those same indices here. 
+          ! Until then, don’t read them from cnpft ... we will use what we calculate.          
+          this%alphapsnsun_patch(np) = 0._r8
+          this%alphapsnsha_patch(np) = 0._r8
        end do ! p
      end do ! nz
   end do ! nc

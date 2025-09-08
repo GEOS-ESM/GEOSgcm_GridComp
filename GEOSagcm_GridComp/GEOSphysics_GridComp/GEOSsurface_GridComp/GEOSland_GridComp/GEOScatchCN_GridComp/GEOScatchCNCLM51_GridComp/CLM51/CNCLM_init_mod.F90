@@ -201,7 +201,7 @@ module CNCLM_initMod
 
     call solarabs_inst%Init             (bounds)
 
-    call surfalb_inst%Init              (bounds, nch, cncol, cnpft)
+    call surfalb_inst%Init              (bounds, nch, ityp, fveg, cncol, cnpft)
 
     call ozone_inst%Init           (bounds)
 
