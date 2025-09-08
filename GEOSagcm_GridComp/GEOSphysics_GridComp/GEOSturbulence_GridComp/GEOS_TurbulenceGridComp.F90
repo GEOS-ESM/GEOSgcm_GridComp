@@ -3652,7 +3652,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
       call MAPL_GetResource (MAPL, MFPARAMS%L0fac,     "EDMF_L0FAC:",         default=10.,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.0,   RC=STATUS)
      ! factor to multiply the eddy-diffusivity with
       call MAPL_GetResource (MAPL, MFPARAMS%EDfac,     "EDMF_EDFAC:",         default=1.,    RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%DOCLASP,   "EDMF_DOCLASP:",       default=0,     RC=STATUS)
@@ -3987,7 +3987,7 @@ end if
 
         if (associated(TKEDISSx)) TKEDISSx = TKEDISS
         KH(:,:,1:LM) = TKH(:,:,1:LM)
-
+        
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
@@ -5449,13 +5449,13 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           DX => DKQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQL
-!          OPT = .FALSE.
+          if (DO_SHOC/=0.) OPT = .FALSE.
  elseif (trim(name)=='QILS') then
           CX => CQ
           DX => DKQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
-!          OPT = .FALSE.
+          if (DO_SHOC/=0.) OPT = .FALSE.
  elseif (trim(name)=='U') then       
          CX => CU
          DX => DKV
@@ -5474,6 +5474,7 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
 
        call VTRISOLVE(AK,BK,CK,SX,SG,OPT)
 
+       
 ! Compute the surface fluxes
 !---------------------------
 
@@ -6283,7 +6284,7 @@ end subroutine RUN1
 
 ! Replace friendly
 !-----------------
-
+         
          if(FRIENDLY) then
             S = SX
          end if

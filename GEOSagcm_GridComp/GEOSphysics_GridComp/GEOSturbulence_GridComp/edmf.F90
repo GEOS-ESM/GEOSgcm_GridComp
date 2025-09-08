@@ -312,10 +312,21 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       pblh=max(pblh,pblhmin)
       wthv=wthl+mapl_epsilon*thv3(IH,JH,kte)*wqt
 
+      ! calc average TKE below 100 m
+      tmp = 0.
+      tmp2 = 0.
+      k = kte
+      do  while (zlo3(IH,JH,k)<100. .and. k>1)
+         tmp2 = tmp2 + (zw3(IH,JH,k-1)-zw3(IH,JH,k))
+         tmp = tmp+tke3(IH,JH,k)*(zw3(IH,JH,k-1)-zw3(IH,JH,k))
+         k = k-1
+      end do
+      tmp = tmp/tmp2  ! avg TKE
+      
       ! if CLASP enabled: mass flux is input
       ! if CLASP disabled: mass-flux if positive surface buoyancy flux and
-      !                    TKE at 2nd model level above threshold
-      IF ( (wthv > 0.0 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.3e4)      &
+      !                    mean TKE below 100m exceeds threshold (for stability)
+      IF ( (wthv > 0.0 .and. tmp>0.05 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.3e4)      &
       .or. (any(mfsrcthl(IH,JH,1:MFPARAMS%NUP) >= -2.0) .and. MFPARAMS%doclasp/=0)) then
 
       if (MFPARAMS%doclasp/=0) then
@@ -655,13 +666,15 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       K = KTS
       tmp = 0.
       tmp2 = 0.
-      DO WHILE (ZW(K).lt.100. .and. K.lt.KTE)
-         tmp = tmp + 0.5*SUM(UPA(K,:)*UPW(K,:)*UPW(K,:))
-         tmp2 = tmp2 + TKE3(IH,JH,KTE-K+KTS)
+      factor = 1.
+      DO WHILE (ZW(K).lt.200. .and. K.lt.KTE)
+         tmp = 0.25*SUM(UPA(K,:)*UPW(K,:)*UPW(K,:)+UPA(K-1,:)*UPW(K-1,:)*UPW(K-1,:))
+         tmp2 = TKE3(IH,JH,KTE-K+KTS)
+         factor = min(factor,0.5*tmp2/tmp)
          K = K+1
       END DO
-      if (tmp.gt.0.5*tmp2) then
-        factor = 0.5*tmp2/tmp
+      if (factor.lt.1.) then
+!        factor = 0.5*tmp2/tmp
         UPA    = factor*UPA
         QR     = factor*QR
         QS     = factor*QS
