@@ -360,25 +360,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer :: I, J, L
 
     integer :: comm, rank, mpierr
-    !$ser verbatim integer :: temporary_1, temporary_2, iter, iter_1, iter_2
-
-    !$ser verbatim real,    parameter :: TMINTBL    =  150.0
-    !$ser verbatim real,    parameter :: TMAXTBL    =  333.0
-    !$ser verbatim integer, parameter :: DEGSUBS    =  100
-    !$ser verbatim integer, parameter :: TABLESIZE  =  nint(TMAXTBL-TMINTBL)*DEGSUBS + 1
-    !$ser verbatim integer, parameter :: TEST_ARRAY_SIZE  =  100
-
-    !$ser verbatim integer :: SER_TABLESIZE
-    !$ser verbatim real :: SER_ESTBLE(TABLESIZE)
-    !$ser verbatim real :: SER_ESTBLW(TABLESIZE)
-    !$ser verbatim real :: SER_ESTBLX(TABLESIZE)
-    !$ser verbatim real :: SER_ESTFRZ
-    !$ser verbatim real :: SER_ESTLQU
-
-    !$ser verbatim real, allocatable, dimension(:,:,:) :: SER_QSATLQU, SER_QSATICE, SER_DQSL, SER_DQSI, SER_DQSAT_QS, SER_DQSAT_DQ, SER_QSAT_QS, SER_QSAT_DQ
-    !$ser verbatim real, allocatable, dimension(:,:) :: TEMP_ARRAY, PRES_ARRAY
-    !$ser verbatim real, allocatable, dimension(:,:) :: SER_QSATLQU_2D, SER_QSATICE_2D, SER_DQSL_2D, SER_DQSI_2D
-    !$ser verbatim real, allocatable, dimension(:,:) :: SER_QSAT0_QS_2D, SER_QSAT0_DQ_2D, SER_DQSAT0_QS_2D, SER_DQSAT0_DQ_2D
+    !$ser verbatim integer :: temporary_1
 
     type(ESMF_VM) :: vm
     call ESMF_VMGetCurrent(vm,rc=status)
@@ -481,25 +463,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( KLCL         (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
 
-    !$ser verbatim ALLOCATE(SER_QSATLQU(IM, JM, LM))
-    !$ser verbatim ALLOCATE(SER_QSATICE(IM, JM, LM))
-    !$ser verbatim ALLOCATE(SER_DQSL(IM, JM, LM))
-    !$ser verbatim ALLOCATE(SER_DQSI(IM, JM, LM))
-    !$ser verbatim ALLOCATE(SER_DQSAT_QS(IM, JM, LM))
-    !$ser verbatim ALLOCATE(SER_DQSAT_DQ(IM, JM, LM)) 
-    !$ser verbatim ALLOCATE(SER_QSAT_QS(IM, JM, LM)) 
-    !$ser verbatim ALLOCATE(SER_QSAT_DQ(IM, JM, LM)) 
-    !$ser verbatim ALLOCATE(TEMP_ARRAY(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-    !$ser verbatim ALLOCATE(PRES_ARRAY(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-    !$ser verbatim ALLOCATE(SER_QSATLQU_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-    !$ser verbatim ALLOCATE(SER_QSATICE_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-    !$ser verbatim ALLOCATE(SER_DQSL_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-    !$ser verbatim ALLOCATE(SER_DQSI_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-    !$ser verbatim ALLOCATE(SER_QSAT0_QS_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-    !$ser verbatim ALLOCATE(SER_QSAT0_DQ_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-    !$ser verbatim ALLOCATE(SER_DQSAT0_QS_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-    !$ser verbatim ALLOCATE(SER_DQSAT0_DQ_2D(TEST_ARRAY_SIZE, TEST_ARRAY_SIZE))
-
     !$ser savepoint GFDL_1M-constants
     !$ser data LHYDROSTATIC=LHYDROSTATIC LPHYS_HYDROSTATIC=LPHYS_HYDROSTATIC DT_MOIST=DT_MOIST
     !$ser data MP_TIME=MP_TIME T_MIN=T_MIN T_SUB=T_SUB TAU_R2G=TAU_R2G TAU_SMLT=TAU_SMLT TAU_G2R=TAU_G2R DW_LAND=DW_LAND DW_OCEAN=DW_OCEAN
@@ -519,46 +482,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data LIQ_RADII_PARAM=LIQ_RADII_PARAM ICE_RADII_PARAM=ICE_RADII_PARAM FAC_RI=FAC_RI MIN_RI=MIN_RI
     !$ser data MAX_RI=MAX_RI FAC_RL=FAC_RL MIN_RL=MIN_RL MAX_RL=MAX_RL
     !$ser data CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
-
-    !$ser verbatim do iter=0, TEST_ARRAY_SIZE-1
-      !$ser verbatim TEMP_ARRAY(iter+1, :) = 150 + (2*iter)
-      !$ser verbatim PRES_ARRAY(:, iter+1) = 0.01 + (10*iter)
-    !$ser verbatim enddo
-
-    !$ser verbatim SER_TABLESIZE=TABLESIZE
-    !$ser savepoint saturation_tables-In
-    !$ser data TABLESIZE=SER_TABLESIZE
-    !$ser verbatim call SERIALIZE_ESINIT(SER_ESTBLE, SER_ESTBLW, SER_ESTBLX, SER_ESTFRZ, SER_ESTLQU)
-    !$ser savepoint saturation_tables-Out
-    !$ser data ESTBLE=SER_ESTBLE ESTBLW=SER_ESTBLW ESTBLX=SER_ESTBLX
-    !$ser data ESTFRZ=SER_ESTFRZ ESTLQU=SER_ESTLQU
-
-    !$ser savepoint qsat_functions-In
-    !$ser data T=T PLmb=PLmb TEMP_ARRAY=TEMP_ARRAY PRES_ARRAY=PRES_ARRAY
-    !$ser verbatim do L=1,LM
-      !$ser verbatim do J=1,JM
-        !$ser verbatim do I=1,IM
-          !$ser verbatim SER_QSATICE(I, J, L) = GEOS_QsatICE( T(I, J, L), PLmb(I, J, L)*100.0 , DQ=SER_DQSI(I, J, L) )
-          !$ser verbatim SER_QSATLQU(I, J, L) = GEOS_QsatLQU( T(I, J, L), PLmb(I, J, L)*100.0 , DQ=SER_DQSL(I, J, L) )
-          !$ser verbatim SER_QSAT_QS(I, J, L) = GEOS_Qsat( T(I, J, L), PLmb(I, J, L), DQSAT=SER_QSAT_DQ(I, J, L) )
-          !$ser verbatim SER_DQSAT_DQ(I, J, L) = GEOS_DQsat( T(I, J, L), PLmb(I, J, L), QSAT=SER_DQSAT_QS(I, J, L) )
-        !$ser verbatim enddo
-      !$ser verbatim enddo
-    !$ser verbatim enddo
-
-    !$ser verbatim do iter_1=1, TEST_ARRAY_SIZE
-      !$ser verbatim do iter_2=1, TEST_ARRAY_SIZE
-        !$ser verbatim SER_QSATICE_2D(iter_1, iter_2) = GEOS_QsatICE( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2)*100.0 , DQ=SER_DQSI_2D(iter_1, iter_2) )
-        !$ser verbatim SER_QSATLQU_2D(iter_1, iter_2) = GEOS_QsatLQU( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2)*100.0 , DQ=SER_DQSL_2D(iter_1, iter_2) )
-        !$ser verbatim SER_QSAT0_QS_2D(iter_1, iter_2) = GEOS_Qsat( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2), DQSAT=SER_QSAT0_DQ_2D(iter_1, iter_2) )
-        !$ser verbatim SER_DQSAT0_DQ_2D(iter_1, iter_2) = GEOS_DQsat( TEMP_ARRAY(iter_1, iter_2), PRES_ARRAY(iter_1, iter_2), QSAT=SER_DQSAT0_QS_2D(iter_1, iter_2) )
-      !$ser verbatim enddo
-    !$ser verbatim enddo
-    !$ser savepoint qsat_functions-Out
-    !$ser data SER_QSATLQU=SER_QSATLQU SER_QSATICE=SER_QSATICE SER_DQSL=SER_DQSL SER_DQSI=SER_DQSI
-    !$ser data SER_QSATLQU_2D=SER_QSATLQU_2D SER_QSATICE_2D=SER_QSATICE_2D SER_DQSL_2D=SER_DQSL_2D SER_DQSI_2D=SER_DQSI_2D
-    !$ser data SER_QSAT_QS=SER_QSAT_QS SER_QSAT_DQ=SER_QSAT_DQ SER_DQSAT_QS=SER_DQSAT_QS SER_DQSAT_DQ=SER_DQSAT_DQ
-    !$ser data SER_QSAT0_QS_2D=SER_QSAT0_QS_2D SER_QSAT0_DQ_2D=SER_QSAT0_DQ_2D SER_DQSAT0_QS_2D=SER_DQSAT0_QS_2D SER_DQSAT0_DQ_2D=SER_DQSAT0_DQ_2D
     
     !$ser savepoint GFDL_1M_setup-In
     !$ser data PLE=PLE ZLE=ZLE T=T U=U V=V Q=Q QRAIN=QRAIN QSNOW=QSNOW QGRAUPEL=QGRAUPEL
@@ -742,12 +665,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! Put condensates in touch with the PDF
              if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP
               !$ser verbatim if (USE_BERGERON .eqv. .true.) then
-              !$ser verbatim   temporary_2 = 1
+              !$ser verbatim   temporary_1 = 1
               !$ser verbatim else
-              !$ser verbatim   temporary_2 = 0
+              !$ser verbatim   temporary_1 = 0
               !$ser verbatim endif
               !$ser savepoint GFDL_1M_hydrostatic_pdf-In
-              !$ser data_buffered Dx=0 DT_MOIST=DT_MOIST PDFSHAPE=PDFSHAPE USE_BERGERON=temporary_2
+              !$ser data_buffered Dx=0 DT_MOIST=DT_MOIST PDFSHAPE=PDFSHAPE USE_BERGERON=temporary_1
               !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
               !$ser data_buffered Dx=3 ALPHA=ALPHA PLmb=PLmb(I,J,L) Q=Q(I,J,L)
               !$ser data_buffered Dx=3 QLLS=QLLS(I,J,L) QLCN=QLCN(I,J,L) QILS=QILS(I,J,L)
