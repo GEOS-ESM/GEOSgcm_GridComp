@@ -1874,7 +1874,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '5-day running mean of CN sum for snow depth',&
+       LONG_NAME          = '5-day_exp_moving_avg_of_CN_sum_for_snow_depth',&
        UNITS              = 'm'                         ,&
        SHORT_NAME         = 'SNDZM5D'                   ,&
        DIMS               = MAPL_DimsTileOnly           ,&
@@ -1894,7 +1894,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '10-day running mean of 2-m temperature',&
+       LONG_NAME          = '10-day_exp_moving_avg_of_surface_air_temperature',&
        UNITS              = 'K'                         ,&
        SHORT_NAME         = 'T2M10D'                    ,&
        DIMS               = MAPL_DimsTileOnly           ,&
@@ -1904,7 +1904,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '10-day running mean of surface layer soil temperature',&
+       LONG_NAME          = '10-day_exp_moving_avg_of_surface_layer_soil_temperature',&
        UNITS              = 'K'                         ,&
        SHORT_NAME         = 'TG10D'                    ,&
        DIMS               = MAPL_DimsTileOnly           ,&
@@ -1914,7 +1914,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '5-day running mean of daily minimum 2-m temperature',&
+       LONG_NAME          = '5-day_exp_moving_avg_of_daily_minimum_surface_air_temperature',&
        UNITS              = 'K'                         ,&
        SHORT_NAME         = 'T2MMIN5D'                    ,&
        DIMS               = MAPL_DimsTileOnly           ,&
@@ -1924,7 +1924,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '30-day running mean of surface relative humidity',&
+       LONG_NAME          = '30-day_exp_moving_avg_of_surface_relative_humidity',&
        UNITS              = '%'                         ,&
        SHORT_NAME         = 'RH30D'                    ,&
        DIMS               = MAPL_DimsTileOnly           ,&
@@ -1935,8 +1935,8 @@ subroutine SetServices ( GC, RC )
 
   
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '10-day running mean of total precipitation',&
-       UNITS              = 'mm H2O/s'                         ,&
+       LONG_NAME          = '10-day_exp_moving_avg_of_total precipitation',&
+       UNITS              = 'kg m-2 s-1'                         ,&
        SHORT_NAME         = 'TPREC10D'                  ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1945,8 +1945,8 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
   
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '60-day running mean of total precipitation',&
-       UNITS              = 'mm H2O/s'                         ,&
+       LONG_NAME          = '60-day_exp_moving_avg_of_total_precipitation',&
+       UNITS              = 'kg m-2 s-1'                         ,&
        SHORT_NAME         = 'TPREC60D'                  ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
@@ -1955,7 +1955,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '365-day running mean of total ET',&
+       LONG_NAME          = '365-day_exp_moving_avg_of_total_evapotranspiration',&
        UNITS              = 'W m-2'                         ,&
        SHORT_NAME         = 'ET365D'                  ,&
        DIMS               = MAPL_DimsTileOnly           ,&
@@ -6007,7 +6007,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         istep = maxval((/n10d,n30d,n60d/)) ! otherwise, set model time step index to the maximum of these nXX
       end if           
       
-      ! jkolassa: implement this separately for 365-day running mean of ET
+      ! jkolassa: implement this separately for 365-day exponential moving average of ET
       if(init_accum_365) then 
         istep_365 = 0                             ! set model time step index to 0 when begin to accumulate the cumulative variables, fzeng, 21 Apr 2017 
        else
@@ -7134,27 +7134,27 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! ---------------------------------------------------------------------------------   
      if(init_accum) then     
         
-        ! (1) 5-day running mean of snow depth      
+        ! (1) 5-day exponential moving average of snow depth      
          accper = min(istep,n5d)
          SNDZM5D   = ((accper-1)*SNDZM5D + SNDZM) / accper 
 
-        ! (1) 10-day running mean of 2-m temperature (K) and total precipitation (mm H2O/s)     
+        ! (1) 10-day exponential moving average of 2-m temperature (K) and total precipitation (mm H2O/s)     
          accper = min(istep,n10d)
          T2M10D   = ((accper-1)*T2M10D + TA) / accper
          TPREC10D = ((accper-1)*TPREC10D + PCU + PLS + SNO) / accper      
          TG10D    = ((accper-1)*TG10D + TG(:,1)) / accper         
 
-        ! (2) 30-day running mean of relative humidity [%]     
+        ! (2) 30-day exponential moving average of relative humidity [%]     
          accper = min(istep,n30d)
          RH30D   = ((accper-1)*RH30D + Qair_relative) / accper
 
 
-        ! (2) 60-day running mean of total precipitation (mm H2O/s)
+        ! (2) 60-day exponential moving average of total precipitation (mm H2O/s)
          accper = min(istep,n60d)
          TPREC60D = ((accper-1)*TPREC60D + PCU + PLS + SNO) / accper      
 
 
-        ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day running mean of minimum T2M
+        ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day exponential moving average of minimum T2M
 
          do n = 1,ntiles
             ta_count(n) = ta_count(n) + 1
@@ -7169,15 +7169,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       else
  
-         SNDZM5D  = ((n5d-1)*SNDZM5D   + SNDZM)  / n5d
-         T2M10D   = ((n10d-1)*T2M10D   + TA)  / n10d
-         TG10D    = ((n10d-1)*TG10D   + TG(:,1))  / n10d
+         SNDZM5D  = (( n5d-1)*SNDZM5D  + SNDZM          ) /  n5d
+         T2M10D   = ((n10d-1)*T2M10D   + TA             ) / n10d
+         TG10D    = ((n10d-1)*TG10D    + TG(:,1)        ) / n10d
          TPREC10D = ((n10d-1)*TPREC10D + PCU + PLS + SNO) / n10d
-         RH30D    = ((n30d-1)*RH30D    + Qair_relative)  / n30d
+         RH30D    = ((n30d-1)*RH30D    + Qair_relative  ) / n30d
          TPREC60D = ((n60d-1)*TPREC60D + PCU + PLS + SNO) / n60d
 
 
-         ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day running mean of minimum T2M
+         ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day exponential moving average of minimum T2M
 
          do n = 1,ntiles
             ta_count(n) = ta_count(n) + 1
@@ -8112,9 +8112,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         end if
 
-        ! compute 365-day running mean of total ET (excluding sublimation from snow)
+        ! compute 365-day exponential moving average of total ET (excluding sublimation from snow)
         if(init_accum_365) then     
-           ! 365-day running mean of total ET (W m-2)
+           ! 365-day exponential moving average of total ET (W m-2)
            accper = min(istep_365,n365d)
            ET365D = ((accper-1)*ET365D + EVPSOI + EVPINT + EVPVEG) / accper     
         else            
