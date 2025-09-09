@@ -81,7 +81,7 @@ module GEOS_RouteGridCompMod
 
      real,    pointer :: wstream(:)        => NULL()  ! m3
      real,    pointer :: wriver(:)         => NULL()  ! m3
-     integer, pointer :: downid(:)         => NULL()
+     integer, allocatable :: downid(:) 
      integer, pointer :: upid(:,:)         => NULL()
 
      real,    pointer :: wriver_acc(:)     => NULL()
@@ -238,6 +238,7 @@ contains
 ! -----------------------------------------------------------
 !   Import States
 ! -----------------------------------------------------------
+! WY note: Here TileOnly is on tile space
 
     call MAPL_AddImportSpec(GC,                            &
          LONG_NAME          = 'runoff_total_flux'         ,&
@@ -245,26 +246,62 @@ contains
          SHORT_NAME         = 'RUNOFF'                    ,&
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
-         RC=STATUS  ) 
-    VERIFY_(STATUS)
+         _RC ) 
+
+!!!!!!!!!!!!!!!!
+! Internal
+!!!!!!!!!!!!!!
+! WY note: Here TileOnly is on catchment space
+
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'area_of_catchment'        ,&
-         UNITS              = 'km+2'                     ,&
-         SHORT_NAME         = 'AREACAT'                  ,&
+         LONG_NAME          = 'volume_of_water_in_local_stream',&
+         UNITS              = 'm+3'                      ,&
+         SHORT_NAME         = 'WSTREAM'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartOptional       ,&
-         RC=STATUS  )
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'volume_of_water_in_river' ,&
+         UNITS              = 'm+3'                      ,&
+         SHORT_NAME         = 'WRIVER'                   ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC  )
+
+!!!!!!!!!!!!!!!!
+! Export
+!!!!!!!!!!!!!!!
+! WY note: Here TileOnly is on catchment space
+
+    call MAPL_AddExportSpec(GC,                        &
+         LONG_NAME          = 'transfer_of_moisture_from_stream_variable_to_river_variable' ,&
+         UNITS              = 'm+3 s-1'                  ,&
+         SHORT_NAME         = 'QSFLOW'                   ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC )
+
+    call MAPL_AddExportSpec(GC,                    &
+         LONG_NAME          = 'transfer_of_river_water_from_upstream_catchments' ,&
+         UNITS              = 'm+3 s-1'                   ,&
+         SHORT_NAME         = 'QINFLOW'                   ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+         _RC )
+
+    call MAPL_AddExportSpec(GC,                    &
+         LONG_NAME          = 'transfer_of_river_water_to_downstream_catchments' ,&
+         UNITS              = 'm+3 s-1'                  ,&
+         SHORT_NAME         = 'QOUTFLOW'                 ,&
+         DIMS               = MAPL_DimsCatchOnly           ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC )
 
 
-   call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'wstream wstream mmm'     ,&
-         UNITS              = 'm3'                     ,&
-         SHORT_NAME         = 'WSTREAM'                 ,&
-         DIMS               = MAPL_DimsTileOnly         ,&
-         VLOCATION          = MAPL_VLocationNone        ,&
-                                         RC=STATUS  )
 !EOS
 
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
@@ -346,9 +383,12 @@ contains
     type(MAPL_LocStream)           :: locstream, catch_LocStream
 
     character(len=ESMF_MAXSTR)     :: River_RoutingFile    
-    character(len=ESMF_MAXSTR)     :: gridname    
+    character(len=ESMF_MAXSTR)     :: gridname
+    character(len=:), allocatable  :: file_name 
     type(ESMF_Grid)  :: agrid 
-    
+    type (ESMF_DELayout) :: layout
+    type (ESMF_DistGrid) :: dist_grid 
+
     integer, pointer :: ims(:) => NULL()
     integer, pointer :: local_id(:)  => NULL()
     real,    pointer :: tile_area_local(:) => NULL(), tile_area_global(:) => NULL()
@@ -362,7 +402,7 @@ contains
 
     real,    pointer :: runoff_save(:)=>NULL(), areacat(:)=>NULL()
     real,    pointer :: lengsc_global(:)=>NULL(), lengsc(:)=>NULL(), buff_global(:)=>NULL()
-    integer, pointer :: downid_global(:)=>NULL(), downid(:)=>NULL()
+    integer, allocatable :: downid_global(:)
     integer, pointer :: upid_global(:,:)=>NULL(), upid(:,:)=>NULL()    
     real,    pointer :: wstream(:)=>NULL(),wriver(:)=>NULL(),wres(:)=>NULL()
     real,    pointer :: wstream_global(:)=>NULL(),wriver_global(:)=>NULL(),wres_global(:)=>NULL()    
@@ -371,13 +411,14 @@ contains
     type (RROUTE_wrap)             :: wrap
 
     type(ESMF_Time)  :: CurrentTime
+    type(ESMF_Alarm) :: CollectWaterAlarm
+    type(ESMF_TimeInterval) :: CollectWater_DT, ModelTimeStep
     integer          :: YY,MM,DD,HH,MMM,SS
     character(len=4) :: yr_s
     character(len=2) :: mon_s,day_s    
     character(len=3) :: resname
-
     
-    integer          :: j,nt_local,mpierr,it
+    integer          :: j,nt_local,mpierr,it, unit
 
     ! ------------------
     ! begin
@@ -417,6 +458,9 @@ contains
     ! Get grid info from the gridcomp
     call ESMF_GridCompGet(gc, grid=agrid, rc=status)
     VERIFY_(status)
+    call ESMF_GridGet(agrid,   distGrid=dist_grid, _RC)
+    call ESMF_DistGridGet(dist_grid, delayout=layout, _RC) 
+
     ! get grid name
     call ESMF_GridGet(agrid, name=gridname, rc=status)
     VERIFY_(STATUS)    
@@ -523,10 +567,12 @@ contains
     route%lengsc=>lengsc
     deallocate(lengsc_global)
 
-    allocate(downid_global(N_pfaf_g),downid(n_pfaf_local))
-    open(77,file=trim(River_RoutingFile)//"/downstream_1D_new_noadj.txt",status="old",action="read");read(77,*)downid_global;close(77)    
-    downid=downid_global(minCatch:maxCatch)
-    route%downid=>downid
+    file_name = trim(River_RoutingFile)//"/downstream_1D_new_noadj.txt"
+    allocate(downid_global(N_pfaf_g))
+    UNIT = GETFILE(file_name, form='FORMATTED', _RC)
+    call READ_PARALLEL(layout, downid_global(:), unit=UNIT, _RC)
+    call FREE_FILE(unit)
+    allocate(route%downid(n_pfaf_local), source = downid_global(minCatch:maxCatch))
     deallocate(downid_global)
 
     allocate(upid_global(upmax,N_pfaf_g),upid(upmax,n_pfaf_local))   
@@ -686,15 +732,31 @@ contains
     VERIFY_(STATUS)
 
     call setup_exchange_cat(_RC)
+
+    call ESMF_TimeIntervalSet(CollectWater_DT, s=ROUTE_DT, rc=status)
+    VERIFY_(status)
+    call ESMF_ClockGet(clock, timeStep=ModelTimeStep, rc=status) 
+    CollectWaterAlarm = ESMF_AlarmCreate(                                       &
+         clock,                                                                 &
+         name='CollectWater',                                                   &
+         ringTime=CurrentTime - ModelTimeStep+CollectWater_DT,                   &
+         ringInterval=CollectWater_DT,                                          &
+         ringTimeStepCount=1,                                                   &
+         sticky=.false.,                                                        &
+         rc=status                                                              &
+         )
+    VERIFY_(status)
+ 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
-
     RETURN_(ESMF_SUCCESS)
+
     contains
+
        subroutine create_catchment_grid(catch_Grid, catch_Locstream, rc)
           type (ESMF_Grid), intent(out)  :: catch_grid
           type (MAPL_LocStream), intent(out) :: catch_Locstream
@@ -742,8 +804,7 @@ contains
           integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:)
           real,    allocatable :: mapping(:,:), weights(:)
           integer, allocatable :: local_src(:), local_dst(:)
-          type (ESMF_DELayout) :: layout
-          type (ESMF_DistGrid) :: dist_grid
+          integer :: unit
 
 
           ! create source for orignal tile space
@@ -760,17 +821,20 @@ contains
           VERIFY_(STATUS)
           deallocate(ptr)
 
-          call ESMF_GridGet(agrid,   distGrid=dist_grid, _RC)
-          call ESMF_DistGridGet(dist_grid, delayout=layout, _RC)
+          UNIT = GETFILE(route_file, form='FORMATTED', _RC)
+          call READ_PARALLEL(layout, nWeights, UNIT=UNIT, _RC)
+          allocate(mapping(3, nWeights))
+          call READ_PARALLEL(layout, mapping(:,:), unit=UNIT, _RC)
+          call FREE_FILE(unit)
 
-          call MAPL_ReadRouteASCII(layout, route_file, nWeights, mapping, _RC)
           ! get local  number of weight         
           allocate(mask(nWeights))
-          mask = minCatch <= mapping(:,2) .and. mapping(:,2) <=maxCatch
-          local_src = nint(pack(mapping(:,1), mask))
-          local_dst = nint(pack(mapping(:,2), mask))
-          weights   = pack(mapping(:,3), mask)
-          
+          mask = minCatch <= mapping(2,:) .and. mapping(2,:) <=maxCatch
+          local_src = nint(pack(mapping(1,:), mask))
+          local_dst = nint(pack(mapping(2,:), mask))
+          weights   = pack(mapping(3,:), mask)
+          deallocate(mapping)
+
           ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
           allocate(global_id(nt_global))
           call ArrayGather(local_id, global_id, tilegrid,  _RC)
@@ -825,12 +889,9 @@ contains
           allocate(cat_to_ranks_local(route%n_pfaf_local))
           allocate(cat_to_ranks_global(n_pfaf_g))
           cat_to_ranks_local = mype
-          
-          call MPI_allgatherv  (                          &
-            cat_to_ranks_local,  route%scounts_cat(mype+1)           ,MPI_INTEGER, &
-            cat_to_ranks_global, route%scounts_cat, route%rdispls_cat,MPI_INTEGER, &
-            route%comm, status)
-          VERIFY_(STATUS)
+         
+          call ArrayGather(cat_to_ranks_local, cat_to_ranks_global, newtilegrid,  _RC)
+          call MAPL_CommsBcast(vm, DATA= cat_to_ranks_global, N = n_pfaf_g, ROOT= MAPL_ROOT, _RC) 
 
           allocate(route%send_count(route%ndes), source=0)
           allocate(route%recv_count(route%ndes), source=0)
@@ -883,13 +944,13 @@ contains
                              route%to_down, route%recv_count, route%displ_recv, MPI_INTEGER, &
                              route%comm, status)
 
-         ! testing
-          do i = 1, route%total_recv
-             down_id = route%to_down(i)
-             if (down_id < minCatch .or. maxCatch < down_id) then
-               _ASSERT(.false., "Got the down_id that does not belong to me")
-             endif
-          enddo
+          ! testing
+          !do i = 1, route%total_recv
+          !   down_id = route%to_down(i)
+          !   if (down_id < minCatch .or. maxCatch < down_id) then
+          !     _ASSERT(.false., "Got the down_id that does not belong to me")
+          !   endif
+          !enddo
 
           _VERIFY(STATUS)
           _RETURN(_SUCCESS)
@@ -967,7 +1028,7 @@ contains
 ! EXPORT pointers 
 ! -----------------------------------------------------
 
-    real, dimension(:,:), pointer :: QSFLOW
+    real, dimension(:), pointer :: QSFLOW
     real, dimension(:), pointer :: QINFLOW
     real, dimension(:), pointer :: QOUTFLOW
   
@@ -1003,16 +1064,16 @@ contains
     character(len=4) :: yr_s
     character(len=2) :: mon_s,day_s
 
-    real,             pointer     :: runoff_act_new(:)=>NULL()
-    real,             pointer     :: runoff_save_new(:)=>NULL()
     real,             pointer     :: runoff_save(:)=>NULL()
     real,             pointer     :: WSTREAM_ACT(:)=>NULL()
     real,             pointer     :: WRIVER_ACT(:) =>NULL()
     type (RES_STATE), pointer     :: res => NULL()    
 
     real,             allocatable :: QOUTFLOW_GLOBAL(:),Qres_global(:)
-    real,             allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:), tmp_local(:)
+    real,             allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:)
     real,             allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:),wres_global(:)
+   
+    type(ESMF_Alarm) :: CollectWaterAlarm 
     
     ! ------------------
     ! begin    
@@ -1034,17 +1095,20 @@ contains
     VERIFY_(STATUS)
     call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, RC=STATUS)
     VERIFY_(STATUS)
+
+    call ESMF_ClockGetAlarm(clock, 'CollectWater', CollectWaterAlarm, _RC)
     !if (mapl_am_I_root()) print *, "HEARTBEAT=",HEARTBEAT 
 
-    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
-    VERIFY_(STATUS)
+! internal
+    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
+    call MAPL_GetPointer(INTERNAL, WRIVER,'WRIVER', _RC )
+    call MAPL_GetPointer(INTERNAL, WSTREAM,'WSTREAM', _RC)
 
-    call MAPL_GetPointer(INTERNAL, AREACAT,'AREACAT', RC=STATUS); VERIFY_(STATUS)
+! export
+    call MAPL_GetPointer(EXPORT, QSFLOW, 'QSFLOW', _RC)
+    call MAPL_GetPointer(EXPORT, QINFLOW,  'QINFLOW' , _RC)
+    call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW', _RC)
 
-    !call MAPL_GetPointer(EXPORT, QSFLOW, 'QSFLOW', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, WSTREAM,'WSTREAM', RC=STATUS); VERIFY_(STATUS)
-
-    AREACAT = route%areacat
 ! Start timers
 ! ------------
     call MAPL_TimerOn(MAPL,"RUN2")
@@ -1076,8 +1140,10 @@ contains
     call MAPL_TimerOn  ( MAPL, "-RRM" )
     
     ! For efficiency, the time step to call the river routing model is set at ROUTE_DT 
-    
     N_CYC = ROUTE_DT/HEARTBEAT    
+    if (ESMF_AlarmIsRinging(CollectWaterAlarm)) then
+       _ASSERT(thisCycle == N_CYC,"Wrong alarm time")
+    endif
     RUN_MODEL : if (ThisCycle == N_CYC) then   
        
        !accumulates runoff
@@ -1113,23 +1179,17 @@ contains
              if(it==0)exit
           enddo
        enddo
-
-       call ESMF_FieldGet(route%field_src, farrayPtr=RUNOFF_SAVE_new, rc=status)
-       VERIFY_(STATUS)
-       Runoff_save_new(:) = runoff_save(:)
-       call ESMF_FieldSMM(srcField=route%field_src, dstField=route%Field, &
-                       routeHandle=route%routeHandle, rc=rc)
-       call ESMF_FieldGet(route%field, farrayPtr=RUNOFF_ACT_new, rc=status)
-       VERIFY_(STATUS)
-       RUNOFF_ACT_new = RUNOFF_ACT_new * route%areacat/1000.
-       !print out for the accuracy
-       !if (MAPL_AM_I_ROOT()) then 
-       !  do i = 1, n_pfaf_local
-       !    print*, "i, RUNOFF_ACT(i), RUNOFF_ACT_new(i): ", i, RUNOFF_ACT(i), RUNOFF_ACT_new(i)
-       !  enddo
-       !endif
-       
        deallocate(runoff_global) 
+
+       !call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr, rc=status)
+       !VERIFY_(STATUS)
+       !ArrayPtr = runoff_save(:)
+       !call ESMF_FieldSMM(srcField=route%field_src, dstField=route%Field, &
+       !                routeHandle=route%routeHandle, rc=rc)
+       !call ESMF_FieldGet(route%field, farrayPtr=arraPtr, rc=status)
+       !VERIFY_(STATUS)
+       !RUNOFF_ACT = arrayPtr * route%areacat/1000.
+       
 
        ! Prepares to conduct routing model
        allocate (AREACAT_ACT (n_pfaf_local))       
@@ -1138,11 +1198,11 @@ contains
        allocate (QOUTFLOW_ACT(n_pfaf_local),QRES_ACT(n_pfaf_local),QOUT_CAT(n_pfaf_local))  
 
        QRES_ACT=0.
-       LENGSC_ACT=route%lengsc/1.e3 !m->km
+       LENGSC_ACT =route%lengsc/1.e3 !m->km
        AREACAT_ACT=route%areacat/1.e6 !m2->km2
 
        WSTREAM_ACT => route%wstream
-       WRIVER_ACT => route%wriver
+       WRIVER_ACT  => route%wriver
 
 
        allocate(WTOT_BEFORE(n_pfaf_local))
@@ -1189,29 +1249,25 @@ contains
           enddo
        enddo
 
-       allocate(tmp_local(n_pfaf_local))
-       call collect_cat(QOUT_CAT, tmp_local, _RC)
-       do i = 1, n_pfaf_local
-          if (route%downid(i) == -1) cycle
-          ! WY note: nothing is printed, it is zero-diff
-          if( (QINFLOW_LOCAL(i)- tmp_local(i)) /=0.) then
-             print*, "The answer is wrong"
-             print*, i, QINFLOW_LOCAL(i), tmp_local(i)
-          endif
-       enddo
-       deallocate(tmp_local)
+       !call collect_cat(QOUT_CAT, QINFLOW_LOCAL, _RC)
+       !WRIVER_ACT = WRIVER_ACT + QINFLOW_LOCAL*real(route_dt)
 
        ! Check balance if needed
        !call check_balance(route,n_pfaf_local,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
 
        ! Update accumulated variables for output
-       if(FirstTime) nstep_per_day = 86400/route_dt
+       nstep_per_day = 86400/route_dt
        route%wriver_acc = route%wriver_acc + WRIVER_ACT/real(nstep_per_day)
        route%wstream_acc = route%wstream_acc + WSTREAM_ACT/real(nstep_per_day)
        route%qoutflow_acc = route%qoutflow_acc + QOUTFLOW_ACT/real(nstep_per_day)
        route%qsflow_acc = route%qsflow_acc + QSFLOW_ACT/real(nstep_per_day)
        res%qres_acc = res%qres_acc + QRES_ACT/real(nstep_per_day)       
 
+       WRIVER  = route%wriver_acc
+       WSTREAM = route%wstream_acc 
+       if (associated(QSFLOW))    QSFLOW  = route%qsflow_acc
+       if (associated(QOUTFLOW)) QOUTFLOW = route%qoutflow_acc
+       
        deallocate(RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_ACT,QINFLOW_LOCAL,QOUTFLOW_GLOBAL,QSFLOW_ACT,WTOT_BEFORE,QRES_ACT,QOUT_CAT)
        !initialize the cycle counter and sum (runoff_tile)       
        WSTREAM_ACT=>NULL()
@@ -1290,7 +1346,6 @@ contains
        !write restart
        if(MM_next/=MM)then
           allocate(wriver_global(N_pfaf_g),wstream_global(N_pfaf_g))
-          if (associated(WSTREAM)) WSTREAM = route%wstream
           call MPI_allgatherv  (                          &
                route%wstream,  route%scounts_cat(mype+1)      ,MPI_REAL, &
                wstream_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
@@ -1540,7 +1595,7 @@ contains
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap, _RC)
     route => wrap%ptr    
 
-    CALL ESMF_RouteHandleDestroy(route%routeHandle, _RC)
+    CALL ESMF_FieldSMMRelease(routeHandle=route%routeHandle, _RC)
 
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, _RC)
