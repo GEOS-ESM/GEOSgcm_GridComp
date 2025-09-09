@@ -4040,7 +4040,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     logical, save :: first = .true.
     integer(INT64), save :: istep_cn = 0 ! gkw: legacy variable from offline
     real :: ndt
-    integer(INT64) :: nstep_cn
+    integer(INT64) :: dummy_int64
     character(len=ESMF_MAXSTR) :: cnclm51_paramfile
 
   ! Offline mode
@@ -4383,7 +4383,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! update CN time step number
 ! --------------------------
-  nstep_cn = get_nstep(istep_cn) 
+! reichle, 9 Sep 2025: must call get_nstep() to update "save" variable within get_nstep(), which is needed by fire code
+  dummy_int64 = get_nstep(istep_cn)    
 
 ! read CNCLM51 parameter file
 !-----------------------------
