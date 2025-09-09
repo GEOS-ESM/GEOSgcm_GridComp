@@ -22,18 +22,38 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggress
    set (CMAKE_Fortran_FLAGS_AGGRESSIVE "${GEOS_Fortran_FLAGS_VECT}")
 endif ()
 
-if (CMAKE_Fortran_COMPILER_ID MATCHES GNU AND CMAKE_BUILD_TYPE MATCHES Release)
-  string (REPLACE "${FOPT3}" "${FOPT2}" CMAKE_Fortran_FLAGS_RELEASE ${CMAKE_Fortran_FLAGS_RELEASE})
+# Apply only for GNU in Release or Aggressive builds
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU"
+    AND CMAKE_BUILD_TYPE MATCHES "^(Release|Aggressive)$")
+
+  # If Aggressive, start from your release flags. If you use the 'default'
+  # aggressive flags, the model is quickly unstable.
+  if (CMAKE_BUILD_TYPE STREQUAL "Aggressive")
+    set(CMAKE_Fortran_FLAGS_AGGRESSIVE "${GEOS_Fortran_FLAGS_RELEASE}")
+    # drop -O3 -> -O2
+    string(REPLACE "${FOPT3}" "${FOPT2}"
+           CMAKE_Fortran_FLAGS_AGGRESSIVE "${CMAKE_Fortran_FLAGS_AGGRESSIVE}")
+  else()
+    # drop -O3 -> -O2
+    string(REPLACE "${FOPT3}" "${FOPT2}"
+           CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE}")
+  endif()
+
+  # GCC 15+ workaround for GF sources
   # There is some odd interaction between GCC 15 and the GF code. FPEs
   # that do not occur with GCC 14 or earlier. For now, we compile GF
   # codes with -O1 which seems to avoid the bad instruction. Tests show
   # not much of a speed difference with GCC 14
-  if (${CMAKE_Fortran_COMPILER_VERSION} VERSION_GREATER_EQUAL 15)
-    message (STATUS "[GCC15+] Setting GF Code to use -O1 for GCC 15")
-    set_source_files_properties(ConvPar_GF2020.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
-    set_source_files_properties(ConvPar_GF_GEOS5.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
+  if (CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL 15)
+    message(STATUS "[GCC15+] Setting GF Code to use -O1 for GCC 15")
+    set(gf_sources
+      ConvPar_GF2020.F90
+      ConvPar_GF_GEOS5.F90
+    )
+    set_source_files_properties(${gf_sources}
+      PROPERTIES COMPILE_OPTIONS "${FOPT1}")
   endif()
-endif ()
+endif()
 
 # Note For unknown reasons, BACM_1M_Interface takes 20 minutes to compile at O3
 #      and 10 minutes at O2. But only 7 seconds with O1. So we compile at O1
