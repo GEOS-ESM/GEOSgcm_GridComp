@@ -464,8 +464,8 @@ contains
     allocate(this%deadstemc_col            (begc:endc)) ; this%deadstemc_col            (:) = nan                            
     allocate(this%fuelc_col                (begc:endc)) ; this%fuelc_col                (:) = nan 
     allocate(this%fuelc_crop_col           (begc:endc)) ; this%fuelc_crop_col           (:) = nan                            
-    ! totvegc_patch set to zero so non visited patches don’t print CF_FILL.
-    allocate(this%totvegc_patch            (begp:endp)) ; this%totvegc_patch            (:) = 0._r8
+    ! totvegc_patch set to zero so non visited patches don’t print CF_FILL.                                      !rrXbo 10Sep2025
+    allocate(this%totvegc_patch            (begp:endp)) ; this%totvegc_patch            (:) = spval    ! 0._r8   !rrXbo 10Sep2025
     allocate(this%totvegc_col              (begc:endc)) ; this%totvegc_col              (:) = nan                            
                                                                                                                              
     allocate(this%totc_p2c_col             (begc:endc)) ; this%totc_p2c_col             (:) = nan                            

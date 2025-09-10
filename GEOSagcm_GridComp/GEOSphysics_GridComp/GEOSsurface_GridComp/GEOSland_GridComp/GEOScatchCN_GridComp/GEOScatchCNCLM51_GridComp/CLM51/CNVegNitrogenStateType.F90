@@ -463,11 +463,13 @@ contains
 
           this%seedn_grc(nc) = this%seedn_grc(nc) + safe( real(cncol(nc,nz,23), r8) )
 
-          ! Slot 29 in CNCOL is an aggregate diagnostic - total column N and is where all junk shows up this avoids hard coding
-            this%totn_col(n) = spval
-          ! this%totn_col(n)   = safe( real(cncol(nc,nz,29), r8) )   ! produces large values and if we do not wish to hard code
-          ! solution is NOT to ingest the restart aggregate; we'll anyway recompute in subroutine Summary_nitrogenstate at line:
-          ! this%totn_col(c) = this%totn_p2c_col(c) + cwdn + totlitn + totsomn + sminn + ntrunc
+          this%totn_col(n)   = cncol(nc,nz,29)    ! borescan, reichle, 10 Sep 2025: may not be needed in restart file, diagnosed in subroutine Summary_nitrogenstate() (?)
+          
+          !rrXbo 10Sep2025 ! Slot 29 in CNCOL is an aggregate diagnostic - total column N and is where all junk shows up this avoids hard coding
+          !rrXbo 10Sep2025   this%totn_col(n) = spval
+          !rrXbo 10Sep2025 ! this%totn_col(n)   = safe( real(cncol(nc,nz,29), r8) )   ! produces large values and if we do not wish to hard code
+          !rrXbo 10Sep2025 ! solution is NOT to ingest the restart aggregate; we'll anyway recompute in subroutine Summary_nitrogenstate at line:
+          !rrXbo 10Sep2025 ! this%totn_col(c) = this%totn_p2c_col(c) + cwdn + totlitn + totsomn + sminn + ntrunc
                                                                         
           do p = 0,numpft  ! PFT index loop                                                                        
              np = np + 1
