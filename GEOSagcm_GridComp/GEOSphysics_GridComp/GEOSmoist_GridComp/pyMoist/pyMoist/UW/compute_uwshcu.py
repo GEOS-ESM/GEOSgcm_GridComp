@@ -8400,8 +8400,8 @@ class ComputeUwshcuInv:
         # iterative cin calculation, because cumulus convection induces non-zero fluxes
         # even at interfaces below PBL top height through 'fluxbelowinv' calculation.
 
-        for iteration in range(iter_cin):
-            iteration = int32(iteration)
+        for it_cin in range(iter_cin):
+            iteration = int32(it_cin)
 
             self._find_pbl_height(
                 iteration=iteration,
