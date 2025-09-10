@@ -731,7 +731,7 @@ contains
     call MAPL_set(MAPL, locstream = catch_locstream, rc=status)
     VERIFY_(STATUS)
 
-    call setup_exchange_cat(_RC)
+    call setup_exchange_water(_RC)
 
     call ESMF_TimeIntervalSet(CollectWater_DT, s=ROUTE_DT, rc=status)
     VERIFY_(status)
@@ -837,8 +837,7 @@ contains
 
           ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
           allocate(global_id(nt_global))
-          call ArrayGather(local_id, global_id, tilegrid,  _RC)
-          call MAPL_CommsBcast(vm, DATA= global_id, N = nt_global,ROOT= MAPL_ROOT, _RC)
+          call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
           ! mapping form local to global index
           nLocal_weights = size(weights)
@@ -868,7 +867,7 @@ contains
 
           !call ESMF_FieldGet(route%Field, farrayPtr=ptr, rc=status)
           !VERIFY_(STATUS)
-          ! after remapping, all values should be 1
+          !! after remapping, all values should be 1
           !if (route%mype == 20) then
           !  do i = 1, n_pfaf_local
           !    print* , 'ptr(i): ',i,  ptr(i)
@@ -877,7 +876,7 @@ contains
          _RETURN(_SUCCESS)
        end subroutine
        
-       subroutine setup_exchange_cat(rc)
+       subroutine setup_exchange_water(rc)
           integer, optional, intent(out) :: rc
           integer :: pf, down_id, rank
           integer, allocatable :: cat_to_ranks_global(:)
@@ -890,8 +889,7 @@ contains
           allocate(cat_to_ranks_global(n_pfaf_g))
           cat_to_ranks_local = mype
          
-          call ArrayGather(cat_to_ranks_local, cat_to_ranks_global, newtilegrid,  _RC)
-          call MAPL_CommsBcast(vm, DATA= cat_to_ranks_global, N = n_pfaf_g, ROOT= MAPL_ROOT, _RC) 
+          call ESMFL_FCollect(newtilegrid, cat_to_ranks_global, cat_to_ranks_local, _RC)
 
           allocate(route%send_count(route%ndes), source=0)
           allocate(route%recv_count(route%ndes), source=0)
@@ -1249,7 +1247,7 @@ contains
           enddo
        enddo
 
-       !call collect_cat(QOUT_CAT, QINFLOW_LOCAL, _RC)
+       !call exchange_water(QOUT_CAT, QINFLOW_LOCAL, _RC)
        !WRIVER_ACT = WRIVER_ACT + QINFLOW_LOCAL*real(route_dt)
 
        ! Check balance if needed
@@ -1410,7 +1408,7 @@ contains
     RETURN_(ESMF_SUCCESS)
     contains
 
-      subroutine collect_cat(cat_out, cat_in, rc)
+      subroutine exchange_water(cat_out, cat_in, rc)
         real, intent(in)  :: cat_out(:)
         real, intent(out) :: cat_in(:)
         integer, optional, intent(out) :: rc
@@ -1449,7 +1447,7 @@ contains
           cat_in(k) = cat_in(k) + recv_data(i)
         enddo
         RETURN_(ESMF_SUCCESS)
-      end subroutine collect_cat
+      end subroutine exchange_water
 
   end subroutine RUN2
   
