@@ -1,4 +1,5 @@
 import copy
+import dace
 
 from gt4py.cartesian.gtscript import (
     BACKWARD,
@@ -8400,7 +8401,7 @@ class ComputeUwshcuInv:
         # iterative cin calculation, because cumulus convection induces non-zero fluxes
         # even at interfaces below PBL top height through 'fluxbelowinv' calculation.
 
-        for it_cin in range(iter_cin):
+        for it_cin in dace.nounroll(range(iter_cin)):
             iteration = int32(it_cin)
 
             self._find_pbl_height(
