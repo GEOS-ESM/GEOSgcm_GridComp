@@ -227,7 +227,7 @@ contains
 
    pure elemental real(r8) function safe(v)
      real(r8), intent(in) :: v
-     safe = merge(v, 0._r8, valid(v))
+     safe = merge(v, 0._r8, .true.)   ! valid(v))        !rrXbo 10Sep2025
    end function safe
 
 !-------------------------------------------------------------
