@@ -116,7 +116,6 @@ contains
 
     real                                    :: SYNCUV
     real                                    :: SYNCTQ
-    logical                                 :: DEBUG_SYNCTQ
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
     character(len=ESMF_MAXSTR)              :: TendUnits
     character(len=ESMF_MAXSTR)              :: SURFRC
@@ -196,8 +195,6 @@ contains
     call MAPL_GetResource ( MAPL, SYNCUV, Label="SYNCUV:", DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, SYNCTQ, Label="SYNCTQ:", DEFAULT= 1.0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DEBUG_SYNCTQ, Label="DEBUG_SYNCTQ:", DEFAULT= .false., RC=STATUS)
     VERIFY_(STATUS)
 
 !BOS
@@ -2588,7 +2585,7 @@ contains
    logical                             :: NEED_STN
    logical                             :: DPEDT_PHYS
    real                                :: DT
-   logical                             :: DEBUG_SYNCTQ
+   logical                             :: DEBUG_SYNCTQ, DEBUG_PHYINC
    real                                :: SYNCUV, SYNCTQ, DOPHYSICS
    real                                :: HGT_SURFACE
 
@@ -2794,6 +2791,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource(STATE, DEBUG_SYNCTQ, Label="DEBUG_SYNCTQ:", DEFAULT= .false., RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource(STATE, DEBUG_PHYINC, Label="DEBUG_PHYINC:", DEFAULT= .false., RC=STATUS)
+    VERIFY_(STATUS)                    
     call MAPL_GetResource(STATE, DOPHYSICS, 'DOPHYSICS:', DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
                     HGT_SURFACE = 50.0
@@ -3616,10 +3615,11 @@ contains
         if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWC ', TDPOLD*DPI + DT*PTR3D)
         call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSWNA', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWNA', TDPOLD*DPI + DT*PTR3D)
+      endif
 
+      if (DEBUG_PHYINC) then
         call MAPL_MaxMin('FRI: INT ', (TDPOLD + DT*INTDIS)*DPI)
         call MAPL_MaxMin('FRI: TOP ', (TDPOLD + DT*TOPDIS)*DPI)
-
         call MAPL_MaxMin('PHYINC: OLD ', (TDPOLD          )*DPI)
         call MAPL_MaxMin('PHYINC: TIR ', (TDPOLD + DT*TIR )*DPI)
         call MAPL_MaxMin('PHYINC: STN ', (TDPOLD + DT*STN )*DPI)
