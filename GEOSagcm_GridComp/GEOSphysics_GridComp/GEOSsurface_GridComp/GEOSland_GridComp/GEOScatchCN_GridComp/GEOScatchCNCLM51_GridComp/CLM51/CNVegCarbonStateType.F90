@@ -650,12 +650,12 @@ contains
     SHR_ASSERT_ALL_FL((ubound(soilbiogeochem_totsomc_col) == (/bounds%endc/)), sourcefile, __LINE__)
     SHR_ASSERT_ALL_FL((ubound(soilbiogeochem_ctrunc_col)  == (/bounds%endc/)), sourcefile, __LINE__)
 
-    ! --- make non visited patches safe
-    this%dispvegc_patch(bounds%begp:bounds%endp) = 0._r8
-    this%storvegc_patch(bounds%begp:bounds%endp) = 0._r8
-    this%totvegc_patch(bounds%begp:bounds%endp) = 0._r8
-    this%totc_patch   (bounds%begp:bounds%endp) = 0._r8
-    this%woodc_patch  (bounds%begp:bounds%endp) = 0._r8    
+    !rrXbo 10Sep2025 ! --- make non visited patches safe
+    !rrXbo 10Sep2025 this%dispvegc_patch(bounds%begp:bounds%endp) = 0._r8
+    !rrXbo 10Sep2025 this%storvegc_patch(bounds%begp:bounds%endp) = 0._r8
+    !rrXbo 10Sep2025 this%totvegc_patch(bounds%begp:bounds%endp) = 0._r8
+    !rrXbo 10Sep2025 this%totc_patch   (bounds%begp:bounds%endp) = 0._r8
+    !rrXbo 10Sep2025 this%woodc_patch  (bounds%begp:bounds%endp) = 0._r8    
 
     do fp = 1,num_soilp
        p = filter_soilp(fp)
