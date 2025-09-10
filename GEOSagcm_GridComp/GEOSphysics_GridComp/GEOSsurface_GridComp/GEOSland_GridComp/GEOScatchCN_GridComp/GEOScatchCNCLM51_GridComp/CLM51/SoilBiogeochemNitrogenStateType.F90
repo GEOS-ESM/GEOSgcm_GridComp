@@ -8,7 +8,7 @@
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
                                 NUM_ZON, VAR_COL
   use clm_varcon       , only : spval, dzsoi_decomp, zisoi
-  use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp, use_soil_matrixcn, iulog
+  use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp, use_soil_matrixcn   !, iulog   !rrXbo 10Sep2025
   use decompMod        , only : bounds_type
   use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
   use LandunitType                       , only : lun

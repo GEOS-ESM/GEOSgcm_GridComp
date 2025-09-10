@@ -4,7 +4,7 @@ module CNVegNitrogenStateType
   use MAPL_ExceptionHandling
   use clm_varctl       , only : use_matrixcn, use_crop
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp
-  use clm_varctl       , only : iulog
+  !use clm_varctl       , only : iulog     !rrXbo 10Sep2025
   use clm_varpar       , only : NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT, &
                                 numpft, CN_zone_weight
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan

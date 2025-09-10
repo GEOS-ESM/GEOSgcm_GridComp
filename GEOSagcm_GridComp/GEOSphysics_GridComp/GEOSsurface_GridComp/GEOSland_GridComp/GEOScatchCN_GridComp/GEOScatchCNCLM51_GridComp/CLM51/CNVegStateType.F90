@@ -5,7 +5,7 @@ module CNVegStateType
   use clm_varpar       , only : nlevsno, nlevgrnd, nlevlak, nlevsoi, &
                                 num_zon, num_veg, var_col, var_pft, numpft
   use clm_varcon       , only : spval, ispval
-  use clm_varctl       , only : iulog
+  !use clm_varctl       , only : iulog      !rrXbo 10Sep2025
   use decompMod        , only : bounds_type
   use AnnualFluxDribbler, only : annual_flux_dribbler_type, annual_flux_dribbler_patch
 
