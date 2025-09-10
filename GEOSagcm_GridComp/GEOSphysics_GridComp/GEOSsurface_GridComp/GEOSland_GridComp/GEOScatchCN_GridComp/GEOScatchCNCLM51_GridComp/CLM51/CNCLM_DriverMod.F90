@@ -62,8 +62,9 @@ module CNCLM_DriverMod
   public :: get_CN_LAI
   
 contains
-
-!---------------------------------
+  
+  !---------------------------------
+  
   subroutine CN_Driver(istep,nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
        rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,et365d,gdp,&
        abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
@@ -592,6 +593,10 @@ contains
     
     !----------------
     
+    !rrXbo10Sep2025 ! Clean slate: zero arrays so any unassigned slots are safe in the restart
+    !rrXbo10Sep2025 cncol(:,:,:)   = 0.0
+    !rrXbo10Sep2025 cnpft(:,:,:,:) = 0.0
+
     n  = 0
     np = 0
 
