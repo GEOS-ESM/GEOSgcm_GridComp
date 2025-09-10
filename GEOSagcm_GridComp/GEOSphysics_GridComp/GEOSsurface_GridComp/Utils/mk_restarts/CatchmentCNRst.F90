@@ -228,7 +228,8 @@ contains
            call MAPL_VarRead( formatter, "TPREC10D", catch%TPREC10D, __RC__)
            call MAPL_VarRead( formatter, "TPREC60D", catch%TPREC60D, __RC__)
            call MAPL_VarRead( formatter, "ET365D",   catch%ET365D  , __RC__)   ! rreichle, bug fix 4 Aug 2025: added for CLM51  
-           call MAPL_VarRead( formatter, "RUNSURF",  catch%RUNSURF , __RC__)   ! rreichle, bug fix 4 Aug 2025: added for CLM51 
+
+           call MAPL_VarRead( formatter, "RUNSURF",  catch%RUNSURF , __RC__)   ! rreichle, bug fix 9 Sep 2025: added for CLM51  
 
         endif !! <— close CLM40/CLM51 branch
 
@@ -410,7 +411,6 @@ contains
         call MAPL_VarWrite( formatter, "TPREC60D", this%TPREC60D, __RC__)
         call MAPL_VarWrite( formatter, "ET365D",   this%ET365D  , __RC__)
         call MAPL_VarWrite( formatter, "RUNSURF",  this%RUNSURF , __RC__)
-
 
      endif
      
