@@ -222,12 +222,13 @@ contains
  real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  integer  :: n, p, nc, nz, np, nv
- integer(INT64) :: nstep_cn   ! number of CN model steps run
+ integer(INT64) :: dummy_int64  ! number of CN model steps run
 
  !-------------------------------
 
-  ! update time step 
-  nstep_cn = get_nstep(istep)
+  ! update time step
+  ! reichle, 9 Sep 2025: must call get_nstep() to update "save" variable within get_nstep(), which is needed by fire code
+  dummy_int64 = get_nstep(istep)
 
   ! update CLM types with current states
 
