@@ -264,12 +264,11 @@ contains
        cold_start = .true.
     end if
 
-    ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
+    ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM51, else abort 
     if ((cold_start.eqv..false.) .and. ((size(cncol,3).ne.var_col) .or. &
        (size(cnpft,4).ne.var_pft))) then
        _ASSERT(.FALSE.,'option CNCLM50_cold_start = .FALSE. requires a CNCLM50 restart file')
     end if
-
 
     allocate(this%c3flag_patch      (begp:endp))             ; this%c3flag_patch      (:)     =.false.
     allocate(this%ac_phs_patch      (begp:endp,2,1:nlevcan)) ; this%ac_phs_patch      (:,:,:) = nan
@@ -346,9 +345,10 @@ contains
     allocate(this%luvcmax25top_patch(begp:endp))           ; this%luvcmax25top_patch(:) = nan
     allocate(this%lujmax25top_patch (begp:endp))           ; this%lujmax25top_patch(:)  = nan
     allocate(this%lutpu25top_patch  (begp:endp))           ; this%lutpu25top_patch(:)   = nan
-!!
-!    allocate(this%psncanopy_patch   (begp:endp))           ; this%psncanopy_patch   (:)   = nan
-!    allocate(this%lmrcanopy_patch   (begp:endp))           ; this%lmrcanopy_patch   (:)   = nan
+    !!
+    !    allocate(this%psncanopy_patch   (begp:endp))           ; this%psncanopy_patch   (:)   = nan
+    !    allocate(this%lmrcanopy_patch   (begp:endp))           ; this%lmrcanopy_patch   (:)   = nan
+    
     if(use_luna)then
       ! NOTE(bja, 2015-09) because these variables are only allocated
       ! when luna is turned on, they can not be placed into associate
@@ -372,21 +372,30 @@ contains
 !
 !     this%modifyphoto_and_lmr_forcrop = .true. ! jkolassa, Feb 2022: Default for CLM50 and up
 
-  ! initialize types from restart file or through cold start values
 
-  np = 0
-  do nc = 1,nch        ! catchment tile loop
-    do nz = 1,num_zon    ! CN zone loop
-       do p = 0,numpft  ! PFT index loop
-          np = np + 1
-          ! Using 0._r8 is safer than spval, because spval value can propagate if any path uses alpha before it’s overwritten.
-          ! If someday we do want alpha to persist across restarts, we  need to: (1) pick free indices, (2) write them in CN_exit, and (3) read those same indices here. 
-          ! Until then, don’t read them from cnpft ... we will use what we calculate.          
-          this%alphapsnsun_patch(np) = 0._r8
-          this%alphapsnsha_patch(np) = 0._r8
-       end do ! p
-     end do ! nz
-  end do ! nc
+    ! The original CatchCN51 implementation was filling "alphapsn" from the CatchCN51 restart (CNPFT(:,:,[76,77]),
+    !   but the variables indices [76,77] used to do so are associated with vegwp_patch(:,[1,2]) in subroutine CN_exit().
+    !   It is not clear if "alphapsn" is used anywhere in CatchCN51.  For now, change the generic NaN
+    !   initialization from above to "spval" for the "defined" PFTs. - reichle, 11 Sep 2025
+
+    np = 0
+    do nc = 1,nch        ! catchment tile loop
+       do nz = 1,num_zon    ! CN zone loop
+          do p = 0,numpft  ! PFT index loop
+             np = np + 1
+             do nv = 1,num_veg ! defined veg loop
+                
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
+                   
+                   this%alphapsnsun_patch(np) = spval    ! spval instead of NaN from generic init above    !rrXbo, 10Sep2025
+                   this%alphapsnsha_patch(np) = spval    ! spval instead of NaN from generic init above    !rrXbo, 10Sep2025
+                   
+                end if     ! ityp==p .and. fveg>FVEG_MIN  
+                
+             end do        ! nv
+          end do           ! p
+       end do              ! nz
+    end do                 ! nc
 
   end subroutine Init
 
@@ -750,8 +759,8 @@ contains
           this%fpsn_wp_patch(p)   = 0._r8
 
           if ( use_c13 ) then
-             this%alphapsnsun_patch(p) = 0._r8
-             this%alphapsnsha_patch(p) = 0._r8
+             this%alphapsnsun_patch(p) = 0._r8   ! should this be 1.?  see subroutine PhotosynthesisHydraulicStress(),  [irrelevant as long as use_c13=.false. remains hard-coded],  reichle, 11 Sep 2025]
+             this%alphapsnsha_patch(p) = 0._r8   ! should this be 1.?  see subroutine PhotosynthesisHydraulicStress(),  [irrelevant as long as use_c13=.false. remains hard-coded],  reichle, 11 Sep 2025]
              this%c13_psnsun_patch(p)  = 0._r8
              this%c13_psnsha_patch(p)  = 0._r8
           endif
@@ -1961,8 +1970,8 @@ contains
                kp_z(p,sha,iv) = 0._r8
 
                if ( use_c13 ) then
-                  alphapsn_sun(p) = 1._r8
-                  alphapsn_sha(p) = 1._r8
+                  alphapsn_sun(p) = 1._r8   ! should this be 0.?  see subroutine TimeStepInit(),  [irrelevant as long as use_c13=.false. remains hard-coded],  reichle, 11 Sep 2025]
+                  alphapsn_sha(p) = 1._r8   ! should this be 0.?  see subroutine TimeStepInit(),  [irrelevant as long as use_c13=.false. remains hard-coded],  reichle, 11 Sep 2025]
                end if
 
             else                                     ! day time
