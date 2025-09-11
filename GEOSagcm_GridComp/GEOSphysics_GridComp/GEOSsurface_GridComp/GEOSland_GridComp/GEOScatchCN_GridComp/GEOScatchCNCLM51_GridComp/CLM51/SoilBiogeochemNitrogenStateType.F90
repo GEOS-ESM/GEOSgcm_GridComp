@@ -105,14 +105,15 @@ contains
     safe = merge(v, 0._r8, .true.)   ! valid(v))        !rrXbo 10Sep2025
   end function safe
 
-  pure elemental real(r8) function clamp_nonneg(v) result(out)
-    real(r8), intent(in) :: v
-    real(r8) :: x
-    x = safe(v)              ! NaN/CF-fill/SPVAL -> 0 (via safe), else pass through
-    if (x < 0._r8) x = 0._r8 ! pools are nonnegative
-    if (x > N_MAX) x = 0._r8 ! treat absurd values as missing
-    out = x
-  end function clamp_nonneg  
+!rrXbo, 10Sep2025
+!  pure elemental real(r8) function clamp_nonneg(v) result(out)
+!    real(r8), intent(in) :: v
+!    real(r8) :: x
+!    x = safe(v)              ! NaN/CF-fill/SPVAL -> 0 (via safe), else pass through
+!    if (x < 0._r8) x = 0._r8 ! pools are nonnegative
+!    if (x > N_MAX) x = 0._r8 ! treat absurd values as missing
+!    out = x
+!  end function clamp_nonneg  
 
 !-------------------------------------------
  subroutine Init(this, bounds, nch, cncol)
@@ -199,17 +200,17 @@ contains
           
           ! 2) total mineral N
           ! jkolassa May 2022: for now nlevdecomp_full = 1; will need to add loop if we introduce more soil layers
-          this%sminn_vr_col(n,1:nlevdecomp_full)  = clamp_nonneg( real(cncol(nc,nz,24), r8) )
+          this%sminn_vr_col(n,1:nlevdecomp_full)   = max(cncol(nc,nz,24), 0._r8 )                                         !rrXbo, 10Sep2025
           this%sminn_col(n)                        = this%sminn_vr_col(n,1)
           
           ! 3) split into NO3/NH4
           if (no_cn51_rst) then ! jkolassa Nov 2024: when no CN51 restart file is available compute NO3 and NH4 from N
             ! derive split if no CN51 restart present
-            this%smin_no3_col(n) = clamp_nonneg( (1.25_r8/2.25_r8)*this%sminn_col(n) )
-            this%smin_nh4_col(n) = clamp_nonneg(  this%sminn_col(n)/2.25_r8         )
+            this%smin_no3_col(n) = max( (1.25_r8/2.25_r8)*this%sminn_col(n), 0._r8 )                                       !rrXbo, 10Sep2025
+            this%smin_nh4_col(n) = max(  this%sminn_col(n)/2.25_r8         , 0._r8 )                                       !rrXbo, 10Sep2025
           else
-            this%smin_no3_col(n) = clamp_nonneg( real(cncol(nc,nz,36), r8) )
-            this%smin_nh4_col(n) = clamp_nonneg( real(cncol(nc,nz,37), r8) )
+            this%smin_no3_col(n) = max( cncol(nc,nz,36),                     0._r8 )                                       !rrXbo, 10Sep2025
+            this%smin_nh4_col(n) = max( cncol(nc,nz,37),                     0._r8 )                                       !rrXbo, 10Sep2025
           end if
           
           ! 4) mirror scalars into vertically-resolved arrays (nlevdecomp_full is 1 today, but this stays valid if >1 later)
@@ -218,7 +219,7 @@ contains
 
           do np = 1,ndecomp_pools
              ! jkolassa May 2022: accounting for fact that pool order in CNCOL is different from CTSM
-             this%decomp_npools_col   (n,np) = clamp_nonneg( real(cncol(nc,nz,decomp_npool_cncol_index(np)), r8) )
+             this%decomp_npools_col   (n,np) = max(  cncol(nc,nz,decomp_npool_cncol_index(np)), 0._r8 )                     !rrXbo, 10Sep2025
              this%decomp_npools_1m_col(n,np) = this%decomp_npools_col(n,np)
              ! jkolassa May 2022: loop has to be added below if we add more biogeochemical (or soil) layers
              this%decomp_npools_vr_col(n,1,np) = this%decomp_npools_col(n,np)
