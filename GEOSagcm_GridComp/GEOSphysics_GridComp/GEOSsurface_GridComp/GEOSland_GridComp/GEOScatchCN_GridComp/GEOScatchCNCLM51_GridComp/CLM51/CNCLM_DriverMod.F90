@@ -619,7 +619,7 @@ contains
           ! jkolassa: variables below transitioned from being column-level to being gridcell-level in CLM;
           !           assuming here that quantities are spread over zones according to zone weight
           cncol(nc,nz, 7) = bgc_vegetation_inst%c_products_inst%prod100_grc(        nc) * CN_zone_weight(nz) 
-          cncol(nc,nz, 8) = bgc_vegetation_inst%c_products_inst%prod100_grc(        nc) * CN_zone_weight(nz)
+          cncol(nc,nz, 8) = bgc_vegetation_inst%c_products_inst%prod10_grc(         nc) * CN_zone_weight(nz)
           cncol(nc,nz, 9) = bgc_vegetation_inst%cnveg_carbonstate_inst%seedc_grc(   nc) * CN_zone_weight(nz)
           
           cncol(nc,nz,14) = bgc_vegetation_inst%cnveg_carbonstate_inst%totc_col(     n  )
@@ -628,7 +628,7 @@ contains
           
           
           cncol(nc,nz,21) = bgc_vegetation_inst%n_products_inst%prod100_grc(        nc) * CN_zone_weight(nz) 
-          cncol(nc,nz,22) = bgc_vegetation_inst%n_products_inst%prod100_grc(        nc) * CN_zone_weight(nz)
+          cncol(nc,nz,22) = bgc_vegetation_inst%n_products_inst%prod10_grc(         nc) * CN_zone_weight(nz)
           cncol(nc,nz,23) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%seedn_grc( nc) * CN_zone_weight(nz)
           
           cncol(nc,nz,24) = soilbiogeochem_nitrogenstate_inst%sminn_vr_col(          n,1)
