@@ -103,8 +103,10 @@ contains
     begg = bounds%begg ; endg = bounds%endg
 
     ! check whether a cn5_cold_start option was set and change cold_start accordingly
-    if (present(cn5_cold_start) .and. (cn5_cold_start.eqv..true.)) then
-       cold_start = .true.
+    if (present(cn5_cold_start)) then
+       if (cn5_cold_start .eqv. .true.) then
+          cold_start = .true.
+       end if
     end if
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
