@@ -4,6 +4,21 @@
 
 import os
 import glob
+import re
+
+def topo_version_for_bcs(bcs_version: str) -> str:
+    """
+    Decide which TOPO set to use based on BCS version chosen in the questionnaire.
+    - v14 and later → TOPO v2
+    - v13 and earlier (and NL*/ICA/GM4/F25) → TOPO v1
+    """
+    v = (bcs_version or "").strip()
+   ## m = re.fullmatch(r"[vV](\d+)", v)
+    m = re.match(r"[vV]?(\d+)", v)  # relaxed tolerance if we change names
+    if m:
+        return "v2" if int(m.group(1)) >= 14 else "v1"
+    # NL3, NL4, NL5, ICA, GM4, F25, etc.
+    return "v1"
 
 def get_script_head() :
 
@@ -170,6 +185,29 @@ if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
 else
     /bin/cp -p {MAKE_BCS_INPUT_DIR}/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4 land/shared/CO2_MonthlyMean_DiurnalCycle.nc4
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
+endif
+
+
+# Link TOPO into this BCS directory based on bcs_version
+# You can override with: setenv TOPO_VERSION v1|v2  before launching the job
+if ( $?TOPO_VERSION ) then
+    set topo_version = $TOPO_VERSION
+else
+    set topo_version = {TOPO_VERSION}
+endif
+
+if ( ! -d TOPO ) mkdir -p TOPO
+set topo_dir  = CF{NC}x6C{SGNAME}     # e.g., CF0024x6C or CF0540x6C-SG001
+set topo_root = {MAKE_BCS_INPUT_DIR}/atmosphere/TOPO
+set topo_src  = $topo_root/$topo_version/$topo_dir
+
+if ( -e TOPO/$topo_dir ) then
+    echo "TOPO/$topo_dir already exists; not relinking."
+else if ( -d $topo_src ) then
+     /bin/ln -s $topo_src TOPO/$topo_dir
+    echo "Linked TOPO/$topo_dir -> $topo_src"
+else
+    echo "WARNING: TOPO source not found: $topo_src"
 endif
 
 # adjust permissions

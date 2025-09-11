@@ -5,21 +5,57 @@
 import os
 from make_bcs_questionary import *
 from make_bcs_shared import * 
+import re
+from datetime import datetime
+import subprocess
+
+def _resolve_versions(bcs_version: str):
+    """
+    Returns (mom6_bathy_version, topo_version) as 'v1' or 'v2'
+    Rule: v14+ -> v2; else -> v1. Non-numeric (NL3, ICA, GM4...) -> v1.
+    """
+    v = (bcs_version or "").strip()
+    m = re.match(r'[vV]?(\d+)', v)
+    vnum = int(m.group(1)) if m else None
+    use_v2 = vnum is not None and vnum >= 14
+    return ("v2" if use_v2 else "v1", "v2" if use_v2 else "v1")
+
+def _build_mom6_link_lines(inputdir: str, preferred_version: str) -> str:
+    """
+    Build csh lines to symlink MOM6 datasets.
+    Prefer `preferred_version` (v1 or v2) per size; if missing, fall back to the other version.
+    Emits an echo note on fallback; warns if a size is missing in both.
+    """
+    sizes = ["72x36", "540x458", "1440x1080"]
+    other = "v1" if preferred_version == "v2" else "v2"
+
+    lines = ['if ( ! -d data/MOM6 ) mkdir -p data/MOM6']
+    for size in sizes:
+        src_pref = os.path.join(inputdir, "ocean", "MOM6", preferred_version, size)
+        src_other = os.path.join(inputdir, "ocean", "MOM6", other,            size)
+
+        if os.path.isdir(src_pref):
+            src = src_pref
+            note = ""
+        elif os.path.isdir(src_other):
+            src = src_other
+            note = f'echo "NOTE: MOM6 {preferred_version}/{size} not found; using {other}/{size}"'
+        else:
+            lines.append(f'echo "WARNING: MOM6 {size} missing in both v1 and v2; skipping"')
+            continue
+
+        lines.append(f'if ( -e data/MOM6/{size} ) /bin/rm -f data/MOM6/{size}')
+        if note:
+            lines.append(note)
+        lines.append(f'ln -s {src} data/MOM6/{size}')
+    return "\n".join(lines)
 
 cube_template = """
-
-if ({lbcsv} == "v14")
-    {mom6_bathy_version} = "v2"
-else
-    {mom6_bathy_version} = "v1"
-endif
 
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/72x36 data/MOM6/72x36
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/540x458 data/MOM6/540x458
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/1440x1080 data/MOM6/1440x1080
+{MOM6_LINK_LINES}
 
 
 if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
@@ -144,6 +180,9 @@ def make_bcs_cube(config):
   if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
+  MOM6_BATHY_VERSION, TOPO_VERSION = _resolve_versions(config['lbcsv'])
+  MOM6_LINK_LINES = _build_mom6_link_lines(config['inputdir'], MOM6_BATHY_VERSION)
+
   script_template = get_script_head() + cube_template + get_script_mv(config['grid_type'])
 
   script_string = script_template.format(\
@@ -182,6 +221,9 @@ def make_bcs_cube(config):
            STRETCH = STRETCH, \
            SGNAME  = SGNAME, \
            SGPARAM = SGPARAM, \
+           TOPO_VERSION = TOPO_VERSION,
+           mom6_bathy_version = MOM6_BATHY_VERSION,
+           MOM6_LINK_LINES = MOM6_LINK_LINES,                              
            IS_STRETCHED = IS_STRETCHED, \
            NCPUS = config['NCPUS'])
 
@@ -218,6 +260,5 @@ if __name__ == "__main__":
    answers = ask_questions()
    configs = get_configs_from_answers(answers)
    for config in configs:
-      if grid_type in ["Stretched_CS", "Cubed-Sphere"] :
-         make_bcs_cube(config)
-
+       if config['grid_type'] in ["Stretched_CS", "Cubed-Sphere"]:
+           make_bcs_cube(config)   
