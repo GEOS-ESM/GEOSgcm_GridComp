@@ -1548,19 +1548,13 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'CT   ','CM   ','CQ   ',                  &
-                         'BSTAR','USTAR'              /),          &
+         SHORT_NAME  = (/'CT    ','CM    ','CQ    ',               &
+                         'BSTAR ','USTAR ','Z0    ','Z0H    ',     &
+                         'FRLAND','EVAP  ','SH    '/),             &
          DST_ID      = TURBL,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
      VERIFY_(STATUS)
-
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'FRLAND','EVAP  ','SH    '/),             &
-         DST_ID      = TURBL,                                      &
-         SRC_ID      = SURF,                                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
 
 ! Radiation Imports
 !-------------------
@@ -3627,6 +3621,7 @@ contains
         call MAPL_MaxMin('PHYINC: FRI ', (TDPOLD + DT*FRI )*DPI)
         call MAPL_MaxMin('PHYINC: TIG ', (TDPOLD + DT*TIG )*DPI)
         call MAPL_MaxMin('PHYINC: TICU', (TDPOLD + DT*TICU)*DPI)
+        call MAPL_MaxMin('PHYINC: TOT ', (TDPOLD + DT*TOT )*DPI)
       endif
 
        IF(DO_SPPT) THEN

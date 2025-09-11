@@ -520,6 +520,26 @@ contains
 !                                                       RC=STATUS  )
 !     VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'Z0',                                &
+        LONG_NAME          = 'surface_roughness',                 &
+        UNITS              = 'm',                                 &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'Z0H',                               &
+        LONG_NAME          = 'surface_roughness_for_heat',        &
+        UNITS              = 'm',                                 &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'FRLAND',                            &
         LONG_NAME          = 'land_fraction',                     &
@@ -1330,9 +1350,18 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'Blackadar_length_scale_for_scalars',                    &
+       LONG_NAME  = 'Blackadar_length_scale_for_heat',                       &
        UNITS      = 'm',                                                     &
        SHORT_NAME = 'ALH',                                                   &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Blackadar_length_scale_for_momentum',                   &
+       UNITS      = 'm',                                                     &
+       SHORT_NAME = 'ALM',                                                   &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -2943,7 +2972,7 @@ end if
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: AREA, VARFLT
      real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, QRTOT, QSTOT, QGTOT, FCLD
-     real, dimension(:,:,:), pointer     :: ALH
+     real, dimension(:,:,:), pointer     :: ALM,ALH
      real, dimension(:    ), pointer     :: PREF
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
@@ -2954,6 +2983,7 @@ end if
 
 !     real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
+     real, dimension(:,:  ), pointer     :: Z0, Z0H
      real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND,TRINVBS,TRINVFRQ,TRINVDELT
      real, dimension(:,:  ), pointer     :: TCZPBL => null()
      real, dimension(:,:  ), pointer     :: ZPBL2 => null()
@@ -3009,7 +3039,11 @@ end if
      logical                             :: ALLOC_ZPBL10p, CALC_ZPBL10p
      logical                             :: PDFALLOC
 
-     real                                :: LOUISKH, LOUISKM, ALHFAC, ALMFAC
+     logical                             :: OLD_LOUIS
+     real                                :: LOUIS_B_KH, LOUIS_B_KM
+     real                                :: LOUIS_C_KH, LOUIS_C_KM 
+     real                                :: LOUIS_D_KH, LOUIS_D_KM 
+     real                                :: ALHFAC, ALMFAC
      real                                :: LAMBDAM, LAMBDAM2
      real                                :: LAMBDAH, LAMBDAH2
      real                                :: ZKHMENV
@@ -3022,7 +3056,7 @@ end if
      real                                :: PCEFF_SURF, VSCALE_SURF, KHSFCFAC_LND, KHSFCFAC_OCN
 
      real                                :: SMTH_HGT
-     integer                             :: I,J,L,LOCK_ON,ITER
+     integer                             :: I,J,L,LOCK_ON,ITER,MO_MAX_ITER
      integer                             :: KPBLMIN,PBLHT_OPTION
 
      ! SCM idealized surface-layer parameters
@@ -3150,6 +3184,8 @@ end if
      call MAPL_GetPointer(IMPORT, BSTAR,   'BSTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,    Z0,      'Z0', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,   Z0H,     'Z0H', RC=STATUS); VERIFY_(STATUS)
 
      ! Imports for CLASP heterogeneity coupling in EDMF
 !     call MAPL_GetPointer(IMPORT, MFTHSRC, 'MFTHSRC',RC=STATUS); VERIFY_(STATUS)
@@ -3168,9 +3204,14 @@ end if
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=300.0,  RC=STATUS); VERIFY_(STATUS)
      endif
+     call MAPL_GetResource (MAPL, OLD_LOUIS,   trim(COMP_NAME)//"_OLD_LOUIS:",   default=.false.,    RC=STATUS); VERIFY_(STATUS)
      if (JASON_TRB) then
-       call MAPL_GetResource (MAPL, LOUISKH,      trim(COMP_NAME)//"_LOUISKH:",      default=5.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LOUISKM,      trim(COMP_NAME)//"_LOUISKM:",      default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_B_KH,   trim(COMP_NAME)//"_LOUIS_B_KH:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_C_KH,   trim(COMP_NAME)//"_LOUIS_C_KH:",   default=7.5,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_D_KH,   trim(COMP_NAME)//"_LOUIS_D_KH:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_B_KM,   trim(COMP_NAME)//"_LOUIS_B_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_C_KM,   trim(COMP_NAME)//"_LOUIS_C_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_D_KM,   trim(COMP_NAME)//"_LOUIS_D_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,    RC=STATUS); VERIFY_(STATUS)
@@ -3200,9 +3241,14 @@ end if
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, MO_MAX_ITER, trim(COMP_NAME)//"_MO_MAX_ITER:",   default=0,      RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, LOUISKH,      trim(COMP_NAME)//"_LOUISKH:",      default=5.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LOUISKM,      trim(COMP_NAME)//"_LOUISKM:",      default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_B_KH,   trim(COMP_NAME)//"_LOUIS_B_KH:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_C_KH,   trim(COMP_NAME)//"_LOUIS_C_KH:",   default=7.5,    RC=STATUS); VERIFY_(STATUS)   
+       call MAPL_GetResource (MAPL, LOUIS_D_KH,   trim(COMP_NAME)//"_LOUIS_D_KH:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_B_KM,   trim(COMP_NAME)//"_LOUIS_B_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_C_KM,   trim(COMP_NAME)//"_LOUIS_C_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_D_KM,   trim(COMP_NAME)//"_LOUIS_D_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-3.0,   RC=STATUS); VERIFY_(STATUS)
@@ -3218,22 +3264,23 @@ end if
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.15e-3,RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=150.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=150.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=3000.,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,      RC=STATUS); VERIFY_(STATUS)  
-       call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,    RC=STATUS); VERIFY_(STATUS)
-       AKHMMAX = MIN(1.0,225.0/DT)*200.0 ! Critical for INTDIS stability with long DTs
+       call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=150.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=450.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=3000.,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,    RC=STATUS); VERIFY_(STATUS)  
+       call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,  RC=STATUS); VERIFY_(STATUS)
+       AKHMMAX = MAX( 1.0,MIN(1.0, 90.0/DT)*200.0) ! Critical for INTDIS stability with long DTs
        call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=AKHMMAX,    RC=STATUS); VERIFY_(STATUS)
-       RI_MAX = MIN(1.0,225.0/DT)*300.0  ! Critical for INTDIS stability with long DTs
-       call MAPL_GetResource (MAPL, RI_MAX,       trim(COMP_NAME)//"_RI_MAX:",       default=RI_MAX,     RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, RI_MIN,       trim(COMP_NAME)//"_RI_MIN:",       default=-RI_MAX/3., RC=STATUS); VERIFY_(STATUS)
+       RI_MIN  = MAX(10.0,MIN(1.0, 90.0/DT)*100.0)  ! Critical for INTDIS stability with long DTs
+       call MAPL_GetResource (MAPL, RI_MAX,       trim(COMP_NAME)//"_RI_MAX:",       default= RI_MIN*3,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, RI_MIN,       trim(COMP_NAME)//"_RI_MIN:",       default=-RI_MIN,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,      RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, MO_MAX_ITER, trim(COMP_NAME)//"_MO_MAX_ITER:",   default=15,         RC=STATUS); VERIFY_(STATUS)
      endif
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
@@ -3364,6 +3411,8 @@ end if
      call MAPL_GetPointer(EXPORT,   CLDRF,   'CLDRF',               RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,     ALH,     'ALH',               RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,     ALM,     'ALM',               RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  AKSODT,  'AKSODT',               RC=STATUS)
      VERIFY_(STATUS)
@@ -3517,6 +3566,7 @@ end if
       KHSFC = 0.0
       KHRAD = 0.0
       if(associated( ALH))  ALH = 0.0
+      if(associated( ALM))  ALM = 0.0 
       if(associated(KHLS)) KHLS = 0.0
       if(associated(KMLS)) KMLS = 0.0
 
@@ -4002,15 +4052,31 @@ end if
       VERIFY_(STATUS)
 
       if (DO_SHOC == 0) then
-        call LOUIS_KS_OPTIMIZED( IM,JM,LM,DT, &
+        if (OLD_LOUIS) then
+        call LOUIS_KS( IM,JM,LM,            &
             Z,ZL0,TSM,USM,VSM,ZPBL,         &
-            KH, KM, RI, LOUISKH, LOUISKM,   &
+            KH, KM, RI,                     &
+            LOUIS_B_KH,LOUIS_B_KM,          &
+            MINSHEAR, MINTHICK,             &
+            LAMBDAM, LAMBDAM2,              & 
+            LAMBDAH, LAMBDAH2,              & 
+            ALHFAC, ALMFAC,                 &
+            ZKHMENV, AKHMMAX,               &
+            DU, ALH, KMLS, KHLS             )
+        else
+        call LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DT, &
+            ZL0,TSM,USM,VSM,ZPBL,Z0,Z0H,    &
+            KH, KM, RI,                     &
+            LOUIS_B_KH,LOUIS_B_KM,          & 
+            LOUIS_C_KH,LOUIS_C_KM,          &
+            LOUIS_D_KH,LOUIS_D_KM,          &
             MINSHEAR, MINTHICK,             &
             LAMBDAM, LAMBDAM2,              & 
             LAMBDAH, LAMBDAH2,              & 
             ALHFAC, ALMFAC,                 &
             ZKHMENV, AKHMMAX, RI_MIN, RI_MAX, &
-            DU, ALH, KMLS, KHLS             )
+            DU, ALM, ALH, KMLS, KHLS             )
+         endif
       end if
 
 
@@ -4438,15 +4504,17 @@ end if
           TKE(:,:,0) = 1e-6
           TKE(:,:,LM) = 1e-6
         else
-          TKE = 1e-6 ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
-          do L = 1,LM-1
-            TKE(:,:,L) = ( LAMBDADISS * &
-            ( -1.*(KH(:,:,L)*MAPL_GRAV/((TSM(:,:,L) + TSM(:,:,L+1))*0.5)  *  ((TSM(:,:,L) - TSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
-            (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
-            (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
-            TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
-          enddo
-          TKE = max(1e-6, TKE) ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
+         !TKE = 1e-6 ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
+         !do L = 1,LM-1
+         !  TKE(:,:,L) = ( LAMBDADISS * &
+         !  ( -1.*(KH(:,:,L)*MAPL_GRAV/((TSM(:,:,L) + TSM(:,:,L+1))*0.5)  *  ((TSM(:,:,L) - TSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
+         !  (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
+         !  (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
+         !  TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
+         !enddo
+         !TKE = max(1e-6, TKE) ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
+          call COMPUTE_TKE_FROM_PRODUCTION(IM, JM, LM, LAMBDADISS, &
+                                           KH, KM, TSM, U, V, Z, TKE)
 
           ! If not running SHOC, estimate ISOTROPY from KH and TKE,
           ! based on Eq. 7 from Bogenschutz and Krueger (2013).
@@ -4827,35 +4895,10 @@ end if
       ZPBL = MIN(ZPBL,Z(:,:,KPBLMIN))
       KPBL = MAX(KPBL,float(KPBLMIN))
   
-     ! Calc KPBL using surface turbulence, for use in shallow scheme
+      ! Calc KPBL using surface turbulence, for use in shallow scheme
       if (associated(KPBL_SC)) then
-        KPBL_SC = MAPL_UNDEF
-        do I = 1, IM
-          do J = 1, JM
-            if (DO_SHOC==0) then
-              temparray(1:LM+1) = KHSFC(I,J,0:LM)
-            else
-              temparray(1:LM+1) = KH(I,J,0:LM)
-            endif
-            maxkh = maxval(temparray)
-            do L=LM-1,2,-1
-              if ( (temparray(L) < 0.1*maxkh) .and. (temparray(L+1) >= 0.1*maxkh)  &
-              .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
-                 KPBL_SC(I,J) = float(L)
-              end if
-            end do
-            if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then
-              KPBL_SC(I,J) = float(LM)
-            endif
-          end do
-        end do
-      endif
-      if (associated(KPBL_SC) .and. associated(ZPBL_SC)) then
-        do I = 1, IM
-          do J = 1, JM
-             ZPBL_SC(I,J) = Z(I,J,KPBL_SC(I,J))
-          end do
-        end do
+         call COMPUTE_SHALLOW_CONVECTION_PBL(IM, JM, LM, KH, Z, &
+                                             KPBL_SC, ZPBL_SC)
       endif
 
       if (associated(PPBL)) then
@@ -6440,29 +6483,275 @@ end subroutine RUN1
 
 !*********************************************************************
 !*********************************************************************
-!*********************************************************************
 
-!*********************************************************************
+! !IROUTINE:  LOUIS_KS -- Computes atmospheric diffusivities at interior levels
 
-! !IROUTINE:  LOUIS_KS -- Optimized Computes atmospheric diffusivities at interior levels
+! !INTERFACE:
 
-subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,DTIME, &
-      ZZ,ZE,PV,UU,VV,ZPBL,        &
-      KH,KM,RI,LOUISKH,LOUISKM,   & 
+   subroutine LOUIS_KS( IM,JM,LM,    &
+         ZZ,ZE,PV,UU,VV,ZPBL,        &
+         KH,KM,RI,LOUISKH,LOUISKM,   & 
+         MINSHEAR, MINTHICK,         &
+         LAMBDAM, LAMBDAM2,          &
+         LAMBDAH, LAMBDAH2,          &
+         ALHFAC, ALMFAC,             &
+         ZKHMENV, AKHMMAX,           &
+         DU_DIAG, ALH_DIAG,KMLS_DIAG,KHLS_DIAG)
+
+! !ARGUMENTS:
+
+      ! Inputs
+      integer, intent(IN   ) :: IM,JM,LM
+      real,    intent(IN   ) ::   ZZ(IM,JM,  LM) ! Height of layer center above the surface (m).
+      real,    intent(IN   ) ::   PV(IM,JM,  LM) ! Virtual potential temperature at layer center (K).
+      real,    intent(IN   ) ::   UU(IM,JM,  LM) ! Eastward velocity at layer center (m s-1).
+      real,    intent(IN   ) ::   VV(IM,JM,  LM) ! Northward velocity at layer center (m s-1).
+      real,    intent(IN   ) ::   ZE(IM,JM,0:LM) ! Height of layer base above the surface (m).
+      real,    intent(IN   ) :: ZPBL(IM,JM     ) ! PBL Depth (m)
+
+      ! Outputs
+      real,    intent(  OUT) ::   KM(IM,JM,0:LM) ! Momentum diffusivity at base of each layer (m+2 s-1).
+      real,    intent(  OUT) ::   KH(IM,JM,0:LM) ! Heat diffusivity at base of each layer  (m+2 s-1).
+      real,    intent(  OUT) ::   RI(IM,JM,0:LM) ! Richardson number
+   
+      ! Diagnostic outputs
+      real,    pointer       ::   DU_DIAG(:,:,:) ! Magnitude of wind shear (s-1).
+      real,    pointer       ::  ALH_DIAG(:,:,:) ! Blackadar Length Scale diagnostic (m) [Optional] 
+      real,    pointer       :: KMLS_DIAG(:,:,:) ! Momentum diffusivity at base of each layer (m+2 s-1).
+      real,    pointer       :: KHLS_DIAG(:,:,:) ! Heat diffusivity at base of each layer  (m+2 s-1).
+
+      ! These are constants
+      real,    intent(IN   ) :: LOUISKH, LOUISKM ! Louis scheme parameters (usually 5).
+      real,    intent(IN   ) :: MINSHEAR     ! Min shear allowed in Ri calculation (s-1).
+      real,    intent(IN   ) :: MINTHICK     ! Min layer thickness (m).
+      real,    intent(IN   ) :: LAMBDAM      ! Blackadar(1962) length scale parameter for momentum (m).
+      real,    intent(IN   ) :: LAMBDAM2     ! Second Blackadar parameter for momentum (m).
+      real,    intent(IN   ) :: LAMBDAH      ! Blackadar(1962) length scale parameter for heat (m).
+      real,    intent(IN   ) :: LAMBDAH2     ! Second Blackadar parameter for heat (m).
+      real,    intent(IN   ) :: ALHFAC
+      real,    intent(IN   ) :: ALMFAC
+      real,    intent(IN   ) :: ZKHMENV      ! Transition height for reduction of diffusivity in the free atm (m)
+      real,    intent(IN   ) :: AKHMMAX      ! Maximum allowe diffusivity (m+2 s-1).
+
+! !DESCRIPTION: Computes Louis et al.(1979) Richardson-number-based diffusivites,
+!                as well as an additional ``entrainment'' diffusivity.
+!                The Louis diffusivities for momentum, $K_m$, and for heat
+!   and moisture, $K_h$, are defined at the interior layer edges. For LM layers,
+!   we define diffusivities at the base of the top LM-1 layers. All indexing
+!   is from top to bottom of the atmosphere. 
+!
+!
+!  The Richardson number, Ri, is defined at the same edges as the diffusivities. 
+!  $$
+!  {\rm Ri}_l = \frac{ \frac{g}{\left(\overline{\theta_v}\right)_l}\left(\frac{\delta \theta_v}{\delta z}\right)_l }
+!                    { \left(\frac{\delta {\bf |V|}}{\delta z}\right)^2_l             }, \, \,  l=1,LM-1
+!  $$
+!  where $\theta_v=\theta(1+\epsilon q)$ is the virtual potential temperature,
+!  $\epsilon=\frac{M_a}{M_w}-1$, $M_a$ and $M_w$ are the molecular weights of
+!  dry air and water, and $q$ is the specific humidity.
+!  $\delta \theta_v$ is the difference of $\theta_v$ in the layers above and below the edge 
+!  at which Ri$_l$ is defined; $\overline{\theta_v}$ is their average.
+!
+!  The diffusivities at the layer edges have the form:
+!  $$
+!  K^m_l = (\ell^2_m)_l \left(\frac{\delta {\bf |V|}}{\delta z}\right)_l f_m({\rm Ri}_l)
+!  $$
+!  and
+!  $$
+!  K^h_l = (\ell^2_h)_l \left(\frac{\delta {\bf |V|}}{\delta z}\right)_l f_h({\rm Ri}_l),
+!  $$
+!  where $k$ is the Von Karman constant, and $\ell$ is the 
+!  Blackdar(1962) length scale, also defined at the layer edges.
+!
+!  Different turbulent length scales can be used for heat and momentum. 
+!  in both cases, we use the  traditional formulation:
+!  $$
+!  (\ell_{(m,h)})_l  = \frac{kz_l}{1 + \frac{kz_l}{\lambda_{(m,h)}}},
+!  $$
+!  where, near the surface, the scale is proportional to $z_l$, the height above 
+!  the surface of edge level $l$, and far from the surface it approaches $\lambda$.
+!  The length scale $\lambda$ is usually taken to be a constant (order 150 m), assuming
+!  the same scale for the outre boundary layer and the free atmosphere. We make it
+!  a function of height, reducing its value in the free atmosphere. The momentum
+!  length scale written as:
+!  $$
+!  \lambda_m = \max(\lambda_1 e^{\left(\frac{z_l}{z_T}\right)^2}, \lambda_2)
+!  $$
+!  where $\lambda_2 \le \lambda_1$ and $z_T$ is the top of the boundary layer.
+!  The length scale for heat and other scalers is taken as: $\lambda_h =  \sqrt\frac{3d}{2} \lambda_m$,
+!  following the scheme used at ECMWF.
+!
+!  The two universal functions of the Richardson number,  $f_m$ and $f_h$,
+!  are taken from Louis et al (1982). For unstable conditions (Ri$\le 0$),
+!  they are:
+!  $$
+!  f_m = (1 - 2b \psi)
+!  $$
+!  and
+!  $$
+!  f_h = (1 - 3b \psi),
+!  $$
+!  where
+!  $$
+!  \psi = \frac{ {\rm Ri} }{ 1 + 3bC(z)\sqrt{-{\rm Ri}} },
+!  $$
+!  and
+!  $$
+!  C(z)=
+!  $$
+
+!  For stable condition (Ri$\ge 0$), they are
+!  $$
+!  f_m = \frac{1}{1.0 + \frac{2b{\rm Ri}}{\psi}}
+!  $$
+!  and
+!  $$
+!  f_h = \frac{1}{1.0 + 3b{\rm Ri}\psi},
+!  $$
+!  where
+!  $$
+!  \psi =  \sqrt{1+d{\rm Ri}}.
+!  $$
+!  As in Louis et al (1982), the parameters appearing in these are taken  
+!  as $b = c = d = 5$. 
+
+
+!EOP
+
+! Locals
+
+      real, dimension(IM,JM,LM-1) :: ALH, ALM, DV, DZ, DT, TM, LAMBDAM_X, LAMBDAH_X, RLS
+      real, dimension(IM,JM     ) :: pbllocal
+
+      integer :: I,J,L
+      real :: PS
+      real, parameter :: r13 = 1.0/3.0
+      real, parameter :: r32 = 3.0/2.0
+
+! Begin...
+
+!===>   Initialize output arrays
+
+      KH = 0.0
+      KM = 0.0
+      RI = 0.0
+
+!===>   Initialize pbllocal
+
+      pbllocal = ZPBL
+      where ( pbllocal .LE. ZZ(:,:,LM) ) pbllocal = ZZ(:,:,LM)
+
+!===>   Quantities needed for Richardson number (all layer edges above the surface layer)
+
+      DZ(:,:,:) = (ZZ(:,:,1:LM-1) - ZZ(:,:,2:LM))
+      TM(:,:,:) = (PV(:,:,1:LM-1) + PV(:,:,2:LM))*0.5
+      DT(:,:,:) = (PV(:,:,1:LM-1) - PV(:,:,2:LM))
+      DV(:,:,:) = (UU(:,:,1:LM-1) - UU(:,:,2:LM))**2 + &
+                  (VV(:,:,1:LM-1) - VV(:,:,2:LM))**2
+
+!===>   Limits on distance between layer centers and vertical shear at edges.
+
+      DZ = max(DZ, MINTHICK)
+      DV = SQRT(DV)/DZ
+      DT = DT/DZ
+
+!===>   Richardson number  ( RI = G*(DTheta_v/DZ) / (Theta_v*|DV/DZ|^2) )
+
+      RI(:,:,1:LM-1) = MAPL_GRAV*DT/(TM*(MAX(DV, MINSHEAR)**2))
+
+!===>   Blackadar(1962) length scale: $1/l = 1/(kz) + 1/\lambda$
+
+     ! 0.1 * local PBL includes diurnal variability on the Blackadar length scale
+      pbllocal = 0.1*pbllocal
+      do L = 1, LM-1
+         LAMBDAM_X(:,:,L) = MAX( pbllocal , LAMBDAM2)
+         LAMBDAH_X(:,:,L) = MAX( pbllocal , LAMBDAH2)
+      end do
+
+     ! cap the Blackadar length scales
+      LAMBDAM_X = MIN(LAMBDAM_X,LAMBDAM)
+      LAMBDAH_X = MIN(LAMBDAH_X,LAMBDAH)
+
+      ALM = ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAM_X) ) )**2
+      ALH = ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAH_X) ) )**2
+
+      if (associated(ALH_DIAG)) then
+         ALH_DIAG(:,:,0) = 0.0
+         ALH_DIAG(:,:,1:LM-1) = SQRT( ALH )
+         ALH_DIAG(:,:,LM) = 0.0
+      endif
+
+      do L=1,LM-1
+        do J=1,JM
+          do I=1,IM
+            if ( RI(I,J,L) < 0.0 ) then
+             !===> UnStable case PS from eqs 14 and 24 of Louis, 1979
+              PS = ( (ZZ(I,J,L)/ZZ(I,J,L+1))**r13 - 1.0 )**3
+              PS = SQRT( (PS/(ZE(I,J,L)*(DZ(I,J,L)**3))) * ABS(RI(I,J,L)) )
+
+              KM(I,J,L) = 1.0 - 10.0*RI(I,J,L) / &
+                               (1.0 + 15.0*LOUISKM*ALM(I,J,L)*PS)
+              KH(I,J,L) = 1.0 - 15.0*RI(I,J,L) / &
+                               (1.0 + 15.0*LOUISKH*ALH(I,J,L)*PS)
+            else
+             !===>   Stable case
+              PS = sqrt(1.0 + 5.0*RI(I,J,L))
+
+              KM(I,J,L) = 1.0 / (1.0 + 10.0*RI(I,J,L)/PS)
+              KH(I,J,L) = 1.0 / (1.0 + 15.0*RI(I,J,L)*PS)
+            end if
+          end do
+        end do
+      end do
+
+!===>   Reduction length in the free atmosphere eq 3.12 (IFS Documentation Cycle CY25r1)
+
+      RLS = (0.2 + (0.8)/(1.0 + (ZE(:,:,1:LM-1)/ZKHMENV)**2))**2
+
+!===>   DIMENSIONALIZE Kz and LIMIT DIFFUSIVITY
+
+      KM(:,:,1:LM-1) = ALMFAC*ALM*KM(:,:,1:LM-1)*DV*RLS
+      KH(:,:,1:LM-1) = ALHFAC*ALH*KH(:,:,1:LM-1)*DV*RLS
+
+   if (DEBUG_TRB) then
+      call MAPL_MaxMin('LOUIS: RI', RI)
+      call MAPL_MaxMin('LOUIS: KM', KM)
+      call MAPL_MaxMin('LOUIS: KH', KH)
+   endif 
+
+      KM  = min(KM, AKHMMAX)
+      KH  = min(KH, AKHMMAX)
+
+      if (associated(  DU_DIAG)) then
+         DU_DIAG(:,:,0) = 0.0
+         DU_DIAG(:,:,1:LM-1) = DV
+         DU_DIAG(:,:,LM) = 0.0
+      endif
+      if (associated(KMLS_DIAG)) KMLS_DIAG = KM
+      if (associated(KHLS_DIAG)) KHLS_DIAG = KH
+
+  end subroutine LOUIS_KS
+
+
+! !IROUTINE:  LOUIS_KS_OPTIMIZED -- Optimized Computes atmospheric diffusivities at interior levels
+
+subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
+      ZE,PV,UU,VV,ZPBL,Z0,Z0H,    &
+      KH,KM,RI,                   &
+      LOUIS_B_KH,LOUIS_B_KM,      & 
+      LOUIS_C_KH,LOUIS_C_KM,      &
+      LOUIS_D_KH,LOUIS_D_KM,      &
       MINSHEAR, MINTHICK,         &
       LAMBDAM, LAMBDAM2,          &
       LAMBDAH, LAMBDAH2,          &
       ALHFAC, ALMFAC,             &
       ZKHMENV, AKHMMAX, RI_MIN, RI_MAX,           &
-      DU_DIAG, ALH_DIAG,KMLS_DIAG,KHLS_DIAG)
+      DU_DIAG,ALM_DIAG,ALH_DIAG,KMLS_DIAG,KHLS_DIAG)
 
    implicit none
 
    ! Physical constants
-   real, parameter :: KARMAN = 0.4              ! von Karman constant
    real, parameter :: BLACKADAR_SCALE = 0.1     ! PBL local scaling factor
-   real, parameter :: FREE_ATM_COEF1 = 0.2      ! Free atmosphere coefficient 1
-   real, parameter :: FREE_ATM_COEF2 = 0.8      ! Free atmosphere coefficient 2
    real, parameter :: R13 = 1.0/3.0             ! 1/3 power
    real, parameter :: GRAV = 9.81               ! Gravitational acceleration
    real, parameter :: MIN_DIFFUSIVITY = 0.01    ! Minimum diffusivity
@@ -6470,36 +6759,53 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,DTIME, &
    real, parameter :: MAX_PS_DIVISOR = 0.1      ! Maximum PS divisor
    
    ! Arguments (same as original)
-   integer, intent(IN) :: IM,JM,LM
+   integer, intent(IN) :: IM,JM,LM,MO_MAX_ITER
    real, intent(IN) :: DTIME
-   real, intent(IN) :: ZZ(IM,JM,LM), PV(IM,JM,LM), UU(IM,JM,LM), VV(IM,JM,LM)
-   real, intent(IN) :: ZE(IM,JM,0:LM), ZPBL(IM,JM)
+   real, intent(IN) :: PV(IM,JM,LM), UU(IM,JM,LM), VV(IM,JM,LM)
+   real, intent(IN) :: ZE(IM,JM,0:LM), ZPBL(IM,JM), Z0(IM,JM), Z0H(IM,JM)
    real, intent(OUT) :: KM(IM,JM,0:LM), KH(IM,JM,0:LM), RI(IM,JM,0:LM)
-   real, intent(IN) :: LOUISKH, LOUISKM, MINSHEAR, MINTHICK
+   real, intent(IN) :: LOUIS_B_KH,LOUIS_B_KM
+   real, intent(IN) :: LOUIS_C_KH,LOUIS_C_KM
+   real, intent(IN) :: LOUIS_D_KH,LOUIS_D_KM
+   real, intent(IN) :: MINSHEAR, MINTHICK
    real, intent(IN) :: LAMBDAM, LAMBDAM2, LAMBDAH, LAMBDAH2
    real, intent(IN) :: ALHFAC, ALMFAC, ZKHMENV, AKHMMAX, RI_MIN, RI_MAX
-   real, pointer :: DU_DIAG(:,:,:), ALH_DIAG(:,:,:), KMLS_DIAG(:,:,:), KHLS_DIAG(:,:,:)
+   real, pointer :: DU_DIAG(:,:,:), ALM_DIAG(:,:,:), ALH_DIAG(:,:,:), KMLS_DIAG(:,:,:), KHLS_DIAG(:,:,:)
 
    ! Local variables - optimized memory layout
-   real :: dz_inv, dt_local, dv_local, shear_sq, buoyancy_freq_sq
-   real :: ri_local, ps_stable, ps_unstable, km_factor, kh_factor
-   real :: alm_local, alh_local, rls_local, cfl_limit
-   real :: pbl_local, lambda_m, lambda_h
-   real :: z_ratio, height_factor, karman_z
-   
+   real :: dz, dz_inv, th_avg, dth_local, shear, shear_sq
+   real :: ri_local, ps_stable, ps_unstable, km_local, kh_local
+   real :: lm_local, lh_local, am_local, ah_local, z_exp, zm_factor, zh_factor, cfl_limit
+   real :: pbl_local, z_ratio, karman_z
+   real, allocatable :: S_M(:,:), S_H(:,:)
+
    integer :: i, j, l
 
+   if (associated(ALM_DIAG)) ALM_DIAG = 0.0
+   if (associated(ALH_DIAG)) ALH_DIAG = 0.0
+
+   allocate(S_M(IM,JM))
+   allocate(S_H(IM,JM))
+
+   if (MO_MAX_ITER > 0) then
+       call ComputeMOScaling(MO_MAX_ITER, IM, JM, LM, ZE, Z0, Z0H, ZPBL, UU, VV, PV, &
+                             S_M, S_H)
+   else
+       S_M = 1.0
+       S_H = 1.0
+   endif
+
    ! Initialize arrays
-   KM = 0.0
-   KH = 0.0
+   KM = MIN_DIFFUSIVITY
+   KH = MIN_DIFFUSIVITY
    RI = 0.0
 
    ! Optimized main computation loop
-   !$OMP PARALLEL DO PRIVATE(i,j,l,dz_inv,dt_local,dv_local,shear_sq, &
-   !$OMP                     buoyancy_freq_sq,ri_local,ps_stable,ps_unstable, &
-   !$OMP                     km_factor,kh_factor,alm_local,alh_local,rls_local, &
-   !$OMP                     cfl_limit,pbl_local,lambda_m,lambda_h,z_ratio, &
-   !$OMP                     height_factor,karman_z) &
+   !$OMP PARALLEL DO PRIVATE(i,j,l,dz_inv,dth_local,shear,shear_sq, &
+   !$OMP                     dz,th_avg,ri_local,ps_stable,ps_unstable, &
+   !$OMP                     km_local,kh_local,lm_local,lh_local,am_local,ah_local,z_exp,zm_factor,zh_factor, &
+   !$OMP                     cfl_limit,pbl_local,z_ratio, &
+   !$OMP                     karman_z) &
    !$OMP             COLLAPSE(2) SCHEDULE(STATIC)
    do l = 1, LM-1
       do j = 1, JM
@@ -6507,67 +6813,72 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,DTIME, &
          do i = 1, IM
             
             ! Pre-compute frequently used values
-            dz_inv = 1.0 / max(ZZ(i,j,l+1) - ZZ(i,j,l), MINTHICK)
-            
-            ! Compute shear squared
-            shear_sq = ((UU(i,j,l+1) - UU(i,j,l)) * dz_inv)**2 + &
-                      ((VV(i,j,l+1) - VV(i,j,l)) * dz_inv)**2
+
+            ! layer thickness
+            dz = max(ZE(i,j,l) - ZE(i,j,l+1), MINTHICK)
+            dz_inv = 1.0 / dz
+
+            ! delta-theta and theta-layer
+            dth_local =  PV(i,j,l) - PV(i,j,l+1)
+            th_avg    = (PV(i,j,l) + PV(i,j,l+1))*0.5
+
+            ! Wind shear squared
+            shear_sq = ((UU(i,j,l) - UU(i,j,l+1)) * dz_inv)**2 + &
+                       ((VV(i,j,l) - VV(i,j,l+1)) * dz_inv)**2
             shear_sq = max(shear_sq, MINSHEAR**2)
-            
-            ! Compute buoyancy frequency squared
-            dt_local = PV(i,j,l+1) - PV(i,j,l)
-            buoyancy_freq_sq = GRAV * dt_local * dz_inv / &
-                              max(0.5 * (PV(i,j,l+1) + PV(i,j,l)), 200.0)
+            shear = sqrt(shear_sq)
+            if (associated(DU_DIAG)) DU_DIAG(i,j,l) = shear
             
             ! Richardson number
-            ri_local = buoyancy_freq_sq / shear_sq
-            ri_local = max(RI_MIN, min(ri_local, RI_MAX))
+            ri_local = (GRAV/th_avg) * dth_local * dz_inv / shear_sq
+           !ri_local = max(RI_MIN, min(ri_local, RI_MAX))
             RI(i,j,l) = ri_local
-            
-            ! Blackadar length scales - optimized
-            pbl_local = BLACKADAR_SCALE * ZPBL(i,j)
-            lambda_m = max(pbl_local, LAMBDAM2)
-            lambda_h = max(pbl_local, LAMBDAH2)
-            lambda_m = min(lambda_m, LAMBDAM)
-            lambda_h = min(lambda_h, LAMBDAH)
-            
-            karman_z = KARMAN * ZE(i,j,l)
-            alm_local = (karman_z / (1.0 + karman_z/lambda_m))**2
-            alh_local = (karman_z / (1.0 + karman_z/lambda_h))**2
-            
-            ! Free atmosphere reduction
-            height_factor = ZE(i,j,l) / ZKHMENV
-            rls_local = (FREE_ATM_COEF1 + FREE_ATM_COEF2/(1.0 + height_factor**2))**2
-            
-            ! Dimensionless velocity
-            dv_local = sqrt(shear_sq)
-            
+
+            ! Cap asymptotic mixing lengths to boundary layer height if provided
+            pbl_local = BLACKADAR_SCALE * max(ZPBL(i,j),ZE(i,j,LM))
+            lm_local = min(max(pbl_local,LAMBDAM2),LAMBDAM)
+            lh_local = min(max(pbl_local,LAMBDAH2),LAMBDAH)
+            ! Blackadar mixing Lengths
+            karman_z = MAPL_KARMAN * ZE(i,j,l)
+            am_local = ( karman_z / ( 1.0 + karman_z/lm_local ) )**2
+            ah_local = ( karman_z / ( 1.0 + karman_z/lh_local ) )**2
+
+            if (associated(ALM_DIAG)) ALM_DIAG(i,j,l) = SQRT(am_local)
+            if (associated(ALH_DIAG)) ALH_DIAG(i,j,l) = SQRT(ah_local)
+
             ! Stability functions - optimized with minimal branching
             if (ri_local < 0.0) then
-               ! Unstable case - Louis 1979 equations 14 and 24
-               z_ratio = ZZ(i,j,l) / ZZ(i,j,l+1)
-               ps_unstable = (z_ratio**R13 - 1.0)**3
-               ps_unstable = sqrt((ps_unstable / (ZE(i,j,l) * (ZZ(i,j,l+1) - ZZ(i,j,l))**3)) * &
-                                abs(ri_local))
-               ps_unstable = max(ps_unstable, STABILITY_EPS)
-               
-               km_factor = 1.0 - 10.0*ri_local / max(1.0 + 15.0*LOUISKM*alm_local*ps_unstable, MAX_PS_DIVISOR)
-               kh_factor = 1.0 - 15.0*ri_local / max(1.0 + 15.0*LOUISKH*alh_local*ps_unstable, MAX_PS_DIVISOR)
+               ! Unstable case
+               ps_unstable = max(sqrt((ZE(I,J,L)/Z0(i,j)) * abs(ri_local)), STABILITY_EPS)
+                ! Momentum
+               km_local = am_local * ( 1.0 - 2.0*LOUIS_B_KM*ri_local / &
+                                   max( 1.0 + 2.0*LOUIS_B_KM*am_local*LOUIS_C_KM*ps_unstable, MAX_PS_DIVISOR) )
+                ! Heat
+               ps_unstable = max(sqrt((ZE(I,J,L)/Z0H(i,j)) * abs(ri_local)), STABILITY_EPS)
+               kh_local = ah_local * ( 1.0 - 2.0*LOUIS_B_KH*ri_local / &
+                                   max( 1.0 + 2.0*LOUIS_B_KH*ah_local*LOUIS_C_KH*ps_unstable, MAX_PS_DIVISOR) )
             else
                ! Stable case
-               ps_stable = sqrt(1.0 + 5.0*ri_local)
-               ps_stable = max(ps_stable, MAX_PS_DIVISOR)
-               
-               km_factor = 1.0 / (1.0 + 10.0*ri_local/ps_stable)
-               kh_factor = 1.0 / (1.0 + 15.0*ri_local*ps_stable)
+                ! Momentum 
+               ps_stable = max(sqrt(1.0 + LOUIS_D_KM*ri_local), STABILITY_EPS)
+               km_local = am_local * ( 1.0 / (1.0 + 2.0*LOUIS_B_KM*ri_local/max(ps_stable,MAX_PS_DIVISOR)) )
+                ! Heat
+               ps_stable = max(sqrt(1.0 + LOUIS_D_KH*ri_local), STABILITY_EPS)
+               kh_local = ah_local * ( 1.0 / (1.0 + 3.0*LOUIS_B_KH*ri_local*ps_stable) )
             endif
-            
-            ! Dimensionalize
-            KM(i,j,l) = ALMFAC * alm_local * km_factor * dv_local * rls_local
-            KH(i,j,l) = ALHFAC * alh_local * kh_factor * dv_local * rls_local
-            
-            ! CFL limiting - optimized
-            cfl_limit = min(0.5 * (ZZ(i,j,l+1) - ZZ(i,j,l))**2 / DTIME, AKHMMAX)
+
+            ! Free atmosphere reduction
+            z_exp = exp(-1.0 * ZE(i,j,l)/max(min(ZPBL(i,j),ZKHMENV),1.0e-6))
+           !z_exp = (0.2 + (0.8)/(1.0 + (ZE(i,j,l)/ZKHMENV)**2))**2
+            zm_factor = S_M(i,j) * z_exp
+            zh_factor = S_H(i,j) * z_exp
+
+            ! Eddy diffusivities
+            KM(i,j,l) = ALMFAC * km_local * shear * zm_factor
+            KH(i,j,l) = ALHFAC * kh_local * shear * zh_factor
+
+            ! CFL limiting
+            cfl_limit = 0.5 * dz*dz / max(DTIME, 1.0e-12)
             KM(i,j,l) = max(MIN_DIFFUSIVITY, min(KM(i,j,l), cfl_limit))
             KH(i,j,l) = max(MIN_DIFFUSIVITY, min(KH(i,j,l), cfl_limit))
             
@@ -6576,52 +6887,107 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,DTIME, &
    end do
    !$OMP END PARALLEL DO
 
-   if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: RI', RI)
-   if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: KM', KM)
-   if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: KH', KH)
+   if (DEBUG_TRB) then
+      call MAPL_MaxMin('LOUIS: RI', RI)
+      call MAPL_MaxMin('LOUIS: KM', KM)
+      call MAPL_MaxMin('LOUIS: KH', KH)
+   endif
 
-   ! Handle diagnostic outputs efficiently
-   call update_diagnostics()
-
-contains
-
-   subroutine update_diagnostics()
-      if (associated(DU_DIAG)) then
-         !$OMP PARALLEL DO PRIVATE(i,j,l) COLLAPSE(2)
-         do l = 1, LM-1
-            do j = 1, JM
-               do i = 1, IM
-                  DU_DIAG(i,j,l) = sqrt(((UU(i,j,l+1) - UU(i,j,l))/(ZZ(i,j,l+1) - ZZ(i,j,l)))**2 + &
-                                       ((VV(i,j,l+1) - VV(i,j,l))/(ZZ(i,j,l+1) - ZZ(i,j,l)))**2)
-               end do
-            end do
-         end do
-         !$OMP END PARALLEL DO
-      endif
-      
-      if (associated(ALH_DIAG)) then
-         ALH_DIAG(:,:,0) = 0.0
-         ALH_DIAG(:,:,LM) = 0.0
-         !$OMP PARALLEL DO PRIVATE(i,j,l) COLLAPSE(2)
-         do l = 1, LM-1
-            do j = 1, JM
-               do i = 1, IM
-                  pbl_local = BLACKADAR_SCALE * ZPBL(i,j)
-                  lambda_h = max(pbl_local, LAMBDAH2)
-                  lambda_h = min(lambda_h, LAMBDAH)
-                  karman_z = KARMAN * ZE(i,j,l)
-                  ALH_DIAG(i,j,l) = sqrt((karman_z / (1.0 + karman_z/lambda_h))**2)
-               end do
-            end do
-         end do
-         !$OMP END PARALLEL DO
-      endif
-      
-      if (associated(KMLS_DIAG)) KMLS_DIAG = KM
-      if (associated(KHLS_DIAG)) KHLS_DIAG = KH
-   end subroutine update_diagnostics
+   if (associated(KMLS_DIAG)) KMLS_DIAG = KM
+   if (associated(KHLS_DIAG)) KHLS_DIAG = KH
 
 end subroutine LOUIS_KS_OPTIMIZED
+
+subroutine ComputeMOScaling(MO_MAX_ITER, IM, JM, LM, ZE, Z0, Z0H, ZPBL, UU, VV, PV, &
+                            S_M, S_H)
+   use MAPL_ConstantsMod, only: MAPL_GRAV, MAPL_KARMAN
+   implicit none
+
+   integer, intent(IN) :: MO_MAX_ITER, IM, JM, LM
+   real, intent(IN) :: ZE(IM,JM,0:LM), Z0(IM,JM), Z0H(IM,JM), ZPBL(IM,JM)
+   real, intent(IN) :: UU(IM,JM,LM), VV(IM,JM,LM), PV(IM,JM,LM)
+   real, intent(OUT) :: S_M(IM,JM), S_H(IM,JM)
+
+   ! Local parameters
+   real,    parameter :: MO_TOL = 1.0e-4
+   real,    parameter :: ASSUMED_DTH = 0.1
+   real,    parameter :: EPS = 1.0e-12
+
+   ! Local variables
+   integer :: i,j, iter
+   real :: zref, Uref, tref, ustar, Cd, Ch, Lmo
+   real :: log_m, log_h, psi_m, psi_h, denom
+   real :: dtheta_surf, tmpval
+
+   !$OMP PARALLEL DO PRIVATE(i,j,zref,Uref,tref,ustar,Cd,Ch,Lmo,log_m,log_h,psi_m,psi_h,iter,denom,dtheta_surf,tmpval) &
+   !$OMP                    COLLAPSE(2) SCHEDULE(STATIC)
+   do j = 1, JM
+      do i = 1, IM
+
+         ! initialize
+         S_M(i,j) = 1.0
+         S_H(i,j) = 1.0
+
+         ! reference surface model level
+         zref = max(ZE(i,j,LM), 1.0e-6)
+         Uref = sqrt( UU(i,j,LM)**2 + VV(i,j,LM)**2 )
+         tref = PV(i,j,LM)
+         if (Uref < 1.0e-4) Uref = 1.0e-4
+
+         log_m = log(max(zref / max(Z0(i,j),EPS), 1.01))
+         log_h = log(max(zref / max(Z0H(i,j),EPS), 1.01))
+
+         Cd = (MAPL_KARMAN / max(log_m, 1.0e-6))**2
+         Ch = (MAPL_KARMAN / max(log_h, 1.0e-6))**2
+         ustar = sqrt(max(0.0,Cd)) * Uref
+         if (ustar < 1.0e-6) ustar = 1.0e-6
+
+         dtheta_surf = ASSUMED_DTH
+         Lmo = 1.0e6
+
+         ! Iterative correction for MO
+         do iter = 1, MO_MAX_ITER
+            if (abs(Lmo) < EPS) then
+               psi_m = 0.0
+               psi_h = 0.0
+            else if (Lmo > 0.0) then
+               psi_m = -5.0 * zref / Lmo
+               psi_h = psi_m
+            else
+               tmpval = 1.0 - 16.0 * zref / Lmo
+               if (tmpval <= EPS) then
+                  psi_m = 0.0
+                  psi_h = 0.0
+               else
+                  psi_m = 2.0*log( (1.0 + tmpval**0.25)/2.0 )
+                  psi_h = 2.0*log( (1.0 + tmpval**0.5)/2.0 )
+               end if
+            end if
+
+            denom = log_m - psi_m
+            if (denom <= EPS) denom = EPS
+            Cd = (MAPL_KARMAN / denom)**2
+
+            denom = (log_m - psi_m)*(log_h - psi_h)
+            if (denom <= EPS) denom = EPS
+            Ch = MAPL_KARMAN**2 / denom
+
+            ustar = sqrt(max(0.0,Cd)) * Uref
+            if (ustar < 1.0e-6) ustar = 1.0e-6
+
+            Lmo = - (ustar**3 * tref) / (MAPL_KARMAN * MAPL_GRAV * Ch * dtheta_surf + EPS)
+            if (abs(zref / Lmo) < MO_TOL) exit
+         end do
+
+         ! near-surface scaling
+         S_M(i,j) = Cd / max(Cd, EPS)
+         S_H(i,j) = Ch / max(Ch, EPS)
+
+      end do
+   end do
+   !$OMP END PARALLEL DO
+
+end subroutine ComputeMOScaling
 
 !BOP
 ! !IROUTINE: BELJAARS_OPTIMIZED -- Optimized orographic drag following Beljaars (2003)
@@ -6928,7 +7294,264 @@ subroutine BELJAARS_OPTIMIZED(IM, JM, LM, DT, &
 end subroutine BELJAARS_OPTIMIZED
 
 
+!BOP
+! !IROUTINE: COMPUTE_TKE_FROM_PRODUCTION -- Computes TKE from turbulent energy production
+!
+! !INTERFACE:
+!
+subroutine COMPUTE_TKE_FROM_PRODUCTION(IM, JM, LM, LAMBDADISS, &
+                                       KH, KM, TSM, U, V, Z, TKE)
+!
+! !USES:
+   use MAPL_ConstantsMod, only: MAPL_GRAV
+   implicit none
+!
+! !INPUT PARAMETERS:
+   integer, intent(IN) :: IM                           ! Number of longitude points
+   integer, intent(IN) :: JM                           ! Number of latitude points  
+   integer, intent(IN) :: LM                           ! Number of vertical levels
+   real,    intent(IN) :: LAMBDADISS                   ! Dissipation length scale (m)
+   real,    intent(IN), dimension(IM,JM,0:LM) :: KH    ! Heat diffusivity (m²/s)
+   real,    intent(IN), dimension(IM,JM,0:LM) :: KM    ! Momentum diffusivity (m²/s)
+   real,    intent(IN), dimension(IM,JM,LM)   :: TSM   ! Temperature (K)
+   real,    intent(IN), dimension(IM,JM,LM)   :: U     ! Eastward wind (m/s)
+   real,    intent(IN), dimension(IM,JM,LM)   :: V     ! Northward wind (m/s)
+   real,    intent(IN), dimension(IM,JM,LM)   :: Z     ! Height above surface (m)
+!
+! !OUTPUT PARAMETERS:
+   real,    intent(OUT), dimension(IM,JM,LM) :: TKE    ! Turbulent kinetic energy (m²/s²)
+!
+! !DESCRIPTION:
+!   Computes turbulent kinetic energy from the balance of turbulent energy production
+!   and dissipation using a mixing length approach. The TKE is estimated as:
+!   
+!   $$
+!   \text{TKE} = (\lambda_{\text{diss}} \times \varepsilon)^{2/3}
+!   $$
+!   
+!   where $\varepsilon$ is the turbulent energy production rate from:
+!   - **Buoyancy production**: $P_b = -K_H \frac{g}{\theta} \frac{\partial \theta}{\partial z}$
+!   - **Shear production**: $P_s = K_M \left[\left(\frac{\partial u}{\partial z}\right)^2 + \left(\frac{\partial v}{\partial z}\right)^2\right]$
+!   
+!   The 2/3 power law comes from Kolmogorov theory relating TKE to dissipation rate
+!   and length scale: $\text{TKE} \sim (\varepsilon l)^{2/3}$
+!
+! !REVISION HISTORY:
+!   2024 - Initial implementation based on GEOS TKE calculation
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+
+   ! Physical and numerical constants
+   real, parameter :: MIN_LAYER_THICK = 1.0       ! Minimum layer thickness (m)
+   real, parameter :: MIN_TEMPERATURE = 200.0     ! Minimum temperature (K) 
+   real, parameter :: MIN_TKE = 1.0E-6            ! Minimum TKE (m²/s²)
+   real, parameter :: MAX_TKE = 100.0             ! Maximum TKE for stability (m²/s²)
+   real, parameter :: TKE_POWER = 2.0/3.0         ! Kolmogorov 2/3 power law
+   
+   ! Work variables
+   integer :: i, j, l                             ! Loop indices
+   real :: dz                                     ! Layer thickness (m)
+   real :: mean_temp                              ! Mean layer temperature (K)
+   real :: theta_grad                             ! Potential temperature gradient (K/m)
+   real :: du_dz, dv_dz                          ! Velocity shears (1/s)
+   real :: buoyancy_prod                          ! Buoyancy production (m²/s³)
+   real :: shear_prod                             ! Shear production (m²/s³)
+   real :: total_prod                             ! Total production (m²/s³)
+   real :: tke_local                              ! Local TKE value (m²/s²)
+
+!BOC
+
+   ! Initialize TKE array
+   TKE = MIN_TKE
+
+   ! Compute TKE from turbulent energy production at each layer interface
+   !$OMP PARALLEL DO DEFAULT(NONE) &
+   !$OMP SHARED(IM,JM,LM,Z,TSM,U,V,KH,KM,MAPL_GRAV,LAMBDADISS,TKE, &
+   !$OMP        MIN_LAYER_THICK,MIN_TEMPERATURE,MIN_TKE,MAX_TKE,TKE_POWER) &
+   !$OMP PRIVATE(i,j,l,dz,mean_temp,theta_grad,du_dz,dv_dz, &
+   !$OMP         buoyancy_prod,shear_prod,total_prod,tke_local) &
+   !$OMP SCHEDULE(STATIC) COLLAPSE(2)
+   do l = 1, LM-1
+      do j = 1, JM
+         do i = 1, IM
+            
+            ! Layer thickness with numerical protection
+            dz = max(abs(Z(i,j,l) - Z(i,j,l+1)), MIN_LAYER_THICK)
+            
+            ! Mean layer temperature with protection against unrealistic values
+            mean_temp = max(0.5 * (TSM(i,j,l) + TSM(i,j,l+1)), MIN_TEMPERATURE)
+            
+            ! Potential temperature gradient (dθ/dz)
+            ! Note: Negative gradient indicates unstable stratification
+            theta_grad = (TSM(i,j,l) - TSM(i,j,l+1)) / dz
+            
+            ! Velocity shears (du/dz, dv/dz)
+            du_dz = (U(i,j,l) - U(i,j,l+1)) / dz
+            dv_dz = (V(i,j,l) - V(i,j,l+1)) / dz
+            
+            ! Buoyancy production term
+            ! P_b = -K_H * (g/θ) * (dθ/dz)
+            ! For unstable conditions (dθ/dz < 0), this gives positive production
+            buoyancy_prod = -KH(i,j,l) * MAPL_GRAV * theta_grad / mean_temp
+            
+            ! Shear production term  
+            ! P_s = K_M * [(du/dz)² + (dv/dz)²]
+            ! Always positive (velocity shear creates turbulence)
+            shear_prod = KM(i,j,l) * (du_dz**2 + dv_dz**2)
+            
+            ! Total turbulent energy production rate
+            total_prod = buoyancy_prod + shear_prod
+            
+            ! Compute TKE using mixing length theory
+            if (total_prod > 0.0) then
+               ! Apply Kolmogorov 2/3 power law: TKE ~ (ε*l)^(2/3)
+               tke_local = (LAMBDADISS * total_prod)**TKE_POWER
+               
+               ! Apply physically reasonable bounds
+               TKE(i,j,l) = max(MIN_TKE, min(tke_local, MAX_TKE))
+            else
+               ! For negative or zero production, use minimum value
+               ! This can occur in strongly stable conditions where
+               ! buoyancy suppression dominates over shear production
+               TKE(i,j,l) = MIN_TKE
+            endif
+            
+         end do
+      end do
+   end do
+   !$OMP END PARALLEL DO
+
+   ! Ensure all TKE values meet minimum threshold
+   ! This is redundant but provides extra safety
+   TKE = max(MIN_TKE, TKE)
+
+!EOC
+end subroutine COMPUTE_TKE_FROM_PRODUCTION
 !*********************************************************************
+
+!BOP
+! !IROUTINE: COMPUTE_SHALLOW_CONVECTION_PBL -- Computes PBL height for shallow convection scheme
+!
+! !INTERFACE:
+!
+subroutine COMPUTE_SHALLOW_CONVECTION_PBL(IM, JM, LM, KH, Z, &
+                                          KPBL_SC, ZPBL_SC)
+!
+! !USES:
+   implicit none
+!
+! !INPUT PARAMETERS:
+   integer, intent(IN) :: IM                           ! Number of longitude points
+   integer, intent(IN) :: JM                           ! Number of latitude points
+   integer, intent(IN) :: LM                           ! Number of vertical levels
+   real,    intent(IN), dimension(IM,JM,0:LM) :: KH    ! Heat diffusivity from turbulence (m²/s)
+   real,    intent(IN), dimension(IM,JM,LM)   :: Z     ! Height above surface (m)
+!
+! !OUTPUT PARAMETERS:
+   real, pointer, intent(OUT), dimension(:,:) :: KPBL_SC      ! PBL top level index for shallow convection
+   real, pointer, intent(OUT), dimension(:,:) :: ZPBL_SC      ! PBL height for shallow convection (m)
+!
+! !DESCRIPTION:
+!   Computes planetary boundary layer height specifically for use by the shallow 
+!   convection scheme. The PBL top is defined as the level where the heat diffusivity
+!   drops below 10% of its maximum value in the column.
+!   
+!   Algorithm:
+!   1. Find maximum heat diffusivity in the vertical column
+!   2. Search downward from upper levels to find where KH first exceeds 10% of maximum
+!   3. If no clear PBL top found or maximum KH < 1 m²/s, set PBL top to surface
+!   4. Convert level index to height for ZPBL_SC
+!
+! !REVISION HISTORY:
+!   Original: Unknown
+!   2024 - Cleaned up, documented, and optimized
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+
+   ! Physical constants
+   real, parameter :: PBL_THRESHOLD_FRACTION = 0.1    ! 10% threshold for PBL detection
+   real, parameter :: MIN_SIGNIFICANT_KH = 1.0        ! Minimum KH to define meaningful PBL (m²/s)
+   
+   ! Work variables
+   integer :: i, j, l                                 ! Loop indices
+   real :: max_kh                                     ! Maximum KH in column (m²/s)
+   real :: kh_threshold                               ! 10% of maximum KH (m²/s)
+   real, dimension(LM+1) :: kh_profile                ! Vertical KH profile (m²/s)
+   logical :: pbl_found                               ! Flag for PBL top detection
+
+!BOC
+
+   if (associated(KPBL_SC) .OR. associated(ZPBL_SC)) then
+   KPBL_SC = MAPL_UNDEF
+   ! Compute PBL level index using surface turbulence
+   !$OMP PARALLEL DO DEFAULT(NONE) &
+   !$OMP SHARED(IM,JM,LM,KH,KPBL_SC,MAPL_UNDEF, &
+   !$OMP        PBL_THRESHOLD_FRACTION,MIN_SIGNIFICANT_KH) &
+   !$OMP PRIVATE(i,j,l,max_kh,kh_threshold,kh_profile,pbl_found) &
+   !$OMP SCHEDULE(STATIC) COLLAPSE(2)
+   do j = 1, JM
+      do i = 1, IM
+         
+         ! heat diffusivity profile
+         kh_profile(1:LM+1) = KH(i,j,0:LM)
+         
+         ! Find maximum heat diffusivity in the column
+         max_kh = maxval(kh_profile(1:LM+1))
+         
+         ! Only proceed if there's significant turbulent mixing
+         if (max_kh >= MIN_SIGNIFICANT_KH) then
+            
+            ! Compute threshold (10% of maximum)
+            kh_threshold = PBL_THRESHOLD_FRACTION * max_kh
+            
+            ! Search for PBL top from upper levels downward
+            ! PBL top is where KH first exceeds threshold when going down
+            pbl_found = .false.
+            do l = LM-1, 2, -1
+               if (kh_profile(l) < kh_threshold .and. &
+                   kh_profile(l+1) >= kh_threshold .and. &
+                   .not. pbl_found) then
+                  KPBL_SC(i,j) = real(l)
+                  pbl_found = .true.
+                  exit
+               endif
+            end do
+            
+         endif
+         
+         ! If no clear PBL top found, set to surface level
+         if (KPBL_SC(i,j) == MAPL_UNDEF) then
+            KPBL_SC(i,j) = real(LM)
+         endif
+         
+      end do
+   end do
+   !$OMP END PARALLEL DO
+   endif
+
+   ! Convert level indices to heights
+   if (associated(ZPBL_SC)) then
+   ZPBL_SC = MAPL_UNDEF
+   !$OMP PARALLEL DO DEFAULT(NONE) &
+   !$OMP SHARED(IM,JM,Z,KPBL_SC,ZPBL_SC) &
+   !$OMP PRIVATE(i,j) &
+   !$OMP SCHEDULE(STATIC) COLLAPSE(2)
+   do j = 1, JM
+      do i = 1, IM
+         ! Convert PBL level index to height
+         ! Use nint() to handle floating point level indices safely
+         ZPBL_SC(i,j) = Z(i,j, nint(KPBL_SC(i,j)))
+      end do
+   end do
+   !$OMP END PARALLEL DO
+   endif
+
+!EOC
+end subroutine COMPUTE_SHALLOW_CONVECTION_PBL
 
 !BOP
 

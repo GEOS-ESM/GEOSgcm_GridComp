@@ -76,6 +76,7 @@ module GEOS_GwdGridCompMod
       type (GEOS_GwdGridComp), pointer     :: PTR
    end type wrap_
 
+  logical :: DEBUG_TQ_ERRORS
   logical :: DEBUG_GWD
 
 contains
@@ -422,6 +423,7 @@ contains
       endif
 
       call MAPL_GetResource( MAPL, DEBUG_GWD,   Label="DEBUG_GWD:", default=.FALSE., _RC)
+      call MAPL_GetResource( MAPL, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., _RC)
 
       allocate(self%alpha(LM+1), _STAT)
       call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
@@ -833,7 +835,7 @@ contains
 
     if (allocated(scratch_ridge)) deallocate(scratch_ridge)
 
-    if(associated(    T_EXP )) then
+    if(associated(    T_EXP ) .and. DEBUG_TQ_ERRORS) then
         do L=1,LM
           do J=1,JM
            do I=1,IM

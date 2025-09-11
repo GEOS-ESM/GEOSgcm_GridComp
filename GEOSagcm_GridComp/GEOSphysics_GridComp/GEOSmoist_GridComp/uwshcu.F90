@@ -2699,7 +2699,10 @@ contains
 
             umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
             emf(k) = 0.
-   
+  
+            ! Limit umf based on (2x) the CFL condition
+            umf(k) = min(umf(k),2.*dp0(k)/g/dt)
+ 
             dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
 !           dcm(k) = min(1.,max(0.,xsat-xc))
 
