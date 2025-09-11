@@ -132,7 +132,10 @@ real,   parameter :: EMSSNO        =    0.99999
 ! ROOTL import from GEOS_VegdynGridComp was disabled and brought the look up table 
 ! in order to obtain ROOTL for primary and secondary types.
 
+
+
 !  map catchment type into PFT
+!  NOTE: Unlike CatchCN40/45, CatchCN51 no longer uses split PFTs (depending on moisture stress)
 !  ---------------------------
 !PFT 	Description
 ! 0 	bare
@@ -145,16 +148,12 @@ real,   parameter :: EMSSNO        =    0.99999
 ! 7 	broadleaf deciduous temperate tree
 ! 8 	broadleaf deciduous boreal tree
 ! 9 	broadleaf evergreen temperate shrub
-! 10 	broadleaf deciduous temperate shrub [moisture + deciduous]
-! 11 	broadleaf deciduous temperate shrub [moisture stress only]
-! 12 	broadleaf deciduous boreal shrub
-! 13 	arctic c3 grass
-! 14 	cool c3 grass [moisture + deciduous]
-! 15 	cool c3 grass [moisture stress only]
-! 16 	warm c4 grass [moisture + deciduous]
-! 17 	warm c4 grass [moisture stress only]
-! 18 	crop          [moisture + deciduous]
-! 19 	crop          [moisture stress only]
+! 10 	broadleaf deciduous temperate shrub 
+! 11 	broadleaf deciduous boreal shrub
+! 12 	arctic c3 grass
+! 13 	cool c3 grass 
+! 14 	warm c4 grass 
+! 15 	crop          
 
 ! Catchment types and PFT mapping:
 ! 
