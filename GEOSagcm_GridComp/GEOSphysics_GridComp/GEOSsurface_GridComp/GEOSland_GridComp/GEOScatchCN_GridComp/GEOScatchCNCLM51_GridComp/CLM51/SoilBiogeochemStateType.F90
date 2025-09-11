@@ -7,12 +7,13 @@ module SoilBiogeochemStateType
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan, &
                                 nlevsno, nlevgrnd, nlevlak
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
-                                VAR_COL, VAR_PFT, num_zon, num_veg, numpft
+                                VAR_COL, VAR_PFT, num_zon, num_veg, numpft, FVEG_MIN
   use clm_varctl       , only : use_cn
   use clm_varcon       , only : spval
   use decompMod        , only : bounds_type
-  use MAPL_ExceptionHandling
 
+  use MAPL_ExceptionHandling
+  
   ! !PUBLIC TYPES:
   implicit none
   save
@@ -109,7 +110,7 @@ contains
           this%plant_ndemand_col(n) = 0._r8
           do p = 0,numpft  ! PFT index loop
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
                    this%plant_ndemand_col(n) = this%plant_ndemand_col(n) + cnpft(nc,nz,nv, 75)
                 end if
              end do ! nv

@@ -3,7 +3,7 @@ module SurfaceAlbedoType
   use shr_kind_mod     , only : r8 => shr_kind_r8
   use nanMod           , only : nan
   use clm_varpar       , only : numrad, nlevcan, nlevsno, numpft, num_zon, num_veg, &
-                                var_col, var_pft
+                                var_col, var_pft, FVEG_MIN
   use clm_varcon       , only : spval, ispval
   use decompMod        , only : bounds_type
 
@@ -94,7 +94,6 @@ contains
     integer :: begp, endp
     integer :: begc, endc
     integer :: np, nc, nz, p, nv, n
-    real, parameter :: fmin = 1.0e-4  ! Ignore vegetation fractions at or below this value
     !-------------------------------
 
     begp = bounds%begp ; endp = bounds%endp
@@ -156,7 +155,7 @@ contains
              this%nrad_patch(np) = 1
 
              do nv = 1,num_veg ! defined veg loop
-              if (ityp(nc,nv,nz) == p .and. fveg(nc,nv,nz) > fmin) then  
+              if (ityp(nc,nv,nz) == p .and. fveg(nc,nv,nz) > FVEG_MIN) then  
                ! without this if loop we are overwriting each patch multiple times because we loop nv=1:num_veg without 
                ! checking which nv corresponds to the active PFT for patch p.
                  do n = 1, nlevcan

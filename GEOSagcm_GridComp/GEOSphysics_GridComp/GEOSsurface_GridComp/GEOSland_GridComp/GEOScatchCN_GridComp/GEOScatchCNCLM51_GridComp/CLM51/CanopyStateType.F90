@@ -4,13 +4,14 @@ module CanopyStateType
 
   use shr_kind_mod     , only : r8 => shr_kind_r8
   use clm_varpar       , only : nlevcan, nvegwcs, numpft, num_zon, num_veg, &
-                                var_col, var_pft
+                                var_col, var_pft, FVEG_MIN
   use clm_varcon       , only : spval
   !use clm_varctl       , only : iulog        !rrXbo 10Sep2025
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
-  use MAPL_ExceptionHandling
 
+  use MAPL_ExceptionHandling
+  
   ! !PUBLIC TYPES:
   implicit none
   save
@@ -155,7 +156,7 @@ contains
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                   ! "old" variables: CNCLM45 and before
                   this%elai_patch  (np) = cnpft(nc,nz,nv, 69)

@@ -17,7 +17,7 @@ module CNVegCarbonFluxType
                                 ideadcroot,ideadcroot_st,ideadcroot_xf,&
                                 igrain,igrain_st,igrain_xf,ioutc
   use clm_varpar       , only : numpft, num_zon, num_veg, &
-                                var_col, var_pft, CN_zone_weight
+                                var_col, var_pft, CN_zone_weight, FVEG_MIN
   use clm_varctl       , only : use_crop, use_matrixcn, use_cndv, use_grainproduct, iulog
   use clm_varcon       , only : dzsoi_decomp
   use pftconMod        , only : npcropmin
@@ -29,7 +29,6 @@ module CNVegCarbonFluxType
   use abortutils       , only : endrun
   use shr_log_mod                        , only : errMsg => shr_log_errMsg
 !  use SPMMod                             , only : sparse_matrix_type, diag_matrix_type, vector_type
-
 
   ! !PUBLIC TYPES:
   implicit none
@@ -1140,7 +1139,7 @@ contains
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                    this%gpp_patch(p)                   = 0._r8
                    this%excess_cflux_patch(p)          = 0._r8

@@ -10,12 +10,13 @@ module clm_varpar
 !
 ! !USES:
 !
-  use clm_varpar_shared, only :    &
-       VAR_COL => VAR_COL_51,      &
-       VAR_PFT => VAR_PFT_51,      &
-       numpft  => NUM_PFT_CN_51,   &
-       NUM_ZON => NUM_ZON_CN,      &
-       NUM_VEG => NUM_VEG_CN_51
+  use clm_varpar_shared, only :     &
+       VAR_COL  => VAR_COL_51,      &
+       VAR_PFT  => VAR_PFT_51,      &
+       numpft   => NUM_PFT_CN_51,   &
+       NUM_ZON  => NUM_ZON_CN,      &
+       NUM_VEG  => NUM_VEG_CN_51,   &
+       FVEG_MIN
   
 ! !PUBLIC TYPES:
   implicit none

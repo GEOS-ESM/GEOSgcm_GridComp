@@ -3,9 +3,9 @@ module filterMod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use nanMod     , only : nan
   use decompMod  , only : bounds_type
-  use clm_varpar , only : NUM_ZON, NUM_VEG, numpft
+  use clm_varpar , only : NUM_ZON, NUM_VEG, numpft, FVEG_MIN
   use pftconMod  , only : npcropmin
-
+  
   ! !PUBLIC TYPES:
   implicit none
   save
@@ -224,28 +224,27 @@ contains
                do nv = 1,num_veg ! defined veg loop
                   if(ityp(nc,nv,nz)==p) then
 
-                    if (fveg(nc,nv,nz)>1.e-4) then
+                    if (fveg(nc,nv,nz)>FVEG_MIN) then
                     
-                    this_filter(1)%num_nourbanp = this_filter(1)%num_nourbanp + 1
-                    this_filter(1)%nourbanp(this_filter(1)%num_nourbanp) = np
+                       this_filter(1)%num_nourbanp = this_filter(1)%num_nourbanp + 1
+                       this_filter(1)%nourbanp(this_filter(1)%num_nourbanp) = np
+                       
+                       this_filter(1)%num_soilp = this_filter(1)%num_soilp + 1
+                       this_filter(1)%soilp(this_filter(1)%num_soilp) = np
+                       
+                       ! jkolassa: not sure this is needed, since we do not use prognostic crop information
+                       if(ityp(nc,nv,nz) >= npcropmin) then
+                          this_filter(1)%num_pcropp = this_filter(1)%num_pcropp + 1
+                          this_filter(1)%pcropp(this_filter(1)%num_pcropp) = np
+                       endif
 
-                    this_filter(1)%num_soilp = this_filter(1)%num_soilp + 1
-                    this_filter(1)%soilp(this_filter(1)%num_soilp) = np
-
-                    ! jkolassa: not sure this is needed, since we do not use prognostic crop information
-                    if(ityp(nc,nv,nz) >= npcropmin) then
-                      this_filter(1)%num_pcropp = this_filter(1)%num_pcropp + 1
-                      this_filter(1)%pcropp(this_filter(1)%num_pcropp) = np
-                    endif
-
-
-!                    if (fveg(nc,nv,nz)>1.e-4) then
-
+                       ! if (fveg(nc,nv,nz)>FVEG_MIN) then
+                       
                        this_filter(1)%num_exposedvegp = this_filter(1)%num_exposedvegp + 1
                        this_filter(1)%exposedvegp(this_filter(1)%num_exposedvegp) = np
-
-                    elseif (fveg(nc,nv,nz)<=1.e-4) then
-            
+                       
+                    elseif (fveg(nc,nv,nz)<=FVEG_MIN) then
+                       
                        this_filter(1)%num_noexposedvegp = this_filter(1)%num_noexposedvegp + 1
                        this_filter(1)%noexposedvegp(this_filter(1)%num_noexposedvegp) = np
                        

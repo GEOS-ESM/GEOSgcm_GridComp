@@ -6,7 +6,7 @@ module CNVegNitrogenStateType
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp
   !use clm_varctl       , only : iulog     !rrXbo 10Sep2025
   use clm_varpar       , only : NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT, &
-                                numpft, CN_zone_weight
+                                numpft, CN_zone_weight, FVEG_MIN
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp
   use clm_varcon       , only : spval, ispval, dzsoi_decomp, zisoi
@@ -14,7 +14,7 @@ module CNVegNitrogenStateType
   use decompMod        , only : bounds_type
   use pftconMod                          , only : npcropmin
   use PatchType        , only : patch
-
+  
   ! !PUBLIC TYPES:
   implicit none
   save
@@ -474,7 +474,7 @@ contains
           do p = 0,numpft  ! PFT index loop                                                                        
              np = np + 1
              do nv = 1,NUM_VEG ! defined veg loop                                                                      
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                      this%deadcrootn_patch         (np) = safe( real(cnpft(nc,nz,nv, 48), r8) )
                      this%deadcrootn_storage_patch (np) = safe( real(cnpft(nc,nz,nv, 49), r8) )

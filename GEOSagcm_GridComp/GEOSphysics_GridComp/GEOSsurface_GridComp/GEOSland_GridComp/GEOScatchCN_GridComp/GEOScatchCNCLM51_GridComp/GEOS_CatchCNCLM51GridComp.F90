@@ -62,7 +62,8 @@ module GEOS_CatchCNCLM51GridCompMod
 
   USE  clm_varpar, ONLY :                      &
        NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT,     &
-       CN_zone_weight, map_cat, numpft
+       CN_zone_weight, map_cat, numpft,        &
+       FVEG_MIN
  
   USE MAPL
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI, MAPL_RHOWTR 
@@ -131,8 +132,6 @@ real,   parameter :: EMSSNO        =    0.99999
 
 ! ROOTL import from GEOS_VegdynGridComp was disabled and brought the look up table 
 ! in order to obtain ROOTL for primary and secondary types.
-
-
 
 !  map catchment type into PFT
 !  NOTE: Unlike CatchCN40/45, CatchCN51 no longer uses split PFTs (depending on moisture stress)
@@ -7355,7 +7354,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       do nz = 1,nzone
          do nv = 1,nveg
             do n = 1,ntiles
-               if (fveg(n,nv,nz)>1.e-4) then ! account for fact that parzone is undefined if fveg = 0
+               if (fveg(n,nv,nz)>FVEG_MIN) then ! account for fact that parzone is undefined if fveg = 0
                  para(n)     = para(n) + parzone(n,nv,nz)*wtzone(n,nz)*fveg(n,nv,nz)
                  if(associated(BTRANT)) then
                     btrant(n) = btrant(n) + btran(n,nv,nz)*fveg(n,nv,nz)*wtzone(n,nz)

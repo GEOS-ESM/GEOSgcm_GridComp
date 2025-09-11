@@ -5,7 +5,7 @@ module CNVegCarbonStateType
   use shr_kind_mod     , only : r8 => shr_kind_r8
   use clm_varctl       , only : iulog, use_cndv, use_crop, use_matrixcn
   use clm_varpar       , only : numpft, num_zon, num_veg, &
-                                var_col, var_pft, CN_zone_weight
+                                var_col, var_pft, CN_zone_weight, FVEG_MIN
   use clm_varcon       , only : spval
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
@@ -491,7 +491,7 @@ contains
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
                 
                      ! "old" variables: CNCLM45 and before
                      this%cpool_patch             (np) = cnpft(nc,nz,nv,  1)

@@ -4,8 +4,8 @@ module CNCLM_DriverMod
   
   use nanMod           , only : nan
   use CNVegetationFacade
-  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
-                                var_col, var_pft, nlevgrnd, numpft, ndecomp_pools
+  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,   &
+                                var_col, var_pft, nlevgrnd, numpft, ndecomp_pools, FVEG_MIN
   use clm_varcon       , only : grav, denh2o
   use clm_time_manager , only : is_first_step, get_nstep
   use decompMod
@@ -319,7 +319,7 @@ contains
 
              do nv = 1,num_veg ! defined veg loop
                 
-                if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>FVEG_MIN) then
                    
                    photosyns_inst%psnsun_patch(p)                              = psnsunm(nc,nv,nz)
                    photosyns_inst%psnsha_patch(p)                              = psnsham(nc,nv,nz)
@@ -507,7 +507,7 @@ contains
 
              do nv = 1,num_veg ! defined veg loop
 
-                if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                    
                    zlai(nc,nv,nz)            = canopystate_inst%elai_patch(p)
@@ -649,7 +649,7 @@ contains
 
              do nv = 1,num_veg ! defined veg loop
                 
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                    cnpft(nc,nz,nv,  1) = bgc_vegetation_inst%cnveg_carbonstate_inst%cpool_patch               (np  )
                    cnpft(nc,nz,nv,  2) = bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_patch          (np  )
@@ -791,7 +791,7 @@ contains
                   
                   ! extract LAI & SAI from CN clmtype
                   ! ---------------------------------
-                  if(ityp(nc,nv,nz)==p .and. ityp(nc,nv,nz)>0 .and. fveg(nc,nv,nz)>1.e-4) then
+                  if(ityp(nc,nv,nz)==p .and. ityp(nc,nv,nz)>0 .and. fveg(nc,nv,nz)>FVEG_MIN) then
                      elai(nc,nv,nz) = elai_clm(np)
                      if(present(esai)) esai(nc,nv,nz) = esai_clm(np)
                      if(present(tlai)) tlai(nc,nv,nz) = tlai_clm(np)
