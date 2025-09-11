@@ -1,8 +1,8 @@
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, interval, log, log10, GlobalTable
 from mpi4py import MPI
 
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, GlobalTable, K, computation, exp, interval, log, log10
 from ndsl.dsl.typing import Float, FloatField, Int
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.shared_incloud_processes import ice_fraction
@@ -81,30 +81,34 @@ def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
     with computation(PARALLEL), interval(...):
         tem0 = constants.TMIN + constants.DELT * K
         fac0 = (tem0 - constants.T_ICE) / (tem0 * constants.T_ICE)
-        if K < 1600:
+
+    with computation(PARALLEL):
+        with interval(0, 1600):
             # -----------------------------------------------------------------------
             # compute es over ice between - 160 deg c and 0 deg c.
             # -----------------------------------------------------------------------
             fac1 = fac0 * constants.LI2
             fac2 = (constants.D2ICE * log(tem0 / constants.T_ICE) + fac1) / constants.RVGAS
-        else:
+        with interval(1600, None):
             # -----------------------------------------------------------------------
             # compute es over water between 0 deg c and 102 deg c.
             # -----------------------------------------------------------------------
             fac1 = fac0 * constants.LV0
             fac2 = (constants.DC_VAP * log(tem0 / constants.T_ICE) + fac1) / constants.RVGAS
+
+    with computation(PARALLEL), interval(...):
         table3 = constants.E_00 * exp(fac2)
 
-    with computation(FORWARD), interval(1599, 1601):
+    with computation(FORWARD):
         # -----------------------------------------------------------------------
         # smoother around 0 deg c
         # -----------------------------------------------------------------------
-        if K == 1599:
+        with interval(1599, 1600):
             t0 = 0.25 * (table3[0, 0, -1] + 2.0 * table1 + table3[0, 0, 1])
             t1 = 0.25 * (table3 + 2.0 * table1[0, 0, 1] + table3[0, 0, 2])
             table3 = t0
-        elif K == 1600:
-            table3 = t1  # type: ignore
+        with interval(1600, 1601):
+            table3 = t1[0, 0, -1]  # type: ignore
 
 
 def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
@@ -116,7 +120,9 @@ def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
     """
     with computation(PARALLEL), interval(...):
         tem = constants.TMIN + constants.DELT * K
-        if K < 1580:  # change to - 2 c
+
+    with computation(PARALLEL):
+        with interval(0, 1580):  # change to - 2 c
             # -----------------------------------------------------------------------
             # compute es over ice between - 160 deg c and 0 deg c.
             # see smithsonian meteorological tables page 350.
@@ -126,7 +132,7 @@ def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
             c = 0.876793 * (1.0 - tem / constants.TABLE_ICE)
             e = log10(constants.ESBASI)
             table4 = 0.1 * 10 ** (aa + b + c + e)
-        else:
+        with interval(1580, None):
             # -----------------------------------------------------------------------
             # compute es over water between - 2 deg c and 102 deg c.
             # see smithsonian meteorological tables page 350.
@@ -138,16 +144,16 @@ def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
             e = log10(constants.ESBASW)
             table4 = 0.1 * 10 ** (aa + b + c + d + e)
 
-    with computation(FORWARD), interval(1579, 1581):
-        # -----------------------------------------------------------------------
-        # smoother around - 2 deg c
-        # -----------------------------------------------------------------------
-        if K == 1579:
+    # -----------------------------------------------------------------------
+    # smoother around - 2 deg c
+    # -----------------------------------------------------------------------
+    with computation(FORWARD):
+        with interval(1579, 1580):
             t0 = 0.25 * (table4[0, 0, -1] + 2.0 * table1 + table4[0, 0, 1])
             t1 = 0.25 * (table4 + 2.0 * table1[0, 0, 1] + table4[0, 0, 2])
             table4 = t0
-        elif K == 1580:
-            table4 = t1  # type: ignore
+        with interval(1580, 1581):
+            table4 = t1[0, 0, -1]  # type: ignore
 
 
 def des_tables(
