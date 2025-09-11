@@ -15,13 +15,12 @@ module CatchmentCNRstMod
        VAR_COL_40, VAR_PFT_40,                     &
        VAR_COL_51, VAR_PFT_51,                     &
        npft_40                  => NUM_PFT_CN_40,  &
-       npft_51                  => NUM_PFT_CN_51
+       npft_51                  => NUM_PFT_CN_51,  &
+       FVEG_MIN
 
   use nanMod,                only : nan
   
   implicit none
-
-  real,    parameter :: fmin = 1.e-4  ! ignore vegetation fractions at or below this value
 
   integer            :: iclass_40(npft_40) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
   integer            :: iclass_51(npft_51) = (/1,1,2,3,3,4,5,5,6,7,  9,10,11,   11,   11   /)
@@ -1312,17 +1311,17 @@ contains
 
             end if
 
-            if (fveg_new > fmin) then
+            if (fveg_new > FVEG_MIN) then
 
                offl_cell    = Id_glb(n,nv)
 
-               if(ityp_new      == ityp_offl (offl_cell,nv) .and. fveg_offl (offl_cell,nv)> fmin) then
+               if(ityp_new      == ityp_offl (offl_cell,nv) .and. fveg_offl (offl_cell,nv)> FVEG_MIN) then
                   iv = nv                                     ! same type fraction (primary of secondary)                          
-               else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
+               else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> FVEG_MIN) then
                   iv = nx                                     ! not same fraction
-               else if(iclass_in(ityp_new)==iclass_in(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> fmin) then
+               else if(iclass_in(ityp_new)==iclass_in(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> FVEG_MIN) then
                   iv = nv                                     ! primary, other type (same class)
-               else if(fveg_offl (offl_cell,nx)> fmin) then
+               else if(fveg_offl (offl_cell,nx)> FVEG_MIN) then
                   iv = nx                                     ! secondary, other type (same class)
                endif
 
@@ -1395,7 +1394,7 @@ contains
                      if (nv == 2) fveg_new = CLMC_sf1(n)
                   end if
 
-                  if(fveg_new > fmin) then
+                  if(fveg_new > FVEG_MIN) then
                      var_pft_out(n, nz,nv, 1) = max(var_pft_out(n, nz,nv, 1),0.)
                      var_pft_out(n, nz,nv, 2) = max(var_pft_out(n, nz,nv, 2),0.)
                      var_pft_out(n, nz,nv, 3) = max(var_pft_out(n, nz,nv, 3),0.)
