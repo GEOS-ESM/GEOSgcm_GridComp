@@ -307,15 +307,15 @@ contains
              temperature_inst%t_ref2m_patch(p)                                 = tairm(nc)
              temperature_inst%soila10_patch(p)                                 = tg10d(nc)
              temperature_inst%t_a5min_patch(p)                                 = t2m5d(nc)
-             cn2clm_inst%btran2_patch_cn2clm(p)                                = btran_fire(nc,nz)
-             
+
+             cn2clm_inst%btran2_patch_cn2clm(p)                                = btran_fire(nc,nz)   ! add root zone soil wetness ("btran_fire") into CN2CLM structure; fire modules read it from there
              ! cnfire_li2016_inst%cnfire_base_type%btran2_patch(p)             = btran_fire(nc,nz)
              ! cnfire_li2021_inst%cnfire_base_type%btran2_patch(p)             = btran_fire(nc,nz)
              
              water_inst%wateratm2lndbulk_inst%prec60_patch(p)                  = prec60d(nc)
              water_inst%wateratm2lndbulk_inst%prec10_patch(p)                  = prec10d(nc)
              water_inst%wateratm2lndbulk_inst%rh30_patch(p)                    = rh30(nc)
-             frictionvel_inst%forc_hgt_u_patch(p)                              = 30.              ! following CNCLM45 implementation, but this should be available from the GridComp
+             frictionvel_inst%forc_hgt_u_patch(p)                              = 30.                 ! following CNCLM45 implementation, but this should be available from the GridComp
 
              do nv = 1,num_veg ! defined veg loop
                 
