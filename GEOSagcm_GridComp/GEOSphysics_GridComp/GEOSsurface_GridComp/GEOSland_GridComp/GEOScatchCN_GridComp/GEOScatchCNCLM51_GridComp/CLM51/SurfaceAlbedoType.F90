@@ -10,10 +10,10 @@ module SurfaceAlbedoType
   ! !PUBLIC TYPES:
   implicit none
   save
-!
-! !PUBLIC MEMBER FUNCTIONS:
+  !
+  ! !PUBLIC MEMBER FUNCTIONS:
 
- !
+  !
   type, public :: surfalb_type
 
      real(r8), pointer :: coszen_col           (:)   ! col cosine of solar zenith angle
@@ -61,34 +61,37 @@ module SurfaceAlbedoType
      integer  , pointer :: nrad_patch          (:)   ! patch number of canopy layers, above snow for radiative transfer
      real(r8) , pointer :: vcmaxcintsun_patch  (:)   ! patch leaf to canopy scaling coefficient, sunlit leaf vcmax   
      real(r8) , pointer :: vcmaxcintsha_patch  (:)   ! patch leaf to canopy scaling coefficient, shaded leaf vcmax   
-
+     
    contains 
-
+     
      procedure, public :: Init
-
-end type surfalb_type
-type(surfalb_type), public, target, save :: surfalb_inst
+     
+  end type surfalb_type
+  
+  type(surfalb_type), public, target, save :: surfalb_inst
 
 contains
 
-!---------------------------------------------------
+  !---------------------------------------------------
+
   subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft)  
 
-  ! !DESCRIPTION:
-! Initialize CTSM surface albedo needed for calling CTSM routines                                 
-! jk Apr 2021: type is allocated and initialized to NaN; values are assigned from Catchment states before calls to CLM subroutines are made
-! this type is only used to be able to pass Catchment states and fluxes to CLM subroutines in the format they expect         
-!                                                                                                                       
-! !ARGUMENTS:                                                                                                           
+    ! !DESCRIPTION:
+    ! Initialize CTSM surface albedo needed for calling CTSM routines                                 
+    ! jk Apr 2021: type is allocated and initialized to NaN; values are assigned from Catchment states before calls to CLM subroutines are made
+    ! this type is only used to be able to pass Catchment states and fluxes to CLM subroutines in the format they expect         
+    !                                                                                                                       
+    ! !ARGUMENTS:                                                                                                           
     implicit none
+    
     !INPUT/OUTPUT
-    type(bounds_type),                            intent(in) :: bounds
-    integer,                                      intent(in) :: nch    ! number of Catchment tiles
-    real, dimension(nch,num_zon,var_col),         intent(in) :: cncol  ! column-level restart variable array 
-    real, dimension(nch,num_zon,num_veg,var_pft), intent(in) :: cnpft  ! pft-level (patch-level) restart variable array
-    integer, dimension(nch,num_veg,num_zon),      intent(in) :: ityp
-    real, dimension(nch,num_veg,num_zon),         intent(in) :: fveg
-    class(surfalb_type)                                      :: this
+    type(bounds_type),                               intent(in) :: bounds
+    integer,                                         intent(in) :: nch    ! number of Catchment tiles
+    real,    dimension(nch,num_zon,var_col),         intent(in) :: cncol  ! column-level restart variable array 
+    real,    dimension(nch,num_zon,num_veg,var_pft), intent(in) :: cnpft  ! pft-level (patch-level) restart variable array
+    integer, dimension(nch,num_veg,num_zon),         intent(in) :: ityp
+    real,    dimension(nch,num_veg,num_zon),         intent(in) :: fveg
+    class(surfalb_type)                                         :: this
 
     ! LOCAL
     integer :: begp, endp
@@ -147,30 +150,35 @@ contains
     ! initialize variables from restart files
 
     np = 0
-    do nc = 1,nch        ! catchment tile loop
-       do nz = 1,num_zon    ! CN zone loop
-          do p = 0,numpft  ! PFT index loop
-             np = np + 1
 
+    do nc = 1,nch           ! catchment tile loop
+       do nz = 1,num_zon    ! CN zone loop
+          do p = 0,numpft   ! PFT index loop
+
+             np = np + 1
+             
              this%nrad_patch(np) = 1
 
              do nv = 1,num_veg ! defined veg loop
-              if (ityp(nc,nv,nz) == p .and. fveg(nc,nv,nz) > FVEG_MIN) then  
-               ! without this if loop we are overwriting each patch multiple times because we loop nv=1:num_veg without 
-               ! checking which nv corresponds to the active PFT for patch p.
-                 do n = 1, nlevcan
-                   this%tlai_z_patch(np,n) = cnpft(nc,nz,nv,73); if (isnan(this%tlai_z_patch(np,n))) this%tlai_z_patch(np,n)=0._r8
-                   this%tsai_z_patch(np,n) = cnpft(nc,nz,nv,74); if (isnan(this%tsai_z_patch(np,n))) this%tsai_z_patch(np,n)=0._r8
-                 end do
-                 this%vcmaxcintsun_patch(np) = 1._r8
-                 this%vcmaxcintsha_patch(np) = 1._r8
-                 exit   ! <- stop after filling the matching nv for this patch
-              end if ! ityp =p               
-             end do !nv
-          end do ! p
-       end do ! nz
-    end do ! nc
 
+                if (ityp(nc,nv,nz) == p .and. fveg(nc,nv,nz) > FVEG_MIN) then     ! "if" condition was missing in original implementation !rrXbo 10Sep2025
+
+                   do n = 1, nlevcan
+                      this%tlai_z_patch(np,n) = cnpft(nc,nz,nv,73); if (isnan(this%tlai_z_patch(np,n))) this%tlai_z_patch(np,n)=0._r8
+                      this%tsai_z_patch(np,n) = cnpft(nc,nz,nv,74); if (isnan(this%tsai_z_patch(np,n))) this%tsai_z_patch(np,n)=0._r8
+                   end do
+                   
+                   this%vcmaxcintsun_patch(np) = 1._r8
+                   this%vcmaxcintsha_patch(np) = 1._r8
+                   
+                   exit   ! stop after filling the matching nv for this patch
+                   
+                end if  ! ityp =p               
+             end do     ! nv
+          end do        ! p
+       end do           ! nz
+    end do              ! nc
+    
   end subroutine Init
 
 end module SurfaceAlbedoType
