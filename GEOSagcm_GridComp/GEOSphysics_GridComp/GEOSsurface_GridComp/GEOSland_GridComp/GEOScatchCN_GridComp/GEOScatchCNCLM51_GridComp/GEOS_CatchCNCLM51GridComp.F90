@@ -7136,8 +7136,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     if ( AGCM_MI==0 .and. AGCM_S==0 ) then
 
-       tmplon1 = LT2lon( AGCM_HH, AGCM_MI, AGCM_S, 4.5 )    ! get longitude [radians] where it is 4:30am local time
-       tmplon2 = LT2lon( AGCM_HH, AGCM_MI, AGCM_S, 5.5 )    ! get longitude [radians] where it is 5:30am local time
+       call LT2lon( AGCM_HH, AGCM_MI, AGCM_S, 4.5, tmplon1, rc )    ! get longitude [radians] where it is 4:30am local time
+       call LT2lon( AGCM_HH, AGCM_MI, AGCM_S, 5.5, tmplon2, rc )    ! get longitude [radians] where it is 5:30am local time
 
        ! create mask for tiles within longitude band (4:30-5:30am local time);
        ! assumes -pi <= LONS <= pi
@@ -9188,7 +9188,7 @@ end subroutine RUN0
 
   ! *****************************************************************
   
-  real function LT2lon( UTC_HH, UTC_MI, UTC_S, local_hour )
+  subroutine LT2lon( UTC_HH, UTC_MI, UTC_S, local_hour, longitude, rc )
 
     ! for UTC hour/min/sec, find the longitude where the local time is (fractional) local_hour;
     ! when UTC and local time are exactly 12 hours offset, always return longitude=+PI.
@@ -9197,12 +9197,14 @@ end subroutine RUN0
 
     implicit none
 
-    integer, intent(in)  :: UTC_HH, UTC_MI, UTC_S   ! UTC hour/min/sec
+    integer, intent(in)            :: UTC_HH, UTC_MI, UTC_S   ! UTC hour/min/sec
 
-    real,    intent(in)  :: local_hour              ! fractional local hour (e.g., 1:30pm is 13.5); range=[0,24)
-
-    real                 :: longitude               ! [degree]  -pi <  longitude <= +pi 
-
+    real,    intent(in)            :: local_hour              ! fractional local hour (e.g., 1:30pm is 13.5); range=[0,24)
+    
+    real,    intent(out)           :: longitude               ! [degree]  -pi <  longitude <= +pi 
+    
+    integer, intent(out), optional :: rc                      ! return code for _ASSERT()
+    
     ! ----------------------------------------------
 
     real                              :: UTC_hour, time_diff
@@ -9244,9 +9246,9 @@ end subroutine RUN0
 
     longitude = time_diff/24.*360.      ! [degree]  -180. <  longitude <= +180.
 
-    LT2lon    = longitude*pi/180.       ! [radians]
+    longitude = longitude*pi/180.       ! [radians]
     
-  end function LT2lon
+  end subroutine LT2lon
 
 ! *****************************************************************
 
