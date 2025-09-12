@@ -5530,10 +5530,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, save :: istep                    ! model time step index
     integer, save :: istep_365                ! model time step index
     integer :: accper                         ! number of time steps accumulated in a period of XX days, increases from 1 to nXXd in the first XX days,
-    ! and remains as nXXd thereafter
-    integer, allocatable, dimension(:) :: ta_count
-    real, allocatable, dimension(:)    :: TA_MIN                
-   
+                                              ! and remains as nXXd thereafter
+    integer :: accper_days
+    real    :: tmplon1 tmplon2
+    logical, allocatable, dimension(:) :: mask_5amLT
+    
     integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr, AGCM_S_ofday
     logical, save :: first = .true.
     integer(INT64), save :: istep_cn = 1 ! gkw: legacy variable from offline
@@ -6231,9 +6232,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
 
-        allocate(TA_MIN   (NTILES))
-        allocate(ta_count (NTILES))
+        allocate(mask_5amLT(NTILES))
 
+        
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
 
         debugzth = .false.
@@ -7122,14 +7123,54 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     istep = istep + 1
     istep_365 = istep_365 + 1
-    TA_MIN(:) = 1000.
 
     ! running mean - reset accumulation period until greater than nstep
     ! fzeng & gkw: may not be exactly 2m, but it is consistent with t_ref2m in CN model
     ! T2M10D   (T10    in CLM4.5): 10-day running mean of 2-m temperature (K)
     ! TPREC10D (PREC10 in CLM4.5): 10-day running mean of total precipitation (mm H2O/s)
     ! TPREC60D (PREC60 in CLM4.5): 60-day running mean of total precipitation (mm H2O/s)
-    ! ---------------------------------------------------------------------------------   
+    ! ---------------------------------------------------------------------------------
+    
+    ! For T2MMIN5D, always use surface air temperature at ~5am local time to avoid need for additional
+    !   restart variables.  Update every full hour. -- reichle, 12 Sep 2025
+    
+    if ( AGCM_MI==0 .and. AGCM_S==0 ) then
+
+       tmplon1 = LT2lon( AGCM_HH, AGCM_MI, AGCM_S, 4.5 )    ! get longitude [radians] where it is 4:30am local time
+       tmplon2 = LT2lon( AGCM_HH, AGCM_MI, AGCM_S, 5.5 )    ! get longitude [radians] where it is 5:30am local time
+
+       ! create mask for tiles within longitude band (4:30-5:30am local time);
+       ! assumes -pi <= LONS <= pi
+
+       if (tmplon1<tmplon2) then
+
+          mask_5amLT = (tmplon1 <= LONS) .and. (LONS < tmplon2)
+
+       else
+
+          ! deal with wrap-around (for UTC_HH=17, tmplon1 = +172.5, tmplon2 = -172.5)
+
+          mask_5amLT = (tmplon1 <= LONS) .or.  (LONS < tmplon2)
+
+       end if
+
+       ! compute 5-day exponential moving average (executed at daily time step from the perspective of a given tile)
+
+       if (init_accum) then
+
+          accper_days = min( istep/n1d, 5 )
+
+       else
+
+          accper_days = 5
+
+       end if
+
+       T2MMIN5D(mask_5amLT) = ( (accper_days-1)*T2MMIN5D(mask_5amLT) + TA(mask_5amLT) )/accper_days
+
+    end if
+
+       
      if(init_accum) then     
         
         ! (1) 5-day exponential moving average of snow depth      
@@ -7151,20 +7192,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          accper = min(istep,n60d)
          TPREC60D = ((accper-1)*TPREC60D + PCU + PLS + SNO) / accper      
 
-
-        ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day exponential moving average of minimum T2M
-
-         do n = 1,ntiles
-            ta_count(n) = ta_count(n) + 1
-            TA_MIN(n) = min(TA_MIN(n),TA(n))
-
-            if (ta_count(n) == n1d) then 
-                T2MMIN5D(n)   = ((accper-1)*T2MMIN5D(n)   + TA_MIN(n))  / accper
-                TA_MIN(n) = 1000.
-                ta_count(n) = 0
-            end if 
-         end do
-
       else
  
          SNDZM5D  = (( n5d-1)*SNDZM5D  + SNDZM          ) /  n5d
@@ -7173,20 +7200,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          TPREC10D = ((n10d-1)*TPREC10D + PCU + PLS + SNO) / n10d
          RH30D    = ((n30d-1)*RH30D    + Qair_relative  ) / n30d
          TPREC60D = ((n60d-1)*TPREC60D + PCU + PLS + SNO) / n60d
-
-
-         ! jkolassa: for T2MMIN5D compute minimum T2M once per day, then use that value to compute new 5-day exponential moving average of minimum T2M
-
-         do n = 1,ntiles
-            ta_count(n) = ta_count(n) + 1
-            TA_MIN(n) = min(TA_MIN(n),TA(n))
-
-            if (ta_count(n) == n1d) then
-                T2MMIN5D(n)   = ((accper-1)*T2MMIN5D(n)   + TA_MIN(n))  / accper
-                TA_MIN(n) = 1000.
-                ta_count(n) = 0
-            end if 
-         end do 
 
      endif
 
@@ -8680,8 +8693,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(      ht )
         deallocate(      tp )
         deallocate( soilice )
-        deallocate(TA_MIN)
-        deallocate(ta_count)
+        deallocate(mask_5amLT)
+
         call MAPL_TimerOff  ( MAPL, "-CATCHCNCLM51" )
         RETURN_(ESMF_SUCCESS)
 
@@ -9165,6 +9178,70 @@ subroutine RUN0(gc, import, export, clock, rc)
   RETURN_(ESMF_SUCCESS)
 
 end subroutine RUN0
+
+  ! *****************************************************************
+  
+  real function LT2lon( UTC_HH, UTC_MI, UTC_S, local_hour )
+
+    ! for UTC hour/min/sec, find the longitude where the local time is (fractional) local_hour;
+    ! when UTC and local time are exactly 12 hours offset, always return longitude=+PI.
+    !
+    ! - reichle, 12 Sep 2025 (simplified version of subroutine localtime2longitude() in GEOSldas_GridComp
+
+    implicit none
+
+    integer, intent(in)  :: UTC_HH, UTC_MI, UTC_S   ! UTC hour/min/sec
+
+    real,    intent(in)  :: local_hour              ! fractional local hour (e.g., 1:30pm is 13.5); range=[0,24)
+
+    real                 :: longitude               ! [degree]  -pi <  longitude <= +pi 
+
+    ! ----------------------------------------------
+
+    real                              :: UTC_hour, time_diff
+
+    character(len=*),     parameter   :: Iam = 'LT2lon'
+    character(len=400)                :: err_msg
+
+    ! ---------------------------------------------------------------------------
+
+    ! make sure local_hour is within range: 0 <= local_hour < 24
+
+    if ( (local_hour < 0.) .or. (local_hour >= 24.) ) then
+
+       err_msg = 'input local_hour falls outside allowed range of [0,24)'
+
+       _ASSERT( .FALSE., err_msg)
+
+    end if
+
+    ! determine fractional UTC hour and time difference with local_hour
+
+    UTC_hour  = ( UTC_HH*3600 + UTC_MI*60 + UTC_S )/3600.  ! 0 <= UTC_hour < 24
+
+    time_diff = local_hour - UTC_hour
+
+    ! enforce -12. < time_diff <= 12. 
+
+    if     (time_diff <= -12.) then
+
+       time_diff  = time_diff + 24.   
+
+    elseif (time_diff >   12.) then
+
+       time_diff  = time_diff - 24.   
+
+    end if
+    
+    ! determine longitude
+
+    longitude = time_diff/24.*360.      ! [degree]  -180. <  longitude <= +180.
+
+    LT2lon    = longitude*pi/180.       ! [radians]
+    
+  end function LT2lon
+
+! *****************************************************************
 
 end module GEOS_CatchCNCLM51GridCompMod
 
