@@ -565,7 +565,7 @@ contains
 
     ! OUTPUT
     real,    dimension(nch,num_zon,var_col),         intent(out) :: cncol ! column-level restart variables 
-    real,    dimension(nch,num_zon,num_veg,var_pft), intent(out) :: cnpft ! PFT-level restart variables
+    real,    dimension(nch,num_zon,num_veg,var_pft), intent(out) :: cnpft ! PFT-level restart variables     ! NOTE: order of dims DIFFERS from that of ityp & fveg !!!
 
     ! LOCAL
 
