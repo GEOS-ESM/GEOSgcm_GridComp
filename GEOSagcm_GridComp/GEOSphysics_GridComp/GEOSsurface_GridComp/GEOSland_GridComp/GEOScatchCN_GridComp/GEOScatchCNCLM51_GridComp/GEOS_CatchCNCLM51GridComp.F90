@@ -7154,17 +7154,23 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        end if
 
-       ! compute 5-day exponential moving average (executed at daily time step from the perspective of a given tile)
+       ! get (inverse) weight for exponential moving average
 
        if (init_accum) then
-
-          accper_days = min( istep/n1d, 5 )
-
+          
+          accper_days = min( (istep-1)/n1d + 1, 5 ) 
+          
        else
 
           accper_days = 5
 
        end if
+
+       ! during init_accum only, verify that from day 2 we have sensible values in T2MMIN5D (Kelvin)
+
+       if (init_accum .and. accper_days>1)  _ASSERT( (100. < T2MMIN5D) .and. (T2MMIN5D < 400.), 'error in T2MMIN5D calculation' )
+
+       ! compute 5-day exponential moving average (executed at daily time step from the perspective of a given tile)
 
        T2MMIN5D(mask_5amLT) = ( (accper_days-1)*T2MMIN5D(mask_5amLT) + TA(mask_5amLT) )/accper_days
 
@@ -7186,7 +7192,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! (2) 30-day exponential moving average of relative humidity [%]     
          accper = min(istep,n30d)
          RH30D   = ((accper-1)*RH30D + Qair_relative) / accper
-
 
         ! (2) 60-day exponential moving average of total precipitation (mm H2O/s)
          accper = min(istep,n60d)
