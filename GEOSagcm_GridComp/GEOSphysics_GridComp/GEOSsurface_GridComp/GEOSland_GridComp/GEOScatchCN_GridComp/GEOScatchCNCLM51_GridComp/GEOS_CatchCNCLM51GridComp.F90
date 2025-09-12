@@ -7169,7 +7169,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! during init_accum only, verify that from day 2 we have sensible values in T2MMIN5D (Kelvin)
 
        if ( init_accum .and. (accper_days>1) ) then
-          _ASSERT( (100. < T2MMIN5D) .and. (T2MMIN5D < 400.), 'error in T2MMIN5D calculation' )
+          _ASSERT( all( (100. < T2MMIN5D) .and. (T2MMIN5D < 400.) ), 'error in T2MMIN5D calculation' )
        end if
        
        ! compute 5-day exponential moving average (executed at daily time step from the perspective of a given tile)
