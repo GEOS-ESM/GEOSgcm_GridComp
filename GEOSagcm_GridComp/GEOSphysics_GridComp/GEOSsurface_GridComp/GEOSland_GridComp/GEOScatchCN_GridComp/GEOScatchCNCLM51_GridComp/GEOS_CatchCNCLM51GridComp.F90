@@ -1872,9 +1872,9 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
-       LONG_NAME          = '5-day_exp_moving_avg_of_CN_sum_for_snow_depth',&
+       LONG_NAME          = '5-day_exp_moving_avg_of_snow_depth',&
        UNITS              = 'm'                         ,&
-       SHORT_NAME         = 'SNDZM5D'                   ,&
+       SHORT_NAME         = 'SNDZM5D'                   ,&            !rrXbo, 10Sep2025 -- SHOULD BE RENAMED IN RESTART TO "SNDZ5D"
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RESTART            = MAPL_RestartOptional        ,&
@@ -5993,12 +5993,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
       ! set number of time steps within a XX-day/hour period for 2m temperature XX-day/hour "running mean"
       ! --------------------------------------------------------------------------------------------------
-      n1d  = 86400/dt
-      n5d  = 5*86400/dt
-      n10d = 10*86400/dt
-      n30d = 30*86400/dt
-      n60d = 60*86400/dt
+      n1d   =     86400/dt
+      n5d   =   5*86400/dt
+      n10d  =  10*86400/dt
+      n30d  =  30*86400/dt
+      n60d  =  60*86400/dt
       n365d = 365*86400/dt
+      
       ! fzeng: this is done in such way to exclude istep in the restart file
       if(init_accum) then
         istep = 0                             ! set model time step index to 0 when begin to accumulate the cumulative variables, fzeng, 21 Apr 2017 
@@ -7183,17 +7184,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         
         ! (1) 5-day exponential moving average of snow depth      
          accper = min(istep,n5d)
-         SNDZM5D   = ((accper-1)*SNDZM5D + SNDZM) / accper 
+         SNDZM5D   = ((accper-1)*SNDZM5D + sum(SNDZN,1)   ) / accper       
 
         ! (1) 10-day exponential moving average of 2-m temperature (K) and total precipitation (mm H2O/s)     
          accper = min(istep,n10d)
-         T2M10D   = ((accper-1)*T2M10D + TA) / accper
+         T2M10D   = ((accper-1)*T2M10D   + TA             ) / accper
          TPREC10D = ((accper-1)*TPREC10D + PCU + PLS + SNO) / accper      
-         TG10D    = ((accper-1)*TG10D + TG(:,1)) / accper         
+         TG10D    = ((accper-1)*TG10D    + TG(:,1)        ) / accper         
 
         ! (2) 30-day exponential moving average of relative humidity [%]     
          accper = min(istep,n30d)
-         RH30D   = ((accper-1)*RH30D + Qair_relative) / accper
+         RH30D   = ((accper-1)*RH30D     + Qair_relative  ) / accper
 
         ! (2) 60-day exponential moving average of total precipitation (mm H2O/s)
          accper = min(istep,n60d)
@@ -7201,7 +7202,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       else
  
-         SNDZM5D  = (( n5d-1)*SNDZM5D  + SNDZM          ) /  n5d
+         SNDZM5D  = (( n5d-1)*SNDZM5D  + sum(SNDZN,1)   ) /  n5d
          T2M10D   = ((n10d-1)*T2M10D   + TA             ) / n10d
          TG10D    = ((n10d-1)*TG10D    + TG(:,1)        ) / n10d
          TPREC10D = ((n10d-1)*TPREC10D + PCU + PLS + SNO) / n10d
