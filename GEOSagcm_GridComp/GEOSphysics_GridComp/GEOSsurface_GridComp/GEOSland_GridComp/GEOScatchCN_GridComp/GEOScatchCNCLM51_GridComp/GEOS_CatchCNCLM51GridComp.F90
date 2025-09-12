@@ -9204,7 +9204,7 @@ end subroutine RUN0
     
     real,    intent(out)           :: longitude               ! [degree]  -pi <  longitude <= +pi 
     
-    integer, intent(out), optional :: rc                      ! return code for _ASSERT()
+    integer, intent(out), optional :: rc                      ! return code for MAPL ASSERT()
     
     ! ----------------------------------------------
 
