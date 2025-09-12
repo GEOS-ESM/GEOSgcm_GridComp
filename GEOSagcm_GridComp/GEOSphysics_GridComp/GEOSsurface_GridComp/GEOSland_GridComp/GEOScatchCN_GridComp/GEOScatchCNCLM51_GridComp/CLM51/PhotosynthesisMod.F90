@@ -17,7 +17,7 @@ module  PhotosynthesisMod
   use clm_varctl          , only : use_c13, use_c14, use_cn, use_cndv, use_fates, use_luna, use_hydrstress
   use clm_varctl          , only : iulog
   use clm_varpar          , only : nlevcan, nvegwcs, mxpft
-  use clm_varpar          , only : numpft, NUM_VEG, NUM_ZON, VAR_COL, VAR_PFT
+  use clm_varpar          , only : numpft, NUM_VEG, NUM_ZON, VAR_COL, VAR_PFT, FVEG_MIN
   use clm_varcon          , only : namep, spval, isecspday
   use decompMod           , only : bounds_type
   use QuadraticMod        , only : quadratic
