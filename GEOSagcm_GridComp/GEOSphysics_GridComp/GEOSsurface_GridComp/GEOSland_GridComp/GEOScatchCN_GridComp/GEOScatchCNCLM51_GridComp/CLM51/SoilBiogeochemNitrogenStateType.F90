@@ -5,8 +5,9 @@
   use abortutils       , only : endrun
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
-  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
-                                NUM_ZON, VAR_COL
+  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi
+  use clm_varpar       , only : NUM_ZON, VAR_COL
+  use clm_varpar       , only : decomp_npool_cncol_index
   use clm_varcon       , only : spval, dzsoi_decomp, zisoi
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp, use_soil_matrixcn   !, iulog   !rrXbo 10Sep2025
   use decompMod        , only : bounds_type
@@ -129,7 +130,6 @@ contains
     ! !LOCAL VARIABLES:
     integer               :: begc,endc
     integer               :: n, nc, nz, np, l, c
-    integer, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17,25, 26, 27, 28 /)
     logical               :: no_cn51_rst = .false.
     !-----------------------------------
 

@@ -4,8 +4,9 @@ module CNCLM_DriverMod
   
   use nanMod           , only : nan
   use CNVegetationFacade
-  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,   &
-                                var_col, var_pft, nlevgrnd, numpft, ndecomp_pools, FVEG_MIN
+  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight
+  use clm_varpar       , only : var_col, var_pft, nlevgrnd, numpft, ndecomp_pools, FVEG_MIN
+  use clm_varpar       , only : decomp_cpool_cncol_index, decomp_npool_cncol_index
   use clm_varcon       , only : grav, denh2o
   use clm_time_manager , only : is_first_step, get_nstep
   use decompMod
@@ -586,11 +587,6 @@ contains
 
     integer               :: n, p, nv, nc, nz, np, nd
 
-    ! map between order of C & N pools in CNCOL and CTSM
-    
-    integer, dimension(8) :: decomp_cpool_cncol_index = (/  3,  4,  5,  2, 10, 11, 12, 13 /)    
-    integer, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17, 25, 26, 27, 28 /)
-    
     !----------------
     
     !rrXbo10Sep2025 ! Clean slate: zero arrays so any unassigned slots are safe in the restart
@@ -607,6 +603,8 @@ contains
           n = n + 1
 
           cncol(nc,nz, 1) = soilbiogeochem_carbonstate_inst%ctrunc_vr_col(n,1)
+          
+          ! C and N decomposition pools are stored in cncol entries 2:5, 10:13, 17:20, and 25:28
           
           do nd = 1,ndecomp_pools
              ! jkolassa: accounting for fact that pool order in CNCOL is different from CTSM
@@ -626,12 +624,12 @@ contains
           cncol(nc,nz,15) = soilbiogeochem_carbonstate_inst%totlitc_col(             n  )
           cncol(nc,nz,16) = soilbiogeochem_nitrogenstate_inst%ntrunc_vr_col(         n,1)
           
-          
           cncol(nc,nz,21) = bgc_vegetation_inst%n_products_inst%prod100_grc(        nc) * CN_zone_weight(nz) 
           cncol(nc,nz,22) = bgc_vegetation_inst%n_products_inst%prod10_grc(         nc) * CN_zone_weight(nz)
           cncol(nc,nz,23) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%seedn_grc( nc) * CN_zone_weight(nz)
           
           cncol(nc,nz,24) = soilbiogeochem_nitrogenstate_inst%sminn_vr_col(          n,1)
+          
           cncol(nc,nz,29) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%totn_col(   n  )
           cncol(nc,nz,30) = soilbiogeochem_state_inst%fpg_col(                       n  )
           cncol(nc,nz,31) = bgc_vegetation_inst%cnveg_state_inst%annsum_counter_col( n  )

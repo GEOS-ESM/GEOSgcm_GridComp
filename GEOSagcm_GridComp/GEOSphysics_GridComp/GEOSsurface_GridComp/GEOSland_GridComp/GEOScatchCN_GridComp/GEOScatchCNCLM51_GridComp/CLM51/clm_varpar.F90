@@ -40,6 +40,11 @@ module clm_varpar
   integer, public            :: ndecomp_cascade_transitions
   integer, public            :: ndecomp_cascade_outtransitions
 
+  ! map between order of C & N pools in CNCOL and CTSM; *MUST* have ndecomp_pools=8!!!
+  
+  integer, public, dimension(8) :: decomp_cpool_cncol_index = (/  3,  4,  5,  2, 10, 11, 12, 13 /)    
+  integer, public, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17, 25, 26, 27, 28 /)
+    
   ! for soil matrix 
   integer, public            :: ndecomp_pools_vr            ! total number of pools ndecomp_pools*vertical levels
 
