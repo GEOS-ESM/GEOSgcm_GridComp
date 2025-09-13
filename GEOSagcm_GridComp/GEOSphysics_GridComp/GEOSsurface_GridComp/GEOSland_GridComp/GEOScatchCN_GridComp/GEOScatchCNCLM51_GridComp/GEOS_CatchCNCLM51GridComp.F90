@@ -7158,9 +7158,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! get (inverse) weight for exponential moving average
 
        if (init_accum) then
-          
+
           accper_days = min( (istep-1)/n1d + 1, 5 ) 
-          
+
        else
 
           accper_days = 5
@@ -7172,44 +7172,46 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        if ( init_accum .and. (accper_days>1) ) then
           _ASSERT( all( (100. < T2MMIN5D) .and. (T2MMIN5D < 400.) ), 'error in T2MMIN5D calculation' )
        end if
-       
+
        ! compute 5-day exponential moving average (executed at daily time step from the perspective of a given tile)
 
-       T2MMIN5D(mask_5amLT) = ( (accper_days-1)*T2MMIN5D(mask_5amLT) + TA(mask_5amLT) )/accper_days
+       WHERE (mask_5amLT)
+          T2MMIN5D = ((accper_days-1)*T2MMIN5D + TA)/accper_days
+       END WHERE
 
     end if
 
-       
-     if(init_accum) then     
-        
-        ! (1) 5-day exponential moving average of snow depth      
-         accper = min(istep,n5d)
-         SNDZM5D   = ((accper-1)*SNDZM5D + sum(SNDZN,1)   ) / accper       
 
-        ! (1) 10-day exponential moving average of 2-m temperature (K) and total precipitation (mm H2O/s)     
-         accper = min(istep,n10d)
-         T2M10D   = ((accper-1)*T2M10D   + TA             ) / accper
-         TPREC10D = ((accper-1)*TPREC10D + PCU + PLS + SNO) / accper      
-         TG10D    = ((accper-1)*TG10D    + TG(:,1)        ) / accper         
+    if(init_accum) then     
 
-        ! (2) 30-day exponential moving average of relative humidity [%]     
-         accper = min(istep,n30d)
-         RH30D   = ((accper-1)*RH30D     + Qair_relative  ) / accper
+       ! (1) 5-day exponential moving average of snow depth      
+       accper = min(istep,n5d)
+       SNDZM5D  = ((accper-1)*SNDZM5D + sum(SNDZN,1)   ) / accper       
 
-        ! (2) 60-day exponential moving average of total precipitation (mm H2O/s)
-         accper = min(istep,n60d)
-         TPREC60D = ((accper-1)*TPREC60D + PCU + PLS + SNO) / accper      
+       ! (1) 10-day exponential moving average of 2-m temperature (K) and total precipitation (mm H2O/s)     
+       accper = min(istep,n10d)
+       T2M10D   = ((accper-1)*T2M10D   + TA             ) / accper
+       TPREC10D = ((accper-1)*TPREC10D + PCU + PLS + SNO) / accper      
+       TG10D    = ((accper-1)*TG10D    + TG(:,1)        ) / accper         
 
-      else
- 
-         SNDZM5D  = (( n5d-1)*SNDZM5D  + sum(SNDZN,1)   ) /  n5d
-         T2M10D   = ((n10d-1)*T2M10D   + TA             ) / n10d
-         TG10D    = ((n10d-1)*TG10D    + TG(:,1)        ) / n10d
-         TPREC10D = ((n10d-1)*TPREC10D + PCU + PLS + SNO) / n10d
-         RH30D    = ((n30d-1)*RH30D    + Qair_relative  ) / n30d
-         TPREC60D = ((n60d-1)*TPREC60D + PCU + PLS + SNO) / n60d
+       ! (2) 30-day exponential moving average of relative humidity [%]     
+       accper = min(istep,n30d)
+       RH30D   = ((accper-1)*RH30D     + Qair_relative  ) / accper
 
-     endif
+       ! (2) 60-day exponential moving average of total precipitation (mm H2O/s)
+       accper = min(istep,n60d)
+       TPREC60D = ((accper-1)*TPREC60D + PCU + PLS + SNO) / accper      
+
+    else
+
+       SNDZM5D  = (( n5d-1)*SNDZM5D  + sum(SNDZN,1)   ) /  n5d
+       T2M10D   = ((n10d-1)*T2M10D   + TA             ) / n10d
+       TG10D    = ((n10d-1)*TG10D    + TG(:,1)        ) / n10d
+       TPREC10D = ((n10d-1)*TPREC10D + PCU + PLS + SNO) / n10d
+       RH30D    = ((n30d-1)*RH30D    + Qair_relative  ) / n30d
+       TPREC60D = ((n60d-1)*TPREC60D + PCU + PLS + SNO) / n60d
+
+    endif
 
 
 ! get CO2
