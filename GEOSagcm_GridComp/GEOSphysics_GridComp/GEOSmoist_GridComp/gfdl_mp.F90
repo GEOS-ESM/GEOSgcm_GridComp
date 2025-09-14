@@ -311,7 +311,7 @@ module gfdl_mp_mod
     logical :: prog_ccn = .true. ! do prognostic ccn (Yi Ming's method)
     logical :: prog_cin = .false. ! do prognostic cin
 
-    logical :: fix_negative = .true. ! fix negative water species
+    logical :: fix_negative = .false. ! fix negative water species
 
     logical :: do_evap_timescale = .true. ! whether to apply a timescale to evaporation
     logical :: do_cond_timescale = .true. ! whether to apply a timescale to condensation

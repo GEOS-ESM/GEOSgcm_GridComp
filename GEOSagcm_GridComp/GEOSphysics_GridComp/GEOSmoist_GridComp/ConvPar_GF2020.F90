@@ -43,7 +43,7 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
  !- number of microphysics schemes in the host model
  INTEGER ,PARAMETER  :: nmp = 1, lsmp = 1, cnmp = 2
 
- LOGICAL :: FIX_NEGATIVES     = .true.
+ LOGICAL :: FIX_NEGATIVES     = .false.
 
  INTEGER :: USE_MEMORY        =-1 != -1/0/1/2 .../10    !-
 

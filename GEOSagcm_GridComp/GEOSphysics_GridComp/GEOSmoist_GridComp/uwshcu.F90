@@ -66,6 +66,8 @@ module uwshcu
    real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
    real, parameter :: qcmin = 1.e-12 !< min value for cloud condensates
 
+   logical, parameter :: fix_negative = .false.
+
    real, parameter :: mintracer = 0.0
 contains
 
@@ -2699,10 +2701,10 @@ contains
 
             umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
             emf(k) = 0.
-  
+
             ! Limit umf based on (2x) the CFL condition
             umf(k) = min(umf(k),2.*dp0(k)/g/dt)
- 
+   
             dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
 !           dcm(k) = min(1.,max(0.,xsat-xc))
 
@@ -3935,6 +3937,7 @@ contains
 	   ! 
            ! ----------------------------------------------------------------- !
 
+           if (fix_negative) then
            if ( ((qc_lm+qlten_sink(k))*dt+ql0(k)).lt.0. ) then
               totsink = qc_lm+qlten_sink(k)
               if (totsink.ne.0.) then
@@ -3951,6 +3954,7 @@ contains
                 qiten_det(k) = qc_i(k) + qc_im
               end if
            end if
+           endif
 
            qlten(k) = qrten(k) + qlten_sink(k) + qlten_det(k)
            qiten(k) = qsten(k) + qiten_sink(k) + qiten_det(k)
@@ -4014,6 +4018,7 @@ contains
        !                in combination with the original computation of qlten, qiten. However,
        !                if we use new 'qlten,qiten', there is no problem.
 
+         if (fix_negative) then
          qv0_star(:k0) = qv0(:k0) + qvten(:k0) * dt
          ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
          qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
@@ -4022,6 +4027,7 @@ contains
               dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
          qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
          slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
+         endif
 
        ! --------------------- !
        ! Tendencies of tracers !
