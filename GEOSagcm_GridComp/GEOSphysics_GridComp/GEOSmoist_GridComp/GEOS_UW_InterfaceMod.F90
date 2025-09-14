@@ -118,7 +118,7 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=0.9e-3, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 11.0,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
@@ -338,10 +338,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       do J=1,JM
         do I=1,IM
           !! option to vary RKFRE by resolution
-           SIG   = sigma(SQRT(PTR2D(i,j)))                      ! Param -> Resolved
-           RKFRE(i,j) = SHLWPARAMS%RKFRE
-           ! support for varying rkm/mix if needed              ! Param -> Resolved
-           RKM2D(i,j) = SHLWPARAMS%RKM*SIG + 8.0*(1.0-SIG)      ! RKM   -> 8.0
+           SIG   = MIN(1.0,MAX(0.1,10.0/SQRT(PTR2D(i,j))))   ! Coarse  -> Fine
+           RKFRE(i,j) = SHLWPARAMS%RKFRE*SIG                 ! 0.1     -> 1.0
+           ! support for varying rkm/mix if needed
+           RKM2D(i,j) = SHLWPARAMS%RKM*SIG + 8.0*(1.0-SIG)   ! RKM(12) -> 8.0
            MIX2D(i,j) = SHLWPARAMS%MIXSCALE
         enddo
       enddo 
