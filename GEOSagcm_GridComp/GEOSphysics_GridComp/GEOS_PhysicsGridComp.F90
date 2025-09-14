@@ -2648,12 +2648,13 @@ contains
 
 
 ! SYNCTQ & UV pointers
-   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  TAFMOIST, QAFMOIST, THAFMOIST, SAFMOIST
+   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  TAFMOIST, QAFMOIST, THAFMOIST
    real, pointer, dimension(:,:)       ::  UFORSURF, VFORSURF, TFORSURF, QFORSURF, SPD4SURF
    real, pointer, dimension(:,:,:)     ::  UFORCHEM, VFORCHEM, TFORCHEM, THFORCHEM
    real, pointer, dimension(:,:,:)     ::  UFORTURB, VFORTURB, TFORTURB, THFORTURB, SFORTURB
    real, pointer, dimension(:,:,:)     ::                      TFORRAD
-   real, pointer, dimension(:,:,:)     :: UAFDIFFUSE, VAFDIFFUSE, SAFDIFFUSE, SAFUPDATE
+   real, pointer, dimension(:,:,:)     :: UAFDIFFUSE, VAFDIFFUSE
+   real, pointer, dimension(:,:,:)     :: SAFDIFFUSE, SAFUPDATE
 
    real, allocatable, dimension(:,:,:) :: TMP3D
    real, allocatable, dimension(:,:,:) :: HGT
@@ -3130,7 +3131,6 @@ contains
     ! From Moist
      call MAPL_GetPointer ( GEX(MOIST),  TAFMOIST,  'TAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST), THAFMOIST, 'THAFMOIST', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  QAFMOIST,  'QAFMOIST', RC=STATUS); VERIFY_(STATUS)
     ! Boundary Layer Tendencies for GF
      DTDT_BL=TAFMOIST
@@ -3154,13 +3154,10 @@ contains
        THFORCHEM = THAFMOIST
      endif
     ! For TURBL
-     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
-     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
       TFORTURB =  TAFMOIST
      THFORTURB = THAFMOIST
-      SFORTURB =  SAFMOIST
     endif
 
     if (DEBUG_SYNCTQ) then
@@ -3280,17 +3277,15 @@ contains
 !  SYNCTQ - Stage 2 SYNC of T/Q 
 !--------------------------------------
     if ( SYNCTQ.ge.1. ) then
-    ! From TURBL Run 1
-     call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
     ! For TURBL
-     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
-     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
-      TFORTURB = TFORTURB + (SAFDIFFUSE-SFORTURB)/MAPL_CP
+     TFORTURB = (SAFDIFFUSE - MAPL_GRAV*0.5*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1)))/MAPL_CP
      THFORTURB = TFORTURB/PK
-      SFORTURB = SAFDIFFUSE
+     call MAPL_MaxMin('DEBUG S: SAFDIFFUSE', SAFDIFFUSE)
+     call MAPL_MaxMin('DEBUG S: TFORTURB', TFORTURB)
     ! For SURF
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
@@ -3380,12 +3375,13 @@ contains
     call FILLQ2ZERO( QGRAUPEL, DM, DT=DT, DQDT=  DQGDT_FILL, WARNING_LABEL="QG After Stage2"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
 
     if ( SYNCTQ.ge.1. ) then
+    ! For RAD
      call MAPL_GetPointer ( GIM(RAD), TFORRAD, 'T',  RC=STATUS); VERIFY_(STATUS)
-     ! From TURBL Stage 2
-     call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE,  'SAFUPDATE', RC=STATUS); VERIFY_(STATUS)
-     ! For RAD
-      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
-      TFORRAD = TFORTURB + (SAFUPDATE-SAFDIFFUSE)/MAPL_CP
+     ! For Stage 2 - Changes in S from TURBL assumed to be all in T
+     call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE, 'SAFUPDATE', RC=STATUS); VERIFY_(STATUS)
+     TFORRAD = (SAFUPDATE - MAPL_GRAV*0.5*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1)))/MAPL_CP
+     call MAPL_MaxMin('DEBUG S: SAFUPDATE', SAFUPDATE)
+     call MAPL_MaxMin('DEBUG S: TFORRAD', TFORRAD)
      ! For CHEM use the same T as RAD
      if ( SYNCTQ.eq.1. ) then
        call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
@@ -3514,7 +3510,7 @@ contains
     if(NEED_STN) then
        allocate(STN(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
-       STN = SIT*(1./MAPL_CP)
+       STN = SIT/MAPL_CP
     end if
 
     if(associated(DUDT   )) DUDT    = UIM + UIT + UIG
