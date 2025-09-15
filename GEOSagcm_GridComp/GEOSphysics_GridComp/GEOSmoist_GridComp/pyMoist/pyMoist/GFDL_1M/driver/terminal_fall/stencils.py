@@ -197,10 +197,10 @@ def setup(
         if t1 <= constants.TICE:
             is_frozen = True
 
-    # we only want the melting layer closest to the surface
-    with computation(BACKWARD), interval(0, -1):
-        if is_frozen[0, 0, 1] == True and is_frozen[0, 0, 0] == False:  # noqa
-            is_frozen = True
+    # we only want the melting layer farthest from the surface
+    with computation(FORWARD), interval(1, None):
+        if is_frozen[0, 0, -1] == False and is_frozen == True:  # noqa
+            is_frozen = False
 
     # force surface to "melt" for later calculations
     with computation(PARALLEL), interval(-1, None):
@@ -230,10 +230,6 @@ def setup(
     with computation(PARALLEL), interval(0, -1):
         if dts < 300.0:
             is_frozen = True
-
-    with computation(PARALLEL), interval(-1, None):
-        if dts < 300.0:
-            is_frozen = False
 
     with computation(BACKWARD), interval(...):
         ze = ze[0, 0, 1] - dz1  # dz < 0
