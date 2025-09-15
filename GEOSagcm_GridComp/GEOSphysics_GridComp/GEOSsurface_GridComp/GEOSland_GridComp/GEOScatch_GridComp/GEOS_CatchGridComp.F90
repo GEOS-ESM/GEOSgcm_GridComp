@@ -114,6 +114,23 @@ real,   parameter :: EMSVEG(NTYPS) = (/ 0.99560, 0.99000, 0.99560, 0.99320, &
 real,   parameter :: EMSBARESOIL   =    0.94120
 real,   parameter :: EMSSNO        =    0.99999
 
+! Wrapper for extracting internal state
+! -------------------------------------
+type T_URBAN_STATE !urban related variables
+     private
+     integer :: nt_global
+     integer :: nt_local
+     integer :: comm
+     integer :: nDes
+     integer :: myPe
+     real,    pointer :: frac(:)      => NULL()  
+end type T_URBAN_STATE
+
+type URBAN_WRAP
+    type (T_URB_STATE), pointer :: PTR => null()
+end type URBAN_WRAP
+
+
 ! moved SURFLAY from catchment.F90 to enable run-time changes for off-line system
 ! - reichle, 29 Oct 2010
 
@@ -157,6 +174,8 @@ subroutine SetServices ( GC, RC )
     integer :: RESTART
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
+    type (T_URB_STATE), pointer             :: urban_internal_state => null()
+    type (URBAN_WRAP)                       :: wrap_urb    
     
 ! Begin...
 ! --------
@@ -2989,6 +3008,18 @@ subroutine SetServices ( GC, RC )
        RC=STATUS  )
   VERIFY_(STATUS)
 
+! Allocate this instance of the internal state and put it in wrapper.
+! -------------------------------------------------------------------
+
+    allocate( urban_internal_state, stat=status )
+    VERIFY_(STATUS)
+    wrap_urb%ptr => urban_internal_state
+    
+! Save pointer to the wrapped internal state in the GC
+! ----------------------------------------------------
+
+    call ESMF_UserCompSetInternalState ( GC, 'Urban_state',wrap_urb,status )
+    VERIFY_(STATUS)
 
 !EOS
 
@@ -3071,7 +3102,17 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
 
-
+    !urban related variables
+    type (T_URBAN_STATE),           pointer :: urban => null()
+    type (URBAN_wrap)                       :: wrap_urb
+    integer                                 :: NT_LOCAL, NT_GLOBAL
+    type (ESMF_VM)                          :: VM
+    integer                                 :: comm
+    integer                                 :: nDEs
+    integer                                 :: myPE,mpierr   
+    integer,                        pointer :: scounts(:)=>NULL()
+    integer,                        pointer :: scounts_global(:)=>NULL(),rdispls_global(:)=>NULL()
+    real,                           pointer :: frac_global(:)=>NULL()
 !=============================================================================
 
 ! Begin... 
@@ -3101,6 +3142,10 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     CATCH_INTERNAL_STATE => wrap%ptr
 
+    call ESMF_UserCompGetInternalState ( GC, 'Urban_state',wrap_urb,status )
+    VERIFY_(STATUS)    
+    urban => wrap_urb%ptr
+
 
 !#for_ldas_coupling 
 !
@@ -3116,9 +3161,31 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! Get the grid
        call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+       call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, NT_LOCAL=NT_LOCAL, NT_GLOBAL=NT_GLOBAL, RC=STATUS)
        VERIFY_(STATUS)
-       
+       urban%nt_global=NT_GLOBAL
+       urban%nt_local=NT_LOCAL
+       call ESMF_VMGetCurrent(VM,                                RC=STATUS)
+       VERIFY_(STATUS)
+       call ESMF_VMGet(VM, mpiCommunicator =comm, localpet=MYPE, petcount=nDEs,  RC=STATUS)
+       VERIFY_(STATUS)
+       urban%comm = comm
+       urban%ndes = ndes
+       urban%mype = mype
+       ! Set variables used in MPI
+       allocate(scounts(ndes),scounts_global(ndes),rdispls_global(ndes))
+       scounts=0
+       scounts(mype+1)=NT_LOCAL  
+       call MPI_Allgather(scounts(mype+1), 1, MPI_INTEGER, scounts_global, 1, MPI_INTEGER, urban%comm, mpierr) 
+       rdispls_global(1)=0
+       do i=2,nDes
+          rdispls_global(i)=rdispls_global(i-1)+scounts_global(i-1)
+       enddo
+       allocate(urban%frac(nt_local),frac_global(nt_global))  
+       open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_frac_urban.txt",status="old",action="read");read(77,*)frac_global;close(77)
+       urban%frac=frac_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local) !km2->m2
+       deallocate(frac_global,scounts,scounts_global,rdispls_global)       
+
        ! Create bundle for LDAS increments on tilegrid
        CATCH_INTERNAL_STATE%bundle = ESMF_FieldBundleCreate(NAME="LDAS_INCREMENTS", &
             RC=STATUS)
@@ -3966,6 +4033,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
     type (CATCH_WRAP)                       :: wrap
 
+    type (T_URBAN_STATE), pointer         :: urban => null()
+    type (URBAN_wrap)                     :: wrap_urb
+
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
 ! set-up traceback handle.
@@ -3986,6 +4056,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(status)
     CATCH_INTERNAL_STATE=>wrap%ptr
 
+    call ESMF_UserCompGetInternalState ( GC, 'Urban_state',wrap_urb,status )
+    VERIFY_(STATUS)
+    urban => wrap_urb%ptr
 ! Get parameters from generic state.
 !-----------------------------------
 
@@ -6005,7 +6078,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
-             SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
+             FRAC_UR=urban%frac, SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
              TC_UR=TC_UR, QA_UR=QC_UR, CH_UR=CH_UR)
 
         end if

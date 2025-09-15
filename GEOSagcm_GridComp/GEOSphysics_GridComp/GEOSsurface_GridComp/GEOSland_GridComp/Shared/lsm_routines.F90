@@ -237,7 +237,8 @@ CONTAINS
            VGWMAX, RZEQ, POROS,                               &
            SRFEXC, RZEXC,                                     &
            RUNSRF,                                            &  ! [kg m-2 s-1]  (flux units)
-           QINFIL                                            &  ! [kg m-2 s-1]  (flux units)
+           QINFIL,                                            &  ! [kg m-2 s-1]  (flux units)
+           AR_UR
            )
 
 !**** NOTE: Input throughfall is in volume units, as are calcs throughout this subroutine  [kg m-2]
@@ -257,6 +258,7 @@ CONTAINS
       REAL,    INTENT(INOUT), DIMENSION(NCH) :: SRFEXC, RZEXC
       REAL,    INTENT(INOUT), DIMENSION(NCH) :: RUNSRF                            ! [kg m-2 s-1]
       REAL,    INTENT(OUT),   DIMENSION(NCH) :: QINFIL                            ! [kg m-2 s-1]
+      REAL,    INTENT(IN),    DIMENSION(NCH), OPTIONAL :: AR_UR
 
       ! ---------------------------
       
@@ -278,7 +280,6 @@ CONTAINS
       THRUC  = THRUC_VOL   
       
       RUNSRF = RUNSRF * DTSTEP  ! convert input surface runoff from flux to "volume" units
-      AR_UR  = AR_UR0
 
       DO N=1,NCH
 
@@ -288,7 +289,11 @@ CONTAINS
 
             IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                ! Non-peatland
-               frun=AR1(N)+AR_UR(N)*fac_im_UR
+               if(present(AR_UR))then
+                 frun=AR1(N)+AR_UR(N)*fac_im_UR
+               else
+                 frun=AR1(N)
+               endif
                srun0=PTOTAL*frun
 
                !**** Comment out this line in order to allow moisture

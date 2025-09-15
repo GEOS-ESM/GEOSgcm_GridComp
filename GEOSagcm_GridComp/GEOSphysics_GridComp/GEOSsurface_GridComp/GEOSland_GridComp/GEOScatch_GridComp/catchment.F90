@@ -167,7 +167,7 @@
                      lonbeg,lonend,latbeg,latend,                              &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
                      RCONSTIT, RMELT, TOTDEPOS, &
-                     SWNET_UR, RA_UR, QSAT_UR, DQS_UR,  &
+                     FRAC_UR, SWNET_UR, RA_UR, QSAT_UR, DQS_UR,  &
                      TC_UR, QA_UR, CH_UR )                                  ! OPTIONAL
 
       IMPLICIT NONE
@@ -201,7 +201,7 @@
 
       REAL,    INTENT(IN), DIMENSION(NCH, N_Constit), OPTIONAL :: TOTDEPOS
 
-      REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: SWNET_UR, RA_UR, QSAT_UR, DQS_UR
+      REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: FRAC_UR, SWNET_UR, RA_UR, QSAT_UR, DQS_UR
 
       REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: TC_UR, QA_UR, CH_UR
 
@@ -661,7 +661,7 @@
                       SRFEXC,CATDEF,RUNSRF,                                    &
                       AR1, AR2, AR4,srfmx,srfmn,  SWSRF1,SWSRF2,SWSRF4,RZI     &
                      )
-      AR_UR = AR_UR0
+      AR_UR = FRAC_UR
 
       DO N=1,NCH
          TSOIL=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
@@ -1107,7 +1107,7 @@
              FRICE, TP1, SRFMX, BUG,                                    & 
              VGWMAX, RZEQOL, POROS,                                     &
              SRFEXC, RZEXC, RUNSRF,                                     &
-             QINFIL                                                     &
+             QINFIL,AR_UR=AR_UR                                                     &
              )
 
       IF (BUG) THEN
