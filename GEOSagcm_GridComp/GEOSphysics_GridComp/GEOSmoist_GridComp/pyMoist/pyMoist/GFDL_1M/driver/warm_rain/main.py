@@ -5,7 +5,11 @@ from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 from pyMoist.GFDL_1M.driver.stencils import implicit_fall
-from pyMoist.GFDL_1M.driver.warm_rain.stencils import update_outputs, warm_rain_step_1, warm_rain_step_2
+from pyMoist.GFDL_1M.driver.warm_rain.stencils import (
+    update_outputs,
+    warm_rain_step_1,
+    warm_rain_step_2,
+)
 from pyMoist.GFDL_1M.driver.warm_rain.temporaries import Temporaries
 
 
@@ -184,14 +188,14 @@ class WarmRain:
             # within the terminal_fall module. May be a similar issue to the warm_rain_part_1 error
             # (different result despite inputs being identical, possible registry issue??).
             self._implicit_fall(
-                qr1,
-                vtr,
-                ze,
-                dp1,
-                m1,
-                m1_rain,
-                rain1,
-                precip_fall,
+                q=qr1,
+                vt=vtr,
+                ze=ze,
+                dp1=dp1,
+                m1=self.temporaries.unused_m1,
+                m1_sol=m1_rain,
+                precip=rain1,
+                precip_fall=precip_fall,
             )
 
         self._warm_rain_step_2(
