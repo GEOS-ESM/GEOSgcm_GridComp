@@ -22,8 +22,8 @@ module CatchmentCNRstMod
   
   implicit none
 
-  integer            :: iclass_40(npft_40) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
-  integer            :: iclass_51(npft_51) = (/1,1,2,3,3,4,5,5,6,7,  9,10,11,   11,   11   /)
+  integer, parameter :: iclass_40(npft_40) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
+  integer, parameter :: iclass_51(npft_51) = (/1,1,2,3,3,4,5,5,6,7,  9,10,11,   11,   11   /)
 
   integer, dimension(:), allocatable :: iclass
 
@@ -111,28 +111,33 @@ module CatchmentCNRstMod
 contains
 
   function CatchmentCNRst_create(filename, cnclm, time, rc) result (catch)
-    type(CatchmentCNRst) :: catch
-    character(*), intent(in) :: filename
-    character(*), intent(in) :: cnclm
-    character(*), intent(in) :: time
-    integer, optional, intent(out) :: rc
-    integer :: status
-    type(Netcdf4_fileformatter) :: formatter
-    integer :: filetype, ntiles, unit
-    integer :: j, dim1,dim2, myid, mpierr
-    type(Variable), pointer :: myVariable
-    character(len=:), pointer :: dname
-    type(FileMetadata) :: meta
-    character(len=256) :: Iam = "CatchmentCNRst_create"
-    integer :: nt_col, blk_col, off
-    real    :: N_MAX
-    integer :: joff
-    integer :: n_fixed
 
+    type(CatchmentCNRst)           :: catch
+
+    character(*),      intent(in)  :: filename
+    character(*),      intent(in)  :: cnclm
+    character(*),      intent(in)  :: time
+
+    integer, optional, intent(out) :: rc
+    
+    integer                     :: status
+    type(Netcdf4_fileformatter) :: formatter
+    integer                     :: filetype, ntiles, unit
+    integer                     :: j, dim1,dim2, myid, mpierr
+    type(Variable),   pointer   :: myVariable
+    character(len=:), pointer   :: dname
+    type(FileMetadata)          :: meta
+    character(len=256)          :: Iam = "CatchmentCNRst_create"
+
+    !rrXbo, 10Sep2025
+    !integer :: nt_col, blk_col, off
+    !real    :: N_MAX
+    !integer :: joff
+    !integer :: n_fixed
 
      call MAPL_NCIOGetFileType(filename, filetype, __RC__)
      if (filetype /= 0) then
-        _ASSERT( .false., "CatchmentCN only support nc4 file restart")
+        _ASSERT( .false., "CatchmentCN only supports nc4 file restart")
      endif
   
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
@@ -230,59 +235,60 @@ contains
 
            call MAPL_VarRead( formatter, "RUNSURF",  catch%RUNSURF , __RC__)   ! rreichle, bug fix 9 Sep 2025: added for CLM51  
 
-        endif !! <— close CLM40/CLM51 branch
+        endif 
 
-        ! strip NaNs
-        where (.not.(catch%CNCOL == catch%CNCOL)) catch%CNCOL = 0.0
-        where (.not.(catch%CNPFT == catch%CNPFT)) catch%CNPFT = 0.0
+        !rrXbo, 10Sep2025
+        !  ! strip NaNs
+        !  where (.not.(catch%CNCOL == catch%CNCOL)) catch%CNCOL = 0.0
+        !  where (.not.(catch%CNPFT == catch%CNPFT)) catch%CNPFT = 0.0
+        !  
+        !  ! Targeted sanitize for N in CNCOL: 24=sminn, 36=NO3, 37=NH4
+        !  ! Without this section model can't run values are junk! 
+        !  
+        !  N_MAX = 1.0e5    ! conservative guardrail
+        !  
+        !  ! Slot 24: sminn
+        !  joff = (24-1)*nzone
+        !  where (catch%CNCOL(:, joff+1:joff+nzone) /= catch%CNCOL(:, joff+1:joff+nzone))
+        !     catch%CNCOL(:, joff+1:joff+nzone) = 0.0
+        !  end where
+        !  where (catch%CNCOL(:, joff+1:joff+nzone) < 0.0)
+        !     catch%CNCOL(:, joff+1:joff+nzone) = 0.0
+        !  end where
+        !  where (catch%CNCOL(:, joff+1:joff+nzone) > N_MAX)
+        !     catch%CNCOL(:, joff+1:joff+nzone) = 0.0
+        !  end where
+        !  
+        !  ! Slot 36: smin_no3
+        !  joff = (36-1)*nzone
+        !  where (catch%CNCOL(:, joff+1:joff+nzone) /= catch%CNCOL(:, joff+1:joff+nzone))
+        !     catch%CNCOL(:, joff+1:joff+nzone) = 0.0
+        !  end where
+        !  where (catch%CNCOL(:, joff+1:joff+nzone) < 0.0)
+        !     catch%CNCOL(:, joff+1:joff+nzone) = 0.0
+        !  end where
+        !  where (catch%CNCOL(:, joff+1:joff+nzone) > N_MAX)
+        !     catch%CNCOL(:, joff+1:joff+nzone) = 0.0
+        !  end where
+        !  
+        !  ! Slot 37: smin_nh4
+        !  joff = (37-1)*nzone
+        !  where (catch%CNCOL(:, joff+1:joff+nzone) /= catch%CNCOL(:, joff+1:joff+nzone))
+        !     catch%CNCOL(:, joff+1:joff+nzone) = 0.0
+        !  end where
+        !  where (catch%CNCOL(:, joff+1:joff+nzone) < 0.0)
+        !     catch%CNCOL(:, joff+1:joff+nzone) = 0.0
+        !  end where
+        !  where (catch%CNCOL(:, joff+1:joff+nzone) > N_MAX)
+        !     catch%CNCOL(:, joff+1:joff+nzone) = 0.0
+        !  end where
+        !  
+        !  n_fixed = count(.not.(catch%CNCOL(:, (24-1)*nzone+1:(24)*nzone) == catch%CNCOL(:, (24-1)*nzone+1:(24)*nzone)))  &
+        !       + count(catch%CNCOL(:, (24-1)*nzone+1:(24)*nzone) < 0.0)                                           &
+        !       + count(catch%CNCOL(:, (24-1)*nzone+1:(24)*nzone) > N_MAX)
+        !  if (n_fixed > 0) write(*,*) 'RSTCHK sanitize CNCOL(24): fixed=', n_fixed       
 
-       ! Targeted sanitize for N in CNCOL: 24=sminn, 36=NO3, 37=NH4
-       ! Without this section model can't run values are junk! 
-       
-       N_MAX = 1.0e5    ! conservative guardrail
-       
-       ! Slot 24: sminn
-       joff = (24-1)*nzone
-       where (catch%CNCOL(:, joff+1:joff+nzone) /= catch%CNCOL(:, joff+1:joff+nzone))
-         catch%CNCOL(:, joff+1:joff+nzone) = 0.0
-       end where
-       where (catch%CNCOL(:, joff+1:joff+nzone) < 0.0)
-         catch%CNCOL(:, joff+1:joff+nzone) = 0.0
-       end where
-       where (catch%CNCOL(:, joff+1:joff+nzone) > N_MAX)
-         catch%CNCOL(:, joff+1:joff+nzone) = 0.0
-       end where
-       
-       ! Slot 36: smin_no3
-       joff = (36-1)*nzone
-       where (catch%CNCOL(:, joff+1:joff+nzone) /= catch%CNCOL(:, joff+1:joff+nzone))
-         catch%CNCOL(:, joff+1:joff+nzone) = 0.0
-       end where
-       where (catch%CNCOL(:, joff+1:joff+nzone) < 0.0)
-         catch%CNCOL(:, joff+1:joff+nzone) = 0.0
-       end where
-       where (catch%CNCOL(:, joff+1:joff+nzone) > N_MAX)
-         catch%CNCOL(:, joff+1:joff+nzone) = 0.0
-       end where
-       
-       ! Slot 37: smin_nh4
-       joff = (37-1)*nzone
-       where (catch%CNCOL(:, joff+1:joff+nzone) /= catch%CNCOL(:, joff+1:joff+nzone))
-         catch%CNCOL(:, joff+1:joff+nzone) = 0.0
-       end where
-       where (catch%CNCOL(:, joff+1:joff+nzone) < 0.0)
-         catch%CNCOL(:, joff+1:joff+nzone) = 0.0
-       end where
-       where (catch%CNCOL(:, joff+1:joff+nzone) > N_MAX)
-         catch%CNCOL(:, joff+1:joff+nzone) = 0.0
-       end where
-
-          n_fixed = count(.not.(catch%CNCOL(:, (24-1)*nzone+1:(24)*nzone) == catch%CNCOL(:, (24-1)*nzone+1:(24)*nzone)))  &
-                  + count(catch%CNCOL(:, (24-1)*nzone+1:(24)*nzone) < 0.0)                                           &
-                  + count(catch%CNCOL(:, (24-1)*nzone+1:(24)*nzone) > N_MAX)
-          if (n_fixed > 0) write(*,*) 'RSTCHK sanitize CNCOL(24): fixed=', n_fixed       
-
-      endif !! <— closes myid
+      endif ! myid==0
 
      call formatter%close()
 
@@ -1168,7 +1174,9 @@ contains
           end do
        end do
 
-  
+       !rrXbo, 10Sep2025 -- the following lines were in original file, but not sure why NaNs should be turned into zeros; omit for now
+       !where(isnan(var_off_pft))          var_off_pft = 0.
+       !where(var_off_pft /= var_off_pft)  var_off_pft = 0.     ! should do same as previous line, but keep for now just in case
 
        print *, 'calculating regridded carbn'
 
@@ -1222,9 +1230,11 @@ contains
       integer           :: N, STATUS, nv, nx, offl_cell, ityp_new, i, j, nz, iv, jj
       real              :: fveg_new
       character(256) :: Iam = "write_regridded_carbon"
-         ! Column slots (CNCOL) that must be >= 0
+
+      
+      ! Column slots (CNCOL) that must be >= 0
       integer, parameter :: nonneg_col(*) = (/ 1,2,3,4,5, 6, 10,11,12,13, 14,15,16, 21,22,23,24,25,26,27,28,29, 30,31,32,33,34,35,36,37 /)
-         ! PFT slots (CNPFT) that must be >= 0 (DO NOT include 76–79: veg water potentials)
+      ! PFT slots (CNPFT) that must be >= 0 (DO NOT include 76–79: veg water potentials)
       integer, parameter :: nonneg_pft(*) = (/ &
            1,2,3,4,5, 6,7,8,9,10, 11,12,13,14,15, 16,17,18,19,20, 21,22,23, &
            24,25,26,27,             &
@@ -1233,7 +1243,7 @@ contains
            69,70,71,72,73,74,       & ! canopy geometry
            75,                       & ! plant_ndemand
            80,81                    & ! litfall sums
-         /)
+           /)
          
       
       allocate (CLMC_pf1(NTILES))
@@ -1269,9 +1279,9 @@ contains
       allocate (var_col_out (1: NTILES, 1 : nzone,1 : var_col))
       allocate (var_pft_out (1: NTILES, 1 : nzone,1 : nveg, 1 : var_pft))
 
-      var_col_out = 0.
-      !var_pft_out = NaN
-      var_pft_out = 0.0
+      var_col_out = 0.            !rrXbo, 10Sep2025 -- why not initialized to NaN (matching var_pft_out)? 
+      var_pft_out = NaN 
+      !var_pft_out = 0.0          !rrXbo, 10Sep2025
       
       OUT_TILE : DO N = 1, NTILES
 
@@ -1347,18 +1357,21 @@ contains
 
          end do NVLOOP2
 
-         ! reset carbon if negative < 10g
+         ! reset if too little (or negative) total carbon: totc_col < 10 (gC/m2)
          ! ------------------------
 
          NZLOOP : do nz = 1, nzone
 
-            if(var_col_out (n, nz,14) < 10.) then
+            if(var_col_out (n, nz,14) < 10.) then    ! totc_col<10
 
                var_col_out(n, nz, 1) = max(var_col_out(n, nz, 1), 0.)
                var_col_out(n, nz, 2) = max(var_col_out(n, nz, 2), 0.)
                var_col_out(n, nz, 3) = max(var_col_out(n, nz, 3), 0.)
                var_col_out(n, nz, 4) = max(var_col_out(n, nz, 4), 0.)
                var_col_out(n, nz, 5) = max(var_col_out(n, nz, 5), 0.)
+
+               ! skip 6-9                [why? - reichle, 15 Sep 2025]
+               
                var_col_out(n, nz,10) = max(var_col_out(n, nz,10), 0.)
                var_col_out(n, nz,11) = max(var_col_out(n, nz,11), 0.)
                var_col_out(n, nz,12) = max(var_col_out(n, nz,12), 0.)
@@ -1377,6 +1390,9 @@ contains
                var_col_out(n, nz,28) = max(var_col_out(n, nz,28), 1.)
                var_col_out(n, nz,29) = max(var_col_out(n, nz,29), 0.)
 
+               ! skip 30-40 (CNCLM40)  [why? - reichle, 15 Sep 2025]
+               ! skip 30-37 (CNCLM51)  [why? - reichle, 15 Sep 2025]
+               
                NVLOOP3 : do nv = 1,nveg
                   if     (this%isCLM40) then
                      if (nv == 1) ityp_new = CLMC_pt1(n)
@@ -1443,15 +1459,15 @@ contains
                      var_pft_out(n, nz,nv,48) = max(var_pft_out(n, nz,nv,48),0.)
                      var_pft_out(n, nz,nv,49) = max(var_pft_out(n, nz,nv,49),0.)
                      var_pft_out(n, nz,nv,50) = max(var_pft_out(n, nz,nv,50),0.)
-                     var_pft_out(n, nz,nv,51) = max(var_pft_out(n, nz,nv, 5)/500.,0.)
-                     var_pft_out(n, nz,nv,52) = max(var_pft_out(n, nz,nv,52),0.)
+                     var_pft_out(n, nz,nv,51) = max(var_pft_out(n, nz,nv, 5)/500.,0.)     !    limit: deadstemn_patch         <= deadstemc_patch/500.
+                     var_pft_out(n, nz,nv,52) = max(var_pft_out(n, nz,nv,52),0.)          ! no limit? deadstemc_storage_patch
                      var_pft_out(n, nz,nv,53) = max(var_pft_out(n, nz,nv,53),0.)
                      var_pft_out(n, nz,nv,54) = max(var_pft_out(n, nz,nv,54),0.)
                      var_pft_out(n, nz,nv,55) = max(var_pft_out(n, nz,nv,55),0.)
-                     var_pft_out(n, nz,nv,56) = max(var_pft_out(n, nz,nv,56),0.)
-                     var_pft_out(n, nz,nv,57) = max(var_pft_out(n, nz,nv,13)/25.,0.)
-                     var_pft_out(n, nz,nv,58) = max(var_pft_out(n, nz,nv,14)/25.,0.)
-                     var_pft_out(n, nz,nv,59) = max(var_pft_out(n, nz,nv,59),0.)
+                     var_pft_out(n, nz,nv,56) = max(var_pft_out(n, nz,nv,56),0.) 
+                     var_pft_out(n, nz,nv,57) = max(var_pft_out(n, nz,nv,13)/25.,0.)      !    limit: leafn_patch             <= leafc_patch/25.
+                     var_pft_out(n, nz,nv,58) = max(var_pft_out(n, nz,nv,14)/25.,0.)      !    limit: leafn_storage_patch     <= leafc_storage_patch/25.
+                     var_pft_out(n, nz,nv,59) = max(var_pft_out(n, nz,nv,59),0.)          ! 
                      var_pft_out(n, nz,nv,60) = max(var_pft_out(n, nz,nv,60),0.)
                      var_pft_out(n, nz,nv,61) = max(var_pft_out(n, nz,nv,61),0.)
                      var_pft_out(n, nz,nv,62) = max(var_pft_out(n, nz,nv,62),0.)
@@ -1467,6 +1483,7 @@ contains
                      var_pft_out(n, nz,nv,72) = max(var_pft_out(n, nz,nv,72),0.) ! HTOP are heights
                      var_pft_out(n, nz,nv,73) = max(var_pft_out(n, nz,nv,73),0.)
                      var_pft_out(n, nz,nv,74) = max(var_pft_out(n, nz,nv,74),0.)
+                     
                      !if(this%isCLM45) var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)
                      if(this%isCLM51) then
                         var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)
@@ -1488,22 +1505,28 @@ contains
             endif    ! end carbon check         
          end do NZLOOP ! end zone loop
 
-         ! --- Enforce non-negativity on known non-negative fields (all tiles) ---
-         do jj = 1, size(nonneg_col)
-           do nz = 1, nzone
-             var_col_out(:,nz,nonneg_col(jj)) = max( var_col_out(:,nz,nonneg_col(jj)), 0.0 )
-           end do
-         end do
+         !rrXbo, 10Sep2025
+         !list of "non-neg" variables applied here differs from that in preceding block:
+         !  var_col_out: 6     is       reset
+         !  var_col_out: 17-20 is *not* reset
+         !  var_col_out: 30-37 is       reset
+         !
+         !  ! --- Enforce non-negativity on known non-negative fields (all tiles) ---
+         !  do jj = 1, size(nonneg_col)
+         !    do nz = 1, nzone
+         !      var_col_out(:,nz,nonneg_col(jj)) = max( var_col_out(:,nz,nonneg_col(jj)), 0.0 )
+         !    end do
+         !  end do
+         !  
+         !  do j = 1, size(nonneg_pft)
+         !    do nz = 1, nzone
+         !      do nv = 1, nveg
+         !        var_pft_out(:,nz,nv,nonneg_pft(j)) = max( var_pft_out(:,nz,nv,nonneg_pft(j)), 0.0 )
+         !      end do
+         !    end do
+         !  end do
          
-         do j = 1, size(nonneg_pft)
-           do nz = 1, nzone
-             do nv = 1, nveg
-               var_pft_out(:,nz,nv,nonneg_pft(j)) = max( var_pft_out(:,nz,nv,nonneg_pft(j)), 0.0 )
-             end do
-           end do
-         end do
-
-         ! Update dayx variable var_pft_out (:,:,28)
+         ! Update dayx variable var_pft_out (:,:,28)               [daylight duration in seconds]
          do j = 28, 28  !  1,VAR_PFT var_pft_out (:,:,:,28)
             do nv = 1,nveg
                do nz = 1,nzone
@@ -1643,9 +1666,10 @@ contains
 
       end do OUT_TILE
 
-       ! --- Final scrub: only finite, plausible magnitudes make it to the restart
-       where (var_col_out /= var_col_out .or. abs(var_col_out) > 1.0e20) var_col_out = 0.0
-       where (var_pft_out /= var_pft_out .or. abs(var_pft_out) > 1.0e20) var_pft_out = 0.0
+      !rrXbo, 10Sep2025
+      !  ! --- Final scrub: only finite, plausible magnitudes make it to the restart
+      !  where (var_col_out /= var_col_out .or. abs(var_col_out) > 1.0e20) var_col_out = 0.0
+      !  where (var_pft_out /= var_pft_out .or. abs(var_pft_out) > 1.0e20) var_pft_out = 0.0
   
 
       i = 1
