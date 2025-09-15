@@ -238,7 +238,7 @@ CONTAINS
            SRFEXC, RZEXC,                                     &
            RUNSRF,                                            &  ! [kg m-2 s-1]  (flux units)
            QINFIL,                                            &  ! [kg m-2 s-1]  (flux units)
-           AR_UR
+           AR_UR &
            )
 
 !**** NOTE: Input throughfall is in volume units, as are calcs throughout this subroutine  [kg m-2]
@@ -265,7 +265,7 @@ CONTAINS
       INTEGER              :: N
       REAL                 :: deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil
       REAL                 :: srunc, srunl, ptotal, excess, totcapac, watadd
-      REAL, DIMENSION(NCH) :: THRUL, THRUC, AR_UR
+      REAL, DIMENSION(NCH) :: THRUL, THRUC
 
       ! constants for PEATCLSM piecewise linear relationship between surface runoff and AR1
       

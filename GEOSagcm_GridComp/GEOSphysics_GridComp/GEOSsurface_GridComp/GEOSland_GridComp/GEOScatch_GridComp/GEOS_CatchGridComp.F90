@@ -127,9 +127,10 @@ type T_URBAN_STATE !urban related variables
 end type T_URBAN_STATE
 
 type URBAN_WRAP
-    type (T_URB_STATE), pointer :: PTR => null()
+    type (T_URBAN_STATE), pointer :: PTR => null()
 end type URBAN_WRAP
 
+include "mpif.h"
 
 ! moved SURFLAY from catchment.F90 to enable run-time changes for off-line system
 ! - reichle, 29 Oct 2010
@@ -174,7 +175,7 @@ subroutine SetServices ( GC, RC )
     integer :: RESTART
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
-    type (T_URB_STATE), pointer             :: urban_internal_state => null()
+    type (T_URBAN_STATE), pointer             :: urban_internal_state => null()
     type (URBAN_WRAP)                       :: wrap_urb    
     
 ! Begin...
