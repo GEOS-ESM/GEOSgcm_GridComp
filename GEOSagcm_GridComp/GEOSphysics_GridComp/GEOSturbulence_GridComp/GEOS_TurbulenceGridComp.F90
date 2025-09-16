@@ -3051,7 +3051,7 @@ end if
      real                                :: MINSHEAR
      real                                :: AKHMMAX
      real                                :: RI_MIN, RI_MAX
-     real                                :: FKV_LIM, C_B, LAMBDA_B, LOUIS_MEMORY
+     real                                :: C_B, LAMBDA_B, LOUIS_MEMORY
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
      real                                :: PCEFF_SURF, VSCALE_SURF, KHSFCFAC_LND, KHSFCFAC_OCN
 
@@ -3215,7 +3215,6 @@ end if
        call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, FKV_LIM,      trim(COMP_NAME)//"_FKV_LIM:",      default=10.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,   RC=STATUS); VERIFY_(STATUS)
@@ -3252,7 +3251,6 @@ end if
        call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-3.0,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, FKV_LIM,      trim(COMP_NAME)//"_FKV_LIM:",      default=10.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
@@ -3280,7 +3278,7 @@ end if
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,      RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, MO_MAX_ITER, trim(COMP_NAME)//"_MO_MAX_ITER:",   default=15,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, MO_MAX_ITER, trim(COMP_NAME)//"_MO_MAX_ITER:",   default=0,          RC=STATUS); VERIFY_(STATUS)
      endif
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
@@ -4504,17 +4502,15 @@ end if
           TKE(:,:,0) = 1e-6
           TKE(:,:,LM) = 1e-6
         else
-         !TKE = 1e-6 ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
-         !do L = 1,LM-1
-         !  TKE(:,:,L) = ( LAMBDADISS * &
-         !  ( -1.*(KH(:,:,L)*MAPL_GRAV/((TSM(:,:,L) + TSM(:,:,L+1))*0.5)  *  ((TSM(:,:,L) - TSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
-         !  (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
-         !  (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
-         !  TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
-         !enddo
-         !TKE = max(1e-6, TKE) ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
-          call COMPUTE_TKE_FROM_PRODUCTION(IM, JM, LM, LAMBDADISS, &
-                                           KH, KM, TSM, U, V, Z, TKE)
+          TKE = 1e-6 ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
+          do L = 1,LM-1
+            TKE(:,:,L) = ( LAMBDADISS * &
+            ( -1.*(KH(:,:,L)*MAPL_GRAV/((TSM(:,:,L) + TSM(:,:,L+1))*0.5)  *  ((TSM(:,:,L) - TSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
+            (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
+            (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
+            TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
+          enddo
+          TKE = max(1e-6, TKE) ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
 
           ! If not running SHOC, estimate ISOTROPY from KH and TKE,
           ! based on Eq. 7 from Bogenschutz and Krueger (2013).
@@ -4895,15 +4891,35 @@ end if
       ZPBL = MIN(ZPBL,Z(:,:,KPBLMIN))
       KPBL = MAX(KPBL,float(KPBLMIN))
   
-      ! Calc KPBL using surface turbulence, for use in shallow scheme
+     ! Calc KPBL using surface turbulence, for use in shallow scheme
       if (associated(KPBL_SC)) then
-         if (DO_SHOC==0) then
-           call COMPUTE_SHALLOW_CONVECTION_PBL(IM, JM, LM, KHSFC, Z, &
-                                               KPBL_SC, ZPBL_SC)
-         else
-           call COMPUTE_SHALLOW_CONVECTION_PBL(IM, JM, LM, KH, Z, &
-                                               KPBL_SC, ZPBL_SC)
-         endif
+        KPBL_SC = MAPL_UNDEF
+        do I = 1, IM
+          do J = 1, JM
+            if (DO_SHOC==0) then
+              temparray(1:LM+1) = KHSFC(I,J,0:LM)
+            else
+              temparray(1:LM+1) = KH(I,J,0:LM)
+            endif
+            maxkh = maxval(temparray)
+            do L=LM-1,2,-1
+              if ( (temparray(L) < 0.1*maxkh) .and. (temparray(L+1) >= 0.1*maxkh)  &
+              .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
+                 KPBL_SC(I,J) = float(L)
+              end if
+            end do
+            if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then
+              KPBL_SC(I,J) = float(LM)
+            endif
+          end do
+        end do
+      endif
+      if (associated(KPBL_SC) .and. associated(ZPBL_SC)) then
+        do I = 1, IM
+          do J = 1, JM
+             ZPBL_SC(I,J) = Z(I,J,KPBL_SC(I,J))
+          end do
+        end do
       endif
 
       if (associated(PPBL)) then
@@ -5099,13 +5115,12 @@ end if
 
       call MAPL_TimerOn(MAPL,"---BELJAARS")
       if (C_B /= 0.0) then
-      call BELJAARS_OPTIMIZED(IM, JM, LM, DT, &
+      call BELJAARS(IM, JM, LM, DT, &
                     LAMBDA_B, C_B,  &
                     KPBL,           &
                     U, V, Z, AREA,  &
                     VARFLT, PLE,    &
-                    BKV, BKUU, FKV, &
-                    FKV_LIM)
+                    BKV, BKUU, FKV  )
       endif
       call MAPL_TimerOff(MAPL,"---BELJAARS")
 
@@ -6486,6 +6501,13 @@ end subroutine RUN1
 
 !*********************************************************************
 !*********************************************************************
+!*********************************************************************
+
+!*********************************************************************
+
+!*********************************************************************
+
+!BOP
 
 ! !IROUTINE:  LOUIS_KS -- Computes atmospheric diffusivities at interior levels
 
@@ -6967,7 +6989,11 @@ subroutine ComputeMOScalingInterlevel(MO_MAX_ITER, IM, JM, LM, ZE, Z0, Z0H, UU, 
                !  - use shear between levels as velocity scale: Uref = |U(k)-U(k-1)|
                !  - use theta difference tref = PV(k) - PV(k-1)
                ! ------------------------------------------------------------
-               zc_km1 = 0.5*( ZE(i,j,k-2) + ZE(i,j,k-1) )   ! valid since k>=1 ; for k=1 not used
+               if (k > 1) then  ! Add this check
+                  zc_km1 = 0.5*( ZE(i,j,k-2) + ZE(i,j,k-1) )
+               else
+                  zc_km1 = ZE(i,j,0)  ! or appropriate boundary value
+               endif
                ! defensive floor (zc_km1 is well-defined for k>=2 because ZE index k-2 exists)
                if (zc_km1 < ZMIN) zc_km1 = ZMIN
 
@@ -7042,568 +7068,100 @@ subroutine ComputeMOScalingInterlevel(MO_MAX_ITER, IM, JM, LM, ZE, Z0, Z0H, UU, 
 end subroutine ComputeMOScalingInterlevel
 
 !BOP
-! !IROUTINE: BELJAARS_OPTIMIZED -- Optimized orographic drag following Beljaars (2003)
+! !IROUTINE: BELJAARS -- orographic drag following Beljaars (2003)
 !
 ! !INTERFACE:
 !
-subroutine BELJAARS_OPTIMIZED(IM, JM, LM, DT, &
-                              LAMBDA_B, C_B,  &
-                              KPBL,           &
-                              U, V, Z, AREA,  &
-                              VARFLT, PLE,    &
-                              BKV, BKVV, FKV, FKV_LIM)
+   subroutine BELJAARS(IM, JM, LM, DT, &
+                       LAMBDA_B, C_B,  &
+                       KPBL,           &
+                       U, V, Z, AREA,  &
+                       VARFLT, PLE,    &
+                       BKV, BKVV, FKV  )
+
+!BOP
 !
-! !USES:
-   implicit none
-!
-! !INPUT PARAMETERS:
-   integer, intent(IN) :: IM                      ! Number of longitude points
-   integer, intent(IN) :: JM                      ! Number of latitude points  
-   integer, intent(IN) :: LM                      ! Number of vertical levels
-   real,    intent(IN) :: DT                      ! Time step (s)
-   real,    intent(IN) :: LAMBDA_B                ! Vertical length scale (m), default 1500
-   real,    intent(IN) :: C_B                     ! Orographic drag coefficient (dimensionless)
-   real,    intent(IN) :: FKV_LIM                 ! Maximum allowed forcing limit (stability)
-   real,    intent(IN), dimension(IM,JM,LM) :: U  ! Eastward wind component (m/s)
-   real,    intent(IN), dimension(IM,JM,LM) :: V  ! Northward wind component (m/s)
-   real,    intent(IN), dimension(IM,JM,LM) :: Z  ! Height above surface (m)
-   real,    intent(IN), dimension(IM,JM) :: KPBL  ! PBL height index (dimensionless)
-   real,    intent(IN), dimension(IM,JM) :: AREA  ! Grid cell area (m^2)
-   real,    intent(IN), dimension(IM,JM) :: VARFLT! Filtered topographic variance (m^2)
-   real,    intent(IN), dimension(IM,JM,0:LM) :: PLE ! Pressure at layer edges (Pa)
-!
-! !INPUT/OUTPUT PARAMETERS:
-   real,    intent(INOUT), dimension(IM,JM,LM) :: BKV  ! Turbulent kinetic viscosity (m^2/s)
-   real,    intent(INOUT), dimension(IM,JM,LM) :: BKVV ! Turbulent kinetic viscosity for moisture (m^2/s)
-!
-! !OUTPUT PARAMETERS:
-   real,    intent(OUT), dimension(IM,JM,LM) :: FKV    ! Orographic drag forcing (Pa*m/s^2)
-!
-! !DESCRIPTION:
-!   Computes orographic drag following Beljaars et al. (2004):
-!   "The parametrization of surface orographic drag in the ECMWF model"
-!   
-!   The orographic stress divergence is given by:
+!   Orographic drag follows  Beljaars (2003):
 !   $$
 !   \frac{\partial}{\partial z}\frac{\tau}{\rho} = \frac{C_B}{\lambda_B} |U(z)| U(z) 
-!          e^{-\tilde{z}^{1.5}}\tilde{z}^{-1.2}
+!          e^{-\tilde{z}^\frac{3}{2}}\tilde{z}^{-1.2},
 !   $$
-!   
-!   where:
-!   - $z$ is height above surface (m)
-!   - $\tilde{z} = z/\lambda_B$ is normalized height
-!   - $\tau$ is orographic stress at level z (Pa)
-!   - $\rho$ is air density (kg/m^3)  
-!   - $U(z)$ is horizontal wind speed (m/s)
-!   - $\lambda_B$ is vertical length scale (m), typically 1500m
-!   - $C_B$ is dimensionless orographic drag coefficient
-!   
-!   Two formulations are implemented:
-!   
-!   1. **Original Beljaars (C_B > 0)**: Uses fixed coefficient with terrain variance
-!   2. **Resolution-dependent (C_B ? 0)**: Uses Arakawa-Schubert sigma function
-!      for grid-resolution dependent scaling
-!
-!   The forcing is applied up to height $4\lambda_B$ (typically 6km) to avoid
-!   underflow in the exponential terms.
-!
-! !OPTIMIZATION FEATURES:
-!   - OpenMP parallelization with optimized scheduling
-!   - Thread-safe atomic updates for shared arrays
-!   - Improved cache locality through loop reordering
-!   - Pre-computed constants to reduce redundant calculations
-!   - Safe array bounds handling for edge cases
-!
-! !REVISION HISTORY:
-!   Original Beljaars implementation: Unknown
-!   Optimized version: 2024 - Added OpenMP, bounds safety, performance improvements
+!   where $z$ is the height above the surface in meters, 
+!   $\tilde{z}=\frac{z}{\lambda_B}$, $\tau$ is the orographic stress at $z$,
+!   $\rho$ is the air density, $U(z)$ is the wind velocity, and $\lambda_B$ is a vertical length scale.
+!   Beljaars uses $\lambda_B = 1500$m, for which the non-dimensional parameter $C_B = 2.5101471 \times 10^{-8}$.
+!   These are the default values, but both can be modified from the configuration. To avoid underflow.
+!   the tendency is set to zero once $\tilde{z}$ exceeds 4 (i.e., 6 km from the surface for default values). 
 !
 !EOP
-!
-! !LOCAL VARIABLES:
-   
-   ! Physical and numerical constants
-   real, parameter :: C_TOFD = 1.0837E-07          ! Combined coefficient from eq 16 of Beljaars (2004)
-                                                   ! = 9.031E-09 * 12.0 (dimensionless)
-   real, parameter :: MAX_HEIGHT_RATIO = 4.0       ! Cutoff ratio z/lambda_b (dimensionless)
-   real, parameter :: MAX_WIND_SPEED = 5.0         ! Wind speed cap for stability (m/s)
-   real, parameter :: MIN_VARFLT = 1.0E-10         ! Minimum terrain variance threshold (m^2)
-   real, parameter :: MIN_SIGMA = 1.0E-9           ! Minimum Arakawa sigma value (dimensionless)
-   real, parameter :: ARAKAWA_COEF1 = 0.9839       ! Arakawa sigma function coefficient 1
-   real, parameter :: ARAKAWA_COEF2 = 0.09835      ! Arakawa sigma function coefficient 2  
-   real, parameter :: GRID_SCALE = 750.0           ! Reference grid scale (m)
-   
-   ! Work variables
-   integer :: i, j, l                              ! Loop indices
-   real :: lambda_b_inv                            ! 1/LAMBDA_B for efficiency (1/m)
-   real :: height_cutoff                           ! Maximum height for drag application (m)
-   real :: z_ratio                                 ! Normalized height z/lambda_b (dimensionless)
-   real :: wind_speed                              ! Horizontal wind magnitude (m/s)
-   real :: vertical_profile                        ! Vertical decay function (1/m^1.2)
-   real :: sigma                                   ! Arakawa sigma function value (dimensionless)
-   real :: cbl_local                               ! Local drag coefficient (1/m)
-   real :: fkv_temp                                ! Temporary forcing value (m/s^2)
-   real :: pressure_weight                         ! Pressure layer thickness (Pa)
-   real, dimension(IM,JM) :: cbl_2d                ! 2D drag coefficient field (1/m)
 
-!BOC
-   
-   ! Input validation and error handling
-   if (LAMBDA_B <= 0.0) then
-      print *, 'ERROR: BELJAARS_OPTIMIZED - LAMBDA_B must be positive, got:', LAMBDA_B
-      print *, 'Using default LAMBDA_B = 1500.0 m'
-      return
-   endif
+      integer, intent(IN   )                    :: IM,JM,LM
+      real,    intent(IN   )                    :: DT
+      real,    intent(IN   )                    :: LAMBDA_B
+      real,    intent(IN   )                    :: C_B
 
-   if (DT <= 0.0) then
-      print *, 'ERROR: BELJAARS_OPTIMIZED - Time step DT must be positive, got:', DT
-      return
-   endif
+      real,    intent(IN   ), dimension(:,:,: ) :: U
+      real,    intent(IN   ), dimension(:,:,: ) :: V
+      real,    intent(IN   ), dimension(:,:,: ) :: Z
+      real,    intent(IN   ), dimension(:,:   ) :: KPBL, AREA, VARFLT
+      real,    intent(IN   ), dimension(:,:,0:) :: PLE
 
-   ! Pre-compute frequently used constants for computational efficiency
-   lambda_b_inv = 1.0 / LAMBDA_B                  ! Inverse length scale (1/m)
-   height_cutoff = MAX_HEIGHT_RATIO * LAMBDA_B    ! Maximum application height (m)
+      real,    intent(INOUT), dimension(:,:,: ) :: BKV,BKVV
 
-   ! Initialize output forcing array using OpenMP for large arrays
-   ! This ensures clean initialization across all threads
-   !$OMP PARALLEL DO COLLAPSE(3) PRIVATE(i,j,l) SHARED(FKV,IM,JM,LM)
-   do l = 1, LM
-      do j = 1, JM
-         do i = 1, IM
-            FKV(i,j,l) = 0.0
-         end do
-      end do
-   end do
-   !$OMP END PARALLEL DO
+      real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
-   if (C_B > 0.0) then
-      ! =======================================================================
-      ! BRANCH 1: Original Beljaars formulation with fixed coefficient
-      ! =======================================================================
-      ! Uses original Beljaars (2004) formulation with coefficient C_B
-      ! scaled by terrain variance. Appropriate when C_B represents
-      ! a physically-based drag coefficient.
-      
-      !$OMP PARALLEL DO DEFAULT(NONE) &
-      !$OMP SHARED(IM,JM,LM,C_B,VARFLT,Z,height_cutoff,lambda_b_inv,U,V,MAX_WIND_SPEED,DT,PLE,FKV,BKV,BKVV) &
-      !$OMP PRIVATE(i,j,l,z_ratio,wind_speed,vertical_profile,cbl_local,fkv_temp,pressure_weight) &
-      !$OMP SCHEDULE(STATIC,16) COLLAPSE(2)
-      do j = 1, JM
-         do i = 1, IM
-            ! Local drag coefficient scaled by terrain variance
-            cbl_local = C_B * 1.0E-7 * VARFLT(i,j)  ! (dimensionless * m^2 = 1/m after scaling)
-            
-            if (cbl_local > 0.0) then
-               ! Process levels from top to near-surface (avoid l=1 for bounds safety)
-               do l = LM, 2, -1
-                  if (Z(i,j,l) < height_cutoff) then
-                     ! Normalized height for vertical profile calculation
-                     z_ratio = Z(i,j,l) * lambda_b_inv  ! (dimensionless)
-                     
-                     ! Horizontal wind speed with stability cap
-                     wind_speed = min(MAX_WIND_SPEED, sqrt(U(i,j,l)**2 + V(i,j,l)**2))  ! (m/s)
-                     
-                     ! Beljaars vertical profile function: exp(-z?^1.5) * z?^(-1.2)
-                     ! Note: Using z?*sqrt(z?) = z?^1.5 for numerical consistency
-                     vertical_profile = exp(-z_ratio * sqrt(z_ratio)) * (z_ratio**(-1.2))  ! (1/m^1.2)
-                     
-                     ! Complete forcing term: C_B/?_B * |U| * profile_function
-                     fkv_temp = cbl_local * (vertical_profile * lambda_b_inv) * wind_speed  ! (m/s^2)
-                     
-                     ! Apply pressure weighting for mass-weighted forcing
-                     pressure_weight = PLE(i,j,l) - PLE(i,j,l-1)  ! (Pa)
-                     FKV(i,j,l) = fkv_temp * pressure_weight      ! (Pa*m/s^2)
-                     
-                     ! Update turbulent viscosity arrays (thread-safe atomic operations)
-                     !$OMP ATOMIC UPDATE
-                     BKV(i,j,l) = BKV(i,j,l) + DT * fkv_temp     ! (m^2/s)
-                     !$OMP ATOMIC UPDATE  
-                     BKVV(i,j,l) = BKVV(i,j,l) + DT * fkv_temp   ! (m^2/s)
-                  endif
-               end do
-               
-               ! Special handling for surface level (l=1) to avoid array bounds issues
-               if (Z(i,j,1) < height_cutoff) then
-                  z_ratio = Z(i,j,1) * lambda_b_inv
-                  wind_speed = min(MAX_WIND_SPEED, sqrt(U(i,j,1)**2 + V(i,j,1)**2))
-                  vertical_profile = exp(-z_ratio * sqrt(z_ratio)) * (z_ratio**(-1.2))
-                  fkv_temp = cbl_local * (vertical_profile * lambda_b_inv) * wind_speed
-                  
-                  ! Careful handling of PLE(i,j,0) - only use if valid
-                  if (PLE(i,j,0) > 0.0) then
-                     pressure_weight = PLE(i,j,1) - PLE(i,j,0)
-                     FKV(i,j,1) = fkv_temp * pressure_weight
-                     
-                     !$OMP ATOMIC UPDATE
-                     BKV(i,j,1) = BKV(i,j,1) + DT * fkv_temp
-                     !$OMP ATOMIC UPDATE
-                     BKVV(i,j,1) = BKVV(i,j,1) + DT * fkv_temp
-                  endif
-               endif
-            endif
-         end do
-      end do
-      !$OMP END PARALLEL DO
+      integer :: I,J,L
+      real    :: CBl, wsp, FKV_temp
+      real, parameter :: C_TOFD = 9.031E-09 * 12.0
 
-   else
-      ! =======================================================================
-      ! BRANCH 2: Resolution-dependent formulation
-      ! =======================================================================
-      ! Uses Arakawa-Schubert sigma function for grid-resolution dependent
-      ! scaling when C_B ? 0. Appropriate for variable resolution grids.
-      
-      ! Pre-compute resolution-dependent drag coefficients
-      ! Uses Arakawa sigma function: ? = 1 - 0.9839*exp(-0.09835*?(A)/750)
-      !$OMP PARALLEL DO DEFAULT(NONE) &
-      !$OMP SHARED(IM,JM,AREA,GRID_SCALE,ARAKAWA_COEF1,ARAKAWA_COEF2,MIN_SIGMA,C_TOFD,C_B,cbl_2d) &
-      !$OMP PRIVATE(i,j,sigma) COLLAPSE(2)
-      do j = 1, JM
-         do i = 1, IM
-            ! Arakawa sigma function for resolution dependence
-            sigma = 1.0 - ARAKAWA_COEF1 * exp(-ARAKAWA_COEF2 * (sqrt(AREA(i,j)) / GRID_SCALE))
-            sigma = max(MIN_SIGMA, min(1.0, sigma))**2  ! Clamp and square
-            
-            ! Combined coefficient with resolution scaling
-            cbl_2d(i,j) = C_TOFD * (abs(C_B) * sigma + (1.0 - sigma))**2  ! (1/m)
-         end do
-      end do
-      !$OMP END PARALLEL DO
+      if (C_B > 0.0) then
+      do I = 1, IM
+         do J = 1, JM
+            CBl = C_B*1.e-7*VARFLT(I,J)
+            do L = LM, 1, -1
+               FKV(I,J,L) = 0.0
+               if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*LAMBDA_B ) then
+                  FKV_temp = Z(I,J,L)/LAMBDA_B
+                  FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
+                  FKV_temp = CBl*(FKV_temp/LAMBDA_B)*min(5.0,sqrt(U(I,J,L)**2+V(I,J,L)**2))
 
-      ! Main computation with optimized loop ordering for cache efficiency
-      !$OMP PARALLEL DO DEFAULT(NONE) &
-      !$OMP SHARED(LM,JM,IM,VARFLT,MIN_VARFLT,Z,height_cutoff,lambda_b_inv,U,V,cbl_2d,FKV_LIM,PLE,FKV,DT,BKV,BKVV) &
-      !$OMP PRIVATE(l,j,i,z_ratio,wind_speed,vertical_profile,fkv_temp,pressure_weight) &
-      !$OMP SCHEDULE(DYNAMIC,4) COLLAPSE(2)
-      do j = 1, JM
-         do i = 1, IM
-            ! Only process grid points with significant terrain variance
-            if (VARFLT(i,j) > MIN_VARFLT) then
-               ! Process all vertical levels for this horizontal location
-               ! (improved cache locality vs. level-first ordering)
-               do l = LM, 2, -1
-                  if (Z(i,j,l) < height_cutoff) then
-                     ! Normalized height for profile calculation
-                     z_ratio = Z(i,j,l) * lambda_b_inv  ! (dimensionless)
-                     
-                     ! Horizontal wind magnitude (no artificial cap in this branch)
-                     wind_speed = sqrt(U(i,j,l)**2 + V(i,j,l)**2)  ! (m/s)
-                     
-                     ! Vertical profile function: exp(-z?^1.5) * z^(-1.2)
-                     ! Note: Using z^(-1.2) instead of z?^(-1.2) for dimensional consistency
-                     vertical_profile = exp(-z_ratio**1.5) * (Z(i,j,l)**(-1.2))  ! (1/m^1.2)
-                     
-                     ! Complete forcing with terrain variance scaling
-                     fkv_temp = cbl_2d(i,j) * VARFLT(i,j) * vertical_profile * wind_speed  ! (m/s^2)
-                     
-                     ! Apply pressure weighting and stability limit
-                     pressure_weight = PLE(i,j,l) - PLE(i,j,l-1)  ! (Pa)
-                     FKV(i,j,l) = min(FKV_LIM, fkv_temp * pressure_weight)  ! (Pa*m/s^2)
-                     
-                     ! Back-calculate forcing for viscosity update (ensures consistency)
-                     fkv_temp = FKV(i,j,l) / pressure_weight  ! (m/s^2)
-                     
-                     ! Thread-safe updates to turbulent viscosity
-                     !$OMP ATOMIC UPDATE
-                     BKV(i,j,l) = BKV(i,j,l) + DT * fkv_temp   ! (m^2/s)
-                     !$OMP ATOMIC UPDATE
-                     BKVV(i,j,l) = BKVV(i,j,l) + DT * fkv_temp ! (m^2/s)
-                  endif
-               end do
-               
-               ! Handle surface level with bounds safety
-               if (Z(i,j,1) < height_cutoff) then
-                  z_ratio = Z(i,j,1) * lambda_b_inv
-                  wind_speed = sqrt(U(i,j,1)**2 + V(i,j,1)**2)
-                  vertical_profile = exp(-z_ratio**1.5) * (Z(i,j,1)**(-1.2))
-                  fkv_temp = cbl_2d(i,j) * VARFLT(i,j) * vertical_profile * wind_speed
-                  
-                  ! Safe access to PLE surface boundary
-                  if (PLE(i,j,0) > 0.0) then
-                     pressure_weight = PLE(i,j,1) - PLE(i,j,0)
-                     FKV(i,j,1) = min(FKV_LIM, fkv_temp * pressure_weight)
-                     fkv_temp = FKV(i,j,1) / pressure_weight
-                     
-                     !$OMP ATOMIC UPDATE
-                     BKV(i,j,1) = BKV(i,j,1) + DT * fkv_temp
-                     !$OMP ATOMIC UPDATE
-                     BKVV(i,j,1) = BKVV(i,j,1) + DT * fkv_temp
-                  endif
-               endif
-            endif
-         end do
-      end do
-      !$OMP END PARALLEL DO
-   endif
-
-   ! Diagnostic output for debugging and validation
-   if (DEBUG_TRB) then
-      call MAPL_MaxMin('TOFD: BKV', BKV)      ! Turbulent viscosity field
-      call MAPL_MaxMin('TOFD: FKV', FKV * (PLE(:,:,1:LM) - PLE(:,:,0:LM-1)))  ! Mass-weighted forcing
-      call MAPL_MaxMin('TOFD: FKVP', FKV)     ! Pressure-weighted forcing per unit mass
-   endif
-
-!EOC
-end subroutine BELJAARS_OPTIMIZED
-
-
-!BOP
-! !IROUTINE: COMPUTE_TKE_FROM_PRODUCTION -- Computes TKE from turbulent energy production
-!
-! !INTERFACE:
-!
-subroutine COMPUTE_TKE_FROM_PRODUCTION(IM, JM, LM, LAMBDADISS, &
-                                       KH, KM, TSM, U, V, Z, TKE)
-!
-! !USES:
-   use MAPL_ConstantsMod, only: MAPL_GRAV
-   implicit none
-!
-! !INPUT PARAMETERS:
-   integer, intent(IN) :: IM                           ! Number of longitude points
-   integer, intent(IN) :: JM                           ! Number of latitude points  
-   integer, intent(IN) :: LM                           ! Number of vertical levels
-   real,    intent(IN) :: LAMBDADISS                   ! Dissipation length scale (m)
-   real,    intent(IN), dimension(IM,JM,0:LM) :: KH    ! Heat diffusivity (m^2/s)
-   real,    intent(IN), dimension(IM,JM,0:LM) :: KM    ! Momentum diffusivity (m^2/s)
-   real,    intent(IN), dimension(IM,JM,LM)   :: TSM   ! Temperature (K)
-   real,    intent(IN), dimension(IM,JM,LM)   :: U     ! Eastward wind (m/s)
-   real,    intent(IN), dimension(IM,JM,LM)   :: V     ! Northward wind (m/s)
-   real,    intent(IN), dimension(IM,JM,LM)   :: Z     ! Height above surface (m)
-!
-! !OUTPUT PARAMETERS:
-   real,    intent(OUT), dimension(IM,JM,LM) :: TKE    ! Turbulent kinetic energy (m^2/s^2)
-!
-! !DESCRIPTION:
-!   Computes turbulent kinetic energy from the balance of turbulent energy production
-!   and dissipation using a mixing length approach. The TKE is estimated as:
-!   
-!   $$
-!   \text{TKE} = (\lambda_{\text{diss}} \times \varepsilon)^{2/3}
-!   $$
-!   
-!   where $\varepsilon$ is the turbulent energy production rate from:
-!   - **Buoyancy production**: $P_b = -K_H \frac{g}{\theta} \frac{\partial \theta}{\partial z}$
-!   - **Shear production**: $P_s = K_M \left[\left(\frac{\partial u}{\partial z}\right)^2 + \left(\frac{\partial v}{\partial z}\right)^2\right]$
-!   
-!   The 2/3 power law comes from Kolmogorov theory relating TKE to dissipation rate
-!   and length scale: $\text{TKE} \sim (\varepsilon l)^{2/3}$
-!
-! !REVISION HISTORY:
-!   2024 - Initial implementation based on GEOS TKE calculation
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-
-   ! Physical and numerical constants
-   real, parameter :: MIN_LAYER_THICK = 1.0       ! Minimum layer thickness (m)
-   real, parameter :: MIN_TEMPERATURE = 200.0     ! Minimum temperature (K) 
-   real, parameter :: MIN_TKE = 1.0E-6            ! Minimum TKE (m^2/s^2)
-   real, parameter :: MAX_TKE = 100.0             ! Maximum TKE for stability (m^2/s^2)
-   real, parameter :: TKE_POWER = 2.0/3.0         ! Kolmogorov 2/3 power law
-   
-   ! Work variables
-   integer :: i, j, l                             ! Loop indices
-   real :: dz                                     ! Layer thickness (m)
-   real :: mean_temp                              ! Mean layer temperature (K)
-   real :: theta_grad                             ! Potential temperature gradient (K/m)
-   real :: du_dz, dv_dz                          ! Velocity shears (1/s)
-   real :: buoyancy_prod                          ! Buoyancy production (m^2/s³)
-   real :: shear_prod                             ! Shear production (m^2/s³)
-   real :: total_prod                             ! Total production (m^2/s³)
-   real :: tke_local                              ! Local TKE value (m^2/s^2)
-
-!BOC
-
-   ! Initialize TKE array
-   TKE = MIN_TKE
-
-   ! Compute TKE from turbulent energy production at each layer interface
-   !$OMP PARALLEL DO DEFAULT(NONE) &
-   !$OMP SHARED(IM,JM,LM,Z,TSM,U,V,KH,KM,MAPL_GRAV,LAMBDADISS,TKE, &
-   !$OMP        MIN_LAYER_THICK,MIN_TEMPERATURE,MIN_TKE,MAX_TKE,TKE_POWER) &
-   !$OMP PRIVATE(i,j,l,dz,mean_temp,theta_grad,du_dz,dv_dz, &
-   !$OMP         buoyancy_prod,shear_prod,total_prod,tke_local) &
-   !$OMP SCHEDULE(STATIC) COLLAPSE(2)
-   do l = 1, LM-1
-      do j = 1, JM
-         do i = 1, IM
-            
-            ! Layer thickness with numerical protection
-            dz = max(abs(Z(i,j,l) - Z(i,j,l+1)), MIN_LAYER_THICK)
-            
-            ! Mean layer temperature with protection against unrealistic values
-            mean_temp = max(0.5 * (TSM(i,j,l) + TSM(i,j,l+1)), MIN_TEMPERATURE)
-            
-            ! Potential temperature gradient (d?/dz)
-            ! Note: Negative gradient indicates unstable stratification
-            theta_grad = (TSM(i,j,l) - TSM(i,j,l+1)) / dz
-            
-            ! Velocity shears (du/dz, dv/dz)
-            du_dz = (U(i,j,l) - U(i,j,l+1)) / dz
-            dv_dz = (V(i,j,l) - V(i,j,l+1)) / dz
-            
-            ! Buoyancy production term
-            ! P_b = -K_H * (g/?) * (d?/dz)
-            ! For unstable conditions (d?/dz < 0), this gives positive production
-            buoyancy_prod = -KH(i,j,l) * MAPL_GRAV * theta_grad / mean_temp
-            
-            ! Shear production term  
-            ! P_s = K_M * [(du/dz)^2 + (dv/dz)^2]
-            ! Always positive (velocity shear creates turbulence)
-            shear_prod = KM(i,j,l) * (du_dz**2 + dv_dz**2)
-            
-            ! Total turbulent energy production rate
-            total_prod = buoyancy_prod + shear_prod
-            
-            ! Compute TKE using mixing length theory
-            if (total_prod > 0.0) then
-               ! Apply Kolmogorov 2/3 power law: TKE ~ (?*l)^(2/3)
-               tke_local = (LAMBDADISS * total_prod)**TKE_POWER
-               
-               ! Apply physically reasonable bounds
-               TKE(i,j,l) = max(MIN_TKE, min(tke_local, MAX_TKE))
-            else
-               ! For negative or zero production, use minimum value
-               ! This can occur in strongly stable conditions where
-               ! buoyancy suppression dominates over shear production
-               TKE(i,j,l) = MIN_TKE
-            endif
-            
-         end do
-      end do
-   end do
-   !$OMP END PARALLEL DO
-
-   ! Ensure all TKE values meet minimum threshold
-   ! This is redundant but provides extra safety
-   TKE = max(MIN_TKE, TKE)
-
-!EOC
-end subroutine COMPUTE_TKE_FROM_PRODUCTION
-!*********************************************************************
-
-!BOP
-! !IROUTINE: COMPUTE_SHALLOW_CONVECTION_PBL -- Computes PBL height for shallow convection scheme
-!
-! !INTERFACE:
-!
-subroutine COMPUTE_SHALLOW_CONVECTION_PBL(IM, JM, LM, KH, Z, &
-                                          KPBL_SC, ZPBL_SC)
-!
-! !USES:
-   implicit none
-!
-! !INPUT PARAMETERS:
-   integer, intent(IN) :: IM                           ! Number of longitude points
-   integer, intent(IN) :: JM                           ! Number of latitude points
-   integer, intent(IN) :: LM                           ! Number of vertical levels
-   real,    intent(IN), dimension(IM,JM,0:LM) :: KH    ! Heat diffusivity from turbulence (m^2/s)
-   real,    intent(IN), dimension(IM,JM,LM)   :: Z     ! Height above surface (m)
-!
-! !OUTPUT PARAMETERS:
-   real, pointer, intent(OUT), dimension(:,:) :: KPBL_SC      ! PBL top level index for shallow convection
-   real, pointer, intent(OUT), dimension(:,:) :: ZPBL_SC      ! PBL height for shallow convection (m)
-!
-! !DESCRIPTION:
-!   Computes planetary boundary layer height specifically for use by the shallow 
-!   convection scheme. The PBL top is defined as the level where the heat diffusivity
-!   drops below 10% of its maximum value in the column.
-!   
-!   Algorithm:
-!   1. Find maximum heat diffusivity in the vertical column
-!   2. Search downward from upper levels to find where KH first exceeds 10% of maximum
-!   3. If no clear PBL top found or maximum KH < 1 m^2/s, set PBL top to surface
-!   4. Convert level index to height for ZPBL_SC
-!
-! !REVISION HISTORY:
-!   Original: Unknown
-!   2024 - Cleaned up, documented, and optimized
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-
-   ! Physical constants
-   real, parameter :: PBL_THRESHOLD_FRACTION = 0.1    ! 10% threshold for PBL detection
-   real, parameter :: MIN_SIGNIFICANT_KH = 1.0        ! Minimum KH to define meaningful PBL (m^2/s)
-   
-   ! Work variables
-   integer :: i, j, l                                 ! Loop indices
-   real :: max_kh                                     ! Maximum KH in column (m^2/s)
-   real :: kh_threshold                               ! 10% of maximum KH (m^2/s)
-   real, dimension(LM+1) :: kh_profile                ! Vertical KH profile (m^2/s)
-   logical :: pbl_found                               ! Flag for PBL top detection
-
-!BOC
-
-   if (associated(KPBL_SC) .OR. associated(ZPBL_SC)) then
-   KPBL_SC = MAPL_UNDEF
-   ! Compute PBL level index using surface turbulence
-   !$OMP PARALLEL DO DEFAULT(NONE) &
-   !$OMP SHARED(IM,JM,LM,KH,KPBL_SC,MAPL_UNDEF, &
-   !$OMP        PBL_THRESHOLD_FRACTION,MIN_SIGNIFICANT_KH) &
-   !$OMP PRIVATE(i,j,l,max_kh,kh_threshold,kh_profile,pbl_found) &
-   !$OMP SCHEDULE(STATIC) COLLAPSE(2)
-   do j = 1, JM
-      do i = 1, IM
-         
-         ! heat diffusivity profile
-         kh_profile(1:LM+1) = KH(i,j,0:LM)
-         
-         ! Find maximum heat diffusivity in the column
-         max_kh = maxval(kh_profile(1:LM+1))
-         
-         ! Only proceed if there's significant turbulent mixing
-         if (max_kh >= MIN_SIGNIFICANT_KH) then
-            
-            ! Compute threshold (10% of maximum)
-            kh_threshold = PBL_THRESHOLD_FRACTION * max_kh
-            
-            ! Search for PBL top from upper levels downward
-            ! PBL top is where KH first exceeds threshold when going down
-            pbl_found = .false.
-            do l = LM-1, 2, -1
-               if (kh_profile(l) < kh_threshold .and. &
-                   kh_profile(l+1) >= kh_threshold .and. &
-                   .not. pbl_found) then
-                  KPBL_SC(i,j) = real(l)
-                  pbl_found = .true.
-                  exit
-               endif
+                  BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
+                  BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
+                  FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
+               end if
             end do
-            
-         endif
-         
-         ! If no clear PBL top found, set to surface level
-         if (KPBL_SC(i,j) == MAPL_UNDEF) then
-            KPBL_SC(i,j) = real(LM)
-         endif
-         
+         end do 
+      end do 
+      else
+    ! C_TOFD is the end product of all coeficients in eq 16 of Beljaars, 2003 (doi: 10.1256/qj.03.73)
+    ! C_B is a factor used to amplify the variance of the filtered topography
+      CBl = C_TOFD * C_B**2
+      do L = LM, 1, -1
+        do J = 1, JM
+          do I = 1, IM
+            FKV(I,J,L) = 0.0
+            if (VARFLT(i,j) > 0.0 .AND. Z(I,J,L) < 4.0*LAMBDA_B) then
+                wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
+                FKV_temp = exp(-1*(Z(I,J,L)/LAMBDA_B)**1.5) * Z(I,J,L)**(-1.2)
+                FKV_temp = CBl * VARFLT(i,j) * FKV_temp * wsp
+                FKV(I,J,L)  = MIN(20.0,FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))) ! include limit on this forcing for stability
+                FKV_temp = FKV(I,J,L)/(PLE(I,J,L)-PLE(I,J,L-1))
+                BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
+                BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
+            end if
+          end do
+        end do
       end do
-   end do
-   !$OMP END PARALLEL DO
-   endif
 
-   ! Convert level indices to heights
-   if (associated(ZPBL_SC)) then
-   ZPBL_SC = MAPL_UNDEF
-   !$OMP PARALLEL DO DEFAULT(NONE) &
-   !$OMP SHARED(IM,JM,Z,KPBL_SC,ZPBL_SC) &
-   !$OMP PRIVATE(i,j) &
-   !$OMP SCHEDULE(STATIC) COLLAPSE(2)
-   do j = 1, JM
-      do i = 1, IM
-         ! Convert PBL level index to height
-         ! Use nint() to handle floating point level indices safely
-         ZPBL_SC(i,j) = Z(i,j, nint(KPBL_SC(i,j)))
-      end do
-   end do
-   !$OMP END PARALLEL DO
-   endif
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: BKV ', BKV)
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKV ', FKV*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1)))
+      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKVP', FKV)
 
-!EOC
-end subroutine COMPUTE_SHALLOW_CONVECTION_PBL
+      endif
+
+   end subroutine BELJAARS
+
+!*********************************************************************
 
 !BOP
 

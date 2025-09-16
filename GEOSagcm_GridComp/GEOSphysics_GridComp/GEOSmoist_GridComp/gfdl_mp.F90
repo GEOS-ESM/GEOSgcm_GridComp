@@ -2532,7 +2532,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
 
     integer :: k
 
-    real :: DIAM, C1, C0, lnP, tmp, pl, qden, viLSC, viCNV
+    real :: DIAM, C2, C1, C0, lnP, tmp, pl, qden, viLSC, viCNV
 
     real, parameter :: aa = - 4.14122e-5
     real, parameter :: bb = - 0.00538922
@@ -2546,6 +2546,12 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
     real, parameter :: ddL = 0.00410839
     real, parameter :: eeL = 1.93644
 
+    real, parameter :: aaC = - 4.18334e-5
+    real, parameter :: bbC = - 0.00525867
+    real, parameter :: ccC = - 0.0486519
+    real, parameter :: ddC = 0.00251197
+    real, parameter :: eeC = 1.91523
+
     real, dimension (ks:ke) :: tc
     real :: zero=0.0
 
@@ -2558,10 +2564,25 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    qden = q (k) * den (k)
-                    vt (k) = (3. + log10 (qden)) * (tc (k) * (aa * tc (k) + bb) + cc) + &
-                        dd * tc (k) + ee
-                    vt (k) = 0.01 * v_fac * exp (vt (k) * log (10.))
+                    ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
+                    pl = den (k) * rdgas * tz (k) ! dry air pressure
+                    tmp = tz (k)          
+                    DIAM = 2.0*LDRADIUS4(pl/100.0,tmp,q(k),zero,zero,2)*1.e6 ! microns
+                    lnP = log(pl/100.0)            
+                    C0 = -1.04 + 0.298*lnP
+                    C1 =  0.67 - 0.097*lnP
+                    C2 = (C0 + C1*log(DIAM))
+                    ! Compute original fall speeds
+                    qden = q (k) * den (k) * 1.e3
+                    ! Large-scale settling SGP
+                    viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
+                    viLSC = viLSC * C2 ! slow settling with pressure scaling
+                    ! Convective settling TWP
+                    viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
+                    viLSC = viLSC / C2 ! increase settling with pressure scaling
+                    ! Combine
+                    vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+                    vt (k) = 0.01 * v_fac * vt (k)
                 endif
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)

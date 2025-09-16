@@ -963,6 +963,8 @@ contains
                          !  'u' & 'v' by horizontal PGF during upward motion [no unit]
     real :: frc_rasn
 
+    real :: cbmf_raw, rkfre_eff
+
 !!! TEMPORARY:  should be ncnst array of minimum values for all constituents
 !!! real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
 
@@ -1748,6 +1750,27 @@ contains
        endif
 
        !----------------------------------------------------------------------!
+       ! determine rkfre stability limiter based on rkfre or 1.9 x cbmf       !
+       !----------------------------------------------------------------------!
+       if( use_CINcin ) then
+            wcrit = sqrt(max(0.0, 2. * cin * rbuoy) )
+       else
+            wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
+       endif
+       sigmaw = sqrt(max(0.0, rkfre(i) * tkeavg + epsvarw) )
+       mu = min(wcrit/sigmaw/1.4142, 3.0)
+       rho0inv = pifc0(kinv-1)/(r*thv0top(kinv-1)*exnifc0(kinv-1))
+       cbmf_raw = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
+       ! --- compute cbmf limit based on mass availability ---
+       cbmflimit = max(0.0, 1.9*dp0(kinv-1)/g/dt)
+       ! --- adjust rkfre dynamically for stability ---
+       if (cbmf_raw > tiny(0.0)) then
+          rkfre_eff = min(rkfre(i), cbmflimit/cbmf_raw)
+       else
+          rkfre_eff = epsvarw
+       end if
+
+       !----------------------------------------------------------------------!
        ! In order to calculate implicit 'cin' (or 'cinlcl'), save the initially !
        ! calculated 'cin' and 'cinlcl', and other related variables. These will !
        ! be restored after calculating implicit CIN.                            !
@@ -1756,7 +1779,7 @@ contains
        if( iter .eq. 1 ) then 
            cin_i       = cin
            cinlcl_i    = cinlcl
-           ke          = rbuoy / ( rkfre(i) * tkeavg + epsvarw ) 
+           ke          = rbuoy / ( rkfre_eff * tkeavg + epsvarw )
            kinv_o      = kinv     
            klcl_o      = klcl     
            klfc_o      = klfc    
@@ -2172,7 +2195,7 @@ contains
          else
             wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
          endif
-         sigmaw = sqrt(max(0.0, rkfre(i) * tkeavg + epsvarw) )
+         sigmaw = sqrt(max(0.0, rkfre_eff * tkeavg + epsvarw) )
          mu = wcrit/sigmaw/1.4142                  
          if( mu .ge. 3. ) then
             if (scverbose) then
@@ -2212,10 +2235,9 @@ contains
        ! 'ufrclcl' are smaller than ufrcmax with no instability.             !
        ! ------------------------------------------------------------------- !
 
-         cbmf = rkfre(i)*(rho0inv*sigmaw/2.5066)*exp(-mu**2)                       
+         cbmf = rkfre_eff*(rho0inv*sigmaw/2.5066)*exp(-mu**2)
          winv = sigmaw*(2./2.5066)*exp(-mu**2)/erfc(mu)
          ufrcinv = cbmf/winv/rho0inv
-
 
        ! ------------------------------------------------------------------- !
        ! Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top, !
@@ -2250,7 +2272,7 @@ contains
          endif
          ufrc(krel-1) = ufrclcl
 
-      ! ----------------------------------------------------------------------- !
+       ! ----------------------------------------------------------------------- !
        ! Below is just diagnostic output for detailed analysis of cumulus scheme !
        ! ----------------------------------------------------------------------- !
 
@@ -2702,9 +2724,6 @@ contains
             umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
             emf(k) = 0.
 
-            ! Limit umf based on (2x) the CFL condition
-            umf(k) = min(umf(k),2.*dp0(k)/g/dt)
-   
             dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
 !           dcm(k) = min(1.,max(0.,xsat-xc))
 

@@ -2648,7 +2648,7 @@ contains
 
 
 ! SYNCTQ & UV pointers
-   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  TAFMOIST, QAFMOIST, THAFMOIST
+   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  SAFMOIST, TAFMOIST, QAFMOIST, THAFMOIST
    real, pointer, dimension(:,:)       ::  UFORSURF, VFORSURF, TFORSURF, QFORSURF, SPD4SURF
    real, pointer, dimension(:,:,:)     ::  UFORCHEM, VFORCHEM, TFORCHEM, THFORCHEM
    real, pointer, dimension(:,:,:)     ::  UFORTURB, VFORTURB, TFORTURB, THFORTURB, SFORTURB
@@ -3158,10 +3158,15 @@ contains
      call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
       TFORTURB =  TAFMOIST
      THFORTURB = THAFMOIST
+     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
+      SFORTURB = SAFMOIST
     endif
 
     if (DEBUG_SYNCTQ) then
        if ( SYNCTQ.ge.1. ) then
+         call MAPL_MaxMin('DEBUG S: SFORTURB', SFORTURB)    
          call MAPL_MaxMin('SYNCTQ: TAFMOIST', TAFMOIST)
          call MAPL_MaxMin('SYNCTQ: QAFMOIST', QAFMOIST)
          call MAPL_MaxMin('SYNCTQ: TFORSURF', TFORSURF)
@@ -3284,8 +3289,16 @@ contains
      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
      TFORTURB = (SAFDIFFUSE - MAPL_GRAV*0.5*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1)))/MAPL_CP
      THFORTURB = TFORTURB/PK
-     call MAPL_MaxMin('DEBUG S: SAFDIFFUSE', SAFDIFFUSE)
-     call MAPL_MaxMin('DEBUG S: TFORTURB', TFORTURB)
+     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     if (DEBUG_SYNCTQ) then
+       call MAPL_MaxMin('DEBUG S: S_FRM_TURB', SFORTURB)                  
+       call MAPL_MaxMin('DEBUG S: SAFDIFFUSE', SAFDIFFUSE)
+     endif
+     SFORTURB = SAFDIFFUSE
+     if (DEBUG_SYNCTQ) then
+       call MAPL_MaxMin('DEBUG S: SFORTURB', SFORTURB)
+     endif
     ! For SURF
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
@@ -3380,8 +3393,15 @@ contains
      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
      call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE, 'SAFUPDATE', RC=STATUS); VERIFY_(STATUS)
      TFORRAD = (SAFUPDATE - MAPL_GRAV*0.5*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1)))/MAPL_CP
-     call MAPL_MaxMin('DEBUG S: SAFUPDATE', SAFUPDATE)
-     call MAPL_MaxMin('DEBUG S: TFORRAD', TFORRAD)
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     if (DEBUG_SYNCTQ) then
+       call MAPL_MaxMin('DEBUG S: S_FRM_TURB', SFORTURB)                
+       call MAPL_MaxMin('DEBUG S: SAFUPDATE', SAFUPDATE)
+     endif
+     SFORTURB = SAFUPDATE
+     if (DEBUG_SYNCTQ) then
+       call MAPL_MaxMin('DEBUG S: SFORTURB', SFORTURB)    
+     endif
      ! For CHEM use the same T as RAD
      if ( SYNCTQ.eq.1. ) then
        call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
@@ -3611,12 +3631,18 @@ contains
         call MAPL_MaxMin('FRI: INT ', (TDPOLD + DT*INTDIS)*DPI)
         call MAPL_MaxMin('FRI: TOP ', (TDPOLD + DT*TOPDIS)*DPI)
         call MAPL_MaxMin('PHYINC: OLD ', (TDPOLD          )*DPI)
-        call MAPL_MaxMin('PHYINC: TIR ', (TDPOLD + DT*TIR )*DPI)
-        call MAPL_MaxMin('PHYINC: STN ', (TDPOLD + DT*STN )*DPI)
-        call MAPL_MaxMin('PHYINC: TTN ', (TDPOLD + DT*TTN )*DPI)
-        call MAPL_MaxMin('PHYINC: FRI ', (TDPOLD + DT*FRI )*DPI)
+     !  call MAPL_MaxMin('PHYINC: TIG ', (TDPOLD + DT*TIG )*DPI)
+     !  call MAPL_MaxMin('PHYINC: TTN ', (TDPOLD + DT*TIG + DT*TTN )*DPI)
+     !  call MAPL_MaxMin('PHYINC: TICU', (TDPOLD + DT*TIG + DT*TTN + DT*TICU )*DPI)
+     !  call MAPL_MaxMin('PHYINC: STN ', (TDPOLD + DT*TIG + DT*TTN + DT*TICU + DT*STN )*DPI)
+     !  call MAPL_MaxMin('PHYINC: FRI ', (TDPOLD + DT*TIG + DT*TTN + DT*TICU + DT*STN + DT*FRI )*DPI)
+     !  call MAPL_MaxMin('PHYINC: TIR ', (TDPOLD + DT*TIG + DT*TTN + DT*TICU + DT*STN + DT*FRI + DT*TIR)*DPI)
         call MAPL_MaxMin('PHYINC: TIG ', (TDPOLD + DT*TIG )*DPI)
+        call MAPL_MaxMin('PHYINC: TTN ', (TDPOLD + DT*TTN )*DPI)
         call MAPL_MaxMin('PHYINC: TICU', (TDPOLD + DT*TICU)*DPI)
+        call MAPL_MaxMin('PHYINC: STN ', (TDPOLD + DT*STN )*DPI)
+        call MAPL_MaxMin('PHYINC: FRI ', (TDPOLD + DT*FRI )*DPI)
+        call MAPL_MaxMin('PHYINC: TIR ', (TDPOLD + DT*TIR )*DPI)
         call MAPL_MaxMin('PHYINC: TOT ', (TDPOLD + DT*TOT )*DPI)
       endif
 
@@ -3775,7 +3801,6 @@ contains
        deallocate( sumdq   )
        deallocate( dpe     )
        deallocate( names   )
-       deallocate( ple_new )
 
     else
                                       DPDT = 0.0
@@ -3800,7 +3825,11 @@ contains
       do L=1,LM
          TDPNEW(:,:,L) = ( T(:,:,L) + DT*DTDT(:,:,L)*DPI(:,:,L) ) * ( PLE(:,:,L)-PLE(:,:,L-1) + DT*(DPDT(:,:,L)-DPDT(:,:,L-1)) )
       enddo
-         DTDT = ( TDPNEW - TDPOLD )/DT
+      DTDT = ( TDPNEW - TDPOLD )/DT
+      if (DEBUG_PHYINC) then
+        call MAPL_MaxMin('PHYINC: NEW ', TDPNEW/(ple_new(:,:,1:LM)-ple_new(:,:,0:LM-1)))
+      endif
+      deallocate( ple_new )
       deallocate( TDPNEW )
       deallocate( TDPOLD )
     endif
