@@ -200,7 +200,9 @@
 
       REAL,    INTENT(IN), DIMENSION(NCH, N_Constit), OPTIONAL :: TOTDEPOS
 
-      REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: FRAC_UR, SWNET_UR, RA_UR, QSAT_UR, DQS_UR
+      REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: FRAC_UR
+
+      REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: SWNET_UR, RA_UR, QSAT_UR, DQS_UR
 
       REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: TC_UR, QA_UR, CH_UR
 
@@ -511,6 +513,19 @@
        NETSW_SNOW(N)=0.
       end do
 
+      if(.not.present(FRAC_UR))then
+        AR_UR=0.
+        SWNET_UR=SWNETF
+        RA_UR=RA4
+        QSAT_UR=QSAT4
+        DQS_UR=DQS4
+        TC_UR=TC4
+        QA_UR=QA4
+        CH_UR=0.018 
+      else
+        AR_UR=FRAC_UR      
+      endif
+
 !**** ---------------------------------------------------
 !**** PRE-PROCESS DATA AS NECESSARY:
 !****
@@ -659,7 +674,6 @@
                       SRFEXC,CATDEF,RUNSRF,                                    &
                       AR1, AR2, AR4,srfmx,srfmn,  SWSRF1,SWSRF2,SWSRF4,RZI     &
                      )
-      AR_UR = FRAC_UR
 
       DO N=1,NCH
          TSOIL=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
@@ -743,9 +757,10 @@
                       T1_UR,phi,-1.*ZBAR,THETAF,                        &   ! note minus sign for zbar
                       HT,                                            &
                       fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp      &
-                     )  
+                      ) 
         HFTDS_UR(N)=-FH21D  
-        DHFT_UR(N)=-DFH21D              
+        DHFT_UR(N)=-DFH21D 
+         
 
         ENDDO 
 
@@ -764,6 +779,7 @@
         TC2SF(N)  = TC2(N)
         TC4SF(N)  = TC4(N)
         TCSF_UR(N)= TC_UR(N)
+
         ENDDO
 
       CALL RCUNST (                                                            &
