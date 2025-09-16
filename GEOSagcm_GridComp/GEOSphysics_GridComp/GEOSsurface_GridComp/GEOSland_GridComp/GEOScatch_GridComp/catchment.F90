@@ -150,14 +150,13 @@
                      ARS1,ARS2,ARS3,ARA1,ARA2,ARA3,ARA4,ARW1,ARW2,ARW3,ARW4,   &
                      tsa1,tsa2,tsb1,tsb2,atau,btau,BUG,                        &
                      TC1, TC2, TC4, QA1, QA2, QA4, CAPAC,                      &
-                     CATDEF, RZEXC, srfexc, GHTCNT, GHTCNT_UR, TSURF,                     &
+                     CATDEF, RZEXC, srfexc, GHTCNT, TSURF,                     &
                      WESNN, HTSNNN, SNDZN,                                     &
                      EVAP, SHFLUX, RUNOFF,                                     &  ! EVAP:                   kg/m2/s
                      EINT, ESOI, EVEG, ESNO,  BFLOW,RUNSRF,SMELT,              &  ! EINT, ESOI, EVEG, ESNO: W/m2
                      HLWUP,SWLAND,LHFLUX,QINFIL,AR1, AR2, RZEQ,                &  ! HLWUP = *emitted* longwave only (excl reflected)
                      GHFLUX, GHFLUXSNO, GHTSKIN, TPSN1, ASNOW0,                &
-                     TP1, TP2, TP3, TP4, TP5, TP6,                             &
-                     TP1_UR, TP2_UR, TP3_UR, TP4_UR, TP5_UR, TP6_UR,           &                     
+                     TP1, TP2, TP3, TP4, TP5, TP6,                             &                  
                      sfmc, rzmc, prmc, entot, wtot, WCHANGE, ECHANGE, HSNACC,  &
                      EVACC,                                                    &  ! kg/m2/s
                      LHACC, SHACC,                                             &  ! W/m2
@@ -216,7 +215,7 @@
                      TC1, TC2, TC4, QA1, QA2, QA4, CAPAC,                      &
                      CATDEF, RZEXC, SRFEXC
  
-      REAL, INTENT(INOUT), DIMENSION(N_GT, NCH) ::  GHTCNT,GHTCNT_UR
+      REAL, INTENT(INOUT), DIMENSION(N_GT, NCH) ::  GHTCNT
  
       REAL, INTENT(INOUT), DIMENSION(N_SNOW, NCH) :: WESNN, HTSNNN, SNDZN
 
@@ -231,8 +230,7 @@
                      HLWUP,SWLAND,LHFLUX,QINFIL,AR1, AR2, RZEQ,                &
                      GHFLUX, TPSN1, ASNOW0, TP1, TP2, TP3, TP4, TP5, TP6,      &
                      sfmc, rzmc, prmc, entot, wtot, tsurf, WCHANGE, ECHANGE,   &
-                     HSNACC, EVACC, LHACC, SHACC,&
-                     TP1_UR, TP2_UR, TP3_UR, TP4_UR, TP5_UR, TP6_UR
+                     HSNACC, EVACC, LHACC, SHACC
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: GHFLUXSNO, GHTSKIN
 
@@ -739,7 +737,7 @@
         T1_UR(2)=TC_UR(N)
         T1_UR(3)=TC_UR(N) 
         DO LAYER=1,6
-          HT(LAYER)=GHTCNT_UR(LAYER,N)
+          HT(LAYER)=GHTCNT(LAYER,N)
         ENDDO           
         CALL GNDTP0_UR(                                               &
                       T1_UR,phi,-1.*ZBAR,THETAF,                        &   ! note minus sign for zbar
@@ -992,29 +990,6 @@
         tp5(n)=tp(5)
         tp6(n)=tp(6)
         frice(n)=xfice
-
-        !if(AR_UR(N)>0.)then
-        !  DO LAYER=1,6
-        !    HT(LAYER)=GHTCNT_UR(LAYER,N)
-        !  ENDDO          
-        !  FH21=-GHFLUX_UR(N)
-        !  CALL GNDTMP(                                 &
-        !      phi, -1.*zbar,                           &   
-        !      ht,                                      &
-        !      xfice, tp, soilice_UR,                   &
-        !      DTS=dtstep, THETAF=thetaf, FH21=fh21)
-          DO LAYER=1,6
-            GHTCNT_UR(LAYER,N)=GHTCNT(LAYER,N)
-          ENDDO
-          TP1_UR(n)=tp1(n)
-          TP2_UR(n)=tp2(n)
-          TP3_UR(n)=tp3(n)
-          TP4_UR(n)=tp4(n)
-          TP5_UR(n)=tp5(n)
-          TP6_UR(n)=tp6(n)
-          frice_UR(n)=frice(n)            
-        !endif
-
          
         ENDDO
 
