@@ -26,6 +26,7 @@ class Setup:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "cpaut": config_dependent_constants.CPAUT,
+                "DO_SEDI_W": GFDL_1M_config.DO_SEDI_W,
             },
         )
 

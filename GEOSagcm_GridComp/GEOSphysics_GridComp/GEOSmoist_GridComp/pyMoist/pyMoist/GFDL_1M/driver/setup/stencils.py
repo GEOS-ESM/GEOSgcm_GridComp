@@ -67,7 +67,7 @@ def init_temporaries(
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
     """
-    from __externals__ import cpaut
+    from __externals__ import cpaut, DO_SEDI_W
 
     with computation(PARALLEL), interval(...):
         t1 = t
@@ -114,7 +114,9 @@ def init_temporaries(
         m1 = 0.0
         u1 = uin
         v1 = vin
-        w1 = w
+
+        if DO_SEDI_W:
+            w1 = w
 
         # ccn needs units #/m^3
         ccn = ice_conentration + liquid_concentration

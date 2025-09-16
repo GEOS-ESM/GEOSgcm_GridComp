@@ -3,10 +3,11 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
+from pyMoist.GFDL_1M.driver.finish.main import Finish
+from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 
 
-class TranslateGFDL_1M_driver(TranslateFortranData2Py):
+class TranslateGFDL_1M_driver_finish(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -19,72 +20,52 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
 
         # grid.compute_dict is workaround to remove grid halo, which is hardcoded to 3
         self.in_vars["data_vars"] = {
-            "t": grid.compute_dict() | {"serialname": "T"},
-            "w": grid.compute_dict() | {"serialname": "W"},
-            "u": grid.compute_dict() | {"serialname": "U"},
-            "v": grid.compute_dict() | {"serialname": "V"},
-            "dz": grid.compute_dict() | {"serialname": "DZ"},
-            "dp": grid.compute_dict() | {"serialname": "DP"},
-            "area": grid.compute_dict() | {"serialname": "AREA"},
-            "land_fraction": grid.compute_dict() | {"serialname": "FRLAND"},
-            "convection_fraction": grid.compute_dict() | {"serialname": "CNV_FRC"},
-            "surface_type": grid.compute_dict() | {"serialname": "SRF_TYPE"},
-            "estimated_inversion_strength": grid.compute_dict() | {"serialname": "EIS"},
-            "rh_crit": grid.compute_dict() | {"serialname": "RHCRIT3D"},
-            "vapor": grid.compute_dict() | {"serialname": "RAD_QV"},
-            "liquid": grid.compute_dict() | {"serialname": "RAD_QL"},
-            "rain": grid.compute_dict() | {"serialname": "RAD_QR"},
-            "ice": grid.compute_dict() | {"serialname": "RAD_QI"},
-            "snow": grid.compute_dict() | {"serialname": "RAD_QS"},
-            "graupel": grid.compute_dict() | {"serialname": "RAD_QG"},
-            "cloud_fraction": grid.compute_dict() | {"serialname": "RAD_CF"},
-            "ice_concentration": grid.compute_dict() | {"serialname": "NACTI"},
-            "liquid_concentration": grid.compute_dict() | {"serialname": "NACTL"},
-            "dvapor_dt": grid.compute_dict() | {"serialname": "DQVDTmic"},
-            "dliquid_dt": grid.compute_dict() | {"serialname": "DQLDTmic"},
-            "drain_dt": grid.compute_dict() | {"serialname": "DQRDTmic"},
-            "dice_dt": grid.compute_dict() | {"serialname": "DQIDTmic"},
-            "dsnow_dt": grid.compute_dict() | {"serialname": "DQSDTmic"},
-            "dgraupel_dt": grid.compute_dict() | {"serialname": "DQGDTmic"},
-            "dcloud_fraction_dt": grid.compute_dict() | {"serialname": "DQADTmic"},
-            "dt_dt": grid.compute_dict() | {"serialname": "DTDTmic"},
-            "du_dt": grid.compute_dict() | {"serialname": "DUDTmic"},
-            "dv_dt": grid.compute_dict() | {"serialname": "DVDTmic"},
+            "qv0": grid.compute_dict() | {"serialname": "qv0_driver_finish"},
+            "ql0": grid.compute_dict() | {"serialname": "ql0_driver_finish"},
+            "qr0": grid.compute_dict() | {"serialname": "qr0_driver_finish"},
+            "qi0": grid.compute_dict() | {"serialname": "qi0_driver_finish"},
+            "qs0": grid.compute_dict() | {"serialname": "qs0_driver_finish"},
+            "qg0": grid.compute_dict() | {"serialname": "qg0_driver_finish"},
+            "qa0": grid.compute_dict() | {"serialname": "qa0_driver_finish"},
+            "qv1": grid.compute_dict() | {"serialname": "qv1_driver_finish"},
+            "ql1": grid.compute_dict() | {"serialname": "ql1_driver_finish"},
+            "qr1": grid.compute_dict() | {"serialname": "qr1_driver_finish"},
+            "qi1": grid.compute_dict() | {"serialname": "qi1_driver_finish"},
+            "qs1": grid.compute_dict() | {"serialname": "qs1_driver_finish"},
+            "qg1": grid.compute_dict() | {"serialname": "qg1_driver_finish"},
+            "qv_dt": grid.compute_dict() | {"serialname": "qv_dt_driver_finish"},
+            "ql_dt": grid.compute_dict() | {"serialname": "ql_dt_driver_finish"},
+            "qr_dt": grid.compute_dict() | {"serialname": "qr_dt_driver_finish"},
+            "qi_dt": grid.compute_dict() | {"serialname": "qi_dt_driver_finish"},
+            "qs_dt": grid.compute_dict() | {"serialname": "qs_dt_driver_finish"},
+            "qg_dt": grid.compute_dict() | {"serialname": "qg_dt_driver_finish"},
+            "qa_dt": grid.compute_dict() | {"serialname": "qa_dt_driver_finish"},
+            "t": grid.compute_dict() | {"serialname": "t_driver_finish"},
+            "t1": grid.compute_dict() | {"serialname": "t1_driver_finish"},
+            "t_dt": grid.compute_dict() | {"serialname": "t_dt_driver_finish"},
+            "w": grid.compute_dict() | {"serialname": "w_driver_finish"},
+            "w1": grid.compute_dict() | {"serialname": "w1_driver_finish"},
+            "u": grid.compute_dict() | {"serialname": "u_driver_finish"},
+            "u1": grid.compute_dict() | {"serialname": "u1_driver_finish"},
+            "udt": grid.compute_dict() | {"serialname": "udt_driver_finish"},
+            "v": grid.compute_dict() | {"serialname": "v_driver_finish"},
+            "v1": grid.compute_dict() | {"serialname": "v1_driver_finish"},
+            "vdt": grid.compute_dict() | {"serialname": "vdt_driver_finish"},
+            "dp": grid.compute_dict() | {"serialname": "dp_driver_finish"},
+            "dp1": grid.compute_dict() | {"serialname": "dp1_driver_finish"},
+            "m1": grid.compute_dict() | {"serialname": "m1_driver_finish"},
+            "rain": grid.compute_dict() | {"serialname": "rain_driver_finish"},
+            "snow": grid.compute_dict() | {"serialname": "snow_driver_finish"},
+            "ice": grid.compute_dict() | {"serialname": "ice_driver_finish"},
+            "graupel": grid.compute_dict() | {"serialname": "graupel_driver_finish"},
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
-        self.out_vars.update(
-            {
-                "REV_LS": {},
-                "RSU_LS": {},
-                "PRCP_RAIN": {},
-                "PRCP_SNOW": {},
-                "PRCP_ICE": {},
-                "PRCP_GRAUPEL": {},
-                "PFL_LS_driver": {},
-                "PFI_LS_driver": {},
-            }
-        )
         del (
-            self.out_vars["t"],
-            self.out_vars["w"],
-            self.out_vars["u"],
-            self.out_vars["v"],
-            self.out_vars["dz"],
-            self.out_vars["dp"],
-            self.out_vars["area"],
-            self.out_vars["land_fraction"],
-            self.out_vars["convection_fraction"],
-            self.out_vars["surface_type"],
-            self.out_vars["estimated_inversion_strength"],
-            self.out_vars["rh_crit"],
-            self.out_vars["vapor"],
-            self.out_vars["liquid"],
             self.out_vars["rain"],
+            self.out_vars["snow"],
+            self.out_vars["ice"],
             self.out_vars["graupel"],
-            self.out_vars["cloud_fraction"],
-            self.out_vars["ice_concentration"],
-            self.out_vars["liquid_concentration"],
         )
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -193,28 +174,11 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
             CCI_EVAP_EFF=self.constants["CCI_EVAP_EFF"],
         )
 
+        config_dependent_constants = ConfigConstants.make(self.GFDL_1M_config)
+
         # Initalize object to be tested
-        self.driver = MicrophysicsDriver(
-            self.stencil_factory,
-            self.quantity_factory,
-            self.GFDL_1M_config,
-        )
+        finish = Finish(self.stencil_factory, self.GFDL_1M_config, config_dependent_constants)
 
-        self.driver(
-            **inputs,
-        )
-
-        inputs.update(
-            {
-                "REV_LS": self.driver.outputs.revap.view[:],
-                "RSU_LS": self.driver.outputs.isubl.view[:],
-                "PRCP_RAIN": self.driver.outputs.rain.view[:],
-                "PRCP_SNOW": self.driver.outputs.snow.view[:],
-                "PRCP_ICE": self.driver.outputs.ice.view[:],
-                "PRCP_GRAUPEL": self.driver.outputs.graupel.view[:],
-                "PFL_LS_driver": self.driver.outputs.m2_rain.view[:],
-                "PFI_LS_driver": self.driver.outputs.m2_sol.view[:],
-            }
-        )
+        finish(**inputs)
 
         return inputs
