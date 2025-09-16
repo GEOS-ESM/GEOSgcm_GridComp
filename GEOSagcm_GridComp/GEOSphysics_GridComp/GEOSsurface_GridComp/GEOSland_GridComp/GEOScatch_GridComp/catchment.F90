@@ -735,21 +735,19 @@
         DHFT2(N)=-DFH21I
         DHFT4(N)=-DFH21D
 
-        if(AR_UR(N)>0.)then
-          T1_UR(1)=TC_UR(N)
-          T1_UR(2)=TC_UR(N)
-          T1_UR(3)=TC_UR(N) 
-          DO LAYER=1,6
-            HT(LAYER)=GHTCNT_UR(LAYER,N)
-          ENDDO           
-          CALL GNDTP0_UR(                                               &
+        T1_UR(1)=TC_UR(N)
+        T1_UR(2)=TC_UR(N)
+        T1_UR(3)=TC_UR(N) 
+        DO LAYER=1,6
+          HT(LAYER)=GHTCNT_UR(LAYER,N)
+        ENDDO           
+        CALL GNDTP0_UR(                                               &
                       T1_UR,phi,-1.*ZBAR,THETAF,                        &   ! note minus sign for zbar
                       HT,                                            &
                       fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp      &
                      )  
-          HFTDS_UR(N)=-FH21D  
-          DHFT_UR(N)=-DFH21D              
-        endif
+        HFTDS_UR(N)=-FH21D  
+        DHFT_UR(N)=-DFH21D              
 
         ENDDO 
 
@@ -831,6 +829,7 @@
 
 !**** 4. URBAN FRACTION
 !CC    print*,'energy urban'
+      CH_UR=0.018
       BLW_UR = EMIS_UR*stefan_boltzmann*TC_UR*TC_UR*TC_UR
       ALW_UR = -3.0*BLW_UR*TC_UR
       BLW_UR =  4.0*BLW_UR  
@@ -994,7 +993,7 @@
         tp6(n)=tp(6)
         frice(n)=xfice
 
-        if(AR_UR(N)>0.)then
+        !if(AR_UR(N)>0.)then
         !  DO LAYER=1,6
         !    HT(LAYER)=GHTCNT_UR(LAYER,N)
         !  ENDDO          
@@ -1014,7 +1013,7 @@
           TP5_UR(n)=tp5(n)
           TP6_UR(n)=tp6(n)
           frice_UR(n)=frice(n)            
-        endif
+        !endif
 
          
         ENDDO
