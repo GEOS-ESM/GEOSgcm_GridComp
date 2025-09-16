@@ -2,13 +2,13 @@ module CNVegStateType
 
   use shr_kind_mod     , only : r8 => shr_kind_r8
   use nanMod           , only : nan
-  use clm_varpar       , only : nlevsno, nlevgrnd, nlevlak, nlevsoi, &
-                                num_zon, num_veg, var_col, var_pft, numpft
+  use clm_varpar       , only : nlevsno, nlevgrnd, nlevlak, nlevsoi,                  &
+                                num_zon, num_veg, var_col, var_pft, numpft, FVEG_MIN
   use clm_varcon       , only : spval, ispval
+  !use clm_varctl       , only : iulog      !rrXbo 10Sep2025
   use decompMod        , only : bounds_type
   use AnnualFluxDribbler, only : annual_flux_dribbler_type, annual_flux_dribbler_patch
-
-
+  
   ! !PUBLIC TYPES:
   implicit none
   save
@@ -223,7 +223,7 @@ contains
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
                   
                   this%annavg_t2m_patch            (np) = cnpft(nc,nz,nv,  24)
                   this%annmax_retransn_patch       (np) = cnpft(nc,nz,nv, 25)

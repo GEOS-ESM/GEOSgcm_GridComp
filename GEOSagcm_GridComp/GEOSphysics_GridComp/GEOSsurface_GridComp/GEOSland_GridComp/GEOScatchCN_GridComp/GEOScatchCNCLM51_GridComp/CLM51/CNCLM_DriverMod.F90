@@ -4,8 +4,9 @@ module CNCLM_DriverMod
   
   use nanMod           , only : nan
   use CNVegetationFacade
-  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight,&
-                                var_col, var_pft, nlevgrnd, numpft, ndecomp_pools
+  use clm_varpar       , only : nlevsno, nlevmaxurbgrnd, num_veg, num_zon, CN_zone_weight
+  use clm_varpar       , only : var_col, var_pft, nlevgrnd, numpft, ndecomp_pools, FVEG_MIN
+  use clm_varpar       , only : decomp_cpool_cncol_index, decomp_npool_cncol_index
   use clm_varcon       , only : grav, denh2o
   use clm_time_manager , only : is_first_step, get_nstep
   use decompMod
@@ -62,8 +63,9 @@ module CNCLM_DriverMod
   public :: get_CN_LAI
   
 contains
-
-!---------------------------------
+  
+  !---------------------------------
+  
   subroutine CN_Driver(istep,nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
        rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,et365d,gdp,&
        abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
@@ -306,19 +308,19 @@ contains
              temperature_inst%t_ref2m_patch(p)                                 = tairm(nc)
              temperature_inst%soila10_patch(p)                                 = tg10d(nc)
              temperature_inst%t_a5min_patch(p)                                 = t2m5d(nc)
-             cn2clm_inst%btran2_patch_cn2clm(p)                                = btran_fire(nc,nz)
-             
+
+             cn2clm_inst%btran2_patch_cn2clm(p)                                = btran_fire(nc,nz)   ! add root zone soil wetness ("btran_fire") into CN2CLM structure; fire modules read it from there
              ! cnfire_li2016_inst%cnfire_base_type%btran2_patch(p)             = btran_fire(nc,nz)
              ! cnfire_li2021_inst%cnfire_base_type%btran2_patch(p)             = btran_fire(nc,nz)
              
              water_inst%wateratm2lndbulk_inst%prec60_patch(p)                  = prec60d(nc)
              water_inst%wateratm2lndbulk_inst%prec10_patch(p)                  = prec10d(nc)
              water_inst%wateratm2lndbulk_inst%rh30_patch(p)                    = rh30(nc)
-             frictionvel_inst%forc_hgt_u_patch(p)                              = 30.              ! following CNCLM45 implementation, but this should be available from the GridComp
+             frictionvel_inst%forc_hgt_u_patch(p)                              = 30.                 ! following CNCLM45 implementation, but this should be available from the GridComp
 
              do nv = 1,num_veg ! defined veg loop
                 
-                if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>FVEG_MIN) then
                    
                    photosyns_inst%psnsun_patch(p)                              = psnsunm(nc,nv,nz)
                    photosyns_inst%psnsha_patch(p)                              = psnsham(nc,nv,nz)
@@ -506,7 +508,7 @@ contains
 
              do nv = 1,num_veg ! defined veg loop
 
-                if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                    
                    zlai(nc,nv,nz)            = canopystate_inst%elai_patch(p)
@@ -563,7 +565,7 @@ contains
 
     ! OUTPUT
     real,    dimension(nch,num_zon,var_col),         intent(out) :: cncol ! column-level restart variables 
-    real,    dimension(nch,num_zon,num_veg,var_pft), intent(out) :: cnpft ! PFT-level restart variables
+    real,    dimension(nch,num_zon,num_veg,var_pft), intent(out) :: cnpft ! PFT-level restart variables     ! NOTE: order of dims DIFFERS from that of ityp & fveg !!!
 
     ! LOCAL
 
@@ -585,13 +587,12 @@ contains
 
     integer               :: n, p, nv, nc, nz, np, nd
 
-    ! map between order of C & N pools in CNCOL and CTSM
-    
-    integer, dimension(8) :: decomp_cpool_cncol_index = (/  3,  4,  5,  2, 10, 11, 12, 13 /)    
-    integer, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17, 25, 26, 27, 28 /)
-    
     !----------------
     
+    !rrXbo10Sep2025 ! Clean slate: zero arrays so any unassigned slots are safe in the restart
+    !rrXbo10Sep2025 cncol(:,:,:)   = 0.0
+    !rrXbo10Sep2025 cnpft(:,:,:,:) = 0.0
+
     n  = 0
     np = 0
 
@@ -602,6 +603,8 @@ contains
           n = n + 1
 
           cncol(nc,nz, 1) = soilbiogeochem_carbonstate_inst%ctrunc_vr_col(n,1)
+          
+          ! C and N decomposition pools are stored in cncol entries 2:5, 10:13, 17:20, and 25:28
           
           do nd = 1,ndecomp_pools
              ! jkolassa: accounting for fact that pool order in CNCOL is different from CTSM
@@ -614,19 +617,19 @@ contains
           ! jkolassa: variables below transitioned from being column-level to being gridcell-level in CLM;
           !           assuming here that quantities are spread over zones according to zone weight
           cncol(nc,nz, 7) = bgc_vegetation_inst%c_products_inst%prod100_grc(        nc) * CN_zone_weight(nz) 
-          cncol(nc,nz, 8) = bgc_vegetation_inst%c_products_inst%prod100_grc(        nc) * CN_zone_weight(nz)
+          cncol(nc,nz, 8) = bgc_vegetation_inst%c_products_inst%prod10_grc(         nc) * CN_zone_weight(nz)
           cncol(nc,nz, 9) = bgc_vegetation_inst%cnveg_carbonstate_inst%seedc_grc(   nc) * CN_zone_weight(nz)
           
           cncol(nc,nz,14) = bgc_vegetation_inst%cnveg_carbonstate_inst%totc_col(     n  )
           cncol(nc,nz,15) = soilbiogeochem_carbonstate_inst%totlitc_col(             n  )
           cncol(nc,nz,16) = soilbiogeochem_nitrogenstate_inst%ntrunc_vr_col(         n,1)
           
-          
           cncol(nc,nz,21) = bgc_vegetation_inst%n_products_inst%prod100_grc(        nc) * CN_zone_weight(nz) 
-          cncol(nc,nz,22) = bgc_vegetation_inst%n_products_inst%prod100_grc(        nc) * CN_zone_weight(nz)
+          cncol(nc,nz,22) = bgc_vegetation_inst%n_products_inst%prod10_grc(         nc) * CN_zone_weight(nz)
           cncol(nc,nz,23) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%seedn_grc( nc) * CN_zone_weight(nz)
           
           cncol(nc,nz,24) = soilbiogeochem_nitrogenstate_inst%sminn_vr_col(          n,1)
+          
           cncol(nc,nz,29) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%totn_col(   n  )
           cncol(nc,nz,30) = soilbiogeochem_state_inst%fpg_col(                       n  )
           cncol(nc,nz,31) = bgc_vegetation_inst%cnveg_state_inst%annsum_counter_col( n  )
@@ -644,7 +647,7 @@ contains
 
              do nv = 1,num_veg ! defined veg loop
                 
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                    cnpft(nc,nz,nv,  1) = bgc_vegetation_inst%cnveg_carbonstate_inst%cpool_patch               (np  )
                    cnpft(nc,nz,nv,  2) = bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_patch          (np  )
@@ -786,7 +789,7 @@ contains
                   
                   ! extract LAI & SAI from CN clmtype
                   ! ---------------------------------
-                  if(ityp(nc,nv,nz)==p .and. ityp(nc,nv,nz)>0 .and. fveg(nc,nv,nz)>1.e-4) then
+                  if(ityp(nc,nv,nz)==p .and. ityp(nc,nv,nz)>0 .and. fveg(nc,nv,nz)>FVEG_MIN) then
                      elai(nc,nv,nz) = elai_clm(np)
                      if(present(esai)) esai(nc,nv,nz) = esai_clm(np)
                      if(present(tlai)) tlai(nc,nv,nz) = tlai_clm(np)

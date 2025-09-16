@@ -5,8 +5,8 @@ module PatchType
   use decompMod        , only : bounds_type
   use clm_varcon       , only : ispval
   use clm_varctl       , only : use_fates
-  use clm_varpar       , only : numpft, NUM_ZON, NUM_VEG, CN_zone_weight
-
+  use clm_varpar       , only : numpft, NUM_ZON, NUM_VEG, CN_zone_weight, FVEG_MIN
+  
  !-----------------------------------------------------------------------
   ! !DESCRIPTION:
   ! Patch data type allocation 
@@ -138,7 +138,7 @@ module PatchType
              this%landunit(np) = nc
              this%wtlunit(np)  = 0.
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
                    this%active(np) = .true.
                    this%wtcol(np) = this%wtcol(np) + fveg(nc,nv,nz)
                    this%wtgcell(np)  = this%wtgcell(np) + (fveg(nc,nv,nz)*CN_zone_weight(nz))

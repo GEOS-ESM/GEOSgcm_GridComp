@@ -15,15 +15,14 @@ module CNVegNitrogenFluxType
                                  ideadcroot,ideadcroot_st,ideadcroot_xf,&
                                  igrain,igrain_st,igrain_xf,iretransn,ioutn
   use clm_varpar       , only : numpft, num_zon, num_veg, &
-                                var_col, var_pft, CN_zone_weight
+                                var_col, var_pft, CN_zone_weight, FVEG_MIN
   use clm_varcon       , only : spval, ispval, dzsoi_decomp
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_crop, use_matrixcn
   use PatchType        , only : patch
   use CNSharedParamsMod , only : use_fun
   use LandunitType      , only : lun
   use landunit_varcon  , only : istsoil, istcrop
-
-
+  
   ! !PUBLIC TYPES:
   implicit none
   save
@@ -983,7 +982,7 @@ contains
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                   this%plant_ndemand_patch (np) = cnpft(nc,nz,nv, 75)
                  

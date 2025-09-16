@@ -10,12 +10,13 @@ module clm_varpar
 !
 ! !USES:
 !
-  use clm_varpar_shared, only :    &
-       VAR_COL => VAR_COL_51,      &
-       VAR_PFT => VAR_PFT_51,      &
-       numpft  => NUM_PFT_CN_51,   &
-       NUM_ZON => NUM_ZON_CN,      &
-       NUM_VEG => NUM_VEG_CN_51
+  use clm_varpar_shared, only :     &
+       VAR_COL  => VAR_COL_51,      &
+       VAR_PFT  => VAR_PFT_51,      &
+       numpft   => NUM_PFT_CN_51,   &
+       NUM_ZON  => NUM_ZON_CN,      &
+       NUM_VEG  => NUM_VEG_CN_51,   &
+       FVEG_MIN
   
 ! !PUBLIC TYPES:
   implicit none
@@ -39,6 +40,11 @@ module clm_varpar
   integer, public            :: ndecomp_cascade_transitions
   integer, public            :: ndecomp_cascade_outtransitions
 
+  ! map between order of C & N pools in CNCOL and CTSM; *MUST* have ndecomp_pools=8!!!
+  
+  integer, public, dimension(8) :: decomp_cpool_cncol_index = (/  3,  4,  5,  2, 10, 11, 12, 13 /)    
+  integer, public, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17, 25, 26, 27, 28 /)
+    
   ! for soil matrix 
   integer, public            :: ndecomp_pools_vr            ! total number of pools ndecomp_pools*vertical levels
 

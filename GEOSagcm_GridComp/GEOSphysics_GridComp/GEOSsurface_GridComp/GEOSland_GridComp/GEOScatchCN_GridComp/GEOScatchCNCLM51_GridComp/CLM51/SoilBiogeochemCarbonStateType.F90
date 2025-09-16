@@ -5,8 +5,9 @@ module SoilBiogeochemCarbonStateType
   use abortutils       , only : endrun
   use nanMod           , only : nan
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan
-  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
-                                NUM_ZON, VAR_COL
+  use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi
+  use clm_varpar       , only : NUM_ZON, VAR_COL
+  use clm_varpar       , only : decomp_cpool_cncol_index
   use clm_varcon       , only : spval, ispval, dzsoi_decomp, zisoi, zsoi, c3_r2
   use clm_varctl       , only : iulog, use_vertsoilc, use_fates, use_soil_matrixcn, use_century_decomp
   use decompMod        , only : bounds_type
@@ -84,7 +85,6 @@ contains
     ! !LOCAL VARIABLES:
     integer               :: begc,endc
     integer :: n, nc, nz, np
-    integer, dimension(8) :: decomp_cpool_cncol_index = (/ 3, 4, 5, 2, 10, 11, 12, 13 /)
     !-----------------------------------
 
     begc = bounds%begc ; endc = bounds%endc

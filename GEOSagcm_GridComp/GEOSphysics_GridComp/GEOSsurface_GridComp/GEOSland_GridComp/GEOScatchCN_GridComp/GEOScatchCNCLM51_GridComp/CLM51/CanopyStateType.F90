@@ -4,12 +4,14 @@ module CanopyStateType
 
   use shr_kind_mod     , only : r8 => shr_kind_r8
   use clm_varpar       , only : nlevcan, nvegwcs, numpft, num_zon, num_veg, &
-                                var_col, var_pft
+                                var_col, var_pft, FVEG_MIN
   use clm_varcon       , only : spval
+  !use clm_varctl       , only : iulog        !rrXbo 10Sep2025
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
-  use MAPL_ExceptionHandling
 
+  use MAPL_ExceptionHandling
+  
   ! !PUBLIC TYPES:
   implicit none
   save
@@ -101,8 +103,10 @@ contains
     begg = bounds%begg ; endg = bounds%endg
 
     ! check whether a cn5_cold_start option was set and change cold_start accordingly
-    if (present(cn5_cold_start) .and. (cn5_cold_start.eqv..true.)) then
-       cold_start = .true.
+    if (present(cn5_cold_start)) then
+       if (cn5_cold_start .eqv. .true.) then
+          cold_start = .true.
+       end if
     end if
 
     ! jkolassa: if cold_start is false, check that both CNCOL and CNPFT have the expected size for CNCLM50, else abort 
@@ -154,7 +158,7 @@ contains
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                   ! "old" variables: CNCLM45 and before
                   this%elai_patch  (np) = cnpft(nc,nz,nv, 69)
@@ -167,7 +171,7 @@ contains
                   ! "new" variables: introduced in CNCLM50
                   if (cold_start.eqv..false.) then
                      do nw = 1,nvegwcs
-                        this%vegwp_patch(np,nw)    = cnpft(nc,nz,nv, 78+(nw-1))
+                        this%vegwp_patch(np,nw)    = cnpft(nc,nz,nv, 76+(nw-1))
                      end do
                   elseif (cold_start) then
                      this%vegwp_patch(np,1:nvegwcs)    = -2.5e4_r8

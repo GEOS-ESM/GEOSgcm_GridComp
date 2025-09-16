@@ -17,7 +17,7 @@ module CNVegCarbonFluxType
                                 ideadcroot,ideadcroot_st,ideadcroot_xf,&
                                 igrain,igrain_st,igrain_xf,ioutc
   use clm_varpar       , only : numpft, num_zon, num_veg, &
-                                var_col, var_pft, CN_zone_weight
+                                var_col, var_pft, CN_zone_weight, FVEG_MIN
   use clm_varctl       , only : use_crop, use_matrixcn, use_cndv, use_grainproduct, iulog
   use clm_varcon       , only : dzsoi_decomp
   use pftconMod        , only : npcropmin
@@ -29,7 +29,6 @@ module CNVegCarbonFluxType
   use abortutils       , only : endrun
   use shr_log_mod                        , only : errMsg => shr_log_errMsg
 !  use SPMMod                             , only : sparse_matrix_type, diag_matrix_type, vector_type
-
 
   ! !PUBLIC TYPES:
   implicit none
@@ -500,7 +499,21 @@ type(cnveg_carbonflux_type), public, target, save :: cnveg_carbonflux_inst
        __FILE__
 
 contains
-
+  pure elemental logical function valid(v)
+    use shr_kind_mod, only : r8 => shr_kind_r8
+    use clm_varcon  , only : spval
+    real(r8), intent(in) :: v
+    real(r8), parameter :: CF_FILL = 9.96921e36_r8
+    real(r8), parameter :: BADHUGE = 1.0e20_r8   ! tighten from 1.0e30
+    valid = (v == v) .and. (abs(v) < BADHUGE) .and. &
+            (abs(v - spval)   > 1.0e-6_r8*max(1._r8,abs(spval))) .and. &
+            (abs(v - CF_FILL) > 1.0e-6_r8*max(1._r8,abs(CF_FILL)))  
+  end function valid
+  
+  pure elemental real(r8) function safe(v)
+    real(r8), intent(in) :: v
+    safe = merge(v, 0._r8, .true.)   ! valid(v))        !rrXbo 10Sep2025
+  end function safe
 !---------------------------------------
  subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft, carbon_type, cn5_cold_start, rc)
 
@@ -1126,7 +1139,7 @@ contains
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                    this%gpp_patch(p)                   = 0._r8
                    this%excess_cflux_patch(p)          = 0._r8
@@ -1143,8 +1156,8 @@ contains
 
                   ! "new" variables: introduced in CNCLM50
                   if (cold_start.eqv..false.) then
-                      this%annsum_litfall_patch(np)    = cnpft(nc,nz,nv, 82)
-                      this%tempsum_litfall_patch(np)   = cnpft(nc,nz,nv, 83)  
+                      this%annsum_litfall_patch(np)  = safe( real(cnpft(nc,nz,nv, 80), r8) )
+                      this%tempsum_litfall_patch(np) = safe( real(cnpft(nc,nz,nv, 81), r8) )
                   elseif (cold_start) then
                       this%annsum_litfall_patch(np)    = 0._r8      
                       this%tempsum_litfall_patch(np)   = 0._r8 

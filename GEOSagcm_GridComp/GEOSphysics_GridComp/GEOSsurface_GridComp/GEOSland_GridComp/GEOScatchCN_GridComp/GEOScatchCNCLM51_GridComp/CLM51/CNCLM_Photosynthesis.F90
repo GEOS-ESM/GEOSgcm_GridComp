@@ -1,7 +1,7 @@
  module CNCLM_Photosynthesis
 
  use MAPL_ConstantsMod
- use clm_varpar,         only : numpft, numrad, num_veg, num_zon, &
+ use clm_varpar,         only : numpft, numrad, num_veg, num_zon, FVEG_MIN, &
                                 nlevcan
  use decompMod
  use PatchType
@@ -23,7 +23,7 @@
  use WaterStateType
  use WaterType
  use CNVegetationFacade
-
+ 
  implicit none
 
  private
@@ -459,7 +459,7 @@
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>FVEG_MIN) then
 
                  ! stomatal resistances
                  rs = laisun(np)/max(rssun(np), 1.e-06_r8 ) + laisha(np)/max(rssha(np), 1.e-06_r8 )

@@ -269,38 +269,40 @@ Files that are specific to Catchment-CN5.1 are in the ./GEOScatchCNCLM51\_GridCo
 | WaterStateType.F90 | C1, C4 |
 | WaterType.F90 | C1, C4 |
 
-**Table B2: Illustration of the layout of a CTSM variable array** In this example, tile 1 contains PFTs 7 and 10 and has data values for the corresponding entries. Only the gray shaded data is present in the CTSM variable array, the other columns of the table serve to illustrate the layout.
+**Table B2: Illustration of the layout of a CTSM variable array** In this example, tile 1 contains PFTs 7 and 10 and has data values for the corresponding entries. Only the "Data" column is present in the CTSM variable array, the other columns of the table serve to illustrate the layout.
 
 | Array Index | Tile | Zone | PFT | Data |
 |-------------|------|------|-----|------|
-| 1 | 1 | 1 | 1 | NaN |
-| 2 | 1 | 1 | 2 | NaN |
-| 3 | 1 | 1 | 3 | NaN |
-| 4 | 1 | 1 | 4 | NaN |
-| 5 | 1 | 1 | 5 | NaN |
-| 6 | 1 | 1 | 6 | NaN |
-| 7 | 1 | 1 | 7 | Some data |
-| 8 | 1 | 1 | 8 | NaN |
-| 9 | 1 | 1 | 9 | NaN |
-| 10 | 1 | 1 | 10 | Some data |
-| 11 | 1 | 1 | 11 | NaN |
-| 12 | 1 | 1 | 12 | NaN |
-| 13 | 1 | 1 | 13 | NaN |
-| 14 | 1 | 1 | 14 | NaN |
-| 15 | 1 | 1 | 15 | NaN |
-| 16 | 1 | 2 | 1 | NaN |
-| 17 | 1 | 2 | 2 | NaN |
-| 18 | 1 | 2 | 3 | NaN |
-| 19 | 1 | 2 | 4 | NaN |
-| 20 | 1 | 2 | 5 | NaN |
-| 21 | 1 | 2 | 6 | NaN |
-| 22 | 1 | 2 | 7 | Some data |
-| 23 | 1 | 2 | 8 | NaN |
-| 24 | 1 | 2 | 9 | NaN |
-| 25 | 1 | 2 | 10 | Some data |
-| 26 | 1 | 2 | 11 | NaN |
-| 27 | 1 | 2 | 12 | NaN |
-| 28 | 1 | 2 | 13 | NaN |
-| 29 | 1 | 2 | 14 | NaN |
-| 30 | 1 | 2 | 15 | NaN |
+|  1 | 1 | 1 |  0 | NaN |
+|  2 | 1 | 1 |  1 | NaN |
+|  3 | 1 | 1 |  2 | NaN |
+|  4 | 1 | 1 |  3 | NaN |
+|  5 | 1 | 1 |  4 | NaN |
+|  6 | 1 | 1 |  5 | NaN |
+|  7 | 1 | 1 |  6 | NaN |
+|  8 | 1 | 1 |  7 | Some data |
+|  9 | 1 | 1 |  8 | NaN |
+| 10 | 1 | 1 |  9 | NaN |
+| 11 | 1 | 1 | 10 | Some data |
+| 12 | 1 | 1 | 11 | NaN |
+| 13 | 1 | 1 | 12 | NaN |
+| 14 | 1 | 1 | 13 | NaN |
+| 15 | 1 | 1 | 14 | NaN |
+| 16 | 1 | 1 | 15 | NaN |
+| 17 | 1 | 2 |  0 | NaN |
+| 18 | 1 | 2 |  1 | NaN |
+| 19 | 1 | 2 |  2 | NaN |
+| 20 | 1 | 2 |  3 | NaN |
+| 21 | 1 | 2 |  4 | NaN |
+| 22 | 1 | 2 |  5 | NaN |
+| 23 | 1 | 2 |  6 | NaN |
+| 24 | 1 | 2 |  7 | Some data |
+| 25 | 1 | 2 |  8 | NaN |
+| 26 | 1 | 2 |  9 | NaN |
+| 27 | 1 | 2 | 10 | Some data |
+| 28 | 1 | 2 | 11 | NaN |
+| 29 | 1 | 2 | 12 | NaN |
+| 30 | 1 | 2 | 13 | NaN |
+| 31 | 1 | 2 | 14 | NaN |
+| 32 | 1 | 2 | 15 | NaN |
 | ... | ... | ... | ... | ... |

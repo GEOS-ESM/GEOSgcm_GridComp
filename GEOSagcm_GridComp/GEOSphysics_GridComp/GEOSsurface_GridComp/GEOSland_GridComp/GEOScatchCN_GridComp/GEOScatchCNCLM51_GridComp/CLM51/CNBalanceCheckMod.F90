@@ -523,9 +523,9 @@ contains
          end if
          
          if (abs(col_errnb(c)) > this%nwarning) then
-        !    write(iulog,*) 'nbalance warning at c =', c, col_errnb(c), col_endnb(c)
-        !    write(iulog,*)'inputs,ffix,nfix,ndep = ',ffix_to_sminn(c)*dt,nfix_to_sminn(c)*dt,ndep_to_sminn(c)*dt
-        !    write(iulog,*)'outputs,lch,roff,dnit = ',smin_no3_leached(c)*dt, smin_no3_runoff(c)*dt,f_n2o_nit(c)*dt
+            write(iulog,*) 'nbalance warning at c =', c, col_errnb(c), col_endnb(c)
+            write(iulog,*)'inputs,ffix,nfix,ndep = ',ffix_to_sminn(c)*dt,nfix_to_sminn(c)*dt,ndep_to_sminn(c)*dt
+            write(iulog,*)'outputs,lch,roff,dnit = ',smin_no3_leached(c)*dt, smin_no3_runoff(c)*dt,f_n2o_nit(c)*dt
          end if
 
       end do ! end of columns loop
@@ -540,8 +540,26 @@ contains
          write(iulog,*)'input mass               = ',col_ninputs(c)*dt
          write(iulog,*)'output mass              = ',col_noutputs(c)*dt
          write(iulog,*)'net flux                 = ',(col_ninputs(c)-col_noutputs(c))*dt
-         write(iulog,*)'inputs,ffix,nfix,ndep    = ',ffix_to_sminn(c)*dt,nfix_to_sminn(c)*dt,ndep_to_sminn(c)*dt
-         write(iulog,*)'outputs,ffix,nfix,ndep   = ',smin_no3_leached(c)*dt, smin_no3_runoff(c)*dt,f_n2o_nit(c)*dt
+         write(iulog,*)'column nbalance error    = ', col_errnb(c), c
+         write(iulog,*)'Latdeg,Londeg            = ', grc%latdeg(col%gridcell(c)), grc%londeg(col%gridcell(c))
+         write(iulog,*)'begnb                    = ', col_begnb(c)
+         write(iulog,*)'endnb                    = ', col_endnb(c)
+         write(iulog,*)'delta store              = ', col_endnb(c)-col_begnb(c)
+         write(iulog,*)'input mass (dt)          = ', col_ninputs(c)*dt
+         write(iulog,*)'output mass (dt)         = ', col_noutputs(c)*dt
+         write(iulog,*)'net flux (dt)            = ', (col_ninputs(c)-col_noutputs(c))*dt
+         
+         ! Full IN terms (rates)
+         write(iulog,*) ' IN rates: ndep=', ndep_to_sminn(c), ' nfix=', nfix_to_sminn(c), &
+                        ' ffix=', ffix_to_sminn(c), ' supplement=', supplement_to_sminn(c), &
+                        ' fert=', fert_to_sminn(c), ' soyfix=', soyfixn_to_sminn(c)
+         
+         ! Full OUT terms (rates) exactly as used in col_noutputs(c)
+         write(iulog,*) 'OUT rates: denit=', denit(c), ' fireN=', col_fire_nloss(c), &
+                        ' wood=', wood_harvestn(c), ' grain=', grainn_to_cropprodn(c), &
+                        ' f_n2o=', f_n2o_nit(c), ' NO3_leach=', smin_no3_leached(c), &
+                        ' NO3_runoff=', smin_no3_runoff(c), ' somN_leach(NEG)=', som_n_leached(c)
+                  
         
          
          
@@ -597,10 +615,9 @@ contains
          end if
 
          if (abs(grc_errnb(g)) > this%nwarning) then
-            !write(iulog,*) 'nbalance warning at g =', g, grc_errnb(g), grc_endnb(g)
+            write(iulog,*) 'nbalance warning at g =', g, grc_errnb(g), grc_endnb(g)
          end if
       end do
-
       if (err_found) then
          g = err_index
          write(iulog,*) 'gridcell nbalance error  =', grc_errnb(g), g
