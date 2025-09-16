@@ -536,6 +536,10 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
             ice (i, j) = ice (i, j) * convt
             graupel (i, j) = graupel (i, j) * convt
             prec_mp (i, j) = rain (i, j) + snow (i, j) + ice (i, j) + graupel (i, j)
+            !$ser verbatim ! still in GFDL_1M_driver_finish-Out
+            !$ser verbatim call ser_set_indices(i, j, 1, 1)
+            !$ser data_buffered Dx=2 rain_driver_finish=rain(i,j) snow_driver_finish=snow(i,j)
+            !$ser data_buffered Dx=2 ice_driver_finish=ice(i,j) graupel_driver_finish=graupel(i,j)
         enddo
     enddo
 
@@ -696,7 +700,33 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     ! -----------------------------------------------------------------------
 
     do i = is, ie
-
+        !$ser savepoint GFDL_1M_driver_setup-In
+        !$ser verbatim do k = ktop, kbot
+            !$ser verbatim call ser_set_indices(i, j, k, 1)
+            !$ser data_buffered Dx=3 t_driver_setup=pt(i,j,k) dp_driver_setup=delp(i,j,k)
+            !$ser data_buffered Dx=3 rhcrit3d_driver_setup=rhcrit(i,j,k) qv_driver_setup=qv(i,j,k)
+            !$ser data_buffered Dx=3 ql_driver_setup=ql(i,j,k) qi_driver_setup=qi(i,j,k)
+            !$ser data_buffered Dx=3 qr_driver_setup=qr(i,j,k) qs_driver_setup=qs(i,j,k)
+            !$ser data_buffered Dx=3 qg_driver_setup=qg(i,j,k) qa_driver_setup=qa(i,j,k)
+            !$ser data_buffered Dx=3 ice_concentration_driver_setup=qn(i,j,k)
+            !$ser data_buffered Dx=3 liquid_concentration_driver_setup=0.0 qv0_driver_setup=qv0(k)
+            !$ser data_buffered Dx=3 ql0_driver_setup=ql0(k) qr0_driver_setup=qr0(k) qi0_driver_setup=qi0(k)
+            !$ser data_buffered Dx=3 qs0_driver_setup=qs0(k) qg0_driver_setup=qg0(k) qa0_driver_setup=qa0(k)
+            !$ser data_buffered Dx=3 qv1_driver_setup=qvz(k) ql1_driver_setup=qlz(k) qr1_driver_setup=qrz(k)
+            !$ser data_buffered Dx=3 qi1_driver_setup=qiz(k) qs1_driver_setup=qsz(k) qg1_driver_setup=qgz(k)
+            !$ser data_buffered Dx=3 qa1_driver_setup=qaz(k) dz_driver_setup=dz(i,j,k)
+            !$ser data_buffered Dx=3 u_driver_setup=uin(i,j,k) v_driver_setup=vin(i,j,k)
+            !$ser data_buffered Dx=3 w_driver_setup=w(i,j,k) t1_driver_setup=tz(k) dp1_driver_setup=dp1(k)
+            !$ser data_buffered Dx=3 omq_driver_setup=omq den_driver_setup=den0(k) p_dry_driver_setup=p1(k)
+            !$ser data_buffered Dx=3 m1_driver_setup=m1(k) u1_driver_setup=u1(k) v1_driver_setup=v1(k)
+            !$ser data_buffered Dx=3 w1_driver_setup=w1(k) ccn_driver_setup=ccn(k)
+            !$ser data_buffered Dx=3 c_praut_driver_setup=c_praut(k) rh_limited_driver_setup=h_var1d(k)
+            !$ser data_buffered Dx=3 m2_rain_driver_setup=m2_rain(i,j,k) m2_sol_driver_setup=m2_sol(i,j,k)
+            !$ser data_buffered Dx=3 revap_driver_setup=revap(i,j,k) isubl_driver_setup=isubl(i,j,k)
+            !$ser data_buffered Dx=2 onemsig_driver_setup=onemsig area_driver_setup=area1(i)
+            !$ser data_buffered Dx=2 rain_driver_setup=rain(i) snow_driver_setup=snow(i)
+            !$ser data_buffered Dx=2 graupel_driver_setup=graupel(i) ice_driver_setup=ice(i)
+        !$ser verbatim enddo
         do k = ktop, kbot
 
             t0 (k) = pt (i, j, k)
@@ -808,6 +838,34 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         revap (i, j, :) = 0.
         isubl (i, j, :) = 0.
 
+        !$ser savepoint GFDL_1M_driver_setup-Out
+        !$ser verbatim do k = ktop, kbot
+            !$ser verbatim call ser_set_indices(i, j, k, 1)
+            !$ser data_buffered Dx=3 t_driver_setup=pt(i,j,k) dp_driver_setup=delp(i,j,k)
+            !$ser data_buffered Dx=3 rhcrit3d_driver_setup=rhcrit(i,j,k) qv_driver_setup=qv(i,j,k)
+            !$ser data_buffered Dx=3 ql_driver_setup=ql(i,j,k) qi_driver_setup=qi(i,j,k)
+            !$ser data_buffered Dx=3 qr_driver_setup=qr(i,j,k) qs_driver_setup=qs(i,j,k)
+            !$ser data_buffered Dx=3 qg_driver_setup=qg(i,j,k) qa_driver_setup=qa(i,j,k)
+            !$ser data_buffered Dx=3 ice_concentration_driver_setup=qn(i,j,k)
+            !$ser data_buffered Dx=3 liquid_concentration_driver_setup=0.0 qv0_driver_setup=qv0(k)
+            !$ser data_buffered Dx=3 ql0_driver_setup=ql0(k) qr0_driver_setup=qr0(k) qi0_driver_setup=qi0(k)
+            !$ser data_buffered Dx=3 qs0_driver_setup=qs0(k) qg0_driver_setup=qg0(k) qa0_driver_setup=qa0(k)
+            !$ser data_buffered Dx=3 qv1_driver_setup=qvz(k) ql1_driver_setup=qlz(k) qr1_driver_setup=qrz(k)
+            !$ser data_buffered Dx=3 qi1_driver_setup=qiz(k) qs1_driver_setup=qsz(k) qg1_driver_setup=qgz(k)
+            !$ser data_buffered Dx=3 qa1_driver_setup=qaz(k) dz_driver_setup=dz(i,j,k)
+            !$ser data_buffered Dx=3 u_driver_setup=uin(i,j,k) v_driver_setup=vin(i,j,k)
+            !$ser data_buffered Dx=3 w_driver_setup=w(i,j,k) t1_driver_setup=tz(k) dp1_driver_setup=dp1(k)
+            !$ser data_buffered Dx=3 omq_driver_setup=omq den_driver_setup=den0(k) p_dry_driver_setup=p1(k)
+            !$ser data_buffered Dx=3 m1_driver_setup=m1(k) u1_driver_setup=u1(k) v1_driver_setup=v1(k)
+            !$ser data_buffered Dx=3 w1_driver_setup=w1(k) ccn_driver_setup=ccn(k)
+            !$ser data_buffered Dx=3 c_praut_driver_setup=c_praut(k) rh_limited_driver_setup=h_var1d(k)
+            !$ser data_buffered Dx=3 m2_rain_driver_setup=m2_rain(i,j,k) m2_sol_driver_setup=m2_sol(i,j,k)
+            !$ser data_buffered Dx=3 revap_driver_setup=revap(i,j,k) isubl_driver_setup=isubl(i,j,k)
+            !$ser data_buffered Dx=2 onemsig_driver_setup=onemsig area_driver_setup=area1(i)
+            !$ser data_buffered Dx=2 rain_driver_setup=rain(i) snow_driver_setup=snow(i)
+            !$ser data_buffered Dx=2 graupel_driver_setup=graupel(i) ice_driver_setup=ice(i)
+        !$ser verbatim enddo
+
         do n = 1, ntimes
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_all_iterations .eqv. .true.) then
@@ -914,7 +972,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                 !$ser verbatim if (serialize_index == n) then
                     !$ser savepoint GFDL_1M_warm_rain-In
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j ,k ,1)
+                        !$ser verbatim call ser_set_indices(i, j, k, 1)
                         !$ser data_buffered Dx=3 dp1_warm_rain=dp1(k) dz1_warm_rain=dz1(k) t1_warm_rain=tz(k)
                         !$ser data_buffered Dx=3 qv_warm_rain=qvz(k) ql_warm_rain=qlz(k) qr_warm_rain=qrz(k) qi_warm_rain=qiz(k)
                         !$ser data_buffered Dx=3 qs_warm_rain=qsz(k) qg_warm_rain=qgz(k) qa_warm_rain=qaz(k) ccn_warm_rain=ccn(k)
@@ -944,7 +1002,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                 !$ser verbatim if (serialize_index == n) then
                     !$ser savepoint GFDL_1M_warm_rain-Out
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j ,k ,1)
+                        !$ser verbatim call ser_set_indices(i, j, k, 1)
                         !$ser data_buffered Dx=3 t1_warm_rain=tz(k)
                         !$ser data_buffered Dx=3 qv_warm_rain=qvz(k) ql_warm_rain=qlz(k) qr_warm_rain=qrz(k) qi_warm_rain=qiz(k)
                         !$ser data_buffered Dx=3 qs_warm_rain=qsz(k) qg_warm_rain=qgz(k) qa_warm_rain=qaz(k)
@@ -1000,6 +1058,29 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
 
         enddo ! ntimes
 
+        !$ser savepoint GFDL_1M_driver_finish-In
+        !$ser verbatim do k = ktop, kbot
+            !$ser verbatim call ser_set_indices(i, j, k, 1)
+            !$ser data_buffered Dx=3 qv0_driver_finish=qv0(k) ql0_driver_finish=ql0(k)
+            !$ser data_buffered Dx=3 qr0_driver_finish=qr0(k) qi0_driver_finish=qi0(k)
+            !$ser data_buffered Dx=3 qs0_driver_finish=qs0(k) qg0_driver_finish=qg0(k)
+            !$ser data_buffered Dx=3 qa0_driver_finish=qa0(k) qv1_driver_finish=qvz(k)
+            !$ser data_buffered Dx=3 ql1_driver_finish=qlz(k) qr1_driver_finish=qrz(k)
+            !$ser data_buffered Dx=3 qi1_driver_finish=qiz(k) qs1_driver_finish=qsz(k)
+            !$ser data_buffered Dx=3 qg1_driver_finish=qgz(k) qv_dt_driver_finish=qv_dt(i,j,k)
+            !$ser data_buffered Dx=3 ql_dt_driver_finish=ql_dt(i,j,k) qr_dt_driver_finish=qr_dt(i,j,k)
+            !$ser data_buffered Dx=3 qi_dt_driver_finish=qi_dt(i,j,k) qs_dt_driver_finish=qs_dt(i,j,k)
+            !$ser data_buffered Dx=3 qg_dt_driver_finish=qg_dt(i,j,k) qa_dt_driver_finish=qa_dt(i,j,k)
+            !$ser data_buffered Dx=3 t_driver_finish=t0(k) t1_driver_finish=tz(k)
+            !$ser data_buffered Dx=3 t_dt_driver_finish=pt_dt(i,j,k) w_driver_finish=w(i,j,k)
+            !$ser data_buffered Dx=3 w1_driver_finish=w1(k) u_driver_finish=u0(k) u1_driver_finish=u1(k)
+            !$ser data_buffered Dx=3 udt_driver_finish=u_dt(i,j,k) v_driver_finish=v0(k)
+            !$ser data_buffered Dx=3 v1_driver_finish=v1(k) vdt_driver_finish=v_dt(i,j,k)
+            !$ser data_buffered Dx=3 dp_driver_finish=dp0(k) dp1_driver_finish=dp1(k) m1_driver_finish=m1(k)
+            !$ser data_buffered Dx=2 rain_driver_finish=rain(i) snow_driver_finish=snow(i)
+            !$ser data_buffered Dx=2 ice_driver_finish=ice(i) graupel_driver_finish=graupel(i)
+        !$ser verbatim enddo
+
         ! -----------------------------------------------------------------------
         ! momentum transportation during sedimentation
         ! note: dp1 is dry mass; dp0 is the old moist (total) mass
@@ -1047,6 +1128,27 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                       qa0(k) )                                                      ! Old Cloud
         enddo
         endif
+
+        !$ser savepoint GFDL_1M_driver_finish-Out
+        !$ser verbatim do k = ktop, kbot
+            !$ser verbatim call ser_set_indices(i, j, k, 1)
+            !$ser data_buffered Dx=3 qv0_driver_finish=qv0(k) ql0_driver_finish=ql0(k)
+            !$ser data_buffered Dx=3 qr0_driver_finish=qr0(k) qi0_driver_finish=qi0(k)
+            !$ser data_buffered Dx=3 qs0_driver_finish=qs0(k) qg0_driver_finish=qg0(k)
+            !$ser data_buffered Dx=3 qa0_driver_finish=qa0(k) qv1_driver_finish=qvz(k)
+            !$ser data_buffered Dx=3 ql1_driver_finish=qlz(k) qr1_driver_finish=qrz(k)
+            !$ser data_buffered Dx=3 qi1_driver_finish=qiz(k) qs1_driver_finish=qsz(k)
+            !$ser data_buffered Dx=3 qg1_driver_finish=qgz(k) qv_dt_driver_finish=qv_dt(i,j,k)
+            !$ser data_buffered Dx=3 ql_dt_driver_finish=ql_dt(i,j,k) qr_dt_driver_finish=qr_dt(i,j,k)
+            !$ser data_buffered Dx=3 qi_dt_driver_finish=qi_dt(i,j,k) qs_dt_driver_finish=qs_dt(i,j,k)
+            !$ser data_buffered Dx=3 qg_dt_driver_finish=qg_dt(i,j,k) qa_dt_driver_finish=qa_dt(i,j,k)
+            !$ser data_buffered Dx=3 t_driver_finish=t0(k) t1_driver_finish=tz(k)
+            !$ser data_buffered Dx=3 t_dt_driver_finish=pt_dt(i,j,k) w_driver_finish=w(i,j,k)
+            !$ser data_buffered Dx=3 w1_driver_finish=w1(k) u_driver_finish=u0(k) u1_driver_finish=u1(k)
+            !$ser data_buffered Dx=3 udt_driver_finish=u_dt(i,j,k) v_driver_finish=v0(k)
+            !$ser data_buffered Dx=3 v1_driver_finish=v1(k) vdt_driver_finish=v_dt(i,j,k)
+            !$ser data_buffered Dx=3 dp_driver_finish=dp0(k) dp1_driver_finish=dp1(k) m1_driver_finish=m1(k)
+        !$ser verbatim enddo
 
         ! -----------------------------------------------------------------------
         ! fms diagnostics:
