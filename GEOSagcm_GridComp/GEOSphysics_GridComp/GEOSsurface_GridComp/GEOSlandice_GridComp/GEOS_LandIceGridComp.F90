@@ -43,6 +43,7 @@ module GEOS_LandiceGridCompMod
   use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
+  use GEOS_IssmGridCompMod,   only : IssmSetServices  => SetServices
   
   implicit none
   private
@@ -99,6 +100,8 @@ module GEOS_LandiceGridCompMod
 ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
+
+  integer ::     ISSM
 
 ! !DESCRIPTION:
 ! 
@@ -1619,6 +1622,11 @@ module GEOS_LandiceGridCompMod
 
 !EOS
 
+! Add ISSM child gridcomp    
+    ISSM  = MAPL_AddChild(GC, NAME='ISSM', SS=IssmSetServices, RC=STATUS)
+    VERIFY_(STATUS)    
+
+
 ! Set the Profiling timers
 ! ------------------------
 
@@ -2207,6 +2215,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
     VERIFY_(STATUS)
 
+    ! NOTE: try to call ISSM gridcomp
+    ! do we use RunChildren or ESMF_GridCompRun?!?!?!?!?
+    call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, _RC)
 !  All done
 !-----------
 
