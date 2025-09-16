@@ -3147,6 +3147,33 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)    
     urban => wrap_urb%ptr
 
+    call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, NT_LOCAL=NT_LOCAL, NT_GLOBAL=NT_GLOBAL, RC=STATUS)
+    VERIFY_(STATUS)
+    urban%nt_global=NT_GLOBAL
+    urban%nt_local=NT_LOCAL
+    call ESMF_VMGetCurrent(VM,                                RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_VMGet(VM, mpiCommunicator =comm, localpet=MYPE, petcount=nDEs,  RC=STATUS)
+    VERIFY_(STATUS)
+    urban%comm = comm
+    urban%ndes = ndes
+    urban%mype = mype
+    ! Set variables used in MPI
+    allocate(scounts(ndes),scounts_global(ndes),rdispls_global(ndes))
+    scounts=0
+    scounts(mype+1)=NT_LOCAL
+    call MPI_Allgather(scounts(mype+1), 1, MPI_INTEGER, scounts_global, 1, MPI_INTEGER, urban%comm, mpierr)
+    rdispls_global(1)=0
+    do i=2,nDes
+       rdispls_global(i)=rdispls_global(i-1)+scounts_global(i-1)
+    enddo
+    allocate(urban%frac(nt_local),frac_global(nt_global))
+    open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_frac_urban.txt",status="old",action="read");read(77,*)frac_global;close(77)
+    urban%frac=frac_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local) !km2->m2
+    deallocate(frac_global,scounts,scounts_global,rdispls_global)
+
 
 !#for_ldas_coupling 
 !
@@ -3162,30 +3189,8 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! Get the grid
        call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, NT_LOCAL=NT_LOCAL, NT_GLOBAL=NT_GLOBAL, RC=STATUS)
+       call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
        VERIFY_(STATUS)
-       urban%nt_global=NT_GLOBAL
-       urban%nt_local=NT_LOCAL
-       call ESMF_VMGetCurrent(VM,                                RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_VMGet(VM, mpiCommunicator =comm, localpet=MYPE, petcount=nDEs,  RC=STATUS)
-       VERIFY_(STATUS)
-       urban%comm = comm
-       urban%ndes = ndes
-       urban%mype = mype
-       ! Set variables used in MPI
-       allocate(scounts(ndes),scounts_global(ndes),rdispls_global(ndes))
-       scounts=0
-       scounts(mype+1)=NT_LOCAL  
-       call MPI_Allgather(scounts(mype+1), 1, MPI_INTEGER, scounts_global, 1, MPI_INTEGER, urban%comm, mpierr) 
-       rdispls_global(1)=0
-       do i=2,nDes
-          rdispls_global(i)=rdispls_global(i-1)+scounts_global(i-1)
-       enddo
-       allocate(urban%frac(nt_local),frac_global(nt_global))  
-       open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_frac_urban.txt",status="old",action="read");read(77,*)frac_global;close(77)
-       urban%frac=frac_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local) !km2->m2
-       deallocate(frac_global,scounts,scounts_global,rdispls_global)       
 
        ! Create bundle for LDAS increments on tilegrid
        CATCH_INTERNAL_STATE%bundle = ESMF_FieldBundleCreate(NAME="LDAS_INCREMENTS", &
@@ -4554,6 +4559,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
         type (CATCH_WRAP)                       :: wrap
 
+        type (T_URBAN_STATE), pointer         :: urban => null()
+        type (URBAN_wrap)                     :: wrap_urb
         ! local variables for LDAS increment (25) 
         real, pointer, dimension(:) :: tcfsat_incr
         real, pointer, dimension(:) :: tcftrn_incr
@@ -4670,6 +4677,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(status)
         CATCH_INTERNAL_STATE=>wrap%ptr
 
+        call ESMF_UserCompGetInternalState ( GC, 'Urban_state',wrap_urb,status )
+        VERIFY_(STATUS)
+        urban => wrap_urb%ptr
         ! --------------------------------------------------------------------------
         ! Get parameters from generic state.
         ! --------------------------------------------------------------------------
@@ -6003,8 +6013,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         endif ! if LDAS_INCR=1
         
         !-------------------------------------------------------------------
-!#----
-
+!#---- 
+        if(mapl_am_I_root(VM))then
+          print *,"ntiles=",ntiles
+          print *,"nt_global=",urban%nt_global
+          print *,"nt_local=",urban%nt_local
+!          print *,"urban fraction:",urban%frac
+        endif
         if (ntiles >0) then
 
              call CATCHMENT ( NTILES, LONS, LATS                  ,&     ! LONS, LATS are in [radians] !!!
