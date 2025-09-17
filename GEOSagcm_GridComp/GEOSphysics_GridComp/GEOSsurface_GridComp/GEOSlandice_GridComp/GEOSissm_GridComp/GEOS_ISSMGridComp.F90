@@ -228,6 +228,7 @@ subroutine SetServices ( GC, RC )
 !     type(ESMF_State),        intent(INOUT) :: EXPORT ! Export state
 !     type(ESMF_Clock),        intent(INOUT) :: CLOCK  ! The clock
 !     integer, optional,       intent(  OUT) :: RC     ! Error code:
+!     type(MAPL_MetaComp), pointer            :: MAPL
 
 !     ! Locals with ESMF and MAPL types
 !     type(ESMF_VM)                  :: vm    
@@ -392,6 +393,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real(dp),    pointer, dimension(:)     :: SMBToISM => null()
   real(dp),    pointer, dimension(:)     :: SurfaceToGEOS5 => null()
 
+  type(MAPL_MetaComp), pointer            :: MAPL
   ! vm stuff
 !   type(ESMF_VM)                  :: vm    
 !   integer                        :: localPet, petCount, peCount, ssiId, vas  
