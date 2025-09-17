@@ -37,7 +37,6 @@ use ESMF
 use MAPL
 use GEOS_UtilsMod
 
-
 implicit none
 
 ! declare interfaces to ISSM HERE
@@ -147,14 +146,14 @@ subroutine SetServices ( GC, RC )
 ! Set the Run entry point
 ! -----------------------
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize, RC=STATUS)
-    VERIFY_(STATUS)
+    ! call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize, RC=STATUS)
+    ! VERIFY_(STATUS)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   RC=STATUS)
-    VERIFY_(STATUS)
+    ! call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   RC=STATUS)
+    ! VERIFY_(STATUS)
 
 !-----------------------------------
 
@@ -223,155 +222,151 @@ subroutine SetServices ( GC, RC )
 
   ! ! INITIALIZE:
   
-  subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
-    type(ESMF_GridComp),     intent(INOUT) :: GC     ! Gridded component 
-    type(ESMF_State),        intent(INOUT) :: IMPORT ! Import state
-    type(ESMF_State),        intent(INOUT) :: EXPORT ! Export state
-    type(ESMF_Clock),        intent(INOUT) :: CLOCK  ! The clock
-    integer, optional,       intent(  OUT) :: RC     ! Error code:
+!   subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
+!     type(ESMF_GridComp),     intent(INOUT) :: GC     ! Gridded component 
+!     type(ESMF_State),        intent(INOUT) :: IMPORT ! Import state
+!     type(ESMF_State),        intent(INOUT) :: EXPORT ! Export state
+!     type(ESMF_Clock),        intent(INOUT) :: CLOCK  ! The clock
+!     integer, optional,       intent(  OUT) :: RC     ! Error code:
 
-    ! Locals with ESMF and MAPL types
-    type(ESMF_VM)                  :: vm    
-    integer                        :: rc
-    type(ESMF_Mesh)                :: mesh
-    integer                        :: localPet, petCount, peCount, ssiId, vas    
-    integer(c_int)                 :: comm
-    integer                        :: sdim
-    integer, pointer, dimension(:) :: elementIds
-    integer, pointer, dimension(:) :: elementConn    
-    integer, allocatable  :: elementTypes(:)
+!     ! Locals with ESMF and MAPL types
+!     type(ESMF_VM)                  :: vm    
+!     integer                        :: rc
+!     type(ESMF_Mesh)                :: mesh
+!     integer                        :: localPet, petCount, peCount, ssiId, vas    
+!     integer(c_int)                 :: comm
+!     integer                        :: sdim
+!     integer, pointer, dimension(:) :: elementIds
+!     integer, pointer, dimension(:) :: elementConn    
+!     integer, allocatable  :: elementTypes(:)
 
-    ! ISSM-related variables
-    integer(c_int)                 :: num_elements
-    integer(c_int)                 :: num_nodes   
-    integer(c_int)                 :: argc
-    character(len=100), dimension(:), allocatable, target :: argv
-    type(c_ptr), dimension(:), allocatable :: argv_ptr
-    integer :: i
+!     ! ISSM-related variables
+!     integer(c_int)                 :: num_elements
+!     integer(c_int)                 :: num_nodes   
+!     integer(c_int)                 :: argc
+!     character(len=100), dimension(:), allocatable, target :: argv
+!     type(c_ptr), dimension(:), allocatable :: argv_ptr
+!     integer :: i
 
-    real(dp),    pointer, dimension(:)     :: nodeCoords => null()
-    integer,     pointer, dimension(:)     :: nodeIds => null()
+!     real(dp),    pointer, dimension(:)     :: nodeCoords => null()
+!     integer,     pointer, dimension(:)     :: nodeIds => null()
 
-    ! ! I don't think I actually need these two:
-    !integer, allocatable                   :: nodeOwners(:)
-    !integer                                :: nodeCount 
+!     ! ErrLog Variables
+!     character(len=ESMF_MAXSTR)		   :: IAm
+!     integer				   :: STATUS
+!     character(len=ESMF_MAXSTR)             :: COMP_NAME
 
-    ! ErrLog Variables
-    character(len=ESMF_MAXSTR)		   :: IAm
-    integer				   :: STATUS
-    character(len=ESMF_MAXSTR)             :: COMP_NAME
+!     ! Begin... 
 
-    ! Begin... 
+!     ! Get the target components name and set-up traceback handle.
+!     ! -----------------------------------------------------------
 
-    ! Get the target components name and set-up traceback handle.
-    ! -----------------------------------------------------------
-
-    Iam = "Initialize"
-    call ESMF_GridCompGet( GC, NAME=comp_name, RC=status )
-    VERIFY_(STATUS)
-    Iam = trim(comp_name) // trim(Iam)
+!     Iam = "Initialize"
+!     call ESMF_GridCompGet( GC, NAME=comp_name, RC=status )
+!     VERIFY_(STATUS)
+!     Iam = trim(comp_name) // trim(Iam)
 
 
-    ! Get my internal MAPL_Generic state
-    !-----------------------------------
+!     ! Get my internal MAPL_Generic state
+!     !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+!     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+!     VERIFY_(STATUS)
 
-    ! Profilers
-    !----------
-    ! ! not sure if this is needed:
-    ! call MAPL_TimerOn(MAPL,"TOTAL"     )
-    ! call MAPL_TimerOn(MAPL,"INITIALIZE")
+!     ! Profilers
+!     !----------
+!     ! ! not sure if this is needed:
+!     ! call MAPL_TimerOn(MAPL,"TOTAL"     )
+!     ! call MAPL_TimerOn(MAPL,"INITIALIZE")
 
 
-    ! Rule 10: A component’s grid must be fully formed before MAPL_GenericInitialize is invoked
-    ! ! NOTE: so currently just getting grid from parent (landice) ***
-    ! Generic initialize
-    ! ------------------
+!     ! Rule 10: A component’s grid must be fully formed before MAPL_GenericInitialize is invoked
+!     ! ! NOTE: so currently just getting grid from parent (landice) ***
+!     ! Generic initialize
+!     ! ------------------
 
-    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
-    VERIFY_(STATUS)
+!     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+!     VERIFY_(STATUS)
 
-    ! ****************************************************
-    ! call ISSM initial C++ code so we can set up mesh
+!     ! ****************************************************
+!     ! call ISSM initial C++ code so we can set up mesh
 
-    sdim = 2    ! spatial dimension of ISSM mesh
+!     sdim = 2    ! spatial dimension of ISSM mesh
 
-    ! Manually set command line argc and argv to initialize ISSM 
-    argc = 4  
-    allocate(argv(argc))
-    argv(1) = "/discover/nobackup/agstubbl/ISSM/GEOS-ISSM/ISSM/bin/issm.exe"//c_null_char
-    argv(2) = "TransientSolution"//c_null_char
-    argv(3) = "/discover/nobackup/agstubbl/ISSM/projs/IRF-ISSM"//c_null_char
-    argv(4) = "GreenlandGEOS"//c_null_char
+!     ! Manually set command line argc and argv to initialize ISSM 
+!     argc = 4  
+!     allocate(argv(argc))
+!     argv(1) = "/discover/nobackup/agstubbl/ISSM/GEOS-ISSM/ISSM/bin/issm.exe"//c_null_char
+!     argv(2) = "TransientSolution"//c_null_char
+!     argv(3) = "/discover/nobackup/agstubbl/ISSM/projs/IRF-ISSM"//c_null_char
+!     argv(4) = "GreenlandGEOS"//c_null_char
 
-    ! Convert Fortran strings to C pointers (argv)
-    allocate(argv_ptr(argc))
+!     ! Convert Fortran strings to C pointers (argv)
+!     allocate(argv_ptr(argc))
 
-    do i = 1, argc
-        ! Ensure that we are only getting the memory address once per string
-        argv_ptr(i) = c_loc(argv(i))
-    end do
+!     do i = 1, argc
+!         ! Ensure that we are only getting the memory address once per string
+!         argv_ptr(i) = c_loc(argv(i))
+!     end do
    
-    call ESMF_VMGet(vm, localPet=localPet, mpiCommunicator=comm, petCount=petCount, peCount=peCount, rc=rc)
+!     call ESMF_VMGet(vm, localPet=localPet, mpiCommunicator=comm, petCount=petCount, peCount=peCount, rc=rc)
     
-    ! ! print the VM information if desired:
-    !call ESMF_VMPrint(vm, rc=rc)
+!     ! ! print the VM information if desired:
+!     !call ESMF_VMPrint(vm, rc=rc)
    
-    ! Call the C++ function for initializing ISSM
-    ! gets the number of elements and nodes of the mesh
-    call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
+!     ! Call the C++ function for initializing ISSM
+!     ! gets the number of elements and nodes of the mesh
+!     call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
 
-    print *, "number of elements: ", num_elements
-    print *, "number of nodes: ", num_nodes
+!     print *, "number of elements: ", num_elements
+!     print *, "number of nodes: ", num_nodes
 
-    !!!! TO CREATE MESH TO DO THIS:
-    ! allocate mesh-related pointers
-    ! allocate(nodeCoords(sdim*num_nodes))
-    ! allocate(nodeIds(num_nodes))
-    ! allocate(elementTypes(num_elements))
-    ! allocate(elementIds(num_elements))
-    ! allocate(elementConn(3*num_elements))
+!     !!!! TO CREATE MESH TO DO THIS:
+!     ! allocate mesh-related pointers
+!     ! allocate(nodeCoords(sdim*num_nodes))
+!     ! allocate(nodeIds(num_nodes))
+!     ! allocate(elementTypes(num_elements))
+!     ! allocate(elementIds(num_elements))
+!     ! allocate(elementConn(3*num_elements))
 
-    ! ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
-    ! allocate(SMBToISM(num_elements))
-    ! allocate(SurfaceToGEOS5(num_elements))
+!     ! ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
+!     ! allocate(SMBToISM(num_elements))
+!     ! allocate(SurfaceToGEOS5(num_elements))
 
-    ! ! create ESMF mesh corresponding to  ISSM mesh 
-    ! ! get information about nodes and elements
-    ! call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords))
-    ! call GetElementsISSM(c_loc(elementIds), c_loc(elementConn))
+!     ! ! create ESMF mesh corresponding to  ISSM mesh 
+!     ! ! get information about nodes and elements
+!     ! call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords))
+!     ! call GetElementsISSM(c_loc(elementIds), c_loc(elementConn))
 
-    ! elementTypes(:) = ESMF_MESHELEMTYPE_TRI
+!     ! elementTypes(:) = ESMF_MESHELEMTYPE_TRI
 
-    ! ! create the ESMF mesh (later will be used for regridding)
-    ! mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
-    !        elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
+!     ! ! create the ESMF mesh (later will be used for regridding)
+!     ! mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
+!     !        elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
 
 
-    ! ! nodecount and nodeowners: I don't know if this is even necessary; 
-    ! ! I think I was looking at them to verify whether I created mesh correctly
-    ! ! get nodecount
-    ! call ESMF_MeshGet(mesh,nodeCount=nodeCount)
+!     ! ! nodecount and nodeowners: I don't know if this is even necessary; 
+!     ! ! I think I was looking at them to verify whether I created mesh correctly
+!     ! ! get nodecount
+!     ! call ESMF_MeshGet(mesh,nodeCount=nodeCount)
     
-    ! allocate(nodeOwners(nodeCount))
-    ! ! get nodeowners
-    ! call ESMF_MeshGet(mesh,nodeOwners=nodeOwners)
+!     ! allocate(nodeOwners(nodeCount))
+!     ! ! get nodeowners
+!     ! call ESMF_MeshGet(mesh,nodeOwners=nodeOwners)
 
-    ! ! NOTE: How do we set this mesh to be the GC's grid?
-    ! ! Rule 10: A component’s grid must be fully formed before MAPL_GenericInitialize is invoked
+!     ! ! NOTE: How do we set this mesh to be the GC's grid?
+!     ! ! Rule 10: A component’s grid must be fully formed before MAPL_GenericInitialize is invoked
 
-    ! ****************************************************
+!     ! ****************************************************
 
-    ! Get the grid, configuration
-    !----------------------------
+!     ! Get the grid, configuration
+!     !----------------------------
 
-    !call ESMF_GridCompGet( GC, grid=mesh?!?!,  RC=status )
-    !VERIFY_(STATUS)
+!     !call ESMF_GridCompGet( GC, grid=mesh?!?!,  RC=status )
+!     !VERIFY_(STATUS)
 
-    RETURN_(ESMF_SUCCESS)
-  end subroutine Initialize
+!     RETURN_(ESMF_SUCCESS)
+!   end subroutine Initialize
 
   !BOP
 
@@ -398,9 +393,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real(dp),    pointer, dimension(:)     :: SurfaceToGEOS5 => null()
 
   ! vm stuff
-  type(ESMF_VM)                  :: vm    
-  integer                        :: localPet, petCount, peCount, ssiId, vas  
-  integer(c_int)                 :: comm  
+!   type(ESMF_VM)                  :: vm    
+!   integer                        :: localPet, petCount, peCount, ssiId, vas  
+!   integer(c_int)                 :: comm  
 
   ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -417,33 +412,35 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   VERIFY_(STATUS)
 
 
-  call ESMF_VMGet(vm, localPet=localPet, mpiCommunicator=comm, petCount=petCount, peCount=peCount, rc=rc)
+!   call ESMF_VMGet(vm, localPet=localPet, mpiCommunicator=comm, petCount=petCount, peCount=peCount, rc=rc)
 
-  ! Start Total timer
-!------------------
-  call MAPL_TimerOn(MAPL,"TOTAL")
-  call MAPL_TimerOn(MAPL,"RUN" )
+!   ! Start Total timer
+! !------------------
+!   call MAPL_TimerOn(MAPL,"TOTAL")
+!   call MAPL_TimerOn(MAPL,"RUN" )
 
-  ! timestep for issm...
-  dt = 0.05   ! timestep in years
+!   ! timestep for issm...
+!   dt = 0.05   ! timestep in years
 
-! set smb and surface for test 
-  SMBToISM(:) = 0
-  SurfaceToGEOS5(:) = 0 ! placeholder 
+! ! set smb and surface for test 
+!   SMBToISM(:) = 0
+!   SurfaceToGEOS5(:) = 0 ! placeholder 
   
-  ! NOTE: do we need the barriers before/after ISSM run?
-  call ESMF_VMBarrier(vm, rc=status)
-  VERIFY_(STATUS)
+!   ! NOTE: do we need the barriers before/after ISSM run?
+!   call ESMF_VMBarrier(vm, rc=status)
+!   VERIFY_(STATUS)
 
-  ! call the C++ routine for running a single time step
-  call RunISSM(dt, c_loc(SMBToISM), c_loc(SurfaceToGEOS5))
+!   ! call the C++ routine for running a single time step
+!   call RunISSM(dt, c_loc(SMBToISM), c_loc(SurfaceToGEOS5))
 
 
-  call ESMF_VMBarrier(vm, rc=status)
-  VERIFY_(STATUS)
+!   call ESMF_VMBarrier(vm, rc=status)
+!   VERIFY_(STATUS)
 
-  call MAPL_TimerOff(MAPL,"RUN"  )
-  call MAPL_TimerOff(MAPL,"TOTAL")
+!   call MAPL_TimerOff(MAPL,"RUN"  )
+!   call MAPL_TimerOff(MAPL,"TOTAL")
+
+  print *, 'Hello World. I am ', trim(comp_name)
  
   RETURN_(ESMF_SUCCESS)
  
@@ -456,61 +453,61 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !INTERFACE:
 
- subroutine Finalize ( GC, IMPORT, EXPORT, CLOCK, RC )
+!  subroutine Finalize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
-    ! !ARGUMENTS:
+!     ! !ARGUMENTS:
     
-    type(ESMF_GridComp), intent(INOUT) :: GC     ! Gridded component 
-    type(ESMF_State),    intent(INOUT) :: IMPORT ! Import state
-    type(ESMF_State),    intent(INOUT) :: EXPORT ! Export state
-    type(ESMF_Clock),    intent(INOUT) :: CLOCK  ! The supervisor clock
-    integer, optional,   intent(  OUT) :: RC     ! Error code:
+!     type(ESMF_GridComp), intent(INOUT) :: GC     ! Gridded component 
+!     type(ESMF_State),    intent(INOUT) :: IMPORT ! Import state
+!     type(ESMF_State),    intent(INOUT) :: EXPORT ! Export state
+!     type(ESMF_Clock),    intent(INOUT) :: CLOCK  ! The supervisor clock
+!     integer, optional,   intent(  OUT) :: RC     ! Error code:
     
-    !EOP
-    type(MAPL_MetaComp), pointer       :: MAPL 
+!     !EOP
+!     type(MAPL_MetaComp), pointer       :: MAPL 
     
-    ! ErrLog Variables
+!     ! ErrLog Variables
     
-    character(len=ESMF_MAXSTR)	     :: IAm
-    integer			     :: STATUS
-    character(len=ESMF_MAXSTR)       :: COMP_NAME
+!     character(len=ESMF_MAXSTR)	     :: IAm
+!     integer			     :: STATUS
+!     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
-    ! Get the target components name and set-up traceback handle.
-! -----------------------------------------------------------
+!     ! Get the target components name and set-up traceback handle.
+! ! -----------------------------------------------------------
 
-    Iam = "Finalize"
-    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
-    VERIFY_(STATUS)
-    Iam = trim(comp_name) // Iam
+!     Iam = "Finalize"
+!     call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
+!     VERIFY_(STATUS)
+!     Iam = trim(comp_name) // Iam
 
-    ! Get my internal MAPL_Generic state
-!-----------------------------------
+!     ! Get my internal MAPL_Generic state
+! !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
-    VERIFY_(STATUS)
+!     call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
+!     VERIFY_(STATUS)
 
-    ! Profilers
-!----------
+!     ! Profilers
+! !----------
 
-    call MAPL_TimerOn(MAPL,"TOTAL"   )
-    call MAPL_TimerOn(MAPL,"FINALIZE")
+!     call MAPL_TimerOn(MAPL,"TOTAL"   )
+!     call MAPL_TimerOn(MAPL,"FINALIZE")
 
-    ! call ISSM finalize (saves binary output .outbin file)
-    call FinalizeISSM()
+!     ! call ISSM finalize (saves binary output .outbin file)
+!     call FinalizeISSM()
 
-    call MAPL_TimerOff(MAPL,"FINALIZE")
-    call MAPL_TimerOff(MAPL,"TOTAL"   )
+!     call MAPL_TimerOff(MAPL,"FINALIZE")
+!     call MAPL_TimerOff(MAPL,"TOTAL"   )
 
-! Generic Finalize
-! ------------------
+! ! Generic Finalize
+! ! ------------------
     
-    call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
-    VERIFY_(STATUS)
+!     call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+!     VERIFY_(STATUS)
 
-! All Done
-!---------
+! ! All Done
+! !---------
 
-    RETURN_(ESMF_SUCCESS)
-  end subroutine Finalize
+!     RETURN_(ESMF_SUCCESS)
+!   end subroutine Finalize
 
 end module GEOS_IssmGridCompMod
