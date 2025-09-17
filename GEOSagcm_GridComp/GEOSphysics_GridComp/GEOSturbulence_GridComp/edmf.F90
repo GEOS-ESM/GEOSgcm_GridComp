@@ -17,9 +17,6 @@ use GEOS_Mod
 implicit none
 
 real, parameter ::     &
-     WSTARmin = 1.e-3, &
-     zpblmin  = 100.,  &
-     onethird = 1./3., &
      r        = 2.
 
  type EDMFPARAMS_TYPE
@@ -201,13 +198,15 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    INTEGER,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENTi
 
    INTEGER :: K,I,IH,JH,NUP2
-   REAL :: wthv,wstar,qstar,thstar,sigmaW,sigmaQT,sigmaTH,z0, &
-           wmin,wmax,wlv,wtv,wp
-   REAL :: B,QTn,THLn,THVn,QCn,QP,Un,Vn,Wn2,EntEXP,EntEXPU,EntW,wf
+   REAL :: wthv,wstar,qstar,thstar, &
+           sigmaW,sigmaQT,sigmaTH,  &
+           wmin,wmax,wlv,wtv,wp,    &
+           B,QTn,THLn,THVn,QCn,QP,  &
+           Un,Vn,Wn2,EntEXP,EntEXPU,EntW,wf
 
 ! internal flipped variables (GEOS5)
-   REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV,QV,QL,QI,ZLO,QR,QS
-   REAL,DIMENSION(KTS-1:KTE)  :: ZW,P,THLI,QTI
+   REAL,DIMENSION(KTS:KTE)   :: U,V,THL,QT,THV,QV,QL,QI,ZLO,QR,QS
+   REAL,DIMENSION(KTS-1:KTE) :: ZW,P,THLI,QTI
    REAL,DIMENSION(KTS-1:KTE) :: UI, VI, QVI, QLI, QII
 
 ! internal surface cont
@@ -221,11 +220,16 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                                 s_ahlqt,s_awqt,s_ahl2,s_awhl,qte
 ! exner function
    REAL,DIMENSION(KTS:KTE)   :: exf,dp,pmid
-   REAL,DIMENSION(KTS-1:KTE) :: exfh,tmp1d
+   REAL,DIMENSION(KTS-1:KTE) :: exfh
    REAL,DIMENSION(KTS-1:KTE) :: rhoe
 
-   REAL :: L0,ztop,tmp,tmp2,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
-   INTEGER, DIMENSION(2) :: seedmf,the_seed
+   ! temporary/dummy variables
+   REAL,DIMENSION(KTS-1:KTE) :: tmp1d
+   REAL :: tmp, tmp2
+
+   
+   REAL :: L0,ztop,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
+   INTEGER, DIMENSION(2) :: the_seed
 
    LOGICAL :: calc_avg_diag
 
@@ -667,7 +671,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       tmp = 0.
       tmp2 = 0.
       factor = 1.
-      DO WHILE (ZW(K).lt.200. .and. K.lt.KTE)
+      DO WHILE (ZW(K).lt.200. .and. SUM(UPW(K-1,:)).gt.0.)
          tmp = 0.25*SUM(UPA(K,:)*UPW(K,:)*UPW(K,:)+UPA(K-1,:)*UPW(K-1,:)*UPW(K-1,:))
          tmp2 = TKE3(IH,JH,KTE-K+KTS)
          factor = min(factor,0.5*tmp2/tmp)
