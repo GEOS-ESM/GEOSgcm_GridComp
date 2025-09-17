@@ -2139,9 +2139,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer, optional,   intent(  out) :: RC     ! Error code:
 
   ! child gridcomp (ISSM) attributes
-  type(ESMF_GridComp), intent(inout) :: GCS    ! Gridded component 
-  type(ESMF_State),    intent(inout) :: GIM    ! Import state
-  type(ESMF_State),    intent(inout) :: GEX    ! Export state
+!   type(ESMF_GridComp), intent(inout) :: GCS    ! Gridded component 
+!   type(ESMF_State),    intent(inout) :: GIM    ! Import state
+!   type(ESMF_State),    intent(inout) :: GEX    ! Export state
 
   !DESCRIPTION: 
 !  Periodically refreshes the ozone mixing ratios.
@@ -2222,12 +2222,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! NOTE: try to call ISSM gridcomp
     ! do we use RunChildren or ESMF_GridCompRun?!?!?!?!?
-    !call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, _RC)
+    call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, _RC)
 
-    call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, RC=STATUS )
-    VERIFY_(STATUS)
+   !  call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, RC=STATUS )
+   !  VERIFY_(STATUS)
 
-    call ESMF_GridCompRun(GCS, importState=GIM, exportState=GEX,clock=CLOCK)
+   !  call ESMF_GridCompRun(GCS, importState=GIM, exportState=GEX,clock=CLOCK)
     VERIFY_(STATUS)
 !  All done
 !-----------
