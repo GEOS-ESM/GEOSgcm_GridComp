@@ -92,6 +92,7 @@ mkdir -p geometry/{GRIDNAME}
 /bin/mv {GRIDNAME}.j geometry/{GRIDNAME}/.
 /bin/cp til/{GRIDNAME}{RS}.til geometry/{GRIDNAME}/.
 /bin/cp til/{GRIDNAME}{RS}.nc4 geometry/{GRIDNAME}/.
+/bin/mv clsm/{GRIDNAME}_tile_pfaf.nc4 geometry/{GRIDNAME}/.
 if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN geometry/{GRIDNAME}/.
 
 /bin/mv rst til geometry/{GRIDNAME}/.
