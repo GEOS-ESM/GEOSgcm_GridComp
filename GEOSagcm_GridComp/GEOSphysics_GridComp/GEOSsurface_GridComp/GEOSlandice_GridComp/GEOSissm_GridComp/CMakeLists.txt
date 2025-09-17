@@ -1,6 +1,6 @@
-find_package (ISSM REQUIRED COMPONENTS Core)
-
 esma_set_this ()
+
+find_package (ISSM REQUIRED COMPONENTS Core)
 
 esma_add_library (${this}
   SRCS GEOS_ISSMGridComp.F90
