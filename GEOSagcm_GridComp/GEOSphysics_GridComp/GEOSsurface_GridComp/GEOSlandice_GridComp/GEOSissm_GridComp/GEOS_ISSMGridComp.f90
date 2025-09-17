@@ -18,7 +18,10 @@ module GEOS_IssmGridCompMod
 !
 ! next steps:  
 !             (1) create GC from ESMF_Mesh corresponding to ISSM's mesh
-!                 this should greatly simplify imports/exports
+!                 this should greatly simplify imports/exports. 
+!                 then we should be able to call ESMF_GridCompCreate in Initialize
+!                 *before* MAPL_GenericInitialize is called
+!    
 !             (2) make sure to only run ISSM at appropriate timesteps
 !
 !             (3) add import/export states corresponding to surface mass balance and 
