@@ -19,11 +19,12 @@ module GEOS_IssmGridCompMod
 ! next steps:  
 !             (1) create GC from ESMF_Mesh corresponding to ISSM's mesh
 !                 this should greatly simplify imports/exports
+!             (2) make sure to only run ISSM at appropriate timesteps
 !
-!             (2) add import/export states corresponding to surface mass balance and 
-!                 ice-surface elevation
+!             (3) add import/export states corresponding to surface mass balance and 
+!                 ice-surface elevation (regrid from parent grid to mesh?)
 ! 
-!             (3) determine realistic ISSM setup, etc...
+!             (4) determine realistic ISSM setup, etc...
 ! 
 
 ! !USES:
@@ -463,7 +464,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     !EOP
     type(MAPL_MetaComp), pointer       :: MAPL 
-    type(ESMF_Time)                    :: MyTime
     
     ! ErrLog Variables
     
