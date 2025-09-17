@@ -248,9 +248,10 @@ subroutine SetServices ( GC, RC )
 
     real(dp),    pointer, dimension(:)     :: nodeCoords => null()
     integer,     pointer, dimension(:)     :: nodeIds => null()
+
+    ! ! I don't think I actually need these two:
     !integer, allocatable                   :: nodeOwners(:)
     !integer                                :: nodeCount 
-
 
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)		   :: IAm
@@ -263,7 +264,7 @@ subroutine SetServices ( GC, RC )
     ! -----------------------------------------------------------
 
     Iam = "Initialize"
-    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
+    call ESMF_GridCompGet( GC, NAME=comp_name, RC=status )
     VERIFY_(STATUS)
     Iam = trim(comp_name) // trim(Iam)
 
@@ -294,7 +295,7 @@ subroutine SetServices ( GC, RC )
 
     sdim = 2    ! spatial dimension of ISSM mesh
 
-    ! Manually set argc and argv to initialize ISSM 
+    ! Manually set command line argc and argv to initialize ISSM 
     argc = 4  
     allocate(argv(argc))
     argv(1) = "/discover/nobackup/agstubbl/ISSM/GEOS-ISSM/ISSM/bin/issm.exe"//c_null_char
