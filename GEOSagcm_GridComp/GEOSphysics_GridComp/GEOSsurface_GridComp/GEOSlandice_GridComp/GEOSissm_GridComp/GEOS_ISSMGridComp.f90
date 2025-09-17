@@ -39,7 +39,7 @@ use GEOS_UtilsMod
 
 implicit none
 
-! declare interfaces to ISSM HERE
+! declare interfaces to ISSM HERE ....
     ! Define the interface for the ISSM C++ functions
 interface
 subroutine InitializeISSM(argc, argv, num_elements, num_nodes, comm) bind(C, NAME="InitializeISSM")
