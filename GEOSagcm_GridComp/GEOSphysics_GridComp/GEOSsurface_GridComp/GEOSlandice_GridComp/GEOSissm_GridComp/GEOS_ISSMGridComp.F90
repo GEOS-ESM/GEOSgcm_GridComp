@@ -428,15 +428,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   SurfaceToGEOS5(:) = 0 ! placeholder 
   
   ! NOTE: do we need the barriers before/after ISSM run?
-  call ESMF_VMBarrier(vm, rc=status)
-  VERIFY_(STATUS)
+  ! call ESMF_VMBarrier(vm, rc=status)
+  ! VERIFY_(STATUS)
 
-  ! call the C++ routine for running a single time step
-  call RunISSM(dt, c_loc(SMBToISM), c_loc(SurfaceToGEOS5))
+  ! ! call the C++ routine for running a single time step
+  ! call RunISSM(dt, c_loc(SMBToISM), c_loc(SurfaceToGEOS5))
 
 
-  call ESMF_VMBarrier(vm, rc=status)
-  VERIFY_(STATUS)
+  ! call ESMF_VMBarrier(vm, rc=status)
+  ! VERIFY_(STATUS)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
