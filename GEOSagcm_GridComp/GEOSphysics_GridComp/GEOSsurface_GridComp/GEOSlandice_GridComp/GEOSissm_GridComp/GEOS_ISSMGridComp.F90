@@ -309,17 +309,17 @@ subroutine SetServices ( GC, RC )
         argv_ptr(i) = c_loc(argv(i))
     end do
    
-    call ESMF_VMGet(vm, localPet=localPet, mpiCommunicator=comm, petCount=petCount, peCount=peCount, rc=rc)
+    call ESMF_VMGet(vm,mpiCommunicator=comm,rc=rc)
     
     ! ! print the VM information if desired:
-    !call ESMF_VMPrint(vm, rc=rc)
+    call ESMF_VMPrint(vm, rc=rc)
    
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
-    call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
+    ! call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
 
-    print *, "number of ISSM elements: ", num_elements
-    print *, "number of ISSM nodes: ", num_nodes
+    ! print *, "number of ISSM elements: ", num_elements
+    ! print *, "number of ISSM nodes: ", num_nodes
 
     !!!! TO CREATE MESH TO DO THIS:
     ! allocate mesh-related pointers
@@ -413,7 +413,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   VERIFY_(STATUS)
 
 
-  call ESMF_VMGet(vm, localPet=localPet, mpiCommunicator=comm, petCount=petCount, peCount=peCount, rc=rc)
+  ! call ESMF_VMGet(vm, localPet=localPet, mpiCommunicator=comm, petCount=petCount, peCount=peCount, rc=rc)
 
   ! Start Total timer
 !------------------
