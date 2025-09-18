@@ -31,7 +31,6 @@ _DEFAULTS = {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"}
 
 def _normalize_lbcsv(label: str) -> str:
     v = (label or "").strip()
-    import re
     m = re.match(r'[vV]?\d+|[A-Za-z0-9]+', v)  # accepts v14 / 14 / NL3 / etc.
     if not m:
         return v
