@@ -861,6 +861,23 @@ module GEOS_CICE4ColumnPhysGridComp
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC  )
 
+    call MAPL_AddImportSpec(GC,                              &
+         LONG_NAME          = 'icefall',                          &
+         UNITS              = 'kg m-2 s-1',                       &
+         SHORT_NAME         = 'ICE',                              &
+         DIMS               = MAPL_DimsTileOnly,                  &
+         VLOCATION          = MAPL_VLocationNone,                 &
+                                                       _RC  )
+
+    call MAPL_AddImportSpec(GC,                              &
+         LONG_NAME          = 'freezing_rain_fall',               &
+         UNITS              = 'kg m-2 s-1',                       &
+         SHORT_NAME         = 'FRZR',                             &
+         DIMS               = MAPL_DimsTileOnly,                  &
+         VLOCATION          = MAPL_VLocationNone,                 &
+                                                       _RC  )
+
+
 ! Surface air quantities
 
      call MAPL_AddImportSpec(GC,                             &
@@ -2880,6 +2897,8 @@ contains
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
+   real, pointer, dimension(:)    :: ICEF => null()
+   real, pointer, dimension(:)    :: FRZR => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: PS => null()
@@ -3472,7 +3491,7 @@ contains
     if(associated(USTARI))   USTARI     = sqrt(sqrt(TAUXBOT**2+TAUYBOT**2)/MAPL_RHO_SEAWATER)
 
     if(associated(PR_C5)) then
-          PR_C5 = FRCICE * (PLS + PCU)
+          PR_C5 = FRCICE * (PLS + PCU) ! as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
           where(FRCICE == 0.0)
              PR_C5 = 0.0
           endwhere
@@ -3541,7 +3560,7 @@ contains
                            FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
                            MELTT,MELTS,MELTB,CONGEL,SNOICE,VOLICE,VOLSNO,SHF,LHF,        &
                            VOLPOND,APONDN,HPONDN,TAUAGE,TRACERS,ALW,BLW,    &
-                           FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,SBLX,_RC)
+                           FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,ICEF,FRZR,SBLX,_RC)
 
 !         Some aggregation of fluxes to the Ocean has to be done now, before using in step2
 
@@ -4367,7 +4386,7 @@ contains
                            FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
                            MELTT,MELTS,MELTB,CONGEL,SNOICE,VOLICE,VOLSNO,SHF,LHF,        &
                            VOLPOND,APONDN,HPONDN,TAUAGE,TRACERS,ALW,BLW,    &
-                           FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,SBLX,RC)
+                           FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,ICEF,FRZR,SBLX,RC)
 ! not passing TFfresh,saltwatercap,nt_tsfc,nt_iage,nt_volpn
 
 ! !ARGUMENTS:
@@ -4399,6 +4418,8 @@ contains
     real,    intent(IN)  :: EVD        (:)     ! related to evap
     real,    intent(IN)  :: SHD        (:)     ! related to sensible heat
     real,    intent(IN)  :: SNO        (:)     ! ?
+    real,    intent(IN)  :: ICEF       (:)     ! ?
+    real,    intent(IN)  :: FRZR       (:)     ! ?
 
     real,    intent(INOUT)  :: FSWSFC  (:,:)   ! ?
     real,    intent(INOUT)  :: EVP     (:)     ! evaporation
@@ -4525,7 +4546,7 @@ contains
 
           TRACERSDB      =  TRACERS(:,NSUB)
           LWDNSRFDB      =  LWDNSRF(K)
-          SNODB          =  SNO(K)
+          SNODB          =  SNO(K) + ICEF(K)
           TBOTDB         =  TBOT(K)
           FBOTDB         =  FBOT(K)
           FSWABSDB       =  FSWABS(K)
@@ -4639,7 +4660,7 @@ contains
              VOLSNODB        =  VOLSNO(K,NSUB)
              APONDNDB        =  APONDN(K,NSUB)
              HPONDNDB        =  HPONDN(K,NSUB)
-             FRAINDB         =  PCU(K) + PLS(K)
+             FRAINDB         =  PCU(K) + PLS(K) ! as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
              call compute_ponds(1, 1,                      &
                            1, 1, 1, 1,                     &
                            MELTTDB, MELTSDB, FRAINDB,      &
