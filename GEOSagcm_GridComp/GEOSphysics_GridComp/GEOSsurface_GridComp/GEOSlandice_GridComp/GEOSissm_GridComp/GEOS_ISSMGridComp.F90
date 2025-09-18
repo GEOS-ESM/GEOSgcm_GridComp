@@ -312,11 +312,12 @@ subroutine SetServices ( GC, RC )
     call ESMF_VMGet(vm,mpiCommunicator=comm,rc=rc)
     
     ! ! print the VM information if desired:
-    call ESMF_VMPrint(vm, rc=rc)
+    ! call ESMF_VMPrint(vm, rc=rc)
    
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
-    ! call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
+    print *, "TRYING TO INITIALIZE ISSM..."
+    call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
 
     ! print *, "number of ISSM elements: ", num_elements
     ! print *, "number of ISSM nodes: ", num_nodes
