@@ -22,7 +22,7 @@ module GEOS_IssmGridCompMod
 !                 then we should be able to call ESMF_GridCompCreate in Initialize
 !                 *before* MAPL_GenericInitialize is called
 !    
-!             (2) make sure to only run ISSM at appropriate timesteps
+!             (2) make sure to only run ISSM at appropriate timesteps,...
 !
 !             (3) add import/export states corresponding to surface mass balance and 
 !                 ice-surface elevation (regrid from parent grid to mesh?)
