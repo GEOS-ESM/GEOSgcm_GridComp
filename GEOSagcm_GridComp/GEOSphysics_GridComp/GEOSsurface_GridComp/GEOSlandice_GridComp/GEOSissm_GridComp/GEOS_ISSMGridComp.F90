@@ -232,7 +232,6 @@ subroutine SetServices ( GC, RC )
 
     ! Locals with ESMF and MAPL types
     type(ESMF_VM)                  :: vm    
-    integer                        :: rc
     type(ESMF_Mesh)                :: mesh
     integer                        :: localPet, petCount, peCount, ssiId, vas    
     integer(c_int)                 :: comm
