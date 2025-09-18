@@ -3050,7 +3050,6 @@ end if
      real                                :: MINTHICK
      real                                :: MINSHEAR
      real                                :: AKHMMAX
-     real                                :: RI_MIN, RI_MAX
      real                                :: C_B, LAMBDA_B, LOUIS_MEMORY
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
      real                                :: PCEFF_SURF, VSCALE_SURF, KHSFCFAC_LND, KHSFCFAC_OCN
@@ -3235,8 +3234,6 @@ end if
        call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, RI_MAX,       trim(COMP_NAME)//"_RI_MAX:",       default= 1000., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, RI_MIN,       trim(COMP_NAME)//"_RI_MIN:",       default=-1000., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,  RC=STATUS); VERIFY_(STATUS)
@@ -3271,10 +3268,8 @@ end if
        call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,  RC=STATUS); VERIFY_(STATUS)
        AKHMMAX = MAX( 1.0,MIN(1.0, 90.0/DT)*200.0) ! Critical for INTDIS stability with long DTs
+       AKHMMAX = 500.
        call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=AKHMMAX,    RC=STATUS); VERIFY_(STATUS)
-       RI_MIN  = MAX(10.0,MIN(1.0, 90.0/DT)*100.0)  ! Critical for INTDIS stability with long DTs
-       call MAPL_GetResource (MAPL, RI_MAX,       trim(COMP_NAME)//"_RI_MAX:",       default= RI_MIN*3,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, RI_MIN,       trim(COMP_NAME)//"_RI_MIN:",       default=-RI_MIN,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,      RC=STATUS); VERIFY_(STATUS)
@@ -4072,7 +4067,7 @@ end if
             LAMBDAM, LAMBDAM2,              & 
             LAMBDAH, LAMBDAH2,              & 
             ALHFAC, ALMFAC,                 &
-            ZKHMENV, AKHMMAX, RI_MIN, RI_MAX, &
+            ZKHMENV, AKHMMAX,               &
             DU, ALM, ALH, KMLS, KHLS             )
          endif
       end if
@@ -5822,7 +5817,7 @@ end subroutine RUN1
       logical                             :: DO_SHVC
       logical                             :: ALLOC_TMP
       integer                             :: KS, DO_SHOC
-      real                                :: HGT_SURFACE, WGTSUM
+      real                                :: HGT_SURFACE, WGTSUM, CAP_INTDIS
 
       ! For idealized SCM surface layer
       integer :: SCM_SL
@@ -5882,7 +5877,11 @@ end subroutine RUN1
       call MAPL_GetResource( MAPL, HGT_SURFACE, 'HGT_SURFACE:', default=HGT_SURFACE, RC=STATUS )
       VERIFY_(STATUS)
 
+      CAP_INTDIS = 1.0 ! Kelvin [per time step done when applied]                 
+      call MAPL_GetResource (MAPL, CAP_INTDIS,   trim(COMP_NAME)//"_CAP_INTDIS:",     default=CAP_INTDIS,  RC=STATUS); VERIFY_(STATUS)
+
       call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", default=0, RC=STATUS); VERIFY_(STATUS)
+
 
 ! SHVC Resource parameters. SHVC_EFFECT can be set to zero to turn-off SHVC.
 ! SHVC_EFFECT = 1. is the tuned value for  2 degree horizontal resolution.
@@ -6234,6 +6233,16 @@ end subroutine RUN1
                      end do 
                   end do
                end do
+               if (CAP_INTDIS > 0.0) then 
+                  ! limit frictional heating from INTDIS by CAP_INTDIS/DT [K/s]
+                  do L=1,LM
+                     do J=1,JM
+                        do I=1,IM
+                           INTDIS(I,J,L) = SIGN(MIN(ABS(INTDIS(I,J,L)/DP(I,J,L)),CAP_INTDIS/DT)*DP(I,J,L),INTDIS(I,J,L))
+                        end do 
+                     end do 
+                  end do 
+               endif
             endif
             if(associated(TOPDIS)) then
                TOPDIS = TOPDIS + (1.0/MAPL_CP)*FKV*SX**2
@@ -6456,14 +6465,6 @@ end subroutine RUN1
       end if
 
       if(associated(INTDIS)) then
-        !! limit INTDIS to 2-deg/hour
-        !do L=1,LM
-        !   do J=1,JM
-        !      do I=1,IM
-        !         INTDIS(I,J,L) = SIGN(min(2.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
-        !      end do
-        !   end do
-        !end do
          if(associated(KETRB)) then
             do L=1,LM
                KETRB = KETRB - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
@@ -6770,7 +6771,7 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
       LAMBDAM, LAMBDAM2,          &
       LAMBDAH, LAMBDAH2,          &
       ALHFAC, ALMFAC,             &
-      ZKHMENV, AKHMMAX, RI_MIN, RI_MAX,           &
+      ZKHMENV, AKHMMAX,           &
       DU_DIAG,ALM_DIAG,ALH_DIAG,KMLS_DIAG,KHLS_DIAG)
 
    implicit none
@@ -6794,7 +6795,7 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
    real, intent(IN) :: LOUIS_D_KH,LOUIS_D_KM
    real, intent(IN) :: MINSHEAR, MINTHICK
    real, intent(IN) :: LAMBDAM, LAMBDAM2, LAMBDAH, LAMBDAH2
-   real, intent(IN) :: ALHFAC, ALMFAC, ZKHMENV, AKHMMAX, RI_MIN, RI_MAX
+   real, intent(IN) :: ALHFAC, ALMFAC, ZKHMENV, AKHMMAX
    real, pointer :: DU_DIAG(:,:,:), ALM_DIAG(:,:,:), ALH_DIAG(:,:,:), KMLS_DIAG(:,:,:), KHLS_DIAG(:,:,:)
 
    ! Local variables - optimized memory layout
@@ -6857,11 +6858,10 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
             
             ! Richardson number
             ri_local = (GRAV/th_avg) * dth_local * dz_inv / shear_sq
-           !ri_local = max(RI_MIN, min(ri_local, RI_MAX))
             RI(i,j,l) = ri_local
 
             ! Cap asymptotic mixing lengths to boundary layer height if provided
-            pbl_local = BLACKADAR_SCALE * max(ZPBL(i,j),ZE(i,j,LM))
+            pbl_local = BLACKADAR_SCALE * max(ZPBL(i,j),ZZ(i,j,LM))
             lm_local = min(max(pbl_local,LAMBDAM2),LAMBDAM)
             lh_local = min(max(pbl_local,LAMBDAH2),LAMBDAH)
             ! Blackadar mixing Lengths
@@ -6894,7 +6894,7 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
             endif
 
             ! Free atmosphere reduction
-            z_exp = exp(-1.0 * ZE(i,j,l)/max(ZPBL(i,j),ZE(i,j,LM),1.0e-3))
+            z_exp = exp(-1.0 * ZE(i,j,l)/ZKHMENV)
             zm_factor = S_M(i,j,l) * z_exp
             zh_factor = S_H(i,j,l) * z_exp
 
@@ -6902,11 +6902,15 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
             KM(i,j,l) = ALMFAC * km_local * shear * zm_factor
             KH(i,j,l) = ALHFAC * kh_local * shear * zh_factor
 
-           !! CFL limiting at 1.9xCFL
-            cfl_limit = 1.9 * dz*dz / max(DTIME, 1.0e-12)
-            KM(i,j,l) = max(MIN_DIFFUSIVITY, min(KM(i,j,l), cfl_limit))
-            KH(i,j,l) = max(MIN_DIFFUSIVITY, min(KH(i,j,l), cfl_limit))
-            
+            ! CFL limiting at 1.9xCFL
+            if (AKHMMAX < 0.0) then
+               cfl_limit = 1.9 * dz*dz / max(DTIME, 1.0e-12)
+               KM(i,j,l) = max(MIN_DIFFUSIVITY, min(KM(i,j,l), cfl_limit, ABS(AKHMMAX)))
+               KH(i,j,l) = max(MIN_DIFFUSIVITY, min(KH(i,j,l), cfl_limit, ABS(AKHMMAX)))
+            else
+               KM(i,j,l) = max(MIN_DIFFUSIVITY, min(KM(i,j,l), AKHMMAX))
+               KH(i,j,l) = max(MIN_DIFFUSIVITY, min(KH(i,j,l), AKHMMAX))
+            endif
          end do
       end do
    end do
@@ -6917,9 +6921,6 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
       call MAPL_MaxMin('LOUIS: KM', KM)
       call MAPL_MaxMin('LOUIS: KH', KH)
    endif
-
-!  KM  = min(KM, AKHMMAX)
-!  KH  = min(KH, AKHMMAX)
 
    if (associated(KMLS_DIAG)) KMLS_DIAG = KM
    if (associated(KHLS_DIAG)) KHLS_DIAG = KH
