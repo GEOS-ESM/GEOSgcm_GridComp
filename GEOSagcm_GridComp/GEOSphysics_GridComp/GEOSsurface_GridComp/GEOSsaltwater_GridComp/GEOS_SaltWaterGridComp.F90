@@ -697,6 +697,8 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDWTR'   , CHILD_ID = WATER, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHWTR'     , CHILD_ID = WATER, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'SNOWOCN'   , CHILD_ID = WATER, _RC)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'ICEFOCN'   , CHILD_ID = WATER, _RC)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SPTOTOCN'  , CHILD_ID = WATER, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'RAINOCN'   , CHILD_ID = WATER, _RC)
 
 ! Atmosphere-Ocean Interface Layer (AOIL) specific variables
