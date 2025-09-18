@@ -112,6 +112,7 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, LIMIT_RKFRE,                 'LIMIT_RKFRE:'     ,DEFAULT= .FALSE., RC=STATUS) ; VERIFY_(STATUS) 
     else
       call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=3000.0, RC=STATUS) ; VERIFY_(STATUS)
@@ -122,6 +123,7 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, LIMIT_RKFRE,                 'LIMIT_RKFRE:'     ,DEFAULT= .FALSE., RC=STATUS) ; VERIFY_(STATUS) 
     endif
     call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
@@ -337,11 +339,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
       do J=1,JM
         do I=1,IM
-          !! option to vary RKFRE by resolution
-           SIG   = sigma(SQRT(PTR2D(i,j)))                      ! Param -> Resolved
+           SIG   = MIN(1.0,MAX(0.1,10.0/SQRT(PTR2D(i,j))))   ! Coarse  -> Fine
+           ! option to vary RKFRE by resolution
            RKFRE(i,j) = SHLWPARAMS%RKFRE
-           ! support for varying rkm/mix if needed              ! Param -> Resolved
-           RKM2D(i,j) = SHLWPARAMS%RKM*SIG + 8.0*(1.0-SIG)      ! RKM   -> 8.0
+           ! support for varying rkm/mix if needed
+           RKM2D(i,j) = SHLWPARAMS%RKM*SIG + 8.0*(1.0-SIG)   ! RKM -> 8.0
            MIX2D(i,j) = SHLWPARAMS%MIXSCALE
         enddo
       enddo 

@@ -5865,6 +5865,7 @@ contains
        ! initialize diagnosed convective fraction
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
+         ! CAPE ramps
            WHERE (CAPE .ne. MAPL_UNDEF)
               CNV_FRC = (1.0-COS(MAPL_PI*(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))/2.0
            END WHERE
@@ -5874,6 +5875,9 @@ contains
            WHERE (CAPE .ge. CNV_FRACTION_MAX)
               CNV_FRC = 1.0
            END WHERE
+       else
+         ! use -1*EIS range 0:1
+           CNV_FRC = MAX(0.0,MIN(1.0,-1*EIS))
        endif
 
        ! Extract convective tracers from the TR bundle
