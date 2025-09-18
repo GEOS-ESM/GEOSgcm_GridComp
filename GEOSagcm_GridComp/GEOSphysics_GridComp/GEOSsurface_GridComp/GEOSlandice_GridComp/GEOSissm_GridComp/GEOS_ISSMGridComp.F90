@@ -394,7 +394,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real(dp),    pointer, dimension(:)     :: SurfaceToGEOS5 => null()
 
   type(MAPL_MetaComp), pointer            :: MAPL
-  vm stuff
+  ! vm stuff
   type(ESMF_VM)                  :: vm    
   integer                        :: localPet, petCount, peCount, ssiId, vas  
   integer(c_int)                 :: comm  
