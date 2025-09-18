@@ -7,6 +7,7 @@ rasterize.F90
 read_riveroutlet.F90
 CubedSphere_GridMod.F90
 rmTinyCatchParaMod.F90
+pfaf_frac.F90
 zip.c
 util.c
 )

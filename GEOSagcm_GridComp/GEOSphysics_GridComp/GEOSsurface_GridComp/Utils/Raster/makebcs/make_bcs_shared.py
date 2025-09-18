@@ -92,7 +92,7 @@ mkdir -p geometry/{GRIDNAME}
 /bin/mv {GRIDNAME}.j geometry/{GRIDNAME}/.
 /bin/cp til/{GRIDNAME}{RS}.til geometry/{GRIDNAME}/.
 /bin/cp til/{GRIDNAME}{RS}.nc4 geometry/{GRIDNAME}/.
-/bin/mv clsm/{GRIDNAME}_tile_pfaf.nc4 geometry/{GRIDNAME}/.
+/bin/cp til/{GRIDNAME}_tile_pfaf.nc4 geometry/{GRIDNAME}/.
 if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN geometry/{GRIDNAME}/.
 
 /bin/mv rst til geometry/{GRIDNAME}/.
@@ -171,6 +171,13 @@ if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
 else
     /bin/cp -p {MAKE_BCS_INPUT_DIR}/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4 land/shared/CO2_MonthlyMean_DiurnalCycle.nc4
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
+endif
+
+if(-f land/shared/river_input.nc ) then
+    echo "river_input.nc already present in bcs dir."
+else
+    /bin/cp -p /discover/nobackup/projects/gmao/bcs_shared/test/stuff/route_model/v1/river_input.nc land/shared/river_input.nc
+    echo "Successfully copied river_input.nc to bcs dir."
 endif
 
 # adjust permissions
