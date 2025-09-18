@@ -492,7 +492,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
     ! call ISSM finalize (saves binary output .outbin file)
-    call FinalizeISSM()
+    ! call FinalizeISSM()
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )
