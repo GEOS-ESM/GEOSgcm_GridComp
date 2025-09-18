@@ -1762,13 +1762,14 @@ contains
        rho0inv = pifc0(kinv-1)/(r*thv0top(kinv-1)*exnifc0(kinv-1))
        cbmf_raw = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
        ! --- compute cbmf limit based on mass availability ---
-       cbmflimit = max(0.0, 1.9*dp0(kinv-1)/g/dt)
+       cbmflimit = max(tiny(0.0), 1.9*dp0(kinv-1)/g/dt)
        ! --- adjust rkfre dynamically for stability ---
-       if (cbmf_raw > tiny(0.0)) then
-          rkfre_eff = min(rkfre(i), cbmflimit/cbmf_raw)
+       if (cbmf_raw > cbmflimit) then
+          rkfre_eff = min(rkfre(i), max(0.1,cbmflimit/cbmf_raw))
        else
-          rkfre_eff = epsvarw
+          rkfre_eff = rkfre(i)
        end if
+      !rkfre_eff = rkfre(i)
 
        !----------------------------------------------------------------------!
        ! In order to calculate implicit 'cin' (or 'cinlcl'), save the initially !
