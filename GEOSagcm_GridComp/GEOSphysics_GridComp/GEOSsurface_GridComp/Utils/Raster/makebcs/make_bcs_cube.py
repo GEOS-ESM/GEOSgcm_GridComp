@@ -5,57 +5,29 @@
 import os
 from make_bcs_questionary import *
 from make_bcs_shared import * 
-import re
 from datetime import datetime
 import subprocess
-
-def _resolve_versions(bcs_version: str):
-    """
-    Returns (mom6_bathy_version, topo_version) as 'v1' or 'v2'
-    Rule: v14+ -> v2; else -> v1. Non-numeric (NL3, ICA, GM4...) -> v1.
-    """
-    v = (bcs_version or "").strip()
-    m = re.match(r'[vV]?(\d+)', v)
-    vnum = int(m.group(1)) if m else None
-    use_v2 = vnum is not None and vnum >= 14
-    return ("v2" if use_v2 else "v1", "v2" if use_v2 else "v1")
-
-def _build_mom6_link_lines(inputdir: str, preferred_version: str) -> str:
-    """
-    Build csh lines to symlink MOM6 datasets.
-    Prefer `preferred_version` (v1 or v2) per size; if missing, fall back to the other version.
-    Emits an echo note on fallback; warns if a size is missing in both.
-    """
-    sizes = ["72x36", "540x458", "1440x1080"]
-    other = "v1" if preferred_version == "v2" else "v2"
-
-    lines = ['if ( ! -d data/MOM6 ) mkdir -p data/MOM6']
-    for size in sizes:
-        src_pref = os.path.join(inputdir, "ocean", "MOM6", preferred_version, size)
-        src_other = os.path.join(inputdir, "ocean", "MOM6", other,            size)
-
-        if os.path.isdir(src_pref):
-            src = src_pref
-            note = ""
-        elif os.path.isdir(src_other):
-            src = src_other
-            note = f'echo "NOTE: MOM6 {preferred_version}/{size} not found; using {other}/{size}"'
-        else:
-            lines.append(f'echo "WARNING: MOM6 {size} missing in both v1 and v2; skipping"')
-            continue
-
-        lines.append(f'if ( -e data/MOM6/{size} ) /bin/rm -f data/MOM6/{size}')
-        if note:
-            lines.append(note)
-        lines.append(f'ln -s {src} data/MOM6/{size}')
-    return "\n".join(lines)
 
 cube_template = """
 
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
-{MOM6_LINK_LINES}
+if ( {TRIPOL_OCEAN} == True ) then
+  set mom6v    = {mom6_bathy_version}
+  set mom6root = {MAKE_BCS_INPUT_DIR}/ocean/MOM6/$mom6v
+  set req      = {imo}x{jmo}
+
+  if ( ! -d $mom6root/$req ) then
+    echo "ERROR: MOM6/$mom6v/$req missing under {MAKE_BCS_INPUT_DIR}/ocean/MOM6"
+    echo "       Selected via questionnaire '{lbcsv}' -> MOM6_BATHY_VERSION=$mom6v"
+    exit 10
+  endif
+
+  if ( ! -d data/MOM6 ) mkdir -p data/MOM6
+  if ( -e data/MOM6/$req ) /bin/rm -f data/MOM6/$req
+  ln -s $mom6root/$req data/MOM6/$req
+endif
 
 
 if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
@@ -180,8 +152,30 @@ def make_bcs_cube(config):
   if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
-  MOM6_BATHY_VERSION, TOPO_VERSION = _resolve_versions(config['lbcsv'])
-  MOM6_LINK_LINES = _build_mom6_link_lines(config['inputdir'], MOM6_BATHY_VERSION)
+  TOPO_VERSION       = topo_version_for_bcs(config['lbcsv'])
+  MOM6_BATHY_VERSION = mom6_bathy_version_for_bcs(config['lbcsv'])
+
+  # ---------- INPUT CHECKS (abort before sbatch) ----------
+  # 1) TOPO must exist for this grid
+  topo_dir = f"CF{NC}x6C{SGNAME}"              # CF0090x6C or CF0540x6C-SG001
+  topo_src = os.path.join(config['inputdir'], "atmosphere", "TOPO", TOPO_VERSION, topo_dir)
+  if not os.path.isdir(topo_src):
+      print(f"ABORT: Missing TOPO: {topo_src} "
+            f"(LBCSV={config['lbcsv']} TOPO_VERSION={TOPO_VERSION})")
+      return
+  
+  # 2) MOM6 bathymetry: strict, check ONLY the size used by this run
+  if config["TRIPOL_OCEAN"]:
+      req = f"{config['imo']}x{config['jmo']}"  # 540x458 or 1440x1080
+      mom6_src = os.path.join(config['inputdir'], "ocean", "MOM6", MOM6_BATHY_VERSION, req)
+      if not os.path.isdir(mom6_src):
+          print(f"ABORT: Missing MOM6 bathymetry: {mom6_src} "
+                f"(LBCSV={config['lbcsv']} MOM6={MOM6_BATHY_VERSION})")
+          return
+  
+  print(f"[make_bcs_cube] LBCSV={config['lbcsv']}  TOPO={TOPO_VERSION}  "
+        f"MOM6={MOM6_BATHY_VERSION}  REQ={'{imo}x{jmo}'.format(**config)}  GRID={GRIDNAME}")
+  # -------------------------------------------------------------------
 
   script_template = get_script_head() + cube_template + get_script_mv(config['grid_type'])
 
@@ -223,7 +217,6 @@ def make_bcs_cube(config):
            SGPARAM = SGPARAM, \
            TOPO_VERSION = TOPO_VERSION,
            mom6_bathy_version = MOM6_BATHY_VERSION,
-           MOM6_LINK_LINES = MOM6_LINK_LINES,                              
            IS_STRETCHED = IS_STRETCHED, \
            NCPUS = config['NCPUS'])
 

@@ -6,19 +6,50 @@ import os
 import glob
 import re
 
+# --- BEGIN VERSION MATRIX ---
+
+# Independent version mapping per questionnaire 'lbcsv'
+_VERSION_MATRIX = {
+    "NL3": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "NL4": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "NL5": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "ICA": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "GM4": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "F25": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v06": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v07": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v08": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v09": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v10": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v11": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v12": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v13": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v14": {"TOPO_VERSION": "v2", "MOM6_BATHY_VERSION": "v2"},
+}
+
+_DEFAULTS = {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"}
+
+def _normalize_lbcsv(label: str) -> str:
+    v = (label or "").strip()
+    import re
+    m = re.match(r'[vV]?\d+|[A-Za-z0-9]+', v)  # accepts v14 / 14 / NL3 / etc.
+    if not m:
+        return v
+    key = m.group(0)
+    # normalize numeric like '14' -> 'v14'
+    if key.isdigit():
+        key = 'v' + key
+    return key
+
+def resolve_bcs_matrix(bcs_version: str):
+    key = _normalize_lbcsv(bcs_version)
+    return {**_DEFAULTS, **_VERSION_MATRIX.get(key, {})}
+
 def topo_version_for_bcs(bcs_version: str) -> str:
-    """
-    Decide which TOPO set to use based on BCS version chosen in the questionnaire.
-    - v14 and later → TOPO v2
-    - v13 and earlier (and NL*/ICA/GM4/F25) → TOPO v1
-    """
-    v = (bcs_version or "").strip()
-   ## m = re.fullmatch(r"[vV](\d+)", v)
-    m = re.match(r"[vV]?(\d+)", v)  # relaxed tolerance if we change names
-    if m:
-        return "v2" if int(m.group(1)) >= 14 else "v1"
-    # NL3, NL4, NL5, ICA, GM4, F25, etc.
-    return "v1"
+    return resolve_bcs_matrix(bcs_version)["TOPO_VERSION"]
+
+def mom6_bathy_version_for_bcs(bcs_version: str) -> str:
+    return resolve_bcs_matrix(bcs_version)["MOM6_BATHY_VERSION"]
 
 def get_script_head() :
 
