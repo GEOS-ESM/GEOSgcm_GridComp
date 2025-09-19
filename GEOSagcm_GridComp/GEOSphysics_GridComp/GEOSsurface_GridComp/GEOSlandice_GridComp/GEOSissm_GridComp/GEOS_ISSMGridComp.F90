@@ -233,7 +233,6 @@ subroutine SetServices ( GC, RC )
     ! Locals with ESMF and MAPL types
     type(ESMF_VM)                  :: vm    
     type(ESMF_Mesh)                :: mesh
-    integer                        :: localPet, petCount, peCount, ssiId, vas    
     integer(c_int)                 :: comm
     integer                        :: sdim
     integer, pointer, dimension(:) :: elementIds
@@ -321,9 +320,6 @@ subroutine SetServices ( GC, RC )
     ! gets the number of elements and nodes of the mesh
     call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
 
-    print *, "number of ISSM elements: ", num_elements
-    print *, "number of ISSM nodes: ", num_nodes
-
     !!! TO CREATE MESH TO DO THIS:
     !allocate mesh-related pointers
     allocate(nodeCoords(sdim*num_nodes))
@@ -381,19 +377,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   character(len=ESMF_MAXSTR)          :: COMP_NAME
 
   real(dp) :: dt
-  ! real(dp),    pointer, dimension(:)     :: SMBToISM => null()
-  ! real(dp),    pointer, dimension(:)     :: SurfaceToGEOS5 => null()
+  real(dp),    pointer, dimension(:)     :: SMBToISSM => null()
+  real(dp),    pointer, dimension(:)     :: SurfaceToGEOS => null()
 
   type(MAPL_MetaComp), pointer            :: MAPL
 
-  integer                        :: localPet, petCount, peCount, ssiId, vas  
+  type(ESMF_Mesh)                :: mesh
+  integer(c_int)                 :: num_elements  
   integer(c_int)                 :: comm  
 
   ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
   Iam = "Run"
-  call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
+  call ESMF_GridCompGet( GC, name=COMP_NAME,mesh=mesh, RC=STATUS )
   VERIFY_(STATUS)
   Iam = trim(COMP_NAME) // Iam
 
@@ -404,7 +401,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   VERIFY_(STATUS)
 
 
-
   ! Start Total timer
 !------------------
   call MAPL_TimerOn(MAPL,"TOTAL")
@@ -413,23 +409,22 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! timestep for issm...
   dt = 0.05   ! timestep in years
 
-  ! ! need to access num_elements in run method... 
-  !! ESMF_GridCompGet(Gc,mesh=mesh)
-  ! ! ESMF_MeshGet(GC,elementCount=num_elements)
+  ! ! need to access num_elements 
+  call ESMF_MeshGet(mesh,elementCount=num_elements)
   ! ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
-  ! allocate(SMBToISM(num_elements))
-  ! allocate(SurfaceToGEOS5(num_elements))
+  allocate(SMBToISSM(num_elements))
+  allocate(SurfaceToGEOS(num_elements))
 
 ! set smb and surface for test 
-  ! SMBToISM(:) = 0
-  ! SurfaceToGEOS5(:) = 0 ! placeholder 
+  SMBToISSM(:) = 0     ! placeholder zeros
+  SurfaceToGEOS(:) = 0 ! placeholder zeros
   
   ! NOTE: do we need the barriers before/after ISSM run?
   ! call ESMF_VMBarrier(vm, rc=status)
   ! VERIFY_(STATUS)
 
   ! ! call the C++ routine for running a single time step
-  ! call RunISSM(dt, c_loc(SMBToISM), c_loc(SurfaceToGEOS5))
+  call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
 
 
   ! call ESMF_VMBarrier(vm, rc=status)
