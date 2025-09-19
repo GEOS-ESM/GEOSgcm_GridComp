@@ -168,6 +168,10 @@ class GFDL1M:
             (out) sublc: ?
             (out | optional) rh_crit: ?
         """
+
+        self.masks.zeros()
+        self.temporaries.zeros()
+
         self.setup(
             geopotential_height_interface=geopotential_height_interface,
             p_interface=p_interface,
