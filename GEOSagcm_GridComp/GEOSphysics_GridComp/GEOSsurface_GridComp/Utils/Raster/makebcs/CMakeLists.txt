@@ -2,12 +2,12 @@ esma_set_this()
 
 set (srcs
 LDAS_DateTimeMod.F90
-EASE_conv.F90
 mod_process_hres_data.F90
 rasterize.F90
 read_riveroutlet.F90
 CubedSphere_GridMod.F90
 rmTinyCatchParaMod.F90
+pfaf_frac.F90
 zip.c
 util.c
 )
@@ -37,6 +37,8 @@ else ()
   # enable it in zip.c
   target_compile_definitions(${this} PRIVATE STDC)
 endif ()
+
+esma_add_subdirectories (@ncar_topo utils_topo)
 
 ecbuild_add_executable (TARGET CombineRasters.x SOURCES CombineRasters.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkCatchParam.x SOURCES mkCatchParam.F90 LIBS MAPL ${this} OpenMP::OpenMP_Fortran)

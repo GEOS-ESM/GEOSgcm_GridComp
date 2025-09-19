@@ -29,17 +29,17 @@ PROGRAM mkEASETilesParam
   ! - removed repetition of identical operations
   ! - added comments
   ! - white-space changes for improved readability
-  
-  use EASE_conv,             only : EASE_extent, EASE_convert, EASE_inverse
+  use, intrinsic :: iso_fortran_env, only: REAL64 
   use rmTinyCatchParaMod,    only : i_raster, j_raster 
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
   use process_hres_data,     only : histogram
   use LogRectRasterizeMod,   only : SRTM_maxcat, MAPL_UNDEF_R8   ! rasterize.F90
   use MAPL_SortMod
-  use MAPL_ConstantsMod
+  use MAPL_ConstantsMod,     only : MAPL_PI_r8, MAPL_RADIUS
   use MAPL_ExceptionHandling
-  use MAPL
+  use MAPL,                  only : MAPL_ease_extent, MAPL_ease_convert, MAPL_ease_inverse, MAPL_WriteTilingNC4
+  use pfaf_fracMod,          only : get_pfaf_frac
   use netcdf
   
   implicit none
@@ -158,7 +158,7 @@ PROGRAM mkEASETilesParam
   
   EASElabel = trim(EASELabel_)
   
-  call ease_extent( EASELabel, nc_ease, nr_ease )
+  call MAPL_ease_extent( EASELabel, nc_ease, nr_ease, _RC)
   
   write(nc_string, '(i0)') nc_ease
   write(nr_string, '(i0)') nr_ease
@@ -373,7 +373,7 @@ PROGRAM mkEASETilesParam
               
               ! get 1-based ind_col and ind_row indices of EASE grid cell that contains raster grid cell (i,j)
               
-              call EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
+              call MAPL_EASE_convert(EASELabel, clat, clon, r_ease, s_ease, _RC)
               
               ind_col = nint(r_ease) + 1 
               ind_row = nint(s_ease) + 1     ! can be negative or greater than nr_ease (lat near N/S pole)
@@ -543,7 +543,7 @@ PROGRAM mkEASETilesParam
 !            do j =nr ,1 ,-1
 !               
 !               clat = -90. + float(j-1)*dy + dy/2.
-!               call EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
+!               call MAPL_EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
 !               
 !               ind_col = nint(r_ease) + 1 
 !               ind_row = nint(s_ease) + 1
@@ -657,7 +657,7 @@ PROGRAM mkEASETilesParam
         
         ! get 1-based ind_col and ind_row indices of EASE grid cell that contains raster grid cell (i,j)
         
-        call EASE_convert(EASELabel, clat, clon, r_ease, s_ease)  
+        call MAPL_EASE_convert(EASELabel, clat, clon, r_ease, s_ease, _RC)
         
         ind_col = nint(r_ease) + 1 
         ind_row = nint(s_ease) + 1     ! NOTE: can be zero or negative or greater than nr_ease (lat near N/S pole)
@@ -884,20 +884,20 @@ PROGRAM mkEASETilesParam
      ! get min/max lat/lon of EASE grid cell
      ! BUG: This is *not* the desired min/max lat/lon of the land tile!!!
      
-     call EASE_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon ) 
+     call MAPL_ease_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon, _RC) 
      
      mnx = clon - dx_ease
      mxx = clon + dx_ease
      
      jgv = real(jg-1) + 0.5
      
-     call EASE_inverse( EASELabel, real(ig-1), jgv, clat, clon ) 
+     call MAPL_ease_inverse( EASELabel, real(ig-1), jgv, clat, clon, _RC) 
      
      mny = clat
      
      jgv = real(jg-1) - 0.5
      
-     call EASE_inverse( EASELabel, real(ig-1), jgv, clat, clon ) 
+     call MAPL_ease_inverse( EASELabel, real(ig-1), jgv, clat, clon, _RC) 
      
      mxy = clat 
      
@@ -921,7 +921,7 @@ PROGRAM mkEASETilesParam
      !       contributing raster grid cells, which is *not* the same for all EASE grid cells;
      !       that is, cannot use exact (globally constant) area of EASE grid  cell.
      
-     call EASE_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon )
+     call MAPL_ease_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon, _RC)
      
      fr_gcm = tile_area(nn) / ease_grid_area((jg-1)*nc_ease+ig)
      
@@ -980,6 +980,8 @@ PROGRAM mkEASETilesParam
   
   deallocate( tileid_index, catid_index,veg )
   deallocate( tile_area, ease_grid_area, tile_elev, my_land, all_id )
+
+  call get_pfaf_frac('til/'//trim(EASELabel)//'_tile_pfaf.nc4', EASELabel)
       
   ! Commented out "empty" if-block. -rreichle, 15 Jun 2023
   !
@@ -1032,7 +1034,7 @@ PROGRAM mkEASETilesParam
 !!!           do i = 1, nc_ease+1
 !!!              x = real(i-1)        -0.5
 !!!              y = real(nr_ease - j)+0.5
-!!!              call EASE_inverse(MGRID, x, y, yout, xout)
+!!!              call MAPL_ease_inverse(MGRID, x, y, yout, xout)
 !!!              ys (i,j) = dble(yout)
 !!!              xs (i,j) = dble(xout)
 !!!           end do

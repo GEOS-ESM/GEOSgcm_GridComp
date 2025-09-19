@@ -75,7 +75,7 @@ def get_configs_from_answers(answers):
            if lbcsv in ['F25', 'GM4', 'ICA']:
               maskfile = 'global.cat_id.catch.GreatLakesCaspian_Updated.DL'
         if (maskfile == ''):
-           print(" \!\!\!\! Invalid Ocean Resolution, stopping ")
+           print(" !!! Invalid Ocean Resolution, stopping !!!")
            exit()
  
         if 'EASEv1' == grid_type or 'EASEv2' == grid_type:
