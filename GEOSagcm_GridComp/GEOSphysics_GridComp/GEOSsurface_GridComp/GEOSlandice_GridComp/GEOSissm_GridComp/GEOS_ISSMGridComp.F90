@@ -286,6 +286,10 @@ subroutine SetServices ( GC, RC )
     ! ! NOTE: so currently just getting grid from parent (landice) ***
     ! Generic initialize
     ! ------------------
+    
+    ! try generic initialize before doing ISSM stuff ?!?!?
+    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
+    VERIFY_(STATUS)
 
     call ESMF_VMGetCurrent(vm, rc=STATUS)
     VERIFY_(STATUS)
@@ -372,8 +376,8 @@ subroutine SetServices ( GC, RC )
 
     ! ^^^^^^^^^^ BAD IDEA BUT BE MIGHT INSIGHTFUL ^^^^^^^^^^
 
-    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
-    VERIFY_(STATUS)
+    ! call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
+    ! VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
@@ -434,10 +438,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! ! need to access num_elements 
   call ESMF_MeshGet(mesh,elementCount=num_elements)
-
-!   print *, "number of ISSM elements: ", num_elements
-  print *, "ISSM empty run method!"
-
 
   ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
   allocate(SMBToISSM(num_elements))
