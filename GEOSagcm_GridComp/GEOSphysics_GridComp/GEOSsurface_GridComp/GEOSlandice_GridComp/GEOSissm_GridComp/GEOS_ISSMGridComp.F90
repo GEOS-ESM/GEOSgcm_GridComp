@@ -325,7 +325,7 @@ subroutine SetServices ( GC, RC )
     print *, "number of ISSM nodes: ", num_nodes
 
     !!! TO CREATE MESH TO DO THIS:
-    allocate mesh-related pointers
+    !allocate mesh-related pointers
     allocate(nodeCoords(sdim*num_nodes))
     allocate(nodeIds(num_nodes))
     allocate(elementTypes(num_elements))
@@ -343,7 +343,8 @@ subroutine SetServices ( GC, RC )
     mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
            elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
 
-    GC = ESMF_GridCompCreate ( name='ISSM',mesh=mesh,rc=rc)
+    GC = ESMF_GridCompCreate ( name='ISSM',mesh=mesh,rc=STATUS)
+    VERIFY_(STATUS)
 
     ! ! NOTE: How do we set this mesh to be the GC's grid? ^ does that work?
     ! ! Rule 10: A component’s grid must be fully formed before MAPL_GenericInitialize is invoked
@@ -353,7 +354,7 @@ subroutine SetServices ( GC, RC )
     ! Get the grid, configuration
     !----------------------------
 
-    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
