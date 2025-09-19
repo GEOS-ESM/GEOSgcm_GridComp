@@ -63,11 +63,16 @@ def finalize_precip(
     graupel: FloatField,
 ):
     """
-    Must be constructed using Z_INTERFACE_DIM
+
+    Dev note on `PFL_LS`, `PFI_LS`, `PFL_AN`, `PFI_AN `:
+        Fortran use large_scale_nonanvil_ice_flux(PFI_LS) & anvil_ice_flux(PFI_AN) etc.,
+        as Z_INTERFACE_DIMS fields, but level == 0 is never touched.
+        It's reset every time to 0 and calculation are done on [1:] everywhere (before and in this code).
+        Therefore, it's not a Z_INTERFACE_DIM and we treat it as a Z_DIM.
     """
     from __externals__ import DT_MOIST
 
-    with computation(PARALLEL), interval(0, -1):
+    with computation(PARALLEL), interval(...):
         # send driver evaporation and sublimation outputs back to the rest of the model
         evaporation = evaporation_from_driver
         sublimation = sublimation_from_driver
@@ -85,40 +90,44 @@ def finalize_precip(
         icefall = precipitated_ice + precipitated_graupel
         freezing_rainfall = 0.0
 
-    with computation(PARALLEL), interval(1, None):
+    with computation(PARALLEL), interval(...):
         # Bring in precipitation fluxes from driver
         large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux_from_driver
         large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux_from_driver
-
-    with computation(PARALLEL), interval(...):
         # Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
-        large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux / (MAPL_GRAV * DT_MOIST)
-        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux / (MAPL_GRAV * DT_MOIST)
+        large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux / (
+            MAPL_GRAV * DT_MOIST
+        )
+        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux / (
+            MAPL_GRAV * DT_MOIST
+        )
 
     with computation(PARALLEL), interval(1, None):
         # Redistribute precipitation fluxes for chemistry
         anvil_ice_flux = large_scale_nonanvil_ice_flux * min(
             1.0,
-            max(convective_ice[0, 0, -1] / max(ice_for_radiation[0, 0, -1], 1.0e-8), 0.0),
+            max(convective_ice / max(ice_for_radiation, 1.0e-8), 0.0),
         )
         large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux - anvil_ice_flux
 
         anvil_liquid_flux = large_scale_nonanvil_liquid_flux * min(
             1.0,
             max(
-                convective_liquid[0, 0, -1] / max(liquid_for_radiation[0, 0, -1], 1.0e-8),
+                convective_liquid / max(liquid_for_radiation, 1.0e-8),
                 0.0,
             ),
         )
-        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux - anvil_liquid_flux
+        large_scale_nonanvil_liquid_flux = (
+            large_scale_nonanvil_liquid_flux - anvil_liquid_flux
+        )
 
-    with computation(PARALLEL), interval(0, -1):
+    with computation(PARALLEL), interval(...):
         # cleanup suspended precipitation condensates
         radiation_rain = fix_negative_precip(radiation_rain)
         radiation_snow = fix_negative_precip(radiation_snow)
         radiation_graupel = fix_negative_precip(radiation_graupel)
 
-    with computation(PARALLEL), interval(0, -1):
+    with computation(PARALLEL), interval(...):
         vapor = radiation_vapor
         rain = radiation_rain
         snow = radiation_snow
@@ -213,7 +222,11 @@ def dissipative_ke_heating(
 ):
     with computation(FORWARD), interval(...):
         # total KE dissipation estimate
-        dts = dts - ((du_dt_macro + du_dt_micro) * u0 + (dv_dt_macro + dv_dt_micro) * v0) * mass
+        dts = (
+            dts
+            - ((du_dt_macro + du_dt_micro) * u0 + (dv_dt_macro + dv_dt_micro) * v0)
+            * mass
+        )
         # [sic] fpi needed for calcualtion of conversion to pot. energyintegrated
         ke = sqrt(
             (du_dt_macro + du_dt_micro) * (du_dt_macro + du_dt_micro)
@@ -279,7 +292,7 @@ class Finalize:
 
         self.finalize_precip = stencil_factory.from_dims_halo(
             func=finalize_precip,
-            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "DT_MOIST": GFDL_1M_config.DT_MOIST,
             },
