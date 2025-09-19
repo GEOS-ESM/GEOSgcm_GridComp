@@ -234,7 +234,6 @@ subroutine SetServices ( GC, RC )
     type(ESMF_VM)                  :: vm    
     type(ESMF_Mesh)                :: mesh
     integer(c_int)                 :: comm
-    integer                        :: sdim
     integer, pointer, dimension(:) :: elementIds
     integer, pointer, dimension(:) :: elementConn    
     integer, allocatable  :: elementTypes(:)
@@ -294,8 +293,6 @@ subroutine SetServices ( GC, RC )
     ! ****************************************************
     ! call ISSM initial C++ code so we can set up mesh
 
-    sdim = 2    ! spatial dimension of ISSM mesh
-
     ! Manually set command line argc and argv to initialize ISSM 
     argc = 4  
     allocate(argv(argc))
@@ -322,7 +319,7 @@ subroutine SetServices ( GC, RC )
 
     !!! TO CREATE MESH TO DO THIS:
     !allocate mesh-related pointers
-    allocate(nodeCoords(sdim*num_nodes))
+    allocate(nodeCoords(2*num_nodes))
     allocate(nodeIds(num_nodes))
     allocate(elementTypes(num_elements))
     allocate(elementIds(num_elements))
@@ -416,8 +413,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   print *, "number of ISSM elements: ", num_elements
 
   ! ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
-  allocate(SMBToISSM(num_elements+2000))
-  allocate(SurfaceToGEOS(num_elements+2000))
+  allocate(SMBToISSM(num_elements))
+  allocate(SurfaceToGEOS(num_elements))
 
 ! set smb and surface for test 
   SMBToISSM(:) = 0     ! placeholder zeros
