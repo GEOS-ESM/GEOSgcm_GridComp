@@ -285,10 +285,7 @@ subroutine SetServices ( GC, RC )
     ! Generic initialize
     ! ------------------
 
-    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
-    VERIFY_(STATUS)
 
-    !call ESMF_GridCompGet(GC,vm=vm)
     call ESMF_VMGetCurrent(vm, rc=STATUS)
     VERIFY_(STATUS)
 
@@ -322,46 +319,33 @@ subroutine SetServices ( GC, RC )
    
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
-    print *, "TRYING TO INITIALIZE ISSM..."
     call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
 
-    ! print *, "number of ISSM elements: ", num_elements
-    ! print *, "number of ISSM nodes: ", num_nodes
+    print *, "number of ISSM elements: ", num_elements
+    print *, "number of ISSM nodes: ", num_nodes
 
-    !!!! TO CREATE MESH TO DO THIS:
-    ! allocate mesh-related pointers
-    ! allocate(nodeCoords(sdim*num_nodes))
-    ! allocate(nodeIds(num_nodes))
-    ! allocate(elementTypes(num_elements))
-    ! allocate(elementIds(num_elements))
-    ! allocate(elementConn(3*num_elements))
+    !!! TO CREATE MESH TO DO THIS:
+    allocate mesh-related pointers
+    allocate(nodeCoords(sdim*num_nodes))
+    allocate(nodeIds(num_nodes))
+    allocate(elementTypes(num_elements))
+    allocate(elementIds(num_elements))
+    allocate(elementConn(3*num_elements))
 
-    ! ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
-    ! allocate(SMBToISM(num_elements))
-    ! allocate(SurfaceToGEOS5(num_elements))
+    ! create ESMF mesh corresponding to  ISSM mesh 
+    ! get information about nodes and elements
+    call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords))
+    call GetElementsISSM(c_loc(elementIds), c_loc(elementConn))
 
-    ! ! create ESMF mesh corresponding to  ISSM mesh 
-    ! ! get information about nodes and elements
-    ! call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords))
-    ! call GetElementsISSM(c_loc(elementIds), c_loc(elementConn))
+    elementTypes(:) = ESMF_MESHELEMTYPE_TRI
 
-    ! elementTypes(:) = ESMF_MESHELEMTYPE_TRI
+    ! create the ESMF mesh 
+    mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
+           elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
 
-    ! ! create the ESMF mesh (later will be used for regridding)
-    ! mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
-    !        elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
+    GC = ESMF_GridCompCreate ( name='ISSM',mesh=mesh,rc=rc)
 
-
-    ! ! nodecount and nodeowners: I don't know if this is even necessary; 
-    ! ! I think I was looking at them to verify whether I created mesh correctly
-    ! ! get nodecount
-    ! call ESMF_MeshGet(mesh,nodeCount=nodeCount)
-    
-    ! allocate(nodeOwners(nodeCount))
-    ! ! get nodeowners
-    ! call ESMF_MeshGet(mesh,nodeOwners=nodeOwners)
-
-    ! ! NOTE: How do we set this mesh to be the GC's grid?
+    ! ! NOTE: How do we set this mesh to be the GC's grid? ^ does that work?
     ! ! Rule 10: A component’s grid must be fully formed before MAPL_GenericInitialize is invoked
 
     ! ****************************************************
@@ -369,8 +353,8 @@ subroutine SetServices ( GC, RC )
     ! Get the grid, configuration
     !----------------------------
 
-    !call ESMF_GridCompGet( GC, grid=mesh?!?!,  RC=status )
-    !VERIFY_(STATUS)
+    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+    VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
@@ -429,6 +413,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! timestep for issm...
   dt = 0.05   ! timestep in years
+
+  ! ! need to access num_elements in run method... 
+  !! ESMF_GridCompGet(Gc,mesh=mesh)
+  ! ! ESMF_MeshGet(GC,elementCount=num_elements)
+  ! ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
+  ! allocate(SMBToISM(num_elements))
+  ! allocate(SurfaceToGEOS5(num_elements))
 
 ! set smb and surface for test 
   ! SMBToISM(:) = 0
