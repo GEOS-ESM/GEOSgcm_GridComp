@@ -90,7 +90,10 @@ class FortranPythonConversion:
         if not dim:
             dim = [self._npx, self._npy, self._npz]
         ftype = self._ffi.getctype(self._ffi.typeof(fptr).item)
-        assert ftype in self._TYPEMAP
+        if ftype not in self._TYPEMAP:
+            raise ValueError(
+                f"Fortran Python memory converter: cannot convert type {ftype}"
+            )
         return np.frombuffer(
             self._ffi.buffer(fptr, prod(dim) * self._ffi.sizeof(ftype)),
             self._TYPEMAP[ftype],
@@ -111,7 +114,9 @@ class FortranPythonConversion:
                 swap_axes,
             )
             self._current_stream = (
-                self._stream_A if self._current_stream == self._stream_B else self._stream_B
+                self._stream_A
+                if self._current_stream == self._stream_B
+                else self._stream_B
             )
             return final_array
 
@@ -167,7 +172,9 @@ class FortranPythonConversion:
                 device_array.astype(dtype).flatten(order="F"),
             )
             self._current_stream = (
-                self._stream_A if self._current_stream == self._stream_B else self._stream_B
+                self._stream_A
+                if self._current_stream == self._stream_B
+                else self._stream_B
             )
             return host_array
 

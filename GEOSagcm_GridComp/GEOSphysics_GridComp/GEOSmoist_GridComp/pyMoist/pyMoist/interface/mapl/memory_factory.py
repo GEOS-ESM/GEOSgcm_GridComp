@@ -7,7 +7,7 @@ import numpy.typing as npt
 from _cffi_backend import _CDataBase as CFFIObj
 from MAPLpyish import MAPLBridge, MAPLState
 
-from ndsl import QuantityFactory
+from ndsl import QuantityFactory, ndsl_log
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
 
 
@@ -59,8 +59,9 @@ class MAPLMemoryRepository:
             raise NotImplementedError(
                 f"Only 2D & 3D fields implemented, missing support for {len(dims)}D arrays."
             )
+        cast_ptr = self._f_py_converter.cast(dtype, void_fptr)
         self._fortran_pointers[name] = MAPLMemoryRepository.FortranMemory(
-            pointer=self._f_py_converter.cast(dtype, void_fptr),
+            pointer=cast_ptr,
             associated=is_associated,
             shape=self._quantity_factory.sizer.get_extent(dims),
             python_array=np.empty((0)),
@@ -76,9 +77,13 @@ class MAPLMemoryRepository:
         except KeyError:
             raise KeyError(f"Pointer {name} was never registered.")
         if not fmem.associated:
+            ndsl_log.info(f"MAPL Bridge: skip sending back {name} - not associated")
             return
 
-        fmem.python_array = self._f_py_converter.fortran_to_python(fmem.pointer, dim=list(fmem.shape))
+        fmem.python_array = self._f_py_converter.fortran_to_python(
+            fptr=fmem.pointer,
+            dim=list(fmem.shape),
+        )
 
         return fmem.python_array
 
@@ -93,6 +98,7 @@ class MAPLMemoryRepository:
         except KeyError:
             raise KeyError(f"Pointer {name} was never registered.")
         if not fmem.associated:
+            ndsl_log.info(f"MAPL Bridge: skip sending back {name} - not associated")
             return
 
         self._f_py_converter.python_to_fortran(fmem.python_array, fmem.pointer)
