@@ -246,10 +246,6 @@ subroutine SetServices ( GC, RC )
     type(c_ptr), dimension(:), allocatable :: argv_ptr
     integer :: i
 
-    ! real(dp),    pointer, dimension(:)     :: SMBToISSM => null()
-    ! real(dp),    pointer, dimension(:)     :: SurfaceToGEOS => null()
-    ! real(dp) :: dt
-
     real(dp),    pointer, dimension(:)     :: nodeCoords => null()
     integer,     pointer, dimension(:)     :: nodeIds => null()
 
@@ -351,31 +347,6 @@ subroutine SetServices ( GC, RC )
 
     ! ****************************************************
 
-    ! Get the grid, configuration
-    !----------------------------
-
-    ! vvvvvvvvv BAD IDEA BUT BE MIGHT INSIGHTFUL vvvvvvvvv
-    ! dt = 0.05
-    !   ! ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
-    ! allocate(SMBToISSM(num_elements))
-    ! allocate(SurfaceToGEOS(num_elements))
-
-    ! ! set smb and surface for test 
-    ! SMBToISSM(:) = 0     ! placeholder zeros
-    ! SurfaceToGEOS(:) = 0 ! placeholder zeros
-    
-    ! ! NOTE: do we need the barriers before/after ISSM run?
-    ! call ESMF_VMBarrier(vm, rc=status)
-    ! VERIFY_(STATUS)
-
-    ! ! ! call the C++ routine for running a single time step
-    ! call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
-
-    ! call ESMF_VMBarrier(vm, rc=status)
-    ! VERIFY_(STATUS)
-
-    ! ^^^^^^^^^^ BAD IDEA BUT BE MIGHT INSIGHTFUL ^^^^^^^^^^
-
     ! call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     ! VERIFY_(STATUS)
 
@@ -443,6 +414,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   allocate(SMBToISSM(num_elements))
   allocate(SurfaceToGEOS(num_elements))
 
+  call ESMF_VMBarrier(vm, rc=status)
+  VERIFY_(STATUS)
+
 ! set smb and surface for test 
   SMBToISSM(:) = 0     ! placeholder zeros
   SurfaceToGEOS(:) = 0 ! placeholder zeros
@@ -451,8 +425,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  PRINT *, "Elements of SMBtoISSM:"
-  PRINT *, SMBtoISSM
+  print *, "Size of SMB:", size(SMBtoISSM)
 
   ! ! call the C++ routine for running a single time step
 !   call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
