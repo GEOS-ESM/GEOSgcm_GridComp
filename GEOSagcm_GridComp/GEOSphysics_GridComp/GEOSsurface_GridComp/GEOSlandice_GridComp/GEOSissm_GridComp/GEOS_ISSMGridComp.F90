@@ -416,8 +416,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   print *, "number of ISSM elements: ", num_elements
 
   ! ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
-  allocate(SMBToISSM(num_elements))
-  allocate(SurfaceToGEOS(num_elements))
+  allocate(SMBToISSM(num_elements+2000))
+  allocate(SurfaceToGEOS(num_elements+2000))
 
 ! set smb and surface for test 
   SMBToISSM(:) = 0     ! placeholder zeros
@@ -432,6 +432,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
+
+
+  deallocate(SMBToISSM)
+  deallocate(SurfaceToGEOS)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
