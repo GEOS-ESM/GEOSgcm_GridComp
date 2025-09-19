@@ -384,13 +384,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   type(ESMF_Mesh)                :: mesh
   integer(c_int)                 :: num_elements  
+  type(ESMF_VM)                  :: vm  
   integer(c_int)                 :: comm  
 
   ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
   Iam = "Run"
-  call ESMF_GridCompGet( GC, name=COMP_NAME,mesh=mesh, RC=STATUS )
+  call ESMF_GridCompGet( GC, name=COMP_NAME,mesh=mesh,vm=vm,RC=STATUS )
   VERIFY_(STATUS)
   Iam = trim(COMP_NAME) // Iam
 
@@ -411,6 +412,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! ! need to access num_elements 
   call ESMF_MeshGet(mesh,elementCount=num_elements)
+
+  print *, "number of ISSM elements: ", num_elements
+
   ! ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
   allocate(SMBToISSM(num_elements))
   allocate(SurfaceToGEOS(num_elements))
@@ -420,15 +424,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   SurfaceToGEOS(:) = 0 ! placeholder zeros
   
   ! NOTE: do we need the barriers before/after ISSM run?
-  ! call ESMF_VMBarrier(vm, rc=status)
-  ! VERIFY_(STATUS)
+  call ESMF_VMBarrier(vm, rc=status)
+  VERIFY_(STATUS)
 
   ! ! call the C++ routine for running a single time step
   call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
 
-
-  ! call ESMF_VMBarrier(vm, rc=status)
-  ! VERIFY_(STATUS)
+  call ESMF_VMBarrier(vm, rc=status)
+  VERIFY_(STATUS)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
