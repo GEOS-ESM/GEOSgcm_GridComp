@@ -343,7 +343,7 @@ subroutine SetServices ( GC, RC )
     mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
            elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
 
-    GC = ESMF_GridCompCreate ( name='ISSM',mesh=mesh,rc=STATUS)
+    call ESMF_GridCompSet(GC,mesh=mesh,rc=STATUS)
     VERIFY_(STATUS)
 
     ! ! NOTE: How do we set this mesh to be the GC's grid? ^ does that work?
@@ -385,8 +385,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! real(dp),    pointer, dimension(:)     :: SurfaceToGEOS5 => null()
 
   type(MAPL_MetaComp), pointer            :: MAPL
-  ! vm stuff
-  ! type(ESMF_VM)                  :: vm    
+
   integer                        :: localPet, petCount, peCount, ssiId, vas  
   integer(c_int)                 :: comm  
 
@@ -405,7 +404,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   VERIFY_(STATUS)
 
 
-  ! call ESMF_VMGet(vm, localPet=localPet, mpiCommunicator=comm, petCount=petCount, peCount=peCount, rc=rc)
 
   ! Start Total timer
 !------------------
