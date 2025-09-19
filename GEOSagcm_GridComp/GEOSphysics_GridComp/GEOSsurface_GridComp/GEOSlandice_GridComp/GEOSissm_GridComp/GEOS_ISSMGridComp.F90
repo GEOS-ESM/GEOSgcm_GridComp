@@ -396,8 +396,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   character(len=ESMF_MAXSTR)          :: COMP_NAME
 
   real(dp) :: dt
-  real(dp),    pointer, dimension(:)     :: SMBToISM => null()
-  real(dp),    pointer, dimension(:)     :: SurfaceToGEOS5 => null()
+  ! real(dp),    pointer, dimension(:)     :: SMBToISM => null()
+  ! real(dp),    pointer, dimension(:)     :: SurfaceToGEOS5 => null()
 
   type(MAPL_MetaComp), pointer            :: MAPL
   ! vm stuff
@@ -431,8 +431,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   dt = 0.05   ! timestep in years
 
 ! set smb and surface for test 
-  SMBToISM(:) = 0
-  SurfaceToGEOS5(:) = 0 ! placeholder 
+  ! SMBToISM(:) = 0
+  ! SurfaceToGEOS5(:) = 0 ! placeholder 
   
   ! NOTE: do we need the barriers before/after ISSM run?
   ! call ESMF_VMBarrier(vm, rc=status)
@@ -499,7 +499,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
     ! call ISSM finalize (saves binary output .outbin file)
-    ! call FinalizeISSM()
+    call FinalizeISSM()
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )
