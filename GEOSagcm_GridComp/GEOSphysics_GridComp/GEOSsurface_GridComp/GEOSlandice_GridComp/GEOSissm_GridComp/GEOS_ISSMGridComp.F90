@@ -425,10 +425,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  print *, "Size of SMB:", size(SMBtoISSM)
-
   ! ! call the C++ routine for running a single time step
-!   call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
+  call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
