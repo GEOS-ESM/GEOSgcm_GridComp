@@ -241,7 +241,7 @@ class PhaseChange:
                 large_scale_ice,
             )
 
-        if self.GFDL_1M_config.CCW_EVAP_EFF > 0.0:
+        if self.GFDL_1M_config.CCW_EVAP_EFF > 0.0 and not self.GFDL_1M_config.DO_EVAP:
             self._evap(
                 p_mb,
                 t,
@@ -255,7 +255,7 @@ class PhaseChange:
                 evapc,
             )
 
-        if self.GFDL_1M_config.CCI_EVAP_EFF > 0.0:
+        if self.GFDL_1M_config.CCI_EVAP_EFF > 0.0 and not self.GFDL_1M_config.DO_SUBL:
             self._subl(
                 p_mb,
                 t,
