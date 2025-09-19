@@ -284,10 +284,15 @@ subroutine SetServices ( GC, RC )
     ! ! NOTE: so currently just getting grid from parent (landice) ***
     ! Generic initialize
     ! ------------------
-    call ESMF_VMGet(vm,mpiCommunicator=comm,rc=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+    VERIFY_(STATUS)
+
+    !call ESMF_GridCompGet(GC,vm=vm)
+    call ESMF_VMGetCurrent(vm, rc=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_VMGet(vm,mpiCommunicator=comm,rc=STATUS)
     VERIFY_(STATUS)
 
     ! ****************************************************
@@ -311,7 +316,6 @@ subroutine SetServices ( GC, RC )
         argv_ptr(i) = c_loc(argv(i))
     end do
    
-  
     
     ! ! print the VM information if desired:
     ! call ESMF_VMPrint(vm, rc=rc)
@@ -397,7 +401,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   type(MAPL_MetaComp), pointer            :: MAPL
   ! vm stuff
-  type(ESMF_VM)                  :: vm    
+  ! type(ESMF_VM)                  :: vm    
   integer                        :: localPet, petCount, peCount, ssiId, vas  
   integer(c_int)                 :: comm  
 
