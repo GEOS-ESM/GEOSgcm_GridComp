@@ -78,8 +78,6 @@ end interface
 
 private
 
-!NOTE: previous version has "save" here?!?!
-
 
 ! declare any variables here?
 
@@ -299,7 +297,7 @@ subroutine SetServices ( GC, RC )
     ! Manually set command line argc and argv to initialize ISSM 
     argc = 4  
     allocate(argv(argc))
-    argv(1) = "/discover/nobackup/agstubbl/ISSM/GEOS-ISSM/ISSM/bin/issm.exe"//c_null_char
+    argv(1) = "/discover/nobackup/projects/gmao/SIteam/ISSM/2025-09-02/ifort_2021.13.0-intelmpi_2021.13.0/ISSM/bin/issm.exe"//c_null_char
     argv(2) = "TransientSolution"//c_null_char
     argv(3) = "/discover/nobackup/agstubbl/ISSM/projs/IRF-ISSM"//c_null_char
     argv(4) = "GreenlandGEOS"//c_null_char
@@ -339,14 +337,12 @@ subroutine SetServices ( GC, RC )
     mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
            elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
 
+    ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports       
     call ESMF_GridCompSet(GC,mesh=mesh,rc=STATUS)
     VERIFY_(STATUS)
 
-    ! ! NOTE: How do we set this mesh to be the GC's grid? ^ does that work?
-    ! ! Rule 10: A component’s grid must be fully formed before MAPL_GenericInitialize is invoked
-
     ! ****************************************************
-
+    ! ! not sure if generic initialize should be here or earlier(?): 
     ! call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     ! VERIFY_(STATUS)
 
