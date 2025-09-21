@@ -240,7 +240,7 @@ subroutine SetServices ( GC, RC )
     integer(c_int)                 :: num_elements
     integer(c_int)                 :: num_nodes   
     integer(c_int)                 :: argc
-    character(len=100), dimension(:), allocatable, target :: argv
+    character(len=200), dimension(:), allocatable, target :: argv
     type(c_ptr), dimension(:), allocatable :: argv_ptr
     integer :: i
 
