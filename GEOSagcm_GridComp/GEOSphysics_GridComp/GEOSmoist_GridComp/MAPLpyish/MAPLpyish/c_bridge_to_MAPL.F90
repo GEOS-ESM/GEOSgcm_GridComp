@@ -23,6 +23,10 @@ module C_BRIDGE_TO_MAPL
     public :: MAPLpy_ESMF_TimeIntervalGet
     public :: MAPLpy_Associated
 
+    character(len=ESMF_MAXSTR)              :: IAm
+    integer :: STATUS
+    integer :: RC  ! return code
+
     CONTAINS
 
     function MAPLPy_ESMF_AttributeGet_1D_int(esmf_state_c_ptr, name_c_ptr, name_len) result(return_value) bind(c, name="MAPLPy_ESMF_AttributeGet_1D_int")
@@ -45,7 +49,8 @@ module C_BRIDGE_TO_MAPL
         call c_f_pointer(esmf_state_c_ptr, state)
 
         ! Call function
-        call ESMF_AttributeGet(state, name=varname, value=return_value)  ! Need RC=Status and handling
+        call ESMF_AttributeGet(state, name=varname, value=return_value, RC=STATUS)
+        VERIFY_(STATUS)
     
     end function MAPLPy_ESMF_AttributeGet_1D_int
 
@@ -65,7 +70,8 @@ module C_BRIDGE_TO_MAPL
         ! Turn the ESMF State C pointer to a Fortran pointer
         call c_f_pointer(esmf_state_c_ptr, state)
 
-        call ESMF_MethodExecute(state, label=label)
+        call ESMF_MethodExecute(state, label=label, RC=STATUS)
+        VERIFY_(STATUS)
 
     end subroutine MAPLPy_ESMF_MethodExecute
 
@@ -90,8 +96,10 @@ module C_BRIDGE_TO_MAPL
         ! Turn the ESMF State C pointer to a Fortran pointer
         call c_f_pointer(esmf_state_c_ptr, state)        
 
-        call ESMF_AttributeGet(state, name=name, value=field_name_from_esmf)
-        call MAPL_GetPointer(state, f_ptr, trim(field_name_from_esmf))
+        call ESMF_AttributeGet(state, name=name, value=field_name_from_esmf, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(state, f_ptr, trim(field_name_from_esmf), RC=STATUS)
+        VERIFY_(STATUS)
         c_data_ptr=c_loc(f_ptr)
     
     end function    
@@ -117,10 +125,12 @@ module C_BRIDGE_TO_MAPL
         ! Turn the ESMF State C pointer to a Fortran pointer
         call c_f_pointer(esmf_state_c_ptr, state)        
         
-        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc))
-        if (associated(f_ptr)) then
-            c_data_ptr=c_loc(f_ptr)
-        endif
+        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc), RC=STATUS)
+        VERIFY_(STATUS)
+        PRINT *, "Get pointer 2D ", trim(name), " ", logical(alloc), " ", loc(f_ptr), " ", c_loc(f_ptr)
+        ! if (associated(f_ptr)) then
+        c_data_ptr=c_loc(f_ptr)
+        ! endif
 
     end function
 
@@ -145,7 +155,8 @@ module C_BRIDGE_TO_MAPL
         ! Turn the ESMF State C pointer to a Fortran pointer
         call c_f_pointer(esmf_state_c_ptr, state)        
         
-        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc))
+        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc), RC=STATUS)
+        VERIFY_(STATUS)
         is_associated = associated(f_ptr)
     
     end function
@@ -171,7 +182,9 @@ module C_BRIDGE_TO_MAPL
         ! Turn the ESMF State C pointer to a Fortran pointer
         call c_f_pointer(esmf_state_c_ptr, state)    
 
-        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc))
+        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc), RC=STATUS)
+        PRINT *, "Get pointer 3D ", trim(name), " ", logical(alloc), " ", loc(f_ptr), " ", c_loc(f_ptr)
+        VERIFY_(STATUS)
 
         c_data_ptr=c_loc(f_ptr)
     
@@ -198,7 +211,8 @@ module C_BRIDGE_TO_MAPL
         ! Turn the ESMF State C pointer to a Fortran pointer
         call c_f_pointer(esmf_state_c_ptr, state)        
         
-        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc))
+        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc), RC=STATUS)
+        VERIFY_(STATUS)
         is_associated = associated(f_ptr)
     
     end function
@@ -237,7 +251,8 @@ module C_BRIDGE_TO_MAPL
 
         ! Use fortran type & cast back to C types
         local_d = default
-        call MAPL_GetResource(state, local_r, label=trim(name), default=local_d)       
+        call MAPL_GetResource(state, local_r, label=trim(name), default=local_d, RC=STATUS)
+        VERIFY_(STATUS)
         result = local_r
     end function
 
@@ -263,7 +278,8 @@ module C_BRIDGE_TO_MAPL
         call c_f_pointer(mapl_metacomp_c_ptr, state)        
 
         local_d = default
-        call MAPL_GetResource(state, local_r, label=trim(name), default=local_d)
+        call MAPL_GetResource(state, local_r, label=trim(name), default=local_d, RC=STATUS)
+        VERIFY_(STATUS)
         result = local_r
     
     end function
@@ -288,7 +304,8 @@ module C_BRIDGE_TO_MAPL
         call c_f_pointer(state_c_ptr, state)              
 
         local_d = default
-        call MAPL_GetResource(state, local_r, label=trim(name), default=local_d)
+        call MAPL_GetResource(state, local_r, label=trim(name), default=local_d, RC=STATUS)
+        VERIFY_(STATUS)
         result = local_r
     
     end function
