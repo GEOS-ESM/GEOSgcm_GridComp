@@ -15,7 +15,7 @@ from pyMoist.GFDL_1M.stencils import (
     update_tendencies,
 )
 from pyMoist.GFDL_1M.temporaries import Temporaries
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 
 
 class GFDL1M:
@@ -62,7 +62,7 @@ class GFDL1M:
         self.GFDL_1M_config = GFDL_1M_config
 
         # Initalize saturation tables
-        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        self.saturation_tables = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
 
         # Initalize internal fields
         self.masks = Masks.make(quantity_factory=quantity_factory)

@@ -16,8 +16,7 @@ from pyMoist.GFDL_1M.PhaseChange.rh_calculations import compute_rh_crit_3D, rh_c
 from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.GFDL_1M.PhaseChange.temporaries import Temporaries
 from pyMoist.GFDL_1M.state import LiquidWaterStaticEnergy, TotalWater
-from pyMoist.saturation_tables.formulation import SaturationFormulation
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.saturation_tables import SaturationFormulation, get_saturation_vapor_pressure_table
 from pyMoist.shared_incloud_processes import fix_up_clouds
 
 
@@ -71,9 +70,8 @@ class PhaseChange:
         # -----------------------------------------------------------------------
         # Initalize QSat tables
         # -----------------------------------------------------------------------
-        self.tables = SaturationVaporPressureTable(
-            self.stencil_factory.backend,
-            formulation=formulation,
+        self.tables = get_saturation_vapor_pressure_table(
+            self.stencil_factory.backend, formulation=formulation
         )
 
         # -----------------------------------------------------------------------
