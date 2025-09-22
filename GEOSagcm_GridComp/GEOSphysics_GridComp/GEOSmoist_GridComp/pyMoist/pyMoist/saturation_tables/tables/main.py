@@ -162,8 +162,13 @@ class SaturationVaporPressureTable:
         #   - Need the ability to pass 32 or 64 bit externals flexibly. Right now it appears they all
         #       get forced to the same precision
 
-        if NDSL_tables == True:
-            compute_tables(self._estimated_ese, self._estimated_esw, self._estimated_esx, formulation_int)
+        if NDSL_tables:
+            compute_tables(
+                self._estimated_ese,
+                self._estimated_esw,
+                self._estimated_esx,
+                formulation_int,
+            )
         else:
             for i in range(TABLESIZE):
                 t = Float(i * DELTA_T) + TMINTBL

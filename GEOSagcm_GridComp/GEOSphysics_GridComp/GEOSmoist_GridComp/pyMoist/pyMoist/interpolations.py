@@ -81,7 +81,7 @@ def vertical_interpolation(
 
     with computation(BACKWARD), interval(1, None):
         pt = 0.5 * (log(p_interface_mb[0, 0, -1] * 100) + log(p_interface_mb * 100))
-        if log(target_pressure) > pt and log(target_pressure) <= pb and boolean_2d_mask == False:
+        if log(target_pressure) > pt and log(target_pressure) <= pb and not boolean_2d_mask:
             al = (pb - log(target_pressure)) / (pb - pt)
             interpolated_field = field[0, 0, -1] * al + field * (1.0 - al)
             boolean_2d_mask = True
@@ -93,7 +93,7 @@ def vertical_interpolation(
         if (
             log(target_pressure) > pb
             and log(target_pressure) <= log(p_interface_mb[0, 0, 1] * 100)
-            and boolean_2d_mask == False
+            and not boolean_2d_mask
         ):
             interpolated_field = field
             boolean_2d_mask = True
