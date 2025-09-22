@@ -8,7 +8,7 @@ import numpy as np
 from mpi4py import MPI
 
 from ndsl.dsl.gt4py_utils import is_gpu_backend
-from ndsl.dsl.typing import Float, Int
+from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
@@ -116,9 +116,7 @@ class PYMOIST_WRAPPER:
                 ],
             )
 
-            frland = self.f_py.fortran_to_python(
-                f_frland, [self.flags.npx, self.flags.npy]
-            )
+            frland = self.f_py.fortran_to_python(f_frland, [self.flags.npx, self.flags.npy])
 
             t = self.f_py.fortran_to_python(f_t)
             plo = self.f_py.fortran_to_python(f_plo)
@@ -458,7 +456,7 @@ def compute_uwshcu_run(
 ):
     if not WRAPPER.ready:
         raise RuntimeError("[GEOS WRAPPER] Bad init, did you call init?")
-    WRAPPER.UW_shallow_convection(
+    WRAPPER.pymoist.UW_shallow_convection(
         dotransport=dotransport,
         k0=k0,
         windsrcavg=windsrcavg,
