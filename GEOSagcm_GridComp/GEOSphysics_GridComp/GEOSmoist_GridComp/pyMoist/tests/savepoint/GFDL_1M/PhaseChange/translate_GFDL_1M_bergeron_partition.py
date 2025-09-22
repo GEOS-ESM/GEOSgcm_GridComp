@@ -4,9 +4,8 @@ from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import bergeron_partition
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable
 
 
 def _stencil(
@@ -22,8 +21,8 @@ def _stencil(
     DQCALL: FloatField,
     CNVFRC: FloatFieldIJ,
     SRF_TYPE: FloatFieldIJ,
-    ese: GlobalTable_saturaion_tables,
-    esw: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esw: GlobalTable_saturation_tables,
     estfrz: Float,
     estlqu: Float,
     fQi: FloatField,
@@ -98,7 +97,7 @@ class TranslateGFDL_1M_bergeron_partition(TranslateFortranData2Py):
             esw=tables.esw,
             estfrz=tables.frz,
             estlqu=tables.lqu,
-            **inputs
+            **inputs,
         )
 
         # inputs.update(

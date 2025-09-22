@@ -7,13 +7,13 @@ from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.field_types import GlobalTable_saturaion_tables
-from pyMoist.saturation_tables.qsat_functions import (
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    SaturationVaporPressureTable,
     saturation_specific_humidity,
     saturation_specific_humidity_frozen_surface,
     saturation_specific_humidity_liquid_surface,
 )
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 def _stencil(
@@ -25,9 +25,9 @@ def _stencil(
     out_dqsl: FloatField,
     out_qs: FloatField,
     out_dq: FloatField,
-    ese: GlobalTable_saturaion_tables,
-    esw: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esw: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     frz: Float,
     lqu: Float,
 ):
@@ -47,9 +47,9 @@ def _stencil_2d(
     out_dqsl_2d: FloatFieldIJ,
     out_qs_2d: FloatFieldIJ,
     out_dq_2d: FloatFieldIJ,
-    ese: GlobalTable_saturaion_tables,
-    esw: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esw: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     frz: Float,
     lqu: Float,
 ):

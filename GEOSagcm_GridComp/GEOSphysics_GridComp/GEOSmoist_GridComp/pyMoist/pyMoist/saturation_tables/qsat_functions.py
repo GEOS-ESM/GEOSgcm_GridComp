@@ -5,7 +5,7 @@ from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, floor, function, int32, interval
 from ndsl.dsl.typing import Float, FloatField
-from pyMoist.field_types import GlobalTable_saturaion_tables
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationFormulation
 from pyMoist.saturation_tables.constants import (
     DEGSUBS,
     ERFAC,
@@ -18,13 +18,12 @@ from pyMoist.saturation_tables.constants import (
     TMINTBL,
     TMIX,
 )
-from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.main import get_table
 
 
 @function
 def saturation_specific_humidity_frozen_surface(
-    ese: GlobalTable_saturaion_tables,  # type: ignore
+    ese: GlobalTable_saturation_tables,  # type: ignore
     frz: Float,
     t: Float,
     p: Float,
@@ -81,7 +80,7 @@ def saturation_specific_humidity_frozen_surface(
 
 @function
 def saturation_specific_humidity_liquid_surface(
-    esw: GlobalTable_saturaion_tables,  # type: ignore
+    esw: GlobalTable_saturation_tables,  # type: ignore
     lqu: Float,
     t: Float,
     p: Float,
@@ -142,8 +141,8 @@ def saturation_specific_humidity_liquid_surface(
 def saturation_specific_humidity(
     t: Float,
     p: Float,
-    ese: GlobalTable_saturaion_tables,  # type: ignore
-    esx: GlobalTable_saturaion_tables,  # type: ignore
+    ese: GlobalTable_saturation_tables,  # type: ignore
+    esx: GlobalTable_saturation_tables,  # type: ignore
     use_ramp: bool = False,
     ramp: Float = -999.0,
 ):
@@ -199,8 +198,8 @@ def saturation_specific_humidity(
 
 # Stencils implement GEOS_Qsat subroutine from GEOS_Utilities.F90
 def QSat_FloatField(
-    ese: GlobalTable_saturaion_tables,  # type: ignore
-    esx: GlobalTable_saturaion_tables,  # type: ignore
+    ese: GlobalTable_saturation_tables,  # type: ignore
+    esx: GlobalTable_saturation_tables,  # type: ignore
     T: FloatField,
     PL: FloatField,
     QSAT: FloatField,
