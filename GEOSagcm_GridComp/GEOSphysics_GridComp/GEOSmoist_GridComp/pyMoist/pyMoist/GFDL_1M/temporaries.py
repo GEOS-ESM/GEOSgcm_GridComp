@@ -2,8 +2,8 @@ import dataclasses
 
 from ndsl import Quantity, QuantityFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Int
 from ndsl.dsl.dace.orchestration import dace_inhibitor
+from ndsl.dsl.typing import Int
 
 
 @dataclasses.dataclass
@@ -44,12 +44,8 @@ class Temporaries:
     def make(cls, quantity_factory: QuantityFactory):
         p_interface_mb = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
         p_mb = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        edge_height_above_surface = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a"
-        )
-        layer_height_above_surface = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )
+        edge_height_above_surface = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        layer_height_above_surface = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         layer_thickness = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         layer_thickness_negative = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         dp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")

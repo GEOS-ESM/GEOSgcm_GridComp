@@ -2,7 +2,6 @@ import dataclasses
 
 from ndsl import Quantity, QuantityFactory
 from ndsl.constants import X_DIM, Y_DIM
-
 from ndsl.dsl.dace.orchestration import dace_inhibitor
 
 
