@@ -3,7 +3,6 @@ from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, s
 
 import pyMoist.constants as constants
 import pyMoist.pyMoist_constants as py_constants
-from ndsl.dsl.gt4py import K, erfc, exp, f32, float64, function, log, sin, sqrt
 from ndsl.dsl.typing import Float, FloatField, Int
 from pyMoist.saturation.qsat import FloatField_Extra_Dim, QSat_Float
 
@@ -13,7 +12,7 @@ zvir = Float(0.609)  # r_H2O/r_air-1
 ROVCP = constants.MAPL_RGAS / constants.MAPL_CP  # Gas constant over specific heat
 
 
-@function
+@gtscript.function
 def exnerfn(
     p: Float,
 ) -> Float:
@@ -31,7 +30,7 @@ def exnerfn(
     return (p / 100000.0) ** (constants.MAPL_RGAS / constants.MAPL_CP)
 
 
-@function
+@gtscript.function
 def slope_bot(
     field: FloatField,
     p0: FloatField,
@@ -56,7 +55,7 @@ def slope_bot(
     return slope
 
 
-@function
+@gtscript.function
 def slope_mid(
     max_k: Int,
     field: FloatField,
@@ -114,7 +113,7 @@ def slope_mid(
 #     return slope
 
 
-@function
+@gtscript.function
 def ice_fraction(
     temp: Float,
     cnv_frc: Float,
@@ -196,7 +195,7 @@ def ice_fraction(
     return ice_frac
 
 
-@function
+@gtscript.function
 def conden(
     p: Float,
     thl: Float,
@@ -268,7 +267,7 @@ def conden(
     return float32(th), float32(qv), float32(ql), float32(qi), float32(rvls), id_check
 
 
-@function
+@gtscript.function
 def compute_alpha(
     del_CIN: Float,
     ke: Float,
@@ -301,7 +300,7 @@ def compute_alpha(
     return compute_alpha
 
 
-@function
+@gtscript.function
 def compute_mumin2(
     mulcl: Float,
     rmaxfrax: Float,
@@ -344,7 +343,7 @@ def compute_mumin2(
     return compute_mumin2
 
 
-@function
+@gtscript.function
 def compute_ppen(
     wtwb: Float,
     drag: Float,
@@ -409,7 +408,7 @@ def compute_ppen(
     return compute_ppen
 
 
-@function
+@gtscript.function
 def getbuoy(
     pbot: Float,
     thv0bot: Float,
@@ -478,7 +477,7 @@ def getbuoy(
     return plfc, cin  # Note: plfc and cin are returned, but not always used
 
 
-@function
+@gtscript.function
 def qsinvert(
     qt: Float,
     thl: Float,
@@ -572,7 +571,7 @@ def qsinvert(
     return float32(qsinvert)
 
 
-@function
+@gtscript.function
 def sign(
     a: Float,
     b: Float,
@@ -596,7 +595,7 @@ def sign(
     return result
 
 
-@function
+@gtscript.function
 def roots(
     a: Float,
     b: Float,
@@ -644,7 +643,7 @@ def roots(
     return r1, r2, status
 
 
-@function
+@gtscript.function
 def single_cin(
     pbot: Float,
     thv0bot: Float,
