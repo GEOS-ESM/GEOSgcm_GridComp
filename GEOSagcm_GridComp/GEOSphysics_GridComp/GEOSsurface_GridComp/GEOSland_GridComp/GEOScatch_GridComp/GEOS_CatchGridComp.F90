@@ -1157,6 +1157,17 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)  
 
   call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'canopy_temperature_nature'        ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TC_NA'                        ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip       ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)  
+
+  call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'canopy_specific_humidity_urban'  ,&
     UNITS              = 'kg kg-1'                   ,&
     SHORT_NAME         = 'QC_UR'                        ,&
@@ -1166,6 +1177,17 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'canopy_specific_humidity_nature'  ,&
+    UNITS              = 'kg kg-1'                   ,&
+    SHORT_NAME         = 'QC_NA'                        ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)  
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'vegetation_interception_water_storage',&
@@ -4127,7 +4149,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: old_ity
         real, dimension(:),   pointer :: FRACOUT_UR
         real, dimension(:),   pointer :: TC_UR  
-        real, dimension(:),   pointer :: QC_UR          
+        real, dimension(:),   pointer :: TC_NA 
+        real, dimension(:),   pointer :: QC_UR  
+        real, dimension(:),   pointer :: QC_NA          
         real, dimension(:),   pointer :: capac
         real, dimension(:),   pointer :: catdef
         real, dimension(:),   pointer :: rzexc
@@ -4699,7 +4723,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,QC         ,'QC'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,FRACOUT_UR         ,'FRACOUT_UR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TC_UR         ,'TC_UR'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,QC_UR         ,'QC_UR'         ,RC=STATUS); VERIFY_(STATUS)         
+        call MAPL_GetPointer(INTERNAL,TC_NA         ,'TC_NA'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,QC_UR         ,'QC_UR'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,QC_NA         ,'QC_NA'         ,RC=STATUS); VERIFY_(STATUS)                 
         call MAPL_GetPointer(INTERNAL,CAPAC      ,'CAPAC'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,CATDEF     ,'CATDEF'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,RZEXC      ,'RZEXC'      ,RC=STATUS); VERIFY_(STATUS)
@@ -5956,7 +5982,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
              FRAC_UR=urban%frac, SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
-             TC_UR=TC_UR, QA_UR=QC_UR, CH_UR=CH_UR)
+             TC_UR=TC_UR, TC_NA=TC_NA, QA_UR=QC_UR, QA_NA=QC_NA, CH_UR=CH_UR)
              FRACOUT_UR=urban%frac
 
         end if

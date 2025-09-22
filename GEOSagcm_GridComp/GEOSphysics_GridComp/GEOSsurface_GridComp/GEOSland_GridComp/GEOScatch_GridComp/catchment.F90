@@ -167,7 +167,7 @@
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
                      RCONSTIT, RMELT, TOTDEPOS, &
                      FRAC_UR, SWNET_UR, RA_UR, QSAT_UR, DQS_UR,  &
-                     TC_UR, QA_UR, CH_UR )                                  ! OPTIONAL
+                     TC_UR, TC_NA, QA_UR, QA_NA, CH_UR )                                  ! OPTIONAL
 
       IMPLICIT NONE
 
@@ -204,7 +204,7 @@
 
       REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: SWNET_UR, RA_UR, QSAT_UR, DQS_UR
 
-      REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: TC_UR, QA_UR, CH_UR
+      REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: TC_UR, TC_NA, QA_UR, QA_NA, CH_UR
 
       LOGICAL, INTENT(IN) :: BUG
 
@@ -295,7 +295,7 @@
               SNOWF, TS, fh31w, fh31i, fh31d, pr, ea, desdtc, areasc,          &
               pre, dummy1, dummy2, dummy3, areasc0, EDIF, EINTX,               &
               SCLAI, tsn1, tsn2, tsn3, hold, hnew, emaxrz, dedtc0,             &
-              dhsdtc0, alhfsn, ADJ, raddn, zc1, tsnowsrf, dum, tsoil,          &
+              dhsdtc0, alhfsn, ADJ, raddn, zc1, tsnowsrf, dum, tsoil,TSOIL_NA, &
               QA1X, QA2X, QA4X, TC1X, TC2X, TC4X, TCSX,                        &
               EVAPX1,EVAPX2,EVAPX4,EVAPX124,                                   &
               SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,                              &
@@ -522,6 +522,8 @@
         TC_UR=TC4
         QA_UR=QA4
         CH_UR=0.018 
+        TC_NA=TC1*AR1+TC2*AR2+TC4*AR4
+        QA_NA=QA1*AR1+QA2*AR2+QA4*AR4
       else
         AR_UR=FRAC_UR      
       endif
@@ -676,10 +678,10 @@
                      )
 
       DO N=1,NCH
-         TSOIL=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
+         TSOIL_NA=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
 
          ENTOT_ORIG(N) =                                                       &
-              sum(HTSNNN(1:N_snow,N)) + TSOIL*CSOIL(N) + sum(GHTCNT(1:N_gt,N))
+              sum(HTSNNN(1:N_snow,N)) + TSOIL_NA*CSOIL(N)*(1.-AR_UR(N)) + TC_UR(N)*CSOIL_UR*AR_UR(N) + sum(GHTCNT(1:N_gt,N))
 
       ENDDO
 
@@ -843,7 +845,7 @@
 
 !**** 4. URBAN FRACTION
 !CC    print*,'energy urban'
-      CH_UR=0.018
+      CH_UR = 0.018 !just for test
       BLW_UR = EMIS_UR*stefan_boltzmann*TC_UR*TC_UR*TC_UR
       ALW_UR = -3.0*BLW_UR*TC_UR
       BLW_UR =  4.0*BLW_UR  
@@ -885,9 +887,9 @@
          
         SUMEP=EPFRC1*EVAP1(N)*AR1(N)+EPFRC2*EVAP2(N)*AR2(N)+                   &
               EPFRC4*EVAP4(N)*AR4(N)
-        SUMEP = SUMEP*(1.-AR_UR(N)) + EPFRC_UR*EVAP_UR(N)*AR_UR(N)
+        !SUMEP = SUMEP*(1.-AR_UR(N)) + EPFRC_UR*EVAP_UR(N)*AR_UR(N)
         SUME=EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N)
-        SUME= SUME*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)
+        !SUME= SUME*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)
         
         !   "quick fix" gone wrong in global AMSR-E assimilation
         !   trying to correct while staying as close as possible to past fix
@@ -930,35 +932,28 @@
         ENDIF 
  
       DO N=1,NCH 
-        LHFLUX(N)=(1.-ASNOW(N))*                                               &
-              (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))*ALHE           &
-              +ASNOW(N)*EVSNOW(N)*ALHS
-        LHFLUX(N) = LHFLUX(N)*(1.-AR_UR(N)) + EVAP_UR(N)*ALHE*AR_UR(N)
-        EVAP(N)=(1.-ASNOW(N))*                                                 &
-              (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))                &
-              +ASNOW(N)*EVSNOW(N) 
-        EVAP(N) = EVAP(N)*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)       
-        EVAPFR(N)=(1.-ASNOW(N))*                                               &
-              (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))
-        EVAPFR(N) = EVAPFR(N)*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)     
-        SHFLUX(N)=(1.-ASNOW(N))*                                               &
-              (SHFLUX1(N)*AR1(N)+SHFLUX2(N)*AR2(N)+SHFLUX4(N)*AR4(N))          &
-              +ASNOW(N)*SHFLUXS(N) 
-        SHFLUX(N)=SHFLUX(N)*(1.-AR_UR(N)) + SHFLUX_UR(N)*AR_UR(N)     
-        HLWUP(N)=(1.-ASNOW(N))*                                                &
-              (HLWUP1(N)*AR1(N)+HLWUP2(N)*AR2(N)+HLWUP4(N)*AR4(N))             &
-              +ASNOW(N)*HLWUPS(N) 
-        HLWUP(N) = HLWUP(N)*(1.-AR_UR(N)) + HLWUP_UR(N)*AR_UR(N)
-        SWLAND(N)=(1.-ASNOW(N))*SWNETF(N) + ASNOW(N)*SWNETS(N) 
-        SWLAND(N) = SWLAND(N)*(1.-AR_UR(N)) + SWNET_UR(N)*AR_UR(N)
-        GHFLUX(N)=(1.-ASNOW(N))*                                               &
-              (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
-              +ASNOW(N)*GHFLUXS(N) 
-        GHFLUX(N)=GHFLUX(N)*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)     
-        GHTSKIN(N)=(1.-ASNOW(N))*                                              &
-              (GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))          &
-              -ASNOW(N)*ghfluxsno(N)
-        GHTSKIN(N)=GHTSKIN(N)*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)      
+        LHFLUX(N)=(EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))*ALHE*(1.-AR_UR(N)) + EVAP_UR(N)*ALHE*AR_UR(N)             
+        LHFLUX(N)=(1.-ASNOW(N))*LHFLUX(N)+ASNOW(N)*EVSNOW(N)*ALHS
+
+        EVAP(N)=(EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))*(1.-AR_UR(N)) + EVAP_UR(N)*AR_UR(N)       
+        EVAP(N)=(1.-ASNOW(N))*EVAP(N)+ASNOW(N)*EVSNOW(N)      
+      
+        EVAPFR(N)=(1.-ASNOW(N))*(1.-AR_UR(N))*(EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))
+    
+        SHFLUX(N)=(SHFLUX1(N)*AR1(N)+SHFLUX2(N)*AR2(N)+SHFLUX4(N)*AR4(N))*(1.-AR_UR(N)) +  SHFLUX_UR(N)*AR_UR(N)  
+        SHFLUX(N)=(1.-ASNOW(N))*SHFLUX(N)+ASNOW(N)*SHFLUXS(N) 
+    
+        HLWUP(N)= (HLWUP1(N)*AR1(N)+HLWUP2(N)*AR2(N)+HLWUP4(N)*AR4(N))*(1.-AR_UR(N)) +  HLWUP_UR(N)*AR_UR(N)         
+        HLWUP(N)= (1.-ASNOW(N))*HLWUP(N) +ASNOW(N)*HLWUPS(N) 
+  
+        SWLAND(N)=SWNETF(N)*(1.-AR_UR(N)) + SWNET_UR*AR_UR(N) 
+        SWLAND(N)=(1.-ASNOW(N))*SWLAND(N) +  ASNOW(N)*SWNETS(N)
+
+        GHFLUX(N)=(GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)          
+        GHFLUX(N)=(1.-ASNOW(N))*GHFLUX(N) + ASNOW(N)*GHFLUXS(N)
+    
+        GHTSKIN(N)=(GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)          
+        GHTSKIN(N)= (1.-ASNOW(N))*GHTSKIN(N) - ASNOW(N)*ghfluxsno(N)       
         ENDDO 
 
 
@@ -1022,25 +1017,35 @@
 
       DO N=1,NCH
         EINTX=EIRFRC(N)*EVAPFR(N)*DTSTEP
-        IF(EINTX .GT. CAPAC(N)) THEN
-          EDIF=(EINTX-CAPAC(N))/DTSTEP
+        IF( EINTX .GT. CAPAC(N)*(1.-AR_UR(N)) ) THEN
+          EDIF=( EINTX-CAPAC(N)*(1.-AR_UR(N)) )/DTSTEP
           EVAPFR(N)=EVAPFR(N)-EDIF
           EVAP(N)=EVAP(N)-EDIF
           LHFLUX(N)=LHFLUX(N)-EDIF*ALHE
           SHFLUX(N)=SHFLUX(N)+EDIF*ALHE
-          EIRFRC(N)=CAPAC(N)/((EVAPFR(N)+1.E-20)*DTSTEP)
+          EIRFRC(N)=CAPAC(N)*(1.-AR_UR(N))/((EVAPFR(N)+1.E-20)*DTSTEP)
           ENDIF
         ENDDO
-
+     
+      DO N=1,NCH
+        EVAPFR(N)=EVAPFR(N)/(1.-AR_UR(N))
+      ENDDO
 
       CALL WUPDAT (                                                            &
                      NCH, DTSTEP, EVAPFR, SATCAP, TC1, RA1, RC,                &
-                     RX11,RX21,RX12,RX22,RX14,RX24,                            &
-                     AR1,AR2,AR4,CDCR1,EIRFRC,RZEQOL,srfmn,WPWET,VGWMAX,POROS, &
+                     RX11,RX21,RX12, RX22,RX14,RX24,                           &
+                     AR1,AR2,AR4,AR_UR, CDCR1,EIRFRC,RZEQOL,srfmn,WPWET,VGWMAX,POROS, &
                      BF1, BF2, ARS1, ARS2, ARS3,                               &
                      CAPAC, RZEXC, CATDEF, SRFEXC,                             &
                      EINT, ESOI, EVEG                                          &
                     )
+
+      DO N=1,NCH
+        EVAPFR(N) = EVAPFR(N)*(1.-AR_UR(N)) + EINT(N)/DTSTEP*AR_UR(N)
+        EVAP(N) = EVAP(N) + EINT(N)/DTSTEP*AR_UR(N)
+        LHFLUX(N) = LHFLUX(N) + EINT(N)*ALHE/DTSTEP*AR_UR(N)
+        SHFLUX(N) = SHFLUX(N) - EINT(N)*ALHE/DTSTEP*AR_UR(N) 
+      ENDDO
 
 ! ---------------------------------------------------------------------
 
@@ -1194,7 +1199,11 @@
         EVEG(N) = EVEG(N) * ALHE / DTSTEP
         ESNO(N) = ESNO(N) * ALHS / DTSTEP
          
-        TSOIL=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
+        QA_NA(N) = AR1(N)*QA1(N)+AR2(N)*QA2(N)+AR4(N)*QA4(N)
+
+        TSOIL_NA=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
+        TC_NA(N) = TSOIL_NA
+        TSOIL=( TSOIL_NA*(1.-AR_UR(N))*CSOIL(N) + TC_UR(N)*AR_UR(N)*CSOIL_UR )/( (1.-AR_UR(N))*CSOIL(N) + AR_UR(N)*CSOIL_UR )
         TSURF(N)=(1.-ASNOW0(N))*TSOIL+ASNOW0(N)*TPSN1(N)
 
         if(asnow0(n) .eq. 0) then
@@ -1209,7 +1218,7 @@
              WTOT(N) )
 
         ENTOT(N) =                                                             &
-             sum(HTSNNN(1:N_snow,N)) + TSOIL*CSOIL(N) + sum(GHTCNT(1:N_gt,N))
+             sum(HTSNNN(1:N_snow,N)) + TSOIL_NA*CSOIL(N)*(1.-AR_UR(N)) + TC_UR(N)*AR_UR(N)*CSOIL_UR + sum(GHTCNT(1:N_gt,N))
                 
         WCHANGE(N) = (WTOT(N)-WTOT_ORIG(N))/DTSTEP
         ECHANGE(N) = (ENTOT(N)-ENTOT_ORIG(N))/DTSTEP
@@ -1248,7 +1257,7 @@
           ! energy correction term resulting from resetting tc[X] to tc[X]_00          
 
           EACC_00(N) =                                                     &
-               (dtc1*AR1(N) + dtc2*AR2(N) + dtc4*AR4(N))*CSOIL(N)/DTSTEP
+               (dtc1*AR1(N) + dtc2*AR2(N) + dtc4*AR4(N))*CSOIL(N)*(1.-AR_UR(N))/DTSTEP
 
        ELSE
           
@@ -2893,11 +2902,11 @@
 !****
       SUBROUTINE WUPDAT (                                                      &
                            NCH, DTSTEP, EVAP, SATCAP, TC, RA, RC,              &
-                           RX11,RX21,RX12,RX22,RX14,RX24, AR1,AR2,AR4,CDCR1,   &
+                           RX11,RX21,RX12, RX22,RX14,RX24, AR1,AR2,AR4,AR_UR,CDCR1,   &
                            EIRFRC,RZEQ,srfmn,WPWET,VGWMAX, POROS,              &
                            BF1, BF2, ARS1, ARS2, ARS3,                         &
                            CAPAC, RZEXC, CATDEF, SRFEXC,                       &
-                           EINT, ESOI, EVEG                                    &
+                           EINT, ESOI, EVEG                                   &
                           )
 !****
 !**** THIS SUBROUTINE ALLOWS EVAPOTRANSPIRATION TO ADJUST THE WATER
@@ -2909,9 +2918,9 @@
 
       REAL, INTENT(IN) :: DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: EVAP, SATCAP, TC, RA, RC, RX11,      &
-             RX21, RX12, RX22, RX14, RX24, AR1, AR2, AR4, CDCR1, EIRFRC,       &
+             RX21, RX12, RX22, RX14, RX24, AR1, AR2, AR4, AR_UR, CDCR1, EIRFRC,       &
              RZEQ, srfmn, WPWET, VGWMAX, POROS, BF1, BF2, ARS1, ARS2, ARS3
-
+      
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC, CATDEF, RZEXC, SRFEXC
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: EINT, ESOI, EVEG
@@ -2995,6 +3004,9 @@
         ESOI(CHNO)=0.
         EVEG(CHNO)=0.
         ENDIF
+
+      EVEG(CHNO)=EVEG(CHNO)*(1.-AR_UR(CHNO))
+      ESOI(CHNO)=ESOI(CHNO)*(1.-AR_UR(CHNO))
 
 !****
 !**** REMOVE MOISTURE FROM RESERVOIRS:
