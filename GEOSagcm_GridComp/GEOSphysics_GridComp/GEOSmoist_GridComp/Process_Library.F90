@@ -1511,6 +1511,7 @@ module GEOSmoist_Process_Library
                               tabs,         &
                               qwv,          &
                               qc,           &  ! OUT
+                              qsat,         &
 !                              qi,           &
                               omega,        &  ! IN
                               zl,           &
@@ -1565,6 +1566,7 @@ module GEOSmoist_Process_Library
 !   real, intent(in   )  :: DT          ! timestep [s]
    real, intent(in   )  :: tabs        ! absolute temperature [K]
    real, intent(in   )  :: qwv         ! specific humidity [kg kg-1]
+   real, intent(in   )  :: qsat
    real, intent(  out)  :: qc          ! liquid+ice condensate [kg kg-1]
    real, intent(in   )  :: omega       ! resolved pressure velocity
    real, intent(in   )  :: zl          ! layer heights [m]
@@ -1656,10 +1658,10 @@ module GEOSmoist_Process_Library
    w_first = - rog * omega * thv / pval
 
 ! Initialize cloud variables to zero
-   diag_qn   = 0.0
-   diag_frac = 0.0
-   diag_ql   = 0.0
-   diag_qi   = 0.0
+!   diag_qn   = 0.0
+!   diag_frac = 0.0
+!   diag_ql   = 0.0
+!   diag_qi   = 0.0
 
    pkap = (pval/100000.0) ** kapa
 
@@ -1687,7 +1689,16 @@ module GEOSmoist_Process_Library
             skew_qw  = 0.
           endif
 
-! Find parameters of the double Gaussian PDF of vertical velocity
+!          qsat = GEOS_QSAT( tabs, pval )
+!          if (skew_qw.lt.1e-3 .and. total_water+3.*sqrtqt.lt.qsat) then
+          if (qt3.lt.1e-12 .and. total_water+4.*sqrtqt.lt.(1.-0.14*sqrtthl)*qsat) then
+              wqls = 0.
+              wqis = 0.
+              cld_sgs = 0.
+              qc = 0.
+          else
+             
+          ! Find parameters of the double Gaussian PDF of vertical velocity
 
 !          aterm = pdf_a
 
@@ -2109,6 +2120,8 @@ module GEOSmoist_Process_Library
           wqls = aterm * ((w1_1-w_first)*ql1+wql1) + onema * ((w1_2-w_first)*ql2+wql2)
           wqis = aterm * ((w1_1-w_first)*qi1) + onema * ((w1_2-w_first)*qi2)
 
+          end if  ! small RH conditional
+          
 ! diagnostic buoyancy flux.  Includes effects from liquid water, ice
 ! condensate, liquid & ice precipitation
           wrk = epsv * thv
@@ -2202,7 +2215,7 @@ module GEOSmoist_Process_Library
       real :: QCx, QC, fQi, QCi, qsnx
       real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv
 
-      real :: tmpARR
+      real :: tmpARR, tmp, tmp2
       real :: alhxbcp, DQCALL
       ! internal scalars
       integer :: N, nmax
@@ -2262,11 +2275,14 @@ module GEOSmoist_Process_Library
            fQi = ice_fraction( TEn, CNVFRC,SRF_TYPE )
            alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
            HL = TEn + gravbcp*ZL - alhxbcp*QCn
-
+           tmp = max( QT2, WQT*WQT/max(W2,1e-4) )
+           tmp2 = max( HL2, WHL*WHL/max(W2,1e-4) )
+           
            call partition_dblgss(fQi,          &
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &
+                                 QSn,          &
                                  0.0,          & ! assume OMEGA=0
                                  ZL,           &
                                  PL*100.,      &
@@ -2274,8 +2290,8 @@ module GEOSmoist_Process_Library
                                  HL,           &
                                  WHL,          &
                                  WQT,          &
-                                 HL2,          &
-                                 QT2,          &
+                                 tmp2,         &
+                                 tmp,          &
                                  HLQT,         &
                                  W3,           &
                                  W2,           &
@@ -2339,7 +2355,7 @@ module GEOSmoist_Process_Library
             ! for now, just use relaxation of 1/2 of top-hat.
             QCn = QCp + 0.5*(QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
          elseif(PDFSHAPE.eq.5) then
-            QCn = QCp + 0.5*(QCn-QCp)
+            QCn = QCp + 0.75*(QCn-QCp)
          endif
 
          QVn = QVp - (QCn - QCp)
@@ -2375,7 +2391,7 @@ module GEOSmoist_Process_Library
       QLLS   = QLLS + dQLLS
       QV     = QV -         (dQILS+dQLLS)
       TE     = TE + alhlbcp*(dQILS+dQLLS) + alhfbcp*(dQILS)
-
+      
    end subroutine hystpdf
 
 !==========Estimate RHcrit========================
