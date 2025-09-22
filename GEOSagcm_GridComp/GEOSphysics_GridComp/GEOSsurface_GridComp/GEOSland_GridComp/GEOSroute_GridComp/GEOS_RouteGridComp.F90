@@ -65,15 +65,15 @@ module GEOS_RouteGridCompMod
      integer :: minCatch
      integer :: maxCatch
 
-     real,    pointer :: runoff_save(:)    => NULL()
-     real,    allocatable  :: areacat(:)  ! m2
-     real,    allocatable  :: lengsc(:)   ! m
-     integer, allocatable  :: downid(:) 
+     real,    allocatable :: areacat(:)  ! m2
+     real,    allocatable :: lengsc(:)   ! m
+     integer, allocatable :: downid(:) 
 
-     real,    pointer :: wriver_acc(:)     => NULL()
-     real,    pointer :: wstream_acc(:)    => NULL()     
-     real,    pointer :: qoutflow_acc(:)   => NULL()
-     real,    pointer :: qsflow_acc(:)     => NULL()
+     real,    allocatable :: runoff_acc(:) 
+     real,    allocatable :: wriver_acc(:)    
+     real,    allocatable :: wstream_acc(:)        
+     real,    allocatable :: qoutflow_acc(:)
+     real,    allocatable :: qsflow_acc(:)  
 
      real,    allocatable :: lstr(:)         ! m
      real,    allocatable :: qri_clmt(:)     ! m3/s
@@ -397,7 +397,6 @@ contains
     integer, pointer :: ims(:) => NULL()
     integer, pointer :: local_id(:)  => NULL()
 
-    real,    pointer :: runoff_save(:)=>NULL()
     type (T_RROUTE_STATE), pointer :: route => null()
     type (RES_STATE),      pointer :: res => NULL()
     type (RROUTE_wrap)             :: wrap
@@ -555,9 +554,7 @@ contains
 
     deallocate(tmp_real, tmp_int)
 
-    allocate(runoff_save(1:nt_local))
-    route%runoff_save => runoff_save
-    route%runoff_save=0.
+    allocate(route%runoff_acc(nt_local), source = 0.)
 
     ! accumulated variables for output 
     allocate(route%wriver_acc(n_pfaf_local),route%wstream_acc(n_pfaf_local),route%qoutflow_acc(n_pfaf_local),route%qsflow_acc(n_pfaf_local),route%reservoir%qres_acc(n_pfaf_local))
@@ -948,7 +945,6 @@ contains
     character(len=2) :: mon_s,day_s
 
     real,             pointer     :: arrayPtr(:)
-    real,             pointer     :: runoff_save(:)=>NULL()
     type (RES_STATE), pointer     :: res => NULL()    
 
     real,             allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:)
@@ -1006,7 +1002,6 @@ contains
     mype          =  route%mype  
     n_pfaf_local  =  route%n_pfaf_local  
     nt_global     =  route%nt_global  
-    runoff_save   => route%runoff_save
     nt_local      =  route%nt_local
     res           => route%reservoir
 
@@ -1026,7 +1021,7 @@ contains
     if (ESMF_AlarmIsRinging(CollectWaterAlarm)) then
        
        !accumulates runoff
-       runoff_save = (runoff_save + RUNOFF_SRC0)/real (N_CYC)
+       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real (N_CYC)
 
        !Gets time used for output and restart 
        call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
@@ -1040,7 +1035,7 @@ contains
        ! redistribute runoff from tile space to catchment space
        call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr, rc=status)
        VERIFY_(STATUS)
-       ArrayPtr = runoff_save(:)
+       ArrayPtr = route%runoff_acc(:)
        call ESMF_FieldSMM(srcField=route%field_src, dstField=route%Field, &
                        routeHandle=route%routeHandle, rc=rc)
        call ESMF_FieldGet(route%field, farrayPtr=arrayPtr, rc=status)
@@ -1084,7 +1079,7 @@ contains
        WRIVER = WRIVER + QINFLOW_LOCAL*real(route_dt)
 
        ! Check balance if needed
-       !call check_balance(route,n_pfaf_local,nt_local,runoff_save,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
+       !call check_balance(route,n_pfaf_local,nt_local,runoff_acc,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
 
        ! Update accumulated variables for output
        nstep_per_day = 86400/route_dt
@@ -1102,22 +1097,21 @@ contains
        endif
        deallocate(RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_ACT,QINFLOW_LOCAL,QSFLOW_ACT,WTOT_BEFORE,QRES_ACT,QOUT_CAT)
 
-       runoff_save = 0.
-       route%wriver_acc = 0.
-       route%wstream_acc = 0.
-       route%qoutflow_acc = 0.
-       route%qsflow_acc = 0.
-       res%qres_acc = 0.
-
+       route%runoff_acc = 0.
+       if (HH == 23) then
+          route%wriver_acc = 0.
+          route%wstream_acc = 0.
+          route%qoutflow_acc = 0.
+          route%qsflow_acc = 0.
+          res%qres_acc = 0.
+       endif
     else
 
-       runoff_save = runoff_save + RUNOFF_SRC0
+       route%runoff_acc = route%runoff_acc + RUNOFF_SRC0
 
     endif ! alarm
 
     ! update restart
-
-    runoff_save => NULL()
 
 ! All done
 ! --------
