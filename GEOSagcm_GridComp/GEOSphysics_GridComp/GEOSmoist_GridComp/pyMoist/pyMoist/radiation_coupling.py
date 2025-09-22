@@ -2,8 +2,7 @@ from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField
-from pyMoist.field_types import GlobalTable_saturaion_tables
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
 from pyMoist.shared_incloud_processes import (
     cloud_effective_radius_ice,
     cloud_effective_radius_liquid,
@@ -101,8 +100,8 @@ def _update_humidity(
     pressure: FloatField,
     vapor: FloatField,
     humidity: FloatField,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
 ):
     with computation(PARALLEL), interval(...):
         qsat, _ = saturation_specific_humidity(temperature, pressure * 100, ese, esx)
@@ -189,8 +188,8 @@ class GFDL1MRadiationCoupling:
         liquid_radius: FloatField,
         ice_radius: FloatField,
         relative_humidity_after_pdf: FloatField,
-        ese: GlobalTable_saturaion_tables,
-        esx: GlobalTable_saturaion_tables,
+        ese: GlobalTable_saturation_tables,
+        esx: GlobalTable_saturation_tables,
     ):
         """
         Perform the radiation coupling process

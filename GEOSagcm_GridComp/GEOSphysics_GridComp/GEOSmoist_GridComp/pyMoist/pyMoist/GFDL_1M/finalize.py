@@ -3,7 +3,6 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
-from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.masks import Masks
@@ -12,8 +11,11 @@ from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
 from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.radiation_coupling import GFDL1MRadiationCoupling
 from pyMoist.redistribute_clouds import RedistributeClouds
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    SaturationVaporPressureTable,
+    saturation_specific_humidity,
+)
 
 
 @function
@@ -133,8 +135,8 @@ def fix_humidity(
     vapor: FloatField,
     t: FloatField,
     p_mb: FloatField,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
 ):
     with computation(PARALLEL), interval(...):
         qsat, _ = saturation_specific_humidity(t, p_mb * 100, ese, esx)

@@ -15,15 +15,17 @@ from pyMoist.constants import (
     MAPL_RGAS,
     MAPL_RVAP,
 )
-from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.outputs import Outputs
 from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
 from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.interpolations import vertical_interpolation
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    SaturationVaporPressureTable,
+    saturation_specific_humidity,
+)
 
 
 def calculate_derived_states(
@@ -38,8 +40,8 @@ def calculate_derived_states(
     dp: FloatField,
     mass: FloatField,
     t: FloatField,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     qsat: FloatField,
     dqsat: FloatField,
     u: FloatField,
@@ -104,8 +106,8 @@ def find_k_lcl(
     t: FloatField,
     p_mb: FloatField,
     vapor: FloatField,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     found_level: BoolFieldIJ,
     k_lcl: IntFieldIJ,
 ):
@@ -161,8 +163,8 @@ def find_eis(
     th700: FloatFieldIJ,
     z700: FloatFieldIJ,
     k_lcl: IntFieldIJ,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     lower_tropospheric_stability: FloatFieldIJ,
     estimated_inversion_strength: FloatFieldIJ,
 ):
