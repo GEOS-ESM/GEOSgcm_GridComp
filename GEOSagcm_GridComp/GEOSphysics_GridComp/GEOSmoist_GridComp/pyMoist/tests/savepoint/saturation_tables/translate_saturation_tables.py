@@ -4,7 +4,7 @@ from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.saturation_tables.formulation import SaturationFormulation
-from pyMoist.saturation_tables.tables.main import get_table
+from pyMoist.saturation_tables.tables.main import get_saturation_vapor_pressure_table
 
 
 class Translatesaturation_tables(TranslateFortranData2Py):
@@ -26,7 +26,7 @@ class Translatesaturation_tables(TranslateFortranData2Py):
 
     def compute(self, inputs):
         formulation = SaturationFormulation.Staars
-        tables = get_table(self.stencil_factory.backend, formulation)
+        tables = get_saturation_vapor_pressure_table(self.stencil_factory.backend, formulation)
         inputs.update(
             {
                 "ESTBLE": tables.ese,

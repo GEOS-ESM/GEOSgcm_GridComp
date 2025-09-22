@@ -19,3 +19,4 @@ from .GFDL_1M.translate_GFDL_1M_setup import TranslateGFDL_1M_setup
 from .saturation_tables.translate_qsat_functions import Translateqsat_functions
 from .saturation_tables.translate_saturation_tables import Translatesaturation_tables
 from .translate_aer_activation import TranslateAerActivation
+from .translate_compute_uwshcu import TranslateComputeUwshcuInv
