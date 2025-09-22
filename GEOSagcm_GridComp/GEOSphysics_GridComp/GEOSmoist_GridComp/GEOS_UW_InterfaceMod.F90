@@ -14,6 +14,10 @@ module GEOS_UW_InterfaceMod
   use MAPL
   use UWSHCU   ! using module that contains uwshcu code
   use GEOSmoist_Process_Library
+#ifdef PYMOIST_INTEGRATION
+  use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
+  use pymoist_interface_mod
+#endif
 
   implicit none
 
@@ -26,8 +30,13 @@ module GEOS_UW_InterfaceMod
   character(len=ESMF_MAXSTR)              :: IAm
   integer                                 :: STATUS
 
+#ifdef PYMOIST_INTEGRATION
+  logical :: USE_PYMOIST_UW = .FALSE.
+  logical :: INIT_PYMOIST_UW = .FALSE.
+#endif
+
   public :: UW_Setup, UW_Initialize, UW_Run
-   
+
 contains
 
 subroutine UW_Setup (GC, CF, RC)
@@ -53,6 +62,7 @@ subroutine UW_Setup (GC, CF, RC)
 
     call MAPL_TimerAdd(GC, name="--UW", RC=STATUS)
     VERIFY_(STATUS)
+
 
 end subroutine UW_Setup
 
@@ -197,8 +207,14 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Local variables
 
-    integer                         :: I, J, L
+    integer                         :: I, J, L, k, k_inv, mm
     integer                         :: IM,JM,LM
+
+#ifdef PYMOIST_INTEGRATION
+    integer                         :: ncnst
+    real, dimension(:,:,:,:), allocatable :: tracers
+    integer, dimension(:,:),  allocatable :: kpbl_int
+#endif
 
     call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -236,6 +252,21 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
+
+#ifdef PYMOIST_INTEGRATION
+    ! We defer init to RUN time because we need to make sure GEOS_MoistGridComp.Run has ran
+    ! which it is the one doing overall init
+    call MAPL_GetResource(MAPL, USE_PYMOIST_UW, 'USE_PYMOIST_UW:', default=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)
+    if (.not. INIT_PYMOIST_UW .and.USE_PYMOIST_UW) then
+      call compute_uwshcu_f_init( &
+        size(CNV_Tracers), &
+        LM, &
+        SHLWPARAMS%WINDSRCAVG &
+      )
+      INIT_PYMOIST_UW = .TRUE.
+    endif
+#endif
 
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
@@ -325,9 +356,101 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     QLTOT = QLLS+QLCN
     QITOT = QILS+QICN
- 
+
+#ifdef PYMOIST_INTEGRATION
+    if (USE_PYMOIST_UW) then
+      ncnst = size(CNV_Tracers)
+      allocate(tracers(IM,JM,LM,ncnst))
+      do mm = 1, ncnst
+        tracers(:,:,:,mm) = CNV_Tracers(mm)%Q(:,:,:)
+      enddo
+
+      ! I think to get the tracers, I need to manually extract them from CNV_Tracers
+      call compute_uwshcu_f_run_compute_uwshcu( &
+        !inputs
+        USE_TRACER_TRANSP_UW, & ! dotransport
+        LM, & ! k0
+        SHLWPARAMS%WINDSRCAVG, & ! windsrcavg
+        SHLWPARAMS%QTSRCHGT, & ! qtsrchgt
+        SHLWPARAMS%QTSRC_FAC, & ! qtsrc_fac
+        SHLWPARAMS%THLSRC_FAC, & ! thlsrc_fac
+        SHLWPARAMS%FRC_RASN, & ! frc_rasn
+        SHLWPARAMS%RBUOY, & ! rbuoy
+        SHLWPARAMS%EPSVARW, & ! epsvarw
+        SHLWPARAMS%USE_CINCIN, & ! use_CINcin
+        SHLWPARAMS%MUMIN1, & ! mumin1
+        SHLWPARAMS%RMAXFRAC, & ! rmaxfrac
+        SHLWPARAMS%PGFC, & ! PGFc
+        UW_DT, & ! dt
+        SHLWPARAMS%NITER_XC, & ! niter_xc
+        SHLWPARAMS%CRIQC, & ! criqc
+        SHLWPARAMS%RLE, & ! rle
+        SHLWPARAMS%CRIDIST_OPT, & ! cridist_opt
+        SHLWPARAMS%MIXSCALE, & ! mixscale
+        SHLWPARAMS%RDRAG, & ! rdrag
+        SHLWPARAMS%RKM, & ! rkm
+        SHLWPARAMS%USE_SELF_DETRAIN, & ! use_self_detrain
+        SHLWPARAMS%DETRHGT, & ! detrhgt
+        SHLWPARAMS%USE_CUMPENENT, & ! use_cumpenent
+        SHLWPARAMS%RPEN, & ! rpen
+        SHLWPARAMS%USE_MOMENFLX, & ! use_momenflx
+        SHLWPARAMS%RDROP, & ! rdrop
+        SHLWPARAMS%ITER_CIN, & ! iter_cin
+        PLE, shape(PLE), rank(PLE), &
+        ZLE0, shape(ZLE0), rank(ZLE0), &
+        PL, shape(PL), rank(PL), &
+        ZL0, shape(ZL0), rank(ZL0), &
+        KPBL_SC, shape(KPBL_SC), rank(KPBL_SC), &
+        PK, shape(PK), rank(PK), &
+        PKE, shape(PKE), rank(PKE), &
+        DP, shape(DP), rank(DP), &
+        U, shape(U), rank(U), &
+        V, shape(V), rank(V), &
+        Q, shape(Q), rank(Q), &
+        QLTOT, shape(QLTOT), rank(QLTOT), &
+        QITOT, shape(QITOT), rank(QITOT), &
+        T, shape(T), rank(T), &
+        FRLAND, shape(FRLAND), rank(FRLAND), &
+        TKE, shape(TKE), rank(TKE), &
+        RKFRE, shape(RKFRE), rank(RKFRE), &
+        CUSH, shape(CUSH), rank(CUSH), &
+        SH, shape(SH), rank(SH), &
+        EVAP, shape(EVAP), rank(EVAP), &
+        CNPCPRATE, shape(CNPCPRATE), rank(CNPCPRATE), &
+        tracers, shape(tracers), rank(tracers), &
+        !inouts
+        !outputs
+        UMF_SC, shape(UMF_SC), rank(UMF_SC), &
+        DCM_SC, shape(DCM_SC), rank(DCM_SC), &
+        QTFLX_SC, shape(QTFLX_SC), rank(QTFLX_SC), &
+        SLFLX_SC, shape(SLFLX_SC), rank(SLFLX_SC), &
+        UFLX_SC, shape(UFLX_SC), rank(UFLX_SC), &
+        VFLX_SC, shape(VFLX_SC), rank(VFLX_SC), &
+        DQVDT_SC, shape(DQVDT_SC), rank(DQVDT_SC), &
+        DQLDT_SC, shape(DQLDT_SC), rank(DQLDT_SC), &
+        DQIDT_SC, shape(DQIDT_SC), rank(DQIDT_SC), &
+        DTDT_SC, shape(DTDT_SC), rank(DTDT_SC), &
+        DUDT_SC, shape(DUDT_SC), rank(DUDT_SC), &
+        DVDT_SC, shape(DVDT_SC), rank(DVDT_SC), &
+        DQRDT_SC, shape(DQRDT_SC), rank(DQRDT_SC), &
+        DQSDT_SC, shape(DQSDT_SC), rank(DQSDT_SC), &
+        CUFRC_SC, shape(CUFRC_SC), rank(CUFRC_SC), &
+        ENTR_SC, shape(ENTR_SC), rank(ENTR_SC), &
+        DETR_SC, shape(DETR_SC), rank(DETR_SC), &
+        SC_NDROP, shape(SC_NDROP), rank(SC_NDROP), &
+        SC_NICE, shape(SC_NICE), rank(SC_NICE), &
+        QLDET_SC, shape(QLDET_SC), rank(QLDET_SC), &
+        QLSUB_SC, shape(QLSUB_SC), rank(QLSUB_SC), &
+        QIDET_SC, shape(QIDET_SC), rank(QIDET_SC), &
+        QISUB_SC, shape(QISUB_SC), rank(QISUB_SC), &
+        TPERT_SC, shape(TPERT_SC), rank(TPERT_SC), &
+        QPERT_SC, shape(QPERT_SC), rank(QPERT_SC) &
+      )
+    else
+#endif
       !  Call UW shallow convection
       !----------------------------------------------------------------
+
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
             U, V, Q, QLTOT, QITOT, T, TKE, RKFRE, KPBL_SC,&
@@ -349,7 +472,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             XC_SC,                                        &
 #endif 
             USE_TRACER_TRANSP_UW)
-
+#ifdef PYMOIST_INTEGRATION
+    endif
+#endif
       !  Apply tendencies
       !--------------------------------------------------------------
         Q  = Q  + DQVDT_SC * UW_DT    ! note this adds to the convective

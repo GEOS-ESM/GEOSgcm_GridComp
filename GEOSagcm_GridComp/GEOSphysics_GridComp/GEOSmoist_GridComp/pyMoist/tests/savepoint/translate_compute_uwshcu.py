@@ -1,10 +1,15 @@
 from ndsl import Namelist, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
+from ndsl.dsl.typing import Float, FloatField, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv
 from pyMoist.UW.config import UWConfiguration
+
+
+# Dev NOTE: The data for this translate test comes from combining ComputeUwschcu and ComputeUwschuInv in
+#           a single nc file using the following NCO tool:
+#           `ncks -A ComputeUwshcu-In.nc ComputeUwshcuInv-In.nc`
 
 
 class TranslateComputeUwshcuInv(TranslateFortranData2Py):
@@ -110,6 +115,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "qsten_inv": self.grid.compute_dict(),
             "tpert_out": self.grid.compute_dict(),
             "qpert_out": self.grid.compute_dict(),
+            "cush": self.grid.compute_dict(),
         }
 
     def make_ntracers_ijk_field(self, data) -> Quantity:
@@ -118,6 +124,16 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "n/a",
         )
         qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
+        return qty
+
+    def make_ijk_field(self, data, dtype=FloatField) -> Quantity:
+        qty = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], "n/a", dtype=dtype)
+        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
+        return qty
+
+    def make_ij_field(self, data, dtype=FloatField) -> Quantity:
+        qty = self.quantity_factory.empty([X_DIM, Y_DIM], "n/a", dtype=dtype)
+        qty.view[:, :] = qty.np.asarray(data[:, :])
         return qty
 
     def compute(self, inputs):
@@ -172,7 +188,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         safe_assign_array(pmid0_inv.view[:, :, :], inputs["pmid0_inv"])
         zmid0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(zmid0_inv.view[:, :, :], inputs["zmid0_inv"])
-        kpbl_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a", dtype=Int)
+        kpbl_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
         safe_assign_array(kpbl_inv.view[:, :], inputs["kpbl_inv"])
         exnmid0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(exnmid0_inv.view[:, :, :], inputs["exnmid0_inv"])
@@ -363,4 +379,5 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "tpert_out": tpert_out.view[:],
             "qpert_out": qpert_out.view[:],
             "dotransport": dotransport,
+            "cush": cush.view[:],
         }

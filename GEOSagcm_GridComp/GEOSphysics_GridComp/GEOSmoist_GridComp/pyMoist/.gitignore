@@ -11,3 +11,4 @@ test_data/
 sandbox/
 *.mod
 .gt4py_cache/
+.translate*

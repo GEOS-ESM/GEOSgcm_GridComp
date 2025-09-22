@@ -1,5 +1,16 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, exp, i32, interval, log, max, sqrt, trunc
+from gt4py.cartesian.gtscript import (
+    FORWARD,
+    PARALLEL,
+    computation,
+    exp,
+    int32,
+    interval,
+    log,
+    max,
+    sqrt,
+    trunc,
+)
 
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -739,7 +750,7 @@ def iqs1(
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
-    it = i32(trunc(ap1))
+    it = int32(trunc(ap1))
     es = table3.A[it - 1] + (ap1 - it) * des3.A[it - 1]
     iqs1 = es / (constants.RVGAS * ta * den)
 
@@ -769,10 +780,10 @@ def iqs2(
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
-    it = i32(trunc(ap1))
+    it = int32(trunc(ap1))
     es = table3.A[it - 1] + (ap1 - it) * des3.A[it - 1]
     iqs2 = es / (constants.RVGAS * ta * den)
-    it = i32(trunc(ap1 - 0.5))
+    it = int32(trunc(ap1 - 0.5))
     dqdt = 10.0 * (des3.A[it - 1] + (ap1 - it) * (des3.A[it] - des3.A[it - 1])) / (constants.RVGAS * ta * den)
 
     return iqs2, dqdt
@@ -800,7 +811,7 @@ def wqs1(
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
-    it = i32(trunc(ap1))
+    it = int32(trunc(ap1))
     es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
     wqs1 = es / (constants.RVGAS * ta * den)
 
