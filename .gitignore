@@ -5,3 +5,6 @@
 # Python (cache, install artifacts, ...)
 *.egg-info/
 **/__pycache__/
+
+# IDE
+.vscode/
