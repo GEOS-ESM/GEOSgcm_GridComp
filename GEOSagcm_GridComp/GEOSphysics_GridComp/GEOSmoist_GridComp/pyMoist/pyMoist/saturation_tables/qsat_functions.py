@@ -18,7 +18,7 @@ from pyMoist.saturation_tables.constants import (
     TMINTBL,
     TMIX,
 )
-from pyMoist.saturation_tables.tables.main import get_table
+from pyMoist.saturation_tables.tables.main import get_saturation_vapor_pressure_table
 
 
 @function
@@ -287,7 +287,7 @@ class QSat:
         self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
         self.esx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
 
-        self.table = get_table(formulation)
+        self.table = get_saturation_vapor_pressure_table(formulation)
         self.ese.view[:] = self.table.ese
         self.esw.view[:] = self.table.esw
         self.esx.view[:] = self.table.esx

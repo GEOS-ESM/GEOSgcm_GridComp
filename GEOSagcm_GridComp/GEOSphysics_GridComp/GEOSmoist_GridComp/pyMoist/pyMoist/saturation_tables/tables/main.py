@@ -220,7 +220,7 @@ _cached_estimated_saturation: Dict[SaturationFormulation, Optional[SaturationVap
 }
 
 
-def get_table(
+def get_saturation_vapor_pressure_table(
     backend,
     formulation: SaturationFormulation = SaturationFormulation.Staars,
 ) -> SaturationVaporPressureTable:

@@ -24,8 +24,12 @@ from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
-from pyMoist.saturation.formulation import SaturationFormulation
-from pyMoist.saturation.qsat import FloatField_Extra_Dim, QSat, QSat_Float
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    SaturationFormulation,
+    get_saturation_vapor_pressure_table,
+    saturation_specific_humidity,
+)
 from pyMoist.UW.config import UWConfiguration
 from pyMoist.UW.temporaries import Temporaries
 from pyMoist.UW.uwshcu_functions import (
@@ -430,8 +434,8 @@ def compute_thv0_thvl0(
     pifc0_in: FloatField,
     ssthl0: FloatField,
     ssqt0: FloatField,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -536,8 +540,8 @@ def compute_thv0_thvl0(
     th0_in [FloatField]: Environmental potential temperature [K]
     zmid0 [FloatField]: Environmental height at the layer mid-point [m]
     pifc0_in [FloatField]: Environmental pressure at interfaces [Pa]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
     u0_in [FloatField]: Environmental zonal wind [m/s]
     v0_in [FloatField]: Environmental meridional wind [m/s]
     k0 [Int]: Number of levels
@@ -646,8 +650,8 @@ def compute_thv0_thvl0(
     th0_in [FloatField]: Environmental potential temperature [K]
     zmid0 [FloatField]: Environmental height at the layer mid-point [m]
     pifc0_in [FloatField]: Environmental pressure at interfaces [Pa]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
     u0_in [FloatField]: Environmental zonal wind [m/s]
     v0_in [FloatField]: Environmental meridional wind [m/s]
     k0 [Int]: Number of levels
@@ -1304,8 +1308,8 @@ def find_klcl(
     vflx_out: FloatField,
     qtsrc: FloatField,
     thlsrc: FloatField,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     k0: Int,
     thl0: FloatField,
     ssthl0: FloatField,
@@ -1339,8 +1343,8 @@ def find_klcl(
     pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
     qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
     thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
     k0 [Int]: Number of levels
     thl0 [FloatField]: Temperature [?]
     ssthl0 [FloatField]: Temperature [?]
@@ -1529,8 +1533,8 @@ def compute_cin_cinlcl(
     thv0lcl: FloatField,
     thlsrc: FloatField,
     qtsrc: FloatField,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -2609,8 +2613,8 @@ def define_updraft_properties(
     thlsrc: FloatField,
     qtsrc: FloatField,
     prel: FloatField,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     thvu: FloatField,
     wlcl: FloatField,
     ufrclcl: FloatField,
@@ -2638,8 +2642,8 @@ def define_updraft_properties(
     thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
     qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
     prel [FloatField]: Lowest level from which buoyancy sorting occurs [Pa]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
 
     Inouts:
     condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
@@ -2954,8 +2958,8 @@ def buoyancy_sorting(
     qtu: FloatField,
     wu: FloatField,
     niter_xc: Int,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -3141,7 +3145,6 @@ def buoyancy_sorting(
 
     with computation(FORWARD), interval(1, -2):
         if K >= krel and K < k0 - 1 and not stop_buoyancy_sort and not condensation:
-
             thlue = thlu[0, 0, -1]
             qtue = qtu[0, 0, -1]
             wue = wu[0, 0, -1]
@@ -3185,7 +3188,7 @@ def buoyancy_sorting(
                     thv0j = thj * (1.0 + zvir * qvj - qlj - qij)
                     rhomid0j = pe / (constants.MAPL_RDRY * thv0j * exne)
                     qsat_arg = thle * exne
-                    qs, _ = QSat_Float(ese, esx, qsat_arg, qsat_pe / 100.0)
+                    qs, _ = saturation_specific_humidity(qsat_arg, qsat_pe, ese, esx)
                     excess0 = qte - qs
 
                     thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, ese, esx)
@@ -3265,7 +3268,7 @@ def buoyancy_sorting(
                             thvj = thj * (1.0 + zvir * qvj - qlj - qij)
                             tj = thj * exne  # This 'tj' is used for computing thermo. coeffs. below
                             qsat_arg = thlue * exne
-                            qs, _ = QSat_Float(ese, esx, qsat_arg, qsat_pe / 100.0)
+                            qs, _ = saturation_specific_humidity(qsat_arg, qsat_pe, ese, esx)
                             excessu = qtue - qs
 
                             # Calculate critical mixing fraction, 'xc'. Mixture with
@@ -3984,8 +3987,8 @@ def recalc_condensate(
     qt0: FloatField,
     ssqt0: FloatField,
     pifc0: FloatField,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -4035,8 +4038,8 @@ def recalc_condensate(
     qt0 [FloatField]: Mixing ratio [?]
     ssqt0 [FloatField]: Mixing ratio [?]
     pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
     criqc [Float]: Maximum condensate that can be hold by cumulus updraft [kg/kg]
     thv0bot [FloatField]: Temperature at bottom [?]
     thv0top [FloatField]: Temperature at top [?]
@@ -5103,8 +5106,8 @@ def penetrative_entrainment_fluxes(
     ql0: FloatField,
     qi0: FloatField,
     dt: Float,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -5173,8 +5176,8 @@ def penetrative_entrainment_fluxes(
     ql0 [FloatField]: Environmental liquid water specific humidity
     qi0 [FloatField]: Environmental ice specific humidity
     dt [Float]: Timestep [s]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
     iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
 
     Inouts:
@@ -5404,8 +5407,8 @@ def calc_thermodynamic_tendencies(
     prel: FloatField,
     thlu: FloatField,
     qtu: FloatField,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -5467,8 +5470,8 @@ def calc_thermodynamic_tendencies(
     prel [FloatField]: Lowest level from which buoyancy sorting occurs [Pa]
     thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
     qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
     pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
     ppen [FloatFieldIJ]: Highest interface evel where Cu w = 0 [Pa]
     thlu_top [FloatFieldIJ]: Updraft liquid potential temperature at top [K]
@@ -6111,8 +6114,8 @@ def compute_diagnostic_outputs(
     thlu: FloatField,
     qtu: FloatField,
     krel: IntField,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -6139,8 +6142,8 @@ def compute_diagnostic_outputs(
     thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
     qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
     krel [IntField]: Release layer where buoyancy sorting first occurs
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
 
     Inouts:
     condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
@@ -6172,8 +6175,8 @@ def compute_diagnostic_outputs(
     thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
     qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
     krel [IntField]: Release layer where buoyancy sorting first occurs
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
 
     Inouts:
     condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
@@ -6240,8 +6243,8 @@ def calc_cumulus_condensate_at_interface(
     qtu_top: FloatFieldIJ,
     thlu: FloatField,
     qtu: FloatField,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -6276,8 +6279,8 @@ def calc_cumulus_condensate_at_interface(
     qtu_top [FloatFieldIJ]: Updraft total specific humidity at top [kg/kg]
     thlu [FloatField]: Updraft liquid potential temperature at the interface [K]
     qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]:  Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]:  Used in QSat_Float [n/a]
     ufrc [FloatField]: Cumulus updraft fraction [fraction]
     ufrclcl [FloatField]: Cumulus updraft fraction at the LCL [fraction]
     prel [FloatField]: Lowest level from which buoyancy sorting occurs [Pa]
@@ -6614,8 +6617,8 @@ def recalc_environmental_variables(
     u0: FloatField,
     v0: FloatField,
     pifc0: FloatField,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     umf_out: FloatField,
     qtflx_out: FloatField,
     slflx_out: FloatField,
@@ -6661,8 +6664,8 @@ def recalc_environmental_variables(
     u0 [FloatField]: Environmental zonal wind [m/s]
     v0 [FloatField]: Environmental meridional wind [m/s]
     pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
     tr0_temp [FloatField]: Environmental tracers [#, kg/kg]
 
     Inouts:
@@ -7293,7 +7296,6 @@ class ComputeUwshcuInv:
         self.temporaries = Temporaries.make(quantity_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
-        grid_indexing = stencil_factory.grid_indexing
 
         if constants.NCNST != self.UW_config.NCNST:
             raise NotImplementedError(
@@ -7539,10 +7541,8 @@ class ComputeUwshcuInv:
             [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
         )
 
-        self.qsat = QSat(
-            self.stencil_factory,
-            self.quantity_factory,
-            formulation=formulation,
+        self.saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(
+            self.stencil_factory.backend
         )
 
     @staticmethod
@@ -7838,8 +7838,8 @@ class ComputeUwshcuInv:
             pifc0_in=self.temporaries.pifc0_in,
             ssthl0=self.temporaries.ssthl0,
             ssqt0=self.temporaries.ssqt0,
-            ese=self.qsat.ese,
-            esx=self.qsat.esx,
+            ese=self.saturation_vapor_pressure_table.ese,
+            esx=self.saturation_vapor_pressure_table.esx,
             umf_out=self.temporaries.umf_out,
             qtflx_out=self.temporaries.qtflx_out,
             slflx_out=self.temporaries.slflx_out,
@@ -8016,8 +8016,8 @@ class ComputeUwshcuInv:
                 vflx_out=self.temporaries.vflx_out,
                 qtsrc=self.temporaries.qtsrc,
                 thlsrc=self.temporaries.thlsrc,
-                ese=self.qsat.ese,
-                esx=self.qsat.esx,
+                ese=self.saturation_vapor_pressure_table.ese,
+                esx=self.saturation_vapor_pressure_table.esx,
                 k0=k0,
                 thl0=self.temporaries.thl0,
                 ssthl0=self.temporaries.ssthl0,
@@ -8046,8 +8046,8 @@ class ComputeUwshcuInv:
                 thv0lcl=self.temporaries.thv0lcl,
                 thlsrc=self.temporaries.thlsrc,
                 qtsrc=self.temporaries.qtsrc,
-                ese=self.qsat.ese,
-                esx=self.qsat.esx,
+                ese=self.saturation_vapor_pressure_table.ese,
+                esx=self.saturation_vapor_pressure_table.esx,
                 umf_out=self.temporaries.umf_out,
                 qtflx_out=self.temporaries.qtflx_out,
                 slflx_out=self.temporaries.slflx_out,
@@ -8351,8 +8351,8 @@ class ComputeUwshcuInv:
                 thlsrc=self.temporaries.thlsrc,
                 qtsrc=self.temporaries.qtsrc,
                 prel=self.temporaries.prel,
-                ese=self.qsat.ese,
-                esx=self.qsat.esx,
+                ese=self.saturation_vapor_pressure_table.ese,
+                esx=self.saturation_vapor_pressure_table.esx,
                 thvu=self.temporaries.thvu,
                 wlcl=self.temporaries.wlcl,
                 ufrclcl=self.temporaries.ufrclcl,
@@ -8428,8 +8428,8 @@ class ComputeUwshcuInv:
                 qtu=self.temporaries.qtu,
                 wu=self.temporaries.wu,
                 niter_xc=niter_xc,
-                ese=self.qsat.ese,
-                esx=self.qsat.esx,
+                ese=self.saturation_vapor_pressure_table.ese,
+                esx=self.saturation_vapor_pressure_table.esx,
                 umf_out=self.temporaries.umf_out,
                 qtflx_out=self.temporaries.qtflx_out,
                 slflx_out=self.temporaries.slflx_out,
@@ -8520,8 +8520,8 @@ class ComputeUwshcuInv:
                 qt0=self.temporaries.qt0,
                 ssqt0=self.temporaries.ssqt0,
                 pifc0=self.temporaries.pifc0_in,
-                ese=self.qsat.ese,
-                esx=self.qsat.esx,
+                ese=self.saturation_vapor_pressure_table.ese,
+                esx=self.saturation_vapor_pressure_table.esx,
                 umf_out=self.temporaries.umf_out,
                 qtflx_out=self.temporaries.qtflx_out,
                 slflx_out=self.temporaries.slflx_out,
@@ -8736,8 +8736,8 @@ class ComputeUwshcuInv:
                 ql0=self.temporaries.ql0,
                 qi0=self.temporaries.qi0,
                 dt=dt,
-                ese=self.qsat.ese,
-                esx=self.qsat.esx,
+                ese=self.saturation_vapor_pressure_table.ese,
+                esx=self.saturation_vapor_pressure_table.esx,
                 umf_out=self.temporaries.umf_out,
                 qtflx_out=self.temporaries.qtflx_out,
                 slflx_out=self.temporaries.slflx_out,
@@ -8788,8 +8788,8 @@ class ComputeUwshcuInv:
                 prel=self.temporaries.prel,
                 thlu=self.temporaries.thlu,
                 qtu=self.temporaries.qtu,
-                ese=self.qsat.ese,
-                esx=self.qsat.esx,
+                ese=self.saturation_vapor_pressure_table.ese,
+                esx=self.saturation_vapor_pressure_table.esx,
                 umf_out=self.temporaries.umf_out,
                 qtflx_out=self.temporaries.qtflx_out,
                 slflx_out=self.temporaries.slflx_out,
@@ -8866,8 +8866,8 @@ class ComputeUwshcuInv:
                 thlu=self.temporaries.thlu,
                 qtu=self.temporaries.qtu,
                 krel=self.temporaries.krel,
-                ese=self.qsat.ese,
-                esx=self.qsat.esx,
+                ese=self.saturation_vapor_pressure_table.ese,
+                esx=self.saturation_vapor_pressure_table.esx,
                 umf_out=self.temporaries.umf_out,
                 qtflx_out=self.temporaries.qtflx_out,
                 slflx_out=self.temporaries.slflx_out,
@@ -8892,8 +8892,8 @@ class ComputeUwshcuInv:
                 qtu_top=self.temporaries.qtu_top,
                 thlu=self.temporaries.thlu,
                 qtu=self.temporaries.qtu,
-                ese=self.qsat.ese,
-                esx=self.qsat.esx,
+                ese=self.saturation_vapor_pressure_table.ese,
+                esx=self.saturation_vapor_pressure_table.esx,
                 umf_out=self.temporaries.umf_out,
                 qtflx_out=self.temporaries.qtflx_out,
                 slflx_out=self.temporaries.slflx_out,
@@ -9009,8 +9009,8 @@ class ComputeUwshcuInv:
                     u0=self.temporaries.u0_in,
                     v0=self.temporaries.v0_in,
                     pifc0=self.temporaries.pifc0_in,
-                    ese=self.qsat.ese,
-                    esx=self.qsat.esx,
+                    ese=self.saturation_vapor_pressure_table.ese,
+                    esx=self.saturation_vapor_pressure_table.esx,
                     umf_out=self.temporaries.umf_out,
                     slflx_out=self.temporaries.slflx_out,
                     qtflx_out=self.temporaries.qtflx_out,
