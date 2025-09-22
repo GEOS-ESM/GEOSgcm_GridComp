@@ -39,8 +39,7 @@ use GEOS_UtilsMod
 
 implicit none
 
-! declare interfaces to ISSM HERE ....
-    ! Define the interface for the ISSM C++ functions
+! declare interface to the ISSM C++ functions
 interface
 subroutine InitializeISSM(argc, argv, num_elements, num_nodes, comm) bind(C, NAME="InitializeISSM")
     import :: c_ptr, c_int
@@ -163,8 +162,7 @@ subroutine SetServices ( GC, RC )
     ! Set the state variable specs.
 ! -----------------------------
 
-!BOS
-! TODO: lots of placeholders commentary for IM/IN/EX states
+! TODO: placeholders comments for IM/IN/EX states
 !  !Export state:
     ! TODO: set export states here, like this: 
 !    call MAPL_AddExportSpec(GC,                             &
@@ -207,9 +205,8 @@ subroutine SetServices ( GC, RC )
     call MAPL_TimerAdd(GC,    name="RUN"   ,RC=STATUS)
     VERIFY_(STATUS)
 
-    ! Set generic init and final methods
+   
 ! ----------------------------------
-
     call MAPL_GenericSetServices    ( GC, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -309,10 +306,9 @@ subroutine SetServices ( GC, RC )
         ! Ensure that we are only getting the memory address once per string
         argv_ptr(i) = c_loc(argv(i))
     end do
-   
     
     ! ! print the VM information if desired:
-    ! call ESMF_VMPrint(vm, rc=rc)
+    call ESMF_VMPrint(vm, rc=rc)
    
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
@@ -333,7 +329,7 @@ subroutine SetServices ( GC, RC )
 
     elementTypes(:) = ESMF_MESHELEMTYPE_TRI
 
-    ! create the ESMF mesh 
+    ! create the ESMF mesh from ISSM mesh properties
     mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
            elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
 
@@ -378,7 +374,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Mesh)                :: mesh
   integer(c_int)                 :: num_elements  
   type(ESMF_VM)                  :: vm  
-  integer(c_int)                 :: comm  
 
   ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -400,7 +395,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call MAPL_TimerOn(MAPL,"TOTAL")
   call MAPL_TimerOn(MAPL,"RUN" )
 
-  ! timestep for issm...
+  ! timestep for ISSM (TODO: later figure out how to only run at these increments)
   dt = 0.05   ! timestep in years
 
   ! ! need to access num_elements 
