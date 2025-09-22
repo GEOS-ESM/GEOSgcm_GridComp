@@ -306,9 +306,6 @@ subroutine SetServices ( GC, RC )
         ! Ensure that we are only getting the memory address once per string
         argv_ptr(i) = c_loc(argv(i))
     end do
-    
-    ! ! print the VM information if desired:
-    call ESMF_VMPrint(vm, rc=rc)
    
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
