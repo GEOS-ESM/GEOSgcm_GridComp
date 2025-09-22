@@ -1,12 +1,31 @@
-from mpi4py import MPI
+from gt4py.cartesian.gtscript import (
+    FORWARD,
+    PARALLEL,
+    K,
+    computation,
+    exp,
+    interval,
+    log,
+    log10,
+)
 
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, GlobalTable, K, computation, exp, interval, log, log10
+from ndsl.dsl.gt4py import (
+    FORWARD,
+    PARALLEL,
+    GlobalTable,
+    K,
+    computation,
+    exp,
+    interval,
+    log,
+    log10,
+)
 from ndsl.dsl.typing import Float, FloatField, Int
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.shared_incloud_processes import ice_fraction
-
+from mpi4py import MPI
 
 # Workaround to create a 1d off-grid axis that can be written to
 GlobalTable_driver_qsat = GlobalTable[(Float, (int(constants.LENGTH)))]
@@ -88,13 +107,17 @@ def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
             # compute es over ice between - 160 deg c and 0 deg c.
             # -----------------------------------------------------------------------
             fac1 = fac0 * constants.LI2
-            fac2 = (constants.D2ICE * log(tem0 / constants.T_ICE) + fac1) / constants.RVGAS
+            fac2 = (
+                constants.D2ICE * log(tem0 / constants.T_ICE) + fac1
+            ) / constants.RVGAS
         with interval(1600, None):
             # -----------------------------------------------------------------------
             # compute es over water between 0 deg c and 102 deg c.
             # -----------------------------------------------------------------------
             fac1 = fac0 * constants.LV0
-            fac2 = (constants.DC_VAP * log(tem0 / constants.T_ICE) + fac1) / constants.RVGAS
+            fac2 = (
+                constants.DC_VAP * log(tem0 / constants.T_ICE) + fac1
+            ) / constants.RVGAS
 
     with computation(PARALLEL), interval(...):
         table3 = constants.E_00 * exp(fac2)

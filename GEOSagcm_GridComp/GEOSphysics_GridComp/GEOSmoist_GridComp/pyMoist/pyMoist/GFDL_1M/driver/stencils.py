@@ -1,4 +1,12 @@
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, int32, interval, trunc
+from ndsl.dsl.gt4py import (
+    FORWARD,
+    PARALLEL,
+    computation,
+    function,
+    int32,
+    interval,
+    trunc,
+)
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
@@ -31,9 +39,15 @@ def wqs2(
     it = int32(trunc(ap1))
     es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
     qsat = es / (constants.RVGAS * ta * den)
-    it = int32(trunc(ap1 - 0.5))  # check if this rounds or truncates. need truncation here
+    it = int32(
+        trunc(ap1 - 0.5)
+    )  # check if this rounds or truncates. need truncation here
     # finite diff, del_t = 0.1:
-    dqdt = 10.0 * (des2.A[it - 1] + (ap1 - it) * (des2.A[it] - des2.A[it - 1])) / (constants.RVGAS * ta * den)
+    dqdt = (
+        10.0
+        * (des2.A[it - 1] + (ap1 - it) * (des2.A[it] - des2.A[it - 1]))
+        / (constants.RVGAS * ta * den)
+    )
 
     return qsat, dqdt
 
