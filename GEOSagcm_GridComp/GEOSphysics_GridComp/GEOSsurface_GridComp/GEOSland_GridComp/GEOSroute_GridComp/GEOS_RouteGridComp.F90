@@ -65,9 +65,6 @@ module GEOS_RouteGridCompMod
      integer :: minCatch
      integer :: maxCatch
      real,    pointer :: tile_area(:)      => NULL()  ! m2
-     integer, pointer :: nsub(:)           => NULL()
-     integer, pointer :: subi(:,:)         => NULL()
-     real,    pointer :: subarea(:,:)      => NULL()  ! m2
 
      integer, pointer :: scounts_global(:) => NULL()
      integer, pointer :: rdispls_global(:) => NULL()
@@ -75,7 +72,7 @@ module GEOS_RouteGridCompMod
      integer, pointer :: rdispls_cat(:)    => NULL()
  
      real,    pointer :: runoff_save(:)    => NULL()
-     real,    pointer :: areacat(:)        => NULL()  ! m2
+     real,    allocatable  :: areacat(:)  ! m2
      real,    pointer :: lengsc(:)         => NULL()  ! m
 
      integer, allocatable :: downid(:) 
@@ -410,14 +407,11 @@ contains
     integer, pointer :: local_id(:)  => NULL()
     real,    pointer :: tile_area_local(:) => NULL(), tile_area_global(:) => NULL()
 
-    real,    pointer :: subarea_global(:,:)=> NULL(),subarea(:,:)=> NULL() ! Arrays for sub-area and fractions
-    integer, pointer :: subi_global(:,:)=> NULL(),subi(:,:)=> NULL()
-    integer, pointer :: nsub_global(:)=> NULL(),nsub(:)=> NULL()
     integer, pointer :: scounts(:)=>NULL()
     integer, pointer :: scounts_global(:)=>NULL(),rdispls_global(:)=>NULL()
     integer, pointer :: scounts_cat(:)=>NULL(),rdispls_cat(:)=>NULL()    
 
-    real,    pointer :: runoff_save(:)=>NULL(), areacat(:)=>NULL()
+    real,    pointer :: runoff_save(:)=>NULL()
     real,    pointer :: lengsc_global(:)=>NULL(), lengsc(:)=>NULL(), buff_global(:)=>NULL()
     integer, allocatable :: downid_global(:)
     integer, pointer :: upid_global(:,:)=>NULL(), upid(:,:)=>NULL()    
@@ -426,6 +420,8 @@ contains
     type (T_RROUTE_STATE), pointer :: route => null()
     type (RES_STATE),      pointer :: res => NULL()
     type (RROUTE_wrap)             :: wrap
+    real, allocatable              :: tmp_real(:)
+    integer, allocatable           :: tmp_int(:)
 
     type(ESMF_Time)  :: CurrentTime
     type(ESMF_Alarm) :: CollectWaterAlarm
@@ -434,7 +430,7 @@ contains
     character(len=4) :: yr_s
     character(len=2) :: mon_s,day_s    
     character(len=3) :: resname
-    
+    type(Netcdf4_Fileformatter)  :: formatter 
     integer          :: j,nt_local,mpierr,it, unit
 
     ! ------------------
@@ -508,25 +504,21 @@ contains
     route%maxCatch    = maxCatch 
 
     call MAPL_GetResource (MAPL, River_RoutingFile, label = 'River_Routing_FILE:',  default = 'river_input', RC=STATUS )
+    call MAPL_GetResource (MAPL, RIVER_INPUT_FILE,  label = 'RIVER_INPUT_FILE:',    default = '../input/river_input.nc', RC=STATUS )
+    if (MAPL_AM_I_Root()) then
+       call formatter%open(RIVER_INPUT_FILE, PFIO_READ, _RC)
+    endif
+    allocate(tmp_real(n_pfaf_g))
+    allocate(tmp_int(n_pfaf_g))
 
-    ! Read sub-catchment data 
-    allocate(nsub_global(N_pfaf_g),subarea_global(nmax,N_pfaf_g))
-    open(77,file=trim(River_RoutingFile)//"/Pfaf_nsub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)nsub_global; close(77)
-    open(77,file=trim(River_RoutingFile)//"/Pfaf_asub_"//trim(resname)//".txt",status="old",action="read"); read(77,*)subarea_global; close(77)       
-    allocate(nsub(n_pfaf_local),subarea(nmax,n_pfaf_local))
-    nsub=nsub_global(minCatch:maxCatch)
-    subarea=subarea_global(:,minCatch:maxCatch)
-    subarea=subarea*1.e6 !km2->m2
-    deallocate(nsub_global,subarea_global)
+    ! read areacat
+    if (MAPL_AM_I_Root()) then
+       call formatter%get_var('area_catch', tmp_real(:), _RC)
+    endif
+    call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
+    allocate(route%areacat(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
 
-    route%nsub    => nsub
-    route%subarea => subarea
 
-    allocate(subi_global(nmax,N_pfaf_g),subi(nmax,n_pfaf_local))
-    open(77,file=trim(River_RoutingFile)//"/Pfaf_isub_"//trim(resname)//".txt",status="old",action="read");read(77,*)subi_global;close(77)
-    subi=subi_global(:,minCatch:maxCatch)
-    route%subi => subi
-    deallocate(subi_global)
 
     ! Set variables used in MPI
     allocate(scounts(ndes),scounts_global(ndes),rdispls_global(ndes))
@@ -563,19 +555,6 @@ contains
     tile_area_local=tile_area_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local)*1.e6 !km2->m2
     route%tile_area => tile_area_local
     deallocate(tile_area_global)
-
-    allocate(areacat(1:n_pfaf_local))
-    areacat=0. 
-    do i=1,n_pfaf_local
-       do j=1,nmax
-          it=route%subi(j,i) 
-          if(it>0)then 
-             areacat(i)=areacat(i)+route%subarea(j,i)
-          endif
-          if(it==0)exit
-       enddo
-    enddo
-    route%areacat=>areacat
 
     ! Read river network-realated data
     allocate(lengsc_global(N_pfaf_g),lengsc(n_pfaf_local))   
@@ -642,19 +621,6 @@ contains
     call res_init(River_RoutingFile,N_pfaf_g,n_pfaf_local,minCatch,maxCatch,use_res,res%active_res,res%type_res,res%cap_res,res%fld_res,res%Qfld_thres,res%cat2res,res%wid_res)
     if(mapl_am_I_root()) print *,"reservoir init success" 
 
-    !if (mapl_am_I_root())then
-    !  open(88,file="nsub.txt",action="write")
-    !  open(89,file="subarea.txt",action="write")
-    !  open(90,file="subi.txt",action="write")
-    !  open(91,file="tile_area.txt",action="write")
-    !  do i=1,n_pfaf_local
-    !    write(88,*)route%nsub(i)
-    !    write(89,'(150(1x,f10.4))')route%subarea(:,i)
-    !    write(90,'(150(i7))')route%subi(:,i)
-    !    write(91,*)route%tile_area(i)
-    !  enddo
-    !  stop
-    !endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -688,6 +654,9 @@ contains
          )
     VERIFY_(status)
  
+    if (MAPL_AM_I_Root()) then
+       call formatter%close()
+    endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
