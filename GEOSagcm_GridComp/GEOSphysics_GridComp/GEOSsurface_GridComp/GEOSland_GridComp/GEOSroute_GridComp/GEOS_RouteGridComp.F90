@@ -398,6 +398,8 @@ contains
     type(MAPL_LocStream)           :: locstream, catch_LocStream
 
     character(len=ESMF_MAXSTR)     :: River_RoutingFile    
+    character(len=ESMF_MAXSTR)     :: RIVER_INPUT_FILE    
+    character(len=ESMF_MAXSTR)     :: TILE_PFAF_FILE    
     character(len=ESMF_MAXSTR)     :: gridname
     character(len=:), allocatable  :: file_name 
     type(ESMF_Grid)  :: agrid 
@@ -659,7 +661,8 @@ contains
 
     call create_catchment_grid(catch_grid, catch_locstream, _RC)
 
-    call create_mapping_handler('../run/EASEv2_M36_Pfaf.txt', _RC)
+    call MAPL_GetResource (MAPL, TILE_PFAF_File, label = 'TILE_PFAF_FILE:',  default = '../input/tile_pfaf.nc4', RC=STATUS )
+    call create_mapping_handler(trim(TILE_PFAF_File), _RC)
 
     call MAPL%grid%set(catch_grid, _RC)
 
@@ -732,18 +735,20 @@ contains
           _RETURN(_SUCCESS)
        end subroutine create_catchment_grid
 
-       subroutine create_mapping_handler(route_file, rc)
-          character(*),      intent(in)  :: route_file
+       subroutine create_mapping_handler(tile_pfaf_file, rc)
+          character(*),      intent(in)  :: tile_pfaf_file
           integer, optional, intent(out) :: rc
           integer :: status, nWeights, nLocal_weights
           integer, allocatable :: global_id(:)
           real, pointer :: ptr(:)
           logical, allocatable :: mask(:)
           integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:)
-          real,    allocatable :: mapping(:,:), weights(:)
-          integer, allocatable :: local_src(:), local_dst(:)
+          real,    allocatable :: weights(:), global_frac(:)
+          integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:)
           integer :: unit
-
+          type(Netcdf4_Fileformatter) :: formatter
+          type(Filemetadata)          :: meta
+        
 
           ! create source for orignal tile space
           allocate(ptr(nt_local), source = 0.)
@@ -759,26 +764,49 @@ contains
           VERIFY_(STATUS)
           deallocate(ptr)
 
-          UNIT = GETFILE(route_file, form='FORMATTED', _RC)
-          call READ_PARALLEL(layout, nWeights, UNIT=UNIT, _RC)
-          allocate(mapping(3, nWeights))
-          call READ_PARALLEL(layout, mapping(:,:), unit=UNIT, _RC)
-          call FREE_FILE(unit)
+          if (MAPL_AM_I_ROOT()) then
+             call formatter%open(tile_pfaf_file, PFIO_READ, _RC)
+             meta = formatter%read(rc=status)
+             nweights = meta%get_dimension('tile')
+          endif
+          call MAPL_CommsBcast(layout, nWeights, 1, MAPL_Root, status)
+          allocate(global_src(nWeights), global_dst(nWeights), global_frac(nWeights))
+          if (MAPL_AM_I_ROOT()) then
+             call formatter%get_var('tile_id',    global_src, _RC)
+             call formatter%get_var('pfaf_index', global_dst, _RC)
+             call formatter%get_var('pfaf_frac',  global_frac, _RC)
+          endif
+          call MAPL_CommsBcast(layout, global_src, nWeights, MAPL_Root, status)
+          call MAPL_CommsBcast(layout, global_dst, nWeights, MAPL_Root, status)
+          call MAPL_CommsBcast(layout, global_frac,nWeights, MAPL_Root, status)
+          allocate(mask(nWeights))
+          mask = minCatch <= global_dst(:) .and. global_dst(:) <=maxCatch
+          local_src = pack(global_src(:), mask)
+          local_dst = pack(global_dst(:), mask)
+          weights   = pack(global_frac(:), mask)
+          deallocate(global_src, global_dst, global_frac)
+
+
+          !UNIT = GETFILE(route_file, form='FORMATTED', _RC)
+          !call READ_PARALLEL(layout, nWeights, UNIT=UNIT, _RC)
+          !allocate(mapping(3, nWeights))
+          !call READ_PARALLEL(layout, mapping(:,:), unit=UNIT, _RC)
+          !call FREE_FILE(unit)
 
           ! get local  number of weight         
-          allocate(mask(nWeights))
-          mask = minCatch <= mapping(2,:) .and. mapping(2,:) <=maxCatch
-          local_src = nint(pack(mapping(1,:), mask))
-          local_dst = nint(pack(mapping(2,:), mask))
-          weights   = pack(mapping(3,:), mask)
-          deallocate(mapping)
+          !allocate(mask(nWeights))
+          !mask = minCatch <= mapping(2,:) .and. mapping(2,:) <=maxCatch
+          !local_src = nint(pack(mapping(1,:), mask))
+          !local_dst = nint(pack(mapping(2,:), mask))
+          !weights   = pack(mapping(3,:), mask)
+          !deallocate(mapping)
 
           ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
           allocate(global_id(nt_global))
           call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
           ! mapping form local to global index
-          nLocal_weights = size(weights)
+          nLocal_weights = count(mask)
           allocate(srcIndices(nLocal_weights))
           do i =1, nLocal_weights
              positions = pack([(j, j=1, nt_global)], global_id == local_src(i))
