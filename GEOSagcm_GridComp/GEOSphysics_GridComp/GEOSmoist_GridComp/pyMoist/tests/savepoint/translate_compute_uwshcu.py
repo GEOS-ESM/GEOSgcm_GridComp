@@ -7,6 +7,11 @@ from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv
 from pyMoist.UW.config import UWConfiguration
 
 
+# Dev NOTE: The data for this translate test comes from combining ComputeUwschcu and ComputeUwschuInv in
+#           a single nc file using the following NCO tool:
+#           `ncks -A ComputeUwshcu-In.nc ComputeUwshcuInv-In.nc`
+
+
 class TranslateComputeUwshcuInv(TranslateFortranData2Py):
     def __init__(
         self,
@@ -265,11 +270,6 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         # FloatFieldIJs
         tpert_out = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
         qpert_out = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
-
-        # Test variables
-        testvar3D = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-
-        testvar2D = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
 
         compute_uwshcu(
             # Field inputs
