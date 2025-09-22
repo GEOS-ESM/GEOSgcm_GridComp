@@ -946,7 +946,7 @@
         HLWUP(N)= (HLWUP1(N)*AR1(N)+HLWUP2(N)*AR2(N)+HLWUP4(N)*AR4(N))*(1.-AR_UR(N)) +  HLWUP_UR(N)*AR_UR(N)         
         HLWUP(N)= (1.-ASNOW(N))*HLWUP(N) +ASNOW(N)*HLWUPS(N) 
   
-        SWLAND(N)=SWNETF(N)*(1.-AR_UR(N)) + SWNET_UR*AR_UR(N) 
+        SWLAND(N)=SWNETF(N)*(1.-AR_UR(N)) + SWNET_UR(N)*AR_UR(N) 
         SWLAND(N)=(1.-ASNOW(N))*SWLAND(N) +  ASNOW(N)*SWNETS(N)
 
         GHFLUX(N)=(GHFLUX1(N)*AR1(N)+GHFLUX2(N)*AR2(N)+GHFLUX4(N)*AR4(N))*(1.-AR_UR(N)) + GHFLUX_UR(N)*AR_UR(N)          
@@ -1026,10 +1026,6 @@
           EIRFRC(N)=CAPAC(N)*(1.-AR_UR(N))/((EVAPFR(N)+1.E-20)*DTSTEP)
           ENDIF
         ENDDO
-     
-      DO N=1,NCH
-        EVAPFR(N)=EVAPFR(N)/(1.-AR_UR(N))
-      ENDDO
 
       CALL WUPDAT (                                                            &
                      NCH, DTSTEP, EVAPFR, SATCAP, TC1, RA1, RC,                &
@@ -1041,10 +1037,10 @@
                     )
 
       DO N=1,NCH
-        EVAPFR(N) = EVAPFR(N)*(1.-AR_UR(N)) + EINT(N)/DTSTEP*AR_UR(N)
-        EVAP(N) = EVAP(N) + EINT(N)/DTSTEP*AR_UR(N)
-        LHFLUX(N) = LHFLUX(N) + EINT(N)*ALHE/DTSTEP*AR_UR(N)
-        SHFLUX(N) = SHFLUX(N) - EINT(N)*ALHE/DTSTEP*AR_UR(N) 
+        EVAPFR(N) = EVAPFR(N) + EINT(N)*( AR_UR(N)/(1.-AR_UR(N)) )/DTSTEP
+        EVAP(N)   = EVAP(N) + EINT(N)*( AR_UR(N)/(1.-AR_UR(N)) )/DTSTEP
+        LHFLUX(N) = LHFLUX(N) + EINT(N)*( AR_UR(N)/(1.-AR_UR(N)) )*ALHE/DTSTEP
+        SHFLUX(N) = SHFLUX(N) - EINT(N)*( AR_UR(N)/(1.-AR_UR(N)) )*ALHE/DTSTEP
       ENDDO
 
 ! ---------------------------------------------------------------------
@@ -2952,9 +2948,9 @@
 
 !**** ENSURE THAT INDIVIDUAL CAPACITIES ARE NOT EXCEEDED.
 
-      IF(EINT(CHNO) .GT. CAPAC(CHNO)) THEN
-        EGRO=EGRO+EINT(CHNO)-CAPAC(CHNO)
-        EINT(CHNO)=CAPAC(CHNO)
+      IF( EINT(CHNO) .GT. CAPAC(CHNO)*(1.-AR_UR(CHNO)) ) THEN
+        EGRO=EGRO+EINT(CHNO)-CAPAC(CHNO)*(1.-AR_UR(CHNO))
+        EINT(CHNO)=CAPAC(CHNO)*(1.-AR_UR(CHNO))
         ENDIF
 
 ! RK 09/16/03
@@ -2963,7 +2959,7 @@
       egromx= rzemax + (srfexc(chno)-srfmn(chno))
       IF(EGRO .GT. egromx) THEN
 ! 06.02.98: the minimum is designed to prevent truncation errors 
-        EINT(CHNO)=AMIN1(CAPAC(CHNO),EINT(CHNO)+EGRO-egromx)
+        EINT(CHNO)=AMIN1(CAPAC(CHNO)*(1.-AR_UR(CHNO)),EINT(CHNO)+EGRO-egromx)
         EGRO=egromx
         ENDIF
 ! RK 09/16/03
@@ -3005,16 +3001,13 @@
         EVEG(CHNO)=0.
         ENDIF
 
-      EVEG(CHNO)=EVEG(CHNO)*(1.-AR_UR(CHNO))
-      ESOI(CHNO)=ESOI(CHNO)*(1.-AR_UR(CHNO))
-
 !****
 !**** REMOVE MOISTURE FROM RESERVOIRS:
 !****
 
         IF (CATDEF(CHNO) .LT. CDCR1(CHNO)) THEN
-          CAPAC(CHNO) = AMAX1(0., CAPAC(CHNO) - EINT(CHNO))
-          RZEXC(CHNO) = RZEXC(CHNO) - EVEG(CHNO)*(1.-ESATFR)
+          CAPAC(CHNO) = AMAX1( 0., CAPAC(CHNO) - EINT(CHNO) - EINT(CHNO)*( AR_UR(CHNO)/(1.-AR_UR(CHNO)) ) )
+          RZEXC(CHNO) = RZEXC(CHNO) - EVEG(CHNO)*(1.-ESATFR) 
           SRFEXC(CHNO) = SRFEXC(CHNO) - ESOI(CHNO)*(1.-ESATFR)
 
           IF (POROS(CHNO) < PEATCLSM_POROS_THRESHOLD) THEN
@@ -3033,7 +3026,7 @@
           ENDIF
 ! 05.12.98: first attempt to include bedrock
         ELSE
-          CAPAC(CHNO) = AMAX1(0., CAPAC(CHNO) - EINT(CHNO))
+          CAPAC(CHNO) = AMAX1( 0., CAPAC(CHNO) - EINT(CHNO) - EINT(CHNO)*( AR_UR(CHNO)/(1.-AR_UR(CHNO)) ) )
           RZEXC(CHNO) = RZEXC(CHNO) -  EVEG(CHNO)
           SRFEXC(CHNO) = SRFEXC(CHNO) - ESOI(CHNO)
         ENDIF
