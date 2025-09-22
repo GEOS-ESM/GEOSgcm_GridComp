@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, function
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval
 from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 

@@ -1,7 +1,6 @@
-from ndsl.dsl.gt4py import K, erfc, exp, f32, float64, log, sin, sqrt, function
-
 import pyMoist.constants as constants
 import pyMoist.pyMoist_constants as py_constants
+from ndsl.dsl.gt4py import K, erfc, exp, f32, float64, function, log, sin, sqrt
 from ndsl.dsl.typing import Float, FloatField, Int
 from pyMoist.saturation.qsat import FloatField_Extra_Dim, QSat_Float
 
@@ -277,17 +276,17 @@ def compute_mumin2(
     x0: float64 = mulow
     iteration = 0
     while iteration < 10:
-        ex: float64 = exp(-(x0**2))
+        ex: float64 = exp(-(x0 ** 2))
         ef: float64 = erfc(x0)  # Complimentary error fraction function
         exf: float64 = ex / ef
         f: float64 = (
-            float64(0.5) * exf**2
+            float64(0.5) * exf ** 2
             - float64(0.5) * (ex / float64(2.0) / rmaxfrax) ** 2
             - (mulcl * float64(2.5066) / float64(2.0)) ** 2
         )
-        fs: float64 = (float64(2.0) * exf**2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
-            float64(0.5) * x0 * ex**2
-        ) / (rmaxfrax**2)
+        fs: float64 = (float64(2.0) * exf ** 2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
+            float64(0.5) * x0 * ex ** 2
+        ) / (rmaxfrax ** 2)
         x1: float64 = x0 - f / fs
         x0 = x1
         iteration += 1
@@ -519,10 +518,10 @@ def roots(
                 r1 = sqrt(-c / a)
             r2 = -r1
         else:  # Form a*x**2 + b*x + c = 0
-            if (b**2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
+            if (b ** 2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
                 status = 3
             else:
-                q = -0.5 * (b + sign(1.0, b) * sqrt(b**2 - 4.0 * a * c))
+                q = -0.5 * (b + sign(1.0, b) * sqrt(b ** 2 - 4.0 * a * c))
                 r1 = q / a
                 r2 = c / q
 

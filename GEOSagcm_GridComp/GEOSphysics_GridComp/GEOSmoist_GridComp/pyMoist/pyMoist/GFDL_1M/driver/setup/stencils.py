@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt, function
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.shared_generic_math import sigma
@@ -67,7 +67,7 @@ def init_temporaries(
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
     """
-    from __externals__ import cpaut, DO_SEDI_W
+    from __externals__ import DO_SEDI_W, cpaut
 
     with computation(PARALLEL), interval(...):
         t1 = t

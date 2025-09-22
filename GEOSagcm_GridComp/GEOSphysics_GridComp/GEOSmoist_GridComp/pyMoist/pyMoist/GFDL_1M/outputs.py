@@ -150,8 +150,6 @@ class Outputs:
             "anvil_ice_flux",
         ]
         for field in _3D_fields_K_interface:
-            attrs[field] = quantity_factory.zeros(
-                [X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a"
-            )
+            attrs[field] = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
 
         return cls(**attrs)

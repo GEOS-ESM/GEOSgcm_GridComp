@@ -1,5 +1,5 @@
 from ndsl import StencilFactory, ndsl_log, orchestrate
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
@@ -95,12 +95,8 @@ def finalize_precip(
         large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux_from_driver
         large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux_from_driver
         # Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
-        large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux / (
-            MAPL_GRAV * DT_MOIST
-        )
-        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux / (
-            MAPL_GRAV * DT_MOIST
-        )
+        large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux / (MAPL_GRAV * DT_MOIST)
+        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux / (MAPL_GRAV * DT_MOIST)
 
     with computation(PARALLEL), interval(1, None):
         # Redistribute precipitation fluxes for chemistry
@@ -117,9 +113,7 @@ def finalize_precip(
                 0.0,
             ),
         )
-        large_scale_nonanvil_liquid_flux = (
-            large_scale_nonanvil_liquid_flux - anvil_liquid_flux
-        )
+        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux - anvil_liquid_flux
 
     with computation(PARALLEL), interval(...):
         # cleanup suspended precipitation condensates
@@ -222,11 +216,7 @@ def dissipative_ke_heating(
 ):
     with computation(FORWARD), interval(...):
         # total KE dissipation estimate
-        dts = (
-            dts
-            - ((du_dt_macro + du_dt_micro) * u0 + (dv_dt_macro + dv_dt_micro) * v0)
-            * mass
-        )
+        dts = dts - ((du_dt_macro + du_dt_micro) * u0 + (dv_dt_macro + dv_dt_micro) * v0) * mass
         # [sic] fpi needed for calcualtion of conversion to pot. energyintegrated
         ke = sqrt(
             (du_dt_macro + du_dt_micro) * (du_dt_macro + du_dt_micro)

@@ -2,16 +2,7 @@ from typing import Optional
 
 from ndsl import StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.gt4py import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    function,
-    interval,
-    log,
-    K,
-)
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
 from pyMoist.constants import (
     MAPL_ALHL,
@@ -30,10 +21,7 @@ from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.outputs import Outputs
 from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
 from pyMoist.GFDL_1M.temporaries import Temporaries
-from pyMoist.interpolations import (
-    vertical_interpolation,
-    vertical_interpolation_interface,
-)
+from pyMoist.interpolations import vertical_interpolation
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 

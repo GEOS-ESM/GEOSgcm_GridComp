@@ -3,8 +3,8 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.finish.main import Finish
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
+from pyMoist.GFDL_1M.driver.finish.main import Finish
 
 
 class TranslateGFDL_1M_driver_finish(TranslateFortranData2Py):

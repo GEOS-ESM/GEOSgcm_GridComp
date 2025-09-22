@@ -1,10 +1,9 @@
 import copy
 from typing import Optional
 
-
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import PARALLEL, computation, floor, function, interval, int32
+from ndsl.dsl.gt4py import PARALLEL, computation, floor, function, int32, interval
 from ndsl.dsl.typing import Float, FloatField
 from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.constants import (

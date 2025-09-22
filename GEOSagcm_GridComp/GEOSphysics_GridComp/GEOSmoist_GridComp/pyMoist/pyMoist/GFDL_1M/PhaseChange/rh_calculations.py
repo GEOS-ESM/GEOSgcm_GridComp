@@ -36,12 +36,7 @@ def rh_calculations(
             rh_crit = minrhcrit + (1.0 - minrhcrit) / (19.0) * (
                 (
                     atan(
-                        (
-                            2.0
-                            * (p_mb - turnrhcrit)
-                            / (p_interface_mb.at(K=k_end) - turnrhcrit)
-                            - 1.0
-                        )
+                        (2.0 * (p_mb - turnrhcrit) / (p_interface_mb.at(K=k_end) - turnrhcrit) - 1.0)
                         * tan(20.0 * constants.MAPL_PI / 21.0 - 0.5 * constants.MAPL_PI)
                     )
                     + 0.5 * constants.MAPL_PI

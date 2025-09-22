@@ -2,11 +2,11 @@ from typing import Optional
 
 import numpy as np
 
+from ndsl.dsl.gt4py import exp, function, log
 from ndsl.dsl.typing import Float, Int
 from pyMoist.saturation_tables.constants import DELTA_T, ERFAC, ESFAC, MAPL_TICE, MAX_MIXING_RATIO
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.constants import IceExactConstants
-from ndsl.dsl.gt4py import function, exp, log
 
 
 @function

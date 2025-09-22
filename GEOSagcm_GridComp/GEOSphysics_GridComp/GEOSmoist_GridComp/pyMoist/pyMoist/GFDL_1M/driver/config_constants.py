@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
 import numpy as np
-from ndsl.dsl.gt4py import int32
 
+from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Float
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.constants import constants

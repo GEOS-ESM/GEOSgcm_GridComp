@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 
+from ndsl.dsl.gt4py import exp, function, log, log10, tanh
 from ndsl.dsl.typing import Float, Int
 from pyMoist.saturation_tables.constants import (
     DELTA_T,
@@ -14,7 +15,6 @@ from pyMoist.saturation_tables.constants import (
 )
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.constants import LiquidExactConstants
-from ndsl.dsl.gt4py import function, exp, tanh, log10, log
 
 
 @function

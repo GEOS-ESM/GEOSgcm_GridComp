@@ -2,14 +2,13 @@ from typing import Dict, Optional
 
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import PARALLEL, K, computation, interval
 from ndsl.dsl.typing import Float, FloatField, Int
-from ndsl.dsl.gt4py import computation, PARALLEL, interval, K
 from pyMoist.saturation_tables.constants import DELTA_T, MAPL_TICE, TABLESIZE, TMINLQU, TMINTBL, TMIX
 from pyMoist.saturation_tables.formulation import SaturationFormulation
-from pyMoist.saturation_tables.tables.ice_exact import ice_exact_no_stencil, ice_exact
-from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact_no_stencil, liquid_exact
-from pyMoist.saturation_tables.tables.constants import IceExactConstants
-from pyMoist.saturation_tables.tables.constants import LiquidExactConstants
+from pyMoist.saturation_tables.tables.constants import IceExactConstants, LiquidExactConstants
+from pyMoist.saturation_tables.tables.ice_exact import ice_exact, ice_exact_no_stencil
+from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact, liquid_exact_no_stencil
 
 
 def _compute_tables(ese: FloatField, esw: FloatField, esx: FloatField, formulation: Int):

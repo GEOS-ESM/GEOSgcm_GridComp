@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import exp, function, log, float64
+from ndsl.dsl.gt4py import exp, float64, function, log
 
 
 @function
@@ -159,7 +159,7 @@ def Erf(x: float64) -> float64:
     """
     erf: float64 = float64(0.0)
     if x < float64(0.0e00):
-        erf = float64(-1.0) * GammP(float64(0.5), x**2)
+        erf = float64(-1.0) * GammP(float64(0.5), x ** 2)
     else:
-        erf = GammP(float64(0.5), x**2)
+        erf = GammP(float64(0.5), x ** 2)
     return erf

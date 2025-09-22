@@ -1,10 +1,9 @@
 import copy
 
-from ndsl.dsl.gt4py import PARALLEL, computation, exp, float64, interval, log, sqrt
-
 import pyMoist.constants as constants
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, float64, interval, log, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.field_types import FloatField_NModes
 from pyMoist.numerical_recipes import Erf
@@ -222,16 +221,16 @@ def aer_activation_stencil(
                 sm = (float64(2.0) / sqrt(bibar[0, 0, 0][n])) * (a / (3.0 * rg[0, 0, 0][n])) ** float64(
                     1.5
                 )  # [1]
-                eta = dum**3 / (TWOPI * DENH2O * gamma * ni[0, 0, 0][n])  # [1]
-                f1 = float64(0.5) * exp(2.50 * xlogsigm**2)  # [1]
+                eta = dum ** 3 / (TWOPI * DENH2O * gamma * ni[0, 0, 0][n])  # [1]
+                f1 = float64(0.5) * exp(2.50 * xlogsigm ** 2)  # [1]
                 f2 = float64(1.0) + 0.25 * xlogsigm  # [1]
                 smax = (
                     smax
                     + (
                         f1 * (zeta / eta) ** float64(1.5)
-                        + f2 * (sm**2 / (eta + float64(3.0) * zeta)) ** float64(0.75)
+                        + f2 * (sm ** 2 / (eta + float64(3.0) * zeta)) ** float64(0.75)
                     )
-                    / sm**2
+                    / sm ** 2
                 )  # [1] - eq. (6)
                 n += 1
 

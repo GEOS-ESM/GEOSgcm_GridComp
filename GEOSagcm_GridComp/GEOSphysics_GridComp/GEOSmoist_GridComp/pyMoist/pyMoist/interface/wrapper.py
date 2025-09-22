@@ -40,10 +40,7 @@ from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.interface.cuda_profiler import TimedCUDAProfiler
 from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
-from pyMoist.interface.mapl.memory_factory import (
-    MAPLManagedMemory,
-    MAPLMemoryRepository,
-)
+from pyMoist.interface.mapl.memory_factory import MAPLManagedMemory, MAPLMemoryRepository
 
 
 class MemorySpace(enum.Enum):
@@ -217,7 +214,7 @@ class GEOSPyMoistWrapper:
         )
 
         # Timer result dict
-        self._timings = {}
+        self._timings: dict[str, list[float]] = {}
 
         # JIT system for the component of Moist
         self._aer_activation: Optional[AerActivation] = None
