@@ -331,6 +331,12 @@ class Finalize:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
+        # Dev NOTE: this is an orchestration workaround. Direct call to
+        #           `self.saturation_tables.X` fails closure capture for
+        #           argument reconstruction at call time
+        self._ese = self.saturation_tables.ese
+        self._esx = self.saturation_tables.esx
+
     def __call__(
         self,
         t: FloatField,
@@ -421,8 +427,8 @@ class Finalize:
             outputs.liquid_radius,
             outputs.ice_radius,
             outputs.relative_humidity_after_pdf,
-            self.saturation_tables.ese,
-            self.saturation_tables.esx,
+            self._ese,
+            self._esx,
         )
 
         if self.GFDL_1M_config.DO_QA is True:
@@ -431,8 +437,8 @@ class Finalize:
                 vapor=mixing_ratios.vapor,
                 t=t,
                 p_mb=temporaries.p_mb,
-                ese=self.saturation_tables.ese,
-                esx=self.saturation_tables.esx,
+                ese=self._ese,
+                esx=self._esx,
             )
 
         self.fix_mixing_ratio(

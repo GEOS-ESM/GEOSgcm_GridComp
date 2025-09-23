@@ -132,6 +132,15 @@ class PhaseChange:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
+        # Dev NOTE: this is an orchestration workaround. Direct call to
+        #           `self.tables.X` fails closure capture for
+        #           argument reconstruction at call time
+        self._ese = self.tables.ese
+        self._esw = self.tables.esw
+        self._esx = self.tables.esx
+        self._estfrz = self.tables.frz
+        self._estlqu = self.tables.lqu
+
     def __call__(
         self,
         estimated_inversion_strength: FloatFieldIJ,
@@ -216,11 +225,11 @@ class PhaseChange:
             convective_cloud_fraction=convective_cloud_fraction,
             nacti=nacti,
             rhx=rhx,
-            ese=self.tables.ese,
-            esw=self.tables.esw,
-            esx=self.tables.esx,
-            estfrz=self.tables.frz,
-            estlqu=self.tables.lqu,
+            ese=self._ese,
+            esw=self._esw,
+            esx=self._esx,
+            estfrz=self._estfrz,
+            estlqu=self._estlqu,
         )
 
         if self.GFDL_1M_config.MELTFRZ:

@@ -48,7 +48,6 @@ def calculate_derived_states(
     u_unmodified: FloatField,
     v: FloatField,
     v_unmodified: FloatField,
-    temporary_3d: FloatField,
     th: FloatField,
 ):
     """
@@ -62,7 +61,7 @@ def calculate_derived_states(
     with computation(PARALLEL), interval(...):
         p_interface_mb = p_interface * 0.01
         edge_height_above_surface = geopotential_height_interface - geopotential_height_interface.at(K=k_end)
-    with computation(FORWARD), interval(0, -1):
+    with computation(PARALLEL), interval(0, -1):
         p_mb = 0.5 * (p_interface_mb + p_interface_mb[0, 0, 1])
         layer_height_above_surface = 0.5 * (edge_height_above_surface + edge_height_above_surface[0, 0, 1])
         layer_thickness = edge_height_above_surface - edge_height_above_surface[0, 0, 1]
@@ -74,10 +73,6 @@ def calculate_derived_states(
         v_unmodified = v
         temporary_3d = (100.0 * p_mb / MAPL_P00) ** (MAPL_KAPPA)
         th = t / temporary_3d
-
-    # reset temporary field for later uses
-    with computation(PARALLEL), interval(...):
-        temporary_3d = 0
 
 
 @function
@@ -266,6 +261,12 @@ class Setup:
             },
         )
 
+        # Dev NOTE: this is an orchestration workaround. Direct call to
+        #           `self.saturation_tables.X` fails closure capture for
+        #           argument reconstruction at call time
+        self._ese = self.saturation_tables.ese
+        self._esx = self.saturation_tables.esx
+
     def __call__(
         self,
         geopotential_height_interface: FloatField,
@@ -320,7 +321,7 @@ class Setup:
             dp=temporaries.dp,
             mass=temporaries.mass,
             t=t,
-            ese=self.saturation_tables.ese,
+            ese=self._ese,
             esx=self.saturation_tables.esx,
             qsat=temporaries.qsat,
             dqsat=temporaries.dqsat,
@@ -328,7 +329,6 @@ class Setup:
             u_unmodified=temporaries.u_unmodified,
             v=v,
             v_unmodified=temporaries.v_unmodified,
-            temporary_3d=temporaries.temporary_3d,
             th=temporaries.th,
         )
 
@@ -336,8 +336,8 @@ class Setup:
             t=t,
             p_mb=temporaries.p_mb,
             vapor=mixing_ratios.vapor,
-            ese=self.saturation_tables.ese,
-            esx=self.saturation_tables.esx,
+            ese=self._ese,
+            esx=self._esx,
             found_level=masks.boolean_2d_mask,
             k_lcl=temporaries.k_lcl,
         )
@@ -387,8 +387,8 @@ class Setup:
             th700=temporaries.th700,
             z700=temporaries.z700,
             k_lcl=temporaries.k_lcl,
-            ese=self.saturation_tables.ese,
-            esx=self.saturation_tables.esx,
+            ese=self._ese,
+            esx=self._esx,
             lower_tropospheric_stability=outputs.lower_tropospheric_stability,
             estimated_inversion_strength=outputs.estimated_inversion_strength,
         )
