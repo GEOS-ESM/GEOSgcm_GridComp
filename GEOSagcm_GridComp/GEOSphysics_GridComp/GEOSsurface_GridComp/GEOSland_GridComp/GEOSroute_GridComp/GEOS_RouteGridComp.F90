@@ -1,11 +1,5 @@
-
 #include "MAPL_Generic.h"
 
-#ifndef RUN_FOR_REAL
-#define MAPL_DimsCatchOnly MAPL_DimsTileOnly
-#endif
-
-!=============================================================================
 module GEOS_RouteGridCompMod
 
 !BOP
@@ -32,9 +26,7 @@ module GEOS_RouteGridCompMod
   
   implicit none
 
-  integer, parameter :: upmax    = 34
   logical, parameter :: use_res  = .True.
-  integer, save      :: nmax 
 
   private
 
@@ -75,16 +67,6 @@ module GEOS_RouteGridCompMod
      integer, allocatable :: recv_count(:), displ_recv(:)
      integer              :: total_send, total_recv
   end type T_RROUTE_STATE
-
-
-  interface
-    function mkdir(path,mode) bind(c,name="mkdir")
-      use iso_c_binding
-      integer(c_int) :: mkdir
-      character(kind=c_char,len=1) :: path(*)
-      integer(c_int16_t), value :: mode
-    end function mkdir
-  end interface
 
   ! Wrapper for extracting internal state
   ! -------------------------------------
@@ -167,11 +149,7 @@ contains
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
     VERIFY_(STATUS)
-!    call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_RUN, Run, RC=STATUS)
-!    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN1, RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN2, RC=STATUS )
+    call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_RUN, Run, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE, Finalize, RC=status)
     VERIFY_(status)
@@ -281,7 +259,7 @@ contains
          LONG_NAME          = 'transfer_of_river_water_to_downstream_catchments' ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QOUTFLOW'                 ,&
-         DIMS               = MAPL_DimsCatchOnly           ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )
 
@@ -290,7 +268,7 @@ contains
          LONG_NAME          = 'qres' ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QRES'                 ,&
-         DIMS               = MAPL_DimsCatchOnly           ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )
     endif
@@ -319,9 +297,7 @@ contains
 
     call MAPL_TimerAdd(GC, name="INITIALIZE"     ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC, name="RUN1"           ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC, name="RUN2"           ,RC=STATUS)
+    call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
     VERIFY_(STATUS)
 
 ! All done
@@ -376,7 +352,6 @@ contains
 
     character(len=ESMF_MAXSTR)     :: RIVER_INPUT_FILE    
     character(len=ESMF_MAXSTR)     :: TILE_PFAF_FILE    
-    character(len=ESMF_MAXSTR)     :: gridname
     type(ESMF_Grid)  :: agrid 
     type (ESMF_DELayout) :: layout
     type (ESMF_DistGrid) :: dist_grid 
@@ -436,23 +411,6 @@ contains
     VERIFY_(status)
     call ESMF_GridGet(agrid,   distGrid=dist_grid, _RC)
     call ESMF_DistGridGet(dist_grid, delayout=layout, _RC) 
-
-    ! get grid name
-    call ESMF_GridGet(agrid, name=gridname, rc=status)
-    VERIFY_(STATUS)    
-    ! Determine the resolution
-    if(index(gridname,'M36') /=0)then
-       resname="M36"
-       nmax=150
-    else if(index(gridname,'M09') /=0)then
-       resname="M09"
-       nmax=458
-    else
-       if(mapl_am_I_root())then
-          print *,"unknown grid for routing model"
-          stop
-       endif
-    endif
 
     call MAPL_LocStreamGet(locstream, &
          tileGrid=tilegrid, nt_local=nt_local, nt_global=nt_global, &
@@ -821,25 +779,7 @@ contains
 
   ! --------------------------------------------------------------------------------  
   
-! -----------------------------------------------------------
-! RUN -- Run method for the route component
-! -----------------------------------------------------------
-  subroutine RUN1 (GC,IMPORT, EXPORT, CLOCK, RC )
-
-! -----------------------------------------------------------
-! !ARGUMENTS:
-! -----------------------------------------------------------
-
-    type(ESMF_GridComp), intent(inout) :: GC    
-    type(ESMF_State),    intent(inout) :: IMPORT
-    type(ESMF_State),    intent(inout) :: EXPORT
-    type(ESMF_Clock),    intent(inout) :: CLOCK
-    integer, optional,   intent(  out) :: RC
-  end subroutine RUN1
-  
-  ! --------------------------------------------------------------------------------
-  
-  subroutine RUN2 (GC,IMPORT, EXPORT, CLOCK, RC )
+  subroutine RUN (GC,IMPORT, EXPORT, CLOCK, RC )
     
 ! -----------------------------------------------------------
 ! !ARGUMENTS:
@@ -855,7 +795,7 @@ contains
 ! ErrLog Variables
 ! -----------------------------------------------------------
 
-    character(len=ESMF_MAXSTR)          :: IAm="Run2"
+    character(len=ESMF_MAXSTR)          :: IAm='RUN'
     integer                             :: STATUS
     character(len=ESMF_MAXSTR)          :: COMP_NAME
 
@@ -913,7 +853,7 @@ contains
     type(ESMF_Field) :: runoff_src
 
     integer                                :: ndes, mype
-    type (T_RROUTE_STATE), pointer         :: route => null()
+    type (T_RROUTE_STATE), pointer         :: route 
     type (RROUTE_wrap)                     :: wrap
 
     integer :: nt_global,nt_local
@@ -925,7 +865,7 @@ contains
     character(len=2) :: mon_s,day_s
 
     real,             pointer     :: arrayPtr(:)
-    type (RES_STATE), pointer     :: res => NULL()    
+    type (RES_STATE), pointer     :: res 
 
     real,             allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:)
    
@@ -942,7 +882,7 @@ contains
 
     call ESMF_GridCompGet(GC, name=COMP_NAME, CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS) 
-    Iam = trim(COMP_NAME) // "RUN2"
+    Iam = trim(COMP_NAME) // "::RUN"
 
 ! Get my internal MAPL_Generic state
 ! -----------------------------------------------------------
@@ -969,7 +909,7 @@ contains
 
 ! Start timers
 ! ------------
-    call MAPL_TimerOn(MAPL,"RUN2")
+    call MAPL_TimerOn(MAPL,"RUN")
 ! Get parameters from generic state
 ! ---------------------------------
 
@@ -1089,12 +1029,10 @@ contains
 
     endif ! alarm
 
-    ! update restart
-
 ! All done
 ! --------
     call MAPL_TimerOff ( MAPL, "-RRM" ) 
-    call MAPL_TimerOff(MAPL,"RUN2")
+    call MAPL_TimerOff(MAPL,"RUN")
     !call MPI_Barrier(route%comm, mpierr)
 
     RETURN_(ESMF_SUCCESS)
@@ -1141,7 +1079,7 @@ contains
         RETURN_(ESMF_SUCCESS)
       end subroutine exchange_water
 
-  end subroutine RUN2
+  end subroutine RUN
   
   subroutine Finalize(gc, import, export, clock, rc)
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component

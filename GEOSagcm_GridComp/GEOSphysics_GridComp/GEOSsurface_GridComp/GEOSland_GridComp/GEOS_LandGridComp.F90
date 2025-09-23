@@ -195,9 +195,9 @@ contains
        
     END SELECT
 
-    allocate (ROUTE(NUM_CATCH_ENS), stat=status)
-    VERIFY_(STATUS)
     IF(RUN_ROUTE == 1) THEN
+       allocate (ROUTE(NUM_CATCH_ENS), stat=status)
+       VERIFY_(STATUS)
        if (NUM_CATCH_ENS == 1) then
           ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
           VERIFY_(STATUS)
@@ -1717,7 +1717,7 @@ contains
    type (ESMF_State),     pointer  :: GEX(:)
    character(len=ESMF_MAXSTR),pointer  :: GCnames(:)
 
-   integer :: I
+   integer :: I, phase
   
 !=============================================================================
 
@@ -1746,9 +1746,11 @@ contains
 !--------------------------------
     DO I=1,size(GCS)
        if (I == VEGDYN) cycle
+       phase = 2
+       if (trim(GCnames(i)) == "ROUTE") phase = 1
        call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
        call ESMF_GridCompRun(GCS(I), importState=GIM(I), exportState=GEX(I), &
-                             CLOCK=CLOCK, PHASE=2, userRC=STATUS)
+                             CLOCK=CLOCK, PHASE=phase, userRC=STATUS)
        VERIFY_(STATUS)
        call MAPL_TimerOff(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
     END DO
