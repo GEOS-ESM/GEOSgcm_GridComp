@@ -29,8 +29,6 @@ class TranslateGFDL_driver_tables(TranslateFortranData2Py):
 
         self.sat_tables = get_tables(self.stencil_factory.backend)
 
-        print(len(self.sat_tables.table1))
-
         return {
             "table1_driver": self.sat_tables.table1,
             "table2_driver": self.sat_tables.table2,

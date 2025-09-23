@@ -1,7 +1,7 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import BoolFieldIJ, FloatField, FloatFieldIJ
-from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
+from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 from pyMoist.GFDL_1M.driver.stencils import implicit_fall
@@ -18,9 +18,10 @@ class WarmRain:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        GFDL_1M_config: MicrophysicsConfiguration,
+        GFDL_1M_config: GFDL1MConfig,
         config_dependent_constants: ConfigConstants,
     ):
+        self.GFDL_1M_config = GFDL_1M_config
 
         # Initalize temporaries
         self.temporaries = Temporaries.make(quantity_factory)
@@ -161,6 +162,7 @@ class WarmRain:
             c_praut,
             vtr,
             evap1,
+            m1_rain,
             rh_limited,
             eis,
             onemsig,
@@ -176,17 +178,21 @@ class WarmRain:
             des3,
             des4,
         )
-
-        self._implicit_fall(
-            qr1,
-            vtr,
-            ze,
-            dp1,
-            m1,
-            m1_sol,
-            rain1,
-            precip_fall,
-        )
+        if self.GFDL_1M_config.USE_PPM is False:
+            # NOTE: somehow errors pop up in rain1 and m1_rain within implicit fall, despite all of the
+            # imputs being correct and implicit_fall verifying at three separate calls
+            # within the terminal_fall module. May be a similar issue to the warm_rain_part_1 error
+            # (different result despite inputs being identical, possible registry issue??).
+            self._implicit_fall(
+                q=qr1,
+                vt=vtr,
+                ze=ze,
+                dp1=dp1,
+                m1=self.temporaries.unused_m1,
+                m1_sol=m1_rain,
+                precip=rain1,
+                precip_fall=precip_fall,
+            )
 
         self._warm_rain_step_2(
             t1,

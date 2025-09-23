@@ -6,6 +6,8 @@ from typing import List, Optional, Tuple, TypeAlias
 
 import cffi
 import numpy as np
+import numpy.typing as npt
+from _cffi_backend import _CDataBase as CFFIObj
 
 from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
@@ -14,8 +16,8 @@ from ndsl.optional_imports import cupy as cp
 # Dev note: we would like to use cp.ndarray for Device and
 # Union of np and cp ndarray for Python but we can't
 # because cp might not be importable!
-DeviceArray: TypeAlias = np.ndarray
-PythonArray: TypeAlias = np.ndarray
+DeviceArray: TypeAlias = npt.NDArray
+PythonArray: TypeAlias = npt.NDArray
 
 
 class NullStream:
@@ -88,7 +90,8 @@ class FortranPythonConversion:
         if not dim:
             dim = [self._npx, self._npy, self._npz]
         ftype = self._ffi.getctype(self._ffi.typeof(fptr).item)
-        assert ftype in self._TYPEMAP
+        if ftype not in self._TYPEMAP:
+            raise ValueError(f"Fortran Python memory converter: cannot convert type {ftype}")
         return np.frombuffer(
             self._ffi.buffer(fptr, prod(dim) * self._ffi.sizeof(ftype)),
             self._TYPEMAP[ftype],
@@ -195,7 +198,7 @@ class FortranPythonConversion:
         fptr: cffi.FFI.CData,
         ptr_offset: int = 0,
         swap_axes: Optional[Tuple[int, int]] = None,
-    ) -> np.ndarray:
+    ) -> None:
         """
         Input: Fortran data pointed to by fptr and of shape dim = (i, j, k)
         Output: C-ordered double precision NumPy data of shape (i, j, k)
@@ -209,3 +212,17 @@ class FortranPythonConversion:
             swap_axes,
         )
         self._ffi.memmove(fptr + ptr_offset, numpy_array, 4 * numpy_array.size)
+
+    def cast(self, dtype: npt.DTypeLike, void_ptr: CFFIObj) -> CFFIObj:
+        if dtype in [int, np.int64]:  # type: ignore
+            return self._ffi.cast("int64_t*", void_ptr)
+        elif dtype in [np.int32]:  # type: ignore
+            return self._ffi.cast("int32_t*", void_ptr)
+        elif dtype in [np.float32]:  # type: ignore
+            return self._ffi.cast("float*", void_ptr)
+        elif dtype in [float, np.float64]:  # type: ignore
+            return self._ffi.cast("double*", void_ptr)
+        elif dtype in [bool]:
+            return self._ffi.cast("bool*", void_ptr)
+
+        raise NotImplementedError(f"Cannot cast void* to C-equivalent of {dtype}")

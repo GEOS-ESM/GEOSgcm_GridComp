@@ -4,7 +4,7 @@ from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, s
 import pyMoist.constants as constants
 import pyMoist.pyMoist_constants as py_constants
 from ndsl.dsl.typing import Float, FloatField, Int
-from pyMoist.saturation.qsat import FloatField_Extra_Dim, QSat_Float
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
 
 
 P00 = Float(1e5)  # Reference pressure
@@ -188,8 +188,8 @@ def conden(
     p: Float,
     thl: Float,
     qt: Float,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
 ):
     """
     Function that determines if condensation process has occurred.
@@ -198,8 +198,8 @@ def conden(
     p [Float]: Pressure [Pa]
     thl [Float]: Liquid potential temperature [K]
     qt [Float]: Mixing ratio [kg/kg]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
 
     Returns:
     th [Float]: Temperature [K]
@@ -219,7 +219,7 @@ def conden(
     )
     temps: float32 = tc
     ps: float32 = p
-    qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
+    qs, _ = saturation_specific_humidity(temps, ps, ese, esx)
     rvls: float32 = float64(qs)
 
     if qs >= qt:  # no condensation
@@ -236,7 +236,7 @@ def conden(
                 constants.MAPL_CP / leff
                 + constants.EPSILON * leff * rvls / (constants.MAPL_RGAS * temps * temps)
             )
-            qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
+            qs, _ = saturation_specific_humidity(temps, ps, ese, esx)
             rvls = qs
             iteration += 1
         qc = max(qt - qs, float64(0.0))
@@ -447,10 +447,8 @@ def getbuoy(
         frc = (thvubot / thv0bot - 1.0) / ((thvubot / thv0bot - 1.0) - (thvutop / thv0top - 1.0))
         plfc = pbot - frc * (pbot - ptop)
         cin = cin_in - ((thvubot / thv0bot - 1.0) * (pbot - plfc)) / (
-            (
-                pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
-                + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
-            )
+            pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
+            + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
 
     return plfc, cin  # Note: plfc and cin are returned, but not always used
@@ -461,8 +459,8 @@ def qsinvert(
     qt: Float,
     thl: Float,
     ps_in: Float,
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
 ):
     """
     Function calculating saturation pressure ps (or pLCL) from qt and
@@ -474,8 +472,8 @@ def qsinvert(
     qt [Float]: Mixing ratio [kg/kg]
     thl [Float]: Liquid potential temperature [K]
     ps_in [Float]: Pressure [Pa]
-    ese [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
-    esx [FloatField_Extra_Dim]: Used in QSat_Float [n/a]
+    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
 
     Returns:
     qsinvert [Float]: Saturation pressure [Pa]
@@ -490,7 +488,7 @@ def qsinvert(
     Ti: float64 = thl * (ps_in / p00) ** rovcp
     Tgeos: float32 = Ti
     Pgeos: float32 = float32(ps_in)
-    qs, dqsdT = QSat_Float(ese, esx, Tgeos, Pgeos / 100.0)
+    qs, dqsdT = saturation_specific_humidity(Tgeos, Pgeos, ese, esx)
     es: float64 = ps_in * qs / (py_constants.ep2 + (float64(1.0) - py_constants.ep2) * float64(qs))
     rhi: float64 = qt / float64(qs)
 
@@ -498,7 +496,6 @@ def qsinvert(
         qsinvert: float32 = psmin
 
     else:
-
         TLCL: float64 = float64(55.0) + float64(1.0) / (
             float64(1.0) / (Ti - float64(55.0)) - log(rhi) / float64(2840.0)
         )  # Bolton's formula. MWR.1980.Eq.(22)
@@ -511,7 +508,7 @@ def qsinvert(
             Ts: float64 = thl * Pis
             Tgeos = Ts
             Pgeos = ps
-            qs, dqsdT = QSat_Float(ese, esx, Tgeos, Pgeos / 100.0, DQSAT_trigger=True)
+            qs, dqsdT = saturation_specific_humidity(Tgeos, Pgeos, ese, esx)
             gam: float64 = (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * float64(dqsdT)
             err: float64 = qt - qs
             nu: float64 = ice_fraction(float32(Ts), 0.0, 0.0)

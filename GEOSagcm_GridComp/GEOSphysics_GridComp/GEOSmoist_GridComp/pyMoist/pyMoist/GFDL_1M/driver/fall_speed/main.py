@@ -1,9 +1,9 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
-from pyMoist.GFDL_1M.driver.config import MicrophysicsConfiguration
+from ndsl.dsl.typing import FloatField, FloatFieldIJ
+from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
-from pyMoist.GFDL_1M.driver.fall_speed.stencils import fall_speed_core
+from pyMoist.GFDL_1M.driver.fall_speed.stencils import fall_speed
 
 
 class FallSpeed:
@@ -18,15 +18,14 @@ class FallSpeed:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        GFDL_1M_config: MicrophysicsConfiguration,
+        GFDL_1M_config: GFDL1MConfig,
         config_dependent_constants: ConfigConstants,
     ):
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
-
         # Initalize stencils
         self._fall_speed_core = stencil_factory.from_dims_halo(
-            func=fall_speed_core,
+            func=fall_speed,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "p_nonhydro": config_dependent_constants.P_NONHYDRO,
@@ -39,6 +38,8 @@ class FallSpeed:
                 "vs_max": GFDL_1M_config.VS_MAX,
                 "vg_fac": GFDL_1M_config.VG_FAC,
                 "vg_max": GFDL_1M_config.VG_MAX,
+                "anv_icefall": GFDL_1M_config.ANV_ICEFALL,
+                "ls_icefall": GFDL_1M_config.LS_ICEFALL,
             },
         )
 
@@ -60,8 +61,6 @@ class FallSpeed:
         vts: FloatField,
         vtg: FloatField,
         cnv_frc: FloatFieldIJ,
-        anv_icefall: Float,
-        ls_icefall: Float,
     ):
         self._fall_speed_core(
             ql1,
@@ -75,11 +74,8 @@ class FallSpeed:
             den,
             den1,
             denfac,
-            p_dry,
             vti,
             vts,
             vtg,
             cnv_frc,
-            anv_icefall,
-            ls_icefall,
         )

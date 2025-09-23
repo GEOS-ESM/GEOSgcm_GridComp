@@ -1,12 +1,10 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, int32, interval, trunc
-
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, int32, interval, trunc
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 
-@gtscript.function
+@function
 def wqs2(
     ta: Float,
     den: Float,
@@ -56,61 +54,53 @@ def implicit_fall(
     reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
     Fortran author: Shian-Jiann Lin, 2016
     """
-    from __externals__ import dts, use_ppm
+    from __externals__ import dts
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                height_diff = ze - ze[0, 0, 1]
-                dd = dts * vt
-                q = q * dp1
+            height_diff = ze - ze[0, 0, 1]
+            dd = dts * vt
+            q = q * dp1
 
     # -----------------------------------------------------------------------
     # sedimentation: non - vectorizable loop
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                qm = q / (height_diff + dd)
+            qm = q / (height_diff + dd)
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                qm = (q + dd[0, 0, -1] * qm[0, 0, -1]) / (height_diff + dd)
+            qm = (q + dd[0, 0, -1] * qm[0, 0, -1]) / (height_diff + dd)
 
     # -----------------------------------------------------------------------
     # qm is density at this stage
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                qm = qm * height_diff
+            qm = qm * height_diff
 
     # -----------------------------------------------------------------------
     # output mass fluxes: non - vectorizable loop
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                m1 = q - qm
+            m1 = q - qm
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                m1 = m1[0, 0, -1] + q - qm
+            m1 = m1[0, 0, -1] + q - qm
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                precip = m1
+            precip = m1
 
     # -----------------------------------------------------------------------
     # update:
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:  # noqa
-                q = qm / dp1
+            q = qm / dp1
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:

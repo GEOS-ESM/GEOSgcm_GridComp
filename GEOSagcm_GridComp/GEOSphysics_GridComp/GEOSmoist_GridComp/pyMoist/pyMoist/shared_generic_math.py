@@ -2,14 +2,12 @@
 These functions perform basic math and calculate fundamental
 meteorological quantities"""
 
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import exp
-
 import pyMoist.constants as constants
+from ndsl.dsl.gt4py import exp, function
 from ndsl.dsl.typing import Float
 
 
-@gtscript.function
+@function
 def air_density(PL: Float, TE: Float) -> Float:
     """
     Calculate air density [kg/m^3]
@@ -25,7 +23,7 @@ def air_density(PL: Float, TE: Float) -> Float:
     return air_density
 
 
-@gtscript.function
+@function
 def sigma(dx) -> Float:
     sigma = 1.0 - 0.9839 * exp(-0.09835 * (dx / 1000.0))  # Arakawa 2011 sigma
     return sigma
