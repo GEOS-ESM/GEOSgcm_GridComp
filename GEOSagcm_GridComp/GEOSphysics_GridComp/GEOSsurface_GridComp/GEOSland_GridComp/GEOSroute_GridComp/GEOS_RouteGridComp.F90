@@ -25,7 +25,7 @@ module GEOS_RouteGridCompMod
   use MAPL_Mod
   use MAPL_ConstantsMod
   use ROUTING_MODEL,          ONLY: river_routing_lin, river_routing_hyd, ROUTE_DT
-  use reservoir,              ONLY: res_init, res_cal
+  use reservoirMod,           ONLY: RES_STATE, Reservoir
   use catch_constants,        ONLY: N_pfaf_g => CATCH_N_PFAFS
 
   use, intrinsic :: iso_c_binding
@@ -37,18 +37,6 @@ module GEOS_RouteGridCompMod
   integer, save      :: nmax 
 
   private
-
-  type RES_STATE !reserver related variables
-    integer, pointer :: active_res(:)
-    integer, pointer :: active_up(:,:)
-    integer, pointer :: type_res(:)
-    real,    pointer :: cap_res(:) !m3
-    real,    pointer :: wid_res(:) !m
-    integer, pointer :: fld_res(:) 
-    real,    pointer :: Qfld_thres(:) !m3/s
-    integer, pointer :: cat2res(:)
-    real,    pointer :: qres_acc(:)  
-  end type RES_STATE
 
   type T_RROUTE_STATE !routing related variables
      private
@@ -386,7 +374,6 @@ contains
     type(MAPL_MetaComp), pointer   :: MAPL
     type(MAPL_LocStream)           :: locstream, catch_LocStream
 
-    character(len=ESMF_MAXSTR)     :: River_RoutingFile    
     character(len=ESMF_MAXSTR)     :: RIVER_INPUT_FILE    
     character(len=ESMF_MAXSTR)     :: TILE_PFAF_FILE    
     character(len=ESMF_MAXSTR)     :: gridname
@@ -398,7 +385,6 @@ contains
     integer, pointer :: local_id(:)  => NULL()
 
     type (T_RROUTE_STATE), pointer :: route => null()
-    type (RES_STATE),      pointer :: res => NULL()
     type (RROUTE_wrap)             :: wrap
     real, allocatable              :: tmp_real(:)
     integer, allocatable           :: tmp_int(:)
@@ -480,7 +466,6 @@ contains
     route%minCatch    = minCatch
     route%maxCatch    = maxCatch 
 
-    call MAPL_GetResource (MAPL, River_RoutingFile, label = 'River_Routing_FILE:',  default = 'river_input', RC=STATUS )
     call MAPL_GetResource (MAPL, RIVER_INPUT_FILE,  label = 'RIVER_INPUT_FILE:',    default = '../input/river_input.nc', RC=STATUS )
     if (MAPL_AM_I_Root()) then
        call formatter%open(RIVER_INPUT_FILE, PFIO_READ, _RC)
@@ -554,24 +539,24 @@ contains
 
     deallocate(tmp_real, tmp_int)
 
+    if (MAPL_AM_I_Root()) then
+       call formatter%close()
+    endif
+
     allocate(route%runoff_acc(nt_local), source = 0.)
 
     ! accumulated variables for output 
-    allocate(route%wriver_acc(n_pfaf_local),route%wstream_acc(n_pfaf_local),route%qoutflow_acc(n_pfaf_local),route%qsflow_acc(n_pfaf_local),route%reservoir%qres_acc(n_pfaf_local))
+    allocate(route%wriver_acc(n_pfaf_local),route%wstream_acc(n_pfaf_local),route%qoutflow_acc(n_pfaf_local),route%qsflow_acc(n_pfaf_local))
     route%wriver_acc=0.
     route%wstream_acc=0.
     route%qoutflow_acc=0.
     route%qsflow_acc=0.
-    route%reservoir%qres_acc=0.
 
     !Initial reservoir module
-    res => route%reservoir
-    call res_init(River_RoutingFile,N_pfaf_g,n_pfaf_local,minCatch,maxCatch,use_res,res%active_res,res%type_res,res%cap_res,res%fld_res,res%Qfld_thres,res%cat2res,res%wid_res)
+    route%reservoir = Reservoir(layout, trim(RIVER_INPUT_FILE), N_pfaf_g,n_pfaf_local, minCatch,maxCatch,use_res, _RC)
+    allocate(route%reservoir%qres_acc(n_pfaf_local), source =0.0)
+
     if(mapl_am_I_root()) print *,"reservoir init success" 
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     call create_catchment_grid(catch_grid, catch_locstream, _RC)
 
@@ -602,11 +587,6 @@ contains
          )
     VERIFY_(status)
  
-    if (MAPL_AM_I_Root()) then
-       call formatter%close()
-    endif
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
@@ -936,7 +916,7 @@ contains
     type (T_RROUTE_STATE), pointer         :: route => null()
     type (RROUTE_wrap)                     :: wrap
 
-    integer :: mpierr, nt_global,nt_local
+    integer :: nt_global,nt_local
     integer,save :: nstep_per_day
 
     type(ESMF_Time) :: CurrentTime, nextTime
@@ -1068,10 +1048,8 @@ contains
             WSTREAM,WRIVER, &
             QSFLOW_ACT,QOUTFLOW_ACT)  
        ! Call reservoir module        
-       do i=1,n_pfaf_local
-          call res_cal(res%active_res(i),QOUTFLOW_ACT(i),res%type_res(i),res%cat2res(i),&
-               QRES_ACT(i),res%wid_res(i),res%fld_res(i),WRES(i),res%Qfld_thres(i),res%cap_res(i),real(route_dt))
-       enddo
+
+       call res%calc( QOUTFLOW_ACT, QRES_ACT, WRES, real(route_dt), _RC)
        QOUT_CAT = QOUTFLOW_ACT              
        where(res%active_res==1) QOUT_CAT=QRES_ACT
        allocate(QINFLOW_LOCAL(n_pfaf_local))
