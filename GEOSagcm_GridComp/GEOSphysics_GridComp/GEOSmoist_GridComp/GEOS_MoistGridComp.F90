@@ -5169,6 +5169,7 @@ contains
 
     type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
 #ifdef PYMOIST_INTEGRATION
+    ! We have to use TARGET to be able to do `c_loc` for interface to DSL purposes
     type(ESMF_State),    intent(inout), TARGET :: IMPORT ! Import state
     type(ESMF_State),    intent(inout), TARGET :: EXPORT ! Export state
 #else
