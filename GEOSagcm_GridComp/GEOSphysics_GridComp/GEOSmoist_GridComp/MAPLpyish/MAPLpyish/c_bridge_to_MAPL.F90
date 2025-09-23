@@ -127,7 +127,6 @@ module C_BRIDGE_TO_MAPL
         
         call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc), RC=STATUS)
         VERIFY_(STATUS)
-        PRINT *, "Get pointer 2D ", trim(name), " ", logical(alloc), " ", loc(f_ptr), " ", c_loc(f_ptr)
         ! if (associated(f_ptr)) then
         c_data_ptr=c_loc(f_ptr)
         ! endif
@@ -183,7 +182,6 @@ module C_BRIDGE_TO_MAPL
         call c_f_pointer(esmf_state_c_ptr, state)    
 
         call MAPL_GetPointer(state, f_ptr, trim(name), alloc=logical(alloc), RC=STATUS)
-        PRINT *, "Get pointer 3D ", trim(name), " ", logical(alloc), " ", loc(f_ptr), " ", c_loc(f_ptr)
         VERIFY_(STATUS)
 
         c_data_ptr=c_loc(f_ptr)
