@@ -595,7 +595,6 @@ contains
           integer, optional, intent(out) :: rc
           integer :: status, nWeights, nLocal_weights
           integer, allocatable :: global_id(:)
-          real, pointer :: ptr(:)
           logical, allocatable :: mask(:)
           integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:)
           real,    allocatable :: weights(:), global_frac(:)
@@ -606,22 +605,14 @@ contains
         
 
           ! create source for orignal tile space
-          allocate(ptr(nt_local), source = 0.)
-          route%field_src = ESMF_FieldCreate(grid=tilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
-               farrayPtr = ptr, RC=STATUS)
-          VERIFY_(STATUS)
-          deallocate(ptr)
+          route%field_src = ESMF_FieldCreate(grid=tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
 
           call MAPL_LocStreamGet(catch_LocStream, TILEGRID=newtilegrid, RC=status)
-          allocate(ptr(n_pfaf_local), source =0.0)
-          route%field = ESMF_FieldCreate(grid=newtilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
-               farrayPtr = ptr, RC=STATUS)
-          VERIFY_(STATUS)
-          deallocate(ptr)
+          route%field     = ESMF_FieldCreate(grid=newtilegrid, typekind=ESMF_TYPEKIND_R4,_RC)
 
           if (MAPL_AM_I_ROOT()) then
              call formatter%open(tile_pfaf_file, PFIO_READ, _RC)
-             meta = formatter%read(rc=status)
+             meta     = formatter%read(rc=status)
              nweights = meta%get_dimension('tile')
           endif
           call MAPL_CommsBcast(layout, nWeights, 1, MAPL_Root, status)
@@ -640,7 +631,6 @@ contains
           local_dst = pack(global_dst(:), mask)
           weights   = pack(global_frac(:), mask)
           deallocate(global_src, global_dst, global_frac)
-
 
           !UNIT = GETFILE(route_file, form='FORMATTED', _RC)
           !call READ_PARALLEL(layout, nWeights, UNIT=UNIT, _RC)
