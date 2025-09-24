@@ -411,6 +411,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
+
+    call cpu_time(start)
 #ifdef PYMOIST_INTEGRATION
     IF (USE_PYMOIST_GFDL_1M) THEN
       IF (.NOT. GFDL_1M_READY) THEN
@@ -1012,7 +1014,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 #ifdef PYMOIST_INTEGRATION
   ENDIF
 #endif
-     call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
+  call cpu_time(finish)
+  print *, 'gfdl_1m: time taken = ', finish - start, 's'
+  call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
 end subroutine GFDL_1M_Run
 
