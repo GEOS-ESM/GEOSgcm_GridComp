@@ -34,6 +34,7 @@ module GEOS_UW_InterfaceMod
   logical :: USE_PYMOIST_UW = .FALSE.
   logical :: INIT_PYMOIST_UW = .FALSE.
 #endif
+  real :: start, finish
 
   public :: UW_Setup, UW_Initialize, UW_Run
 
@@ -357,6 +358,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     QLTOT = QLLS+QLCN
     QITOT = QILS+QICN
 
+    call cpu_time(start)
+
 #ifdef PYMOIST_INTEGRATION
     if (USE_PYMOIST_UW) then
       ncnst = size(CNV_Tracers)
@@ -475,6 +478,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 #ifdef PYMOIST_INTEGRATION
     endif
 #endif
+
+      call cpu_time(finish)
+      print *, 'uw shallow convection: time taken = ', finish - start, 's'
+
       !  Apply tendencies
       !--------------------------------------------------------------
         Q  = Q  + DQVDT_SC * UW_DT    ! note this adds to the convective
