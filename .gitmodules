@@ -1,0 +1,3 @@
+[submodule "GEOSagcm_GridComp/GEOSchem_GridComp"]
+	path = GEOSagcm_GridComp/GEOSchem_GridComp
+	url = https://github.com/GEOS-ESM/GEOSchem_GridComp
