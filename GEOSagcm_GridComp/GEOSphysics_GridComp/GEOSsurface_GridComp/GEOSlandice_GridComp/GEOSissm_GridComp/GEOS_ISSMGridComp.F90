@@ -246,10 +246,18 @@ subroutine SetServices ( GC, RC )
     real(dp),    pointer, dimension(:)     :: nodeCoords => null()
     integer,     pointer, dimension(:)     :: nodeIds => null()
 
+    ! just testing something here...
+    real(dp),    pointer, dimension(:)     :: SMBToISSM => null()
+    real(dp),    pointer, dimension(:)     :: SurfaceToGEOS => null()
+    real(dp) :: dt
+
+
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)		   :: IAm
     integer				   :: STATUS
     character(len=ESMF_MAXSTR)             :: COMP_NAME
+
+
 
     ! Begin... 
 
@@ -291,6 +299,11 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MPI_Comm_dup(comm_vm, comm_issm, STATUS)
+    VERIFY_(STATUS)
+
+    call MPI_Barrier(comm_issm, STATUS)
+    VERIFY_(STATUS)
+
 
     ! ****************************************************
     ! call ISSM initial C++ code so we can set up mesh
@@ -312,15 +325,37 @@ subroutine SetServices ( GC, RC )
     end do
    
 
-    call ESMF_VMBarrier(vm, rc=status)
-    VERIFY_(STATUS)
+    call MPI_Barrier(comm_issm, STATUS)
+    !VERIFY_(STATUS)
 
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
     call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm_issm)
 
-    call ESMF_VMBarrier(vm, rc=status)
+    call MPI_Barrier(comm_issm, STATUS)
     VERIFY_(STATUS)
+
+
+    ! TESTING.......................... vvvv
+        ! set smb and surface for test 
+    SMBToISSM(:) = 0     ! placeholder zeros
+    SurfaceToGEOS(:) = 0 ! placeholder zeros
+
+    dt = 0.05   ! timestep in years
+    
+    ! NOTE: do we need the barriers before/after ISSM run?
+    call MPI_Barrier(comm_issm, STATUS)
+    ! VERIFY_(STATUS)
+
+    ! ! call the C++ routine for running a single time step
+    call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
+
+    call MPI_Barrier(comm_issm, STATUS)
+    VERIFY_(STATUS)
+
+    deallocate(SMBToISSM)
+    deallocate(SurfaceToGEOS)
+     ! TESTING.......................... ^^^^
 
     !!! TO CREATE MESH TO DO THIS:
     !allocate mesh-related pointers
@@ -436,7 +471,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   VERIFY_(STATUS)
 
   ! ! call the C++ routine for running a single time step
-  call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
+!   call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
