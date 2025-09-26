@@ -341,10 +341,10 @@ subroutine SetServices ( GC, RC )
     allocate(SMBToISSM(num_elements))
     allocate(SurfaceToGEOS(num_elements))
     
-    SMBToISSM(:) = 0     ! placeholder zeros
-    SurfaceToGEOS(:) = 0 ! placeholder zeros
+    SMBToISSM(:) = 0.0_dp     ! placeholder zeros
+    SurfaceToGEOS(:) = 0.0_dp ! placeholder zeros
 
-    dt = 0.05   ! timestep in years
+    dt = 0.05_dp   ! timestep in years
     
     ! NOTE: do we need the barriers before/after ISSM run?
     call MPI_Barrier(comm_issm, STATUS)
@@ -453,7 +453,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call MAPL_TimerOn(MAPL,"RUN" )
 
   ! timestep for ISSM (TODO: later figure out how to only run at these increments)
-  dt = 0.05   ! timestep in years
+  dt = 0.05_dp   ! timestep in years
 
   ! ! need to access num_elements 
   call ESMF_MeshGet(mesh,elementCount=num_elements)
@@ -466,8 +466,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   VERIFY_(STATUS)
 
 ! set smb and surface for test 
-  SMBToISSM(:) = 0     ! placeholder zeros
-  SurfaceToGEOS(:) = 0 ! placeholder zeros
+  SMBToISSM(:) = 0.0_dp     ! placeholder zeros
+  SurfaceToGEOS(:) = 0.0_dp ! placeholder zeros
   
   ! NOTE: do we need the barriers before/after ISSM run?
   call ESMF_VMBarrier(vm, rc=status)
