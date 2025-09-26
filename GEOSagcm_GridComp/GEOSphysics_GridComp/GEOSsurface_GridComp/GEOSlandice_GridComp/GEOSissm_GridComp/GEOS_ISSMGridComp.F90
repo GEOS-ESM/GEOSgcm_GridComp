@@ -311,9 +311,16 @@ subroutine SetServices ( GC, RC )
         argv_ptr(i) = c_loc(argv(i))
     end do
    
+
+    call ESMF_VMBarrier(vm, rc=status)
+    VERIFY_(STATUS)
+
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
     call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm_issm)
+
+    call ESMF_VMBarrier(vm, rc=status)
+    VERIFY_(STATUS)
 
     !!! TO CREATE MESH TO DO THIS:
     !allocate mesh-related pointers
@@ -342,6 +349,17 @@ subroutine SetServices ( GC, RC )
     ! ! not sure if generic initialize should be here or earlier(?): 
     ! call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     ! VERIFY_(STATUS)
+
+   
+
+    ! deallocate pointers
+    deallocate(argv)
+    deallocate(argv_ptr)
+    deallocate(nodeCoords)
+    deallocate(nodeIds)
+    deallocate(elementTypes)
+    deallocate(elementIds)
+    deallocate(elementConn)
 
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
