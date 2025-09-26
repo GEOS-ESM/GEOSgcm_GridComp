@@ -338,6 +338,9 @@ subroutine SetServices ( GC, RC )
 
     ! TESTING.......................... vvvv
         ! set smb and surface for test 
+    allocate(SMBToISSM(num_elements))
+    allocate(SurfaceToGEOS(num_elements))
+    
     SMBToISSM(:) = 0     ! placeholder zeros
     SurfaceToGEOS(:) = 0 ! placeholder zeros
 
