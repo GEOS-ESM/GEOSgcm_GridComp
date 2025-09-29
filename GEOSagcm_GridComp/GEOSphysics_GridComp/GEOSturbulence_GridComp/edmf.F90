@@ -358,7 +358,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         call calc_mf_depth(kts,kte,t3(IH,JH,:),zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
         L0 = max(min(ztop,2500.),500.) / mfparams%L0fac
         if (associated(mfdepth)) mfdepth(IH,JH) = ztop
-
+        
         ! Reduce L0 over ocean where LTS is large to encourage StCu formation
         lts =  0.0
         if (FRLAND(IH,JH)<0.5) then
@@ -375,6 +375,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         L0 = mfparams%L0
       end if
 
+      if (ztop.gt.100.) then
+      
       !
       ! flipping variables
       !
@@ -917,7 +919,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       if (associated(EDMF_PLUMES_THL)) EDMF_PLUMES_THL(IH,JH,KTS-1:KTE,:) = upthl(KTE:KTS-1:-1,:)
       if (associated(EDMF_PLUMES_QT))  EDMF_PLUMES_QT(IH,JH,KTS-1:KTE,:)  = upqt(KTE:KTS-1:-1,:)
 
-
+     end if  !  IF ( mfdepth>100m)
     END IF   !  IF ( wthv > 0.0 )
 
   ENDDO ! JH loop over horizontal area
