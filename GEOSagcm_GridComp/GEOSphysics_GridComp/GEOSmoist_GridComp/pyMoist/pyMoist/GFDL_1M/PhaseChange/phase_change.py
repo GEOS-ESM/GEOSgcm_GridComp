@@ -15,7 +15,7 @@ from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 from pyMoist.GFDL_1M.PhaseChange.rh_calculations import compute_rh_crit_3D, rh_calculations
 from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.GFDL_1M.PhaseChange.temporaries import Temporaries
-from pyMoist.GFDL_1M.state import LiquidWaterStaticEnergy, TotalWater
+from pyMoist.GFDL_1M.state import MicrophysicsDiagnostics
 from pyMoist.saturation_tables import SaturationFormulation, get_saturation_vapor_pressure_table
 from pyMoist.shared_incloud_processes import fix_up_clouds
 
@@ -35,10 +35,7 @@ class PhaseChange:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_compiletime_args=[
-                "total_water",
-                "liquid_static_energy",
-            ],
+            dace_compiletime_args=["diagnostics"],
         )
         if GFDL_1M_config.USE_BERGERON is not True:
             raise NotImplementedError(
@@ -165,8 +162,7 @@ class PhaseChange:
         evapc: FloatField,
         sublc: FloatField,
         rh_crit: Optional[FloatField] = None,
-        total_water: TotalWater | None = None,
-        liquid_static_energy: LiquidWaterStaticEnergy | None = None,
+        diagnostics: MicrophysicsDiagnostics | None = None,
     ):
         """
 

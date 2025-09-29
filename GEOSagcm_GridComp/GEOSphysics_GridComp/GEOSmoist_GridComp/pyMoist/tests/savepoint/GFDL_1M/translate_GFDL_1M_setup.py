@@ -5,9 +5,8 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.masks import Masks
-from pyMoist.GFDL_1M.outputs import Outputs
 from pyMoist.GFDL_1M.setup import Setup
-from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
+from pyMoist.GFDL_1M.state import MicrophysicState, Outputs
 from pyMoist.GFDL_1M.stencils import prepare_tendencies
 from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
@@ -203,7 +202,7 @@ class TranslateGFDL_1M_setup(TranslateFortranData2Py):
         t = self.make_ijk_quantity(inputs.pop("T"))
         u = self.make_ijk_quantity(inputs.pop("U"))
         v = self.make_ijk_quantity(inputs.pop("V"))
-        mixing_ratios = MixingRatios(
+        mixing_ratios = MicrophysicState.MixingRatios(
             vapor=self.make_ijk_quantity(inputs.pop("Q")),
             rain=self.make_ijk_quantity(inputs.pop("QRAIN")),
             snow=self.make_ijk_quantity(inputs.pop("QSNOW")),
@@ -213,7 +212,7 @@ class TranslateGFDL_1M_setup(TranslateFortranData2Py):
             large_scale_liquid=self.make_ijk_quantity(inputs.pop("QLLS")),
             large_scale_ice=self.make_ijk_quantity(inputs.pop("QILS")),
         )
-        cloud_fractions = CloudFractions(
+        cloud_fractions = MicrophysicState.CloudFractions(
             convective=self.make_ijk_quantity(inputs.pop("CLCN")),
             large_scale=self.make_ijk_quantity(inputs.pop("CLLS")),
         )
