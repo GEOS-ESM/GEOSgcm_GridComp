@@ -5869,10 +5869,10 @@ contains
            WHERE (CAPE .ne. MAPL_UNDEF)
               CNV_FRC = (1.0-COS(MAPL_PI*(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))/2.0
            END WHERE
-           WHERE (CAPE .le. CNV_FRACTION_MIN)
+           WHERE ((CAPE .le. CNV_FRACTION_MIN) .and. (CAPE .ne. MAPL_UNDEF))
               CNV_FRC = 0.0
            END WHERE
-           WHERE (CAPE .ge. CNV_FRACTION_MAX)
+           WHERE ((CAPE .ge. CNV_FRACTION_MAX) .and. (CAPE .ne. MAPL_UNDEF))
               CNV_FRC = 1.0
            END WHERE
        else

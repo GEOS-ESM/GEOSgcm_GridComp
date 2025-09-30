@@ -970,6 +970,8 @@ contains
 !!! TEMPORARY:  should be ncnst array of minimum values for all constituents
 !!! real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
 
+    real :: tiny = 1.e-15
+    real :: arg
 
     ! ---------------------------------------- !
     ! Bulk microphysics controlling parameters !
@@ -1765,7 +1767,7 @@ contains
          rho0inv = pifc0(kinv-1)/(r*thv0top(kinv-1)*exnifc0(kinv-1))
          cbmf_raw = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
          ! --- compute cbmf limit based on mass availability ---
-         cbmflimit = max(tiny(0.0), 1.9*dp0(kinv-1)/g/dt)
+         cbmflimit = max(tiny, 1.9*dp0(kinv-1)/g/dt)
          ! --- adjust rkfre dynamically for stability ---
          if (cbmf_raw > cbmflimit) then
             rkfre_eff = min(rkfre(i), max(0.1,cbmflimit/cbmf_raw))
@@ -2216,7 +2218,7 @@ contains
          ! 1. 'cbmf' constraint
          cbmflimit = 0.9*dp0(kinv-1)/g/dt
          mumin0 = 0.
-         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(max(0.0,-log(max(tiny(0.0),2.5066*cbmflimit/rho0inv/sigmaw))))
+         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmflimit/rho0inv/sigmaw))))
 ! ALT ?? if( cbmf .gt. cbmflimit ) mumin0 = sqrt(mu**2-log(cbmflimit/cbmf))
          ! 2. 'ufrcinv' constraint
          mu = max(max(mu,mumin0),mumin1)
@@ -2700,7 +2702,7 @@ contains
           ! ------------------------------------------------------------------------ !
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
-            if (min(scaleh,mix2d(i)).gt.0.0) then
+            if (min(scaleh,mix2d(i)) .gt. tiny) then
               rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
 ! regression bug due to cnvtr
 ! WMP         rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
@@ -2708,7 +2710,11 @@ contains
               rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
             end if
 
-            if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny(0.0),dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
+! overflow  if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny,dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
+            if( xc .gt. 0.5 ) then
+                arg = dp0(k)/g/dt/max(umf(km1),tiny) + 1.0
+                rei(k) = min(rei(k),0.9*log(max(tiny,arg))/max(dpe*(2.*xc-1.), tiny))
+            endif
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
             xco(k) = xc
@@ -2988,7 +2994,7 @@ contains
               limit_ufrc(i) = 1. 
               ufrc(k) = rmaxfrac
               umf(k)  = rmaxfrac * rhoifc0j * wu(k)
-              fdr(k)  = fer(k) - log(max(tiny(0.0), umf(k) / umf(km1)) ) / dpe
+              fdr(k)  = fer(k) - log(max(tiny, umf(k) / umf(km1)) ) / dpe
           endif
 
           ! ------------------------------------------------------------ !
