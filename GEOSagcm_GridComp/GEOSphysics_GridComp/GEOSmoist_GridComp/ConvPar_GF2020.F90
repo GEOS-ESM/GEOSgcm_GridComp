@@ -3529,7 +3529,6 @@ IF(VERT_DISCR == 0) THEN
 ! BUG2025   dellah(i,k) = dellah(i,k) + xlf*((1.-p_liq_ice(i,k))*0.5*(qrco(i,k+1)+qrco(i,k)) &
 ! BUG2025                                     - melting(i,k))*g/dp
 ! BUG2025 latent heat of freezing for qrco included in hco already
-
             !-- for output only
             subten_H(i,k) = -(zuo(i,k+1)*(-heo_cup(i,k+1)) - zuo(i,k)*(-heo_cup(i,k)))*g/dp       &
                             +(zdo(i,k+1)*(-heo_cup(i,k+1)) - zdo(i,k)*(-heo_cup(i,k)))*g/dp*edto(i)
@@ -3695,7 +3694,6 @@ ELSEIF(VERT_DISCR == 1) THEN
 ! BUG2025   dellah(i,k) = dellah(i,k) + xlf*((1.-p_liq_ice(i,k))* &
 ! BUG2025                              0.5*(qrco(i,k+1)+qrco(i,k)) - melting(i,k))*g/dp
 ! BUG2025 latent heat of freezing for qrco included in hco already
-
             !--- for output only
             subten_H(i,k) = -(zuo(i,k+1)*(-heo_cup(i,k+1)) - zuo(i,k)*(-heo_cup(i,k)))*g/dp       &
                             +(zdo(i,k+1)*(-heo_cup(i,k+1)) - zdo(i,k)*(-heo_cup(i,k)))*g/dp*edto(i)
