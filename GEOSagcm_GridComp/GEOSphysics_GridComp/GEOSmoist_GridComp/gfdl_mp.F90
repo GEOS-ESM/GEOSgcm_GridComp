@@ -169,10 +169,11 @@ module gfdl_mp_mod
     ! predefined parameters
     ! -----------------------------------------------------------------------
 
-    real, parameter :: qpmin = 1.e-8  !< min value for suspended rain/snow/liquid/ice precip
-    real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
-    real, parameter :: qcmin = 1.0e-12 ! min value for cloud condensates (kg/kg)
-    real, parameter :: qfmin = 1.0e-8 ! min value for sedimentation (kg/kg)
+    real, parameter :: qpmin = 1.e-8  ! min value for suspended rain/snow/liquid/ice precip
+    real, parameter :: qvmin = 1.e-15 ! min value for water vapor (treated as zero)
+    real, parameter :: qcmin = 1.e-8  ! min value for cloud condensates (kg/kg)
+    real, parameter :: cfmin = 1.e-5  ! min value for cloud fraction (unitless)
+    real, parameter :: qfmin = 1.e-8  ! min value for sedimentation (kg/kg)
 
     real, parameter :: dz_min = 1.0e-2 ! used for correcting flipped height (m)
 
@@ -226,7 +227,7 @@ module gfdl_mp_mod
     ! 3: WSM6 with 0 at 0 C and fixed value at - 10 C
     ! 4: combination of 1 and 3
 
-    integer :: ifflag = 3 ! ice fall scheme
+    integer :: ifflag = 1 ! ice fall scheme
     ! 1: Deng and Mace (2008)
     ! 2: Heymsfield and Donner (1990)
     ! 3: Combination of Deng and Mace (2008) and Mishra et al (2014, JGR)
@@ -1489,8 +1490,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             dp0 (k) = delp (i, k)
             ! dp: dry air_mass
             dp (k) = delp (i, k) * con_r8
-            con_r8 = one_r8 / con_r8
 
+            con_r8  = dp0 (k) / dp (k)
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1757,14 +1758,16 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 con_r8 = one_r8 + qvz (k)
             endif
 
-            dp  (k) = dp (k) * con_r8
-            con_r8 = one_r8 / con_r8
+            con_r8  =  dp (k) / dp0 (k)
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
             qiz (k) = qiz (k) * con_r8
             qsz (k) = qsz (k) * con_r8
             qgz (k) = qgz (k) * con_r8
+
+            ! convert dry air mass to wet
+            dp  (k) = dp (k) * con_r8
 
             q1 = qv (i, k) + ql (i, k) + qr (i, k) + qi (i, k) + qs (i, k) + qg (i, k)
             q2 = qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
@@ -1787,7 +1790,11 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qi_dt (i, k) = rdt * (qiz (k) - qi (i, k))
             qs_dt (i, k) = rdt * (qsz (k) - qs (i, k))
             qg_dt (i, k) = rdt * (qgz (k) - qg (i, k))
-            qa_dt (i, k) = rdt * (qaz (k) - qa (i, k))
+            if (.not. do_qa) then
+               qa_dt (i, k) = rdt * &
+                      ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
+                        qa (i, k) )                                                                 ! Old Cloud
+            endif
 
             ! -----------------------------------------------------------------------
             ! calculate some more variables needed outside
@@ -2564,22 +2571,11 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-                    pl = den (k) * rdgas * tz (k) ! dry air pressure
-                    tmp = tz (k)          
-                    DIAM = 2.0*LDRADIUS4(pl/100.0,tmp,q(k),zero,zero,2)*1.e6 ! microns
-                    lnP = log(pl/100.0)            
-                    C0 = -1.04 + 0.298*lnP
-                    C1 =  0.67 - 0.097*lnP
-                    C2 = (C0 + C1*log(DIAM))
-                    ! Compute original fall speeds
                     qden = q (k) * den (k) * 1.e3
                     ! Large-scale settling SGP
                     viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-                    viLSC = viLSC * C2 ! slow settling with pressure scaling
                     ! Convective settling TWP
                     viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
-                    viLSC = viLSC / C2 ! increase settling with pressure scaling
                     ! Combine
                     vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                     vt (k) = 0.01 * v_fac * vt (k)
@@ -4542,11 +4538,23 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
             sink = dim (qv (k), qcmin)
             mppd1 = mppd1 + sink * dp (k) * convt
 
-            qa (k) = 1.0
-
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                  - sink, 0., 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
+
+            ! [WMP] avoid high cloud fractions for high troposhere cirrus clouds
+            if (.not. do_qa) then
+               qa (k) = max(0.0,min(1.0,1.0 - qcmin/max(qi (k), qcmin)))
+               if ( qa (k) .lt. cfmin) then
+                  ! remove clouds and qi if qa is too small
+                  qa (k) = 0.0
+                  sink = qi (k)
+                  mppd1 = mppd1 - sink * dp (k) * convt
+                  call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
+                       sink, 0., 0., - sink, 0., 0., te8 (k), cvm (k), tz (k), &
+                      lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
+               endif
+            endif
 
         endif
 
@@ -5139,7 +5147,9 @@ subroutine cloud_fraction (ks, ke, pz, den, qv, ql, qr, qi, qs, qg, qa, tz, gsiz
 
     real (kind = r8), intent (in), dimension (ks:ke) :: tz
 
-    real, intent (inout), dimension (ks:ke) :: qv, ql, qr, qi, qs, qg, qa
+    real, intent (in), dimension (ks:ke) :: qv, ql, qr, qi, qs, qg
+
+    real, intent (inout), dimension (ks:ke) :: qa
 
     ! -----------------------------------------------------------------------
     ! local variables

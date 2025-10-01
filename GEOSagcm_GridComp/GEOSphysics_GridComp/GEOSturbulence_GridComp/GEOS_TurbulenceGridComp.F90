@@ -5817,7 +5817,7 @@ end subroutine RUN1
       logical                             :: DO_SHVC
       logical                             :: ALLOC_TMP
       integer                             :: KS, DO_SHOC
-      real                                :: HGT_SURFACE, WGTSUM, CAP_INTDIS
+      real                                :: HGT_SURFACE, WGTSUM, CAP_INTDIS, CAP_TOPDIS
 
       ! For idealized SCM surface layer
       integer :: SCM_SL
@@ -5879,6 +5879,9 @@ end subroutine RUN1
 
       CAP_INTDIS = 1.0 ! Kelvin [per time step done when applied]                 
       call MAPL_GetResource (MAPL, CAP_INTDIS,   trim(COMP_NAME)//"_CAP_INTDIS:",     default=CAP_INTDIS,  RC=STATUS); VERIFY_(STATUS)
+
+      CAP_TOPDIS = 1.0 ! Kelvin [per time step done when applied]                 
+      call MAPL_GetResource (MAPL, CAP_TOPDIS,   trim(COMP_NAME)//"_CAP_TOPDIS:",     default=CAP_TOPDIS,  RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", default=0, RC=STATUS); VERIFY_(STATUS)
 
@@ -6246,6 +6249,16 @@ end subroutine RUN1
             endif
             if(associated(TOPDIS)) then
                TOPDIS = TOPDIS + (1.0/MAPL_CP)*FKV*SX**2
+               if (CAP_TOPDIS > 0.0) then
+                  ! limit frictional heating from TOPDIS by CAP_TOPDIS/DT [K/s]
+                  do L=1,LM                                   
+                     do J=1,JM
+                        do I=1,IM
+                           TOPDIS(I,J,L) = SIGN(MIN(ABS(TOPDIS(I,J,L)/DP(I,J,L)),CAP_TOPDIS/DT)*DP(I,J,L),TOPDIS(I,J,L))
+                        end do 
+                     end do 
+                  end do
+               endif
              endif
             if(associated(SRFDIS)) then
                SRFDIS = SRFDIS + (1.0/MAPL_CP)*EKV(:,:,LM)*SX(:,:,LM)**2
