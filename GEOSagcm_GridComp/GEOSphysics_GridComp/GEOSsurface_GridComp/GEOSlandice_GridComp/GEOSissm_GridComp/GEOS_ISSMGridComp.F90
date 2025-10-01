@@ -294,7 +294,7 @@ subroutine SetServices ( GC, RC )
     ! Manually set command line argc and argv to initialize ISSM 
     argc = 4  
     allocate(argv(argc))
-    argv(1) = "/discover/nobackup/projects/gmao/SIteam/ISSM/2025-09-02/ifort_2021.13.0-intelmpi_2021.13.0/ISSM/bin/issm.exe"//c_null_char
+    argv(1) = "/discover/nobackup/projects/gmao/SIteam/ISSM/2025-09-25/ifort_2021.13.0-intelmpi_2021.13.0-DebugPETSc/ISSM/bin/issm.exe"//c_null_char
     argv(2) = "TransientSolution"//c_null_char
     argv(3) = "/discover/nobackup/agstubbl/ISSM/projs/IRF-ISSM"//c_null_char
     argv(4) = "GreenlandGEOS"//c_null_char
