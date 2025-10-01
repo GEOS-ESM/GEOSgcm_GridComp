@@ -33,8 +33,8 @@ module GEOS_IssmGridCompMod
 ! 
 
 ! !USES:
-use intrinsic :: iso_fortran_env, only: dp=>real64
-use intrinsic :: iso_c_binding, only: c_ptr, c_double, c_f_pointer,c_null_char, c_loc, c_int
+use iso_fortran_env, only: dp=>real64
+use iso_c_binding, only: c_ptr, c_double, c_f_pointer,c_null_char, c_loc, c_int
 use ESMF
 use MAPL
 use GEOS_UtilsMod
