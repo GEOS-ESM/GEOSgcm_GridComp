@@ -11,10 +11,12 @@ module GEOS_IssmGridCompMod
 !
 !   {\tt GEOS\_ISSM} is a wrapper that calls ISSM (C++) IRF methods
 !
-! *** NOTE: currently just want to call/"drive" ISSM with no coupling at all
-!           to test if the building/linking is working    
-!           ~~the current grid is just inherited from the parent (landice)~~
-!           ~~currently only running over Greenland~~
+! *** NOTES: *currently just want to call/"drive" ISSM with no coupling at all
+!             to test if the building/linking is working:   
+!           
+!            *the current grid is just inherited from the parent (landice)
+!            *currently just want to run over Greenland with all given PETs
+!            *ISSM mesh is *internal* to ISSM but we've created an ESMF_MESH version for future regridding        
 !
 ! next steps:  
 !             (1) create GC from ESMF_Mesh corresponding to ISSM's mesh
@@ -31,12 +33,12 @@ module GEOS_IssmGridCompMod
 ! 
 
 ! !USES:
-use iso_fortran_env, only: dp=>real64
-use iso_c_binding, only: c_ptr, c_double, c_f_pointer,c_null_char, c_loc, c_int
+use intrinsic :: iso_fortran_env, only: dp=>real64
+use intrinsic :: iso_c_binding, only: c_ptr, c_double, c_f_pointer,c_null_char, c_loc, c_int
 use ESMF
 use MAPL
 use GEOS_UtilsMod
-use MPI
+! use MPI
 
 implicit none
 
@@ -158,7 +160,6 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    ! NOTE: there's other stuff here in landice that I don't know if will be needed for our purpose
 
     ! Set the state variable specs.
 ! -----------------------------
@@ -246,12 +247,6 @@ subroutine SetServices ( GC, RC )
     real(dp),    pointer, dimension(:)     :: nodeCoords => null()
     integer,     pointer, dimension(:)     :: nodeIds => null()
 
-    ! just testing something here...
-    real(dp),    pointer, dimension(:)     :: SMBToISSM => null()
-    real(dp),    pointer, dimension(:)     :: SurfaceToGEOS => null()
-    real(dp) :: dt
-
-
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)		   :: IAm
     integer				   :: STATUS
@@ -278,16 +273,7 @@ subroutine SetServices ( GC, RC )
 
     ! Profilers
     !----------
-    ! ! not sure if this is needed:
-    ! call MAPL_TimerOn(MAPL,"TOTAL"     )
-    ! call MAPL_TimerOn(MAPL,"INITIALIZE")
 
-
-    ! Rule 10: A component’s grid must be fully formed before MAPL_GenericInitialize is invoked
-    ! ! NOTE: so currently just getting grid from parent (landice) ***
-    ! Generic initialize
-    ! ------------------
-    
     ! try generic initialize before doing ISSM stuff ?!?!?
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
@@ -298,12 +284,9 @@ subroutine SetServices ( GC, RC )
     call ESMF_VMGet(vm,mpiCommunicator=comm_vm,rc=STATUS)
     VERIFY_(STATUS)
 
-    call MPI_Comm_dup(comm_vm, comm_issm, STATUS)
-    VERIFY_(STATUS)
-
-    call MPI_Barrier(comm_issm, STATUS)
-    VERIFY_(STATUS)
-
+    ! ! tried duplicating comm just in case (new comm_issm); that's what ESMF_refdoc suggests doing
+    ! call MPI_Comm_dup(comm_vm, comm_issm, STATUS)
+    ! VERIFY_(STATUS)
 
     ! ****************************************************
     ! call ISSM initial C++ code so we can set up mesh
@@ -323,44 +306,19 @@ subroutine SetServices ( GC, RC )
         ! Ensure that we are only getting the memory address once per string
         argv_ptr(i) = c_loc(argv(i))
     end do
-   
 
-    call MPI_Barrier(comm_issm, STATUS)
+    ! call MPI_Barrier(comm_issm, STATUS)
     !VERIFY_(STATUS)
-
+    call ESMF_VMBarrier(vm, rc=status)
+    
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
-    call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm_issm)
+    call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm_vm)
 
-    call MPI_Barrier(comm_issm, STATUS)
-    VERIFY_(STATUS)
-
-
-    ! TESTING.......................... vvvv
-        ! set smb and surface for test 
-    allocate(SMBToISSM(num_elements))
-    allocate(SurfaceToGEOS(num_elements))
-    
-    SMBToISSM(:) = 0.0_dp     ! placeholder zeros
-    SurfaceToGEOS(:) = 0.0_dp ! placeholder zeros
-
-    dt = 0.05_dp   ! timestep in years
-    
-    ! NOTE: do we need the barriers before/after ISSM run?
-    call MPI_Barrier(comm_issm, STATUS)
+    ! call MPI_Barrier(comm_issm, STATUS)
     ! VERIFY_(STATUS)
 
-    ! ! call the C++ routine for running a single time step
-    call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
-
-    call MPI_Barrier(comm_issm, STATUS)
-    VERIFY_(STATUS)
-
-    deallocate(SMBToISSM)
-    deallocate(SurfaceToGEOS)
-     ! TESTING.......................... ^^^^
-
-    !!! TO CREATE MESH TO DO THIS:
+    !TO CREATE MESH TO DO THIS:
     !allocate mesh-related pointers
     allocate(nodeCoords(2*num_nodes))
     allocate(nodeIds(num_nodes))
@@ -379,16 +337,9 @@ subroutine SetServices ( GC, RC )
     mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
            elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
 
-    ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports       
+    ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports (future work / to-do)       
     call ESMF_GridCompSet(GC,mesh=mesh,rc=STATUS)
     VERIFY_(STATUS)
-
-    ! ****************************************************
-    ! ! not sure if generic initialize should be here or earlier(?): 
-    ! call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
-    ! VERIFY_(STATUS)
-
-   
 
     ! deallocate pointers
     deallocate(argv)
@@ -432,9 +383,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer(c_int)                 :: num_elements  
   type(ESMF_VM)                  :: vm  
 
-  ! Get the target components name and set-up traceback handle.
+! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
-
+! also get the mesh and vm
   Iam = "Run"
   call ESMF_GridCompGet( GC, name=COMP_NAME,mesh=mesh,vm=vm,RC=STATUS )
   VERIFY_(STATUS)
@@ -465,7 +416,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-! set smb and surface for test 
+! set smb and surface to zero for simple test 
   SMBToISSM(:) = 0.0_dp     ! placeholder zeros
   SurfaceToGEOS(:) = 0.0_dp ! placeholder zeros
   
@@ -473,12 +424,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  ! ! call the C++ routine for running a single time step
-!   call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
+  ! call the C++ routine for running a single time step
+  call RunISSM(dt, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
-
 
   deallocate(SMBToISSM)
   deallocate(SurfaceToGEOS)
@@ -489,7 +439,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   RETURN_(ESMF_SUCCESS)
  
  end subroutine RUN
-
 
  !BOP
     
@@ -524,23 +473,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     Iam = trim(comp_name) // Iam
 
-    ! Get my internal MAPL_Generic state
-!-----------------------------------
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
-    VERIFY_(STATUS)
-
-    ! Profilers
-!----------
-
-    call MAPL_TimerOn(MAPL,"TOTAL"   )
-    call MAPL_TimerOn(MAPL,"FINALIZE")
-
     ! call ISSM finalize (saves binary output .outbin file)
     call FinalizeISSM()
-
-    call MAPL_TimerOff(MAPL,"FINALIZE")
-    call MAPL_TimerOff(MAPL,"TOTAL"   )
 
 ! Generic Finalize
 ! ------------------
