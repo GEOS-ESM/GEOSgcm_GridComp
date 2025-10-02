@@ -3023,7 +3023,7 @@ end if
      real, dimension(:    ), pointer     :: PREF
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
-     real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA, TSM, USM, VSM
+     real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA, TSM, USM, VSM, DELP
      real, dimension(IM,JM,0:LM)         :: ZL0
      integer, dimension(IM,JM)           :: SMTH_LEV
 
@@ -3659,6 +3659,7 @@ end if
       ! Miscellaneous factors
       !----------------------
 
+      DELP = PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
       RDZ = PLE(:,:,1:LM-1) / ( MAPL_RGAS * TVE )
       RDZ = RDZ(:,:,1:LM-1) / (Z(:,:,1:LM-1)-Z(:,:,2:LM))
       DMI = (MAPL_GRAV*DT)/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
