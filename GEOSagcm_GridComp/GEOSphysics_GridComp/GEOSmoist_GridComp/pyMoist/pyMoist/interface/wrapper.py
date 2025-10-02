@@ -443,7 +443,7 @@ class GEOSPyMoistWrapper:
             self._mapl_import
         ) as mapl_import, MAPLManagedMemory(self._mapl_export) as mapl_export:
             # Pull the data from the linked Fortran memory
-            self._GFDL_1M_state.init_zero_copy(
+            self._GFDL_1M_state.update_move_memory(
                 {
                     "mixing_ratios": {
                         "vapor": mapl_internal.Q,
@@ -466,7 +466,7 @@ class GEOSPyMoistWrapper:
                     },
                 },
                 # We follow fortran strides and because we do this consistently it doesn't break orchestration
-                check=False,
+                check_shape_and_strides=False,
             )
 
             # Diagnostic for un-tested code
@@ -496,7 +496,7 @@ class GEOSPyMoistWrapper:
                 rh_crit = None
 
             # Outputs: model fields originating from within GFDL
-            self._GFDL_1M_outputs.init_zero_copy(
+            self._GFDL_1M_outputs.update_move_memory(
                 {
                     "liquid_radius": mapl_export.RL,
                     "ice_radius": mapl_export.RI,
@@ -573,7 +573,7 @@ class GEOSPyMoistWrapper:
                     "shallow_convective_snow": mapl_export.SC_SNR,
                 },
                 # We follow fortran strides and because we do this consistently it doesn't break orchestration
-                check=False,
+                check_shape_and_strides=False,
             )
 
             # Call the module

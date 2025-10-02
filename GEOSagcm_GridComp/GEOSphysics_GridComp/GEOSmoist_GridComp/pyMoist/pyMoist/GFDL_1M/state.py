@@ -1,91 +1,11 @@
 import dataclasses
-from typing import Any, Self
 
-import dacite
-from numpy.typing import ArrayLike
-
-from ndsl import Quantity, QuantityFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM, Float
+from ndsl import Quantity, State
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Float
 
 
 @dataclasses.dataclass
-class NDSLState:
-    """[! Experimental !] Collection of Quantities.
-    Can do zero copy with checks."""
-
-    @classmethod
-    def zeros(cls, quantity_factory: QuantityFactory) -> Self:
-        """Init all quantities to zeros - included nested ones"""
-
-        def _zeros(cls):
-            initial_quantities = {}
-            for _field in dataclasses.fields(cls):
-                if dataclasses.is_dataclass(_field.type):
-                    initial_quantities[_field.name] = _zeros(_field.type)
-                else:
-                    if "dims" not in _field.metadata.keys():
-                        raise ValueError(
-                            "Malformed state - no dims to init "
-                            f"Quantity in  {_field.name} of type {_field.type}"
-                        )
-
-                    initial_quantities[_field.name] = quantity_factory.zeros(
-                        _field.metadata["dims"],
-                        _field.metadata["units"],
-                        dtype=_field.metadata["dtype"],
-                        allow_mismatch_float_precision=True,
-                    )
-
-            return initial_quantities
-
-        dict_of_qty = _zeros(cls)
-        return dacite.from_dict(data_class=cls, data=dict_of_qty)
-
-    def init_from_memory(self, memory_map: dict[str, Any]):
-        """Copy data from the input by following dataclass naming convention"""
-
-        def _init_from_memory(dataclss, memory_map: dict[str, Any]):
-            for name, array in memory_map.items():
-                if isinstance(array, dict):
-                    _init_from_memory(dataclss.__getattribute__(name), array)
-                else:
-                    try:
-                        dataclss.__getattribute__(name).field[:] = array
-                    except ValueError as e:
-                        e.add_note(f"Error when initializing field {name} on state {type(self)}")
-                        raise e
-
-        _init_from_memory(self, memory_map)
-
-    def init_zero_copy(self, memory_map: dict[str, Any], check: bool = True):
-        """Swap buffers given into the Quantities carried by the state
-        by following dataclass naming convention"""
-
-        def _init_from_memory(dataclss, memory_map: dict[str, Any | ArrayLike]):
-            for name, array in memory_map.items():
-                if isinstance(array, dict):
-                    _init_from_memory(dataclss.__getattribute__(name), array)
-                else:
-                    qty = dataclss.__getattribute__(name)
-                    if check:
-                        if array.shape != qty.field.shape:
-                            e = ValueError("Shape mismatch on zero copy for")
-                            e.add_note(f"  Error on {name} for {type(dataclss)}")
-                            e.add_note(f"  Shapes: {array.shape} != {qty.field.shape}")
-                            raise e
-                        if array.strides != qty.data.strides:
-                            e = ValueError("Stride mismatch on zero copy for")
-                            e.add_note(f"  Error on {name} for {type(dataclss)}")
-                            e.add_note(f"  Strides: {array.strides} != {qty.data.strides}")
-                            raise e
-
-                    qty.data = array
-
-        _init_from_memory(self, memory_map)
-
-
-@dataclasses.dataclass
-class MicrophysicState(NDSLState):
+class MicrophysicState(State):
     @dataclasses.dataclass
     class MixingRatios:
         """
@@ -271,7 +191,7 @@ class MicrophysicState(NDSLState):
 
 
 @dataclasses.dataclass
-class Outputs(NDSLState):
+class Outputs(State):
     """
     Collection of all fields computed locally and returned to the rest of the model
     """
@@ -658,7 +578,7 @@ class Outputs(NDSLState):
     large_scale_nonanvil_ice_flux: Quantity = dataclasses.field(
         metadata={
             "name": "large_scale_nonanvil_ice_flux",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -667,7 +587,7 @@ class Outputs(NDSLState):
     large_scale_nonanvil_liquid_flux: Quantity = dataclasses.field(
         metadata={
             "name": "large_scale_nonanvil_liquid_flux",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -676,7 +596,7 @@ class Outputs(NDSLState):
     anvil_liquid_flux: Quantity = dataclasses.field(
         metadata={
             "name": "anvil_liquid_flux",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -685,7 +605,7 @@ class Outputs(NDSLState):
     anvil_ice_flux: Quantity = dataclasses.field(
         metadata={
             "name": "anvil_ice_flux",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
