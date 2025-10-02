@@ -381,10 +381,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     logical                               :: init_gfdl_1m_flags = .true.
     ! IEEE trapping see below
     logical                               :: halting_mode(5)
-    real                                  :: start, finish
     integer                               :: comm, rank, mpierr
     ! fixing issue passing logical 4 to logical 1 at interface to python
 #endif
+    real                                  :: start, finish
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS)
