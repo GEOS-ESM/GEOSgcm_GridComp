@@ -125,9 +125,9 @@ The script writes **`topo_<tag>.j`** in `out_dir` and sets sane defaults for tim
 
 ---
 
-## Runtime guidance (from header comments)
+## Runtime guidance
 
-> Wall estimates assume GMAO/Discover‑like nodes; adjust for your system.
+> Wall estimates assume Discover nodes; adjust for your system.
 
 * `c180 … c2880, c1536, c1120, c2160`: **1 node**, ~**1h**
 * `c5760, c540, c270, c48`: **2 nodes**, ~**4h**
