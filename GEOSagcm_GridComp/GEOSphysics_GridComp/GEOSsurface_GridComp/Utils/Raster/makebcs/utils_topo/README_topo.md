@@ -16,11 +16,11 @@ source g5_modules
 ./make_topo.py
 
 # 3) Answer prompts (bin dir, output dir, input GMTED path, and resolutions)
-#    The script writes a Slurm job like topo_c360.j in your chosen out_dir.
+#    The script writes a Slurm job like topo_{res}.j in your chosen out_dir.
 
 # 4) Submit
 cd <out_dir>
-sbatch topo_c360.j
+sbatch topo_c{res}.j
 ```
 
 Outputs (per‑resolution) in `out_dir/output_<IM>/` as NetCDF files and binary alongside a GMAO restart.
