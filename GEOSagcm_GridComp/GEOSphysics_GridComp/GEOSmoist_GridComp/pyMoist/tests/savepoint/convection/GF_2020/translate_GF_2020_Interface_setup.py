@@ -5,7 +5,7 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.convective_parameterization.GF_2020.config import GF2020Config
 from pyMoist.convective_parameterization.GF_2020.temporaries import Temporaries
-from pyMoist.convective_parameterization.GF_2020.driver_interface.driver_interface import DriverInterface
+from pyMoist.convective_parameterization.GF_2020.interface.interface import GF2020Interface
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convective_parameterization.GF_2020.state import MixingRatios
 from pyMoist.convective_parameterization.GF_2020.GF_2020 import GF2020
@@ -15,7 +15,7 @@ from ndsl.dsl.typing import Int
 import numpy as np
 
 
-class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
+class TranslateGF_2020_Interface_setup(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -141,13 +141,6 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
             "DZ": grid.compute_dict(),
             "AIR_DEN": grid.compute_dict(),
             "entr3d": grid.compute_dict(),
-            # debug
-            "MASS_N": grid.compute_dict(),
-            "ZLE_N": grid.compute_dict(),
-            "ZLO_N": grid.compute_dict(),
-            "PLO_N": grid.compute_dict(),
-            "PK_N": grid.compute_dict(),
-            "ec3d": grid.compute_dict(),
         }
 
         # Initalize saturation tables
@@ -176,6 +169,7 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
 
     def compute(self, inputs):
         GF_2020_config = GF2020Config(
+            DT_MOIST=self.constants["DT_MOIST"],
             STOCHASTIC_CONVECTION=bool(self.constants["STOCHASTIC_CNV"]),
             STOCH_TOP=self.constants["STOCH_TOP"],
             STOCH_BOT=self.constants["STOCH_BOT"],
@@ -185,6 +179,10 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
             CONVECTION_TRACER=self.constants["CONVECTION_TRACER"],
             C1=self.constants["C1"],
             ADV_TRIGGER=self.constants["ADV_TRIGGER"],
+            AUTOCONV=self.constants["AUTOCONV"],
+            USE_TRACER_TRANSP=self.constants["USE_TRACER_TRANSP"],
+            SCLM_DEEP=self.constants["SCLM_DEEP"],
+            FIX_CNV_CLOUD=bool(self.constants["FIX_CNV_CLOUD"]),
         )
 
         PLE = self.make_ijk_quantity(inputs.pop("PLE"), interface=True)
@@ -269,23 +267,13 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
         TAU_EC = self.make_ij_quantity(inputs.pop("TAU_EC"))
 
         # Construct stencils
-        driver_interface = DriverInterface(
+        interface = GF2020Interface(
             stencil_factory=self.stencil_factory,
+            quantity_factory=self.quantity_factory,
             GF_2020_config=GF_2020_config,
         )
 
-        maximum_t2m = np.max(T2M.field)
-
-        # debug stuff
-        MASS_N = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        ZLE_N = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
-        ZLE_N_surface = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        ZLO_N = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        PLO_N = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        PK_N = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        ec3d = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-
-        driver_interface(
+        interface.setup(
             PLE,
             PLO,
             ZLE,
@@ -394,21 +382,7 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
             AA1_CIN,
             TAU_BL,
             TAU_EC,
-            # workarounds
-            maximum_t2m,
-            Int(PLE.field.shape[0]),
-            Int(PLE.field.shape[1]),
-            # debug stuff
-            MASS_N,
-            ZLE_N,
-            ZLE_N_surface,
-            ZLO_N,
-            PLO_N,
-            PK_N,
-            ec3d,
         )
-
-        ZLE_N.field[:, :, -1] = ZLE_N_surface.field
 
         return {
             "aot500": self.temporaries.aot500.field,
@@ -437,10 +411,4 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
             "DZ": self.temporaries.DZ.field,
             "AIR_DEN": self.temporaries.AIR_DEN.field,
             "entr3d": self.temporaries.entr3d.field,
-            "MASS_N": MASS_N.field,
-            "ZLE_N": ZLE_N.field,
-            "ZLO_N": ZLO_N.field,
-            "PLO_N": PLO_N.field,
-            "PK_N": PK_N.field,
-            "ec3d": np.moveaxis(ec3d.field, 2, 0),
         }

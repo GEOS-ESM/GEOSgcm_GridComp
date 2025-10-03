@@ -20,3 +20,4 @@ from .saturation_tables.translate_qsat_functions import Translateqsat_functions
 from .saturation_tables.translate_saturation_tables import Translatesaturation_tables
 from .translate_aer_activation import TranslateAerActivation
 from .translate_compute_uwshcu import TranslateComputeUwshcuInv
+from .convection.GF_2020.translate_GF_2020_setup import TranslateGF_2020_setup

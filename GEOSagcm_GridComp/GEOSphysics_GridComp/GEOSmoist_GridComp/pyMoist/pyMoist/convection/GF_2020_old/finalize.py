@@ -7,7 +7,7 @@ import pyMoist.constants as constants
 from pyMoist.convective_parameterization.GF_2020.temporaries import Temporaries
 from pyMoist.convective_parameterization.GF_2020.state import MixingRatios, CloudFractions
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.field_types import GlobalTable_saturaion_tables
+from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared_incloud_processes import ice_fraction
 
@@ -41,8 +41,8 @@ def finalize(
     QICN: FloatField,
     CLCN: FloatField,
     PL: FloatField,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
 ):
     """
     This stencil MUST be built using Z_INTERFACE_DIM to function properly.

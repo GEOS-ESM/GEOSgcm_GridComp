@@ -7,7 +7,7 @@ import pyMoist.constants as constants
 from pyMoist.convective_parameterization.GF_2020.temporaries import Temporaries
 from pyMoist.convective_parameterization.GF_2020.state import MixingRatios
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.field_types import GlobalTable_saturaion_tables
+from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
@@ -28,8 +28,8 @@ def setup(
     area: FloatFieldIJ,
     modified_area: FloatFieldIJ,
     convection_fraction: FloatFieldIJ,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
 ):
     """
     Performs initial setup for the GF 2020 convection scheme:

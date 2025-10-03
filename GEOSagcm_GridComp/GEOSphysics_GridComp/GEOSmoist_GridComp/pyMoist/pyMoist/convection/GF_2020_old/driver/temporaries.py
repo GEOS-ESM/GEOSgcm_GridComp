@@ -6,7 +6,7 @@ from ndsl.dsl.typing import Int
 
 
 @dataclass
-class DriverTemporaries:
+class GF2020DriverTemporaries:
     do_this_column: Quantity
     ierr: Quantity
     jmin: Quantity
@@ -181,7 +181,7 @@ class DriverTemporaries:
 
 
 @dataclass
-class DriverTemporaries:
+class GF2020DriverTemporaries:
     last_ierr: Quantity
 
     @classmethod

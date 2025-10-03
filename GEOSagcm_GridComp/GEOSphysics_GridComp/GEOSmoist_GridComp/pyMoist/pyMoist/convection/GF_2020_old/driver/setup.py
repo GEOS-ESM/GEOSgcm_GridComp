@@ -10,7 +10,7 @@ from pyMoist.convective_parameterization.GF_2020.state import MixingRatios
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
 from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.convective_parameterization.GF_2020.driver.temporaries import DriverTemporaries
+from pyMoist.convective_parameterization.GF_2020.driver.temporaries import GF2020DriverTemporaries
 from pyMoist.field_types import FloatField_maxiens, FloatField_nmp
 from pyMoist.convective_parameterization.GF_2020.driver.constants import driver_constants
 
@@ -146,4 +146,4 @@ class DriverSetup:
         )
 
     def __call__(self, quantity_factory: QuantityFactory):
-        self.driver_temporaries = DriverTemporaries.make(quantity_factory)
+        self.driver_temporaries = GF2020DriverTemporaries.make(quantity_factory)

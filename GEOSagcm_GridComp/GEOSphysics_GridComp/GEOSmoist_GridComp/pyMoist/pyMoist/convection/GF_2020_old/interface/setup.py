@@ -1,16 +1,7 @@
-import copy
-from ndsl import StencilFactory, QuantityFactory
-from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, sqrt, max, min, abs, floor, K, BACKWARD
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, sqrt, max, K, BACKWARD
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, Int
-from pyMoist.convective_parameterization.GF_2020.config import GF2020Config
 import pyMoist.constants as constants
-from pyMoist.convective_parameterization.GF_2020.temporaries import Temporaries
-from pyMoist.convective_parameterization.GF_2020.state import MixingRatios
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.field_types import GlobalTable_saturaion_tables
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.field_types import FloatField_nmp
+from pyMoist.convective_parameterization.GF_2020.field_types import FloatField_nmp
 
 
 def reset_to_zero(
@@ -183,14 +174,8 @@ def driver_interface(
     maximum_t2m: Float,  # because max of entire field cannot be determined within a stencil
     i_end: Int,  # i_end cannot be used like k_end, gtscript error
     j_end: Int,  # j_end cannot be used like k_end, gtscript error
-    # debug
-    MASS_N: FloatField,
     ZLE_N: FloatField,
     ZLE_N_surface: FloatFieldIJ,
-    ZLO_N: FloatField,
-    PLO_N: FloatField,
-    PK_N: FloatField,
-    ec3d: FloatField,
 ):
     from __externals__ import k_end, GF_ENV_SETTING, ENTRVERSION, CONVECTION_TRACER
 
@@ -352,8 +337,6 @@ def driver_interface(
                 else:
                     ec3d = 1.0
 
-                entr3d = ec3d.at(K=flip)
-
                 mp_ice[0, 0, 0][0] = QILS.at(K=flip)
                 mp_liq[0, 0, 0][0] = QLLS.at(K=flip)
                 mp_cf[0, 0, 0][0] = CLLS.at(K=flip)
@@ -372,6 +355,8 @@ def driver_interface(
 
     with computation(PARALLEL), interval(...):
         if single_column_stop == False:
+            if GF_ENV_SETTING == 1:
+                entr3d = ec3d.at(K=flip)
             if CONVECTION_TRACER == 1:
                 buoy_exc = CNV_TR.at(K=flip)
             else:
@@ -383,266 +368,3 @@ def driver_interface(
     #    allocate(SRC_CHEM(mtp, mzp, mxp, myp),stat=alloc_stat) !- tendency from convection
     #    IF(alloc_stat==0) SRC_CHEM=0.0
     # ENDIF
-
-
-class DriverInterface:
-    def __init__(self, stencil_factory: StencilFactory, GF_2020_config: GF2020Config):
-        # Construct stencils
-        self.reset_to_zero = stencil_factory.from_dims_halo(
-            func=reset_to_zero,
-            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
-        )
-
-        self.driver_interface = stencil_factory.from_dims_halo(
-            func=driver_interface,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "GF_ENV_SETTING": GF_2020_config.GF_ENV_SETTING,
-                "ENTRVERSION": GF_2020_config.ENTRVERSION,
-                "CONVECTION_TRACER": GF_2020_config.CONVECTION_TRACER,
-            },
-        )
-
-    def __call__(
-        self,
-        # inputs
-        PLE: FloatField,
-        PLO: FloatField,
-        ZLE: FloatField,
-        ZLO: FloatField,
-        PK: FloatField,
-        MASS: FloatField,
-        KH: FloatField,
-        T1: FloatField,
-        Q1: FloatField,
-        U1: FloatField,
-        V1: FloatField,
-        W1: FloatField,
-        BYNCY: FloatField,
-        QLCN: FloatField,
-        QICN: FloatField,
-        QLLS: FloatField,
-        QILS: FloatField,
-        CLCN: FloatField,
-        CLLS: FloatField,
-        QV_DYN_IN: FloatField,
-        PLE_DYN_IN: FloatField,
-        U_DYN_IN: FloatField,
-        V_DYN_IN: FloatField,
-        T_DYN_IN: FloatField,
-        RADSW: FloatField,
-        RADLW: FloatField,
-        DQDT_BL: FloatField,
-        DTDT_BL: FloatField,
-        FRLAND: FloatFieldIJ,
-        AREA: FloatFieldIJ,
-        T2M: FloatFieldIJ,
-        SH: FloatFieldIJ,
-        EVAP: FloatFieldIJ,
-        PHIS: FloatFieldIJ,
-        KPBLIN: FloatFieldIJ,
-        DTDTDYN: FloatField,
-        DQVDTDYN: FloatField,
-        TPWI: FloatFieldIJ,
-        TPWI_star: FloatFieldIJ,
-        CNV_TR: FloatField,
-        # fields computed here and passed to the driver
-        aot500: FloatFieldIJ,
-        temp2m: FloatFieldIJ,
-        sflux_r: FloatFieldIJ,
-        sflux_t: FloatFieldIJ,
-        topt: FloatFieldIJ,
-        xland: FloatFieldIJ,
-        dx2d: FloatFieldIJ,
-        kpbl: FloatFieldIJ,
-        temp: FloatField,
-        press: FloatField,
-        rvap: FloatField,
-        up: FloatField,
-        vp: FloatField,
-        wp: FloatField,
-        zt3d: FloatField,
-        zm3d: FloatField,
-        dm3d: FloatField,
-        khloc: FloatField,
-        curr_rvap: FloatField,
-        mp_ice: FloatField_nmp,
-        mp_liq: FloatField_nmp,
-        mp_cf: FloatField_nmp,
-        buoy_exc: FloatField,
-        # fields computed here and used immediately after driver conclusion
-        DZ: FloatField,
-        AIR_DEN: FloatField,
-        # fields computed here and used elsewhere in the model
-        entr3d: FloatField,
-        # fields just getting reset to zero
-        WQT_DC: FloatField,
-        CNV_MFC: FloatField,
-        PRFIL: FloatField,
-        CNV_MF0: FloatField,
-        CNV_PRC3: FloatField,
-        CNV_MFD: FloatField,
-        CNV_DQCDT: FloatField,
-        CNV_UPDF: FloatField,
-        CNV_CVW: FloatField,
-        CNV_QC: FloatField,
-        ENTLAM: FloatField,
-        REVSU: FloatField,
-        DQDT_GF: FloatField,
-        DTDT_GF: FloatField,
-        DUDT_GF: FloatField,
-        DVDT_GF: FloatField,
-        MUPDP: FloatField,
-        MDNDP: FloatField,
-        MUPSH: FloatField,
-        MUPMD: FloatField,
-        CNPCPRATE: FloatFieldIJ,
-        LIGHTN_DENS: FloatFieldIJ,
-        SIGMA_DEEP: FloatFieldIJ,
-        SIGMA_MID: FloatFieldIJ,
-        MFDP: FloatFieldIJ,
-        MFSH: FloatFieldIJ,
-        MFMD: FloatFieldIJ,
-        ERRDP: FloatFieldIJ,
-        ERRSH: FloatFieldIJ,
-        ERRMD: FloatFieldIJ,
-        AA0: FloatFieldIJ,
-        AA1: FloatFieldIJ,
-        AA2: FloatFieldIJ,
-        AA3: FloatFieldIJ,
-        AA1_BL: FloatFieldIJ,
-        AA1_CIN: FloatFieldIJ,
-        TAU_BL: FloatFieldIJ,
-        TAU_EC: FloatFieldIJ,
-        # workarounds
-        maximum_t2m: Float,  # because max of entire field cannot be determined within a stencil
-        i_size: Int,  # i_end cannot be used like k_end, gtscript error
-        j_size: Int,  # j_end cannot be used like k_end, gtscript error
-        # debug stuff
-        MASS_N: FloatField,
-        ZLE_N: FloatField,
-        ZLE_N_surface: FloatFieldIJ,
-        ZLO_N: FloatField,
-        PLO_N: FloatField,
-        PK_N: FloatField,
-        ec3d: FloatField,
-    ):
-        self.reset_to_zero(
-            WQT_DC,
-            CNV_MFC,
-            PRFIL,
-            CNV_MF0,
-            CNV_PRC3,
-            CNV_MFD,
-            CNV_DQCDT,
-            CNV_UPDF,
-            CNV_CVW,
-            CNV_QC,
-            ENTLAM,
-            REVSU,
-            DQDT_GF,
-            DTDT_GF,
-            DUDT_GF,
-            DVDT_GF,
-            MUPDP,
-            MDNDP,
-            MUPSH,
-            MUPMD,
-            CNPCPRATE,
-            LIGHTN_DENS,
-            SIGMA_DEEP,
-            SIGMA_MID,
-            MFDP,
-            MFSH,
-            MFMD,
-            ERRDP,
-            ERRSH,
-            ERRMD,
-            AA0,
-            AA1,
-            AA2,
-            AA3,
-            AA1_BL,
-            AA1_CIN,
-            TAU_BL,
-            TAU_EC,
-        )
-        self.driver_interface(
-            PLE,
-            PLO,
-            ZLE,
-            ZLO,
-            PK,
-            MASS,
-            KH,
-            T1,
-            Q1,
-            U1,
-            V1,
-            W1,
-            BYNCY,
-            QLCN,
-            QICN,
-            QLLS,
-            QILS,
-            CLCN,
-            CLLS,
-            QV_DYN_IN,
-            PLE_DYN_IN,
-            U_DYN_IN,
-            V_DYN_IN,
-            T_DYN_IN,
-            RADSW,
-            RADLW,
-            DQDT_BL,
-            DTDT_BL,
-            FRLAND,
-            AREA,
-            T2M,
-            SH,
-            EVAP,
-            PHIS,
-            KPBLIN,
-            DTDTDYN,
-            DQVDTDYN,
-            TPWI,
-            TPWI_star,
-            CNV_TR,
-            aot500,
-            temp2m,
-            sflux_r,
-            sflux_t,
-            topt,
-            xland,
-            dx2d,
-            kpbl,
-            temp,
-            press,
-            rvap,
-            up,
-            vp,
-            wp,
-            zt3d,
-            zm3d,
-            dm3d,
-            khloc,
-            curr_rvap,
-            mp_ice,
-            mp_liq,
-            mp_cf,
-            buoy_exc,
-            DZ,
-            AIR_DEN,
-            entr3d,
-            # workarounds
-            maximum_t2m,
-            i_size,
-            j_size,
-            MASS_N,
-            ZLE_N,
-            ZLE_N_surface,
-            ZLO_N,
-            PLO_N,
-            PK_N,
-            ec3d,
-        )
