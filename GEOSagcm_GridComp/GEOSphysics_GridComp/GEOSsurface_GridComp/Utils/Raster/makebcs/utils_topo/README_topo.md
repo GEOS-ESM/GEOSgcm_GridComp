@@ -72,7 +72,7 @@ Outputs (per‑resolution) in `out_dir/output_<IM>/` as NetCDF files and binary 
   * `mpirun` available in `$PATH`
 * **Scheduler:** Slurm (`sbatch`)
 
-> The driver writes a **csh** job file
+The driver writes a **csh** job file
 
 ---
 
@@ -87,7 +87,7 @@ Outputs (per‑resolution) in `out_dir/output_<IM>/` as NetCDF files and binary 
 
   * If you choose a stretched family, you will be asked for its concrete IM sizes (e.g., `C270`, `C540`).
 
-The script writes **`topo_<tag>.j`** in `out_dir` and sets sane defaults for time, nodes, and job name.
+The script writes **`topo_<res>.j`** in `out_dir` and sets sane defaults for time, nodes, and job name.
 
 ---
 
@@ -121,13 +121,13 @@ The script writes **`topo_<tag>.j`** in `out_dir` and sets sane defaults for tim
 | C1536 (SG002) |            26.8 |                   12.1 |
 | C2160 (SG001) |            2.98 |                  14.25 |
 
-> To add/retune a grid, edit the `smoothmap`/`alpha` dicts in `make_topo.py` and re‑run.
+To add/retune a grid, edit the `smoothmap`/`alpha` dicts in `make_topo.py` and re‑run.
 
 ---
 
 ## Runtime guidance
 
-> Wall estimates assume Discover nodes; adjust for your system.
+Wall estimates assume Discover nodes; adjust for your system.
 
 * `c180 … c2880, c1536, c1120, c2160`: **1 node**, ~**1h**
 * `c5760, c540, c270, c48`: **2 nodes**, ~**4h**
@@ -135,7 +135,7 @@ The script writes **`topo_<tag>.j`** in `out_dir` and sets sane defaults for tim
 * `c24`: **2 nodes**, ~**8h**
 * `c12`: **2 nodes**, ~**19h**, use `qos=long`
 
-> The driver currently sets 1 node in the Slurm header by default; edit the generated job for heavy cases.
+The driver currently sets 1 node in the Slurm header by default; edit the generated job for heavy cases.
 
 ---
 
