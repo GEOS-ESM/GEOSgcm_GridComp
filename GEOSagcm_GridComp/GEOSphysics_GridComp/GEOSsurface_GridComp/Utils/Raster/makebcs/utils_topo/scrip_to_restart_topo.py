@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
+"""
+scrip_to_restart_topo.py
 
+Purpose:
+    Convert old-style cubed-sphere NetCDF files with a flat 'ncol' dimension
+    into new-style cube files with explicit (lat, lon) dimensions.
+    Optionally annotate stretched grids (sg001, sg002) with STRETCH_FACTOR
+    and target center information.
+
+Key points:
+    - Input: NetCDF with dimension 'ncol' (and possibly 'nrdg')
+    - Output: NetCDF with dimensions ('lat','lon'[,'unknown_dim1'])
+    - Reshapes variables from (ncol) → (lat, lon) or (nrdg,ncol) → (nrdg,lat,lon)
+    - Adds lon/lat index coordinate variables (1..IM, 1..6*IM)
+    - Sets global attrs for sg001/sg002 grids
+"""
 #-------------
 # Load modules
 #-------------
