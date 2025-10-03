@@ -17,8 +17,7 @@ from pyMoist.constants import (
 )
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.masks import Masks
-from pyMoist.GFDL_1M.outputs import Outputs
-from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
+from pyMoist.GFDL_1M.state import MicrophysicState, Outputs
 from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.interpolations import vertical_interpolation
 from pyMoist.saturation_tables import (
@@ -276,8 +275,8 @@ class Setup:
         v: FloatField,
         shallow_convective_rain: Optional[FloatField],
         shallow_convective_snow: Optional[FloatField],
-        mixing_ratios: MixingRatios,
-        cloud_fractions: CloudFractions,
+        mixing_ratios: MicrophysicState.MixingRatios,
+        cloud_fractions: MicrophysicState.CloudFractions,
         masks: Masks,
         outputs: Outputs,
         temporaries: Temporaries,
