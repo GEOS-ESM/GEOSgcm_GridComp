@@ -26,13 +26,6 @@ program create_example
 !       - Variable:   PHIS(ncol) [units: m]
 !   * Basic error handling via subroutine `check` (aborts with NetCDF error message).
 !
-! Examples:
-!   # GEOS-style 2D NetCDF, assuming cubed-sphere (JM = 6*IM)
-!   create_example -i topo.bin --im 540 -o geos_topo.nc
-!
-!   # NCAR-style 1D ncol NetCDF for a general (IM,JM)
-!   create_example -i topo.bin --im 720 --jm 361 --ncar ncar_topo.nc
-!
 !------------------------------------------------------------------------------
 
   
