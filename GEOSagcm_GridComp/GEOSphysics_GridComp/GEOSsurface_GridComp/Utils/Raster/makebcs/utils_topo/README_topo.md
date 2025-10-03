@@ -224,5 +224,18 @@ We cannot push changes back upstream (no test platform there), so their repo may
 **Q: Can I widen or narrow the stretched‑grid refinement “dome”?**
 A: Yes. The dome’s footprint is set by the half‑power radius (half_power_radius_deg) inside the stretched‑grid rrfac logic. By default it’s ~40°/sqrt(max(1, stretch_factor)), so for SF≈2.5 the half‑power radius is ~25° (covers most of CONUS). Increase the constant (e.g., 45–50) to broaden the dome; decrease to tighten it. This only affects stretched grids.
 
-*Last updated: 2025‑10‑03*
+## List of Files in utils_topo
 
+Below are the main files in this directory, with one-line summaries.  
+Each file also has its own inline header with more detail.
+
+- **CMakeLists.txt** — builds the utilities.
+- **convert_bin_to_netcdf.F90** — small helper to convert raw binary topography into NetCDF (intermediate or testing).
+- **convert_to_gmao_output.F90** — final step: produces GMAO deliverables (`gmted_DYN_ave_*.nc4`, `gmted_GWD_var_*.nc4`, `gmted_TRB_var_*.nc4`).
+- **geompack.F90** — bundled geometry library (Burkardt routines: convex hull, triangle quality, etc.), needed for SCRIP generation.
+- **generate_scrip_cube.F90** — builds SCRIP descriptors (uniform or Schmidt-stretched).
+- **make_topo.py** — interactive driver, generates the Slurm job script to run the full pipeline.
+- **scrip_to_cube_topo.py** — converts flat `ncol` → cube layout, using example file geometry.
+- **scrip_to_restart_topo.py** — converts PE outputs into GWD restart format.
+
+*Last updated: 2025-10-03*
