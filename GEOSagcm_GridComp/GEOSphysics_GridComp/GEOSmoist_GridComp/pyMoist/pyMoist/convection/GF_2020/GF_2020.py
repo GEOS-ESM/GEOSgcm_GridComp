@@ -1,7 +1,7 @@
 import copy
 from pyMoist.convection.GF_2020.config import GF2020Config
 from ndsl import StencilFactory, QuantityFactory
-from pyMoist.convection.GF_2020.temporaries import GF2020Temporaries
+from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection.GF_2020.setup import GF2020Setup
@@ -24,7 +24,7 @@ class GF2020:
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         # Initalize extra quantities
-        self.temporaries = GF2020Temporaries.make(self.quantity_factory)
+        self.temporaries = GF2020Locals.make(self.quantity_factory)
 
         # Initalize submodules and build stencils
         self.setup = GF2020Setup(stencil_factory, quantity_factory, GF_2020_config)

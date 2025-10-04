@@ -9,7 +9,7 @@ from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidit
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.state import GF2020State
-from pyMoist.convection.GF_2020.temporaries import GF2020Temporaries
+from pyMoist.convection.GF_2020.locals import GF2020Locals
 
 
 def compute_extra_inputs_from_state(
@@ -212,7 +212,7 @@ def zero_state_fields(
         cape_removal_time_scale = 0.0
 
 
-def compute_2d_inputs(
+def preliminary_calculations(
     t: FloatField,
     t_2m_max: Float,
     t_2m: FloatFieldIJ,
@@ -285,8 +285,8 @@ def set_local_state(
     mass_local: FloatField,
     scalar_diffusivity: FloatField,
     scalar_diffusivity_local: FloatField,
-    lateral_entrainment_rate_local: FloatField,
     lateral_entrainment_rate: FloatField,
+    lateral_entrainment_rate_local: FloatField,
     p_surface: FloatFieldIJ,
     buoyancy: FloatField,
     p_interface: FloatField,
@@ -470,56 +470,56 @@ def prepare_cumulus_parameterization(
     last_ierr: FloatFieldIJ,
     fix_out_vapor: FloatFieldIJ,
     conprr: FloatFieldIJ,
-    evap_subl_tendency_cu_param: FloatField,
-    convective_precip_flux_cu_param: FloatField,
-    t_perturbation_cu_param_horizontal: FloatField,
-    t_perturbation_cu_param_vertical: FloatField,
-    t_perturbation_cu_param: FloatField,
-    omega_cu_param: FloatField,
+    evap_subl_tendency: FloatField,
+    convective_precip_flux: FloatField,
+    t_perturbation_horizontal: FloatField,
+    t_perturbation_vertical: FloatField,
+    t_perturbation: FloatField,
+    omega: FloatField,
     ccn: FloatFieldIJ,
-    dtdt_cu_param_shallow: FloatField,
-    dtdt_cu_param_mid: FloatField,
-    dtdt_cu_param_deep: FloatField,
-    dudt_cu_param_shallow: FloatField,
-    dudt_cu_param_mid: FloatField,
-    dudt_cu_param_deep: FloatField,
-    dvdt_cu_param_shallow: FloatField,
-    dvdt_cu_param_mid: FloatField,
-    dvdt_cu_param_deep: FloatField,
-    dvapordt_cu_param_shallow: FloatField,
-    dvapordt_cu_param_mid: FloatField,
-    dvapordt_cu_param_deep: FloatField,
-    dvapordt_cu_param_combined: FloatField,
-    dcloudicedt_cu_param_shallow: FloatField,
-    dcloudicedt_cu_param_mid: FloatField,
-    dcloudicedt_cu_param_deep: FloatField,
-    dnicedt_cu_param_shallow: FloatField,
-    dnicedt_cu_param_mid: FloatField,
-    dnicedt_cu_param_deep: FloatField,
-    dnliquiddt_cu_param_shallow: FloatField,
-    dnliquiddt_cu_param_mid: FloatField,
-    dnliquiddt_cu_param_deep: FloatField,
-    dbuoyancydt_cu_param_shallow: FloatField,
-    dbuoyancydt_cu_param_mid: FloatField,
-    dbuoyancydt_cu_param_deep: FloatField,
-    dconvectiveicedt_cu_param_shallow: FloatField,
-    dconvectiveicedt_cu_param_mid: FloatField,
-    dconvectiveicedt_cu_param_deep: FloatField,
-    dlargescaleicedt_cu_param_shallow: FloatField,
-    dlargescaleicedt_cu_param_mid: FloatField,
-    dlargescaleicedt_cu_param_deep: FloatField,
-    dconvectiveliquiddt_cu_param_shallow: FloatField,
-    dconvectiveliquiddt_cu_param_mid: FloatField,
-    dconvectiveliquiddt_cu_param_deep: FloatField,
-    dlargescaleliquiddt_cu_param_shallow: FloatField,
-    dlargescaleliquiddt_cu_param_mid: FloatField,
-    dlargescaleliquiddt_cu_param_deep: FloatField,
-    dconvectivecloudfractiondt_cu_param_shallow: FloatField,
-    dconvectivecloudfractiondt_cu_param_mid: FloatField,
-    dconvectivecloudfractiondt_cu_param_deep: FloatField,
-    dlargescalecloudfractiondt_cu_param_shallow: FloatField,
-    dlargescalecloudfractiondt_cu_param_mid: FloatField,
-    dlargescalecloudfractiondt_cu_param_deep: FloatField,
+    dtdt_shallow: FloatField,
+    dtdt_mid: FloatField,
+    dtdt_deep: FloatField,
+    dudt_shallow: FloatField,
+    dudt_mid: FloatField,
+    dudt_deep: FloatField,
+    dvdt_shallow: FloatField,
+    dvdt_mid: FloatField,
+    dvdt_deep: FloatField,
+    dvapordt_shallow: FloatField,
+    dvapordt_mid: FloatField,
+    dvapordt_deep: FloatField,
+    dvapordt_combined: FloatField,
+    dcloudicedt_shallow: FloatField,
+    dcloudicedt_mid: FloatField,
+    dcloudicedt_deep: FloatField,
+    dnicedt_shallow: FloatField,
+    dnicedt_mid: FloatField,
+    dnicedt_deep: FloatField,
+    dnliquiddt_shallow: FloatField,
+    dnliquiddt_mid: FloatField,
+    dnliquiddt_deep: FloatField,
+    dbuoyancydt_shallow: FloatField,
+    dbuoyancydt_mid: FloatField,
+    dbuoyancydt_deep: FloatField,
+    dconvectiveicedt_shallow: FloatField,
+    dconvectiveicedt_mid: FloatField,
+    dconvectiveicedt_deep: FloatField,
+    dlargescaleicedt_shallow: FloatField,
+    dlargescaleicedt_mid: FloatField,
+    dlargescaleicedt_deep: FloatField,
+    dconvectiveliquiddt_shallow: FloatField,
+    dconvectiveliquiddt_mid: FloatField,
+    dconvectiveliquiddt_deep: FloatField,
+    dlargescaleliquiddt_shallow: FloatField,
+    dlargescaleliquiddt_mid: FloatField,
+    dlargescaleliquiddt_deep: FloatField,
+    dconvectivecloudfractiondt_shallow: FloatField,
+    dconvectivecloudfractiondt_mid: FloatField,
+    dconvectivecloudfractiondt_deep: FloatField,
+    dlargescalecloudfractiondt_shallow: FloatField,
+    dlargescalecloudfractiondt_mid: FloatField,
+    dlargescalecloudfractiondt_deep: FloatField,
     p_surface: FloatFieldIJ,
     topography_height: FloatFieldIJ,
     topography_height_no_negative: FloatFieldIJ,
@@ -540,60 +540,60 @@ def prepare_cumulus_parameterization(
 
     with computation(PARALLEL), interval(...):
         # pre-fill some fields
-        evap_subl_tendency_cu_param = 0.0
-        convective_precip_flux_cu_param = 0.0
-        t_perturbation_cu_param = 0.0
+        evap_subl_tendency = 0.0
+        convective_precip_flux = 0.0
+        t_perturbation = 0.0
 
-        dtdt_cu_param_shallow = 0.0
-        dtdt_cu_param_mid = 0.0
-        dtdt_cu_param_deep = 0.0
-        dudt_cu_param_shallow = 0.0
-        dudt_cu_param_mid = 0.0
-        dudt_cu_param_deep = 0.0
-        dvdt_cu_param_shallow = 0.0
-        dvdt_cu_param_mid = 0.0
-        dvdt_cu_param_deep = 0.0
-        dvapordt_cu_param_shallow = 0.0
-        dvapordt_cu_param_mid = 0.0
-        dvapordt_cu_param_deep = 0.0
-        dvapordt_cu_param_combined = 0.0
-        dcloudicedt_cu_param_shallow = 0.0
-        dcloudicedt_cu_param_mid = 0.0
-        dcloudicedt_cu_param_deep = 0.0
-        dnicedt_cu_param_shallow = 0.0
-        dnicedt_cu_param_mid = 0.0
-        dnicedt_cu_param_deep = 0.0
-        dnliquiddt_cu_param_shallow = 0.0
-        dnliquiddt_cu_param_mid = 0.0
-        dnliquiddt_cu_param_deep = 0.0
-        dbuoyancydt_cu_param_shallow = 0.0
-        dbuoyancydt_cu_param_mid = 0.0
-        dbuoyancydt_cu_param_deep = 0.0
+        dtdt_shallow = 0.0
+        dtdt_mid = 0.0
+        dtdt_deep = 0.0
+        dudt_shallow = 0.0
+        dudt_mid = 0.0
+        dudt_deep = 0.0
+        dvdt_shallow = 0.0
+        dvdt_mid = 0.0
+        dvdt_deep = 0.0
+        dvapordt_shallow = 0.0
+        dvapordt_mid = 0.0
+        dvapordt_deep = 0.0
+        dvapordt_combined = 0.0
+        dcloudicedt_shallow = 0.0
+        dcloudicedt_mid = 0.0
+        dcloudicedt_deep = 0.0
+        dnicedt_shallow = 0.0
+        dnicedt_mid = 0.0
+        dnicedt_deep = 0.0
+        dnliquiddt_shallow = 0.0
+        dnliquiddt_mid = 0.0
+        dnliquiddt_deep = 0.0
+        dbuoyancydt_shallow = 0.0
+        dbuoyancydt_mid = 0.0
+        dbuoyancydt_deep = 0.0
 
         if APPLY_SUB_MP == 1:
-            dconvectiveicedt_cu_param_shallow = 0.0
-            dconvectiveicedt_cu_param_mid = 0.0
-            dconvectiveicedt_cu_param_deep = 0.0
-            dlargescaleicedt_cu_param_shallow = 0.0
-            dlargescaleicedt_cu_param_mid = 0.0
-            dlargescaleicedt_cu_param_deep = 0.0
-            dconvectiveliquiddt_cu_param_shallow = 0.0
-            dconvectiveliquiddt_cu_param_mid = 0.0
-            dconvectiveliquiddt_cu_param_deep = 0.0
-            dlargescaleliquiddt_cu_param_shallow = 0.0
-            dlargescaleliquiddt_cu_param_mid = 0.0
-            dlargescaleliquiddt_cu_param_deep = 0.0
-            dconvectivecloudfractiondt_cu_param_shallow = 0.0
-            dconvectivecloudfractiondt_cu_param_mid = 0.0
-            dconvectivecloudfractiondt_cu_param_deep = 0.0
-            dlargescalecloudfractiondt_cu_param_shallow = 0.0
-            dlargescalecloudfractiondt_cu_param_mid = 0.0
-            dlargescalecloudfractiondt_cu_param_deep = 0.0
+            dconvectiveicedt_shallow = 0.0
+            dconvectiveicedt_mid = 0.0
+            dconvectiveicedt_deep = 0.0
+            dlargescaleicedt_shallow = 0.0
+            dlargescaleicedt_mid = 0.0
+            dlargescaleicedt_deep = 0.0
+            dconvectiveliquiddt_shallow = 0.0
+            dconvectiveliquiddt_mid = 0.0
+            dconvectiveliquiddt_deep = 0.0
+            dlargescaleliquiddt_shallow = 0.0
+            dlargescaleliquiddt_mid = 0.0
+            dlargescaleliquiddt_deep = 0.0
+            dconvectivecloudfractiondt_shallow = 0.0
+            dconvectivecloudfractiondt_mid = 0.0
+            dconvectivecloudfractiondt_deep = 0.0
+            dlargescalecloudfractiondt_shallow = 0.0
+            dlargescalecloudfractiondt_mid = 0.0
+            dlargescalecloudfractiondt_deep = 0.0
 
-        omega_cu_param = 0.0
+        omega = 0.0
 
         if ADV_TRIGGER == 2:
-            t_perturbation_cu_param = t_perturbation_cu_param_horizontal + t_perturbation_cu_param_vertical
+            t_perturbation = t_perturbation_horizontal + t_perturbation_vertical
 
         if USE_TRACER_TRANSP == 1:
             tracer_stuff_not_implemented_yet = 0
@@ -638,8 +638,8 @@ class GF2020Setup:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._compute_2d_inputs = stencil_factory.from_dims_halo(
-            func=compute_2d_inputs,
+        self._preliminary_calcualtions = stencil_factory.from_dims_halo(
+            func=preliminary_calculations,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "SINGLE_COLUMN_MODE": GF_2020_config.SINGLE_COLUMN_MODE,
@@ -671,27 +671,27 @@ class GF2020Setup:
         self,
         state: GF2020State,
         saturation_tables: SaturationVaporPressureTable,
-        temporaries: GF2020Temporaries,
+        locals: GF2020Locals,
     ):
         self._compute_extra_inputs_from_state(
             p_interface=state.p_interface,
-            p=temporaries.p,
-            p_kappa=temporaries.p_kappa,
-            edge_height_above_surface=temporaries.edge_height_above_surface,
-            layer_height_above_surface=temporaries.layer_height_above_surface,
+            p=locals.DerivedState.p,
+            p_kappa=locals.DerivedState.p_kappa,
+            edge_height_above_surface=locals.DerivedState.edge_height_above_surface,
+            layer_height_above_surface=locals.DerivedState.layer_height_above_surface,
             geopotential_height_interface=state.geopotential_height_interface,
             t=state.t,
-            th=temporaries.th,
+            th=locals.DerivedState.th,
             vapor=state.vapor,
-            mass=temporaries.mass,
+            mass=locals.DerivedState.mass,
             w=state.w,
             omega=state.omega,
-            vertical_motion=temporaries.vertical_velocity,
+            vertical_motion=locals.DerivedState.vertical_velocity,
             tpwi=state.total_precipitable_water_initial,
             tpwi_star=state.saturation_total_precipitable_water_initial,
-            seed_convection=temporaries.seed_convection,
+            seed_convection=locals.DerivedState.seed_convection,
             area=state.area,
-            modified_area=temporaries.modified_area,
+            modified_area=locals.DerivedState.modified_area,
             convection_fraction=state.convection_fraction,
             ese=saturation_tables.ese,
             esx=saturation_tables.esx,
@@ -743,52 +743,52 @@ class GF2020Setup:
         if self.GF_2020_config.SINGLE_COLUMN_MODE == True and t_2m_max < 1.0e-6:
             return
 
-        self._compute_2d_inputs(
+        self._preliminary_calcualtions(
             t=state.t,
             t_2m_max=t_2m_max,
             t_2m=state.t_2m,
-            t_2m_local=temporaries.t_2m_local,
+            t_2m_local=locals.LocalCopy.t_2m,
             evaporation=state.evaporation,
-            evaporation_local=temporaries.evaporation_local,
+            evaporation_local=locals.LocalCopy.evaporation,
             sensible_heat_flux=state.sensible_heat_flux,
             p_interface=state.p_interface,
             vapor=state.vapor,
             geopotential_height_surface=state.geopotential_height_surface,
-            topography_height=temporaries.topography_height,
+            topography_height=locals.DerivedState.topography_height,
             land_fraction=state.land_fraction,
-            ocean_fraction=temporaries.ocean_fraction,
+            ocean_fraction=locals.CumulusParameterizationInput.ocean_fraction,
             area=state.area,
-            grid_length=temporaries.grid_length,
+            grid_length=locals.CumulusParameterizationInput.grid_length,
             pbl_level=state.pbl_level,
-            pbl_level_local=temporaries.pbl_level_local,
+            pbl_level_local=locals.LocalCopy.pbl_level,
         )
 
         self._set_local_state(
             geopotential_height_interface=state.geopotential_height_interface,
             t=state.t,
-            t_local=temporaries.t_local,
-            p=temporaries.p,
-            p_local=temporaries.p_local,
+            t_local=locals.LocalCopy.t,
+            p=locals.DerivedState.p,
+            p_local=locals.LocalCopy.p,
             vapor=state.vapor,
-            vapor_local=temporaries.vapor_local,
-            vapor_current_local=temporaries.vapor_current_local,
+            vapor_local=locals.LocalCopy.vapor,
+            vapor_current_local=locals.LocalCopy.vapor_current,
             u=state.u,
-            u_local=temporaries.u_local,
+            u_local=locals.LocalCopy.u,
             v=state.v,
-            v_local=temporaries.v_local,
-            vertical_velocity=temporaries.vertical_velocity,
-            vertical_velocity_local=temporaries.vertical_velocity_local,
-            layer_height_above_surface=temporaries.layer_height_above_surface,
-            layer_height_above_surface_local=temporaries.layer_height_above_surface_local,
-            edge_height_above_surface=temporaries.edge_height_above_surface,
-            edge_height_above_surface_local=temporaries.edge_height_above_surface_local,
-            mass=temporaries.mass,
-            mass_local=temporaries.mass_local,
+            v_local=locals.LocalCopy.v,
+            vertical_velocity=locals.DerivedState.vertical_velocity,
+            vertical_velocity_local=locals.LocalCopy.vertical_velocity,
+            layer_height_above_surface=locals.DerivedState.layer_height_above_surface,
+            layer_height_above_surface_local=locals.LocalCopy.layer_height_above_surface,
+            edge_height_above_surface=locals.DerivedState.edge_height_above_surface,
+            edge_height_above_surface_local=locals.LocalCopy.edge_height_above_surface,
+            mass=locals.DerivedState.mass,
+            mass_local=locals.LocalCopy.mass,
             scalar_diffusivity=state.scalar_diffusivity,
-            scalar_diffusivity_local=temporaries.scalar_diffusivity_local,
-            lateral_entrainment_rate_local=temporaries.lateral_entrainment_rate_local,
+            scalar_diffusivity_local=locals.LocalCopy.scalar_diffusivity,
             lateral_entrainment_rate=state.lateral_entrainment_rate,
-            p_surface=temporaries.p_surface,
+            lateral_entrainment_rate_local=locals.LocalCopy.lateral_entrainment_rate,
+            p_surface=locals.CumulusParameterizationInput.p_surface,
             buoyancy=state.buoyancy,
             p_interface=state.p_interface,
             convective_liquid=state.convective_liquid,
@@ -808,85 +808,85 @@ class GF2020Setup:
             dvapordt_from_dynamics=state.dvapordt_from_dynamics,
             dtdt_pbl=state.dtdt_pbl,
             dspecific_humiditydt_pbl=state.dspecific_humiditydt_pbl,
-            grid_scale_forcing_t=temporaries.grid_scale_forcing_t,
-            grid_scale_forcing_vapor=temporaries.grid_scale_forcing_vapor,
-            subgrid_scale_forcing_t=temporaries.subgrid_scale_forcing_t,
-            subgrid_scale_forcing_vapor=temporaries.subgrid_scale_forcing_vapor,
-            advective_forcing_t=temporaries.advective_forcing_t,
-            convective_liquid_local=temporaries.convective_liquid_local,
-            convective_ice_local=temporaries.convective_ice_local,
-            convective_cloud_fraction_local=temporaries.convective_cloud_fraction_local,
-            large_scale_liquid_local=temporaries.large_scale_liquid_local,
-            large_scale_ice_local=temporaries.large_scale_ice_local,
-            large_scale_cloud_fraction_local=temporaries.large_scale_cloud_fraction_local,
+            grid_scale_forcing_t=locals.DerivedState.grid_scale_forcing_t,
+            grid_scale_forcing_vapor=locals.DerivedState.grid_scale_forcing_vapor,
+            subgrid_scale_forcing_t=locals.DerivedState.subgrid_scale_forcing_t,
+            subgrid_scale_forcing_vapor=locals.DerivedState.subgrid_scale_forcing_vapor,
+            advective_forcing_t=locals.DerivedState.advective_forcing_t,
+            convective_liquid_local=locals.LocalCopy.convective_liquid,
+            convective_ice_local=locals.LocalCopy.convective_ice,
+            convective_cloud_fraction_local=locals.LocalCopy.convective_cloud_fraction,
+            large_scale_liquid_local=locals.LocalCopy.large_scale_liquid,
+            large_scale_ice_local=locals.LocalCopy.large_scale_ice,
+            large_scale_cloud_fraction_local=locals.LocalCopy.large_scale_cloud_fraction,
             convection_tracer=state.convection_tracer,
-            buoyancy_excess=temporaries.buoyancy_excess,
+            buoyancy_excess=locals.CumulusParameterizationInput.buoyancy_excess,
         )
 
         if self.GF_2020_config.ADV_TRIGGER == 2:
             raise NotImplementedError("ADV_TRIGGER == 2 not implemented yet")
 
         self._prepare_cumulus_parameterization(
-            t_excess=temporaries.t_excess,
-            vapor_excess=temporaries.vapor_excess,
-            last_ierr=temporaries.last_ierr,
-            fix_out_vapor=temporaries.fix_out_vapor,
-            conprr=temporaries.conprr,
-            evap_subl_tendency_cu_param=temporaries.evap_subl_tendency_cu_param,
-            convective_precip_flux_cu_param=temporaries.convective_precip_flux_cu_param,
-            t_perturbation_cu_param_horizontal=temporaries.t_perturbation_cu_param_horizontal,
-            t_perturbation_cu_param_vertical=temporaries.t_perturbation_cu_param_vertical,
-            t_perturbation_cu_param=temporaries.t_perturbation_cu_param,
-            omega_cu_param=temporaries.omega_cu_param,
-            ccn=temporaries.ccn,
-            dtdt_cu_param_shallow=temporaries.dtdt_cu_param_shallow,
-            dtdt_cu_param_mid=temporaries.dtdt_cu_param_mid,
-            dtdt_cu_param_deep=temporaries.dtdt_cu_param_deep,
-            dudt_cu_param_shallow=temporaries.dudt_cu_param_shallow,
-            dudt_cu_param_mid=temporaries.dudt_cu_param_mid,
-            dudt_cu_param_deep=temporaries.dudt_cu_param_deep,
-            dvdt_cu_param_shallow=temporaries.dvdt_cu_param_shallow,
-            dvdt_cu_param_mid=temporaries.dvdt_cu_param_mid,
-            dvdt_cu_param_deep=temporaries.dvdt_cu_param_deep,
-            dvapordt_cu_param_shallow=temporaries.dvapordt_cu_param_shallow,
-            dvapordt_cu_param_mid=temporaries.dvapordt_cu_param_mid,
-            dvapordt_cu_param_deep=temporaries.dvapordt_cu_param_deep,
-            dvapordt_cu_param_combined=temporaries.dvapordt_cu_param_combined,
-            dcloudicedt_cu_param_shallow=temporaries.dcloudicedt_cu_param_shallow,
-            dcloudicedt_cu_param_mid=temporaries.dcloudicedt_cu_param_mid,
-            dcloudicedt_cu_param_deep=temporaries.dcloudicedt_cu_param_deep,
-            dnicedt_cu_param_shallow=temporaries.dnicedt_cu_param_shallow,
-            dnicedt_cu_param_mid=temporaries.dnicedt_cu_param_mid,
-            dnicedt_cu_param_deep=temporaries.dnicedt_cu_param_deep,
-            dnliquiddt_cu_param_shallow=temporaries.dnliquiddt_cu_param_shallow,
-            dnliquiddt_cu_param_mid=temporaries.dnliquiddt_cu_param_mid,
-            dnliquiddt_cu_param_deep=temporaries.dnliquiddt_cu_param_deep,
-            dbuoyancydt_cu_param_shallow=temporaries.dbuoyancydt_cu_param_shallow,
-            dbuoyancydt_cu_param_mid=temporaries.dbuoyancydt_cu_param_mid,
-            dbuoyancydt_cu_param_deep=temporaries.dbuoyancydt_cu_param_deep,
-            dconvectiveicedt_cu_param_shallow=temporaries.dconvectiveicedt_cu_param_shallow,
-            dconvectiveicedt_cu_param_mid=temporaries.dconvectiveicedt_cu_param_mid,
-            dconvectiveicedt_cu_param_deep=temporaries.dconvectiveicedt_cu_param_deep,
-            dlargescaleicedt_cu_param_shallow=temporaries.dlargescaleicedt_cu_param_shallow,
-            dlargescaleicedt_cu_param_mid=temporaries.dlargescaleicedt_cu_param_mid,
-            dlargescaleicedt_cu_param_deep=temporaries.dlargescaleicedt_cu_param_deep,
-            dconvectiveliquiddt_cu_param_shallow=temporaries.dconvectiveliquiddt_cu_param_shallow,
-            dconvectiveliquiddt_cu_param_mid=temporaries.dconvectiveliquiddt_cu_param_mid,
-            dconvectiveliquiddt_cu_param_deep=temporaries.dconvectiveliquiddt_cu_param_deep,
-            dlargescaleliquiddt_cu_param_shallow=temporaries.dlargescaleliquiddt_cu_param_shallow,
-            dlargescaleliquiddt_cu_param_mid=temporaries.dlargescaleliquiddt_cu_param_mid,
-            dlargescaleliquiddt_cu_param_deep=temporaries.dlargescaleliquiddt_cu_param_deep,
-            dconvectivecloudfractiondt_cu_param_shallow=temporaries.dconvectivecloudfractiondt_cu_param_shallow,
-            dconvectivecloudfractiondt_cu_param_mid=temporaries.dconvectivecloudfractiondt_cu_param_mid,
-            dconvectivecloudfractiondt_cu_param_deep=temporaries.dconvectivecloudfractiondt_cu_param_deep,
-            dlargescalecloudfractiondt_cu_param_shallow=temporaries.dlargescalecloudfractiondt_cu_param_shallow,
-            dlargescalecloudfractiondt_cu_param_mid=temporaries.dlargescalecloudfractiondt_cu_param_mid,
-            dlargescalecloudfractiondt_cu_param_deep=temporaries.dlargescalecloudfractiondt_cu_param_deep,
-            p_surface=temporaries.p_surface,
-            topography_height=temporaries.topography_height,
-            topography_height_no_negative=temporaries.topography_height_no_negative,
+            t_excess=locals.CumulusParameterizationInput.t_excess,
+            vapor_excess=locals.CumulusParameterizationInput.vapor_excess,
+            last_ierr=locals.MiscelaneousDiagnostic.last_ierr,
+            fix_out_vapor=locals.MiscelaneousDiagnostic.fix_out_vapor,
+            conprr=locals.MiscelaneousDiagnostic.conprr,
+            evap_subl_tendency=locals.CumlusParameterizationOutput.evap_subl_tendency,
+            convective_precip_flux=locals.CumlusParameterizationOutput.convective_precip_flux,
+            t_perturbation_horizontal=locals.DerivedState.t_perturbation_horizontal,
+            t_perturbation_vertical=locals.DerivedState.t_perturbation_vertical,
+            t_perturbation=locals.CumulusParameterizationInput.t_perturbation,
+            omega=locals.CumulusParameterizationInput.omega,
+            ccn=locals.CumulusParameterizationInput.ccn,
+            dtdt_shallow=locals.CumlusParameterizationOutput.dtdt_shallow,
+            dtdt_mid=locals.CumlusParameterizationOutput.dtdt_mid,
+            dtdt_deep=locals.CumlusParameterizationOutput.dtdt_deep,
+            dudt_shallow=locals.CumlusParameterizationOutput.dudt_shallow,
+            dudt_mid=locals.CumlusParameterizationOutput.dudt_mid,
+            dudt_deep=locals.CumlusParameterizationOutput.dudt_deep,
+            dvdt_shallow=locals.CumlusParameterizationOutput.dvdt_shallow,
+            dvdt_mid=locals.CumlusParameterizationOutput.dvdt_mid,
+            dvdt_deep=locals.CumlusParameterizationOutput.dvdt_deep,
+            dvapordt_shallow=locals.CumlusParameterizationOutput.dvapordt_shallow,
+            dvapordt_mid=locals.CumlusParameterizationOutput.dvapordt_mid,
+            dvapordt_deep=locals.CumlusParameterizationOutput.dvapordt_deep,
+            dvapordt_combined=locals.CumlusParameterizationOutput.dvapordt_combined,
+            dcloudicedt_shallow=locals.CumlusParameterizationOutput.dcloudicedt_shallow,
+            dcloudicedt_mid=locals.CumlusParameterizationOutput.dcloudicedt_mid,
+            dcloudicedt_deep=locals.CumlusParameterizationOutput.dcloudicedt_deep,
+            dnicedt_shallow=locals.CumlusParameterizationOutput.dnicedt_shallow,
+            dnicedt_mid=locals.CumlusParameterizationOutput.dnicedt_mid,
+            dnicedt_deep=locals.CumlusParameterizationOutput.dnicedt_deep,
+            dnliquiddt_shallow=locals.CumlusParameterizationOutput.dnliquiddt_shallow,
+            dnliquiddt_mid=locals.CumlusParameterizationOutput.dnliquiddt_mid,
+            dnliquiddt_deep=locals.CumlusParameterizationOutput.dnliquiddt_deep,
+            dbuoyancydt_shallow=locals.CumlusParameterizationOutput.dbuoyancydt_shallow,
+            dbuoyancydt_mid=locals.CumlusParameterizationOutput.dbuoyancydt_mid,
+            dbuoyancydt_deep=locals.CumlusParameterizationOutput.dbuoyancydt_deep,
+            dconvectiveicedt_shallow=locals.CumlusParameterizationOutput.dconvectiveicedt_shallow,
+            dconvectiveicedt_mid=locals.CumlusParameterizationOutput.dconvectiveicedt_mid,
+            dconvectiveicedt_deep=locals.CumlusParameterizationOutput.dconvectiveicedt_deep,
+            dlargescaleicedt_shallow=locals.CumlusParameterizationOutput.dlargescaleicedt_shallow,
+            dlargescaleicedt_mid=locals.CumlusParameterizationOutput.dlargescaleicedt_mid,
+            dlargescaleicedt_deep=locals.CumlusParameterizationOutput.dlargescaleicedt_deep,
+            dconvectiveliquiddt_shallow=locals.CumlusParameterizationOutput.dconvectiveliquiddt_shallow,
+            dconvectiveliquiddt_mid=locals.CumlusParameterizationOutput.dconvectiveliquiddt_mid,
+            dconvectiveliquiddt_deep=locals.CumlusParameterizationOutput.dconvectiveliquiddt_deep,
+            dlargescaleliquiddt_shallow=locals.CumlusParameterizationOutput.dlargescaleliquiddt_shallow,
+            dlargescaleliquiddt_mid=locals.CumlusParameterizationOutput.dlargescaleliquiddt_mid,
+            dlargescaleliquiddt_deep=locals.CumlusParameterizationOutput.dlargescaleliquiddt_deep,
+            dconvectivecloudfractiondt_shallow=locals.CumlusParameterizationOutput.dconvectivecloudfractiondt_shallow,
+            dconvectivecloudfractiondt_mid=locals.CumlusParameterizationOutput.dconvectivecloudfractiondt_mid,
+            dconvectivecloudfractiondt_deep=locals.CumlusParameterizationOutput.dconvectivecloudfractiondt_deep,
+            dlargescalecloudfractiondt_shallow=locals.CumlusParameterizationOutput.dlargescalecloudfractiondt_shallow,
+            dlargescalecloudfractiondt_mid=locals.CumlusParameterizationOutput.dlargescalecloudfractiondt_mid,
+            dlargescalecloudfractiondt_deep=locals.CumlusParameterizationOutput.dlargescalecloudfractiondt_deep,
+            p_surface=locals.CumulusParameterizationInput.p_surface,
+            topography_height=locals.DerivedState.topography_height,
+            topography_height_no_negative=locals.CumulusParameterizationInput.topography_height,
             latitude=state.latitude,
             longitude=state.longitude,
-            latitude_degrees=temporaries.latitude_degrees,
-            longitude_degrees=temporaries.longitude_degrees,
+            latitude_degrees=locals.CumulusParameterizationInput.latitude_degrees,
+            longitude_degrees=locals.CumulusParameterizationInput.longitude_degrees,
         )

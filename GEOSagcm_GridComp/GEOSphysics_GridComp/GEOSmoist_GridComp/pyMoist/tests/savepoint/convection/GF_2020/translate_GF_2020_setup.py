@@ -5,7 +5,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.setup import GF2020Setup
-from pyMoist.convection.GF_2020.temporaries import GF2020Temporaries
+from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
@@ -84,7 +84,7 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
             "dvdt_deep_convection": {},
             "pressure_shallow_convective_cloud_top": {},
             "pressure_mid_convective_cloud_top": {},
-            "pressure_deep_convection_cloud_top": {},
+            "pressure_deep_convective_cloud_top": {},
             "mass_flux_shalow": {},
             "mass_flux_mid": {},
             "mass_flux_deep_updraft": {},
@@ -229,143 +229,143 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
 
         state = GF2020State(**inputs)
 
-        temporaries = GF2020Temporaries.make(self.quantity_factory)
+        locals = GF2020Locals.zeros(self.quantity_factory)
 
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         setup = GF2020Setup(self.stencil_factory, self.quantity_factory, config)
 
-        setup(state, saturation_tables, temporaries)
+        setup(state, saturation_tables, locals)
 
         from numpy import moveaxis
 
         inputs.update(
             {
-                "edge_height_above_surface": temporaries.edge_height_above_surface.field[:],
-                "layer_height_above_surface": temporaries.layer_height_above_surface.field[:],
-                "p": temporaries.p.field[:],
-                "p_kappa": temporaries.p_kappa.field[:],
-                "th": temporaries.th.field[:],
-                "mass": temporaries.mass.field[:],
-                "vertical_velocity": temporaries.vertical_velocity.field[:],
-                "seed_convection": temporaries.seed_convection.field[:],
-                "modified_area": temporaries.modified_area.field[:],
-                "t_2m_local": temporaries.t_2m_local.field[:],
-                "evaporation_local": temporaries.evaporation_local.field[:],
-                "sensible_heat_flux_local": temporaries.sensible_heat_flux_local.field[:],
-                "topography_height": temporaries.topography_height.field[:],
-                "ocean_fraction": temporaries.ocean_fraction.field[:],
-                "grid_length": temporaries.grid_length.field[:],
-                "pbl_level_local": temporaries.pbl_level_local.field[:],
-                "t_local": moveaxis(temporaries.t_local.field[:], 2, 0),
-                "p_local": moveaxis(temporaries.p_local.field[:], 2, 0),
-                "vapor_local": moveaxis(temporaries.vapor_local.field[:], 2, 0),
-                "vapor_current_local": moveaxis(temporaries.vapor_current_local.field[:], 2, 0),
-                "u_local": moveaxis(temporaries.u_local.field[:], 2, 0),
-                "v_local": moveaxis(temporaries.v_local.field[:], 2, 0),
-                "vertical_velocity_local": moveaxis(temporaries.vertical_velocity_local.field[:], 2, 0),
+                "edge_height_above_surface": locals.edge_height_above_surface.field[:],
+                "layer_height_above_surface": locals.layer_height_above_surface.field[:],
+                "p": locals.p.field[:],
+                "p_kappa": locals.p_kappa.field[:],
+                "th": locals.th.field[:],
+                "mass": locals.mass.field[:],
+                "vertical_velocity": locals.vertical_velocity.field[:],
+                "seed_convection": locals.seed_convection.field[:],
+                "modified_area": locals.modified_area.field[:],
+                "t_2m_local": locals.t_2m_local.field[:],
+                "evaporation_local": locals.evaporation_local.field[:],
+                "sensible_heat_flux_local": locals.sensible_heat_flux_local.field[:],
+                "topography_height": locals.topography_height.field[:],
+                "ocean_fraction": locals.ocean_fraction.field[:],
+                "grid_length": locals.grid_length.field[:],
+                "pbl_level_local": locals.pbl_level_local.field[:],
+                "t_local": moveaxis(locals.t_local.field[:], 2, 0),
+                "p_local": moveaxis(locals.p_local.field[:], 2, 0),
+                "vapor_local": moveaxis(locals.vapor_local.field[:], 2, 0),
+                "vapor_current_local": moveaxis(locals.vapor_current_local.field[:], 2, 0),
+                "u_local": moveaxis(locals.u_local.field[:], 2, 0),
+                "v_local": moveaxis(locals.v_local.field[:], 2, 0),
+                "vertical_velocity_local": moveaxis(locals.vertical_velocity_local.field[:], 2, 0),
                 "layer_height_above_surface_local": moveaxis(
-                    temporaries.layer_height_above_surface_local.field[:], 2, 0
+                    locals.layer_height_above_surface_local.field[:], 2, 0
                 ),
                 "edge_height_above_surface_local": moveaxis(
-                    temporaries.edge_height_above_surface_local.field[:], 2, 0
+                    locals.edge_height_above_surface_local.field[:], 2, 0
                 ),
-                "mass_local": moveaxis(temporaries.mass_local.field[:], 2, 0),
-                "scalar_diffusivity_local": moveaxis(temporaries.scalar_diffusivity_local.field[:], 2, 0),
+                "mass_local": moveaxis(locals.mass_local.field[:], 2, 0),
+                "scalar_diffusivity_local": moveaxis(locals.scalar_diffusivity_local.field[:], 2, 0),
                 "lateral_entrainment_rate_local": moveaxis(
-                    temporaries.lateral_entrainment_rate_local.field[:], 2, 0
+                    locals.lateral_entrainment_rate_local.field[:], 2, 0
                 ),
-                "convective_liquid_local": moveaxis(temporaries.convective_liquid_local.field[:], 2, 0),
-                "convective_ice_local": moveaxis(temporaries.convective_ice_local.field[:], 2, 0),
+                "convective_liquid_local": moveaxis(locals.convective_liquid_local.field[:], 2, 0),
+                "convective_ice_local": moveaxis(locals.convective_ice_local.field[:], 2, 0),
                 "convective_cloud_fraction_local": moveaxis(
-                    temporaries.convective_cloud_fraction_local.field[:], 2, 0
+                    locals.convective_cloud_fraction_local.field[:], 2, 0
                 ),
-                "large_scale_liquid_local": moveaxis(temporaries.large_scale_liquid_local.field[:], 2, 0),
-                "large_scale_ice_local": moveaxis(temporaries.large_scale_ice_local.field[:], 2, 0),
+                "large_scale_liquid_local": moveaxis(locals.large_scale_liquid_local.field[:], 2, 0),
+                "large_scale_ice_local": moveaxis(locals.large_scale_ice_local.field[:], 2, 0),
                 "large_scale_cloud_fraction_local": moveaxis(
-                    temporaries.large_scale_cloud_fraction_local.field[:], 2, 0
+                    locals.large_scale_cloud_fraction_local.field[:], 2, 0
                 ),
-                "p_surface": temporaries.p_surface.field[:],
-                "grid_scale_forcing_t": moveaxis(temporaries.grid_scale_forcing_t.field[:], 2, 0),
-                "grid_scale_forcing_vapor": moveaxis(temporaries.grid_scale_forcing_vapor.field[:], 2, 0),
-                "subgrid_scale_forcing_t": moveaxis(temporaries.subgrid_scale_forcing_t.field[:], 2, 0),
+                "p_surface": locals.p_surface.field[:],
+                "grid_scale_forcing_t": moveaxis(locals.grid_scale_forcing_t.field[:], 2, 0),
+                "grid_scale_forcing_vapor": moveaxis(locals.grid_scale_forcing_vapor.field[:], 2, 0),
+                "subgrid_scale_forcing_t": moveaxis(locals.subgrid_scale_forcing_t.field[:], 2, 0),
                 "subgrid_scale_forcing_vapor": moveaxis(
-                    temporaries.subgrid_scale_forcing_vapor.field[:], 2, 0
+                    locals.subgrid_scale_forcing_vapor.field[:], 2, 0
                 ),
-                "advective_forcing_t": moveaxis(temporaries.advective_forcing_t.field[:], 2, 0),
-                "buoyancy_excess": moveaxis(temporaries.buoyancy_excess.field[:], 2, 0),
-                "t_excess": temporaries.t_excess.field[:],
-                "vapor_excess": temporaries.vapor_excess.field[:],
-                "last_ierr": temporaries.last_ierr.field[:],
-                "fix_out_vapor": temporaries.fix_out_vapor.field[:],
-                "conprr": temporaries.conprr.field[:],
-                "evap_subl_tendency_cu_param": temporaries.evap_subl_tendency_cu_param.field[:],
-                "convective_precip_flux_cu_param": temporaries.convective_precip_flux_cu_param.field[:],
-                "t_perturbation_cu_param": temporaries.t_perturbation_cu_param.field[:],
-                "omega_cu_param": temporaries.omega_cu_param.field[:],
-                "ccn": temporaries.ccn.field[:],
-                "dtdt_cu_param_shallow": temporaries.dtdt_cu_param_shallow.field[:],
-                "dtdt_cu_param_mid": temporaries.dtdt_cu_param_mid.field[:],
-                "dtdt_cu_param_deep": temporaries.dtdt_cu_param_deep.field[:],
-                "dudt_cu_param_shallow": temporaries.dudt_cu_param_shallow.field[:],
-                "dudt_cu_param_mid": temporaries.dudt_cu_param_mid.field[:],
-                "dudt_cu_param_deep": temporaries.dudt_cu_param_deep.field[:],
-                "dvdt_cu_param_shallow": temporaries.dvdt_cu_param_shallow.field[:],
-                "dvdt_cu_param_mid": temporaries.dvdt_cu_param_mid.field[:],
-                "dvdt_cu_param_deep": temporaries.dvdt_cu_param_deep.field[:],
-                "dvapordt_cu_param_shallow": temporaries.dvapordt_cu_param_shallow.field[:],
-                "dvapordt_cu_param_mid": temporaries.dvapordt_cu_param_mid.field[:],
-                "dvapordt_cu_param_deep": temporaries.dvapordt_cu_param_deep.field[:],
-                "dvapordt_cu_param_combined": temporaries.dvapordt_cu_param_combined.field[:],
-                "dcloudicedt_cu_param_shallow": temporaries.dcloudicedt_cu_param_shallow.field[:],
-                "dcloudicedt_cu_param_mid": temporaries.dcloudicedt_cu_param_mid.field[:],
-                "dcloudicedt_cu_param_deep": temporaries.dcloudicedt_cu_param_deep.field[:],
-                "dnicedt_cu_param_shallow": temporaries.dnicedt_cu_param_shallow.field[:],
-                "dnicedt_cu_param_mid": temporaries.dnicedt_cu_param_mid.field[:],
-                "dnicedt_cu_param_deep": temporaries.dnicedt_cu_param_deep.field[:],
-                "dnliquiddt_cu_param_shallow": temporaries.dnliquiddt_cu_param_shallow.field[:],
-                "dnliquiddt_cu_param_mid": temporaries.dnliquiddt_cu_param_mid.field[:],
-                "dnliquiddt_cu_param_deep": temporaries.dnliquiddt_cu_param_deep.field[:],
-                "dbuoyancydt_cu_param_shallow": temporaries.dbuoyancydt_cu_param_shallow.field[:],
-                "dbuoyancydt_cu_param_mid": temporaries.dbuoyancydt_cu_param_mid.field[:],
-                "dbuoyancydt_cu_param_deep": temporaries.dbuoyancydt_cu_param_deep.field[:],
-                "dconvectiveicedt_cu_param_shallow": temporaries.dconvectiveicedt_cu_param_shallow.field[:],
-                "dconvectiveicedt_cu_param_mid": temporaries.dconvectiveicedt_cu_param_mid.field[:],
-                "dconvectiveicedt_cu_param_deep": temporaries.dconvectiveicedt_cu_param_deep.field[:],
-                "dlargescaleicedt_cu_param_shallow": temporaries.dlargescaleicedt_cu_param_shallow.field[:],
-                "dlargescaleicedt_cu_param_mid": temporaries.dlargescaleicedt_cu_param_mid.field[:],
-                "dlargescaleicedt_cu_param_deep": temporaries.dlargescaleicedt_cu_param_deep.field[:],
-                "dconvectiveliquiddt_cu_param_shallow": temporaries.dconvectiveliquiddt_cu_param_shallow.field[
+                "advective_forcing_t": moveaxis(locals.advective_forcing_t.field[:], 2, 0),
+                "buoyancy_excess": moveaxis(locals.buoyancy_excess.field[:], 2, 0),
+                "t_excess": locals.t_excess.field[:],
+                "vapor_excess": locals.vapor_excess.field[:],
+                "last_ierr": locals.last_ierr.field[:],
+                "fix_out_vapor": locals.fix_out_vapor.field[:],
+                "conprr": locals.conprr.field[:],
+                "evap_subl_tendency_cu_param": locals.evap_subl_tendency_cu_param.field[:],
+                "convective_precip_flux_cu_param": locals.convective_precip_flux_cu_param.field[:],
+                "t_perturbation_cu_param": locals.t_perturbation_cu_param.field[:],
+                "omega_cu_param": locals.omega_cu_param.field[:],
+                "ccn": locals.ccn.field[:],
+                "dtdt_cu_param_shallow": locals.dtdt_cu_param_shallow.field[:],
+                "dtdt_cu_param_mid": locals.dtdt_cu_param_mid.field[:],
+                "dtdt_cu_param_deep": locals.dtdt_cu_param_deep.field[:],
+                "dudt_cu_param_shallow": locals.dudt_cu_param_shallow.field[:],
+                "dudt_cu_param_mid": locals.dudt_cu_param_mid.field[:],
+                "dudt_cu_param_deep": locals.dudt_cu_param_deep.field[:],
+                "dvdt_cu_param_shallow": locals.dvdt_cu_param_shallow.field[:],
+                "dvdt_cu_param_mid": locals.dvdt_cu_param_mid.field[:],
+                "dvdt_cu_param_deep": locals.dvdt_cu_param_deep.field[:],
+                "dvapordt_cu_param_shallow": locals.dvapordt_cu_param_shallow.field[:],
+                "dvapordt_cu_param_mid": locals.dvapordt_cu_param_mid.field[:],
+                "dvapordt_cu_param_deep": locals.dvapordt_cu_param_deep.field[:],
+                "dvapordt_cu_param_combined": locals.dvapordt_cu_param_combined.field[:],
+                "dcloudicedt_cu_param_shallow": locals.dcloudicedt_cu_param_shallow.field[:],
+                "dcloudicedt_cu_param_mid": locals.dcloudicedt_cu_param_mid.field[:],
+                "dcloudicedt_cu_param_deep": locals.dcloudicedt_cu_param_deep.field[:],
+                "dnicedt_cu_param_shallow": locals.dnicedt_cu_param_shallow.field[:],
+                "dnicedt_cu_param_mid": locals.dnicedt_cu_param_mid.field[:],
+                "dnicedt_cu_param_deep": locals.dnicedt_cu_param_deep.field[:],
+                "dnliquiddt_cu_param_shallow": locals.dnliquiddt_cu_param_shallow.field[:],
+                "dnliquiddt_cu_param_mid": locals.dnliquiddt_cu_param_mid.field[:],
+                "dnliquiddt_cu_param_deep": locals.dnliquiddt_cu_param_deep.field[:],
+                "dbuoyancydt_cu_param_shallow": locals.dbuoyancydt_cu_param_shallow.field[:],
+                "dbuoyancydt_cu_param_mid": locals.dbuoyancydt_cu_param_mid.field[:],
+                "dbuoyancydt_cu_param_deep": locals.dbuoyancydt_cu_param_deep.field[:],
+                "dconvectiveicedt_cu_param_shallow": locals.dconvectiveicedt_cu_param_shallow.field[:],
+                "dconvectiveicedt_cu_param_mid": locals.dconvectiveicedt_cu_param_mid.field[:],
+                "dconvectiveicedt_cu_param_deep": locals.dconvectiveicedt_cu_param_deep.field[:],
+                "dlargescaleicedt_cu_param_shallow": locals.dlargescaleicedt_cu_param_shallow.field[:],
+                "dlargescaleicedt_cu_param_mid": locals.dlargescaleicedt_cu_param_mid.field[:],
+                "dlargescaleicedt_cu_param_deep": locals.dlargescaleicedt_cu_param_deep.field[:],
+                "dconvectiveliquiddt_cu_param_shallow": locals.dconvectiveliquiddt_cu_param_shallow.field[
                     :
                 ],
-                "dconvectiveliquiddt_cu_param_mid": temporaries.dconvectiveliquiddt_cu_param_mid.field[:],
-                "dconvectiveliquiddt_cu_param_deep": temporaries.dconvectiveliquiddt_cu_param_deep.field[:],
-                "dlargescaleliquiddt_cu_param_shallow": temporaries.dlargescaleliquiddt_cu_param_shallow.field[
+                "dconvectiveliquiddt_cu_param_mid": locals.dconvectiveliquiddt_cu_param_mid.field[:],
+                "dconvectiveliquiddt_cu_param_deep": locals.dconvectiveliquiddt_cu_param_deep.field[:],
+                "dlargescaleliquiddt_cu_param_shallow": locals.dlargescaleliquiddt_cu_param_shallow.field[
                     :
                 ],
-                "dlargescaleliquiddt_cu_param_mid": temporaries.dlargescaleliquiddt_cu_param_mid.field[:],
-                "dlargescaleliquiddt_cu_param_deep": temporaries.dlargescaleliquiddt_cu_param_deep.field[:],
-                "dconvectivecloudfractiondt_cu_param_shallow": temporaries.dconvectivecloudfractiondt_cu_param_shallow.field[
+                "dlargescaleliquiddt_cu_param_mid": locals.dlargescaleliquiddt_cu_param_mid.field[:],
+                "dlargescaleliquiddt_cu_param_deep": locals.dlargescaleliquiddt_cu_param_deep.field[:],
+                "dconvectivecloudfractiondt_cu_param_shallow": locals.dconvectivecloudfractiondt_cu_param_shallow.field[
                     :
                 ],
-                "dconvectivecloudfractiondt_cu_param_mid": temporaries.dconvectivecloudfractiondt_cu_param_mid.field[
+                "dconvectivecloudfractiondt_cu_param_mid": locals.dconvectivecloudfractiondt_cu_param_mid.field[
                     :
                 ],
-                "dconvectivecloudfractiondt_cu_param_deep": temporaries.dconvectivecloudfractiondt_cu_param_deep.field[
+                "dconvectivecloudfractiondt_cu_param_deep": locals.dconvectivecloudfractiondt_cu_param_deep.field[
                     :
                 ],
-                "dlargescalecloudfractiondt_cu_param_shallow": temporaries.dlargescalecloudfractiondt_cu_param_shallow.field[
+                "dlargescalecloudfractiondt_cu_param_shallow": locals.dlargescalecloudfractiondt_cu_param_shallow.field[
                     :
                 ],
-                "dlargescalecloudfractiondt_cu_param_mid": temporaries.dlargescalecloudfractiondt_cu_param_mid.field[
+                "dlargescalecloudfractiondt_cu_param_mid": locals.dlargescalecloudfractiondt_cu_param_mid.field[
                     :
                 ],
-                "dlargescalecloudfractiondt_cu_param_deep": temporaries.dlargescalecloudfractiondt_cu_param_deep.field[
+                "dlargescalecloudfractiondt_cu_param_deep": locals.dlargescalecloudfractiondt_cu_param_deep.field[
                     :
                 ],
-                "topography_height_no_negative": temporaries.topography_height_no_negative.field[:],
-                "latitude_degrees": temporaries.latitude_degrees.field[:],
-                "longitude_degrees": temporaries.longitude_degrees.field[:],
+                "topography_height_no_negative": locals.topography_height_no_negative.field[:],
+                "latitude_degrees": locals.latitude_degrees.field[:],
+                "longitude_degrees": locals.longitude_degrees.field[:],
             }
         )
 
