@@ -365,6 +365,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
   integer, optional,   intent(  out) :: RC     ! Error code:
 
+  type (ESMF_Alarm)                  :: ALARM
+  
   ! ErrLog Variables
   character(len=ESMF_MAXSTR)          :: IAm
   integer                             :: STATUS
