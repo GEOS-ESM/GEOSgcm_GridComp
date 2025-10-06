@@ -25,7 +25,7 @@ jobs:
     with:
       compiler: ${{ matrix.compiler }}
       cmake-build-type: ${{ matrix.build-type }}
-      gcm-ref: feature/sdrabenh/gcm_v12
+      fixture-ref: feature/sdrabenh/gcm_v12
 
   spack_build:
     uses: GEOS-ESM/CI-workflows/.github/workflows/spack_gcc_build.yml@project/geosgcm
@@ -33,4 +33,5 @@ jobs:
       BUILDCACHE_USERNAME: ${{ secrets.BUILDCACHE_USERNAME }}
       BUILDCACHE_TOKEN: ${{ secrets.BUILDCACHE_TOKEN }}
     with:
-      gcm-ref: feature/sdrabenh/gcm_v12
+      fixture-repo: GEOS-ESM/GEOSgcm
+      fixture-ref: feature/sdrabenh/gcm_v12
