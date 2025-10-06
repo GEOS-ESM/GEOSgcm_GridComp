@@ -38,19 +38,18 @@ use iso_c_binding, only: c_ptr, c_double, c_f_pointer,c_null_char, c_loc, c_int
 use ESMF
 use MAPL
 use GEOS_UtilsMod
-! use MPI
 
 implicit none
 
 ! declare interface to the ISSM C++ functions
 interface
-subroutine InitializeISSM(argc, argv, num_elements, num_nodes, comm_issm) bind(C, NAME="InitializeISSM")
+subroutine InitializeISSM(argc, argv, num_elements, num_nodes, comm) bind(C, NAME="InitializeISSM")
     import :: c_ptr, c_int
     integer(c_int), value        :: argc
     type(c_ptr), dimension(argc) :: argv
     integer(c_int)               :: num_elements
     integer(c_int)               :: num_nodes
-    integer(c_int)               :: comm_issm
+    integer(c_int)               :: comm
 end subroutine InitializeISSM
     
 subroutine RunISSM(dt, gcmf, issmouts) bind(C,NAME="RunISSM")
@@ -230,8 +229,7 @@ subroutine SetServices ( GC, RC )
     ! Locals with ESMF and MAPL types
     type(ESMF_VM)                  :: vm    
     type(ESMF_Mesh)                :: mesh
-    integer(c_int)                 :: comm_vm
-    integer(c_int)                 :: comm_issm
+    integer(c_int)                 :: comm
     integer, pointer, dimension(:) :: elementIds
     integer, pointer, dimension(:) :: elementConn    
     integer, allocatable  :: elementTypes(:)
@@ -281,12 +279,8 @@ subroutine SetServices ( GC, RC )
     call ESMF_VMGetCurrent(vm, rc=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_VMGet(vm,mpiCommunicator=comm_vm,rc=STATUS)
+    call ESMF_VMGet(vm,mpiCommunicator=comm,rc=STATUS)
     VERIFY_(STATUS)
-
-    ! ! tried duplicating comm just in case (new comm_issm); that's what ESMF_refdoc suggests doing
-    ! call MPI_Comm_dup(comm_vm, comm_issm, STATUS)
-    ! VERIFY_(STATUS)
 
     ! ****************************************************
     ! call ISSM initial C++ code so we can set up mesh
@@ -294,7 +288,7 @@ subroutine SetServices ( GC, RC )
     ! Manually set command line argc and argv to initialize ISSM 
     argc = 4  
     allocate(argv(argc))
-    argv(1) = "/discover/nobackup/projects/gmao/SIteam/ISSM/2025-09-25/ifort_2021.13.0-intelmpi_2021.13.0-DebugPETSc/ISSM/bin/issm.exe"//c_null_char
+    argv(1) = "/discover/nobackup/projects/gmao/SIteam/ISSM/2025-09-02/ifort_2021.13.0-intelmpi_2021.13.0/ISSM/bin/issm.exe"//c_null_char
     argv(2) = "TransientSolution"//c_null_char
     argv(3) = "/discover/nobackup/agstubbl/ISSM/projs/IRF-ISSM"//c_null_char
     argv(4) = "GreenlandGEOS"//c_null_char
@@ -307,16 +301,13 @@ subroutine SetServices ( GC, RC )
         argv_ptr(i) = c_loc(argv(i))
     end do
 
-    ! call MPI_Barrier(comm_issm, STATUS)
     !VERIFY_(STATUS)
     call ESMF_VMBarrier(vm, rc=status)
     
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
-    call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm_vm)
+    call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
 
-    ! call MPI_Barrier(comm_issm, STATUS)
-    ! VERIFY_(STATUS)
 
     !TO CREATE MESH TO DO THIS:
     !allocate mesh-related pointers
