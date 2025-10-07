@@ -393,9 +393,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     !$ser savepoint GF_2020-constants
     !$ser data STOCHASTIC_CNV=STOCHASTIC_CNV STOCH_TOP=STOCH_TOP STOCH_BOT=STOCH_BOT GF_MIN_AREA=GF_MIN_AREA
-    !$ser data DT_MOIST=GF_DT GF_ENV_SETTING=SER_VAR_1 ENTRVERSION=ENTRVERSION
+    !$ser data DT_MOIST=GF_DT GF_ENV_SETTING=SER_VAR_1 ENTRVERSION=ENTRVERSION LHYDROSTATIC=LHYDROSTATIC
     !$ser data CONVECTION_TRACER=CONVECTION_TRACER C1=C1 ADV_TRIGGER=ADV_TRIGGER AUTOCONV=AUTOCONV
     !$ser data USE_TRACER_TRANSP=USE_TRACER_TRANSP SCLM_DEEP=SCLM_DEEP FIX_CNV_CLOUD=FIX_CNV_CLOUD
+    !$ser data APPLY_SUB_MP=APPLY_SUB_MP
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ); VERIFY_(STATUS)
 
@@ -591,32 +592,39 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     endif
 
     !$ser savepoint GF_2020_setup-In
-    !$ser data PLE=PLE ZLE=ZLE T=T Q=Q AREA=AREA CNV_FRC=CNV_FRC
-
-    !$ser savepoint GF_2020_setup-Out
-    !$ser data TMP2D=TMP2D TPWI_star=TPWI_star TPWI=TPWI ZL0=ZL0 TH=TH MASS=MASS
-    !$ser data ZLE0=ZLE0 PL=PL PK=PK SEEDCNV=SEEDCNV
-
+    !$ser data latitude=LATS longitude=LONS
+    !$ser data p_interface=PLE t=T u=U v=V w=W omega=OMEGA t_2m=T2M specific_humidity_2m=Q2M t_surface=TA
+    !$ser data specific_humidity_surface=QA vapor=Q convective_liquid=QLCN convective_ice=QICN
+    !$ser data convective_cloud_fraction=CLCN large_scale_liquid=QLLS large_scale_ice=QILS
+    !$ser data large_scale_cloud_fraction=CLLS p_interface_timestep_start=PLE_DYN_IN
+    !$ser data t_timestep_start=T_DYN_IN u_timestep_start=U_DYN_IN v_timestep_start=V_DYN_IN
+    !$ser data vapor_timestep_start=QV_DYN_IN geopotential_height_interface=ZLE
+    !$ser data geopotential_height_surface=PHIS area=AREA pbl_level=KPBL convection_fraction=CNV_FRC
+    !$ser data surface_type=SRF_TYPE land_fraction=FRLAND scalar_diffusivity=KH buoyancy=BYNCY
+    !$ser data convective_precipitation_GF=CNPCPRATE convective_precipitation_RAS=CNV_PRC3
+    !$ser data sensible_heat_flux=SH total_water_flux_deep_convection=WQT_DC evaporation=EVAP
+    !$ser data convective_condensate_source=CNV_DQCDT convective_condensate_grid_mean=CNV_QC
+    !$ser data entrainment_parameter=ENTLAM lateral_entrainment_rate=ENTR
+    !$ser data lateral_entrainment_rate_shallow=ENTR_SH lateral_entrainment_rate_mid=ENTR_MD
+    !$ser data lateral_entrainment_rate_deep=ENTR_DP updraft_area_fraction=CNV_UPDF
+    !$ser data updraft_vertical_velocity=CNV_CVW dtdt_shortwave=RADSW dtdt_longwave=RADLW
+    !$ser data dspecific_humiditydt_pbl=DQDT_BL dtdt_pbl=DTDT_BL dtdt_from_dynamics=DTDTDYN
+    !$ser data dvapordt_from_dynamics=DQVDTDYN sigma_mid=SIGMA_MID sigma_deep=SIGMA_DEEP
+    !$ser data total_precipitable_water_initial=TPWI saturation_total_precipitable_water_initial=TPWI_star
+    !$ser data dvapordt_deep_convection=DQVDT_DC dtdt_deep_convection=DTDT_DC dudt_deep_convection=DUDT_DC
+    !$ser data dvdt_deep_convection=DVDT_DC pressure_shallow_convective_cloud_top=CNV_TOPP_SH
+    !$ser data pressure_mid_convective_cloud_top=CNV_TOPP_MD pressure_deep_convective_cloud_top=CNV_TOPP_DP
+    !$ser data mass_flux_shalow=MUPSH mass_flux_mid=MUPMD mass_flux_deep_updraft=MUPDP
+    !$ser data mass_flux_deep_updraft_interface=UMF_DC mass_flux_deep_updraft_detrained=MFD_DC
+    !$ser data mass_flux_deep_downdraft=MDNDP mass_flux_cloud_base=CNV_MF0 mass_flux_cloud_base_shallow=MFSH
+    !$ser data mass_flux_cloud_base_mid=MFMD mass_flux_cloud_base_deep=MFDP
+    !$ser data convection_code_shallow=ERRSH convection_code_mid=ERRMD convection_code_deep=ERRDP
+    !$ser data cloud_work_function_0=AA0 cloud_work_function_1=AA1 cloud_work_function_2=AA2
+    !$ser data cloud_work_function_3=AA3 cloud_work_function_1_pbl=AA1_BL
+    !$ser data cloud_work_function_1_cin=AA1_CIN pbl_time_scale=TAU_BL
+    !$ser data cape_removal_time_scale=TAU_EC lighting_density=LFR_GF convection_tracer=CNV_TR
    
     IF (USE_GF2020==1) THEN
-         !$ser savepoint GF_2020_Interface-In
-         !$ser data Q=Q QLLS=QLLS QLCN=QLCN CLCN=CLCN CLLS=CLLS QILS=QILS QICN=QICN CNV_TR=CNV_TR
-         !$ser data FRLAND=FRLAND AREA=AREA ZLE=ZLE PLE=PLE T=T U=U V=V W=W OMEGA=OMEGA KH=KH SH=SH
-         !$ser data EVAP=EVAP T2M=T2M Q2M=Q2M TA=TA QA=QA PHIS=PHIS DQVDTDYN=DQVDTDYN DTDTDYN=DTDTDYN
-         !$ser data QV_DYN_IN=QV_DYN_IN U_DYN_IN=U_DYN_IN V_DYN_IN=V_DYN_IN T_DYN_IN=T_DYN_IN
-         !$ser data PLE_DYN_IN=PLE_DYN_IN DTDT_BL=DTDT_BL DQDT_BL=DQDT_BL RADSW=RADSW RADLW=RADLW KPBL=KPBL
-         !$ser data MFD_DC=MFD_DC UMF_DC=UMF_DC CNV_CVW=CNV_CVW CNV_QC=CNV_QC CNV_DQCDT=CNV_DQCDT
-         !$ser data CNV_PRC3=CNV_PRC3 CNV_UPDF=CNV_UPDF CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE
-         !$ser data BYNCY=BYNCY CNV_MF0=CNV_MF0 CNPCPRATE=CNPCPRATE ENTLAM=ENTLAM SIGMA_DEEP=SIGMA_DEEP
-         !$ser data SIGMA_MID=SIGMA_MID TPWI=TPWI TPWI_star=TPWI_star
-         !$ser data LFR_GF=LFR_GF MUPDP=MUPDP MDNDP=MDNDP MUPSH=MUPSH MUPMD=MUPMD MFDP=MFDP MFSH=MFSH MFMD=MFMD
-         !$ser data ERRDP=ERRDP ERRSH=ERRSH ERRMD=ERRMD RSU_CN=RSU_CN REV_CN=REV_CN PFI_CN=PFI_CN PFL_CN=PFL_CN
-         !$ser data AA0=AA0 AA1=AA1 AA2=AA2 AA3=AA3 AA1_BL=AA1_BL AA1_CIN=AA1_CIN TAU_BL=TAU_BL TAU_EC=TAU_EC
-         !$ser data WQT_DC=WQT_DC ENTR=ENTR ENTR_DP=ENTR_DP ENTR_MD=ENTR_MD ENTR_SH=ENTR_SH
-         !$ser data CNV_TOPP_DP=CNV_TOPP_DP CNV_TOPP_MD=CNV_TOPP_MD CNV_TOPP_SH=CNV_TOPP_SH ENTR=ENTR
-         !$ser data ENTR_DP=ENTR_DP ENTR_MD=ENTR_MD ENTR_SH=ENTR_SH CNV_TOPP_DP=CNV_TOPP_DP CNV_TOPP_MD=CNV_TOPP_MD
-         !$ser data CNV_TOPP_SH=CNV_TOPP_SH DUDT_DC=DUDT_DC DVDT_DC=DVDT_DC DTDT_DC=DTDT_DC DQVDT_DC=DQVDT_DC
-         !$ser data DQLDT_DC=DQLDT_DC DQIDT_DC=DQIDT_DC DQADT_DC=DQADT_DC
          !- Determine which W is proper import
          IF (LHYDROSTATIC) THEN
             TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
@@ -625,7 +633,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ENDIF
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pa
-      
+
+    !$ser savepoint GF_2020_setup-Out
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
                                  ,T, TH, Q, U, V, TMP3D, BYNCY, QLCN, QICN, QLLS, QILS, CNPCPRATE &
@@ -667,11 +676,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,REVSU, PRFIL)
     ENDIF
 
-    !$ser savepoint GF_2020_finalize-In
-    !$ser data DUDT_DC=DUDT_DC DVDT_DC=DVDT_DC DQVDT_DC=DQVDT_DC DTDT_DC=DTDT_DC PK=PK U=U V=V Q=Q T=T
-    !$ser data CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE MASS=MASS CNV_DQCDT=CNV_DQCDT MFD_DC=MFD_DC
-    !$ser data DQLDT_DC=DQLDT_DC DQIDT_DC=DQIDT_DC DQADT_DC=DQADT_DC REVSU=REVSU RSU_CN=RSU_CN REV_CN=REV_CN
-    !$ser data PFI_CN=PFI_CN PRFIL=PRFIL PFL_CN=PFL_CN QLCN=QLCN QICN=QICN CLCN=CLCN PL=PL
+   !  !$ser savepoint GF_2020_finalize-In
+   !  !$ser data DUDT_DC=DUDT_DC DVDT_DC=DVDT_DC DQVDT_DC=DQVDT_DC DTDT_DC=DTDT_DC PK=PK U=U V=V Q=Q T=T
+   !  !$ser data CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE MASS=MASS CNV_DQCDT=CNV_DQCDT MFD_DC=MFD_DC
+   !  !$ser data DQLDT_DC=DQLDT_DC DQIDT_DC=DQIDT_DC DQADT_DC=DQADT_DC REVSU=REVSU RSU_CN=RSU_CN REV_CN=REV_CN
+   !  !$ser data PFI_CN=PFI_CN PRFIL=PRFIL PFL_CN=PFL_CN QLCN=QLCN QICN=QICN CLCN=CLCN PL=PL
 
     ! add tendencies to the moist import state
       U  = U  +  DUDT_DC*GF_DT
@@ -740,10 +749,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
 
-    !$ser savepoint GF_2020_finalize-Out
-    !$ser data U=U V=V Q=Q T=T TH=TH
-    !$ser data DQLDT_DC=DQLDT_DC DQIDT_DC=DQIDT_DC DQADT_DC=DQADT_DC RSU_CN=RSU_CN REV_CN=REV_CN
-    !$ser data PFI_CN=PFI_CN PFL_CN=PFL_CN QLCN=QLCN QICN=QICN CLCN=CLCN
+   !  !$ser savepoint GF_2020_finalize-Out
+   !  !$ser data U=U V=V Q=Q T=T TH=TH
+   !  !$ser data DQLDT_DC=DQLDT_DC DQIDT_DC=DQIDT_DC DQADT_DC=DQADT_DC RSU_CN=RSU_CN REV_CN=REV_CN
+   !  !$ser data PFI_CN=PFI_CN PFL_CN=PFL_CN QLCN=QLCN QICN=QICN CLCN=CLCN
 
     call MAPL_TimerOff (MAPL,"--GF")
 
