@@ -324,7 +324,7 @@ subroutine SetServices ( GC, RC )
 
     ! create the ESMF mesh from ISSM mesh properties
     mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
-           elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_CART, rc=rc)
+           elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn, coordSys=ESMF_COORDSYS_SPH_DEG, rc=rc)
 
     ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports (future work / to-do)       
     call ESMF_GridCompSet(GC,mesh=mesh,rc=STATUS)

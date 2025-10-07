@@ -2217,20 +2217,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call LANDICECORE(RC=STATUS )
        VERIFY_(STATUS)
-       call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
-       VERIFY_(STATUS)
     end if
     VERIFY_(STATUS)
 
-    ! NOTE: try to call ISSM gridcomp
-    ! do we use RunChildren or ESMF_GridCompRun?!?!?!?!?
- 
-
-   !  call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, RC=STATUS )
-   !  VERIFY_(STATUS)
-
-   !  call ESMF_GridCompRun(GCS, importState=GIM, exportState=GEX,clock=CLOCK)
+    ! Run ISSM (checks if ISSM_ALARM is ringing)
+    call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
     VERIFY_(STATUS)
+
 !  All done
 !-----------
 
