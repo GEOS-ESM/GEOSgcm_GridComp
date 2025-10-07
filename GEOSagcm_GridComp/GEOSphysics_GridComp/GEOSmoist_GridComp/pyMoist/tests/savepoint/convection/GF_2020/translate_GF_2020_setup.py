@@ -136,7 +136,7 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
                 "topography_height": {},
                 "ocean_fraction": {},
                 "grid_length": {},
-                "pbl_level_local": {},
+                "pbl_level_cu_param_input": {},
                 "t_local": {},
                 "p_local": {},
                 "vapor_local": {},
@@ -167,57 +167,36 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
                 "last_ierr": {},
                 "fix_out_vapor": {},
                 "conprr": {},
-                "evap_subl_tendency_cu_param": {},
-                "convective_precip_flux_cu_param": {},
-                "t_perturbation_cu_param": {},
-                "omega_cu_param": {},
+                "evap_subl_tendency": {},
+                "convective_precip_flux": {},
+                "t_perturbation": {},
+                "omega_cu_param_input": {},
                 "ccn": {},
-                "dtdt_cu_param_shallow": {},
-                "dtdt_cu_param_mid": {},
-                "dtdt_cu_param_deep": {},
-                "dudt_cu_param_shallow": {},
-                "dudt_cu_param_mid": {},
-                "dudt_cu_param_deep": {},
-                "dvdt_cu_param_shallow": {},
-                "dvdt_cu_param_mid": {},
-                "dvdt_cu_param_deep": {},
-                "dvapordt_cu_param_shallow": {},
-                "dvapordt_cu_param_mid": {},
-                "dvapordt_cu_param_deep": {},
-                "dvapordt_cu_param_combined": {},
-                "dcloudicedt_cu_param_shallow": {},
-                "dcloudicedt_cu_param_mid": {},
-                "dcloudicedt_cu_param_deep": {},
-                "dnicedt_cu_param_shallow": {},
-                "dnicedt_cu_param_mid": {},
-                "dnicedt_cu_param_deep": {},
-                "dnliquiddt_cu_param_shallow": {},
-                "dnliquiddt_cu_param_mid": {},
-                "dnliquiddt_cu_param_deep": {},
-                "dbuoyancydt_cu_param_shallow": {},
-                "dbuoyancydt_cu_param_mid": {},
-                "dbuoyancydt_cu_param_deep": {},
-                # "dconvectiveicedt_cu_param_shallow": {},
-                # "dconvectiveicedt_cu_param_mid": {},
-                # "dconvectiveicedt_cu_param_deep": {},
-                # "dlargescaleicedt_cu_param_shallow": {},
-                # "dlargescaleicedt_cu_param_mid": {},
-                # "dlargescaleicedt_cu_param_deep": {},
-                # "dconvectiveliquiddt_cu_param_shallow": {},
-                # "dconvectiveliquiddt_cu_param_mid": {},
-                # "dconvectiveliquiddt_cu_param_deep": {},
-                # "dlargescaleliquiddt_cu_param_shallow": {},
-                # "dlargescaleliquiddt_cu_param_mid": {},
-                # "dlargescaleliquiddt_cu_param_deep": {},
-                # "dconvectivecloudfractiondt_cu_param_shallow": {},
-                # "dconvectivecloudfractiondt_cu_param_mid": {},
-                # "dconvectivecloudfractiondt_cu_param_deep": {},
-                # "dlargescalecloudfractiondt_cu_param_shallow": {},
-                # "dlargescalecloudfractiondt_cu_param_mid": {},
-                # "dlargescalecloudfractiondt_cu_param_deep": {},
                 "topography_height_no_negative": {},
                 "latitude_degrees": {},
                 "longitude_degrees": {},
+                "geopotential_height_cu_param_input": {},
+                "p_cu_param_input": {},
+                "t_cu_param_input": {},
+                "vapor_timestep_start_cu_param_input": {},
+                "vapor_current_cu_param_input": {},
+                "air_density_cu_param_input": {},
+                "u_cu_param_input": {},
+                "v_cu_param_input": {},
+                "w_cu_param_input": {},
+                "mass_cu_param_input": {},
+                "t_modified_by_advection": {},
+                "vapor_modified_by_advection": {},
+                # "convective_liquid_cu_param_input": {},
+                # "convective_ice_cu_param_input": {},
+                # "convective_cloud_fraction_cu_param_input": {},
+                # "large_scale_liquid_cu_param_input": {},
+                # "large_scale_ice_cu_param_input": {},
+                # "large_scale_cloud_fraction_cu_param_input": {},
+                "pbl_height_cu_param_input": {},
+                "sensible_heat_flux_cu_param_inputs": {},
+                "latent_heat_flux_cu_param_inputs": {},
+                "convective_scale_velosity_cu_param_input": {},
             }
         )
 
@@ -237,135 +216,151 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
 
         setup(state, saturation_tables, locals)
 
-        from numpy import moveaxis
+        import numpy as np
 
+        locals.cumulus_parameterization_input.p_mb.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.t.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.vapor_timestep_start.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.vapor_current.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.u.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.v.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.w.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.buoyancy_excess.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.geopotential_height.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.air_density.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.mass.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.t_modified_by_advection.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.vapor_modified_by_advection.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.convective_liquid.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.convective_ice.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.convective_cloud_fraction.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.large_scale_liquid.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.large_scale_ice.field[:, :, -1] = np.nan
+        locals.cumulus_parameterization_input.large_scale_cloud_fraction.field[:, :, -1] = np.nan
         inputs.update(
             {
-                "edge_height_above_surface": locals.edge_height_above_surface.field[:],
-                "layer_height_above_surface": locals.layer_height_above_surface.field[:],
-                "p": locals.p.field[:],
-                "p_kappa": locals.p_kappa.field[:],
-                "th": locals.th.field[:],
-                "mass": locals.mass.field[:],
-                "vertical_velocity": locals.vertical_velocity.field[:],
-                "seed_convection": locals.seed_convection.field[:],
-                "modified_area": locals.modified_area.field[:],
-                "t_2m_local": locals.t_2m_local.field[:],
-                "evaporation_local": locals.evaporation_local.field[:],
-                "sensible_heat_flux_local": locals.sensible_heat_flux_local.field[:],
-                "topography_height": locals.topography_height.field[:],
-                "ocean_fraction": locals.ocean_fraction.field[:],
-                "grid_length": locals.grid_length.field[:],
-                "pbl_level_local": locals.pbl_level_local.field[:],
-                "t_local": moveaxis(locals.t_local.field[:], 2, 0),
-                "p_local": moveaxis(locals.p_local.field[:], 2, 0),
-                "vapor_local": moveaxis(locals.vapor_local.field[:], 2, 0),
-                "vapor_current_local": moveaxis(locals.vapor_current_local.field[:], 2, 0),
-                "u_local": moveaxis(locals.u_local.field[:], 2, 0),
-                "v_local": moveaxis(locals.v_local.field[:], 2, 0),
-                "vertical_velocity_local": moveaxis(locals.vertical_velocity_local.field[:], 2, 0),
-                "layer_height_above_surface_local": moveaxis(
-                    locals.layer_height_above_surface_local.field[:], 2, 0
+                "edge_height_above_surface": locals.derived_state.edge_height_above_surface.field[:],
+                "layer_height_above_surface": locals.derived_state.layer_height_above_surface.field[:],
+                "p": locals.derived_state.p.field[:],
+                "p_kappa": locals.derived_state.p_kappa.field[:],
+                "th": locals.derived_state.th.field[:],
+                "mass": locals.derived_state.mass.field[:],
+                "vertical_velocity": locals.derived_state.vertical_velocity.field[:],
+                "seed_convection": locals.derived_state.seed_convection.field[:],
+                "modified_area": locals.derived_state.modified_area.field[:],
+                "t_2m_local": locals.local_copy.t_2m.field[:],
+                "evaporation_local": locals.local_copy.evaporation.field[:],
+                "sensible_heat_flux_local": locals.local_copy.sensible_heat_flux.field[:],
+                "topography_height": locals.derived_state.topography_height.field[:],
+                "ocean_fraction": locals.cumulus_parameterization_input.ocean_fraction.field[:],
+                "grid_length": locals.cumulus_parameterization_input.grid_length.field[:],
+                "pbl_level_cu_param_input": locals.cumulus_parameterization_input.pbl_level.field[:] + 1,
+                "t_local": np.moveaxis(locals.local_copy.t.field[:], 2, 0),
+                "p_local": np.moveaxis(locals.local_copy.p.field[:], 2, 0),
+                "vapor_local": np.moveaxis(locals.local_copy.vapor.field[:], 2, 0),
+                "vapor_current_local": np.moveaxis(locals.local_copy.vapor_current.field[:], 2, 0),
+                "u_local": np.moveaxis(locals.local_copy.u.field[:], 2, 0),
+                "v_local": np.moveaxis(locals.local_copy.v.field[:], 2, 0),
+                "vertical_velocity_local": np.moveaxis(locals.local_copy.vertical_velocity.field[:], 2, 0),
+                "layer_height_above_surface_local": np.moveaxis(
+                    locals.local_copy.layer_height_above_surface.field[:], 2, 0
                 ),
-                "edge_height_above_surface_local": moveaxis(
-                    locals.edge_height_above_surface_local.field[:], 2, 0
+                "edge_height_above_surface_local": np.moveaxis(
+                    locals.local_copy.edge_height_above_surface.field[:], 2, 0
                 ),
-                "mass_local": moveaxis(locals.mass_local.field[:], 2, 0),
-                "scalar_diffusivity_local": moveaxis(locals.scalar_diffusivity_local.field[:], 2, 0),
-                "lateral_entrainment_rate_local": moveaxis(
-                    locals.lateral_entrainment_rate_local.field[:], 2, 0
+                "mass_local": np.moveaxis(locals.local_copy.mass.field[:], 2, 0),
+                "scalar_diffusivity_local": np.moveaxis(locals.local_copy.scalar_diffusivity.field[:], 2, 0),
+                "lateral_entrainment_rate_local": np.moveaxis(
+                    locals.local_copy.lateral_entrainment_rate.field[:], 2, 0
                 ),
-                "convective_liquid_local": moveaxis(locals.convective_liquid_local.field[:], 2, 0),
-                "convective_ice_local": moveaxis(locals.convective_ice_local.field[:], 2, 0),
-                "convective_cloud_fraction_local": moveaxis(
-                    locals.convective_cloud_fraction_local.field[:], 2, 0
+                "convective_liquid_local": np.moveaxis(locals.local_copy.convective_liquid.field[:], 2, 0),
+                "convective_ice_local": np.moveaxis(locals.local_copy.convective_ice.field[:], 2, 0),
+                "convective_cloud_fraction_local": np.moveaxis(
+                    locals.local_copy.convective_cloud_fraction.field[:], 2, 0
                 ),
-                "large_scale_liquid_local": moveaxis(locals.large_scale_liquid_local.field[:], 2, 0),
-                "large_scale_ice_local": moveaxis(locals.large_scale_ice_local.field[:], 2, 0),
-                "large_scale_cloud_fraction_local": moveaxis(
-                    locals.large_scale_cloud_fraction_local.field[:], 2, 0
+                "large_scale_liquid_local": np.moveaxis(locals.local_copy.large_scale_liquid.field[:], 2, 0),
+                "large_scale_ice_local": np.moveaxis(locals.local_copy.large_scale_ice.field[:], 2, 0),
+                "large_scale_cloud_fraction_local": np.moveaxis(
+                    locals.local_copy.large_scale_cloud_fraction.field[:], 2, 0
                 ),
-                "p_surface": locals.p_surface.field[:],
-                "grid_scale_forcing_t": moveaxis(locals.grid_scale_forcing_t.field[:], 2, 0),
-                "grid_scale_forcing_vapor": moveaxis(locals.grid_scale_forcing_vapor.field[:], 2, 0),
-                "subgrid_scale_forcing_t": moveaxis(locals.subgrid_scale_forcing_t.field[:], 2, 0),
-                "subgrid_scale_forcing_vapor": moveaxis(
-                    locals.subgrid_scale_forcing_vapor.field[:], 2, 0
+                "p_surface": locals.cumulus_parameterization_input.p_surface.field[:],
+                "grid_scale_forcing_t": np.moveaxis(locals.derived_state.grid_scale_forcing_t.field[:], 2, 0),
+                "grid_scale_forcing_vapor": np.moveaxis(
+                    locals.derived_state.grid_scale_forcing_vapor.field[:], 2, 0
                 ),
-                "advective_forcing_t": moveaxis(locals.advective_forcing_t.field[:], 2, 0),
-                "buoyancy_excess": moveaxis(locals.buoyancy_excess.field[:], 2, 0),
-                "t_excess": locals.t_excess.field[:],
-                "vapor_excess": locals.vapor_excess.field[:],
-                "last_ierr": locals.last_ierr.field[:],
-                "fix_out_vapor": locals.fix_out_vapor.field[:],
-                "conprr": locals.conprr.field[:],
-                "evap_subl_tendency_cu_param": locals.evap_subl_tendency_cu_param.field[:],
-                "convective_precip_flux_cu_param": locals.convective_precip_flux_cu_param.field[:],
-                "t_perturbation_cu_param": locals.t_perturbation_cu_param.field[:],
-                "omega_cu_param": locals.omega_cu_param.field[:],
-                "ccn": locals.ccn.field[:],
-                "dtdt_cu_param_shallow": locals.dtdt_cu_param_shallow.field[:],
-                "dtdt_cu_param_mid": locals.dtdt_cu_param_mid.field[:],
-                "dtdt_cu_param_deep": locals.dtdt_cu_param_deep.field[:],
-                "dudt_cu_param_shallow": locals.dudt_cu_param_shallow.field[:],
-                "dudt_cu_param_mid": locals.dudt_cu_param_mid.field[:],
-                "dudt_cu_param_deep": locals.dudt_cu_param_deep.field[:],
-                "dvdt_cu_param_shallow": locals.dvdt_cu_param_shallow.field[:],
-                "dvdt_cu_param_mid": locals.dvdt_cu_param_mid.field[:],
-                "dvdt_cu_param_deep": locals.dvdt_cu_param_deep.field[:],
-                "dvapordt_cu_param_shallow": locals.dvapordt_cu_param_shallow.field[:],
-                "dvapordt_cu_param_mid": locals.dvapordt_cu_param_mid.field[:],
-                "dvapordt_cu_param_deep": locals.dvapordt_cu_param_deep.field[:],
-                "dvapordt_cu_param_combined": locals.dvapordt_cu_param_combined.field[:],
-                "dcloudicedt_cu_param_shallow": locals.dcloudicedt_cu_param_shallow.field[:],
-                "dcloudicedt_cu_param_mid": locals.dcloudicedt_cu_param_mid.field[:],
-                "dcloudicedt_cu_param_deep": locals.dcloudicedt_cu_param_deep.field[:],
-                "dnicedt_cu_param_shallow": locals.dnicedt_cu_param_shallow.field[:],
-                "dnicedt_cu_param_mid": locals.dnicedt_cu_param_mid.field[:],
-                "dnicedt_cu_param_deep": locals.dnicedt_cu_param_deep.field[:],
-                "dnliquiddt_cu_param_shallow": locals.dnliquiddt_cu_param_shallow.field[:],
-                "dnliquiddt_cu_param_mid": locals.dnliquiddt_cu_param_mid.field[:],
-                "dnliquiddt_cu_param_deep": locals.dnliquiddt_cu_param_deep.field[:],
-                "dbuoyancydt_cu_param_shallow": locals.dbuoyancydt_cu_param_shallow.field[:],
-                "dbuoyancydt_cu_param_mid": locals.dbuoyancydt_cu_param_mid.field[:],
-                "dbuoyancydt_cu_param_deep": locals.dbuoyancydt_cu_param_deep.field[:],
-                "dconvectiveicedt_cu_param_shallow": locals.dconvectiveicedt_cu_param_shallow.field[:],
-                "dconvectiveicedt_cu_param_mid": locals.dconvectiveicedt_cu_param_mid.field[:],
-                "dconvectiveicedt_cu_param_deep": locals.dconvectiveicedt_cu_param_deep.field[:],
-                "dlargescaleicedt_cu_param_shallow": locals.dlargescaleicedt_cu_param_shallow.field[:],
-                "dlargescaleicedt_cu_param_mid": locals.dlargescaleicedt_cu_param_mid.field[:],
-                "dlargescaleicedt_cu_param_deep": locals.dlargescaleicedt_cu_param_deep.field[:],
-                "dconvectiveliquiddt_cu_param_shallow": locals.dconvectiveliquiddt_cu_param_shallow.field[
+                "subgrid_scale_forcing_t": np.moveaxis(
+                    locals.derived_state.subgrid_scale_forcing_t.field[:], 2, 0
+                ),
+                "subgrid_scale_forcing_vapor": np.moveaxis(
+                    locals.derived_state.subgrid_scale_forcing_vapor.field[:], 2, 0
+                ),
+                "advective_forcing_t": np.moveaxis(locals.derived_state.advective_forcing_t.field[:], 2, 0),
+                "buoyancy_excess": locals.cumulus_parameterization_input.buoyancy_excess.field[:],
+                "t_excess": locals.cumulus_parameterization_input.t_excess.field[:],
+                "vapor_excess": locals.cumulus_parameterization_input.vapor_excess.field[:],
+                "last_ierr": locals.miscelaneous_diagnostic.last_ierr.field[:],
+                "fix_out_vapor": locals.miscelaneous_diagnostic.fix_out_vapor.field[:],
+                "conprr": locals.miscelaneous_diagnostic.conprr.field[:],
+                "evap_subl_tendency": locals.cumulus_parameterization_output.evap_subl_tendency.field[:],
+                "convective_precip_flux": locals.cumulus_parameterization_output.convective_precip_flux.field[
                     :
                 ],
-                "dconvectiveliquiddt_cu_param_mid": locals.dconvectiveliquiddt_cu_param_mid.field[:],
-                "dconvectiveliquiddt_cu_param_deep": locals.dconvectiveliquiddt_cu_param_deep.field[:],
-                "dlargescaleliquiddt_cu_param_shallow": locals.dlargescaleliquiddt_cu_param_shallow.field[
+                "t_perturbation": locals.cumulus_parameterization_input.t_perturbation.field[:],
+                "omega_cu_param_input": locals.cumulus_parameterization_input.omega.field[:],
+                "ccn": locals.cumulus_parameterization_input.ccn.field[:],
+                "topography_height_no_negative": locals.cumulus_parameterization_input.topography_height.field[
                     :
                 ],
-                "dlargescaleliquiddt_cu_param_mid": locals.dlargescaleliquiddt_cu_param_mid.field[:],
-                "dlargescaleliquiddt_cu_param_deep": locals.dlargescaleliquiddt_cu_param_deep.field[:],
-                "dconvectivecloudfractiondt_cu_param_shallow": locals.dconvectivecloudfractiondt_cu_param_shallow.field[
+                "latitude_degrees": locals.cumulus_parameterization_input.latitude_degrees.field[:],
+                "longitude_degrees": locals.cumulus_parameterization_input.longitude_degrees.field[:],
+                "geopotential_height_cu_param_input": locals.cumulus_parameterization_input.geopotential_height.field[
                     :
                 ],
-                "dconvectivecloudfractiondt_cu_param_mid": locals.dconvectivecloudfractiondt_cu_param_mid.field[
+                "p_cu_param_input": locals.cumulus_parameterization_input.p_mb.field[:],
+                "t_cu_param_input": locals.cumulus_parameterization_input.t.field[:],
+                "vapor_timestep_start_cu_param_input": locals.cumulus_parameterization_input.vapor_timestep_start.field[
                     :
                 ],
-                "dconvectivecloudfractiondt_cu_param_deep": locals.dconvectivecloudfractiondt_cu_param_deep.field[
+                "vapor_current_cu_param_input": locals.cumulus_parameterization_input.vapor_current.field[:],
+                "air_density_cu_param_input": locals.cumulus_parameterization_input.air_density.field[:],
+                "u_cu_param_input": locals.cumulus_parameterization_input.u.field[:],
+                "v_cu_param_input": locals.cumulus_parameterization_input.v.field[:],
+                "w_cu_param_input": locals.cumulus_parameterization_input.w.field[:],
+                "mass_cu_param_input": locals.cumulus_parameterization_input.mass.field[:],
+                "t_modified_by_advection": locals.cumulus_parameterization_input.t_modified_by_advection.field[
                     :
                 ],
-                "dlargescalecloudfractiondt_cu_param_shallow": locals.dlargescalecloudfractiondt_cu_param_shallow.field[
+                "vapor_modified_by_advection": locals.cumulus_parameterization_input.vapor_modified_by_advection.field[
                     :
                 ],
-                "dlargescalecloudfractiondt_cu_param_mid": locals.dlargescalecloudfractiondt_cu_param_mid.field[
+                "convective_liquid_cu_param_input": locals.cumulus_parameterization_input.convective_liquid.field[
                     :
                 ],
-                "dlargescalecloudfractiondt_cu_param_deep": locals.dlargescalecloudfractiondt_cu_param_deep.field[
+                "convective_ice_cu_param_input": locals.cumulus_parameterization_input.convective_ice.field[
                     :
                 ],
-                "topography_height_no_negative": locals.topography_height_no_negative.field[:],
-                "latitude_degrees": locals.latitude_degrees.field[:],
-                "longitude_degrees": locals.longitude_degrees.field[:],
+                "convective_cloud_fraction_cu_param_input": locals.cumulus_parameterization_input.convective_cloud_fraction.field[
+                    :
+                ],
+                "large_scale_liquid_cu_param_input": locals.cumulus_parameterization_input.large_scale_liquid.field[
+                    :
+                ],
+                "large_scale_ice_cu_param_input": locals.cumulus_parameterization_input.large_scale_ice.field[
+                    :
+                ],
+                "large_scale_cloud_fraction_cu_param_input": locals.cumulus_parameterization_input.large_scale_cloud_fraction.field[
+                    :
+                ],
+                "pbl_height_cu_param_input": locals.cumulus_parameterization_input.pbl_height.field[:],
+                "sensible_heat_flux_cu_param_inputs": locals.cumulus_parameterization_input.sensible_heat_flux.field[
+                    :
+                ],
+                "latent_heat_flux_cu_param_inputs": locals.cumulus_parameterization_input.latent_heat_flux.field[
+                    :
+                ],
+                "convective_scale_velosity_cu_param_input": locals.cumulus_parameterization_input.convective_scale_velosity.field[
+                    :
+                ],
             }
         )
 
