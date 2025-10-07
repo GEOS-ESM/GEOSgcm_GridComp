@@ -250,9 +250,6 @@ subroutine SetServices ( GC, RC )
     integer				   :: STATUS
     character(len=ESMF_MAXSTR)             :: COMP_NAME
 
-    real(dp) :: dt
-
-
     ! Begin... 
 
     ! Get the target components name and set-up traceback handle.
@@ -342,11 +339,6 @@ subroutine SetServices ( GC, RC )
     deallocate(elementIds)
     deallocate(elementConn)
 
-
-    call MAPL_GetResource ( MAPL, dt, Label=trim(COMP_NAME)//"_DT:", RC=STATUS)
-    print *, "ISSM DT = ", dt, " s"
-    VERIFY_(STATUS)
-
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
@@ -411,15 +403,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
 
-  ! timestep for ISSM (TODO: later figure out how to only run at these increments)
-  sec_per_year = 31557600.0
-
+  ! get timestep for ISSM
   call MAPL_GetResource ( MAPL, dt, Label=trim(COMP_NAME)//"_DT:", RC=STATUS)
 
-  ! convert dt in seconds to years
+  ! convert dt to years for ISSM input
+  sec_per_year = 31557600.0
   dt_yr = dt/sec_per_year
 
-  ! ! need to access num_elements 
+  ! get number of mesh elements
   call ESMF_MeshGet(mesh,elementCount=num_elements)
 
   ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
@@ -437,11 +428,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  ! call the C++ routine for running a single time step
+  ! run ISSM at specified time steps
   if ( ESMF_AlarmIsRinging (ALARM, RC=STATUS) ) then
-    print *, "ISSM alarm is ringing!"
     call RunISSM(dt_yr, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
-    call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
     VERIFY_(STATUS)
   end if 
 
