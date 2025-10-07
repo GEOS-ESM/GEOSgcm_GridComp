@@ -1,7 +1,8 @@
 import dataclasses
 
 from ndsl import Quantity, State
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM, Float
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.typing import Float, Int
 
 
 @dataclasses.dataclass
@@ -230,15 +231,6 @@ class GF2020Locals(State):
                 "dtype": Float,
             }
         )
-        pbl_level: Quantity = dataclasses.field(
-            metadata={
-                "name": "pbl_level",
-                "dims": [X_DIM, Y_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
         t: Quantity = dataclasses.field(
             metadata={
                 "name": "t",
@@ -413,9 +405,117 @@ class GF2020Locals(State):
 
     @dataclasses.dataclass
     class CumulusParameterizationInput:
+        geopotential_height: Quantity = dataclasses.field(
+            metadata={
+                "name": "geopotential_height",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        p_mb: Quantity = dataclasses.field(
+            metadata={
+                "name": "p_mb",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        p_surface: Quantity = dataclasses.field(
+            metadata={
+                "name": "p_surface",
+                "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        t: Quantity = dataclasses.field(
+            metadata={
+                "name": "t",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        vapor_timestep_start: Quantity = dataclasses.field(
+            metadata={
+                "name": "vapor_timestep_start",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        vapor_current: Quantity = dataclasses.field(
+            metadata={
+                "name": "vapor_current",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        u: Quantity = dataclasses.field(
+            metadata={
+                "name": "u",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        v: Quantity = dataclasses.field(
+            metadata={
+                "name": "v",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        w: Quantity = dataclasses.field(
+            metadata={
+                "name": "w",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        omega: Quantity = dataclasses.field(
+            metadata={
+                "name": "omega",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        air_density: Quantity = dataclasses.field(
+            metadata={
+                "name": "air_density",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        mass: Quantity = dataclasses.field(
+            metadata={
+                "name": "mass",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
         topography_height: Quantity = dataclasses.field(
             metadata={
-                "name": "topography_height_no_negative",
+                "name": "topography_height",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
@@ -440,18 +540,18 @@ class GF2020Locals(State):
                 "dtype": Float,
             }
         )
-        p_surface: Quantity = dataclasses.field(
+        buoyancy_excess: Quantity = dataclasses.field(
             metadata={
-                "name": "p_surface",
-                "dims": [X_DIM, Y_DIM],
+                "name": "buoyancy_excess",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        buoyancy_excess: Quantity = dataclasses.field(
+        t_perturbation: Quantity = dataclasses.field(
             metadata={
-                "name": "buoyancy_excess",
+                "name": "t_perturbation",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
@@ -470,24 +570,24 @@ class GF2020Locals(State):
         vapor_excess: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor_excess",
+                "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        t_modified_by_advection: Quantity = dataclasses.field(
+            metadata={
+                "name": "t_modified_by_advection",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        t_perturbation: Quantity = dataclasses.field(
+        vapor_modified_by_advection: Quantity = dataclasses.field(
             metadata={
-                "name": "t_perturbation",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        omega: Quantity = dataclasses.field(
-            metadata={
-                "name": "omega",
+                "name": "vapor_modified_by_advection",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
@@ -498,6 +598,60 @@ class GF2020Locals(State):
             metadata={
                 "name": "ccn",
                 "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        convective_liquid: Quantity = dataclasses.field(
+            metadata={
+                "name": "convective_liquid",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        convective_ice: Quantity = dataclasses.field(
+            metadata={
+                "name": "convective_ice",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        convective_cloud_fraction: Quantity = dataclasses.field(
+            metadata={
+                "name": "convective_cloud_fraction",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        large_scale_liquid: Quantity = dataclasses.field(
+            metadata={
+                "name": "large_scale_liquid",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        large_scale_ice: Quantity = dataclasses.field(
+            metadata={
+                "name": "large_scale_ice",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        large_scale_cloud_fraction: Quantity = dataclasses.field(
+            metadata={
+                "name": "large_scale_cloud_fraction",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -521,9 +675,54 @@ class GF2020Locals(State):
                 "dtype": Float,
             }
         )
+        pbl_level: Quantity = dataclasses.field(
+            metadata={
+                "name": "pbl_level",
+                "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Int,
+            }
+        )
+        pbl_height: Quantity = dataclasses.field(
+            metadata={
+                "name": "pbl_height",
+                "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        sensible_heat_flux: Quantity = dataclasses.field(
+            metadata={
+                "name": "sensible_heat_flux",
+                "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        latent_heat_flux: Quantity = dataclasses.field(
+            metadata={
+                "name": "latent_heat_flux",
+                "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        convective_scale_velosity: Quantity = dataclasses.field(
+            metadata={
+                "name": "convective_scale_velosity",
+                "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
 
     @dataclasses.dataclass
-    class CumlusParameterizationOutput:
+    class CumulusParameterizationOutput:
         dtdt_shallow: Quantity = dataclasses.field(
             metadata={
                 "name": "dtdt_shallow",
@@ -959,3 +1158,10 @@ class GF2020Locals(State):
                 "dtype": Float,
             }
         )
+
+    derived_state: DerivedState
+    output: Output
+    local_copy: LocalCopy
+    cumulus_parameterization_input: CumulusParameterizationInput
+    cumulus_parameterization_output: CumulusParameterizationOutput
+    miscelaneous_diagnostic: MiscelaneousDiagnostic
