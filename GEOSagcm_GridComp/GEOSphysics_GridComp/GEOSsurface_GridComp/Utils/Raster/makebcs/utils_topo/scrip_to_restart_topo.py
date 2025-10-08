@@ -85,27 +85,53 @@ temp1d = numpy.zeros([6*cRes,cRes])
 if haveRdg: 
    temp2d = numpy.zeros([rdgSize,6*cRes,cRes])
 
-exclude = ['lon','lat']
+exclude = ['lon', 'lat']
 for var in ncFid.variables:
-    if var not in exclude:
-        temp = ncFid.variables[var][:]
-        dim_size =len(temp.shape)
-        
-        if dim_size == 2:
-            tout = ncFidOut.createVariable(var,'f8',('unknown_dim1','lat','lon'),fill_value=1.0e15)
-            for att in ncFid.variables[var].ncattrs():
-                if att != "_FillValue":
-                   setattr(ncFidOut.variables[var],att,getattr(ncFid.variables[var],att))
-            temp2d = numpy.reshape(temp,[rdgSize,cRes*6,cRes])
-            tout[:,:,:] = temp2d[:,:,:]
+    if var in exclude:
+        continue
 
-        elif dim_size == 1:
-            tout = ncFidOut.createVariable(var,'f8',('lat','lon'),fill_value=1.0e15)
-            for att in ncFid.variables[var].ncattrs():
-                if att != "_FillValue":
-                   setattr(ncFidOut.variables[var],att,getattr(ncFid.variables[var],att))
-            temp1d = numpy.reshape(temp,[cRes*6,cRes])
-            tout[:,:] = temp1d[:,:]
+    v = ncFid.variables[var]
+    temp = v[:]
+    nd = temp.ndim
+
+    # Choose fill value at creation time
+    is_angle = var.upper() in ('ANGLX', 'ANGLL')
+    fv = -9999.0 if is_angle else 1.0e15
+
+    # Create destination variable with correct fill immediately
+    if nd == 2:  # (nrdg, ncol) -> (unknown_dim1, lat, lon)
+        tout = ncFidOut.createVariable(
+            var, 'f8', ('unknown_dim1', 'lat', 'lon'),
+            fill_value=fv
+        )
+    elif nd == 1:  # (ncol) -> (lat, lon)
+        tout = ncFidOut.createVariable(
+            var, 'f8', ('lat', 'lon'),
+            fill_value=fv
+        )
+    else:
+        # unexpected rank — skip safely
+        continue
+
+    # Copy attributes verbatim EXCEPT _FillValue (already set)
+    for att in v.ncattrs():
+        if att != '_FillValue':
+            setattr(tout, att, getattr(v, att))
+
+    # For angle variables, make the metadata sentinel explicit
+    if is_angle:
+        setattr(tout, 'missing_value', -9999.0)
+
+    # Simple reshape write (no masking/NaN munging in this tool)
+    if nd == 2:
+        tout[:, :, :] = numpy.reshape(temp, (len(ncFid.dimensions['nrdg']),
+                                             int((len(ncFid.dimensions['ncol'])//6)**0.5)*6,
+                                             int((len(ncFid.dimensions['ncol'])//6)**0.5)))
+    else:
+        tout[:, :] = numpy.reshape(temp,
+                                   (int((len(ncFid.dimensions['ncol'])//6)**0.5)*6,
+                                    int((len(ncFid.dimensions['ncol'])//6)**0.5)))
+
 #-----------------
 # Closing the file
 #----------------

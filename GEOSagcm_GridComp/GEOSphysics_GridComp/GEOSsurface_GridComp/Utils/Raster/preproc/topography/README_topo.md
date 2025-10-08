@@ -187,20 +187,99 @@ Users may add new stretching options with different target centers and stretch f
 
 ```
 $ ./make_topo.py
-Enter the root path of the bin: /home/me/topo/bin
-Enter the path of the output directory: /discover/nobackup/me/BCS_TOPO
+Enter the root path of the bin. Where code was compiled install/bin.
+Enter the path of the output directory: /discover/nobackup/{USER}/BCS_TOPO
 Enter the path contains gmted_fixed_anartica_superior_caspian.nc4 (confirm selection):
   /discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/topo/v1/
 Select resolutions: [x] C360 [x] SG001
 Select resolution of SG001 grid: [x] C540 [ ] C1080 [ ] C2160 [ ] C270
 # => writes topo_c360_c540.j under out_dir
-$ cd /discover/nobackup/me/BCS_TOPO
+$ cd /discover/nobackup/{USER}/BCS_TOPO
 $ sbatch topo_c360_c540.j
-# or submit one job at the time to have clean run log for each job: topo_c360.j. Save it is res dependent dir to have whole run isolated: /discover/nobackup/me/BCS_TOPO/c360/
+# or submit one job at the time to have clean run log for each job: topo_c360.j. 
+Save it is res dependent dir to have whole run isolated: /discover/nobackup/{USER}/BCS_TOPO/c360/
 ```
 
 ---
 
+## **List of Files in directory `utils_topo`**
+
+Below are the main files in this directory, with one-line summaries.  
+Each file also has its own inline header with more detail.
+
+- **CMakeLists.txt** — builds the utilities.
+- **convert_bin_to_netcdf.F90** — small helper to convert raw binary topography into NetCDF (intermediate or testing).
+- **convert_to_gmao_output.F90** — final step: produces GMAO deliverables (`gmted_DYN_ave_*.nc4`, `gmted_GWD_var_*.nc4`, `gmted_TRB_var_*.nc4`).
+- **geompack.F90** — bundled geometry library (Burkardt routines: convex hull, triangle quality, etc.), needed for SCRIP generation.
+- **generate_scrip_cube.F90** — builds SCRIP descriptors (uniform or Schmidt-stretched).
+- **make_topo.py** — interactive driver, generates the Slurm job script to run the full pipeline.
+- **scrip_to_cube_topo.py** — converts flat `ncol` → cube layout, using example file geometry.
+- **scrip_to_restart_topo.py** — converts PE outputs into GWD restart format.
+
+---
+
+## **List of Files in directory `@ncar_topo`**
+
+# **@ncar_topo — GMAO Version of NCAR Topography Tools**
+
+This directory contains the **GMAO-adapted version** of the NCAR *Topography Generation Software*
+(originally `NCAR_Topo_2_0_1`, February 2023).
+It provides the core Fortran utilities used to build cubed-sphere topography for the **GEOS** model.
+
+For the original NCAR user guide, see:  
+➡️ [https://github.com/NCAR/Topo/wiki/User's-Guide](https://github.com/NCAR/Topo/wiki/User's-Guide)
+
+### **`bin_to_cube/`**
+Utility to **bin high-resolution global elevation data** (e.g., GMTED) from a latitude–longitude grid
+onto a **cubed-sphere intermediate grid**.
+
+**Purpose:**  
+Creates an intermediate cube (e.g., `c3000.gmted_fixedanarticasuperior.nc`) used by the next stage,
+`cube_to_target`.
+
+**Key files:**
+- **bin_to_cube.F90** — main Fortran program  
+- **bin_to_cube\*.nl** — sample namelists for various cube sizes (e.g., 540, 3000)  
+
+- Normally run **once** unless the source dataset or cube resolution changes.
+- Generates data used for all downstream remapping and smoothing.
+
+---
+
+### **`cube_to_target/`**
+Utility to **process, smooth, and remap** the cubed-sphere intermediate topography to a **target model grid**,
+either **uniform** or **Schmidt-stretched** variable resolution.
+
+**Capabilities:**
+- Iterative **Laplacian “no-leak” smoother**
+- Ridge detection and sub-grid statistics (`SGH`, `SGH30`, etc.)
+- Seamless **variable-resolution** support using `rrfac` and `STRETCH_FACTOR`
+
+**Key files:**
+- **cube_to_target.F90** — main driver  
+- **neighbor_search_mod.F90**, **kdtree_mod.F90** — geometric utilities  
+- **f90getopt.F90** — command line argument parser  
+
+---
+
+### **Upstream NCAR Software**
+
+Peter H. Lauritzen, Julio T. Bacmeister, Patrick Callaghan, and Mark A. Taylor (2015).  
+*NCAR Global Model Topography Generation Software for Unstructured Grids.*  
+*Geosci. Model Dev.*, **8**, 3975–3986.  
+DOI: **10.5194/gmd-8-3975-2015**
+
+---
+
+### **GMAO Modifications**
+
+- Discover-compatible (Slurm) version  
+- Schmidt stretching and `rrfac` support  
+- Neighbor-repair logic using KD-tree search  
+- NetCDF compliance  
+- GEOS restart generation cleanup
+
+---
 ## FAQ
 
 **Q: Can I reuse an existing `c3000`?**
@@ -224,18 +303,4 @@ We cannot push changes back upstream (no test platform there), so their repo may
 **Q: Can I widen or narrow the stretched‑grid refinement “dome”?**
 A: Yes. The dome’s footprint is set by the half‑power radius (half_power_radius_deg) inside the stretched‑grid rrfac logic. By default it’s ~40°/sqrt(max(1, stretch_factor)), so for SF≈2.5 the half‑power radius is ~25° (covers most of CONUS). Increase the constant (e.g., 45–50) to broaden the dome; decrease to tighten it. This only affects stretched grids.
 
-## List of Files in utils_topo
-
-Below are the main files in this directory, with one-line summaries.  
-Each file also has its own inline header with more detail.
-
-- **CMakeLists.txt** — builds the utilities.
-- **convert_bin_to_netcdf.F90** — small helper to convert raw binary topography into NetCDF (intermediate or testing).
-- **convert_to_gmao_output.F90** — final step: produces GMAO deliverables (`gmted_DYN_ave_*.nc4`, `gmted_GWD_var_*.nc4`, `gmted_TRB_var_*.nc4`).
-- **geompack.F90** — bundled geometry library (Burkardt routines: convex hull, triangle quality, etc.), needed for SCRIP generation.
-- **generate_scrip_cube.F90** — builds SCRIP descriptors (uniform or Schmidt-stretched).
-- **make_topo.py** — interactive driver, generates the Slurm job script to run the full pipeline.
-- **scrip_to_cube_topo.py** — converts flat `ncol` → cube layout, using example file geometry.
-- **scrip_to_restart_topo.py** — converts PE outputs into GWD restart format.
-
-*Last updated: 2025-10-03*
+*Last updated: 2025-10-08*
