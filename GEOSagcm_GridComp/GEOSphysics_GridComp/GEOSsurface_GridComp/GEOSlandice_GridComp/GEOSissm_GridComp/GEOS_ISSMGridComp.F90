@@ -62,7 +62,7 @@ end subroutine RunISSM
 subroutine GetNodesISSM(nodeIds, nodeCoords) bind(C,NAME="GetNodesISSM")
    import :: c_ptr
    type(c_ptr),      value   :: nodeIds
-   type(c_ptr),      value   :: nodeCoords
+   type(c_ptr),      value   :: nodeCoords ! node coordinates (longitude,latitude)
 end subroutine GetNodesISSM
 
 subroutine GetElementsISSM(elementIds, elementConn) bind(C,NAME="GetElementsISSM")
@@ -231,7 +231,7 @@ subroutine SetServices ( GC, RC )
     type(c_ptr), dimension(:), allocatable :: argv_ptr
     integer :: i
 
-    real(dp),    pointer, dimension(:)     :: nodeCoords => null()
+    real(dp),    pointer, dimension(:)     :: nodeCoords => null() ! node coordinates (longitude,latitude)
     integer,     pointer, dimension(:)     :: nodeIds => null()
 
     ! ErrLog Variables
@@ -306,7 +306,7 @@ subroutine SetServices ( GC, RC )
 
     ! create ESMF mesh corresponding to  ISSM mesh 
     ! get information about nodes and elements
-    call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords))
+    call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords))       ! node coordinates (longitude,latitude)
     call GetElementsISSM(c_loc(elementIds), c_loc(elementConn))
 
     elementTypes(:) = ESMF_MESHELEMTYPE_TRI
