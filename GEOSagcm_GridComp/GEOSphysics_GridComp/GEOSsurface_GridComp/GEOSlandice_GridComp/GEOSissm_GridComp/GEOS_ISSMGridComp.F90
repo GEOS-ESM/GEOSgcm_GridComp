@@ -175,18 +175,7 @@ subroutine SetServices ( GC, RC )
 !                                                   RC=STATUS  )
 ! VERIFY_(STATUS)
 
-    !  !Internal state:
-    !   ! TODO: add internal states here, like this:
 
-!    call MAPL_AddInternalSpec(GC,                           &
-!    SHORT_NAME         = 'TS',                                &
-!    LONG_NAME          = 'surface_skin_temperature',          &
-!    UNITS              = 'K',                                 &
-!    DIMS               = MAPL_DimsTileOnly,                   &
-!    UNGRIDDED_DIMS     = (/NUM_SUBTILES/),                    &
-!    VLOCATION          = MAPL_VLocationNone,                  &
-!    DEFAULT            = 280.0,                               &
-!                                                   RC=STATUS  )
 ! VERIFY_(STATUS)
 
 !  !Import state:
@@ -286,7 +275,7 @@ subroutine SetServices ( GC, RC )
     ! Manually set command line argc and argv to initialize ISSM 
     argc = 4  
     allocate(argv(argc))
-    argv(1) = "/discover/nobackup/projects/gmao/SIteam/ISSM/2025-09-02/ifort_2021.13.0-intelmpi_2021.13.0/ISSM/bin/issm.exe"//c_null_char
+    argv(1) = "unused"//c_null_char ! this argument is not actually used for anything
     argv(2) = "TransientSolution"//c_null_char
     argv(3) = "/discover/nobackup/agstubbl/ISSM/projs/IRF-ISSM"//c_null_char
     argv(4) = "GreenlandGEOS"//c_null_char
