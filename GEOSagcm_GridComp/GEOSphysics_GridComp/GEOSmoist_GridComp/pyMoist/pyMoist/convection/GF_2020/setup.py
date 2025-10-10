@@ -4,6 +4,7 @@ from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, sqrt, max, 
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, K, IntFieldIJ
 import pyMoist.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as GF_2020_constants
 from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
@@ -566,8 +567,8 @@ def prepare_cumulus_parameterization(
             100.0 * p_surface / (287.04 * (t_cu_param_input * (1.0 + 0.608 * vapor_current_cu_param_input)))
         )
         # sensible and latent sfc fluxes for the heat-engine closure
-        sensible_heat_flux_cu_param_input = density * constants.MAPL_CP * sensible_heat_flux_local  # W/m^2
-        latent_heat_flux_cu_param_input = density * constants.MAPL_ALHL * evaporation_local  # W/m^2
+        sensible_heat_flux_cu_param_input = density * GF_2020_constants.CP * sensible_heat_flux_local  # W/m^2
+        latent_heat_flux_cu_param_input = density * GF_2020_constants.XLV * evaporation_local  # W/m^2
 
         buoyancy_flux = (
             -sensible_heat_flux_cu_param_input * density * 1004.64 / 1004.64
@@ -643,7 +644,7 @@ class GF2020Setup:
 
     - GF_Run
         - GF2020_INTERFACE
-            - GF2020_DRV
+            - GF2020_DRV up to "------ CALL CUMULUS PARAMETERIZATION"
 
     This python implementation simplifies this structure by bringing all setup calculations to the same level,
     reducing some (but likely not all) redundent/duplicate field definitions in the process.
@@ -660,9 +661,6 @@ class GF2020Setup:
         Build stencils
         """
         self.GF_2020_config = GF_2020_config
-
-        self.plume_order = "SH_MD_DP"
-        ndsl_log.warning("plume order currently set manually, need to integrate this into config")
 
         # Construct stencils
         self._compute_extra_inputs_from_state = stencil_factory.from_dims_halo(
@@ -719,8 +717,8 @@ class GF2020Setup:
     def __call__(
         self,
         state: GF2020State,
-        saturation_tables: SaturationVaporPressureTable,
         locals: GF2020Locals,
+        saturation_tables: SaturationVaporPressureTable,
     ):
         """
         Perform setup calculations
@@ -871,11 +869,11 @@ class GF2020Setup:
             dvapordt_from_dynamics=state.dvapordt_from_dynamics,
             dtdt_pbl=state.dtdt_pbl,
             dspecific_humiditydt_pbl=state.dspecific_humiditydt_pbl,
-            grid_scale_forcing_t=locals.derived_state.grid_scale_forcing_t,
-            grid_scale_forcing_vapor=locals.derived_state.grid_scale_forcing_vapor,
-            subgrid_scale_forcing_t=locals.derived_state.subgrid_scale_forcing_t,
-            subgrid_scale_forcing_vapor=locals.derived_state.subgrid_scale_forcing_vapor,
-            advective_forcing_t=locals.derived_state.advective_forcing_t,
+            grid_scale_forcing_t=locals.cumulus_parameterization_input.grid_scale_forcing_t,
+            grid_scale_forcing_vapor=locals.cumulus_parameterization_input.grid_scale_forcing_vapor,
+            subgrid_scale_forcing_t=locals.cumulus_parameterization_input.subgrid_scale_forcing_t,
+            subgrid_scale_forcing_vapor=locals.cumulus_parameterization_input.subgrid_scale_forcing_vapor,
+            advective_forcing_t=locals.cumulus_parameterization_input.advective_forcing_t,
             convective_liquid_local=locals.local_copy.convective_liquid,
             convective_ice_local=locals.local_copy.convective_ice,
             convective_cloud_fraction_local=locals.local_copy.convective_cloud_fraction,
@@ -921,9 +919,9 @@ class GF2020Setup:
             omega_cu_param_input=locals.cumulus_parameterization_input.omega,
             mass_local=locals.local_copy.mass,
             mass_cu_param_input=locals.cumulus_parameterization_input.mass,
-            advective_forcing_t=locals.derived_state.advective_forcing_t,
+            advective_forcing_t=locals.cumulus_parameterization_input.advective_forcing_t,
             t_modified_by_advection=locals.cumulus_parameterization_input.t_modified_by_advection,
-            grid_scale_forcing_vapor=locals.derived_state.grid_scale_forcing_vapor,
+            grid_scale_forcing_vapor=locals.cumulus_parameterization_input.grid_scale_forcing_vapor,
             vapor_modified_by_advection=locals.cumulus_parameterization_input.vapor_modified_by_advection,
             pbl_level_cu_param_input=locals.cumulus_parameterization_input.pbl_level,
             pbl_height_cu_param_input=locals.cumulus_parameterization_input.pbl_height,

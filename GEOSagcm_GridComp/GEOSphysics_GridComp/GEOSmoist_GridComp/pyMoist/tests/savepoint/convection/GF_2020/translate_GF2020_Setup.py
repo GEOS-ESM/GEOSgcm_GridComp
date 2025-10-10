@@ -9,7 +9,7 @@ from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
-class TranslateGF_2020_setup(TranslateFortranData2Py):
+class TranslateGF2020_Setup(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -156,14 +156,14 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
                 "large_scale_ice_local": {},
                 "large_scale_cloud_fraction_local": {},
                 "p_surface": {},
-                "grid_scale_forcing_t": {},
-                "grid_scale_forcing_vapor": {},
-                "subgrid_scale_forcing_t": {},
-                "subgrid_scale_forcing_vapor": {},
-                "advective_forcing_t": {},
+                "grid_scale_forcing_t_cu_param_input": {},
+                "grid_scale_forcing_vapor_cu_param_input": {},
+                "subgrid_scale_forcing_t_cu_param_input": {},
+                "subgrid_scale_forcing_vapor_cu_param_input": {},
+                "advective_forcing_t_cu_param_input": {},
                 "buoyancy_excess": {},
-                "t_excess": {},
-                "vapor_excess": {},
+                "t_excess_cu_param_input": {},
+                "vapor_excess_cu_param_input": {},
                 "last_ierr": {},
                 "fix_out_vapor": {},
                 "conprr": {},
@@ -187,12 +187,12 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
                 "mass_cu_param_input": {},
                 "t_modified_by_advection": {},
                 "vapor_modified_by_advection": {},
-                # "convective_liquid_cu_param_input": {},
-                # "convective_ice_cu_param_input": {},
-                # "convective_cloud_fraction_cu_param_input": {},
-                # "large_scale_liquid_cu_param_input": {},
-                # "large_scale_ice_cu_param_input": {},
-                # "large_scale_cloud_fraction_cu_param_input": {},
+                # "convective_liquid_cu_param_input": {}, # all nan first timestep
+                # "convective_ice_cu_param_input": {}, # all nan first timestep
+                # "convective_cloud_fraction_cu_param_input": {}, # all nan first timestep
+                # "large_scale_liquid_cu_param_input": {}, # all nan first timestep
+                # "large_scale_ice_cu_param_input": {}, # all nan first timestep
+                # "large_scale_cloud_fraction_cu_param_input": {}, # all nan first timestep
                 "pbl_height_cu_param_input": {},
                 "sensible_heat_flux_cu_param_inputs": {},
                 "latent_heat_flux_cu_param_inputs": {},
@@ -201,7 +201,7 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
         )
 
     def extra_data_load(self, data_loader: DataLoader):
-        self.constants = data_loader.load("GF_2020-constants")
+        self.constants = data_loader.load("GF2020-constants")
 
     def compute(self, inputs):
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
@@ -214,10 +214,12 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
 
         setup = GF2020Setup(self.stencil_factory, self.quantity_factory, config)
 
-        setup(state, saturation_tables, locals)
+        setup(state, locals, saturation_tables)
 
         import numpy as np
 
+        # top rows are not computed in Fortran, retains initalized value (nan)
+        # Python initalizes with zero, fill top row with nan for test passage
         locals.cumulus_parameterization_input.p_mb.field[:, :, -1] = np.nan
         locals.cumulus_parameterization_input.t.field[:, :, -1] = np.nan
         locals.cumulus_parameterization_input.vapor_timestep_start.field[:, :, -1] = np.nan
@@ -284,20 +286,24 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
                     locals.local_copy.large_scale_cloud_fraction.field[:], 2, 0
                 ),
                 "p_surface": locals.cumulus_parameterization_input.p_surface.field[:],
-                "grid_scale_forcing_t": np.moveaxis(locals.derived_state.grid_scale_forcing_t.field[:], 2, 0),
-                "grid_scale_forcing_vapor": np.moveaxis(
-                    locals.derived_state.grid_scale_forcing_vapor.field[:], 2, 0
+                "grid_scale_forcing_t_cu_param_input": np.moveaxis(
+                    locals.cumulus_parameterization_input.grid_scale_forcing_t.field[:], 2, 0
                 ),
-                "subgrid_scale_forcing_t": np.moveaxis(
-                    locals.derived_state.subgrid_scale_forcing_t.field[:], 2, 0
+                "grid_scale_forcing_vapor_cu_param_input": np.moveaxis(
+                    locals.cumulus_parameterization_input.grid_scale_forcing_vapor.field[:], 2, 0
                 ),
-                "subgrid_scale_forcing_vapor": np.moveaxis(
-                    locals.derived_state.subgrid_scale_forcing_vapor.field[:], 2, 0
+                "subgrid_scale_forcing_t_cu_param_input": np.moveaxis(
+                    locals.cumulus_parameterization_input.subgrid_scale_forcing_t.field[:], 2, 0
                 ),
-                "advective_forcing_t": np.moveaxis(locals.derived_state.advective_forcing_t.field[:], 2, 0),
+                "subgrid_scale_forcing_vapor_cu_param_input": np.moveaxis(
+                    locals.cumulus_parameterization_input.subgrid_scale_forcing_vapor.field[:], 2, 0
+                ),
+                "advective_forcing_t_cu_param_input": np.moveaxis(
+                    locals.cumulus_parameterization_input.advective_forcing_t.field[:], 2, 0
+                ),
                 "buoyancy_excess": locals.cumulus_parameterization_input.buoyancy_excess.field[:],
-                "t_excess": locals.cumulus_parameterization_input.t_excess.field[:],
-                "vapor_excess": locals.cumulus_parameterization_input.vapor_excess.field[:],
+                "t_excess_cu_param_input": locals.cumulus_parameterization_input.t_excess.field[:],
+                "vapor_excess_cu_param_input": locals.cumulus_parameterization_input.vapor_excess.field[:],
                 "last_ierr": locals.miscelaneous_diagnostic.last_ierr.field[:],
                 "fix_out_vapor": locals.miscelaneous_diagnostic.fix_out_vapor.field[:],
                 "conprr": locals.miscelaneous_diagnostic.conprr.field[:],

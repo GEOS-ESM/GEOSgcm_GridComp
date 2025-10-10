@@ -117,51 +117,6 @@ class GF2020Locals(State):
                 "dtype": Float,
             }
         )
-        grid_scale_forcing_t: Quantity = dataclasses.field(
-            metadata={
-                "name": "grid_scale_forcing_t",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        grid_scale_forcing_vapor: Quantity = dataclasses.field(
-            metadata={
-                "name": "grid_scale_forcing_vapor",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        subgrid_scale_forcing_t: Quantity = dataclasses.field(
-            metadata={
-                "name": "subgrid_scale_forcing_t",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        subgrid_scale_forcing_vapor: Quantity = dataclasses.field(
-            metadata={
-                "name": "subgrid_scale_forcing_vapor",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        advective_forcing_t: Quantity = dataclasses.field(
-            metadata={
-                "name": "advective_forcing_t",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
         t_perturbation_horizontal: Quantity = dataclasses.field(
             metadata={
                 "name": "t_perturbation_horizontal",
@@ -397,6 +352,36 @@ class GF2020Locals(State):
             metadata={
                 "name": "large_scale_cloud_fraction",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    @dataclasses.dataclass
+    class MiscelaneousDiagnostic:
+        fix_out_vapor: Quantity = dataclasses.field(
+            metadata={
+                "name": "fix_out_vapor",
+                "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        last_ierr: Quantity = dataclasses.field(
+            metadata={
+                "name": "last_ierr",
+                "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        conprr: Quantity = dataclasses.field(
+            metadata={
+                "name": "conprr",
+                "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -715,6 +700,51 @@ class GF2020Locals(State):
             metadata={
                 "name": "convective_scale_velosity",
                 "dims": [X_DIM, Y_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        grid_scale_forcing_t: Quantity = dataclasses.field(
+            metadata={
+                "name": "grid_scale_forcing_t",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        grid_scale_forcing_vapor: Quantity = dataclasses.field(
+            metadata={
+                "name": "grid_scale_forcing_vapor",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        subgrid_scale_forcing_t: Quantity = dataclasses.field(
+            metadata={
+                "name": "subgrid_scale_forcing_t",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        subgrid_scale_forcing_vapor: Quantity = dataclasses.field(
+            metadata={
+                "name": "subgrid_scale_forcing_vapor",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        advective_forcing_t: Quantity = dataclasses.field(
+            metadata={
+                "name": "advective_forcing_t",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -1130,29 +1160,65 @@ class GF2020Locals(State):
         )
 
     @dataclasses.dataclass
-    class MiscelaneousDiagnostic:
-        fix_out_vapor: Quantity = dataclasses.field(
+    class CumulusParameterizationInternal:
+        t: Quantity = dataclasses.field(
             metadata={
-                "name": "fix_out_vapor",
+                "name": "t",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        vapor: Quantity = dataclasses.field(
+            metadata={
+                "name": "vapor",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        t_pbl: Quantity = dataclasses.field(
+            metadata={
+                "name": "t_pbl",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        vapor_pbl: Quantity = dataclasses.field(
+            metadata={
+                "name": "vapor_pbl",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        t_excess: Quantity = dataclasses.field(
+            metadata={
+                "name": "t_excess",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        last_ierr: Quantity = dataclasses.field(
+        vapor_excess: Quantity = dataclasses.field(
             metadata={
-                "name": "last_ierr",
+                "name": "vapor_excess",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        conprr: Quantity = dataclasses.field(
+        moist_static_energy: Quantity = dataclasses.field(
             metadata={
-                "name": "conprr",
-                "dims": [X_DIM, Y_DIM],
+                "name": "moist_static_energy",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -1165,3 +1231,4 @@ class GF2020Locals(State):
     cumulus_parameterization_input: CumulusParameterizationInput
     cumulus_parameterization_output: CumulusParameterizationOutput
     miscelaneous_diagnostic: MiscelaneousDiagnostic
+    cumulus_parameterization_internal: CumulusParameterizationInternal
