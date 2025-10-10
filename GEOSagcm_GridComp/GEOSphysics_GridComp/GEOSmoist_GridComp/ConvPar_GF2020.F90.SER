@@ -355,8 +355,51 @@ CONTAINS
     INTEGER :: mtp
     real :: dtqw,qsatup
 
+    !$ser verbatim integer :: SER_VAR_1
+
    !  PRINT *, "SIZE OF KH", size(KH, 1), size(KH, 2), size(KH, 3)
    !  PRINT *, "SIZE OF MASS", size(MASS, 1), size(MASS, 2), size(MASS, 3)
+
+   !$ser savepoint GF2020_CumulusParameterization-constants
+   !$ser data DOWNDRAFT_MAX_HEIGHT_LAND_SHALLOW=CUM_HEI_DOWN_LAND(2)
+   !$ser data DOWNDRAFT_MAX_HEIGHT_LAND_MID=CUM_HEI_DOWN_LAND(3)
+   !$ser data DOWNDRAFT_MAX_HEIGHT_LAND_DEEP=CUM_HEI_DOWN_LAND(1)
+   !$ser data DOWNDRAFT_MAX_HEIGHT_OCEAN_SHALLOW=CUM_HEI_DOWN_OCEAN(2)
+   !$ser data DOWNDRAFT_MAX_HEIGHT_OCEAN_MID=CUM_HEI_DOWN_OCEAN(3)
+   !$ser data DOWNDRAFT_MAX_HEIGHT_OCEAN_DEEP=CUM_HEI_DOWN_OCEAN(1)
+   !$ser data UPDRAFT_MAX_HEIGHT_LAND_SHALLOW=CUM_HEI_UPDF_LAND(2)
+   !$ser data UPDRAFT_MAX_HEIGHT_LAND_MID=CUM_HEI_UPDF_LAND(3)
+   !$ser data UPDRAFT_MAX_HEIGHT_LAND_DEEP=CUM_HEI_UPDF_LAND(1)
+   !$ser data UPDRAFT_MAX_HEIGHT_OCEAN_SHALLOW=CUM_HEI_UPDF_OCEAN(2)
+   !$ser data UPDRAFT_MAX_HEIGHT_OCEAN_MID=CUM_HEI_UPDF_OCEAN(3)
+   !$ser data UPDRAFT_MAX_HEIGHT_OCEAN_DEEP=CUM_HEI_UPDF_OCEAN(1)
+   !$ser data MINIMUM_EVAP_FRACTION_LAND_SHALLOW=CUM_MIN_EDT_LAND(2)
+   !$ser data MINIMUM_EVAP_FRACTION_LAND_MID=CUM_MIN_EDT_LAND(3)
+   !$ser data MINIMUM_EVAP_FRACTION_LAND_DEEP=CUM_MIN_EDT_LAND(1)
+   !$ser data MINIMUM_EVAP_FRACTION_OCEAN_SHALLOW=CUM_MIN_EDT_OCEAN(2)
+   !$ser data MINIMUM_EVAP_FRACTION_OCEAN_MID=CUM_MIN_EDT_OCEAN(3)
+   !$ser data MINIMUM_EVAP_FRACTION_OCEAN_DEEP=CUM_MIN_EDT_OCEAN(1)
+   !$ser data MAXIMUM_EVAP_FRACTION_LAND_SHALLOW=CUM_MAX_EDT_LAND(2)
+   !$ser data MAXIMUM_EVAP_FRACTION_LAND_MID=CUM_MAX_EDT_LAND(3)
+   !$ser data MAXIMUM_EVAP_FRACTION_LAND_DEEP=CUM_MAX_EDT_LAND(1)
+   !$ser data MAXIMUM_EVAP_FRACTION_OCEAN_SHALLOW=CUM_MAX_EDT_OCEAN(2)
+   !$ser data MAXIMUM_EVAP_FRACTION_OCEAN_MID=CUM_MAX_EDT_OCEAN(3)
+   !$ser data MAXIMUM_EVAP_FRACTION_OCEAN_DEEP=CUM_MAX_EDT_OCEAN(1)
+   !$ser data CLOUD_BASE_MASS_FLUX_FACTOR_SHALLOW=CUM_FADJ_MASSFLX(2)
+   !$ser data CLOUD_BASE_MASS_FLUX_FACTOR_MID=CUM_FADJ_MASSFLX(3)
+   !$ser data CLOUD_BASE_MASS_FLUX_FACTOR_DEEP=CUM_FADJ_MASSFLX(1)
+   !$ser data USE_EXCESS_SHALLOW=CUM_USE_EXCESS(2)
+   !$ser data USE_EXCESS_MID=CUM_USE_EXCESS(3)
+   !$ser data USE_EXCESS_DEEP=CUM_USE_EXCESS(1)
+   !$ser data ENABLE_SHALLOW=icumulus_gf(2)
+   !$ser data ENABLE_MID=icumulus_gf(3)
+   !$ser data ENABLE_DEEP=icumulus_gf(1)
+   !$ser verbatim if (SH_MD_DP) then
+      !$ser verbatim SER_VAR_1 = 0
+   !$ser verbatim else
+      !$ser verbatim SER_VAR_1 = 1
+   !$ser verbatim endif
+   !$ser data PLUME_ORDER=SER_VAR_1
 
    WQT_DC = 0.0
    CNV_MFC = 0.0
@@ -646,6 +689,7 @@ CONTAINS
 
    ! savepoint is located outside of the subroutine call
    ! state fields from GF_Run
+   !$ser savepoint GF2020_Setup-Out-part-1
    !$ser data p_interface=PLE t=T1 u=U1 v=V1 t_2m=T2M specific_humidity_2m=Q2M t_surface=TA
    !$ser data specific_humidity_surface=QA vapor=Q1 convective_liquid=QLCN convective_ice=QICN
    !$ser data convective_cloud_fraction=CLCN large_scale_liquid=QLLS large_scale_ice=QILS
@@ -1242,6 +1286,7 @@ CONTAINS
 
    ! savepoint is located outside of the subroutine call
    ! state fields from GF_Run
+   !$ser savepoint GF2020_Setup-Out-part-2
    !$ser data convection_fraction=cnvfrc surface_type=srftype
    !$ser data cloud_work_function_0=AA0
    !$ser data cloud_work_function_1=AA1 cloud_work_function_2=AA2 cloud_work_function_3=AA3
@@ -1256,8 +1301,8 @@ CONTAINS
    !$ser data vertical_velocity_local=w layer_height_above_surface_local=zt
    !$ser data edge_height_above_surface_local=zm mass_local=dm
    !$ser data vapor_current_local=curr_rvap lateral_entrainment_rate_local=entr_c
-   !$ser data grid_scale_forcing_t=rthften grid_scale_forcing_vapor=rqvften subgrid_scale_forcing_t=rthblten
-   !$ser data subgrid_scale_forcing_vapor=rqvblten advective_forcing_t=rth_advten
+   !$ser data grid_scale_forcing_t_cu_param_input=rthften grid_scale_forcing_vapor_cu_param_input=rqvften subgrid_scale_forcing_t_cu_param_input=rthblten
+   !$ser data subgrid_scale_forcing_vapor_cu_param_input=rqvblten advective_forcing_t_cu_param_input=rth_advten
    !$ser data convective_liquid_local=mp_liq(cnmp,:,:,:) convective_ice_local=mp_ice(cnmp,:,:,:)
    !$ser data convective_cloud_fraction_local=mp_cf(cnmp,:,:,:) large_scale_liquid_local=mp_liq(lsmp,:,:,:)
    !$ser data large_scale_ice_local=mp_ice(lsmp,:,:,:) large_scale_cloud_fraction_local=mp_cf(lsmp,:,:,:)
@@ -1467,10 +1512,12 @@ CONTAINS
        zws(i) = 1.2*zws(i)**.3333
      enddo
 
-      !$ser verbatim do i=its,ite
+     !$ser savepoint GF2020_Setup-Out-part-3
+     !$ser verbatim do i=its,ite
       !$ser verbatim do k=kts,kte
+         ! fields modified in GF2020_DRV
          !$ser verbatim call ser_set_indices(i, j, k, 1)
-         !$ser data_buffered Dx=2 t_excess=ztexec(i) vapor_excess=zqexec(i)
+         !$ser data_buffered Dx=2 t_excess_cu_param_input=ztexec(i) vapor_excess_cu_param_input=zqexec(i)
          !$ser data_buffered Dx=2 last_ierr=last_ierr(i) fix_out_vapor=fixout_qv(i) conprr=conprr(i,j)
          !$ser data_buffered Dx=2 lighting_density=lightn_dens(i,j) ccn=ccn(i) p_surface=psur(i)
          !$ser data_buffered Dx=3 evap_subl_tendency=revsu_gf_2d(i,k)
@@ -1577,6 +1624,20 @@ CONTAINS
 !------ CALL CUMULUS PARAMETERIZATION
 !
 
+      !$ser savepoint GF2020_CumulusParameterization-In
+      !$ser verbatim do i=its,ite
+         !$ser verbatim do k=kts,kte
+            !$ser verbatim call ser_set_indices(i, j, k, 1)
+            !$ser data_buffered Dx=2 t_excess_cu_param_input=ztexec(i) vapor_excess_cu_param_input=zqexec(i)
+            !$ser data_buffered Dx=2 ocean_fraction=xland(i,j)
+            !$ser data_buffered Dx=3 t_cu_param_input=temp_old(i,k)
+            !$ser data_buffered Dx=3 vapor_timestep_start_cu_param_input=qv_old(i,k)
+            !$ser data_buffered Dx=3 grid_scale_forcing_t_cu_param_input_data_buffered=rthften(k,i,j)
+            !$ser data_buffered Dx=3 grid_scale_forcing_vapor_cu_param_input_data_buffered=rqvften(k,i,j)
+            !$ser data_buffered Dx=3 subgrid_scale_forcing_t_cu_param_input_data_buffered=rthblten(k,i,j)
+            !$ser data_buffered Dx=3 subgrid_scale_forcing_vapor_cu_param_input_data_buffered=rqvblten(k,i,j)
+         !$ser verbatim enddo
+      !$ser verbatim enddo
      DO ii_plume = 1, maxiens
        if (SH_MD_DP) then
          if(ii_plume == 1) plume = shal
@@ -1646,6 +1707,22 @@ CONTAINS
 
          enddo
        enddo
+
+         !$ser verbatim if (trim(cumulus_type(plume))=="mid") then
+            !$ser savepoint GF2020_CumulusParameterization-Out
+            !$ser verbatim do i=its,ite
+               !$ser verbatim do k=kts,kte
+                  !$ser verbatim call ser_set_indices(i, j, k, 1)
+                  !$ser data_buffered Dx=2 t_excess_cu_param_internal=cum_ztexec(i)
+                  !$ser data_buffered Dx=2 vapor_excess_cu_param_internal=cum_zqexec(i)
+                  !$ser data_buffered Dx=3 t_cu_param_internal=temp_new(i,k)
+                  !$ser data_buffered Dx=3 vapor_cu_param_internal=qv_new(i,k)
+                  !$ser data_buffered Dx=3 moist_static_energy_cu_param_internal=dhdt(i,k)
+                  !$ser data_buffered Dx=3 t_pbl_cu_param_internal=temp_new_BL(i,k)
+                  !$ser data_buffered Dx=3 vapor_pbl_cu_param_internal=qv_new_BL(i,k)
+               !$ser verbatim enddo
+            !$ser verbatim enddo
+         !$ser verbatim endif
 
        CALL CUP_gf(its,ite,kts,kte, itf,ktf, mtp, nmp &
                   ,cumulus_type  (plume)            &

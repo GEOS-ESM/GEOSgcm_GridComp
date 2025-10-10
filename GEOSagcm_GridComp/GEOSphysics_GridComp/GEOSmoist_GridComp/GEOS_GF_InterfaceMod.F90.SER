@@ -391,7 +391,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !$ser verbatim SER_VAR_1 = 1
     !$ser verbatim endif
 
-    !$ser savepoint GF_2020-constants
+    !$ser savepoint GF2020-constants
     !$ser data STOCHASTIC_CNV=STOCHASTIC_CNV STOCH_TOP=STOCH_TOP STOCH_BOT=STOCH_BOT GF_MIN_AREA=GF_MIN_AREA
     !$ser data DT_MOIST=GF_DT GF_ENV_SETTING=SER_VAR_1 ENTRVERSION=ENTRVERSION LHYDROSTATIC=LHYDROSTATIC
     !$ser data CONVECTION_TRACER=CONVECTION_TRACER C1=C1 ADV_TRIGGER=ADV_TRIGGER AUTOCONV=AUTOCONV
@@ -591,7 +591,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        TMP2D = AREA
     endif
 
-    !$ser savepoint GF_2020_setup-In
+    !$ser savepoint GF2020_Setup-In
     !$ser data latitude=LATS longitude=LONS
     !$ser data p_interface=PLE t=T u=U v=V w=W omega=OMEGA t_2m=T2M specific_humidity_2m=Q2M t_surface=TA
     !$ser data specific_humidity_surface=QA vapor=Q convective_liquid=QLCN convective_ice=QICN
@@ -634,7 +634,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pa
 
-    !$ser savepoint GF_2020_setup-Out
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
                                  ,T, TH, Q, U, V, TMP3D, BYNCY, QLCN, QICN, QLLS, QILS, CNPCPRATE &
