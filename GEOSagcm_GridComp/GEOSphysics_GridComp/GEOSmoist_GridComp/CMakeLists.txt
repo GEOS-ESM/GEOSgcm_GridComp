@@ -64,12 +64,7 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF)
-
-get_target_property (extra_incs FMS::fms_r4 INTERFACE_INCLUDE_DIRECTORIES)
-target_include_directories(${this} PRIVATE
-   $<BUILD_INTERFACE:${extra_incs}>
-   )
+  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF FMS::fms)
 
 file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc *.yaml)
 foreach ( file ${rc_files} )
