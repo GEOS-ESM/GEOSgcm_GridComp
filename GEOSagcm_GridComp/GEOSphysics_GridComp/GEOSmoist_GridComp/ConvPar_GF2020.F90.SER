@@ -1638,6 +1638,8 @@ CONTAINS
             !$ser data_buffered Dx=3 subgrid_scale_forcing_vapor_cu_param_input_data_buffered=rqvblten(k,i,j)
          !$ser verbatim enddo
       !$ser verbatim enddo
+
+
      DO ii_plume = 1, maxiens
        if (SH_MD_DP) then
          if(ii_plume == 1) plume = shal
@@ -1820,6 +1822,8 @@ CONTAINS
                   ,revsu_gf_2d                      &
                   ,prfil_gf_2d                      &
                   ,Tpert_2d                         &
+                  ,j                                &
+                  ,plume                            &
                   )
         ! Save ierr from this plume
         ! if (plume /= SHAL) then
@@ -1979,8 +1983,10 @@ loop1:  do n=1,maxiens
      !ENDIF
 !-----memory
 
-
+    
      ENDDO
+     ! $ser flush_savepoint CupMinimi-In
+     ! $ser flush_savepoint CupMinimi-Out
 
     END SUBROUTINE GF2020_DRV
 !---------------------------------------------------------------------------------------------------
@@ -2081,6 +2087,8 @@ loop1:  do n=1,maxiens
                       ,revsu_gf          &
                      ,prfil_gf          &
                      ,Tpert             &
+                     ,SER_CURRENT_J                 &
+                     ,SER_CURRENT_PLUME             &
                      )
      IMPLICIT NONE
 
@@ -2356,6 +2364,9 @@ loop1:  do n=1,maxiens
      real :: alp0,beta1,beta2,dp_p,dp_m,delt1,delt2,delt_Tvv,wkf,ckf,wkflcl,rcount
      real,    dimension (kts:kte,8)       ::  tend2d
      real,    dimension (8)               ::  tend1d
+     integer                              :: ii
+     INTEGER, OPTIONAL :: SER_CURRENT_J
+     INTEGER, OPTIONAL :: SER_CURRENT_PLUME
     !----------------------------------------------------------------------
 
      pre = 0.0
@@ -2862,8 +2873,27 @@ loop0:       do k=kts,ktf
      enddo
 !
 !--- increase detrainment in stable layers
-!
+      ! $ser savepoint CupMinimi-In
+      ! $ser verbatim do i=its,ite
+      ! $ser verbatim do k=kts,kte
+      ! $ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      ! $ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      ! $ser data_buffered Dx=3 HEso_cup=HEso_cup(i,k)
+      ! $ser data_buffered Dx=3 Kbcon=Kbcon(i) kstabm=kstabm(i) ierr=ierr(i)
+      ! $ser verbatim endif
+      ! $ser verbatim enddo
+      ! $ser verbatim enddo
       CALL cup_minimi(HEso_cup,Kbcon,kstabm,kstabi,ierr,itf,ktf,its,ite, kts,kte)
+      ! $ser savepoint CupMinimi-Out
+      ! $ser verbatim do i=its,ite
+      ! $ser verbatim do k=kts,kte
+      ! $ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      ! $ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      ! $ser data_buffered Dx=3 kstabi=kstabi(i)
+      ! $ser verbatim endif
+      ! $ser verbatim enddo
+      ! $ser verbatim enddo
+   
 !
 !--- use KTOP for plumes
 !
@@ -3164,8 +3194,8 @@ loop0:       do k=kts,ktf
       ENDDO
 !
 !--- DOWNDRAFT ORIGINATING LEVEL - JMIN
-!
-      call cup_minimi(heso_cup,k22,kzdown,jmin,ierr,itf,ktf,its,ite, kts,kte)
+!  
+      call cup_minimi(heso_cup,k22,kzdown,jmin,ierr,itf,ktf,its,ite,kts,kte)
 
       call get_jmin(cumulus,itf,ktf,its,ite, kts,kte,ierr,kdet,ktop,kbcon,jmin,ierrc  &
                    ,beta,depth_min,heso_cup,zo_cup,melting_layer)
@@ -5763,12 +5793,13 @@ ENDIF !- end of section for atmospheric composition
          x
      integer                              ::                           &
          i,k,kstop
-
+   
        DO i=its,itf
          KT(I)=KS(I)
          if(ierr(i).eq.0)then
            X(I)=ARRAY(I,KS(I))
            KSTOP=MAX(KS(I)+1,KEND(I))
+      
 !
            DO K=KS(I)+1,KSTOP
               IF(ARRAY(I,K).LT.X(I)) THEN
