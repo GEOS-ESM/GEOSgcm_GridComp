@@ -10,12 +10,12 @@ export FV3_DACEMODE=Python
 # export OPENMP_CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
 # export OPENMP_LDFLAGS="-L/opt/homebrew/opt/libomp/lib -lomp -Xpreprocessor -fopenmp"
 #export GT4PY_EXTRA_COMPILE_OPT_FLAGS="-fbracket-depth=512"
-export GT4PY_EXTRA_COMPILE_OPT_FLAGS='-fconstexpr-ops-limit=1000000000'
+#export GT4PY_EXTRA_COMPILE_OPT_FLAGS='-fconstexpr-ops-limit=1000000000'
 python -m pytest -s -v --disable-warnings --multimodal_metric \
     --data_path=/Users/kfandric/netcdf \
     --backend=dace:cpu\
-    --which_rank=5 \
+    --which_rank=0 \
     --which_savepoint=0\
-    --which_modules=ComputeUwshcuInv \
+    --which_modules=CupMinimi \
     --grid=default \
     ..
