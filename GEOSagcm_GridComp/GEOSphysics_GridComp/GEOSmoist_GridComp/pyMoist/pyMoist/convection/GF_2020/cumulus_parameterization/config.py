@@ -39,3 +39,10 @@ class GF2020CumulusParameterizationConfig:
     ENABLE_MID: Float
     ENABLE_DEEP: Float
     PLUME_ORDER: Float
+    ZERO_DIFF: Int
+    MOIST_TRIGGER: Int
+    LAMBDA_DEEP: Float
+    LAMBDA_SHALLOW_DOWN: Float
+    PRESSURE_GRADIENT_CONSTANT: Float
+    CAP_MAXS: Float
+    OUTPUT_SOUNDING: Int
