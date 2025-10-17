@@ -110,15 +110,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "convection_tracer": {},
         }
 
-        self.out_vars = self.in_vars["data_vars"].copy()
-        del (
-            self.out_vars["latitude"],
-            self.out_vars["longitude"],
-            self.out_vars["w"],
-            self.out_vars["omega"],
-            self.out_vars["geopotential_height_interface"],
-            self.out_vars["area"],
-        )
+        self.out_vars = {}
         self.out_vars.update(
             {
                 "edge_height_above_surface": {},
@@ -155,7 +147,8 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
                 "large_scale_liquid_local": {},
                 "large_scale_ice_local": {},
                 "large_scale_cloud_fraction_local": {},
-                "p_surface": {},
+                "t_surface_cu_param_input": {},
+                "p_surface_cu_param_input": {},
                 "grid_scale_forcing_t_cu_param_input": {},
                 "grid_scale_forcing_vapor_cu_param_input": {},
                 "subgrid_scale_forcing_t_cu_param_input": {},
@@ -197,6 +190,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
                 "sensible_heat_flux_cu_param_inputs": {},
                 "latent_heat_flux_cu_param_inputs": {},
                 "convective_scale_velosity_cu_param_input": {},
+                "ocean_fraction_cu_param_input": {},
             }
         )
 
@@ -208,7 +202,12 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         state = GF2020State(**inputs)
 
-        locals = GF2020Locals.zeros(self.quantity_factory)
+        locals = GF2020Locals.zeros(
+            self.quantity_factory,
+            data_dimensions={
+                "plumes": 3,
+            },
+        )
 
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
@@ -239,6 +238,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         locals.cumulus_parameterization_input.large_scale_liquid.field[:, :, -1] = np.nan
         locals.cumulus_parameterization_input.large_scale_ice.field[:, :, -1] = np.nan
         locals.cumulus_parameterization_input.large_scale_cloud_fraction.field[:, :, -1] = np.nan
+        print(f"README: {locals.cumulus_parameterization_input.pbl_level.field[:].shape}")
         inputs.update(
             {
                 "edge_height_above_surface": locals.derived_state.edge_height_above_surface.field[:],
@@ -285,7 +285,8 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
                 "large_scale_cloud_fraction_local": np.moveaxis(
                     locals.local_copy.large_scale_cloud_fraction.field[:], 2, 0
                 ),
-                "p_surface": locals.cumulus_parameterization_input.p_surface.field[:],
+                "t_surface_cu_param_input": locals.cumulus_parameterization_input.t_surface.field[:],
+                "p_surface_cu_param_input": locals.cumulus_parameterization_input.p_surface.field[:],
                 "grid_scale_forcing_t_cu_param_input": np.moveaxis(
                     locals.cumulus_parameterization_input.grid_scale_forcing_t.field[:], 2, 0
                 ),
@@ -365,6 +366,9 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
                     :
                 ],
                 "convective_scale_velosity_cu_param_input": locals.cumulus_parameterization_input.convective_scale_velosity.field[
+                    :
+                ],
+                "ocean_fraction_cu_param_input": locals.cumulus_parameterization_input.ocean_fraction.field[
                     :
                 ],
             }

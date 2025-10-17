@@ -14,9 +14,6 @@ class GF2020:
         quantity_factory: QuantityFactory,
         GF_2020_config: GF2020Config,
     ):
-        if self.stencil_factory.grid_indexing.n_halo != 0:
-            raise ValueError("halo needs to be zero for GFDL Single Moment microphysics")
-
         # Create extra quantity factories
         self.nmp_quantity_factory = self.make_nmp_quantity_factory(quantity_factory)
 

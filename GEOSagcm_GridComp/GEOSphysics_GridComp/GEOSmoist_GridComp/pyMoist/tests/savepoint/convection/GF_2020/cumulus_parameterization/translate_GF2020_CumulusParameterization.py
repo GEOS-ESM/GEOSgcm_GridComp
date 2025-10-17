@@ -69,7 +69,12 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
 
         state = GF2020State.zeros(self.quantity_factory)
 
-        locals = GF2020Locals.zeros(self.quantity_factory)
+        locals = GF2020Locals.zeros(
+            self.quantity_factory,
+            data_dimensions={
+                "plumes": 3,
+            },
+        )
 
         import numpy as np
 

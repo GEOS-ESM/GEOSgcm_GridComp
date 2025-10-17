@@ -230,7 +230,7 @@ def set_2d_fields(
     area: FloatFieldIJ,
     grid_length: FloatFieldIJ,
     pbl_level: FloatFieldIJ,
-    pbl_level_cu_param_input: IntFieldIJ,
+    pbl_level_local: IntFieldIJ,
 ):
     from __externals__ import k_end, SINGLE_COLUMN_MODE
 
@@ -257,9 +257,9 @@ def set_2d_fields(
             dx2d = 100000.0
 
         if pbl_level != 0.0:
-            pbl_level_cu_param_input = k_end - int(round(pbl_level))
+            pbl_level = k_end - int(round(pbl_level))
         else:
-            pbl_level_cu_param_input = 0
+            pbl_level = 0
 
 
 def set_local_state(
@@ -468,8 +468,13 @@ def prepare_cumulus_parameterization(
     t_perturbation_horizontal: FloatField,
     t_perturbation_vertical: FloatField,
     t_perturbation: FloatField,
+    t_2m: FloatFieldIJ,
+    t_surface: FloatFieldIJ,
     ccn: FloatFieldIJ,
-    p_surface: FloatFieldIJ,
+    p_surface_local: FloatFieldIJ,
+    p_surface_cu_param_input: FloatFieldIJ,
+    ocean_fraction_lcoal: FloatFieldIJ,
+    ocean_fraction_cu_param_input: FloatFieldIJ,
     topography_height: FloatFieldIJ,
     topography_height_no_negative: FloatFieldIJ,
     latitude: FloatFieldIJ,
@@ -500,6 +505,7 @@ def prepare_cumulus_parameterization(
     t_modified_by_advection: FloatField,
     grid_scale_forcing_vapor: FloatField,
     vapor_modified_by_advection: FloatField,
+    pbl_level_local: IntFieldIJ,
     pbl_level_cu_param_input: IntFieldIJ,
     pbl_height_cu_param_input: FloatFieldIJ,
     sensible_heat_flux_local: FloatFieldIJ,
@@ -525,8 +531,10 @@ def prepare_cumulus_parameterization(
         else:
             ccn = 100.0
 
-        p_surface = p_surface * 1.0e-2
+        p_surface_cu_param_input = p_surface_local * 1.0e-2
+        t_surface = t_2m
 
+        ocean_fraction_cu_param_input = ocean_fraction_lcoal
         topography_height_no_negative = max(0, topography_height)
         latitude_degrees = latitude * 180.0 / 3.14159
         longitude_degrees = longitude * 180.0 / 3.14159
@@ -557,6 +565,7 @@ def prepare_cumulus_parameterization(
         )
 
     with computation(FORWARD), interval(0, 1):
+        pbl_level_cu_param_input = pbl_level_local
         pbl_height_cu_param_input = (
             geopotential_height_cu_param_input.at(K=pbl_level_cu_param_input) - topography_height
         )
@@ -564,7 +573,9 @@ def prepare_cumulus_parameterization(
     with computation(FORWARD), interval(0, 1):
         # get execess T and Q for source air parcels
         density = (
-            100.0 * p_surface / (287.04 * (t_cu_param_input * (1.0 + 0.608 * vapor_current_cu_param_input)))
+            100.0
+            * p_surface_cu_param_input
+            / (287.04 * (t_cu_param_input * (1.0 + 0.608 * vapor_current_cu_param_input)))
         )
         # sensible and latent sfc fluxes for the heat-engine closure
         sensible_heat_flux_cu_param_input = density * GF_2020_constants.CP * sensible_heat_flux_local  # W/m^2
@@ -817,11 +828,11 @@ class GF2020Setup:
             geopotential_height_surface=state.geopotential_height_surface,
             topography_height=locals.derived_state.topography_height,
             land_fraction=state.land_fraction,
-            ocean_fraction=locals.cumulus_parameterization_input.ocean_fraction,
+            ocean_fraction=locals.derived_state.ocean_fraction,
             area=state.area,
             grid_length=locals.cumulus_parameterization_input.grid_length,
             pbl_level=state.pbl_level,
-            pbl_level_cu_param_input=locals.cumulus_parameterization_input.pbl_level,
+            pbl_level_local=locals.local_copy.pbl_level,
         )
 
         self._set_local_state(
@@ -849,7 +860,7 @@ class GF2020Setup:
             scalar_diffusivity_local=locals.local_copy.scalar_diffusivity,
             lateral_entrainment_rate=state.lateral_entrainment_rate,
             lateral_entrainment_rate_local=locals.local_copy.lateral_entrainment_rate,
-            p_surface=locals.cumulus_parameterization_input.p_surface,
+            p_surface=locals.local_copy.p_surface,
             buoyancy=state.buoyancy,
             p_interface=state.p_interface,
             convective_liquid=state.convective_liquid,
@@ -891,8 +902,13 @@ class GF2020Setup:
             t_perturbation_horizontal=locals.derived_state.t_perturbation_horizontal,
             t_perturbation_vertical=locals.derived_state.t_perturbation_vertical,
             t_perturbation=locals.cumulus_parameterization_input.t_perturbation,
+            t_2m=locals.local_copy.t_2m,
+            t_surface=locals.cumulus_parameterization_input.t_surface,
             ccn=locals.cumulus_parameterization_input.ccn,
-            p_surface=locals.cumulus_parameterization_input.p_surface,
+            p_surface_local=locals.local_copy.p_surface,
+            p_surface_cu_param_input=locals.cumulus_parameterization_input.p_surface,
+            ocean_fraction_lcoal=locals.derived_state.ocean_fraction,
+            ocean_fraction_cu_param_input=locals.cumulus_parameterization_input.ocean_fraction,
             topography_height=locals.derived_state.topography_height,
             topography_height_no_negative=locals.cumulus_parameterization_input.topography_height,
             latitude=state.latitude,
@@ -923,6 +939,7 @@ class GF2020Setup:
             t_modified_by_advection=locals.cumulus_parameterization_input.t_modified_by_advection,
             grid_scale_forcing_vapor=locals.cumulus_parameterization_input.grid_scale_forcing_vapor,
             vapor_modified_by_advection=locals.cumulus_parameterization_input.vapor_modified_by_advection,
+            pbl_level_local=locals.local_copy.pbl_level,
             pbl_level_cu_param_input=locals.cumulus_parameterization_input.pbl_level,
             pbl_height_cu_param_input=locals.cumulus_parameterization_input.pbl_height,
             sensible_heat_flux_local=locals.local_copy.sensible_heat_flux,
