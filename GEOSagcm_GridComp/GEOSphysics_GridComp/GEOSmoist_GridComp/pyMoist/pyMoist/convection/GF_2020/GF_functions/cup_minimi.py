@@ -43,7 +43,7 @@ def test_cup_minimi(
     kt: IntField,
 ):
     with computation(PARALLEL), interval(...):
-        kt = cup_minimi(array, ks-1, kend-1, ierr)
+        kt = cup_minimi(array, ks-1, kend-1, ierr) # Subtract 1 from ks and kend
 
 
 class CupMinimi:
@@ -72,7 +72,7 @@ class CupMinimi:
         # Out
         kt: IntField,
     ):
-
+        
         self._test_cup_minimi(
             # In
             array=array,

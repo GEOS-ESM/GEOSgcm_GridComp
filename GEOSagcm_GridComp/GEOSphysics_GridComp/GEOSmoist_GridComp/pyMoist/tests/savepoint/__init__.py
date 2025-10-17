@@ -25,3 +25,4 @@ from .convection.GF_2020.cumulus_parameterization.translate_GF2020_CumulusParame
     TranslateGF2020_CumulusParameterization,
 )
 from .convection.GF_2020.translate_cup_minimi import TranslateCupMinimi
+from .convection.GF_2020.translate_get_melting_profile import TranslateGetMeltingProfile

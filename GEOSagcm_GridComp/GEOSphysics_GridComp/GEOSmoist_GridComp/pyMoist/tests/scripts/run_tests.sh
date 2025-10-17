@@ -16,6 +16,6 @@ python -m pytest -s -v --disable-warnings --multimodal_metric \
     --backend=dace:cpu\
     --which_rank=0 \
     --which_savepoint=0\
-    --which_modules=CupMinimi \
+    --which_modules=GetMeltingProfile \
     --grid=default \
     ..
