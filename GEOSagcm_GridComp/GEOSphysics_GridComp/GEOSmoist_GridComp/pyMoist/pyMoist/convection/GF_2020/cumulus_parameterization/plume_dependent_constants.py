@@ -5,6 +5,7 @@ from ndsl.dsl.typing import Float, Int
 
 @dataclasses.dataclass
 class GF2020PlumeDependentConstants:
+    PLUME_INDEX: Int = 0
     DOWNDRAFT_MAX_HEIGHT_LAND: Float = 0.0
     DOWNDRAFT_MAX_HEIGHT_OCEAN: Float = 0.0
     UPDRAFT_MAX_HEIGHT_LAND: Float = 0.0
