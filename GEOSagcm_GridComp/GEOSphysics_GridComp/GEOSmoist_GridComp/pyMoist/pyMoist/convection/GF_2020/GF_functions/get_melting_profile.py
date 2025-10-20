@@ -11,51 +11,6 @@ from ndsl.dsl.typing import (
 import gt4py.cartesian.gtscript as gtscript
 import pyMoist.constants as constants
 
-# @gtscript.function
-# def get_melting_profile(
-#     MELT_GLAC: Int,
-#     cumulus: Int,
-#     edto: Float,
-#     ierr: Int,
-#     melting_layer: Float,
-#     p_liq_ice: Float,
-#     po_cup: FloatField,
-#     pwdo: Float,
-#     pwo: Float,
-#     qrco: Float,
-#     tn_cup: Float,
-# ):
-#     if MELT_GLAC == 1 and cumulus == 1:
-#         norm = 0.0
-#         pwo_solid_phase = 0.0
-#         pwo_eff = 0.0
-#         melting = 0.0
-   
-#         if ierr > 0: 
-#             melting = 0.0
-   
-#         total_pwo_solid_phase=0.0
-
-    
-#         if ierr == 0:
-#             dp = 100.*(po_cup.at(K=idx)-po_cup.at(K=idx+1))
-
-#             pwo_eff = 0.5*(pwo.at(K=idx)+pwo.at(K=idx+1))
-
-#             pwo_solid_phase = (1.-p_liq_ice.at(K=idx))*pwo_eff.at(K=idx)
-
-#             total_pwo_solid_phase = total_pwo_solid_phase+pwo_solid_phase.at(K=idx)*\
-#             dp/constants.MAPL_GRAV
-         
-      
-#         if ierr == 0:
-#             melting = melting_layer*(total_pwo_solid_phase/(100*(po_cup.at(K=0)-po_cup.at(K=71))/constants.MAPL_GRAV))
-    
-#     else:
-#         melting = 0.0
-
-#     return melting
-
 def test_get_melting_profile(
     # In
     MELT_GLAC: IntField,
@@ -77,7 +32,6 @@ def test_get_melting_profile(
 
     with computation(FORWARD), interval(...):
         if MELT_GLAC == 1 and cumulus == 1:
-            norm = 0.0
             pwo_solid_phase = 0.0
             pwo_eff = 0.0
             melting = 0.0
@@ -87,7 +41,7 @@ def test_get_melting_profile(
     
             total_pwo_solid_phase=0.0
 
-    with computation(FORWARD), interval(0,-1):
+    with computation(FORWARD), interval(0,-2):
         if MELT_GLAC == 1 and cumulus == 1:
             if ierr == 0:
                 dp = 100.*(po_cup-po_cup[0,0,1])
@@ -98,10 +52,10 @@ def test_get_melting_profile(
 
                 total_pwo_solid_phase = total_pwo_solid_phase+pwo_solid_phase*dp/constants.MAPL_GRAV
         
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0,-1):
         if MELT_GLAC == 1 and cumulus == 1:
             if ierr == 0:
-                melting = melting_layer*(total_pwo_solid_phase/(100*(po_cup.at(K=0)-po_cup.at(K=k_end))/constants.MAPL_GRAV))
+                melting = melting_layer*(total_pwo_solid_phase/(100*(po_cup.at(K=0)-po_cup.at(K=k_end-1))/constants.MAPL_GRAV))
         else:
             melting = 0.0
 
