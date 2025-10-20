@@ -11,7 +11,7 @@ from ndsl.dsl.typing import (
 import gt4py.cartesian.gtscript as gtscript
 import pyMoist.constants as constants
 
-def test_get_melting_profile(
+def get_melting_profile(
     # In
     MELT_GLAC: IntField,
     cumulus: IntField,
@@ -31,6 +31,7 @@ def test_get_melting_profile(
     from __externals__ import k_end
 
     with computation(FORWARD), interval(...):
+        ktf = k_end - 1
         if MELT_GLAC == 1 and cumulus == 1:
             pwo_solid_phase = 0.0
             pwo_eff = 0.0
@@ -41,21 +42,23 @@ def test_get_melting_profile(
     
             total_pwo_solid_phase=0.0
 
-    with computation(FORWARD), interval(0,-2):
+    with computation(FORWARD), interval(...):
         if MELT_GLAC == 1 and cumulus == 1:
-            if ierr == 0:
-                dp = 100.*(po_cup-po_cup[0,0,1])
+            if K <= ktf-1:
+                if ierr == 0:
+                    dp = 100.*(po_cup-po_cup[0,0,1])
 
-                pwo_eff = 0.5*(pwo+pwo[0,0,1])
+                    pwo_eff = 0.5*(pwo+pwo[0,0,1])
 
-                pwo_solid_phase = (1.-p_liq_ice)*pwo_eff
+                    pwo_solid_phase = (1.-p_liq_ice)*pwo_eff
 
-                total_pwo_solid_phase = total_pwo_solid_phase+pwo_solid_phase*dp/constants.MAPL_GRAV
+                    total_pwo_solid_phase = total_pwo_solid_phase+pwo_solid_phase*dp/constants.MAPL_GRAV
         
-    with computation(PARALLEL), interval(0,-1):
+    with computation(PARALLEL), interval(...):
         if MELT_GLAC == 1 and cumulus == 1:
-            if ierr == 0:
-                melting = melting_layer*(total_pwo_solid_phase/(100*(po_cup.at(K=0)-po_cup.at(K=k_end-1))/constants.MAPL_GRAV))
+            if K <= ktf:
+                if ierr == 0:
+                    melting = melting_layer*(total_pwo_solid_phase/(100*(po_cup.at(K=0)-po_cup.at(K=ktf))/constants.MAPL_GRAV))
         else:
             melting = 0.0
 
@@ -71,8 +74,8 @@ class GetMeltingProfile:
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
 
-        self._test_get_melting_profile = self.stencil_factory.from_dims_halo(
-            func=test_get_melting_profile,
+        self._get_melting_profile = self.stencil_factory.from_dims_halo(
+            func=get_melting_profile,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -98,7 +101,7 @@ class GetMeltingProfile:
         melting: FloatField,
     ):
 
-        self._test_get_melting_profile(
+        self._get_melting_profile(
             # In
             MELT_GLAC=MELT_GLAC,
             cumulus=cumulus,
