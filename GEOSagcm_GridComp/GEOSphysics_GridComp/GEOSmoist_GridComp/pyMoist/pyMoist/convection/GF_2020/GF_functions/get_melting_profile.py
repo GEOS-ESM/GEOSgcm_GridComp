@@ -11,7 +11,7 @@ from ndsl.dsl.typing import (
 import gt4py.cartesian.gtscript as gtscript
 import pyMoist.constants as constants
 
-def test_get_melting_profile(
+def get_melting_profile(
     # In
     MELT_GLAC: IntField,
     cumulus: IntField,
@@ -74,8 +74,8 @@ class GetMeltingProfile:
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
 
-        self._test_get_melting_profile = self.stencil_factory.from_dims_halo(
-            func=test_get_melting_profile,
+        self._get_melting_profile = self.stencil_factory.from_dims_halo(
+            func=get_melting_profile,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -101,7 +101,7 @@ class GetMeltingProfile:
         melting: FloatField,
     ):
 
-        self._test_get_melting_profile(
+        self._get_melting_profile(
             # In
             MELT_GLAC=MELT_GLAC,
             cumulus=cumulus,
