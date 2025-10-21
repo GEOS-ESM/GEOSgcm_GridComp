@@ -23,7 +23,7 @@ def fract_liq_f(
 ):
 
    if FRAC_MODIS == 1:
-       fract_liq_f = 1.0 - ice_fraction(temp2,cnvfrc,srftype)
+        fract_liq_f = 1.0 - ice_fraction(temp2,cnvfrc,srftype)
   
    return fract_liq_f
 

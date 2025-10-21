@@ -8,6 +8,7 @@ from ndsl.dsl.typing import (
     IntFieldIJ,
     IntField,
 )
+
 import gt4py.cartesian.gtscript as gtscript
 
 @gtscript.function

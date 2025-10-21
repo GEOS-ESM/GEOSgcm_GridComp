@@ -9,7 +9,6 @@ from ndsl.dsl.typing import (
     IntField,
 )
 import gt4py.cartesian.gtscript as gtscript
-import pyMoist.constants as constants
 
 
 @gtscript.function
@@ -53,8 +52,6 @@ def test_get_buoyancy(
         dby = get_buoyancy(hc,he_cup, hes_cup, ierr,kbcon-1,klcl-1,ktop-1)
 
     
-
-
 
 class GetBuoyancy:
     def __init__(
