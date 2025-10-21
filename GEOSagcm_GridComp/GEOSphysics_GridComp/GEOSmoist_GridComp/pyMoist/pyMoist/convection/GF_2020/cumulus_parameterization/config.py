@@ -46,3 +46,4 @@ class GF2020CumulusParameterizationConfig:
     PRESSURE_GRADIENT_CONSTANT: Float
     CAP_MAXS: Float
     OUTPUT_SOUNDING: Int
+    USE_SCALE_DEP: Int
