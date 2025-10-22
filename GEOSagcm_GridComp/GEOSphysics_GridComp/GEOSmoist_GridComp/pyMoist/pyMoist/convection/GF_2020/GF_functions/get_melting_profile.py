@@ -1,15 +1,19 @@
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import (
-    Float,
     FloatField,
-    Int,
     FloatFieldIJ,
-    IntFieldIJ,
     IntField,
 )
-import gt4py.cartesian.gtscript as gtscript
 import pyMoist.constants as constants
+from gt4py.cartesian.gtscript import (
+    FORWARD,
+    PARALLEL,
+    K,
+    computation,
+    interval,
+)
+
 
 def get_melting_profile(
     # In
@@ -36,29 +40,39 @@ def get_melting_profile(
             pwo_solid_phase = 0.0
             pwo_eff = 0.0
             melting = 0.0
-    
-            if ierr > 0: 
+
+            if ierr > 0:
                 melting = 0.0
-    
-            total_pwo_solid_phase=0.0
+
+            total_pwo_solid_phase = 0.0
 
     with computation(FORWARD), interval(...):
         if MELT_GLAC == 1 and cumulus == 1:
-            if K <= ktf-1:
+            if K <= ktf - 1:
                 if ierr == 0:
-                    dp = 100.*(po_cup-po_cup[0,0,1])
+                    dp = 100.0 * (po_cup - po_cup[0, 0, 1])
 
-                    pwo_eff = 0.5*(pwo+pwo[0,0,1])
+                    pwo_eff = 0.5 * (pwo + pwo[0, 0, 1])
 
-                    pwo_solid_phase = (1.-p_liq_ice)*pwo_eff
+                    pwo_solid_phase = (1.0 - p_liq_ice) * pwo_eff
 
-                    total_pwo_solid_phase = total_pwo_solid_phase+pwo_solid_phase*dp/constants.MAPL_GRAV
-        
+                    total_pwo_solid_phase = (
+                        total_pwo_solid_phase
+                        + pwo_solid_phase * dp / constants.MAPL_GRAV
+                    )
+
     with computation(PARALLEL), interval(...):
         if MELT_GLAC == 1 and cumulus == 1:
             if K <= ktf:
                 if ierr == 0:
-                    melting = melting_layer*(total_pwo_solid_phase/(100*(po_cup.at(K=0)-po_cup.at(K=ktf))/constants.MAPL_GRAV))
+                    melting = melting_layer * (
+                        total_pwo_solid_phase
+                        / (
+                            100
+                            * (po_cup.at(K=0) - po_cup.at(K=ktf))
+                            / constants.MAPL_GRAV
+                        )
+                    )
         else:
             melting = 0.0
 
@@ -70,7 +84,6 @@ class GetMeltingProfile:
         quantity_factory: QuantityFactory,
     ) -> None:
 
-     
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
 
@@ -118,5 +131,3 @@ class GetMeltingProfile:
             # Out
             melting=melting,
         )
-
-           

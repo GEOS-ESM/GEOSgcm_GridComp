@@ -4,11 +4,15 @@ from ndsl.dsl.typing import (
     Float,
     FloatField,
     Int,
-    FloatFieldIJ,
-    IntFieldIJ,
     IntField,
 )
 import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import (
+    PARALLEL,
+    K,
+    computation,
+    interval,
+)
 
 
 @gtscript.function
@@ -22,16 +26,15 @@ def get_buoyancy(
     ktop: Int,
 ):
 
-    dby = 0.
+    dby = 0.0
     if ierr == 0:
         if K <= klcl:
-            dby=hc-he_cup
-      
-        if K >= klcl+1 and K <= ktop+1:
-            dby=hc-hes_cup
+            dby = hc - he_cup
+
+        if K >= klcl + 1 and K <= ktop + 1:
+            dby = hc - hes_cup
 
     return dby
-
 
 
 def test_get_buoyancy(
@@ -49,9 +52,8 @@ def test_get_buoyancy(
 
     with computation(PARALLEL), interval(...):
         # Subtract 1 from k-level arrays to account for Python starting at zero
-        dby = get_buoyancy(hc,he_cup, hes_cup, ierr,kbcon-1,klcl-1,ktop-1)
+        dby = get_buoyancy(hc, he_cup, hes_cup, ierr, kbcon - 1, klcl - 1, ktop - 1)
 
-    
 
 class GetBuoyancy:
     def __init__(
@@ -60,7 +62,6 @@ class GetBuoyancy:
         quantity_factory: QuantityFactory,
     ) -> None:
 
-     
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
 
@@ -81,9 +82,8 @@ class GetBuoyancy:
         ktop: IntField,
         # Out
         dby: FloatField,
- 
     ):
-     
+
         self._test_get_buoyancy(
             # In
             hc=hc,
@@ -96,5 +96,3 @@ class GetBuoyancy:
             # Out
             dby=dby,
         )
-
-           
