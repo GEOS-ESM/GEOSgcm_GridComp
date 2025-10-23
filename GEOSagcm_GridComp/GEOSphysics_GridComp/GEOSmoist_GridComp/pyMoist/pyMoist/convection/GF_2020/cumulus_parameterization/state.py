@@ -12,7 +12,7 @@ class GF2020CumulusParameterizationState(State):
         t_excess: Quantity = dataclasses.field(
             metadata={
                 "name": "t_excess",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -21,7 +21,7 @@ class GF2020CumulusParameterizationState(State):
         vapor_excess: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor_excess",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
