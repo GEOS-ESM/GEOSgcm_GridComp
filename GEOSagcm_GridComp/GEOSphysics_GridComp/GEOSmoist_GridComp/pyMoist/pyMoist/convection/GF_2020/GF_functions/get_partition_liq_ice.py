@@ -5,14 +5,20 @@ from ndsl.dsl.typing import (
     FloatField,
     Int,
     FloatFieldIJ,
-    IntFieldIJ,
     IntField,
 )
 import gt4py.cartesian.gtscript as gtscript
-from pyMoist.UW.uwshcu_functions import ice_fraction
+from pyMoist.shared_incloud_processes import ice_fraction
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 import pyMoist.constants as constants
+from gt4py.cartesian.gtscript import (
+    FORWARD,
+    PARALLEL,
+    K,
+    computation,
+    interval,
+)
 
-T_0 = 273.16 # K
 
 @gtscript.function
 def fract_liq_f(
@@ -22,13 +28,14 @@ def fract_liq_f(
     FRAC_MODIS: Int,
 ):
 
-   if FRAC_MODIS == 1:
-        fract_liq_f = 1.0 - ice_fraction(temp2,cnvfrc,srftype)
-  
-   return fract_liq_f
+    if FRAC_MODIS == 1:
+        fract_liq_f = 1.0 - ice_fraction(temp2, cnvfrc, srftype)
+
+    return fract_liq_f
+
 
 def get_partition_liq_ice(
-     # In
+    # In
     MELT_GLAC: IntField,
     cumulus: IntField,
     ierr: IntField,
@@ -47,46 +54,53 @@ def get_partition_liq_ice(
     from __externals__ import k_end
 
     with computation(FORWARD), interval(...):
-       p_liq_ice = 1.0
-       melting_layer = 0.0
-       delT=3.0
-       norm=0.
-       ktf = k_end-1
+        p_liq_ice = 1.0
+        melting_layer = 0.0
+        delT = 3.0
+        norm = 0.0
+        ktf = k_end - 1
 
     with computation(PARALLEL), interval(...):
         if MELT_GLAC == 1 and cumulus == 1:
             if K <= ktf:
                 if ierr == 0:
-                    p_liq_ice = fract_liq_f(tn,cnvfrc,srftype,FRAC_MODIS)
-        
+                    p_liq_ice = fract_liq_f(tn, cnvfrc, srftype, FRAC_MODIS)
+
     with computation(PARALLEL), interval(...):
         if MELT_GLAC == 1 and cumulus == 1:
             if K <= ktf:
                 if ierr == 0:
-                    if tn <= (T_0-delT): 
-                        melting_layer = 0.
+                    if tn <= (cumulus_parameterization_constants.T_0 - delT):
+                        melting_layer = 0.0
 
-                    elif tn < (T_0+delT) and tn > (T_0-delT):
-                        melting_layer =  ((tn-(T_0-delT))/(2.*delT))**2
+                    elif tn < (cumulus_parameterization_constants.T_0 + delT) and tn > (
+                        cumulus_parameterization_constants.T_0 - delT
+                    ):
+                        melting_layer = (
+                            (tn - (cumulus_parameterization_constants.T_0 - delT))
+                            / (2.0 * delT)
+                        ) ** 2
 
                     else:
-                        melting_layer = 1.
-                
-                    melting_layer = melting_layer*(1.-melting_layer)
+                        melting_layer = 1.0
+
+                    melting_layer = melting_layer * (1.0 - melting_layer)
 
     with computation(FORWARD), interval(...):
         if MELT_GLAC == 1 and cumulus == 1:
-            if K <= ktf-1:
+            if K <= ktf - 1:
                 if ierr == 0:
-                    dp = 100.*(po_cup-po_cup[0,0,1])
-                    norm = norm + melting_layer*dp/constants.MAPL_GRAV
+                    dp = 100.0 * (po_cup - po_cup[0, 0, 1])
+                    norm = norm + melting_layer * dp / constants.MAPL_GRAV
 
     with computation(PARALLEL), interval(...):
         if MELT_GLAC == 1 and cumulus == 1:
             if ierr == 0:
-                melting_layer=melting_layer/(norm+1.e-6)*(100*(po_cup.at(K=0)-po_cup.at(K=ktf))/constants.MAPL_GRAV)
-        
-
+                melting_layer = (
+                    melting_layer
+                    / (norm + 1.0e-6)
+                    * (100 * (po_cup.at(K=0) - po_cup.at(K=ktf)) / constants.MAPL_GRAV)
+                )
 
 
 class GetPartitionLiqIce:
@@ -96,7 +110,6 @@ class GetPartitionLiqIce:
         quantity_factory: QuantityFactory,
     ) -> None:
 
-     
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
 
@@ -127,7 +140,9 @@ class GetPartitionLiqIce:
         p_liq_ice: FloatField,
     ):
         if FRAC_MODIS.view[:].all() != Int(1):
-            raise NotImplementedError(f"Warning: This code has not been ported!! Expecting FRAC_MODIS = 1, got FRAC_MODIS != 1")
+            raise NotImplementedError(
+                f"Warning: This code has not been ported!! Expecting FRAC_MODIS = 1, got FRAC_MODIS != 1"
+            )
 
         self._get_partition_liq_ice(
             # In
@@ -146,5 +161,3 @@ class GetPartitionLiqIce:
             melting_layer=melting_layer,
             p_liq_ice=p_liq_ice,
         )
-
-           

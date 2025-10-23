@@ -4,12 +4,15 @@ from ndsl.dsl.typing import (
     Float,
     FloatField,
     Int,
-    FloatFieldIJ,
-    IntFieldIJ,
     IntField,
 )
-
+from gt4py.cartesian.gtscript import (
+    PARALLEL,
+    computation,
+    interval,
+)
 import gt4py.cartesian.gtscript as gtscript
+
 
 @gtscript.function
 def cup_minimi(
@@ -23,16 +26,17 @@ def cup_minimi(
 
     if ierr == 0:
         x = array.at(K=ks)
-        kstop = max(ks+1,kend)
-        
-        idx=ks+1
-        while idx >= ks+1 and idx <= kstop:
+        kstop = max(ks + 1, kend)
+
+        idx = ks + 1
+        while idx >= ks + 1 and idx <= kstop:
             if array.at(K=idx) < x:
                 x = array.at(K=idx)
-                kt=idx
-            idx+=1
+                kt = idx
+            idx += 1
 
     return kt
+
 
 def test_cup_minimi(
     # In
@@ -44,7 +48,7 @@ def test_cup_minimi(
     kt: IntField,
 ):
     with computation(PARALLEL), interval(...):
-        kt = cup_minimi(array, ks-1, kend-1, ierr) # Subtract 1 from ks and kend
+        kt = cup_minimi(array, ks - 1, kend - 1, ierr)  # Subtract 1 from ks and kend
 
 
 class CupMinimi:
@@ -54,7 +58,6 @@ class CupMinimi:
         quantity_factory: QuantityFactory,
     ) -> None:
 
-     
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
 
@@ -73,7 +76,7 @@ class CupMinimi:
         # Out
         kt: IntField,
     ):
-        
+
         self._test_cup_minimi(
             # In
             array=array,
@@ -83,5 +86,3 @@ class CupMinimi:
             # Out
             kt=kt,
         )
-
-           
