@@ -591,38 +591,38 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        TMP2D = AREA
     endif
 
-    !$ser savepoint GF2020_Setup-In
-    !$ser data latitude=LATS longitude=LONS
-    !$ser data p_interface=PLE t=T u=U v=V w=W omega=OMEGA t_2m=T2M specific_humidity_2m=Q2M t_surface=TA
-    !$ser data specific_humidity_surface=QA vapor=Q convective_liquid=QLCN convective_ice=QICN
-    !$ser data convective_cloud_fraction=CLCN large_scale_liquid=QLLS large_scale_ice=QILS
-    !$ser data large_scale_cloud_fraction=CLLS p_interface_timestep_start=PLE_DYN_IN
-    !$ser data t_timestep_start=T_DYN_IN u_timestep_start=U_DYN_IN v_timestep_start=V_DYN_IN
-    !$ser data vapor_timestep_start=QV_DYN_IN geopotential_height_interface=ZLE
-    !$ser data geopotential_height_surface=PHIS area=AREA pbl_level=KPBL convection_fraction=CNV_FRC
-    !$ser data surface_type=SRF_TYPE land_fraction=FRLAND scalar_diffusivity=KH buoyancy=BYNCY
-    !$ser data convective_precipitation_GF=CNPCPRATE convective_precipitation_RAS=CNV_PRC3
-    !$ser data sensible_heat_flux=SH total_water_flux_deep_convection=WQT_DC evaporation=EVAP
-    !$ser data convective_condensate_source=CNV_DQCDT convective_condensate_grid_mean=CNV_QC
-    !$ser data entrainment_parameter=ENTLAM lateral_entrainment_rate=ENTR
-    !$ser data lateral_entrainment_rate_shallow=ENTR_SH lateral_entrainment_rate_mid=ENTR_MD
-    !$ser data lateral_entrainment_rate_deep=ENTR_DP updraft_area_fraction=CNV_UPDF
-    !$ser data updraft_vertical_velocity=CNV_CVW dtdt_shortwave=RADSW dtdt_longwave=RADLW
-    !$ser data dspecific_humiditydt_pbl=DQDT_BL dtdt_pbl=DTDT_BL dtdt_from_dynamics=DTDTDYN
-    !$ser data dvapordt_from_dynamics=DQVDTDYN sigma_mid=SIGMA_MID sigma_deep=SIGMA_DEEP
-    !$ser data total_precipitable_water_initial=TPWI saturation_total_precipitable_water_initial=TPWI_star
-    !$ser data dvapordt_deep_convection=DQVDT_DC dtdt_deep_convection=DTDT_DC dudt_deep_convection=DUDT_DC
-    !$ser data dvdt_deep_convection=DVDT_DC pressure_shallow_convective_cloud_top=CNV_TOPP_SH
-    !$ser data pressure_mid_convective_cloud_top=CNV_TOPP_MD pressure_deep_convective_cloud_top=CNV_TOPP_DP
-    !$ser data mass_flux_shalow=MUPSH mass_flux_mid=MUPMD mass_flux_deep_updraft=MUPDP
-    !$ser data mass_flux_deep_updraft_interface=UMF_DC mass_flux_deep_updraft_detrained=MFD_DC
-    !$ser data mass_flux_deep_downdraft=MDNDP mass_flux_cloud_base=CNV_MF0 mass_flux_cloud_base_shallow=MFSH
-    !$ser data mass_flux_cloud_base_mid=MFMD mass_flux_cloud_base_deep=MFDP
-    !$ser data convection_code_shallow=ERRSH convection_code_mid=ERRMD convection_code_deep=ERRDP
-    !$ser data cloud_work_function_0=AA0 cloud_work_function_1=AA1 cloud_work_function_2=AA2
-    !$ser data cloud_work_function_3=AA3 cloud_work_function_1_pbl=AA1_BL
-    !$ser data cloud_work_function_1_cin=AA1_CIN pbl_time_scale=TAU_BL
-    !$ser data cape_removal_time_scale=TAU_EC lighting_density=LFR_GF convection_tracer=CNV_TR
+   !  !$ser savepoint GF2020_Setup-In
+   !  !$ser data latitude=LATS longitude=LONS
+   !  !$ser data p_interface=PLE t=T u=U v=V w=W omega=OMEGA t_2m=T2M specific_humidity_2m=Q2M t_surface=TA
+   !  !$ser data specific_humidity_surface=QA vapor=Q convective_liquid=QLCN convective_ice=QICN
+   !  !$ser data convective_cloud_fraction=CLCN large_scale_liquid=QLLS large_scale_ice=QILS
+   !  !$ser data large_scale_cloud_fraction=CLLS p_interface_timestep_start=PLE_DYN_IN
+   !  !$ser data t_timestep_start=T_DYN_IN u_timestep_start=U_DYN_IN v_timestep_start=V_DYN_IN
+   !  !$ser data vapor_timestep_start=QV_DYN_IN geopotential_height_interface=ZLE
+   !  !$ser data geopotential_height_surface=PHIS area=AREA pbl_level=KPBL convection_fraction=CNV_FRC
+   !  !$ser data surface_type=SRF_TYPE land_fraction=FRLAND scalar_diffusivity=KH buoyancy=BYNCY
+   !  !$ser data convective_precipitation_GF=CNPCPRATE convective_precipitation_RAS=CNV_PRC3
+   !  !$ser data sensible_heat_flux=SH total_water_flux_deep_convection=WQT_DC evaporation=EVAP
+   !  !$ser data convective_condensate_source=CNV_DQCDT convective_condensate_grid_mean=CNV_QC
+   !  !$ser data entrainment_parameter=ENTLAM lateral_entrainment_rate=ENTR
+   !  !$ser data lateral_entrainment_rate_shallow=ENTR_SH lateral_entrainment_rate_mid=ENTR_MD
+   !  !$ser data lateral_entrainment_rate_deep=ENTR_DP updraft_area_fraction=CNV_UPDF
+   !  !$ser data updraft_vertical_velocity=CNV_CVW dtdt_shortwave=RADSW dtdt_longwave=RADLW
+   !  !$ser data dspecific_humiditydt_pbl=DQDT_BL dtdt_pbl=DTDT_BL dtdt_from_dynamics=DTDTDYN
+   !  !$ser data dvapordt_from_dynamics=DQVDTDYN sigma_mid=SIGMA_MID sigma_deep=SIGMA_DEEP
+   !  !$ser data total_precipitable_water_initial=TPWI saturation_total_precipitable_water_initial=TPWI_star
+   !  !$ser data dvapordt_deep_convection=DQVDT_DC dtdt_deep_convection=DTDT_DC dudt_deep_convection=DUDT_DC
+   !  !$ser data dvdt_deep_convection=DVDT_DC pressure_shallow_convective_cloud_top=CNV_TOPP_SH
+   !  !$ser data pressure_mid_convective_cloud_top=CNV_TOPP_MD pressure_deep_convective_cloud_top=CNV_TOPP_DP
+   !  !$ser data mass_flux_shalow=MUPSH mass_flux_mid=MUPMD mass_flux_deep_updraft=MUPDP
+   !  !$ser data mass_flux_deep_updraft_interface=UMF_DC mass_flux_deep_updraft_detrained=MFD_DC
+   !  !$ser data mass_flux_deep_downdraft=MDNDP mass_flux_cloud_base=CNV_MF0 mass_flux_cloud_base_shallow=MFSH
+   !  !$ser data mass_flux_cloud_base_mid=MFMD mass_flux_cloud_base_deep=MFDP
+   !  !$ser data convection_code_shallow=ERRSH convection_code_mid=ERRMD convection_code_deep=ERRDP
+   !  !$ser data cloud_work_function_0=AA0 cloud_work_function_1=AA1 cloud_work_function_2=AA2
+   !  !$ser data cloud_work_function_3=AA3 cloud_work_function_1_pbl=AA1_BL
+   !  !$ser data cloud_work_function_1_cin=AA1_CIN pbl_time_scale=TAU_BL
+   !  !$ser data cape_removal_time_scale=TAU_EC lighting_density=LFR_GF convection_tracer=CNV_TR
    
     IF (USE_GF2020==1) THEN
          !- Determine which W is proper import
@@ -653,6 +653,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,REVSU, ENTR, ENTR_DP, ENTR_MD, ENTR_SH,  PRFIL    &
                                  ,TPWI, TPWI_star, LFR_GF, CNV_TR)
+         !!$ser flush_savepoint GF2020_Setup-Out-part-3
+         !$ser flush_savepoint GF2020_CumulusParameterization-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_Setup-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_Setup-Out
     ELSE
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pa
