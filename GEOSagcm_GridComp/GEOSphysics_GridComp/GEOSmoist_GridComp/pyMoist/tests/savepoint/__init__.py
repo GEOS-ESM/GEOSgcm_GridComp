@@ -48,3 +48,4 @@ from .convection.GF_2020.translate_get_partition_liq_ice import (
 from .convection.GF_2020.translate_get_buoyancy import TranslateGetBuoyancy
 from .convection.GF_2020.translate_ke_to_heating import TranslateKeToHeating
 from .convection.GF_2020.translate_get_precip_fluxes import TranslateGetPrecipFluxes
+from .convection.GF_2020.translate_rates_up_pdf import TranslateRatesUpPdf
