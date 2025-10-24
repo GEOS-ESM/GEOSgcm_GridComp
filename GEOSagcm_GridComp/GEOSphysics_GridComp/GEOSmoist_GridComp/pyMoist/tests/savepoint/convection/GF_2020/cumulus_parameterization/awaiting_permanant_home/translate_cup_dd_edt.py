@@ -30,10 +30,8 @@ class TranslateCupDDEdt(TranslateFortranData2Py):
             "p": {},
             "psum2": {},
             "psumh": {},
-            "pw": {},
             "pwav": {},
             "pwev": {},
-            "rho": {},
             "us": {},
             "vs": {},
             "z": {},
@@ -129,13 +127,6 @@ class TranslateCupDDEdt(TranslateFortranData2Py):
         )
         safe_assign_array(psumh.view[:, :, :], inputs["psumh"])
 
-        pw = QuantityFactory.zeros(
-            self.quantity_factory,
-            dims=[X_DIM, Y_DIM, Z_DIM],
-            units="n/a",
-        )
-        safe_assign_array(pw.view[:, :, :], inputs["pw"])
-
         pwav = QuantityFactory.zeros(
             self.quantity_factory,
             dims=[X_DIM, Y_DIM, Z_DIM],
@@ -149,13 +140,6 @@ class TranslateCupDDEdt(TranslateFortranData2Py):
             units="n/a",
         )
         safe_assign_array(pwev.view[:, :, :], inputs["pwev"])
-
-        rho = QuantityFactory.zeros(
-            self.quantity_factory,
-            dims=[X_DIM, Y_DIM, Z_DIM],
-            units="n/a",
-        )
-        safe_assign_array(rho.view[:, :, :], inputs["rho"])
 
         us = QuantityFactory.zeros(
             self.quantity_factory,
@@ -210,10 +194,8 @@ class TranslateCupDDEdt(TranslateFortranData2Py):
             p=p,
             psum2=psum2,
             psumh=psumh,
-            pw=pw,
             pwav=pwav,
             pwev=pwev,
-            rho=rho,
             us=us,
             vs=vs,
             z=z,
