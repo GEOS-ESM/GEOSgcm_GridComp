@@ -4,7 +4,7 @@ from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, sqrt, max, 
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, K, IntFieldIJ
 import pyMoist.constants as constants
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as GF_2020_constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
@@ -578,8 +578,12 @@ def prepare_cumulus_parameterization(
             / (287.04 * (t_cu_param_input * (1.0 + 0.608 * vapor_current_cu_param_input)))
         )
         # sensible and latent sfc fluxes for the heat-engine closure
-        sensible_heat_flux_cu_param_input = density * GF_2020_constants.CP * sensible_heat_flux_local  # W/m^2
-        latent_heat_flux_cu_param_input = density * GF_2020_constants.XLV * evaporation_local  # W/m^2
+        sensible_heat_flux_cu_param_input = (
+            density * cumulus_parameterization_constants.CP * sensible_heat_flux_local
+        )  # W/m^2
+        latent_heat_flux_cu_param_input = (
+            density * cumulus_parameterization_constants.XLV * evaporation_local
+        )  # W/m^2
 
         buoyancy_flux = (
             -sensible_heat_flux_cu_param_input * density * 1004.64 / 1004.64

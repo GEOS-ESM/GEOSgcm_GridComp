@@ -38,6 +38,9 @@ class GF2020CumulusParameterizationConfig:
     ENABLE_SHALLOW: Float
     ENABLE_MID: Float
     ENABLE_DEEP: Float
+    ENTRAINMENT_RATE_SHALLOW: Float
+    ENTRAINMENT_RATE_MID: Float
+    ENTRAINMENT_RATE_DEEP: Float
     PLUME_ORDER: Float
     ZERO_DIFF: Int
     MOIST_TRIGGER: Int
@@ -47,3 +50,4 @@ class GF2020CumulusParameterizationConfig:
     CAP_MAXS: Float
     OUTPUT_SOUNDING: Int
     USE_SCALE_DEP: Int
+    USE_RANDOM_NUMBER: Float

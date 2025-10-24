@@ -19,7 +19,7 @@ class GF2020CumulusParameterizationLocals(State):
     t_excess: Quantity = dataclasses.field(
         metadata={
             "name": "t_excess",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -37,7 +37,7 @@ class GF2020CumulusParameterizationLocals(State):
     vapor_excess: Quantity = dataclasses.field(
         metadata={
             "name": "vapor_excess",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -70,22 +70,22 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    kbmax: Quantity = dataclasses.field(
+    maximum_updraft_origin_level: Quantity = dataclasses.field(
         metadata={
-            "name": "kbmax",
+            "name": "maximum_updraft_origin_level",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
-            "dtype": Float,
+            "dtype": Int,
         }
     )
-    kstamb: Quantity = dataclasses.field(
+    kstabm: Quantity = dataclasses.field(
         metadata={
-            "name": "kstamb",
+            "name": "kstabm",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
-            "dtype": Float,
+            "dtype": Int,
         }
     )
     ocean_fraction: Quantity = dataclasses.field(
@@ -133,9 +133,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Int,
         }
     )
-    max_increment: Quantity = dataclasses.field(
+    cap_max_increment: Quantity = dataclasses.field(
         metadata={
-            "name": "max_increment",
+            "name": "cap_max_increment",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
@@ -145,7 +145,7 @@ class GF2020CumulusParameterizationLocals(State):
     geopotential_height: Quantity = dataclasses.field(
         metadata={
             "name": "geopotential_height",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -154,7 +154,7 @@ class GF2020CumulusParameterizationLocals(State):
     geopotential_height_modified: Quantity = dataclasses.field(
         metadata={
             "name": "geopotential_height_modified",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -397,6 +397,42 @@ class GF2020CumulusParameterizationLocals(State):
     random_number: Quantity = dataclasses.field(
         metadata={
             "name": "random_number",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    updraft_detrainment_function: Quantity = dataclasses.field(
+        metadata={
+            "name": "updraft_detrainment_function",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    epsilon_min: Quantity = dataclasses.field(
+        metadata={
+            "name": "epsilon_min",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    epsilon_max: Quantity = dataclasses.field(
+        metadata={
+            "name": "epsilon_max",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    arbitrary_numerical_parameter: Quantity = dataclasses.field(
+        metadata={
+            "name": "arbitrary_numerical_parameter",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",

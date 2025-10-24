@@ -36,14 +36,45 @@ from .saturation_tables.translate_qsat_functions import Translateqsat_functions
 from .saturation_tables.translate_saturation_tables import Translatesaturation_tables
 from .translate_aer_activation import TranslateAerActivation
 from .translate_compute_uwshcu import TranslateComputeUwshcuInv
-from .convection.GF_2020.translate_GF2020_Setup import TranslateGF2020_Setup
+
+
+# GF_2020
+# finalized tests
 from .convection.GF_2020.cumulus_parameterization.translate_GF2020_CumulusParameterization import (
     TranslateGF2020_CumulusParameterization,
 )
-from .convection.GF_2020.translate_cup_minimi import TranslateCupMinimi
-from .convection.GF_2020.translate_get_melting_profile import TranslateGetMeltingProfile
-from .convection.GF_2020.translate_get_partition_liq_ice import (
+from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup_shallow import (
+    TranslateGF2020_CumulusParameterization_Setup_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup_mid import (
+    TranslateGF2020_CumulusParameterization_Setup_mid,
+)
+from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup_deep import (
+    TranslateGF2020_CumulusParameterization_Setup_deep,
+)
+
+# in progress tests
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_minimi import (
+    TranslateCupMinimi,
+)
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
+    TranslateGetMeltingProfile,
+)
+from .convection.GF_2020.awaiting_permanant_home.translate_GF2020_Setup import TranslateGF2020_Setup
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_partition_liq_ice import (
     TranslateGetPartitionLiqIce,
+)
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_buoyancy import (
+    TranslateGetBuoyancy,
+)
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_ke_to_heating import (
+    TranslateKeToHeating,
+)
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_precip_fluxes import (
+    TranslateGetPrecipFluxes,
+)
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_rates_up_pdf import (
+    TranslateRatesUpPdf,
 )
 from .convection.GF_2020.translate_get_buoyancy import TranslateGetBuoyancy
 from .convection.GF_2020.translate_ke_to_heating import TranslateKeToHeating

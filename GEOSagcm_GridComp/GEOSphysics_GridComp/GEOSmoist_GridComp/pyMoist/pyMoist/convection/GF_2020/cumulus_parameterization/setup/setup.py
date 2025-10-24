@@ -8,12 +8,17 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.setup.stencils import (
     set_plume_dependent_fields,
     prefil_internal_fields,
     compute_scale_dependence_factor,
+    get_random_number,
+    initial_entrainment_detrainment,
+    epsilon_min_max,
+    calculate_arbitrary_numerical_parameter,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
+from ndsl.dsl.typing import Int, Float
 
 
 class Setup:
@@ -48,6 +53,27 @@ class Setup:
             externals={"USE_SCALE_DEP": cumulus_parameterization_config.USE_SCALE_DEP},
         )
 
+        self._get_random_number = stencil_factory.from_dims_halo(
+            func=get_random_number,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"USE_RANDOM_NUMBER": cumulus_parameterization_config.USE_RANDOM_NUMBER},
+        )
+
+        self._initial_entrainment_detrainment = stencil_factory.from_dims_halo(
+            func=initial_entrainment_detrainment,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._epsilon_min_max = stencil_factory.from_dims_halo(
+            func=epsilon_min_max,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._calculate_arbitrary_numerical_parameter = stencil_factory.from_dims_halo(
+            func=calculate_arbitrary_numerical_parameter,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
     def __call__(
         self,
         state: GF2020CumulusParameterizationState,
@@ -58,7 +84,7 @@ class Setup:
     ):
         if plume == "shallow":
             # set a number of plume dependent constants
-            plume_depenedent_constants.PLUME_INDEX = 1
+            plume_depenedent_constants.PLUME_INDEX = Int(0)
             plume_depenedent_constants.DOWNDRAFT_MAX_HEIGHT_LAND = (
                 self.cu_param_config.DOWNDRAFT_MAX_HEIGHT_LAND_SHALLOW
             )
@@ -87,24 +113,35 @@ class Setup:
                 self.cu_param_config.CLOUD_BASE_MASS_FLUX_FACTOR_SHALLOW
             )
             plume_depenedent_constants.USE_EXCESS = self.cu_param_config.USE_EXCESS_SHALLOW
+            plume_depenedent_constants.ENTRAINMENT_RATE = self.cu_param_config.ENTRAINMENT_RATE_SHALLOW
             plume_depenedent_constants.ENABLE_PLUME = self.cu_param_config.ENABLE_SHALLOW
 
             # maximum depth (mb) of capping inversion (larger cap = no convection)
             if self.cu_param_config.ZERO_DIFF == 1 or self.cu_param_config.MOIST_TRIGGER == 0:
-                plume_depenedent_constants.CAP_MAX_INC = 25.0
+                plume_depenedent_constants.CAP_MAX_INC = Float(25.0)
             else:
-                plume_depenedent_constants.CAP_MAX_INC = 10.0
+                plume_depenedent_constants.CAP_MAX_INC = Float(10.0)
 
             # lambda_U parameter for momentum transport
             if self.cu_param_config.PRESSURE_GRADIENT_CONSTANT != 0.0:
-                plume_depenedent_constants.LAMBDA_DEEP = 0.0
-                plume_depenedent_constants.LAMBDA_DOWN = 0.0
+                plume_depenedent_constants.LAMBDA_DEEP = Float(0.0)
+                plume_depenedent_constants.LAMBDA_DOWN = Float(0.0)
             else:
                 plume_depenedent_constants.LAMBDA_DEEP = self.cu_param_config.LAMBDA_DEEP
                 plume_depenedent_constants.LAMBDA_DOWN = self.cu_param_config.LAMBDA_SHALLOW_DOWN
+
+            # minimum depth (m) clouds must have
+            plume_depenedent_constants.DEPTH_MIN = Float(500.0)
+
+            # max height(m) above ground where updraft air can originate
+            plume_depenedent_constants.MAX_UPDRAFT_ORIGIN_HEIGHT = Float(2000.0)
+
+            # height(m) above which no downdrafts are allowed to originate
+            plume_depenedent_constants.MAX_DOWNDRAFT_ORIGIN_HEIGHt = Float(3000.0)
+
         if plume == "mid":
             # set a number of plume dependent constants
-            plume_depenedent_constants.PLUME_INDEX = 2
+            plume_depenedent_constants.PLUME_INDEX = Int(1)
             plume_depenedent_constants.DOWNDRAFT_MAX_HEIGHT_LAND = (
                 self.cu_param_config.DOWNDRAFT_MAX_HEIGHT_LAND_MID
             )
@@ -133,24 +170,35 @@ class Setup:
                 self.cu_param_config.CLOUD_BASE_MASS_FLUX_FACTOR_MID
             )
             plume_depenedent_constants.USE_EXCESS = self.cu_param_config.USE_EXCESS_MID
+            plume_depenedent_constants.ENTRAINMENT_RATE = self.cu_param_config.ENTRAINMENT_RATE_MID
             plume_depenedent_constants.ENABLE_PLUME = self.cu_param_config.ENABLE_MID
 
             # maximum depth (mb) of capping inversion (larger cap = no convection)
             if self.cu_param_config.ZERO_DIFF == 1 or self.cu_param_config.MOIST_TRIGGER == 0:
-                plume_depenedent_constants.CAP_MAX_INC = 10.0
+                plume_depenedent_constants.CAP_MAX_INC = Float(10.0)
             else:
-                plume_depenedent_constants.CAP_MAX_INC = 90.0
+                plume_depenedent_constants.CAP_MAX_INC = Float(90.0)
 
             # lambda_U parameter for momentum transport
             if self.cu_param_config.PRESSURE_GRADIENT_CONSTANT != 0.0:
-                plume_depenedent_constants.LAMBDA_DEEP = 0.0
-                plume_depenedent_constants.LAMBDA_DOWN = 0.0
+                plume_depenedent_constants.LAMBDA_DEEP = Float(0.0)
+                plume_depenedent_constants.LAMBDA_DOWN = Float(0.0)
             else:
                 plume_depenedent_constants.LAMBDA_DEEP = self.cu_param_config.LAMBDA_SHALLOW_DOWN
                 plume_depenedent_constants.LAMBDA_DOWN = self.cu_param_config.LAMBDA_SHALLOW_DOWN
+
+            # minimum depth (m) clouds must have
+            plume_depenedent_constants.DEPTH_MIN = Float(1000.0)
+
+            # max height(m) above ground where updraft air can originate
+            plume_depenedent_constants.MAX_UPDRAFT_ORIGIN_HEIGHT = Float(3000.0)
+
+            # height(m) above which no downdrafts are allowed to originate
+            plume_depenedent_constants.MAX_DOWNDRAFT_ORIGIN_HEIGHt = Float(3000.0)
+
         if plume == "deep":
             # set a number of plume dependent constants
-            plume_depenedent_constants.PLUME_INDEX = 3
+            plume_depenedent_constants.PLUME_INDEX = Int(2)
             plume_depenedent_constants.DOWNDRAFT_MAX_HEIGHT_LAND = (
                 self.cu_param_config.DOWNDRAFT_MAX_HEIGHT_LAND_DEEP
             )
@@ -179,21 +227,31 @@ class Setup:
                 self.cu_param_config.CLOUD_BASE_MASS_FLUX_FACTOR_DEEP
             )
             plume_depenedent_constants.USE_EXCESS = self.cu_param_config.USE_EXCESS_DEEP
+            plume_depenedent_constants.ENTRAINMENT_RATE = self.cu_param_config.ENTRAINMENT_RATE_DEEP
             plume_depenedent_constants.ENABLE_PLUME = self.cu_param_config.ENABLE_DEEP
 
             # maximum depth (mb) of capping inversion (larger cap = no convection)
             if self.cu_param_config.ZERO_DIFF == 1 or self.cu_param_config.MOIST_TRIGGER == 0:
-                plume_depenedent_constants.CAP_MAX_INC = 20.0
+                plume_depenedent_constants.CAP_MAX_INC = Float(20.0)
             else:
-                plume_depenedent_constants.CAP_MAX_INC = 90.0
+                plume_depenedent_constants.CAP_MAX_INC = Float(90.0)
 
             # lambda_U parameter for momentum transport
             if self.cu_param_config.PRESSURE_GRADIENT_CONSTANT != 0.0:
-                plume_depenedent_constants.LAMBDA_DEEP = 0.0
-                plume_depenedent_constants.LAMBDA_DOWN = 0.0
+                plume_depenedent_constants.LAMBDA_DEEP = Float(0.0)
+                plume_depenedent_constants.LAMBDA_DOWN = Float(0.0)
             else:
                 plume_depenedent_constants.LAMBDA_DEEP = self.cu_param_config.LAMBDA_SHALLOW_DOWN
                 plume_depenedent_constants.LAMBDA_DOWN = self.cu_param_config.LAMBDA_SHALLOW_DOWN
+
+            # minimum depth (m) clouds must have
+            plume_depenedent_constants.DEPTH_MIN = Float(1000.0)
+
+            # max height(m) above ground where updraft air can originate
+            plume_depenedent_constants.MAX_UPDRAFT_ORIGIN_HEIGHT = Float(4000.0)
+
+            # height(m) above which no downdrafts are allowed to originate
+            plume_depenedent_constants.MAX_DOWNDRAFT_ORIGIN_HEIGHt = Float(3000.0)
 
         # compute/prefil the last few fields needed for the rest of the scheme
         self._set_plume_dependent_fields(
@@ -217,17 +275,18 @@ class Setup:
         )
 
         self._prefil_internal_fields(
-            kbmax=locals.kbmax,
-            kstamb=locals.kstamb,
-            ocean_fraction=locals.ocean_fraction,
+            plume=plume_depenedent_constants.PLUME_INDEX,
+            maximum_updraft_origin_level=locals.maximum_updraft_origin_level,
+            kstabm=locals.kstabm,
+            ocean_fraction=state.input.ocean_fraction,
             ocean_fraction_local=locals.ocean_fraction,
             cap_max=locals.cap_max,
             ierr2=locals.ierr2,
             ierr3=locals.ierr3,
             ierrc=locals.ierrc,
             CAP_MAX_INC=plume_depenedent_constants.CAP_MAX_INC,
-            max_increment=locals.max_increment,
-            geopotential_height=locals.geopotential_height,
+            cap_max_increment=locals.cap_max_increment,
+            geopotential_height=state.input_output.geopotential_height,
             geopotential_height_local=locals.geopotential_height,
             geopotential_height_modified_local=locals.geopotential_height_modified,
             cloud_work_function_0=locals.cloud_work_function_0,
@@ -241,12 +300,12 @@ class Setup:
             k_x_modified=locals.k_x_modified,
             epsilon_local=locals.epsilon,
             pbl_time_scale=locals.pbl_time_scale,
-            plume=plume_depenedent_constants.PLUME_INDEX,
             t_wetbulb=locals.t_wetbulb,
             vapor_wetbulb=locals.vapor_wetbulb,
             tau_ecmwf=locals.tau_ecmwf,
             f_dicycle_modified=locals.f_dicycle_modified,
             add_buoy_modified=locals.add_buoy_modified,
+            scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
             hcdo=locals.hcdo,
             cupclw=locals.cupclw,
             qrcdo=locals.qrcdo,
@@ -264,7 +323,7 @@ class Setup:
         # scale dependence factor (sig), version new
         self._compute_scale_dependence_factor(
             plume=plume_depenedent_constants.PLUME_INDEX,
-            scale_dependence_factor=locals.scale_dependence_factor,
+            scale_dependence_factor=state.output.scale_dependence_factor,
             seed_convection=state.input.seed_convection,
             ierr=state.output.ierr,
             ierrc=locals.ierrc,
@@ -272,3 +331,33 @@ class Setup:
         )
 
         # create a real random number in the interval [-use_random_num, +use_random_num]
+        self._get_random_number(
+            plume=plume_depenedent_constants.PLUME_INDEX,
+            random_number=locals.random_number,
+        )
+
+        # define entrainment/detrainment profiles for updrafts
+        self._initial_entrainment_detrainment(
+            plume=plume_depenedent_constants.PLUME_INDEX,
+            lateral_entrainment_rate=state.input.lateral_entrainment_rate,
+            current_plume_rate=plume_depenedent_constants.ENTRAINMENT_RATE,
+            entrainment_rate=state.output.entrainment_rate,
+            updraft_detrainment_function=locals.updraft_detrainment_function,
+        )
+
+        # max/min allowed value for epsilon (ratio downdraft base mass flux/updraft base mass flux
+        # note : to make the evaporation stronger => increase "epsilon_min"
+        self._epsilon_min_max(
+            ocean_fraction=state.input.ocean_fraction,
+            epsilon_min=locals.epsilon_min,
+            epsilon_max=locals.epsilon_max,
+            MINIMUM_EVAP_FRACTION_OCEAN=plume_depenedent_constants.MINIMUM_EVAP_FRACTION_OCEAN,
+            MAXIMUM_EVAP_FRACTION_OCEAN=plume_depenedent_constants.MAXIMUM_EVAP_FRACTION_OCEAN,
+            MINIMUM_EVAP_FRACTION_LAND=plume_depenedent_constants.MINIMUM_EVAP_FRACTION_LAND,
+            MAXIMUM_EVAP_FRACTION_LAND=plume_depenedent_constants.MAXIMUM_EVAP_FRACTION_LAND,
+        )
+
+        # calculate arbitrary numerical parameter
+        self._calculate_arbitrary_numerical_parameter(
+            arbitrary_numerical_parameter=locals.arbitrary_numerical_parameter,
+        )
