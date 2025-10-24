@@ -60,7 +60,9 @@ from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.transl
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
     TranslateGetMeltingProfile,
 )
-from .convection.GF_2020.awaiting_permanant_home.translate_GF2020_Setup import TranslateGF2020_Setup
+from .convection.GF_2020.awaiting_permanant_home.translate_GF2020_Setup import (
+    TranslateGF2020_Setup,
+)
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_partition_liq_ice import (
     TranslateGetPartitionLiqIce,
 )
@@ -76,8 +78,22 @@ from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.transl
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_rates_up_pdf import (
     TranslateRatesUpPdf,
 )
-from .convection.GF_2020.translate_get_buoyancy import TranslateGetBuoyancy
-from .convection.GF_2020.translate_ke_to_heating import TranslateKeToHeating
-from .convection.GF_2020.translate_get_precip_fluxes import TranslateGetPrecipFluxes
-from .convection.GF_2020.translate_rates_up_pdf import TranslateRatesUpPdf
-from .convection.GF_2020.translate_cup_dd_edt import TranslateCupDDEdt
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_buoyancy import (
+    TranslateGetBuoyancy,
+)
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_ke_to_heating import (
+    TranslateKeToHeating,
+)
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_precip_fluxes import (
+    TranslateGetPrecipFluxes,
+)
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_rates_up_pdf import (
+    TranslateRatesUpPdf,
+)
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_dd_edt import (
+    TranslateCupDDEdt,
+)
+
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_env import (
+    TranslateCupEnv,
+)
