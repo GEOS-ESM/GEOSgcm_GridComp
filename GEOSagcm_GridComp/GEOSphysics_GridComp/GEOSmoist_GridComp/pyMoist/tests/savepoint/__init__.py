@@ -97,3 +97,7 @@ from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.transl
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_env import (
     TranslateCupEnv,
 )
+
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_rain_evap_below_cloudbase import (
+    TranslateRainEvapBelowCloudbase,
+)

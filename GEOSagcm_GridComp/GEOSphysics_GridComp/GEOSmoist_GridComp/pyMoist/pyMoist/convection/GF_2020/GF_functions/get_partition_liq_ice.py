@@ -17,6 +17,8 @@ from gt4py.cartesian.gtscript import (
     K,
     computation,
     interval,
+    float32,
+    float64,
 )
 
 
@@ -61,13 +63,13 @@ def get_partition_liq_ice(
         ktf = k_end - 1
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_GLAC == 1 and cumulus == cumulus_parameterization_constants.deep:
             if K <= ktf:
                 if ierr == 0:
                     p_liq_ice = fract_liq_f(tn, cnvfrc, srftype, FRAC_MODIS)
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_GLAC == 1 and cumulus == cumulus_parameterization_constants.deep:
             if K <= ktf:
                 if ierr == 0:
                     if tn <= (cumulus_parameterization_constants.T_0 - delT):
@@ -87,14 +89,14 @@ def get_partition_liq_ice(
                     melting_layer = melting_layer * (1.0 - melting_layer)
 
     with computation(FORWARD), interval(...):
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_GLAC == 1 and cumulus == cumulus_parameterization_constants.deep:
             if K <= ktf - 1:
                 if ierr == 0:
                     dp = 100.0 * (po_cup - po_cup[0, 0, 1])
                     norm = norm + melting_layer * dp / constants.MAPL_GRAV
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_GLAC == 1 and cumulus == cumulus_parameterization_constants.deep:
             if ierr == 0:
                 melting_layer = (
                     melting_layer
