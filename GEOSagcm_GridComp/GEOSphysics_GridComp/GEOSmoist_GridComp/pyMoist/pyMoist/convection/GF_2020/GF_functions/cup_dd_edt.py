@@ -1,6 +1,6 @@
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, IntField, FloatFieldIJ, IntFieldIJ, Float
+from ndsl.dsl.typing import FloatField, IntField, FloatFieldIJ, Float, Int
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from gt4py.cartesian.gtscript import (
     PARALLEL,
@@ -10,6 +10,7 @@ from gt4py.cartesian.gtscript import (
     interval,
     int32,
     abs,
+    float32,
 )
 
 beta3 = Float(-1.13)
@@ -28,10 +29,8 @@ def cup_dd_edt(
     p: FloatField,
     psum2: FloatField,
     psumh: FloatField,
-    pw: FloatField,
     pwav: FloatField,
     pwev: FloatField,
-    rho: FloatField,
     us: FloatField,
     vs: FloatField,
     z: FloatField,
@@ -49,11 +48,11 @@ def cup_dd_edt(
 
     with computation(FORWARD), interval(...):
         edt = 0.0
-        vws = 0.0
-        sdp = 0.0
         vshear = 0.0
         edtc = 0.0
     with computation(FORWARD), interval(...):
+        sdp = 0.0
+        vws = 0.0
         if cumulus != cumulus_parameterization_constants.shallow:
             if ierr == 0:
                 idx = kbcon - 1
@@ -80,10 +79,10 @@ def cup_dd_edt(
         if cumulus != cumulus_parameterization_constants.shallow:
             if ierr == 0:
                 pef = (
-                    1.591
-                    - 0.639 * vshear
-                    + 0.0953 * (vshear * vshear)
-                    - 0.00496 * (vshear * vshear * vshear)
+                    float32(1.591)
+                    - float32(0.639) * vshear
+                    + float32(0.0953) * (vshear**2)
+                    - float32(0.00496) * (vshear**3)
                 )
                 pef = min(pef, 0.9)
                 pef = max(pef, 0.1)
@@ -110,37 +109,37 @@ def cup_dd_edt(
 
                 edt = 1.0 - 0.5 * (pefb + pef)
 
-                # if aeroevap > 1:
-                #     aeroadd = (cumulus_parameterization_constants.ccnclean**beta3) * (
-                #         (psumh) ** (alpha3 - 1)
-                #     )
+                if aeroevap > 1:
+                    aeroadd = (cumulus_parameterization_constants.ccnclean**beta3) * (
+                        (psumh) ** (alpha3 - 1)
+                    )
 
-                #     prop_c = 0.5 * (pefb + pef) / aeroadd
-                #     aeroadd = (ccn**beta3) * ((psum2) ** (alpha3 - 1))
+                    prop_c = 0.5 * (pefb + pef) / aeroadd
+                    aeroadd = (ccn**beta3) * ((psum2) ** (alpha3 - 1))
 
-                #     aeroadd = prop_c * aeroadd
-                #     pefc = aeroadd
-                #     if pefc > 0.9:
-                #         pefc = 0.9
-                #     if pefc < 0.1:
-                #         pefc = 0.1
-                #     edt = 1.0 - pefc
-                #     if aeroevap == 2:
-                #         edt = 1.0 - 0.25 * (pefb + pef + 2.0 * pefc)
+                    aeroadd = prop_c * aeroadd
+                    pefc = aeroadd
+                    if pefc > 0.9:
+                        pefc = 0.9
+                    if pefc < 0.1:
+                        pefc = 0.1
+                    edt = 1.0 - pefc
+                    if aeroevap == 2:
+                        edt = 1.0 - 0.25 * (pefb + pef + 2.0 * pefc)
 
                 einc = 0.2 * edt
-                # if K <= maxens2 - 1:
-                edtc = edt + float(int32(K) - 1) * einc
+                if K <= maxens2 - 1:
+                    edtc = edt + float(int32(K) - 1) * einc
 
     with computation(PARALLEL), interval(...):
         if cumulus != cumulus_parameterization_constants.shallow:
             if ierr == 0:
-                # if K <= maxens2 - 1:
-                edtc = -edtc * pwav / pwev
-                if edtc > edtmax:
-                    edtc = edtmax
-                if edtc < edtmin:
-                    edtc = edtmin
+                if K <= maxens2 - 1:
+                    edtc = -edtc * pwav / pwev
+                    if edtc > edtmax:
+                        edtc = edtmax
+                    if edtc < edtmin:
+                        edtc = edtmin
 
                 temp = edtc.at(K=0)
                 edtc = temp
@@ -190,10 +189,8 @@ class CupDDEdt:
         p: FloatField,
         psum2: FloatField,
         psumh: FloatField,
-        pw: FloatField,
         pwav: FloatField,
         pwev: FloatField,
-        rho: FloatField,
         us: FloatField,
         vs: FloatField,
         z: FloatField,
@@ -203,6 +200,10 @@ class CupDDEdt:
         edtc: FloatField,
         ierr: IntField,
     ):
+        if aeroevap.view[:].all() > Int(1):
+            raise NotImplementedError(
+                f"Warning: This code has not been ported!! Expected aeroevap == 1"
+            )
 
         self._cup_dd_edt(
             # In
@@ -216,10 +217,8 @@ class CupDDEdt:
             p=p,
             psum2=psum2,
             psumh=psumh,
-            pw=pw,
             pwav=pwav,
             pwev=pwev,
-            rho=rho,
             us=us,
             vs=vs,
             z=z,
