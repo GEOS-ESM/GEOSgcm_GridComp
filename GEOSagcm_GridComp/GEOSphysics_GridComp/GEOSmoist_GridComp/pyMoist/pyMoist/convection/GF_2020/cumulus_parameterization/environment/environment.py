@@ -77,6 +77,8 @@ class EnvironmentConditions:
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
+        else:
+            raise NotImplementedError("EnvironmentCloudLevels call type not supported.")
 
 
 class EnvironmentCloudLevels:
@@ -169,6 +171,8 @@ class EnvironmentCloudLevels:
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
             state.output.p.field[:, :, :, plume_dependent_constants.PLUME_INDEX] = p_3d
+        else:
+            raise NotImplementedError("EnvironmentCloudLevels call type not supported.")
 
 
 class EnvironmentMassFlux:
