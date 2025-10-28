@@ -11,7 +11,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment.environment import (
     EnvironmentConditions,
-    EnvironmentOnCloudLevels,
+    EnvironmentCloudLevels,
     EnvironmentMassFlux,
     EnvironmentalSubsidence,
 )
@@ -133,11 +133,21 @@ class CumulusParameterization:
             cumulus_parameterization_config,
         )
 
-        self._environment_conditions = EnvironmentConditions()
+        self._environment_conditions = EnvironmentConditions(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._sounding = Sounding()
 
-        self._environment_on_cloud_levels = EnvironmentOnCloudLevels()
+        self._environment_cloud_levels = EnvironmentCloudLevels(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._hydrostatic_air_density = HydrostaticAirDensity()
 
@@ -281,213 +291,240 @@ class CumulusParameterization:
                 state,
                 locals,
                 saturation_tables,
-                plume,
                 self.plume_dependent_constants,
+                plume,
             )
 
-            # environmental conditions, first heights
-            # calculate moist static energy, heights, environmental saturation mixing ratio
-            self._environment_conditions()  # cup_env
-            self._environment_conditions()  # cup_env
+            if self.plume_dependent_constants.ENABLE_PLUME == 1:
+                # environmental conditions, first heights
+                # calculate moist static energy, heights, environmental saturation mixing ratio
+                self._environment_conditions(
+                    state=state,
+                    locals=locals,
+                    saturation_tables=saturation_tables,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                    data_type=0,
+                )
+                self._environment_conditions(
+                    state=state,
+                    locals=locals,
+                    saturation_tables=saturation_tables,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                    data_type=1,
+                )
+
+                # outputs a model sounding for the stand-alone code (part 1)
+                self._sounding()
+                if self.cumulus_parameterization_config.OUTPUT_SOUNDING != 0:
+                    ndsl_log.error(" GF2020 output sounding not supported")
+
+                # environmental values on cloud levels
+                self._environment_cloud_levels(
+                    state=state,
+                    locals=locals,
+                    saturation_tables=saturation_tables,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                    data_type=0,
+                )
+                self._environment_cloud_levels(
+                    state=state,
+                    locals=locals,
+                    saturation_tables=saturation_tables,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                    data_type=1,
+                )
 
-            # outputs a model sounding for the stand-alone code (part 1)
-            self._sounding()
+                # get air density at full layer (model levels) by hydrostatic balance (kg/m3)
+                self._hydrostatic_air_density()
 
-            # environmental values on cloud levels
-            self._environment_on_cloud_levels()  # cup_env_clev
-            self._environment_on_cloud_levels()  # cup_env_clev
+                # partition between liq/ice cloud contents
+                self._partition_liquid_ice()
 
-            # get air density at full layer (model levels) by hydrostatic balance (kg/m3)
-            self._hydrostatic_air_density()
+                # level where detrainment for downdraft starts
+                self._downdraft_detrainment_level()
 
-            # partition between liq/ice cloud contents
-            self._partition_liquid_ice()
+                # determine level with highest moist static energy content (k_max_mse)
+                self._highest_moist_static_energy_level()
 
-            # level where detrainment for downdraft starts
-            self._downdraft_detrainment_level()
+                # get the pickup of ensemble ave prec, following Neelin et al 2009.
+                self._precip_factor()
 
-            # determine level with highest moist static energy content (k_max_mse)
-            self._highest_moist_static_energy_level()
+                # cold pool parameterization and convective memory
+                # NOTE CONVECTION TRACER BLOCK
+                self._cold_pool_parameterization()
 
-            # get the pickup of ensemble ave prec, following Neelin et al 2009.
-            self._precip_factor()
+                # determine LCL for the air parcels with highest moist static energy
+                self._get_lcl()
 
-            # cold pool parameterization and convective memory
-            # NOTE CONVECTION TRACER BLOCK
-            self._cold_pool_parameterization()
+                # determine the moist static energy of air parcels at source level
+                self._parcel_moist_static_energy()
 
-            # determine LCL for the air parcels with highest moist static energy
-            self._get_lcl()
+                # determine the vertical entrainment/detrainment rates
+                self._environment_conditions()
 
-            # determine the moist static energy of air parcels at source level
-            self._parcel_moist_static_energy()
+                # determine level of convective cloud base
+                self._convective_cloud_base_level()
 
-            # determine the vertical entrainment/detrainment rates
-            self._environment_conditions()
+                # define entrainment/detrainment profiles for downdrafts
+                self._downdraft_entraiment_profiles()
 
-            # determine level of convective cloud base
-            self._convective_cloud_base_level()
+                # update unforced & forced moist static energy
+                self._update_moist_static_energy()
 
-            # define entrainment/detrainment profiles for downdrafts
-            self._downdraft_entraiment_profiles()
+                # increase detrainment in stable layers
+                self._stable_detrainment()
 
-            # update unforced & forced moist static energy
-            self._update_moist_static_energy()
+                # use cloud for plumes
+                self._cloud_top()
 
-            # increase detrainment in stable layers
-            self._stable_detrainment()
+                # determine the normalized mass flux profile for updraft
+                self._updraft_mass_flux_profile()
 
-            # use cloud for plumes
-            self._cloud_top()
+                # calculate mass entrainment and detrainment
+                self._calculate_mass_entrainment_detrainment()
 
-            # determine the normalized mass flux profile for updraft
-            self._updraft_mass_flux_profile()
+                # 1st guess for moist static energy
+                self._first_guess_moist_static_energy()
 
-            # calculate mass entrainment and detrainment
-            self._calculate_mass_entrainment_detrainment()
+                # Get buoyancy of updrafts
+                self._get_buoyancy()
 
-            # 1st guess for moist static energy
-            self._first_guess_moist_static_energy()
+                # get "c1d" profile
+                self._c1d_profile()
 
-            # Get buoyancy of updrafts
-            self._get_buoyancy()
+                # get updraft profile
+                self._updraft_moisture_profile()
 
-            # get "c1d" profile
-            self._c1d_profile()
+                # get melting profile
+                self._melting_profile()
 
-            # get updraft profile
-            self._updraft_moisture_profile()
+                # updraft moist static energy + momentum budget
+                self._moist_static_energy_and_momentum_budget()
 
-            # get melting profile
-            self._melting_profile()
+                # Get buoyancy of updrafts
+                self._get_buoyancy()
+                self._get_buoyancy()
 
-            # updraft moist static energy + momentum budget
-            self._moist_static_energy_and_momentum_budget()
+                # calculate in-cloud/updraft air temperature for vertical velocity
+                self._in_cloud_updraft_air_temperature()
 
-            # Get buoyancy of updrafts
-            self._get_buoyancy()
-            self._get_buoyancy()
+                # vertical velocity
+                self._vertical_velosity()
 
-            # calculate in-cloud/updraft air temperature for vertical velocity
-            self._in_cloud_updraft_air_temperature()
+                # downdraft origin level
+                self._downdraft_origin_level()
 
-            # vertical velocity
-            self._vertical_velosity()
+                # downdraft normalized mass flux
+                self._downdraft_normalized_mass_flux()
 
-            # downdraft origin level
-            self._downdraft_origin_level()
+                # lateral mass fluxes associated with downdrafts
+                self._downdraft_lateral_mass_flux()
 
-            # downdraft normalized mass flux
-            self._downdraft_normalized_mass_flux()
+                # wet bulb temperature and moisture at downdraft origin level
+                self._downdraft_wet_bulb()
 
-            # lateral mass fluxes associated with downdrafts
-            self._downdraft_lateral_mass_flux()
+                # downdraft moist static energy + moisture budget
+                self._downdraft_moist_static_energy_and_moisture_budget()
 
-            # wet bulb temperature and moisture at downdraft origin level
-            self._downdraft_wet_bulb()
+                # calculate moisture properties of downdraft
+                self._downdraft_moisture_properties()
 
-            # downdraft moist static energy + moisture budget
-            self._downdraft_moist_static_energy_and_moisture_budget()
+                # calculate workfunctions for updrafts
+                self._updraft_initial_workfunctions()
 
-            # calculate moisture properties of downdraft
-            self._downdraft_moisture_properties()
+                # calculate CIN for updrafts
+                self._updraft_cin()
 
-            # calculate workfunctions for updrafts
-            self._updraft_initial_workfunctions()
+                # trigger function: KE+CIN < 0 --> no convection
+                self._trigger_function_convection()
 
-            # calculate CIN for updrafts
-            self._updraft_cin()
+                # calculate in-cloud/updraft and downdraft air temperature for vertical velocity
+                self._in_cloud_temperature()
 
-            # trigger function: KE+CIN < 0 --> no convection
-            self._trigger_function_convection()
+                # diurnal cycle section
+                self._diurnal_cycle()
 
-            # calculate in-cloud/updraft and downdraft air temperature for vertical velocity
-            self._in_cloud_temperature()
+                # Bechtold et al 2008 time-scale of cape removal
+                self._cape_removal()
 
-            # diurnal cycle section
-            self._diurnal_cycle()
+                # Trigger function based on Xie et al 2019
+                self._trigger_function_xie()
 
-            # Bechtold et al 2008 time-scale of cape removal
-            self._cape_removal()
+                # determine downdraft strength in terms of windshear
+                self._downdraft_windshear()
 
-            # Trigger function based on Xie et al 2019
-            self._trigger_function_xie()
+                # get the environmental mass flux
+                self._environment_mass_flux()
 
-            # determine downdraft strength in terms of windshear
-            self._downdraft_windshear()
+                # check mass conservation
+                self._mass_conservation()
 
-            # get the environmental mass flux
-            self._environment_mass_flux()
+                # change per unit mass that a model cloud would modify the environment
+                self._vertical_discretization()
 
-            # check mass conservation
-            self._mass_conservation()
+                # apply environmental subsidence on grid-scale ice and
+                # liq water contents, and cloud fraction (Upwind scheme)
+                self._environmental_subsidence()
 
-            # change per unit mass that a model cloud would modify the environment
-            self._vertical_discretization()
+                # make the smoothness procedure
+                self._make_smoother()
 
-            # apply environmental subsidence on grid-scale ice and
-            # liq water contents, and cloud fraction (Upwind scheme)
-            self._environmental_subsidence()
+                # using smoothed tendencies, calculate changed environmental profiles
+                self._apply_smoother()
 
-            # make the smoothness procedure
-            self._make_smoother()
+                # calculate moist static energy, heights, environmental saturation mixing ratio
+                self._environment_conditions()
 
-            # using smoothed tendencies, calculate changed environmental profiles
-            self._apply_smoother()
+                # environmental values on cloud levels
+                self._environment_cloud_levels()
 
-            # calculate moist static energy, heights, environmental saturation mixing ratio
-            self._environment_conditions()
+                # static control
+                # moist static energy inside cloud
+                self._moist_static_energy_inside_cloud()
 
-            # environmental values on cloud levels
-            self._environment_on_cloud_levels()
+                # workfunctions for updraft
+                self._updraft_update_workfunctions()
 
-            # static control
-            # moist static energy inside cloud
-            self._moist_static_energy_inside_cloud()
+                # large scale forcing
+                # calculate cloud base mass flux
+                self._cloud_base_mass_flux()
 
-            # workfunctions for updraft
-            self._updraft_update_workfunctions()
+                # Include kinetic energy dissipation converted to heating
+                self._kinetic_energy_to_heating()
 
-            # large scale forcing
-            # calculate cloud base mass flux
-            self._cloud_base_mass_flux()
+                # feedback
+                self._feedback()
 
-            # Include kinetic energy dissipation converted to heating
-            self._kinetic_energy_to_heating()
+                # net precipitation flux (after downdraft evaporation)
+                self._precipitation_flux()
 
-            # feedback
-            self._feedback()
+                # rainfall evap below cloud base
+                self._rain_evap_below_cloud_base()
 
-            # net precipitation flux (after downdraft evaporation)
-            self._precipitation_flux()
+                # includes effects of the remained cloud dissipation into the enviroment
+                self._cloud_dissapation()
 
-            # rainfall evap below cloud base
-            self._rain_evap_below_cloud_base()
+                # total (deep+mid) evaporation flux for output (units kg/kg/s)
+                self._output_evaporation_flux()
 
-            # includes effects of the remained cloud dissipation into the enviroment
-            self._cloud_dissapation()
+                # lightning flashes density (parameterization from Lopez 2016, MWR)
+                self._lightning_flash_density()
 
-            # total (deep+mid) evaporation flux for output (units kg/kg/s)
-            self._output_evaporation_flux()
+                # output precipitation (only deep plume)
+                self._output_deep_precipitation()
 
-            # lightning flashes density (parameterization from Lopez 2016, MWR)
-            self._lightning_flash_density()
+                # for tracer convective transport / outputs
+                self._tracer_output()
 
-            # output precipitation (only deep plume)
-            self._output_deep_precipitation()
+                # convert mass fluxes, etc...
+                self._prepare_output()
 
-            # for tracer convective transport / outputs
-            self._tracer_output()
+                # outputs a model sounding for the stand-alone code (part 2)
+                self._sounding()
 
-            # convert mass fluxes, etc...
-            self._prepare_output()
+                # section for atmospheric composition
+                self._atmospheric_composition()
 
-            # outputs a model sounding for the stand-alone code (part 2)
-            self._sounding()
-
-            # section for atmospheric composition
-            self._atmospheric_composition()
-
-            # begin: for GATE soundings
-            # NOTE not needed right now, probably will never be implemented
-            self._gate_sounding()
+                # begin: for GATE soundings
+                # NOTE not needed right now, probably will never be implemented
+                self._gate_sounding()

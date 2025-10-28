@@ -35,9 +35,9 @@ class GF2020CumulusParameterizationConfig:
     USE_EXCESS_SHALLOW: Int
     USE_EXCESS_MID: Int
     USE_EXCESS_DEEP: Int
-    ENABLE_SHALLOW: Float
-    ENABLE_MID: Float
-    ENABLE_DEEP: Float
+    ENABLE_SHALLOW: Int
+    ENABLE_MID: Int
+    ENABLE_DEEP: Int
     ENTRAINMENT_RATE_SHALLOW: Float
     ENTRAINMENT_RATE_MID: Float
     ENTRAINMENT_RATE_DEEP: Float
@@ -51,3 +51,6 @@ class GF2020CumulusParameterizationConfig:
     OUTPUT_SOUNDING: Int
     USE_SCALE_DEP: Int
     USE_RANDOM_NUMBER: Float
+    SATURATION_CALCULATION_CHOICE: Int
+    ITEST: Int
+    CLOUD_LEVEL_GRID: Int

@@ -118,9 +118,9 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        last_ierr: Quantity = dataclasses.field(
+        last_error_code: Quantity = dataclasses.field(
             metadata={
-                "name": "last_ierr_in",
+                "name": "last_error_code",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
@@ -256,9 +256,9 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        ierr: Quantity = dataclasses.field(
+        error_code: Quantity = dataclasses.field(
             metadata={
-                "name": "ierr",
+                "name": "error_code",
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",

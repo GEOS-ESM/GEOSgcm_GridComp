@@ -43,6 +43,7 @@ from .translate_compute_uwshcu import TranslateComputeUwshcuInv
 from .convection.GF_2020.cumulus_parameterization.translate_GF2020_CumulusParameterization import (
     TranslateGF2020_CumulusParameterization,
 )
+
 from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup_shallow import (
     TranslateGF2020_CumulusParameterization_Setup_shallow,
 )
@@ -51,6 +52,27 @@ from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_Cumulus
 )
 from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup_deep import (
     TranslateGF2020_CumulusParameterization_Setup_deep,
+)
+
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentConditions_1 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentConditions_2 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_shallow,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentCloudLevels_1 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_shallow,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentCloudLevels_2 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_shallow,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_deep,
 )
 
 # in progress tests
@@ -92,8 +114,4 @@ from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.transl
 )
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_dd_edt import (
     TranslateCupDDEdt,
-)
-
-from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_env import (
-    TranslateCupEnv,
 )
