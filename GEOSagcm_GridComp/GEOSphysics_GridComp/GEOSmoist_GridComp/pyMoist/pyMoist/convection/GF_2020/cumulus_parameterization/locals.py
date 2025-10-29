@@ -16,10 +16,37 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    t_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "t_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    t_cloud_levels_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "t_cloud_levels_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     t_excess: Quantity = dataclasses.field(
         metadata={
             "name": "t_excess",
             "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    t_new_pbl: Quantity = dataclasses.field(
+        metadata={
+            "name": "t_new_pbl",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -34,19 +61,28 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    vapor_excess: Quantity = dataclasses.field(
+    vapor_cloud_levels: Quantity = dataclasses.field(
         metadata={
-            "name": "vapor_excess",
-            "dims": [X_DIM, Y_DIM],
+            "name": "vapor_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    t_new_pbl: Quantity = dataclasses.field(
+    vapor_cloud_levels_forced: Quantity = dataclasses.field(
         metadata={
-            "name": "t_new_pbl",
+            "name": "vapor_cloud_levels_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    vapor_excess: Quantity = dataclasses.field(
+        metadata={
+            "name": "vapor_excess",
+            "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -106,27 +142,27 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    ierrc: Quantity = dataclasses.field(
+    error_code_string: Quantity = dataclasses.field(
         metadata={
-            "name": "ierrc",
+            "name": "error_code_string",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Int,
         }
     )
-    ierr2: Quantity = dataclasses.field(
+    error_code_2: Quantity = dataclasses.field(
         metadata={
-            "name": "ierr2",
+            "name": "error_code_2",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Int,
         }
     )
-    ierr3: Quantity = dataclasses.field(
+    error_code_3: Quantity = dataclasses.field(
         metadata={
-            "name": "ierr3",
+            "name": "error_code_3",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
@@ -154,6 +190,24 @@ class GF2020CumulusParameterizationLocals(State):
     geopotential_height_modified: Quantity = dataclasses.field(
         metadata={
             "name": "geopotential_height_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    geopotential_height_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "geopotential_height_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    geopotential_height_cloud_levels_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "geopotential_height_cloud_levels_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -434,6 +488,141 @@ class GF2020CumulusParameterizationLocals(State):
         metadata={
             "name": "arbitrary_numerical_parameter",
             "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_moist_static_energy: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_moist_static_energy",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_moist_static_energy_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_moist_static_energy_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_moist_static_energy_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_moist_static_energy_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_moist_static_energy: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_moist_static_energy",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_moist_static_energy_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_moist_static_energy_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_moist_static_energy_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_moist_static_energy_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_moist_static_energy_cloud_levels_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_moist_static_energy_cloud_levels_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_mixing_ratio: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_mixing_ratio",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_mixing_ratio_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_mixing_ratio_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_mixing_ratio_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_mixing_ratio_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    p_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "p_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    u_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "u_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    v_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "v_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    gamma_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "gamma_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    gamma_cloud_levels_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "gamma_cloud_levels_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

@@ -83,9 +83,9 @@ def prefil_internal_fields(
     ocean_fraction: FloatFieldIJ,
     ocean_fraction_local: FloatFieldIJ,
     cap_max: FloatFieldIJ,
-    ierr2: IntFieldIJ,
-    ierr3: IntFieldIJ,
-    ierrc: IntFieldIJ,
+    error_code_2: IntFieldIJ,
+    error_code_3: IntFieldIJ,
+    error_code_string: IntFieldIJ,
     CAP_MAX_INC: Float,
     cap_max_increment: FloatFieldIJ,
     geopotential_height: FloatField,
@@ -130,9 +130,9 @@ def prefil_internal_fields(
         kstabm = k_end - 2
         ocean_fraction_local = ocean_fraction
         cap_max = CAP_MAXS
-        ierr2 = 0
-        ierr3 = 0
-        ierrc = -999
+        error_code_2 = 0
+        error_code_3 = 0
+        error_code_string = -999
         cap_max_increment = CAP_MAX_INC
         cloud_work_function_0 = 0.0
         cloud_work_function_1 = 0.0
@@ -184,8 +184,8 @@ def compute_scale_dependence_factor(
     plume: Int,
     scale_dependence_factor: FloatFieldIJ_Plume,
     seed_convection: FloatFieldIJ,
-    ierr: IntFieldIJ_Plume,
-    ierrc: IntFieldIJ,
+    error_code: IntFieldIJ_Plume,
+    error_code_string: IntFieldIJ,
     grid_length: FloatFieldIJ,
 ):
     from __externals__ import USE_SCALE_DEP
@@ -202,8 +202,8 @@ def compute_scale_dependence_factor(
                 scale_dependence_factor[0, 0][plume] = 1.0
             else:
                 if seed_convection < 0.0:
-                    ierr[0, 0][plume] = 1
-                    ierrc = 1
+                    error_code[0, 0][plume] = 1
+                    error_code_string = 1
                     error_at_point = True
                 if error_at_point == False:
                     scale_dependence_factor[0, 0][plume] = sigma(grid_length)
@@ -215,8 +215,8 @@ def compute_scale_dependence_factor(
                     0.1, min(scale_dependence_factor[0, 0][plume], 1.0)
                 )
                 if scale_dependence_factor[0, 0][plume] <= 0.1:
-                    ierr[0, 0][plume] = 1
-                    ierrc = 1
+                    error_code[0, 0][plume] = 1
+                    error_code_string = 1
                     error_at_point = True
 
 

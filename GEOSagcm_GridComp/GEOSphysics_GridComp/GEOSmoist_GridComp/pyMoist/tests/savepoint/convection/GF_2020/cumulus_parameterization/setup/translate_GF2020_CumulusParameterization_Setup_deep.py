@@ -41,7 +41,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             "scale_dependence_factor": {} | {"serialname": "scale_dependence_factor_cu_param_setup"},
             "lightning_density": {} | {"serialname": "lightning_density_cu_param_setup"},
             "seed_convection": {} | {"serialname": "seed_convection_cu_param_setup"},
-            "ierr": {} | {"serialname": "ierr_cu_param_setup"},
+            "error_code": {} | {"serialname": "error_code_cu_param_setup"},
             "grid_length": {} | {"serialname": "grid_length_cu_param_setup"},
             "lateral_entrainment_rate": {} | {"serialname": "lateral_entrainment_rate_cu_param_setup"},
             "entrainment_rate": {} | {"serialname": "entrainment_rate_cu_param_setup"},
@@ -76,8 +76,8 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
                 "local_kstabm": {"serialname": "local_kstabm_cu_param_setup"},
                 "local_ocean_fraction": {"serialname": "local_ocean_fraction_cu_param_setup"},
                 "local_cap_max": {"serialname": "local_cap_max_cu_param_setup"},
-                "local_ierr2": {"serialname": "local_ierr2_cu_param_setup"},
-                "local_ierr3": {"serialname": "local_ierr3_cu_param_setup"},
+                "local_error_code_2": {"serialname": "local_error_code_2_cu_param_setup"},
+                "local_error_code_3": {"serialname": "local_error_code_3_cu_param_setup"},
                 "local_cap_max_increment": {"serialname": "local_cap_max_increment_cu_param_setup"},
                 "local_geopotential_height": {"serialname": "local_geopotential_height_cu_param_setup"},
                 "local_geopotential_height_modified": {
@@ -131,11 +131,15 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
+        # initalize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
+
+        # initalize saturation tables
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
+        # initalize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
@@ -150,6 +154,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             },
         )
 
+        # fill relevant parts of dataclasses
         state.input.t_excess.data[:] = inputs["t_excess"]
         state.input.vapor_excess.data[:] = inputs["vapor_excess"]
         state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
@@ -167,7 +172,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
         ]  # plume dependent
         state.output.lightning_density.data[:] = inputs["lightning_density"]
         state.input.seed_convection.data[:] = inputs["seed_convection"]
-        state.output.ierr.data[:, :, 2] = inputs["ierr"]  # plume dependent
+        state.output.error_code.data[:, :, 2] = inputs["error_code"]  # plume dependent
         state.input_output.grid_length.data[:] = inputs["grid_length"]
         state.input.lateral_entrainment_rate.data[:] = inputs["lateral_entrainment_rate"]
         state.output.entrainment_rate.data[:, :, :, 2] = inputs["entrainment_rate"]  # plume dependent
@@ -179,13 +184,14 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        setup(
-            state=state,
-            locals=locals,
-            saturation_tables=saturation_tables,
-            plume="deep",
-            plume_depenedent_constants=plume_dependent_constants,
-        )
+        if cumulus_parameterization_config.ENABLE_DEEP == 1:
+            setup(
+                state=state,
+                locals=locals,
+                saturation_tables=saturation_tables,
+                plume_dependent_constants=plume_dependent_constants,
+                plume="deep",
+            )
 
         # fortran initalized to nan and never touches the top level of some variables
         # set those rows to nan here so the tests pass - even though they are zero in python
@@ -205,7 +211,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             "precip": state.output.precip.field[:, :, 2],
             "scale_dependence_factor": state.output.scale_dependence_factor.field[:, :, 2],
             "lightning_density": state.output.lightning_density.field[:],
-            "ierr": state.output.ierr.field[:, :, 2],
+            "error_code": state.output.error_code.field[:, :, 2],
             "grid_length": state.input_output.grid_length.field[:],
             "lateral_entrainment_rate": state.input.lateral_entrainment_rate.field[:],
             "entrainment_rate": state.output.entrainment_rate.field[:, :, :, 2],
@@ -221,9 +227,9 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             "local_kstabm": locals.kstabm.field[:] + 1,  # +1 b/c python counts from 0
             "local_ocean_fraction": locals.ocean_fraction.field[:],
             "local_cap_max": locals.cap_max.field[:],
-            "local_ierr2": locals.ierr2.field[:],
-            "local_ierr3": locals.ierr3.field[:],
-            "local_ierrc": locals.ierrc.field[:],
+            "local_error_code_2": locals.error_code_2.field[:],
+            "local_error_code_3": locals.error_code_3.field[:],
+            "local_error_code_string": locals.error_code_string.field[:],
             "local_cap_max_increment": locals.cap_max_increment.field[:],
             "local_geopotential_height": locals.geopotential_height.field[:],
             "local_geopotential_height_modified": locals.geopotential_height_modified.field[:],
