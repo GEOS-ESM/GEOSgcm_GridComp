@@ -66,6 +66,12 @@ module GEOS_RouteGridCompMod
      integer, allocatable :: send_count(:), displ_send(:)
      integer, allocatable :: recv_count(:), displ_recv(:)
      integer              :: total_send, total_recv
+
+     integer, pointer :: scounts_global(:) => NULL()
+     integer, pointer :: rdispls_global(:) => NULL()
+     integer, pointer :: scounts_cat(:)    => NULL()
+     integer, pointer :: rdispls_cat(:)    => NULL()
+
   end type T_RROUTE_STATE
 
   ! Wrapper for extracting internal state
@@ -371,6 +377,10 @@ contains
     type(Netcdf4_Fileformatter)  :: formatter 
     integer          :: j,nt_local, mpierr
 
+    integer, pointer :: scounts(:)=>NULL()
+    integer, pointer :: scounts_global(:)=>NULL(),rdispls_global(:)=>NULL()
+    integer, pointer :: scounts_cat(:)=>NULL(),rdispls_cat(:)=>NULL()        
+
     ! ------------------
     ! begin
 
@@ -545,6 +555,30 @@ contains
          )
     VERIFY_(status)
  
+    ! Set variables used in MPI
+    allocate(scounts(ndes),scounts_global(ndes),rdispls_global(ndes))
+    scounts=0
+    scounts(mype+1)=nt_local  
+    call MPI_Allgather(scounts(mype+1), 1, MPI_INTEGER, scounts_global, 1, MPI_INTEGER, route%comm, mpierr) 
+    rdispls_global(1)=0
+    do i=2,ndes
+       rdispls_global(i)=rdispls_global(i-1)+scounts_global(i-1)
+    enddo
+    deallocate(scounts)
+    route%scounts_global=>scounts_global
+    route%rdispls_global=>rdispls_global
+
+    allocate(scounts(ndes),scounts_cat(ndes),rdispls_cat(ndes))
+    scounts=0
+    scounts(mype+1)=ntiles  
+    call MPI_Allgather(scounts(mype+1), 1, MPI_INTEGER, scounts_cat, 1, MPI_INTEGER, route%comm, mpierr) 
+    rdispls_cat(1)=0
+    do i=2,ndes
+       rdispls_cat(i)=rdispls_cat(i-1)+scounts_cat(i-1)
+    enddo
+    deallocate(scounts)
+    route%scounts_cat=>scounts_cat
+    route%rdispls_cat=>rdispls_cat
 
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
@@ -860,7 +894,14 @@ contains
     real,             allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:)
    
     type(ESMF_Alarm) :: CollectWaterAlarm 
-    
+
+
+    integer :: mpierr
+    real,             allocatable :: runoff_save_global(:),runoff_save_m3(:),runoff_global_m3(:),QOUTFLOW_GLOBAL(:),Qres_global(:)
+    real,             allocatable :: UNBALANCE(:),UNBALANCE_GLOBAL(:),ERROR(:),ERROR_GLOBAL(:)
+    real,             allocatable :: QFLOW_SINK(:),QFLOW_SINK_GLOBAL(:),WTOT_BEFORE_GLOBAL(:),WTOT_AFTER_GLOBAL(:)
+    real,             allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:),wres_global(:)
+    real, dimension(:), pointer :: runoff_global,runoff_local,area_local,runoff_cat_global   
     ! ------------------
     ! begin    
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
@@ -951,6 +992,32 @@ contains
        call ESMF_FieldGet(route%field, farrayPtr=arrayPtr, rc=status)
        VERIFY_(STATUS)
        RUNOFF_ACT = arrayPtr * route%areacat/1000.
+       
+
+       allocate(runoff_cat_global(N_pfaf_g),runoff_save_global(nt_global))
+       call MPI_allgatherv  (                          &
+         route%runoff_acc,  route%scounts_global(mype+1)      ,MPI_REAL, &
+         runoff_save_global, route%scounts_global, route%rdispls_global,MPI_REAL, &
+         route%comm, mpierr)   
+       call MPI_allgatherv  (                          &
+         RUNOFF_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+         runoff_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+         route%comm, mpierr)   
+
+       if(mapl_am_I_root())then 
+         open(88,file="../runoff_save_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
+         do i=1,nt_global
+           write(88,*)runoff_save_global(i)
+         enddo
+         close(88)
+         open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
+         do i=1,N_pfaf_g
+           write(88,*)runoff_cat_global(i)
+         enddo
+         close(88)  
+         print *,"sum(runoff_cat_global)=",sum(runoff_cat_global)   
+         stop
+       endif
        
 
        ! Prepares to conduct routing model
