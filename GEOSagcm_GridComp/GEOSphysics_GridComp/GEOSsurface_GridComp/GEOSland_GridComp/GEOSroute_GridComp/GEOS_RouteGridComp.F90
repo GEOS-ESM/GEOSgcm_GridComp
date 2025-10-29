@@ -905,21 +905,21 @@ contains
          route%comm, mpierr)   
 
        if(mapl_am_I_root())then 
-         open(88,file="../runoff_tile_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt",status="unknown", position="append")
+         open(88,file="../runoff_tile_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
          do i=1,nt_global
            write(88,*)runoff_global_m3(i)
          enddo
          close(88)
-         open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt",status="unknown", position="append")
+         open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
          do i=1,N_pfaf_g
            write(88,*)runoff_cat_global(i)
          enddo
          close(88)  
          print *,"sum(runoff_global_m3)=",sum(runoff_global_m3)
          print *,"sum(runoff_cat_global)=",sum(runoff_cat_global)   
+         stop
        endif
        
-       stop
 
        deallocate(runoff_global) 
 
@@ -1130,7 +1130,6 @@ contains
     call MAPL_TimerOff ( MAPL, "-RRM" ) 
     call MAPL_TimerOff(MAPL,"RUN2")
     !call MPI_Barrier(route%comm, mpierr)
-
 
     RETURN_(ESMF_SUCCESS)
   end subroutine RUN2
