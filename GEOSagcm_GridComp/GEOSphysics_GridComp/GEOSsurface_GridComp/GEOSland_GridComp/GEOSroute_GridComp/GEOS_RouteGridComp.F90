@@ -797,7 +797,7 @@ contains
     real,             pointer     :: WRIVER_ACT(:) =>NULL()
     type (RES_STATE), pointer     :: res => NULL()    
 
-    real,             allocatable :: runoff_save_m3(:),runoff_global_m3(:),QOUTFLOW_GLOBAL(:),Qres_global(:)
+    real,             allocatable :: runoff_save_global(:),runoff_save_m3(:),runoff_global_m3(:),QOUTFLOW_GLOBAL(:),Qres_global(:)
     real,             allocatable :: WTOT_BEFORE(:),WTOT_AFTER(:),QINFLOW_LOCAL(:),UNBALANCE(:),UNBALANCE_GLOBAL(:),ERROR(:),ERROR_GLOBAL(:)
     real,             allocatable :: QFLOW_SINK(:),QFLOW_SINK_GLOBAL(:),WTOT_BEFORE_GLOBAL(:),WTOT_AFTER_GLOBAL(:)
     real,             allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:),wres_global(:)
@@ -893,11 +893,10 @@ contains
           enddo
        enddo
 
-       allocate(runoff_save_m3(nt_local),runoff_cat_global(N_pfaf_g),runoff_global_m3(nt_global))
-       runoff_save_m3=runoff_save*route%tile_area/1000. 
+       allocate(runoff_save_m3(nt_local),runoff_cat_global(N_pfaf_g),runoff_save_global(nt_global))
        call MPI_allgatherv  (                          &
-         runoff_save_m3,  route%scounts_global(mype+1)      ,MPI_REAL, &
-         runoff_global_m3, route%scounts_global, route%rdispls_global,MPI_REAL, &
+         runoff_save,  route%scounts_global(mype+1)      ,MPI_REAL, &
+         runoff_save_global, route%scounts_global, route%rdispls_global,MPI_REAL, &
          route%comm, mpierr)   
        call MPI_allgatherv  (                          &
          RUNOFF_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
@@ -905,7 +904,7 @@ contains
          route%comm, mpierr)   
 
        if(mapl_am_I_root())then 
-         open(88,file="../runoff_tile_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
+         open(88,file="../runoff_save_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
          do i=1,nt_global
            write(88,*)runoff_global_m3(i)
          enddo
