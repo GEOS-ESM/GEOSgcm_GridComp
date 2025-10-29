@@ -892,7 +892,31 @@ contains
              if(it==0)exit
           enddo
        enddo
+
+       allocate(runoff_save_m3(nt_local),runoff_cat_global(N_pfaf_g),runoff_global_m3(nt_global))
+       runoff_save_m3=runoff_save*route%tile_area/1000. 
+       call MPI_allgatherv  (                          &
+         runoff_save_m3,  route%scounts_global(mype+1)      ,MPI_REAL, &
+         runoff_global_m3, route%scounts_global, route%rdispls_global,MPI_REAL, &
+         route%comm, mpierr)   
+       call MPI_allgatherv  (                          &
+         RUNOFF_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+         runoff_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+         route%comm, mpierr)   
+
+       if(mapl_am_I_root())then 
+         open(88,file="../runoff_tile_global_"//trim(yr_s)//"_"//trim(mon_s)//".txt",status="unknown", position="append")
+         write(88,*)sum(runoff_global_m3)
+         close(88)
+         open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//".txt",status="unknown", position="append")
+         write(88,*)sum(runoff_cat_global)
+         close(88)  
+         print *,"sum(runoff_global_m3)=",sum(runoff_global_m3)
+         print *,"sum(runoff_cat_global)=",sum(runoff_cat_global)   
+       endif
        
+       stop
+
        deallocate(runoff_global) 
 
        ! Prepares to conduct routing model
@@ -962,7 +986,7 @@ contains
        route%wstream_acc = route%wstream_acc + WSTREAM_ACT/real(nstep_per_day)
        route%qoutflow_acc = route%qoutflow_acc + QOUTFLOW_ACT/real(nstep_per_day)
        route%qsflow_acc = route%qsflow_acc + QSFLOW_ACT/real(nstep_per_day)
-       res%qres_acc = res%qres_acc + QRES_ACT/real(nstep_per_day)       
+       res%qres_acc = res%qres_acc + QRES_ACT/real(nstep_per_day)   
 
        deallocate(RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_ACT,QINFLOW_LOCAL,QOUTFLOW_GLOBAL,QSFLOW_ACT,WTOT_BEFORE,QRES_ACT,QOUT_CAT)
        !initialize the cycle counter and sum (runoff_tile)       
@@ -980,37 +1004,37 @@ contains
        endif
        if(HH==23)then
           allocate(wriver_global(N_pfaf_g),wstream_global(N_pfaf_g),qoutflow_global(N_pfaf_g),qsflow_global(N_pfaf_g))       
-          !call MPI_allgatherv  (                          &
-          !     route%wriver_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
-          !     wriver_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-          !     route%comm, mpierr)    
-          !call MPI_allgatherv  (                          &
-          !     route%wstream_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
-          !     wstream_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-          !     route%comm, mpierr)    
+          call MPI_allgatherv  (                          &
+               route%wriver_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+               wriver_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+               route%comm, mpierr)    
+          call MPI_allgatherv  (                          &
+               route%wstream_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+               wstream_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+               route%comm, mpierr)    
           call MPI_allgatherv  (                          &
                route%qoutflow_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
                qoutflow_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
                route%comm, mpierr)        
-          !call MPI_allgatherv  (                          &
-          !     route%qsflow_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
-          !     qsflow_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-          !     route%comm, mpierr)      
+          call MPI_allgatherv  (                          &
+               route%qsflow_acc,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+               qsflow_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+               route%comm, mpierr)      
           if(mapl_am_I_root())then   
-             !open(88,file="../river/river_storage_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
-             !open(89,file="../river/stream_storage_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
+             open(88,file="../river/river_storage_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
+             open(89,file="../river/stream_storage_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")
              open(90,file="../river/river_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write")             
-             !open(91,file="../river/stream_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write") 
+             open(91,file="../river/stream_flow_"//trim(yr_s)//trim(mon_s)//trim(day_s)//".txt",action="write") 
              do i=1,N_pfaf_g
-                !write(88,*)wriver_global(i)
-                !write(89,*)wstream_global(i)
+                write(88,*)wriver_global(i)
+                write(89,*)wstream_global(i)
                 write(90,*)qoutflow_global(i)
-                !write(91,*)qsflow_global(i)
+                write(91,*)qsflow_global(i)
              enddo
-             !close(88)
-             !close(89)
+             close(88)
+             close(89)
              close(90)
-             !close(91)
+             close(91)
              !print *, "output river storage is: ",sum(wriver_global)/1.e9
              !print *, "output stream storage is: ",sum(wstream_global)/1.e9             
           endif
