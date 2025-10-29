@@ -263,7 +263,7 @@ contains
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )
 
-    if (use_res) then
+    !if (use_res) then
        call MAPL_AddExportSpec(GC,                    &
          LONG_NAME          = 'qres' ,&
          UNITS              = 'm+3 s-1'                  ,&
@@ -271,7 +271,7 @@ contains
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )
-    endif
+    !endif
 !EOS
 
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
