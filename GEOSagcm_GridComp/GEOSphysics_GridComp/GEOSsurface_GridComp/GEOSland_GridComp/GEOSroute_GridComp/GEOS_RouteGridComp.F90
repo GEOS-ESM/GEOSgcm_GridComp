@@ -905,11 +905,15 @@ contains
          route%comm, mpierr)   
 
        if(mapl_am_I_root())then 
-         open(88,file="../runoff_tile_global_"//trim(yr_s)//"_"//trim(mon_s)//".txt",status="unknown", position="append")
-         write(88,*)sum(runoff_global_m3)
+         open(88,file="../runoff_tile_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt",status="unknown", position="append")
+         do i=1,nt_global
+           write(88,*)runoff_global_m3(i)
+         enddo
          close(88)
-         open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//".txt",status="unknown", position="append")
-         write(88,*)sum(runoff_cat_global)
+         open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt",status="unknown", position="append")
+         do i=1,N_pfaf_g
+           write(88,*)runoff_cat_global(i)
+         enddo
          close(88)  
          print *,"sum(runoff_global_m3)=",sum(runoff_global_m3)
          print *,"sum(runoff_cat_global)=",sum(runoff_cat_global)   
