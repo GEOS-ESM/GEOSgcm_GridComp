@@ -26,7 +26,7 @@ module GEOS_RouteGridCompMod
   
   implicit none
 
-  logical, parameter :: use_res  = .True.
+  logical, parameter :: use_res  = .False.
 
   private
 
