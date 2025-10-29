@@ -570,7 +570,7 @@ contains
 
     allocate(scounts(ndes),scounts_cat(ndes),rdispls_cat(ndes))
     scounts=0
-    scounts(mype+1)=ntiles  
+    scounts(mype+1)=n_pfaf_local !ntiles  
     call MPI_Allgather(scounts(mype+1), 1, MPI_INTEGER, scounts_cat, 1, MPI_INTEGER, route%comm, mpierr) 
     rdispls_cat(1)=0
     do i=2,ndes
