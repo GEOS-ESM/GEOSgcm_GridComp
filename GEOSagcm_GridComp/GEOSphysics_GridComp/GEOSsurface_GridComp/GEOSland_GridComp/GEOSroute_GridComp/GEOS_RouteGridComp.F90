@@ -996,30 +996,30 @@ contains
        RUNOFF_ACT = arrayPtr * route%areacat/1000.
        
 
-       allocate(runoff_cat_global(N_pfaf_g),runoff_save_global(nt_global))
-       call MPI_allgatherv  (                          &
-         route%runoff_acc,  route%scounts_global(mype+1)      ,MPI_REAL, &
-         runoff_save_global, route%scounts_global, route%rdispls_global,MPI_REAL, &
-         route%comm, mpierr)   
-       call MPI_allgatherv  (                          &
-         RUNOFF_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
-         runoff_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-         route%comm, mpierr)   
+      ! allocate(runoff_cat_global(N_pfaf_g),runoff_save_global(nt_global))
+      ! call MPI_allgatherv  (                          &
+      !   route%runoff_acc,  route%scounts_global(mype+1)      ,MPI_REAL, &
+      !   runoff_save_global, route%scounts_global, route%rdispls_global,MPI_REAL, &
+      !   route%comm, mpierr)   
+      ! call MPI_allgatherv  (                          &
+      !   RUNOFF_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+      !   runoff_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+      !   route%comm, mpierr)   
 
-       if(mapl_am_I_root())then 
-         open(88,file="../runoff_save_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
-         do i=1,nt_global
-           write(88,*)runoff_save_global(i)
-         enddo
-         close(88)
-         open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
-         do i=1,N_pfaf_g
-           write(88,*)runoff_cat_global(i)
-         enddo
-         close(88)  
-         print *,"sum(runoff_cat_global)=",sum(runoff_cat_global)   
-         stop
-       endif
+      ! if(mapl_am_I_root())then 
+      !   open(88,file="../runoff_save_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
+      !   do i=1,nt_global
+      !     write(88,*)runoff_save_global(i)
+      !   enddo
+      !   close(88)
+      !   open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
+      !   do i=1,N_pfaf_g
+      !     write(88,*)runoff_cat_global(i)
+      !   enddo
+      !   close(88)  
+      !   print *,"sum(runoff_cat_global)=",sum(runoff_cat_global)   
+      !   stop
+      ! endif
        
 
        ! Prepares to conduct routing model
