@@ -1050,11 +1050,11 @@ contains
 
        allocate(data_cat_global(N_pfaf_g))
        call MPI_allgatherv  (                          &
-         QSFLOW_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+         QOUTFLOW_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
          data_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
          route%comm, mpierr)  
        if(mapl_am_I_root())then
-         open(88,file="../qsflow_global_"//trim(yr_s)//"_"//trim(mon_s)//"_1step.txt")
+         open(88,file="../qoutflow_global_"//trim(yr_s)//"_"//trim(mon_s)//"_1step.txt")
          do i=1,nt_global
            write(88,*)data_cat_global(i)
          enddo
