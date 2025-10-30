@@ -447,6 +447,7 @@ contains
     endif
     call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
     allocate(route%areacat(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
+    route%areacat=route%areacat*1.e6
 
    !read lengsc
     if (MAPL_AM_I_Root()) then
@@ -454,6 +455,7 @@ contains
     endif
     call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
     allocate(route%lengsc(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
+    route%lengsc=route%lengsc*1.e3
 
    !read downid
     if (MAPL_AM_I_Root()) then
