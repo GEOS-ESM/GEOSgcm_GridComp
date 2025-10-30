@@ -800,7 +800,7 @@ contains
     real,             allocatable :: runoff_save_global(:),runoff_save_m3(:),runoff_global_m3(:),QOUTFLOW_GLOBAL(:),Qres_global(:)
     real,             allocatable :: WTOT_BEFORE(:),WTOT_AFTER(:),QINFLOW_LOCAL(:),UNBALANCE(:),UNBALANCE_GLOBAL(:),ERROR(:),ERROR_GLOBAL(:)
     real,             allocatable :: QFLOW_SINK(:),QFLOW_SINK_GLOBAL(:),WTOT_BEFORE_GLOBAL(:),WTOT_AFTER_GLOBAL(:)
-    real,             allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:),wres_global(:)
+    real,             allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:),wres_global(:),data_cat_global(:)
     
     ! ------------------
     ! begin    
@@ -893,31 +893,31 @@ contains
           enddo
        enddo
 
-       allocate(runoff_save_m3(nt_local),runoff_cat_global(N_pfaf_g),runoff_save_global(nt_global))
-       call MPI_allgatherv  (                          &
-         runoff_save,  route%scounts_global(mype+1)      ,MPI_REAL, &
-         runoff_save_global, route%scounts_global, route%rdispls_global,MPI_REAL, &
-         route%comm, mpierr)   
-       call MPI_allgatherv  (                          &
-         RUNOFF_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
-         runoff_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-         route%comm, mpierr)   
+       !allocate(runoff_save_m3(nt_local),runoff_cat_global(N_pfaf_g),runoff_save_global(nt_global))
+       !call MPI_allgatherv  (                          &
+       !  runoff_save,  route%scounts_global(mype+1)      ,MPI_REAL, &
+       !  runoff_save_global, route%scounts_global, route%rdispls_global,MPI_REAL, &
+       !  route%comm, mpierr)   
+       !call MPI_allgatherv  (                          &
+       !  RUNOFF_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+       !  runoff_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+       !  route%comm, mpierr)   
 
-       if(mapl_am_I_root())then 
-         open(88,file="../runoff_save_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
-         do i=1,nt_global
-           write(88,*)runoff_save_global(i)
-         enddo
-         close(88)
-         open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
-         do i=1,N_pfaf_g
-           write(88,*)runoff_cat_global(i)
-         enddo
-         close(88)  
+       !if(mapl_am_I_root())then 
+       !  open(88,file="../runoff_save_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
+       !  do i=1,nt_global
+       !    write(88,*)runoff_save_global(i)
+       !  enddo
+       !  close(88)
+       !  open(88,file="../runoff_cat_global_"//trim(yr_s)//"_"//trim(mon_s)//"_01.txt")
+       !  do i=1,N_pfaf_g
+       !    write(88,*)runoff_cat_global(i)
+       !  enddo
+       !  close(88)  
          !print *,"sum(runoff_global_m3)=",sum(runoff_global_m3)
-         print *,"sum(runoff_cat_global)=",sum(runoff_cat_global)   
-         stop
-       endif
+       !  print *,"sum(runoff_cat_global)=",sum(runoff_cat_global)   
+       !  stop
+       !endif
        
 
        deallocate(runoff_global) 
@@ -949,7 +949,23 @@ contains
             route%qstr_clmt, route%qri_clmt, route%qin_clmt, &
             route%K, route%Kstr, &
             WSTREAM_ACT,WRIVER_ACT, &
-            QSFLOW_ACT,QOUTFLOW_ACT)  
+            QSFLOW_ACT,QOUTFLOW_ACT) 
+
+       allocate(data_cat_global(N_pfaf_g))
+       call MPI_allgatherv  (                          &
+         QSFLOW_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+         data_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+         route%comm, mpierr)  
+       if(mapl_am_I_root())then
+         open(88,file="../qsflow_global_"//trim(yr_s)//"_"//trim(mon_s)//"_1step.txt")
+         do i=1,nt_global
+           write(88,*)data_cat_global(i)
+         enddo
+         close(88)  
+         stop                
+       endif
+       deallocate(data_cat_global)
+
        ! Call reservoir module        
        do i=1,ntiles
           call res_cal(res%active_res(i),QOUTFLOW_ACT(i),res%type_res(i),res%cat2res(i),&
