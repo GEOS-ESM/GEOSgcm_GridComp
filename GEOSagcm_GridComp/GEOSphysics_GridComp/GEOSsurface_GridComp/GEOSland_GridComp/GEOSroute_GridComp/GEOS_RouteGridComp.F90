@@ -1048,20 +1048,20 @@ contains
             QSFLOW_ACT,QOUTFLOW_ACT)  
        ! Call reservoir module        
 
-       allocate(data_cat_global(N_pfaf_g))
-       call MPI_allgatherv  (                          &
-         QOUTFLOW_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
-         data_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-         route%comm, mpierr)  
-       if(mapl_am_I_root())then
-         open(88,file="../qoutflow_global_"//trim(yr_s)//"_"//trim(mon_s)//"_1step.txt")
-         do i=1,nt_global
-           write(88,*)data_cat_global(i)
-         enddo
-         close(88)  
-         stop                
-       endif
-       deallocate(data_cat_global)
+       !allocate(data_cat_global(N_pfaf_g))
+       !call MPI_allgatherv  (                          &
+       !  QOUTFLOW_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+       !  data_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+       !  route%comm, mpierr)  
+       !if(mapl_am_I_root())then
+       !  open(88,file="../qoutflow_global_"//trim(yr_s)//"_"//trim(mon_s)//"_1step.txt")
+       !  do i=1,nt_global
+       !    write(88,*)data_cat_global(i)
+       !  enddo
+       !  close(88)  
+       !  stop                
+       !endif
+       !deallocate(data_cat_global)
 
 
        call res%calc( QOUTFLOW_ACT, QRES_ACT, WRES, real(route_dt), _RC)
@@ -1082,11 +1082,11 @@ contains
        route%qsflow_acc = route%qsflow_acc + QSFLOW_ACT/real(nstep_per_day)
        res%qres_acc = res%qres_acc + QRES_ACT/real(nstep_per_day)       
 
-       if (associated(QSFLOW))    QSFLOW  = route%qsflow_acc
-       if (associated(QOUTFLOW)) QOUTFLOW = route%qoutflow_acc
+       if (associated(QSFLOW))    QSFLOW  = QSFLOW_ACT!route%qsflow_acc
+       if (associated(QOUTFLOW)) QOUTFLOW = QOUTFLOW_ACT!route%qoutflow_acc
        if (associated(QRES)) then
           _ASSERT(use_res, "Set ues_res be true to get QRES export")
-          QRES = res%qres_acc
+          QRES = QRES_ACT!res%qres_acc
        endif
        deallocate(RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_ACT,QINFLOW_LOCAL,QSFLOW_ACT,WTOT_BEFORE,QRES_ACT,QOUT_CAT)
 
