@@ -33,7 +33,7 @@ module GEOS_RouteGridCompMod
   implicit none
 
   integer, parameter :: upmax    = 34
-  logical, parameter :: use_res  = .True.
+  logical, parameter :: use_res  = .False.
   integer, save      :: nmax 
 
   private
@@ -49,6 +49,7 @@ module GEOS_RouteGridCompMod
     real,    pointer :: Qfld_thres(:) !m3/s
     integer, pointer :: cat2res(:)
     real,    pointer :: qres_acc(:)  
+    real,    pointer :: qres_prev(:)
   end type RES_STATE
 
   type T_RROUTE_STATE !routing related variables
@@ -88,6 +89,11 @@ module GEOS_RouteGridCompMod
      real,    pointer :: wstream_acc(:)    => NULL()     
      real,    pointer :: qoutflow_acc(:)   => NULL()
      real,    pointer :: qsflow_acc(:)     => NULL()
+
+     real,    pointer :: wriver_prev(:)     => NULL()
+     real,    pointer :: wstream_prev(:)    => NULL()     
+     real,    pointer :: qoutflow_prev(:)   => NULL()
+     real,    pointer :: qsflow_prev(:)     => NULL()     
 
      real,    pointer :: lstr(:)           => NULL()  ! m
      real,    pointer :: qri_clmt(:)       => NULL()  ! m3/s
@@ -617,6 +623,12 @@ contains
     route%qoutflow_acc=0.
     route%qsflow_acc=0.
     route%reservoir%qres_acc=0.
+    allocate(route%wriver_prev(ntiles),route%wstream_prev(ntiles),route%qoutflow_prev(ntiles),route%qsflow_prev(ntiles),route%reservoir%qres_prev(ntiles))
+    route%wriver_prev=0.
+    route%wstream_prev=0.
+    route%qoutflow_prev=0.
+    route%qsflow_prev=0.
+    route%reservoir%qres_prev=0.    
 
     !Read input specially for geometry hydraulic (not required by linear model)
     allocate(buff_global(N_pfaf_g),route%lstr(ntiles))   
@@ -951,20 +963,20 @@ contains
             WSTREAM_ACT,WRIVER_ACT, &
             QSFLOW_ACT,QOUTFLOW_ACT) 
 
-       allocate(data_cat_global(N_pfaf_g))
-       call MPI_allgatherv  (                          &
-         QOUTFLOW_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
-         data_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
-         route%comm, mpierr)  
-       if(mapl_am_I_root())then
-         open(88,file="../qoutflow_global_"//trim(yr_s)//"_"//trim(mon_s)//"_1step.txt")
-         do i=1,nt_global
-           write(88,*)data_cat_global(i)
-         enddo
-         close(88)  
-         stop                
-       endif
-       deallocate(data_cat_global)
+       !allocate(data_cat_global(N_pfaf_g))
+       !call MPI_allgatherv  (                          &
+       !  QOUTFLOW_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+       !  data_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+       !  route%comm, mpierr)  
+       !if(mapl_am_I_root())then
+       !  open(88,file="../qoutflow_global_"//trim(yr_s)//"_"//trim(mon_s)//"_1step.txt")
+       !  do i=1,nt_global
+       !    write(88,*)data_cat_global(i)
+       !  enddo
+       !  close(88)  
+       !  stop                
+       !endif
+       !deallocate(data_cat_global)
 
        ! Call reservoir module        
        do i=1,ntiles
@@ -1001,11 +1013,17 @@ contains
 
        ! Update accumulated variables for output
        if(FirstTime) nstep_per_day = 86400/route_dt
-       route%wriver_acc = route%wriver_acc + WRIVER_ACT/real(nstep_per_day)
-       route%wstream_acc = route%wstream_acc + WSTREAM_ACT/real(nstep_per_day)
-       route%qoutflow_acc = route%qoutflow_acc + QOUTFLOW_ACT/real(nstep_per_day)
-       route%qsflow_acc = route%qsflow_acc + QSFLOW_ACT/real(nstep_per_day)
-       res%qres_acc = res%qres_acc + QRES_ACT/real(nstep_per_day)   
+       route%wriver_acc = route%wriver_acc + route%wriver_prev/real(nstep_per_day)
+       route%wstream_acc = route%wstream_acc + route%wstream_prev/real(nstep_per_day)
+       route%qoutflow_acc = route%qoutflow_acc + route%qoutflow_prev/real(nstep_per_day)
+       route%qsflow_acc = route%qsflow_acc + route%qsflow_prev/real(nstep_per_day)
+       res%qres_acc = res%qres_acc + res%qres_prev/real(nstep_per_day)   
+
+       route%wriver_prev=WRIVER_ACT
+       route%wstream_prev=WSTREAM_ACT
+       route%qoutflow_prev=QOUTFLOW_ACT
+       route%qsflow_prev=QSFLOW_ACT
+       res%qres_prev=QRES_ACT
 
        deallocate(RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_ACT,QINFLOW_LOCAL,QOUTFLOW_GLOBAL,QSFLOW_ACT,WTOT_BEFORE,QRES_ACT,QOUT_CAT)
        !initialize the cycle counter and sum (runoff_tile)       
