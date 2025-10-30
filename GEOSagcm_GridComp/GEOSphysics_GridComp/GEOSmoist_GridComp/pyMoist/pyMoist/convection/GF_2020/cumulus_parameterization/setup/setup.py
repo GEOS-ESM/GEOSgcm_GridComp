@@ -122,7 +122,7 @@ class Setup:
                 error_code_string=locals.error_code_string,
                 CAP_MAX_INC=plume_dependent_constants.CAP_MAX_INC,
                 cap_max_increment=locals.cap_max_increment,
-                geopotential_height=state.input_output.geopotential_height,
+                geopotential_height=state.input_output.geopotential_height_forced,
                 geopotential_height_local=locals.geopotential_height,
                 geopotential_height_modified_local=locals.geopotential_height_modified,
                 cloud_work_function_0=locals.cloud_work_function_0,

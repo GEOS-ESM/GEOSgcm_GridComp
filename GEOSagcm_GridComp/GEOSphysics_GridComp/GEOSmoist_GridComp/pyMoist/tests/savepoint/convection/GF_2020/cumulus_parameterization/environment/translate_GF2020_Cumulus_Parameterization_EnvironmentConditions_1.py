@@ -9,10 +9,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020Cum
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment.environment import EnvironmentConditions
-from ndsl.dsl.typing import Int
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 
 
@@ -28,18 +26,16 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow(Tr
         self.quantity_factory = grid.quantity_factory
 
         self.in_vars["data_vars"] = {
-            "geopotential_height": {"serialname": "local_geopotential_height_env_cond"},
-            "saturation_mixing_ratio": {"serialname": "local_env_saturation_mixing_ratio_env_cond"},
-            "moist_static_energy": {"serialname": "local_env_moist_static_energy_env_cond"},
-            "saturation_moist_static_energy": {
-                "serialname": "local_env_saturation_moist_static_energy_env_cond"
-            },
-            "t_old": {"serialname": "t_old_env_cond"},
-            "vapor_old": {"serialname": "vapor_old_env_cond"},
-            "p": {"serialname": "p_env_cond"},
-            "topography_height_no_negative": {"serialname": "topography_height_no_negative_env_cond"},
-            "p_surface": {"serialname": "p_surface_env_cond"},
-            "error_code": {"serialname": "error_code_env_cond"},
+            "local_geopotential_height_env_cond": {},
+            "local_env_saturation_mixing_ratio_env_cond": {},
+            "local_env_moist_static_energy_env_cond": {},
+            "local_env_saturation_moist_static_energy_env_cond": {},
+            "t_old_env_cond": {},
+            "vapor_old_env_cond": {},
+            "p_forced_env_cond": {},
+            "topography_height_no_negative_env_cond": {},
+            "p_surface_env_cond": {},
+            "error_code_env_cond": {},
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
@@ -57,9 +53,6 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow(Tr
             cumulus_parameterization_config, plume_dependent_constants, "shallow"
         )
 
-        # initalize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
-
         # initalize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
@@ -76,17 +69,24 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow(Tr
         )
 
         # fill relevant parts of dataclasses
-        locals.geopotential_height.data[:] = inputs["geopotential_height"]
-        locals.environment_saturation_mixing_ratio.data[:] = inputs["saturation_mixing_ratio"]
-        locals.environment_moist_static_energy.data[:] = inputs["moist_static_energy"]
-        locals.environment_saturation_moist_static_energy.data[:] = inputs["saturation_moist_static_energy"]
-
-        state.input_output.t_old.data[:] = inputs["t_old"]
-        state.input_output.vapor_old.data[:] = inputs["vapor_old"]
-        state.input_output.p.data[:] = inputs["p"]
-        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
-        state.input_output.p_surface.data[:] = inputs["p_surface"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.geopotential_height.data[:] = inputs["local_geopotential_height_env_cond"]
+        locals.environment_saturation_mixing_ratio.data[:] = inputs[
+            "local_env_saturation_mixing_ratio_env_cond"
+        ]
+        locals.environment_moist_static_energy.data[:] = inputs["local_env_moist_static_energy_env_cond"]
+        locals.environment_saturation_moist_static_energy.data[:] = inputs[
+            "local_env_saturation_moist_static_energy_env_cond"
+        ]
+        state.input_output.t_old.data[:] = inputs["t_old_env_cond"]
+        state.input_output.vapor_old.data[:] = inputs["vapor_old_env_cond"]
+        state.input_output.p_forced.data[:] = inputs["p_forced_env_cond"]
+        state.input_output.topography_height_no_negative.data[:] = inputs[
+            "topography_height_no_negative_env_cond"
+        ]
+        state.input_output.p_surface.data[:] = inputs["p_surface_env_cond"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code_env_cond"
+        ]
 
         environment_conditions = EnvironmentConditions(
             stencil_factory=self.stencil_factory,
@@ -99,23 +99,26 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow(Tr
             environment_conditions(
                 state=state,
                 locals=locals,
-                saturation_tables=saturation_tables,
                 plume_dependent_constants=plume_dependent_constants,
                 data_type=0,
             )
 
         outputs = {
             # state fields
-            "geopotential_height": locals.geopotential_height.field[:],
-            "saturation_mixing_ratio": locals.environment_saturation_mixing_ratio.field[:],
-            "moist_static_energy": locals.environment_moist_static_energy.field[:],
-            "saturation_moist_static_energy": locals.environment_saturation_moist_static_energy.field[:],
-            "t_old": state.input_output.t_old.field[:],
-            "vapor_old": state.input_output.vapor_old.field[:],
-            "p": state.input_output.p.field[:],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
-            "p_surface": state.input_output.p_surface.field[:],
-            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_geopotential_height_env_cond": locals.geopotential_height.field[:],
+            "local_env_saturation_mixing_ratio_env_cond": locals.environment_saturation_mixing_ratio.field[:],
+            "local_env_moist_static_energy_env_cond": locals.environment_moist_static_energy.field[:],
+            "local_env_saturation_moist_static_energy_env_cond": locals.environment_saturation_moist_static_energy.field[
+                :
+            ],
+            "t_old_env_cond": state.input_output.t_old.field[:],
+            "vapor_old_env_cond": state.input_output.vapor_old.field[:],
+            "p_forced_env_cond": state.input_output.p_forced.field[:],
+            "topography_height_no_negative_env_cond": state.input_output.topography_height_no_negative.field[
+                :
+            ],
+            "p_surface_env_cond": state.input_output.p_surface.field[:],
+            "error_code_env_cond": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
         }
 
         return outputs
@@ -133,18 +136,16 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid(Transl
         self.quantity_factory = grid.quantity_factory
 
         self.in_vars["data_vars"] = {
-            "geopotential_height": {"serialname": "local_geopotential_height_env_cond"},
-            "saturation_mixing_ratio": {"serialname": "local_env_saturation_mixing_ratio_env_cond"},
-            "moist_static_energy": {"serialname": "local_env_moist_static_energy_env_cond"},
-            "saturation_moist_static_energy": {
-                "serialname": "local_env_saturation_moist_static_energy_env_cond"
-            },
-            "t_old": {"serialname": "t_old_env_cond"},
-            "vapor_old": {"serialname": "vapor_old_env_cond"},
-            "p": {"serialname": "p_env_cond"},
-            "topography_height_no_negative": {"serialname": "topography_height_no_negative_env_cond"},
-            "p_surface": {"serialname": "p_surface_env_cond"},
-            "error_code": {"serialname": "error_code_env_cond"},
+            "local_geopotential_height_env_cond": {},
+            "local_env_saturation_mixing_ratio_env_cond": {},
+            "local_env_moist_static_energy_env_cond": {},
+            "local_env_saturation_moist_static_energy_env_cond": {},
+            "t_old_env_cond": {},
+            "vapor_old_env_cond": {},
+            "p_forced_env_cond": {},
+            "topography_height_no_negative_env_cond": {},
+            "p_surface_env_cond": {},
+            "error_code_env_cond": {},
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
@@ -162,9 +163,6 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid(Transl
             cumulus_parameterization_config, plume_dependent_constants, "mid"
         )
 
-        # initalize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
-
         # initalize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
@@ -181,17 +179,24 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid(Transl
         )
 
         # fill relevant parts of dataclasses
-        locals.geopotential_height.data[:] = inputs["geopotential_height"]
-        locals.environment_saturation_mixing_ratio.data[:] = inputs["saturation_mixing_ratio"]
-        locals.environment_moist_static_energy.data[:] = inputs["moist_static_energy"]
-        locals.environment_saturation_moist_static_energy.data[:] = inputs["saturation_moist_static_energy"]
-
-        state.input_output.t_old.data[:] = inputs["t_old"]
-        state.input_output.vapor_old.data[:] = inputs["vapor_old"]
-        state.input_output.p.data[:] = inputs["p"]
-        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
-        state.input_output.p_surface.data[:] = inputs["p_surface"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.geopotential_height.data[:] = inputs["local_geopotential_height_env_cond"]
+        locals.environment_saturation_mixing_ratio.data[:] = inputs[
+            "local_env_saturation_mixing_ratio_env_cond"
+        ]
+        locals.environment_moist_static_energy.data[:] = inputs["local_env_moist_static_energy_env_cond"]
+        locals.environment_saturation_moist_static_energy.data[:] = inputs[
+            "local_env_saturation_moist_static_energy_env_cond"
+        ]
+        state.input_output.t_old.data[:] = inputs["t_old_env_cond"]
+        state.input_output.vapor_old.data[:] = inputs["vapor_old_env_cond"]
+        state.input_output.p_forced.data[:] = inputs["p_forced_env_cond"]
+        state.input_output.topography_height_no_negative.data[:] = inputs[
+            "topography_height_no_negative_env_cond"
+        ]
+        state.input_output.p_surface.data[:] = inputs["p_surface_env_cond"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code_env_cond"
+        ]
 
         environment_conditions = EnvironmentConditions(
             stencil_factory=self.stencil_factory,
@@ -204,23 +209,26 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid(Transl
             environment_conditions(
                 state=state,
                 locals=locals,
-                saturation_tables=saturation_tables,
                 plume_dependent_constants=plume_dependent_constants,
                 data_type=0,
             )
 
         outputs = {
             # state fields
-            "geopotential_height": locals.geopotential_height.field[:],
-            "saturation_mixing_ratio": locals.environment_saturation_mixing_ratio.field[:],
-            "moist_static_energy": locals.environment_moist_static_energy.field[:],
-            "saturation_moist_static_energy": locals.environment_saturation_moist_static_energy.field[:],
-            "t_old": state.input_output.t_old.field[:],
-            "vapor_old": state.input_output.vapor_old.field[:],
-            "p": state.input_output.p.field[:],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
-            "p_surface": state.input_output.p_surface.field[:],
-            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_geopotential_height_env_cond": locals.geopotential_height.field[:],
+            "local_env_saturation_mixing_ratio_env_cond": locals.environment_saturation_mixing_ratio.field[:],
+            "local_env_moist_static_energy_env_cond": locals.environment_moist_static_energy.field[:],
+            "local_env_saturation_moist_static_energy_env_cond": locals.environment_saturation_moist_static_energy.field[
+                :
+            ],
+            "t_old_env_cond": state.input_output.t_old.field[:],
+            "vapor_old_env_cond": state.input_output.vapor_old.field[:],
+            "p_forced_env_cond": state.input_output.p_forced.field[:],
+            "topography_height_no_negative_env_cond": state.input_output.topography_height_no_negative.field[
+                :
+            ],
+            "p_surface_env_cond": state.input_output.p_surface.field[:],
+            "error_code_env_cond": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
         }
 
         return outputs
@@ -238,18 +246,16 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_deep(Trans
         self.quantity_factory = grid.quantity_factory
 
         self.in_vars["data_vars"] = {
-            "geopotential_height": {"serialname": "local_geopotential_height_env_cond"},
-            "saturation_mixing_ratio": {"serialname": "local_env_saturation_mixing_ratio_env_cond"},
-            "moist_static_energy": {"serialname": "local_env_moist_static_energy_env_cond"},
-            "saturation_moist_static_energy": {
-                "serialname": "local_env_saturation_moist_static_energy_env_cond"
-            },
-            "t_old": {"serialname": "t_old_env_cond"},
-            "vapor_old": {"serialname": "vapor_old_env_cond"},
-            "p": {"serialname": "p_env_cond"},
-            "topography_height_no_negative": {"serialname": "topography_height_no_negative_env_cond"},
-            "p_surface": {"serialname": "p_surface_env_cond"},
-            "error_code": {"serialname": "error_code_env_cond"},
+            "local_geopotential_height_env_cond": {},
+            "local_env_saturation_mixing_ratio_env_cond": {},
+            "local_env_moist_static_energy_env_cond": {},
+            "local_env_saturation_moist_static_energy_env_cond": {},
+            "t_old_env_cond": {},
+            "vapor_old_env_cond": {},
+            "p_forced_env_cond": {},
+            "topography_height_no_negative_env_cond": {},
+            "p_surface_env_cond": {},
+            "error_code_env_cond": {},
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
@@ -267,9 +273,6 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_deep(Trans
             cumulus_parameterization_config, plume_dependent_constants, "deep"
         )
 
-        # initalize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
-
         # initalize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
@@ -286,17 +289,24 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_deep(Trans
         )
 
         # fill relevant parts of dataclasses
-        locals.geopotential_height.data[:] = inputs["geopotential_height"]
-        locals.environment_saturation_mixing_ratio.data[:] = inputs["saturation_mixing_ratio"]
-        locals.environment_moist_static_energy.data[:] = inputs["moist_static_energy"]
-        locals.environment_saturation_moist_static_energy.data[:] = inputs["saturation_moist_static_energy"]
-
-        state.input_output.t_old.data[:] = inputs["t_old"]
-        state.input_output.vapor_old.data[:] = inputs["vapor_old"]
-        state.input_output.p.data[:] = inputs["p"]
-        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
-        state.input_output.p_surface.data[:] = inputs["p_surface"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.geopotential_height.data[:] = inputs["local_geopotential_height_env_cond"]
+        locals.environment_saturation_mixing_ratio.data[:] = inputs[
+            "local_env_saturation_mixing_ratio_env_cond"
+        ]
+        locals.environment_moist_static_energy.data[:] = inputs["local_env_moist_static_energy_env_cond"]
+        locals.environment_saturation_moist_static_energy.data[:] = inputs[
+            "local_env_saturation_moist_static_energy_env_cond"
+        ]
+        state.input_output.t_old.data[:] = inputs["t_old_env_cond"]
+        state.input_output.vapor_old.data[:] = inputs["vapor_old_env_cond"]
+        state.input_output.p_forced.data[:] = inputs["p_forced_env_cond"]
+        state.input_output.topography_height_no_negative.data[:] = inputs[
+            "topography_height_no_negative_env_cond"
+        ]
+        state.input_output.p_surface.data[:] = inputs["p_surface_env_cond"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code_env_cond"
+        ]
 
         environment_conditions = EnvironmentConditions(
             stencil_factory=self.stencil_factory,
@@ -309,23 +319,26 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_deep(Trans
             environment_conditions(
                 state=state,
                 locals=locals,
-                saturation_tables=saturation_tables,
                 plume_dependent_constants=plume_dependent_constants,
                 data_type=0,
             )
 
         outputs = {
             # state fields
-            "geopotential_height": locals.geopotential_height.field[:],
-            "saturation_mixing_ratio": locals.environment_saturation_mixing_ratio.field[:],
-            "moist_static_energy": locals.environment_moist_static_energy.field[:],
-            "saturation_moist_static_energy": locals.environment_saturation_moist_static_energy.field[:],
-            "t_old": state.input_output.t_old.field[:],
-            "vapor_old": state.input_output.vapor_old.field[:],
-            "p": state.input_output.p.field[:],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
-            "p_surface": state.input_output.p_surface.field[:],
-            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_geopotential_height_env_cond": locals.geopotential_height.field[:],
+            "local_env_saturation_mixing_ratio_env_cond": locals.environment_saturation_mixing_ratio.field[:],
+            "local_env_moist_static_energy_env_cond": locals.environment_moist_static_energy.field[:],
+            "local_env_saturation_moist_static_energy_env_cond": locals.environment_saturation_moist_static_energy.field[
+                :
+            ],
+            "t_old_env_cond": state.input_output.t_old.field[:],
+            "vapor_old_env_cond": state.input_output.vapor_old.field[:],
+            "p_forced_env_cond": state.input_output.p_forced.field[:],
+            "topography_height_no_negative_env_cond": state.input_output.topography_height_no_negative.field[
+                :
+            ],
+            "p_surface_env_cond": state.input_output.p_surface.field[:],
+            "error_code_env_cond": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
         }
 
         return outputs

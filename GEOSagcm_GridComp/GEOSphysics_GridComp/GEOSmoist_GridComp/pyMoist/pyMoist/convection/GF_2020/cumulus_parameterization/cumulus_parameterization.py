@@ -31,6 +31,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.precip.precip import (
     UpdateWorkfunctionsAndCondensates,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels.get_levels import (
+    MaximumUpdraftOriginLevel,
     DowndraftDetrainmentLevel,
     HighestMoistStaticEnergyLevel,
     ConvectiveCloudBaseLevel,
@@ -149,13 +150,40 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._hydrostatic_air_density = HydrostaticAirDensity()
+        self._hydrostatic_air_density = HydrostaticAirDensity(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
-        self._partition_liquid_ice = PartitionLiquidIce()
+        self._partition_liquid_ice = PartitionLiquidIce(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
-        self._downdraft_detrainment_level = DowndraftDetrainmentLevel()
+        self._maximum_updraft_origin_level = MaximumUpdraftOriginLevel(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
-        self._highest_moist_static_energy_level = HighestMoistStaticEnergyLevel()
+        self._downdraft_detrainment_level = DowndraftDetrainmentLevel(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
+
+        self._highest_moist_static_energy_level = HighestMoistStaticEnergyLevel(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._precip_factor = PrecipFactor()
 
@@ -335,22 +363,47 @@ class CumulusParameterization:
                 )
 
                 # get air density at full layer (model levels) by hydrostatic balance (kg/m3)
-                self._hydrostatic_air_density()
+                self._hydrostatic_air_density(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # partition between liq/ice cloud contents
-                self._partition_liquid_ice()
+                self._partition_liquid_ice(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
+
+                # get the maximum origin level up an updraft
+                self._maximum_updraft_origin_level(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # level where detrainment for downdraft starts
-                self._downdraft_detrainment_level()
+                self._downdraft_detrainment_level(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # determine level with highest moist static energy content (k_max_mse)
-                self._highest_moist_static_energy_level()
+                self._highest_moist_static_energy_level(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # get the pickup of ensemble ave prec, following Neelin et al 2009.
+                # NOTE this runs in fortran but the output is never used - so it is not implemented
                 self._precip_factor()
 
                 # cold pool parameterization and convective memory
                 # NOTE CONVECTION TRACER BLOCK
+                # NOTE not called in experiment used to design this, so it is not implemented
                 self._cold_pool_parameterization()
 
                 # determine LCL for the air parcels with highest moist static energy

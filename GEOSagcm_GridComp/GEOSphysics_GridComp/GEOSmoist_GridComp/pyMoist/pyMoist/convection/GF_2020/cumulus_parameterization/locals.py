@@ -106,6 +106,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    updraft_origin_level: Quantity = dataclasses.field(
+        metadata={
+            "name": "updraft_origin_level",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Int,
+        }
+    )
     maximum_updraft_origin_level: Quantity = dataclasses.field(
         metadata={
             "name": "maximum_updraft_origin_level",
@@ -520,6 +529,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    environment_moist_static_energy_cloud_levels_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_moist_static_energy_cloud_levels_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     environment_saturation_moist_static_energy: Quantity = dataclasses.field(
         metadata={
             "name": "environment_saturation_moist_static_energy",
@@ -583,6 +601,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    environment_saturation_mixing_ratio_cloud_levels_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_mixing_ratio_cloud_levels_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     p_cloud_levels: Quantity = dataclasses.field(
         metadata={
             "name": "p_cloud_levels",
@@ -626,5 +653,41 @@ class GF2020CumulusParameterizationLocals(State):
             "units": "?",
             "intent": "?",
             "dtype": Float,
+        }
+    )
+    air_density: Quantity = dataclasses.field(
+        metadata={
+            "name": "air_density",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    partition_liquid_ice: Quantity = dataclasses.field(
+        metadata={
+            "name": "partition_liquid_ice",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    melting_layer: Quantity = dataclasses.field(
+        metadata={
+            "name": "melting_layer",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    detrainment_start_level: Quantity = dataclasses.field(
+        metadata={
+            "name": "detrainment_start_level",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Int,
         }
     )

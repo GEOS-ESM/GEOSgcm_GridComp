@@ -70,6 +70,11 @@ def set_constants(
         # height(m) above which no downdrafts are allowed to originate
         plume_dependent_constants.MAX_DOWNDRAFT_ORIGIN_HEIGHt = Float(3000.0)
 
+        # depth(m) over which downdraft detrains all its mass
+        plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
+            Float(0.5) * plume_dependent_constants.DEPTH_MIN
+        )
+
     elif plume == "mid":
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(1)
@@ -130,6 +135,11 @@ def set_constants(
         # height(m) above which no downdrafts are allowed to originate
         plume_dependent_constants.MAX_DOWNDRAFT_ORIGIN_HEIGHt = Float(3000.0)
 
+        # depth(m) over which downdraft detrains all its mass
+        plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
+            Float(0.5) * plume_dependent_constants.DEPTH_MIN
+        )
+
     elif plume == "deep":
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(2)
@@ -189,6 +199,11 @@ def set_constants(
 
         # height(m) above which no downdrafts are allowed to originate
         plume_dependent_constants.MAX_DOWNDRAFT_ORIGIN_HEIGHt = Float(3000.0)
+
+        # depth(m) over which downdraft detrains all its mass
+        plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
+            Float(0.5) * plume_dependent_constants.DEPTH_MIN
+        )
 
     else:
         raise NotImplementedError("Unknown plume specified, corresponding constants are unavailable.")

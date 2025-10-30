@@ -54,3 +54,5 @@ class GF2020CumulusParameterizationConfig:
     SATURATION_CALCULATION_CHOICE: Int
     ITEST: Int
     CLOUD_LEVEL_GRID: Int
+    MELT_ICE: Int
+    MODIS_FRACTION: Int
