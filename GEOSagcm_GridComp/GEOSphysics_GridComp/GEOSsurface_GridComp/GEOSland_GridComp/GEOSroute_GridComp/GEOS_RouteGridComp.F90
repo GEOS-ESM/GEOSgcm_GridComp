@@ -903,7 +903,7 @@ contains
     real,             allocatable :: UNBALANCE(:),UNBALANCE_GLOBAL(:),ERROR(:),ERROR_GLOBAL(:)
     real,             allocatable :: QFLOW_SINK(:),QFLOW_SINK_GLOBAL(:),WTOT_BEFORE_GLOBAL(:),WTOT_AFTER_GLOBAL(:)
     real,             allocatable :: wriver_global(:),wstream_global(:),qsflow_global(:),wres_global(:)
-    real, dimension(:), pointer :: runoff_global,runoff_local,area_local,runoff_cat_global   
+    real, dimension(:), pointer :: runoff_global,runoff_local,area_local,runoff_cat_global,data_cat_global  
     ! ------------------
     ! begin    
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
@@ -1047,6 +1047,22 @@ contains
             WSTREAM,WRIVER, &
             QSFLOW_ACT,QOUTFLOW_ACT)  
        ! Call reservoir module        
+
+       allocate(data_cat_global(N_pfaf_g))
+       call MPI_allgatherv  (                          &
+         QSFLOW_ACT,  route%scounts_cat(mype+1)      ,MPI_REAL, &
+         data_cat_global, route%scounts_cat, route%rdispls_cat,MPI_REAL, &
+         route%comm, mpierr)  
+       if(mapl_am_I_root())then
+         open(88,file="../qsflow_global_"//trim(yr_s)//"_"//trim(mon_s)//"_1step.txt")
+         do i=1,nt_global
+           write(88,*)data_cat_global(i)
+         enddo
+         close(88)  
+         stop                
+       endif
+       deallocate(data_cat_global)
+
 
        call res%calc( QOUTFLOW_ACT, QRES_ACT, WRES, real(route_dt), _RC)
        QOUT_CAT = QOUTFLOW_ACT              
