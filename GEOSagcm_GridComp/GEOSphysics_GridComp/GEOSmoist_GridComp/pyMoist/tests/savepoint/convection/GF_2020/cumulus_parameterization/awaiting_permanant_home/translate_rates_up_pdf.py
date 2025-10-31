@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -69,14 +70,10 @@ class TranslateRatesUpPdf(TranslateFortranData2Py):
         )
         safe_assign_array(heo.view[:, :, :], inputs["heo"])
 
-        heso_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        heso_cup = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(heso_cup.view[:, :, :], inputs["heso_cup"])
 
-        hkbo = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        hkbo = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(hkbo.view[:, :, :], inputs["hkbo"])
 
         ierr = QuantityFactory.zeros(
@@ -106,9 +103,7 @@ class TranslateRatesUpPdf(TranslateFortranData2Py):
         )
         safe_assign_array(z_cup.view[:, :, :], inputs["z_cup"])
 
-        ktopIJ = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a", dtype=Int
-        )
+        ktopIJ = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a", dtype=Int)
 
         rates_up_pdf(
             # In

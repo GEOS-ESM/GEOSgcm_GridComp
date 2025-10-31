@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -26,17 +27,14 @@ class TranslateGetBuoyancy(TranslateFortranData2Py):
             "kbcon": {},
             "klcl": {},
             "ktop": {},
-
         }
 
         # Float/Int Inputs
-        self.in_vars["parameters"] = [
-        ]
+        self.in_vars["parameters"] = []
 
         # FloatField Outputs
         self.out_vars = {
             "dby": self.grid.compute_dict(),
-  
         }
 
     def compute(self, inputs):
@@ -46,48 +44,49 @@ class TranslateGetBuoyancy(TranslateFortranData2Py):
             self.grid.quantity_factory,
         )
 
-
         # Field inputs
         hc = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", 
+            self.quantity_factory,
+            dims=[X_DIM, Y_DIM, Z_DIM],
+            units="n/a",
         )
         safe_assign_array(hc.view[:, :, :], inputs["hc"])
 
         he_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", 
+            self.quantity_factory,
+            dims=[X_DIM, Y_DIM, Z_DIM],
+            units="n/a",
         )
         safe_assign_array(he_cup.view[:, :, :], inputs["he_cup"])
 
         hes_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a",
+            self.quantity_factory,
+            dims=[X_DIM, Y_DIM, Z_DIM],
+            units="n/a",
         )
         safe_assign_array(hes_cup.view[:, :, :], inputs["hes_cup"])
 
         ierr = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a",dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
         safe_assign_array(ierr.view[:, :, :], inputs["ierr"])
 
         kbcon = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
         safe_assign_array(kbcon.view[:, :, :], inputs["kbcon"])
 
         klcl = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a",dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
         safe_assign_array(klcl.view[:, :, :], inputs["klcl"])
 
         ktop = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a",dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
         safe_assign_array(ktop.view[:, :, :], inputs["ktop"])
 
-       
-        dby = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
-      
+        dby = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
         get_buoyancy(
             # In
@@ -103,5 +102,5 @@ class TranslateGetBuoyancy(TranslateFortranData2Py):
         )
 
         return {
-            "dby": dby.view[:], 
+            "dby": dby.view[:],
         }

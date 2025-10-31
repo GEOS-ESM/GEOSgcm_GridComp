@@ -1,4 +1,5 @@
-from ndsl import Namelist, StencilFactory
+from f90nml import Namelist
+from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -72,7 +73,7 @@ class TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_shallow(Tran
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_air_density"
         ]
-        locals.air_density.data[:] = inputs["local_air_density_air_density"]
+        locals.hydrostatic_air_density.data[:] = inputs["local_air_density_air_density"]
 
         hydrostatic_air_density = HydrostaticAirDensity(
             stencil_factory=self.stencil_factory,
@@ -98,7 +99,7 @@ class TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_shallow(Tran
             "error_code_air_density": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_air_density_air_density": locals.air_density.field[:],
+            "local_air_density_air_density": locals.hydrostatic_air_density.field[:],
         }
 
         return outputs
@@ -162,7 +163,7 @@ class TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_mid(Translat
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_air_density"
         ]
-        locals.air_density.data[:] = inputs["local_air_density_air_density"]
+        locals.hydrostatic_air_density.data[:] = inputs["local_air_density_air_density"]
 
         hydrostatic_air_density = HydrostaticAirDensity(
             stencil_factory=self.stencil_factory,
@@ -188,7 +189,7 @@ class TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_mid(Translat
             "error_code_air_density": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_air_density_air_density": locals.air_density.field[:],
+            "local_air_density_air_density": locals.hydrostatic_air_density.field[:],
         }
 
         return outputs
@@ -252,7 +253,7 @@ class TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_deep(Transla
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_air_density"
         ]
-        locals.air_density.data[:] = inputs["local_air_density_air_density"]
+        locals.hydrostatic_air_density.data[:] = inputs["local_air_density_air_density"]
 
         hydrostatic_air_density = HydrostaticAirDensity(
             stencil_factory=self.stencil_factory,
@@ -278,7 +279,7 @@ class TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_deep(Transla
             "error_code_air_density": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_air_density_air_density": locals.air_density.field[:],
+            "local_air_density_air_density": locals.hydrostatic_air_density.field[:],
         }
 
         return outputs
