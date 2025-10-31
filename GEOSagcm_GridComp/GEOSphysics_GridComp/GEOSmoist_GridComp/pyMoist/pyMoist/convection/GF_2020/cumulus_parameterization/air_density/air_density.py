@@ -27,7 +27,7 @@ def hydrostatic_air_density(
     Args:
         p (in): pressure
         geopotential_height (in): geopotential height
-        air_density (out): air density
+        hydrostatic_air_density (out): air density
         plume (in): specifies the current plume
     """
     with computation(PARALLEL), interval(...):
@@ -72,6 +72,6 @@ class HydrostaticAirDensity:
             p=state.output.p_cloud_levels_forced,
             geopotential_height=locals.geopotential_height_cloud_levels_forced,
             error_code=state.output.error_code,
-            air_density=locals.air_density,
+            air_density=locals.hydrostatic_air_density,
             plume=plume_dependent_constants.PLUME_INDEX,
         )

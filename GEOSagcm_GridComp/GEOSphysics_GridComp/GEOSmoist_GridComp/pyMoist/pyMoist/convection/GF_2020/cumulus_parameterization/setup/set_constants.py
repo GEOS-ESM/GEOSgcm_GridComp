@@ -43,6 +43,9 @@ def set_constants(
         plume_dependent_constants.USE_EXCESS = cumulus_parameterization_config.USE_EXCESS_SHALLOW
         plume_dependent_constants.ENTRAINMENT_RATE = cumulus_parameterization_config.ENTRAINMENT_RATE_SHALLOW
         plume_dependent_constants.ENABLE_PLUME = cumulus_parameterization_config.ENABLE_SHALLOW
+        plume_dependent_constants.AVERAGE_LAYER_DEPTH = (
+            cumulus_parameterization_config.AVERAGE_LAYER_DEPTH_SHALLOW
+        )
 
         # maximum depth (mb) of capping inversion (larger cap = no convection)
         if (
@@ -108,6 +111,9 @@ def set_constants(
         plume_dependent_constants.USE_EXCESS = cumulus_parameterization_config.USE_EXCESS_MID
         plume_dependent_constants.ENTRAINMENT_RATE = cumulus_parameterization_config.ENTRAINMENT_RATE_MID
         plume_dependent_constants.ENABLE_PLUME = cumulus_parameterization_config.ENABLE_MID
+        plume_dependent_constants.AVERAGE_LAYER_DEPTH = (
+            cumulus_parameterization_config.AVERAGE_LAYER_DEPTH_MID
+        )
 
         # maximum depth (mb) of capping inversion (larger cap = no convection)
         if (
@@ -173,6 +179,9 @@ def set_constants(
         plume_dependent_constants.USE_EXCESS = cumulus_parameterization_config.USE_EXCESS_DEEP
         plume_dependent_constants.ENTRAINMENT_RATE = cumulus_parameterization_config.ENTRAINMENT_RATE_DEEP
         plume_dependent_constants.ENABLE_PLUME = cumulus_parameterization_config.ENABLE_DEEP
+        plume_dependent_constants.AVERAGE_LAYER_DEPTH = (
+            cumulus_parameterization_config.AVERAGE_LAYER_DEPTH_DEEP
+        )
 
         # maximum depth (mb) of capping inversion (larger cap = no convection)
         if (

@@ -24,6 +24,8 @@ MAXENS1 = Int(1)  # ensemble one on cap_max
 MAXENS2 = Int(1)  # ensemble two on precip efficiency
 MAXENS3 = Int(16)  # ensemble three done in cup_forcing_ens16 for G3d
 
+USE_LCL = False
+
 # deep = Int(1)
 # shallow = Int(2)
 # mid = Int(3)

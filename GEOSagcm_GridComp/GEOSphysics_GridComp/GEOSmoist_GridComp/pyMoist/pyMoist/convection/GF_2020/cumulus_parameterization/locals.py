@@ -655,9 +655,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    air_density: Quantity = dataclasses.field(
+    hydrostatic_air_density: Quantity = dataclasses.field(
         metadata={
-            "name": "air_density",
+            "name": "hydrostatic_air_density",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",

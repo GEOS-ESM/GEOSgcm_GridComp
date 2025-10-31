@@ -89,6 +89,9 @@ from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cu
     TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_mid,
     TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_deep,
 )
+from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cumulus_Parameterization_GetLCL import (
+    TranslateGF2020_CumulusParameterization_GetLCL_deep,
+)
 
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_minimi import (

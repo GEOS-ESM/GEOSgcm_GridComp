@@ -11,6 +11,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels.stencils imp
     find_maximum_updraft_origin_level,
     find_detrainmet_start_level,
     find_highest_moist_static_energy_level,
+    find_lcl,
 )
 
 
@@ -115,15 +116,57 @@ class HighestMoistStaticEnergyLevel:
         )
 
 
-class ConvectiveCloudBaseLevel:
-    def __init__(self):
-        pass
-
-    def __call__(self, *args, **kwds):
-        pass
-
-
 class GetLCL:
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
+
+        # construct stencils and functions
+        self._find_lcl = stencil_factory.from_dims_halo(
+            func=find_lcl,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
+                "ADV_TRIGGER": config.ADV_TRIGGER,
+            },
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._find_lcl(
+            p=state.input_output.p_forced,
+            p_cloud_levels=locals.p_cloud_levels,
+            t_excess=locals.t_excess,
+            t_cloud_levels_forced=locals.t_cloud_levels,
+            t_perturbation=state.output.t_perturbation,
+            vapor_excess=locals.vapor_excess,
+            vapor_cloud_levels_forced=locals.vapor_cloud_levels,
+            omega=state.input_output.omega,
+            air_density=state.input_output.air_density,
+            geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels,
+            topography_height_no_negative=state.input_output.topography_height_no_negative,
+            ocean_fraction=state.input.ocean_fraction,
+            updraft_origin_level=locals.updraft_origin_level,
+            grid_length=state.input_output.grid_length,
+            lcl_level=state.output.lcl_level,
+            error_code=state.output.error_code,
+            AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
+
+
+class ConvectiveCloudBaseLevel:
     def __init__(self):
         pass
 

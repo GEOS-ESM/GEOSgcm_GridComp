@@ -18,6 +18,7 @@ class GF2020PlumeDependentConstants:
     USE_EXCESS: Int = Int(0)
     ENTRAINMENT_RATE: Float = Float(0.0)
     ENABLE_PLUME: Int = Int(0)
+    AVERAGE_LAYER_DEPTH = Float(0.0)
     CAP_MAX_INC: Float = Float(0.0)
     LAMBDA_DEEP: Float = Float(0.0)
     LAMBDA_DOWN: Float = Float(0.0)
