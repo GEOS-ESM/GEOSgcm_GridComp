@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -77,37 +78,23 @@ class TranslateGetPartitionLiqIce(TranslateFortranData2Py):
         )
         safe_assign_array(ierr.view[:, :, :], inputs["ierr"])
 
-        po_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        po_cup = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(po_cup.view[:, :, :], inputs["po_cup"])
 
-        z1 = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        z1 = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(z1.view[:, :, :], inputs["z1"])
 
-        zo_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        zo_cup = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(zo_cup.view[:, :, :], inputs["zo_cup"])
 
-        srftype = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        srftype = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(srftype.view[:, :, :], inputs["srftype"])
 
-        tn = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        tn = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(tn.view[:, :, :], inputs["tn"])
 
-        melting_layer = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
-        p_liq_ice = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        melting_layer = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        p_liq_ice = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
         get_partition_liq_ice(
             # In

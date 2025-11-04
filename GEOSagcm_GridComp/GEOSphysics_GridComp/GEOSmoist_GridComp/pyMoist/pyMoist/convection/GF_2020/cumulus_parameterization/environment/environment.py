@@ -39,7 +39,6 @@ class EnvironmentConditions:
         self,
         state: GF2020CumulusParameterizationState,
         locals: GF2020CumulusParameterizationLocals,
-        saturation_tables: SaturationVaporPressureTable,
         plume_dependent_constants: GF2020PlumeDependentConstants,
         data_type: int,
     ):
@@ -51,7 +50,7 @@ class EnvironmentConditions:
 
         if data_type == 0:
             self._environment_conditions(
-                p=state.input_output.p,
+                p=state.input_output.p_forced,
                 p_surface=state.input_output.p_surface,
                 t=state.input_output.t_old,
                 vapor=state.input_output.vapor_old,
@@ -65,7 +64,7 @@ class EnvironmentConditions:
             )
         elif data_type == 1:
             self._environment_conditions(
-                p=state.input_output.p,
+                p=state.input_output.p_forced,
                 p_surface=state.input_output.p_surface,
                 t=locals.t_new,
                 vapor=locals.vapor_new,
@@ -73,7 +72,7 @@ class EnvironmentConditions:
                 moist_static_energy=locals.environment_moist_static_energy_forced,
                 saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_forced,
                 saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_forced,
-                geopotential_height=state.input_output.geopotential_height,
+                geopotential_height=state.input_output.geopotential_height_forced,
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
@@ -104,7 +103,6 @@ class EnvironmentCloudLevels:
         self,
         state: GF2020CumulusParameterizationState,
         locals: GF2020CumulusParameterizationLocals,
-        saturation_tables: SaturationVaporPressureTable,
         plume_dependent_constants: GF2020PlumeDependentConstants,
         data_type: int,
     ):
@@ -117,7 +115,7 @@ class EnvironmentCloudLevels:
 
         if data_type == 0:
             self._environment_cloud_levels(
-                p=state.input_output.p,
+                p=state.input_output.p_forced,
                 p_surface=state.input_output.p_surface,
                 p_cloud_levels=locals.p_cloud_levels,
                 topography_height_no_negative=state.input_output.topography_height_no_negative,
@@ -143,13 +141,13 @@ class EnvironmentCloudLevels:
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
         elif data_type == 1:
-            p_3d = state.output.p.field[:, :, :, plume_dependent_constants.PLUME_INDEX]
+            p_3d = state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX]
             self._environment_cloud_levels(
-                p=state.input_output.p,
+                p=state.input_output.p_forced,
                 p_surface=state.input_output.p_surface,
                 p_cloud_levels=p_3d,
                 topography_height_no_negative=state.input_output.topography_height_no_negative,
-                geopotential_height=state.input_output.geopotential_height,
+                geopotential_height=state.input_output.geopotential_height_forced,
                 geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_forced,
                 t=locals.t_new,
                 t_surface=state.input_output.t_surface,
@@ -161,16 +159,16 @@ class EnvironmentCloudLevels:
                 u_cloud_levels=locals.u_cloud_levels,
                 v_cloud_levels=locals.v_cloud_levels,
                 environment_saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_forced,
-                environment_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels,
+                environment_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
                 environment_moist_static_energy=locals.environment_moist_static_energy_forced,
-                environment_moist_static_energy_cloud_levels=locals.environment_moist_static_energy_cloud_levels,
+                environment_moist_static_energy_cloud_levels=locals.environment_moist_static_energy_cloud_levels_forced,
                 environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_forced,
                 environment_saturation_moist_static_energy_cloud_levels=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                 gamma_cloud_levels=locals.gamma_cloud_levels_forced,
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
-            state.output.p.field[:, :, :, plume_dependent_constants.PLUME_INDEX] = p_3d
+            state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX] = p_3d
         else:
             raise NotImplementedError("EnvironmentCloudLevels call type not supported.")
 

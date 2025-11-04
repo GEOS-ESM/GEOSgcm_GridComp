@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -29,14 +30,12 @@ class TranslateKeToHeating(TranslateFortranData2Py):
             "dellat": {},
         }
 
-        #Float/Int Inputs
-        self.in_vars["parameters"] = [
-        ]
+        # Float/Int Inputs
+        self.in_vars["parameters"] = []
 
         # FloatField Outputs
         self.out_vars = {
             "dellat": self.grid.compute_dict(),
-  
         }
 
     def compute(self, inputs):
@@ -46,49 +45,55 @@ class TranslateKeToHeating(TranslateFortranData2Py):
             self.grid.quantity_factory,
         )
 
-
         # # Field inputs
         dellu = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", 
+            self.quantity_factory,
+            dims=[X_DIM, Y_DIM, Z_DIM],
+            units="n/a",
         )
         safe_assign_array(dellu.view[:, :, :], inputs["dellu"])
 
         dellv = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", 
+            self.quantity_factory,
+            dims=[X_DIM, Y_DIM, Z_DIM],
+            units="n/a",
         )
         safe_assign_array(dellv.view[:, :, :], inputs["dellv"])
 
         po_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", 
+            self.quantity_factory,
+            dims=[X_DIM, Y_DIM, Z_DIM],
+            units="n/a",
         )
         safe_assign_array(po_cup.view[:, :, :], inputs["po_cup"])
 
         us = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", 
+            self.quantity_factory,
+            dims=[X_DIM, Y_DIM, Z_DIM],
+            units="n/a",
         )
         safe_assign_array(us.view[:, :, :], inputs["us"])
 
         vs = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", 
+            self.quantity_factory,
+            dims=[X_DIM, Y_DIM, Z_DIM],
+            units="n/a",
         )
         safe_assign_array(vs.view[:, :, :], inputs["vs"])
 
         ierr = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a",dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
         safe_assign_array(ierr.view[:, :, :], inputs["ierr"])
 
         ktop = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a",dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
         safe_assign_array(ktop.view[:, :, :], inputs["ktop"])
 
-       
-        dellat = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        dellat = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(dellat.view[:, :, :], inputs["dellat"])
-    
+
         ke_to_heating(
             # In
             dellu=dellu,
@@ -103,5 +108,5 @@ class TranslateKeToHeating(TranslateFortranData2Py):
         )
 
         return {
-            "dellat": dellat.view[:], 
+            "dellat": dellat.view[:],
         }

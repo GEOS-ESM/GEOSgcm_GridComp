@@ -1,4 +1,5 @@
-from ndsl import Namelist, StencilFactory
+from f90nml import Namelist
+from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -164,7 +165,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
         state.input.grid_scale_forcing_vapor.data[:] = inputs["grid_scale_forcing_vapor"]
         state.input.subgrid_scale_forcing_t.data[:] = inputs["subgrid_scale_forcing_t"]
         state.input.subgrid_scale_forcing_vapor.data[:] = inputs["subgrid_scale_forcing_vapor"]
-        state.input_output.geopotential_height.data[:] = inputs["geopotential_height"]
+        state.input_output.geopotential_height_forced.data[:] = inputs["geopotential_height"]
         state.output.epsilon.data[:, :, 1] = inputs["epsilon"]  # plume dependent
         state.output.precip.data[:, :, 1] = inputs["precip"]  # plume dependent
         state.output.scale_dependence_factor.data[:, :, 1] = inputs[

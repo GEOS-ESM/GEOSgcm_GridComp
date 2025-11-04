@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -72,14 +73,10 @@ class TranslateCloudDissipation(TranslateFortranData2Py):
         )
         safe_assign_array(COUPL_MPHYSICS.view[:, :, :], inputs["COUPL_MPHYSICS"])
 
-        dtime = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        dtime = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(dtime.view[:, :, :], inputs["dtime"])
 
-        heso_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        heso_cup = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(heso_cup.view[:, :, :], inputs["heso_cup"])
 
         ierr = QuantityFactory.zeros(
@@ -175,9 +172,7 @@ class TranslateCloudDissipation(TranslateFortranData2Py):
             dims=[X_DIM, Y_DIM, Z_DIM],
             units="n/a",
         )
-        safe_assign_array(
-            use_cloud_dissipation.view[:, :, :], inputs["use_cloud_dissipation"]
-        )
+        safe_assign_array(use_cloud_dissipation.view[:, :, :], inputs["use_cloud_dissipation"])
 
         vvel2d = QuantityFactory.zeros(
             self.quantity_factory,

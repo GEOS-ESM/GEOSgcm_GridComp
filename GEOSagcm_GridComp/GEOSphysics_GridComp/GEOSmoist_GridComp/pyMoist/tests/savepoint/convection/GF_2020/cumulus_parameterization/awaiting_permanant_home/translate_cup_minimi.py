@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -26,13 +27,11 @@ class TranslateCupMinimi(TranslateFortranData2Py):
         }
 
         # Float/Int Inputs
-        self.in_vars["parameters"] = [
-        ]
+        self.in_vars["parameters"] = []
 
         # FloatField Outputs
         self.out_vars = {
             "kstabi": self.grid.compute_dict(),
-  
         }
 
     def compute(self, inputs):
@@ -42,30 +41,27 @@ class TranslateCupMinimi(TranslateFortranData2Py):
             self.grid.quantity_factory,
         )
 
-
         # Field inputs
-        HEso_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
-        safe_assign_array(HEso_cup.view[:, :,:], inputs["HEso_cup"])
+        HEso_cup = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        safe_assign_array(HEso_cup.view[:, :, :], inputs["HEso_cup"])
 
         Kbcon = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
-        safe_assign_array(Kbcon.view[:, :,:], inputs["Kbcon"])
+        safe_assign_array(Kbcon.view[:, :, :], inputs["Kbcon"])
 
         ierr = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a",dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
-        safe_assign_array(ierr.view[:, :,:], inputs["ierr"])
+        safe_assign_array(ierr.view[:, :, :], inputs["ierr"])
 
         kstabm = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a",dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
-        safe_assign_array(kstabm.view[:, :,:], inputs["kstabm"])
+        safe_assign_array(kstabm.view[:, :, :], inputs["kstabm"])
 
         kstabi = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a",dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
 
         cup_minimi(
@@ -79,5 +75,5 @@ class TranslateCupMinimi(TranslateFortranData2Py):
         )
 
         return {
-            "kstabi": kstabi.view[:]+1, # kstabi is an array of klevels so need to adjust by 1
+            "kstabi": kstabi.view[:] + 1,  # kstabi is an array of klevels so need to adjust by 1
         }

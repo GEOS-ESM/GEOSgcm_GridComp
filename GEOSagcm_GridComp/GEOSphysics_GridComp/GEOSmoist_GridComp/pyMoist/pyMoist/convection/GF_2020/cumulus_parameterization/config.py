@@ -35,6 +35,9 @@ class GF2020CumulusParameterizationConfig:
     USE_EXCESS_SHALLOW: Int
     USE_EXCESS_MID: Int
     USE_EXCESS_DEEP: Int
+    AVERAGE_LAYER_DEPTH_SHALLOW: Float
+    AVERAGE_LAYER_DEPTH_MID: Float
+    AVERAGE_LAYER_DEPTH_DEEP: Float
     ENABLE_SHALLOW: Int
     ENABLE_MID: Int
     ENABLE_DEEP: Int
@@ -54,3 +57,6 @@ class GF2020CumulusParameterizationConfig:
     SATURATION_CALCULATION_CHOICE: Int
     ITEST: Int
     CLOUD_LEVEL_GRID: Int
+    MELT_ICE: Int
+    MODIS_FRACTION: Int
+    BOUNDARY_CONDITION_METHOD: Int

@@ -373,9 +373,9 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        p: Quantity = dataclasses.field(
+        p_cloud_levels_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "p",
+                "name": "p_cloud_levels_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
@@ -727,18 +727,18 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        geopotential_height: Quantity = dataclasses.field(
+        geopotential_height_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "geopotential_height",
+                "name": "geopotential_height_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        p: Quantity = dataclasses.field(
+        p_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "p",
+                "name": "p_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",

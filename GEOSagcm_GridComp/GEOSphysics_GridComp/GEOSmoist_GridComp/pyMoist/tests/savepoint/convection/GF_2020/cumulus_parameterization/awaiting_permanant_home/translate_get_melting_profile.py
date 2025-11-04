@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -23,23 +24,21 @@ class TranslateGetMeltingProfile(TranslateFortranData2Py):
             "cumulus": {},
             "edto": {},
             "ierr": {},
-            "melting_layer":{},
-            "p_liq_ice":{},
-            "po_cup":{},
-            "pwdo":{},
-            "pwo":{},
-            "qrco":{},
-            "tn_cup":{},
+            "melting_layer": {},
+            "p_liq_ice": {},
+            "po_cup": {},
+            "pwdo": {},
+            "pwo": {},
+            "qrco": {},
+            "tn_cup": {},
         }
 
         # Float/Int Inputs
-        self.in_vars["parameters"] = [
-        ]
+        self.in_vars["parameters"] = []
 
         # FloatField Outputs
         self.out_vars = {
             "melting": self.grid.compute_dict(),
-  
         }
 
     def compute(self, inputs):
@@ -49,66 +48,47 @@ class TranslateGetMeltingProfile(TranslateFortranData2Py):
             self.grid.quantity_factory,
         )
 
-
         # Field inputs
         MELT_GLAC = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
         safe_assign_array(MELT_GLAC.view[:, :, :], inputs["MELT_GLAC"])
 
         cumulus = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
         safe_assign_array(cumulus.view[:, :, :], inputs["cumulus"])
 
-        edto = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        edto = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(edto.view[:, :, :], inputs["edto"])
-        
+
         ierr = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a", dtype=Int
+            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
         )
         safe_assign_array(ierr.view[:, :, :], inputs["ierr"])
 
-        melting_layer = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        melting_layer = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(melting_layer.view[:, :, :], inputs["melting_layer"])
 
-        p_liq_ice = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        p_liq_ice = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(p_liq_ice.view[:, :, :], inputs["p_liq_ice"])
 
-        po_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        po_cup = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(po_cup.view[:, :, :], inputs["po_cup"])
 
-        pwdo = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        pwdo = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(pwdo.view[:, :, :], inputs["pwdo"])
 
-        pwo = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        pwo = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(pwo.view[:, :, :], inputs["pwo"])
 
-        qrco = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        qrco = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(qrco.view[:, :, :], inputs["qrco"])
 
-        tn_cup = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        tn_cup = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(tn_cup.view[:, :, :], inputs["tn_cup"])
 
-        melting = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM,Z_DIM], units="n/a"
-        )
+        melting = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
         get_melting_profile(
             # In
@@ -128,5 +108,5 @@ class TranslateGetMeltingProfile(TranslateFortranData2Py):
         )
 
         return {
-            "melting": melting.view[:], 
+            "melting": melting.view[:],
         }

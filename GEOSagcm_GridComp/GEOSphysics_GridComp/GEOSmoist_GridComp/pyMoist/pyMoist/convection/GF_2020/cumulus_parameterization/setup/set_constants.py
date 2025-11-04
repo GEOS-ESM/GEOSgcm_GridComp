@@ -43,6 +43,9 @@ def set_constants(
         plume_dependent_constants.USE_EXCESS = cumulus_parameterization_config.USE_EXCESS_SHALLOW
         plume_dependent_constants.ENTRAINMENT_RATE = cumulus_parameterization_config.ENTRAINMENT_RATE_SHALLOW
         plume_dependent_constants.ENABLE_PLUME = cumulus_parameterization_config.ENABLE_SHALLOW
+        plume_dependent_constants.AVERAGE_LAYER_DEPTH = (
+            cumulus_parameterization_config.AVERAGE_LAYER_DEPTH_SHALLOW
+        )
 
         # maximum depth (mb) of capping inversion (larger cap = no convection)
         if (
@@ -69,6 +72,11 @@ def set_constants(
 
         # height(m) above which no downdrafts are allowed to originate
         plume_dependent_constants.MAX_DOWNDRAFT_ORIGIN_HEIGHt = Float(3000.0)
+
+        # depth(m) over which downdraft detrains all its mass
+        plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
+            Float(0.5) * plume_dependent_constants.DEPTH_MIN
+        )
 
     elif plume == "mid":
         # set a number of plume dependent constants
@@ -103,6 +111,9 @@ def set_constants(
         plume_dependent_constants.USE_EXCESS = cumulus_parameterization_config.USE_EXCESS_MID
         plume_dependent_constants.ENTRAINMENT_RATE = cumulus_parameterization_config.ENTRAINMENT_RATE_MID
         plume_dependent_constants.ENABLE_PLUME = cumulus_parameterization_config.ENABLE_MID
+        plume_dependent_constants.AVERAGE_LAYER_DEPTH = (
+            cumulus_parameterization_config.AVERAGE_LAYER_DEPTH_MID
+        )
 
         # maximum depth (mb) of capping inversion (larger cap = no convection)
         if (
@@ -129,6 +140,11 @@ def set_constants(
 
         # height(m) above which no downdrafts are allowed to originate
         plume_dependent_constants.MAX_DOWNDRAFT_ORIGIN_HEIGHt = Float(3000.0)
+
+        # depth(m) over which downdraft detrains all its mass
+        plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
+            Float(0.5) * plume_dependent_constants.DEPTH_MIN
+        )
 
     elif plume == "deep":
         # set a number of plume dependent constants
@@ -163,6 +179,9 @@ def set_constants(
         plume_dependent_constants.USE_EXCESS = cumulus_parameterization_config.USE_EXCESS_DEEP
         plume_dependent_constants.ENTRAINMENT_RATE = cumulus_parameterization_config.ENTRAINMENT_RATE_DEEP
         plume_dependent_constants.ENABLE_PLUME = cumulus_parameterization_config.ENABLE_DEEP
+        plume_dependent_constants.AVERAGE_LAYER_DEPTH = (
+            cumulus_parameterization_config.AVERAGE_LAYER_DEPTH_DEEP
+        )
 
         # maximum depth (mb) of capping inversion (larger cap = no convection)
         if (
@@ -189,6 +208,11 @@ def set_constants(
 
         # height(m) above which no downdrafts are allowed to originate
         plume_dependent_constants.MAX_DOWNDRAFT_ORIGIN_HEIGHt = Float(3000.0)
+
+        # depth(m) over which downdraft detrains all its mass
+        plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
+            Float(0.5) * plume_dependent_constants.DEPTH_MIN
+        )
 
     else:
         raise NotImplementedError("Unknown plume specified, corresponding constants are unavailable.")

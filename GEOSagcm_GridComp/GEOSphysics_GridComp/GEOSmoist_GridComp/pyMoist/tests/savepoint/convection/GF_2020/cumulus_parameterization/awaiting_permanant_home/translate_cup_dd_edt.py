@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -78,9 +79,7 @@ class TranslateCupDDEdt(TranslateFortranData2Py):
         )
         safe_assign_array(edtmax.view[:, :, :], inputs["edtmax"])
 
-        edtmin = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        edtmin = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(edtmin.view[:, :, :], inputs["edtmin"])
 
         ierr = QuantityFactory.zeros(

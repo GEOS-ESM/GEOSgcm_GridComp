@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -64,28 +65,18 @@ class TranslateGetPrecipFluxes(TranslateFortranData2Py):
         )
         safe_assign_array(ktop.view[:, :, :], inputs["ktop"])
 
-        pwdo = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        pwdo = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(pwdo.view[:, :, :], inputs["pwdo"])
 
-        pwo = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        pwo = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(pwo.view[:, :, :], inputs["pwo"])
 
-        xmb = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        xmb = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(xmb.view[:, :, :], inputs["xmb"])
 
-        prec_flx = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        prec_flx = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
-        evap_flx = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        evap_flx = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
         get_precip_fluxes(
             # In
