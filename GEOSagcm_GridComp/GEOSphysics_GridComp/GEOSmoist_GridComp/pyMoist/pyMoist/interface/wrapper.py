@@ -152,7 +152,6 @@ class GEOSPyMoistWrapper:
             tile_rank=self.communicator.tile.rank,
         )
         self.quantity_factory = QuantityFactory.from_backend(sizer=sizer, backend=backend)
-        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(self.quantity_factory)
 
         self.stencil_config = StencilConfig(
             compilation_config=CompilationConfig(backend=backend, rebuild=False, validate_args=True),
@@ -262,14 +261,6 @@ class GEOSPyMoistWrapper:
                     USE_AERSOL_NN=True,
                 )
         return self._aer_activation
-
-    def make_nmmodes_quantity(self, data):
-        qty = self.nmodes_quantity_factory.empty(
-            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
-            "n/a",
-        )
-        qty.field[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
-        return qty
 
     def init_gfdl_1m_configuration(
         self,
