@@ -8,7 +8,13 @@ from _cffi_backend import _CDataBase as CFFIObj
 from MAPLpyish import MAPLBridge, MAPLState
 
 from ndsl import QuantityFactory, ndsl_log
+from ndsl.dsl.gt4py_utils import is_gpu_backend
+from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
+
+
+if cp is None:
+    cp = np
 
 
 class MAPLMemoryRepository:
@@ -32,11 +38,12 @@ class MAPLMemoryRepository:
         self._quantity_factory = quantity_factory
         self._state = state
         self._bridge = MAPLBridge()
+        self._quantity_factory.backend
         self._f_py_converter = FortranPythonConversion(
             self._quantity_factory.sizer.nx,
             self._quantity_factory.sizer.ny,
             self._quantity_factory.sizer.nz,
-            self._quantity_factory._numpy,
+            cp if is_gpu_backend(self._quantity_factory.backend) else np,
         )
         self._fortran_pointers: dict[str, MAPLMemoryRepository.FortranMemory] = {}
 
