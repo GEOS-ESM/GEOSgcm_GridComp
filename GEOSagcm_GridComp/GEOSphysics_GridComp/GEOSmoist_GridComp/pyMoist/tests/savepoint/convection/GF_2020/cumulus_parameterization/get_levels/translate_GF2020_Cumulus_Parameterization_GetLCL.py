@@ -45,6 +45,10 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
             "grid_length": {},
             "lcl_level": {},
             "error_code": {},
+            "vapor_source": {},
+            "t_source": {},
+            "p_source": {},
+            "z_source": {},
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
@@ -90,7 +94,7 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
         locals.geopotential_height_cloud_levels.data[:] = inputs["local_geopotential_height_cloud_levels"]
         state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
         state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level"]
+        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level"] - 1
         state.input_output.grid_length.data[:] = inputs["grid_length"]
         state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"]
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
@@ -104,14 +108,25 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
         )
 
         # call test code
+        from ndsl.constants import X_DIM, Y_DIM
+
+        vapor_source = self.quantity_factory.zeros([X_DIM, Y_DIM], units="n/a")
+        t_source = self.quantity_factory.zeros([X_DIM, Y_DIM], units="n/a")
+        p_source = self.quantity_factory.zeros([X_DIM, Y_DIM], units="n/a")
+        z_source = self.quantity_factory.zeros([X_DIM, Y_DIM], units="n/a")
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
                 state=state,
                 locals=locals,
                 plume_dependent_constants=plume_dependent_constants,
+                vapor_source=vapor_source,
+                t_source=t_source,
+                p_source=p_source,
+                z_source=z_source,
             )
 
-            locals.updraft_origin_level.field[:] = locals.updraft_origin_level.field[:] + 1
+            locals.updraft_origin_level.field[:] += 1
+            state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
         outputs = {
@@ -131,6 +146,10 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
             "grid_length": state.input_output.grid_length.field[:],
             "lcl_level": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "vapor_source": vapor_source.field[:],
+            "t_source": t_source.field[:],
+            "p_source": p_source.field[:],
+            "z_source": z_source.field[:],
         }
 
         return outputs

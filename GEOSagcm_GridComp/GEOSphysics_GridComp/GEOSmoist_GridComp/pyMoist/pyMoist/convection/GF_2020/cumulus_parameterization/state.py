@@ -280,7 +280,7 @@ class GF2020CumulusParameterizationState(State):
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
-                "dtype": Float,
+                "dtype": Int,
             }
         )
         updraft_origin_level: Quantity = dataclasses.field(
@@ -592,7 +592,7 @@ class GF2020CumulusParameterizationState(State):
         t_perturbation: Quantity = dataclasses.field(
             metadata={
                 "name": "t_perturbation",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,

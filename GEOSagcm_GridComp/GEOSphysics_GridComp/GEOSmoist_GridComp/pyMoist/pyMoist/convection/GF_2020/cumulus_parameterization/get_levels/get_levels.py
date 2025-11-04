@@ -143,6 +143,10 @@ class GetLCL:
         state: GF2020CumulusParameterizationState,
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
+        vapor_source,
+        t_source,
+        p_source,
+        z_source,
     ):
         self._find_lcl(
             p=state.input_output.p_forced,
@@ -163,6 +167,10 @@ class GetLCL:
             error_code=state.output.error_code,
             AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
             plume=plume_dependent_constants.PLUME_INDEX,
+            vapor_source=vapor_source,
+            t_source=t_source,
+            p_source=p_source,
+            z_source=z_source,
         )
 
 

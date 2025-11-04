@@ -147,12 +147,13 @@ def get_cloud_boundary_conditions(
                 if dp_layer + dp <= x_ave_layer:
                     dp_layer = dp_layer + dp
                     source_parcel_value = source_parcel_value + field * dp
-
+                    level += 1
                 else:
                     dp = x_ave_layer - dp_layer
                     dp_layer = dp_layer + dp
                     source_parcel_value = source_parcel_value + field * dp
                     stop_computation = True
+                    level += 1
 
         source_parcel_value = source_parcel_value / dp_layer
         level_c = max(start_index, level)

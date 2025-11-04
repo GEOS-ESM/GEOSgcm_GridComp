@@ -358,9 +358,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    add_buoy_modified: Quantity = dataclasses.field(
+    add_buoyancy: Quantity = dataclasses.field(
         metadata={
-            "name": "add_buoy_modified",
+            "name": "add_buoyancy",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
@@ -689,5 +689,23 @@ class GF2020CumulusParameterizationLocals(State):
             "units": "?",
             "intent": "?",
             "dtype": Int,
+        }
+    )
+    moist_static_energy_origin_level: Quantity = dataclasses.field(
+        metadata={
+            "name": "moist_static_energy_origin_level",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    moist_static_energy_origin_level_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "moist_static_energy_origin_level_forced",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
         }
     )

@@ -140,7 +140,7 @@ class Setup:
                 vapor_wetbulb=locals.vapor_wetbulb,
                 tau_ecmwf=locals.tau_ecmwf,
                 f_dicycle_modified=locals.f_dicycle_modified,
-                add_buoy_modified=locals.add_buoy_modified,
+                add_buoyancy=locals.add_buoyancy,
                 scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
                 hcdo=locals.hcdo,
                 cupclw=locals.cupclw,

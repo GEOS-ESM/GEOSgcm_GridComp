@@ -168,8 +168,15 @@ def find_lcl(
     error_code: IntFieldIJ_Plume,
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
+    vapor_source: FloatFieldIJ,
+    t_source: FloatFieldIJ,
+    p_source: FloatFieldIJ,
+    z_source: FloatFieldIJ,
 ):
     from __externals__ import k_end, BOUNDARY_CONDITION_METHOD, ADV_TRIGGER
+
+    with computation(PARALLEL), interval(...):
+        dummy_field_no_read = 0.0
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
@@ -187,7 +194,7 @@ def find_lcl(
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
                 k_end=k_end,
                 compute_perturbation=False,
-                perturbation_field=0,  # note this may need to be a field of zeros
+                perturbation_field=dummy_field_no_read,
             )
             t_source = get_cloud_boundary_conditions(
                 field=t_cloud_levels_forced,
@@ -199,7 +206,7 @@ def find_lcl(
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
                 k_end=k_end,
                 compute_perturbation=False,
-                perturbation_field=0,  # note this may need to be a field of zeros
+                perturbation_field=dummy_field_no_read,
             )
             p_source = get_cloud_boundary_conditions(
                 field=p_cloud_levels,
@@ -211,20 +218,20 @@ def find_lcl(
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
                 k_end=k_end,
                 compute_perturbation=False,
-                perturbation_field=0,  # note this may need to be a field of zeros
+                perturbation_field=dummy_field_no_read,
             )
 
         # initalize 2d temporaries
         p_lcl: FloatFieldIJ = 0.0
         t_lcl: FloatFieldIJ = 0.0
         dz_lcl: FloatFieldIJ = 0.0
-        z_lcl: FloatFieldIJ = 0.0
+        z_source: FloatFieldIJ = 0.0
         stop_computation: BoolFieldIJ = False
 
         p_lcl, t_lcl, dz_lcl = get_lcl(p_source=p_source, t_source=t_source, vapor_source=vapor_source)
 
         if dz_lcl >= 0.0:
-            z_lcl = get_cloud_boundary_conditions(
+            z_source = get_cloud_boundary_conditions(
                 field=geopotential_height_cloud_levels,
                 scalar_perturbation=0,
                 p=p,
@@ -234,13 +241,13 @@ def find_lcl(
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
                 k_end=k_end,
                 compute_perturbation=False,
-                perturbation_field=0,  # note this may need to be a field of zeros
+                perturbation_field=dummy_field_no_read,
             )
 
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if dz_lcl >= 0.0:
-                if geopotential_height_cloud_levels >= z_lcl + dz_lcl and stop_computation == False:
+                if geopotential_height_cloud_levels >= z_source + dz_lcl and stop_computation == False:
                     lcl_level[0, 0][plume] = max(K, updraft_origin_level)
                     stop_computation = True
 
@@ -280,11 +287,8 @@ def find_lcl(
                     else:
                         wkflcl = wkflcl - ckf
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and ADV_TRIGGER == 1 and plume == 0:
-            # think about letting wkflcl <0 => Tpert<0 =>prevent convection in subsidence areas
-            # wkflcl = max(wkflcl,0.) ! -- only positive.
-
             # Kain (2004) Eq. 1
             t_perturbation = 4.64 * wkflcl ** (1.0 / 3.0)
 

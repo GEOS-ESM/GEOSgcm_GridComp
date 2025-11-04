@@ -44,16 +44,11 @@ from .convection.GF_2020.cumulus_parameterization.translate_GF2020_CumulusParame
     TranslateGF2020_CumulusParameterization,
 )
 
-from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup_shallow import (
+from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup import (
     TranslateGF2020_CumulusParameterization_Setup_shallow,
-)
-from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup_mid import (
     TranslateGF2020_CumulusParameterization_Setup_mid,
-)
-from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup_deep import (
     TranslateGF2020_CumulusParameterization_Setup_deep,
 )
-
 from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentConditions_1 import (
     TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow,
     TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid,
@@ -91,6 +86,9 @@ from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cu
 )
 from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cumulus_Parameterization_GetLCL import (
     TranslateGF2020_CumulusParameterization_GetLCL_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_ParcelMoistStaticEnergy import (
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_deep,
 )
 
 # in progress tests

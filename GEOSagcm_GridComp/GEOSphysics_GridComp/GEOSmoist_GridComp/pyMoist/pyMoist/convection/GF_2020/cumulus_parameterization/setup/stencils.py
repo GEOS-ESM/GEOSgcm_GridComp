@@ -106,7 +106,7 @@ def prefil_internal_fields(
     vapor_wetbulb: FloatFieldIJ,
     tau_ecmwf: FloatFieldIJ,
     f_dicycle_modified: FloatFieldIJ,
-    add_buoy_modified: FloatFieldIJ,
+    add_buoyancy: FloatFieldIJ,
     scale_dependence_factor_downdraft: FloatFieldIJ,
     hcdo: FloatField,
     cupclw: FloatField,
@@ -149,7 +149,7 @@ def prefil_internal_fields(
         vapor_wetbulb = 0.0
         tau_ecmwf = 0.0
         f_dicycle_modified = 0.0
-        add_buoy_modified = 0.0
+        add_buoyancy = 0.0
         scale_dependence_factor_downdraft = 0.0
 
     # internal fields

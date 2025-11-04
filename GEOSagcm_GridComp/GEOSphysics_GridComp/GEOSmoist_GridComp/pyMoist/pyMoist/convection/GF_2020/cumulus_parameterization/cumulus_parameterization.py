@@ -44,16 +44,14 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers.conv
     TracerOutput,
     AtmosphericComposition,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.parcel_moist_static_energy.parcel_moist_static_energy import (
-    ParcelMoistStaticEnergy,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment.entrainment import (
-    VerticalEntrainmentRate,
+    EntrainmentRates,
     DowndraftEntrainmentProfiles,
     StableDetrainment,
     CalculateMassEntrainmentDetrainment,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy.moist_static_energy import (
+    ParcelMoistStaticEnergy,
     UpdateMoistStaticEnergy,
     FirstGuessMoistStaticEnergy,
     MoistStaticEnergyInsideCloud,
@@ -189,11 +187,26 @@ class CumulusParameterization:
 
         self._cold_pool_parameterization = ColdPoolParameterization()
 
-        self._get_lcl = GetLCL()
+        self._get_lcl = GetLCL(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
-        self._parcel_moist_static_energy = ParcelMoistStaticEnergy()
+        self._parcel_moist_static_energy = ParcelMoistStaticEnergy(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
-        self.vertical_entrainment_rate = VerticalEntrainmentRate()
+        self._entrainment_rates = EntrainmentRates(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._convective_cloud_base_level = ConvectiveCloudBaseLevel()
 
@@ -407,13 +420,28 @@ class CumulusParameterization:
                 self._cold_pool_parameterization()
 
                 # determine LCL for the air parcels with highest moist static energy
-                self._get_lcl()
+                # NOTE EXISTS BUT NON FUNCTIONAL, DEVELOPMENT IN PROGRESS, STUCK BEHIND SERIALBOX DIMENSION PROBLEM
+                self._get_lcl(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # determine the moist static energy of air parcels at source level
-                self._parcel_moist_static_energy()
+                # NOTE UNTESTEDD
+                self._parcel_moist_static_energy(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # determine the vertical entrainment/detrainment rates
-                self._environment_conditions()
+                # NOTE UNTESTEDD
+                self._entrainment_rates(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # determine level of convective cloud base
                 self._convective_cloud_base_level()
