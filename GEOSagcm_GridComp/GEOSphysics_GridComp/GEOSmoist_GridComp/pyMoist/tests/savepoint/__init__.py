@@ -137,3 +137,6 @@ from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.transl
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cloud_dissipation import (
     TranslateCloudDissipation,
 )
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_up_moisture import (
+    TranslateCupUpMoisture,
+)
