@@ -16,7 +16,9 @@ T_0 = Float(273.16)  # K
 T_ICE = Float(235.16)  # K
 XLF = Float(0.333e6)  # latent heat of freezing (J K-1 kg-1)
 MAX_QSAT = Float(0.5)  # kg/kg
-MX_BUOY = CP * Float(5.0) + XLV * Float(2.0e-3)  # temp exc=5 K, q deficit=2 g/kg (=> mx_buoy ~ 10 kJ/kg)
+MX_BUOY = CP * Float(5.0) + XLV * Float(
+    2.0e-3
+)  # temp exc=5 K, q deficit=2 g/kg (=> mx_buoy ~ 10 kJ/kg)
 
 smaller_qv = Float(1.0e-16)  # kg/kg
 
@@ -26,6 +28,9 @@ MAXENS3 = Int(16)  # ensemble three done in cup_forcing_ens16 for G3d
 
 USE_LCL = False
 
-# deep = Int(1)
-# shallow = Int(2)
-# mid = Int(3)
+deep = Int(1)
+shallow = Int(2)
+mid = Int(3)
+
+BL = Int(1)
+CIN = Int(2)
