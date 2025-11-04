@@ -84,7 +84,10 @@ class MicrophysicsDriver:
         # generate saturation specific humidity tables
         # -----------------------------------------------------------------------
 
-        self.sat_tables = get_tables(stencil_factory.backend)
+        self.sat_tables = get_tables(
+            stencil_factory.backend,
+            stencil_factory.config.dace_config,
+        )
 
         # -----------------------------------------------------------------------
         # initialize stencils
