@@ -146,7 +146,6 @@ class GEOSPyMoistWrapper:
             ny_tile=self.flags.npy * self.flags.layout_y,
             nz=self.flags.npz,
             n_halo=0,
-            extra_dim_lengths={},
             layout=layout,
             tile_partitioner=partitioner.tile,
             tile_rank=self.communicator.tile.rank,
