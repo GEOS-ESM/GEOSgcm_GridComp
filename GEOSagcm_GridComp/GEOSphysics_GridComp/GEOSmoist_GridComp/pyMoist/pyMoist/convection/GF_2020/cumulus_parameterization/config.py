@@ -60,3 +60,4 @@ class GF2020CumulusParameterizationConfig:
     MELT_ICE: Int
     MODIS_FRACTION: Int
     BOUNDARY_CONDITION_METHOD: Int
+    OVERSHOOT: Float
