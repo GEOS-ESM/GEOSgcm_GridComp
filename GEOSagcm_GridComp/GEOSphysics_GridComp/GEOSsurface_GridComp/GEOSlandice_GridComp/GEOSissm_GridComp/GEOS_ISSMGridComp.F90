@@ -16,13 +16,11 @@ module GEOS_IssmGridCompMod
 !         
 !            *currently we run over the Greenland Ice Sheet with all given PETs
 !            *ISSM mesh is *internal* to ISSM (C++ source) but we create an ESMF_MESH version for regridding     
-!            *the current grid is inherited from the parent    
+!            *the atmospheric grid is inherited from the parent, so we regrid onto the grid, then regrid onto tiles    
 !
 ! next steps:  
 !    
-!             (*) add import/export states corresponding to surface mass balance and 
-!                 ice-surface elevation (regrid from parent grid to mesh?)
-! 
+!             (*) add import states corresponding to surface mass balance 
 !             (*) determine realistic ISSM setup, etc...
 ! 
 
@@ -169,21 +167,12 @@ subroutine SetServices ( GC, RC )
 ! TODO: placeholders comments for IM/IN/EX states
  !Export state:
  !TODO: set export states here, like this: 
-    call MAPL_AddExportSpec(GC,                                                            &
-         SHORT_NAME = 'ICEEL',                                                       &
-         LONG_NAME  = 'ice_elevation',        &
-         UNITS      = 'm',                                                        &
-         DIMS       = MAPL_DimsHorzOnly,                                                   &
-         VLOCATION  = MAPL_VLocationNone,                                                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                                            &
-         SHORT_NAME = 'ICEELTILE',                                                       &
+    call MAPL_AddExportSpec(GC,                     &
+         SHORT_NAME = 'ICEEL',                      &
          LONG_NAME  = 'ice_elevation_tiles',        &
-         UNITS      = 'm',                                                        &
-         DIMS       = MAPL_DimsTileOnly,                                                   &
-         VLOCATION  = MAPL_VLocationNone,                                                  &
+         UNITS      = 'm',                          &
+         DIMS       = MAPL_DimsTileOnly,            &
+         VLOCATION  = MAPL_VLocationNone,           &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -219,11 +208,11 @@ subroutine SetServices ( GC, RC )
   ! ! INITIALIZE:
   
   subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
-    type(ESMF_GridComp),     intent(INOUT) :: GC                    ! Gridded component 
-    type(ESMF_State),        intent(INOUT) :: IMPORT                ! Import state
-    type(ESMF_State),        intent(INOUT) :: EXPORT                ! Export state
-    type(ESMF_Clock),        intent(INOUT) :: CLOCK                 ! The clock
-    integer, optional,       intent(  OUT) :: RC                    ! Error code
+    type(ESMF_GridComp),     intent(INOUT) :: GC                  ! Gridded component 
+    type(ESMF_State),        intent(INOUT) :: IMPORT              ! Import state
+    type(ESMF_State),        intent(INOUT) :: EXPORT              ! Export state
+    type(ESMF_Clock),        intent(INOUT) :: CLOCK               ! The clock
+    integer, optional,       intent(  OUT) :: RC                  ! Error code
     type(MAPL_MetaComp), pointer           :: MAPL   
 
     ! ErrLog Variables
@@ -231,33 +220,35 @@ subroutine SetServices ( GC, RC )
     integer				                   :: STATUS
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
-    ! Locals with ESMF and MAPL types
+    ! virtual machine / mpi comm
     type(ESMF_VM)                  :: vm    
-    type(ESMF_Mesh)                :: mesh
-    integer(c_int)                 :: comm
-    integer, pointer, dimension(:) :: elementIds => null()          ! list of elements local to PET
-    integer, pointer, dimension(:) :: elementConn => null()         ! element connectivity (nodes indices)
-    real(dp),pointer, dimension(:) :: elementCoords => null()       ! element centroids
-    integer, allocatable  :: elementTypes(:)
+    integer(c_int)                 :: comm                        ! mpi comm to pass to ISSM
+    
+    ! mesh information
+    type(ESMF_Mesh)                :: mesh                        ! ESMF_Mesh representation of ISSM mesh
+    integer, allocatable           :: elementTypes(:)             ! element geometry type (triangles)
+    integer(c_int)                 :: num_elements                ! number of elements on PET
+    integer(c_int)                 :: num_nodes                   ! number of nodes on PET
+    integer, pointer, dimension(:) :: elementIds    => null()     ! list of elements local to PET
+    integer, pointer, dimension(:) :: elementConn   => null()     ! element connectivity (nodes indices)
+    real(dp),pointer, dimension(:) :: elementCoords => null()     ! element centroids
+    real(dp),pointer,dimension(:)  :: nodeCoords    => null()     ! node coordinates (longitude,latitude)
+    integer, pointer, dimension(:) :: nodeIds       => null()     ! list of nodes local to PET
 
-    ! some new things for regridding
-    type(ESMF_RouteHandle) :: routehandle                          ! routehandle for regridding
-    type(ESMF_Field)       :: srcField                             ! ice elevation on mesh
-    type(ESMF_Field)       :: dstField                             ! ice elevation on grid
-    type(ESMF_Grid)        :: grid                                 ! atmospheric grid
-    type(CONNECT_REGRIDHANDLES), pointer :: regridding_handles         ! store the routehandles for access during run
-    type(REGRIDHANDLES)                  :: wrap                       ! wrapper for routehandle container
+    ! regridding 
+    type(ESMF_RouteHandle)               :: routehandle           ! routehandle for regridding
+    type(ESMF_Field)                     :: srcField              ! source field for regridding
+    type(ESMF_Field)                     :: dstField              ! destination field for regridding
+    type(ESMF_Grid)                      :: grid                  ! atmospheric grid
+    type(CONNECT_REGRIDHANDLES), pointer :: regridding_handles    ! store the routehandles for access during run
+    type(REGRIDHANDLES)                  :: wrap                  ! wrapper for routehandle container
 
-    ! ISSM-related variables
-    integer(c_int)                 :: num_elements                 ! number of elements on PET
-    integer(c_int)                 :: num_nodes                    ! number of nodes on PET
-    integer(c_int)                 :: argc                         ! command line count for ISSM init
-    character(len=200), dimension(:), allocatable, target :: argv  ! command line args for ISSM init
-    type(c_ptr), dimension(:), allocatable :: argv_ptr             ! pointer for passing command line args
-    integer :: i                                                   ! loop index
+    ! command-line arguments to initialize ISSM 
+    integer(c_int)                 :: argc                        ! command line count for ISSM init
+    character(len=200), dimension(:), allocatable, target :: argv ! command line args for ISSM init
+    type(c_ptr), dimension(:), allocatable :: argv_ptr            ! pointer for passing command line args
+    integer :: i                                                  ! loop index
 
-    real(dp),    pointer, dimension(:)     :: nodeCoords => null() ! node coordinates (longitude,latitude)
-    integer,     pointer, dimension(:)     :: nodeIds => null()    ! list of nodes local to PET
 
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
@@ -289,8 +280,8 @@ subroutine SetServices ( GC, RC )
 
     ! Manually set command line argc and argv to initialize ISSM 
     ! note: we will probably want to change the experiment directory argv(3)
-    !       to the GEOS experiment directory, after copying the input file (GreenlandGEOS.bin)
-    !       and toolkits file (GreenlandGEOS.toolkits) to 
+    !       to the GEOS experiment directory(?), after copying the input file (GreenlandGEOS.bin)
+    !       and toolkits file (GreenlandGEOS.toolkits), TBD... 
     argc = 4  
     allocate(argv(argc))
     argv(1) = "unused"//c_null_char ! this argument is not actually used for anything
@@ -298,15 +289,12 @@ subroutine SetServices ( GC, RC )
     argv(3) = "/discover/nobackup/agstubbl/ISSM/GEOS-ISSM/ISSM/examples/GEOSInput"//c_null_char
     argv(4) = "GreenlandGEOS"//c_null_char
 
-    ! Convert Fortran strings to C pointers (argv)
+    ! Convert Fortran strings to C pointers (in argv_ptr)
     allocate(argv_ptr(argc))
-
     do i = 1, argc
-        ! Ensure that we are only getting the memory address once per string
         argv_ptr(i) = c_loc(argv(i))
     end do
 
-    !VERIFY_(STATUS)
     call ESMF_VMBarrier(vm, rc=status)
     
     ! Call the C++ function for initializing ISSM
@@ -323,7 +311,8 @@ subroutine SetServices ( GC, RC )
 
     ! create ESMF mesh corresponding to  ISSM mesh 
     ! get information about nodes and elements
-    call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords)) ! node coordinates in (lon,lat)
+    ! node coords and element coords (centroids) are in (lon,lat)
+    call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords)) 
     call GetElementsISSM(c_loc(elementIds), c_loc(elementConn), c_loc(elementCoords))
 
     elementTypes(:) = ESMF_MESHELEMTYPE_TRI
@@ -335,12 +324,11 @@ subroutine SetServices ( GC, RC )
 
     VERIFY_(STATUS)
 
-    ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports (future work / to-do)       
+    ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports in run method       
     call ESMF_GridCompSet(GC,mesh=mesh,rc=STATUS)
     VERIFY_(STATUS)
 
     ! set up regridding next
-
     ! create source field on ISSM mesh
     srcField = ESMF_FieldCreate(mesh=mesh,typekind=ESMF_TYPEKIND_R8,meshloc=ESMF_MESHLOC_ELEMENT,rc=STATUS)
     call ESMF_FieldFill(srcField, dataFillScheme="const",const1=0.0_dp)
@@ -364,7 +352,6 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     regridding_handles%routehandle  = routehandle 
     wrap%ptr => regridding_handles
-
     call ESMF_UserCompSetInternalState ( GC, 'REGRIDHANDLES', wrap, status )
     VERIFY_(STATUS)
 
@@ -378,7 +365,6 @@ subroutine SetServices ( GC, RC )
     deallocate(elementConn)
     deallocate(elementCoords)
 
-
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
@@ -388,52 +374,50 @@ subroutine SetServices ( GC, RC )
 subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ! Run ISSM ice-sheet model (only over Greenland right now)
 ! !ARGUMENTS:
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
-  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-  type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-  integer, optional,   intent(  out) :: RC     ! Error code:
-
-  type (ESMF_Alarm)                  :: ALARM
+  type(ESMF_GridComp), intent(inout)   :: GC                          ! Gridded component 
+  type(ESMF_State),    intent(inout)   :: IMPORT                      ! Import state
+  type(ESMF_State),    intent(inout)   :: EXPORT                      ! Export state
+  type(ESMF_Clock),    intent(inout)   :: CLOCK                       ! The clock
+  integer, optional,   intent(  out)   :: RC                          ! Error code
+  type (ESMF_Alarm)                    :: ALARM                       ! run alarm for ISSM component 
   
-  ! some new things for regridding
-  type(ESMF_RouteHandle) :: routehandle                              ! routehandle for regridding
-  type(ESMF_Field)       :: srcField                                 ! ice elevation on mesh
-  type(ESMF_Field)       :: dstField                                 ! ice elevation on grid
-  real(dp),    pointer, dimension(:,:)     :: dstField_ptr  => null()! pointer for dstField
-
-  type(ESMF_Grid)        :: grid                                     ! atmospheric grid
-  type(CONNECT_REGRIDHANDLES), pointer :: regridding_handles=>null() ! store the routehandles for access during run
-  type(REGRIDHANDLES)                  :: wrap                       ! wrapper for routehandle container
-
   ! ErrLog Variables
-  character(len=ESMF_MAXSTR)          :: IAm
-  integer                             :: STATUS
-  character(len=ESMF_MAXSTR)          :: COMP_NAME
+  character(len=ESMF_MAXSTR)           :: IAm
+  integer                              :: STATUS
+  character(len=ESMF_MAXSTR)           :: COMP_NAME
 
-  real(dp) :: dt
-  real(dp) :: dt_yr
-  real(dp) :: sec_per_year
-  real(dp),    pointer, dimension(:)     :: SMBToISSM => null()
-  real(dp),    pointer, dimension(:)     :: SurfaceToGEOS => null()
+  ! regridding
+  type(ESMF_RouteHandle)               :: routehandle                 ! routehandle for regridding
+  type(ESMF_Field)                     :: srcField                    ! ice elevation on mesh
+  type(ESMF_Field)                     :: dstField                    ! ice elevation on grid
+  type(ESMF_Grid)                      :: grid                        ! atmospheric grid
+  type(CONNECT_REGRIDHANDLES), pointer :: regridding_handles=>null()  ! store the routehandles for access during run
+  type(REGRIDHANDLES)                  :: wrap                        ! wrapper for routehandle container
 
-  ! pointers to gridded exports
-  real, pointer, dimension(:,:) :: ICEEL     => null()
+  ! time stepping information (ISSM_DT set in AGCM.rc)
+  real(dp) :: dt                                                      ! time step in seconds
+  real(dp) :: dt_yr                                                   ! time step in years (ISSM units)
+  real(dp) :: sec_per_year                                            ! conversion factor
 
-  type(MAPL_MetaComp), pointer            :: MAPL
-
-  type(ESMF_Mesh)                :: mesh
-  integer(c_int)                 :: num_elements  
+  type(MAPL_MetaComp), pointer   :: MAPL
+  type(ESMF_Mesh)                :: mesh                              ! ESMF version of ISSM mesh
+  integer(c_int)                 :: num_elements                      ! number of elements on each PET
   type(ESMF_VM)                  :: vm  
 
-  ! some new things for tiles
+  ! tile information
   type (MAPL_LocStream       )        :: locstream
-  !real, allocatable                   :: ICEELTILE(:) !not sure if this is the right way or below:
-  real, pointer, dimension(:)  ::  ICEELTILE(:) => null()
   integer, pointer, dimension(:)      :: TILETYPES
   integer                             :: NT
 
-  real, pointer, dimension(:)  :: ICEELTILE_ptr  => null()  ! pointer to export state
+  ! ice elevation on mesh, grid, tile
+  real(dp),    pointer, dimension(:)  :: ICEEL_MESH    => null()      ! ice-sheet elevation on mesh elements
+  real, pointer, dimension(:,:)       :: ICEEL_GRID    => null()      ! ice-sheet elevation on atmospheric grid
+  real, pointer, dimension(:)         :: ICEEL_TILE(:) => null()      ! ice-sheet elevation on landice tiles
+  real, pointer, dimension(:)         :: ICEEL         => null()      ! pointer to ice-sheet elevation export state
+
+  ! need to do the same for SMB
+  real(dp),    pointer, dimension(:)     :: SMBToISSM => null()
+
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -470,14 +454,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
   allocate(SMBToISSM(num_elements))
-  allocate(SurfaceToGEOS(num_elements))
+  allocate(ICEEL_MESH(num_elements))
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
 ! set smb and surface to zero for simple test 
   SMBToISSM(:) = 0.0_dp     ! placeholder zeros
-  SurfaceToGEOS(:) = 0.0_dp ! placeholder zeros
+  ICEEL_MESH(:) = 0.0_dp ! placeholder zeros
   
   ! NOTE: do we need the barriers before/after ISSM run?
   call ESMF_VMBarrier(vm, rc=status)
@@ -487,21 +471,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_GridCompGet( GC, GRID=grid, RC=status )
   VERIFY_(STATUS)
 
-  ! get LocStream
-  call MAPL_Get(MAPL, LocStream = locstream, TILETYPES = TILETYPES, RC=status)
-  VERIFY_(STATUS)
-
-  NT = size(TILETYPES)
-
-  VERIFY_(STATUS)
-
   ! run ISSM at specified time steps
   if ( ESMF_AlarmIsRinging (ALARM, RC=STATUS) ) then
-    call RunISSM(dt_yr, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
+    call RunISSM(dt_yr, c_loc(SMBToISSM), c_loc(ICEEL_MESH))
     VERIFY_(STATUS)
 
     ! create source field: ice elevation on mesh elements
-    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=SurfaceToGEOS,meshloc=ESMF_MESHLOC_ELEMENT, & 
+    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICEEL_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
     datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
     VERIFY_(STATUS)
     
@@ -515,34 +491,38 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     routehandle = regridding_handles%routehandle
     call ESMF_FieldRegrid(srcField, dstField, routehandle, RC=STATUS); VERIFY_(STATUS)
 
+    ! get pointer to ice elevation on grid
+    call ESMF_FieldGet(dstField,farrayPtr=ICEEL_GRID,RC=STATUS); VERIFY_(STATUS)
+
     ! get pointer to export
     call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' ,  RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICEEL)) then
-      call ESMF_FieldGet(dstField,farrayPtr=dstField_ptr,RC=STATUS); VERIFY_(STATUS)
-      ICEEL(:,:) = dstField_ptr(:,:)
 
-      ! MKTILE
-      if(associated(ICEEL) .and. .not.associated(ICEELTILE)) then
-        allocate(ICEELTILE(NT), STAT=STATUS)
-        VERIFY_(STATUS)
-        ICEELTILE = MAPL_Undef
-      end if
+    ! get LocStream for landice tiles 
+    call MAPL_Get(MAPL, LocStream = locstream, TILETYPES = TILETYPES, RC=STATUS)
+    VERIFY_(STATUS)
+    NT = size(TILETYPES)
 
-      call MAPL_LocStreamTransform( LOCSTREAM, ICEELTILE, ICEEL, RC=STATUS)
+    ! MKTILE
+    if(associated(ICEEL) .and. .not.associated(ICEEL_TILE)) then
+      allocate(ICEEL_TILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
+      ICEEL_TILE = MAPL_Undef
+    end if
 
-      call MAPL_GetPointer(EXPORT  , ICEELTILE_ptr , 'ICEELTILE' ,  RC=STATUS); VERIFY_(STATUS)
-      ICEELTILE_ptr(:) = ICEELTILE(:)
+    call MAPL_LocStreamTransform( LOCSTREAM, ICEEL_TILE, ICEEL_GRID, RC=STATUS)
+    VERIFY_(STATUS)
 
-    end if 
-!
+    ICEEL(:) = ICEEL_TILE(:)
+
   end if 
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
   deallocate(SMBToISSM)
-  deallocate(SurfaceToGEOS)
+  deallocate(ICEEL_MESH)
+
+  if(associated(ICEEL_TILE)) deallocate(ICEEL_TILE)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
