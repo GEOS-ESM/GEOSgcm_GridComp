@@ -1,6 +1,8 @@
 from typing import Any
 
-from ndsl import Namelist, StencilFactory
+from f90nml import Namelist
+
+from ndsl import StencilFactory
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval

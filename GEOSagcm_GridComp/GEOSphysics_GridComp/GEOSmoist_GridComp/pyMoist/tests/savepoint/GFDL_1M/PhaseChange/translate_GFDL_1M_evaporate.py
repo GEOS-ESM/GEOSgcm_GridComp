@@ -1,4 +1,6 @@
-from ndsl import Namelist, StencilFactory
+from f90nml import Namelist
+
+from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
