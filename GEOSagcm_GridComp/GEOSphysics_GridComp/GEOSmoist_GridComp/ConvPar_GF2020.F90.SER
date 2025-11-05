@@ -355,7 +355,7 @@ CONTAINS
     INTEGER :: mtp
     real :: dtqw,qsatup
 
-    !$ser verbatim integer :: SER_VAR_1
+    !$ser verbatim integer :: SER_VAR_1, SER_VAR_2
 
    !  PRINT *, "SIZE OF KH", size(KH, 1), size(KH, 2), size(KH, 3)
    !  PRINT *, "SIZE OF MASS", size(MASS, 1), size(MASS, 2), size(MASS, 3)
@@ -391,6 +391,9 @@ CONTAINS
    !$ser data USE_EXCESS_SHALLOW=CUM_USE_EXCESS(2)
    !$ser data USE_EXCESS_MID=CUM_USE_EXCESS(3)
    !$ser data USE_EXCESS_DEEP=CUM_USE_EXCESS(1)
+   !$ser data AVERAGE_LAYER_DEPTH_SHALLOW=CUM_AVE_LAYER(2)
+   !$ser data AVERAGE_LAYER_DEPTH_MID=CUM_AVE_LAYER(3)
+   !$ser data AVERAGE_LAYER_DEPTH_DEEP=CUM_AVE_LAYER(1)
    !$ser data ENABLE_SHALLOW=icumulus_gf(2)
    !$ser data ENABLE_MID=icumulus_gf(3)
    !$ser data ENABLE_DEEP=icumulus_gf(1)
@@ -403,9 +406,16 @@ CONTAINS
       !$ser verbatim SER_VAR_1 = 1
    !$ser verbatim endif
    !$ser data PLUME_ORDER=SER_VAR_1 ZERO_DIFF=ZERO_DIFF MOIST_TRIGGER=MOIST_TRIGGER LAMBDA_DEEP=LAMBAU_DEEP
-   !$ser data LAMBDA_SHALLOW_DOWN=LAMBAU_SHDN CAP_MAXS=cap_maxs
-   !$ser data_writeonly PRESSURE_GRADIENT_CONSTANT=pgcon
+   !$ser data LAMBDA_SHALLOW_DOWN=LAMBAU_SHDN CAP_MAXS=cap_maxs SATURATION_CALCULATION_CHOICE=SATUR_CALC
+   !$ser data_writeonly PRESSURE_GRADIENT_CONSTANT=pgcon ITEST=itest
    !$ser data OUTPUT_SOUNDING=OUTPUT_SOUND USE_SCALE_DEP=USE_SCALE_DEP USE_RANDOM_NUMBER=use_random_num
+   !$ser verbatim if (MELT_GLAC) then
+      !$ser verbatim SER_VAR_2 = 1
+   !$ser verbatim else
+      !$ser verbatim SER_VAR_2 = 0
+   !$ser verbatim endif
+   !$ser data CLOUD_LEVEL_GRID=CLEV_GRID MELT_ICE=SER_VAR_2 MODIS_FRACTION=FRAC_MODIS
+   !$ser data BOUNDARY_CONDITION_METHOD=BC_METH OVERSHOOT=OVERSHOOT
 
    WQT_DC = 0.0
    CNV_MFC = 0.0
@@ -1290,31 +1300,30 @@ CONTAINS
     REAL,   DIMENSION(mxp,myp,-1:5) :: dummy_precip
     INTEGER :: imemory,irun,jlx,kk,kss,plume,ii_plume
 
-   ! ! savepoint is located outside of the subroutine call
-   ! ! state fields from GF_Run
-   ! ! $ser savepoint GF2020_Setup-Out-part-2
-   ! ! $ser data convection_fraction=cnvfrc surface_type=srftype
-   ! ! $ser data cloud_work_function_0=AA0
-   ! ! $ser data cloud_work_function_1=AA1 cloud_work_function_2=AA2 cloud_work_function_3=AA3
-   ! ! $ser data cloud_work_function_1_pbl=AA1_BL cloud_work_function_1_cin=AA1_CIN pbl_time_scale=TAU_BL
-   ! ! $ser data cape_removal_time_scale=TAU_EC
-   ! ! non state fields from GF_Run
-   ! ! $ser data seed_convection=STOCHASTIC_SIG
-   ! ! local from GF2020_INTERFACE
-   ! ! $ser data t_2m_local=temp2m evaporation_local=sflux_r sensible_heat_flux_local=sflux_t
-   ! ! $ser data topography_height=topt ocean_fraction=xland grid_length=dx2d
-   ! ! $ser data t_local=temp p_local=press vapor_local=rvap u_local=u v_local=v
-   ! ! $ser data vertical_velocity_local=w layer_height_above_surface_local=zt
-   ! ! $ser data edge_height_above_surface_local=zm mass_local=dm
-   ! ! $ser data vapor_current_local=curr_rvap lateral_entrainment_rate_local=entr_c
-   ! ! $ser data grid_scale_forcing_t_cu_param_input=rthften grid_scale_forcing_vapor_cu_param_input=rqvften subgrid_scale_forcing_t_cu_param_input=rthblten
-   ! ! $ser data subgrid_scale_forcing_vapor_cu_param_input=rqvblten advective_forcing_t_cu_param_input=rth_advten
-   ! ! $ser data convective_liquid_local=mp_liq(cnmp,:,:,:) convective_ice_local=mp_ice(cnmp,:,:,:)
-   ! ! $ser data convective_cloud_fraction_local=mp_cf(cnmp,:,:,:) large_scale_liquid_local=mp_liq(lsmp,:,:,:)
-   ! ! $ser data large_scale_ice_local=mp_ice(lsmp,:,:,:) large_scale_cloud_fraction_local=mp_cf(lsmp,:,:,:)
+   !!savepoint is located outside of the subroutine call
+   !!state fields from GF_Run
+   !!$ser savepoint GF2020_Setup-Out-part-2
+   !!$ser data convection_fraction=cnvfrc surface_type=srftype
+   !!$ser data cloud_work_function_0=AA0
+   !!$ser data cloud_work_function_1=AA1 cloud_work_function_2=AA2 cloud_work_function_3=AA3
+   !!$ser data cloud_work_function_1_pbl=AA1_BL cloud_work_function_1_cin=AA1_CIN pbl_time_scale=TAU_BL
+   !!$ser data cape_removal_time_scale=TAU_EC
+   !!non state fields from GF_Run
+   !!$ser data seed_convection=STOCHASTIC_SIG
+   !!local from GF2020_INTERFACE
+   !!$ser data t_2m_local=temp2m evaporation_local=sflux_r sensible_heat_flux_local=sflux_t
+   !!$ser data topography_height=topt ocean_fraction=xland grid_length=dx2d
+   !!$ser data t_local=temp p_local=press vapor_local=rvap u_local=u v_local=v
+   !!$ser data vertical_velocity_local=w layer_height_above_surface_local=zt
+   !!$ser data edge_height_above_surface_local=zm mass_local=dm
+   !!$ser data vapor_current_local=curr_rvap lateral_entrainment_rate_local=entr_c
+   !!$ser data grid_scale_forcing_t_cu_param_input=rthften grid_scale_forcing_vapor_cu_param_input=rqvften subgrid_scale_forcing_t_cu_param_input=rthblten
+   !!$ser data subgrid_scale_forcing_vapor_cu_param_input=rqvblten advective_forcing_t_cu_param_input=rth_advten
+   !!$ser data convective_liquid_local=mp_liq(cnmp,:,:,:) convective_ice_local=mp_ice(cnmp,:,:,:)
+   !!$ser data convective_cloud_fraction_local=mp_cf(cnmp,:,:,:) large_scale_liquid_local=mp_liq(lsmp,:,:,:)
+   !!$ser data large_scale_ice_local=mp_ice(lsmp,:,:,:) large_scale_cloud_fraction_local=mp_cf(lsmp,:,:,:)
 
    !$ser verbatim call ser_set_Dx(ite, jte, kte, 3)
-
 
 !----------------------------------------------------------------------
     !-do not change this
@@ -1531,7 +1540,7 @@ CONTAINS
    !       !$ser data_buffered Dx=3 convective_precip_flux=prfil_gf_2d(i,k)
    !       !$ser data_buffered Dx=3 t_perturbation=Tpert_2d(i,k)
    !       !$ser data_buffered Dx=3 dvapordt_combined=temp_tendqv(i,k) omega_cu_param_input=omeg(i,k,1)
-   !       !$ser data_buffered Dx=3 geopotential_height_cu_param_input=zo(i,k) p_cu_param_input=po(i,k)
+   !       !$ser data_buffered Dx=3 geopotential_height_forced_cu_param_input=zo(i,k) p_forced_cu_param_input=po(i,k)
    !       !$ser data_buffered Dx=3 t_cu_param_input=temp_old(i,k)
    !       !$ser data_buffered Dx=3 vapor_timestep_start_cu_param_input=qv_old(i,k)
    !       !$ser data_buffered Dx=3 vapor_current_cu_param_input=qv_curr(i,k) air_density_cu_param_input=rhoi(i,k)
@@ -1666,7 +1675,7 @@ CONTAINS
       !       !$ser data_buffered Dx=2 surface_type_in=srftype(i,j)
       !       !$ser data_buffered Dx=3 t_modified_by_advection_in_out=temp_new_ADV(i,k)
       !       !$ser data_buffered Dx=3 vapor_modified_by_advection_in_out=qv_new_ADV(i,k)
-      !       !$ser data_buffered Dx=3 geopotential_height_cu_param_in_out=zo(i,k) p_cu_param_in_out=po(i,k)
+      !       !$ser data_buffered Dx=3 geopotential_height_forced_cu_param_in_out=zo(i,k) p_forced_cu_param_in_out=po(i,k)
       !       !$ser data_buffered Dx=2 p_surface_cu_param_in_out=psur(i) t_surface_cu_param_in_out=tsur(i)
       !       !$ser data_buffered Dx=3 u_cu_param_in_out=us(i,k) v_cu_param_in_out=vs(i,k)
       !       !$ser data_buffered Dx=3 w_cu_param_in_out=ws(i,k)
@@ -1680,7 +1689,7 @@ CONTAINS
       !       !$ser data_buffered Dx=3 convective_liquid_cu_param_in_out=mpql(2,i,k)
       !       !$ser data_buffered Dx=3 large_scale_cloud_fraction_cu_param_in_out=mpcf(1,i,k)
       !       !$ser data_buffered Dx=3 convective_cloud_fraction_cu_param_in_out=mpcf(2,i,k)
-      !       !$ser data_buffered Dx=2 last_ierr_in=last_ierr(i)
+      !       !$ser data_buffered Dx=2 last_error_code_in=last_ierr(i)
       !       !$ser verbatim do ii_plume = 1, maxiens
       !          ! !$ser verbatim call ser_set_indices(i, j, k, ii_plume)
       !          ! !$ser data_buffered Dx=4 t_cu_param_out=outt(i,k,ii_plume)
@@ -1697,7 +1706,7 @@ CONTAINS
       !          ! !$ser data_buffered Dx=4 dlargescaleliquiddt_cu_param_out=outmpql(1,i,k,ii_plume)
       !          ! !$ser data_buffered Dx=4 dconvectivecloudfractiondt_cu_param_out=outmpcf(2,i,k,ii_plume)
       !          ! !$ser data_buffered Dx=4 dlargescalecloudfractiondt_cu_param_out=outmpcf(1,i,k,ii_plume)
-      !          ! !$ser data_buffered Dx=4 ierr_cu_param_out=ierr4d(i,j,ii_plume)
+      !          ! !$ser data_buffered Dx=4 error_code_cu_param_out=ierr4d(i,j,ii_plume)
       !          ! !$ser data_buffered Dx=4 downdraft_origin_level_cu_param_out=jmin4d(i,j,ii_plume)
       !          ! !$ser data_buffered Dx=4 lcl_level_cu_param_out=klcl4d(i,j,ii_plume)
       !          ! !$ser data_buffered Dx=4 updraft_origin_level_cu_param_out=k224d(i,j,ii_plume)
@@ -1751,31 +1760,31 @@ CONTAINS
          if(ii_plume == 3) plume = mid
        endif
 
-      !$ser savepoint GF2020_CumulusParameterization_Setup-In
-      !$ser verbatim do i=its,ite
-         !$ser verbatim do k=kts,kte
-            !$ser verbatim call ser_set_indices(i,j,k,plume)
-            !$ser data_buffered Dx=4 t_excess_cu_param_setup=ztexec(i)
-            !$ser data_buffered Dx=4 vapor_excess_cu_param_setup=zqexec(i)
-            !$ser data_buffered Dx=4 ocean_fraction_cu_param_setup=xlandi(i)
-            !$ser data_buffered Dx=4 t_old_cu_param_setup=temp_old(i,k)
-            !$ser data_buffered Dx=4 vapor_old_cu_param_setup=qv_old(i,k)
-            !$ser data_buffered Dx=4 grid_scale_forcing_t_cu_param_setup=rthften(k,i,j)
-            !$ser data_buffered Dx=4 grid_scale_forcing_vapor_cu_param_setup=rqvften(k,i,j)
-            !$ser data_buffered Dx=4 subgrid_scale_forcing_t_cu_param_setup=rthblten(k,i,j)
-            !$ser data_buffered Dx=4 subgrid_scale_forcing_vapor_cu_param_setup=rqvblten(k,i,j)
-            !$ser data_buffered Dx=4 geopotential_height_cu_param_setup=zo(i,k)
-            !$ser data_buffered Dx=4 epsilon_cu_param_setup=edt4d(i,j,plume)
-            !$ser data_buffered Dx=4 precip_cu_param_setup=cprr4d(i,j,plume)
-            !$ser data_buffered Dx=4 scale_dependence_factor_cu_param_setup=sigma4d(i,j,plume)
-            !$ser data_buffered Dx=4 lightning_density_cu_param_setup=lightn_dens(i,j)
-            !$ser data_buffered Dx=4 seed_convection_cu_param_setup=stochastic_sig(i,j)
-            !$ser data_buffered Dx=4 ierr_cu_param_setup=ierr4d(i,j,plume)
-            !$ser data_buffered Dx=4 grid_length_cu_param_setup=dx2d(i,j)
-            !$ser data_buffered Dx=4 lateral_entrainment_rate_cu_param_setup=entr_c(k,i,j)
-            !$ser data_buffered Dx=4 entrainment_rate_cu_param_setup=entr5d(i,k,j,plume)
-         !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GF2020_CumulusParameterization_Setup-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,j,k,plume)
+      !      !$ser data_buffered Dx=4 t_excess_cu_param_setup=ztexec(i)
+      !      !$ser data_buffered Dx=4 vapor_excess_cu_param_setup=zqexec(i)
+      !      !$ser data_buffered Dx=4 ocean_fraction_cu_param_setup=xlandi(i)
+      !      !$ser data_buffered Dx=4 t_old_cu_param_setup=temp_old(i,k)
+      !      !$ser data_buffered Dx=4 vapor_old_cu_param_setup=qv_old(i,k)
+      !      !$ser data_buffered Dx=4 grid_scale_forcing_t_cu_param_setup=rthften(k,i,j)
+      !      !$ser data_buffered Dx=4 grid_scale_forcing_vapor_cu_param_setup=rqvften(k,i,j)
+      !      !$ser data_buffered Dx=4 subgrid_scale_forcing_t_cu_param_setup=rthblten(k,i,j)
+      !      !$ser data_buffered Dx=4 subgrid_scale_forcing_vapor_cu_param_setup=rqvblten(k,i,j)
+      !      !$ser data_buffered Dx=4 geopotential_height_forced_cu_param_setup=zo(i,k)
+      !      !$ser data_buffered Dx=4 epsilon_cu_param_setup=edt4d(i,j,plume)
+      !      !$ser data_buffered Dx=4 precip_cu_param_setup=cprr4d(i,j,plume)
+      !      !$ser data_buffered Dx=4 scale_dependence_factor_cu_param_setup=sigma4d(i,j,plume)
+      !      !$ser data_buffered Dx=4 lightning_density_cu_param_setup=lightn_dens(i,j)
+      !      !$ser data_buffered Dx=4 seed_convection_cu_param_setup=stochastic_sig(i,j)
+      !      !$ser data_buffered Dx=4 error_code_cu_param_setup=ierr4d(i,j,plume)
+      !      !$ser data_buffered Dx=4 grid_length_cu_param_setup=dx2d(i,j)
+      !      !$ser data_buffered Dx=4 lateral_entrainment_rate_cu_param_setup=entr_c(k,i,j)
+      !      !$ser data_buffered Dx=4 entrainment_rate_cu_param_setup=entr5d(i,k,j,plume)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 
        hei_down_land  =  cum_hei_down_land  (plume)
        hei_down_ocean =  cum_hei_down_ocean (plume)
@@ -1836,7 +1845,6 @@ CONTAINS
          enddo
        enddo
 
-      !  PRINT *, "OUTSIDE SUM AT J ", j, " FOR PLUME ", plume, " (which is loop ", ii_plume, "):", SUM(ierr4d(:,j,plume))
        CALL CUP_gf(its,ite,kts,kte, itf,ktf, mtp, nmp &
                   ,cumulus_type  (plume)            &
                   ,closure_choice(plume)            &
@@ -1976,7 +1984,7 @@ CONTAINS
    !          !$ser data_buffered Dx=3 t_new_pbl_in_out=temp_new_BL(i,k) vapor_new_pbl_in_out=qv_new_BL(i,k)
    !          !$ser data_buffered Dx=3 t_modified_by_advection_in_out=temp_new_ADV(i,k)
    !          !$ser data_buffered Dx=3 vapor_modified_by_advection_in_out=qv_new_ADV(i,k)
-   !          !$ser data_buffered Dx=3 geopotential_height_cu_param_in_out=zo(i,k) p_cu_param_in_out=po(i,k)
+   !          !$ser data_buffered Dx=3 geopotential_height_forced_cu_param_in_out=zo(i,k) p_forced_cu_param_in_out=po(i,k)
    !          !$ser data_buffered Dx=2 p_surface_cu_param_in_out=psur(i) t_surface_cu_param_in_out=tsur(i)
    !          !$ser data_buffered Dx=3 u_cu_param_in_out=us(i,k) v_cu_param_in_out=vs(i,k)
    !          !$ser data_buffered Dx=3 w_cu_param_in_out=ws(i,k)
@@ -1990,7 +1998,7 @@ CONTAINS
    !          !$ser data_buffered Dx=3 convective_liquid_cu_param_in_out=mpql(2,i,k)
    !          !$ser data_buffered Dx=3 large_scale_cloud_fraction_cu_param_in_out=mpcf(1,i,k)
    !          !$ser data_buffered Dx=3 convective_cloud_fraction_cu_param_in_out=mpcf(2,i,k)
-   !          !$ser data_buffered Dx=2 last_ierr_in=last_ierr(i)
+   !          !$ser data_buffered Dx=2 last_error_code_in=last_ierr(i)
    !          !$ser verbatim do ii_plume = 1, maxiens
    !             ! !$ser verbatim call ser_set_indices(i, j, k, ii_plume)
    !             ! !$ser data_buffered Dx=4 t_cu_param_out=outt(i,k,ii_plume)
@@ -2007,7 +2015,7 @@ CONTAINS
    !             ! !$ser data_buffered Dx=4 dlargescaleliquiddt_cu_param_out=outmpql(1,i,k,ii_plume)
    !             ! !$ser data_buffered Dx=4 dconvectivecloudfractiondt_cu_param_out=outmpcf(2,i,k,ii_plume)
    !             ! !$ser data_buffered Dx=4 dlargescalecloudfractiondt_cu_param_out=outmpcf(1,i,k,ii_plume)
-   !             ! !$ser data_buffered Dx=4 ierr_cu_param_out=ierr4d(i,j,ii_plume)
+   !             ! !$ser data_buffered Dx=4 error_code_cu_param_out=ierr4d(i,j,ii_plume)
    !             ! !$ser data_buffered Dx=4 downdraft_origin_level_cu_param_out=jmin4d(i,j,ii_plume)
    !             ! !$ser data_buffered Dx=4 lcl_level_cu_param_out=klcl4d(i,j,ii_plume)
    !             ! !$ser data_buffered Dx=4 updraft_origin_level_cu_param_out=k224d(i,j,ii_plume)
@@ -2588,10 +2596,7 @@ loop1:  do n=1,maxiens
      real,    dimension (kts:kte,8)       ::  tend2d
      real,    dimension (8)               ::  tend1d
      integer                              :: ii
-     INTEGER, OPTIONAL :: SER_CURRENT_J
-     INTEGER, OPTIONAL :: SER_CURRENT_PLUME
-     INTEGER  :: boolean_true
-     INTEGER  :: boolean_false
+     !$ser verbatim INTEGER  :: SER_VAR_1, SER_VAR_2
     !----------------------------------------------------------------------
 
      pre = 0.0
@@ -2747,98 +2752,140 @@ loop1:  do n=1,maxiens
          !mbdt(i)= 0.1*mbdt(i)
       enddo
 
-      ! PRINT *, "INSIDE SUM AT J", SER_CURRENT_J, " FOR PLUME ", SER_CURRENT_PLUME, ":", SUM(ierr)
-      !$ser savepoint GF2020_CumulusParameterization_Setup-Out
-      !$ser verbatim do i=its,ite
-         !$ser verbatim do k=kts,kte
-            ! from outside CUP_gf
-            !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
-            !$ser data_buffered Dx=4 epsilon_cu_param_setup=edto(i)
-            !$ser data_buffered Dx=4 precip_cu_param_setup=pre(i)
-            !$ser data_buffered Dx=4 scale_dependence_factor_cu_param_setup=sig(i)
-            !$ser data_buffered Dx=4 lightning_density_cu_param_setup=lightn_dens(i)
-            !$ser data_buffered Dx=4 ierr_cu_param_setup=ierr(i)
-            !$ser data_buffered Dx=4 grid_length_cu_param_setup=dx(i)
-            !$ser data_buffered Dx=4 lateral_entrainment_rate_cu_param_setup=entr_c(k,i)
-            !$ser data_buffered Dx=4 entrainment_rate_cu_param_setup=entr_rate(i,k)
-            ! local fields
-            !$ser data_buffered Dx=4 local_t_excess_cu_param_setup=ztexec(i)
-            !$ser data_buffered Dx=4 local_vapor_excess_cu_param_setup=zqexec(i)
-            !$ser data_buffered Dx=4 local_t_new_cu_param_setup=tn(i,k)
-            !$ser data_buffered Dx=4 local_vapor_new_cu_param_setup=qo(i,k)
-            !$ser data_buffered Dx=4 local_t_new_pbl_cu_param_setup=tn_bl(i,k)
-            !$ser data_buffered Dx=4 local_vapor_new_pbl_cu_param_setup=qo_bl(i,k)
-            !$ser data_buffered Dx=4 local_moist_static_energy_cu_param_setup=dhdt(i,k)
-            !$ser data_buffered Dx=4 local_maximum_updraft_origin_level_cu_param_setup=kbmax(i)
-            !$ser data_buffered Dx=4 local_kstabm_cu_param_setup=kstabm(i)
-            !$ser data_buffered Dx=4 local_ocean_fraction_cu_param_setup=xland1(i)
-            !$ser data_buffered Dx=4 local_cap_max_cu_param_setup=cap_max(i)
-            !$ser data_buffered Dx=4 local_ierr2_cu_param_setup=ierr2(i)
-            !$ser data_buffered Dx=4 local_ierr3_cu_param_setup=ierr3(i)
-            ! DISABLED. NO SUPPORT FOR STRINGS !$ser data_buffered Dx=4 local_ierrc=ierrc(i)
-            !$ser data_buffered Dx=4 local_cap_max_increment_cu_param_setup=cap_max_increment(i)
-            !$ser data_buffered Dx=4 local_geopotential_height_cu_param_setup=z(i,k)
-            !$ser data_buffered Dx=4 local_geopotential_height_modified_cu_param_setup=xz(i,k)
-            !$ser data_buffered Dx=4 local_cloud_work_function_0_cu_param_setup=aa0(i)
-            !$ser data_buffered Dx=4 local_cloud_work_function_1_cu_param_setup=aa1(i)
-            !$ser data_buffered Dx=4 local_cloud_work_function_2_cu_param_setup=aa2(i)
-            !$ser data_buffered Dx=4 local_cloud_work_function_3_cu_param_setup=aa3(i)
-            !$ser data_buffered Dx=4 local_cloud_work_function_0_pbl_cu_param_setup=aa0_bl(i)
-            !$ser data_buffered Dx=4 local_cloud_work_function_1_pbl_cu_param_setup=aa1_bl(i)
-            !$ser data_buffered Dx=4 local_cloud_work_function_1_fa_cu_param_setup=aa1_fa(i)
-            !$ser data_buffered Dx=4 local_cin1_cu_param_setup=cin1(i)
-            !$ser data_buffered Dx=4 local_k_x_modified_cu_param_setup=xk_x(i)
-            !$ser data_buffered Dx=4 local_epsilon_cu_param_setup=edt(i)
-            !$ser data_buffered Dx=4 local_pbl_time_scale_cu_param_setup=tau_bl(i)
-            !$ser data_buffered Dx=4 local_t_wetbulb_cu_param_setup=t_wetbulb(i)
-            !$ser data_buffered Dx=4 local_vapor_wetbulb_cu_param_setup=q_wetbulb(i)
-            !$ser data_buffered Dx=4 local_tau_ecmwf_cu_param_setup=tau_ecmwf(i)
-            !$ser data_buffered Dx=4 local_f_dicycle_modified_cu_param_setup=xf_dicycle(i)
-            !$ser data_buffered Dx=4 local_add_buoy_modified_cu_param_setup=x_add_buoy(i)
-            !$ser data_buffered Dx=4 local_hcdo_cu_param_setup=hcdo(i,k)
-            !$ser data_buffered Dx=4 local_cupclw_cu_param_setup=cupclw(i,k)
-            !$ser data_buffered Dx=4 local_qrcdo_cu_param_setup=qrcdo(i,k)
-            !$ser data_buffered Dx=4 local_hcot_cu_param_setup=hcot(i,k)
-            !$ser data_buffered Dx=4 local_c1d_cu_param_setup=c1d(i,k)
-            !$ser data_buffered Dx=4 local_evap_bcb_cu_param_setup=evap_bcb(i,k)
-            ! DISABLED. CANNOT SUPPORT VARIABLE 4TH DIMENSION !$ser data_buffered Dx=4 local_mass_flux_ensemble=
-            ! DISABLED. CANNOT SUPPORT VARIABLE 4TH DIMENSION !$ser data_buffered Dx=4 local_precipitation_ensemble=
-            !$ser data_buffered Dx=4 local_scale_dependence_factor_cu_param_setup=sigd(i)
-            !$ser data_buffered Dx=4 local_random_number_cu_param_setup=random(i)
-            !$ser data_buffered Dx=4 local_updraft_detrainment_function_cu_param_setup=cd(i,k)
-            !$ser data_buffered Dx=4 local_epsilon_min_cu_param_setup=edtmin(i)
-            !$ser data_buffered Dx=4 local_epsilon_max_cu_param_setup=edtmax(i)
-            !$ser data_buffered Dx=4 local_arbitrary_numerical_parameter_cu_param_setup=mbdt(i)
-         !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GF2020_CumulusParameterization_Setup-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      ! from outside CUP_gf
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 epsilon_cu_param_setup=edto(i)
+      !      !$ser data_buffered Dx=4 precip_cu_param_setup=pre(i)
+      !      !$ser data_buffered Dx=4 scale_dependence_factor_cu_param_setup=sig(i)
+      !      !$ser data_buffered Dx=4 lightning_density_cu_param_setup=lightn_dens(i)
+      !      !$ser data_buffered Dx=4 error_code_cu_param_setup=ierr(i)
+      !      !$ser data_buffered Dx=4 grid_length_cu_param_setup=dx(i)
+      !      !$ser data_buffered Dx=4 lateral_entrainment_rate_cu_param_setup=entr_c(k,i)
+      !      !$ser data_buffered Dx=4 entrainment_rate_cu_param_setup=entr_rate(i,k)
+      !      ! local fields
+      !      !$ser data_buffered Dx=4 local_t_excess_cu_param_setup=ztexec(i)
+      !      !$ser data_buffered Dx=4 local_vapor_excess_cu_param_setup=zqexec(i)
+      !      !$ser data_buffered Dx=4 local_t_new_cu_param_setup=tn(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_new_cu_param_setup=qo(i,k)
+      !      !$ser data_buffered Dx=4 local_t_new_pbl_cu_param_setup=tn_bl(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_new_pbl_cu_param_setup=qo_bl(i,k)
+      !      !$ser data_buffered Dx=4 local_moist_static_energy_cu_param_setup=dhdt(i,k)
+      !      !$ser data_buffered Dx=4 local_maximum_updraft_origin_level_cu_param_setup=kbmax(i)
+      !      !$ser data_buffered Dx=4 local_kstabm_cu_param_setup=kstabm(i)
+      !      !$ser data_buffered Dx=4 local_ocean_fraction_cu_param_setup=xland1(i)
+      !      !$ser data_buffered Dx=4 local_cap_max_cu_param_setup=cap_max(i)
+      !      !$ser data_buffered Dx=4 local_error_code_2_cu_param_setup=ierr2(i)
+      !      !$ser data_buffered Dx=4 local_error_code_3_cu_param_setup=ierr3(i)
+      !      ! DISABLED. NO SUPPORT FOR STRINGS !$ser data_buffered Dx=4 local_error_code_string=ierrc(i)
+      !      !$ser data_buffered Dx=4 local_cap_max_increment_cu_param_setup=cap_max_increment(i)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cu_param_setup=z(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_modified_cu_param_setup=xz(i,k)
+      !      !$ser data_buffered Dx=4 local_cloud_work_function_0_cu_param_setup=aa0(i)
+      !      !$ser data_buffered Dx=4 local_cloud_work_function_1_cu_param_setup=aa1(i)
+      !      !$ser data_buffered Dx=4 local_cloud_work_function_2_cu_param_setup=aa2(i)
+      !      !$ser data_buffered Dx=4 local_cloud_work_function_3_cu_param_setup=aa3(i)
+      !      !$ser data_buffered Dx=4 local_cloud_work_function_0_pbl_cu_param_setup=aa0_bl(i)
+      !      !$ser data_buffered Dx=4 local_cloud_work_function_1_pbl_cu_param_setup=aa1_bl(i)
+      !      !$ser data_buffered Dx=4 local_cloud_work_function_1_fa_cu_param_setup=aa1_fa(i)
+      !      !$ser data_buffered Dx=4 local_cin1_cu_param_setup=cin1(i)
+      !      !$ser data_buffered Dx=4 local_k_x_modified_cu_param_setup=xk_x(i)
+      !      !$ser data_buffered Dx=4 local_epsilon_cu_param_setup=edt(i)
+      !      !$ser data_buffered Dx=4 local_pbl_time_scale_cu_param_setup=tau_bl(i)
+      !      !$ser data_buffered Dx=4 local_t_wetbulb_cu_param_setup=t_wetbulb(i)
+      !      !$ser data_buffered Dx=4 local_vapor_wetbulb_cu_param_setup=q_wetbulb(i)
+      !      !$ser data_buffered Dx=4 local_tau_ecmwf_cu_param_setup=tau_ecmwf(i)
+      !      !$ser data_buffered Dx=4 local_f_dicycle_modified_cu_param_setup=xf_dicycle(i)
+      !      !$ser data_buffered Dx=4 local_add_buoy_cu_param_setup=x_add_buoy(i)
+      !      !$ser data_buffered Dx=4 local_hcdo_cu_param_setup=hcdo(i,k)
+      !      !$ser data_buffered Dx=4 local_cupclw_cu_param_setup=cupclw(i,k)
+      !      !$ser data_buffered Dx=4 local_qrcdo_cu_param_setup=qrcdo(i,k)
+      !      !$ser data_buffered Dx=4 local_hcot_cu_param_setup=hcot(i,k)
+      !      !$ser data_buffered Dx=4 local_c1d_cu_param_setup=c1d(i,k)
+      !      !$ser data_buffered Dx=4 local_evap_bcb_cu_param_setup=evap_bcb(i,k)
+      !      ! DISABLED. CANNOT SUPPORT VARIABLE 4TH DIMENSION !$ser data_buffered Dx=4 local_mass_flux_ensemble=
+      !      ! DISABLED. CANNOT SUPPORT VARIABLE 4TH DIMENSION !$ser data_buffered Dx=4 local_precipitation_ensemble=
+      !      !$ser data_buffered Dx=4 local_scale_dependence_factor_cu_param_setup=sigd(i)
+      !      !$ser data_buffered Dx=4 local_random_number_cu_param_setup=random(i)
+      !      !$ser data_buffered Dx=4 local_updraft_detrainment_function_cu_param_setup=cd(i,k)
+      !      !$ser data_buffered Dx=4 local_epsilon_min_cu_param_setup=edtmin(i)
+      !      !$ser data_buffered Dx=4 local_epsilon_max_cu_param_setup=edtmax(i)
+      !      !$ser data_buffered Dx=4 local_arbitrary_numerical_parameter_cu_param_setup=mbdt(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 
 !
 !--- environmental conditions, FIRST HEIGHTS
 !--- calculate moist static energy, heights, qes
 !
-      !$ser savepoint CupEnv-In
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 SATUR_CALC=SATUR_CALC z=z(i,k) ierr=ierr(i)
-      !$ser data_buffered Dx=3 p=po(i,k) t=t(i,k) q=q(i,k) psur=psur(i) z1=z1(i)
-      !$ser verbatim boolean_true=-1
-      !$ser data_buffered Dx=3 itest=boolean_true
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GF2020_CumulusParameterization_EnvironmentConditions_1-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_env_cond=z(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_env_cond=qes(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_env_cond=he(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_env_cond=hes(i,k)
+      !      !$ser data_buffered Dx=4 t_old_env_cond=t(i,k)
+      !      !$ser data_buffered Dx=4 vapor_old_env_cond=q(i,k)
+      !      !$ser data_buffered Dx=4 p_forced_env_cond=po(i,k)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_env_cond=z1(i)
+      !      !$ser data_buffered Dx=4 p_surface_env_cond=psur(i)
+      !      !$ser data_buffered Dx=4 error_code_env_cond=ierr(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       call cup_env(z ,qes ,he ,hes ,t ,q ,po,z1 ,psur,ierr,-1,itf,ktf,its,ite, kts,kte)
-      !$ser savepoint CupEnv-Out
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 ierr=ierr(i) z=z(i,k) he=he(i,k) hes=hes(i,k) qes=qes(i,k)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GF2020_CumulusParameterization_EnvironmentConditions_1-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_env_cond=z(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_env_cond=qes(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_env_cond=he(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_env_cond=hes(i,k)
+      !      !$ser data_buffered Dx=4 t_old_env_cond=t(i,k)
+      !      !$ser data_buffered Dx=4 vapor_old_env_cond=q(i,k)
+      !      !$ser data_buffered Dx=4 p_forced_env_cond=po(i,k)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_env_cond=z1(i)
+      !      !$ser data_buffered Dx=4 p_surface_env_cond=psur(i)
+      !      !$ser data_buffered Dx=4 error_code_env_cond=ierr(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
+      !!$ser savepoint GF2020_CumulusParameterization_EnvironmentConditions_2-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 geopotential_height_forced_env_cond=zo(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_forced_env_cond=qeso(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_forced_env_cond=heo(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_forced_env_cond=heso(i,k)
+      !      !$ser data_buffered Dx=4 local_t_new_env_cond=tn(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_new_env_cond=qo(i,k)
+      !      !$ser data_buffered Dx=4 p_forced_env_cond=po(i,k)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_env_cond=z1(i)
+      !      !$ser data_buffered Dx=4 p_surface_env_cond=psur(i)
+      !      !$ser data_buffered Dx=4 error_code_env_cond=ierr(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       call cup_env(zo,qeso,heo,heso,tn,qo,po,z1, psur,ierr,-1,itf,ktf,its,ite, kts,kte)
+      !!$ser savepoint GF2020_CumulusParameterization_EnvironmentConditions_2-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 geopotential_height_forced_env_cond=zo(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_forced_env_cond=qeso(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_forced_env_cond=heo(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_forced_env_cond=heso(i,k)
+      !      !$ser data_buffered Dx=4 local_t_new_env_cond=tn(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_new_env_cond=qo(i,k)
+      !      !$ser data_buffered Dx=4 p_forced_env_cond=po(i,k)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_env_cond=z1(i)
+      !      !$ser data_buffered Dx=4 p_surface_env_cond=psur(i)
+      !      !$ser data_buffered Dx=4 error_code_env_cond=ierr(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 
 !
 !--- outputs a model sounding for the stand-alone code (part 1)
@@ -2853,18 +2900,144 @@ loop1:  do n=1,maxiens
 !
 !--- environmental values on cloud levels
 !
+      !!$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_1-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 t_old_env_clev=t(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_env_clev=qes(i,k)
+      !      !$ser data_buffered Dx=4 vapor_old_env_clev=q(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_env_clev=he(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_env_clev=hes(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_env_clev=z(i,k)
+      !      !$ser data_buffered Dx=4 p_forced_env_clev=po(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_cloud_levels_env_clev=qes_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_cloud_levels_env_clev=q_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_env_clev=he_cup(i,k)
+      !      !$ser data_buffered Dx=4 u_env_clev=us(i,k)
+      !      !$ser data_buffered Dx=4 v_env_clev=vs(i,k)
+      !      !$ser data_buffered Dx=4 local_u_cloud_levels_env_clev=u_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_v_cloud_levels_env_clev=v_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_cloud_levels_env_clev=hes_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_env_clev=z_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_p_cloud_levels_env_clev=p_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_gamma_cloud_levels_env_clev=gamma_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_t_cloud_levels_env_clev=t_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_surface_env_clev=psur(i)
+      !      !$ser data_buffered Dx=4 t_surface_env_clev=tsur(i)
+      !      !$ser data_buffered Dx=4 error_code_env_clev=ierr(i)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_env_clev=z1(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       call cup_env_clev(t,qes,q,he,hes,z,po,qes_cup,q_cup,he_cup, &
            us,vs,u_cup,v_cup,                                     &
            hes_cup,z_cup,p_cup,gamma_cup,t_cup,psur,tsur,         &
            ierr,z1,itf,ktf,its,ite, kts,kte)
+      !!$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_1-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 t_old_env_clev=t(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_env_clev=qes(i,k)
+      !      !$ser data_buffered Dx=4 vapor_old_env_clev=q(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_env_clev=he(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_env_clev=hes(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_env_clev=z(i,k)
+      !      !$ser data_buffered Dx=4 p_forced_env_clev=po(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_cloud_levels_env_clev=qes_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_cloud_levels_env_clev=q_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_env_clev=he_cup(i,k)
+      !      !$ser data_buffered Dx=4 u_env_clev=us(i,k)
+      !      !$ser data_buffered Dx=4 v_env_clev=vs(i,k)
+      !      !$ser data_buffered Dx=4 local_u_cloud_levels_env_clev=u_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_v_cloud_levels_env_clev=v_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_cloud_levels_env_clev=hes_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_env_clev=z_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_p_cloud_levels_env_clev=p_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_gamma_cloud_levels_env_clev=gamma_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_t_cloud_levels_env_clev=t_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_surface_env_clev=psur(i)
+      !      !$ser data_buffered Dx=4 t_surface_env_clev=tsur(i)
+      !      !$ser data_buffered Dx=4 error_code_env_clev=ierr(i)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_env_clev=z1(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 
+      !!$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_2-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 local_t_new_env_clev=tn(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_forced_env_clev=qeso(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_new_env_cond=qo(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_forced_env_clev=heo(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_forced_env_clev=heso(i,k)
+      !      !$ser data_buffered Dx=4 geopotential_height_forced_env_clev=zo(i,k)
+      !      !$ser data_buffered Dx=4 p_forced_env_clev=po(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_cloud_levels_forced_env_clev=qeso_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_cloud_levels_forced_env_clev=qo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_forced_env_clev=heo_cup(i,k)
+      !      !$ser data_buffered Dx=4 u_env_clev=us(i,k)
+      !      !$ser data_buffered Dx=4 v_env_clev=vs(i,k)
+      !      !$ser data_buffered Dx=4 local_u_cloud_levels_env_clev=u_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_v_cloud_levels_env_clev=v_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_cloud_levels_forced_env_clev=heso_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_forced_env_clev=zo_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_cloud_levels_forced_env_clev=po_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_gamma_cloud_levels_forced_env_clev=gammao_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_t_cloud_levels_forced_env_clev=tn_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_surface_env_clev=psur(i)
+      !      !$ser data_buffered Dx=4 t_surface_env_clev=tsur(i)
+      !      !$ser data_buffered Dx=4 error_code_env_clev=ierr(i)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_env_clev=z1(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       call cup_env_clev(tn,qeso,qo,heo,heso,zo,po,qeso_cup,qo_cup, heo_cup,   &
            us,vs,u_cup,v_cup,                                           &
            heso_cup,zo_cup,po_cup,gammao_cup,tn_cup,psur,tsur,          &
            ierr,z1,itf,ktf,its,ite, kts,kte)
+      !!$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_2-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 local_t_new_env_clev=tn(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_forced_env_clev=qeso(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_new_env_cond=qo(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_forced_env_clev=heo(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_forced_env_clev=heso(i,k)
+      !      !$ser data_buffered Dx=4 geopotential_height_forced_env_clev=zo(i,k)
+      !      !$ser data_buffered Dx=4 p_forced_env_clev=po(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_cloud_levels_forced_env_clev=qeso_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_cloud_levels_forced_env_clev=qo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_forced_env_clev=heo_cup(i,k)
+      !      !$ser data_buffered Dx=4 u_env_clev=us(i,k)
+      !      !$ser data_buffered Dx=4 v_env_clev=vs(i,k)
+      !      !$ser data_buffered Dx=4 local_u_cloud_levels_env_clev=u_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_v_cloud_levels_env_clev=v_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_cloud_levels_forced_env_clev=heso_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_forced_env_clev=zo_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_cloud_levels_forced_env_clev=po_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_gamma_cloud_levels_forced_env_clev=gammao_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_t_cloud_levels_forced_env_clev=tn_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_surface_env_clev=psur(i)
+      !      !$ser data_buffered Dx=4 t_surface_env_clev=tsur(i)
+      !      !$ser data_buffered Dx=4 error_code_env_clev=ierr(i)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_env_clev=z1(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !--- get air density at full layer (model levels) by hydrostatic balance (kg/m3)
 !
+      !!$ser savepoint GF2020_CumulusParameterization_HydrostaticAirDensity-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_forced_air_density=zo_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_cloud_levels_forced_air_density=po_cup(i,k)
+      !      !$ser data_buffered Dx=4 error_code_air_density=ierr(i)
+      !      !$ser data_buffered Dx=4 local_air_density_air_density=rho_hydr(i,k)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       do i=its,itf
           rho_hydr(i,:) = 0.0
           if(ierr(i) /= 0)cycle
@@ -2873,43 +3046,38 @@ loop1:  do n=1,maxiens
              !print*,"rhohidr=",k,rho_hydr(i,k),po_cup(i,k+1),zo_cup(i,k+1)
           enddo
       enddo
+      !!$ser savepoint GF2020_CumulusParameterization_HydrostaticAirDensity-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_forced_air_density=zo_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_cloud_levels_forced_air_density=po_cup(i,k)
+      !      !$ser data_buffered Dx=4 error_code_air_density=ierr(i)
+      !      !$ser data_buffered Dx=4 local_air_density_air_density=rho_hydr(i,k)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !--- partition between liq/ice cloud contents
 !
-      !$ser savepoint GetPartitionLiqIce-In
-      !$ser verbatim boolean_true=1
-      !$ser verbatim boolean_false=0
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 tn=tn(i,k) FRAC_MODIS=FRAC_MODIS
-      !$ser data_buffered Dx=3 po_cup=po_cup(i,k) zo_cup=zo_cup(i,k)
-      !$ser data_buffered Dx=3 ierr=ierr(i) z1=z1(i) cnvfrc=cnvfrc(i) srftype=srftype(i)
-      !$ser verbatim if (trim(cumulus) .eq. "deep") then
-      !$ser data_buffered Dx=3 cumulus=boolean_true
-      !$ser verbatim else
-      !$ser data_buffered Dx=3 cumulus=boolean_false
-      !$ser verbatim endif
-      !$ser verbatim if (MELT_GLAC) then
-      !$ser data_buffered Dx=3 MELT_GLAC=boolean_true
-      !$ser verbatim else
-      !$ser data_buffered Dx=3 MELT_GLAC=boolean_false
-      !$ser verbatim endif
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GF2020_CumulusParameterization_PartitionLiquidIce-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 error_code_partition=ierr(i)
+      !      !$ser data_buffered Dx=4 local_t_new_partition=tn(i,k)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_partition=z1(i)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_forced_partition=zo_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_cloud_levels_forced_partition=po_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_partition_liquid_ice_partition=p_liq_ice(i,k)
+      !      !$ser data_buffered Dx=4 local_melting_layer_partition=melting_layer(i,k)
+      !      !$ser data_buffered Dx=4 convection_fraction_partition=cnvfrc(i)
+      !      !$ser data_buffered Dx=4 surface_type_partition=srftype(i)
+      !      !$ser data_buffered Dx=4 local_maximum_updraft_origin_level_partition=kbmax(i)
+      !      !$ser data_buffered Dx=4 local_detrainment_start_level_partition=kdet(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       call get_partition_liq_ice(ierr,tn,z1,zo_cup,po_cup,p_liq_ice,melting_layer,&
                                  itf,ktf,its,ite,kts,kte,cnvfrc,srftype,cumulus)
-      !$ser savepoint GetPartitionLiqIce-Out
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 melting_layer=melting_layer(i,k) p_liq_ice=p_liq_ice(i,k)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
       do i=its,itf
         if(ierr(i).eq.0)then
           do k=kts,ktf
@@ -2929,9 +3097,37 @@ loop1:  do n=1,maxiens
  26       continue
         endif
       enddo
+      !!$ser savepoint GF2020_CumulusParameterization_PartitionLiquidIce-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 error_code_partition=ierr(i)
+      !      !$ser data_buffered Dx=4 local_t_new_partition=tn(i,k)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_partition=z1(i)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_forced_partition=zo_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_cloud_levels_forced_partition=po_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_partition_liquid_ice_partition=p_liq_ice(i,k)
+      !      !$ser data_buffered Dx=4 local_melting_layer_partition=melting_layer(i,k)
+      !      !$ser data_buffered Dx=4 convection_fraction_partition=cnvfrc(i)
+      !      !$ser data_buffered Dx=4 surface_type_partition=srftype(i)
+      !      !$ser data_buffered Dx=4 local_maximum_updraft_origin_level_partition=kbmax(i)
+      !      !$ser data_buffered Dx=4 local_detrainment_start_level_partition=kdet(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
+
 !
 !--- determine level with highest moist static energy content - k22
 !
+      !!$ser savepoint GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 local_updraft_origin_level_mse_level=k22(i)
+      !      !$ser data_buffered Dx=4 error_code_mse_level=ierr(i)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_forced_mse_level=heo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_maximum_updraft_origin_level_mse_level=kbmax(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       if(trim(cumulus) == 'shallow') then
         start_k22 = 1
       else
@@ -2960,6 +3156,16 @@ loop1:  do n=1,maxiens
 
             endif
       ENDDO
+      !!$ser savepoint GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 local_updraft_origin_level_mse_level=k22(i)
+      !      !$ser data_buffered Dx=4 error_code_mse_level=ierr(i)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_forced_mse_level=heo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_maximum_updraft_origin_level_mse_level=kbmax(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !
 !-- get the pickup of ensemble ave prec, following Neelin et al 2009.
@@ -3064,6 +3270,32 @@ loop1:  do n=1,maxiens
 !
 !------- determine LCL for the air parcels around K22
 !
+      !!$ser savepoint GF2020_CumulusParameterization_GetLCL-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 p_forced_getlcl=po(i,k)
+      !      !$ser data_buffered Dx=4 local_p_cloud_levels_getlcl=p_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_t_excess_getlcl=ztexec(i)
+      !      !$ser data_buffered Dx=4 local_t_cloud_levels_getlcl=t_cup(i,k)
+      !      !$ser data_buffered Dx=4 t_perturbation_getlcl=Tpert(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_excess_getlcl=zqexec(i)
+      !      !$ser data_buffered Dx=4 local_vapor_cloud_levels_forced_getlcl=q_cup(i,k)
+      !      !$ser data_buffered Dx=4 omega_getlcl=omeg(i,k,1)
+      !      !$ser data_buffered Dx=4 air_density_getlcl=rho(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_getlcl=z_cup(i,k)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_getlcl=z1(i)
+      !      !$ser data_buffered Dx=4 ocean_fraction_getlcl=xland(i)
+      !      !$ser data_buffered Dx=4 local_updraft_origin_level_getlcl=k22(i)
+      !      !$ser data_buffered Dx=4 grid_length_getlcl=dx(i)
+      !      !$ser data_buffered Dx=4 lcl_level_getlcl=klcl(i)
+      !      !$ser data_buffered Dx=4 error_code_getlcl=ierr(i)
+      !      !! TESTING
+      !      !$ser data_buffered Dx=4 vapor_source=rlll t_source=tlll p_source=plll z_source=zlll
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
+      !!$ser savepoint GF2020_CumulusParameterization_GetLCL-Out
+
        DO i=its,itf
         klcl(i) = k22(i) ! default value
         if(ierr(i) == 0)then
@@ -3088,6 +3320,10 @@ loop0:       do k=kts,ktf
               enddo loop0
               klcl(i)=min(klcl(i),ktf-4)
            endif
+           !!$ser verbatim do k=kts,kte
+           ! !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+           ! !$ser data_buffered Dx=4 vapor_source=rlll t_source=tlll p_source=plll z_source=zlll
+           !!$ser verbatim enddo
         endif
         !write(12,111)'MDlcl',tlcl,plcl,dzlcl,klcl(i),ierr(i)
         111 format(1x,A5,3F10.2,2i4)
@@ -3152,18 +3388,84 @@ loop0:       do k=kts,ktf
              !endif
          enddo
       ENDIF
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 p_forced_getlcl=po(i,k)
+      !      !$ser data_buffered Dx=4 local_p_cloud_levels_getlcl=p_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_t_excess_getlcl=ztexec(i)
+      !      !$ser data_buffered Dx=4 local_t_cloud_levels_getlcl=t_cup(i,k)
+      !      !$ser data_buffered Dx=4 t_perturbation_getlcl=Tpert(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_excess_getlcl=zqexec(i)
+      !      !$ser data_buffered Dx=4 local_vapor_cloud_levels_forced_getlcl=q_cup(i,k)
+      !      !$ser data_buffered Dx=4 omega_getlcl=omeg(i,k,1)
+      !      !$ser data_buffered Dx=4 air_density_getlcl=rho(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_getlcl=z_cup(i,k)
+      !      !$ser data_buffered Dx=4 topography_height_no_negative_getlcl=z1(i)
+      !      !$ser data_buffered Dx=4 ocean_fraction_getlcl=xland(i)
+      !      !$ser data_buffered Dx=4 local_updraft_origin_level_getlcl=k22(i)
+      !      !$ser data_buffered Dx=4 grid_length_getlcl=dx(i)
+      !      !$ser data_buffered Dx=4 lcl_level_getlcl=klcl(i)
+      !      !$ser data_buffered Dx=4 error_code_getlcl=ierr(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !--- determine the moist static energy of air parcels at source level
 !
+      !!$ser savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser data_buffered Dx=4 error_code_parcelmse=ierr(i)
+      !      !$ser data_buffered Dx=4 ocean_fraction_parcelmse=xland(i)
+      !      !$ser data_buffered Dx=4 local_vapor_excess_parcelmse=zqexec(i)
+      !      !$ser data_buffered Dx=4 local_t_excess_parcelmse=ztexec(i)
+      !      !$ser data_buffered Dx=4 local_add_buoy_parcelmse=x_add_buoy(i)
+      !      !$ser data_buffered Dx=4 p_forced_parcelmse=po(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_parcelmse=he_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_forced_parcelmse=heo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_moist_static_energy_origin_level_parcelmse=hkb(i)
+      !      !$ser data_buffered Dx=4 local_moist_static_energy_origin_level_forced_parcelmse=hkbo(i)
+      !      !$ser data_buffered Dx=4 local_updraft_origin_level_parcelmse=k22(i)
+      !      !$ser data_buffered Dx=4 t_perturbation_parcelmse=Tpert(i,k)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       do i=its,itf
        if(ierr(i) /= 0)cycle
        x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
        call get_cloud_bc(cumulus,kts,kte,ktf,xland(i),po(i,kts:kte),he_cup (i,kts:kte),hkb (i),k22(i),x_add,Tpert(i,kts:kte))
        call get_cloud_bc(cumulus,kts,kte,ktf,xland(i),po(i,kts:kte),heo_cup(i,kts:kte),hkbo(i),k22(i),x_add,Tpert(i,kts:kte))
       enddo
+      !!$ser savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser data_buffered Dx=4 error_code_parcelmse=ierr(i)
+      !      !$ser data_buffered Dx=4 ocean_fraction_parcelmse=xland(i)
+      !      !$ser data_buffered Dx=4 local_vapor_excess_parcelmse=zqexec(i)
+      !      !$ser data_buffered Dx=4 local_t_excess_parcelmse=ztexec(i)
+      !      !$ser data_buffered Dx=4 local_add_buoy_parcelmse=x_add_buoy(i)
+      !      !$ser data_buffered Dx=4 p_forced_parcelmse=po(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_parcelmse=he_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_forced_parcelmse=heo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_moist_static_energy_origin_level_parcelmse=hkb(i)
+      !      !$ser data_buffered Dx=4 local_moist_static_energy_origin_level_forced_parcelmse=hkbo(i)
+      !      !$ser data_buffered Dx=4 local_updraft_origin_level_parcelmse=k22(i)
+      !      !$ser data_buffered Dx=4 t_perturbation_parcelmse=Tpert(i,k)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !--- determine the vertical entrainment/detrainment rates, the level of convective cloud base -kbcon-
 !--- and the scale dependence factor (sig).
+      !!$ser savepoint GF2020_CumulusParameterization_EntrainmentRates-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser data_buffered Dx=4 error_code_entrainmentrates=ierr(i)
+      !      !$ser data_buffered Dx=4 local_vapor_cloud_levels_forced_ecv=qo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_cloud_levels_forced_entrainmentrates=qeso_cup(i,k)
+      !      !$ser data_buffered Dx=4 lcl_level_entrainmentrates=klcl(i)
+      !      !$ser data_buffered Dx=4 entrainment_rate_entrainmentrates=entr_rate(i,k)
+      !      !$ser data_buffered Dx=4 local_updraft_detrainment_function_entrainmentrates=cd(i,k)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       DO i=its,itf
          if(ierr(i) /= 0) CYCLE
          do k=kts,kte
@@ -3183,9 +3485,46 @@ loop0:       do k=kts,ktf
             endif
          enddo
       ENDDO
+      !!$ser savepoint GF2020_CumulusParameterization_EntrainmentRates-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser data_buffered Dx=4 error_code_entrainmentrates=ierr(i)
+      !      !$ser data_buffered Dx=4 local_vapor_cloud_levels_forced_ecv=qo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_cloud_levels_forced_entrainmentrates=qeso_cup(i,k)
+      !      !$ser data_buffered Dx=4 lcl_level_entrainmentrates=klcl(i)
+      !      !$ser data_buffered Dx=4 entrainment_rate_entrainmentrates=entr_rate(i,k)
+      !      !$ser data_buffered Dx=4 local_updraft_detrainment_function_entrainmentrates=cd(i,k)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !--- start_level
 !
+      !!$ser savepoint GF2020_CumulusParameterization_ConvectiveCloudBase-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser data_buffered Dx=4 error_code_ccb=ierr(i)
+      !      !$ser data_buffered Dx=4 local_cap_max_increment_ccb=cap_max_increment(i)
+      !      !$ser data_buffered Dx=4 local_cap_max_ccb=cap_max(i)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_cloud_levels_forced_ccb=heo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_cloud_levels_forced_ccb=heso_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_vapor_cloud_levels_forced_ccb=qo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_cloud_levels_forced_ccb=qeso_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_forced_ccb=po(i,k)
+      !      !$ser data_buffered Dx=4 p_cloud_levels_forced_ccb=po_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_forced_ccb=zo_cup(i,k)
+      !      !$ser data_buffered Dx=4 local_env_moist_static_energy_forced_ccb=heo(i,k)
+      !      !$ser data_buffered Dx=4 local_moist_static_energy_origin_level_forced_ccb=hkbo(i)
+      !      !$ser data_buffered Dx=4 local_vapor_new_ccb=qo(i,k)
+      !      !$ser data_buffered Dx=4 local_env_saturation_mixing_ratio_forced_ccb=qeso(i,k)
+      !      !$ser data_buffered Dx=4 entrainment_rate_ccb=entr_rate(i,k)
+      !      !$ser data_buffered Dx=4 local_hcot_ccb=hcot(i,k)
+      !      !$ser data_buffered Dx=4 local_updraft_origin_level_ccb=k22(i)
+      !      !$ser data_buffered Dx=4 local_maximum_updraft_origin_level_ccb=kbmax(i)
+      !      !$ser data_buffered Dx=4 lcl_level_ccb=klcl(i)
+      !      !$ser data_buffered Dx=4 local_updraft_parcel_lfc_ccb=kbcon(i)
+
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
       start_level(:)=  KLCL(:)
 !
 !
@@ -3216,59 +3555,59 @@ loop0:       do k=kts,ktf
      enddo
 !
 !--- increase detrainment in stable layers
-      !$ser savepoint CupMinimi-In
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
-      !$ser data_buffered Dx=3 HEso_cup=HEso_cup(i,k)
-      !$ser data_buffered Dx=3 Kbcon=Kbcon(i) kstabm=kstabm(i) ierr=ierr(i)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint CupMinimi-In
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      !!$ser data_buffered Dx=3 HEso_cup=HEso_cup(i,k)
+      !!$ser data_buffered Dx=3 Kbcon=Kbcon(i) kstabm=kstabm(i) ierr=ierr(i)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
       CALL cup_minimi(HEso_cup,Kbcon,kstabm,kstabi,ierr,itf,ktf,its,ite, kts,kte)
-      !$ser savepoint CupMinimi-Out
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
-      !$ser data_buffered Dx=3 kstabi=kstabi(i)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint CupMinimi-Out
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      !!$ser data_buffered Dx=3 kstabi=kstabi(i)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
    
 !
 !--- use KTOP for plumes
 !
-      !$ser savepoint RatesUpPdf-In
-      !$ser verbatim boolean_true = 2
-      !$ser verbatim boolean_false = 0
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
-      !$ser data_buffered Dx=3 ierr=ierr(i) ktop=ktop(i) kbcon=kbcon(i)
-      !$ser data_buffered Dx=3 entr_rate=entr_rate(i,k) hkbo=hkbo(i) heo=heo(i,k) heso_cup=heso_cup(i,k)
-      !$ser data_buffered Dx=3 z_cup=zo_cup(i,k) OVERSHOOT=OVERSHOOT
-      !$ser verbatim if (trim(cumulus) .eq. "shallow") then
-      !$ser data_buffered Dx=3 name=boolean_true
-      !$ser verbatim else
-      !$ser data_buffered Dx=3 name=boolean_false
-      !$ser verbatim endif
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint RatesUpPdf-In
+      !!$ser verbatim SER_VAR_1 = 2
+      !!$ser verbatim SER_VAR_2 = 0
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      !!$ser data_buffered Dx=3 ierr=ierr(i) ktop=ktop(i) kbcon=kbcon(i)
+      !!$ser data_buffered Dx=3 entr_rate=entr_rate(i,k) hkbo=hkbo(i) heo=heo(i,k) heso_cup=heso_cup(i,k)
+      !!$ser data_buffered Dx=3 z_cup=zo_cup(i,k) OVERSHOOT=OVERSHOOT
+      !!$ser verbatim if (trim(cumulus) .eq. "shallow") then
+      !!$ser data_buffered Dx=3 name=SER_VAR_1
+      !!$ser verbatim else
+      !!$ser data_buffered Dx=3 name=SER_VAR_2
+      !!$ser verbatim endif
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
       CALL rates_up_pdf(cumulus,ktop,ierr,po_cup,entr_rate,hkbo,heo,heso_cup,zo_cup, &
                         kstabi,k22,kbcon,its,ite,itf,kts,kte,ktf,zuo,kpbl,klcl,hcot)
-      !$ser savepoint RatesUpPdf-Out
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
-      !$ser data_buffered Dx=3 ierr=ierr(i) ktop=ktop(i)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint RatesUpPdf-Out
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      !!$ser data_buffered Dx=3 ierr=ierr(i) ktop=ktop(i)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
 !
       IF(trim(cumulus) == 'deep') THEN
         !
@@ -3396,26 +3735,26 @@ loop0:       do k=kts,ktf
 !
 !--- Get buoyancy of updrafts
 !
-      !$ser savepoint GetBuoyancy-In
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
-      !$ser data_buffered Dx=3 hc=hco(i,k) he_cup=heo_cup(i,k) hes_cup=heso_cup(i,k)
-      !$ser data_buffered Dx=3 ierr=ierr(i) klcl=klcl(i) kbcon=kbcon(i) ktop=ktop(i)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GetBuoyancy-In
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      !!$ser data_buffered Dx=3 hc=hco(i,k) he_cup=heo_cup(i,k) hes_cup=heso_cup(i,k)
+      !!$ser data_buffered Dx=3 ierr=ierr(i) klcl=klcl(i) kbcon=kbcon(i) ktop=ktop(i)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
      call get_buoyancy(itf,ktf, its,ite, kts,kte,ierr,klcl,kbcon,ktop,hco,heo_cup,heso_cup,dbyo,zo_cup)
-      !$ser savepoint GetBuoyancy-Out
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
-      !$ser data_buffered Dx=3 dby=dbyo(i,k) 
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GetBuoyancy-Out
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      !!$ser data_buffered Dx=3 dby=dbyo(i,k) 
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
 !--- get "c1d" profile ----------------------------------------
      if(trim(cumulus) == 'deep' .and. USE_C1D) then
         Do i=its,itf
@@ -3451,42 +3790,42 @@ loop0:       do k=kts,ktf
 
 !
 !--- get melting profile
-      !$ser savepoint GetMeltingProfile-In
-      !$ser verbatim boolean_true=1
-      !$ser verbatim boolean_false=0
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 tn_cup=tn_cup(i,k)
-      !$ser data_buffered Dx=3 po_cup=po_cup(i,k) qrco=qrco(i,k) melting_layer=melting_layer(i,k)
-      !$ser data_buffered Dx=3 pwo=pwo(i,k) pwdo=pwdo(i,k) p_liq_ice=p_liq_ice(i,k)
-      !$ser data_buffered Dx=3 ierr=ierr(i) edto=edto(i)
-      !$ser verbatim if (trim(cumulus) .eq. "deep") then
-      !$ser data_buffered Dx=3 cumulus=boolean_true
-      !$ser verbatim else
-      !$ser data_buffered Dx=3 cumulus=boolean_false
-      !$ser verbatim endif
-      !$ser verbatim if (MELT_GLAC) then
-      !$ser data_buffered Dx=3 MELT_GLAC=boolean_true
-      !$ser verbatim else
-      !$ser data_buffered Dx=3 MELT_GLAC=boolean_false
-      !$ser verbatim endif
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GetMeltingProfile-In
+      !!$ser verbatim SER_VAR_1=1
+      !!$ser verbatim SER_VAR_2=0
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
+      !!$ser data_buffered Dx=3 tn_cup=tn_cup(i,k)
+      !!$ser data_buffered Dx=3 po_cup=po_cup(i,k) qrco=qrco(i,k) melting_layer=melting_layer(i,k)
+      !!$ser data_buffered Dx=3 pwo=pwo(i,k) pwdo=pwdo(i,k) p_liq_ice=p_liq_ice(i,k)
+      !!$ser data_buffered Dx=3 ierr=ierr(i) edto=edto(i)
+      !!$ser verbatim if (trim(cumulus) .eq. "deep") then
+      !!$ser data_buffered Dx=3 cumulus=SER_VAR_1
+      !!$ser verbatim else
+      !!$ser data_buffered Dx=3 cumulus=SER_VAR_2
+      !!$ser verbatim endif
+      !!$ser verbatim if (MELT_GLAC) then
+      !!$ser data_buffered Dx=3 MELT_GLAC=SER_VAR_1
+      !!$ser verbatim else
+      !!$ser data_buffered Dx=3 MELT_GLAC=SER_VAR_2
+      !!$ser verbatim endif
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
      call get_melting_profile(ierr,tn_cup,po_cup, p_liq_ice,melting_layer,qrco    &
                              ,pwo,edto,pwdo,melting                               &
                              ,itf,ktf,its,ite, kts,kte, cumulus                   )
-      !$ser savepoint GetMeltingProfile-Out
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 melting=melting(i,k)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GetMeltingProfile-Out
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
+      !!$ser data_buffered Dx=3 melting=melting(i,k)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !--- updraft moist static energy + momentum budget
 !
@@ -4073,37 +4412,37 @@ ENDIF
 !
 !--- DETERMINE DOWNDRAFT STRENGTH IN TERMS OF WINDSHEAR
 !
-      !$ser savepoint CupDDEdt-In
-      !$ser verbatim boolean_true=2
-      !$ser verbatim boolean_false=0
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 rho=rho(i,k) us=us(i,k) vs=vs(i,k) z=zo(i,k) p=po(i,k) pw=pwo(i,k)
-      !$ser data_buffered Dx=3 pwav=pwavo(i) pwev=pwevo(i) ccn=ccn(i) psum2=psum(i) psumh=psumh(i)
-      !$ser data_buffered Dx=3 ierr=ierr(i) edtmax=edtmax(i) edtmin=edtmin(i) ktop=ktop(i) 
-      !$ser data_buffered Dx=3 kbcon=kbcon(i) maxens2=maxens2 aeroevap=aeroevap
-      !$ser verbatim if (trim(cumulus) .eq. "shallow") then
-      !$ser data_buffered Dx=3 cumulus=boolean_true
-      !$ser verbatim else
-      !$ser data_buffered Dx=3 cumulus=boolean_false
-      !$ser verbatim endif
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint CupDDEdt-In
+      !!$ser verbatim SER_VAR_1=2
+      !!$ser verbatim SER_VAR_2=0
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
+      !!$ser data_buffered Dx=3 rho=rho(i,k) us=us(i,k) vs=vs(i,k) z=zo(i,k) p=po(i,k) pw=pwo(i,k)
+      !!$ser data_buffered Dx=3 pwav=pwavo(i) pwev=pwevo(i) ccn=ccn(i) psum2=psum(i) psumh=psumh(i)
+      !!$ser data_buffered Dx=3 ierr=ierr(i) edtmax=edtmax(i) edtmin=edtmin(i) ktop=ktop(i) 
+      !!$ser data_buffered Dx=3 kbcon=kbcon(i) maxens2=maxens2 aeroevap=aeroevap
+      !!$ser verbatim if (trim(cumulus) .eq. "shallow") then
+      !!$ser data_buffered Dx=3 cumulus=SER_VAR_1
+      !!$ser verbatim else
+      !!$ser data_buffered Dx=3 cumulus=SER_VAR_2
+      !!$ser verbatim endif
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
       call cup_dd_edt(cumulus,ierr,us,vs,zo,ktop,kbcon,edt,po,pwavo, &
                       pwo,ccn,pwevo,edtmax,edtmin,maxens2,edtc,psum,psumh, &
                       rho,aeroevap,itf,ktf,ipr,jpr,its,ite, kts,kte)
-      !$ser savepoint CupDDEdt-Out
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 edt=edt(i) ierr=ierr(i) edtc=edtc(i,1)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint CupDDEdt-Out
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
+      !!$ser data_buffered Dx=3 edt=edt(i) ierr=ierr(i) edtc=edtc(i,1)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
 
 
      do iedt=1,maxens2
@@ -4902,27 +5241,27 @@ ENDIF ! vertical discretization formulation
 !
 !--- Include kinetic energy dissipation converted to heating
 !
-      !$ser savepoint KeToHeating-In
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
-      !$ser data_buffered Dx=3 po_cup=po_cup(i,k) us=us(i,k) vs=vs(i,k) dellu=dellu(i,k)
-      !$ser data_buffered Dx=3 ierr=ierr(i) ktop=ktop(i) dellv=dellv(i,k) dellat=dellat(i,k)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint KeToHeating-In
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      !!$ser data_buffered Dx=3 po_cup=po_cup(i,k) us=us(i,k) vs=vs(i,k) dellu=dellu(i,k)
+      !!$ser data_buffered Dx=3 ierr=ierr(i) ktop=ktop(i) dellv=dellv(i,k) dellat=dellat(i,k)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
        call ke_to_heating(itf,ktf,its,ite, kts,kte,ktop,ierr &
                          ,po_cup,us,vs,dellu,dellv,dellat)
-      !$ser savepoint KeToHeating-Out
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
-      !$ser data_buffered Dx=3 dellat=dellat(i,k)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint KeToHeating-Out
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 3) then
+      !!$ser data_buffered Dx=3 dellat=dellat(i,k)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !--- FEEDBACK
 !
@@ -4938,31 +5277,31 @@ ENDIF ! vertical discretization formulation
 !
 !
 !--- get the net precipitation flux (after downdraft evaporation)
-      !$ser savepoint GetPrecipFluxes-In
-      !$ser verbatim boolean_true=1
-      !$ser verbatim boolean_false=0
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 ktop=ktop(i) ierr=ierr(i) xmb=xmb(i)
-      !$ser data_buffered Dx=3 edto=edto(i) pwo=pwo(i,k) pwdo=pwdo(i,k)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GetPrecipFluxes-In
+      !!$ser verbatim SER_VAR_1=1
+      !!$ser verbatim SER_VAR_2=0
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
+      !!$ser data_buffered Dx=3 ktop=ktop(i) ierr=ierr(i) xmb=xmb(i)
+      !!$ser data_buffered Dx=3 edto=edto(i) pwo=pwo(i,k) pwdo=pwdo(i,k)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
        call get_precip_fluxes(cumulus,klcl,kbcon,ktop,k22,ierr,xland,pre,xmb  &
                              ,pwo,pwavo,edto,pwevo,pwdo,t_cup,tempco          &
                              ,prec_flx,evap_flx                               &
                              ,itf,ktf,its,ite, kts,kte)
-      !$ser savepoint GetPrecipFluxes-Out
-      !$ser verbatim do i=its,ite
-      !$ser verbatim do k=kts,kte
-      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
-      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
-      !$ser data_buffered Dx=3 prec_flx=prec_flx(i,k) evap_flx=evap_flx(i,k)
-      !$ser verbatim endif
-      !$ser verbatim enddo
-      !$ser verbatim enddo
+      !!$ser savepoint GetPrecipFluxes-Out
+      !!$ser verbatim do i=its,ite
+      !!$ser verbatim do k=kts,kte
+      !!$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !!$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
+      !!$ser data_buffered Dx=3 prec_flx=prec_flx(i,k) evap_flx=evap_flx(i,k)
+      !!$ser verbatim endif
+      !!$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !--- rainfall evap below cloud base
 !
@@ -6129,6 +6468,7 @@ ENDIF !- end of section for atmospheric composition
        DO i=its,itf
            IF(ierr(i) == 0) then
             do k=kts,kte-1
+               PRINT *, "IN WEIRD LOOP SEND HELP"
               rho=100*(p_cup(i,k)-p_cup(i,k+1))/(z_cup(i,k+1)-z_cup(i,k))/g ! air dens by hidrostatic balance (kg/m3)
               write(23,101) i,k,z_cup(i,k),p_cup(i,k),t_cup(i,k),q_cup(i,k)*1000.,he_cup(i,k),u_cup(i,k),v_cup(i,k),rho
 
