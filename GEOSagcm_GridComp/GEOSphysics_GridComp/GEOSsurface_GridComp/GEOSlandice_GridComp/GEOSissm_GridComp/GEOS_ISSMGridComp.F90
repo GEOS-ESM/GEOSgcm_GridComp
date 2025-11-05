@@ -331,7 +331,7 @@ subroutine SetServices ( GC, RC )
     ! set up regridding next
     ! create source field on ISSM mesh
     srcField = ESMF_FieldCreate(mesh=mesh,typekind=ESMF_TYPEKIND_R8,meshloc=ESMF_MESHLOC_ELEMENT,rc=STATUS)
-    call ESMF_FieldFill(srcField, dataFillScheme="const",const1=0.0_dp)
+    call ESMF_FieldFill(srcField, dataFillScheme="const")
     VERIFY_(STATUS)
 
     ! get atmospheric grid 
@@ -340,7 +340,7 @@ subroutine SetServices ( GC, RC )
     
     ! create destination field on atmospheric grid
     dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
-    call ESMF_FieldFill(dstField, dataFillScheme="const",const1=0.0)
+    call ESMF_FieldFill(dstField, dataFillScheme="const")
     VERIFY_(STATUS)
     
     ! create routehandle
@@ -482,7 +482,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! create destination field: regrid ice elevation onto grid
     dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
-    call ESMF_FieldFill(dstField, dataFillScheme="const",const1=0.0)
+    call ESMF_FieldFill(dstField, dataFillScheme="const")
     VERIFY_(STATUS)
 
     call ESMF_UserCompGetInternalState(GC, 'REGRIDHANDLES', wrap, status); VERIFY_(STATUS)
