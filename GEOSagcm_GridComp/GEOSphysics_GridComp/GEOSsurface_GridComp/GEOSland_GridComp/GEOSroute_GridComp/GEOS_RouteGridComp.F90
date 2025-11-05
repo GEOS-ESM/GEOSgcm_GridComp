@@ -263,15 +263,13 @@ contains
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )
 
-    if (use_res) then
-       call MAPL_AddExportSpec(GC,                    &
+    call MAPL_AddExportSpec(GC,                    &
          LONG_NAME          = 'qres' ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QRES'                 ,&
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )
-    endif
 !EOS
 
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
@@ -437,6 +435,7 @@ contains
     endif
     call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
     allocate(route%areacat(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
+    route%areacat=route%areacat*1.e6
 
    !read lengsc
     if (MAPL_AM_I_Root()) then
@@ -444,6 +443,7 @@ contains
     endif
     call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
     allocate(route%lengsc(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
+    route%lengsc=route%lengsc*1.e3
 
    !read downid
     if (MAPL_AM_I_Root()) then
@@ -997,11 +997,11 @@ contains
        route%qsflow_acc = route%qsflow_acc + QSFLOW_ACT/real(nstep_per_day)
        res%qres_acc = res%qres_acc + QRES_ACT/real(nstep_per_day)       
 
-       if (associated(QSFLOW))    QSFLOW  = route%qsflow_acc
-       if (associated(QOUTFLOW)) QOUTFLOW = route%qoutflow_acc
+       if (associated(QSFLOW))    QSFLOW  = QSFLOW_ACT
+       if (associated(QOUTFLOW)) QOUTFLOW = QOUTFLOW_ACT
        if (associated(QRES)) then
           _ASSERT(use_res, "Set ues_res be true to get QRES export")
-          QRES = res%qres_acc
+          QRES = QRES_ACT
        endif
        deallocate(RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_ACT,QINFLOW_LOCAL,QSFLOW_ACT,WTOT_BEFORE,QRES_ACT,QOUT_CAT)
 
