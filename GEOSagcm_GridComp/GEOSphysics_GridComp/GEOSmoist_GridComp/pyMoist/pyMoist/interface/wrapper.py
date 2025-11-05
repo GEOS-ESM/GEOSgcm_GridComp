@@ -195,7 +195,7 @@ class GEOSPyMoistWrapper:
             f"  Orchestration : {self._is_orchestrated}\n"
             f"          Sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
-            f" Strides for 3D : {tmp_quantity.data.strides // 8}\n"
+            f" Strides for 3D : {[s // 8 for s in tmp_quantity.data.strides]}\n"
             f"     Device ord : {device_ordinal_info}\n"
             f"     Nvidia MPS : {MPS_is_on}"
         )
