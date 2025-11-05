@@ -25,7 +25,7 @@ module GEOS_IssmGridCompMod
 ! 
 
 ! !USES:
-use iso_fortran_env, only: dp=>real64
+use iso_fortran_env, only: dp=>real64, sp => real32
 use iso_c_binding, only: c_ptr, c_double, c_f_pointer,c_null_char, c_loc, c_int
 use ESMF
 use MAPL
@@ -411,7 +411,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! ice elevation on mesh, grid, tile
   real(dp),    pointer, dimension(:)  :: ICEEL_MESH    => null()      ! ice-sheet elevation on mesh elements
-  real(dp), pointer, dimension(:,:)   :: ICEEL_GRID    => null()      ! ice-sheet elevation on atmospheric grid
+  real(dp), pointer, dimension(:,:)   :: ICEEL_GRID_dp => null()      ! ice-sheet elevation on atmospheric grid (double precision)
+  real, pointer, dimension(:,:)       :: ICEEL_GRID_sp => null()      ! ice-sheet elevation on atmospheric grid (single precision)
   real, pointer, dimension(:)         :: ICEEL_TILE(:) => null()      ! ice-sheet elevation on landice tiles
   real, pointer, dimension(:)         :: ICEEL         => null()      ! pointer to ice-sheet elevation export state
 
@@ -491,7 +492,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldRegrid(srcField, dstField, routehandle, RC=STATUS); VERIFY_(STATUS)
 
     ! get pointer to ice elevation on grid
-    call ESMF_FieldGet(dstField,farrayPtr=ICEEL_GRID,RC=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldGet(dstField,farrayPtr=ICEEL_GRID_dp,RC=STATUS); VERIFY_(STATUS)
+    
+    ICEEL_GRID_sp = real(ICEEL_GRID_dp,sp)
 
     ! get pointer to export
     call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' ,  RC=STATUS); VERIFY_(STATUS)
@@ -507,8 +510,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       VERIFY_(STATUS)
       ICEEL_TILE = MAPL_Undef
     end if
-
-    call MAPL_LocStreamTransform( LOCSTREAM, ICEEL_TILE, ICEEL_GRID, RC=STATUS)
+   
+    call MAPL_LocStreamTransform( LOCSTREAM, ICEEL_TILE,ICEEL_GRID_sp, RC=STATUS)
     VERIFY_(STATUS)
 
     ICEEL(:) = ICEEL_TILE(:)
