@@ -7512,37 +7512,31 @@ class ComputeUwshcuInv:
         self.stop_cin = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
         self.stop_buoyancy_sort = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a", dtype=bool)
 
-        self.ntracers_quantity_factory = self.make_ntracers_quantity_factory(
-            self.quantity_factory,
+        self.quantity_factory.add_data_dimensions(
+            {
+                "ntracers": constants.NCNST,
+            }
         )
 
         # Create tracer fields
-        self.trsrc = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
-        self.trsrc_o = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
-        self.tre = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
-        self.trmin = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
-        self.sstr0 = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
-        self.tr0 = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
-        self.tr0_o = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
-        self.sstr0_o = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
-        self.trten = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
-        self.tr0_s = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
-        self.tr0_inoutvar = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
-        self.tr0_inout = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
-        self.trflx = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
-        self.tru = self.ntracers_quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
-        self.tru_emf = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
-        )
-        self.xflx_ndim = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
-        )
-        self.trflx_d = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
-        )
-        self.trflx_u = self.ntracers_quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a"
-        )
+        self.trsrc = self.quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
+        self.trsrc_o = self.quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
+        self.tre = self.quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
+        self.trmin = self.quantity_factory.zeros([X_DIM, Y_DIM, "ntracers"], "n/a")
+        self.sstr0 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0_o = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.sstr0_o = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.trten = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0_s = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0_inoutvar = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.tr0_inout = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "ntracers"], "n/a")
+        self.trflx = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
+        self.tru = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
+        self.tru_emf = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
+        self.xflx_ndim = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
+        self.trflx_d = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
+        self.trflx_u = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], "n/a")
 
         self.saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(
             self.stencil_factory.backend
