@@ -411,7 +411,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! ice elevation on mesh, grid, tile
   real(dp),    pointer, dimension(:)  :: ICEEL_MESH    => null()      ! ice-sheet elevation on mesh elements
-  real, pointer, dimension(:,:)       :: ICEEL_GRID    => null()      ! ice-sheet elevation on atmospheric grid
+  real(dp), pointer, dimension(:,:)   :: ICEEL_GRID    => null()      ! ice-sheet elevation on atmospheric grid
   real, pointer, dimension(:)         :: ICEEL_TILE(:) => null()      ! ice-sheet elevation on landice tiles
   real, pointer, dimension(:)         :: ICEEL         => null()      ! pointer to ice-sheet elevation export state
 
@@ -474,7 +474,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! run ISSM at specified time steps
   if ( ESMF_AlarmIsRinging (ALARM, RC=STATUS) ) then
     call RunISSM(dt_yr, c_loc(SMBToISSM), c_loc(ICEEL_MESH))
-    VERIFY_(STATUS)
 
     ! create source field: ice elevation on mesh elements
     srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICEEL_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
