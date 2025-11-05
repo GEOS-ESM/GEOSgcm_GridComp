@@ -1323,7 +1323,7 @@ CONTAINS
    !!$ser data convective_cloud_fraction_local=mp_cf(cnmp,:,:,:) large_scale_liquid_local=mp_liq(lsmp,:,:,:)
    !!$ser data large_scale_ice_local=mp_ice(lsmp,:,:,:) large_scale_cloud_fraction_local=mp_cf(lsmp,:,:,:)
 
-   !$ser verbatim call ser_set_Dx(ite, jte, kte, 3)
+   !$ser verbatim call ser_set_Dx(ite, jte, kte, 1)
 
 !----------------------------------------------------------------------
     !-do not change this
@@ -2215,6 +2215,8 @@ loop1:  do n=1,maxiens
      !$ser flush_savepoint GetMeltingProfile-Out
      !$ser flush_savepoint GetPartitionLiqIce-In
      !$ser flush_savepoint GetPartitionLiqIce-Out
+     !$ser flush_savepoint CupEnv-In
+     !$ser flush_savepoint CupEnv-Out
 
 
     END SUBROUTINE GF2020_DRV
@@ -5305,13 +5307,43 @@ ENDIF ! vertical discretization formulation
 !
 !--- rainfall evap below cloud base
 !
-       if(USE_REBCB == 1)                                                              &
+       if(USE_REBCB == 1) &
+       !$ser savepoint RainEvapBelowCloudbase-In
+       !$ser verbatim do i=its,ite
+       !$ser verbatim do k=kts,kte
+       !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+       !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
+       !$ser verbatim boolean_true=2
+       !$ser verbatim boolean_false=0
+       !$ser data_buffered Dx=3 ierr=ierr(i) kbcon=kbcon(i) ktop=ktop(i) psur=psur(i) xland=xland(i)
+       !$ser data_buffered Dx=3 pwavo=pwavo(i) edto=edto(i) pwevo=pwevo(i) xmb=xmb(i) 
+       !$ser data_buffered Dx=3 po_cup=po_cup(i,k)
+       !$ser data_buffered Dx=3 qo_cup=qo_cup(i,k) qes_cup=qes_cup(i,k) pwo=pwo(i,k) pwdo=pwdo(i,k)
+       !$ser data_buffered Dx=3 t_cup=t_cup(i,k) pre=pre(i) outt=outt(i,k) outq=outq(i,k)
+       !$ser data_buffered Dx=3 outbuoy=outbuoy(i,k) prec_flx=prec_flx(i,k) evap_flx=evap_flx(i,k)
+       !$ser verbatim if (trim(cumulus) .eq. "shallow") then
+       !$ser data_buffered Dx=3 cumulus=boolean_true
+       !$ser verbatim else
+       !$ser data_buffered Dx=3 cumulus=boolean_false
+       !$ser verbatim endif
+       !$ser verbatim endif
+       !$ser verbatim enddo
+       !$ser verbatim enddo                                                           
        call rain_evap_below_cloudbase(cumulus,itf,ktf, its,ite, kts,kte,ierr,kbcon,ktop&
                                       ,xmb,psur,xland,qo_cup,t_cup                     &
                                       ,po_cup,qes_cup,pwavo,edto,pwevo,pwo,pwdo        &
                                       ,pre,prec_flx,evap_flx,outt,outq,outbuoy,evap_bcb)
 
-
+      !$ser savepoint RainEvapBelowCloudbase-Out
+      !$ser verbatim do i=its,ite
+      !$ser verbatim do k=kts,kte
+      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,1)
+      !$ser verbatim if (SER_CURRENT_PLUME .eq. 1) then
+      !$ser data_buffered Dx=3 evap_bcb=evap_bcb(i,k) pre=pre(i) outt=outt(i,k) outq=outq(i,k)
+      !$ser data_buffered Dx=3 outbuoy=outbuoy(i,k) prec_flx=prec_flx(i,k) evap_flx=evap_flx(i,k)
+      !$ser verbatim endif
+      !$ser verbatim enddo
+      !$ser verbatim enddo
 !
 !--- includes effects of the remained cloud dissipation into the enviroment
 !
@@ -10807,6 +10839,7 @@ ENDIF
          outbuoy(i,k) = outbuoy(i,k) + cp*del_t+xlv*del_q
 
          pre(i) = pre(i) - evap_bcb(i,k)
+         
 
         !--for future use (rain and snow precipitation fluxes)
         !p_liq_ice(i,k) = fract_liq_f(tempco(i,k),,cnvfrc(i),srftype(i))
