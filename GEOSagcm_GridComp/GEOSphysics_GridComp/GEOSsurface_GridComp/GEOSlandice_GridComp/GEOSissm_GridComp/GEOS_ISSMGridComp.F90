@@ -240,7 +240,7 @@ subroutine SetServices ( GC, RC )
     type(ESMF_Field)                     :: srcField              ! source field for regridding
     type(ESMF_Field)                     :: dstField              ! destination field for regridding
     type(ESMF_Grid)                      :: grid                  ! atmospheric grid
-    type(CONNECT_REGRIDHANDLES), pointer :: regridding_handles    ! store the routehandles for access during run
+    type(CONNECT_REGRIDHANDLES), pointer :: regrid_handles        ! store the routehandles for access during run
     type(REGRIDHANDLES)                  :: wrap                  ! wrapper for routehandle container
 
     ! command-line arguments to initialize ISSM 
@@ -339,8 +339,8 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     
     ! create destination field on atmospheric grid
-    dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R8,rc=STATUS)
-    call ESMF_FieldFill(dstField, dataFillScheme="const",const1=0.0_dp)
+    dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
+    call ESMF_FieldFill(dstField, dataFillScheme="const",const1=0.0)
     VERIFY_(STATUS)
     
     ! create routehandle
@@ -348,10 +348,10 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     
     ! create pointer to routehandle for component's private internal state
-    allocate(regridding_handles, stat=status)
+    allocate(regrid_handles, stat=status)
     VERIFY_(STATUS)
-    regridding_handles%routehandle  = routehandle 
-    wrap%ptr => regridding_handles
+    regrid_handles%routehandle  = routehandle 
+    wrap%ptr => regrid_handles
     call ESMF_UserCompSetInternalState ( GC, 'REGRIDHANDLES', wrap, status )
     VERIFY_(STATUS)
 
@@ -391,7 +391,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Field)                     :: srcField                    ! ice elevation on mesh
   type(ESMF_Field)                     :: dstField                    ! ice elevation on grid
   type(ESMF_Grid)                      :: grid                        ! atmospheric grid
-  type(CONNECT_REGRIDHANDLES), pointer :: regridding_handles=>null()  ! store the routehandles for access during run
+  type(CONNECT_REGRIDHANDLES), pointer :: regrid_handles=>null()      ! store the routehandles for access during run
   type(REGRIDHANDLES)                  :: wrap                        ! wrapper for routehandle container
 
   ! time stepping information (ISSM_DT set in AGCM.rc)
@@ -411,8 +411,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! ice elevation on mesh, grid, tile
   real(dp),    pointer, dimension(:)  :: ICEEL_MESH    => null()      ! ice-sheet elevation on mesh elements
-  real(dp), pointer, dimension(:,:)   :: ICEEL_GRID_dp => null()      ! ice-sheet elevation on atmospheric grid (double precision)
-  real, pointer, dimension(:,:)       :: ICEEL_GRID_sp => null()      ! ice-sheet elevation on atmospheric grid (single precision)
+  real, pointer, dimension(:,:)       :: ICEEL_GRID => null()         ! ice-sheet elevation on atmospheric grid 
   real, pointer, dimension(:)         :: ICEEL_TILE(:) => null()      ! ice-sheet elevation on landice tiles
   real, pointer, dimension(:)         :: ICEEL         => null()      ! pointer to ice-sheet elevation export state
 
@@ -482,20 +481,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     
     ! create destination field: regrid ice elevation onto grid
-    dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R8,rc=STATUS)
-    call ESMF_FieldFill(dstField, dataFillScheme="const",const1=0.0_dp)
+    dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
+    call ESMF_FieldFill(dstField, dataFillScheme="const",const1=0.0)
     VERIFY_(STATUS)
 
     call ESMF_UserCompGetInternalState(GC, 'REGRIDHANDLES', wrap, status); VERIFY_(STATUS)
-    regridding_handles => wrap%ptr
-    routehandle = regridding_handles%routehandle
+    regrid_handles => wrap%ptr
+    routehandle = regrid_handles%routehandle
     call ESMF_FieldRegrid(srcField, dstField, routehandle, RC=STATUS); VERIFY_(STATUS)
 
     ! get pointer to ice elevation on grid
-    call ESMF_FieldGet(dstField,farrayPtr=ICEEL_GRID_dp,RC=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldGet(dstField,farrayPtr=ICEEL_GRID,RC=STATUS); VERIFY_(STATUS)
     
-    ICEEL_GRID_sp = real(ICEEL_GRID_dp,sp)
-
     ! get pointer to export
     call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' ,  RC=STATUS); VERIFY_(STATUS)
 
@@ -511,7 +508,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       ICEEL_TILE = MAPL_Undef
     end if
    
-    call MAPL_LocStreamTransform( LOCSTREAM, ICEEL_TILE,ICEEL_GRID_sp, RC=STATUS)
+    call MAPL_LocStreamTransform( LOCSTREAM, ICEEL_TILE,ICEEL_GRID, RC=STATUS)
     VERIFY_(STATUS)
 
     ICEEL(:) = ICEEL_TILE(:)
