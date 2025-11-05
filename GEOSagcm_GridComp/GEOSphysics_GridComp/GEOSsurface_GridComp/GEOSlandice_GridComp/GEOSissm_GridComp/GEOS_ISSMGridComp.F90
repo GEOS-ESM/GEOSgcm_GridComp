@@ -493,7 +493,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   NT = size(TILETYPES)
 
-  !allocate(ICEELTILE(NT), STAT=STATUS) ! needed if type real, allocatable  ?
   VERIFY_(STATUS)
 
   ! run ISSM at specified time steps
@@ -522,7 +521,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call ESMF_FieldGet(dstField,farrayPtr=dstField_ptr,RC=STATUS); VERIFY_(STATUS)
       ICEEL(:,:) = dstField_ptr(:,:)
 
-      call MKTILE(ICEEL , ICEELTILE,  NT,RC=STATUS); VERIFY_(STATUS)
+      ! MKTILE
+      if(associated(ICEEL) .and. .not.associated(ICEELTILE)) then
+        allocate(ICEELTILE(NT), STAT=STATUS)
+        VERIFY_(STATUS)
+        TILEVAR = MAPL_Undef
+      end if
 
       call MAPL_LocStreamTransform( LOCSTREAM, ICEELTILE, ICEEL, RC=STATUS)
       VERIFY_(STATUS)
