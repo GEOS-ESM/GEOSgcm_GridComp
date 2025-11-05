@@ -140,3 +140,6 @@ from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.transl
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_up_moisture import (
     TranslateCupUpMoisture,
 )
+from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_up_aa0 import (
+    TranslateCupUpAa0,
+)
