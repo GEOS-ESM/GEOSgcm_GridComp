@@ -164,11 +164,13 @@ module GEOS_LandiceGridCompMod
 
 ! Set the Run entry point
 ! -----------------------
-
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS ) !for ISSM
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, RC=STATUS )
     VERIFY_(STATUS)
+
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
@@ -1648,6 +1650,87 @@ module GEOS_LandiceGridCompMod
 
 
 !BOP
+
+
+  subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+   ! !ARGUMENTS:
+   
+       type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+       type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+       type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+       type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+       integer, optional,   intent(  out) :: RC     ! Error code
+   
+   ! !DESCRIPTION: The Initialize method of the Landice Gridded Component.
+   
+   !EOP
+   
+   ! ErrLog Variables
+   
+       character(len=ESMF_MAXSTR)           :: IAm 
+       integer                              :: STATUS
+       character(len=ESMF_MAXSTR)           :: COMP_NAME
+       
+   ! Local derived type aliases
+   
+       type (MAPL_MetaComp    ), pointer       :: MAPL
+       type (MAPL_MetaComp    ), pointer       :: CHILD_MAPL 
+       type (MAPL_LocStream       )            :: LOCSTREAM
+       type (ESMF_Config          )            :: CF
+       type (ESMF_GridComp        ), pointer   :: GCS(:)
+     
+       integer                                 :: I
+   
+   !=============================================================================
+   
+   ! Begin... 
+   
+   ! Get the target components name and set-up traceback handle.
+   ! -----------------------------------------------------------
+   
+       call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+       VERIFY_(STATUS)
+       Iam = trim(COMP_NAME) // "Initialize"
+   
+   ! Get my internal MAPL_Generic state
+   !-----------------------------------
+   
+       call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+       VERIFY_(STATUS)
+   
+       call MAPL_TimerOn(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
+       call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
+   
+   ! Get the landice tilegrid and the child components
+   !----------------------------------------------- 
+   
+       call MAPL_Get (MAPL, LOCSTREAM=LOCSTREAM, GCS=GCS, RC=STATUS )
+       VERIFY_(STATUS)
+   
+   ! Place the land tilegrid in the generic state of each child component
+   !---------------------------------------------------------------------
+   
+       do I = 1, SIZE(GCS)
+          call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
+          VERIFY_(STATUS)
+          call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
+          VERIFY_(STATUS)
+       end do
+   
+       call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
+   
+   ! Call Initialize for every Child
+   !--------------------------------
+   
+       call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
+       VERIFY_(STATUS)
+   
+       call MAPL_TimerOff(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
+   
+       RETURN_(ESMF_SUCCESS)
+     end subroutine Initialize
+
 
 ! !IROUTINE: RUN1 -- First Run stage for the LandIce component
 

@@ -171,14 +171,21 @@ subroutine SetServices ( GC, RC )
  !TODO: set export states here, like this: 
     call MAPL_AddExportSpec(GC,                                                            &
          SHORT_NAME = 'ICEEL',                                                       &
-         LONG_NAME  = 'ice_sheet_elevation',        &
+         LONG_NAME  = 'ice_elevation',        &
          UNITS      = 'm',                                                        &
          DIMS       = MAPL_DimsHorzOnly,                                                   &
          VLOCATION  = MAPL_VLocationNone,                                                  &
          RC=STATUS  )
     VERIFY_(STATUS)
 
-
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'ICEELTILE',                                                       &
+         LONG_NAME  = 'ice_elevation_tiles',        &
+         UNITS      = 'm',                                                        &
+         DIMS       = MAPL_DimsTileOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
 ! VERIFY_(STATUS)
 
@@ -393,7 +400,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_RouteHandle) :: routehandle                              ! routehandle for regridding
   type(ESMF_Field)       :: srcField                                 ! ice elevation on mesh
   type(ESMF_Field)       :: dstField                                 ! ice elevation on grid
-  real(dp),    pointer, dimension(:,:)     :: dstField_ptr => null() ! pointer for dstField
+  real(dp),    pointer, dimension(:,:)     :: dstField_ptr  => null()! pointer for dstField
 
   type(ESMF_Grid)        :: grid                                     ! atmospheric grid
   type(CONNECT_REGRIDHANDLES), pointer :: regridding_handles=>null() ! store the routehandles for access during run
@@ -418,6 +425,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Mesh)                :: mesh
   integer(c_int)                 :: num_elements  
   type(ESMF_VM)                  :: vm  
+
+  ! some new things for tiles
+  type (MAPL_LocStream       )        :: locstream
+  !real, allocatable                   :: ICEELTILE(:) !not sure if this is the right way or below:
+  real, pointer, dimension(:)  ::  ICEELTILE(:) => null()
+  integer, pointer, dimension(:)      :: TILETYPES
+  integer                             :: NT
+
+  real, pointer, dimension(:)  :: ICEELTILE_ptr  => null()  ! pointer to export state
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -471,6 +487,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_GridCompGet( GC, GRID=grid, RC=status )
   VERIFY_(STATUS)
 
+  ! get LocStream
+  call MAPL_Get(MAPL, LocStream = locstream, TILETYPES = TILETYPES, RC=status)
+  VERIFY_(STATUS)
+
+  NT = size(TILETYPES)
+
+  !allocate(ICEELTILE(NT), STAT=STATUS) ! needed if type real, allocatable  ?
+  VERIFY_(STATUS)
+
   ! run ISSM at specified time steps
   if ( ESMF_AlarmIsRinging (ALARM, RC=STATUS) ) then
     call RunISSM(dt_yr, c_loc(SMBToISSM), c_loc(SurfaceToGEOS))
@@ -496,8 +521,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated(ICEEL)) then
       call ESMF_FieldGet(dstField,farrayPtr=dstField_ptr,RC=STATUS); VERIFY_(STATUS)
       ICEEL(:,:) = dstField_ptr(:,:)
-    end if 
 
+      call MKTILE(ICEEL , ICEELTILE,  NT,RC=STATUS); VERIFY_(STATUS)
+
+      call MAPL_LocStreamTransform( LOCSTREAM, ICEELTILE, ICEEL, RC=STATUS)
+      VERIFY_(STATUS)
+
+      call MAPL_GetPointer(EXPORT  , ICEELTILE_ptr , 'ICEELTILE' ,  RC=STATUS); VERIFY_(STATUS)
+      ICEELTILE_ptr(:) = ICEELTILE(:)
+
+    end if 
+!
   end if 
 
   call ESMF_VMBarrier(vm, rc=status)
