@@ -177,12 +177,11 @@ def cup_up_moisture(
     with computation(PARALLEL), interval(0, -1):
         if ierr == 0:
             if K <= start_level - 1:
-                qc = qaver
-                # qc = (
-                #     qaver
-                #     + zqexec
-                #     + 0.5 * x_add_buoy / cumulus_parameterization_constants.XLV
-                # )
+                qc = (
+                    qaver
+                    + zqexec
+                    + 0.5 * x_add_buoy / cumulus_parameterization_constants.XLV
+                )
                 qrc = 0.0
 
     # with computation(PARALLEL), interval(...):
@@ -190,81 +189,82 @@ def cup_up_moisture(
     #         if ierr == 0:
     #             call get_delmix(name,kts,kte,ktf,xland(i),start_level(i),po(i,kts:kte) &
     #                            ,qe_cup(i,kts:kte), qc(i,kts:kte))
-    # with computation(PARALLEL), interval(...):
-    #     if ierr == 0:
-    #         if K >= start_level and K <= ktop:
-    #             dz = z_cup - z_cup[0, 0, -1]
 
-    #             qrch = (
-    #                 qes_cup
-    #                 + (1.0 / cumulus_parameterization_constants.XLV)
-    #                 * (gamma_cup / (1.0 + gamma_cup))
-    #                 * dby
-    #             )
+    with computation(PARALLEL), interval(...):
+        if ierr == 0:
+            if K >= start_level and K <= ktop:
+                dz = z_cup - z_cup[0, 0, -1]
 
-    #             denom = (
-    #                 zu[0, 0, -1] - 0.5 * up_massdetr[0, 0, -1] + up_massentr[0, 0, -1]
-    #             )
-    #             if denom > 0.0:
+                qrch = (
+                    qes_cup
+                    + (1.0 / cumulus_parameterization_constants.XLV)
+                    * (gamma_cup / (1.0 + gamma_cup))
+                    * dby
+                )
 
-    #                 qc = (
-    #                     qc[0, 0, -1] * zu[0, 0, -1]
-    #                     - 0.5 * up_massdetr[0, 0, -1] * qc[0, 0, -1]
-    #                     + up_massentr[0, 0, -1] * q[0, 0, -1]
-    #                 ) / denom
+                denom = (
+                    zu[0, 0, -1] - 0.5 * up_massdetr[0, 0, -1] + up_massentr[0, 0, -1]
+                )
+                if denom > 0.0:
 
-    #                 if K == start_level:
-    #                     qc = qc + zqexec * up_massentr[0, 0, -1] / denom
+                    qc = (
+                        qc[0, 0, -1] * zu[0, 0, -1]
+                        - 0.5 * up_massdetr[0, 0, -1] * qc[0, 0, -1]
+                        + up_massentr[0, 0, -1] * q[0, 0, -1]
+                    ) / denom
 
-    #                 qrc = (
-    #                     qrc[0, 0, -1] * zu[0, 0, -1]
-    #                     - 0.5 * up_massdetr[0, 0, -1] * qrc[0, 0, -1]
-    #                 ) / denom
+                    if K == start_level:
+                        qc = qc + zqexec * up_massentr[0, 0, -1] / denom
 
-    #             else:
-    #                 qc = qc[0, 0, -1]
-    #                 qrc = qrc[0, 0, -1]
+                    qrc = (
+                        qrc[0, 0, -1] * zu[0, 0, -1]
+                        - 0.5 * up_massdetr[0, 0, -1] * qrc[0, 0, -1]
+                    ) / denom
 
-    #             tempc = (1.0 / cumulus_parameterization_constants.CP) * (
-    #                 hc
-    #                 - constants.MAPL_GRAV * z_cup
-    #                 - cumulus_parameterization_constants.XLV * qrch
-    #             )
+                else:
+                    qc = qc[0, 0, -1]
+                    qrc = qrc[0, 0, -1]
 
-    #             clw_all = max(0.0, qc - qrch)
+                tempc = (1.0 / cumulus_parameterization_constants.CP) * (
+                    hc
+                    - constants.MAPL_GRAV * z_cup
+                    - cumulus_parameterization_constants.XLV * qrch
+                )
 
-    #             qrc = min(clw_all, qrc)
+                clw_all = max(0.0, qc - qrch)
 
-    #             cup = max(0.0, qc - qrch - qrc) / dz
+                qrc = min(clw_all, qrc)
 
-    #             if c0 < 1.0e-6:
-    #                 qrc = clw_all
-    #                 qc = qrc + min(qc, qrch)
-    #                 pwav = 0.0
-    #                 psum = psum + clw_all * zu * dz
+                cup = max(0.0, qc - qrch - qrc) / dz
 
-    # if AUTOCONV == 1:
-    #     min_liq = xland * qrc_crit_ocn + (1.0 - xland) * qrc_crit_lnd
-    #     cx0 = (c1d + c0) * dz
-    #     qrc = clw_all / (1.0 + cx0)
-    #     pw = cx0 * max(0.0, qrc - min_liq)
+                if c0 < 1.0e-6:
+                    qrc = clw_all
+                    qc = qrc + min(qc, qrch)
+                    pwav = 0.0
+                    psum = psum + clw_all * zu * dz
 
-    #     pw = pw * zu
+    if AUTOCONV == 1:
+        min_liq = xland * qrc_crit_ocn + (1.0 - xland) * qrc_crit_lnd
+        cx0 = (c1d + c0) * dz
+        qrc = clw_all / (1.0 + cx0)
+        pw = cx0 * max(0.0, qrc - min_liq)
 
-    # qc = qrc + min(qc, qrch)
+        pw = pw * zu
 
-    # pwav = pwav + pw
-    # psum = psum + clw_all * zu * dz
+    qc = qrc + min(qc, qrch)
 
-    # with computation(PARALLEL), interval(...):
-    #     if ZERO_DIFF == 0:
-    #         if pwav < 0.0:
-    #             ierr = 66
-    #             # ierrc="pwav negative"
+    pwav = pwav + pw
+    psum = psum + clw_all * zu * dz
 
-    #     if ierr == 0:
-    #         if K <= ktop:
-    #             qc = qc - qrc
+    with computation(PARALLEL), interval(...):
+        if ZERO_DIFF == 0:
+            if pwav < 0.0:
+                ierr = 66
+                # ierrc="pwav negative"
+
+        if ierr == 0:
+            if K <= ktop:
+                qc = qc - qrc
 
 
 class CupUpMoisture:
