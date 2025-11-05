@@ -143,10 +143,6 @@ class GetLCL:
         state: GF2020CumulusParameterizationState,
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
-        vapor_source,
-        t_source,
-        p_source,
-        z_source,
     ):
         self._find_lcl(
             p=state.input_output.p_forced,
@@ -167,19 +163,38 @@ class GetLCL:
             error_code=state.output.error_code,
             AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
             plume=plume_dependent_constants.PLUME_INDEX,
-            vapor_source=vapor_source,
-            t_source=t_source,
-            p_source=p_source,
-            z_source=z_source,
         )
 
 
 class ConvectiveCloudBaseLevel:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+        # construct stencils and functions
+        self._find_lcl = stencil_factory.from_dims_halo(
+            func=find_lcl,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
+                "ADV_TRIGGER": config.ADV_TRIGGER,
+            },
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._find_lcl()
 
 
 class CloudTop:

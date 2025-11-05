@@ -28,6 +28,9 @@ class ParcelMoistStaticEnergy:
         self._parcel_moist_static_energy = stencil_factory.from_dims_halo(
             func=parcel_moist_static_energy,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
+            },
         )
 
     def __call__(

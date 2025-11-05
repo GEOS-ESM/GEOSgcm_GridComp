@@ -1,4 +1,5 @@
-from ndsl import Namelist, QuantityFactory, StencilFactory
+from f90nml import Namelist
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -276,9 +277,7 @@ class TranslateCupUpMoisture(TranslateFortranData2Py):
             units="n/a",
             dtype=Int,
         )
-        safe_assign_array(
-            use_linear_subcl_mf.view[:, :, :], inputs["use_linear_subcl_mf"]
-        )
+        safe_assign_array(use_linear_subcl_mf.view[:, :, :], inputs["use_linear_subcl_mf"])
 
         vvel2d = QuantityFactory.zeros(
             self.quantity_factory,

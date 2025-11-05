@@ -168,10 +168,6 @@ def find_lcl(
     error_code: IntFieldIJ_Plume,
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
-    vapor_source: FloatFieldIJ,
-    t_source: FloatFieldIJ,
-    p_source: FloatFieldIJ,
-    z_source: FloatFieldIJ,
 ):
     from __externals__ import k_end, BOUNDARY_CONDITION_METHOD, ADV_TRIGGER
 
@@ -296,3 +292,9 @@ def find_lcl(
                 t_perturbation = 2.0
             elif t_perturbation < -2.0:
                 t_perturbation = -2.0
+
+
+# def convective_cloud_base_level(
+#     error_code: IntFieldIJ_Plume,
+# )
+#     from __externals__ import OVERSHOOT

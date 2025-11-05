@@ -85,6 +85,8 @@ from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cu
     TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cumulus_Parameterization_GetLCL import (
+    TranslateGF2020_CumulusParameterization_GetLCL_shallow,
+    TranslateGF2020_CumulusParameterization_GetLCL_mid,
     TranslateGF2020_CumulusParameterization_GetLCL_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_ParcelMoistStaticEnergy import (

@@ -144,15 +144,15 @@ def get_cloud_boundary_conditions(
             stop_computation = False
             level = start_index
             while level <= k_end - 1 and stop_computation == False:
-                dp = -(p[0, 0, 1] - p)
+                dp = -(p.at(K=level + 1) - p.at(K=level))
                 if dp_layer + dp <= ave_layer:
                     dp_layer = dp_layer + dp
-                    source_parcel_value = source_parcel_value + field * dp
+                    source_parcel_value = source_parcel_value + field.at(K=level) * dp
                     level += 1
                 else:
                     dp = ave_layer - dp_layer
                     dp_layer = dp_layer + dp
-                    source_parcel_value = source_parcel_value + field * dp
+                    source_parcel_value = source_parcel_value + field.at(K=level) * dp
                     stop_computation = True
                     level += 1
 

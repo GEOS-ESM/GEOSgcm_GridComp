@@ -17,7 +17,7 @@ def parcel_moist_static_energy(
     vapor_excess: FloatFieldIJ,
     add_buoyancy: FloatFieldIJ,
     ocean_fraction: FloatFieldIJ,
-    updraft_origin_level: FloatFieldIJ,
+    updraft_origin_level: IntFieldIJ,
     p: FloatField,
     environmenet_moist_static_energy: FloatField,
     environmenet_moist_static_energy_forced: FloatField,
@@ -29,7 +29,7 @@ def parcel_moist_static_energy(
 ):
     from __externals__ import k_end, BOUNDARY_CONDITION_METHOD
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             modification = (
                 cumulus_parameterization_constants.XLV * vapor_excess

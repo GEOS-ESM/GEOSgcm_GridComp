@@ -208,7 +208,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._convective_cloud_base_level = ConvectiveCloudBaseLevel()
+        self._convective_cloud_base_level = ConvectiveCloudBaseLevel(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._downdraft_entraiment_profiles = DowndraftEntrainmentProfiles()
 
@@ -444,7 +449,12 @@ class CumulusParameterization:
                 )
 
                 # determine level of convective cloud base
-                self._convective_cloud_base_level()
+                # NOTE UNTESTEDD
+                self._convective_cloud_base_level(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # define entrainment/detrainment profiles for downdrafts
                 self._downdraft_entraiment_profiles()

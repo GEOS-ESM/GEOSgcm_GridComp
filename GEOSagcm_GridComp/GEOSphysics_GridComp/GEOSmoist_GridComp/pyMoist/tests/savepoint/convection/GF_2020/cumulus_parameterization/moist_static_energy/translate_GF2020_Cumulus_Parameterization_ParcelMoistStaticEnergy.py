@@ -11,10 +11,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
-from pyMoist.convection.GF_2020.cumulus_parameterization.precip.precip import PartitionLiquidIce
-from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels.get_levels import (
-    MaximumUpdraftOriginLevel,
-    DowndraftDetrainmentLevel,
+from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy.moist_static_energy import (
+    ParcelMoistStaticEnergy,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 
@@ -76,35 +74,31 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_deep(Trans
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:,:,plume_dependent_constants.PLUME_INDEX] = inputs["error_code_parcelmse"]
-        state.input.ocean_fraction.data[:]=inputs["ocean_fraction_parcelmse"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code_parcelmse"
+        ]
+        state.input.ocean_fraction.data[:] = inputs["ocean_fraction_parcelmse"]
         locals.vapor_excess.data[:] = inputs["local_vapor_excess_parcelmse"]
         locals.t_excess.data[:] = inputs["local_t_excess_parcelmse"]
         locals.add_buoyancy.data[:] = inputs["local_add_buoy_parcelmse"]
         state.input_output.p_forced.data[:] = inputs["p_forced_parcelmse"]
-        locals.environment_moist_static_energy_cloud_levels.data[:] = inputs["local_env_moist_static_energy_cloud_levels_parcelmse"]
-        locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs["local_env_moist_static_energy_cloud_levels_forced_parcelmse"]
-        locals.moist_static_energy_origin_level.data[:] = inputs["local_moist_static_energy_origin_level_parcelmse"]
-        locals.moist_static_energy_origin_level_forced.data[:] = inputs["local_moist_static_energy_origin_level_forced_parcelmse"]
+        locals.environment_moist_static_energy_cloud_levels.data[:] = inputs[
+            "local_env_moist_static_energy_cloud_levels_parcelmse"
+        ]
+        locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
+            "local_env_moist_static_energy_cloud_levels_forced_parcelmse"
+        ]
+        locals.moist_static_energy_origin_level.data[:] = inputs[
+            "local_moist_static_energy_origin_level_parcelmse"
+        ]
+        locals.moist_static_energy_origin_level_forced.data[:] = inputs[
+            "local_moist_static_energy_origin_level_forced_parcelmse"
+        ]
         locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level_parcelmse"]
         state.output.t_perturbation.data[:] = inputs["t_perturbation_parcelmse"]
 
         # initalize test code
-        partition_liquid_ice = PartitionLiquidIce(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
-        )
-
-        maximum_updraft_origin_level = MaximumUpdraftOriginLevel(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
-        )
-
-        downdraft_detrainment_level = DowndraftDetrainmentLevel(
+        code = ParcelMoistStaticEnergy(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
@@ -113,37 +107,34 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_deep(Trans
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            partition_liquid_ice(
+            code(
                 state=state,
                 locals=locals,
                 plume_dependent_constants=plume_dependent_constants,
             )
-            maximum_updraft_origin_level(
-                state=state,
-                locals=locals,
-                plume_dependent_constants=plume_dependent_constants,
-            )
-            downdraft_detrainment_level(
-                state=state,
-                locals=locals,
-                plume_dependent_constants=plume_dependent_constants,
-            )
-
-            locals.maximum_updraft_origin_level.field[:] = locals.maximum_updraft_origin_level.field[:] + 1
-            locals.detrainment_start_level.field[:] = locals.detrainment_start_level.field[:] + 1
 
         # write output
         outputs = {
-            "error_code_parcelmse": state.output.error_code.field[:,:,plume_dependent_constants.PLUME_INDEX],
+            "error_code_parcelmse": state.output.error_code.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "ocean_fraction_parcelmse": state.input.ocean_fraction.field[:],
             "local_vapor_excess_parcelmse": locals.vapor_excess.field[:],
             "local_t_excess_parcelmse": locals.t_excess.field[:],
             "local_add_buoy_parcelmse": locals.add_buoyancy.field[:],
             "p_forced_parcelmse": state.input_output.p_forced.field[:],
-            "local_env_moist_static_energy_cloud_levels_parcelmse": locals.environment_moist_static_energy_cloud_levels.field[:],
-            "local_env_moist_static_energy_cloud_levels_forced_parcelmse": locals.environment_moist_static_energy_cloud_levels_forced.field[:],
-            "local_moist_static_energy_origin_level_parcelmse": locals.moist_static_energy_origin_level.field[:],
-            "local_moist_static_energy_origin_level_forced_parcelmse": locals.moist_static_energy_origin_level_forced.field[:],
+            "local_env_moist_static_energy_cloud_levels_parcelmse": locals.environment_moist_static_energy_cloud_levels.field[
+                :
+            ],
+            "local_env_moist_static_energy_cloud_levels_forced_parcelmse": locals.environment_moist_static_energy_cloud_levels_forced.field[
+                :
+            ],
+            "local_moist_static_energy_origin_level_parcelmse": locals.moist_static_energy_origin_level.field[
+                :
+            ],
+            "local_moist_static_energy_origin_level_forced_parcelmse": locals.moist_static_energy_origin_level_forced.field[
+                :
+            ],
             "local_updraft_origin_level_parcelmse": locals.updraft_origin_level.field[:],
             "t_perturbation_parcelmse": state.output.t_perturbation.field[:],
         }
