@@ -525,7 +525,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       if(associated(ICEEL) .and. .not.associated(ICEELTILE)) then
         allocate(ICEELTILE(NT), STAT=STATUS)
         VERIFY_(STATUS)
-        TILEVAR = MAPL_Undef
+        ICEELTILE = MAPL_Undef
       end if
 
       call MAPL_LocStreamTransform( LOCSTREAM, ICEELTILE, ICEEL, RC=STATUS)
