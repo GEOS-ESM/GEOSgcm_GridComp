@@ -29,7 +29,6 @@ class PYMOIST_WRAPPER:
         self.rank = MPI.COMM_WORLD.Get_rank()
         self.backend = backend
         self.flags = moist_flags_f_to_python(pyMoist_flags)
-        print(f"Moist Flags:\n{self.flags}")
         # For Fortran<->NumPy conversion
         if is_gpu_backend(self.backend):
             numpy_module = cp
