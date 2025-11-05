@@ -29,22 +29,22 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
         self.quantity_factory = grid.quantity_factory
 
         self.in_vars["data_vars"] = {
-            "p_forced_env_clev": {},
-            "local_p_cloud_levels": {},
-            "local_t_excess": {},
-            "local_t_cloud_levels_env_clev": {},
-            "t_perturbation": {},
-            "local_vapor_excess": {},
-            "local_vapor_cloud_levels_forced": {},
-            "omega": {},
-            "air_density": {},
-            "local_geopotential_height_cloud_levels": {},
-            "topography_height_no_negative": {},
-            "ocean_fraction": {},
-            "local_updraft_origin_level": {},
-            "grid_length": {},
-            "lcl_level": {},
-            "error_code": {},
+            "p_forced_getlcl": {},
+            "local_p_cloud_levels_getlcl": {},
+            "local_t_excess_getlcl": {},
+            "local_t_cloud_levels_getlcl": {},
+            "t_perturbation_getlcl": {},
+            "local_vapor_excess_getlcl": {},
+            "local_vapor_cloud_levels_forced_getlcl": {},
+            "omega_getlcl": {},
+            "air_density_getlcl": {},
+            "local_geopotential_height_cloud_levels_getlcl": {},
+            "topography_height_no_negative_getlcl": {},
+            "ocean_fraction_getlcl": {},
+            "local_updraft_origin_level_getlcl": {},
+            "grid_length_getlcl": {},
+            "lcl_level_getlcl": {},
+            "error_code_getlcl": {},
             "vapor_source": {},
             "t_source": {},
             "p_source": {},
@@ -82,22 +82,28 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
         )
 
         # fill relevant parts of dataclasses
-        state.input_output.p_forced.data[:] = inputs["p_forced_env_clev"]
-        locals.p_cloud_levels.data[:] = inputs["local_p_cloud_levels"]
-        locals.t_excess.data[:] = inputs["local_t_excess"]
-        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels_env_clev"]
-        state.output.t_perturbation.data[:] = inputs["t_perturbation"]
-        locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
-        locals.vapor_cloud_levels.data[:] = inputs["local_vapor_cloud_levels_forced"]
-        state.input_output.omega.data[:] = inputs["omega"]
-        state.input_output.air_density.data[:] = inputs["air_density"]
-        locals.geopotential_height_cloud_levels.data[:] = inputs["local_geopotential_height_cloud_levels"]
-        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
-        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level"] - 1
-        state.input_output.grid_length.data[:] = inputs["grid_length"]
-        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.input_output.p_forced.data[:] = inputs["p_forced_getlcl"]
+        locals.p_cloud_levels.data[:] = inputs["local_p_cloud_levels_getlcl"]
+        locals.t_excess.data[:] = inputs["local_t_excess_getlcl"]
+        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels_getlcl"]
+        state.output.t_perturbation.data[:] = inputs["t_perturbation_getlcl"]
+        locals.vapor_excess.data[:] = inputs["local_vapor_excess_getlcl"]
+        locals.vapor_cloud_levels.data[:] = inputs["local_vapor_cloud_levels_forced_getlcl"]
+        state.input_output.omega.data[:] = inputs["omega_getlcl"]
+        state.input_output.air_density.data[:] = inputs["air_density_getlcl"]
+        locals.geopotential_height_cloud_levels.data[:] = inputs[
+            "local_geopotential_height_cloud_levels_getlcl"
+        ]
+        state.input_output.topography_height_no_negative.data[:] = inputs[
+            "topography_height_no_negative_getlcl"
+        ]
+        state.input.ocean_fraction.data[:] = inputs["ocean_fraction_getlcl"]
+        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level_getlcl"] - 1
+        state.input_output.grid_length.data[:] = inputs["grid_length_getlcl"]
+        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_getlcl"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code_getlcl"
+        ]
 
         # initalize test code
         code = GetLCL(
@@ -130,22 +136,22 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
 
         # write output
         outputs = {
-            "p_forced_env_clev": state.input_output.p_forced.field[:],
-            "local_p_cloud_levels": locals.p_cloud_levels.field[:],
-            "local_t_excess": locals.t_excess.field[:],
-            "local_t_cloud_levels_env_clev": locals.t_cloud_levels.field[:],
-            "t_perturbation": state.output.t_perturbation.field[:],
-            "local_vapor_excess": locals.vapor_excess.field[:],
-            "local_vapor_cloud_levels_forced": locals.vapor_cloud_levels.field[:],
-            "omega": state.input_output.omega.field[:],
-            "air_density": state.input_output.air_density.field[:],
-            "local_geopotential_height_cloud_levels": locals.geopotential_height_cloud_levels.field[:],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
-            "ocean_fraction": state.input.ocean_fraction.field[:],
-            "local_updraft_origin_level": locals.updraft_origin_level.field[:],
-            "grid_length": state.input_output.grid_length.field[:],
-            "lcl_level": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "p_forced_getlcl": state.input_output.p_forced.field[:],
+            "local_p_cloud_levels_getlcl": locals.p_cloud_levels.field[:],
+            "local_t_excess_getlcl": locals.t_excess.field[:],
+            "local_t_cloud_levels_getlcl": locals.t_cloud_levels.field[:],
+            "t_perturbation_getlcl": state.output.t_perturbation.field[:],
+            "local_vapor_excess_getlcl": locals.vapor_excess.field[:],
+            "local_vapor_cloud_levels_forced_getlcl": locals.vapor_cloud_levels.field[:],
+            "omega_getlcl": state.input_output.omega.field[:],
+            "air_density_getlcl": state.input_output.air_density.field[:],
+            "local_geopotential_height_cloud_levels_getlcl": locals.geopotential_height_cloud_levels.field[:],
+            "topography_height_no_negative_getlcl": state.input_output.topography_height_no_negative.field[:],
+            "ocean_fraction_getlcl": state.input.ocean_fraction.field[:],
+            "local_updraft_origin_level_getlcl": locals.updraft_origin_level.field[:],
+            "grid_length_getlcl": state.input_output.grid_length.field[:],
+            "lcl_level_getlcl": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "error_code_getlcl": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "vapor_source": vapor_source.field[:],
             "t_source": t_source.field[:],
             "p_source": p_source.field[:],

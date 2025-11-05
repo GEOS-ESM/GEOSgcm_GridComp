@@ -12,6 +12,7 @@ from gt4py.cartesian.gtscript import (
     exp,
 )
 from ndsl.dsl.gt4py import function
+from ndsl.stencils.column_operations import column_min, column_max
 
 
 @function
@@ -45,32 +46,32 @@ def saturation_vapor_pressure(t: Float):
     return saturation_vapor_pressure
 
 
-@function
-def column_max(field, start_index, end_index):
-    max_index = 0
-    level = start_index
-    while level <= end_index:
-        new = field.at(K=level)
-        old = field.at(K=max_index)
-        if new > old:
-            max_index = level
-        level += 1
+# @function
+# def column_max(field, start_index, end_index):
+#     max_index = 0
+#     level = start_index
+#     while level <= end_index:
+#         new = field.at(K=level)
+#         old = field.at(K=max_index)
+#         if new > old:
+#             max_index = level
+#         level += 1
 
-    return field.at(K=max_index), max_index
+#     return field.at(K=max_index), max_index
 
 
-@function
-def column_min(field, start_index, end_index):
-    min_index = 0
-    level = start_index
-    while level <= end_index:
-        new = field.at(K=level)
-        old = field.at(K=min_index)
-        if new < old:
-            min_index = level
-        level += 1
+# @function
+# def column_min(field, start_index, end_index):
+#     min_index = 0
+#     level = start_index
+#     while level <= end_index:
+#         new = field.at(K=level)
+#         old = field.at(K=min_index)
+#         if new < old:
+#             min_index = level
+#         level += 1
 
-    return field.at(K=min_index), min_index
+#     return field.at(K=min_index), min_index
 
 
 @function
@@ -97,24 +98,24 @@ def get_cloud_boundary_conditions(
 
     if BOUNDARY_CONDITION_METHOD == 0:
         order_aver = 3
-        local_order_aver = min(updraft_origin_level, order_aver)
+        local_order_aver = min(updraft_origin_level + 1, order_aver)
 
         source_parcel_value = 0.0
-        level = 0
-        while level < local_order_aver:
-            source_parcel_value = source_parcel_value + field.at(K=updraft_origin_level - level + 1)
+        count = 0
+        while count < local_order_aver:
+            source_parcel_value = source_parcel_value + field.at(K=updraft_origin_level - count)
 
         source_parcel_value = source_parcel_value / local_order_aver
 
     elif BOUNDARY_CONDITION_METHOD == 1:
         effec_frac = (1.0 - ocean_fraction) + ocean_fraction * frac_ave_layer_ocean
-        x_ave_layer = AVERAGE_LAYER_DEPTH * effec_frac
+        ave_layer = AVERAGE_LAYER_DEPTH * effec_frac
 
         start_index = 0
         level = 0
         while level <= k_end - 1:
-            new = abs(p.at(K=level) - (p.at(K=updraft_origin_level) + 0.5 * x_ave_layer))
-            old = abs(p.at(K=start_index) - (p.at(K=updraft_origin_level) + 0.5 * x_ave_layer))
+            new = abs(p.at(K=level) - (p.at(K=updraft_origin_level) + 0.5 * ave_layer))
+            old = abs(p.at(K=start_index) - (p.at(K=updraft_origin_level) + 0.5 * ave_layer))
             if new < old:
                 start_index = level
             level += 1
@@ -122,8 +123,8 @@ def get_cloud_boundary_conditions(
         end_index = 0
         level = 0
         while level <= k_end - 1:
-            new = abs(p.at(K=level) - (p.at(K=updraft_origin_level) - 0.5 * x_ave_layer))
-            old = abs(p.at(K=end_index) - (p.at(K=updraft_origin_level) - 0.5 * x_ave_layer))
+            new = abs(p.at(K=level) - (p.at(K=updraft_origin_level) - 0.5 * ave_layer))
+            old = abs(p.at(K=end_index) - (p.at(K=updraft_origin_level) - 0.5 * ave_layer))
             if new < old:
                 end_index = level
             level += 1
@@ -133,7 +134,7 @@ def get_cloud_boundary_conditions(
 
         if start_index >= end_index:
             source_parcel_value = field.at(K=updraft_origin_level)
-            dp_layer = 0.0
+            dp_layer = 1.0
             level_c = start_index
 
         else:
@@ -144,19 +145,19 @@ def get_cloud_boundary_conditions(
             level = start_index
             while level <= k_end - 1 and stop_computation == False:
                 dp = -(p[0, 0, 1] - p)
-                if dp_layer + dp <= x_ave_layer:
+                if dp_layer + dp <= ave_layer:
                     dp_layer = dp_layer + dp
                     source_parcel_value = source_parcel_value + field * dp
                     level += 1
                 else:
-                    dp = x_ave_layer - dp_layer
+                    dp = ave_layer - dp_layer
                     dp_layer = dp_layer + dp
                     source_parcel_value = source_parcel_value + field * dp
                     stop_computation = True
                     level += 1
 
-        source_parcel_value = source_parcel_value / dp_layer
-        level_c = max(start_index, level)
+            source_parcel_value = source_parcel_value / dp_layer
+            level_c = max(start_index, level)
 
         # this perturbation is only used for moist static energy
         if compute_perturbation == True:
