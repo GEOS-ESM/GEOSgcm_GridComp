@@ -172,5 +172,10 @@ def main():
         file_lake_mantag, file_lakecat_manfix
     ])
 
+    run([
+        "python3", "create_river_input.py",
+    ])
+
+
 if __name__ == "__main__":
     main()
