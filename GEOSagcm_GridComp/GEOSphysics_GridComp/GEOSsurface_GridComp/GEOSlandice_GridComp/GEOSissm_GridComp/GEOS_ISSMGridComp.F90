@@ -175,6 +175,15 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME = 'ICESMB',                     &
+        LONG_NAME  = 'ice_surface_mass_balance',   &
+        UNITS      = 'kg m-2 s-1',                          &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
+    VERIFY_(STATUS)
+
 !  !Import states:
     call MAPL_AddImportSpec(GC,                    &
         SHORT_NAME  = 'ACCUM',                     &
@@ -419,12 +428,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! ice elevation on mesh, grid, tile
   real(dp),    pointer, dimension(:)  :: ICEEL_MESH    => null()      ! ice-sheet elevation on mesh elements
-  real, pointer, dimension(:,:)       :: ICEEL_GRID => null()         ! ice-sheet elevation on atmospheric grid 
+  real, pointer, dimension(:,:)       :: ICEEL_GRID    => null()      ! ice-sheet elevation on atmospheric grid 
   real, pointer, dimension(:)         :: ICEEL_TILE(:) => null()      ! ice-sheet elevation on landice tiles
   real, pointer, dimension(:)         :: ICEEL         => null()      ! pointer to ice-sheet elevation export state
 
   ! need to do the same for SMB
-  real(dp),    pointer, dimension(:)     :: SMBToISSM => null()
+  real(dp),    pointer, dimension(:)  :: SMB_MESH      => null()
+  real,    pointer, dimension(:,:)    :: SMB_GRID      => null()
+  real, pointer, dimension(:)         :: SMB_TILE(:)   => null() 
+  real, pointer, dimension(:)         :: SMB           => null()      ! pointer to SMB export state (not currently exported by landice)
+  real, pointer, dimension(:)         :: ACCUM                        ! accumulation import
+  real, pointer, dimension(:)         :: RUNOFF                       ! runoff import
 
   ! physical parameters
   real(dp), parameter :: rho_ice   = 917.0                            ! pure ice density [kg/m^3]
@@ -454,6 +468,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! run ISSM at specified time steps
   if ( ESMF_AlarmIsRinging (ALARM, RC=STATUS) ) then
 
+    ! ************************************************************************ !
+    ! BASIC SETUP
+    ! ************************************************************************ !
+
     ! get timestep for ISSM
     call MAPL_GetResource ( MAPL, dt, Label=trim(COMP_NAME)//"_DT:", RC=STATUS)
 
@@ -465,20 +483,48 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_MeshGet(mesh,elementCount=num_elements)
 
     ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
-    allocate(SMBToISSM(num_elements))
+    allocate(SMB_MESH(num_elements))
     allocate(ICEEL_MESH(num_elements))
 
     call ESMF_VMBarrier(vm, rc=status)
     VERIFY_(STATUS)
 
-  ! set smb and surface to zero for simple test 
-    SMBToISSM(:) = 0.0_dp     ! placeholder zeros
-    ICEEL_MESH(:) = 0.0_dp ! placeholder zeros
+    ! set smb and surface to zero
+    SMB_MESH(:) = 0.0_dp  
+    ICEEL_MESH(:) = 0.0_dp
+
+    ! get LocStream for landice tiles for regridding
+    call MAPL_Get(MAPL, LocStream = locstream, TILETYPES = TILETYPES, RC=STATUS)
+    VERIFY_(STATUS)
+    NT = size(TILETYPES)
+
+    ! ************************************************************************ !
+    ! CALCULATE SMB (surface mass balance) & REGRID FROM TILES [to grid] to MESH 
+    ! ************************************************************************ !
+    call MAPL_GetPointer(EXPORT,SMB, 'SMB'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,ACCUM , 'ACCUM'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,RUNOFF, 'RUNOFF'    , RC=STATUS); VERIFY_(STATUS)
+
+    if(associated(SMB) .and. .not.associated(SMB_TILE)) then
+      allocate(SMB_TILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+      SMB_TILE = MAPL_Undef
+    end if
+
+    SMB_TILE(:) = ACCUM(:) - RUNOFF(:)
     
+    SMB(:) = SMB_TILE(:)
+
+
+    ! ************************************************************************ !
+    !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
+    ! ************************************************************************ !
+
+
     ! NOTE: do we need the barriers before/after ISSM run?
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
-    call RunISSM(dt_yr, c_loc(SMBToISSM), c_loc(ICEEL_MESH))
+    call RunISSM(dt_yr, c_loc(SMB_MESH), c_loc(ICEEL_MESH))
 
     ! ************************************************************************ !
     ! REGRID ICEEL (ice elevation) FROM MESH [to grid] to TILES 
@@ -507,11 +553,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! get pointer to export
     call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' ,  RC=STATUS); VERIFY_(STATUS)
-
-    ! get LocStream for landice tiles 
-    call MAPL_Get(MAPL, LocStream = locstream, TILETYPES = TILETYPES, RC=STATUS)
-    VERIFY_(STATUS)
-    NT = size(TILETYPES)
 
     ! allocate tiles (MKTILE)
     if(associated(ICEEL) .and. .not.associated(ICEEL_TILE)) then
