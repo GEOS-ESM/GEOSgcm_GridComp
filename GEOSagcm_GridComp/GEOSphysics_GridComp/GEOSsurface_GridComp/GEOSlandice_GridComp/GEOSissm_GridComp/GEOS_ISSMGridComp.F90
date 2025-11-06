@@ -166,12 +166,12 @@ subroutine SetServices ( GC, RC )
 ! -----------------------------
 
  !Export states:
-    call MAPL_AddExportSpec(GC,                     &
-         SHORT_NAME = 'ICEEL',                      &
-         LONG_NAME  = 'ice_elevation_tiles',        &
-         UNITS      = 'm',                          &
-         DIMS       = MAPL_DimsTileOnly,            &
-         VLOCATION  = MAPL_VLocationNone,           &
+    call MAPL_AddExportSpec(GC,                           &
+         SHORT_NAME = 'ICEEL',                            &
+         LONG_NAME  = 'ice_elevation_tiles',              &
+         UNITS      = 'm',                                &
+         DIMS       = MAPL_DimsTileOnly,                  &
+         VLOCATION  = MAPL_VLocationNone,                 &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -186,9 +186,9 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                           &
+        SHORT_NAME         = 'RUNOFF',                    &
         LONG_NAME          = 'runoff_total_flux',         &
         UNITS              = 'kg m-2 s-1',                &
-        SHORT_NAME         = 'RUNOFF',                    &
         DIMS               = MAPL_DimsTileOnly,           &
         VLOCATION          = MAPL_VLocationNone,          &
         RC=STATUS  ) 
