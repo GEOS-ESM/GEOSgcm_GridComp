@@ -490,8 +490,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call ESMF_UserCompGetInternalState(GC, 'REGRIDHANDLES', wrap, status); VERIFY_(STATUS)
     regrid_handles => wrap%ptr
-    routehandle = regrid_handles%routehandle_m2g
-    call ESMF_FieldRegrid(srcField, dstField, routehandle, RC=STATUS); VERIFY_(STATUS)
+    routehandle_m2g = regrid_handles%routehandle_m2g
+    call ESMF_FieldRegrid(srcField, dstField, routehandle_m2g, RC=STATUS); VERIFY_(STATUS)
 
     ! get pointer to ice elevation on grid
     call ESMF_FieldGet(dstField,farrayPtr=ICEEL_GRID,RC=STATUS); VERIFY_(STATUS)
