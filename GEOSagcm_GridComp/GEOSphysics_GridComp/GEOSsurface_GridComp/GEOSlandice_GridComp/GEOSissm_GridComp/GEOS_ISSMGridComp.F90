@@ -165,9 +165,7 @@ subroutine SetServices ( GC, RC )
     ! Set the state variable specs.
 ! -----------------------------
 
-! TODO: placeholders comments for IM/IN/EX states
- !Export state:
- !TODO: set export states here, like this: 
+ !Export states:
     call MAPL_AddExportSpec(GC,                     &
          SHORT_NAME = 'ICEEL',                      &
          LONG_NAME  = 'ice_elevation_tiles',        &
@@ -177,18 +175,24 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  )
     VERIFY_(STATUS)
 
-! VERIFY_(STATUS)
+!  !Import states:
+    call MAPL_AddImportSpec(GC,                           &
+        SHORT_NAME         = 'ACCUM',                     &
+        LONG_NAME          = 'net_ice_accumulation_rate', &
+        UNITS              = 'kg m-2 s-1',                &
+        DIMS               = MAPL_DimsTileOnly,           &
+        VLOCATION          = MAPL_VLocationNone,          &
+        RC=STATUS  )
+    VERIFY_(STATUS)
 
-!  !Import state:
-!  ! TODO: add import states here, like this:
-!    call MAPL_AddImportSpec(GC,                             &
-!    SHORT_NAME         = 'ICESMB',                               &
-!    LONG_NAME          = 'ice_surface_mass_balance', &
-!    UNITS              = 'kg s-1',                             &
-!    DIMS               = MAPL_DimsTileOnly,                   &
-!    VLOCATION          = MAPL_VLocationNone,                  &
-!                                                   RC=STATUS  )
-! VERIFY_(STATUS)
+    call MAPL_AddImportSpec(GC,                           &
+        LONG_NAME          = 'runoff_total_flux',         &
+        UNITS              = 'kg m-2 s-1',                &
+        SHORT_NAME         = 'RUNOFF',                    &
+        DIMS               = MAPL_DimsTileOnly,           &
+        VLOCATION          = MAPL_VLocationNone,          &
+        RC=STATUS  ) 
+    VERIFY_(STATUS)
 
 ! Set the Profiling timers
 ! ------------------------
