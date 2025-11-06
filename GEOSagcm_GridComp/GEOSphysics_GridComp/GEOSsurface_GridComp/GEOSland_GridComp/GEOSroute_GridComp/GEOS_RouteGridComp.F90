@@ -33,7 +33,7 @@ module GEOS_RouteGridCompMod
   implicit none
 
   integer, parameter :: upmax    = 34
-  logical, parameter :: use_res  = .False.
+  logical, parameter :: use_res  = .True.
   integer, save      :: nmax 
 
   private
