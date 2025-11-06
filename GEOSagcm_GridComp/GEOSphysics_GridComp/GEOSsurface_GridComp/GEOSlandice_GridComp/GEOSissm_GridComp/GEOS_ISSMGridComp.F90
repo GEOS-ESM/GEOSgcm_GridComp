@@ -404,16 +404,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! regridding
   type(ESMF_RouteHandle)               :: routehandle_m2g             ! routehandle for regridding mesh to grid
   type(ESMF_RouteHandle)               :: routehandle_g2m             ! routehandle for regridding grid to mesh
-  type(ESMF_Field)                     :: srcField                    ! ice elevation on mesh
-  type(ESMF_Field)                     :: dstField                    ! ice elevation on grid
+  type(ESMF_Field)                     :: srcField                    ! generic source field for regridding
+  type(ESMF_Field)                     :: dstField                    ! generic destination field for regridding
   type(ESMF_Grid)                      :: grid                        ! atmospheric grid
   type(CONNECT_REGRIDHANDLES), pointer :: regrid_handles=>null()      ! store the routehandles for access during run
   type(REGRIDHANDLES)                  :: wrap                        ! wrapper for routehandle container
 
   ! time stepping information (ISSM_DT set in AGCM.rc)
-  real(dp) :: dt                                                      ! time step in seconds
-  real(dp) :: dt_yr                                                   ! time step in years (ISSM units)
-  real(dp) :: sec_per_year                                            ! conversion factor
+  real(dp)            :: dt                                           ! time step in seconds
+  real(dp)            :: dt_yr                                        ! time step in years (ISSM units)
+  real(dp), parameter :: sec_per_year = 31536000.0                    ! conversion factor (ISSM value for consistency)
 
   type(MAPL_MetaComp), pointer   :: MAPL
   type(ESMF_Mesh)                :: mesh                              ! ESMF version of ISSM mesh
@@ -421,9 +421,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_VM)                  :: vm  
 
   ! tile information
-  type (MAPL_LocStream       )        :: locstream   ! tile locstream 
-  integer, pointer, dimension(:)      :: TILETYPES   ! types of tiles
-  integer                             :: NT          ! number of tiles
+  type (MAPL_LocStream       )        :: locstream                    ! tile locstream 
+  integer, pointer, dimension(:)      :: TILETYPES                    ! types of tiles
+  integer                             :: NT                           ! number of tiles
 
   ! ice elevation on mesh, grid, tile
   real(dp),    pointer, dimension(:)  :: ICEEL_MESH    => null()      ! ice-sheet elevation on mesh elements
@@ -432,12 +432,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:)         :: ICEEL         => null()      ! pointer to ice-sheet elevation export state
 
   ! need to do the same for SMB
-  real(dp),    pointer, dimension(:)  :: SMB_MESH      => null()
-  real,    pointer, dimension(:,:)    :: SMB_GRID      => null()
-  real, pointer, dimension(:)         :: SMB_TILE(:)   => null() 
-  real, pointer, dimension(:)         :: SMB           => null()      ! pointer to SMB export state (not currently exported by landice)
-  real, pointer, dimension(:)         :: ACCUM                        ! accumulation import
-  real, pointer, dimension(:)         :: RUNOFF                       ! runoff import
+  real(dp),    pointer, dimension(:)  :: ICESMB_MESH   => null()      ! surface mass balce on mesh elements
+  real,    pointer, dimension(:,:)    :: ICESMB_GRID   => null()      ! surface mass balance on atmospheric grid
+  real, pointer, dimension(:)         :: ICESMB_TILE(:)=> null()      ! surface mass balance on tiles
+  real, pointer, dimension(:)         :: ICESMB        => null()      ! pointer to SMB export state (not currently exported by landice)
+  real, pointer, dimension(:)         :: ACCUM         => null()      ! accumulation import
+  real, pointer, dimension(:)         :: RUNOFF        => null()      ! runoff import
 
   ! physical parameters
   real(dp), parameter :: rho_ice   = 917.0                            ! pure ice density [kg/m^3]
@@ -467,29 +467,28 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! run ISSM at specified time steps
   if ( ESMF_AlarmIsRinging (ALARM, RC=STATUS) ) then
 
-    ! ************************************************************************ !
+    ! *************************************************************************** !
     ! BASIC SETUP
-    ! ************************************************************************ !
+    ! *************************************************************************** !
 
     ! get timestep for ISSM
     call MAPL_GetResource ( MAPL, dt, Label=trim(COMP_NAME)//"_DT:", RC=STATUS)
 
     ! convert dt to years for ISSM input
-    sec_per_year = 31557600.0
     dt_yr = dt/sec_per_year
 
     ! get number of mesh elements
     call ESMF_MeshGet(mesh,elementCount=num_elements)
 
-    ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
-    allocate(SMB_MESH(num_elements))
+    ! allocate SMB forcing (input to ISSM) and ice-elevation output (export from ISSM)
+    allocate(ICESMB_MESH(num_elements))
     allocate(ICEEL_MESH(num_elements))
 
     call ESMF_VMBarrier(vm, rc=status)
     VERIFY_(STATUS)
 
-    ! set smb and surface to zero
-    SMB_MESH(:) = 0.0_dp  
+    ! set smb and surface to zero (not sure this is needed...)
+    ICESMB_MESH(:) = 0.0_dp  
     ICEEL_MESH(:) = 0.0_dp
 
     ! get LocStream for landice tiles for regridding
@@ -497,54 +496,87 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     NT = size(TILETYPES)
 
-    ! ************************************************************************ !
+    ! get the atmospheric grid 
+    call ESMF_GridCompGet( GC, GRID=grid, RC=status )
+    VERIFY_(STATUS)
+    
+    ! get routehandles for regridding
+    call ESMF_UserCompGetInternalState(GC, 'REGRIDHANDLES', wrap, status); VERIFY_(STATUS)
+    regrid_handles => wrap%ptr
+    routehandle_m2g = regrid_handles%routehandle_m2g  ! mesh to grid 
+    routehandle_g2m = regrid_handles%routehandle_g2m  ! grid to mesh
+
+    ! *************************************************************************** !
     ! CALCULATE SMB (surface mass balance) & REGRID FROM TILES [to grid] to MESH 
-    ! ************************************************************************ !
-    call MAPL_GetPointer(EXPORT,SMB, 'SMB'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,ACCUM , 'ACCUM'    , RC=STATUS); VERIFY_(STATUS)
+    ! *************************************************************************** !
+    call MAPL_GetPointer(EXPORT,ICESMB, 'ICESMB'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,ACCUM , 'ACCUM'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,RUNOFF, 'RUNOFF'    , RC=STATUS); VERIFY_(STATUS)
 
-    if(associated(SMB) .and. .not.associated(SMB_TILE)) then
-      allocate(SMB_TILE(NT), STAT=STATUS)
+    ! allocate tiles for SMB (MKTILE)
+    if(associated(ICESMB) .and. .not.associated(ICESMB_TILE)) then
+      allocate(ICESMB_TILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
-      SMB_TILE = MAPL_Undef
+      ICESMB_TILE = MAPL_Undef
     end if
 
-    SMB_TILE(:) = ACCUM(:) - RUNOFF(:)
+    ! calculate SMB as accumulation minus runoff (check this)
+    ICESMB_TILE(:) = ACCUM(:) - RUNOFF(:)
     
-    SMB(:) = SMB_TILE(:)
+    ! pointer to SMB export
+    if(associated(ICESMB)) ICESMB(:) = ICESMB_TILE(:)
 
+    ! transform from tile to grid
+    call MAPL_LocStreamTransform( LOCSTREAM, ICESMB_GRID,ICESMB_TILE, RC=STATUS)
+    VERIFY_(STATUS)
 
-    ! ************************************************************************ !
+    ! create source field: SMB on grid
+    srcField = ESMF_FieldCreate(grid=grid,farrayPtr=ICESMB_GRID, & 
+               datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
+    VERIFY_(STATUS)
+
+    ! create destination field: SMB on mesh elements
+    dstField = ESMF_FieldCreate(mesh=mesh,typekind=ESMF_TYPEKIND_R8,rc=STATUS)
+    VERIFY_(STATUS)
+
+    ! regrid SMB from grid to mesh
+    call ESMF_FieldRegrid(srcField, dstField, routehandle_g2m, RC=STATUS); VERIFY_(STATUS)
+
+    ! get pointer to SMB on mesh
+    call ESMF_FieldGet(dstField,farrayPtr=ICESMB_MESH,RC=STATUS); VERIFY_(STATUS)
+
+    ! convert to SMB to ISSM units [m/yr]
+    ICESMB_MESH = ICESMB_MESH*sec_per_year/rho_ice
+
+    ! not sure if these destroy calls are needed because these fields are reused below(?)
+    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
+
+    ! *************************************************************************** !
     !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
-    ! ************************************************************************ !
+    ! *************************************************************************** !
 
 
     ! NOTE: do we need the barriers before/after ISSM run?
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
-    call RunISSM(dt_yr, c_loc(SMB_MESH), c_loc(ICEEL_MESH))
+    ! call run method from ISSM library 
+    call RunISSM(dt_yr, c_loc(ICESMB_MESH), c_loc(ICEEL_MESH))
 
-    ! ************************************************************************ !
+    ! *************************************************************************** !
     ! REGRID ICEEL (ice elevation) FROM MESH [to grid] to TILES 
-    ! ************************************************************************ !
+    ! *************************************************************************** !
 
     ! create source field: ice elevation on mesh elements
     srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICEEL_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
     datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
-    VERIFY_(STATUS)
-
-    ! get atmospheric grid 
-    call ESMF_GridCompGet( GC, GRID=grid, RC=status )
     VERIFY_(STATUS)
     
     ! create destination field: regrid ice elevation onto grid
     dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_UserCompGetInternalState(GC, 'REGRIDHANDLES', wrap, status); VERIFY_(STATUS)
-    regrid_handles => wrap%ptr
-    routehandle_m2g = regrid_handles%routehandle_m2g
+    ! regrid ice elevation from mesh to grid
     call ESMF_FieldRegrid(srcField, dstField, routehandle_m2g, RC=STATUS); VERIFY_(STATUS)
 
     ! get pointer to ice elevation on grid
@@ -553,7 +585,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! get pointer to export
     call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' ,  RC=STATUS); VERIFY_(STATUS)
 
-    ! allocate tiles (MKTILE)
+    ! allocate tiles for ice elevation (MKTILE)
     if(associated(ICEEL) .and. .not.associated(ICEEL_TILE)) then
       allocate(ICEEL_TILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
@@ -564,7 +596,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_LocStreamTransform( LOCSTREAM, ICEEL_TILE,ICEEL_GRID, RC=STATUS)
     VERIFY_(STATUS)
 
-    ICEEL(:) = ICEEL_TILE(:)
+    if(associated(ICEEL)) ICEEL(:) = ICEEL_TILE(:)
 
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
@@ -574,7 +606,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  if(associated(SMB_MESH))  deallocate(SMB_MESH)
+  if(associated(ICESMB_MESH))  deallocate(ICESMB_MESH)
   if(associated(ICEEL_MESH)) deallocate(ICEEL_MESH)
   if(associated(ICEEL_TILE)) deallocate(ICEEL_TILE)
 
