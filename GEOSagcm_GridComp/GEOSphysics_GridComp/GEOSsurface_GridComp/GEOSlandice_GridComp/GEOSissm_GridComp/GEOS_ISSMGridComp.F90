@@ -413,9 +413,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_VM)                  :: vm  
 
   ! tile information
-  type (MAPL_LocStream       )        :: locstream
-  integer, pointer, dimension(:)      :: TILETYPES
-  integer                             :: NT
+  type (MAPL_LocStream       )        :: locstream   ! tile locstream 
+  integer, pointer, dimension(:)      :: TILETYPES   ! types of tiles
+  integer                             :: NT          ! number of tiles
 
   ! ice elevation on mesh, grid, tile
   real(dp),    pointer, dimension(:)  :: ICEEL_MESH    => null()      ! ice-sheet elevation on mesh elements
@@ -426,10 +426,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! need to do the same for SMB
   real(dp),    pointer, dimension(:)     :: SMBToISSM => null()
 
+  ! physical parameters
+  real(dp), parameter :: rho_ice   = 917.0                            ! pure ice density [kg/m^3]
 
-! Get the target components name and set-up traceback handle.
+
+! Get the target components name, mesh and vm
 ! -----------------------------------------------------------
-! also get the mesh and vm
   Iam = "Run"
   call ESMF_GridCompGet( GC, name=COMP_NAME,mesh=mesh,vm=vm,RC=STATUS )
   VERIFY_(STATUS)
@@ -441,7 +443,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
   VERIFY_(STATUS)
 
-
   ! Start Total timer
 !------------------
   call MAPL_TimerOn(MAPL,"TOTAL")
@@ -450,42 +451,46 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call MAPL_Get(MAPL, RUNALARM = ALARM, RC=STATUS )
   VERIFY_(STATUS)
 
-  ! get timestep for ISSM
-  call MAPL_GetResource ( MAPL, dt, Label=trim(COMP_NAME)//"_DT:", RC=STATUS)
-
-  ! convert dt to years for ISSM input
-  sec_per_year = 31557600.0
-  dt_yr = dt/sec_per_year
-
-  ! get number of mesh elements
-  call ESMF_MeshGet(mesh,elementCount=num_elements)
-
-  ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
-  allocate(SMBToISSM(num_elements))
-  allocate(ICEEL_MESH(num_elements))
-
-  call ESMF_VMBarrier(vm, rc=status)
-  VERIFY_(STATUS)
-
-! set smb and surface to zero for simple test 
-  SMBToISSM(:) = 0.0_dp     ! placeholder zeros
-  ICEEL_MESH(:) = 0.0_dp ! placeholder zeros
-  
-  ! NOTE: do we need the barriers before/after ISSM run?
-  call ESMF_VMBarrier(vm, rc=status)
-  VERIFY_(STATUS)
-
-  ! get atmospheric grid 
-  call ESMF_GridCompGet( GC, GRID=grid, RC=status )
-  VERIFY_(STATUS)
-
   ! run ISSM at specified time steps
   if ( ESMF_AlarmIsRinging (ALARM, RC=STATUS) ) then
+
+    ! get timestep for ISSM
+    call MAPL_GetResource ( MAPL, dt, Label=trim(COMP_NAME)//"_DT:", RC=STATUS)
+
+    ! convert dt to years for ISSM input
+    sec_per_year = 31557600.0
+    dt_yr = dt/sec_per_year
+
+    ! get number of mesh elements
+    call ESMF_MeshGet(mesh,elementCount=num_elements)
+
+    ! allocate SMB forcing (input to ISSM) and surface output (export from ISSM)
+    allocate(SMBToISSM(num_elements))
+    allocate(ICEEL_MESH(num_elements))
+
+    call ESMF_VMBarrier(vm, rc=status)
+    VERIFY_(STATUS)
+
+  ! set smb and surface to zero for simple test 
+    SMBToISSM(:) = 0.0_dp     ! placeholder zeros
+    ICEEL_MESH(:) = 0.0_dp ! placeholder zeros
+    
+    ! NOTE: do we need the barriers before/after ISSM run?
+    call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
+
     call RunISSM(dt_yr, c_loc(SMBToISSM), c_loc(ICEEL_MESH))
+
+    ! ************************************************************************ !
+    ! REGRID ICEEL (ice elevation) FROM MESH [to grid] to TILES 
+    ! ************************************************************************ !
 
     ! create source field: ice elevation on mesh elements
     srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICEEL_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
     datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
+    VERIFY_(STATUS)
+
+    ! get atmospheric grid 
+    call ESMF_GridCompGet( GC, GRID=grid, RC=status )
     VERIFY_(STATUS)
     
     ! create destination field: regrid ice elevation onto grid
@@ -515,6 +520,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       ICEEL_TILE = MAPL_Undef
     end if
    
+    ! transform and assign to export pointer
     call MAPL_LocStreamTransform( LOCSTREAM, ICEEL_TILE,ICEEL_GRID, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -528,9 +534,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  deallocate(SMBToISSM)
-  deallocate(ICEEL_MESH)
-
+  if(associated(SMBToISSM))  deallocate(SMBToISSM)
+  if(associated(ICEEL_MESH)) deallocate(ICEEL_MESH)
   if(associated(ICEEL_TILE)) deallocate(ICEEL_TILE)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
