@@ -11,18 +11,17 @@ module GEOS_IssmGridCompMod
 !
 !   {\tt GEOS\_ISSM} is a wrapper that calls ISSM (C++) IRF methods
 !
-! *** NOTES: *currently just want to call/"drive" ISSM with no coupling at all
-!             to test if the building/linking is working:   
-!         
-!            *currently we run over the Greenland Ice Sheet with all given PETs
-!            *ISSM mesh is *internal* to ISSM (C++ source) but we create an ESMF_MESH version for regridding     
-!            *the atmospheric grid is inherited from the parent, so we regrid onto the grid, then regrid onto tiles    
+! *** NOTES: 
+!            (*) currently we run over the Greenland Ice Sheet with all given PETs
+!            (*) ISSM mesh is *internal* to ISSM (C++ source) but we create an ESMF_MESH version for regridding     
+!            (*) the atmospheric grid is inherited from the parent, so we regrid onto the grid, then regrid onto tiles  
+!            (*) for future development, it's important to note that ISSM expects double precision inputs    
 !
 ! next steps:  
-!    
-!             (*) add import states corresponding to surface mass balance 
-!             (*) determine realistic ISSM setup, etc...
-! 
+!            (*) determine "good" ISSM boundary and initial conditions
+!            (*) run basic experiments
+!            (*) work on basic coupling w.r.t. dynamic ice-surface elevation   
+!            (*) expand to other fields (e.g., iceberg discharge), Antarctica, possibly other glaciers
 
 ! !USES:
 use iso_fortran_env, only: dp=>real64
@@ -575,7 +574,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  if(associated(SMBToISSM))  deallocate(SMBToISSM)
+  if(associated(SMB_MESH))  deallocate(SMB_MESH)
   if(associated(ICEEL_MESH)) deallocate(ICEEL_MESH)
   if(associated(ICEEL_TILE)) deallocate(ICEEL_TILE)
 
