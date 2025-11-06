@@ -1,4 +1,6 @@
-from ndsl import Namelist, StencilFactory
+from f90nml import Namelist
+
+from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -187,6 +189,6 @@ class TranslateGFDL_1M_terminal_fall(TranslateFortranData2Py):
             zt=temporaries.zt,
             is_frozen=masks.is_frozen,
             precip_fall=masks.precip_fall,
-            **inputs
+            **inputs,
         )
         return inputs

@@ -1,5 +1,3 @@
-import copy
-
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, float64, interval, log, sqrt
 
 import pyMoist.constants as constants
@@ -326,28 +324,33 @@ class AerActivation:
             raise NotImplementedError("Non NN Aerosol not implemented")
 
         # Temporary buffers
-        nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(quantity_factory)
-        self._nact = nmodes_quantity_factory.zeros(
+        quantity_factory.add_data_dimensions(
+            **{
+                "n_modes": constants.N_MODES,
+            }
+        )
+
+        self._nact = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_DIM, "n_modes"],
             units="n/a",
             dtype=Float,
         )
-        self._ni = nmodes_quantity_factory.zeros(
+        self._ni = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_DIM, "n_modes"],
             units="n/a",
             dtype=Float,
         )
-        self._rg = nmodes_quantity_factory.zeros(
+        self._rg = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_DIM, "n_modes"],
             units="n/a",
             dtype=Float,
         )
-        self._sig0 = nmodes_quantity_factory.zeros(
+        self._sig0 = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_DIM, "n_modes"],
             units="n/a",
             dtype=Float,
         )
-        self._bibar = nmodes_quantity_factory.zeros(
+        self._bibar = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_DIM, "n_modes"],
             units="n/a",
             dtype=Float,
@@ -358,16 +361,6 @@ class AerActivation:
             func=aer_activation_stencil,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-
-    @staticmethod
-    def make_nmodes_quantity_factory(ijk_quantity_factory: QuantityFactory):
-        nmodes_quantity_factory = copy.deepcopy(ijk_quantity_factory)
-        nmodes_quantity_factory.set_extra_dim_lengths(
-            **{
-                "n_modes": constants.N_MODES,
-            }
-        )
-        return nmodes_quantity_factory
 
     def __call__(
         self,

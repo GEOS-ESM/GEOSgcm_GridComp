@@ -150,11 +150,6 @@ class SaturationVaporPressureTable:
         self._estimated_esw = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._estimated_esx = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
-        compute_tables = stencil_factory.from_dims_halo(
-            func=_compute_tables,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
         NDSL_tables = False
         # NOTE Setting NDSL_tables to True will the tables using gt4py stencils and functions.
         # This is turned off because they do not currently verify.
@@ -163,6 +158,10 @@ class SaturationVaporPressureTable:
         #       get forced to the same precision
 
         if NDSL_tables:
+            compute_tables = stencil_factory.from_dims_halo(
+                func=_compute_tables,
+                compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            )
             compute_tables(
                 self._estimated_ese,
                 self._estimated_esw,

@@ -34,7 +34,7 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.dace.build import set_distributed_caches
 from ndsl.dsl.gt4py_utils import is_gpu_backend
 from ndsl.dsl.typing import get_precision
-from ndsl.logging import ndsl_log
+from ndsl.logging import ndsl_log, ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
@@ -146,13 +146,11 @@ class GEOSPyMoistWrapper:
             ny_tile=self.flags.npy * self.flags.layout_y,
             nz=self.flags.npz,
             n_halo=0,
-            extra_dim_lengths={},
             layout=layout,
             tile_partitioner=partitioner.tile,
             tile_rank=self.communicator.tile.rank,
         )
         self.quantity_factory = QuantityFactory.from_backend(sizer=sizer, backend=backend)
-        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(self.quantity_factory)
 
         self.stencil_config = StencilConfig(
             compilation_config=CompilationConfig(backend=backend, rebuild=False, validate_args=True),
@@ -187,18 +185,21 @@ class GEOSPyMoistWrapper:
             and is_gpu_backend(backend)
             and os.path.exists(f"{MPS_pipe_directory}/log")
         )
-        ndsl_log.info(
-            "pyMoist <> GEOS wrapper initialized: \n"
-            f"         bridge : {self._fortran_mem_space}"
+        tmp_quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], units="")
+        ndsl_log_on_rank_0.info(
+            "pyMoist <> GEOS wrapper initialized (Rank 0): \n"
+            f"         Bridge : {self._fortran_mem_space}"
             f" > {self._pace_mem_space}\n"
-            f"        backend : {backend}\n"
-            f"          float : {get_precision()}bit\n"
-            f"  orchestration : {self._is_orchestrated}\n"
-            f"          sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
+            f"        Backend : {backend}\n"
+            f"      Precision : {get_precision()}bit\n"
+            f"  Orchestration : {self._is_orchestrated}\n"
+            f"          Sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
+            f" Strides for 3D : {[s // 8 for s in tmp_quantity.data.strides]}\n"
             f"     Device ord : {device_ordinal_info}\n"
             f"     Nvidia MPS : {MPS_is_on}"
         )
+        del tmp_quantity
 
         # Timer result dict
         self._timings: dict[str, list[float]] = {}
@@ -262,14 +263,6 @@ class GEOSPyMoistWrapper:
                     USE_AERSOL_NN=True,
                 )
         return self._aer_activation
-
-    def make_nmmodes_quantity(self, data):
-        qty = self.nmodes_quantity_factory.empty(
-            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
-            "n/a",
-        )
-        qty.field[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
-        return qty
 
     def init_gfdl_1m_configuration(
         self,
@@ -439,165 +432,169 @@ class GEOSPyMoistWrapper:
         self._mapl_export.register("SC_SNR", np.float32, [X_DIM, Y_DIM], True)
 
     def GFDL_1M_Microphysics(self):
-        with MAPLManagedMemory(self._mapl_internal) as mapl_internal, MAPLManagedMemory(
-            self._mapl_import
-        ) as mapl_import, MAPLManagedMemory(self._mapl_export) as mapl_export:
-            # Pull the data from the linked Fortran memory
-            self._GFDL_1M_state.update_move_memory(
-                {
-                    "mixing_ratios": {
-                        "vapor": mapl_internal.Q,
-                        "rain": mapl_internal.QRAIN,
-                        "snow": mapl_internal.QSNOW,
-                        "graupel": mapl_internal.QGRAUPEL,
-                        "convective_liquid": mapl_internal.QLCN,
-                        "convective_ice": mapl_internal.QICN,
-                        "large_scale_liquid": mapl_internal.QLLS,
-                        "large_scale_ice": mapl_internal.QILS,
-                    },
-                    "cloud_fractions": {
-                        "convective": mapl_internal.CLCN,
-                        "large_scale": mapl_internal.CLLS,
-                    },
-                    "vertical_motion": {
-                        "velocity": mapl_import.W,
-                        "variance": mapl_import.W2,
-                        "third_moment": mapl_import.W3,
-                    },
-                },
-                # We follow fortran strides and because we do this consistently it doesn't break orchestration
-                check_shape_and_strides=False,
-            )
+        with MAPLManagedMemory(self._mapl_internal) as mapl_internal:
+            with MAPLManagedMemory(self._mapl_import) as mapl_import:
+                with MAPLManagedMemory(self._mapl_export) as mapl_export:
+                    # Pull the data from the linked Fortran memory
+                    self._GFDL_1M_state.update_move_memory(
+                        {
+                            "mixing_ratios": {
+                                "vapor": mapl_internal.Q,
+                                "rain": mapl_internal.QRAIN,
+                                "snow": mapl_internal.QSNOW,
+                                "graupel": mapl_internal.QGRAUPEL,
+                                "convective_liquid": mapl_internal.QLCN,
+                                "convective_ice": mapl_internal.QICN,
+                                "large_scale_liquid": mapl_internal.QLLS,
+                                "large_scale_ice": mapl_internal.QILS,
+                            },
+                            "cloud_fractions": {
+                                "convective": mapl_internal.CLCN,
+                                "large_scale": mapl_internal.CLLS,
+                            },
+                            "vertical_motion": {
+                                "velocity": mapl_import.W,
+                                "variance": mapl_import.W2,
+                                "third_moment": mapl_import.W3,
+                            },
+                        },
+                        # We follow fortran strides and because we do this consistently
+                        # it doesn't break orchestration
+                        check_shape_and_strides=False,
+                    )
 
-            # Diagnostic for un-tested code
-            #
-            # liquid_water_static_energy = LiquidWaterStaticEnergy(
-            #     flux=mapl_import.WSL,
-            #     variance=mapl_import.SL2,
-            #     third_moment=mapl_import.SL3,
-            # )
-            # total_water = TotalWater(
-            #     flux=mapl_import.WQT,
-            #     variance=mapl_import.QT2,
-            #     third_moment=mapl_import.QT3,
-            # )
+                    # Diagnostic for un-tested code
+                    #
+                    # liquid_water_static_energy = LiquidWaterStaticEnergy(
+                    #     flux=mapl_import.WSL,
+                    #     variance=mapl_import.SL2,
+                    #     third_moment=mapl_import.SL3,
+                    # )
+                    # total_water = TotalWater(
+                    #     flux=mapl_import.WQT,
+                    #     variance=mapl_import.QT2,
+                    #     third_moment=mapl_import.QT3,
+                    # )
 
-            if mapl_export.associated("SHLW_PRC3"):
-                shallow_convective_rain = mapl_export.SHLW_PRC3
-            else:
-                shallow_convective_rain = None
-            if mapl_export.associated("SHLW_SNO3"):
-                shallow_convective_snow = mapl_export.SHLW_SNO3
-            else:
-                shallow_convective_rain = None
-            if mapl_export.associated("RHCRIT"):
-                rh_crit = mapl_export.RHCRIT
-            else:
-                rh_crit = None
+                    if mapl_export.associated("SHLW_PRC3"):
+                        shallow_convective_rain = mapl_export.SHLW_PRC3
+                    else:
+                        shallow_convective_rain = None
+                    if mapl_export.associated("SHLW_SNO3"):
+                        shallow_convective_snow = mapl_export.SHLW_SNO3
+                    else:
+                        shallow_convective_rain = None
+                    if mapl_export.associated("RHCRIT"):
+                        rh_crit = mapl_export.RHCRIT
+                    else:
+                        rh_crit = None
 
-            # Outputs: model fields originating from within GFDL
-            self._GFDL_1M_outputs.update_move_memory(
-                {
-                    "liquid_radius": mapl_export.RL,
-                    "ice_radius": mapl_export.RI,
-                    "precipitated_rain": mapl_export.PRCP_RAIN,
-                    "precipitated_snow": mapl_export.PRCP_SNOW,
-                    "precipitated_ice": mapl_export.PRCP_ICE,
-                    "precipitated_graupel": mapl_export.PRCP_GRAUPEL,
-                    "radiation_cloud_fraction": mapl_export.FCLD,
-                    "radiation_vapor": mapl_export.QV,
-                    "radiation_liquid": mapl_export.QL,
-                    "radiation_ice": mapl_export.QI,
-                    "radiation_rain": mapl_export.QR,
-                    "radiation_snow": mapl_export.QS,
-                    "radiation_graupel": mapl_export.QG,
-                    "lower_tropospheric_stability": mapl_export.LTS,
-                    "estimated_inversion_strength": mapl_export.EIS,
-                    "z_lcl": (mapl_export.ZLCL if mapl_export.associated("ZLCL") else None),
-                    "du_dt_macro": mapl_export.DUDT_macro,
-                    "dv_dt_macro": mapl_export.DVDT_macro,
-                    "dt_dt_macro": mapl_export.DTDT_macro,
-                    "dvapor_dt_macro": mapl_export.DQVDT_macro,
-                    "dliquid_dt_macro": mapl_export.DQLDT_macro,
-                    "dice_dt_macro": mapl_export.DQIDT_macro,
-                    "dcloud_fraction_dt_macro": mapl_export.DQADT_macro,
-                    "drain_dt_macro": mapl_export.DQRDT_macro,
-                    "dsnow_dt_macro": mapl_export.DQSDT_macro,
-                    "dgraupel_dt_macro": mapl_export.DQGDT_macro,
-                    "du_dt_micro": mapl_export.DUDT_micro,
-                    "dv_dt_micro": mapl_export.DVDT_micro,
-                    "dt_dt_micro": mapl_export.DTDT_micro,
-                    "dvapor_dt_micro": mapl_export.DQVDT_micro,
-                    "dliquid_dt_micro": mapl_export.DQLDT_micro,
-                    "dice_dt_micro": mapl_export.DQIDT_micro,
-                    "dcloud_fraction_dt_micro": mapl_export.DQADT_micro,
-                    "drain_dt_micro": mapl_export.DQRDT_micro,
-                    "dsnow_dt_micro": mapl_export.DQSDT_micro,
-                    "dgraupel_dt_micro": mapl_export.DQGDT_micro,
-                    "large_scale_precip": mapl_export.LS_PRCP,
-                    "large_scale_snow": mapl_export.LS_SNR,
-                    "icefall": mapl_export.ICE,
-                    "freezing_rainfall": mapl_export.FRZR,
-                    "relative_humidity_after_pdf": mapl_export.RHX,
-                    "large_scale_nonanvil_precipitation_evaporation": mapl_export.REV_LS,
-                    "large_scale_nonanvil_precipitation_sublimation": mapl_export.RSU_LS,
-                    # PFL_* are 0-72 in the fortran, but index 0 is always 0
-                    "large_scale_nonanvil_liquid_flux": mapl_export.PFL_LS[:, :, 1:],
-                    "large_scale_nonanvil_ice_flux": mapl_export.PFI_LS[:, :, 1:],
-                    "anvil_liquid_flux": mapl_export.PFL_AN[:, :, 1:],
-                    "anvil_ice_flux": mapl_export.PFI_AN[:, :, 1:],
-                    "large_scale_rainwater_source": mapl_export.DQRL
-                    if mapl_export.associated("DQRL")
-                    else None,
-                    "moist_friction_temperature_tendency": mapl_export.DTDTFRIC
-                    if mapl_export.associated("DTDTFRIC")
-                    else None,
-                    "simulated_reflectivity": mapl_export.DBZ if mapl_export.associated("DBZ") else None,
-                    "maximum_reflectivity": mapl_export.DBZ_MAX
-                    if mapl_export.associated("DBZ_MAX")
-                    else None,
-                    "one_km_agl_reflectivity": mapl_export.DBZ_1KM
-                    if mapl_export.associated("DBZ_1KM")
-                    else None,
-                    "echo_top_reflectivity": mapl_export.DBZ_TOP
-                    if mapl_export.associated("DBZ_TOP")
-                    else None,
-                    "minus_10c_reflectivity": mapl_export.DBZ_M10C
-                    if mapl_export.associated("DBZ_M10C")
-                    else None,
-                    "deep_convective_precipitation": mapl_export.CN_PRCP,
-                    "anvil_precipitation": mapl_export.AN_PRCP,
-                    "shallow_convective_precipitation": mapl_export.SC_PRCP,
-                    "deep_convective_snow": mapl_export.CN_SNR,
-                    "anvil_snow": mapl_export.AN_SNR,
-                    "shallow_convective_snow": mapl_export.SC_SNR,
-                },
-                # We follow fortran strides and because we do this consistently it doesn't break orchestration
-                check_shape_and_strides=False,
-            )
+                    # Outputs: model fields originating from within GFDL
+                    self._GFDL_1M_outputs.update_move_memory(
+                        {
+                            "liquid_radius": mapl_export.RL,
+                            "ice_radius": mapl_export.RI,
+                            "precipitated_rain": mapl_export.PRCP_RAIN,
+                            "precipitated_snow": mapl_export.PRCP_SNOW,
+                            "precipitated_ice": mapl_export.PRCP_ICE,
+                            "precipitated_graupel": mapl_export.PRCP_GRAUPEL,
+                            "radiation_cloud_fraction": mapl_export.FCLD,
+                            "radiation_vapor": mapl_export.QV,
+                            "radiation_liquid": mapl_export.QL,
+                            "radiation_ice": mapl_export.QI,
+                            "radiation_rain": mapl_export.QR,
+                            "radiation_snow": mapl_export.QS,
+                            "radiation_graupel": mapl_export.QG,
+                            "lower_tropospheric_stability": mapl_export.LTS,
+                            "estimated_inversion_strength": mapl_export.EIS,
+                            "z_lcl": (mapl_export.ZLCL if mapl_export.associated("ZLCL") else None),
+                            "du_dt_macro": mapl_export.DUDT_macro,
+                            "dv_dt_macro": mapl_export.DVDT_macro,
+                            "dt_dt_macro": mapl_export.DTDT_macro,
+                            "dvapor_dt_macro": mapl_export.DQVDT_macro,
+                            "dliquid_dt_macro": mapl_export.DQLDT_macro,
+                            "dice_dt_macro": mapl_export.DQIDT_macro,
+                            "dcloud_fraction_dt_macro": mapl_export.DQADT_macro,
+                            "drain_dt_macro": mapl_export.DQRDT_macro,
+                            "dsnow_dt_macro": mapl_export.DQSDT_macro,
+                            "dgraupel_dt_macro": mapl_export.DQGDT_macro,
+                            "du_dt_micro": mapl_export.DUDT_micro,
+                            "dv_dt_micro": mapl_export.DVDT_micro,
+                            "dt_dt_micro": mapl_export.DTDT_micro,
+                            "dvapor_dt_micro": mapl_export.DQVDT_micro,
+                            "dliquid_dt_micro": mapl_export.DQLDT_micro,
+                            "dice_dt_micro": mapl_export.DQIDT_micro,
+                            "dcloud_fraction_dt_micro": mapl_export.DQADT_micro,
+                            "drain_dt_micro": mapl_export.DQRDT_micro,
+                            "dsnow_dt_micro": mapl_export.DQSDT_micro,
+                            "dgraupel_dt_micro": mapl_export.DQGDT_micro,
+                            "large_scale_precip": mapl_export.LS_PRCP,
+                            "large_scale_snow": mapl_export.LS_SNR,
+                            "icefall": mapl_export.ICE,
+                            "freezing_rainfall": mapl_export.FRZR,
+                            "relative_humidity_after_pdf": mapl_export.RHX,
+                            "large_scale_nonanvil_precipitation_evaporation": mapl_export.REV_LS,
+                            "large_scale_nonanvil_precipitation_sublimation": mapl_export.RSU_LS,
+                            # PFL_* are 0-72 in the fortran, but index 0 is always 0
+                            "large_scale_nonanvil_liquid_flux": mapl_export.PFL_LS[:, :, 1:],
+                            "large_scale_nonanvil_ice_flux": mapl_export.PFI_LS[:, :, 1:],
+                            "anvil_liquid_flux": mapl_export.PFL_AN[:, :, 1:],
+                            "anvil_ice_flux": mapl_export.PFI_AN[:, :, 1:],
+                            "large_scale_rainwater_source": mapl_export.DQRL
+                            if mapl_export.associated("DQRL")
+                            else None,
+                            "moist_friction_temperature_tendency": mapl_export.DTDTFRIC
+                            if mapl_export.associated("DTDTFRIC")
+                            else None,
+                            "simulated_reflectivity": mapl_export.DBZ
+                            if mapl_export.associated("DBZ")
+                            else None,
+                            "maximum_reflectivity": mapl_export.DBZ_MAX
+                            if mapl_export.associated("DBZ_MAX")
+                            else None,
+                            "one_km_agl_reflectivity": mapl_export.DBZ_1KM
+                            if mapl_export.associated("DBZ_1KM")
+                            else None,
+                            "echo_top_reflectivity": mapl_export.DBZ_TOP
+                            if mapl_export.associated("DBZ_TOP")
+                            else None,
+                            "minus_10c_reflectivity": mapl_export.DBZ_M10C
+                            if mapl_export.associated("DBZ_M10C")
+                            else None,
+                            "deep_convective_precipitation": mapl_export.CN_PRCP,
+                            "anvil_precipitation": mapl_export.AN_PRCP,
+                            "shallow_convective_precipitation": mapl_export.SC_PRCP,
+                            "deep_convective_snow": mapl_export.CN_SNR,
+                            "anvil_snow": mapl_export.AN_SNR,
+                            "shallow_convective_snow": mapl_export.SC_SNR,
+                        },
+                        # We follow fortran strides and because we do this consistently
+                        # it doesn't break orchestration
+                        check_shape_and_strides=False,
+                    )
 
-            # Call the module
-            with TimedCUDAProfiler("GFDL 1M", self._timings):
-                self.gfdl_1m(
-                    geopotential_height_interface=mapl_import.ZLE,
-                    p_interface=mapl_import.PLE,
-                    t=mapl_import.T,
-                    u=mapl_import.U,
-                    v=mapl_import.V,
-                    shallow_convective_rain=shallow_convective_rain,
-                    shallow_convective_snow=shallow_convective_snow,
-                    state=self._GFDL_1M_state,
-                    outputs=self._GFDL_1M_outputs,
-                    area=mapl_import.AREA,
-                    convection_fraction=mapl_export.CNV_FRC,
-                    surface_type=mapl_export.SRF_TYPE,
-                    liquid_concentration=mapl_internal.NACTL,
-                    ice_concentration=mapl_internal.NACTI,
-                    land_fraction=mapl_import.FRLAND,
-                    rh_crit=rh_crit,
-                    evapc=mapl_export.EVAPC,
-                    sublc=mapl_export.SUBLC,
-                )
+                    # Call the module
+                    with TimedCUDAProfiler("GFDL 1M", self._timings):
+                        self.gfdl_1m(
+                            geopotential_height_interface=mapl_import.ZLE,
+                            p_interface=mapl_import.PLE,
+                            t=mapl_import.T,
+                            u=mapl_import.U,
+                            v=mapl_import.V,
+                            shallow_convective_rain=shallow_convective_rain,
+                            shallow_convective_snow=shallow_convective_snow,
+                            state=self._GFDL_1M_state,
+                            outputs=self._GFDL_1M_outputs,
+                            area=mapl_import.AREA,
+                            convection_fraction=mapl_export.CNV_FRC,
+                            surface_type=mapl_export.SRF_TYPE,
+                            liquid_concentration=mapl_internal.NACTL,
+                            ice_concentration=mapl_internal.NACTI,
+                            land_fraction=mapl_import.FRLAND,
+                            rh_crit=rh_crit,
+                            evapc=mapl_export.EVAPC,
+                            sublc=mapl_export.SUBLC,
+                        )
 
     @property
     def UW_shallow_convection(self) -> Callable:

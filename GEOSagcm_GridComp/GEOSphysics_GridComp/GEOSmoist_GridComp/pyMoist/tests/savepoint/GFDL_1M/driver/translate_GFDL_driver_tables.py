@@ -1,4 +1,6 @@
-from ndsl import Namelist, StencilFactory
+from f90nml import Namelist
+
+from ndsl import StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 
@@ -26,7 +28,6 @@ class TranslateGFDL_driver_tables(TranslateFortranData2Py):
         }
 
     def compute(self, inputs):
-
         self.sat_tables = get_tables(self.stencil_factory.backend)
 
         return {
