@@ -25,7 +25,7 @@ module GEOS_IssmGridCompMod
 ! 
 
 ! !USES:
-use iso_fortran_env, only: dp=>real64, sp => real32
+use iso_fortran_env, only: dp=>real64
 use iso_c_binding, only: c_ptr, c_double, c_f_pointer,c_null_char, c_loc, c_int
 use ESMF
 use MAPL
@@ -84,7 +84,8 @@ public SetServices
 
 type CONNECT_REGRIDHANDLES
   private
-  type(ESMF_RouteHandle) :: routehandle ! routehandle for regridding
+  type(ESMF_RouteHandle) :: routehandle_m2g ! routehandle for regridding mesh to grid
+  type(ESMF_RouteHandle) :: routehandle_g2m ! routehandle for regridding grid to mesh
 end type CONNECT_REGRIDHANDLES
 
 ! Wrapper for extracting internal state
@@ -236,10 +237,11 @@ subroutine SetServices ( GC, RC )
     integer, pointer, dimension(:) :: nodeIds       => null()     ! list of nodes local to PET
 
     ! regridding 
-    type(ESMF_RouteHandle)               :: routehandle           ! routehandle for regridding
-    type(ESMF_Field)                     :: srcField              ! source field for regridding
-    type(ESMF_Field)                     :: dstField              ! destination field for regridding
     type(ESMF_Grid)                      :: grid                  ! atmospheric grid
+    type(ESMF_RouteHandle)               :: routehandle_m2g       ! routehandle for regridding mesh to grid
+    type(ESMF_RouteHandle)               :: routehandle_g2m       ! routehandle for regridding grid to mesh
+    type(ESMF_Field)                     :: meshField             ! field on mesh
+    type(ESMF_Field)                     :: gridField             ! field on grid
     type(CONNECT_REGRIDHANDLES), pointer :: regrid_handles        ! store the routehandles for access during run
     type(REGRIDHANDLES)                  :: wrap                  ! wrapper for routehandle container
 
@@ -330,27 +332,28 @@ subroutine SetServices ( GC, RC )
 
     ! set up regridding next
     ! create source field on ISSM mesh
-    srcField = ESMF_FieldCreate(mesh=mesh,typekind=ESMF_TYPEKIND_R8,meshloc=ESMF_MESHLOC_ELEMENT,rc=STATUS)
-    call ESMF_FieldFill(srcField, dataFillScheme="const")
+    meshField = ESMF_FieldCreate(mesh=mesh,typekind=ESMF_TYPEKIND_R8,meshloc=ESMF_MESHLOC_ELEMENT,rc=STATUS)
     VERIFY_(STATUS)
 
     ! get atmospheric grid 
-    call ESMF_GridCompGet( GC, GRID=grid, RC=status )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, GRID=grid, RC=status ); VERIFY_(STATUS)
     
     ! create destination field on atmospheric grid
-    dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
-    call ESMF_FieldFill(dstField, dataFillScheme="const")
-    VERIFY_(STATUS)
+    gridField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS); VERIFY_(STATUS)
     
-    ! create routehandle
-    call ESMF_FieldRegridStore(srcField=srcField, dstField=dstField,routehandle=routehandle,unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,rc=STATUS)
+    ! create routehandle for mesh-to-grid regridding
+    call ESMF_FieldRegridStore(srcField=meshField, dstField=gridField,routehandle=routehandle_m2g,unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,rc=STATUS)
+    VERIFY_(STATUS)
+
+    ! create routehandle for grid-to-mesh regridding
+    call ESMF_FieldRegridStore(srcField=gridField, dstField=meshField,routehandle=routehandle_g2m,unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,rc=STATUS)
     VERIFY_(STATUS)
     
     ! create pointer to routehandle for component's private internal state
     allocate(regrid_handles, stat=status)
     VERIFY_(STATUS)
-    regrid_handles%routehandle  = routehandle 
+    regrid_handles%routehandle_m2g  = routehandle_m2g
+    regrid_handles%routehandle_g2m  = routehandle_g2m 
     wrap%ptr => regrid_handles
     call ESMF_UserCompSetInternalState ( GC, 'REGRIDHANDLES', wrap, status )
     VERIFY_(STATUS)
@@ -387,7 +390,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   character(len=ESMF_MAXSTR)           :: COMP_NAME
 
   ! regridding
-  type(ESMF_RouteHandle)               :: routehandle                 ! routehandle for regridding
+  type(ESMF_RouteHandle)               :: routehandle_m2g             ! routehandle for regridding mesh to grid
+  type(ESMF_RouteHandle)               :: routehandle_g2m             ! routehandle for regridding grid to mesh
   type(ESMF_Field)                     :: srcField                    ! ice elevation on mesh
   type(ESMF_Field)                     :: dstField                    ! ice elevation on grid
   type(ESMF_Grid)                      :: grid                        ! atmospheric grid
@@ -482,12 +486,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! create destination field: regrid ice elevation onto grid
     dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
-    call ESMF_FieldFill(dstField, dataFillScheme="const")
     VERIFY_(STATUS)
 
     call ESMF_UserCompGetInternalState(GC, 'REGRIDHANDLES', wrap, status); VERIFY_(STATUS)
     regrid_handles => wrap%ptr
-    routehandle = regrid_handles%routehandle
+    routehandle = regrid_handles%routehandle_m2g
     call ESMF_FieldRegrid(srcField, dstField, routehandle, RC=STATUS); VERIFY_(STATUS)
 
     ! get pointer to ice elevation on grid
@@ -501,7 +504,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     NT = size(TILETYPES)
 
-    ! MKTILE
+    ! allocate tiles (MKTILE)
     if(associated(ICEEL) .and. .not.associated(ICEEL_TILE)) then
       allocate(ICEEL_TILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
@@ -512,6 +515,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     ICEEL(:) = ICEEL_TILE(:)
+
+    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
   end if 
 
