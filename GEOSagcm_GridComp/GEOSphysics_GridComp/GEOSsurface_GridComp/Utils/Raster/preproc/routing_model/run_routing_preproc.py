@@ -77,8 +77,8 @@ def main():
     # -----------------------------
     # Copy dam area and capacity files
     # -----------------------------
-    shutil.copy(file_damarea, "output/")
-    shutil.copy(file_damcap,  "output/")
+    shutil.copy(file_damarea, "temp/")
+    shutil.copy(file_damcap,  "temp/")
 
     # -----------------------------
     # River processing section

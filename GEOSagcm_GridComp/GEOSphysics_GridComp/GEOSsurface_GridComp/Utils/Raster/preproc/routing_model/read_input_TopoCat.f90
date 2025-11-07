@@ -101,22 +101,22 @@ use constant, only : no, nvl, nvo, nl=>nl_lake
   end do
 
   ! Write matched outlet data to output text files:
-  open(88, file="temp/outlet_lat.txt")
+  open(88, file="output/outlet_lat.txt")
   do i = 1, nvo
     write(88, *) lat_outV(i)
   end do
 
-  open(88, file="temp/outlet_lon.txt")
+  open(88, file="output/outlet_lon.txt")
   do i = 1, nvo
     write(88, *) lon_outV(i)
   end do
 
-  open(88, file="temp/outlet_lakeid.txt")
+  open(88, file="output/outlet_lakeid.txt")
   do i = 1, nvo
     write(88, *) lakeid_outV(i)
   end do
 
-  open(88, file="temp/outlet_lakeacaOBS.txt")
+  open(88, file="output/outlet_lakeacaOBS.txt")
   do i = 1, nvo
     write(88, *) lakeaca_outV(i)
   end do

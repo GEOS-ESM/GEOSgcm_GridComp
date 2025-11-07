@@ -41,7 +41,7 @@ program main
   qrunf = qrunf / 1.e3                        ! m^3/s
 
   ! Write catchment runoff (qrunf):
-  open(88, file="output/Pfaf_qstr.txt")
+  open(88, file="temp/Pfaf_qstr.txt")
   do i = 1, nc
     write(88, *) qrunf(i)
   end do
@@ -49,10 +49,10 @@ program main
   ! Allocate arrays for "steps to sink" (nts), downstream id (downid) and aggregated runoff (qri):
   allocate(nts(nc), downid(nc), qri(nc))
   ! Read the number of steps to sink for each catchment from file:
-  open(77, file="output/Pfaf_tosink.txt")
+  open(77, file="temp/Pfaf_tosink.txt")
   read(77, *) nts
   ! Read the downstream connectivity (immediate downstream catchment id) from file:
-  open(77, file="output/downstream_1D_new_noadj.txt")  
+  open(77, file="temp/downstream_1D_new_noadj.txt")  
   read(77, *) downid
 
   ! Get the maximum number of steps among all catchments:
@@ -71,7 +71,7 @@ program main
   end do
 
   ! Write the aggregated runoff (qri) to file "Pfaf_qri.txt":
-  open(88, file="output/Pfaf_qri.txt")
+  open(88, file="temp/Pfaf_qri.txt")
   do i = 1, nc
     write(88, *) qri(i)
   end do  
@@ -79,7 +79,7 @@ program main
   ! Allocate arrays for upstream connectivity and inlet discharge (qin):
   allocate(upstream(nupmax, nc), qin(nc))
   ! Read upstream connectivity information from file "upstream_1D.txt":
-  open(77, file="output/upstream_1D.txt")
+  open(77, file="temp/upstream_1D.txt")
   read(77, *) upstream
   ! Initialize qin to -9999:
   qin = -9999.
@@ -90,7 +90,7 @@ program main
   where(upstream(1,:) == -1) qin = qrunf / 2.
   
   ! Write the inlet discharge (qin):
-  open(88, file="output/Pfaf_qin.txt")
+  open(88, file="temp/Pfaf_qin.txt")
   do i = 1, nc
     write(88, *) qin(i)
   end do   
@@ -134,11 +134,11 @@ contains
     allocate(nsub(nc), subarea(nmax, nc), subx(nmax, nc), suby(nmax, nc), tot(nc))
 
     ! Read sub-area data from text files:
-    open(77, file="output/Pfaf_nsub_M09.txt"); read(77, *) nsub
-    open(77, file="output/Pfaf_asub_M09.txt"); read(77, *) subarea
-    open(77, file="output/Pfaf_xsub_M09.txt"); read(77, *) subx
-    open(77, file="output/Pfaf_ysub_M09.txt"); read(77, *) suby
-    open(77, file="output/Pfaf_area.txt"); read(77, *) tot
+    open(77, file="temp/Pfaf_nsub_M09.txt"); read(77, *) nsub
+    open(77, file="temp/Pfaf_asub_M09.txt"); read(77, *) subarea
+    open(77, file="temp/Pfaf_xsub_M09.txt"); read(77, *) subx
+    open(77, file="temp/Pfaf_ysub_M09.txt"); read(77, *) suby
+    open(77, file="temp/Pfaf_area.txt"); read(77, *) tot
 
     ! Allocate fraction array (fraction of sub-area relative to total catchment area)
     allocate(frac(nmax, nc))

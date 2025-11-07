@@ -143,7 +143,7 @@ for i in range(ns):
             k += 1
 
 #print(np.sum(flag_2097_out))
-np.savetxt("output/lake_outlet_flag_valid_2097.txt", flag_2097_out, fmt="%d")
+np.savetxt("temp/lake_outlet_flag_valid_2097.txt", flag_2097_out, fmt="%d")
 
 #------------------------------------------------------------------------------------------------------
 # Update catid with valid flags
@@ -168,6 +168,6 @@ for i in range(nv3):
     catid_outfix_out[oid - 1] = catid_outfix_2097[i]
 
 catid = np.where((catid_outfix_out != 0) & (catid_outfix_out != -9999), catid_outfix_out, catid)
-np.savetxt("output/lake_outlet_catid.txt", catid, fmt="%d")
+np.savetxt("temp/lake_outlet_catid.txt", catid, fmt="%d")
 
 
