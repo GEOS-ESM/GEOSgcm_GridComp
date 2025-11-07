@@ -425,6 +425,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer, pointer, dimension(:)      :: TILETYPES                    ! types of tiles
   integer                             :: NT                           ! number of tiles
 
+  ! grid information 
+  integer                             :: IM, JM
+
   ! ice elevation on mesh, grid, tile
   real(dp),    pointer, dimension(:)  :: ICEEL_MESH    => null()      ! ice-sheet elevation on mesh elements
   real, pointer, dimension(:,:)       :: ICEEL_GRID    => null()      ! ice-sheet elevation on atmospheric grid 
@@ -500,6 +503,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_GridCompGet( GC, GRID=grid, RC=status )
     VERIFY_(STATUS)
     
+    ! get grid dimensions local to PET
+    call MAPL_Get(MAPL, IM = IM, JM=JM, RC=STATUS )
+    VERIFY_(STATUS)
+    
     ! get routehandles for regridding
     call ESMF_UserCompGetInternalState(GC, 'REGRIDHANDLES', wrap, status); VERIFY_(STATUS)
     regrid_handles => wrap%ptr
@@ -525,6 +532,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! pointer to SMB export
     if(associated(ICESMB)) ICESMB(:) = ICESMB_TILE(:)
+
+    ! allocate SMB on grid
+    allocate( ICESMB_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
 
     ! transform from tile to grid
     call MAPL_LocStreamTransform( LOCSTREAM, ICESMB_GRID,ICESMB_TILE, RC=STATUS)
@@ -606,9 +616,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  if(associated(ICESMB_MESH))  deallocate(ICESMB_MESH)
-  if(associated(ICEEL_MESH)) deallocate(ICEEL_MESH)
-  if(associated(ICEEL_TILE)) deallocate(ICEEL_TILE)
+  if(associated(ICESMB_MESH)) deallocate(ICESMB_MESH)
+  if(associated(ICEEL_MESH))  deallocate(ICEEL_MESH)
+  if(associated(ICEEL_TILE))  deallocate(ICEEL_TILE)
+  if(associated(ICESMB_TILE)) deallocate(ICESMB_TILE)
+  if(associated(ICESMB_GRID)) deallocate(ICESMB_GRID)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
