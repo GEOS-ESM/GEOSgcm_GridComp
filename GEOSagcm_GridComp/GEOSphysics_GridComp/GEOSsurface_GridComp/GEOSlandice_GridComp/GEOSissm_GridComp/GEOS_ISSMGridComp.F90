@@ -484,14 +484,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_MeshGet(mesh,elementCount=num_elements)
 
     ! allocate SMB forcing (input to ISSM) and ice-elevation output (export from ISSM)
-    allocate(ICESMB_MESH(num_elements))
-    allocate(ICEEL_MESH(num_elements))
+    allocate(ICEEL_MESH(num_elements)) 
 
     call ESMF_VMBarrier(vm, rc=status)
     VERIFY_(STATUS)
 
     ! set smb and surface to zero (not sure this is needed...)
-    ICESMB_MESH(:) = 0.0_dp  
     ICEEL_MESH(:) = 0.0_dp
 
     ! get LocStream for landice tiles for regridding
@@ -516,7 +514,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
     ! CALCULATE SMB (surface mass balance) & REGRID FROM TILES [to grid] to MESH 
     ! *************************************************************************** !
-    call MAPL_GetPointer(EXPORT,ICESMB, 'ICESMB'    , RC=STATUS); VERIFY_(STATUS)
+    
+    call MAPL_GetPointer(EXPORT,ICESMB, 'ICESMB' , alloc=.true. , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,ACCUM , 'ACCUM'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,RUNOFF, 'RUNOFF'    , RC=STATUS); VERIFY_(STATUS)
 
@@ -558,14 +557,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! convert to SMB to ISSM units [m/yr]
     ICESMB_MESH = ICESMB_MESH*sec_per_year/rho_ice
 
-    ! not sure if these destroy calls are needed because these fields are reused below(?)
+    ! destroy regridding fields so they can be reused below
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
     ! *************************************************************************** !
     !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
     ! *************************************************************************** !
-
 
     ! NOTE: do we need the barriers before/after ISSM run?
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
@@ -593,7 +591,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldGet(dstField,farrayPtr=ICEEL_GRID,RC=STATUS); VERIFY_(STATUS)
     
     ! get pointer to export
-    call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' , alloc=.true. , RC=STATUS); VERIFY_(STATUS)
 
     ! allocate tiles for ice elevation (MKTILE)
     if(associated(ICEEL) .and. .not.associated(ICEEL_TILE)) then
@@ -616,7 +614,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  if(associated(ICESMB_MESH)) deallocate(ICESMB_MESH)
   if(associated(ICEEL_MESH))  deallocate(ICEEL_MESH)
   if(associated(ICEEL_TILE))  deallocate(ICEEL_TILE)
   if(associated(ICESMB_TILE)) deallocate(ICESMB_TILE)
@@ -631,7 +628,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
  !BOP
     
-!IROUTINE: Finalize        -- Finalize method for issm 
+!IROUTINE: Finalize        -- Finalize method for ISSM 
 
 !INTERFACE:
 
