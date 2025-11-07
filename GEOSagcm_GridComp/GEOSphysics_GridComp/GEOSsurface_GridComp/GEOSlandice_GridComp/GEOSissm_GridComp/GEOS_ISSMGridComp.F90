@@ -546,7 +546,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     ! create destination field: SMB on mesh elements
-    dstField = ESMF_FieldCreate(mesh=mesh,typekind=ESMF_TYPEKIND_R8,rc=STATUS)
+    dstField = ESMF_FieldCreate(mesh=mesh,typekind=ESMF_TYPEKIND_R8,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
     VERIFY_(STATUS)
 
     ! regrid SMB from grid to mesh
