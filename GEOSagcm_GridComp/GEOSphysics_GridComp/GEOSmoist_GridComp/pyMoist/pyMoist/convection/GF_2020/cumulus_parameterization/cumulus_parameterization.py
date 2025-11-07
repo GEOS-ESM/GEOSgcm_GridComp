@@ -215,7 +215,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._downdraft_entraiment_profiles = DowndraftEntrainmentProfiles()
+        self._downdraft_entraiment_profiles = DowndraftEntrainmentProfiles(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._update_moist_static_energy = UpdateMoistStaticEnergy()
 
@@ -425,7 +430,6 @@ class CumulusParameterization:
                 self._cold_pool_parameterization()
 
                 # determine LCL for the air parcels with highest moist static energy
-                # NOTE EXISTS BUT NON FUNCTIONAL, DEVELOPMENT IN PROGRESS, STUCK BEHIND SERIALBOX DIMENSION PROBLEM
                 self._get_lcl(
                     state=state,
                     locals=locals,
@@ -433,7 +437,6 @@ class CumulusParameterization:
                 )
 
                 # determine the moist static energy of air parcels at source level
-                # NOTE UNTESTEDD
                 self._parcel_moist_static_energy(
                     state=state,
                     locals=locals,
@@ -441,7 +444,6 @@ class CumulusParameterization:
                 )
 
                 # determine the vertical entrainment/detrainment rates
-                # NOTE UNTESTEDD
                 self._entrainment_rates(
                     state=state,
                     locals=locals,
@@ -449,14 +451,18 @@ class CumulusParameterization:
                 )
 
                 # determine level of convective cloud base
-                # NOTE UNTESTEDD
+                # NOTE UNFINISHED
+                # NOTE UNTESTED
                 self._convective_cloud_base_level(
                     state=state,
                     locals=locals,
                     plume_dependent_constants=self.plume_dependent_constants,
                 )
 
+                ##### NOTE TRANSLATE TESTS HAVE NOT BEEN MADE FOR CLASSES FROM HERE DOWN #####
+
                 # define entrainment/detrainment profiles for downdrafts
+                # NOTE UNTESTED
                 self._downdraft_entraiment_profiles()
 
                 # update unforced & forced moist static energy

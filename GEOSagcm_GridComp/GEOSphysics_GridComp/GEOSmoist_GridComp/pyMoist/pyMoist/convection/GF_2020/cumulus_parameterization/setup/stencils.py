@@ -111,7 +111,7 @@ def prefil_internal_fields(
     hcdo: FloatField,
     cupclw: FloatField,
     qrcdo: FloatField,
-    hcot: FloatField,
+    cloud_moist_static_energy_forced_t: FloatField,
     c1d: FloatField,
     evap_bcb: FloatField,
     mass_flux_ensemble: FloatFieldIJ_Ensemble,
@@ -159,7 +159,7 @@ def prefil_internal_fields(
         hcdo = 0.0
         cupclw = 0.0
         qrcdo = 0.0
-        hcot = 0.0
+        cloud_moist_static_energy_forced_t = 0.0
         c1d = 0.0
         evap_bcb = 0.0
 
@@ -239,11 +239,11 @@ def initial_entrainment_detrainment(
     lateral_entrainment_rate: FloatField,
     current_plume_rate: Float,
     entrainment_rate: FloatField_Plume,
-    updraft_detrainment_function: FloatField,
+    detrainment_function_updraft: FloatField,
 ):
     with computation(PARALLEL), interval(0, -1):
         entrainment_rate[0, 0, 0][plume] = lateral_entrainment_rate * current_plume_rate
-        updraft_detrainment_function = lateral_entrainment_rate * current_plume_rate
+        detrainment_function_updraft = lateral_entrainment_rate * current_plume_rate
 
 
 def epsilon_min_max(

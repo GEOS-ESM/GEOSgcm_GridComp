@@ -12,6 +12,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels.stencils imp
     find_detrainmet_start_level,
     find_highest_moist_static_energy_level,
     find_lcl,
+    set_start_level,
+    convective_cloud_base_level,
 )
 
 
@@ -179,8 +181,12 @@ class ConvectiveCloudBaseLevel:
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         # construct stencils and functions
-        self._find_lcl = stencil_factory.from_dims_halo(
-            func=find_lcl,
+        self._set_start_level = stencil_factory.from_dims_halo(
+            func=set_start_level,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+        self._convective_cloud_base_level = stencil_factory.from_dims_halo(
+            func=convective_cloud_base_level,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
@@ -194,7 +200,12 @@ class ConvectiveCloudBaseLevel:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        self._find_lcl()
+        self._set_start_level(
+            updraft_origin_level=locals.updraft_origin_level,
+            start_level=locals.start_level,
+        )
+        
+        self._convective_cloud_base_level()
 
 
 class CloudTop:

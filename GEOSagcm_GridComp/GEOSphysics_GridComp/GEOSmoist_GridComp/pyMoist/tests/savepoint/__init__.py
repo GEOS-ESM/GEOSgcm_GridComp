@@ -90,7 +90,14 @@ from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cu
     TranslateGF2020_CumulusParameterization_GetLCL_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_ParcelMoistStaticEnergy import (
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_shallow,
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_mid,
     TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_Cumulus_Parameterization_EntrainmentRates import (
+    TranslateGF2020_CumulusParameterization_EntrainmentRates_shallow,
+    TranslateGF2020_CumulusParameterization_EntrainmentRates_mid,
+    TranslateGF2020_CumulusParameterization_EntrainmentRates_deep,
 )
 
 # in progress tests

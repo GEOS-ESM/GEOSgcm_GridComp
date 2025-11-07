@@ -44,7 +44,7 @@ class ParcelMoistStaticEnergy:
             t_excess=locals.t_excess,
             vapor_excess=locals.vapor_excess,
             add_buoyancy=locals.add_buoyancy,
-            ocean_fraction=locals.ocean_fraction,
+            ocean_fraction=state.input.ocean_fraction,
             updraft_origin_level=locals.updraft_origin_level,
             p=state.input_output.p_forced,
             environmenet_moist_static_energy=locals.environment_moist_static_energy_cloud_levels,

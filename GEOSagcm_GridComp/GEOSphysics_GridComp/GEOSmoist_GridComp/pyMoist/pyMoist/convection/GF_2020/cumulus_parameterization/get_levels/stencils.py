@@ -2,7 +2,7 @@ from ndsl.dsl.gt4py import computation, interval, FORWARD, K, function, PARALLEL
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int, BoolFieldIJ
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    get_cloud_boundary_conditions,
+    get_updraft_origin_conditions,
     compute_dewpoint,
     column_max,
 )
@@ -180,7 +180,7 @@ def find_lcl(
             lcl_level[0, 0][plume] = updraft_origin_level
 
             # get conditions for source parcel
-            vapor_source = get_cloud_boundary_conditions(
+            vapor_source = get_updraft_origin_conditions(
                 field=vapor_cloud_levels_forced,
                 scalar_perturbation=vapor_excess,
                 p=p,
@@ -192,7 +192,7 @@ def find_lcl(
                 compute_perturbation=False,
                 perturbation_field=dummy_field_no_read,
             )
-            t_source = get_cloud_boundary_conditions(
+            t_source = get_updraft_origin_conditions(
                 field=t_cloud_levels_forced,
                 scalar_perturbation=t_excess,
                 p=p,
@@ -204,7 +204,7 @@ def find_lcl(
                 compute_perturbation=False,
                 perturbation_field=dummy_field_no_read,
             )
-            p_source = get_cloud_boundary_conditions(
+            p_source = get_updraft_origin_conditions(
                 field=p_cloud_levels,
                 scalar_perturbation=0,
                 p=p,
@@ -227,7 +227,7 @@ def find_lcl(
         p_lcl, t_lcl, dz_lcl = get_lcl(p_source=p_source, t_source=t_source, vapor_source=vapor_source)
 
         if dz_lcl >= 0.0:
-            z_source = get_cloud_boundary_conditions(
+            z_source = get_updraft_origin_conditions(
                 field=geopotential_height_cloud_levels,
                 scalar_perturbation=0,
                 p=p,
@@ -294,7 +294,75 @@ def find_lcl(
                 t_perturbation = -2.0
 
 
-# def convective_cloud_base_level(
-#     error_code: IntFieldIJ_Plume,
-# )
-#     from __externals__ import OVERSHOOT
+def set_start_level(
+    updraft_origin_level: IntFieldIJ,
+    start_level: IntFieldIJ,
+):
+    with computation(FORWARD), interval(...):
+        updraft_origin_level = start_level
+
+
+def convective_cloud_base_level(
+    error_code: IntFieldIJ_Plume,
+    cloud_moist_static_energy_forced_t: FloatField,
+    cap_max: FloatFieldIJ,
+    updraft_origin_level: IntFieldIJ,
+    start_level: IntFieldIJ,
+    moist_static_energy_origin_level_forced: FloatFieldIJ,
+    updraft_lfc_level: IntFieldIJ,
+    maximum_updraft_origin_level: IntFieldIJ,
+    negative_buoyancy_depth: FloatFieldIJ,
+    frh_lfc: FloatFieldIJ,
+    geopotential_height_cloud_levels_forced: FloatField,
+    entrainment_rate: FloatField,
+    environment_moist_static_energy_forced: FloatField,
+    t_excess: FloatFieldIJ,
+    vapor_excess: FloatFieldIJ,
+    add_buoyancy: FloatFieldIJ,
+    plume: Int,
+):
+    from __externals__ import OVERSHOOT, ZERO_DIFF
+
+    with computation(PARALLEL), interval(...):
+        cloud_moist_static_energy_forced_t = 0.0
+        dby = 0.0
+
+    with computation(FORWARD), interval(0, 1):
+        start_level = 0
+        cap_max_internal = cap_max
+        updraft_lfc_level = maximum_updraft_origin_level + 3
+        negative_buoyancy_depth = 0.0
+        frh_lfc = 0.0
+        if error_code[0, 0][plume] == 0:
+            if ZERO_DIFF == 1:
+                start_level_internal = updraft_origin_level
+            else:
+                start_level_internal = start_level
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if K <= start_level_internal:
+                cloud_moist_static_energy_forced_t = moist_static_energy_origin_level_forced
+
+    # determine the level of convective cloud base
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            while error_code[0, 0][plume] == 0:
+                updraft_lfc_level = (
+                    start_level_internal  # NOTE 2D FIELD, PROBLEM - WILL CAUSE NO ALL AXIS PRESENT ERROR
+                )
+                dz = (
+                    geopotential_height_cloud_levels_forced
+                    - geopotential_height_cloud_levels_forced[0, 0, -1]
+                )
+                cloud_moist_static_energy_forced_t = (
+                    (1.0 - 0.5 * entrainment_rate[0, 0, -1] * dz)
+                    * cloud_moist_static_energy_forced_t[0, 0, -1]
+                    + entrainment_rate[0, 0, -1] * dz * environment_moist_static_energy_forced[0, 0, -1]
+                ) / (1.0 + 0.5 * entrainment_rate[0, 0, -1] * dz)
+                if K == start_level_internal + 1:
+                    modification = (
+                        cumulus_parameterization_constants.XLV * vapor_excess
+                        + cumulus_parameterization_constants.CP * t_excess
+                    ) + add_buoyancy
+                    cloud_moist_static_energy_forced_t = cloud_moist_static_energy_forced_t + modification

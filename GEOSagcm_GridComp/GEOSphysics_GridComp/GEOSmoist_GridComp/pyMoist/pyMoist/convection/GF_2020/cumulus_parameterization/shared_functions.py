@@ -46,42 +46,23 @@ def saturation_vapor_pressure(t: Float):
     return saturation_vapor_pressure
 
 
-# @function
-# def column_max(field, start_index, end_index):
-#     max_index = 0
-#     level = start_index
-#     while level <= end_index:
-#         new = field.at(K=level)
-#         old = field.at(K=max_index)
-#         if new > old:
-#             max_index = level
-#         level += 1
-
-#     return field.at(K=max_index), max_index
-
-
-# @function
-# def column_min(field, start_index, end_index):
-#     min_index = 0
-#     level = start_index
-#     while level <= end_index:
-#         new = field.at(K=level)
-#         old = field.at(K=min_index)
-#         if new < old:
-#             min_index = level
-#         level += 1
-
-#     return field.at(K=min_index), min_index
-
-
 @function
-def cloud_boundary_conditions_perturbation(average, perturbation, start_index, end_index):
+def updraft_origin_conditions_perturbation(value, perturbation, start_index, end_index):
+    """
+    Modify the value based by the maximum value of perturbation
+
+    Args:
+        value
+        perturbation
+        start_index: starting index for max value search
+        end_index: ending index for max value search
+    """
     max_value, _ = column_max(perturbation, start_index, end_index)
-    return average + cumulus_parameterization_constants.CP * max_value
+    return value + cumulus_parameterization_constants.CP * max_value
 
 
 @function
-def get_cloud_boundary_conditions(
+def get_updraft_origin_conditions(
     field,
     scalar_perturbation,
     p,
@@ -93,6 +74,22 @@ def get_cloud_boundary_conditions(
     compute_perturbation,
     perturbation_field,
 ):
+    """
+    Get the conditions of a field at the origin level of a updraft
+
+    Args:
+        field: field from which value is extracted
+        scalar_perturbation: scalar perturbation to be applied to the value after extraction
+        p: pressure field
+        updraft_origin_level: origin level of updraft (LCL, LFC, surface, etc.)
+        ocean_fraction: fraction of surface in the grid cell which is ocean
+        BOUNDARY_CONDITION_METHOD: switch which controls function
+        AVERAGE_LAYER_DEPTH: average depth of a model layer
+        k_end: number of model layers
+        compute_perturbation: switch which controls if a full field perturbation is applied to the value
+        perturbation_field: perturbation field which may be applied to the value (must supply dummy field if
+            compute_perturbation is False)
+    """
     # internal constant
     frac_ave_layer_ocean = 0.3
 
@@ -104,6 +101,7 @@ def get_cloud_boundary_conditions(
         count = 0
         while count < local_order_aver:
             source_parcel_value = source_parcel_value + field.at(K=updraft_origin_level - count)
+            count += 1
 
         source_parcel_value = source_parcel_value / local_order_aver
 
@@ -113,24 +111,24 @@ def get_cloud_boundary_conditions(
 
         start_index = 0
         level = 0
+        p_at_origin = p.at(K=updraft_origin_level) + 0.5 * ave_layer
         while level <= k_end - 1:
-            new = abs(p.at(K=level) - (p.at(K=updraft_origin_level) + 0.5 * ave_layer))
-            old = abs(p.at(K=start_index) - (p.at(K=updraft_origin_level) + 0.5 * ave_layer))
+            new = abs(p.at(K=level) - p_at_origin)
+            old = abs(p.at(K=start_index) - p_at_origin)
             if new < old:
                 start_index = level
             level += 1
 
         end_index = 0
         level = 0
+        p_at_origin = p.at(K=updraft_origin_level) - 0.5 * ave_layer
+
         while level <= k_end - 1:
-            new = abs(p.at(K=level) - (p.at(K=updraft_origin_level) - 0.5 * ave_layer))
-            old = abs(p.at(K=end_index) - (p.at(K=updraft_origin_level) - 0.5 * ave_layer))
+            new = abs(p.at(K=level) - p_at_origin)
+            old = abs(p.at(K=end_index) - p_at_origin)
             if new < old:
                 end_index = level
             level += 1
-
-        start_index = min(k_end - 1, max(start_index, 0))
-        end_index = min(k_end - 1, max(end_index, 0))
 
         if start_index >= end_index:
             source_parcel_value = field.at(K=updraft_origin_level)
@@ -161,8 +159,8 @@ def get_cloud_boundary_conditions(
 
         # this perturbation is only used for moist static energy
         if compute_perturbation == True:
-            source_parcel_value = cloud_boundary_conditions_perturbation(
-                average=source_parcel_value,
+            source_parcel_value = updraft_origin_conditions_perturbation(
+                value=source_parcel_value,
                 perturbation=perturbation_field,
                 start_index=start_index,
                 end_index=level_c,

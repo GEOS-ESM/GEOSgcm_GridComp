@@ -145,7 +145,7 @@ class Setup:
                 hcdo=locals.hcdo,
                 cupclw=locals.cupclw,
                 qrcdo=locals.qrcdo,
-                hcot=locals.hcot,
+                cloud_moist_static_energy_forced_t=locals.cloud_moist_static_energy_forced_t,
                 c1d=locals.c1d,
                 evap_bcb=locals.evap_bcb,
                 mass_flux_ensemble=locals.mass_flux_ensemble,
@@ -178,7 +178,7 @@ class Setup:
                 lateral_entrainment_rate=state.input.lateral_entrainment_rate,
                 current_plume_rate=plume_dependent_constants.ENTRAINMENT_RATE,
                 entrainment_rate=state.output.entrainment_rate,
-                updraft_detrainment_function=locals.updraft_detrainment_function,
+                detrainment_function_updraft=locals.detrainment_function_updraft,
             )
 
             # max/min allowed value for epsilon (ratio downdraft base mass flux/updraft base mass flux

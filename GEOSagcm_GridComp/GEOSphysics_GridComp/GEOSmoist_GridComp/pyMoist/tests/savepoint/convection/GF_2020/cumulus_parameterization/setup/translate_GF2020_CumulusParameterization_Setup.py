@@ -204,7 +204,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
         locals.t_new_pbl.field[:, :, -1] = np.nan
         locals.vapor_new_pbl.field[:, :, -1] = np.nan
         locals.moist_static_energy.field[:, :, -1] = np.nan
-        locals.updraft_detrainment_function.field[:, :, -1] = np.nan
+        locals.detrainment_function_updraft.field[:, :, -1] = np.nan
 
         outputs = {
             # state fields
@@ -258,9 +258,9 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
             "local_evap_bcb": locals.evap_bcb.field[:],
             "local_mass_flux_ensemble": locals.mass_flux_ensemble.field[:],
             "local_precipitation_ensemble": locals.precipitation_ensemble.field[:],
-            "local_scale_dependence_factor": locals.scale_dependence_factor.field[:],
+            "local_downdraft_scale_dependence_factor": locals.downdraft_scale_dependence_factor.field[:],
             "local_random_number": locals.random_number.field[:],
-            "local_updraft_detrainment_function": locals.updraft_detrainment_function.field[:],
+            "local_updraft_detrainment_function": locals.detrainment_function_updraft.field[:],
             "local_epsilon_min": locals.epsilon_min.field[:],
             "local_epsilon_max": locals.epsilon_max.field[:],
             "local_arbitrary_numerical_parameter": locals.arbitrary_numerical_parameter.field[:],
@@ -458,7 +458,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
         locals.t_new_pbl.field[:, :, -1] = np.nan
         locals.vapor_new_pbl.field[:, :, -1] = np.nan
         locals.moist_static_energy.field[:, :, -1] = np.nan
-        locals.updraft_detrainment_function.field[:, :, -1] = np.nan
+        locals.detrainment_function_updraft.field[:, :, -1] = np.nan
 
         outputs = {
             # state fields
@@ -503,7 +503,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
             "local_vapor_wetbulb": locals.vapor_wetbulb.field[:],
             "local_tau_ecmwf": locals.tau_ecmwf.field[:],
             "local_f_dicycle_modified": locals.f_dicycle_modified.field[:],
-            "local_add_buoyancy": locals.add_buoyancy_modified.field[:],
+            "local_add_buoyancy": locals.add_buoyancy.field[:],
             "local_hcdo": locals.hcdo.field[:],
             "local_cupclw": locals.cupclw.field[:],
             "local_qrcdo": locals.qrcdo.field[:],
@@ -512,9 +512,9 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
             "local_evap_bcb": locals.evap_bcb.field[:],
             "local_mass_flux_ensemble": locals.mass_flux_ensemble.field[:],
             "local_precipitation_ensemble": locals.precipitation_ensemble.field[:],
-            "local_scale_dependence_factor": locals.scale_dependence_factor.field[:],
+            "local_downdraft_scale_dependence_factor": locals.downdraft_scale_dependence_factor.field[:],
             "local_random_number": locals.random_number.field[:],
-            "local_updraft_detrainment_function": locals.updraft_detrainment_function.field[:],
+            "local_updraft_detrainment_function": locals.detrainment_function_updraft.field[:],
             "local_epsilon_min": locals.epsilon_min.field[:],
             "local_epsilon_max": locals.epsilon_max.field[:],
             "local_arbitrary_numerical_parameter": locals.arbitrary_numerical_parameter.field[:],
@@ -712,7 +712,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
         locals.t_new_pbl.field[:, :, -1] = np.nan
         locals.vapor_new_pbl.field[:, :, -1] = np.nan
         locals.moist_static_energy.field[:, :, -1] = np.nan
-        locals.updraft_detrainment_function.field[:, :, -1] = np.nan
+        locals.detrainment_function_updraft.field[:, :, -1] = np.nan
 
         outputs = {
             # state fields
@@ -766,9 +766,9 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             "local_evap_bcb": locals.evap_bcb.field[:],
             "local_mass_flux_ensemble": locals.mass_flux_ensemble.field[:],
             "local_precipitation_ensemble": locals.precipitation_ensemble.field[:],
-            "local_scale_dependence_factor": locals.scale_dependence_factor.field[:],
+            "local_downdraft_scale_dependence_factor": locals.downdraft_scale_dependence_factor.field[:],
             "local_random_number": locals.random_number.field[:],
-            "local_updraft_detrainment_function": locals.updraft_detrainment_function.field[:],
+            "local_updraft_detrainment_function": locals.detrainment_function_updraft.field[:],
             "local_epsilon_min": locals.epsilon_min.field[:],
             "local_epsilon_max": locals.epsilon_max.field[:],
             "local_arbitrary_numerical_parameter": locals.arbitrary_numerical_parameter.field[:],

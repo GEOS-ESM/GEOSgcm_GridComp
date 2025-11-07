@@ -8,7 +8,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_Plume,
     FloatFieldIJ_Ensemble,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_updraft_origin_conditions
 
 
 def parcel_moist_static_energy(
@@ -33,11 +33,10 @@ def parcel_moist_static_energy(
         if error_code[0, 0][plume] == 0:
             modification = (
                 cumulus_parameterization_constants.XLV * vapor_excess
-                + cumulus_parameterization_constants.CP
-                + t_excess
+                + cumulus_parameterization_constants.CP * t_excess
             ) + add_buoyancy
 
-        moist_static_energy_origin_level = get_cloud_boundary_conditions(
+        moist_static_energy_origin_level = get_updraft_origin_conditions(
             field=environmenet_moist_static_energy,
             scalar_perturbation=modification,
             p=p,
@@ -46,11 +45,11 @@ def parcel_moist_static_energy(
             BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
             AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
             k_end=k_end,
-            compute_perturbation=True,
+            compute_perturbation=False,
             perturbation_field=t_perturbation,
         )
-        moist_static_energy_origin_level_forced = get_cloud_boundary_conditions(
-            field=environmenet_moist_static_energy,
+        moist_static_energy_origin_level_forced = get_updraft_origin_conditions(
+            field=environmenet_moist_static_energy_forced,
             scalar_perturbation=modification,
             p=p,
             updraft_origin_level=updraft_origin_level,
@@ -58,6 +57,6 @@ def parcel_moist_static_energy(
             BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
             AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
             k_end=k_end,
-            compute_perturbation=True,
+            compute_perturbation=False,
             perturbation_field=t_perturbation,
         )

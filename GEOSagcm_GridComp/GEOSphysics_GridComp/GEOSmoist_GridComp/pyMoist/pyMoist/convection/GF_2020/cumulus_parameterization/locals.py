@@ -394,15 +394,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    hcot: Quantity = dataclasses.field(
-        metadata={
-            "name": "hcot",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     c1d: Quantity = dataclasses.field(
         metadata={
             "name": "c1d",
@@ -439,15 +430,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    scale_dependence_factor: Quantity = dataclasses.field(
-        metadata={
-            "name": "scale_dependence_factor",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     scale_dependence_factor_downdraft: Quantity = dataclasses.field(
         metadata={
             "name": "scale_dependence_factor_downdraft",
@@ -466,9 +448,27 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    updraft_detrainment_function: Quantity = dataclasses.field(
+    detrainment_function_updraft: Quantity = dataclasses.field(
         metadata={
-            "name": "updraft_detrainment_function",
+            "name": "detrainment_function_updraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    detrainment_function_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "detrainment_function_downdraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    entrainment_rate_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "entrainment_rate_downdraft",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -703,6 +703,60 @@ class GF2020CumulusParameterizationLocals(State):
     moist_static_energy_origin_level_forced: Quantity = dataclasses.field(
         metadata={
             "name": "moist_static_energy_origin_level_forced",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    start_level: Quantity = dataclasses.field(
+        metadata={
+            "name": "start_level",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Int,
+        }
+    )
+    cloud_moist_static_energy: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_moist_static_energy",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    cloud_moist_static_energy_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_moist_static_energy_forced",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    cloud_moist_static_energy_forced_t: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_moist_static_energy_forced_t",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    negative_buoyancy_depth: Quantity = dataclasses.field(
+        metadata={
+            "name": "negative_buoyancy_depth",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    frh_lfc: Quantity = dataclasses.field(
+        metadata={
+            "name": "frh_lfc",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",

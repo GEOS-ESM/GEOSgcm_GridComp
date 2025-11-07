@@ -9,6 +9,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment.stencils import (
     entrainment_rates,
+    downdraft_entrainment_profiles,
 )
 
 
@@ -28,6 +29,7 @@ class EntrainmentRates:
         self._entrainment_rates = stencil_factory.from_dims_halo(
             func=entrainment_rates,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
         )
 
     def __call__(
@@ -36,15 +38,49 @@ class EntrainmentRates:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        self._entrainment_rates()
+        self._entrainment_rates(
+            vapor=locals.vapor_cloud_levels_forced,
+            environment_saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+            lcl_level=state.output.lcl_level,
+            error_code=state.output.error_code,
+            entrainment_rate=state.output.entrainment_rate,
+            detrainment_function_updraft=locals.detrainment_function_updraft,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
 
 
 class DowndraftEntrainmentProfiles:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+        # construct stencils and functions
+        self._downdraft_entrainment_profiles = stencil_factory.from_dims_halo(
+            func=downdraft_entrainment_profiles,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._downdraft_entrainment_profiles(
+            lateral_entrainment_rate=state.input.lateral_entrainment_rate,
+            entrainment_rate_downdraft=locals.entrainment_rate_downdraft,
+            detrainment_function_downdraft=locals.detrainment_function_downdraft,
+            scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
+            plume_entrainment_rate=plume_dependent_constants.ENTRAINMENT_RATE,
+        )
 
 
 class StableDetrainment:
