@@ -50,7 +50,7 @@ call read_ncfile_double1d(trim(file_path), "latitude", lat, nlat)
 ! Read the 2D catchment index data 
 call read_ncfile_int2d(trim(file_path), "CatchIndex", catchind, nlon, nlat)
 ! Read the cell area data 
-call read_ncfile_real2d("temp/cellarea.nc", "data", cellarea, nlon, nlat)
+call read_ncfile_real2d("output/cellarea.nc", "data", cellarea, nlon, nlat)
 ! Convert cell areas (from m^2 to km^2) by scaling with 1.e6
 cellarea = cellarea / 1.e6
 
@@ -96,7 +96,7 @@ do i = 1, nlon36
 enddo
 
 ! Write the global tile area data to an output text file
-open(88, file="output/area_M36_1d.txt")
+open(88, file="temp/area_M36_1d.txt")
 do i = 1, nt_global
   write(88, *) area_tile(i)
 enddo

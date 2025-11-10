@@ -77,8 +77,8 @@ def main():
     # -----------------------------
     # Copy dam area and capacity files
     # -----------------------------
-    shutil.copy(file_damarea, "output/")
-    shutil.copy(file_damcap,  "output/")
+    shutil.copy(file_damarea, "temp/")
+    shutil.copy(file_damcap,  "temp/")
 
     # -----------------------------
     # River processing section
@@ -171,6 +171,12 @@ def main():
         file_pfafmap,
         file_lake_mantag, file_lakecat_manfix
     ])
+
+    run([
+        "python3", "create_river_input.py",
+    ])
+
+    subprocess.run(["rm", "-rf", "temp"], check=True)
 
 if __name__ == "__main__":
     main()

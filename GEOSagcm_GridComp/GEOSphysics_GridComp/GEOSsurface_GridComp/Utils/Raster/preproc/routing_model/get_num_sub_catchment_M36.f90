@@ -40,7 +40,7 @@ call read_ncfile_double1d(trim(file_path), "longitude", lon, nlon)
 call read_ncfile_double1d(trim(file_path), "latitude", lat, nlat)
 call read_ncfile_int2d(trim(file_path), "CatchIndex", catchind, nlon, nlat)
 ! Read cell area data from the NetCDF file "cellarea.nc":
-call read_ncfile_real2d("temp/cellarea.nc", "data", cellarea, nlon, nlat)
+call read_ncfile_real2d("output/cellarea.nc", "data", cellarea, nlon, nlat)
 cellarea = cellarea / 1.e6  ! Convert cell area (e.g., from m^2 to km^2)
 
 ! Read mapping indices for the 1-minute resolution grid from text files:
@@ -88,10 +88,10 @@ do xi = 1, nlon
 end do
 
 ! Open output files to write the aggregated sub-catchment information:
-open(50, file="output/Pfaf_nsub_M36.txt")
-open(51, file="output/Pfaf_xsub_M36.txt")
-open(52, file="output/Pfaf_ysub_M36.txt")
-open(53, file="output/Pfaf_asub_M36.txt")
+open(50, file="temp/Pfaf_nsub_M36.txt")
+open(51, file="temp/Pfaf_xsub_M36.txt")
+open(52, file="temp/Pfaf_ysub_M36.txt")
+open(53, file="temp/Pfaf_asub_M36.txt")
 ! Loop over all catchments and write:
 do i = 1, nc
   write(50, *) nsub(i)  ! Write the number of sub-areas for catchment i

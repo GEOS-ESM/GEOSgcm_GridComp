@@ -20,11 +20,11 @@ call read_ncfile_int2d("temp/map_tile_M09.nc", "data", map_tile, nlon, nlat)
 allocate(subx(nmax,nc), suby(nmax,nc), subi(nmax,nc))
 
 ! Open and read the x-coordinates of sub-catchments from a text file into subx
-open(77, file="output/Pfaf_xsub_M09.txt")
+open(77, file="temp/Pfaf_xsub_M09.txt")
 read(77, *) subx
 
 ! Open and read the y-coordinates of sub-catchments from a text file into suby
-open(77, file="output/Pfaf_ysub_M09.txt")
+open(77, file="temp/Pfaf_ysub_M09.txt")
 read(77, *) suby
 
 ! Initialize the subi array to zero
@@ -47,7 +47,7 @@ do i = 1, nc
 enddo
 
 ! Open an output file to write the computed sub-catchment tile indices
-open(88, file="output/Pfaf_isub_M09.txt")
+open(88, file="temp/Pfaf_isub_M09.txt")
 do i = 1, nc
   write(88, '(150(i8))') subi(:, i)
 enddo

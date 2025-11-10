@@ -58,7 +58,7 @@ if __name__ == '__main__':
 #----get dam drainage area--
     # Read full dataset for acar(drainage area) and catchment area from ASCII files
     acar_all = np.loadtxt("temp/Pfaf_acar.txt", dtype=float, max_rows=nc)
-    area_all = np.loadtxt("output/Pfaf_area.txt", dtype=float, max_rows=nc)
+    area_all = np.loadtxt("temp/Pfaf_area.txt", dtype=float, max_rows=nc)
 
     # Initialize arrays to store the selected values for each catchment
     acar = np.empty(ns, dtype=float)
@@ -146,7 +146,7 @@ if __name__ == '__main__':
         catid[resid_man[i] - 1] = catid_man[i]
 
     # Write the updated catid_all to an ASCII file
-    np.savetxt("output/catid_dam_corr_aca_grand5000.txt", catid, fmt='%d')
+    np.savetxt("temp/catid_dam_corr_aca_grand5000.txt", catid, fmt='%d')
 
     # Read dams flag (whether we still need it in the model) for the above uncorrect dams from a manually checked flag file
     flag_error = np.loadtxt(file_dam_manflag, dtype=int, max_rows=ne)
@@ -172,7 +172,7 @@ if __name__ == '__main__':
             flag_all[i] = 0
 
     # Write the final flag_all array to an ASCII file.
-    np.savetxt("output/flag_all_res.txt", flag_all, fmt='%d')
+    np.savetxt("temp/flag_all_res.txt", flag_all, fmt='%d')
 
 #----get dam main use---------------
     # Define category strings and corresponding output tags
@@ -195,7 +195,7 @@ if __name__ == '__main__':
                 flag[i] = 1
 
         # Write the flag array
-        out_filename = os.path.join("output", use_out[j] + "_grand.txt")
+        out_filename = os.path.join("temp", use_out[j] + "_grand.txt")
         np.savetxt(out_filename, flag, fmt='%d')    
 #----flood use--------------------
     # Read the use_irr strings from the GRAND file
@@ -211,7 +211,7 @@ if __name__ == '__main__':
             flag[i] = 1
 
     # Write the flag array
-    np.savetxt("output/fldmainsec_grand.txt", flag, fmt='%d')
+    np.savetxt("temp/fldmainsec_grand.txt", flag, fmt='%d')
 
 #----other use--------------------
     use_out = "other"
@@ -231,5 +231,5 @@ if __name__ == '__main__':
             flag[i] = 1
 
     # Write the flag array
-    np.savetxt("output/" + use_out + "_grand.txt", flag, fmt='%d')
+    np.savetxt("temp/" + use_out + "_grand.txt", flag, fmt='%d')
 

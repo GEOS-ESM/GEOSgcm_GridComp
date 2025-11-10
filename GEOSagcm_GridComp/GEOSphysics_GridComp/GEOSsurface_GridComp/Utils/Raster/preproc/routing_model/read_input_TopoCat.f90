@@ -121,7 +121,7 @@ use constant, only : no, nvl, nvo, nl=>nl_lake
     write(88, *) lakeaca_outV(i)
   end do
 
-  open(88, file="output/lake_outlet_lakearea.txt")
+  open(88, file="temp/lake_outlet_lakearea.txt")
   do i = 1, nvo
     write(88, *) lakearea_outV(i)
   end do
