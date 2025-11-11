@@ -88,29 +88,3 @@ def downdraft_entrainment_profiles(
             scale_dependence_factor_downdraft = 1.0
         else:
             scale_dependence_factor_downdraft = 0.0
-
-
-def stable_detrainment(
-    array: FloatField,
-    start_index: IntFieldIJ,
-    end_index: IntFieldIJ,
-    out_index: IntFieldIJ,
-    error_code: IntFieldIJ_Plume,
-    plume: Int,
-):
-    from __externals__ import k_end
-
-    with computation(FORWARD), interval(0, 1):
-        out_index = start_index
-
-    with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0:
-            x = array.at(K=start_index)
-            stop_index = max(start_index + 1, k_end)
-
-            level = start_index + 1
-            while level >= start_index + 1 and level <= stop_index:
-                if array.at(K=level) < x:
-                    x = array.at(K=level)
-                    out_index = level
-                level += 1

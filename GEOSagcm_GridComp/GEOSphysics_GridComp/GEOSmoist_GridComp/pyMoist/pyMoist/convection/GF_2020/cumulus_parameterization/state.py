@@ -316,7 +316,7 @@ class GF2020CumulusParameterizationState(State):
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
-                "dtype": Float,
+                "dtype": Int,
             }
         )
         kstabm: Quantity = dataclasses.field(

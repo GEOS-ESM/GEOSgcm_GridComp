@@ -222,7 +222,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._stable_detrainment = StableDetrainment()
+        self._stable_detrainment = StableDetrainment(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._cloud_top = CloudTop()
 
@@ -471,7 +476,11 @@ class CumulusParameterization:
                 )
 
                 # increase detrainment in stable layers
-                self._stable_detrainment()
+                self._stable_detrainment(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # use cloud for plumes
                 self._cloud_top()
