@@ -71,20 +71,46 @@ def downdraft_entrainment_profiles(
     Get the entrainment and detrainment profiles for the downdraft
 
     Args:
-        lateral_entrainment_rate
-        entrainment_rate_downdraft
-        detrainment_function_downdraft
-        scale_dependence_factor_downdraft
-        plume_entrainment_rate
+        lateral_entrainment_rate (in)
+        entrainment_rate_downdraft (out)
+        detrainment_function_downdraft (out)
+        scale_dependence_factor_downdraft (out)
+        plume_entrainment_rate (in)
     """
     from __externals__ import DOWNDRAFT
 
-    with computation(PARALLEL), interval(...):
-        downdraft_entrainment_rate = lateral_entrainment_rate * plume_entrainment_rate * 0.3
-        detrainment_function_downdraft = downdraft_entrainment_rate
+    with computation(PARALLEL), interval(0, -1):
+        entrainment_rate_downdraft = lateral_entrainment_rate * plume_entrainment_rate * 0.3
+        detrainment_function_downdraft = entrainment_rate_downdraft
 
     with computation(FORWARD), interval(0, 1):
         if DOWNDRAFT == 0:
             scale_dependence_factor_downdraft = 1.0
         else:
             scale_dependence_factor_downdraft = 0.0
+
+
+def stable_detrainment(
+    array: FloatField,
+    start_index: IntFieldIJ,
+    end_index: IntFieldIJ,
+    out_index: IntFieldIJ,
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+):
+    from __externals__ import k_end
+
+    with computation(FORWARD), interval(0, 1):
+        out_index = start_index
+
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0:
+            x = array.at(K=start_index)
+            stop_index = max(start_index + 1, k_end)
+
+            level = start_index + 1
+            while level >= start_index + 1 and level <= stop_index:
+                if array.at(K=level) < x:
+                    x = array.at(K=level)
+                    out_index = level
+                level += 1

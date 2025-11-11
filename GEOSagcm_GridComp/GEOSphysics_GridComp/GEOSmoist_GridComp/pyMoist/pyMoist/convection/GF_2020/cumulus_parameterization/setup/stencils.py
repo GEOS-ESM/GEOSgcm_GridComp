@@ -25,9 +25,9 @@ def set_plume_dependent_fields(
     subgrid_scale_forcing_t: FloatField,
     subgrid_scale_forcing_vapor: FloatField,
     t_new: FloatField,
-    vapor_new: FloatField,
+    vapor_forced: FloatField,
     t_new_pbl: FloatField,
-    vapor_new_pbl: FloatField,
+    vapor_forced_pbl: FloatField,
     moist_static_energy: FloatField,
 ):
     """
@@ -63,12 +63,12 @@ def set_plume_dependent_fields(
 
     with computation(PARALLEL), interval(0, -1):
         t_new = t_old + (subgrid_scale_forcing_t + grid_scale_forcing_t) * DT_MOIST
-        vapor_new = vapor_old + (subgrid_scale_forcing_vapor + grid_scale_forcing_vapor) * DT_MOIST
-        vapor_new = max(cumulus_parameterization_constants.smaller_qv, vapor_new)
+        vapor_forced = vapor_old + (subgrid_scale_forcing_vapor + grid_scale_forcing_vapor) * DT_MOIST
+        vapor_forced = max(cumulus_parameterization_constants.smaller_qv, vapor_forced)
 
         # temp/water vapor modified only by bl processes
         t_new_pbl = t_old + (subgrid_scale_forcing_t) * DT_MOIST
-        vapor_new_pbl = vapor_old + (subgrid_scale_forcing_vapor) * DT_MOIST
+        vapor_forced_pbl = vapor_old + (subgrid_scale_forcing_vapor) * DT_MOIST
 
         # moist static energy
         moist_static_energy = cumulus_parameterization_constants.CP * (
@@ -111,7 +111,7 @@ def prefil_internal_fields(
     hcdo: FloatField,
     cupclw: FloatField,
     qrcdo: FloatField,
-    cloud_moist_static_energy_forced_t: FloatField,
+    cloud_moist_static_energy_forced_transported: FloatField,
     c1d: FloatField,
     evap_bcb: FloatField,
     mass_flux_ensemble: FloatFieldIJ_Ensemble,
@@ -159,7 +159,7 @@ def prefil_internal_fields(
         hcdo = 0.0
         cupclw = 0.0
         qrcdo = 0.0
-        cloud_moist_static_energy_forced_t = 0.0
+        cloud_moist_static_energy_forced_transported = 0.0
         c1d = 0.0
         evap_bcb = 0.0
 

@@ -52,9 +52,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    vapor_new: Quantity = dataclasses.field(
+    vapor_forced: Quantity = dataclasses.field(
         metadata={
-            "name": "vapor_new",
+            "name": "vapor_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -88,9 +88,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    vapor_new_pbl: Quantity = dataclasses.field(
+    vapor_forced_pbl: Quantity = dataclasses.field(
         metadata={
-            "name": "vapor_new_pbl",
+            "name": "vapor_forced_pbl",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -736,10 +736,10 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    cloud_moist_static_energy_forced_t: Quantity = dataclasses.field(
+    cloud_moist_static_energy_forced_transported: Quantity = dataclasses.field(
         metadata={
-            "name": "cloud_moist_static_energy_forced_t",
-            "dims": [X_DIM, Y_DIM],
+            "name": "cloud_moist_static_energy_forced_transported",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

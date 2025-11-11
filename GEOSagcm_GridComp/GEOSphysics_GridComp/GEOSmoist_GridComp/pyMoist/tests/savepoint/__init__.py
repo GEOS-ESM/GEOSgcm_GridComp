@@ -89,15 +89,31 @@ from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cu
     TranslateGF2020_CumulusParameterization_GetLCL_mid,
     TranslateGF2020_CumulusParameterization_GetLCL_deep,
 )
-from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_ParcelMoistStaticEnergy import (
-    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_shallow,
-    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_mid,
-    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_deep,
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_ParcelMoistStaticEnergy_1 import (
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_shallow,
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_mid,
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_Cumulus_Parameterization_EntrainmentRates import (
     TranslateGF2020_CumulusParameterization_EntrainmentRates_shallow,
     TranslateGF2020_CumulusParameterization_EntrainmentRates_mid,
     TranslateGF2020_CumulusParameterization_EntrainmentRates_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cumulus_Parameterization_ConvectiveCloudBaseLevel import (
+    TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_Cumulus_Parameterization_DowndraftEntrainmentProfiles import (
+    TranslateGF2020_CumulusParameterization_DowndraftEntrainmentProfiles_shallow,
+    TranslateGF2020_CumulusParameterization_DowndraftEntrainmentProfiles_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftEntrainmentProfiles_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_ParcelMoistStaticEnergy_2 import (
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_shallow,
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_mid,
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_Cumulus_Parameterization_StableDetrainment import (
+    TranslateGF2020_CumulusParameterization_StableDetrainment_deep,
 )
 
 # in progress tests

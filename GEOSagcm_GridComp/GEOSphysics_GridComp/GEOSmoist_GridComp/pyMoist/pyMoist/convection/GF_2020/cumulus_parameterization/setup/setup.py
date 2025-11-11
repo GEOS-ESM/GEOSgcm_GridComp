@@ -104,9 +104,9 @@ class Setup:
                 subgrid_scale_forcing_t=state.input.subgrid_scale_forcing_t,
                 subgrid_scale_forcing_vapor=state.input.subgrid_scale_forcing_vapor,
                 t_new=locals.t_new,
-                vapor_new=locals.vapor_new,
+                vapor_forced=locals.vapor_forced,
                 t_new_pbl=locals.t_new_pbl,
-                vapor_new_pbl=locals.vapor_new_pbl,
+                vapor_forced_pbl=locals.vapor_forced_pbl,
                 moist_static_energy=locals.moist_static_energy,
             )
 
@@ -145,7 +145,7 @@ class Setup:
                 hcdo=locals.hcdo,
                 cupclw=locals.cupclw,
                 qrcdo=locals.qrcdo,
-                cloud_moist_static_energy_forced_t=locals.cloud_moist_static_energy_forced_t,
+                cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
                 c1d=locals.c1d,
                 evap_bcb=locals.evap_bcb,
                 mass_flux_ensemble=locals.mass_flux_ensemble,

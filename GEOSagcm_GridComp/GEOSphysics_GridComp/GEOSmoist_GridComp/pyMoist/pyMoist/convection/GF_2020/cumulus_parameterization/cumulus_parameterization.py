@@ -222,8 +222,6 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._update_moist_static_energy = UpdateMoistStaticEnergy()
-
         self._stable_detrainment = StableDetrainment()
 
         self._cloud_top = CloudTop()
@@ -451,22 +449,26 @@ class CumulusParameterization:
                 )
 
                 # determine level of convective cloud base
-                # NOTE UNFINISHED
-                # NOTE UNTESTED
+                # NOTE DOES NOT VERIFY
                 self._convective_cloud_base_level(
                     state=state,
                     locals=locals,
                     plume_dependent_constants=self.plume_dependent_constants,
                 )
 
-                ##### NOTE TRANSLATE TESTS HAVE NOT BEEN MADE FOR CLASSES FROM HERE DOWN #####
-
                 # define entrainment/detrainment profiles for downdrafts
-                # NOTE UNTESTED
-                self._downdraft_entraiment_profiles()
+                self._downdraft_entraiment_profiles(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # update unforced & forced moist static energy
-                self._update_moist_static_energy()
+                self._parcel_moist_static_energy(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # increase detrainment in stable layers
                 self._stable_detrainment()

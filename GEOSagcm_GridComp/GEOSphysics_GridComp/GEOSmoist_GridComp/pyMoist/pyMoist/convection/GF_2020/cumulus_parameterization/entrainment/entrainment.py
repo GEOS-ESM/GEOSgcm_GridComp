@@ -65,7 +65,10 @@ class DowndraftEntrainmentProfiles:
         self._downdraft_entrainment_profiles = stencil_factory.from_dims_halo(
             func=downdraft_entrainment_profiles,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
+            externals={
+                "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
+                "DOWNDRAFT": cumulus_parameterization_config.DOWNDRAFT,
+            },
         )
 
     def __call__(
@@ -84,11 +87,34 @@ class DowndraftEntrainmentProfiles:
 
 
 class StableDetrainment:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+        # construct stencils and functions
+        self._stable_detrainment = stencil_factory.from_dims_halo(
+            func=downdraft_entrainment_profiles,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
+                "DOWNDRAFT": cumulus_parameterization_config.DOWNDRAFT,
+            },
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._stable_detrainment()
 
 
 class CalculateMassEntrainmentDetrainment:

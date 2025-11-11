@@ -211,9 +211,9 @@ def get_interp(
         iteration += 1
 
     t_new = pt
-    vapor_new = pq
+    vapor_forced = pq
 
-    return t_new, vapor_new
+    return t_new, vapor_forced
 
 
 def environment_cloud_levels(

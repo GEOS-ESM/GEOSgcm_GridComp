@@ -200,9 +200,9 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
         import numpy as np
 
         locals.t_new.field[:, :, -1] = np.nan
-        locals.vapor_new.field[:, :, -1] = np.nan
+        locals.vapor_forced.field[:, :, -1] = np.nan
         locals.t_new_pbl.field[:, :, -1] = np.nan
-        locals.vapor_new_pbl.field[:, :, -1] = np.nan
+        locals.vapor_forced_pbl.field[:, :, -1] = np.nan
         locals.moist_static_energy.field[:, :, -1] = np.nan
         locals.detrainment_function_updraft.field[:, :, -1] = np.nan
 
@@ -220,9 +220,9 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
             "local_t_excess": locals.t_excess.field[:],
             "local_vapor_excess": locals.vapor_excess.field[:],
             "local_t_new": locals.t_new.field[:],
-            "local_vapor_new": locals.vapor_new.field[:],
+            "local_vapor_new": locals.vapor_forced.field[:],
             "local_t_new_pbl": locals.t_new_pbl.field[:],
-            "local_vapor_new_pbl": locals.vapor_new_pbl.field[:],
+            "local_vapor_new_pbl": locals.vapor_forced_pbl.field[:],
             "local_moist_static_energy": locals.moist_static_energy.field[:],
             "local_maximum_updraft_origin_level": locals.maximum_updraft_origin_level.field[:],
             "local_kstabm": locals.kstabm.field[:] + 1,  # +1 b/c python counts from 0
@@ -454,9 +454,9 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
         import numpy as np
 
         locals.t_new.field[:, :, -1] = np.nan
-        locals.vapor_new.field[:, :, -1] = np.nan
+        locals.vapor_forced.field[:, :, -1] = np.nan
         locals.t_new_pbl.field[:, :, -1] = np.nan
-        locals.vapor_new_pbl.field[:, :, -1] = np.nan
+        locals.vapor_forced_pbl.field[:, :, -1] = np.nan
         locals.moist_static_energy.field[:, :, -1] = np.nan
         locals.detrainment_function_updraft.field[:, :, -1] = np.nan
 
@@ -474,9 +474,9 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
             "local_t_excess": locals.t_excess.field[:],
             "local_vapor_excess": locals.vapor_excess.field[:],
             "local_t_new": locals.t_new.field[:],
-            "local_vapor_new": locals.vapor_new.field[:],
+            "local_vapor_new": locals.vapor_forced.field[:],
             "local_t_new_pbl": locals.t_new_pbl.field[:],
-            "local_vapor_new_pbl": locals.vapor_new_pbl.field[:],
+            "local_vapor_new_pbl": locals.vapor_forced_pbl.field[:],
             "local_moist_static_energy": locals.moist_static_energy.field[:],
             "local_maximum_updraft_origin_level": locals.maximum_updraft_origin_level.field[:],
             "local_kstabm": locals.kstabm.field[:] + 1,  # +1 b/c python counts from 0
@@ -708,9 +708,9 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
         import numpy as np
 
         locals.t_new.field[:, :, -1] = np.nan
-        locals.vapor_new.field[:, :, -1] = np.nan
+        locals.vapor_forced.field[:, :, -1] = np.nan
         locals.t_new_pbl.field[:, :, -1] = np.nan
-        locals.vapor_new_pbl.field[:, :, -1] = np.nan
+        locals.vapor_forced_pbl.field[:, :, -1] = np.nan
         locals.moist_static_energy.field[:, :, -1] = np.nan
         locals.detrainment_function_updraft.field[:, :, -1] = np.nan
 
@@ -728,9 +728,9 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             "local_t_excess": locals.t_excess.field[:],
             "local_vapor_excess": locals.vapor_excess.field[:],
             "local_t_new": locals.t_new.field[:],
-            "local_vapor_new": locals.vapor_new.field[:],
+            "local_vapor_new": locals.vapor_forced.field[:],
             "local_t_new_pbl": locals.t_new_pbl.field[:],
-            "local_vapor_new_pbl": locals.vapor_new_pbl.field[:],
+            "local_vapor_new_pbl": locals.vapor_forced_pbl.field[:],
             "local_moist_static_energy": locals.moist_static_energy.field[:],
             "local_maximum_updraft_origin_level": locals.maximum_updraft_origin_level.field[:],
             "local_kstabm": locals.kstabm.field[:] + 1,  # +1 b/c python counts from 0

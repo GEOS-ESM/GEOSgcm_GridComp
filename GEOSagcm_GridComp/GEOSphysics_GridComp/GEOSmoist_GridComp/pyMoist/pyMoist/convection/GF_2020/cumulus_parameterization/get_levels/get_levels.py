@@ -189,8 +189,11 @@ class ConvectiveCloudBaseLevel:
             func=convective_cloud_base_level,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
+                "OVERSHOOT": cumulus_parameterization_config.OVERSHOOT,
+                "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
+                "MOIST_TRIGGER": cumulus_parameterization_config.MOIST_TRIGGER,
+                "USE_MEMORY": cumulus_parameterization_config.USE_MEMORY,
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
-                "ADV_TRIGGER": config.ADV_TRIGGER,
             },
         )
 
@@ -204,8 +207,36 @@ class ConvectiveCloudBaseLevel:
             updraft_origin_level=locals.updraft_origin_level,
             start_level=locals.start_level,
         )
-        
-        self._convective_cloud_base_level()
+
+        self._convective_cloud_base_level(
+            error_code=state.output.error_code,
+            cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
+            cap_max=locals.cap_max,
+            updraft_origin_level=locals.updraft_origin_level,
+            start_level=locals.start_level,
+            moist_static_energy_origin_level_forced=locals.moist_static_energy_origin_level_forced,
+            updraft_lfc_level=state.output.updraft_lfc_level,
+            maximum_updraft_origin_level=locals.maximum_updraft_origin_level,
+            negative_buoyancy_depth=locals.negative_buoyancy_depth,
+            frh_lfc=locals.frh_lfc,
+            geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+            entrainment_rate=state.output.entrainment_rate,
+            environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+            environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+            t_excess=locals.t_excess,
+            vapor_excess=locals.vapor_excess,
+            add_buoyancy=locals.add_buoyancy,
+            p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+            vapor_forced=locals.vapor_forced,
+            environment_saturation_mixing_ratio_forced=locals.environment_saturation_mixing_ratio_forced,
+            ocean_fraction=locals.ocean_fraction,
+            cap_max_increment=locals.cap_max_increment,
+            t_perturbation=state.output.t_perturbation,
+            p_forced=state.input_output.p_forced,
+            cloud_top=state.output.cloud_top,
+            AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
 
 
 class CloudTop:

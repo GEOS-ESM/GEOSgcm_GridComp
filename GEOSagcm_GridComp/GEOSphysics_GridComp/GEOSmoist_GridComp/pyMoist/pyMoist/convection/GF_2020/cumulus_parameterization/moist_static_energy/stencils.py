@@ -36,27 +36,27 @@ def parcel_moist_static_energy(
                 + cumulus_parameterization_constants.CP * t_excess
             ) + add_buoyancy
 
-        moist_static_energy_origin_level = get_updraft_origin_conditions(
-            field=environmenet_moist_static_energy,
-            scalar_perturbation=modification,
-            p=p,
-            updraft_origin_level=updraft_origin_level,
-            ocean_fraction=ocean_fraction,
-            BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
-            AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
-            k_end=k_end,
-            compute_perturbation=False,
-            perturbation_field=t_perturbation,
-        )
-        moist_static_energy_origin_level_forced = get_updraft_origin_conditions(
-            field=environmenet_moist_static_energy_forced,
-            scalar_perturbation=modification,
-            p=p,
-            updraft_origin_level=updraft_origin_level,
-            ocean_fraction=ocean_fraction,
-            BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
-            AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
-            k_end=k_end,
-            compute_perturbation=False,
-            perturbation_field=t_perturbation,
-        )
+            moist_static_energy_origin_level = get_updraft_origin_conditions(
+                field=environmenet_moist_static_energy,
+                scalar_perturbation=modification,
+                p=p,
+                updraft_origin_level=updraft_origin_level,
+                ocean_fraction=ocean_fraction,
+                BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
+                AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
+                k_end=k_end,
+                compute_perturbation=False,
+                perturbation_field=t_perturbation,
+            )
+            moist_static_energy_origin_level_forced = get_updraft_origin_conditions(
+                field=environmenet_moist_static_energy_forced,
+                scalar_perturbation=modification,
+                p=p,
+                updraft_origin_level=updraft_origin_level,
+                ocean_fraction=ocean_fraction,
+                BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
+                AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
+                k_end=k_end,
+                compute_perturbation=False,
+                perturbation_field=t_perturbation,
+            )

@@ -17,7 +17,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy.moi
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 
 
-class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -142,7 +142,7 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_shallow(Tr
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -267,7 +267,7 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_mid(Transl
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

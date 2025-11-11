@@ -110,8 +110,6 @@ class TranslateGF2020_CumulusParameterization_GetLCL_shallow(TranslateFortranDat
         )
 
         # call test code
-        from ndsl.constants import X_DIM, Y_DIM
-
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
                 state=state,
@@ -238,8 +236,6 @@ class TranslateGF2020_CumulusParameterization_GetLCL_mid(TranslateFortranData2Py
         )
 
         # call test code
-        from ndsl.constants import X_DIM, Y_DIM
-
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
                 state=state,
@@ -366,8 +362,6 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
         )
 
         # call test code
-        from ndsl.constants import X_DIM, Y_DIM
-
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
                 state=state,

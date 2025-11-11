@@ -61,3 +61,5 @@ class GF2020CumulusParameterizationConfig:
     MODIS_FRACTION: Int
     BOUNDARY_CONDITION_METHOD: Int
     OVERSHOOT: Float
+    USE_MEMORY: Int
+    DOWNDRAFT: Int

@@ -298,7 +298,7 @@ class GF2020CumulusParameterizationState(State):
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
-                "dtype": Float,
+                "dtype": Int,
             }
         )
         cloud_top: Quantity = dataclasses.field(
@@ -307,7 +307,7 @@ class GF2020CumulusParameterizationState(State):
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
-                "dtype": Float,
+                "dtype": Int,
             }
         )
         kstabi: Quantity = dataclasses.field(
