@@ -1037,10 +1037,10 @@
                     )
 
       DO N=1,NCH
-        EVAPFR(N) = EVAPFR(N) + EINT(N)*( AR_UR(N)/(1.-AR_UR(N)) )/DTSTEP
-        EVAP(N)   = EVAP(N) + EINT(N)*( AR_UR(N)/(1.-AR_UR(N)) )/DTSTEP
-        LHFLUX(N) = LHFLUX(N) + EINT(N)*( AR_UR(N)/(1.-AR_UR(N)) )*ALHE/DTSTEP
-        SHFLUX(N) = SHFLUX(N) - EINT(N)*( AR_UR(N)/(1.-AR_UR(N)) )*ALHE/DTSTEP
+        EVAPFR(N) = EVAPFR(N) + EINT(N)*AR_UR(N)/DTSTEP
+        EVAP(N)   = EVAP(N) + EINT(N)*AR_UR(N)/DTSTEP
+        LHFLUX(N) = LHFLUX(N) + EINT(N)*AR_UR(N)*ALHE/DTSTEP
+        SHFLUX(N) = SHFLUX(N) - EINT(N)*AR_UR(N)*ALHE/DTSTEP
       ENDDO
 
 ! ---------------------------------------------------------------------
@@ -3001,12 +3001,13 @@
         EVEG(CHNO)=0.
         ENDIF
 
+      EINT(CHNO) = EINT(CHNO) * ( 1./(1.-AR_UR(CHNO)) )
 !****
 !**** REMOVE MOISTURE FROM RESERVOIRS:
-!****
+!****   
 
         IF (CATDEF(CHNO) .LT. CDCR1(CHNO)) THEN
-          CAPAC(CHNO) = AMAX1( 0., CAPAC(CHNO) - EINT(CHNO) - EINT(CHNO)*( AR_UR(CHNO)/(1.-AR_UR(CHNO)) ) )
+          CAPAC(CHNO) = AMAX1( 0., CAPAC(CHNO) - EINT(CHNO))
           RZEXC(CHNO) = RZEXC(CHNO) - EVEG(CHNO)*(1.-ESATFR) 
           SRFEXC(CHNO) = SRFEXC(CHNO) - ESOI(CHNO)*(1.-ESATFR)
 
@@ -3026,10 +3027,12 @@
           ENDIF
 ! 05.12.98: first attempt to include bedrock
         ELSE
-          CAPAC(CHNO) = AMAX1( 0., CAPAC(CHNO) - EINT(CHNO) - EINT(CHNO)*( AR_UR(CHNO)/(1.-AR_UR(CHNO)) ) )
+          CAPAC(CHNO) = AMAX1( 0., CAPAC(CHNO) - EINT(CHNO))
           RZEXC(CHNO) = RZEXC(CHNO) -  EVEG(CHNO)
           SRFEXC(CHNO) = SRFEXC(CHNO) - ESOI(CHNO)
         ENDIF
+        
+
 
 !****
  100  CONTINUE

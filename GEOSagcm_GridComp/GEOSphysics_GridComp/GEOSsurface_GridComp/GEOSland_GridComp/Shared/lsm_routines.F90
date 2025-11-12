@@ -290,7 +290,7 @@ CONTAINS
             IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                ! Non-peatland
                if(present(AR_UR))then
-                 frun=AR1(N)+AR_UR(N)*fac_im_UR
+                 frun=AR1(N)*(1.-AR_UR(N))+AR_UR(N)*fac_im_UR
                else
                  frun=AR1(N)
                endif
@@ -366,7 +366,7 @@ CONTAINS
             IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                 !non-peatland
                deficit=srfmx(n)-srfexc(n)
-               srunl=(AR1(n)+AR_UR(N)*fac_im_UR)*THRUL(n)
+               srunl=(AR1(N)*(1.-AR_UR(N))+AR_UR(N)*fac_im_UR)*THRUL(n)
                qinfil_l=(1.-ar1(n))*THRUL(n)
                qcapac=deficit*FWETL
 
@@ -376,7 +376,7 @@ CONTAINS
                   qinfil_l=qinfil_l-excess_infil
                endif
 
-               srunc=(AR1(n)+AR_UR(N)*fac_im_UR)*THRUC(n)
+               srunc=(AR1(N)*(1.-AR_UR(N))+AR_UR(N)*fac_im_UR)*THRUC(n)
                qinfil_c=(1.-ar1(n))*THRUC(n)
                qcapac=deficit*FWETC
 
