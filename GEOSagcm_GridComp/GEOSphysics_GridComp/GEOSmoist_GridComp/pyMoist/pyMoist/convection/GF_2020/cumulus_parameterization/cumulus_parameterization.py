@@ -275,7 +275,12 @@ class CumulusParameterization:
             UpdraftMoistStaticEnergyAndMomentumBudget()
         )
 
-        self._in_cloud_updraft_air_temperature = UpdraftInCloudUpdraftAirTemperature()
+        self._in_cloud_updraft_air_temperature = UpdraftInCloudUpdraftAirTemperature(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._vertical_velosity = VerticalVelosity()
 
@@ -288,7 +293,12 @@ class CumulusParameterization:
         self._downdraft_wet_bulb = DowndraftWetBlub()
 
         self._downdraft_moist_static_energy_and_moisture_budget = (
-            DowndraftMoistStaticEnergyAndMoistureBudget()
+            DowndraftMoistStaticEnergyAndMoistureBudget(
+                stencil_factory=stencil_factory,
+                quantity_factory=quantity_factory,
+                config=config,
+                cumulus_parameterization_config=cumulus_parameterization_config,
+            )
         )
 
         self._downdraft_moisture_properties = DowndraftMoistureProperties()
@@ -546,7 +556,11 @@ class CumulusParameterization:
                 self._get_buoyancy()
 
                 # calculate in-cloud/updraft air temperature for vertical velocity
-                self._in_cloud_updraft_air_temperature()
+                self._in_cloud_updraft_air_temperature(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # vertical velocity
                 self._vertical_velosity()
@@ -564,7 +578,11 @@ class CumulusParameterization:
                 self._downdraft_wet_bulb()
 
                 # downdraft moist static energy + moisture budget
-                self._downdraft_moist_static_energy_and_moisture_budget()
+                self._downdraft_moist_static_energy_and_moisture_budget(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # calculate moisture properties of downdraft
                 self._downdraft_moisture_properties()
