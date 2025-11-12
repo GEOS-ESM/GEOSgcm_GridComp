@@ -1,14 +1,21 @@
 from ndsl import StencilFactory, QuantityFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    GF2020CumulusParameterizationConfig,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
+    GF2020CumulusParameterizationLocals,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy.stencils import (
     parcel_moist_static_energy,
+    first_guess_mse,
 )
 
 
@@ -103,11 +110,46 @@ class UpdateMoistStaticEnergy:
 
 
 class FirstGuessMoistStaticEnergy:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
 
-    def __call__(self, *args, **kwds):
-        pass
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
+
+        # construct stencils and functions
+        self._first_guess_mse = stencil_factory.from_dims_halo(
+            func=first_guess_mse,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._first_guess_mse(
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            # start_level=,
+            # ktop=,
+            # up_massdetro=,
+            # up_massentro=,
+            # zuo=,
+            # zu=,
+            # heo=,
+            # zqexec=,
+            # hco=,
+            # heso_cup=,
+            # ztexec=,
+            # x_add_buoy=,
+        )
 
 
 class MoistStaticEnergyInsideCloud:

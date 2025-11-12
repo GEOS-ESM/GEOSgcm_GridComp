@@ -1,8 +1,14 @@
 from ndsl import StencilFactory, QuantityFactory, ndsl_log
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    GF2020CumulusParameterizationConfig,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
+    GF2020CumulusParameterizationLocals,
+)
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
@@ -15,7 +21,10 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.environment.environment
     EnvironmentMassFlux,
     EnvironmentalSubsidence,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.sounding.sounding import Sounding, GATESounding
+from pyMoist.convection.GF_2020.cumulus_parameterization.sounding.sounding import (
+    Sounding,
+    GATESounding,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.air_density.air_density import (
     HydrostaticAirDensity,
 )
@@ -57,7 +66,9 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy.moi
     MoistStaticEnergyInsideCloud,
 )
 
-from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy.buoyancy import GetBuoyancy
+from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy.buoyancy import (
+    GetBuoyancy,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.profiles.profiles import (
     C1DProfile,
     MeltingProfile,
@@ -87,8 +98,12 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.trigger_function.trigge
     TriggerFunctionConvection,
     TriggerFunctionXie,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle.diurnal_cycle import DiurnalCycle
-from pyMoist.convection.GF_2020.cumulus_parameterization.cape_removal.cape_removal import CAPERemoval
+from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle.diurnal_cycle import (
+    DiurnalCycle,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.cape_removal.cape_removal import (
+    CAPERemoval,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation.mass_conservation import (
     MassConservation,
 )
@@ -105,8 +120,12 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.cloud_base_mass_flux.cl
 from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.kinetic_energy_to_heating import (
     KineticEnergyToHeating,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback import Feedback
-from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output.prepare_output import PrepareOutput
+from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback import (
+    Feedback,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output.prepare_output import (
+    PrepareOutput,
+)
 
 
 class CumulusParameterization:
@@ -228,9 +247,16 @@ class CumulusParameterization:
 
         self._updraft_mass_flux_profile = UpdraftMassFluxProfile()
 
-        self._calculate_mass_entrainment_detrainment = CalculateMassEntrainmentDetrainment()
+        self._calculate_mass_entrainment_detrainment = (
+            CalculateMassEntrainmentDetrainment()
+        )
 
-        self._first_guess_moist_static_energy = FirstGuessMoistStaticEnergy()
+        self._first_guess_moist_static_energy = FirstGuessMoistStaticEnergy(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._get_buoyancy = GetBuoyancy()
 
@@ -240,7 +266,9 @@ class CumulusParameterization:
 
         self._melting_profile = MeltingProfile()
 
-        self._moist_static_energy_and_momentum_budget = UpdraftMoistStaticEnergyAndMomentumBudget()
+        self._moist_static_energy_and_momentum_budget = (
+            UpdraftMoistStaticEnergyAndMomentumBudget()
+        )
 
         self._in_cloud_updraft_air_temperature = UpdraftInCloudUpdraftAirTemperature()
 
@@ -483,7 +511,11 @@ class CumulusParameterization:
                 self._calculate_mass_entrainment_detrainment()
 
                 # 1st guess for moist static energy
-                self._first_guess_moist_static_energy()
+                self._first_guess_moist_static_energy(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # Get buoyancy of updrafts
                 self._get_buoyancy()

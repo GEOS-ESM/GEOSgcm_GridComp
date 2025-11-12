@@ -110,7 +110,7 @@ def cup_dd_edt(
                 edt = 1.0 - 0.5 * (pefb + pef)
 
                 if aeroevap > 1:
-                    aeroadd = (cumulus_parameterization_constants.ccnclean**beta3) * (
+                    aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * (
                         (psumh) ** (alpha3 - 1)
                     )
 
@@ -129,7 +129,7 @@ def cup_dd_edt(
 
                 einc = 0.2 * edt
                 if K <= maxens2 - 1:
-                    edtc = edt + float(int32(K) - 1) * einc
+                    edtc = edt + float(int32(K) - int32(1)) * einc
 
     with computation(PARALLEL), interval(...):
         if cumulus != cumulus_parameterization_constants.shallow:

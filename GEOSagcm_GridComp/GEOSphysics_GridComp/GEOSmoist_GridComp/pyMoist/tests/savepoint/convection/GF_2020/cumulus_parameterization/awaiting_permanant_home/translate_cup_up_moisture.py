@@ -61,6 +61,7 @@ class TranslateCupUpMoisture(TranslateFortranData2Py):
             "c0_deep": {},
             "qrc_crit_lnd": {},
             "qrc_crit_ocn": {},
+            "bc_meth": {},
         }
 
         # Float/Int Inputs
@@ -86,7 +87,15 @@ class TranslateCupUpMoisture(TranslateFortranData2Py):
             self.grid.quantity_factory,
         )
 
-        # # Field inputs
+        # Field inputs
+
+        bc_meth = QuantityFactory.zeros(
+            self.quantity_factory,
+            dims=[X_DIM, Y_DIM, Z_DIM],
+            units="n/a",
+            dtype=Int,
+        )
+        safe_assign_array(bc_meth.view[:, :, :], inputs["bc_meth"])
 
         c1d = QuantityFactory.zeros(
             self.quantity_factory,
@@ -277,7 +286,9 @@ class TranslateCupUpMoisture(TranslateFortranData2Py):
             units="n/a",
             dtype=Int,
         )
-        safe_assign_array(use_linear_subcl_mf.view[:, :, :], inputs["use_linear_subcl_mf"])
+        safe_assign_array(
+            use_linear_subcl_mf.view[:, :, :], inputs["use_linear_subcl_mf"]
+        )
 
         vvel2d = QuantityFactory.zeros(
             self.quantity_factory,
@@ -424,6 +435,7 @@ class TranslateCupUpMoisture(TranslateFortranData2Py):
             units="n/a",
         )
 
+        print("running stencil")
         cup_up_moisture(
             # In
             c1d=c1d,
@@ -464,6 +476,7 @@ class TranslateCupUpMoisture(TranslateFortranData2Py):
             c0_deep=c0_deep,
             qrc_crit_lnd=qrc_crit_lnd,
             qrc_crit_ocn=qrc_crit_ocn,
+            bc_meth=bc_meth,
             # Out
             clw_all=clw_all,
             ierr=ierr,
