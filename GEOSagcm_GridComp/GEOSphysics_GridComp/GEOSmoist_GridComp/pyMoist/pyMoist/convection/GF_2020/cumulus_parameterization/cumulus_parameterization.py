@@ -597,7 +597,11 @@ class CumulusParameterization:
                 self._trigger_function_convection()
 
                 # calculate in-cloud/updraft and downdraft air temperature for vertical velocity
-                self._in_cloud_temperature()
+                self._in_cloud_temperature(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # diurnal cycle section
                 self._diurnal_cycle()
