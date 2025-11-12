@@ -41,8 +41,10 @@ MODULE lsm_routines
        N_SM              => CATCH_N_ZONES,       &
        PEATCLSM_POROS_THRESHOLD,                 &
        PEATCLSM_ZBARMAX_4_SYSOIL,&
-       AR_UR0            => AR_URBAN,            & 
-       fac_im_UR         => factor_impervious_URBAN
+       fac_im_UR         => factor_impervious_URBAN, &
+       tkdry_UR          => CATCH_tkdry_URBAN
+
+
  
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, FLWALPHA
@@ -1396,7 +1398,7 @@ CONTAINS
          endif
 
       xwi=min(xwi,1.)
-      tkdry=0.9 ! Urban thermal conductivity
+      tkdry=tkdry_UR ! Urban thermal conductivity
       xklh(1)=tkdry!(tksat-tkdry)*xwi + tkdry
       xklhw=tksat
 

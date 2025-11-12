@@ -94,8 +94,7 @@
            PEATCLSM_POROS_THRESHOLD,                 &
            PEATCLSM_ZBARMAX_4_SYSOIL,                &
            EMIS_UR           => CATCH_EMIS_URBAN,    &
-           CSOIL_UR          => CATCH_C_URBAN,       &
-           AR_UR0             => AR_URBAN    
+           CSOIL_UR          => CATCH_C_URBAN
 
       USE SURFPARAMS,       ONLY:                    &
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
