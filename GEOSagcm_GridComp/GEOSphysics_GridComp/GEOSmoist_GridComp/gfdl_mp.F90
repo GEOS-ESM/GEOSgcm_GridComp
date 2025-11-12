@@ -2571,14 +2571,10 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    qden = q (k) * den (k) * 1.e3
-                    ! Large-scale settling SGP
-                    viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-                    ! Convective settling TWP
-                    viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
-                    ! Combine
-                    vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-                    vt (k) = 0.01 * v_fac * vt (k)
+                    qden = q (k) * den (k)
+                    vt (k) = (3. + log10 (qden)) * (tc (k) * (aa * tc (k) + bb) + cc) + &
+                        dd * tc (k) + ee
+                    vt (k) = 0.01 * v_fac * exp (vt (k) * log (10.))
                 endif
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)
