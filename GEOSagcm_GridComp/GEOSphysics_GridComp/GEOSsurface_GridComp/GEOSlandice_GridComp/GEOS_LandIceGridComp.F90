@@ -164,7 +164,8 @@ module GEOS_LandiceGridCompMod
 
 ! Set the Run entry point
 ! -----------------------
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS ) !for ISSM
+    !add initialize method for child (ISSM)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS ) 
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
     VERIFY_(STATUS)
@@ -192,6 +193,15 @@ module GEOS_LandiceGridCompMod
 !BOS
 
 !  !Export state:
+
+     call MAPL_AddExportSpec(GC,                   &
+        SHORT_NAME = 'ICESMB',                     &
+        LONG_NAME  = 'ice_surface_mass_balance',   &
+        UNITS      = 'kg m-2 s-1',                 &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'EMIS',                              &
@@ -1624,10 +1634,14 @@ module GEOS_LandiceGridCompMod
 
 !EOS
 
-! Add ISSM child gridcomp    
-    ISSM  = MAPL_AddChild(GC, NAME='ISSM', SS=IssmSetServices, RC=STATUS)
-    VERIFY_(STATUS)    
 
+    ! Add ISSM child gridcomp    
+    ISSM  = MAPL_AddChild(GC, NAME='ISSM', SS=IssmSetServices, RC=STATUS)
+    VERIFY_(STATUS)   
+    
+    ! ISSM imports will be satisfied by landice
+    call MAPL_TerminateImport(GC, CHILD = ISSM,   RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1653,6 +1667,7 @@ module GEOS_LandiceGridCompMod
 
 
   subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
+  ! this is for ISSM to have access to to the tile locstream 
 
    ! !ARGUMENTS:
    
@@ -2221,15 +2236,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
   integer, optional,   intent(  out) :: RC     ! Error code:
 
-  ! child gridcomp (ISSM) attributes
-!   type(ESMF_GridComp), intent(inout) :: GCS    ! Gridded component 
-!   type(ESMF_State),    intent(inout) :: GIM    ! Import state
-!   type(ESMF_State),    intent(inout) :: GEX    ! Export state
-
   !DESCRIPTION: 
 !  Periodically refreshes the ozone mixing ratios.
 
 !EOP
+
+   type (ESMF_State),     pointer  :: GIM(:)    ! Import state ISSM
 
 
 ! ErrLog Variables
@@ -2268,6 +2280,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+    ! Get import state of child (ISSM)
+    call MAPL_Get(MAPL, GIM=GIM, RC=STATUS )
+    VERIFY_(STATUS) 
+
 ! Start Total timer
 !------------------
 
@@ -2303,10 +2319,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
     VERIFY_(STATUS)
 
-    ! Run ISSM (checks if ISSM_ALARM is ringing)
-    call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
-    VERIFY_(STATUS)
-
 !  All done
 !-----------
 
@@ -2327,8 +2339,13 @@ contains
    character(len=ESMF_MAXSTR)     :: IAm
    integer                        :: STATUS
 
-! pointers to export
 
+   ! pointer to child import (ISSM)
+   real, pointer, dimension(:  )  :: ICESMB_ISSM
+
+
+! pointers to export
+   real, pointer, dimension(:  )  :: ICESMB
    real, pointer, dimension(:  )  :: EMISS
    real, pointer, dimension(:  )  :: ALBVF 
    real, pointer, dimension(:  )  :: ALBVR 
@@ -2642,7 +2659,7 @@ contains
 
 ! Pointers to outputs
 !--------------------
-
+   call MAPL_GetPointer(EXPORT,ICESMB  , 'ICESMB'   ,alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,EMISS  , 'EMIS'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBVF  , 'ALBVF'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBVR  , 'ALBVR'  , RC=STATUS); VERIFY_(STATUS)
@@ -3341,7 +3358,17 @@ contains
     if(associated(ASNOW))    ASNOW    = FR(:,SNOW)
     if(associated(SMELT ))   SMELT    = PERC
     if(associated(RAINRFZ )) RAINRFZ  = FR(:,ICE)  * RAINRF
+
     if(associated(MELTWTR )) MELTWTR  = MELTWTR + MLT  
+
+
+    ! Calculate surface mass balance (SMB) for ISSM
+    if(associated(ICESMB )) ICESMB    = ACCUM - RUNOFF
+
+    ! Set child (ISSM) SMB import pointer to landice export values
+    call MAPL_GetPointer(GIM(ISSM), ICESMB_ISSM, 'ICESMB'  , RC=STATUS)
+
+    ICESMB_ISSM(:) = ICESMB(:)
 
 ! Update snow and landice albedos to anticipate
 !   next radiation calculation
@@ -3475,6 +3502,10 @@ contains
     if(associated(WEBOT )) then
        WEBOT =  WESNBOT / DT
     end if
+
+    ! Run ISSM (checks if ISSM_ALARM is ringing)
+    call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+    VERIFY_(STATUS)
 
     if(allocated (MLT)) deallocate(MLT , STAT=STATUS); VERIFY_(STATUS)              
     if(allocated (DTS)) deallocate(DTS , STAT=STATUS); VERIFY_(STATUS)              
