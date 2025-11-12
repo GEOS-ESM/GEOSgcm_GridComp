@@ -1,22 +1,11 @@
-from ndsl import QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, IntField, Float, Int
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-import pyMoist.constants as constants
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    computation,
-    interval,
-    int32,
-    log,
-    exp,
-)
+from gt4py.cartesian.gtscript import log
 from ndsl.dsl.gt4py import function
-from ndsl.stencils.column_operations import column_min, column_max
+from ndsl.stencils.column_operations import column_max
 
 
 @function
-def saturation_vapor_pressure(t: Float):
+def saturation_vapor_pressure(t):
     """
     Compute saturation vapor pressure
 

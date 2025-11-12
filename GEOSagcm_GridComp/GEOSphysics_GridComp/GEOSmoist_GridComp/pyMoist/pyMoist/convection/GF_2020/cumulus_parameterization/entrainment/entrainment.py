@@ -11,6 +11,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment.stencils im
     entrainment_rates,
     downdraft_entrainment_profiles,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import unknown_find_level
 
 
 class EntrainmentRates:
@@ -99,8 +100,8 @@ class StableDetrainment:
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         # construct stencils and functions
-        self._stable_detrainment = stencil_factory.from_dims_halo(
-            func=downdraft_entrainment_profiles,
+        self._unknown_find_level = stencil_factory.from_dims_halo(
+            func=unknown_find_level,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
@@ -114,7 +115,14 @@ class StableDetrainment:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        self._stable_detrainment()
+        self._unknown_find_level(
+            array=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+            start_index=state.output.updraft_lfc_level,
+            end_index=locals.kstabm,
+            out_index=state.output.kstabi,
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
 
 
 class CalculateMassEntrainmentDetrainment:

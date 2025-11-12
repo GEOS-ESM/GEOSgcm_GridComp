@@ -113,6 +113,8 @@ from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_
     TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_Cumulus_Parameterization_StableDetrainment import (
+    TranslateGF2020_CumulusParameterization_StableDetrainment_shallow,
+    TranslateGF2020_CumulusParameterization_StableDetrainment_mid,
     TranslateGF2020_CumulusParameterization_StableDetrainment_deep,
 )
 
