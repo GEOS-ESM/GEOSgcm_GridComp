@@ -283,8 +283,8 @@ module gfdl_mp_mod
 
     logical :: do_sedi_uv = .true. ! transport of horizontal momentum in sedimentation
     logical :: do_sedi_w = .false. ! transport of vertical momentum in sedimentation
-    logical :: do_sedi_heat = .true. ! transport of heat in sedimentation
-    logical :: do_sedi_melt = .true. ! melt cloud ice, snow, and graupel during sedimentation
+    logical :: do_sedi_heat = .false. ! transport of heat in sedimentation
+    logical :: do_sedi_melt = .false. ! melt cloud ice, snow, and graupel during sedimentation
 
     logical :: do_qa = .false. ! do inline cloud fraction
     logical :: rad_snow = .true. ! include snow in cloud fraciton calculation
@@ -312,7 +312,7 @@ module gfdl_mp_mod
     logical :: prog_ccn = .true. ! do prognostic ccn (Yi Ming's method)
     logical :: prog_cin = .false. ! do prognostic cin
 
-    logical :: fix_negative = .false. ! fix negative water species
+    logical :: fix_negative = .true. ! fix negative water species
 
     logical :: do_evap_timescale = .true. ! whether to apply a timescale to evaporation
     logical :: do_cond_timescale = .true. ! whether to apply a timescale to condensation
@@ -2571,14 +2571,10 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    qden = q (k) * den (k) * 1.e3
-                    ! Large-scale settling SGP
-                    viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-                    ! Convective settling TWP
-                    viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
-                    ! Combine
-                    vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-                    vt (k) = 0.01 * v_fac * vt (k)
+                    qden = q (k) * den (k)
+                    vt (k) = (3. + log10 (qden)) * (tc (k) * (aa * tc (k) + bb) + cc) + &
+                        dd * tc (k) + ee
+                    vt (k) = 0.01 * v_fac * exp (vt (k) * log (10.))
                 endif
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)
