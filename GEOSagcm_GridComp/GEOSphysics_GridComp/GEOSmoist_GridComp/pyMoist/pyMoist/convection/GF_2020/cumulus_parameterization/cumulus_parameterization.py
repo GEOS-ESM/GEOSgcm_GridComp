@@ -248,7 +248,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._cloud_top = CloudTop()
+        self._cloud_top = CloudTop(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._updraft_mass_flux_profile = UpdraftMassFluxProfile()
 
@@ -521,7 +526,12 @@ class CumulusParameterization:
                 )
 
                 # use cloud for plumes
-                self._cloud_top()
+                # NOTE UNFINISHED
+                self._cloud_top(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # determine the normalized mass flux profile for updraft
                 self._updraft_mass_flux_profile()

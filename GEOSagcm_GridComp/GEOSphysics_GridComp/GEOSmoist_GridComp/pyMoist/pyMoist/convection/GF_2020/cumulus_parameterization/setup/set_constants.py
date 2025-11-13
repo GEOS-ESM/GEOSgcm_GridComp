@@ -65,7 +65,7 @@ def set_constants(
             plume_dependent_constants.LAMBDA_DOWN = cumulus_parameterization_config.LAMBDA_SHALLOW_DOWN
 
         # minimum depth (m) clouds must have
-        plume_dependent_constants.DEPTH_MIN = Float(500.0)
+        plume_dependent_constants.MINIMUM_DEPTH = Float(500.0)
 
         # max height(m) above ground where updraft air can originate
         plume_dependent_constants.MAX_UPDRAFT_ORIGIN_HEIGHT = Float(2000.0)
@@ -75,7 +75,7 @@ def set_constants(
 
         # depth(m) over which downdraft detrains all its mass
         plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
-            Float(0.5) * plume_dependent_constants.DEPTH_MIN
+            Float(0.5) * plume_dependent_constants.MINIMUM_DEPTH
         )
 
     elif plume == "mid":
@@ -133,7 +133,7 @@ def set_constants(
             plume_dependent_constants.LAMBDA_DOWN = cumulus_parameterization_config.LAMBDA_SHALLOW_DOWN
 
         # minimum depth (m) clouds must have
-        plume_dependent_constants.DEPTH_MIN = Float(1000.0)
+        plume_dependent_constants.MINIMUM_DEPTH = Float(1000.0)
 
         # max height(m) above ground where updraft air can originate
         plume_dependent_constants.MAX_UPDRAFT_ORIGIN_HEIGHT = Float(3000.0)
@@ -143,7 +143,7 @@ def set_constants(
 
         # depth(m) over which downdraft detrains all its mass
         plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
-            Float(0.5) * plume_dependent_constants.DEPTH_MIN
+            Float(0.5) * plume_dependent_constants.MINIMUM_DEPTH
         )
 
     elif plume == "deep":
@@ -201,7 +201,7 @@ def set_constants(
             plume_dependent_constants.LAMBDA_DOWN = cumulus_parameterization_config.LAMBDA_SHALLOW_DOWN
 
         # minimum depth (m) clouds must have
-        plume_dependent_constants.DEPTH_MIN = Float(1000.0)
+        plume_dependent_constants.MINIMUM_DEPTH = Float(1000.0)
 
         # max height(m) above ground where updraft air can originate
         plume_dependent_constants.MAX_UPDRAFT_ORIGIN_HEIGHT = Float(4000.0)
@@ -211,7 +211,7 @@ def set_constants(
 
         # depth(m) over which downdraft detrains all its mass
         plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
-            Float(0.5) * plume_dependent_constants.DEPTH_MIN
+            Float(0.5) * plume_dependent_constants.MINIMUM_DEPTH
         )
 
     else:
