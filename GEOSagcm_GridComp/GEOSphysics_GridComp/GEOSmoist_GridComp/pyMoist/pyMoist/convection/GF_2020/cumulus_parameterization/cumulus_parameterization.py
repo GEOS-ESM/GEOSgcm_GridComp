@@ -540,7 +540,7 @@ class CumulusParameterization:
                 self._calculate_mass_entrainment_detrainment()
 
                 # 1st guess for moist static energy
-                # KF: ported, but untested
+                # NOTE ported, but untested
                 self._first_guess_moist_static_energy(
                     state=state,
                     locals=locals,
@@ -567,7 +567,7 @@ class CumulusParameterization:
                 self._get_buoyancy()
 
                 # calculate in-cloud/updraft air temperature for vertical velocity
-                # KF: ported, but untested
+                # NOTE ported, but untested
                 self._in_cloud_updraft_air_temperature(
                     state=state,
                     locals=locals,
@@ -590,7 +590,7 @@ class CumulusParameterization:
                 self._downdraft_wet_bulb()
 
                 # downdraft moist static energy + moisture budget
-                # KF: ported, but untested
+                # NOTE ported, but untested
                 self._downdraft_moist_static_energy_and_moisture_budget(
                     state=state,
                     locals=locals,
@@ -610,7 +610,7 @@ class CumulusParameterization:
                 self._trigger_function_convection()
 
                 # calculate in-cloud/updraft and downdraft air temperature for vertical velocity
-                # KF: ported, but untested
+                # NOTE ported, but untested
                 self._in_cloud_temperature(
                     state=state,
                     locals=locals,
@@ -618,7 +618,7 @@ class CumulusParameterization:
                 )
 
                 # diurnal cycle section
-                # KF: ported, but untested
+                # NOTE ported, but untested
                 self._diurnal_cycle(
                     state=state,
                     locals=locals,
@@ -635,7 +635,7 @@ class CumulusParameterization:
                 self._downdraft_windshear()
 
                 # get the environmental mass flux
-                # KF: ported, but untested
+                # NOTE ported, but untested
                 self._environment_mass_flux(
                     state=state,
                     locals=locals,
@@ -666,7 +666,7 @@ class CumulusParameterization:
 
                 # static control
                 # moist static energy inside cloud
-                # KF: ported, but untested
+                # NOTE ported, but untested
                 self._moist_static_energy_inside_cloud(
                     state=state,
                     locals=locals,
@@ -681,7 +681,7 @@ class CumulusParameterization:
                 self._cloud_base_mass_flux()
 
                 # Include kinetic energy dissipation converted to heating
-                # KF: ported, but untested
+                # NOTE ported, but untested
                 self._kinetic_energy_to_heating(
                     state=state,
                     locals=locals,
@@ -692,7 +692,7 @@ class CumulusParameterization:
                 self._feedback()
 
                 # net precipitation flux (after downdraft evaporation)
-                # KF: ported, but untested
+                # NOTE port in progress
                 self._precipitation_flux(
                     state=state,
                     locals=locals,
