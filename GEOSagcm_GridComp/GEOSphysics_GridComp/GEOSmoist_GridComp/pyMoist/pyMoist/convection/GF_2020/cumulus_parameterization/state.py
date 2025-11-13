@@ -124,7 +124,7 @@ class GF2020CumulusParameterizationState(State):
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
-                "dtype": Float,
+                "dtype": Int,
             }
         )
 
@@ -391,54 +391,54 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        updraft_mass_entrainment: Quantity = dataclasses.field(
+        mass_entrainment_updraft: Quantity = dataclasses.field(
             metadata={
-                "name": "updraft_mass_entrainment",
+                "name": "mass_entrainment_updraft",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        updraft_mass_detrainment: Quantity = dataclasses.field(
+        mass_entrainment_downdraft: Quantity = dataclasses.field(
             metadata={
-                "name": "updraft_mass_detrainment",
+                "name": "mass_entrainment_downdraft",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        downdraft_mass_entrainment: Quantity = dataclasses.field(
+        mass_detrainment_updraft: Quantity = dataclasses.field(
             metadata={
-                "name": "downdraft_mass_entrainment",
+                "name": "mass_detrainment_updraft",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        downdraft_mass_detrainment: Quantity = dataclasses.field(
+        mass_detrainment_downdraft: Quantity = dataclasses.field(
             metadata={
-                "name": "downdraft_mass_detrainment",
+                "name": "mass_detrainment_downdraft",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        z_updraft: Quantity = dataclasses.field(
+        normalized_massflux_updraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "z_updraft",
+                "name": "normalized_massflux_updraft",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        z_downdraft: Quantity = dataclasses.field(
+        normalized_massflux_downdraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "z_downdraft",
+                "name": "normalized_massflux_downdraft",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",

@@ -117,11 +117,13 @@ from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_C
     TranslateGF2020_CumulusParameterization_StableDetrainment_mid,
     TranslateGF2020_CumulusParameterization_StableDetrainment_deep,
 )
+from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cumulus_Parameterization_CloudTop import (
+    TranslateGF2020_CumulusParameterization_CloudTop_shallow,
+    TranslateGF2020_CumulusParameterization_CloudTop_mid,
+    TranslateGF2020_CumulusParameterization_CloudTop_deep,
+)
 
 # in progress tests
-from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_cup_minimi import (
-    TranslateCupMinimi,
-)
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
     TranslateGetMeltingProfile,
 )

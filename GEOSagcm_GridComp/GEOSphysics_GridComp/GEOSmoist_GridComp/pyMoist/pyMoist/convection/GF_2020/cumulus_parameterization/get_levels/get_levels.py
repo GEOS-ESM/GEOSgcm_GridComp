@@ -14,6 +14,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels.stencils imp
     find_lcl,
     set_start_level,
     convective_cloud_base_level,
+    updraft_rates_pdf,
+    cloud_top_checks,
 )
 
 
@@ -240,11 +242,62 @@ class ConvectiveCloudBaseLevel:
 
 
 class CloudTop:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+        # construct stencils and functions
+        self._updraft_rates_pdf = stencil_factory.from_dims_halo(
+            func=updraft_rates_pdf,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"OVERSHOOT": cumulus_parameterization_config.OVERSHOOT},
+        )
+
+        self._cloud_top_checks = stencil_factory.from_dims_halo(
+            func=cloud_top_checks,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
+                "ADV_TRIGGER": config.ADV_TRIGGER,
+            },
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._updraft_rates_pdf(
+            entrainment_rate=state.output.entrainment_rate,
+            moist_static_energy=locals.environment_moist_static_energy_forced,
+            saturation_moist_static_energy=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+            moist_static_energy_origin_level=locals.moist_static_energy_origin_level_forced,
+            updraft_lfc_level=state.output.updraft_lfc_level,
+            geopotential_height=locals.geopotential_height_cloud_levels_forced,
+            cloud_moist_static_energy=locals.cloud_moist_static_energy_forced_transported,
+            error_code=state.output.error_code,
+            cloud_top=state.output.cloud_top,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
+
+        self._cloud_top_checks(
+            cloud_top=state.output.cloud_top,
+            p=state.output.p_cloud_levels_forced,
+            geopotential_height=locals.geopotential_height_cloud_levels,
+            error_code=state.output.error_code,
+            last_error_code=state.input.last_error_code,
+            updraft_lfc_level=state.output.updraft_lfc_level,
+            MINIMUM_DEPTH=plume_dependent_constants.MINIMUM_DEPTH,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
 
 
 class DowndraftOriginLevel:

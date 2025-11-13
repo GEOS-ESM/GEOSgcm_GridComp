@@ -22,7 +22,7 @@ class GF2020PlumeDependentConstants:
     CAP_MAX_INC: Float = Float(0.0)
     LAMBDA_DEEP: Float = Float(0.0)
     LAMBDA_DOWN: Float = Float(0.0)
-    DEPTH_MIN: Float = Float(0.0)
+    MINIMUM_DEPTH: Float = Float(0.0)
     MAX_UPDRAFT_ORIGIN_HEIGHT: Float = Float(0.0)
     MAX_DOWNDRAFT_ORIGIN_HEIGHt: Float = Float(0.0)
     DETRAINMENT_CRITICAL_DEPTH: Float = Float(0.0)
