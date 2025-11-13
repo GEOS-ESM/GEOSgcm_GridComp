@@ -2,12 +2,19 @@ from ndsl import StencilFactory, QuantityFactory, ndsl_log
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment.stencils import (
     environment_conditions,
     environment_cloud_levels,
+    environment_mass_flux,
 )
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    GF2020CumulusParameterizationConfig,
+)
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
+    GF2020CumulusParameterizationLocals,
+)
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
@@ -96,7 +103,9 @@ class EnvironmentCloudLevels:
         self._environment_cloud_levels = stencil_factory.from_dims_halo(
             func=environment_cloud_levels,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"CLOUD_LEVEL_GRID": cumulus_parameterization_config.CLOUD_LEVEL_GRID},
+            externals={
+                "CLOUD_LEVEL_GRID": cumulus_parameterization_config.CLOUD_LEVEL_GRID
+            },
         )
 
     def __call__(
@@ -141,7 +150,9 @@ class EnvironmentCloudLevels:
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
         elif data_type == 1:
-            p_3d = state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX]
+            p_3d = state.output.p_cloud_levels_forced.field[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ]
             self._environment_cloud_levels(
                 p=state.input_output.p_forced,
                 p_surface=state.input_output.p_surface,
@@ -168,17 +179,45 @@ class EnvironmentCloudLevels:
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
-            state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX] = p_3d
+            state.output.p_cloud_levels_forced.field[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ] = p_3d
         else:
             raise NotImplementedError("EnvironmentCloudLevels call type not supported.")
 
 
 class EnvironmentMassFlux:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+        # construct stencils and functions
+        self._environment_mass_flux = stencil_factory.from_dims_halo(
+            func=environment_mass_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._environment_mass_flux(
+            # zenv=,
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            # zuo=,
+            # edto=,
+            # zdo=,
+        )
 
 
 class EnvironmentalSubsidence:

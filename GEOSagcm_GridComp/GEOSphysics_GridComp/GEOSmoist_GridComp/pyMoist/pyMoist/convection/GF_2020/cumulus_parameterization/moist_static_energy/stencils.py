@@ -110,3 +110,64 @@ def first_guess_mse(
         if error_code[0, 0][plume] == 0:
             if K >= ktop + 2:
                 hco = heso_cup
+
+
+def moist_static_energy_inside_cloud(
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+    start_level: IntFieldIJ,
+    xhc: FloatField,
+    xhkb: FloatFieldIJ,
+    ktop: IntFieldIJ,
+    up_massdetro: FloatField,
+    up_massentro: FloatField,
+    xzu: FloatField,
+    xhe: FloatField,
+    p_liq_ice: FloatField,
+    zqexec: FloatFieldIJ,
+    ztexec: FloatFieldIJ,
+    x_add_buoy: FloatFieldIJ,
+    qrco: FloatField,
+    xhes_cup: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        xhc = 0.0
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if K <= start_level:
+                xhc = xhkb
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if K >= start_level + 1 and K <= ktop + 1:
+                denom: FloatFieldIJ = (
+                    xzu.at(K=K - 1)
+                    - 0.5 * up_massdetro.at(K=K - 1)
+                    + up_massentro.at(K=K - 1)
+                )
+                if denom == 0.0:
+                    xhc = xhc.at(K=K - 1)
+                else:
+                    xhc = (
+                        xhc.at(K=K - 1) * xzu.at(K=K - 1)
+                        - 0.5 * up_massdetro.at(K=K - 1) * xhc.at(K=K - 1)
+                        + up_massentro.at(K=K - 1) * xhe.at(K=K - 1)
+                    ) / denom
+                    if K == start_level + 1:
+                        x_add: FloatFieldIJ = (
+                            cumulus_parameterization_constants.XLV * zqexec
+                            + cumulus_parameterization_constants.CP * ztexec
+                        ) + x_add_buoy
+                        xhc = xhc + x_add * up_massentro.at(K=K - 1) / denom
+
+                xhc = (
+                    xhc
+                    + cumulus_parameterization_constants.XLF * (1.0 - p_liq_ice) * qrco
+                )
+
+    with computation(PARALLEL), interval(0, -1):
+        if error_code[0, 0][plume] == 0:
+            if K >= ktop + 2:
+                xhc = xhes_cup
+                xzu = 0.0

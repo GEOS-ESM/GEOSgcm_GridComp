@@ -16,7 +16,12 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
 from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy.stencils import (
     parcel_moist_static_energy,
     first_guess_mse,
+    moist_static_energy_inside_cloud,
 )
+
+# from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy.stencils import (
+#     get_buoyancy,
+# )
 
 
 class ParcelMoistStaticEnergy:
@@ -153,8 +158,55 @@ class FirstGuessMoistStaticEnergy:
 
 
 class MoistStaticEnergyInsideCloud:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+        # construct stencils and functions
+        self._moist_static_energy_inside_cloud = stencil_factory.from_dims_halo(
+            func=moist_static_energy_inside_cloud,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._moist_static_energy_inside_cloud(
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            # start_level=,
+            # xhc=,
+            # xhkb=,
+            # ktop=,
+            # up_massdetro=,
+            # up_massentro=,
+            # xzu=,
+            # xhe=,
+            # p_liq_ice=,
+            # zqexec=,
+            # ztexec=,
+            # x_add_buoy=,
+            # qrco=,
+            # xhes_cup=,
+        )
+
+        # self._get_buoyancy(
+        # hc: FloatField,
+        # he_cup: FloatField,
+        # hes_cup: FloatField,
+        # error_code: IntField,
+        # kbcon: IntField,
+        # klcl: IntField,
+        # ktop: IntField,
+        # dby: FloatField,
+        # )
