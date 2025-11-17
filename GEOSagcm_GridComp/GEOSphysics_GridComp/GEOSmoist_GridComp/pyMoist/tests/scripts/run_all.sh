@@ -12,7 +12,7 @@ export NDSL_LOGLEVEL=Critical
 export GT4PY_EXTRA_COMPILE_OPT_FLAGS='-fconstexpr-ops-limit=1000000000'
 
 python -m pytest -s --disable-warnings --multimodal_metric \
-    -x -v \
+    -x \
     --data_path=$1 \
     --backend=$2\
     --grid=default \
