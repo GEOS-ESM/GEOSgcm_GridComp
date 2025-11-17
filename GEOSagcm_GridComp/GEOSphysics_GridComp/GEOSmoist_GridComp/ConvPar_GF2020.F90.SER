@@ -7538,11 +7538,6 @@ ENDIF !- end of section for atmospheric composition
          if(ierr(i)/= 0)cycle
 
          k_ent=maxloc(zuo(i,:),1)
-         !$ser verbatim call ser_set_idx_d1(i)
-         !$ser verbatim do k=kts,kte
-            !$ser verbatim call ser_set_idx_d3(k)
-            !$ser data_buffered Dx=4 max_index=k_ent
-         !$ser verbatim enddo
          !-will not allow detrainment below cloud base or in the PBL
          if(draft=='shallow') then
               cd(i,1:max(kbcon(i),kpbl(i))+1)=0.0
