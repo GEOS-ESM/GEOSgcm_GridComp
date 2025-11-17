@@ -39,7 +39,7 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_shallow(
             "local_env_moist_static_energy_cloud_levels_forced_parcelmse": {},
             "local_moist_static_energy_origin_level_parcelmse": {},
             "local_moist_static_energy_origin_level_forced_parcelmse": {},
-            "local_updraft_origin_level_parcelmse": {},
+            "updraft_origin_level_parcelmse": {},
             "t_perturbation_parcelmse": {},
         }
 
@@ -94,7 +94,9 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_shallow(
         locals.moist_static_energy_origin_level_forced.data[:] = inputs[
             "local_moist_static_energy_origin_level_forced_parcelmse"
         ]
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level_parcelmse"] - 1
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_parcelmse"] - 1
+        )
         state.output.t_perturbation.data[:] = inputs["t_perturbation_parcelmse"]
 
         # initalize test code
@@ -135,7 +137,10 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_shallow(
             "local_moist_static_energy_origin_level_forced_parcelmse": locals.moist_static_energy_origin_level_forced.field[
                 :
             ],
-            "local_updraft_origin_level_parcelmse": locals.updraft_origin_level.field[:] + 1,
+            "updraft_origin_level_parcelmse": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ]
+            + 1,
             "t_perturbation_parcelmse": state.output.t_perturbation.field[:],
         }
 
@@ -164,7 +169,7 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_mid(Tran
             "local_env_moist_static_energy_cloud_levels_forced_parcelmse": {},
             "local_moist_static_energy_origin_level_parcelmse": {},
             "local_moist_static_energy_origin_level_forced_parcelmse": {},
-            "local_updraft_origin_level_parcelmse": {},
+            "updraft_origin_level_parcelmse": {},
             "t_perturbation_parcelmse": {},
         }
 
@@ -219,7 +224,9 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_mid(Tran
         locals.moist_static_energy_origin_level_forced.data[:] = inputs[
             "local_moist_static_energy_origin_level_forced_parcelmse"
         ]
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level_parcelmse"] - 1
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_parcelmse"] - 1
+        )
         state.output.t_perturbation.data[:] = inputs["t_perturbation_parcelmse"]
 
         # initalize test code
@@ -260,7 +267,10 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_mid(Tran
             "local_moist_static_energy_origin_level_forced_parcelmse": locals.moist_static_energy_origin_level_forced.field[
                 :
             ],
-            "local_updraft_origin_level_parcelmse": locals.updraft_origin_level.field[:] + 1,
+            "updraft_origin_level_parcelmse": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ]
+            + 1,
             "t_perturbation_parcelmse": state.output.t_perturbation.field[:],
         }
 
@@ -289,7 +299,7 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_deep(Tra
             "local_env_moist_static_energy_cloud_levels_forced_parcelmse": {},
             "local_moist_static_energy_origin_level_parcelmse": {},
             "local_moist_static_energy_origin_level_forced_parcelmse": {},
-            "local_updraft_origin_level_parcelmse": {},
+            "updraft_origin_level_parcelmse": {},
             "t_perturbation_parcelmse": {},
         }
 
@@ -344,7 +354,9 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_deep(Tra
         locals.moist_static_energy_origin_level_forced.data[:] = inputs[
             "local_moist_static_energy_origin_level_forced_parcelmse"
         ]
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level_parcelmse"] - 1
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_parcelmse"] - 1
+        )
         state.output.t_perturbation.data[:] = inputs["t_perturbation_parcelmse"]
 
         # initalize test code
@@ -385,7 +397,10 @@ class TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_deep(Tra
             "local_moist_static_energy_origin_level_forced_parcelmse": locals.moist_static_energy_origin_level_forced.field[
                 :
             ],
-            "local_updraft_origin_level_parcelmse": locals.updraft_origin_level.field[:] + 1,
+            "updraft_origin_level_parcelmse": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ]
+            + 1,
             "t_perturbation_parcelmse": state.output.t_perturbation.field[:],
         }
 

@@ -72,7 +72,7 @@ def find_highest_moist_static_energy_level(
     moist_static_energy: FloatField,
     error_code: IntFieldIJ_Plume,
     maximum_updraft_origin_level: IntFieldIJ,
-    updraft_origin_level: IntFieldIJ,
+    updraft_origin_level: IntFieldIJ_Plume,
     plume: Int,
 ):
     """
@@ -88,7 +88,7 @@ def find_highest_moist_static_energy_level(
     """
     with computation(FORWARD), interval(0, 1):
         # prefil output
-        updraft_origin_level = 0
+        updraft_origin_level[0, 0][plume] = 0
 
         if plume == 0:
             # start at surface for shallow plume
@@ -101,23 +101,23 @@ def find_highest_moist_static_energy_level(
             level = start_level
             while level <= maximum_updraft_origin_level + 1:
                 if moist_static_energy.at(K=level) > moist_static_energy.at(
-                    K=max(start_level, updraft_origin_level)
+                    K=max(start_level, updraft_origin_level[0, 0][plume])
                 ):
-                    updraft_origin_level = level
+                    updraft_origin_level[0, 0][plume] = level
                 level += 1
 
-            updraft_origin_level = updraft_origin_level + start_level - 1
-            updraft_origin_level = max(updraft_origin_level, start_level)
+            updraft_origin_level[0, 0][plume] = updraft_origin_level[0, 0][plume] + start_level - 1
+            updraft_origin_level[0, 0][plume] = max(updraft_origin_level[0, 0][plume], start_level)
 
             if plume == 0:
                 # for shallow plumes
-                updraft_origin_level = min(2, updraft_origin_level)
-                if updraft_origin_level > maximum_updraft_origin_level:
+                updraft_origin_level[0, 0][plume] = min(2, updraft_origin_level[0, 0][plume])
+                if updraft_origin_level[0, 0][plume] > maximum_updraft_origin_level:
                     error_code[0, 0][plume] = 2
             else:
                 # other plumes
-                if updraft_origin_level > maximum_updraft_origin_level:
-                    updraft_origin_level = start_level
+                if updraft_origin_level[0, 0][plume] > maximum_updraft_origin_level:
+                    updraft_origin_level[0, 0][plume] = start_level
 
 
 @function
@@ -162,7 +162,7 @@ def find_lcl(
     geopotential_height_cloud_levels: FloatField,
     topography_height_no_negative: FloatFieldIJ,
     ocean_fraction: FloatFieldIJ,
-    updraft_origin_level: IntFieldIJ,
+    updraft_origin_level: IntFieldIJ_Plume,
     grid_length: FloatFieldIJ,
     lcl_level: IntFieldIJ_Plume,
     error_code: IntFieldIJ_Plume,
@@ -177,14 +177,14 @@ def find_lcl(
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             # default value
-            lcl_level[0, 0][plume] = updraft_origin_level
+            lcl_level[0, 0][plume] = updraft_origin_level[0,0][plume]
 
             # get conditions for source parcel
             vapor_source = get_updraft_origin_conditions(
                 field=vapor_cloud_levels_forced,
                 scalar_perturbation=vapor_excess,
                 p=p,
-                updraft_origin_level=updraft_origin_level,
+                updraft_origin_level=updraft_origin_level[0,0][plume],
                 ocean_fraction=ocean_fraction,
                 BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
@@ -196,7 +196,7 @@ def find_lcl(
                 field=t_cloud_levels_forced,
                 scalar_perturbation=t_excess,
                 p=p,
-                updraft_origin_level=updraft_origin_level,
+                updraft_origin_level=updraft_origin_level[0,0][plume],
                 ocean_fraction=ocean_fraction,
                 BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
@@ -208,7 +208,7 @@ def find_lcl(
                 field=p_cloud_levels,
                 scalar_perturbation=0,
                 p=p,
-                updraft_origin_level=updraft_origin_level,
+                updraft_origin_level=updraft_origin_level[0,0][plume],
                 ocean_fraction=ocean_fraction,
                 BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
@@ -231,7 +231,7 @@ def find_lcl(
                 field=geopotential_height_cloud_levels,
                 scalar_perturbation=0,
                 p=p,
-                updraft_origin_level=updraft_origin_level,
+                updraft_origin_level=updraft_origin_level[0,0][plume],
                 ocean_fraction=ocean_fraction,
                 BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
@@ -244,7 +244,7 @@ def find_lcl(
         if error_code[0, 0][plume] == 0:
             if dz_lcl >= 0.0:
                 if geopotential_height_cloud_levels >= z_source + dz_lcl and stop_computation == False:
-                    lcl_level[0, 0][plume] = max(K, updraft_origin_level)
+                    lcl_level[0, 0][plume] = max(K, updraft_origin_level[0,0][plume])
                     stop_computation = True
 
     with computation(FORWARD), interval(0, 1):
@@ -294,19 +294,16 @@ def find_lcl(
                 t_perturbation = -2.0
 
 
-def set_start_level(
-    updraft_origin_level: IntFieldIJ,
-    start_level: IntFieldIJ,
-):
+def set_start_level(updraft_origin_level: IntFieldIJ_Plume, start_level: IntFieldIJ, plume: Int):
     with computation(FORWARD), interval(...):
-        updraft_origin_level = start_level
+        updraft_origin_level[0, 0][plume] = start_level
 
 
 def convective_cloud_base_level(
     error_code: IntFieldIJ_Plume,
     cloud_moist_static_energy_forced_transported: FloatField,
     cap_max: FloatFieldIJ,
-    updraft_origin_level: IntFieldIJ,
+    updraft_origin_level: IntFieldIJ_Plume,
     start_level: IntFieldIJ,
     moist_static_energy_origin_level_forced: FloatFieldIJ,
     updraft_lfc_level: IntFieldIJ_Plume,

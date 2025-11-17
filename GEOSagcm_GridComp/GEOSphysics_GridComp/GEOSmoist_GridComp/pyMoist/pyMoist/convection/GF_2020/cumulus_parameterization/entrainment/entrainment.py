@@ -10,6 +10,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
 from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment.stencils import (
     entrainment_rates,
     downdraft_entrainment_profiles,
+    compute_lateral_massflux,
+    compute_uc_vc,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import unknown_find_level
 
@@ -126,8 +128,72 @@ class StableDetrainment:
 
 
 class CalculateMassEntrainmentDetrainment:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+        # construct stencils and functions
+        self._compute_lateral_massflux = stencil_factory.from_dims_halo(
+            func=compute_lateral_massflux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._compute_uc_vc = stencil_factory.from_dims_halo(
+            func=compute_uc_vc,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD
+            },
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._compute_lateral_massflux(
+            error_code=state.output.error_code,
+            cloud_top=state.output.cloud_top,
+            geopotential_height=locals.geopotential_height_cloud_levels_forced,
+            normalized_massflux_updraft=state.output.normalized_massflux_updraft_forced,
+            detrainment_function_updraft=locals.detrainment_function_updraft,
+            entrainment_rate=state.output.entrainment_rate,
+            p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+            mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
+            mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
+            mass_entrainment_updraft=locals.mass_entrainment_updraft,
+            mass_detrainment_updraft=locals.mass_detrainment_updraft,
+            updraft_lfc_level=state.output.updraft_lfc_level,
+            updraft_origin_level=state.output.updraft_origin_level,
+            pbl_level=state.input_output.pbl_level,
+            mass_entrainment_u_updraft=locals.mass_entrainment_u_updraft,
+            mass_detrainment_u_updraft=locals.mass_detrainment_u_updraft,
+            LAMBDA_DEEP=plume_dependent_constants.LAMBDA_DEEP,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
+
+        self._compute_uc_vc(
+            u_c=locals.u_c,
+            v_c=locals.v_c,
+            cloud_moist_static_energy=locals.cloud_moist_static_energy,
+            cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+            error_code=state.output.error_code,
+            start_level=locals.start_level,
+            moist_static_energy_origin_level=locals.moist_static_energy_origin_level,
+            moist_static_energy_origin_level_forced=locals.moist_static_energy_origin_level_forced,
+            u_cloud_levels=locals.u_cloud_levels,
+            v_cloud_levels=locals.v_cloud_levels,
+            p=state.input_output.p_forced,
+            updraft_origin_level=state.output.updraft_origin_level,
+            ocean_fraction=state.input.ocean_fraction,
+            AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )

@@ -115,7 +115,7 @@ class HighestMoistStaticEnergyLevel:
             moist_static_energy=locals.environment_moist_static_energy_cloud_levels_forced,
             error_code=state.output.error_code,
             maximum_updraft_origin_level=locals.maximum_updraft_origin_level,
-            updraft_origin_level=locals.updraft_origin_level,
+            updraft_origin_level=state.output.updraft_origin_level,
             plume=plume_dependent_constants.PLUME_INDEX,
         )
 
@@ -161,7 +161,7 @@ class GetLCL:
             geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels,
             topography_height_no_negative=state.input_output.topography_height_no_negative,
             ocean_fraction=state.input.ocean_fraction,
-            updraft_origin_level=locals.updraft_origin_level,
+            updraft_origin_level=state.output.updraft_origin_level,
             grid_length=state.input_output.grid_length,
             lcl_level=state.output.lcl_level,
             error_code=state.output.error_code,
@@ -206,15 +206,16 @@ class ConvectiveCloudBaseLevel:
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
         self._set_start_level(
-            updraft_origin_level=locals.updraft_origin_level,
+            updraft_origin_level=state.output.updraft_origin_level,
             start_level=locals.start_level,
+            plume=plume_dependent_constants.PLUME_INDEX,
         )
 
         self._convective_cloud_base_level(
             error_code=state.output.error_code,
             cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
             cap_max=locals.cap_max,
-            updraft_origin_level=locals.updraft_origin_level,
+            updraft_origin_level=state.output.updraft_origin_level,
             start_level=locals.start_level,
             moist_static_energy_origin_level_forced=locals.moist_static_energy_origin_level_forced,
             updraft_lfc_level=state.output.updraft_lfc_level,

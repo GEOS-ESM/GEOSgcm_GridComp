@@ -41,7 +41,7 @@ class TranslateGF2020_CumulusParameterization_GetLCL_shallow(TranslateFortranDat
             "local_geopotential_height_cloud_levels_getlcl": {},
             "topography_height_no_negative_getlcl": {},
             "ocean_fraction_getlcl": {},
-            "local_updraft_origin_level_getlcl": {},
+            "updraft_origin_level_getlcl": {},
             "grid_length_getlcl": {},
             "lcl_level_getlcl": {},
             "error_code_getlcl": {},
@@ -94,7 +94,9 @@ class TranslateGF2020_CumulusParameterization_GetLCL_shallow(TranslateFortranDat
             "topography_height_no_negative_getlcl"
         ]
         state.input.ocean_fraction.data[:] = inputs["ocean_fraction_getlcl"]
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level_getlcl"] - 1
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_getlcl"] - 1
+        )
         state.input_output.grid_length.data[:] = inputs["grid_length_getlcl"]
         state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_getlcl"]
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
@@ -117,7 +119,7 @@ class TranslateGF2020_CumulusParameterization_GetLCL_shallow(TranslateFortranDat
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            locals.updraft_origin_level.field[:] += 1
+            state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
             state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
@@ -134,7 +136,9 @@ class TranslateGF2020_CumulusParameterization_GetLCL_shallow(TranslateFortranDat
             "local_geopotential_height_cloud_levels_getlcl": locals.geopotential_height_cloud_levels.field[:],
             "topography_height_no_negative_getlcl": state.input_output.topography_height_no_negative.field[:],
             "ocean_fraction_getlcl": state.input.ocean_fraction.field[:],
-            "local_updraft_origin_level_getlcl": locals.updraft_origin_level.field[:],
+            "updraft_origin_level_getlcl": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "grid_length_getlcl": state.input_output.grid_length.field[:],
             "lcl_level_getlcl": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "error_code_getlcl": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
@@ -167,7 +171,7 @@ class TranslateGF2020_CumulusParameterization_GetLCL_mid(TranslateFortranData2Py
             "local_geopotential_height_cloud_levels_getlcl": {},
             "topography_height_no_negative_getlcl": {},
             "ocean_fraction_getlcl": {},
-            "local_updraft_origin_level_getlcl": {},
+            "updraft_origin_level_getlcl": {},
             "grid_length_getlcl": {},
             "lcl_level_getlcl": {},
             "error_code_getlcl": {},
@@ -220,7 +224,9 @@ class TranslateGF2020_CumulusParameterization_GetLCL_mid(TranslateFortranData2Py
             "topography_height_no_negative_getlcl"
         ]
         state.input.ocean_fraction.data[:] = inputs["ocean_fraction_getlcl"]
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level_getlcl"] - 1
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_getlcl"] - 1
+        )
         state.input_output.grid_length.data[:] = inputs["grid_length_getlcl"]
         state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_getlcl"]
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
@@ -243,7 +249,7 @@ class TranslateGF2020_CumulusParameterization_GetLCL_mid(TranslateFortranData2Py
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            locals.updraft_origin_level.field[:] += 1
+            state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
             state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
@@ -260,7 +266,9 @@ class TranslateGF2020_CumulusParameterization_GetLCL_mid(TranslateFortranData2Py
             "local_geopotential_height_cloud_levels_getlcl": locals.geopotential_height_cloud_levels.field[:],
             "topography_height_no_negative_getlcl": state.input_output.topography_height_no_negative.field[:],
             "ocean_fraction_getlcl": state.input.ocean_fraction.field[:],
-            "local_updraft_origin_level_getlcl": locals.updraft_origin_level.field[:],
+            "updraft_origin_level_getlcl": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "grid_length_getlcl": state.input_output.grid_length.field[:],
             "lcl_level_getlcl": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "error_code_getlcl": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
@@ -293,7 +301,7 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
             "local_geopotential_height_cloud_levels_getlcl": {},
             "topography_height_no_negative_getlcl": {},
             "ocean_fraction_getlcl": {},
-            "local_updraft_origin_level_getlcl": {},
+            "updraft_origin_level_getlcl": {},
             "grid_length_getlcl": {},
             "lcl_level_getlcl": {},
             "error_code_getlcl": {},
@@ -346,7 +354,9 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
             "topography_height_no_negative_getlcl"
         ]
         state.input.ocean_fraction.data[:] = inputs["ocean_fraction_getlcl"]
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level_getlcl"] - 1
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_getlcl"] - 1
+        )
         state.input_output.grid_length.data[:] = inputs["grid_length_getlcl"]
         state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_getlcl"]
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
@@ -369,7 +379,7 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            locals.updraft_origin_level.field[:] += 1
+            state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
             state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
@@ -386,7 +396,9 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
             "local_geopotential_height_cloud_levels_getlcl": locals.geopotential_height_cloud_levels.field[:],
             "topography_height_no_negative_getlcl": state.input_output.topography_height_no_negative.field[:],
             "ocean_fraction_getlcl": state.input.ocean_fraction.field[:],
-            "local_updraft_origin_level_getlcl": locals.updraft_origin_level.field[:],
+            "updraft_origin_level_getlcl": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "grid_length_getlcl": state.input_output.grid_length.field[:],
             "lcl_level_getlcl": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "error_code_getlcl": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],

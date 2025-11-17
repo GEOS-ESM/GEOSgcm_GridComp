@@ -45,7 +45,7 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
             "local_env_saturation_mixing_ratio_forced_ccb": {},
             "entrainment_rate_ccb": {},
             "local_cloud_moist_static_energy_forced_transported_ccb": {},
-            "local_updraft_origin_level_ccb": {},
+            "updraft_origin_level_ccb": {},
             "local_maximum_updraft_origin_level_ccb": {},
             "lcl_level_ccb": {},
             "updraft_lfc_level_ccb": {},
@@ -127,7 +127,9 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
         locals.cloud_moist_static_energy_forced_transported.data[:] = inputs[
             "local_cloud_moist_static_energy_forced_transported_ccb"
         ]
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level_ccb"]
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_origin_level_ccb"
+        ]
         locals.maximum_updraft_origin_level.data[:] = inputs["local_maximum_updraft_origin_level_ccb"]
         state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_ccb"]
         state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
@@ -159,7 +161,7 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            locals.updraft_origin_level.field[:] += 1
+            state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
             state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
@@ -200,7 +202,9 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
             "local_env_saturation_mixing_ratio_forced_ccb": locals.cloud_moist_static_energy_forced_transported.field[
                 :
             ],
-            "local_updraft_origin_level_ccb": locals.updraft_origin_level.field[:],
+            "updraft_origin_level_ccb": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "local_maximum_updraft_origin_level_ccb": locals.maximum_updraft_origin_level.field[:],
             "lcl_level_ccb": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "updraft_lfc_level_ccb": state.output.updraft_lfc_level.field[

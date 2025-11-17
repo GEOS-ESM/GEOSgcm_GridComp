@@ -289,7 +289,7 @@ class GF2020CumulusParameterizationState(State):
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
-                "dtype": Float,
+                "dtype": Int,
             }
         )
         updraft_lfc_level: Quantity = dataclasses.field(
@@ -391,36 +391,36 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        mass_entrainment_updraft: Quantity = dataclasses.field(
+        mass_entrainment_updraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "mass_entrainment_updraft",
+                "name": "mass_entrainment_updraft_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        mass_entrainment_downdraft: Quantity = dataclasses.field(
+        mass_entrainment_downdraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "mass_entrainment_downdraft",
+                "name": "mass_entrainment_downdraft_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        mass_detrainment_updraft: Quantity = dataclasses.field(
+        mass_detrainment_updraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "mass_detrainment_updraft",
+                "name": "mass_detrainment_updraft_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        mass_detrainment_downdraft: Quantity = dataclasses.field(
+        mass_detrainment_downdraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "mass_detrainment_downdraft",
+                "name": "mass_detrainment_downdraft_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",

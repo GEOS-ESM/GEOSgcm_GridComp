@@ -255,11 +255,14 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._updraft_mass_flux_profile = UpdraftMassFluxProfile()
-
-        self._calculate_mass_entrainment_detrainment = (
-            CalculateMassEntrainmentDetrainment()
+        self._updraft_mass_flux_profile = UpdraftMassFluxProfile(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
         )
+
+        self._calculate_mass_entrainment_detrainment = CalculateMassEntrainmentDetrainment()
 
         self._first_guess_moist_static_energy = FirstGuessMoistStaticEnergy(
             stencil_factory=stencil_factory,
@@ -276,9 +279,7 @@ class CumulusParameterization:
 
         self._melting_profile = MeltingProfile()
 
-        self._moist_static_energy_and_momentum_budget = (
-            UpdraftMoistStaticEnergyAndMomentumBudget()
-        )
+        self._moist_static_energy_and_momentum_budget = UpdraftMoistStaticEnergyAndMomentumBudget()
 
         self._in_cloud_updraft_air_temperature = UpdraftInCloudUpdraftAirTemperature(
             stencil_factory=stencil_factory,
@@ -297,13 +298,11 @@ class CumulusParameterization:
 
         self._downdraft_wet_bulb = DowndraftWetBlub()
 
-        self._downdraft_moist_static_energy_and_moisture_budget = (
-            DowndraftMoistStaticEnergyAndMoistureBudget(
-                stencil_factory=stencil_factory,
-                quantity_factory=quantity_factory,
-                config=config,
-                cumulus_parameterization_config=cumulus_parameterization_config,
-            )
+        self._downdraft_moist_static_energy_and_moisture_budget = DowndraftMoistStaticEnergyAndMoistureBudget(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
         self._downdraft_moisture_properties = DowndraftMoistureProperties()
@@ -526,7 +525,6 @@ class CumulusParameterization:
                 )
 
                 # use cloud for plumes
-                # NOTE UNFINISHED
                 self._cloud_top(
                     state=state,
                     locals=locals,
@@ -534,7 +532,11 @@ class CumulusParameterization:
                 )
 
                 # determine the normalized mass flux profile for updraft
-                self._updraft_mass_flux_profile()
+                self._updraft_mass_flux_profile(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # calculate mass entrainment and detrainment
                 self._calculate_mass_entrainment_detrainment()
