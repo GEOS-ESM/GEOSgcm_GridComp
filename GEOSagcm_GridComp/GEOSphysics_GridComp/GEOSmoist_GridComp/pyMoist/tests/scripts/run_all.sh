@@ -19,4 +19,3 @@ python -m pytest -s --disable-warnings --multimodal_metric \
     --no_report \
     --threshold_overrides_file=./overrides.yml \
     ..
-    
