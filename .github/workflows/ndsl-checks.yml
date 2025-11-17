@@ -19,12 +19,12 @@ jobs:
         with:
           repository: NOAA-GFDL/NDSL
           submodules: 'recursive'
-          path: '${GITHUB_WORKSPACE}/ndsl'
+          path: '${{ github.workspace }}/ndsl'
       - name: Checkout repository
         uses: actions/checkout@master
         with:
           submodules: 'recursive'
-          path: '${GITHUB_WORKSPACE}/GCMGridComp'
+          path: '${{ github.workspace }}/GCMGridComp'
       - name: Step Python 3.11.9
         uses: actions/setup-python@v4.6.0
         with:
@@ -35,9 +35,9 @@ jobs:
       - name: Install Python packages
         run: |
           python -m pip install --upgrade pip setuptools wheel pre-commit
-          cd ${GITHUB_WORKSPACE}/ndsl
+          cd ${{ github.workspace }}/ndsl
           pip install -e .[develop]
-          cd ${${GITHUB_WORKSPACE}}/GCMGridComp
+          cd ${{ github.workspace }}/GCMGridComp
           pip install -e ./GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
     
   lint:
@@ -46,7 +46,7 @@ jobs:
     steps:
         - name: Run lint via pre-commit
           run: |
-            cd ${GITHUB_WORKSPACE}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+            cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
             pre-commit run --all-files
   
   translate_test:
@@ -58,12 +58,12 @@ jobs:
     steps:
       - name: Download test_data (if not cached)
         run: |
-          cd ${GITHUB_WORKSPACE}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
           mkdir -p ./test_data  && cd ./test_data
           wget ${{ env.DATA_URL }}
           tar -xzvf TBC_C24L72.tar.gz
 
       - name: Run all tests
         run: |
-          cd ${GITHUB_WORKSPACE}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
+          cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
           ./run_all.sh
