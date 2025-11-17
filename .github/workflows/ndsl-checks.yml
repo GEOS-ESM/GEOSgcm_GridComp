@@ -12,6 +12,9 @@ concurrency:
 
 jobs:
   setup:
+    env:
+      DATA_PATH: ./test_data/11.5.2/TBC_C24_L72/moist
+      DATA_URL: "https://portal.nccs.nasa.gov/datashare/astg/smt/geos-fp/translate/11.5.2/x86_GNU/Moist/TBC_C24L72.tar.gz"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout NDSL
@@ -39,30 +42,16 @@ jobs:
           pip install -e .[develop]
           cd ${{ github.workspace }}/GCMGridComp
           pip install -e ./GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
-    
-  lint:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-        - name: Run lint via pre-commit
-          run: |
-            cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
-            pre-commit run --all-files
-  
-  translate_test:
-    runs-on: ubuntu-latest
-    needs: setup
-    env:
-      DATA_PATH: ./test_data/11.5.2/TBC_C24_L72/moist
-      DATA_URL: "https://portal.nccs.nasa.gov/datashare/astg/smt/geos-fp/translate/11.5.2/x86_GNU/Moist/TBC_C24L72.tar.gz"
-    steps:
+      - name: Run lint via pre-commit
+        run: |
+          cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          pre-commit run --all-files
       - name: Download test_data (if not cached)
         run: |
           cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
           mkdir -p ./test_data  && cd ./test_data
           wget ${{ env.DATA_URL }}
           tar -xzvf TBC_C24L72.tar.gz
-
       - name: Run all tests
         run: |
           cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
