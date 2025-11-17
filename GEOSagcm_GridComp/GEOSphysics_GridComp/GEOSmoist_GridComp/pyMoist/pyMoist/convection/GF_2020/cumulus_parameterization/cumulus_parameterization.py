@@ -717,13 +717,28 @@ class CumulusParameterization:
                 self._lightning_flash_density()
 
                 # output precipitation (only deep plume)
-                self._output_deep_precipitation()
+                # NOTE ported, not tested
+                self._output_deep_precipitation(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # for tracer convective transport / outputs
-                self._tracer_output()
+                # NOTE ported, not tested
+                self._tracer_output(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # convert mass fluxes, etc...
-                self._prepare_output()
+                # NOTE ported, not tested
+                self._prepare_output(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # outputs a model sounding for the stand-alone code (part 2)
                 self._sounding()

@@ -7,7 +7,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
     FloatField_Plume,
     FloatFieldIJ_Ensemble,
-    FloatFieldIJ,
 )
 
 

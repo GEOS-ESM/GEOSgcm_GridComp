@@ -17,6 +17,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.precip.stencils import 
     partition_liquid_ice,
     get_precip_fluxes,
     output_evaporation_flux,
+    output_deep_precipitation,
 )
 
 
@@ -185,11 +186,37 @@ class LightningFlassDensity:
 
 
 class OutputDeepPrecipitation:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+        # construct stencils and functions
+        self._output_deep_precipitation = stencil_factory.from_dims_halo(
+            func=output_deep_precipitation,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._output_deep_precipitation(
+            # cumulus=,
+            # error_code=,
+            # plume=,
+            # ktop=,
+            # prec_flx=,
+            # prfil_gf=,
+        )
 
 
 class UpdateWorkfunctionsAndCondensates:

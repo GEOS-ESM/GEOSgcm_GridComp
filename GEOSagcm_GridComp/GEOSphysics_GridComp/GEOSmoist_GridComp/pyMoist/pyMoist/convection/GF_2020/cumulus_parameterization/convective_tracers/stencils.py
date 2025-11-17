@@ -1,4 +1,4 @@
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
+from ndsl.dsl.typing import FloatField, Int
 from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K, BACKWARD
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 import pyMoist.constants as constants
@@ -10,12 +10,16 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 )
 
 
-def diurnal_cycle(
-    cumulus: Int,
-    T_star: FloatFieldIJ,
+def tracer_output(
+    error_code: FloatFieldIJ_Plume,
+    plume: Int,
+    tup: FloatField,
+    tempco: FloatField,
+    t_cup: FloatField,
 ):
-    with computation(PARALLEL), interval(...):
-        if cumulus == cumulus_parameterization_constants.deep:
-            T_star = 5.0
-        else:
-            T_star = 40.0
+    with computation(PARALLEL), interval(0, -1):
+        if error_code[0, 0][plume]:
+            tup = tempco
+    with computation(PARALLEL), interval(-1, None):
+        if error_code[0, 0][plume]:
+            tup = t_cup
