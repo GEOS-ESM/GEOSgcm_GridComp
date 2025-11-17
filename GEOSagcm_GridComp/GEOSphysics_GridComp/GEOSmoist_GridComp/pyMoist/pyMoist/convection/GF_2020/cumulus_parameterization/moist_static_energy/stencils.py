@@ -7,7 +7,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
     FloatField_Plume,
     FloatFieldIJ_Ensemble,
-    FloatFieldIJ,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
     get_updraft_origin_conditions,
@@ -20,7 +19,7 @@ def parcel_moist_static_energy(
     vapor_excess: FloatFieldIJ,
     add_buoyancy: FloatFieldIJ,
     ocean_fraction: FloatFieldIJ,
-    updraft_origin_level: IntFieldIJ,
+    updraft_origin_level: IntFieldIJ_Plume,
     p: FloatField,
     environmenet_moist_static_energy: FloatField,
     environmenet_moist_static_energy_forced: FloatField,
@@ -43,7 +42,7 @@ def parcel_moist_static_energy(
                 field=environmenet_moist_static_energy,
                 scalar_perturbation=modification,
                 p=p,
-                updraft_origin_level=updraft_origin_level,
+                updraft_origin_level=updraft_origin_level[0,0][plume],
                 ocean_fraction=ocean_fraction,
                 BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
@@ -55,7 +54,7 @@ def parcel_moist_static_energy(
                 field=environmenet_moist_static_energy_forced,
                 scalar_perturbation=modification,
                 p=p,
-                updraft_origin_level=updraft_origin_level,
+                updraft_origin_level=updraft_origin_level[0,0][plume],
                 ocean_fraction=ocean_fraction,
                 BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
@@ -86,9 +85,7 @@ def first_guess_mse(
         if error_code[0, 0][plume] == 0:
             if K >= start_level + 1 and K <= ktop + 1:
                 denom: FloatFieldIJ = (
-                    zu.at(K=K - 1)
-                    - 0.5 * up_massdetro.at(K=K - 1)
-                    + up_massentro.at(K=K - 1)
+                    zu.at(K=K - 1) - 0.5 * up_massdetro.at(K=K - 1) + up_massentro.at(K=K - 1)
                 )
                 if denom > 0.0:
                     hco = (

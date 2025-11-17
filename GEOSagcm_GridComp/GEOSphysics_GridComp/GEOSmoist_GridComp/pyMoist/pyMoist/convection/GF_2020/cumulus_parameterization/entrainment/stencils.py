@@ -1,22 +1,15 @@
-from ndsl import QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, IntFieldIJ, Int
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-import pyMoist.constants as constants
 from gt4py.cartesian.gtscript import (
     PARALLEL,
     FORWARD,
-    BACKWARD,
     computation,
     interval,
-    int32,
-    log,
-    exp,
     K,
 )
-from ndsl.dsl.gt4py import function
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import saturation_vapor_pressure
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
+from ndsl.stencils.column_operations import column_max_ddim
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_updraft_origin_conditions
 
 
 def entrainment_rates(
@@ -88,3 +81,180 @@ def downdraft_entrainment_profiles(
             scale_dependence_factor_downdraft = 1.0
         else:
             scale_dependence_factor_downdraft = 0.0
+
+
+def compute_lateral_massflux(
+    error_code: IntFieldIJ_Plume,
+    cloud_top: IntFieldIJ_Plume,
+    geopotential_height: FloatField,
+    normalized_massflux_updraft: FloatField_Plume,
+    detrainment_function_updraft: FloatField,
+    entrainment_rate: FloatField_Plume,
+    p_cloud_levels_forced: FloatField_Plume,
+    mass_entrainment_updraft_forced: FloatField_Plume,
+    mass_detrainment_updraft_forced: FloatField_Plume,
+    mass_entrainment_updraft: FloatField,
+    mass_detrainment_updraft: FloatField,
+    updraft_lfc_level: IntFieldIJ_Plume,
+    updraft_origin_level: IntFieldIJ_Plume,
+    pbl_level: IntFieldIJ,
+    mass_entrainment_u_updraft: FloatField,
+    mass_detrainment_u_updraft: FloatField,
+    LAMBDA_DEEP: Float,
+    plume: Int,
+):
+    from __externals__ import k_end
+
+    with computation(PARALLEL), interval(...):
+        mass_entrainment_updraft_forced[0, 0, 0][plume] = 0.0
+        mass_detrainment_updraft_forced[0, 0, 0][plume] = 0.0
+        mass_entrainment_u_updraft = 0.0
+        mass_detrainment_u_updraft = 0.0
+
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0:
+            _, index = column_max_ddim(normalized_massflux_updraft, plume, 0, k_end)
+            max_index: IntFieldIJ = index
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            # will not allow detrainment below cloud base or in the PBL
+            if plume == 0:
+                if K <= max(updraft_lfc_level[0, 0][plume], updraft_origin_level[0, 0][plume]) + 1:
+                    detrainment_function_updraft = 0
+            else:
+                if K <= max_index + 1:
+                    detrainment_function_updraft = 0
+
+    # mass entrainment and detrainment are defined on model levels
+    with computation(FORWARD), interval(0, -1):
+        if error_code[0, 0][plume] == 0:
+            # below location of maximum value normalized_massflux_updraft -> change entrainment
+            if K <= max_index - 1:
+                height_massflux_avg = (
+                    geopotential_height[0, 0, 1] - geopotential_height
+                ) * normalized_massflux_updraft[0, 0, 0][plume]
+                mass_detrainment_updraft_forced[0, 0, 0][plume] = (
+                    detrainment_function_updraft * height_massflux_avg
+                )
+                mass_entrainment_updraft_forced[0, 0, 0][plume] = (
+                    normalized_massflux_updraft[0, 0, 1][plume]
+                    + -normalized_massflux_updraft[0, 0, 0][plume]
+                    + mass_detrainment_updraft_forced[0, 0, 0][plume]
+                )
+                mass_entrainment_updraft_forced[0, 0, 0][plume] = max(
+                    mass_entrainment_updraft_forced[0, 0, 0][plume], 0.0
+                )
+
+                # check mass_detrainment_updraft_forced in case it has been changed above
+                mass_detrainment_updraft_forced[0, 0, 0][plume] = (
+                    -normalized_massflux_updraft[0, 0, 1][plume]
+                    + normalized_massflux_updraft[0, 0, 0][plume]
+                    + mass_entrainment_updraft_forced[0, 0, 0][plume]
+                )
+
+    with computation(FORWARD), interval(0, -1):
+        if error_code[0, 0][plume] == 0:
+            if K >= max_index and K <= cloud_top[0, 0][plume]:
+                # above location of maximum value normalized_massflux_updraft -> change entrainment
+                height_massflux_avg = (
+                    geopotential_height[0, 0, 1] - geopotential_height
+                ) * normalized_massflux_updraft[0, 0, 0][plume]
+                mass_entrainment_updraft_forced[0, 0, 0][plume] = (
+                    entrainment_rate[0, 0, 0][plume] * height_massflux_avg
+                )
+                mass_detrainment_updraft_forced[0, 0, 0][plume] = (
+                    normalized_massflux_updraft[0, 0, 0][plume]
+                    + mass_entrainment_updraft_forced[0, 0, 0][plume]
+                    - normalized_massflux_updraft[0, 0, 1][plume]
+                )
+                mass_detrainment_updraft_forced[0, 0, 0][plume] = max(
+                    mass_detrainment_updraft_forced[0, 0, 0][plume], 0.0
+                )
+
+                # check mass_entrainment_updraft_forced in case it has been changed above
+                mass_entrainment_updraft_forced[0, 0, 0][plume] = (
+                    -normalized_massflux_updraft[0, 0, 0][plume]
+                    + mass_detrainment_updraft_forced[0, 0, 0][plume]
+                    + normalized_massflux_updraft[0, 0, 1][plume]
+                )
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            mass_entrainment_updraft = mass_entrainment_updraft_forced[0, 0, 0][plume]
+            mass_detrainment_updraft = mass_detrainment_updraft_forced[0, 0, 0][plume]
+
+    with computation(FORWARD), interval(1, None):
+        if error_code[0, 0][plume] == 0:
+            # for weaker mixing
+            mass_entrainment_u_updraft[0, 0, -1] = (
+                mass_entrainment_updraft_forced[0, 0, -1][plume]
+                + LAMBDA_DEEP * mass_detrainment_updraft_forced[0, 0, -1][plume]
+            )
+            mass_detrainment_u_updraft[0, 0, -1] = (
+                mass_detrainment_updraft_forced[0, 0, -1][plume]
+                + LAMBDA_DEEP * mass_detrainment_updraft_forced[0, 0, -1][plume]
+            )
+
+
+def compute_uc_vc(
+    u_c: FloatField,
+    v_c: FloatField,
+    cloud_moist_static_energy: FloatField,
+    cloud_moist_static_energy_forced: FloatField,
+    error_code: IntFieldIJ_Plume,
+    start_level: IntFieldIJ,
+    moist_static_energy_origin_level: FloatFieldIJ,
+    moist_static_energy_origin_level_forced: FloatFieldIJ,
+    u_cloud_levels: FloatField,
+    v_cloud_levels: FloatField,
+    p: FloatField,
+    updraft_origin_level: IntFieldIJ_Plume,
+    ocean_fraction: FloatFieldIJ,
+    AVERAGE_LAYER_DEPTH: Float,
+    plume: Int,
+):
+    from __externals__ import k_end, BOUNDARY_CONDITION_METHOD
+
+    with computation(PARALLEL), interval(...):
+        u_c = 0.0
+        v_c = 0.0
+        cloud_moist_static_energy = 0.0
+        cloud_moist_static_energy_forced = 0.0
+
+    with computation(PARALLEL), interval(...):
+        # need dummy field for function calls
+        # will not be read so long as compute_perturbation is False
+        dummy_field_no_read = 0
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0 and K <= start_level:
+            cloud_moist_static_energy = moist_static_energy_origin_level
+            cloud_moist_static_energy_forced = moist_static_energy_origin_level_forced
+
+            # get uc and vc as average between layers below k22
+            u_c = get_updraft_origin_conditions(
+                field=u_cloud_levels,
+                scalar_perturbation=0,
+                p=p,
+                updraft_origin_level=updraft_origin_level[0, 0][plume],
+                ocean_fraction=ocean_fraction,
+                BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
+                AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
+                k_end=k_end,
+                compute_perturbation=False,
+                perturbation_field=dummy_field_no_read,
+            )
+
+            v_c = get_updraft_origin_conditions(
+                field=v_cloud_levels,
+                scalar_perturbation=0,
+                p=p,
+                updraft_origin_level=updraft_origin_level[0, 0][plume],
+                ocean_fraction=ocean_fraction,
+                BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
+                AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
+                k_end=k_end,
+                compute_perturbation=False,
+                perturbation_field=dummy_field_no_read,
+            )

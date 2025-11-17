@@ -123,6 +123,12 @@ from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cu
     TranslateGF2020_CumulusParameterization_CloudTop_deep,
 )
 
+# UpdraftMassFluxProfile test goes here
+from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_Cumulus_Parameterization_CalculateMassEntrainmentDetrainment import (
+    TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_deep,
+)
+
+
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
     TranslateGetMeltingProfile,

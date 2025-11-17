@@ -197,7 +197,7 @@ def set_constants(
             plume_dependent_constants.LAMBDA_DEEP = Float(0.0)
             plume_dependent_constants.LAMBDA_DOWN = Float(0.0)
         else:
-            plume_dependent_constants.LAMBDA_DEEP = cumulus_parameterization_config.LAMBDA_SHALLOW_DOWN
+            plume_dependent_constants.LAMBDA_DEEP = cumulus_parameterization_config.LAMBDA_DEEP
             plume_dependent_constants.LAMBDA_DOWN = cumulus_parameterization_config.LAMBDA_SHALLOW_DOWN
 
         # minimum depth (m) clouds must have

@@ -106,15 +106,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    updraft_origin_level: Quantity = dataclasses.field(
-        metadata={
-            "name": "updraft_origin_level",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Int,
-        }
-    )
     maximum_updraft_origin_level: Quantity = dataclasses.field(
         metadata={
             "name": "maximum_updraft_origin_level",
@@ -628,9 +619,27 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    u_c: Quantity = dataclasses.field(
+        metadata={
+            "name": "u_c",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     v_cloud_levels: Quantity = dataclasses.field(
         metadata={
             "name": "v_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    v_c: Quantity = dataclasses.field(
+        metadata={
+            "name": "v_c",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -721,7 +730,7 @@ class GF2020CumulusParameterizationLocals(State):
     cloud_moist_static_energy: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_moist_static_energy",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -730,7 +739,7 @@ class GF2020CumulusParameterizationLocals(State):
     cloud_moist_static_energy_forced: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_moist_static_energy_forced",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -758,6 +767,42 @@ class GF2020CumulusParameterizationLocals(State):
         metadata={
             "name": "frh_lfc",
             "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    mass_entrainment_updraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "mass_entrainment_updraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    mass_detrainment_updraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "mass_detrainment_updraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    mass_entrainment_u_updraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "mass_entrainment_u_updraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    mass_detrainment_u_updraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "mass_detrainment_u_updraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

@@ -29,7 +29,7 @@ class TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_shal
         self.quantity_factory = grid.quantity_factory
 
         self.in_vars["data_vars"] = {
-            "local_updraft_origin_level": {},
+            "updraft_origin_level": {},
             "error_code": {},
             "local_env_moist_static_energy_cloud_levels_forced": {},
             "local_maximum_updraft_origin_level": {},
@@ -66,7 +66,9 @@ class TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_shal
         )
 
         # fill relevant parts of dataclasses
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level"]
+        state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_origin_level"
+        ]
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_moist_static_energy_cloud_levels_forced"
@@ -89,11 +91,13 @@ class TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_shal
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            locals.updraft_origin_level.field[:] = locals.updraft_origin_level.field[:] + 1
+            state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
         outputs = {
-            "local_updraft_origin_level": locals.updraft_origin_level.field[:],
+            "updraft_origin_level": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_env_moist_static_energy_cloud_levels_forced": locals.environment_moist_static_energy_cloud_levels_forced.field[
                 :
@@ -116,7 +120,7 @@ class TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_mid(
         self.quantity_factory = grid.quantity_factory
 
         self.in_vars["data_vars"] = {
-            "local_updraft_origin_level": {},
+            "updraft_origin_level": {},
             "error_code": {},
             "local_env_moist_static_energy_cloud_levels_forced": {},
             "local_maximum_updraft_origin_level": {},
@@ -153,7 +157,9 @@ class TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_mid(
         )
 
         # fill relevant parts of dataclasses
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level"]
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_origin_level"
+        ]
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_moist_static_energy_cloud_levels_forced"
@@ -176,11 +182,13 @@ class TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_mid(
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            locals.updraft_origin_level.field[:] = locals.updraft_origin_level.field[:] + 1
+            state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
         outputs = {
-            "local_updraft_origin_level": locals.updraft_origin_level.field[:],
+            "updraft_origin_level": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_env_moist_static_energy_cloud_levels_forced": locals.environment_moist_static_energy_cloud_levels_forced.field[
                 :
@@ -203,7 +211,7 @@ class TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_deep
         self.quantity_factory = grid.quantity_factory
 
         self.in_vars["data_vars"] = {
-            "local_updraft_origin_level": {},
+            "updraft_origin_level": {},
             "error_code": {},
             "local_env_moist_static_energy_cloud_levels_forced": {},
             "local_maximum_updraft_origin_level": {},
@@ -240,7 +248,9 @@ class TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_deep
         )
 
         # fill relevant parts of dataclasses
-        locals.updraft_origin_level.data[:] = inputs["local_updraft_origin_level"]
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_origin_level"
+        ]
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_moist_static_energy_cloud_levels_forced"
@@ -263,11 +273,13 @@ class TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_deep
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            locals.updraft_origin_level.field[:] = locals.updraft_origin_level.field[:] + 1
+            state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
         outputs = {
-            "local_updraft_origin_level": locals.updraft_origin_level.field[:],
+            "updraft_origin_level": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_env_moist_static_energy_cloud_levels_forced": locals.environment_moist_static_energy_cloud_levels_forced.field[
                 :
