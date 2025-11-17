@@ -55,4 +55,4 @@ jobs:
       - name: Run all tests
         run: |
           cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
-          ./run_all.sh ${{ env.DATA_PATH }} dace:cpu_kfirst
+          ./run_all.sh ../../${{ env.DATA_PATH }} dace:cpu_kfirst
