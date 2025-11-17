@@ -1,8 +1,19 @@
-from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD, function
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, Int
+from ndsl.dsl.gt4py import (
+    PARALLEL,
+    computation,
+    interval,
+    FORWARD,
+    function,
+    BACKWARD,
+    K,
+)
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, Int, IntFieldIJ
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    FloatField_Plume,
+    IntFieldIJ_Plume,
+)
 from pyMoist.shared_incloud_processes import ice_fraction
 
 
@@ -29,7 +40,10 @@ def liquid_fraction(
             1.0,
             (
                 max(0.0, (t - cumulus_parameterization_constants.T_ICE))
-                / (cumulus_parameterization_constants.T_0 - cumulus_parameterization_constants.T_ICE)
+                / (
+                    cumulus_parameterization_constants.T_0
+                    - cumulus_parameterization_constants.T_ICE
+                )
             )
             ** 2,
         )
@@ -73,7 +87,9 @@ def partition_liquid_ice(
         if MELT_ICE == 1 and plume == 2:
             if error_code[0, 0][plume] == 0:
                 # get function of T for partition of total condensate into liq and ice phases
-                part_liquid_ice = liquid_fraction(t, convection_fraction, surface_type, MODIS_FRACTION)
+                part_liquid_ice = liquid_fraction(
+                    t, convection_fraction, surface_type, MODIS_FRACTION
+                )
 
     with computation(PARALLEL), interval(0, -1):
         if MELT_ICE == 1 and plume == 2:
@@ -86,7 +102,8 @@ def partition_liquid_ice(
                     cumulus_parameterization_constants.T_0 - delT
                 ):
                     melting_layer = (
-                        (t - (cumulus_parameterization_constants.T_0 - delT)) / (2.0 * delT)
+                        (t - (cumulus_parameterization_constants.T_0 - delT))
+                        / (2.0 * delT)
                     ) ** 2
 
                 else:
@@ -113,5 +130,45 @@ def partition_liquid_ice(
                 melting_layer = (
                     melting_layer
                     / (norm + 1.0e-6)
-                    * (100 * (p[0, 0, 0][plume] - p.at(K=k_end - 1, ddim=[plume])) / constants.MAPL_GRAV)
+                    * (
+                        100
+                        * (p[0, 0, 0][plume] - p.at(K=k_end - 1, ddim=[plume]))
+                        / constants.MAPL_GRAV
+                    )
                 )
+
+
+def get_precip_fluxes(
+    edto: FloatField,
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+    ktop: IntField,
+    pwdo: FloatField,
+    pwo: FloatField,
+    xmb: FloatField,
+    prec_flx: FloatField,
+    evap_flx: FloatField,
+):
+    with computation(BACKWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if K < ktop:
+                prec_flx = prec_flx[0, 0, 1] + xmb * (pwo + edto * pwdo)
+                prec_flx = max(0.0, prec_flx)
+
+                evap_flx = evap_flx[0, 0, 1] - xmb * edto * pwdo
+                evap_flx = max(0.0, evap_flx)
+
+
+def output_evaporation_flux(
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+    ktop: IntFieldIJ,
+    po_cup: FloatField,
+    evap_flx: FloatField,
+    revsu_gf: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if K <= ktop:
+                dp: FloatFieldIJ = 100.0 * (po_cup - po_cup.at(K=K + 1))
+                revsu_gf = revsu_gf + evap_flx * constants.MAPL_GRAV / dp

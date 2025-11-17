@@ -692,7 +692,7 @@ class CumulusParameterization:
                 self._feedback()
 
                 # net precipitation flux (after downdraft evaporation)
-                # NOTE port in progress
+                # NOTE ported, not tested
                 self._precipitation_flux(
                     state=state,
                     locals=locals,
@@ -706,7 +706,12 @@ class CumulusParameterization:
                 self._cloud_dissapation()
 
                 # total (deep+mid) evaporation flux for output (units kg/kg/s)
-                self._output_evaporation_flux()
+                # NOTE ported, not tested
+                self._output_evaporation_flux(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # lightning flashes density (parameterization from Lopez 2016, MWR)
                 self._lightning_flash_density()
