@@ -633,7 +633,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ENDIF
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pa
-
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
                                  ,T, TH, Q, U, V, TMP3D, BYNCY, QLCN, QICN, QLLS, QILS, CNPCPRATE &
@@ -655,6 +654,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,TPWI, TPWI_star, LFR_GF, CNV_TR)
          !!$ser flush_savepoint GF2020_Setup-Out-part-3
          
+         ! CumulusParameterization savepoints
          !$ser flush_savepoint GF2020_CumulusParameterization-In
          !$ser flush_savepoint GF2020_CumulusParameterization-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_Setup-In
@@ -675,10 +675,24 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_GetLCL-In
          !$ser flush_savepoint GF2020_CumulusParameterization_GetLCL-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_EntrainmentRates-In
          !$ser flush_savepoint GF2020_CumulusParameterization_EntrainmentRates-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_ConvectiveCloudBaseLevel-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_ConvectiveCloudBaseLevel-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftEntrainmentProfiles-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftEntrainmentProfiles-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_2-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_2-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_StableDetrainment-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_StableDetrainment-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_CloudTop-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_CloudTop-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFluxProfile-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFluxProfile-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-Out
 
     ELSE
          !- call GF/GEOS5 interface routine
