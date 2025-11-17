@@ -49,10 +49,10 @@ jobs:
       - name: Download test_data (if not cached)
         run: |
           cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
-          mkdir -p ./test_data  && cd ./test_data
+          mkdir -p ${{ env.DATA_PATH }} && cd ${{ env.DATA_PATH }}
           wget ${{ env.DATA_URL }}
           tar -xzvf TBC_C24L72.tar.gz
       - name: Run all tests
         run: |
           cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
-          ./run_all.sh
+          ./run_all.sh ${{ env.DATA_PATH }} dace:cpu_kfirst
