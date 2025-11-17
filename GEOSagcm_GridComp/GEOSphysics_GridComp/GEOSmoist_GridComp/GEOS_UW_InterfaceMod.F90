@@ -1,3 +1,4 @@
+#define ACC_PREFIX !$acc
 ! $Id$
 
 #include "MAPL_Generic.h"
@@ -9,6 +10,28 @@
 !   UW convection
 
 module GEOS_UW_InterfaceMod
+
+#ifdef SERIALIZE
+USE m_serialize, ONLY: &
+  fs_add_savepoint_metainfo, &
+  fs_create_savepoint, &
+  fs_read_field, &
+  fs_write_field
+USE utils_ppser, ONLY:  &
+  ppser_get_mode, &
+  ppser_intlength, &
+  ppser_reallength, &
+  ppser_realtype, &
+  ppser_savepoint, &
+  ppser_serializer, &
+  ppser_serializer_ref, &
+  ppser_zrperturb, &
+  ppser_get_mode
+USE savepoint_helpers
+USE utils_ppser_buffered
+USE utils_ppser_kbuff
+#endif
+
 
   use ESMF
   use MAPL
@@ -325,7 +348,101 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     QLTOT = QLLS+QLCN
     QITOT = QILS+QICN
- 
+
+#ifdef SERIALIZE
+call fs_create_savepoint('ComputeUwshcuInv-In', ppser_savepoint)
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'idim', IM*JM)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'k0', LM)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'dt', UW_DT)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'pmid0_inv', PL)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'zmid0_inv', ZL0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'exnmid0_inv', PK)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'pifc0_inv', PLE)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'zifc0_inv', ZLE0)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'k0', LM)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'dt', UW_DT)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'pmid0_inv', PL)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'zmid0_inv', ZL0)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'exnmid0_inv', PK)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'pifc0_inv', PLE)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'zifc0_inv', ZLE0)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'k0', LM, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'dt', UW_DT, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'pmid0_inv', PL, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'zmid0_inv', ZL0, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'exnmid0_inv', PK, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'pifc0_inv', PLE, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'zifc0_inv', ZLE0, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'exnifc0_inv', PKE)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'dp0_inv', DP)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'u0_inv', U)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'v0_inv', V)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qv0_inv', Q)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'ql0_inv', QLTOT)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qi0_inv', QITOT)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'exnifc0_inv', PKE)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'dp0_inv', DP)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'u0_inv', U)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'v0_inv', V)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qv0_inv', Q)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'ql0_inv', QLTOT)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qi0_inv', QITOT)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'exnifc0_inv', PKE, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'dp0_inv', DP, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'u0_inv', U, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'v0_inv', V, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qv0_inv', Q, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'ql0_inv', QLTOT, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qi0_inv', QITOT, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 't0_inv', T)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'tke_inv', TKE)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'rkfre', RKFRE)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'kpbl_inv', KPBL_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'shfx', SH)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'evap', EVAP)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'cnvtr', CNPCPRATE)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 't0_inv', T)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'tke_inv', TKE)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'rkfre', RKFRE)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'kpbl_inv', KPBL_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'shfx', SH)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'evap', EVAP)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'cnvtr', CNPCPRATE)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 't0_inv', T, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'tke_inv', TKE, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'rkfre', RKFRE, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'kpbl_inv', KPBL_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'shfx', SH, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'evap', EVAP, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'cnvtr', CNPCPRATE, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'frland', FRLAND)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'cush', CUSH)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'frland', FRLAND)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'cush', CUSH)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'frland', FRLAND, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'cush', CUSH, ppser_zrperturb)
+END SELECT
+#endif
+
       !  Call UW shallow convection
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
@@ -349,6 +466,132 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             XC_SC,                                        &
 #endif 
             USE_TRACER_TRANSP_UW)
+
+#ifdef SERIALIZE
+call fs_create_savepoint('ComputeUwshcuInv-Out', ppser_savepoint)
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'umf_inv', UMF_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'dcm_inv', DCM_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qvten_inv', DQVDT_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qlten_inv', DQLDT_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qiten_inv', DQIDT_SC)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'umf_inv', UMF_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'dcm_inv', DCM_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qvten_inv', DQVDT_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qlten_inv', DQLDT_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qiten_inv', DQIDT_SC)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'umf_inv', UMF_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'dcm_inv', DCM_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qvten_inv', DQVDT_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qlten_inv', DQLDT_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qiten_inv', DQIDT_SC, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'tten_inv', DTDT_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'uten_inv', DUDT_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'vten_inv', DVDT_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qrten_inv', DQRDT_SC)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'tten_inv', DTDT_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'uten_inv', DUDT_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'vten_inv', DVDT_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qrten_inv', DQRDT_SC)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'tten_inv', DTDT_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'uten_inv', DUDT_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'vten_inv', DVDT_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qrten_inv', DQRDT_SC, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qsten_inv', DQSDT_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'cufrc_inv', CUFRC_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'fer_inv', ENTR_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'fdr_inv', DETR_SC)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qsten_inv', DQSDT_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'cufrc_inv', CUFRC_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'fer_inv', ENTR_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'fdr_inv', DETR_SC)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qsten_inv', DQSDT_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'cufrc_inv', CUFRC_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'fer_inv', ENTR_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'fdr_inv', DETR_SC, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qldet_inv', QLDET_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qidet_inv', QIDET_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qlsub_inv', QLSUB_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qisub_inv', QISUB_SC)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qldet_inv', QLDET_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qidet_inv', QIDET_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qlsub_inv', QLSUB_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qisub_inv', QISUB_SC)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qldet_inv', QLDET_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qidet_inv', QIDET_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qlsub_inv', QLSUB_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qisub_inv', QISUB_SC, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'ndrop_inv', SC_NDROP)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'nice_inv', SC_NICE)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'cush', CUSH)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'ndrop_inv', SC_NDROP)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'nice_inv', SC_NICE)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'cush', CUSH)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'ndrop_inv', SC_NDROP, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'nice_inv', SC_NICE, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'cush', CUSH, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qtflx_inv', QTFLX_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'slflx_inv', SLFLX_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'uflx_inv', UFLX_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'vflx_inv', VFLX_SC)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qtflx_inv', QTFLX_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'slflx_inv', SLFLX_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'uflx_inv', UFLX_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'vflx_inv', VFLX_SC)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qtflx_inv', QTFLX_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'slflx_inv', SLFLX_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'uflx_inv', UFLX_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'vflx_inv', VFLX_SC, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'tpert_out', TPERT_SC)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'qpert_out', QPERT_SC)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'tpert_out', TPERT_SC)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qpert_out', QPERT_SC)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'tpert_out', TPERT_SC, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'qpert_out', QPERT_SC, ppser_zrperturb)
+END SELECT
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'dotransport', USE_TRACER_TRANSP_UW)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'dotransport', USE_TRACER_TRANSP_UW)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'dotransport', USE_TRACER_TRANSP_UW, ppser_zrperturb)
+END SELECT
+#endif
+      
 
       !  Apply tendencies
       !--------------------------------------------------------------
