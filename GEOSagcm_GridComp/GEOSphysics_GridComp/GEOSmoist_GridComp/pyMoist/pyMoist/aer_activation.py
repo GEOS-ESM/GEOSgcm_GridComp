@@ -1,7 +1,7 @@
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, float64, interval, log, sqrt
 
 import pyMoist.constants as constants
-from ndsl import QuantityFactory, StencilFactory, orchestrate
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.field_types import FloatField_NModes
@@ -21,8 +21,8 @@ DELTAAI = float64(2.809e3)
 DENSIC = float64(917.0)  # Ice crystal density in kgm-3
 
 # Default precision
-NN_MIN = 100.0e6
-NN_MAX = 1000.0e6
+NN_MIN = Float(100.0e6)
+NN_MAX = Float(1000.0e6)
 
 # ACTFRAC_Mat constants - all 64 bit
 PI = float64(3.141592653589793e00)
@@ -282,7 +282,7 @@ def aer_activation_stencil(
             nacti = NN_MAX
 
 
-class AerActivation:
+class AerActivation(NDSLRuntime):
     """
     Class for aerosol activation computation.
 
@@ -313,48 +313,28 @@ class AerActivation:
         NotImplementedError: If the number of modes is not equal to the expected number.
         NotImplementedError: If the neural network for aerosol is not implemented.
         """
-        orchestrate(obj=self, config=stencil_factory.config.dace_config)
+        super().__init__(dace_config=stencil_factory.config.dace_config)
 
         if constants.N_MODES != n_modes:
             raise NotImplementedError(
-                f"Coding limitation: {constants.N_MODES} modes are expected, " f"getting {n_modes}"
+                f"Coding limitation: {constants.N_MODES} modes are expected, getting {n_modes}"
             )
 
         if not USE_AERSOL_NN:
             raise NotImplementedError("Non NN Aerosol not implemented")
 
-        # Temporary buffers
+        # Locals
         quantity_factory.add_data_dimensions(
-            **{
+            {
                 "n_modes": constants.N_MODES,
             }
         )
 
-        self._nact = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
-            units="n/a",
-            dtype=Float,
-        )
-        self._ni = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
-            units="n/a",
-            dtype=Float,
-        )
-        self._rg = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
-            units="n/a",
-            dtype=Float,
-        )
-        self._sig0 = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
-            units="n/a",
-            dtype=Float,
-        )
-        self._bibar = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
-            units="n/a",
-            dtype=Float,
-        )
+        self._nact = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "n_modes"])
+        self._ni = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "n_modes"])
+        self._rg = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "n_modes"])
+        self._sig0 = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "n_modes"])
+        self._bibar = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "n_modes"])
 
         # Stencil
         self.aer_activation = stencil_factory.from_dims_halo(
