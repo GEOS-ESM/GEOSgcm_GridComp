@@ -25,10 +25,6 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.ntracers_quantity_factory = ComputeUwshcuInv.make_ntracers_quantity_factory(
-            self.quantity_factory,
-        )
-
         # FloatField Inputs
         self.in_vars["data_vars"] = {
             "pifc0_inv": {},
@@ -121,7 +117,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         }
 
     def make_ntracers_ijk_field(self, data) -> Quantity:
-        qty = self.ntracers_quantity_factory.empty(
+        qty = self.quantity_factory.empty(
             [X_DIM, Y_DIM, Z_DIM, "ntracers"],
             "n/a",
         )
@@ -143,7 +139,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
 
         compute_uwshcu = ComputeUwshcuInv(
             self.stencil_factory,
-            self.grid.quantity_factory,
+            self.quantity_factory,
             self.UW_config,
         )
 
