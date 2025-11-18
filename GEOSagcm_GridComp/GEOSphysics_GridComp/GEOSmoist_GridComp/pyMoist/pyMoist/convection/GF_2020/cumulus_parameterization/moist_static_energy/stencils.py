@@ -9,7 +9,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Ensemble,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    get_updraft_origin_conditions,
+    get_cloud_boundary_conditions,
 )
 
 
@@ -38,11 +38,11 @@ def parcel_moist_static_energy(
                 + cumulus_parameterization_constants.CP * t_excess
             ) + add_buoyancy
 
-            moist_static_energy_origin_level = get_updraft_origin_conditions(
+            moist_static_energy_origin_level = get_cloud_boundary_conditions(
                 field=environmenet_moist_static_energy,
                 scalar_perturbation=modification,
                 p=p,
-                updraft_origin_level=updraft_origin_level[0,0][plume],
+                updraft_origin_level=updraft_origin_level[0, 0][plume],
                 ocean_fraction=ocean_fraction,
                 BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
@@ -50,11 +50,11 @@ def parcel_moist_static_energy(
                 compute_perturbation=False,
                 perturbation_field=t_perturbation,
             )
-            moist_static_energy_origin_level_forced = get_updraft_origin_conditions(
+            moist_static_energy_origin_level_forced = get_cloud_boundary_conditions(
                 field=environmenet_moist_static_energy_forced,
                 scalar_perturbation=modification,
                 p=p,
-                updraft_origin_level=updraft_origin_level[0,0][plume],
+                updraft_origin_level=updraft_origin_level[0, 0][plume],
                 ocean_fraction=ocean_fraction,
                 BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
@@ -139,9 +139,7 @@ def moist_static_energy_inside_cloud(
         if error_code[0, 0][plume] == 0:
             if K >= start_level + 1 and K <= ktop + 1:
                 denom: FloatFieldIJ = (
-                    xzu.at(K=K - 1)
-                    - 0.5 * up_massdetro.at(K=K - 1)
-                    + up_massentro.at(K=K - 1)
+                    xzu.at(K=K - 1) - 0.5 * up_massdetro.at(K=K - 1) + up_massentro.at(K=K - 1)
                 )
                 if denom == 0.0:
                     xhc = xhc.at(K=K - 1)
@@ -158,10 +156,7 @@ def moist_static_energy_inside_cloud(
                         ) + x_add_buoy
                         xhc = xhc + x_add * up_massentro.at(K=K - 1) / denom
 
-                xhc = (
-                    xhc
-                    + cumulus_parameterization_constants.XLF * (1.0 - p_liq_ice) * qrco
-                )
+                xhc = xhc + cumulus_parameterization_constants.XLF * (1.0 - p_liq_ice) * qrco
 
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
