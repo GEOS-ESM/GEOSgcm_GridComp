@@ -16,7 +16,7 @@ module GEOS_IssmGridCompMod
 ! *** NOTES: 
 !            (*) currently we run over the Greenland Ice Sheet with all given PETs
 !            (*) ISSM mesh is *internal* to ISSM (C++ source)--we create an ESMF_MESH version for regridding     
-!            (*) the attached grid is inherited from parent. we regrid onto the grid, then transform to tiles  
+!            (*) the attached grid is inherited from parent. we regrid mesh to grid, then transform to tiles  
 !            (*) for future development, note that ISSM expects double precision inputs    
 !
 ! next steps:  
@@ -210,8 +210,8 @@ subroutine SetServices ( GC, RC )
     type(MAPL_MetaComp), pointer           :: MAPL   
 
     ! ErrLog Variables
-    character(len=ESMF_MAXSTR)		       :: IAm
-    integer				                   :: STATUS
+    character(len=ESMF_MAXSTR)		         :: IAm
+    integer				                         :: STATUS
     character(len=ESMF_MAXSTR)             :: COMP_NAME
 
     ! virtual machine / mpi comm
@@ -239,10 +239,12 @@ subroutine SetServices ( GC, RC )
     type(REGRIDHANDLES)                    :: wrap                    ! wrapper for routehandle container
 
     ! command-line arguments to initialize ISSM 
-    integer(c_int)                         :: argc                    ! command line count for ISSM init
-    character(len=200), dimension(:), allocatable, target :: argv     ! command line args for ISSM init
+    character(len=ESMF_MAXSTR), dimension(:), allocatable, target :: argv 
+    integer(c_int)                         :: argc                    ! command line count for ISSM init   
     type(c_ptr), dimension(:), allocatable :: argv_ptr                ! pointer for passing command line args
     integer                                :: i                       ! loop index
+    character(len=ESMF_MAXSTR)             :: ISSM_EXPDIR             ! directory containing ISSM input file
+    character(len=ESMF_MAXSTR)             :: ISSM_EXPNAME            ! name of ISSM input file
 
 
     ! Get the target components name and set-up traceback handle.
@@ -274,15 +276,18 @@ subroutine SetServices ( GC, RC )
     ! call ISSM initialize C++ code so we can set up mesh
 
     ! Manually set command line argc and argv to initialize ISSM 
-    ! note: we will probably want to change the experiment directory argv(3)
-    !       to the GEOS experiment directory(?), after copying the input file (GreenlandGEOS.bin)
-    !       and toolkits file (GreenlandGEOS.toolkits), TBD... 
+    call MAPL_GetResource(MAPL, ISSM_EXPDIR, Label=trim(COMP_NAME)//"_EXPDIR:", RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, ISSM_EXPNAME, Label=trim(COMP_NAME)//"_EXPNAME:", RC=STATUS)
+    VERIFY_(STATUS)
+
     argc = 4  
     allocate(argv(argc))
-    argv(1) = "unused"//c_null_char ! this argument is not actually used for anything
+    argv(1) = "unused"//c_null_char ! executable path: this argument is not used for library calls
     argv(2) = "TransientSolution"//c_null_char
-    argv(3) = "/discover/nobackup/agstubbl/ISSM/GEOS-ISSM/ISSM/examples/GEOSInput"//c_null_char
-    argv(4) = "GreenlandGEOS"//c_null_char
+    argv(3) = trim(ISSM_EXPDIR)//c_null_char
+    argv(4) = trim(ISSM_EXPNAME)//c_null_char
 
     ! Convert Fortran strings to C pointers (in argv_ptr)
     allocate(argv_ptr(argc))
@@ -449,7 +454,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
 
     ! get timestep for ISSM
-    call MAPL_GetResource ( MAPL, dt, Label=trim(COMP_NAME)//"_DT:", RC=STATUS)
+    call MAPL_GetResource (MAPL, dt, Label=trim(COMP_NAME)//"_DT:",DEFAULT=604800.0, RC=STATUS)
+    VERIFY_(STATUS)
 
     ! get number of mesh elements
     call ESMF_MeshGet(mesh,elementCount=num_elements)
