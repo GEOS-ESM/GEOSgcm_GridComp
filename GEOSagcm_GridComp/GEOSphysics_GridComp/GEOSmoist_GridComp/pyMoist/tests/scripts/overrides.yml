@@ -4,3 +4,7 @@ ComputeUwshcuInv:
       absolute_epsilon: 1.00e-08
       relative_fraction: 1.00e-04
       ulp_threshold: 1700.0
+  - backend: dace:cpu_kfirst
+    multimodal:
+      absolute_epsilon: 1.00e-08
+      ulp_threshold: 1000
