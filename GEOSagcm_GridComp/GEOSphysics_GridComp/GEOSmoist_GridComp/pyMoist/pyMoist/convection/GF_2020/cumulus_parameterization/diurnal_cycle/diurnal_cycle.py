@@ -17,6 +17,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle.stencils 
     diurnal_cycle,
 )
 
+
 class DiurnalCycle:
     def __init__(
         self,
@@ -41,6 +42,7 @@ class DiurnalCycle:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+        pass
         # self._diurnal_cycle(
         #     cumulus=,
         #     T_star=,
