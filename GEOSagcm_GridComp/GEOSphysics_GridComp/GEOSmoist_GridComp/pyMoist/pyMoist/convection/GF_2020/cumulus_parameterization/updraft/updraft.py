@@ -1,9 +1,15 @@
 from ndsl import StencilFactory, QuantityFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    GF2020CumulusParameterizationConfig,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
+    GF2020CumulusParameterizationLocals,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
@@ -50,7 +56,7 @@ class UpdraftMassFluxProfile:
 
 
 class UpdraftMoistureProfile:
-    def __init__(self):
+    def __init__():
         pass
 
     def __call__(self, *args, **kwds):

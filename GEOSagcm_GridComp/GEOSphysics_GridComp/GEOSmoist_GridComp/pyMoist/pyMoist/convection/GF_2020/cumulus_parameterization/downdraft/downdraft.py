@@ -15,6 +15,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft.stencils import (
     moist_static_energy_and_moisture_budget,
+    downdraft_wet_bulb,
 )
 
 
@@ -35,11 +36,42 @@ class DowndraftLateralMassFlux:
 
 
 class DowndraftWetBlub:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
+        # construct stencils and functions
+        self._downdraft_wet_bulb = stencil_factory.from_dims_halo(
+            func=downdraft_wet_bulb,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
         pass
+        # self._downdraft_wet_bulb(
+        #     USE_WETBULB=,
+        #     cumulus=,
+        #     error_code=,
+        #     plume=,
+        #     jmin=,
+        #     qo_cup=,
+        #     t_cup=,
+        #     po_cup=,
+        #     q_wetbulb=,
+        #     t_wetbulb=,
+        # )
 
 
 class DowndraftMoistStaticEnergyAndMoistureBudget:

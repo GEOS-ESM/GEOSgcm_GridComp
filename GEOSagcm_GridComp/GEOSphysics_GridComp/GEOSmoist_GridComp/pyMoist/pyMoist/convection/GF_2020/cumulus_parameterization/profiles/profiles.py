@@ -15,6 +15,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.profiles.stencils import (
     in_cloud_updraft_air_temperature,
+    get_melting_profile,
 )
 
 
@@ -27,11 +28,46 @@ class C1DProfile:
 
 
 class MeltingProfile:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
+        # construct stencils and functions
+        self._get_melting_profile = stencil_factory.from_dims_halo(
+            func=get_melting_profile,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
         pass
+        # self._get_melting_profile(
+        #     MELT_GLAC=,
+        #     cumulus=,
+        #     edto=,
+        #     error_code=,
+        #     plume=,
+        #     melting_layer=,
+        #     p_liq_ice=,
+        #     po_cup=,
+        #     pwdo=,
+        #     pwo=,
+        #     qrco=,
+        #     tn_cup=,
+        #     total_pwo_solid_phase=,
+        #     melting=,
+        # )
 
 
 class InCloudTemperature:

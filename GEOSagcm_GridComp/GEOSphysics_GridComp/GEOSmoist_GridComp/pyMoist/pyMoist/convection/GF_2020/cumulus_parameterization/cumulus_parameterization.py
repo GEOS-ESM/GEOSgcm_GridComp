@@ -556,7 +556,12 @@ class CumulusParameterization:
                 )
 
                 # Get buoyancy of updrafts
-                self._get_buoyancy()
+                # NOTE ported and tested (should pass)
+                self._get_buoyancy(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # get "c1d" profile
                 self._c1d_profile()
@@ -565,7 +570,11 @@ class CumulusParameterization:
                 self._updraft_moisture_profile()
 
                 # get melting profile
-                self._melting_profile()
+                self._melting_profile(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # updraft moist static energy + momentum budget
                 self._moist_static_energy_and_momentum_budget()
@@ -595,7 +604,12 @@ class CumulusParameterization:
                 self._downdraft_lateral_mass_flux()
 
                 # wet bulb temperature and moisture at downdraft origin level
-                self._downdraft_wet_bulb()
+                # NOTE ported, not tested
+                self._downdraft_wet_bulb(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # downdraft moist static energy + moisture budget
                 # NOTE ported, but untested
@@ -615,7 +629,11 @@ class CumulusParameterization:
                 self._updraft_cin()
 
                 # trigger function: KE+CIN < 0 --> no convection
-                self._trigger_function_convection()
+                self._trigger_function_convection(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # calculate in-cloud/updraft and downdraft air temperature for vertical velocity
                 # NOTE ported, but untested

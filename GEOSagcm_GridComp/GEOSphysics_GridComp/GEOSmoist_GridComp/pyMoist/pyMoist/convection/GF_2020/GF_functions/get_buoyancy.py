@@ -37,7 +37,7 @@ def get_buoyancy(
     return dby
 
 
-def test_get_buoyancy(
+def get_buoyancy(
     # In
     hc: FloatField,
     he_cup: FloatField,

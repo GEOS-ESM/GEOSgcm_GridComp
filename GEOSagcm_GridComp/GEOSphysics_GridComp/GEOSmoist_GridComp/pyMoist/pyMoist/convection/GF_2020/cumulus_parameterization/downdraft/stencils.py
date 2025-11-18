@@ -1,5 +1,14 @@
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
-from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K, BACKWARD
+from ndsl.dsl.gt4py import (
+    computation,
+    PARALLEL,
+    interval,
+    FORWARD,
+    K,
+    BACKWARD,
+    exp,
+    function,
+)
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 import pyMoist.constants as constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
@@ -8,6 +17,150 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_Plume,
     FloatFieldIJ_Ensemble,
 )
+
+# Parameters needed for get_wetbulb
+RD = 287.06
+RV = 461.52
+RCPD = 1004.71
+RTT = 273.16
+HOH2O = 1000.0
+RLVTT = 2.5008e6
+RLSTT = 2.8345e6
+RETV = RV / RD - 1.0
+RLMLT = RLSTT - RLVTT
+RCPV = 4.0 * RV
+R2ES = 611.21 * RD / RV
+R3LES = 17.502
+R3IES = 22.587
+R4LES = 32.19
+R4IES = -0.7
+R5LES = R3LES * (RTT - R4LES)
+R5IES = R3IES * (RTT - R4IES)
+R5ALVCP = R5LES * RLVTT / RCPD
+R5ALSCP = R5IES * RLSTT / RCPD
+RALVDCP = RLVTT / RCPD
+RALSDCP = RLSTT / RCPD
+RALFDCP = RLMLT / RCPD
+RTWAT = RTT
+RTBER = RTT - 5.0
+RTBERCU = RTT - 5.0
+RTICE = RTT - 23.0
+RTICECU = RTT - 23.0
+RTWAT_RTICE_R = 1.0 / (RTWAT - RTICE)
+RTWAT_RTICECU_R = 1.0 / (RTWAT - RTICECU)
+RVTMP2 = RCPV / RCPD - 1.0
+ZQMAX = 0.5
+
+
+@function
+def get_wetbulb(
+    t_cup,
+    qo_cup,
+    po_cup,
+    max_qsat,
+):
+    PT = t_cup
+    PQ = qo_cup
+    PSP = po_cup * 100.0
+
+    if PT > RTT:
+        Z3ES = R3LES
+        Z4ES = R4LES
+        Z5ALCP = R5ALVCP
+        ZALDCP = RALVDCP
+    else:
+        Z3ES = R3IES
+        Z4ES = R4IES
+        Z5ALCP = R5ALSCP
+        ZALDCP = RALSDCP
+
+    PTARE = PT
+    ZQP = 1.0 / PSP
+
+    FOEALFCU = min(
+        1.0, ((max(RTICECU, min(RTWAT, PTARE)) - RTICECU) * RTWAT_RTICECU_R) ** 2
+    )
+    FOEEWMCU = R2ES * (
+        FOEALFCU * exp(R3LES * (PTARE - RTT) / (PTARE - R4LES))
+        + (1.0 - FOEALFCU) * exp(R3IES * (PTARE - RTT) / (PTARE - R4IES))
+    )
+    ZQSAT = FOEEWMCU * ZQP
+
+    ZQSAT = min(max_qsat, ZQSAT)
+    ZCOR = 1.0 / (1.0 - RETV * ZQSAT)
+    ZQSAT = ZQSAT * ZCOR
+
+    FOEDEMCU = FOEALFCU * R5ALVCP * (1.0 / (PTARE - R4LES) ** 2) + (
+        1.0 - FOEALFCU
+    ) * R5ALSCP * (1.0 / (PTARE - R4IES) ** 2)
+
+    ZCOND = (PQ - ZQSAT) / (1.0 + ZQSAT * ZCOR * FOEDEMCU)
+
+    ZCOND = min(ZCOND, 0.0)
+
+    FOELDCPMCU = FOEALFCU * RALVDCP + (1.0 - FOEALFCU) * RALSDCP
+    PT = PT + FOELDCPMCU * ZCOND
+
+    PQ = PQ - ZCOND
+
+    PTARE = PT
+
+    FOEALFCU = min(
+        1.0, ((max(RTICECU, min(RTWAT, PTARE)) - RTICECU) * RTWAT_RTICECU_R) ** 2
+    )
+    FOEEWMCU = R2ES * (
+        FOEALFCU * exp(R3LES * (PTARE - RTT) / (PTARE - R4LES))
+        + (1.0 - FOEALFCU) * exp(R3IES * (PTARE - RTT) / (PTARE - R4IES))
+    )
+    ZQSAT = FOEEWMCU * ZQP
+
+    ZQSAT = min(0.5, ZQSAT)
+    ZCOR = 1.0 / (1.0 - RETV * ZQSAT)
+    ZQSAT = ZQSAT * ZCOR
+
+    FOEDEMCU = FOEALFCU * R5ALVCP * (1.0 / (PTARE - R4LES) ** 2) + (
+        1.0 - FOEALFCU
+    ) * R5ALSCP * (1.0 / (PTARE - R4IES) ** 2)
+    ZCOND1 = (PQ - ZQSAT) / (1.0 + ZQSAT * ZCOR * FOEDEMCU)
+
+    if ZCOND == 0.0:
+        ZCOND1 = min(ZCOND1, 0.0)
+
+    FOELDCPMCU = FOEALFCU * RALVDCP + (1.0 - FOEALFCU) * RALSDCP
+    PT = PT + FOELDCPMCU * ZCOND1
+    PQ = PQ - ZCOND1
+
+    q_wetbulb = PQ
+    t_wetbulb = PT
+    evap = -ZCOND1
+
+    return (q_wetbulb, t_wetbulb)
+
+
+def downdraft_wet_bulb(
+    USE_WETBULB: Int,
+    cumulus: Int,
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+    jmin: IntFieldIJ,
+    qo_cup: FloatField,
+    t_cup: FloatField,
+    po_cup: FloatField,
+    q_wetbulb: FloatFieldIJ,
+    t_wetbulb: FloatFieldIJ,
+):
+    with computation(PARALLEL), interval(...):
+        if USE_WETBULB == 1 and cumulus != cumulus_parameterization_constants.shallow:
+            if error_code[0, 0][plume] == 0:
+                lev: IntFieldIJ = jmin
+                q_wetbulb, t_wetbulb = get_wetbulb(
+                    jmin,
+                    qo_cup.at(K=lev),
+                    t_cup.at(K=lev),
+                    po_cup.at(K=lev),
+                    q_wetbulb,
+                    t_wetbulb,
+                )
 
 
 def moist_static_energy_and_moisture_budget(
