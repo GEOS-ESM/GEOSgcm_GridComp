@@ -152,6 +152,7 @@ module GEOS_LandiceGridCompMod
 
     type(MAPL_MetaComp), pointer            :: MAPL
 
+    integer                                 :: DO_ISSM ! ISSM flag
 
 ! Begin...
 
@@ -162,23 +163,29 @@ module GEOS_LandiceGridCompMod
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // 'SetServices'
 
-! Set the Run entry point
-! -----------------------
-    !add initialize method for child (ISSM)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS ) 
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, RC=STATUS )
-    VERIFY_(STATUS)
-
-
-! Get my internal MAPL_Generic state
+    ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+! Set the Run entry point
+! -----------------------
+   !add initialize method for child (ISSM)
+   call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
+
+   if (DO_ISSM == 1) then
+      call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS ) 
+      VERIFY_(STATUS)
+   end if 
+
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, RC=STATUS )
+    VERIFY_(STATUS)
+
+ ! Get resource parameters
+ ! -----------------------
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
@@ -1633,15 +1640,16 @@ module GEOS_LandiceGridCompMod
     VERIFY_(STATUS)
 
 !EOS
-
-
-    ! Add ISSM child gridcomp    
-    ISSM  = MAPL_AddChild(GC, NAME='ISSM', SS=IssmSetServices, RC=STATUS)
-    VERIFY_(STATUS)   
-    
-    ! ISSM imports will be satisfied by landice
-    call MAPL_TerminateImport(GC, CHILD = ISSM,   RC=STATUS)
-    VERIFY_(STATUS)
+        
+    if (DO_ISSM==1) then
+      ! Add ISSM child gridcomp    
+      ISSM  = MAPL_AddChild(GC, NAME='ISSM', SS=IssmSetServices, RC=STATUS)
+      VERIFY_(STATUS)   
+      
+      ! ISSM imports will be satisfied by landice
+      call MAPL_TerminateImport(GC, CHILD = ISSM,   RC=STATUS)
+      VERIFY_(STATUS)
+    end if 
 
 ! Set the Profiling timers
 ! ------------------------
@@ -2263,6 +2271,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(MAPL_SunOrbit)                 :: ORBIT
 
   integer                             :: LANDICE_OFFLINE
+  integer         :: DO_ISSM              ! ISSM flag
 !=============================================================================
 
 ! Begin... 
@@ -2280,10 +2289,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    ! Get import state of child (ISSM)
-    call MAPL_Get(MAPL, GIM=GIM, RC=STATUS )
-    VERIFY_(STATUS) 
+    call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
 
+    ! Get import state of child (ISSM)
+    if (DO_ISSM == 1) then
+      call MAPL_Get(MAPL, GIM=GIM, RC=STATUS )
+      VERIFY_(STATUS) 
+    end if 
 ! Start Total timer
 !------------------
 
@@ -2577,7 +2589,6 @@ contains
    real, parameter :: LANDICEDEPTH_ = 0.07 ! water equiv depth of top layer
    real, parameter :: LANDICECOND_  = 1.2  ! ice conductivity divided by depth of bottom layer
    real, parameter :: LANDICETDEEP_ = 230. ! deep ice temperature
-
 !  Begin...
 !----------
 
@@ -3363,12 +3374,14 @@ contains
 
 
     ! Calculate surface mass balance (SMB) for ISSM
-    if(associated(ICESMB )) ICESMB    = ACCUM - RUNOFF
+    if(associated(ICESMB)) ICESMB    = ACCUM - RUNOFF
 
     ! Set child (ISSM) SMB import pointer to landice export values
-    call MAPL_GetPointer(GIM(ISSM), ICESMB_ISSM, 'ICESMB'  , RC=STATUS)
+    if (DO_ISSM == 1) then
+      call MAPL_GetPointer(GIM(ISSM), ICESMB_ISSM, 'ICESMB'  , RC=STATUS)
+    end if 
 
-    ICESMB_ISSM(:) = ICESMB(:)
+    if(associated(ICESMB_ISSM)) ICESMB_ISSM(:) = ICESMB(:)
 
 ! Update snow and landice albedos to anticipate
 !   next radiation calculation
@@ -3504,8 +3517,10 @@ contains
     end if
 
     ! Run ISSM (checks if ISSM_ALARM is ringing)
-    call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
-    VERIFY_(STATUS)
+    if (DO_ISSM==1) then
+      call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+      VERIFY_(STATUS)
+    end if 
 
     if(allocated (MLT)) deallocate(MLT , STAT=STATUS); VERIFY_(STATUS)              
     if(allocated (DTS)) deallocate(DTS , STAT=STATUS); VERIFY_(STATUS)              
