@@ -262,7 +262,9 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._calculate_mass_entrainment_detrainment = CalculateMassEntrainmentDetrainment()
+        self._calculate_mass_entrainment_detrainment = (
+            CalculateMassEntrainmentDetrainment()
+        )
 
         self._first_guess_moist_static_energy = FirstGuessMoistStaticEnergy(
             stencil_factory=stencil_factory,
@@ -279,7 +281,9 @@ class CumulusParameterization:
 
         self._melting_profile = MeltingProfile()
 
-        self._moist_static_energy_and_momentum_budget = UpdraftMoistStaticEnergyAndMomentumBudget()
+        self._moist_static_energy_and_momentum_budget = (
+            UpdraftMoistStaticEnergyAndMomentumBudget()
+        )
 
         self._in_cloud_updraft_air_temperature = UpdraftInCloudUpdraftAirTemperature(
             stencil_factory=stencil_factory,
@@ -298,11 +302,13 @@ class CumulusParameterization:
 
         self._downdraft_wet_bulb = DowndraftWetBlub()
 
-        self._downdraft_moist_static_energy_and_moisture_budget = DowndraftMoistStaticEnergyAndMoistureBudget(
-            stencil_factory=stencil_factory,
-            quantity_factory=quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        self._downdraft_moist_static_energy_and_moisture_budget = (
+            DowndraftMoistStaticEnergyAndMoistureBudget(
+                stencil_factory=stencil_factory,
+                quantity_factory=quantity_factory,
+                config=config,
+                cumulus_parameterization_config=cumulus_parameterization_config,
+            )
         )
 
         self._downdraft_moisture_properties = DowndraftMoistureProperties()
@@ -719,13 +725,28 @@ class CumulusParameterization:
                 self._lightning_flash_density()
 
                 # output precipitation (only deep plume)
-                self._output_deep_precipitation()
+                # NOTE ported, not tested
+                self._output_deep_precipitation(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # for tracer convective transport / outputs
-                self._tracer_output()
+                # NOTE ported, not tested
+                self._tracer_output(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # convert mass fluxes, etc...
-                self._prepare_output()
+                # NOTE ported, not tested
+                self._prepare_output(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # outputs a model sounding for the stand-alone code (part 2)
                 self._sounding()

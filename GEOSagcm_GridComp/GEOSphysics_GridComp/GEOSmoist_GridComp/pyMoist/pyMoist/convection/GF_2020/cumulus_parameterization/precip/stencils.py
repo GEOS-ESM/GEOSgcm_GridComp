@@ -172,3 +172,18 @@ def output_evaporation_flux(
             if K <= ktop:
                 dp: FloatFieldIJ = 100.0 * (po_cup - po_cup.at(K=K + 1))
                 revsu_gf = revsu_gf + evap_flx * constants.MAPL_GRAV / dp
+
+
+def output_deep_precipitation(
+    cumulus: Int,
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+    ktop: IntFieldIJ,
+    prec_flx: FloatField,
+    prfil_gf: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        if cumulus == cumulus_parameterization_constants.deep:
+            if error_code[0, 0][plume] == 0:
+                if K <= ktop + 1:
+                    prfil_gf = prec_flx
