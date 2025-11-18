@@ -7,9 +7,14 @@ from gt4py.cartesian.gtscript import (
     interval,
     K,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    FloatField_Plume,
+    IntFieldIJ_Plume,
+)
 from ndsl.stencils.column_operations import column_max_ddim
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_updraft_origin_conditions
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
+    get_updraft_origin_conditions,
+)
 
 
 def entrainment_rates(
@@ -27,7 +32,10 @@ def entrainment_rates(
         if error_code[0, 0][plume] == 0:
             frh = min(
                 vapor
-                / max(environment_saturation_mixing_ratio, cumulus_parameterization_constants.smaller_qv),
+                / max(
+                    environment_saturation_mixing_ratio,
+                    cumulus_parameterization_constants.smaller_qv,
+                ),
                 1.0,
             )
             if K > lcl_level[0, 0][plume]:
@@ -36,21 +44,31 @@ def entrainment_rates(
                     * (1.3 - frh)
                     * (
                         environment_saturation_mixing_ratio
-                        / environment_saturation_mixing_ratio.at(K=lcl_level[0, 0][plume])
+                        / environment_saturation_mixing_ratio.at(
+                            K=lcl_level[0, 0][plume]
+                        )
                     )
                     ** 3
                 )
             else:
-                entrainment_rate[0, 0, 0][plume] = entrainment_rate[0, 0, 0][plume] * (1.3 - frh)
+                entrainment_rate[0, 0, 0][plume] = entrainment_rate[0, 0, 0][plume] * (
+                    1.3 - frh
+                )
             if ZERO_DIFF == 1:
                 detrainment_function_updraft = 0.75e-4 * (1.6 - frh)
             else:
                 if plume == 0:
-                    detrainment_function_updraft = 0.75 * entrainment_rate[0, 0, 0][plume]
+                    detrainment_function_updraft = (
+                        0.75 * entrainment_rate[0, 0, 0][plume]
+                    )
                 if plume == 1:
-                    detrainment_function_updraft = 0.5 * entrainment_rate[0, 0, 0][plume]
+                    detrainment_function_updraft = (
+                        0.5 * entrainment_rate[0, 0, 0][plume]
+                    )
                 if plume == 2:
-                    detrainment_function_updraft = 0.1 * entrainment_rate[0, 0, 0][plume]
+                    detrainment_function_updraft = (
+                        0.1 * entrainment_rate[0, 0, 0][plume]
+                    )
 
 
 def downdraft_entrainment_profiles(
@@ -73,7 +91,9 @@ def downdraft_entrainment_profiles(
     from __externals__ import DOWNDRAFT
 
     with computation(PARALLEL), interval(0, -1):
-        entrainment_rate_downdraft = lateral_entrainment_rate * plume_entrainment_rate * 0.3
+        entrainment_rate_downdraft = (
+            lateral_entrainment_rate * plume_entrainment_rate * 0.3
+        )
         detrainment_function_downdraft = entrainment_rate_downdraft
 
     with computation(FORWARD), interval(0, 1):
@@ -120,7 +140,14 @@ def compute_lateral_massflux(
         if error_code[0, 0][plume] == 0:
             # will not allow detrainment below cloud base or in the PBL
             if plume == 0:
-                if K <= max(updraft_lfc_level[0, 0][plume], updraft_origin_level[0, 0][plume]) + 1:
+                if (
+                    K
+                    <= max(
+                        updraft_lfc_level[0, 0][plume],
+                        updraft_origin_level[0, 0][plume],
+                    )
+                    + 1
+                ):
                     detrainment_function_updraft = 0
             else:
                 if K <= max_index + 1:

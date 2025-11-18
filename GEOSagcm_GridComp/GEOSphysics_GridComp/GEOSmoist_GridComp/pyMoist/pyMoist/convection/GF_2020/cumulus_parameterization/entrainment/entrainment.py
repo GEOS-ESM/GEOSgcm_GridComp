@@ -1,9 +1,15 @@
 from ndsl import StencilFactory, QuantityFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    GF2020CumulusParameterizationConfig,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
+    GF2020CumulusParameterizationLocals,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
@@ -13,7 +19,9 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment.stencils im
     compute_lateral_massflux,
     compute_uc_vc,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import unknown_find_level
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import (
+    unknown_find_level,
+)
 
 
 class EntrainmentRates:
