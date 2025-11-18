@@ -29,7 +29,7 @@ from pyMoist.saturation_tables import (
     saturation_specific_humidity,
 )
 from pyMoist.UW.config import UWConfiguration
-from pyMoist.UW.temporaries import UWLocals
+from pyMoist.UW.locals import UWLocals
 from pyMoist.UW.uwshcu_functions import (
     compute_alpha,
     compute_mumin2,
