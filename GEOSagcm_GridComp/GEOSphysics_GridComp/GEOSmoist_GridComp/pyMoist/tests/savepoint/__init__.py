@@ -74,10 +74,10 @@ from .convection.GF_2020.cumulus_parameterization.air_density.translate_GF2020_C
     TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_mid,
     TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_deep,
 )
-from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_PartitionLiquidIce import (
-    TranslateGF2020_CumulusParameterization_PartitionLiquidIce_shallow,
-    TranslateGF2020_CumulusParameterization_PartitionLiquidIce_mid,
-    TranslateGF2020_CumulusParameterization_PartitionLiquidIce_deep,
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_PartitionLiquidIceAndGetLevels import (
+    TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_shallow,
+    TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_mid,
+    TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cumulus_Parameterization_HighestMoistStaticEnergyLevel import (
     TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_shallow,

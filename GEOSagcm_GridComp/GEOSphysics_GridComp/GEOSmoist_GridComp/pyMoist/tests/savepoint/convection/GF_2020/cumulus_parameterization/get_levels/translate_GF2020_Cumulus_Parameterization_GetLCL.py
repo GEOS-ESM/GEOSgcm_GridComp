@@ -119,8 +119,9 @@ class TranslateGF2020_CumulusParameterization_GetLCL_shallow(TranslateFortranDat
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
             state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
+        
+        state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
         outputs = {

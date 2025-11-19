@@ -142,15 +142,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    error_code_string: Quantity = dataclasses.field(
-        metadata={
-            "name": "error_code_string",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Int,
-        }
-    )
     error_code_2: Quantity = dataclasses.field(
         metadata={
             "name": "error_code_2",

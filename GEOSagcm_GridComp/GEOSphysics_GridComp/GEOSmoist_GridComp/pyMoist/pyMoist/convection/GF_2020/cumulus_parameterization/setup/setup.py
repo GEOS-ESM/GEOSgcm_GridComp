@@ -119,7 +119,6 @@ class Setup:
                 cap_max=locals.cap_max,
                 error_code_2=locals.error_code_2,
                 error_code_3=locals.error_code_3,
-                error_code_string=locals.error_code_string,
                 CAP_MAX_INC=plume_dependent_constants.CAP_MAX_INC,
                 cap_max_increment=locals.cap_max_increment,
                 geopotential_height=state.input_output.geopotential_height_forced,
@@ -162,7 +161,6 @@ class Setup:
                 scale_dependence_factor=state.output.scale_dependence_factor,
                 seed_convection=state.input.seed_convection,
                 error_code=state.output.error_code,
-                error_code_string=locals.error_code_string,
                 grid_length=state.input_output.grid_length,
             )
 

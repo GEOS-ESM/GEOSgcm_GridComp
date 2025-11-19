@@ -18,6 +18,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy.ste
     first_guess_mse,
     moist_static_energy_inside_cloud,
 )
+from ndsl.logging import ndsl_log
 
 # from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy.stencils import (
 #     get_buoyancy,
@@ -51,6 +52,13 @@ class ParcelMoistStaticEnergy:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+
+        if self.cumulus_parameterization_config.MODIS_FRACTION != 1:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called ParcelMoistStaticEnergy with "
+                "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
+            )
+
         self._parcel_moist_static_energy(
             error_code=state.output.error_code,
             t_excess=locals.t_excess,

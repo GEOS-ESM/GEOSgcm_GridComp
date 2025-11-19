@@ -29,7 +29,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_shallow(T
         self.in_vars["data_vars"] = {
             "local_t_new_env_clev": {},
             "local_env_saturation_mixing_ratio_forced_env_clev": {},
-            "local_vapor_new_env_cond": {},
+            "local_vapor_forced_env_cond": {},
             "local_env_moist_static_energy_forced_env_clev": {},
             "local_env_saturation_moist_static_energy_forced_env_clev": {},
             "geopotential_height_forced_env_clev": {},
@@ -87,7 +87,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_shallow(T
         locals.environment_saturation_mixing_ratio_forced.data[:] = inputs[
             "local_env_saturation_mixing_ratio_forced_env_clev"
         ]
-        locals.vapor_forced.data[:] = inputs["local_vapor_new_env_cond"]
+        locals.vapor_forced.data[:] = inputs["local_vapor_forced_env_cond"]
         locals.environment_moist_static_energy_forced.data[:] = inputs[
             "local_env_moist_static_energy_forced_env_clev"
         ]
@@ -147,7 +147,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_shallow(T
             "local_env_saturation_mixing_ratio_forced_env_clev": locals.environment_saturation_mixing_ratio_forced.field[
                 :
             ],
-            "local_vapor_new_env_cond": locals.vapor_forced.field[:],
+            "local_vapor_forced_env_cond": locals.vapor_forced.field[:],
             "local_env_moist_static_energy_forced_env_clev": locals.environment_moist_static_energy_forced.field[
                 :
             ],
@@ -203,7 +203,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_mid(Trans
         self.in_vars["data_vars"] = {
             "local_t_new_env_clev": {},
             "local_env_saturation_mixing_ratio_forced_env_clev": {},
-            "local_vapor_new_env_cond": {},
+            "local_vapor_forced_env_cond": {},
             "local_env_moist_static_energy_forced_env_clev": {},
             "local_env_saturation_moist_static_energy_forced_env_clev": {},
             "geopotential_height_forced_env_clev": {},
@@ -261,7 +261,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_mid(Trans
         locals.environment_saturation_mixing_ratio_forced.data[:] = inputs[
             "local_env_saturation_mixing_ratio_forced_env_clev"
         ]
-        locals.vapor_forced.data[:] = inputs["local_vapor_new_env_cond"]
+        locals.vapor_forced.data[:] = inputs["local_vapor_forced_env_cond"]
         locals.environment_moist_static_energy_forced.data[:] = inputs[
             "local_env_moist_static_energy_forced_env_clev"
         ]
@@ -270,11 +270,11 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_mid(Trans
         ]
         state.input_output.geopotential_height_forced.data[:] = inputs["geopotential_height_forced_env_clev"]
         state.input_output.p_forced.data[:] = inputs["p_forced_env_clev"]
-        locals.environment_saturation_mixing_ratio_cloud_levels.data[:] = inputs[
+        locals.environment_saturation_mixing_ratio_cloud_levels_forced.data[:] = inputs[
             "local_env_saturation_mixing_ratio_cloud_levels_forced_env_clev"
         ]
         locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced_env_clev"]
-        locals.environment_moist_static_energy_cloud_levels.data[:] = inputs[
+        locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_moist_static_energy_cloud_levels_forced_env_clev"
         ]
         state.input_output.u.data[:] = inputs["u_env_clev"]
@@ -321,7 +321,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_mid(Trans
             "local_env_saturation_mixing_ratio_forced_env_clev": locals.environment_saturation_mixing_ratio_forced.field[
                 :
             ],
-            "local_vapor_new_env_cond": locals.vapor_forced.field[:],
+            "local_vapor_forced_env_cond": locals.vapor_forced.field[:],
             "local_env_moist_static_energy_forced_env_clev": locals.environment_moist_static_energy_forced.field[
                 :
             ],
@@ -330,11 +330,11 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_mid(Trans
             ],
             "geopotential_height_forced_env_clev": state.input_output.geopotential_height_forced.field[:],
             "p_forced_env_clev": state.input_output.p_forced.field[:],
-            "local_env_saturation_mixing_ratio_cloud_levels_forced_env_clev": locals.environment_saturation_mixing_ratio_cloud_levels.field[
+            "local_env_saturation_mixing_ratio_cloud_levels_forced_env_clev": locals.environment_saturation_mixing_ratio_cloud_levels_forced.field[
                 :
             ],
             "local_vapor_cloud_levels_forced_env_clev": locals.vapor_cloud_levels_forced.field[:],
-            "local_env_moist_static_energy_cloud_levels_forced_env_clev": locals.environment_moist_static_energy_cloud_levels.field[
+            "local_env_moist_static_energy_cloud_levels_forced_env_clev": locals.environment_moist_static_energy_cloud_levels_forced.field[
                 :
             ],
             "u_env_clev": state.input_output.u.field[:],
@@ -377,7 +377,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_deep(Tran
         self.in_vars["data_vars"] = {
             "local_t_new_env_clev": {},
             "local_env_saturation_mixing_ratio_forced_env_clev": {},
-            "local_vapor_new_env_cond": {},
+            "local_vapor_forced_env_cond": {},
             "local_env_moist_static_energy_forced_env_clev": {},
             "local_env_saturation_moist_static_energy_forced_env_clev": {},
             "geopotential_height_forced_env_clev": {},
@@ -435,7 +435,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_deep(Tran
         locals.environment_saturation_mixing_ratio_forced.data[:] = inputs[
             "local_env_saturation_mixing_ratio_forced_env_clev"
         ]
-        locals.vapor_forced.data[:] = inputs["local_vapor_new_env_cond"]
+        locals.vapor_forced.data[:] = inputs["local_vapor_forced_env_cond"]
         locals.environment_moist_static_energy_forced.data[:] = inputs[
             "local_env_moist_static_energy_forced_env_clev"
         ]
@@ -444,11 +444,11 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_deep(Tran
         ]
         state.input_output.geopotential_height_forced.data[:] = inputs["geopotential_height_forced_env_clev"]
         state.input_output.p_forced.data[:] = inputs["p_forced_env_clev"]
-        locals.environment_saturation_mixing_ratio_cloud_levels.data[:] = inputs[
+        locals.environment_saturation_mixing_ratio_cloud_levels_forced.data[:] = inputs[
             "local_env_saturation_mixing_ratio_cloud_levels_forced_env_clev"
         ]
         locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced_env_clev"]
-        locals.environment_moist_static_energy_cloud_levels.data[:] = inputs[
+        locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_moist_static_energy_cloud_levels_forced_env_clev"
         ]
         state.input_output.u.data[:] = inputs["u_env_clev"]
@@ -495,7 +495,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_deep(Tran
             "local_env_saturation_mixing_ratio_forced_env_clev": locals.environment_saturation_mixing_ratio_forced.field[
                 :
             ],
-            "local_vapor_new_env_cond": locals.vapor_forced.field[:],
+            "local_vapor_forced_env_cond": locals.vapor_forced.field[:],
             "local_env_moist_static_energy_forced_env_clev": locals.environment_moist_static_energy_forced.field[
                 :
             ],
@@ -504,11 +504,11 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_deep(Tran
             ],
             "geopotential_height_forced_env_clev": state.input_output.geopotential_height_forced.field[:],
             "p_forced_env_clev": state.input_output.p_forced.field[:],
-            "local_env_saturation_mixing_ratio_cloud_levels_forced_env_clev": locals.environment_saturation_mixing_ratio_cloud_levels.field[
+            "local_env_saturation_mixing_ratio_cloud_levels_forced_env_clev": locals.environment_saturation_mixing_ratio_cloud_levels_forced.field[
                 :
             ],
             "local_vapor_cloud_levels_forced_env_clev": locals.vapor_cloud_levels_forced.field[:],
-            "local_env_moist_static_energy_cloud_levels_forced_env_clev": locals.environment_moist_static_energy_cloud_levels.field[
+            "local_env_moist_static_energy_cloud_levels_forced_env_clev": locals.environment_moist_static_energy_cloud_levels_forced.field[
                 :
             ],
             "u_env_clev": state.input_output.u.field[:],

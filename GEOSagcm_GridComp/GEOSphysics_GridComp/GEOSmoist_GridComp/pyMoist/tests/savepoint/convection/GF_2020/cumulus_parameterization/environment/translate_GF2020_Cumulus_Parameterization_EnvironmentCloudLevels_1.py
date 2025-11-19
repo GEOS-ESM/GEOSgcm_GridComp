@@ -159,7 +159,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_shallow(T
             "v_env_clev": state.input_output.v.field[:],
             "local_u_cloud_levels_env_clev": locals.u_cloud_levels.field[:],
             "local_v_cloud_levels_env_clev": locals.v_cloud_levels.field[:],
-            "local_env_saturation_moist_static_energy_cloud_levels_env_clev": locals.environment_moist_static_energy_cloud_levels.field[
+            "local_env_saturation_moist_static_energy_cloud_levels_env_clev": locals.environment_saturation_moist_static_energy_cloud_levels.field[
                 :
             ],
             "local_geopotential_height_cloud_levels_env_clev": locals.geopotential_height_cloud_levels.field[
@@ -323,7 +323,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_mid(Trans
             "v_env_clev": state.input_output.v.field[:],
             "local_u_cloud_levels_env_clev": locals.u_cloud_levels.field[:],
             "local_v_cloud_levels_env_clev": locals.v_cloud_levels.field[:],
-            "local_env_saturation_moist_static_energy_cloud_levels_env_clev": locals.environment_moist_static_energy_cloud_levels.field[
+            "local_env_saturation_moist_static_energy_cloud_levels_env_clev": locals.environment_saturation_moist_static_energy_cloud_levels.field[
                 :
             ],
             "local_geopotential_height_cloud_levels_env_clev": locals.geopotential_height_cloud_levels.field[
@@ -487,7 +487,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_deep(Tran
             "v_env_clev": state.input_output.v.field[:],
             "local_u_cloud_levels_env_clev": locals.u_cloud_levels.field[:],
             "local_v_cloud_levels_env_clev": locals.v_cloud_levels.field[:],
-            "local_env_saturation_moist_static_energy_cloud_levels_env_clev": locals.environment_moist_static_energy_cloud_levels.field[
+            "local_env_saturation_moist_static_energy_cloud_levels_env_clev": locals.environment_saturation_moist_static_energy_cloud_levels.field[
                 :
             ],
             "local_geopotential_height_cloud_levels_env_clev": locals.geopotential_height_cloud_levels.field[
