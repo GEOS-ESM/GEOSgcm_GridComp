@@ -131,6 +131,10 @@ subroutine SetServices ( GC, RC )
 
     type(MAPL_MetaComp), pointer       :: MAPL
 
+    type (ESMF_Config)                 :: CF
+
+    real                               :: dt     ! time step [s] (ISSM_DT set in AGCM.rc)
+
     ! Get my internal MAPL_Generic state
 
     ! Begin...
@@ -156,7 +160,14 @@ subroutine SetServices ( GC, RC )
 
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    call MAPL_GetObjectFromGC (GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_GridCompGet(GC, CONFIG = CF, RC=STATUS)
+    VERIFY_(STATUS)
+
+    ! get timestep for ISSM
+    call ESMF_ConfigGetAttribute(CF, dt, Label=trim(COMP_NAME)//"_DT:", DEFAULT=604800.0, RC=STATUS)
     VERIFY_(STATUS)
 
 
@@ -166,7 +177,7 @@ subroutine SetServices ( GC, RC )
  !Export states:
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICEEL',                     &
-         LONG_NAME  = 'ice_elevation_tiles',       &
+         LONG_NAME  = 'ice_sheet_elevation',       &
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -180,6 +191,8 @@ subroutine SetServices ( GC, RC )
         UNITS      = 'kg m-2 s-1',                 &
         DIMS       = MAPL_DimsTileOnly,            &
         VLOCATION  = MAPL_VLocationNone,           &
+        AVERAGING_INTERVAL = nint(dt),             &
+        REFRESH_INTERVAL   = nint(dt),             &
         RC=STATUS  )
     VERIFY_(STATUS)
 
