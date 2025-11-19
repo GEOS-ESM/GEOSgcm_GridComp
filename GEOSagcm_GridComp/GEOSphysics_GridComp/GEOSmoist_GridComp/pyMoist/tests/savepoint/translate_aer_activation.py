@@ -1,3 +1,5 @@
+import time
+
 from f90nml import Namelist
 
 from ndsl import Quantity, StencilFactory
@@ -13,8 +15,6 @@ class TranslateAerActivation(TranslateFortranData2Py):
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
         self._grid = grid
-
-        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(self.quantity_factory)
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
@@ -77,7 +77,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
         return qty
 
     def make_nmodes_ijk_field(self, data) -> Quantity:
-        qty = self.nmodes_quantity_factory.empty(
+        qty = self.quantity_factory.empty(
             [X_DIM, Y_DIM, Z_DIM, "n_modes"],
             "n/a",
         )
@@ -116,7 +116,6 @@ class TranslateAerActivation(TranslateFortranData2Py):
         qlcn = self.make_ijk_field(inputs["QLCN"])
         qicn = self.make_ijk_field(inputs["QICN"])
 
-        n_modes = inputs["n_modes"]
         ccn_lnd = Float(inputs["CCN_LND"])
         ccn_ocn = Float(inputs["CCN_OCN"])
 
@@ -155,8 +154,40 @@ class TranslateAerActivation(TranslateFortranData2Py):
             aero_sigma=aero_sigma,
         )
 
-        return {
-            "NACTL": nactl.view[:, :, :],
-            "NACTI": nacti.view[:, :, :],
-            "NWFA": nwfa.view[:, :, :],
+        output = {
+            "NACTL": nactl.field[:, :, :].copy(),
+            "NACTI": nacti.field[:, :, :].copy(),
+            "NWFA": nwfa.field[:, :, :].copy(),
         }
+
+        # Inline benchmarking - because Aer Activation is a small enough code
+
+        s = time.perf_counter()
+
+        bench_runs = 100
+        for _ in range(0, bench_runs):
+            aer_activation(
+                aero_dgn=aero_dgn,
+                aero_num=aero_num,
+                nacti=nacti,
+                t=t,
+                plo=plmb,
+                qicn=qicn,
+                qils=qils,
+                qlcn=qlcn,
+                qlls=qlls,
+                nn_land=Float(ccn_lnd * 1.0e6),
+                frland=frland,
+                nn_ocean=Float(ccn_ocn * 1.0e6),
+                aero_hygroscopicity=aero_hygroscopicity,
+                nwfa=nwfa,
+                nactl=nactl,
+                vvel=tmp3d,
+                tke=tke,
+                aero_sigma=aero_sigma,
+            )
+
+        e = time.perf_counter()
+        print(f"Aer Activation inline bench: {e - s:.2f}s for {bench_runs} tries")
+
+        return output
