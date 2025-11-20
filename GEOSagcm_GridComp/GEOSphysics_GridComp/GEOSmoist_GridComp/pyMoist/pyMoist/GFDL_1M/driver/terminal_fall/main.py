@@ -1,4 +1,4 @@
-from ndsl import QuantityFactory, StencilFactory, orchestrate
+from ndsl import QuantityFactory, StencilFactory, NDSLRuntime
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import BoolField, BoolFieldIJ, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.config import GFDL1MConfig
@@ -12,10 +12,10 @@ from pyMoist.GFDL_1M.driver.terminal_fall.stencils import (
     update_outputs,
     update_w1,
 )
-from pyMoist.GFDL_1M.driver.terminal_fall.temporaries import Temporaries
+from pyMoist.GFDL_1M.driver.terminal_fall.locals import TerminalFallLocals
 
 
-class TerminalFall:
+class TerminalFall(NDSLRuntime):
     """
     Calculate terminal fall speed, accounting for
     melting of ice, snow, and graupel during fall
@@ -30,14 +30,13 @@ class TerminalFall:
         GFDL_1M_config: GFDL1MConfig,
         config_dependent_constants: ConfigConstants,
     ):
-
+        super().__init__(dace_config=stencil_factory.config.dace_config)
         self.GFDL_1M_config = GFDL_1M_config
 
         # Initalize temporaries
-        self.temporaries = Temporaries.make(quantity_factory)
+        self.temporaries = TerminalFallLocals.make(self, quantity_factory)
 
         # Initalize stencils
-        orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._setup = stencil_factory.from_dims_halo(
             func=setup,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
