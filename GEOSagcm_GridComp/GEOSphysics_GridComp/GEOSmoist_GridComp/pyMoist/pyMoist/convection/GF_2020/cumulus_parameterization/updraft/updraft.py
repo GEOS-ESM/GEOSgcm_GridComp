@@ -13,6 +13,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.updraft.stencils import (
+    cup_up_aa0,
+    cloud_work_function_zero,
+    in_cloud_updraft_air_temperature,
+)
 
 
 class UpdraftMassFluxProfile:
@@ -108,19 +113,130 @@ class UpdraftInCloudUpdraftAirTemperature:
 
 
 class UpdraftInitialWorkfunctions:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
+        # construct stencils and functions
+        self._cup_up_aa0 = stencil_factory.from_dims_halo(
+            func=cup_up_aa0,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._cloud_work_function_zero = stencil_factory.from_dims_halo(
+            func=cloud_work_function_zero,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
         pass
+        # self._cup_up_aa0(
+        #     dby=dby,
+        #     gamma_cup=gamma_cup,
+        #     ktop=ktop,
+        #     kbcon=kbcon,
+        #     k22=k22,
+        #     z_cup=z_cup,
+        #     t_cup=t_cup,
+        #     zu=zu,
+        #     integ=integ,
+        #     integ_interval=integ_interval,
+        #     error_codd=error_code,
+        #     plume=plume,
+        #     aa0=aa0,
+        # )
+
+        # self._cup_up_aa0(
+        #     dby=dbyo,
+        #     gamma_cup=gammao_cup,
+        #     ktop=ktop,
+        #     kbcon=kbcon,
+        #     k22=k22,
+        #     z_cup=zo_cup,
+        #     t_cup=tn_cup,
+        #     zu=zuo,
+        #     integ=integ,
+        #     integ_interval=integ_interval,
+        #     error_codd=error_code,
+        #     plume=plume,
+        #     aa0=aa1,
+        # )
+
+        # self._cloud_work_function_zero(
+        #     error_code=error_code,
+        #     plume=plume,
+        #     aa1=aa1,
+        # )
 
 
 class UpdraftCIN:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
+        # construct stencils and functions
+        self._cup_up_aa0 = stencil_factory.from_dims_halo(
+            func=cup_up_aa0,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
         pass
+        # self._cup_up_aa0(
+        #     dby=dby,
+        #     gamma_cup=gamma_cup,
+        #     ktop=ktop,
+        #     kbcon=kbcon,
+        #     k22=k22,
+        #     z_cup=z_cup,
+        #     t_cup=t_cup,
+        #     zu=zu,
+        #     integ=integ,
+        #     integ_interval=integ_interval,
+        #     error_codd=error_code,
+        #     plume=plume,
+        #     aa0=cin0,
+        # )
+
+        # self._cup_up_aa0(
+        #     dby=dbyo,
+        #     gamma_cup=gammao_cup,
+        #     ktop=ktop,
+        #     kbcon=kbcon,
+        #     k22=k22,
+        #     z_cup=zo_cup,
+        #     t_cup=tn_cup,
+        #     zu=zuo,
+        #     integ=integ,
+        #     integ_interval=integ_interval,
+        #     error_codd=error_code,
+        #     plume=plume,
+        #     aa0=cin1,
+        # )
 
 
 class UpdraftUpdateWorkfunctions:

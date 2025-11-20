@@ -623,10 +623,20 @@ class CumulusParameterization:
                 self._downdraft_moisture_properties()
 
                 # calculate workfunctions for updrafts
-                self._updraft_initial_workfunctions()
+                # NOTE ported, not tested (should pass)
+                self._updraft_initial_workfunctions(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # calculate CIN for updrafts
-                self._updraft_cin()
+                # NOTE ported, not tested (should pass)
+                self._updraft_cin(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # trigger function: KE+CIN < 0 --> no convection
                 self._trigger_function_convection(
@@ -658,7 +668,12 @@ class CumulusParameterization:
                 self._trigger_function_xie()
 
                 # determine downdraft strength in terms of windshear
-                self._downdraft_windshear()
+                # NOTE ported, not tested
+                self._downdraft_windshear(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # get the environmental mass flux
                 # NOTE ported, but untested
