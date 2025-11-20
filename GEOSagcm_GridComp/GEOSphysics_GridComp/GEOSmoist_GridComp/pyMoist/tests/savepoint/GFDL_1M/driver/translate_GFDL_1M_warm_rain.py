@@ -1,15 +1,14 @@
 from f90nml import Namelist
 
 from ndsl import StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_INTERFACE_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.masks import Masks
-from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
-from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
 
 
@@ -178,12 +177,15 @@ class TranslateGFDL_1M_warm_rain(TranslateFortranData2Py):
         self.config_dependent_constants = ConfigConstants.make(self.GFDL_1M_config)
 
         # Initalize saturation tables
-        self.sat_tables = get_tables(self.stencil_factory.backend)
+        self.sat_tables = get_tables(
+            self.stencil_factory.backend,
+            self.stencil_factory.config.dace_config,
+        )
 
         # Initalize extra quantities
-        temporaries = Temporaries.make(self.quantity_factory)
-        outputs = Outputs.make(self.quantity_factory)
         masks = Masks.make(self.quantity_factory)
+        ze = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "")
+        zt = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "")
 
         # Initalize object to be tested
         self.warm_rain = WarmRain(
@@ -193,8 +195,8 @@ class TranslateGFDL_1M_warm_rain(TranslateFortranData2Py):
             self.config_dependent_constants,
         )
         self.warm_rain(
-            ze=temporaries.ze,
-            zt=temporaries.zt,
+            ze=ze,
+            zt=zt,
             precip_fall=masks.precip_fall,
             table1=self.sat_tables.table1,
             table2=self.sat_tables.table2,

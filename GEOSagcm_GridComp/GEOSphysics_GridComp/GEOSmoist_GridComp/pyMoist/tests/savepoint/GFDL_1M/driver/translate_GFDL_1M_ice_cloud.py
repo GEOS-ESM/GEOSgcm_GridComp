@@ -7,10 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
 from pyMoist.GFDL_1M.driver.ice_cloud.main import IceCloud
-from pyMoist.GFDL_1M.driver.masks import Masks
-from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
-from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 
 
 class TranslateGFDL_1M_ice_cloud(TranslateFortranData2Py):
@@ -174,12 +171,10 @@ class TranslateGFDL_1M_ice_cloud(TranslateFortranData2Py):
         self.config_dependent_constants = ConfigConstants.make(self.GFDL_1M_config)
 
         # Initalize saturation tables
-        self.sat_tables = get_tables(self.stencil_factory.backend)
-
-        # Initalize extra quantities
-        temporaries = Temporaries.make(self.quantity_factory)
-        outputs = Outputs.make(self.quantity_factory)
-        masks = Masks.make(self.quantity_factory)
+        self.sat_tables = get_tables(
+            self.stencil_factory.backend,
+            self.stencil_factory.config.dace_config,
+        )
 
         # Initalize object to be tested
         self.ice_cloud = IceCloud(
