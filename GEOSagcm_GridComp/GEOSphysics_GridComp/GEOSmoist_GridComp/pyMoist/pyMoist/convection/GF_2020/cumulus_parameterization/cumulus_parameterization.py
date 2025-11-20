@@ -646,7 +646,15 @@ class CumulusParameterization:
                 )
 
                 # Get buoyancy of updrafts
-                self._get_buoyancy()
+                # NOTE test GF2020_CumulusParameterization_GetBuoyancy_1_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._get_buoyancy(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # get "c1d" profile
                 self._c1d_profile()

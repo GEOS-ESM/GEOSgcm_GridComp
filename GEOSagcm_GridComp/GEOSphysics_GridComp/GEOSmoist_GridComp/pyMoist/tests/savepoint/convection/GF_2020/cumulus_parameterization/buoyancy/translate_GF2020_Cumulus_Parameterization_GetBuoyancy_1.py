@@ -139,7 +139,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_GetBuoyancy_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_GetBuoyancy_1_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -162,7 +162,7 @@ class TranslateGF2020_CumulusParameterization_GetBuoyancy_shallow(TranslateFortr
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_GetBuoyancy_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_GetBuoyancy_1_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -185,7 +185,7 @@ class TranslateGF2020_CumulusParameterization_GetBuoyancy_mid(TranslateFortranDa
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_GetBuoyancy_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_GetBuoyancy_1_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
