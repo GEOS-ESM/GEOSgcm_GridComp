@@ -275,7 +275,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._get_buoyancy = GetBuoyancy()
+        self._get_buoyancy = GetBuoyancy(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._c1d_profile = C1DProfile()
 
@@ -630,7 +635,10 @@ class CumulusParameterization:
                 )
 
                 # 1st guess for moist static energy
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ⚠️⚠️⚠️ NEEDS ATTENTION
+                # NOTE      shallow ⚠️⚠️⚠️ NEEDS ATTENTION
                 self._first_guess_moist_static_energy(
                     state=state,
                     locals=locals,

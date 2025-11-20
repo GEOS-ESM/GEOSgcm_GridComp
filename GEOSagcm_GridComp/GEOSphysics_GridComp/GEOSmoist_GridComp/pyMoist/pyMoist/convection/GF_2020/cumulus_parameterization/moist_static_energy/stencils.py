@@ -64,49 +64,56 @@ def parcel_moist_static_energy(
             )
 
 
-def first_guess_mse(
+def first_guess_moist_static_energy(
     error_code: IntFieldIJ_Plume,
+    start_level: IntFieldIJ,
+    cloud_top: IntFieldIJ_Plume,
+    mass_detrainment: FloatField_Plume,
+    mass_entrainment: FloatField_Plume,
+    normalized_massflux: FloatField,
+    normalized_massflux_forced: FloatField_Plume,
+    environment_moist_static_energy_forced: FloatField,
+    environment_saturation_moist_static_energy_cloud_levels_forced: FloatField,
+    cloud_moist_static_energy_forced: FloatField,
+    vapor_excess: FloatFieldIJ,
+    t_excess: FloatFieldIJ,
+    add_buoyancy: FloatFieldIJ,
     plume: Int,
-    start_level: IntFieldIJ_Plume,
-    ktop: IntFieldIJ_Plume,
-    up_massdetro: FloatField_Plume,
-    up_massentro: FloatField_Plume,
-    zuo: FloatField_Plume,
-    zu: FloatField_Plume,
-    heo: FloatField_Plume,
-    zqexec: FloatFieldIJ_Plume,
-    hco: FloatField_Plume,
-    heso_cup: FloatField_Plume,
-    ztexec: FloatFieldIJ_Plume,
-    x_add_buoy: FloatFieldIJ_Plume,
 ):
-
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(1, None):
         if error_code[0, 0][plume] == 0:
-            if K >= start_level + 1 and K <= ktop + 1:
+            if K >= start_level + 1 and K <= cloud_top[0, 0][plume] + 1:  # mass cons option
                 denom: FloatFieldIJ = (
-                    zu.at(K=K - 1) - 0.5 * up_massdetro.at(K=K - 1) + up_massentro.at(K=K - 1)
+                    normalized_massflux[0, 0, -1]
+                    - 0.5 * mass_detrainment[0, 0, -1][plume]
+                    + mass_entrainment[0, 0, -1][plume]
                 )
                 if denom > 0.0:
-                    hco = (
-                        hco.at(K=K - 1) * zuo.at(K=K - 1)
-                        - 0.5 * up_massdetro.at(K=K - 1) * hco.at(K=K - 1)
-                        + up_massentro.at(K=K - 1) * heo.at(K=K - 1)
+                    cloud_moist_static_energy_forced = 1
+                    cloud_moist_static_energy_forced = (
+                        cloud_moist_static_energy_forced[0, 0, -1]
+                        * normalized_massflux_forced[0, 0, -1][plume]
+                        - 0.5 * mass_detrainment[0, 0, -1][plume] * cloud_moist_static_energy_forced[0, 0, -1]
+                        + mass_entrainment[0, 0, -1][plume] * environment_moist_static_energy_forced[0, 0, -1]
                     ) / denom
                     if K == start_level + 1:
-                        x_add: FloatFieldIJ = (
-                            cumulus_parameterization_constants.XLV * zqexec
-                            + cumulus_parameterization_constants.CP * ztexec
-                        ) + x_add_buoy
-                        hco = hco + x_add * up_massentro.at(K=K - 1) / denom
-
+                        perturbation: FloatFieldIJ = (
+                            cumulus_parameterization_constants.XLV * vapor_excess
+                            + cumulus_parameterization_constants.CP * t_excess
+                        ) + add_buoyancy
+                        cloud_moist_static_energy_forced = (
+                            cloud_moist_static_energy_forced
+                            + perturbation * mass_entrainment[0, 0, -1][plume] / denom
+                        )
             else:
-                hco = hco.at(K=K - 1)
+                cloud_moist_static_energy_forced = cloud_moist_static_energy_forced[0, 0, -1]
 
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
-            if K >= ktop + 2:
-                hco = heso_cup
+            if K >= cloud_top[0, 0][plume] + 2:
+                cloud_moist_static_energy_forced = (
+                    environment_saturation_moist_static_energy_cloud_levels_forced
+                )
 
 
 def moist_static_energy_inside_cloud(

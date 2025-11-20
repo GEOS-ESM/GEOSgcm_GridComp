@@ -129,7 +129,16 @@ from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_C
     TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_mid,
     TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_deep,
 )
-
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_FirstGuessMoistStaticEnergy import (
+    TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_shallow,
+    TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_mid,
+    TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumulus_Parameterization_GetBuoyancy import (
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_shallow,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_mid,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_deep,
+)
 
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
