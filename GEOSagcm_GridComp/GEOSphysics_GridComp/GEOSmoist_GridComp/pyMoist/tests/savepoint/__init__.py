@@ -135,9 +135,9 @@ from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_
     TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumulus_Parameterization_GetBuoyancy_1 import (
-    TranslateGF2020_CumulusParameterization_GetBuoyancy_shallow,
-    TranslateGF2020_CumulusParameterization_GetBuoyancy_mid,
-    TranslateGF2020_CumulusParameterization_GetBuoyancy_deep,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_1_shallow,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_1_mid,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_1_deep,
 )
 
 # in progress tests
