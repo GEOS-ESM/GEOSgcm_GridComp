@@ -445,27 +445,27 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        p_updraft: Quantity = dataclasses.field(
+        precipitable_water_updraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "p_updraft",
+                "name": "precipitable_water_updraft_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        p_downdraft: Quantity = dataclasses.field(
+        precipitable_water_downdraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "p_downdraft",
+                "name": "precipitable_water_downdraft_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        cloud_liquid_after_rain: Quantity = dataclasses.field(
+        cloud_liquid_after_rain_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud_liquid_after_rain",
+                "name": "cloud_liquid_after_rain_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
