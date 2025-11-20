@@ -18,7 +18,7 @@ from gt4py.cartesian.gtscript import (
     float32,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    get_updraft_origin_conditions,
+    get_cloud_boundary_conditions,
 )
 
 # Parameters needed for cup_up_moisture
@@ -185,7 +185,7 @@ def cup_up_moisture(
         qc = qe_cup
     with computation(FORWARD), interval(0, 1):
         if ierr == 0:
-            qaver: FloatFieldIJ = get_updraft_origin_conditions(
+            qaver: FloatFieldIJ = get_cloud_boundary_conditions(
                 qe_cup,
                 0,
                 po,
@@ -201,11 +201,7 @@ def cup_up_moisture(
     with computation(PARALLEL), interval(0, -1):
         if ierr == 0:
             if K <= start_level - 1:
-                qc = (
-                    qaver
-                    + zqexec
-                    + 0.5 * x_add_buoy / cumulus_parameterization_constants.XLV
-                )
+                qc = qaver + zqexec + 0.5 * x_add_buoy / cumulus_parameterization_constants.XLV
                 qrc = 0.0
 
     # with computation(PARALLEL), interval(...):

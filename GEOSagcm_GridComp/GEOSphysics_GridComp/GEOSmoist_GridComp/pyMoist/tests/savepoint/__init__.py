@@ -74,10 +74,10 @@ from .convection.GF_2020.cumulus_parameterization.air_density.translate_GF2020_C
     TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_mid,
     TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_deep,
 )
-from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_PartitionLiquidIce import (
-    TranslateGF2020_CumulusParameterization_PartitionLiquidIce_shallow,
-    TranslateGF2020_CumulusParameterization_PartitionLiquidIce_mid,
-    TranslateGF2020_CumulusParameterization_PartitionLiquidIce_deep,
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_PartitionLiquidIceAndGetLevels import (
+    TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_shallow,
+    TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_mid,
+    TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cumulus_Parameterization_HighestMoistStaticEnergyLevel import (
     TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_shallow,
@@ -125,9 +125,20 @@ from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cu
 
 # UpdraftMassFluxProfile test goes here
 from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_Cumulus_Parameterization_CalculateMassEntrainmentDetrainment import (
+    TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_shallow,
+    TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_mid,
     TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_deep,
 )
-
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_FirstGuessMoistStaticEnergy import (
+    TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_shallow,
+    TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_mid,
+    TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_deep,
+)
+from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumulus_Parameterization_GetBuoyancy_1 import (
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_1_shallow,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_1_mid,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_1_deep,
+)
 
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
@@ -139,9 +150,6 @@ from .convection.GF_2020.awaiting_permanant_home.translate_GF2020_Setup import (
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_partition_liq_ice import (
     TranslateGetPartitionLiqIce,
 )
-from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_buoyancy import (
-    TranslateGetBuoyancy,
-)
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_ke_to_heating import (
     TranslateKeToHeating,
 )
@@ -150,9 +158,6 @@ from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.transl
 )
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_rates_up_pdf import (
     TranslateRatesUpPdf,
-)
-from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_buoyancy import (
-    TranslateGetBuoyancy,
 )
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_ke_to_heating import (
     TranslateKeToHeating,

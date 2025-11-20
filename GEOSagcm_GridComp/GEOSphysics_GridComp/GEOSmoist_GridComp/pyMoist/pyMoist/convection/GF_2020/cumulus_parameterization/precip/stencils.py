@@ -74,10 +74,10 @@ def partition_liquid_ice(
     with computation(PARALLEL), interval(...):
         # constants, set internally because they may differ from global constants
         # and need to only exist inside this stencil
-        T1 = 276.16
-        Z_meltlayer1 = 4000.0
-        Z_meltlayer2 = 6000.0
-        delT = 3.0
+        t1 = 276.16
+        z_meltlayer1 = 4000.0
+        z_meltlayer2 = 6000.0
+        del_t = 3.0
 
         # prefill some fields
         part_liquid_ice = 1.0
@@ -95,15 +95,15 @@ def partition_liquid_ice(
         if MELT_ICE == 1 and plume == 2:
             if error_code[0, 0][plume] == 0:
                 # define the melting layer (the layer will be between T_0+1 < TEMP < T_1
-                if t <= (cumulus_parameterization_constants.T_0 - delT):
+                if t <= (cumulus_parameterization_constants.T_0 - del_t):
                     melting_layer = 0.0
 
-                elif t < (cumulus_parameterization_constants.T_0 + delT) and t > (
-                    cumulus_parameterization_constants.T_0 - delT
+                elif t < (cumulus_parameterization_constants.T_0 + del_t) and t > (
+                    cumulus_parameterization_constants.T_0 - del_t
                 ):
                     melting_layer = (
-                        (t - (cumulus_parameterization_constants.T_0 - delT))
-                        / (2.0 * delT)
+                        (t - (cumulus_parameterization_constants.T_0 - del_t))
+                        / (2.0 * del_t)
                     ) ** 2
 
                 else:

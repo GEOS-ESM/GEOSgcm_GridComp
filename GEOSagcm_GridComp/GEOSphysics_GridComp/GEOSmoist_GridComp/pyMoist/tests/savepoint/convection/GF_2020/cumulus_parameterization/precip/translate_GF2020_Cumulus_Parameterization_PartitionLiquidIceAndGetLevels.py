@@ -19,7 +19,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels.get_levels i
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 
 
-class TranslateGF2020_CumulusParameterization_PartitionLiquidIce_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -164,7 +164,7 @@ class TranslateGF2020_CumulusParameterization_PartitionLiquidIce_shallow(Transla
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_PartitionLiquidIce_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -309,7 +309,7 @@ class TranslateGF2020_CumulusParameterization_PartitionLiquidIce_mid(TranslateFo
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_PartitionLiquidIce_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

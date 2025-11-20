@@ -142,15 +142,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    error_code_string: Quantity = dataclasses.field(
-        metadata={
-            "name": "error_code_string",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Int,
-        }
-    )
     error_code_2: Quantity = dataclasses.field(
         metadata={
             "name": "error_code_2",
@@ -802,6 +793,24 @@ class GF2020CumulusParameterizationLocals(State):
     mass_detrainment_u_updraft: Quantity = dataclasses.field(
         metadata={
             "name": "mass_detrainment_u_updraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    normalized_massflux_updraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "normalized_massflux_updraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    buoyancy: Quantity = dataclasses.field(
+        metadata={
+            "name": "buoyancy",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",

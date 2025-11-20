@@ -22,6 +22,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment.stencils im
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import (
     unknown_find_level,
 )
+from ndsl.logging import ndsl_log
 
 
 class EntrainmentRates:
@@ -49,6 +50,13 @@ class EntrainmentRates:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+
+        if self.cumulus_parameterization_config.ZERO_DIFF != 0:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called EntrainmentRates with "
+                "untested ZERO_DIFF option. Running untested code... proceed with caution"
+            )
+
         self._entrainment_rates(
             vapor=locals.vapor_cloud_levels_forced,
             environment_saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
@@ -76,10 +84,7 @@ class DowndraftEntrainmentProfiles:
         self._downdraft_entrainment_profiles = stencil_factory.from_dims_halo(
             func=downdraft_entrainment_profiles,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
-                "DOWNDRAFT": cumulus_parameterization_config.DOWNDRAFT,
-            },
+            externals={"DOWNDRAFT": cumulus_parameterization_config.DOWNDRAFT},
         )
 
     def __call__(
@@ -88,6 +93,7 @@ class DowndraftEntrainmentProfiles:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+
         self._downdraft_entrainment_profiles(
             lateral_entrainment_rate=state.input.lateral_entrainment_rate,
             entrainment_rate_downdraft=locals.entrainment_rate_downdraft,
@@ -113,10 +119,6 @@ class StableDetrainment:
         self._unknown_find_level = stencil_factory.from_dims_halo(
             func=unknown_find_level,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
-                "DOWNDRAFT": cumulus_parameterization_config.DOWNDRAFT,
-            },
         )
 
     def __call__(
@@ -167,6 +169,13 @@ class CalculateMassEntrainmentDetrainment:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+
+        if self.cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD != 1:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called CalculateMassEntrainmentDetrainment with "
+                "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
+            )
+
         self._compute_lateral_massflux(
             error_code=state.output.error_code,
             cloud_top=state.output.cloud_top,

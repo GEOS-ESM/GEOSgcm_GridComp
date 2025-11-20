@@ -15,9 +15,10 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy.stencils import (
     parcel_moist_static_energy,
-    first_guess_mse,
+    first_guess_moist_static_energy,
     moist_static_energy_inside_cloud,
 )
+from ndsl.logging import ndsl_log
 
 # from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy.stencils import (
 #     get_buoyancy,
@@ -51,6 +52,13 @@ class ParcelMoistStaticEnergy:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+
+        if self.cumulus_parameterization_config.MODIS_FRACTION != 1:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called ParcelMoistStaticEnergy with "
+                "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
+            )
+
         self._parcel_moist_static_energy(
             error_code=state.output.error_code,
             t_excess=locals.t_excess,
@@ -129,7 +137,7 @@ class FirstGuessMoistStaticEnergy:
 
         # construct stencils and functions
         self._first_guess_mse = stencil_factory.from_dims_halo(
-            func=first_guess_mse,
+            func=first_guess_moist_static_energy,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -141,19 +149,19 @@ class FirstGuessMoistStaticEnergy:
     ):
         self._first_guess_mse(
             error_code=state.output.error_code,
+            start_level=locals.start_level,
+            cloud_top=state.output.cloud_top,
+            mass_detrainment=state.output.mass_detrainment_downdraft_forced,
+            mass_entrainment=state.output.mass_entrainment_downdraft_forced,
+            normalized_massflux=locals.normalized_massflux_updraft,
+            normalized_massflux_forced=state.output.normalized_massflux_updraft_forced,
+            environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+            environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+            cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+            vapor_excess=locals.vapor_excess,
+            t_excess=locals.t_excess,
+            add_buoyancy=locals.add_buoyancy,
             plume=plume_dependent_constants.PLUME_INDEX,
-            # start_level=,
-            # ktop=,
-            # up_massdetro=,
-            # up_massentro=,
-            # zuo=,
-            # zu=,
-            # heo=,
-            # zqexec=,
-            # hco=,
-            # heso_cup=,
-            # ztexec=,
-            # x_add_buoy=,
         )
 
 

@@ -19,6 +19,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.precip.stencils import 
     output_evaporation_flux,
     output_deep_precipitation,
 )
+from ndsl.logging import ndsl_log
 
 
 class PartitionLiquidIce:
@@ -49,6 +50,13 @@ class PartitionLiquidIce:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+
+        if self.cumulus_parameterization_config.MODIS_FRACTION != 1:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called PartitionLiquidIce with "
+                "untested MODIS_FRACTION option. Running untested code... proceed with caution"
+            )
+
         self._partition_liquid_ice(
             t=locals.t_new,
             p=state.output.p_cloud_levels_forced,

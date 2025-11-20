@@ -17,6 +17,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels.stencils imp
     updraft_rates_pdf,
     cloud_top_checks,
 )
+from ndsl.logging import ndsl_log
 
 
 class MaximumUpdraftOriginLevel:
@@ -148,6 +149,19 @@ class GetLCL:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+
+        if self.cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD != 1:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called GetLCL with "
+                "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
+            )
+
+        if self.config.ADV_TRIGGER != 1:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called GetLCL with "
+                "untested ADV_TRIGGER option. Running untested code... proceed with caution"
+            )
+
         self._find_lcl(
             p=state.input_output.p_forced,
             p_cloud_levels=locals.p_cloud_levels,
@@ -205,6 +219,37 @@ class ConvectiveCloudBaseLevel:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+
+        if self.cumulus_parameterization_config.OVERSHOOT != 0:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
+                "untested ZERO_DIFF option. Running untested code... proceed with caution"
+            )
+
+        if self.cumulus_parameterization_config.ZERO_DIFF != 0:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
+                "untested ZERO_DIFF option. Running untested code... proceed with caution"
+            )
+
+        if self.cumulus_parameterization_config.MOIST_TRIGGER != 0:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
+                "untested MOIST_TRIGGER option. Running untested code... proceed with caution"
+            )
+
+        if self.cumulus_parameterization_config.USE_MEMORY != -1:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
+                "untested USE_MEMORY option. Running untested code... proceed with caution"
+            )
+
+        if self.cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD != 1:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
+                "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
+            )
+
         self._set_start_level(
             updraft_origin_level=state.output.updraft_origin_level,
             start_level=locals.start_level,
@@ -264,10 +309,6 @@ class CloudTop:
         self._cloud_top_checks = stencil_factory.from_dims_halo(
             func=cloud_top_checks,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
-                "ADV_TRIGGER": config.ADV_TRIGGER,
-            },
         )
 
     def __call__(
@@ -276,6 +317,13 @@ class CloudTop:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+
+        if self.cumulus_parameterization_config.OVERSHOOT != 0:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called CloudTop with "
+                "untested OVERSHOOT option. Running untested code... proceed with caution"
+            )
+
         self._updraft_rates_pdf(
             entrainment_rate=state.output.entrainment_rate,
             moist_static_energy=locals.environment_moist_static_energy_forced,

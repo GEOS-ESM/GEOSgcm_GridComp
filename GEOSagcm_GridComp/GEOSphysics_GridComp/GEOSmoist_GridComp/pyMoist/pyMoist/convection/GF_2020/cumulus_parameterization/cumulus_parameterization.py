@@ -10,7 +10,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
     GF2020CumulusParameterizationLocals,
 )
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
@@ -262,8 +261,11 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._calculate_mass_entrainment_detrainment = (
-            CalculateMassEntrainmentDetrainment()
+        self._calculate_mass_entrainment_detrainment = CalculateMassEntrainmentDetrainment(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
         self._first_guess_moist_static_energy = FirstGuessMoistStaticEnergy(
@@ -273,7 +275,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._get_buoyancy = GetBuoyancy()
+        self._get_buoyancy = GetBuoyancy(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._c1d_profile = C1DProfile()
 
@@ -281,9 +288,7 @@ class CumulusParameterization:
 
         self._melting_profile = MeltingProfile()
 
-        self._moist_static_energy_and_momentum_budget = (
-            UpdraftMoistStaticEnergyAndMomentumBudget()
-        )
+        self._moist_static_energy_and_momentum_budget = UpdraftMoistStaticEnergyAndMomentumBudget()
 
         self._in_cloud_updraft_air_temperature = UpdraftInCloudUpdraftAirTemperature(
             stencil_factory=stencil_factory,
@@ -302,13 +307,11 @@ class CumulusParameterization:
 
         self._downdraft_wet_bulb = DowndraftWetBlub()
 
-        self._downdraft_moist_static_energy_and_moisture_budget = (
-            DowndraftMoistStaticEnergyAndMoistureBudget(
-                stencil_factory=stencil_factory,
-                quantity_factory=quantity_factory,
-                config=config,
-                cumulus_parameterization_config=cumulus_parameterization_config,
-            )
+        self._downdraft_moist_static_energy_and_moisture_budget = DowndraftMoistStaticEnergyAndMoistureBudget(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
         self._downdraft_moisture_properties = DowndraftMoistureProperties()
@@ -389,6 +392,11 @@ class CumulusParameterization:
             raise NotImplementedError("plume order not impelemented")
 
         for plume in plume_types:
+            # setup constants for the current plume, reset necessary fields, prefill necessary fields
+            # NOTE test F2020_CumulusParameterization_Setup_{plume}:
+            # NOTE      deep ✅
+            # NOTE      mid ✅
+            # NOTE      shallow ❌ (python vs fortran initalization difference)
             self._setup(
                 state,
                 locals,
@@ -400,6 +408,10 @@ class CumulusParameterization:
             if self.plume_dependent_constants.ENABLE_PLUME == 1:
                 # environmental conditions, first heights
                 # calculate moist static energy, heights, environmental saturation mixing ratio
+                # NOTE test GF2020_CumulusParameterization_EnvironmentConditions_1_{plume}:
+                # NOTE      deep ❌ (two vars, each one point off by two ulp)
+                # NOTE      mid ❌ (two vars, each one point off by two ulp)
+                # NOTE      shallow ✅
                 self._environment_conditions(
                     state=state,
                     locals=locals,
@@ -407,6 +419,10 @@ class CumulusParameterization:
                     plume_dependent_constants=self.plume_dependent_constants,
                     data_type=0,
                 )
+                # NOTE test GF2020_CumulusParameterization_EnvironmentConditions_2_{plume}:
+                # NOTE      deep ❌ (two vars, each one point off by two ulp)
+                # NOTE      mid ❌ (two vars, each one point off by two ulp)
+                # NOTE      shallow ✅
                 self._environment_conditions(
                     state=state,
                     locals=locals,
@@ -421,6 +437,10 @@ class CumulusParameterization:
                     ndsl_log.error(" GF2020 output sounding not supported")
 
                 # environmental values on cloud levels
+                # NOTE test GF2020_CumulusParameterization_EnvironmentCloudLevels_1_{plume}:
+                # NOTE.     deep ❌ (worst fail rate 0.01%, worse fail 32 ULP)
+                # NOTE.     mid ❌ (worst fail rate 0.01%, worse fail 32 ULP)
+                # NOTE.     shallow ✅
                 self._environment_cloud_levels(
                     state=state,
                     locals=locals,
@@ -428,6 +448,10 @@ class CumulusParameterization:
                     plume_dependent_constants=self.plume_dependent_constants,
                     data_type=0,
                 )
+                # NOTE test GF2020_CumulusParameterization_EnvironmentCloudLevels_2_{plume}:
+                # NOTE      deep ❌ (worst fail rate 0.02%, worse fail 84 ULP)
+                # NOTE      mid ❌ (worst fail rate 0.02%, worse fail 84 ULP)
+                # NOTE      shallow ✅
                 self._environment_cloud_levels(
                     state=state,
                     locals=locals,
@@ -437,6 +461,10 @@ class CumulusParameterization:
                 )
 
                 # get air density at full layer (model levels) by hydrostatic balance (kg/m3)
+                # NOTE test GF2020_CumulusParameterization_HydrostaticAirDensity_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._hydrostatic_air_density(
                     state=state,
                     locals=locals,
@@ -444,6 +472,10 @@ class CumulusParameterization:
                 )
 
                 # partition between liq/ice cloud contents
+                # NOTE test GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_{plume}:
+                # NOTE      deep ⚠️⚠️⚠️ NEEDS ATTENTION
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._partition_liquid_ice(
                     state=state,
                     locals=locals,
@@ -451,6 +483,10 @@ class CumulusParameterization:
                 )
 
                 # get the maximum origin level up an updraft
+                # NOTE test GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_{plume}:
+                # NOTE      deep ⚠️⚠️⚠️ NEEDS ATTENTION
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._maximum_updraft_origin_level(
                     state=state,
                     locals=locals,
@@ -458,6 +494,10 @@ class CumulusParameterization:
                 )
 
                 # level where detrainment for downdraft starts
+                # NOTE test GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_{plume}:
+                # NOTE      deep ⚠️⚠️⚠️ NEEDS ATTENTION
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._downdraft_detrainment_level(
                     state=state,
                     locals=locals,
@@ -465,6 +505,10 @@ class CumulusParameterization:
                 )
 
                 # determine level with highest moist static energy content (k_max_mse)
+                # NOTE test GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._highest_moist_static_energy_level(
                     state=state,
                     locals=locals,
@@ -481,6 +525,10 @@ class CumulusParameterization:
                 self._cold_pool_parameterization()
 
                 # determine LCL for the air parcels with highest moist static energy
+                # NOTE test GF2020_CumulusParameterization_GetLCL_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._get_lcl(
                     state=state,
                     locals=locals,
@@ -488,6 +536,10 @@ class CumulusParameterization:
                 )
 
                 # determine the moist static energy of air parcels at source level
+                # NOTE test GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._parcel_moist_static_energy(
                     state=state,
                     locals=locals,
@@ -495,6 +547,10 @@ class CumulusParameterization:
                 )
 
                 # determine the vertical entrainment/detrainment rates
+                # NOTE test GF2020_CumulusParameterization_EntrainmentRates_{plume}:
+                # NOTE      deep ⚠️⚠️⚠️ NEEDS ATTENTION (maybe bad constant?)
+                # NOTE      mid ⚠️⚠️⚠️ NEEDS ATTENTION (maybe bad constant?)
+                # NOTE      shallow ✅
                 self._entrainment_rates(
                     state=state,
                     locals=locals,
@@ -502,7 +558,10 @@ class CumulusParameterization:
                 )
 
                 # determine level of convective cloud base
-                # NOTE DOES NOT VERIFY
+                # NOTE test GF2020_CumulusParameterization_ConvectiveCloudBaseLevel_{plume}:
+                # NOTE      deep ⚠️⚠️⚠️ NEEDS ATTENTION (gtir error)
+                # NOTE      mid ⚠️⚠️⚠️ TEST DOES NOT YET EXIST
+                # NOTE      shallow ⚠️⚠️⚠️ TEST DOES NOT YET EXIST
                 self._convective_cloud_base_level(
                     state=state,
                     locals=locals,
@@ -510,6 +569,10 @@ class CumulusParameterization:
                 )
 
                 # define entrainment/detrainment profiles for downdrafts
+                # NOTE test GF2020_CumulusParameterization_DowndraftEntrainmentProfiles_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._downdraft_entraiment_profiles(
                     state=state,
                     locals=locals,
@@ -517,6 +580,10 @@ class CumulusParameterization:
                 )
 
                 # update unforced & forced moist static energy
+                # NOTE test GF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._parcel_moist_static_energy(
                     state=state,
                     locals=locals,
@@ -524,6 +591,10 @@ class CumulusParameterization:
                 )
 
                 # increase detrainment in stable layers
+                # NOTE test GF2020_CumulusParameterization_StableDetrainment_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._stable_detrainment(
                     state=state,
                     locals=locals,
@@ -531,6 +602,10 @@ class CumulusParameterization:
                 )
 
                 # use cloud for plumes
+                # NOTE test GF2020_CumulusParameterization_CloudTop_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._cloud_top(
                     state=state,
                     locals=locals,
@@ -538,6 +613,10 @@ class CumulusParameterization:
                 )
 
                 # determine the normalized mass flux profile for updraft
+                # NOTE test GF2020_CumulusParameterization_UpdraftMassFluxProfile_{plume}:
+                # NOTE      deep ⚠️⚠️⚠️ UNFINISHED, TEST DOES NOT EXIST
+                # NOTE      mid ⚠️⚠️⚠️ UNFINISHED, TEST DOES NOT EXIST
+                # NOTE      shallow ⚠️⚠️⚠️ UNFINISHED, TEST DOES NOT EXIST
                 self._updraft_mass_flux_profile(
                     state=state,
                     locals=locals,
@@ -545,10 +624,21 @@ class CumulusParameterization:
                 )
 
                 # calculate mass entrainment and detrainment
-                self._calculate_mass_entrainment_detrainment()
+                # NOTE test GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._calculate_mass_entrainment_detrainment(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # 1st guess for moist static energy
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ⚠️⚠️⚠️ NEEDS ATTENTION
+                # NOTE      shallow ⚠️⚠️⚠️ NEEDS ATTENTION
                 self._first_guess_moist_static_energy(
                     state=state,
                     locals=locals,
@@ -556,7 +646,10 @@ class CumulusParameterization:
                 )
 
                 # Get buoyancy of updrafts
-                # NOTE ported and tested (should pass)
+                # NOTE test GF2020_CumulusParameterization_GetBuoyancy_1_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._get_buoyancy(
                     state=state,
                     locals=locals,

@@ -40,9 +40,4 @@ def ke_to_heating(
                 if K <= ktop - 1:
                     fp = sqrt((dellu * dellu + dellv * dellv)) / fpi
 
-                    dellat = dellat + (
-                        fp
-                        * dts
-                        * constants.MAPL_GRAV
-                        / cumulus_parameterization_constants.CP
-                    )
+                    dellat = dellat + (fp * dts * constants.MAPL_GRAV / cumulus_parameterization_constants.CP)

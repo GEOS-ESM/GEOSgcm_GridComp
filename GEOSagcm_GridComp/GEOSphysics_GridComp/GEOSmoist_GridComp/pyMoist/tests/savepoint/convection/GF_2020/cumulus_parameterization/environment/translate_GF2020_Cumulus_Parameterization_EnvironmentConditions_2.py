@@ -34,7 +34,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_shallow(Tr
             "local_env_moist_static_energy_forced_env_cond": {},
             "local_env_saturation_moist_static_energy_forced_env_cond": {},
             "local_t_new_env_cond": {},
-            "local_vapor_new_env_cond": {},
+            "local_vapor_forced_env_cond": {},
             "p_forced_env_cond": {},
             "topography_height_no_negative_env_cond": {},
             "p_surface_env_cond": {},
@@ -83,7 +83,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_shallow(Tr
             "local_env_saturation_moist_static_energy_forced_env_cond"
         ]
         locals.t_new.data[:] = inputs["local_t_new_env_cond"]
-        locals.vapor_forced.data[:] = inputs["local_vapor_new_env_cond"]
+        locals.vapor_forced.data[:] = inputs["local_vapor_forced_env_cond"]
         state.input_output.p_forced.data[:] = inputs["p_forced_env_cond"]
         state.input_output.topography_height_no_negative.data[:] = inputs[
             "topography_height_no_negative_env_cond"
@@ -120,7 +120,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_shallow(Tr
                 :
             ],
             "local_t_new_env_cond": locals.t_new.field[:],
-            "local_vapor_new_env_cond": locals.vapor_forced.field[:],
+            "local_vapor_forced_env_cond": locals.vapor_forced.field[:],
             "p_forced_env_cond": state.input_output.p_forced.field[:],
             "topography_height_no_negative_env_cond": state.input_output.topography_height_no_negative.field[
                 :
@@ -149,7 +149,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_mid(Transl
             "local_env_moist_static_energy_forced_env_cond": {},
             "local_env_saturation_moist_static_energy_forced_env_cond": {},
             "local_t_new_env_cond": {},
-            "local_vapor_new_env_cond": {},
+            "local_vapor_forced_env_cond": {},
             "p_forced_env_cond": {},
             "topography_height_no_negative_env_cond": {},
             "p_surface_env_cond": {},
@@ -198,7 +198,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_mid(Transl
             "local_env_saturation_moist_static_energy_forced_env_cond"
         ]
         locals.t_new.data[:] = inputs["local_t_new_env_cond"]
-        locals.vapor_forced.data[:] = inputs["local_vapor_new_env_cond"]
+        locals.vapor_forced.data[:] = inputs["local_vapor_forced_env_cond"]
         state.input_output.p_forced.data[:] = inputs["p_forced_env_cond"]
         state.input_output.topography_height_no_negative.data[:] = inputs[
             "topography_height_no_negative_env_cond"
@@ -235,7 +235,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_mid(Transl
                 :
             ],
             "local_t_new_env_cond": locals.t_new.field[:],
-            "local_vapor_new_env_cond": locals.vapor_forced.field[:],
+            "local_vapor_forced_env_cond": locals.vapor_forced.field[:],
             "p_forced_env_cond": state.input_output.p_forced.field[:],
             "topography_height_no_negative_env_cond": state.input_output.topography_height_no_negative.field[
                 :
@@ -264,7 +264,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_deep(Trans
             "local_env_moist_static_energy_forced_env_cond": {},
             "local_env_saturation_moist_static_energy_forced_env_cond": {},
             "local_t_new_env_cond": {},
-            "local_vapor_new_env_cond": {},
+            "local_vapor_forced_env_cond": {},
             "p_forced_env_cond": {},
             "topography_height_no_negative_env_cond": {},
             "p_surface_env_cond": {},
@@ -313,7 +313,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_deep(Trans
             "local_env_saturation_moist_static_energy_forced_env_cond"
         ]
         locals.t_new.data[:] = inputs["local_t_new_env_cond"]
-        locals.vapor_forced.data[:] = inputs["local_vapor_new_env_cond"]
+        locals.vapor_forced.data[:] = inputs["local_vapor_forced_env_cond"]
         state.input_output.p_forced.data[:] = inputs["p_forced_env_cond"]
         state.input_output.topography_height_no_negative.data[:] = inputs[
             "topography_height_no_negative_env_cond"
@@ -338,8 +338,6 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_deep(Trans
                 data_type=1,
             )
 
-        print(locals.environment_moist_static_energy_forced.data[:])
-
         outputs = {
             "geopotential_height_forced_env_cond": state.input_output.geopotential_height_forced.field[:],
             "local_env_saturation_mixing_ratio_forced_env_cond": locals.environment_saturation_mixing_ratio_forced.field[
@@ -352,7 +350,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_deep(Trans
                 :
             ],
             "local_t_new_env_cond": locals.t_new.field[:],
-            "local_vapor_new_env_cond": locals.vapor_forced.field[:],
+            "local_vapor_forced_env_cond": locals.vapor_forced.field[:],
             "p_forced_env_cond": state.input_output.p_forced.field[:],
             "topography_height_no_negative_env_cond": state.input_output.topography_height_no_negative.field[
                 :

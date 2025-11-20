@@ -51,7 +51,7 @@ def updraft_origin_conditions_perturbation(value, perturbation, start_index, end
 
 
 @function
-def get_updraft_origin_conditions(
+def get_cloud_boundary_conditions(
     field,
     scalar_perturbation,
     p,
@@ -64,7 +64,21 @@ def get_updraft_origin_conditions(
     perturbation_field,
 ):
     """
-    Get the conditions of a field at the origin level of a updraft
+    Get the conditions of a field at the origin level of a updraft by taking an average across layers.
+
+    Dimensions of the average:
+        a) to pick the value at k22 level, instead of an average between
+            (k22-order_aver, ..., k22-1, k22) set order_aver=kts
+        b) to average between kts and k22 => set order_aver = k22
+
+        order_aver = 4:
+            BOUNDARY_CONDITION_METHOD == 0: average between updraft_origin_level,
+                updraft_origin_level - 1, updraft_origin_level - 2
+            BOUNDARY_CONDITION_METHOD == 1: average between updraft_origin_level + 1,
+                updraft_origin_level, updraft_origin_level - 1
+
+        order_aver = 0:
+            average between updraft_origin_level, updraft_origin_level - 1, updraft_origin_level - 2
 
     Args:
         field: field from which value is extracted
@@ -96,11 +110,11 @@ def get_updraft_origin_conditions(
 
     elif BOUNDARY_CONDITION_METHOD == 1:
         effec_frac = (1.0 - ocean_fraction) + ocean_fraction * frac_ave_layer_ocean
-        ave_layer = AVERAGE_LAYER_DEPTH * effec_frac
+        average_layer = AVERAGE_LAYER_DEPTH * effec_frac
 
         start_index = 0
         level = 0
-        p_at_origin = p.at(K=updraft_origin_level) + 0.5 * ave_layer
+        p_at_origin = p.at(K=updraft_origin_level) + 0.5 * average_layer
         while level <= k_end - 1:
             new = abs(p.at(K=level) - p_at_origin)
             old = abs(p.at(K=start_index) - p_at_origin)
@@ -110,8 +124,7 @@ def get_updraft_origin_conditions(
 
         end_index = 0
         level = 0
-        p_at_origin = p.at(K=updraft_origin_level) - 0.5 * ave_layer
-
+        p_at_origin = p.at(K=updraft_origin_level) - 0.5 * average_layer
         while level <= k_end - 1:
             new = abs(p.at(K=level) - p_at_origin)
             old = abs(p.at(K=end_index) - p_at_origin)
@@ -132,12 +145,12 @@ def get_updraft_origin_conditions(
             level = start_index
             while level <= k_end - 1 and stop_computation == False:
                 dp = -(p.at(K=level + 1) - p.at(K=level))
-                if dp_layer + dp <= ave_layer:
+                if dp_layer + dp <= average_layer:
                     dp_layer = dp_layer + dp
                     source_parcel_value = source_parcel_value + field.at(K=level) * dp
                     level += 1
                 else:
-                    dp = ave_layer - dp_layer
+                    dp = average_layer - dp_layer
                     dp_layer = dp_layer + dp
                     source_parcel_value = source_parcel_value + field.at(K=level) * dp
                     stop_computation = True

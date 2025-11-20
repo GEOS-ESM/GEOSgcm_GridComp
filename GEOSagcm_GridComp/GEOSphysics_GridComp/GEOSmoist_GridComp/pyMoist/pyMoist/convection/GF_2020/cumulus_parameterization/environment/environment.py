@@ -103,9 +103,7 @@ class EnvironmentCloudLevels:
         self._environment_cloud_levels = stencil_factory.from_dims_halo(
             func=environment_cloud_levels,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "CLOUD_LEVEL_GRID": cumulus_parameterization_config.CLOUD_LEVEL_GRID
-            },
+            externals={"CLOUD_LEVEL_GRID": cumulus_parameterization_config.CLOUD_LEVEL_GRID},
         )
 
     def __call__(
@@ -150,9 +148,7 @@ class EnvironmentCloudLevels:
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
         elif data_type == 1:
-            p_3d = state.output.p_cloud_levels_forced.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ]
+            p_3d = state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX]
             self._environment_cloud_levels(
                 p=state.input_output.p_forced,
                 p_surface=state.input_output.p_surface,
@@ -164,7 +160,7 @@ class EnvironmentCloudLevels:
                 t_surface=state.input_output.t_surface,
                 t_cloud_levels=locals.t_cloud_levels_forced,
                 vapor=locals.vapor_forced,
-                vapor_cloud_levels=locals.vapor_cloud_levels,
+                vapor_cloud_levels=locals.vapor_cloud_levels_forced,
                 u=state.input_output.u,
                 v=state.input_output.v,
                 u_cloud_levels=locals.u_cloud_levels,
@@ -179,9 +175,7 @@ class EnvironmentCloudLevels:
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
-            state.output.p_cloud_levels_forced.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ] = p_3d
+            state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX] = p_3d
         else:
             raise NotImplementedError("EnvironmentCloudLevels call type not supported.")
 
