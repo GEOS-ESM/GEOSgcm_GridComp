@@ -96,7 +96,7 @@ def update_tendencies(
     # note: dp1 is dry mass; dp0 is the old moist (total) mass
     # -----------------------------------------------------------------------
 
-    with computation(PARALLEL), interval(1, None):
+    with computation(FORWARD), interval(1, None):
         if sedi_transport == True:  # noqa
             u1 = (dp * u1 + m1[0, 0, -1] * u1[0, 0, -1]) / (dp + m1[0, 0, -1])
             v1 = (dp * v1 + m1[0, 0, -1] * v1[0, 0, -1]) / (dp + m1[0, 0, -1])
