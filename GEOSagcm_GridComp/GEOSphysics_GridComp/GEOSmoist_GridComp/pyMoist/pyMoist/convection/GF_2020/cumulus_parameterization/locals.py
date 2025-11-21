@@ -529,14 +529,16 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    environment_saturation_moist_static_energy_cloud_levels: Quantity = dataclasses.field(
-        metadata={
-            "name": "environment_saturation_moist_static_energy_cloud_levels",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
+    environment_saturation_moist_static_energy_cloud_levels: Quantity = (
+        dataclasses.field(
+            metadata={
+                "name": "environment_saturation_moist_static_energy_cloud_levels",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
     )
     environment_saturation_moist_static_energy_forced: Quantity = dataclasses.field(
         metadata={
@@ -547,14 +549,16 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    environment_saturation_moist_static_energy_cloud_levels_forced: Quantity = dataclasses.field(
-        metadata={
-            "name": "environment_saturation_moist_static_energy_cloud_levels_forced",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
+    environment_saturation_moist_static_energy_cloud_levels_forced: Quantity = (
+        dataclasses.field(
+            metadata={
+                "name": "environment_saturation_moist_static_energy_cloud_levels_forced",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
     )
     environment_saturation_mixing_ratio: Quantity = dataclasses.field(
         metadata={
@@ -583,14 +587,16 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    environment_saturation_mixing_ratio_cloud_levels_forced: Quantity = dataclasses.field(
-        metadata={
-            "name": "environment_saturation_mixing_ratio_cloud_levels_forced",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
+    environment_saturation_mixing_ratio_cloud_levels_forced: Quantity = (
+        dataclasses.field(
+            metadata={
+                "name": "environment_saturation_mixing_ratio_cloud_levels_forced",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
     )
     p_cloud_levels: Quantity = dataclasses.field(
         metadata={
@@ -811,6 +817,15 @@ class GF2020CumulusParameterizationLocals(State):
     buoyancy: Quantity = dataclasses.field(
         metadata={
             "name": "buoyancy",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    melting: Quantity = dataclasses.field(
+        metadata={
+            "name": "melting",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",

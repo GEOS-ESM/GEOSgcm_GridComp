@@ -140,6 +140,12 @@ from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumu
     TranslateGF2020_CumulusParameterization_GetBuoyancy_1_deep,
 )
 
+from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_Cumulus_Parameterization_MeltingProfile import (
+    TranslateGF2020_CumulusParameterization_MeltingProfile_shallow,
+    TranslateGF2020_CumulusParameterization_MeltingProfile_mid,
+    TranslateGF2020_CumulusParameterization_MeltingProfile_deep,
+)
+
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
     TranslateGetMeltingProfile,

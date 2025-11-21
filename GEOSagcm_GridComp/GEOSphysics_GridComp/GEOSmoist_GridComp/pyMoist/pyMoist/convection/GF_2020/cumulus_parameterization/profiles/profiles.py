@@ -43,6 +43,9 @@ class MeltingProfile:
         self._get_melting_profile = stencil_factory.from_dims_halo(
             func=get_melting_profile,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "MELT_ICE": cumulus_parameterization_config.MELT_ICE,
+            },
         )
 
     def __call__(
@@ -51,23 +54,16 @@ class MeltingProfile:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        pass
-        # self._get_melting_profile(
-        #     MELT_GLAC=,
-        #     cumulus=,
-        #     edto=,
-        #     error_code=,
-        #     plume=,
-        #     melting_layer=,
-        #     p_liq_ice=,
-        #     po_cup=,
-        #     pwdo=,
-        #     pwo=,
-        #     qrco=,
-        #     tn_cup=,
-        #     total_pwo_solid_phase=,
-        #     melting=,
-        # )
+
+        self._get_melting_profile(
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            local_melting_layer=locals.melting_layer,
+            local_partition_liquid_ice=locals.partition_liquid_ice,
+            p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+            precipitable_water_updraft_forced=state.output.precipitable_water_updraft_forced,
+            local_melting=locals.melting,
+        )
 
 
 class InCloudTemperature:
@@ -94,6 +90,7 @@ class InCloudTemperature:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+        pass
         self._in_cloud_updraft_air_temperature(
             error_code=state.output.error_code,
             plume=plume_dependent_constants.PLUME_INDEX,

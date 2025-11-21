@@ -32,44 +32,43 @@ def in_cloud_updraft_air_temperature(
 
 
 def get_melting_profile(
-    MELT_GLAC: IntField,
-    cumulus: IntField,
-    edto: FloatField,
     error_code: IntFieldIJ_Plume,
     plume: Int,
-    melting_layer: FloatField,
-    p_liq_ice: FloatField,
-    po_cup: FloatField,
-    pwdo: FloatField,
-    pwo: FloatField,
-    qrco: FloatField,
-    tn_cup: FloatField,
-    total_pwo_solid_phase: FloatFieldIJ,
-    melting: FloatField,
+    local_melting_layer: FloatField,
+    local_partition_liquid_ice: FloatField,
+    p_cloud_levels_forced: FloatField_Plume,
+    precipitable_water_updraft_forced: FloatField_Plume,
+    local_melting: FloatField,
 ):
-    from __externals__ import k_end
+    from __externals__ import k_end, MELT_ICE
 
     with computation(FORWARD), interval(...):
         ktf = k_end - 1
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_ICE == 1 and plume == 2:
             pwo_solid_phase = 0.0
             pwo_eff = 0.0
-            melting = 0.0
+            local_melting = 0.0
 
             if error_code[0, 0][plume] > 0:
-                melting = 0.0
+                local_melting = 0.0
 
-            total_pwo_solid_phase = 0.0
+            total_pwo_solid_phase: FloatFieldIJ = 0.0
 
     with computation(FORWARD), interval(...):
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_ICE == 1 and plume == 2:
             if K <= ktf - 1:
                 if error_code[0, 0][plume] == 0:
-                    dp = 100.0 * (po_cup - po_cup[0, 0, 1])
+                    dp = 100.0 * (
+                        p_cloud_levels_forced[0, 0, 0][plume]
+                        - p_cloud_levels_forced[0, 0, 1][plume]
+                    )
 
-                    pwo_eff = 0.5 * (pwo + pwo[0, 0, 1])
+                    pwo_eff = 0.5 * (
+                        precipitable_water_updraft_forced[0, 0, 0][plume]
+                        + precipitable_water_updraft_forced[0, 0, 1][plume]
+                    )
 
-                    pwo_solid_phase = (1.0 - p_liq_ice) * pwo_eff
+                    pwo_solid_phase = (1.0 - local_partition_liquid_ice) * pwo_eff
 
                     total_pwo_solid_phase = (
                         total_pwo_solid_phase
@@ -77,16 +76,19 @@ def get_melting_profile(
                     )
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_ICE == 1 and plume == 2:
             if K <= ktf:
                 if error_code[0, 0][plume] == 0:
-                    melting = melting_layer * (
+                    local_melting = local_melting_layer * (
                         total_pwo_solid_phase
                         / (
                             100
-                            * (po_cup.at(K=0) - po_cup.at(K=ktf))
+                            * (
+                                p_cloud_levels_forced.at(K=0, ddim=[plume])
+                                - p_cloud_levels_forced.at(K=ktf, ddim=[plume])
+                            )
                             / constants.MAPL_GRAV
                         )
                     )
         else:
-            melting = 0.0
+            local_melting = 0.0

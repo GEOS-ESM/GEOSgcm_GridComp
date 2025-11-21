@@ -261,11 +261,13 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._calculate_mass_entrainment_detrainment = CalculateMassEntrainmentDetrainment(
-            stencil_factory=stencil_factory,
-            quantity_factory=quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        self._calculate_mass_entrainment_detrainment = (
+            CalculateMassEntrainmentDetrainment(
+                stencil_factory=stencil_factory,
+                quantity_factory=quantity_factory,
+                config=config,
+                cumulus_parameterization_config=cumulus_parameterization_config,
+            )
         )
 
         self._first_guess_moist_static_energy = FirstGuessMoistStaticEnergy(
@@ -288,7 +290,9 @@ class CumulusParameterization:
 
         self._melting_profile = MeltingProfile()
 
-        self._moist_static_energy_and_momentum_budget = UpdraftMoistStaticEnergyAndMomentumBudget()
+        self._moist_static_energy_and_momentum_budget = (
+            UpdraftMoistStaticEnergyAndMomentumBudget()
+        )
 
         self._in_cloud_updraft_air_temperature = UpdraftInCloudUpdraftAirTemperature(
             stencil_factory=stencil_factory,
@@ -307,11 +311,13 @@ class CumulusParameterization:
 
         self._downdraft_wet_bulb = DowndraftWetBlub()
 
-        self._downdraft_moist_static_energy_and_moisture_budget = DowndraftMoistStaticEnergyAndMoistureBudget(
-            stencil_factory=stencil_factory,
-            quantity_factory=quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        self._downdraft_moist_static_energy_and_moisture_budget = (
+            DowndraftMoistStaticEnergyAndMoistureBudget(
+                stencil_factory=stencil_factory,
+                quantity_factory=quantity_factory,
+                config=config,
+                cumulus_parameterization_config=cumulus_parameterization_config,
+            )
         )
 
         self._downdraft_moisture_properties = DowndraftMoistureProperties()
@@ -663,6 +669,10 @@ class CumulusParameterization:
                 self._updraft_moisture_profile()
 
                 # get melting profile
+                # NOTE test GF2020_CumulusParameterization_MeltingProfile_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._melting_profile(
                     state=state,
                     locals=locals,
