@@ -255,9 +255,19 @@ subroutine SetServices ( GC, RC )
     character(len=ESMF_MAXSTR), dimension(:), allocatable, target :: argv 
     integer(c_int)                         :: argc                    ! command line count for ISSM init   
     type(c_ptr), dimension(:), allocatable :: argv_ptr                ! pointer for passing command line args
-    integer                                :: i                       ! loop index
+    integer                                :: i,j                     ! loop indices
     character(len=ESMF_MAXSTR)             :: ISSM_EXPDIR             ! directory containing ISSM input file
     character(len=ESMF_MAXSTR)             :: ISSM_EXPNAME            ! name of ISSM input file
+
+    ! variables for saving mesh output
+    integer                                :: ISSM_SAVEMESH           ! mesh save flag
+    type(ESMF_Field)                       :: field                   ! for fieldwrites
+    real(dp),    pointer, dimension(:)     :: field_saver => null()
+    real(dp),    pointer, dimension(:)     :: nodelons    => null()
+    real(dp),    pointer, dimension(:)     :: nodelats    => null()
+    integer, pointer, dimension(:)         :: conn_slice  => null()
+    character(len=16) :: varname
+    character(len=1)  :: istr
 
 
     ! Get the target components name and set-up traceback handle.
@@ -369,6 +379,58 @@ subroutine SetServices ( GC, RC )
     call ESMF_UserCompSetInternalState ( GC, 'REGRIDHANDLES', wrap, status )
     VERIFY_(STATUS)
 
+    ! save mesh output if desired
+    call MAPL_GetResource(MAPL, ISSM_SAVEMESH, Label=trim(COMP_NAME)//"_SAVEMESH:",default=0,RC=STATUS)
+    VERIFY_(STATUS)
+    if (ISSM_SAVEMESH/=0) then
+        allocate(field_saver(num_elements))
+        allocate(nodelons(num_nodes))
+        allocate(nodelats(num_nodes))
+        allocate(conn_slice(num_elements))
+
+        nodelons = nodeCoords(1::2)
+        nodelats = nodeCoords(2::2)
+    
+        ! initialize ICEEL and ICESMB to have time slices
+        call ESMF_FieldWrite(meshField, trim(ISSM_EXPDIR)//"/iceel.nc", variableName='ICEEL',timeslice=1,rc=STATUS)
+        VERIFY_(STATUS)
+        call ESMF_FieldWrite(meshField, trim(ISSM_EXPDIR)//"/icesmb.nc", variableName='ICESMB',timeslice=1,rc=STATUS)
+        VERIFY_(STATUS)
+        
+        ! save nodes to reconstructing mesh output after running
+        do i = 1, 3
+            conn_slice = [( elementConn(j), j=i, size(elementConn), 3 )]
+        
+            write(istr, '(I1)') i
+        
+            ! ---- longitude ----
+            varname = "node" // istr // "lon"
+            field_saver = nodelons(conn_slice)
+            field = ESMF_FieldCreate(mesh=mesh,farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
+            VERIFY_(STATUS)
+            call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/mesh.nc", variableName=varname, rc=STATUS)
+            VERIFY_(STATUS)
+            call ESMF_FieldDestroy(field, rc=STATUS)
+            VERIFY_(STATUS)
+        
+            ! ---- latitude ----
+            varname = "node" // istr // "lat"
+            field_saver = nodelats(conn_slice)
+            field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
+            VERIFY_(STATUS)
+            call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/mesh.nc", variableName=varname, rc=STATUS)
+            VERIFY_(STATUS)
+            call ESMF_FieldDestroy(field, rc=STATUS)
+            VERIFY_(STATUS)
+        
+        end do
+
+        deallocate(field_saver)
+        deallocate(nodelons)
+        deallocate(nodelats)
+        deallocate(conn_slice)
+    end if 
+
     ! deallocate pointers
     deallocate(argv)
     deallocate(argv_ptr)
@@ -437,6 +499,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real(dp), parameter                  :: rho_ice   = 917.0       ! pure ice density [kg m^-3]
   real(dp)                             :: dt                      ! time step [s] (ISSM_DT set in AGCM.rc)
 
+  integer                              :: ISSM_SAVEMESH           ! mesh save flag
+  character(len=ESMF_MAXSTR)           :: ISSM_EXPDIR             ! directory containing ISSM input file
 
 ! Get the target components name, mesh and vm
 ! -----------------------------------------------------------
@@ -457,6 +521,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call MAPL_TimerOn(MAPL,"RUN" )
 
   call MAPL_Get(MAPL, RUNALARM = ALARM, RC=STATUS )
+  VERIFY_(STATUS)
+
+  ! save mesh output if desired
+  call MAPL_GetResource(MAPL, ISSM_SAVEMESH, Label=trim(COMP_NAME)//"_SAVEMESH:",default=0,RC=STATUS)
+  VERIFY_(STATUS)
+
+  call MAPL_GetResource(MAPL, ISSM_EXPDIR, Label=trim(COMP_NAME)//"_EXPDIR:", RC=STATUS)
   VERIFY_(STATUS)
 
   ! run ISSM at specified time steps
@@ -541,6 +612,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! get pointer to SMB on mesh
     call ESMF_FieldGet(dstField,farrayPtr=ICESMB_MESH,RC=STATUS); VERIFY_(STATUS)
 
+    ! save ICESMB on mesh elements 
+    if (ISSM_SAVEMESH/=0) then
+        call ESMF_FieldWrite(dstField, trim(ISSM_EXPDIR)//"/icesmb.nc", variableName='ICESMB',rc=STATUS)
+    end if 
+    
     ! convert SMB to units of [m/s] (ice-equivalent) for ISSM
     ICESMB_MESH = ICESMB_MESH/rho_ice
 
@@ -568,6 +644,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICEEL_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
     datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
     VERIFY_(STATUS)
+
+    ! save ICEEL on mesh elements 
+    if (ISSM_SAVEMESH/=0) then
+        call ESMF_FieldWrite(srcField, trim(ISSM_EXPDIR)//"/iceel.nc", variableName='ICEEL',rc=STATUS)
+    end if 
     
     ! create destination field: ice elevation on grid
     dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
