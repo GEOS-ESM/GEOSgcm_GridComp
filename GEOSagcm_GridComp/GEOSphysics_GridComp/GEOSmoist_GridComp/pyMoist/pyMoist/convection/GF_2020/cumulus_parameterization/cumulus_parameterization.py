@@ -683,8 +683,24 @@ class CumulusParameterization:
                 self._moist_static_energy_and_momentum_budget()
 
                 # Get buoyancy of updrafts
-                self._get_buoyancy()
-                self._get_buoyancy()
+                # NOTE test GF2020_CumulusParameterization_GetBuoyancy_2_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._get_buoyancy(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
+                # NOTE test GF2020_CumulusParameterization_GetBuoyancy_3_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._get_buoyancy(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # calculate in-cloud/updraft air temperature for vertical velocity
                 # NOTE ported, but untested

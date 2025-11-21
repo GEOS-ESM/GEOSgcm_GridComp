@@ -3,14 +3,23 @@ from ndsl.dsl.typing import FloatField, Int
 from ndsl import StencilFactory, QuantityFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    GF2020CumulusParameterizationConfig,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
+    GF2020CumulusParameterizationLocals,
+)
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    FloatField_Plume,
+    IntFieldIJ_Plume,
+)
 import pyMoist.constants as constants
 from ndsl.dsl.gt4py import K
 
@@ -48,7 +57,10 @@ def get_buoyancy(
             if K <= lcl_level[0, 0][plume]:
                 buoyancy = cloud_moist_static_energy - environment_moist_static_energy
             if K > lcl_level[0, 0][plume] and K <= cloud_top[0, 0][plume] + 1:
-                buoyancy = cloud_moist_static_energy - environment_saturation_moist_static_energy
+                buoyancy = (
+                    cloud_moist_static_energy
+                    - environment_saturation_moist_static_energy
+                )
 
 
 class GetBuoyancy:
