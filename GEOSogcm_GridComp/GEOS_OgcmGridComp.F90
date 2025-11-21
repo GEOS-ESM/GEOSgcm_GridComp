@@ -849,7 +849,7 @@ contains
     endif
   else
      if(DO_DATA_ATM4OCN) then
-       call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW', 'DISCHARGE', 'CALVING'], [OCEAN, OCEAN, OCEAN, OCEAN], _RC)
+       call MAPL_TerminateImport(GC, ['DATA_UW  ', 'DATA_VW  ', 'DISCHARGE', 'CALVING  '], [OCEAN, OCEAN, OCEAN, OCEAN], _RC)
     else
        call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW'], [OCEAN, OCEAN], _RC)
     endif
