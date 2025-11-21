@@ -88,7 +88,7 @@ module gfdl_mp_mod
     public :: c_liq, c_ice, rhow, wet_bulb
     public :: cv_air, cv_vap, mtetw, mte
     public :: hlv, hlf, tice
-    public :: do_hail
+    public :: do_hail, ifflag
 
     ! -----------------------------------------------------------------------
     ! precision definition
@@ -169,10 +169,11 @@ module gfdl_mp_mod
     ! predefined parameters
     ! -----------------------------------------------------------------------
 
-    real, parameter :: qpmin = 1.e-8  !< min value for suspended rain/snow/liquid/ice precip
-    real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
-    real, parameter :: qcmin = 1.0e-12 ! min value for cloud condensates (kg/kg)
-    real, parameter :: qfmin = 1.0e-8 ! min value for sedimentation (kg/kg)
+    real, parameter :: qpmin = 1.e-8  ! min value for suspended rain/snow/liquid/ice precip
+    real, parameter :: qvmin = 1.e-15 ! min value for water vapor (treated as zero)
+    real, parameter :: qcmin = 1.e-8  ! min value for cloud condensates (kg/kg)
+    real, parameter :: cfmin = 1.e-5  ! min value for cloud fraction (unitless)
+    real, parameter :: qfmin = 1.e-8  ! min value for sedimentation (kg/kg)
 
     real, parameter :: dz_min = 1.0e-2 ! used for correcting flipped height (m)
 
@@ -193,7 +194,7 @@ module gfdl_mp_mod
     ! namelist parameters
     ! -----------------------------------------------------------------------
 
-    integer :: ntimes = 1 ! cloud microphysics sub cycles
+    integer :: ntimes = 2 ! cloud microphysics sub cycles
 
     integer :: nconds = 1 ! condensation sub cycles
 
@@ -226,7 +227,7 @@ module gfdl_mp_mod
     ! 3: WSM6 with 0 at 0 C and fixed value at - 10 C
     ! 4: combination of 1 and 3
 
-    integer :: ifflag = 3 ! ice fall scheme
+    integer :: ifflag = 1 ! ice fall scheme
     ! 1: Deng and Mace (2008)
     ! 2: Heymsfield and Donner (1990)
     ! 3: Combination of Deng and Mace (2008) and Mishra et al (2014, JGR)
@@ -311,7 +312,7 @@ module gfdl_mp_mod
     logical :: prog_ccn = .true. ! do prognostic ccn (Yi Ming's method)
     logical :: prog_cin = .false. ! do prognostic cin
 
-    logical :: fix_negative = .true. ! fix negative water species
+    logical :: fix_negative = .false. ! fix negative water species
 
     logical :: do_evap_timescale = .true. ! whether to apply a timescale to evaporation
     logical :: do_cond_timescale = .true. ! whether to apply a timescale to condensation
@@ -1485,9 +1486,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 con_r8 = one_r8 - qvz (k)
             endif
 
+            ! dp0: original moist air_mass
             dp0 (k) = delp (i, k)
+            ! dp: dry air_mass
             dp (k) = delp (i, k) * con_r8
-            con_r8 = one_r8 / con_r8
+
+            con_r8  = dp0 (k) / dp (k)
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1710,8 +1714,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! momentum transportation during sedimentation
         ! update temperature before delp and q update
         ! -----------------------------------------------------------------------
-
-        if (do_sedi_uv) then
+        if (do_sedi_uv .and. do_sedi_heat) then
             do k = ks, ke
                 c8 = mhc (qvz (k), qlz (k), qrz (k), qiz (k), qsz (k), qgz (k)) * c_air
                 tzuv (k) = 0.5 * (ua (i, k) ** 2 + va (i, k) ** 2 - (u (k) ** 2 + v (k) ** 2)) / c8
@@ -1719,7 +1722,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             enddo
         endif
 
-        if (do_sedi_w) then
+        if (do_sedi_w .and. do_sedi_heat) then
             do k = ks, ke
                 c8 = mhc (qvz (k), qlz (k), qrz (k), qiz (k), qsz (k), qgz (k)) * c_air
                 tzw (k) = 0.5 * (wa (i, k) ** 2 - w (k) ** 2) / c8
@@ -1738,6 +1741,10 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 te_b_end_d (i), tw_b_end_d (i), .false., hydrostatic, te_loss (i))
         endif
 
+        if (fix_negative) &
+            call neg_adj (ks, ke, tz, dp, qaz, qvz, qlz, qrz, qiz, qsz, qgz, mppcw (i), &
+                mppfr (i), convt) 
+
         do k = ks, ke
 
             ! -----------------------------------------------------------------------
@@ -1751,14 +1758,16 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 con_r8 = one_r8 + qvz (k)
             endif
 
-            dp  (k) = dp (k) * con_r8
-            con_r8 = one_r8 / con_r8
+            con_r8  =  dp (k) / dp0 (k)
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
             qiz (k) = qiz (k) * con_r8
             qsz (k) = qsz (k) * con_r8
             qgz (k) = qgz (k) * con_r8
+
+            ! convert dry air mass to wet
+            dp  (k) = dp (k) * con_r8
 
             q1 = qv (i, k) + ql (i, k) + qr (i, k) + qi (i, k) + qs (i, k) + qg (i, k)
             q2 = qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
@@ -1781,7 +1790,11 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qi_dt (i, k) = rdt * (qiz (k) - qi (i, k))
             qs_dt (i, k) = rdt * (qsz (k) - qs (i, k))
             qg_dt (i, k) = rdt * (qgz (k) - qg (i, k))
-            qa_dt (i, k) = rdt * (qaz (k) - qa (i, k))
+            if (.not. do_qa) then
+               qa_dt (i, k) = rdt * &
+                      ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
+                        qa (i, k) )                                                                 ! Old Cloud
+            endif
 
             ! -----------------------------------------------------------------------
             ! calculate some more variables needed outside
@@ -1807,7 +1820,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
 
         if (do_sedi_uv) then
-            do k = ks, ke
+            if (do_sedi_heat) then
+              do k = ks, ke
                 tz (k) = tz (k) - tzuv (k)
                 q_liq (k) = qlz (k) + qrz (k)
                 q_sol (k) = qiz (k) + qsz (k) + qgz (k)
@@ -1817,7 +1831,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 tzuv (k) = (0.5 * (ua (i, k) ** 2 + va (i, k) ** 2) * dp0 (k) - &
                     0.5 * (u (k) ** 2 + v (k) ** 2) * dp (k)) / c8 / dp (k)
                 tz (k) = tz (k) + tzuv (k)
-            enddo
+              enddo
+            endif
             do k = ks, ke
 ! Don't update the state
 !               ua (i, k) = u (k)
@@ -1829,7 +1844,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         endif
 
         if (do_sedi_w) then
-            do k = ks, ke
+            if (do_sedi_heat) then
+              do k = ks, ke
                 tz (k) = tz (k) - tzw (k)
                 q_liq (k) = qlz (k) + qrz (k)
                 q_sol (k) = qiz (k) + qsz (k) + qgz (k)
@@ -1839,7 +1855,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 tzw (k) = (0.5 * (wa (i, k) ** 2) * dp0 (k) - &
                     0.5 * (w (k) ** 2) * dp (k)) / c8 / dp (k)
                 tz (k) = tz (k) + tzw (k)
-            enddo
+              enddo
+            endif
             do k = ks, ke
 ! Don't update the state
 !               wa (i, k) = w (k)
@@ -2012,14 +2029,14 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
         if (qi (k) .lt. 0.) then
             sink = min (- qi (k), max (0., qs (k)))
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., sink, - sink, 0.)
+                0., 0., 0., sink, - sink, 0., 'neg_adj')
         endif
 
         ! if snow < 0, borrow from graupel
         if (qs (k) .lt. 0.) then
             sink = min (- qs (k), max (0., qg (k)))
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., 0., sink, - sink)
+                0., 0., 0., 0., sink, - sink, 'neg_adj')
         endif
 
         ! if graupel < 0, borrow from rain
@@ -2028,7 +2045,7 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
             mppfr = mppfr + sink * dp (k) * convt
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., - sink, 0., 0., sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'neg_adj')
         endif
 
         ! -----------------------------------------------------------------------
@@ -2039,7 +2056,7 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
         if (qr (k) .lt. 0.) then
             sink = min (- qr (k), max (0., ql (k)))
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., - sink, sink, 0., 0., 0.)
+                0., - sink, sink, 0., 0., 0., 'neg_adj')
         endif
 
         ! if cloud water < 0, borrow from water vapor
@@ -2048,7 +2065,7 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
             mppcw = mppcw + sink * dp (k) * convt
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                  - sink, sink, 0., 0., 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'neg_adj')
         endif
 
     enddo
@@ -2063,6 +2080,7 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
             qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
             qv (k) = 0.
         endif
+        if (qv (k) .ne. qv (k)) stop 'qv is NAN in neg_adj'
     enddo
 
     ! if water vapor < 0, borrow water vapor from above
@@ -2071,6 +2089,8 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
         qv (ke - 1) = qv (ke - 1) - dq / dp (ke - 1)
         qv (ke) = qv (ke) + dq / dp (ke)
     endif
+    if (qv (ke-1) .ne. qv (ke-1)) stop 'qv(ke-1) is NAN in neg_adj'
+    if (qv (ke  ) .ne. qv (ke  )) stop 'qv(ke  ) is NAN in neg_adj'
 
 end subroutine neg_adj
 
@@ -2519,7 +2539,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
 
     integer :: k
 
-    real :: DIAM, C1, C0, lnP, tmp, pl, qden, viLSC, viCNV
+    real :: DIAM, C2, C1, C0, lnP, tmp, pl, qden, viLSC, viCNV
 
     real, parameter :: aa = - 4.14122e-5
     real, parameter :: bb = - 0.00538922
@@ -2533,6 +2553,12 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
     real, parameter :: ddL = 0.00410839
     real, parameter :: eeL = 1.93644
 
+    real, parameter :: aaC = - 4.18334e-5
+    real, parameter :: bbC = - 0.00525867
+    real, parameter :: ccC = - 0.0486519
+    real, parameter :: ddC = 0.00251197
+    real, parameter :: eeC = 1.91523
+
     real, dimension (ks:ke) :: tc
     real :: zero=0.0
 
@@ -2545,10 +2571,14 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    qden = q (k) * den (k)
-                    vt (k) = (3. + log10 (qden)) * (tc (k) * (aa * tc (k) + bb) + cc) + &
-                        dd * tc (k) + ee
-                    vt (k) = 0.01 * v_fac * exp (vt (k) * log (10.))
+                    qden = q (k) * den (k) * 1.e3
+                    ! Large-scale settling SGP
+                    viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
+                    ! Convective settling TWP
+                    viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
+                    ! Combine
+                    vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+                    vt (k) = 0.01 * v_fac * vt (k)
                 endif
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)
@@ -3091,6 +3121,8 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
 
     do k = ks, ke
 
+      if (tz (k) .gt. t_wfr .and. qr (k) .gt. qpmin) then
+
         tin = (tz (k) * cvm (k) - lv00 * ql (k)) / mhc (qv (k) + ql (k), qr (k), q_sol (k))
 
         ! -----------------------------------------------------------------------
@@ -3110,9 +3142,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
         ! rain evaporation
         ! -----------------------------------------------------------------------
 
-        rh_tem = qpz / qsat
-
-        if (tz (k) .gt. t_wfr .and. qr (k) .gt. qpmin .and. dqv .gt. 0.0 .and. qsat .gt. q_minus) then
+        if (dqv .gt. 0.0 .and. qsat .gt. q_minus) then
 
             if (qsat .gt. q_plus) then
                 dq = qsat - qpz
@@ -3123,6 +3153,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             t2 = tin * tin
             sink = psub (t2, dq, qden, qsat, crevp, den (k), denfac (k), blinr, mur, lcpk (k), cvm (k))
             sink = min (qr (k), dts * fac_revp * sink, dqv / (1. + lcpk (k) * dqdt))
+            rh_tem = qpz / qsat
             if (use_rhc_revap .and. rh_tem .ge. rhc_revap) then
                 sink = 0.0
             endif
@@ -3137,9 +3168,10 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 sink, 0., - sink, 0., 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'prevp')
 
         endif
+      endif
 
     enddo ! k loop
 
@@ -3193,7 +3225,7 @@ subroutine pracw (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             mppxr = mppxr + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., - sink, sink, 0., 0., 0.)
+                0., - sink, sink, 0., 0., 0., 'pracw')
 
         endif
 
@@ -3274,7 +3306,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
                     mppar = mppar + sink * dp (k) * convt
 
                     call update_qq (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
-                        0., - sink, sink, 0., 0., 0.)
+                        0., - sink, sink, 0., 0., 0., 'praut')
 
                 endif
 
@@ -3307,7 +3339,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
                     mppar = mppar + sink * dp (k) * convt
 
                     call update_qq (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
-                        0., - sink, sink, 0., 0., 0.)
+                        0., - sink, sink, 0., 0., 0., 'praut')
 
                 endif
 
@@ -3501,7 +3533,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             call update_qt (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
                 0., tmp, sink - tmp, - sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pimltfrz')
 
         elseif (tz (k) <= tice .and. qlk (k) > qcmin) then
 
@@ -3526,7 +3558,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             call update_qt (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
                 0., - sink, 0., tmp, sink - tmp, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pimltfrz')
 
         endif
 
@@ -3597,7 +3629,7 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
             call update_qt (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
                 0., tmp, sink - tmp, - sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pimlt')
 
         endif
 
@@ -3669,7 +3701,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
             call update_qt (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
                 0., - sink, 0., tmp, sink - tmp, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pifr')
 
         endif
 
@@ -3754,7 +3786,7 @@ subroutine psmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., tmp, sink - tmp, 0., - sink, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'psmlt')
 
         endif
 
@@ -3848,7 +3880,7 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., sink, 0., 0., - sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgmlt')
 
         endif
 
@@ -3911,7 +3943,7 @@ subroutine psaci (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, denfac, 
             mppxs = mppxs + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., - sink, sink, 0.)
+                0., 0., 0., - sink, sink, 0., 'psaci')
 
         endif
 
@@ -3991,7 +4023,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             mppas = mppas + sink * dp (k) * convt
 
             call update_qq (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
-                0., 0., 0., - sink, sink, 0.)
+                0., 0., 0., - sink, sink, 0., 'psaut')
 
         endif
 
@@ -4058,7 +4090,7 @@ subroutine pgaci (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, denfac, 
             mppxg = mppxg + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., - sink, 0., sink)
+                0., 0., 0., - sink, 0., sink, 'pgaci')
 
         endif
 
@@ -4129,7 +4161,7 @@ subroutine psacr_pgfr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., - sink, 0., psacr, pgfr, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'psacr_pgfr')
 
         endif
 
@@ -4180,7 +4212,7 @@ subroutine pgacs (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, vts, vtg
             mppxg = mppxg + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., 0., - sink, sink)
+                0., 0., 0., 0., - sink, sink, 'pgacs')
 
         endif
 
@@ -4237,7 +4269,7 @@ subroutine pgaut (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mppag, c
             mppag = mppag + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., 0., - sink, sink)
+                0., 0., 0., 0., - sink, sink, 'pgaut')
 
         endif
 
@@ -4319,7 +4351,7 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - pgacw, - pgacr, 0., 0., sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgacw_pgacr')
 
         endif
 
@@ -4506,11 +4538,23 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
             sink = dim (qv (k), qcmin)
             mppd1 = mppd1 + sink * dp (k) * convt
 
-            qa (k) = 1.0
-
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                  - sink, 0., 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
+
+            ! [WMP] avoid high cloud fractions for high troposhere cirrus clouds
+            if (.not. do_qa) then
+               qa (k) = max(0.0,min(1.0,1.0 - qcmin/max(qi (k), qcmin)))
+               if ( qa (k) .lt. cfmin) then
+                  ! remove clouds and qi if qa is too small
+                  qa (k) = 0.0
+                  sink = qi (k)
+                  mppd1 = mppd1 - sink * dp (k) * convt
+                  call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
+                       sink, 0., 0., - sink, 0., 0., te8 (k), cvm (k), tz (k), &
+                      lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
+               endif
+            endif
 
         endif
 
@@ -4523,6 +4567,10 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
             mhc (qpz, qr (k), qs (k) + qg (k))
 
         if (tin .gt. t_sub + 6.) then
+
+            ! initialize to 0s
+            sink = 0.0
+            subl = 0.0
 
             rh_adj = 1. - h_var(k) - rh_inc
             qsi = iqs (tin, den (k), dqdt)
@@ -4560,7 +4608,7 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
 
              call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                  sink + subl, - sink, 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
-                 lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
 
         endif
 
@@ -4609,6 +4657,7 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
     do k = ks, ke
 
+        sink = 0.0
         tin = tz (k)
         qsw = wqs (tin, den (k), dqdt)
         qpz = qv (k) + ql (k) + qi (k)
@@ -4638,7 +4687,7 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
         call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
             sink, - sink, 0., 0., 0., 0., te8 (k), cvm (k), tz (k), &
-            lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+            lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pcond_pevap')
 
     enddo
 
@@ -4678,19 +4727,21 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
 
     integer :: k
 
-    real :: ifrac, sink
-                
+    real :: fac_frez, ifrac, sink
+
+    fac_frez = 1. - exp (- dts / tau_frez)
+
     do k = ks, ke
 
         ifrac = ice_fraction(real(tz(k)),cnv_fraction,srf_type)
         if (ifrac .eq. 1. .and. ql (k) .gt. qcmin) then
 
-            sink = ql (k)
+            sink = min(ql (k), fac_frez * ql (k) )
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - sink, 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pcomp')
 
         endif
 
@@ -4762,7 +4813,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - sink, 0., tmp, sink - tmp, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pwbf')
 
         endif
 
@@ -4826,7 +4877,7 @@ subroutine pbigg (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - sink, 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pbigg')
 
         endif
 
@@ -4924,7 +4975,7 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                  - sink, 0., 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pidep_pisub')
 
         endif
 
@@ -4993,7 +5044,7 @@ subroutine psdep_pssub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 sink, 0., 0., 0., - sink, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'psdep_pssub')
 
         endif
 
@@ -5068,7 +5119,7 @@ subroutine pgdep_pgsub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 sink, 0., 0., 0., 0., - sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgdep_pgsub')
 
         endif
 
@@ -5096,7 +5147,9 @@ subroutine cloud_fraction (ks, ke, pz, den, qv, ql, qr, qi, qs, qg, qa, tz, gsiz
 
     real (kind = r8), intent (in), dimension (ks:ke) :: tz
 
-    real, intent (inout), dimension (ks:ke) :: qv, ql, qr, qi, qs, qg, qa
+    real, intent (in), dimension (ks:ke) :: qv, ql, qr, qi, qs, qg
+
+    real, intent (inout), dimension (ks:ke) :: qa
 
     ! -----------------------------------------------------------------------
     ! local variables
@@ -6242,7 +6295,7 @@ subroutine pgfr_simp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8,
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., - sink, 0., 0., sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgfr_simp')
 
         endif
 
@@ -6301,7 +6354,7 @@ subroutine psmlt_simp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., tmp, sink - tmp, 0., - sink, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'psmlt_simp')
 
         endif
 
@@ -6353,7 +6406,7 @@ subroutine praut_simp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, mppar, c
             mppar = mppar + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., - sink, sink, 0., 0., 0.)
+                0., - sink, sink, 0., 0., 0., 'praut_simp')
 
         endif
 
@@ -6407,7 +6460,7 @@ subroutine psaut_simp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mpp
             mppas = mppas + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., - sink, sink, 0.)
+                0., 0., 0., - sink, sink, 0., 'psaut_simp')
 
         endif
 
@@ -7243,7 +7296,7 @@ end subroutine cal_mhc_lhc
 ! update hydrometeors
 ! =======================================================================
 
-subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg)
+subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, descr)
 
     implicit none
 
@@ -7254,6 +7307,8 @@ subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg)
     real, intent (in) :: dqv, dql, dqr, dqi, dqs, dqg
 
     real, intent (inout) :: qa, qv, ql, qr, qi, qs, qg
+
+    character (len = *), intent (in) :: descr
 
     real :: qc0
 
@@ -7270,6 +7325,14 @@ subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg)
     ! total new condensate / old condensate 
      if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
 
+    if (qv .ne. qv) stop 'qv is NAN in update_qq ' // trim(descr)
+    if (ql .ne. ql) stop 'ql is NAN in update_qq ' // trim(descr)
+    if (qr .ne. qr) stop 'qr is NAN in update_qq ' // trim(descr)
+    if (qi .ne. qi) stop 'qi is NAN in update_qq ' // trim(descr)
+    if (qs .ne. qs) stop 'qs is NAN in update_qq ' // trim(descr)
+    if (qg .ne. qg) stop 'qg is NAN in update_qq ' // trim(descr)
+    if (qa .ne. qa) stop 'qa is NAN in update_qq ' // trim(descr)
+
 end subroutine update_qq
 
 ! =======================================================================
@@ -7277,7 +7340,7 @@ end subroutine update_qq
 ! =======================================================================
 
 subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, te8, &
-        cvm, tk, lcpk, icpk, tcpk, tcp3)
+        cvm, tk, lcpk, icpk, tcpk, tcp3, descr)
 
     implicit none
 
@@ -7295,6 +7358,8 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
 
     real (kind = r8), intent (out) :: cvm, tk
 
+    character (len = *), intent (in) :: descr
+
     real :: qc0
 
     ! save previous total condensate
@@ -7309,6 +7374,17 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
 
     ! total new condensate / old condensate 
     if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
+
+    if (qv .ne. qv) stop 'qv is NAN in update_qt ' // trim(descr)
+    if (ql .ne. ql) stop 'ql is NAN in update_qt ' // trim(descr)
+    if (qr .ne. qr) stop 'qr is NAN in update_qt ' // trim(descr)
+    if (qi .ne. qi) stop 'qi is NAN in update_qt ' // trim(descr)
+    if (qs .ne. qs) stop 'qs is NAN in update_qt ' // trim(descr)
+    if (qg .ne. qg) stop 'qg is NAN in update_qt ' // trim(descr)
+    if (.not. do_qa) then
+       if (qc0 .ne. qc0) stop 'qc0 is NAN in update_qt ' // trim(descr)
+       if (qa  .ne. qa ) stop 'qa  is NAN in update_qt ' // trim(descr)
+    endif
 
     cvm = mhc (qv, ql, qr, qi, qs, qg)
     tk = (te8 - lv00 * qv + li00 * (qi + qs + qg)) / cvm

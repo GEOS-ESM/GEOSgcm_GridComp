@@ -76,6 +76,7 @@ module GEOS_GwdGridCompMod
       type (GEOS_GwdGridComp), pointer     :: PTR
    end type wrap_
 
+  logical :: DEBUG_TQ_ERRORS
   logical :: DEBUG_GWD
 
 contains
@@ -322,7 +323,7 @@ contains
         call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
         call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000 , _RC)
         call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000 , _RC)
-        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.3125, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.400 , _RC)
         call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.000 , _RC)
       endif
 
@@ -353,7 +354,7 @@ contains
 
 ! NCAR GWD settings
 ! -----------------
-      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=35.0, _RC) ! 0.35 hPa
+      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=50.0, _RC) ! 0.5 hPa
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
                                    NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
@@ -376,7 +377,7 @@ contains
       call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=6.4,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.TRUE., _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.FALSE., _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
       ! Beres DeepCu
@@ -422,6 +423,7 @@ contains
       endif
 
       call MAPL_GetResource( MAPL, DEBUG_GWD,   Label="DEBUG_GWD:", default=.FALSE., _RC)
+      call MAPL_GetResource( MAPL, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., _RC)
 
       allocate(self%alpha(LM+1), _STAT)
       call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
@@ -466,13 +468,14 @@ contains
       type (ESMF_Alarm       )            :: ALARM
       type (ESMF_Grid        )            :: ESMFGRID
 
+      integer                             :: I, J, L
       integer                             :: IM, JM, LM
       !integer                             :: pgwv
       real                                :: tcrib
       !real                                :: effgworo, effgwbkg
       !real                                :: CDMBGWD1, CDMBGWD2
       !real                                :: bgstressmax
-      real, pointer, dimension(:,:)       :: LATS
+      real, pointer, dimension(:,:)       :: LONS, LATS
 
       ! Rayleigh friction parameters
 
@@ -520,7 +523,7 @@ contains
 
       call MAPL_Get(MAPL, &
            IM=IM, JM=JM, LM=LM,        &
-           RUNALARM=ALARM, LATS=LATS,  &
+           RUNALARM=ALARM, LONS=LONS, LATS=LATS,  &
            _RC )
 
       ! If its time, recalculate the GWD tendency
@@ -553,12 +556,12 @@ contains
 
 #include "GWD_DeclarePointer___.h"
 
-      real, pointer, dimension(:,:,:)  :: TMP3D
-      real, pointer, dimension(:,:)    :: TMP2D
+      real, pointer, dimension(:,:,:)  :: PTR3D
+      real, pointer, dimension(:,:)    :: PTR2D
 
 ! local variables
 
-      real,              dimension(IM,JM,LM  ) :: DQCDT_LS
+      real,              dimension(IM,JM,LM  ) :: TMP3D
       real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
       real,              dimension(IM,JM     ) :: a2, Hefold
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
@@ -638,20 +641,6 @@ contains
                EFFRDG(:,:,nrdg) = self%NCAR_EFFGWORO*(HWDTH(:,:,nrdg)*CLNGT(:,:,nrdg))/GBXAR_TMP
             enddo
 
-            ! pchakrab: Redundant code? Commenting out.
-            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
-            ! if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
-            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
-            ! if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
-            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', _RC)
-            ! if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
-            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', _RC)
-            ! if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
-            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', _RC)
-            ! if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
-            ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', _RC)
-            ! if(associated(TMP2D)) TMP2D = GBXAR_TMP
-
          else
 
             allocate ( scratch_ridge(IM,JM,16) )
@@ -681,15 +670,16 @@ contains
          !call MAPL_TimerOn(MAPL,"-INTR_NCAR")
          if ( (self%NCAR_EFFGWORO /= 0.0) .OR. (self%NCAR_EFFGWBKG /= 0.0) ) then
             DO L=1, LM
-               DQCDT_LS(:,:,L) = (1.0-CNV_FRC)*(DQLDT(:,:,L)+DQIDT(:,:,L))
+               TMP3D(:,:,L) = (1.0-CNV_FRC)*(DQLDT(:,:,L)+DQIDT(:,:,L))
             END DO
+            if(associated(DQCDT_LS)) DQCDT_LS = TMP3D
             thread = MAPL_get_current_thread()
             workspace => self%workspaces(thread)
             call gw_intr_ncar(IM*JM,    LM,         DT,     self%NCAR_NRDG,   &
                  workspace%beres_dc_desc, &
                  workspace%beres_band, workspace%oro_band, workspace%rdg_band, &
                  PLE,       T,          U,          V,                   &
-                 HT_dc,                 DQCDT_LS,                        &
+                 HT_dc,                 TMP3D,                           &
                  SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
                  PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
@@ -844,6 +834,29 @@ contains
     endif
 
     if (allocated(scratch_ridge)) deallocate(scratch_ridge)
+
+    if(associated(    T_EXP ) .and. DEBUG_TQ_ERRORS) then
+        do L=1,LM
+          do J=1,JM
+           do I=1,IM
+             if (T_EXP(I,J,L) > 333.0) then
+                 print *, "Temperature spike detected : ", T_EXP(I,J,L)
+                 print *, "    GWD TOT Temp Increment : ", DTDT_GWD(I,J,L)*DT
+                 print *, "    GWD ORO Temp Increment : ", DTDT_ORG(I,J,L)*DT
+                 print *, "    GWD BKG Temp Increment : ", (DTDT_GWD(I,J,L)-DTDT_ORG(I,J,L))*DT
+                 print *, "    AFTER GWD Parameterization"
+                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
+                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
+                 print *, "  Pressure (mb)  =", PMID(I,J,L)/100.0
+                 if (associated(U_EXP) .AND. associated(V_EXP)) then
+                 print *, "            UWND =", U_EXP(I,J,L)
+                 print *, "            VWND =", V_EXP(I,J,L)
+                 endif
+             endif 
+           end do ! IM loop
+         end do ! JM loop
+       end do ! LM loop
+    endif
 
 ! All done
 !-----------

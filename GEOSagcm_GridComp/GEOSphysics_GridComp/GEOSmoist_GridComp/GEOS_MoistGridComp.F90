@@ -194,6 +194,8 @@ contains
 
     call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
+    call MAPL_GetResource( CF, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
+
     ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
     !       the first MAPL_AddInternalSpec call must be from the microphysics
 
@@ -2268,22 +2270,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'FILLNQV_IN',                                     &
-         LONG_NAME = 'filling_of_negative_Q_on_entry_to_moist',          &
-         UNITS     = 'kg m-2 s-1',                                  &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'FILLNQV',                                     &
-         LONG_NAME = 'filling_of_negative_Q',          &
-         UNITS     = 'kg m-2 s-1',                                  &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'PGENTOT',                                     &
          LONG_NAME = 'Total_column_production_of_precipitation',    &
          UNITS     = 'kg m-2 s-1',                                  &
@@ -4154,7 +4140,293 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DQVDT_FILL_SC',                             &                    
+         LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_shallow_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &                    
+         DIMS       =  MAPL_DimsHorzVert,                             &                    
+         VLOCATION  =  MAPL_VLocationCenter,                          &                    
+         RC=STATUS  ) 
+    VERIFY_(STATUS) 
 
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLLSDT_FILL_SC',                           &  
+         LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_shallow_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLCNDT_FILL_SC',                           &  
+         LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_shallow_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQILSDT_FILL_SC',                           &  
+         LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_shallow_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQICNDT_FILL_SC',                           &  
+         LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_shallow_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQRDT_FILL_SC',                             &  
+         LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_shallow_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQSDT_FILL_SC',                             &  
+         LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_shallow_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQGDT_FILL_SC',                             &
+         LONG_NAME  = 'tendency_of_graupel_due_to_negative_fill_after_shallow_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DQVDT_FILL_DC',                             &                    
+         LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_deep_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &                    
+         DIMS       =  MAPL_DimsHorzVert,                             &                    
+         VLOCATION  =  MAPL_VLocationCenter,                          &                    
+         RC=STATUS  ) 
+    VERIFY_(STATUS) 
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLLSDT_FILL_DC',                           &  
+         LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_deep_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLCNDT_FILL_DC',                           &  
+         LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_deep_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQILSDT_FILL_DC',                           &  
+         LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_deep_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQICNDT_FILL_DC',                           &  
+         LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_deep_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQRDT_FILL_DC',                             &  
+         LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_deep_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQSDT_FILL_DC',                             &  
+         LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_deep_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQGDT_FILL_DC',                             &
+         LONG_NAME  = 'tendency_of_graupel_due_to_negative_fill_after_deep_cu', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DQVDT_FILL_CLDMACRO',                             &                    
+         LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_cldmacro', &
+         UNITS      = 'kg m-2 s-1',                                   &                    
+         DIMS       =  MAPL_DimsHorzVert,                             &                    
+         VLOCATION  =  MAPL_VLocationCenter,                          &                    
+         RC=STATUS  ) 
+    VERIFY_(STATUS) 
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLLSDT_FILL_CLDMACRO',                           &  
+         LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_cldmacro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLCNDT_FILL_CLDMACRO',                           &  
+         LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_cldmacro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQILSDT_FILL_CLDMACRO',                           &  
+         LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_cldmacro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQICNDT_FILL_CLDMACRO',                           &  
+         LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_cldmacro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQRDT_FILL_CLDMACRO',                             &  
+         LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_cldmacro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQSDT_FILL_CLDMACRO',                             &  
+         LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_cldmacro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQGDT_FILL_CLDMACRO',                             &
+         LONG_NAME  = 'tendency_of_graupel_due_to_negative_fill_after_cldmacro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DQVDT_FILL_CLDMICRO',                             &                    
+         LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_cldmicro', &
+         UNITS      = 'kg m-2 s-1',                                   &                    
+         DIMS       =  MAPL_DimsHorzVert,                             &                    
+         VLOCATION  =  MAPL_VLocationCenter,                          &                    
+         RC=STATUS  ) 
+    VERIFY_(STATUS) 
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLLSDT_FILL_CLDMICRO',                           &  
+         LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_cldmicro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLCNDT_FILL_CLDMICRO',                           &  
+         LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_cldmicro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQILSDT_FILL_CLDMICRO',                           &  
+         LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_cldmicro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQICNDT_FILL_CLDMICRO',                           &  
+         LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_cldmicro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQRDT_FILL_CLDMICRO',                             &  
+         LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_cldmicro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQSDT_FILL_CLDMICRO',                             &  
+         LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_cldmicro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQGDT_FILL_CLDMICRO',                             &
+         LONG_NAME  = 'tendency_of_graupel_due_to_negative_fill_after_cldmicro', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DQVDT_micro',                                         &
@@ -5482,9 +5754,6 @@ contains
 
        ! Derived States
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
-       call FILLQ2ZERO(Q, MASS, TMP2D)
-       call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV_IN', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = TMP2D
        PLEmb    =  PLE*.01
        PKE      = (PLE/MAPL_P00)**(MAPL_KAPPA)
        PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
@@ -5596,21 +5865,19 @@ contains
        ! initialize diagnosed convective fraction
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-         if (DT_MOIST <= 300.0) then
+         ! CAPE ramps
            WHERE (CAPE .ne. MAPL_UNDEF)
               CNV_FRC = (1.0-COS(MAPL_PI*(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))/2.0
            END WHERE
-           WHERE (CAPE .le. CNV_FRACTION_MIN)
+           WHERE ((CAPE .le. CNV_FRACTION_MIN) .and. (CAPE .ne. MAPL_UNDEF))
               CNV_FRC = 0.0
            END WHERE
-           WHERE (CAPE .ge. CNV_FRACTION_MAX)
+           WHERE ((CAPE .ge. CNV_FRACTION_MAX) .and. (CAPE .ne. MAPL_UNDEF))
               CNV_FRC = 1.0
            END WHERE
-         else
-           WHERE (CAPE .ne. MAPL_UNDEF)
-              CNV_FRC = (MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
-           END WHERE
-         endif
+       else
+         ! use -1*EIS range 0:1
+           CNV_FRC = MAX(0.0,MIN(1.0,-1*EIS))
        endif
 
        ! Extract convective tracers from the TR bundle
@@ -5818,19 +6085,17 @@ contains
          elsewhere
             TMP3D = 0.0
          endwhere
+         ! protect against producing negatice QV
+         where ( TMP3D > Q )
+            TMP3D = Q
+         endwhere
          PTR2D = SUM(TMP3D*MASS,3)/DT_MOIST
          LS_PRCP = LS_PRCP + PTR2D
          Q = Q - TMP3D
          T = T + (MAPL_ALHL/MAPL_CP)*TMP3D
         
-        
          DTDT_ER = (T -  DTDT_ER)/DT_MOIST
          DQVDT_ER = (Q - DQVDT_ER)/DT_MOIST
-
-         ! cleanup any negative QV/QC/CF
-         call FILLQ2ZERO(Q, MASS, TMP2D)
-         call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
-         if (associated(PTR2D)) PTR2D = TMP2D/DT_MOIST
 
        if (USE_AEROSOL_NN .and. adjustl(CLDMICR_OPTION)=="MGB2_2M") then
          deallocate ( AeroProps )
@@ -6279,9 +6544,6 @@ contains
        ALLOCATE ( TMP2D(IM,JM     ) )
        ! dervied states
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
-       call FILLQ2ZERO(Q, MASS, TMP2D)
-       call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV_IN', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = TMP2D
        PLEmb    = PLE*.01
        PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
        PK       = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
