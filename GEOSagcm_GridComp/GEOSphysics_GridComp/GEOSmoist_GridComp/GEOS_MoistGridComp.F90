@@ -108,10 +108,6 @@ contains
     logical :: LSHALLOW
     logical :: LCLDMICR
 
-    integer :: pdfRestartSkip, gfEnvRestartSkip, PDFSHAPE
-
-    CHARACTER(len=10) :: GF_ENV_SETTING
-
     !=============================================================================
 
     ! Begin...
@@ -177,20 +173,6 @@ contains
                adjustl(CLDMICR_OPTION)=="THOM_1M" .or. &
                adjustl(CLDMICR_OPTION)=="MGB2_2M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
-
-    call MAPL_GetResource( CF, GF_ENV_SETTING, Label="GF_ENV_SETTING:",  default='DYNAMICS', RC=STATUS) ; VERIFY_(STATUS)
-    if (trim(GF_ENV_SETTING)=='DYNAMICS') then
-       pdfRestartSkip = MAPL_RestartOptional
-    else
-       pdfRestartSkip = MAPL_RestartSkip
-    endif
-
-    call MAPL_GetResource( CF, PDFSHAPE, Label="PDFSHAPE:",  default=1, RC=STATUS) ; VERIFY_(STATUS)
-    if (PDFSHAPE.eq.5) then
-       gfEnvRestartSkip = MAPL_RestartOptional
-    else
-       gfEnvRestartSkip = MAPL_RestartSkip
-    endif
 
     call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 

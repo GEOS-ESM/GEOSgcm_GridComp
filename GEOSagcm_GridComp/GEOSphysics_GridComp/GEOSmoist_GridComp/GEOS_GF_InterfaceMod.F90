@@ -118,15 +118,17 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     endif
     IF (USE_GF2020==1) THEN
-      call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!!!!! call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)          , 'CONGESTUS:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP)      , 'CLOSURE_DEEP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)      , 'CLOSURE_SHALLOW:'       ,default= 7,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      if (INT(ZERO_DIFF) == 0) then
+      if (INT(ZERO_DIFF_ENTR) == 0) then
         call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.3e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
@@ -170,7 +172,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
-      if (INT(ZERO_DIFF) == 0) then
+      if (INT(ZERO_DIFF_ENTR) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
                                      SGS_W_TIMESCALE = 3 ! Hours
          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
@@ -206,7 +208,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      if (INT(ZERO_DIFF) == 0) then
+      if (INT(ZERO_DIFF_LAND) == 0) then
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
