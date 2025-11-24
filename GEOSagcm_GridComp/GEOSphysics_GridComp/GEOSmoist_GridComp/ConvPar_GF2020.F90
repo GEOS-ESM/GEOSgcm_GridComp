@@ -2211,7 +2211,7 @@ loop1:  do n=1,maxiens
             !  ierr(i)=1
             !  ierrc(i)='scale_dep renders convection insignificant'
             !endif
-             if(ierr(i) /= 0) cycle
+            !if(ierr(i) /= 0) cycle
             enddo
          endif
       endif
@@ -4195,7 +4195,7 @@ ENDIF ! vertical discretization formulation
        call cup_output_ens_3d(cumulus,xff_shal,xff_mid,xf_ens,ierr,dellat,dellaq,          &
                               dellaqc,outt, outq,outqc,zuo,pre,pwo_eff,xmb,ktop,           &
                               maxens2,maxens,ierr2,ierr3,                                  &
-                              pr_ens,maxens3,ensdim,sig,xland1,                            &
+                              pr_ens,maxens3,ensdim,sig,cnvfrc,xland1,                     &
                               ichoice,ipr,jpr,itf,ktf,its,ite, kts,kte,                    &
                               xf_dicycle,outu,outv,dellu,dellv,dtime,po_cup,kbcon,         &
                               dellabuoy,outbuoy,                                           &
@@ -8444,7 +8444,7 @@ loop0:  do k= kbcon(i),ktop(i)
 !------------------------------------------------------------------------------------
    SUBROUTINE cup_output_ens_3d(name,xff_shal,xff_mid,xf_ens,ierr,dellat,dellaq,dellaqc,  &
                                 outtem,outq,outqc,zu,pre,pw,xmb,ktop,                     &
-                                nx,nx2,ierr2,ierr3,pr_ens, maxens3,ensdim,sig,xland1,     &
+                                nx,nx2,ierr2,ierr3,pr_ens, maxens3,ensdim,sig,cnvfrc,xland1,     &
                                 ichoice,ipr,jpr,itf,ktf,its,ite, kts,kte,                 &
                                 xf_dicycle,outu,outv,dellu,dellv,dtime,po_cup,kbcon,       &
                                 dellabuoy,outbuoy, dellampqi,outmpqi,dellampql,outmpql,   &
@@ -8492,7 +8492,7 @@ loop0:  do k= kbcon(i),ktop(i)
         zu,po_cup
      real,   dimension (its:ite)                                       &
          ,intent (in  )                   ::                           &
-        sig
+        sig, cnvfrc
      real,   dimension (its:ite,maxens3)                               &
          ,intent (in  )                   ::                           &
         xff_mid
@@ -8634,8 +8634,8 @@ loop0:  do k= kbcon(i),ktop(i)
       !-apply the scale-dependence Arakawa's approach
       DO i=its,itf
           if(ierr(i) /= 0) cycle
-          !- scale dependence
-          xmb(i)=sig(i)*xmb(i)
+          !- scale dependence (include cnv_fraction to reduce tropical drying)
+          xmb(i)=sig(i)*xmb(i)*(1.0-cnvfrc(i))
 
           if(xmb(i) == 0. ) ierr(i)=14
           if(xmb(i) > 100.) ierr(i)=15

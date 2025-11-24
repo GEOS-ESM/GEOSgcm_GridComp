@@ -96,12 +96,11 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_Get ( MAPL, LM=LM, RC=STATUS )
     VERIFY_(STATUS)
 
+                JASON_UW = .FALSE.
+    if (LM==72) JASON_UW = .TRUE.
+    call MAPL_GetResource(MAPL, JASON_UW, 'JASON_UW:', default=JASON_UW, RC=STATUS) ; VERIFY_(STATUS)
+
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , RC=STATUS) ; VERIFY_(STATUS)
-    if (LM==72) then
-      call MAPL_GetResource(MAPL, JASON_UW,                  'JASON_UW:'            ,default= .TRUE. , RC=STATUS) ; VERIFY_(STATUS)
-    else
-      call MAPL_GetResource(MAPL, JASON_UW,                  'JASON_UW:'            ,default= .FALSE., RC=STATUS) ; VERIFY_(STATUS)
-    endif
     if (JASON_UW) then
       call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=0.0,    RC=STATUS) ; VERIFY_(STATUS)
