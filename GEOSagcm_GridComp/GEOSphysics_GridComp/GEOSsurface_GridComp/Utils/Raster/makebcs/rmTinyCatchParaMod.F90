@@ -10,8 +10,9 @@ module rmTinyCatchParaMod
   use LDAS_DateTimeMod
   use MAPL_ConstantsMod
   use MAPL_Base,           ONLY: MAPL_UNDEF
+  use MAPL,                only: MAPL_WriteTilingNC4
   use lsm_routines,        ONLY: sibalb
-  use LogRectRasterizeMod, ONLY: SRTM_maxcat, WritetilingNC4, MAPL_UNDEF_R8 
+  use LogRectRasterizeMod, ONLY: SRTM_maxcat, MAPL_UNDEF_R8 
   use, intrinsic :: iso_fortran_env, only: REAL64 
   implicit none
   
@@ -924,7 +925,7 @@ contains
     INTEGER, allocatable, dimension(:) :: id, I_INDEX, J_INDEX 
     integer                            :: nc_gcm, nr_gcm, nc_ocean, nr_ocean
     REAL                               :: lat, lon, fr_gcm, fr_cat, tarea
-    INTEGER                            :: typ, pfs, ig, jg, j_dum, i_dum, ierr, indx_dum, ip2
+    INTEGER                            :: typ, pfs, ig, jg, j_dum, i_dum, ierr, indx_dum, ip2, n_grid
 
     REAL (REAL64), PARAMETER           :: RADIUS=MAPL_RADIUS, pi= MAPL_PI 
 
@@ -945,7 +946,7 @@ contains
     real*4,            allocatable, target :: q0 (:,:)
     real(REAL64),      allocatable         :: rTable(:,:)
     integer,           allocatable         :: iTable(:,:)
-    character(len=512)                     :: gName(2)
+    character(len=128)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
 
     ! -----------------------------------------------------
@@ -998,11 +999,11 @@ contains
     allocate(tile_area(ip))
   
     id=0
-    read (10,*)j_dum
+    read (10,*) n_grid
     IM = 0
     JM = 0
     gName = ['','']
-    do n = 1, j_dum
+    do n = 1, n_grid
        read (10,'(a)')version
        read (10,*)nc_gcm
        read (10,*)nr_gcm
@@ -1208,11 +1209,7 @@ contains
     endwhere
     
     fname=trim(fnameTil)//'.nc4'
-    if (im(2) == 0) then  ! one grid
-       call WriteTilingNC4(fname, [gName(1)], [im(1)], [jm(1)], nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
-    else                  ! two grids
-       call WriteTilingNC4(fname,  gName,      im,      jm,     nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
-    endif
+    call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid), nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
     
     deallocate (rTable, iTable)
     deallocate (limits)

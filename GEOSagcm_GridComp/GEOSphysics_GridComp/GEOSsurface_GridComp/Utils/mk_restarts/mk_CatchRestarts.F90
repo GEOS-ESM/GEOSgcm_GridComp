@@ -75,8 +75,8 @@ program  mk_CatchRestarts
   if (root_proc) then
 
      ! Read Output/Input  .til files
-     call ReadTileFile_RealLatLon(OutTileFile, ntiles, lono, lato)  
-     call ReadTileFile_RealLatLon(InTileFile,ntiles_in,loni,lati)
+     call ReadTileFile_RealLatLon(OutTileFile, ntiles, xlon=lono, xlat=lato)  
+     call ReadTileFile_RealLatLon(InTileFile,ntiles_in,xlon=loni, xlat=lati)
      allocate(Id (ntiles))
  !    allocate(mask   (ntiles_in))
  !    allocate(tid_in (ntiles_in))

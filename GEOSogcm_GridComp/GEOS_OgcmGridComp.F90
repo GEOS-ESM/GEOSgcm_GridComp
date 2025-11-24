@@ -805,12 +805,14 @@ contains
             SRC_ID = SEAICE,            &
             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'UWC','VWC'/), &
-          SRC_ID = OCEAN,                &
-          DST_ID = SEAICE,               &
-          _RC)
-     endif
+       if (trim(OCEAN_NAME) /= "MIT") then  !
+          call MAPL_AddConnectivity ( GC,   &
+               SHORT_NAME  = (/'UWC','VWC'/), &
+               SRC_ID = OCEAN,                &
+               DST_ID = SEAICE,               &
+               _RC)
+       endif
+    end if
   end if
 
   if (DO_CICE_THERMO > 1) then

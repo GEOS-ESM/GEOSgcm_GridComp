@@ -2,7 +2,6 @@ esma_set_this()
 
 set (srcs
 LDAS_DateTimeMod.F90
-EASE_conv.F90
 mod_process_hres_data.F90
 rasterize.F90
 read_riveroutlet.F90
@@ -38,6 +37,8 @@ else ()
   target_compile_definitions(${this} PRIVATE STDC)
 endif ()
 
+esma_add_subdirectories (@ncar_topo utils_topo)
+
 ecbuild_add_executable (TARGET CombineRasters.x SOURCES CombineRasters.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkCatchParam.x SOURCES mkCatchParam.F90 LIBS MAPL ${this} OpenMP::OpenMP_Fortran)
 ecbuild_add_executable (TARGET mkCubeFVRaster.x SOURCES mkCubeFVRaster.F90 LIBS MAPL ${this})
@@ -55,6 +56,7 @@ file(GLOB MAKE_BCS_PYTHON CONFIGURE_DEPENDS "./make_bcs*.py")
 list(FILTER MAKE_BCS_PYTHON EXCLUDE REGEX "make_bcs_shared.py")
 install(PROGRAMS ${MAKE_BCS_PYTHON} DESTINATION bin)
 install(PROGRAMS TileFile_ASCII_to_nc4.py DESTINATION bin)
+install(PROGRAMS ExtractBCsFromOrig.py DESTINATION bin)
 
 set(file ./make_bcs_shared.py)
 configure_file(${file} ${file} @ONLY)

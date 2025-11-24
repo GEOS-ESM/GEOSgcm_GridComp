@@ -943,6 +943,27 @@ module GEOS_SeaiceInterfaceGridComp
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'icefall'                     ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'ICE'                         ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'freezing_rain_fall'          ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'FRZR'                        ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+
 ! Surface air quantities
 
      call MAPL_AddImportSpec(GC,                             &
@@ -2257,6 +2278,8 @@ contains
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
+   real, pointer, dimension(:)    :: ICEF => null()
+   real, pointer, dimension(:)    :: FRZR => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: PS => null()
@@ -2338,6 +2361,7 @@ contains
    real,               allocatable    :: EVAPN         (:,:) ! 
    real,               allocatable    :: LHFN          (:,:) ! 
    real,               allocatable    :: RAIN          (:)   !
+   real,               allocatable    :: SNOW          (:)   !
 
 
 
@@ -2382,6 +2406,8 @@ contains
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,ICEF   , 'ICE'    ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS); VERIFY_(STATUS)
@@ -2481,12 +2507,15 @@ contains
     allocate(   TS_OLD(size(TS,1),   size(TS,2)), __STAT__) 
 
     allocate(    RAIN(size(TS,1)),  __STAT__) 
+    allocate(    SNOW(size(TS,1)),  __STAT__) 
 
 
 ! Aggregate imports if required
 !-----------------------------------
 
-    RAIN = PLS + PCU
+    RAIN = PLS + PCU ! + FRZR  as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+
+    SNOW = SNO + ICEF
 
 ! Initialize PAR and UVR beam fluxes
 !-----------------------------------
@@ -2670,7 +2699,7 @@ contains
     call RegridA2O_2d(    EVAPN, SURFST,      'EVAP', XFORM_A2O, locstreamO, __RC__)
 
     call RegridA2O_1d(     RAIN, SURFST,      'RAIN', XFORM_A2O, locstreamO, __RC__)
-    call RegridA2O_1d(      SNO, SURFST,      'SNOW', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(     SNOW, SURFST,      'SNOW', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_1d(      ZTH, SURFST,      'COSZ', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_1d(    DRPAR, SURFST,     'DRPAR', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_1d(    DFPAR, SURFST,     'DFPAR', XFORM_A2O, locstreamO, __RC__)
@@ -2821,6 +2850,7 @@ contains
     deallocate(      EVAPN,      __STAT__)
     deallocate(       LHFN,      __STAT__)
     deallocate(       RAIN,      __STAT__)
+    deallocate(       SNOW,      __STAT__)
 
     !deallocate(ALBIN)
     !deallocate(ALBSN)
