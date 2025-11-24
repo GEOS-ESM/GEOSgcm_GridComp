@@ -6,7 +6,7 @@ from pyMoist.GFDL_1M.finalize import Finalize
 from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
 from pyMoist.GFDL_1M.setup import Setup
-from pyMoist.GFDL_1M.state import MicrophysicState, Outputs
+from pyMoist.GFDL_1M.state_old import MicrophysicState, Outputs
 from pyMoist.GFDL_1M.stencils import (
     _prepare_radiation,
     _update_radiation,
@@ -15,6 +15,8 @@ from pyMoist.GFDL_1M.stencils import (
 )
 from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
+from pyMoist.GFDL_1M.state import GFDL1MState
+from pyMoist.GFDL_1M.locals import GFDL1MLocals
 
 
 class GFDL1M:
@@ -42,31 +44,24 @@ class GFDL1M:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        GFDL_1M_config: GFDL1MConfig,
+        config: GFDL1MConfig,
     ):
-        orchestrate(
-            obj=self,
-            config=stencil_factory.config.dace_config,
-            dace_compiletime_args=[
-                "state",
-                "outputs",
-            ],
-        )
-        self.stencil_factory = stencil_factory
-        if self.stencil_factory.grid_indexing.n_halo != 0:
+        # orchestrate(
+        #     obj=self,
+        #     config=stencil_factory.config.dace_config,
+        #     dace_compiletime_args=[
+        #         "state",
+        #         "outputs",
+        #     ],
+        # )
+
+        if stencil_factory.grid_indexing.n_halo != 0:
             raise ValueError("halo needs to be zero for GFDL Single Moment microphysics")
-        self.quantity_factory = quantity_factory
-        self.GFDL_1M_config = GFDL_1M_config
 
         # Initalize saturation tables
-        self.saturation_tables = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
+        saturation_tables = get_saturation_vapor_pressure_table(stencil_factory.backend)
 
-        # Initalize internal fields
-        self.masks = Masks.make(quantity_factory=quantity_factory)
-        self.temporaries = Temporaries.make(quantity_factory=quantity_factory)
-
-        # Construct stencils
-
+        # Build components
         self.prepare_tendencies = stencil_factory.from_dims_halo(
             func=prepare_tendencies,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -74,8 +69,9 @@ class GFDL1M:
 
         self.setup = Setup(
             stencil_factory=stencil_factory,
-            GFDL_1M_config=self.GFDL_1M_config,
-            saturation_tables=self.saturation_tables,
+            quantity_factory=quantity_factory,
+            config=config,
+            saturation_tables=saturation_tables,
             prepare_tendencies=self.prepare_tendencies,
         )
 
@@ -108,7 +104,7 @@ class GFDL1M:
             func=_update_radiation,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "DT_MOIST": GFDL_1M_config.DT_MOIST,
+                "DT_MOIST": config.DT_MOIST,
             },
         )
 
@@ -121,65 +117,13 @@ class GFDL1M:
 
     def __call__(
         self,
-        geopotential_height_interface,
-        p_interface,
-        t,
-        u,
-        v,
-        shallow_convective_rain,
-        shallow_convective_snow,
-        state: MicrophysicState,
-        outputs: Outputs,
-        area,
-        convection_fraction,
-        surface_type,
-        liquid_concentration,
-        ice_concentration,
-        land_fraction,
-        evapc,
-        sublc,
-        rh_crit=None,
+        state: GFDL1MState,
+        locals: GFDL1MLocals,
     ):
-        """
-        Args:
-            (?) geopotential_height_interface: ?
-            (?) p_interface: ?
-            (?) t: ?
-            (?) u: ?
-            (?) v: ?
-            (?) shallow_convective_rain: ?
-            (?) shallow_convective_snow: ?
-            (?) mixing_ratios: ?
-            (?) cloud_fractions: ?
-            (?) area: ?
-            (?) convection_fraction: ?
-            (?) surface_type: ?
-            (?) liquid_concentration: ?
-            (?) ice_concentration: ?
-            (?) vertical_motion: ?
-            (?) land_fraction: ?
-            (out) outputs: ?
-            (out) evapc: ?
-            (out) sublc: ?
-            (out | optional) rh_crit: ?
-        """
-
-        self.masks.zeros()
-        self.temporaries.zeros()
-
+        # NOTE test GFDL_1M_setup: ❌ fails with non-mathematical error (operational differences?)
         self.setup(
-            geopotential_height_interface=geopotential_height_interface,
-            p_interface=p_interface,
-            t=t,
-            u=u,
-            v=v,
-            shallow_convective_rain=shallow_convective_rain,
-            shallow_convective_snow=shallow_convective_snow,
-            mixing_ratios=state.mixing_ratios,
-            cloud_fractions=state.cloud_fractions,
-            masks=self.masks,
-            outputs=outputs,
-            temporaries=self.temporaries,
+            state=state,
+            locals=locals,
         )
 
         self.phase_change(
