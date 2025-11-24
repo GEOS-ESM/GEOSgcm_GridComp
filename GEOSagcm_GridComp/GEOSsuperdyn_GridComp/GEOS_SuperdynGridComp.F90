@@ -16,9 +16,7 @@ module GEOS_SuperdynGridCompMod
   use ESMF
   use MAPL
 
-  use FVdycore_GridCompMod,     only :    FV_SetServices => SetServices
   use FVdycoreCubed_GridComp,   only :   FV3_SetServices => SetServices
-  use ARIESg3_GridCompMod,      only : ARIES_SetServices => SetServices
   use GEOS_DatmoDynGridCompMod, only : DATMO_SetServices => SetServices
   use AdvCore_GridCompMod,      only :   ADV_SetServices => SetServices
 
@@ -145,10 +143,6 @@ integer ::          ADV = -1
 
     VERIFY_(STATUS)
 
-    if(adjustl(DYCORE)=="FV"   ) then
-                  DYN =  MAPL_AddChild(GC, NAME='DYN', SS=   FV_SetServices, RC=STATUS)
-                  VERIFY_(STATUS)
-    endif
     if(adjustl(DYCORE)=="FV3"  ) then
                   DYN =  MAPL_AddChild(GC, NAME='DYN', SS=  FV3_SetServices, RC=STATUS)
                   VERIFY_(STATUS)
@@ -157,10 +151,6 @@ integer ::          ADV = -1
                   DYN =  MAPL_AddChild(GC, NAME='DYN', SS=  FV3_SetServices, RC=STATUS)
                   VERIFY_(STATUS)
                   ADV =  MAPL_AddChild(GC, NAME='ADV', SS=  ADV_SetServices, RC=STATUS)
-                  VERIFY_(STATUS)
-    endif
-    if(adjustl(DYCORE)=="ARIES") then
-                  DYN =  MAPL_AddChild(GC, NAME='DYN', SS=ARIES_SetServices, RC=STATUS)
                   VERIFY_(STATUS)
     endif
     if(adjustl(DYCORE)=="DATMO") then
