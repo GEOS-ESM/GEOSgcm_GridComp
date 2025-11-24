@@ -63,3 +63,4 @@ class GF2020CumulusParameterizationConfig:
     OVERSHOOT: Float
     USE_MEMORY: Int
     DOWNDRAFT: Int
+    FIRST_GUESS_W: Int

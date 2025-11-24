@@ -21,30 +21,36 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 def in_cloud_updraft_air_temperature(
     error_code: IntFieldIJ_Plume,
     plume: Int,
-    FIRST_GUESS_W: Bool,
-    tempco: FloatField_Plume,
-    hco: FloatField_Plume,
-    zo_cup: FloatField_Plume,
-    qco: FloatField_Plume,
-    tn_cup: FloatField_Plume,
+    local_incloud_air_temp: FloatField,
+    local_cloud_moist_static_energy_forced: FloatField,
+    local_geopotential_height_cloud_levels_forced: FloatField,
+    local_incloud_water_vapor_mixing_ratio: FloatField,
+    local_t_cloud_levels_forced: FloatField,
 ):
+    from __externals__ import FIRST_GUESS_W
+
     with computation(PARALLEL), interval(0, -1):
-        if FIRST_GUESS_W == False:
+        if FIRST_GUESS_W == 0:
             if error_code[0, 0][plume] == 0:
-                tempco = (1.0 / cumulus_parameterization_constants.CP) * (
-                    hco
-                    - constants.MAPL_GRAV * zo_cup
-                    - cumulus_parameterization_constants.XLV * qco
+                local_incloud_air_temp = (
+                    1.0 / cumulus_parameterization_constants.CP
+                ) * (
+                    local_cloud_moist_static_energy_forced
+                    - constants.MAPL_GRAV
+                    * local_geopotential_height_cloud_levels_forced
+                    - cumulus_parameterization_constants.XLV
+                    * local_incloud_water_vapor_mixing_ratio
                 )
 
     with computation(PARALLEL), interval(-1, None):
-        if FIRST_GUESS_W == False:
+        if FIRST_GUESS_W == 0:
             if error_code[0, 0][plume] == 0:
-                tempco = tn_cup
+                local_incloud_air_temp = local_t_cloud_levels_forced
+
     with computation(PARALLEL), interval(...):
-        if FIRST_GUESS_W == False:
+        if FIRST_GUESS_W == 0:
             if error_code[0, 0][plume] != 0:
-                tempco = tn_cup
+                local_incloud_air_temp = local_t_cloud_levels_forced
 
 
 def cup_up_aa0(

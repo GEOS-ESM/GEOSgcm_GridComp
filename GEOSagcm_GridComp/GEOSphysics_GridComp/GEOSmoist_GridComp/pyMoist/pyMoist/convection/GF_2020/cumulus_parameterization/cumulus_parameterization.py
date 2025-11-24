@@ -703,7 +703,10 @@ class CumulusParameterization:
                 )
 
                 # calculate in-cloud/updraft air temperature for vertical velocity
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_UpdraftInCloudAirTemperature_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._in_cloud_updraft_air_temperature(
                     state=state,
                     locals=locals,

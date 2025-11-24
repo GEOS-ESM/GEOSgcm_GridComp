@@ -832,3 +832,30 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    melting: Quantity = dataclasses.field(
+        metadata={
+            "name": "melting",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    incloud_air_temp: Quantity = dataclasses.field(
+        metadata={
+            "name": "incloud_air_temp",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    incloud_water_vapor_mixing_ratio: Quantity = dataclasses.field(
+        metadata={
+            "name": "incloud_water_vapor_mixing_ratio",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )

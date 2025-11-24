@@ -92,6 +92,7 @@ class UpdraftInCloudUpdraftAirTemperature:
         self._in_cloud_updraft_air_temperature = stencil_factory.from_dims_halo(
             func=in_cloud_updraft_air_temperature,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"FIRST_GUESS_W": cumulus_parameterization_config.FIRST_GUESS_W},
         )
 
     def __call__(
@@ -103,12 +104,11 @@ class UpdraftInCloudUpdraftAirTemperature:
         self._in_cloud_updraft_air_temperature(
             error_code=state.output.error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
-            # FIRST_GUESS_W=,
-            # tempco=,
-            # hco=,
-            # zo_cup=,
-            # qco=,
-            # tn_cup=,
+            local_incloud_air_temp=locals.incloud_air_temp,
+            local_cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+            local_geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+            local_incloud_water_vapor_mixing_ratio=locals.incloud_water_vapor_mixing_ratio,
+            local_t_cloud_levels_forced=locals.t_cloud_levels_forced,
         )
 
 
