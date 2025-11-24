@@ -8,3 +8,14 @@ ComputeUwshcuInv:
     multimodal:
       absolute_epsilon: 1.00e-08
       ulp_threshold: 1000
+
+
+GFDL_1M_sublimate:
+  - backend: dace:cpu_kfirst
+    multimodal:
+      ulp_threshold: 32
+
+GFDL_1M_hydrostatic_pdf:
+  - backend: dace:cpu_kfirst
+    multimodal:
+      ulp_threshold: 250
