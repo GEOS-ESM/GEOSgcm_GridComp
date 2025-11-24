@@ -1,6 +1,6 @@
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
-from pyMoist.GFDL_1M.state import MicrophysicsDiagnostics, MicrophysicState, Outputs
+from pyMoist.GFDL_1M.state_old import MicrophysicsDiagnostics, MicrophysicState, Outputs
 
 
 __all__ = [

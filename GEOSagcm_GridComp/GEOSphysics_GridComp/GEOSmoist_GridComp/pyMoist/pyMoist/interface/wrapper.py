@@ -303,11 +303,11 @@ class GEOSPyMoistWrapper:
         CCI_EVAP_EFF = self._mapl_comp.get_resource("CCI_EVAP_EFF:", np.float32, default=1e-2)
 
         self.GFDL_1M_config = pyGFDL_1M.GFDL1MConfig(
-            HYDROSTATIC=HYDROSTATIC,  # type: ignore # bool are stupid in numpy
-            PHYS_HYDROSTATIC=PHYS_HYDROSTATIC,  # type: ignore
-            MELTFRZ=MELTFRZ,  # type: ignore
+            LHYDROSTATIC=HYDROSTATIC,  # type: ignore # bool are stupid in numpy
+            LPHYS_HYDROSTATIC=PHYS_HYDROSTATIC,  # type: ignore
+            LMELTFRZ=MELTFRZ,  # type: ignore
             TURNRHCRIT_PARAM=TURNRHCRIT,
-            PDF_SHAPE=PDF_SHAPE,
+            PDFSHAPE=PDF_SHAPE,
             ANV_ICEFALL=ANV_ICEFALL,
             LS_ICEFALL=LS_ICEFALL,
             LIQ_RADII_PARAM=LIQ_RADII_PARAM,
@@ -540,27 +540,27 @@ class GEOSPyMoistWrapper:
                             "large_scale_nonanvil_ice_flux": mapl_export.PFI_LS[:, :, 1:],
                             "anvil_liquid_flux": mapl_export.PFL_AN[:, :, 1:],
                             "anvil_ice_flux": mapl_export.PFI_AN[:, :, 1:],
-                            "large_scale_rainwater_source": mapl_export.DQRL
-                            if mapl_export.associated("DQRL")
-                            else None,
-                            "moist_friction_temperature_tendency": mapl_export.DTDTFRIC
-                            if mapl_export.associated("DTDTFRIC")
-                            else None,
-                            "simulated_reflectivity": mapl_export.DBZ
-                            if mapl_export.associated("DBZ")
-                            else None,
-                            "maximum_reflectivity": mapl_export.DBZ_MAX
-                            if mapl_export.associated("DBZ_MAX")
-                            else None,
-                            "one_km_agl_reflectivity": mapl_export.DBZ_1KM
-                            if mapl_export.associated("DBZ_1KM")
-                            else None,
-                            "echo_top_reflectivity": mapl_export.DBZ_TOP
-                            if mapl_export.associated("DBZ_TOP")
-                            else None,
-                            "minus_10c_reflectivity": mapl_export.DBZ_M10C
-                            if mapl_export.associated("DBZ_M10C")
-                            else None,
+                            "large_scale_rainwater_source": (
+                                mapl_export.DQRL if mapl_export.associated("DQRL") else None
+                            ),
+                            "moist_friction_temperature_tendency": (
+                                mapl_export.DTDTFRIC if mapl_export.associated("DTDTFRIC") else None
+                            ),
+                            "simulated_reflectivity": (
+                                mapl_export.DBZ if mapl_export.associated("DBZ") else None
+                            ),
+                            "maximum_reflectivity": (
+                                mapl_export.DBZ_MAX if mapl_export.associated("DBZ_MAX") else None
+                            ),
+                            "one_km_agl_reflectivity": (
+                                mapl_export.DBZ_1KM if mapl_export.associated("DBZ_1KM") else None
+                            ),
+                            "echo_top_reflectivity": (
+                                mapl_export.DBZ_TOP if mapl_export.associated("DBZ_TOP") else None
+                            ),
+                            "minus_10c_reflectivity": (
+                                mapl_export.DBZ_M10C if mapl_export.associated("DBZ_M10C") else None
+                            ),
                             "deep_convective_precipitation": mapl_export.CN_PRCP,
                             "anvil_precipitation": mapl_export.AN_PRCP,
                             "shallow_convective_precipitation": mapl_export.SC_PRCP,

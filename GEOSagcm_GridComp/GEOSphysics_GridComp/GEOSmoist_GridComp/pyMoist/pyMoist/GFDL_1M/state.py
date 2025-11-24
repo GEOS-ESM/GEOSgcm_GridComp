@@ -1,17 +1,324 @@
 import dataclasses
 
 from ndsl import Quantity, State
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Float
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.typing import Float
 
 
 @dataclasses.dataclass
-class MicrophysicState(State):
-    @dataclasses.dataclass
-    class MixingRatios:
-        """
-        Mixing ratios of water species
-        """
+class GFDL1MState(State):
+    area: Quantity = dataclasses.field(
+        metadata={
+            "name": "area",
+            "dims": [X_DIM, Y_DIM],
+            "units": "m2",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    z_interface: Quantity = dataclasses.field(
+        metadata={
+            "name": "geopotential_height_interface",
+            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "units": "m",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    p_interface: Quantity = dataclasses.field(
+        metadata={
+            "name": "p_interface",
+            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "units": "Pa",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    t: Quantity = dataclasses.field(
+        metadata={
+            "name": "t",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "K",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    u: Quantity = dataclasses.field(
+        metadata={
+            "name": "u",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "m s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    v: Quantity = dataclasses.field(
+        metadata={
+            "name": "v",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "m s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    land_fraction: Quantity = dataclasses.field(
+        metadata={
+            "name": "land_fraction",
+            "dims": [X_DIM, Y_DIM],
+            "units": "1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    scalar_diffusivity_interface: Quantity = dataclasses.field(
+        metadata={
+            "name": "scalar_diffusivity_interface",
+            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "units": "m2 s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    pdf_first_plume_fractional_area: Quantity = dataclasses.field(
+        metadata={
+            "name": "pdf_first_plume_fractional_area",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    covariance_liquid_water_static_energy_and_total_water_specific_humudity: Quantity = dataclasses.field(
+        metadata={
+            "name": "covariance_liquid_water_static_energy_and_total_water_specific_humudity",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "K",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    surface_temperature: Quantity = dataclasses.field(
+        metadata={
+            "name": "surface_temperature",
+            "dims": [X_DIM, Y_DIM],
+            "units": "K",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    sensible_heat_flux: Quantity = dataclasses.field(
+        metadata={
+            "name": "sensible_heat_flux",
+            "dims": [X_DIM, Y_DIM],
+            "units": "W m-2",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    evaporation: Quantity = dataclasses.field(
+        metadata={
+            "name": "evaporation",
+            "dims": [X_DIM, Y_DIM],
+            "units": "kg m-2 s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    omega: Quantity = dataclasses.field(
+        metadata={
+            "name": "omega",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "Pa s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    convection_fraction: Quantity = dataclasses.field(
+        metadata={
+            "name": "convection_fraction",
+            "dims": [X_DIM, Y_DIM],
+            "units": "1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    surface_type: Quantity = dataclasses.field(
+        metadata={
+            "name": "surface_type",
+            "dims": [X_DIM, Y_DIM],
+            "units": "1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    cloud_liquid_evaporation: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_liquid_evaporation",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "kg kg-1 s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    cloud_ice_sublimation: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_ice_sublimation",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "kg kg-1 s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    icefall: Quantity = dataclasses.field(
+        metadata={
+            "name": "icefall",
+            "dims": [X_DIM, Y_DIM],
+            "units": "kg m-2 s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    freezing_rainfall: Quantity = dataclasses.field(
+        metadata={
+            "name": "freezing_rainfall",
+            "dims": [X_DIM, Y_DIM],
+            "units": "kg m-2 s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    relative_humidity_after_pdf: Quantity = dataclasses.field(
+        metadata={
+            "name": "relative_humidity_after_pdf",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    buoyancy_flux: Quantity = dataclasses.field(
+        metadata={
+            "name": "buoyancy_flux",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    liquid_water_flux: Quantity = dataclasses.field(
+        metadata={
+            "name": "liquid_water_flux",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "kg kg-1 m s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    hydrostatic_pdf_iterations: Quantity = dataclasses.field(
+        metadata={
+            "name": "hydrostatic_pdf_iterations",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    lower_tropospheric_stability: Quantity = dataclasses.field(
+        metadata={
+            "name": "lower_tropospheric_stability",
+            "dims": [X_DIM, Y_DIM],
+            "units": "K",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    estimated_inversion_strength: Quantity = dataclasses.field(
+        metadata={
+            "name": "estimated_inversion_strength",
+            "dims": [X_DIM, Y_DIM],
+            "units": "K",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    lcl_height: Quantity = dataclasses.field(
+        metadata={
+            "name": "lcl_height",
+            "dims": [X_DIM, Y_DIM],
+            "units": "m",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    shallow_convection_rain: Quantity = dataclasses.field(
+        metadata={
+            "name": "shallow_convection_rain",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "kg kg-1 s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    shallow_convection_snow: Quantity = dataclasses.field(
+        metadata={
+            "name": "shallow_convective_snow",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "kg kg-1 s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    critical_relative_humidity_for_pdf: Quantity = dataclasses.field(
+        metadata={
+            "name": "critical_relative_humidity_for_pdf",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    large_scale_rainwater_source: Quantity = dataclasses.field(
+        metadata={
+            "name": "large_scale_rainwater_source",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "kg kg-1 s-1",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
 
+    @dataclasses.dataclass
+    class VerticalMotion:
+        velocity: Quantity = dataclasses.field(
+            metadata={
+                "name": "velocity",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "m s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        variance: Quantity = dataclasses.field(
+            metadata={
+                "name": "variance",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "m2 s-2",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        third_moment: Quantity = dataclasses.field(
+            metadata={
+                "name": "third_moment",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "m3 s-3",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    @dataclasses.dataclass
+    class MixingRatio:
         vapor: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor",
@@ -48,27 +355,9 @@ class MicrophysicState(State):
                 "dtype": Float,
             }
         )
-        convective_liquid: Quantity = dataclasses.field(
-            metadata={
-                "name": "convective liquid",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "kg kg-1",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        convective_ice: Quantity = dataclasses.field(
-            metadata={
-                "name": "convective ice",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "kg kg-1",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
         large_scale_liquid: Quantity = dataclasses.field(
             metadata={
-                "name": "large scale liquid",
+                "name": "large_scale_liquid",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
@@ -77,7 +366,25 @@ class MicrophysicState(State):
         )
         large_scale_ice: Quantity = dataclasses.field(
             metadata={
-                "name": "large scale ice",
+                "name": "large_scale_ice",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        convective_liquid: Quantity = dataclasses.field(
+            metadata={
+                "name": "convective_liquid",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        convective_ice: Quantity = dataclasses.field(
+            metadata={
+                "name": "convective_ice",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
@@ -86,23 +393,19 @@ class MicrophysicState(State):
         )
 
     @dataclasses.dataclass
-    class CloudFractions:
-        """
-        ?
-        """
-
-        convective: Quantity = dataclasses.field(
+    class CloudFraction:
+        large_scale: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud fractions convective",
+                "name": "large_scale_cloud_fraction",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "1",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        large_scale: Quantity = dataclasses.field(
+        convective: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud fractions large scale",
+                "name": "convective_cloud_fraction",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "1",
                 "intent": "?",
@@ -111,637 +414,26 @@ class MicrophysicState(State):
         )
 
     @dataclasses.dataclass
-    class VerticalMotion:
-        """
-        ?
-        """
-
-        velocity: Quantity = dataclasses.field(
+    class Concentrations:
+        liquid: Quantity = dataclasses.field(
             metadata={
-                "name": "velocity",
+                "name": "liquid",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "m s-1",
+                "units": "m-3",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        variance: Quantity = dataclasses.field(
+        ice: Quantity = dataclasses.field(
             metadata={
-                "name": "variance",
+                "name": "ice",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "m2 s-2",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        third_moment: Quantity = dataclasses.field(
-            metadata={
-                "name": "third_moment",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": " m3 s-3",
+                "units": "m-3",
                 "intent": "?",
                 "dtype": Float,
             }
         )
 
-    mixing_ratios: MixingRatios
-    cloud_fractions: CloudFractions
-    vertical_motion: VerticalMotion
-
-    # @classmethod
-    # def zeros(cls, quantity_factory: QuantityFactory) -> "MicrophysicState":
-    #     """Init all quantities to zeros - included nested ones"""
-
-    #     def _zeros(cls):
-    #         initial_quantities = {}
-    #         for _field in dataclasses.fields(cls):
-    #             if dataclasses.is_dataclass(_field.type):
-    #                 initial_quantities[_field.name] = _zeros(_field.type)
-    #             else:
-    #                 if "dims" not in _field.metadata.keys():
-    #                     raise ValueError(
-    #                         "Malformed state - no dims to init "
-    #                         f"Quantity in  {_field.name} of type {_field.type}"
-    #                     )
-
-    #                 initial_quantities[_field.name] = quantity_factory.zeros(
-    #                     _field.metadata["dims"],
-    #                     _field.metadata["units"],
-    #                     dtype=_field.metadata["dtype"],
-    #                     allow_mismatch_float_precision=True,
-    #                 )
-
-    #         return initial_quantities
-
-    #     dict_of_qty = _zeros(cls)
-    #     return dacite.from_dict(data_class=cls, data=dict_of_qty)
-
-    # def init_from_memory(self, memory_map: dict[str, Any]):
-    #     """Will copy data from the memory map if it follows the nested
-    #     naming convention of the dataclass"""
-
-    #     def _init_from_memory(dataclss, memory_map: dict[str, Any]):
-    #         for name, array in memory_map.items():
-    #             if isinstance(array, dict):
-    #                 _init_from_memory(dataclss.__getattribute__(name), array)
-    #             else:
-    #                 dataclss.__getattribute__(name).field[:] = array
-
-    #     _init_from_memory(self, memory_map)
-
-
-@dataclasses.dataclass
-class Outputs(State):
-    """
-    Collection of all fields computed locally and returned to the rest of the model
-    """
-
-    lower_tropospheric_stability: Quantity = dataclasses.field(
-        metadata={
-            "name": "lower_tropospheric_stability",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-
-    estimated_inversion_strength: Quantity = dataclasses.field(
-        metadata={
-            "name": "estimated_inversion_strength",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    du_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "du_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dv_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dv_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dt_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dt_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dvapor_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dvapor_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dliquid_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dliquid_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dice_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dice_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dcloud_fraction_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dcloud_fraction_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    drain_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "drain_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dsnow_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dsnow_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dgraupel_dt_macro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dgraupel_dt_macro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    du_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "du_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dv_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dv_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dt_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dt_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dvapor_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dvapor_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dliquid_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dliquid_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dice_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dice_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dcloud_fraction_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dcloud_fraction_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    drain_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "drain_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dsnow_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dsnow_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    dgraupel_dt_micro: Quantity = dataclasses.field(
-        metadata={
-            "name": "dgraupel_dt_micro",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    radiation_cloud_fraction: Quantity = dataclasses.field(
-        metadata={
-            "name": "radiation_cloud_fraction",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    radiation_ice: Quantity = dataclasses.field(
-        metadata={
-            "name": "radiation_ice",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    radiation_liquid: Quantity = dataclasses.field(
-        metadata={
-            "name": "radiation_liquid",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    radiation_vapor: Quantity = dataclasses.field(
-        metadata={
-            "name": "radiation_vapor",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    radiation_rain: Quantity = dataclasses.field(
-        metadata={
-            "name": "radiation_rain",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    radiation_snow: Quantity = dataclasses.field(
-        metadata={
-            "name": "radiation_snow",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    radiation_graupel: Quantity = dataclasses.field(
-        metadata={
-            "name": "radiation_graupel",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    ice_radius: Quantity = dataclasses.field(
-        metadata={
-            "name": "ice_radius",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    liquid_radius: Quantity = dataclasses.field(
-        metadata={
-            "name": "liquid_radius",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    large_scale_nonanvil_precipitation_evaporation: Quantity = dataclasses.field(
-        metadata={
-            "name": "large_scale_nonanvil_precipitation_evaporation",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    large_scale_nonanvil_precipitation_sublimation: Quantity = dataclasses.field(
-        metadata={
-            "name": "large_scale_nonanvil_precipitation_sublimation",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    relative_humidity_after_pdf: Quantity = dataclasses.field(
-        metadata={
-            "name": "relative_humidity_after_pdf",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    precipitated_rain: Quantity = dataclasses.field(
-        metadata={
-            "name": "precipitated_rain",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    precipitated_snow: Quantity = dataclasses.field(
-        metadata={
-            "name": "precipitated_snow",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    precipitated_ice: Quantity = dataclasses.field(
-        metadata={
-            "name": "precipitated_ice",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    precipitated_graupel: Quantity = dataclasses.field(
-        metadata={
-            "name": "precipitated_graupel",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    large_scale_precip: Quantity = dataclasses.field(
-        metadata={
-            "name": "large_scale_precip",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    large_scale_snow: Quantity = dataclasses.field(
-        metadata={
-            "name": "large_scale_snow",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    icefall: Quantity = dataclasses.field(
-        metadata={
-            "name": "icefall",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    freezing_rainfall: Quantity = dataclasses.field(
-        metadata={
-            "name": "freezing_rainfall",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    large_scale_nonanvil_ice_flux: Quantity = dataclasses.field(
-        metadata={
-            "name": "large_scale_nonanvil_ice_flux",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    large_scale_nonanvil_liquid_flux: Quantity = dataclasses.field(
-        metadata={
-            "name": "large_scale_nonanvil_liquid_flux",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    anvil_liquid_flux: Quantity = dataclasses.field(
-        metadata={
-            "name": "anvil_liquid_flux",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    anvil_ice_flux: Quantity = dataclasses.field(
-        metadata={
-            "name": "anvil_ice_flux",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    deep_convective_precipitation: Quantity = dataclasses.field(
-        metadata={
-            "name": "deep_convective_precipitation",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    anvil_precipitation: Quantity = dataclasses.field(
-        metadata={
-            "name": "anvil_precipitation",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    shallow_convective_precipitation: Quantity = dataclasses.field(
-        metadata={
-            "name": "shallow_convective_precipitation",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    deep_convective_snow: Quantity = dataclasses.field(
-        metadata={
-            "name": "deep_convective_snow",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    anvil_snow: Quantity = dataclasses.field(
-        metadata={
-            "name": "anvil_snow",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    shallow_convective_snow: Quantity = dataclasses.field(
-        metadata={
-            "name": "shallow_convective_snow",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    # Optional outputs
-    z_lcl: Quantity = dataclasses.field(
-        metadata={
-            "name": "z_lcl",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    large_scale_rainwater_source: Quantity | None = dataclasses.field(
-        metadata={
-            "name": "large_scale_rainwater_source",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    moist_friction_temperature_tendency: Quantity | None = dataclasses.field(
-        metadata={
-            "name": "moist_friction_temperature_tendency",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    simulated_reflectivity: Quantity | None = dataclasses.field(
-        metadata={
-            "name": "simulated_reflectivity",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    maximum_reflectivity: Quantity | None = dataclasses.field(
-        metadata={
-            "name": "maximum_reflectivity",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    one_km_agl_reflectivity: Quantity | None = dataclasses.field(
-        metadata={
-            "name": "one_km_agl_reflectivity",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    echo_top_reflectivity: Quantity | None = dataclasses.field(
-        metadata={
-            "name": "echo_top_reflectivity",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    minus_10c_reflectivity: Quantity | None = dataclasses.field(
-        metadata={
-            "name": "minus_10c_reflectivity",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-
-
-@dataclasses.dataclass
-class MicrophysicsDiagnostics:
     @dataclasses.dataclass
     class LiquidWaterStaticEnergy:
         """
@@ -771,7 +463,7 @@ class MicrophysicsDiagnostics:
         )
         third_moment: Quantity = dataclasses.field(
             metadata={
-                "name": "third moment",
+                "name": "third_moment",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "K+3",
                 "intent": "?",
@@ -810,7 +502,7 @@ class MicrophysicsDiagnostics:
         )
         third_moment: Quantity = dataclasses.field(
             metadata={
-                "name": "third moment",
+                "name": "third_moment",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "1",
                 "intent": "?",
@@ -818,5 +510,532 @@ class MicrophysicsDiagnostics:
             }
         )
 
+    @dataclasses.dataclass
+    class RadiationField:
+        cloud_fraction: Quantity = dataclasses.field(
+            metadata={
+                "name": "cloud_fraction",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        vapor: Quantity = dataclasses.field(
+            metadata={
+                "name": "vapor",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        liquid: Quantity = dataclasses.field(
+            metadata={
+                "name": "liquid",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        ice: Quantity = dataclasses.field(
+            metadata={
+                "name": "cloud_fraction",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        rain: Quantity = dataclasses.field(
+            metadata={
+                "name": "cloud_fraction",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        snow: Quantity = dataclasses.field(
+            metadata={
+                "name": "cloud_fraction",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        graupel: Quantity = dataclasses.field(
+            metadata={
+                "name": "graupel",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    @dataclasses.dataclass
+    class CloudParticleEffectiveRadius:
+        liquid: Quantity = dataclasses.field(
+            metadata={
+                "name": "liquid",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "m",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        ice: Quantity = dataclasses.field(
+            metadata={
+                "name": "ice",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "m",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    @dataclasses.dataclass
+    class PrecipitationAtSurface:
+        rain: Quantity = dataclasses.field(
+            metadata={
+                "name": "rain",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        snow: Quantity = dataclasses.field(
+            metadata={
+                "name": "snow",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        ice: Quantity = dataclasses.field(
+            metadata={
+                "name": "ice",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        graupel: Quantity = dataclasses.field(
+            metadata={
+                "name": "graupel",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        shallow_convective_precipitation: Quantity = dataclasses.field(
+            metadata={
+                "name": "shallow_convective_precipitation",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        deep_convective_precipitation: Quantity = dataclasses.field(
+            metadata={
+                "name": "deep_convective_precipitation",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        anvil_precipitation: Quantity = dataclasses.field(
+            metadata={
+                "name": "anvil_precipitation",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        shallow_convective_snow: Quantity = dataclasses.field(
+            metadata={
+                "name": "shallow_convective_snow",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        deep_convective_snow: Quantity = dataclasses.field(
+            metadata={
+                "name": "deep_convective_snow",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        anvil_snow: Quantity = dataclasses.field(
+            metadata={
+                "name": "anvil_snow",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    @dataclasses.dataclass
+    class NonAnvilLargeScale:
+        precip: Quantity = dataclasses.field(
+            metadata={
+                "name": "precip",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        snow: Quantity = dataclasses.field(
+            metadata={
+                "name": "snow",
+                "dims": [X_DIM, Y_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        evaporation: Quantity = dataclasses.field(
+            metadata={
+                "name": "evaporation",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        sublimation: Quantity = dataclasses.field(
+            metadata={
+                "name": "sublimation",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        liquid_precip_flux: Quantity = dataclasses.field(
+            metadata={
+                "name": "liquid_precip_flux",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        ice_precip_flux: Quantity = dataclasses.field(
+            metadata={
+                "name": "ice_precip_flux",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    @dataclasses.dataclass
+    class Anvil:
+        liquid_precip_flux: Quantity = dataclasses.field(
+            metadata={
+                "name": "liquid_precip_flux",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        ice_precip_flux: Quantity = dataclasses.field(
+            metadata={
+                "name": "ice_precip_flux",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg m-2 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    @dataclasses.dataclass
+    class Tendencies:
+        dcloud_fractiondt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dsurface_specific_humuditydt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dvapordt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dvapordt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dicedt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dicedt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dliquiddt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dliquiddt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        draindt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "draindt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dsnowdt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dsnowdt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dgraupeldt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dgraupeldt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dsnowdt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dsnowdt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dudt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dudt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dvdt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dvdt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dtdt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dtdt_macro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dcloud_fractiondt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dsurface_specific_humuditydt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dvapordt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dvapordt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dicedt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dicedt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dliquiddt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dliquiddt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        draindt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "draindt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dsnowdt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dsnowdt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dgraupeldt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dgraupeldt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dsnowdt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dsnowdt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dudt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dudt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dvdt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dvdt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dtdt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dtdt_micro",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "kg kg-1 s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dtdt_friction_pressure_weighted: Quantity = dataclasses.field(
+            metadata={
+                "name": "dtdt_friction_pressure_weighted",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "Pa K s-1",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    @dataclasses.dataclass
+    class Radar:
+        simulated_reflectivity: Quantity = dataclasses.field(
+            metadata={
+                "name": "simulated_reflectivity",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "dBZ",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        maximum_composite_reflectivity: Quantity = dataclasses.field(
+            metadata={
+                "name": "maximum_composite_reflectivity",
+                "dims": [X_DIM, Y_DIM],
+                "units": "dBZ",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        base_1km_agl_reflectivity: Quantity = dataclasses.field(
+            metadata={
+                "name": "base_1km_agl_reflectivity",
+                "dims": [X_DIM, Y_DIM],
+                "units": "dBZ",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        echo_top_reflectivity: Quantity = dataclasses.field(
+            metadata={
+                "name": "echo_top_reflectivity",
+                "dims": [X_DIM, Y_DIM],
+                "units": "dBZ",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        minus_10c_reflectivity: Quantity = dataclasses.field(
+            metadata={
+                "name": "minus_10c_reflectivity",
+                "dims": [X_DIM, Y_DIM],
+                "units": "dBZ",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    vertical_motion: VerticalMotion
+    mixing_ratio: MixingRatio
+    cloud_fraction: CloudFraction
+    concentration: Concentrations
     liquid_water_static_energy: LiquidWaterStaticEnergy
     total_water: TotalWater
+    radiation_field: RadiationField
+    cloud_particle_effective_radius: CloudParticleEffectiveRadius
+    precipitation_at_surface: PrecipitationAtSurface
+    non_anvil_large_scale: NonAnvilLargeScale
+    anvil: Anvil
+    tendencies: Tendencies
+    radar: Radar

@@ -6,7 +6,7 @@ from pyMoist.constants import MAPL_CP, MAPL_GRAV
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.masks import Masks
-from pyMoist.GFDL_1M.state import MicrophysicState, Outputs
+from pyMoist.GFDL_1M.state_old import MicrophysicState, Outputs
 from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.radiation_coupling import GFDL1MRadiationCoupling
 from pyMoist.redistribute_clouds import RedistributeClouds

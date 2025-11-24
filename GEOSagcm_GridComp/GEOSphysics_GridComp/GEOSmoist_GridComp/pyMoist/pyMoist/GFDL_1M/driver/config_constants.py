@@ -80,7 +80,7 @@ class ConfigConstants:
         # define heat capacity of dry air and water vap based on hydrostatical property
         # -----------------------------------------------------------------------
 
-        if GFDL_1M_config.PHYS_HYDROSTATIC or GFDL_1M_config.HYDROSTATIC:
+        if GFDL_1M_config.LPHYS_HYDROSTATIC or GFDL_1M_config.LHYDROSTATIC:
             C_AIR = constants.CP_AIR
             C_VAP = constants.CP_VAP
             P_NONHYDRO = False
@@ -91,7 +91,7 @@ class ConfigConstants:
         D0_VAP = C_VAP - constants.C_LIQ
         LV00 = constants.HLV0 - D0_VAP * constants.T_ICE
 
-        if GFDL_1M_config.HYDROSTATIC:
+        if GFDL_1M_config.LHYDROSTATIC:
             DO_SEDI_W = False
         else:
             DO_SEDI_W = True

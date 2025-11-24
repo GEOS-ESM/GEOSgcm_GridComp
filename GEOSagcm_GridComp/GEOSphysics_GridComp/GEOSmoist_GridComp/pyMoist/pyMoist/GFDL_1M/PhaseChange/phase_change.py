@@ -15,7 +15,7 @@ from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 from pyMoist.GFDL_1M.PhaseChange.rh_calculations import compute_rh_crit_3D, rh_calculations
 from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.GFDL_1M.PhaseChange.temporaries import Temporaries
-from pyMoist.GFDL_1M.state import MicrophysicsDiagnostics
+from pyMoist.GFDL_1M.state_old import MicrophysicsDiagnostics
 from pyMoist.saturation_tables import SaturationFormulation, get_saturation_vapor_pressure_table
 from pyMoist.shared_incloud_processes import fix_up_clouds
 
@@ -43,14 +43,14 @@ class PhaseChange:
                 "Disable this error manually to continue."
             )
 
-        if GFDL_1M_config.PDF_SHAPE >= 5:
+        if GFDL_1M_config.PDFSHAPE >= 5:
             raise NotImplementedError(
-                f"PDF_SHAPE={GFDL_1M_config.PDF_SHAPE} hasn't been ported" "from the Fortran"
+                f"PDF_SHAPE={GFDL_1M_config.PDFSHAPE} hasn't been ported" "from the Fortran"
             )
 
-        if GFDL_1M_config.PDF_SHAPE > 1 and GFDL_1M_config.PDF_SHAPE < 5:
+        if GFDL_1M_config.PDFSHAPE > 1 and GFDL_1M_config.PDFSHAPE < 5:
             raise NotImplementedError(
-                f"PDF_SHAPE={GFDL_1M_config.PDF_SHAPE} is ported but untested. "
+                f"PDF_SHAPE={GFDL_1M_config.PDFSHAPE} is ported but untested. "
                 "Disable this error manually to continue."
             )
 
@@ -95,7 +95,7 @@ class PhaseChange:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "DT_MOIST": GFDL_1M_config.DT_MOIST,
-                "PDF_SHAPE": GFDL_1M_config.PDF_SHAPE,
+                "PDF_SHAPE": GFDL_1M_config.PDFSHAPE,
                 "USE_BERGERON": GFDL_1M_config.USE_BERGERON,
                 "FLOAT_TINY": FLOAT_TINY,
             },
@@ -228,7 +228,7 @@ class PhaseChange:
             estlqu=self._estlqu,
         )
 
-        if self.GFDL_1M_config.MELTFRZ:
+        if self.GFDL_1M_config.LMELTFRZ:
             self._meltfrz(
                 convection_fraction,
                 surface_type,
