@@ -2,12 +2,19 @@ from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField
-from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    saturation_specific_humidity,
+    SaturationVaporPressureTable,
+)
 from pyMoist.shared_incloud_processes import (
     cloud_effective_radius_ice,
     cloud_effective_radius_liquid,
     fix_up_clouds,
 )
+from pyMoist.GFDL_1M.config import GFDL1MConfig
+from pyMoist.GFDL_1M.state import GFDL1MState
+from pyMoist.GFDL_1M.locals import GFDL1MLocals
 
 
 def _radiation_coupling(
@@ -112,43 +119,37 @@ class GFDL1MRadiationCoupling:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        DO_QA: bool,
-        FAC_RL: Float,
-        MIN_RL: Float,
-        MAX_RL: Float,
-        FAC_RI: Float,
-        MIN_RI: Float,
-        MAX_RI: Float,
-    ) -> None:
+        config: GFDL1MConfig,
+        saturation_tables: SaturationVaporPressureTable,
+    ):
         """
         Initialize GFDL radiation coupling class
 
         Arguments:
             stencil_factory (StencilFactory): Factory to create stencils.
-            quantity_factory (QuantityFactory): Factory to create quantities.
-            DO_QA (bool): Flow control parameter. Details unknown.
-            FAC_RL (Float): Factor for liquid effective radius.
-            MIN_RL (Float): Minimum liquid effective radius.
-            MAX_RL (Float): Maximum liquid effective radius.
-            FAC_RI (Float): Factor for ice effective radius.
-            MIN_RI (Float): Minimum ice effective radius.
-            MAX_RI (Float): Maximum ice effective radius.
+            config (GFDL1MConfig): contains all constants for GFDL Single Moment Microphysics
         """
-        self.DO_QA = DO_QA
+
+        # make config and saturation tables visible at runtime
+        self.config = config
+        self.saturation_tables = saturation_tables
+
+        # construct stencils
         self.fix_up_clouds = stencil_factory.from_dims_halo(
             func=fix_up_clouds,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+
         self.radiation_coupling = stencil_factory.from_dims_halo(
             func=_radiation_coupling,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "FAC_RL": FAC_RL,
-                "MIN_RL": MIN_RL,
-                "MAX_RL": MAX_RL,
-                "FAC_RI": FAC_RI,
-                "MIN_RI": MIN_RI,
-                "MAX_RI": MAX_RI,
+                "FAC_RL": config.FAC_RL,
+                "MIN_RL": config.MIN_RL,
+                "MAX_RL": config.MAX_RL,
+                "FAC_RI": config.FAC_RI,
+                "MIN_RI": config.MIN_RI,
+                "MAX_RI": config.MAX_RI,
             },
         )
         self.update_humidity = stencil_factory.from_dims_halo(
@@ -156,7 +157,7 @@ class GFDL1MRadiationCoupling:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        if self.DO_QA:
+        if config.DO_QA:
             raise NotImplementedError(
                 "[Radiation Coupling] DO_QA option implemented, but untested. "
                 "Disable message manually to process."
@@ -164,103 +165,57 @@ class GFDL1MRadiationCoupling:
 
     def __call__(
         self,
-        vapor: FloatField,
-        temperature: FloatField,
-        large_scale_liquid: FloatField,
-        large_scale_ice: FloatField,
-        large_scale_cloud_fraction: FloatField,
-        convective_liquid: FloatField,
-        convective_ice: FloatField,
-        convective_cloud_fraction: FloatField,
-        pressure: FloatField,
-        rain: FloatField,
-        snow: FloatField,
-        graupel: FloatField,
-        liquid_concentration: FloatField,
-        ice_concentration: FloatField,
-        radiation_vapor: FloatField,
-        radiation_liquid: FloatField,
-        radiation_ice: FloatField,
-        radiation_rain: FloatField,
-        radiation_snow: FloatField,
-        radiation_graupel: FloatField,
-        radiation_cloud_fraction: FloatField,
-        liquid_radius: FloatField,
-        ice_radius: FloatField,
-        relative_humidity_after_pdf: FloatField,
-        ese: GlobalTable_saturation_tables,
-        esx: GlobalTable_saturation_tables,
+        state: GFDL1MState,
+        locals: GFDL1MLocals,
     ):
         """
-        Perform the radiation coupling process
-
-        Arguments:
-            vapor (inout): water vapor mixing ratio (kg/kg)
-            temperature (inout): temperature (Kelvin)
-            large_scale_liquid (inout): large scale liquid mixing ratio (kg/kg)
-            large_scale_ice (inout): large scale ice mixing ratio (kg/kg)
-            large_scale_cloud_fraction (inout): large scale cloud fraction (unitless)
-            convective_liquid (inout): convective liquid mixing ratio (kg/kg)
-            convective_ice (inout): convective ice mixing ratio (kg/kg)
-            convective_cloud_fraction (inout): convective cloud fraction
-            pressure (in): pressure (millibars)
-            rain (inout): rain mixing ratio (unitless)
-            snow (inout): snow mixing ratio (unitless)
-            graupel (inout): graupel mixing ratio (unitless)
-            liquid_concentration (in): liquid cloud droplet concentration (m^-3)
-            ice_concentration (in): ice cloud droplet concnetration (m^-3)
-            radiation_vapor (inout): radiation water vapor mixing ratio (kg/kg)
-            radiation_liquid (inout): radiation liquid cloud mixing ratio (kg/kg)
-            radiation_ice (inout): radiation ice cloud mixing ratio (kg/kg)
-            radiation_rain (inout): radiation rain mixing ratio (unitless)
-            radiation_snow (inout): radiation snow mixing ratio (unitless)
-            radiation_graupel (inout): radiation graupel mixing ratio (unitless)
-            radiation_cloud_fraction (inout): radiation cloud fraction (unitless)
-            liquid_radius (inout): radiation liquid effective radius (m)
-            ice_radius (inout): radiation ice effective radius (m)
+        Perform the radiation coupling process. This prefills fields for the proper radiation scheme.
+        Fields are (generally) copied cleanly from non-radiation storage to the radiation driven counterpart
+        with only minor modifications. Exceptions include extreme value checks and unit conversions.
         """
         self.fix_up_clouds(
-            vapor,
-            temperature,
-            large_scale_liquid,
-            large_scale_ice,
-            large_scale_cloud_fraction,
-            convective_liquid,
-            convective_ice,
-            convective_cloud_fraction,
+            vapor=state.mixing_ratio.vapor,
+            t=state.t,
+            large_scale_liquid=state.mixing_ratio.large_scale_liquid,
+            large_scale_ice=state.mixing_ratio.large_scale_ice,
+            large_scale_cloud_fraction=state.cloud_fraction.large_scale,
+            convective_liquid=state.mixing_ratio.convective_liquid,
+            convective_ice=state.mixing_ratio.convective_ice,
+            convective_cloud_fraction=state.cloud_fraction.convective,
         )
+        
         self.radiation_coupling(
-            temperature,
-            pressure,
-            large_scale_cloud_fraction,
-            convective_cloud_fraction,
-            vapor,
-            large_scale_liquid,
-            large_scale_ice,
-            convective_liquid,
-            convective_ice,
-            rain,
-            snow,
-            graupel,
-            liquid_concentration,
-            ice_concentration,
-            radiation_vapor,
-            radiation_liquid,
-            radiation_ice,
-            radiation_rain,
-            radiation_snow,
-            radiation_graupel,
-            radiation_cloud_fraction,
-            liquid_radius,
-            ice_radius,
+            temperature=state.t,
+            pressure=locals.p_mb,
+            large_scale_cloud_fraction=state.cloud_fraction.large_scale,
+            convective_cloud_fraction=state.cloud_fraction.convective,
+            vapor=state.mixing_ratio.vapor,
+            large_scale_liquid=state.mixing_ratio.large_scale_liquid,
+            large_scale_ice=state.mixing_ratio.large_scale_ice,
+            convective_liquid=state.mixing_ratio.convective_liquid,
+            convective_ice=state.mixing_ratio.convective_ice,
+            rain=state.mixing_ratio.rain,
+            snow=state.mixing_ratio.snow,
+            graupel=state.mixing_ratio.graupel,
+            liquid_concentration=state.concentration.liquid,
+            ice_concentration=state.concentration.ice,
+            radiation_vapor=state.radiation_field.vapor,
+            radiation_liquid=state.radiation_field.liquid,
+            radiation_ice=state.radiation_field.ice,
+            radiation_rain=state.radiation_field.rain,
+            radiation_snow=state.radiation_field.snow,
+            radiation_graupel=state.radiation_field.graupel,
+            radiation_cloud_fraction=state.radiation_field.cloud_fraction,
+            liquid_radius=state.cloud_particle_effective_radius.liquid,
+            ice_radius=state.cloud_particle_effective_radius.ice,
         )
 
-        if self.DO_QA:
+        if self.config.DO_QA:
             self.update_humidity(
-                temperature,
-                pressure,
-                vapor,
-                relative_humidity_after_pdf,
-                ese,
-                esx,
+                temperature=state.t,
+                pressure=locals.p_mb,
+                vapor=state.mixing_ratio.vapor,
+                humidity=state.relative_humidity_after_pdf,
+                ese=self.saturation_tables.ese,
+                esx=self.saturation_tables.esx,
             )
