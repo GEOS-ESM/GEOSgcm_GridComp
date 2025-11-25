@@ -9,7 +9,7 @@ from pyMoist.GFDL_1M.state import GFDL1MState
 from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from ndsl.stencils.testing.savepoint import DataLoader
-from pyMoist.radiation_coupling import GFDL1MRadiationCoupling
+from pyMoist.GFDL_1M.radiation_coupling import GFDL1MRadiationCoupling
 
 
 class TranslateGFDL_1M_RadiationCoupling(TranslateFortranData2Py):
@@ -97,8 +97,30 @@ class TranslateGFDL_1M_RadiationCoupling(TranslateFortranData2Py):
             saturation_tables=saturation_tables,
         )
         code(
-            state=state,
-            locals=locals,
+            t=state.t,
+            mixing_ratio_vapor=state.mixing_ratio.vapor,
+            mixing_ratio_large_scale_liquid=state.mixing_ratio.large_scale_liquid,
+            mixing_ratio_large_scale_ice=state.mixing_ratio.large_scale_ice,
+            mixing_ratio_convective_liquid=state.mixing_ratio.convective_liquid,
+            mixing_ratio_rain=state.mixing_ratio.rain,
+            mixing_ratio_snow=state.mixing_ratio.snow,
+            mixing_ratio_graupel=state.mixing_ratio.graupel,
+            mixing_ratio_convective_ice=state.mixing_ratio.convective_ice,
+            cloud_fraction_large_scale=state.cloud_fraction.large_scale,
+            cloud_fraction_convective=state.cloud_fraction.convective,
+            concentration_liquid=state.concentration.liquid,
+            concentration_ice=state.concentration.ice,
+            liquid_radius=state.cloud_particle_effective_radius.liquid,
+            ice_radius=state.cloud_particle_effective_radius.ice,
+            relative_humidity_after_pdf=state.relative_humidity_after_pdf,
+            radiation_vapor=state.radiation_field.vapor,
+            radiation_liquid=state.radiation_field.liquid,
+            radiation_ice=state.radiation_field.ice,
+            radiation_rain=state.radiation_field.rain,
+            radiation_snow=state.radiation_field.snow,
+            radiation_graupel=state.radiation_field.graupel,
+            radiation_cloud_fraction=state.radiation_field.cloud_fraction,
+            local_p_mb=locals.p_mb,
         )
 
         return {

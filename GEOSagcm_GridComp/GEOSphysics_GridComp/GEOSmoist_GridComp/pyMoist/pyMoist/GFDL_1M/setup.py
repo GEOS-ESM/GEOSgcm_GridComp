@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, orchestrate, State, Quantity, NDSLRuntime
+from ndsl import StencilFactory, QuantityFactory, orchestrate, State, Quantity, NDSLRuntime, DaceConfig
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
@@ -229,7 +229,7 @@ class GFDL1MSetupLocals(State):
     )
 
 
-class Setup(NDSLRuntime):
+class GFDL1MSetup(NDSLRuntime):
     """
     Perform the following functions to setup GFDL Single Moment microphysics:
 
@@ -250,6 +250,10 @@ class Setup(NDSLRuntime):
         saturation_tables: SaturationVaporPressureTable,
         prepare_tendencies,
     ):
+        # init NDSLRuntime
+        dace_config = DaceConfig(communicator=None, backend=stencil_factory.backend)
+        super().__init__(dace_config)
+
         # make configuration and saturation tables visible at runtime
         self.config = config
         self.saturation_tables = saturation_tables
@@ -315,116 +319,158 @@ class Setup(NDSLRuntime):
 
     def __call__(
         self,
-        state: GFDL1MState,
-        locals: GFDL1MLocals,
+        p_interface: Quantity,
+        z_interface: Quantity,
+        u: Quantity,
+        v: Quantity,
+        t: Quantity,
+        lcl_height: Quantity,
+        lower_tropospheric_stability: Quantity,
+        estimated_inversion_strength: Quantity,
+        mixing_ratio_vapor: Quantity,
+        mixing_ratio_rain: Quantity,
+        mixing_ratio_snow: Quantity,
+        mixing_ratio_graupel: Quantity,
+        mixing_ratio_convective_liquid: Quantity,
+        mixing_ratio_convective_ice: Quantity,
+        mixing_ratio_large_scale_liquid: Quantity,
+        mixing_ratio_large_scale_ice: Quantity,
+        cloud_fraction_convective: Quantity,
+        cloud_fraction_large_scale: Quantity,
+        shallow_convection_rain: Quantity,
+        shallow_convection_snow: Quantity,
+        dudt_macro: Quantity,
+        dvdt_macro: Quantity,
+        dtdt_macro: Quantity,
+        dvapordt_macro: Quantity,
+        dliquiddt_macro: Quantity,
+        dicedt_macro: Quantity,
+        dcloud_fractiondt_macro: Quantity,
+        draindt_macro: Quantity,
+        dsnowdt_macro: Quantity,
+        dgraupeldt_macro: Quantity,
+        local_p_mb: Quantity,
+        local_p_interface_mb: Quantity,
+        local_edge_height_above_surface: Quantity,
+        local_layer_height_above_surface: Quantity,
+        local_layer_thickness: Quantity,
+        local_layer_thickness_negative: Quantity,
+        local_dp: Quantity,
+        local_mass: Quantity,
+        local_mass_inverse: Quantity,
+        local_saturation_specific_humidity: Quantity,
+        local_dsaturation_specific_humidity: Quantity,
+        local_u_unmodified: Quantity,
+        local_v_unmodified: Quantity,
+        local_lcl_level: Quantity,
     ):
         # prepare macrophysics tendencies
         self._prepare_tendencies(
-            u=state.u,
-            v=state.v,
-            t=state.t,
-            vapor=state.mixing_ratio.vapor,
-            rain=state.mixing_ratio.rain,
-            snow=state.mixing_ratio.snow,
-            graupel=state.mixing_ratio.graupel,
-            convective_liquid=state.mixing_ratio.convective_liquid,
-            convective_ice=state.mixing_ratio.convective_ice,
-            large_scale_liquid=state.mixing_ratio.large_scale_liquid,
-            large_scale_ice=state.mixing_ratio.large_scale_ice,
-            convective_cloud_fraction=state.cloud_fraction.convective,
-            large_scale_cloud_fraction=state.cloud_fraction.large_scale,
-            du_dt=state.tendencies.dudt_macro,
-            dv_dt=state.tendencies.dvdt_macro,
-            dt_dt=state.tendencies.dtdt_macro,
-            dvapor_dt=state.tendencies.dvapordt_macro,
-            dliquid_dt=state.tendencies.dliquiddt_macro,
-            dice_dt=state.tendencies.dicedt_macro,
-            dcloud_fraction_dt=state.tendencies.dcloud_fractiondt_macro,
-            drain_dt=state.tendencies.draindt_macro,
-            dsnow_dt=state.tendencies.dsnowdt_macro,
-            dgraupel_dt=state.tendencies.dgraupeldt_macro,
+            u=u,
+            v=v,
+            t=t,
+            vapor=mixing_ratio_vapor,
+            rain=mixing_ratio_rain,
+            snow=mixing_ratio_snow,
+            graupel=mixing_ratio_graupel,
+            convective_liquid=mixing_ratio_convective_liquid,
+            convective_ice=mixing_ratio_convective_ice,
+            large_scale_liquid=mixing_ratio_large_scale_liquid,
+            large_scale_ice=mixing_ratio_large_scale_ice,
+            convective_cloud_fraction=cloud_fraction_convective,
+            large_scale_cloud_fraction=cloud_fraction_large_scale,
+            du_dt=dudt_macro,
+            dv_dt=dvdt_macro,
+            dt_dt=dtdt_macro,
+            dvapor_dt=dvapordt_macro,
+            dliquid_dt=dliquiddt_macro,
+            dice_dt=dicedt_macro,
+            dcloud_fraction_dt=dcloud_fractiondt_macro,
+            drain_dt=draindt_macro,
+            dsnow_dt=dsnowdt_macro,
+            dgraupel_dt=dgraupeldt_macro,
         )
 
         self._calculate_derived_states(
-            p_interface=state.p_interface,
-            p_interface_mb=locals.p_interface_mb,
-            p_mb=locals.p_mb,
-            geopotential_height_interface=state.z_interface,
-            edge_height_above_surface=locals.edge_height_above_surface,
-            layer_height_above_surface=locals.layer_height_above_surface,
-            layer_thickness=locals.layer_thickness,
-            layer_thinkness_negative=locals.layer_thickness_negative,
-            dp=locals.dp,
-            mass=locals.mass,
-            mass_inverse=locals.mass_inverse,
-            t=state.t,
+            p_interface=p_interface,
+            p_interface_mb=local_p_interface_mb,
+            p_mb=local_p_mb,
+            geopotential_height_interface=z_interface,
+            edge_height_above_surface=local_edge_height_above_surface,
+            layer_height_above_surface=local_layer_height_above_surface,
+            layer_thickness=local_layer_thickness,
+            layer_thinkness_negative=local_layer_thickness_negative,
+            dp=local_dp,
+            mass=local_mass,
+            mass_inverse=local_mass_inverse,
+            t=t,
             ese=self._ese,
             esx=self.saturation_tables.esx,
-            sat=locals.saturation_specific_humidity,
-            dsat=locals.dsaturation_specific_humidity,
-            u=state.u,
-            u_unmodified=locals.u_unmodified,
-            v=state.v,
-            v_unmodified=locals.v_unmodified,
+            sat=local_saturation_specific_humidity,
+            dsat=local_dsaturation_specific_humidity,
+            u=u,
+            u_unmodified=local_u_unmodified,
+            v=v,
+            v_unmodified=local_v_unmodified,
             th=self._locals.th,
         )
 
         self._find_lcl_level(
-            t=state.t,
-            p_mb=locals.p_mb,
-            vapor=state.mixing_ratio.vapor,
+            t=t,
+            p_mb=local_p_mb,
+            vapor=mixing_ratio_vapor,
             ese=self._ese,
             esx=self._esx,
-            lcl_level=locals.lcl_level,
+            lcl_level=local_lcl_level,
         )
 
         # NOTE need a new way to resolve this now that it is a state field. it will never be none
-        if state.lcl_height is not None:
+        if lcl_height is not None:
             self._update_lcl_height(
-                layer_height_above_surface=locals.layer_height_above_surface,
-                lcl_level=locals.lcl_level,
-                lcl_height=state.lcl_height,
+                layer_height_above_surface=local_layer_height_above_surface,
+                lcl_level=local_lcl_level,
+                lcl_height=lcl_height,
             )
 
         self._vertical_interpolation(
             field=self._locals.th,
             interpolated_field=self._locals.th700,
-            p_interface_mb=locals.p_interface_mb,
+            p_interface_mb=local_p_interface_mb,
             target_pressure=Float(70000.0),
         )
 
         self._vertical_interpolation(
-            field=state.t,
+            field=t,
             interpolated_field=self._locals.t700,
-            p_interface_mb=locals.p_interface_mb,
+            p_interface_mb=local_p_interface_mb,
             target_pressure=Float(70000.0),
         )
 
         self._vertical_interpolation(
-            field=locals.layer_height_above_surface,
+            field=local_layer_height_above_surface,
             interpolated_field=self._locals.z700,
-            p_interface_mb=locals.p_interface_mb,
+            p_interface_mb=local_p_interface_mb,
             target_pressure=Float(70000.0),
         )
 
         self._compute_estimated_inversion_strength(
-            t=state.t,
+            t=t,
             th=self._locals.th,
-            layer_height_above_surface=locals.layer_height_above_surface,
+            layer_height_above_surface=local_layer_height_above_surface,
             t700=self._locals.t700,
             th700=self._locals.th700,
             z700=self._locals.z700,
-            lcl_level=locals.lcl_level,
+            lcl_level=local_lcl_level,
             ese=self._ese,
             esx=self._esx,
-            lower_tropospheric_stability=state.lower_tropospheric_stability,
-            estimated_inversion_strength=state.estimated_inversion_strength,
+            lower_tropospheric_stability=lower_tropospheric_stability,
+            estimated_inversion_strength=estimated_inversion_strength,
         )
 
         # NOTE need a new way to resolve this now that it is a state field. it will never be none
-        if state.shallow_convection_rain is not None:
-            self._update_precipitaiton(state.mixing_ratio.rain, state.shallow_convection_rain)
+        if shallow_convection_rain is not None:
+            self._update_precipitaiton(mixing_ratio_rain, shallow_convection_rain)
 
         # NOTE need a new way to resolve this now that it is a state field. it will never be none
-        if state.shallow_convection_snow is not None:
-            self._update_precipitaiton(state.mixing_ratio.snow, state.shallow_convection_snow)
+        if shallow_convection_snow is not None:
+            self._update_precipitaiton(mixing_ratio_snow, shallow_convection_snow)

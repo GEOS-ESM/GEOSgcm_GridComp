@@ -121,7 +121,7 @@ def update_tendencies(
         dgraupel_dt = (graupel - dgraupel_dt) / DT_MOIST
 
 
-def _prepare_radiation(
+def prepare_radiation(
     convective_cloud_fraction: FloatField,
     large_scale_cloud_fraction: FloatField,
     radiation_cloud_fraction: FloatField,

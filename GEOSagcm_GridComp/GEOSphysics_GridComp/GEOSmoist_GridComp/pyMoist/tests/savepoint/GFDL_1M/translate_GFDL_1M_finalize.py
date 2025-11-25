@@ -9,7 +9,7 @@ from pyMoist.GFDL_1M.state import GFDL1MState
 from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from ndsl.stencils.testing.savepoint import DataLoader
-from pyMoist.GFDL_1M.finalize import Finalize
+from pyMoist.GFDL_1M.finalize import GFDL1MFinalize
 from pyMoist.GFDL_1M.stencils import update_tendencies
 
 
@@ -158,7 +158,7 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
             externals={"DT_MOIST": config.DT_MOIST},
         )
 
-        code = Finalize(
+        code = GFDL1MFinalize(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
@@ -166,8 +166,62 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
             update_tendencies=_update_tendencies,
         )
         code(
-            state=state,
-            locals=locals,
+            t=state.t,
+            u=state.u,
+            v=state.v,
+            mixing_ratio_vapor=state.mixing_ratio.vapor,
+            mixing_ratio_convective_liquid=state.mixing_ratio.convective_liquid,
+            mixing_ratio_large_scale_liquid=state.mixing_ratio.large_scale_liquid,
+            mixing_ratio_convective_ice=state.mixing_ratio.convective_ice,
+            mixing_ratio_large_scale_ice=state.mixing_ratio.large_scale_ice,
+            mixing_ratio_rain=state.mixing_ratio.rain,
+            mixing_ratio_snow=state.mixing_ratio.snow,
+            mixing_ratio_graupel=state.mixing_ratio.graupel,
+            cloud_fraction_convective=state.cloud_fraction.convective,
+            cloud_fraction_large_scale=state.cloud_fraction.large_scale,
+            non_anvil_large_scale_precip=state.non_anvil_large_scale.precip,
+            non_anvil_large_scale_snow=state.non_anvil_large_scale.snow,
+            non_anvil_large_scale_ice_precip_flux=state.non_anvil_large_scale.ice_precip_flux,
+            non_anvil_large_scale_liquid_precip_flux=state.non_anvil_large_scale.liquid_precip_flux,
+            anvil_liquid_precip_flux=state.anvil.liquid_precip_flux,
+            anvil_ice_precip_flux=state.anvil.ice_precip_flux,
+            surface_rain=state.precipitation_at_surface.rain,
+            surface_snow=state.precipitation_at_surface.snow,
+            surface_ice=state.precipitation_at_surface.ice,
+            surface_graupel=state.precipitation_at_surface.graupel,
+            icefall=state.icefall,
+            freezing_rainfall=state.freezing_rainfall,
+            concentration_liquid=state.concentration.liquid,
+            concentration_ice=state.concentration.ice,
+            cloud_particle_effective_radius_liquid=state.cloud_particle_effective_radius.liquid,
+            cloud_particle_effective_radius_ice=state.cloud_particle_effective_radius.ice,
+            relative_humidity_after_pdf=state.relative_humidity_after_pdf,
+            large_scale_rainwater_source=state.large_scale_rainwater_source,
+            radiation_vapor=state.radiation_field.vapor,
+            radiation_liquid=state.radiation_field.liquid,
+            radiation_rain=state.radiation_field.rain,
+            radiation_snow=state.radiation_field.snow,
+            radiation_graupel=state.radiation_field.graupel,
+            radiation_ice=state.radiation_field.ice,
+            radiation_cloud_fraction=state.radiation_field.cloud_fraction,
+            dudt_micro=state.tendencies.dudt_micro,
+            dvdt_micro=state.tendencies.dvdt_micro,
+            dtdt_micro=state.tendencies.dtdt_micro,
+            dvapordt_micro=state.tendencies.dvapordt_micro,
+            dliquiddt_micro=state.tendencies.dliquiddt_micro,
+            dicedt_micro=state.tendencies.dicedt_micro,
+            dcloud_fractiondt_micro=state.tendencies.dcloud_fractiondt_micro,
+            draindt_micro=state.tendencies.draindt_micro,
+            dsnowdt_micro=state.tendencies.dsnowdt_micro,
+            dgraupeldt_micro=state.tendencies.dgraupeldt_micro,
+            dudt_macro=state.tendencies.dudt_macro,
+            dvdt_macro=state.tendencies.dvdt_macro,
+            draindt_macro=state.tendencies.draindt_macro,
+            dtdt_friction_pressure_weighted=state.tendencies.dtdt_friction_pressure_weighted,
+            local_p_mb=locals.p_mb,
+            local_mass=locals.mass,
+            local_u_unmodified=locals.u_unmodified,
+            local_v_unmodified=locals.v_unmodified,
         )
 
         return {
