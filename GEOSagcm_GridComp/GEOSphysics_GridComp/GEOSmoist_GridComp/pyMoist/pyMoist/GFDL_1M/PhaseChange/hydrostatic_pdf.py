@@ -172,8 +172,8 @@ def hydrostatic_pdf(
     t: FloatField,
     large_scale_cloud_fraction: FloatField,
     convective_cloud_fraction: FloatField,
-    nacti: FloatField,
-    rhx: FloatField,
+    ice_concentration: FloatField,
+    relative_humidity: FloatField,
     ese: GlobalTable_saturation_tables,
     esw: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
@@ -245,7 +245,7 @@ def hydrostatic_pdf(
             if USE_BERGERON:
                 dq_all = qc_n - qc_p
                 Nfac = 100.0 * p_mb * constants.R_AIR / t_n  # density times conversion factor
-                NIv = nacti / Nfac
+                NIv = ice_concentration / Nfac
                 f_qi, dq_all = bergeron_partition(
                     DT_MOIST,
                     p_mb,
@@ -387,4 +387,4 @@ def hydrostatic_pdf(
             convective_cloud_fraction = 0.0
 
         denom, _ = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
-        rhx = vapor / denom
+        relative_humidity = vapor / denom

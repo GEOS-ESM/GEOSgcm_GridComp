@@ -74,42 +74,6 @@ class GFDL1MLocals(State):
         metadata={
             "name": "mass",
             "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    mass: Quantity = dataclasses.field(
-        metadata={
-            "name": "mass",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    mass: Quantity = dataclasses.field(
-        metadata={
-            "name": "mass",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    mass: Quantity = dataclasses.field(
-        metadata={
-            "name": "mass",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    mass: Quantity = dataclasses.field(
-        metadata={
-            "name": "mass",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "kg m-2",
             "intent": "?",
             "dtype": Float,
