@@ -3,10 +3,11 @@ I/O and errorhandling is performed here.
 Calculations can be found in deeper functions."""
 
 from typing import Optional
+import dataclasses
 
-from ndsl import QuantityFactory, StencilFactory, orchestrate
+from ndsl import QuantityFactory, StencilFactory, orchestrate, Quantity, State, NDSLRuntime
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float
 from pyMoist.constants import FLOAT_TINY
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.PhaseChange.evaporate import evaporate
@@ -20,7 +21,20 @@ from pyMoist.saturation_tables import SaturationFormulation, get_saturation_vapo
 from pyMoist.shared_incloud_processes import fix_up_clouds
 
 
-class PhaseChange:
+@dataclasses.dataclass
+class Internals(State):
+    alpha: Quantity = dataclasses.field(
+        metadata={
+            "name": "alpha",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+
+class PhaseChange(NDSLRuntime):
     """This class is the wrapper for the GFDL_1M microphysics scheme. I/O and error handling
     are perfromed at this level, all calculations are performed within deeper functions.
     """
