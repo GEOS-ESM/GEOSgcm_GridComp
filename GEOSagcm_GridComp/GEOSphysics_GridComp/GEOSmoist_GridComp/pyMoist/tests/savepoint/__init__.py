@@ -7,15 +7,15 @@ from .GFDL_1M.driver.translate_GFDL_1M_terminal_fall import TranslateGFDL_1M_ter
 from .GFDL_1M.driver.translate_GFDL_1M_warm_rain import TranslateGFDL_1M_warm_rain
 from .GFDL_1M.driver.translate_GFDL_driver_tables import TranslateGFDL_driver_tables
 from .GFDL_1M.PhaseChange.translate_GFDL_1M_bergeron_partition import TranslateGFDL_1M_bergeron_partition
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_evaporate import TranslateGFDL_1M_evaporate
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_hydrostatic_pdf import TranslateGFDL_1M_hydrostatic_pdf
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_melt_freeze import TranslateGFDL_1M_melt_freeze
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_phase_change import TranslateGFDL_1M_phase_change
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_sublimate import TranslateGFDL_1M_sublimate
-from .GFDL_1M.translate_GFDL_1M_finalize import TranslateGFDL_1M_finalize
-from .GFDL_1M.translate_GFDL_1M_radiation_coupling import TranslateGFDL_1M_radiation_coupling
-from .GFDL_1M.translate_GFDL_1M_redistribute_clouds import TranslateGFDL_1M_redistribute_clouds
-from .GFDL_1M.translate_GFDL_1M_setup import TranslateGFDL_1M_setup
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_Evaporate import TranslateGFDL_1M_Evaporate
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_HydrostaticPDF import TranslateGFDL_1M_HydrostaticPDF
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_MeltFreeze import TranslateGFDL_1M_MeltFreeze
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_PhaseChange import TranslateGFDL_1M_PhaseChange
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_Sublimate import TranslateGFDL_1M_Sublimate
+from .GFDL_1M.translate_GFDL_1M_Finalize import TranslateGFDL_1M_Finalize
+from .GFDL_1M.translate_GFDL_1M_RadiationCoupling import TranslateGFDL_1M_RadiationCoupling
+from .GFDL_1M.translate_GFDL_1M_RedistributeClouds import TranslateGFDL_1M_RedistributeClouds
+from .GFDL_1M.translate_GFDL_1M_Setup import TranslateGFDL_1M_Setup
 from .saturation_tables.translate_qsat_functions import Translateqsat_functions
 from .saturation_tables.translate_saturation_tables import Translatesaturation_tables
 from .translate_aer_activation import TranslateAerActivation
@@ -32,15 +32,15 @@ __all__ = [
     "TranslateGFDL_1M_warm_rain",
     "TranslateGFDL_driver_tables",
     "TranslateGFDL_1M_bergeron_partition",
-    "TranslateGFDL_1M_evaporate",
-    "TranslateGFDL_1M_hydrostatic_pdf",
-    "TranslateGFDL_1M_melt_freeze",
-    "TranslateGFDL_1M_phase_change",
-    "TranslateGFDL_1M_sublimate",
-    "TranslateGFDL_1M_finalize",
-    "TranslateGFDL_1M_radiation_coupling",
-    "TranslateGFDL_1M_redistribute_clouds",
-    "TranslateGFDL_1M_setup",
+    "TranslateGFDL_1M_Evaporate",
+    "TranslateGFDL_1M_HydrostaticPDF",
+    "TranslateGFDL_1M_MeltFreeze",
+    "TranslateGFDL_1M_PhaseChange",
+    "TranslateGFDL_1M_Sublimate",
+    "TranslateGFDL_1M_Finalize",
+    "TranslateGFDL_1M_RadiationCoupling",
+    "TranslateGFDL_1M_RedistributeClouds",
+    "TranslateGFDL_1M_Setup",
     "Translateqsat_functions",
     "Translatesaturation_tables",
     "TranslateAerActivation",
