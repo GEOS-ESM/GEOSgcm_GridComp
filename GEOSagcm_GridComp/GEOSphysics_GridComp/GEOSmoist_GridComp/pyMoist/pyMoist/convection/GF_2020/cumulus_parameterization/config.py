@@ -64,3 +64,4 @@ class GF2020CumulusParameterizationConfig:
     USE_MEMORY: Int
     DOWNDRAFT: Int
     FIRST_GUESS_W: Int
+    USE_WETBULB: Int

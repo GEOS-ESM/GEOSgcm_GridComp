@@ -56,14 +56,13 @@ ZQMAX = 0.5
 
 @function
 def get_wetbulb(
-    t_cup,
-    qo_cup,
-    po_cup,
-    max_qsat,
+    local_t_cloud_levels,
+    local_vapor_cloud_levels_forced,
+    p_cloud_levels_forced,
 ):
-    PT = t_cup
-    PQ = qo_cup
-    PSP = po_cup * 100.0
+    PT = local_t_cloud_levels
+    PQ = local_vapor_cloud_levels_forced
+    PSP = p_cloud_levels_forced * 100.0
 
     if PT > RTT:
         Z3ES = R3LES
@@ -88,7 +87,7 @@ def get_wetbulb(
     )
     ZQSAT = FOEEWMCU * ZQP
 
-    ZQSAT = min(max_qsat, ZQSAT)
+    ZQSAT = min(cumulus_parameterization_constants.MAX_QSAT, ZQSAT)
     ZCOR = 1.0 / (1.0 - RETV * ZQSAT)
     ZQSAT = ZQSAT * ZCOR
 
@@ -132,36 +131,33 @@ def get_wetbulb(
     PT = PT + FOELDCPMCU * ZCOND1
     PQ = PQ - ZCOND1
 
-    q_wetbulb = PQ
-    t_wetbulb = PT
+    local_vapor_wetbulb = PQ
+    local_t_wetbulb = PT
     evap = -ZCOND1
 
-    return (q_wetbulb, t_wetbulb)
+    return (local_vapor_wetbulb, local_t_wetbulb)
 
 
 def downdraft_wet_bulb(
-    USE_WETBULB: Int,
-    cumulus: Int,
     error_code: IntFieldIJ_Plume,
     plume: Int,
     jmin: IntFieldIJ,
-    qo_cup: FloatField,
-    t_cup: FloatField,
-    po_cup: FloatField,
-    q_wetbulb: FloatFieldIJ,
-    t_wetbulb: FloatFieldIJ,
+    local_vapor_cloud_levels_forced: FloatField,
+    local_t_cloud_levels: FloatField,
+    p_cloud_levels_forced: FloatField,
+    local_vapor_wetbulb: FloatFieldIJ,
+    local_t_wetbulb: FloatFieldIJ,
 ):
+    from __externals__ import USE_WETBULB
+
     with computation(PARALLEL), interval(...):
-        if USE_WETBULB == 1 and cumulus != cumulus_parameterization_constants.shallow:
+        if USE_WETBULB == 1 and plume != cumulus_parameterization_constants.shallow:
             if error_code[0, 0][plume] == 0:
                 lev: IntFieldIJ = jmin
-                q_wetbulb, t_wetbulb = get_wetbulb(
-                    jmin,
-                    qo_cup.at(K=lev),
-                    t_cup.at(K=lev),
-                    po_cup.at(K=lev),
-                    q_wetbulb,
-                    t_wetbulb,
+                local_vapor_wetbulb, local_t_wetbulb = get_wetbulb(
+                    local_vapor_cloud_levels_forced.at(K=lev),
+                    local_t_cloud_levels.at(K=lev),
+                    p_cloud_levels_forced.at(K=lev),
                 )
 
 

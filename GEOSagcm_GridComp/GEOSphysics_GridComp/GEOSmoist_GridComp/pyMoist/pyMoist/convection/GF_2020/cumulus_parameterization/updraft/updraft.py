@@ -141,44 +141,43 @@ class UpdraftInitialWorkfunctions:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        pass
-        # self._cup_up_aa0(
-        #     dby=dby,
-        #     gamma_cup=gamma_cup,
-        #     ktop=ktop,
-        #     kbcon=kbcon,
-        #     k22=k22,
-        #     z_cup=z_cup,
-        #     t_cup=t_cup,
-        #     zu=zu,
-        #     integ=integ,
-        #     integ_interval=integ_interval,
-        #     error_codd=error_code,
-        #     plume=plume,
-        #     aa0=aa0,
-        # )
+        self._cup_up_aa0(
+            local_buoyancy=locals.buoyancy,
+            local_gamma_cloud_levels=locals.gamma_cloud_levels,
+            cloud_top=state.output.cloud_top,
+            updraft_lfc_level=state.output.updraft_lfc_level,
+            updraft_origin_level=state.output.updraft_origin_level,
+            local_geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels,
+            local_t_cloud_levels=locals.t_cloud_levels,
+            local_normalized_massflux_updraft=locals.normalized_massflux_updraft,
+            local_integ=locals.integ,
+            local_integ_interval=locals.integ_interval,
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            local_cloud_work_function=locals.cloud_work_function_0,
+        )
 
-        # self._cup_up_aa0(
-        #     dby=dbyo,
-        #     gamma_cup=gammao_cup,
-        #     ktop=ktop,
-        #     kbcon=kbcon,
-        #     k22=k22,
-        #     z_cup=zo_cup,
-        #     t_cup=tn_cup,
-        #     zu=zuo,
-        #     integ=integ,
-        #     integ_interval=integ_interval,
-        #     error_codd=error_code,
-        #     plume=plume,
-        #     aa0=aa1,
-        # )
+        self._cup_up_aa0(
+            local_buoyancy=locals.buoyancy_forced,
+            local_gamma_cloud_levels=locals.gamma_cloud_levels_forced,
+            cloud_top=state.output.cloud_top,
+            updraft_lfc_level=state.output.updraft_lfc_level,
+            updraft_origin_level=state.output.updraft_origin_level,
+            local_geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_forced,
+            local_t_cloud_levels=locals.t_cloud_levels_forced,
+            local_normalized_massflux_updraft=locals.normalized_massflux_updraft_forced,
+            local_integ=locals.integ,
+            local_integ_interval=locals.integ_interval,
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            local_cloud_work_function=locals.cloud_work_function_1,
+        )
 
-        # self._cloud_work_function_zero(
-        #     error_code=error_code,
-        #     plume=plume,
-        #     aa1=aa1,
-        # )
+        self._cloud_work_function_zero(
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            local_cloud_work_function=locals.cloud_work_function_1,
+        )
 
 
 class UpdraftCIN:

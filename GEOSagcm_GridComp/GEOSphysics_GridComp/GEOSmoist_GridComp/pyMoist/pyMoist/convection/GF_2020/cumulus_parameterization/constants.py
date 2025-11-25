@@ -28,9 +28,9 @@ MAXENS3 = Int(16)  # ensemble three done in cup_forcing_ens16 for G3d
 
 USE_LCL = False
 
-deep = Int(1)
-shallow = Int(2)
-mid = Int(3)
+deep = Int(2)
+shallow = Int(0)
+mid = Int(1)
 
 BL = Int(1)
 CIN = Int(2)

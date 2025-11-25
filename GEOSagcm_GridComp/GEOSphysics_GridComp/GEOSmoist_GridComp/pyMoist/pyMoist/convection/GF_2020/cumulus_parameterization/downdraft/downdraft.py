@@ -53,7 +53,13 @@ class DowndraftWetBlub:
         self._downdraft_wet_bulb = stencil_factory.from_dims_halo(
             func=downdraft_wet_bulb,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"USE_WETBULB": cumulus_parameterization_config.USE_WETBULB},
         )
+
+        if self.cumulus_parameterization_config.USE_WETBULB == 1:
+            raise NotImplementedError(
+                f"Coding limitation: USE_WETBULB = 0 is expected, getting USE_WETBULB = 1"
+            )
 
     def __call__(
         self,
@@ -63,16 +69,14 @@ class DowndraftWetBlub:
     ):
         pass
         # self._downdraft_wet_bulb(
-        #     USE_WETBULB=,
-        #     cumulus=,
-        #     error_code=,
-        #     plume=,
+        #     error_code= state.output.error_code,
+        #     plume=plume_dependent_constants.PLUME_INDEX,
         #     jmin=,
-        #     qo_cup=,
-        #     t_cup=,
-        #     po_cup=,
-        #     q_wetbulb=,
-        #     t_wetbulb=,
+        #     local_vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
+        #     local_t_cloud_levels=locals.t_cloud_levels,
+        #     p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+        #     local_vapor_wetbulb=locals.vapor_wetbulb,
+        #     local_t_wetbulb=locals.t_wetbulb,
         # )
 
 

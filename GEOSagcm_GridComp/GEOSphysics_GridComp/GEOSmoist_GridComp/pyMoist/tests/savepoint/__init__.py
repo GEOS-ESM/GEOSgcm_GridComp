@@ -158,6 +158,12 @@ from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumu
     TranslateGF2020_CumulusParameterization_GetBuoyancy_3_deep,
 )
 
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftInitialWorkfunctions import (
+    TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_shallow,
+)
+
 from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftInCloudAirTemperature import (
     TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_deep,
     TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_mid,

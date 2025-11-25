@@ -726,7 +726,8 @@ class CumulusParameterization:
                 self._downdraft_lateral_mass_flux()
 
                 # wet bulb temperature and moisture at downdraft origin level
-                # NOTE ported, not tested
+                # NOTE No test. This code is not executed.
+                # A raise error has been implemented in the event that this code is triggered.
                 self._downdraft_wet_bulb(
                     state=state,
                     locals=locals,
@@ -745,7 +746,10 @@ class CumulusParameterization:
                 self._downdraft_moisture_properties()
 
                 # calculate workfunctions for updrafts
-                # NOTE ported, not tested (should pass)
+                # NOTE test GF2020_CumulusParameterization_UpdraftInitialWorkfunctions_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._updraft_initial_workfunctions(
                     state=state,
                     locals=locals,

@@ -814,9 +814,27 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    normalized_massflux_updraft_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "normalized_massflux_updraft_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     buoyancy: Quantity = dataclasses.field(
         metadata={
             "name": "buoyancy",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    buoyancy_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "buoyancy_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -857,5 +875,23 @@ class GF2020CumulusParameterizationLocals(State):
             "units": "?",
             "intent": "?",
             "dtype": Float,
+        }
+    )
+    integ: Quantity = dataclasses.field(
+        metadata={
+            "name": "integ",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Int,
+        }
+    )
+    integ_interval: Quantity = dataclasses.field(
+        metadata={
+            "name": "integ_interval",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Int,
         }
     )
