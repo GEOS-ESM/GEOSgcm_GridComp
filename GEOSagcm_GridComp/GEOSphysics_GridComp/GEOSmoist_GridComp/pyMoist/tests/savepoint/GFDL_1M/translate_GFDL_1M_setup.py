@@ -1,21 +1,19 @@
 from f90nml import Namelist
 
-from ndsl import Quantity, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl import StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.setup import Setup
 from pyMoist.GFDL_1M.state import GFDL1MState
 from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.stencils import prepare_tendencies
-from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
-class TranslateGFDL_1M_setup(TranslateFortranData2Py):
+class TranslateGFDL_1M_Setup(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

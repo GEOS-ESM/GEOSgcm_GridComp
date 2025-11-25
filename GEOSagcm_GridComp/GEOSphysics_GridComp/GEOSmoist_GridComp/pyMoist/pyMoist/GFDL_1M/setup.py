@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, orchestrate, State, Quantity
+from ndsl import StencilFactory, QuantityFactory, orchestrate, State, Quantity, NDSLRuntime
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
@@ -229,7 +229,7 @@ class GFDL1MSetupLocals(State):
     )
 
 
-class Setup:
+class Setup(NDSLRuntime):
     """
     Perform the following functions to setup GFDL Single Moment microphysics:
 
