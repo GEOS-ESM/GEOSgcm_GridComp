@@ -4,10 +4,15 @@ from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.GFDL_1M.state import GFDL1MState
+from pyMoist.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.GFDL_1M.config import GFDL1MConfig
+from ndsl.stencils.testing.savepoint import DataLoader
 from pyMoist.GFDL_1M.PhaseChange.evaporate import evaporate
 
 
-class TranslateGFDL_1M_evaporate(TranslateFortranData2Py):
+class TranslateGFDL_1M_Evaporate(TranslateFortranData2Py):
     def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
@@ -15,41 +20,74 @@ class TranslateGFDL_1M_evaporate(TranslateFortranData2Py):
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
-            "p_mb": grid.compute_dict() | {"serialname": "PLmb"},
-            "t": grid.compute_dict() | {"serialname": "T"},
-            "vapor": grid.compute_dict() | {"serialname": "Q"},
-            "convective_liquid": grid.compute_dict() | {"serialname": "QLCN"},
-            "convective_ice": grid.compute_dict() | {"serialname": "QICN"},
-            "convective_cloud_fraction": grid.compute_dict() | {"serialname": "CLCN"},
-            "nactl": grid.compute_dict() | {"serialname": "NACTL"},
-            "nacti": grid.compute_dict() | {"serialname": "NACTI"},
-            "qsat": grid.compute_dict() | {"serialname": "QST3"},
-            "evapc": grid.compute_dict() | {"serialname": "EVAPC"},
+            "local_p_mb": {},
+            "t": {},
+            "mixing_ratio_vapor": {},
+            "mixing_ratio_convective_liquid": {},
+            "mixing_ratio_convective_ice": {},
+            "cloud_fraction_convective": {},
+            "concentration_liquid": {},
+            "concentration_ice": {},
+            "local_saturation_specific_humidity": {},
+            "cloud_liquid_evaporation": {},
         }
 
-        self.in_vars["parameters"] = [
-            "CCW_EVAP_EFF_s",
-            "DT_MOIST_s",
-        ]
-
         self.out_vars = self.in_vars["data_vars"].copy()
-        del (
-            self.out_vars["p_mb"],
-            self.out_vars["nactl"],
-            self.out_vars["nacti"],
-            self.out_vars["qsat"],
-        )
 
-    def compute_from_storage(self, inputs):
-        _evaporate = self.stencil_factory.from_dims_halo(
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("GFDL_1M-constants")
+
+    def compute(self, inputs):
+
+        # initalize constants
+        config = GFDL1MConfig(**self.constants)
+
+        # initalize dataclasses
+        state = GFDL1MState.zeros(self.quantity_factory)
+        locals = GFDL1MLocals.zeros(self.quantity_factory)
+
+        # Initalize saturation tables
+        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+
+        locals.p_mb.field[:] = inputs["local_p_mb"]
+        state.t.field[:] = inputs["t"]
+        state.mixing_ratio.vapor.field[:] = inputs["mixing_ratio_vapor"]
+        state.mixing_ratio.convective_liquid.field[:] = inputs["mixing_ratio_convective_liquid"]
+        state.mixing_ratio.convective_ice.field[:] = inputs["mixing_ratio_convective_ice"]
+        state.cloud_fraction.convective.field[:] = inputs["cloud_fraction_convective"]
+        state.concentration.liquid.field[:] = inputs["concentration_liquid"]
+        state.concentration.ice.field[:] = inputs["concentration_ice"]
+        locals.saturation_specific_humidity.field[:] = inputs["local_saturation_specific_humidity"]
+        state.cloud_liquid_evaporation.field[:] = inputs["cloud_liquid_evaporation"]
+
+        # construct test stencil
+        code = self.stencil_factory.from_dims_halo(
             func=evaporate,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "CCW_EVAP_EFF": inputs.pop("CCW_EVAP_EFF_s"),
-                "DT_MOIST": inputs.pop("DT_MOIST_s"),
-            },
+            externals={"DT_MOIST": config.DT_MOIST, "CCW_EVAP_EFF": config.CCW_EVAP_EFF},
+        )
+        code(
+            p_mb=locals.p_mb,
+            t=state.t,
+            vapor=state.mixing_ratio.vapor,
+            convective_liquid=state.mixing_ratio.convective_liquid,
+            convective_ice=state.mixing_ratio.convective_ice,
+            convective_cloud_fraction=state.cloud_fraction.convective,
+            liquid_concentration=state.concentration.liquid,
+            ice_concentration=state.concentration.ice,
+            saturation_specific_humidity=locals.saturation_specific_humidity,
+            evaporation=state.cloud_liquid_evaporation,
         )
 
-        _evaporate(**inputs)
-
-        return inputs
+        return {
+            "local_p_mb": locals.p_mb.field[:],
+            "t": state.t.field[:],
+            "mixing_ratio_vapor": state.mixing_ratio.vapor.field[:],
+            "mixing_ratio_convective_liquid": state.mixing_ratio.convective_liquid.field[:],
+            "mixing_ratio_convective_ice": state.mixing_ratio.convective_ice.field[:],
+            "cloud_fraction_convective": state.cloud_fraction.convective.field[:],
+            "concentration_liquid": state.concentration.liquid.field[:],
+            "concentration_ice": state.concentration.ice.field[:],
+            "local_saturation_specific_humidity": locals.saturation_specific_humidity.field[:],
+            "cloud_liquid_evaporation": state.cloud_liquid_evaporation.field[:],
+        }

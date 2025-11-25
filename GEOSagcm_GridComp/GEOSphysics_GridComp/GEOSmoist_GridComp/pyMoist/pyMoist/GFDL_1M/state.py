@@ -115,15 +115,6 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
-    evaporation: Quantity = dataclasses.field(
-        metadata={
-            "name": "evaporation",
-            "dims": [X_DIM, Y_DIM],
-            "units": "kg m-2 s-1",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     omega: Quantity = dataclasses.field(
         metadata={
             "name": "omega",
@@ -414,7 +405,7 @@ class GFDL1MState(State):
         )
 
     @dataclasses.dataclass
-    class Concentrations:
+    class Concentration:
         liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid",
@@ -731,7 +722,7 @@ class GFDL1MState(State):
         liquid_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid_precip_flux",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -740,7 +731,7 @@ class GFDL1MState(State):
         ice_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "ice_precip_flux",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -752,7 +743,7 @@ class GFDL1MState(State):
         liquid_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid_precip_flux",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -761,7 +752,7 @@ class GFDL1MState(State):
         ice_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "ice_precip_flux",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -1029,7 +1020,7 @@ class GFDL1MState(State):
     vertical_motion: VerticalMotion
     mixing_ratio: MixingRatio
     cloud_fraction: CloudFraction
-    concentration: Concentrations
+    concentration: Concentration
     liquid_water_static_energy: LiquidWaterStaticEnergy
     total_water: TotalWater
     radiation_field: RadiationField
