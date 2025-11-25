@@ -1,370 +1,229 @@
 from f90nml import Namelist
 
-from ndsl import Quantity, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl import StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
-from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
-from pyMoist.GFDL_1M.finalize import Finalize
-from pyMoist.GFDL_1M.masks import Masks
-from pyMoist.GFDL_1M.state_old import MicrophysicState, Outputs
-from pyMoist.GFDL_1M.stencils import update_tendencies
-from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.GFDL_1M.state import GFDL1MState
+from pyMoist.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.GFDL_1M.config import GFDL1MConfig
+from ndsl.stencils.testing.savepoint import DataLoader
+from pyMoist.GFDL_1M.finalize import Finalize
+from pyMoist.GFDL_1M.stencils import update_tendencies
 
 
-class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
-    def __init__(
-        self,
-        grid: Grid,
-        namelist: Namelist,
-        stencil_factory: StencilFactory,
-    ):
-        # self.override_input_netcdf_name = "None"
-        # self.override_output_netcdf_name = "GFDL_1M_finalize-part-4"
-        super().__init__(grid, namelist, stencil_factory)
+class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
+    def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
+        super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        # grid.compute_dict is workaround to remove grid halo, which is hardcoded to 3
+        # FloatField Inputs
         self.in_vars["data_vars"] = {
-            "T": grid.compute_dict(),
-            "U": grid.compute_dict(),
-            "U0": grid.compute_dict(),
-            "V": grid.compute_dict(),
-            "V0": grid.compute_dict(),
-            "PLmb": grid.compute_dict(),
-            "MASS": grid.compute_dict(),
-            "RAD_CF": grid.compute_dict(),
-            "RAD_QI": grid.compute_dict(),
-            "RAD_QL": grid.compute_dict(),
-            "RAD_QV": grid.compute_dict(),
-            "RAD_QR": grid.compute_dict(),
-            "RAD_QS": grid.compute_dict(),
-            "RAD_QG": grid.compute_dict(),
-            "CLCN": grid.compute_dict(),
-            "CLLS": grid.compute_dict(),
-            "QLCN": grid.compute_dict(),
-            "QLLS": grid.compute_dict(),
-            "NACTL": grid.compute_dict(),
-            "CLDREFFL": grid.compute_dict(),
-            "QICN": grid.compute_dict(),
-            "QILS": grid.compute_dict(),
-            "NACTI": grid.compute_dict(),
-            "CLDREFFI": grid.compute_dict(),
-            "Q": grid.compute_dict(),
-            "QRAIN": grid.compute_dict(),
-            "QSNOW": grid.compute_dict(),
-            "QGRAUPEL": grid.compute_dict(),
-            "REV_LS": grid.compute_dict(),
-            "RSU_LS": grid.compute_dict(),
-            "PRCP_RAIN": grid.compute_dict(),
-            "PRCP_SNOW": grid.compute_dict(),
-            "PRCP_ICE": grid.compute_dict(),
-            "PRCP_GRAUPEL": grid.compute_dict(),
-            "PFL_LS": grid.compute_dict(),
-            "PFI_LS": grid.compute_dict(),
-            "PFL_AN": grid.compute_dict(),
-            "PFI_AN": grid.compute_dict(),
-            "LS_PRCP": grid.compute_dict(),
-            "LS_SNR": grid.compute_dict(),
-            "ICE": grid.compute_dict(),
-            "FRZR": grid.compute_dict(),
-            "DQVDT_micro": grid.compute_dict(),
-            "DQLDT_micro": grid.compute_dict(),
-            "DQIDT_micro": grid.compute_dict(),
-            "DQADT_micro": grid.compute_dict(),
-            "DQRDT_micro": grid.compute_dict(),
-            "DQSDT_micro": grid.compute_dict(),
-            "DQGDT_micro": grid.compute_dict(),
-            "DUDT_micro": grid.compute_dict(),
-            "DVDT_micro": grid.compute_dict(),
-            "DTDT_micro": grid.compute_dict(),
+            "t": {},
+            "u": {},
+            "v": {},
+            "local_p_mb": {},
+            "radiation_cloud_fraction": {},
+            "radiation_ice": {},
+            "radiation_liquid": {},
+            "local_u_unmodified": {},
+            "local_v_unmodified": {},
+            "radiation_vapor": {},
+            "radiation_rain": {},
+            "radiation_snow": {},
+            "radiation_graupel": {},
+            "local_mass": {},
+            "cloud_fraction_convective": {},
+            "cloud_fraction_large_scale": {},
+            "mixing_ratio_convective_liquid": {},
+            "mixing_ratio_convective_ice": {},
+            "mixing_ratio_large_scale_ice": {},
+            "mixing_ratio_large_scale_liquid": {},
+            "concentration_ice": {},
+            "concentration_liquid": {},
+            "mixing_ratio_vapor": {},
+            "mixing_ratio_rain": {},
+            "mixing_ratio_snow": {},
+            "mixing_ratio_graupel": {},
+            "non_anvil_large_scale_evaporation": {},
+            "non_anvil_large_scale_sublimation": {},
+            "surface_precip_rain": {},
+            "surface_precip_snow": {},
+            "surface_precip_ice": {},
+            "surface_precip_graupel": {},
+            "non_anvil_large_scale_precip": {},
+            "non_anvil_large_scale_snow": {},
+            "icefall": {},
+            "freezing_rainfall": {},
+            "cloud_particle_effective_radius_liquid": {},
+            "cloud_particle_effective_radius_ice": {},
+            "non_anvil_large_scale_liquid_precip_flux": {},
+            "non_anvil_large_scale_ice_precip_flux": {},
+            "anvil_liquid_precip_flux": {},
+            "anvil_ice_precip_flux": {},
+            "relative_humidity_after_pdf": {},
+            "dvapordt_micro": {},
+            "dliquiddt_micro": {},
+            "dicedt_micro": {},
+            "dcloud_fractiondt_micro": {},
+            "draindt_micro": {},
+            "dsnowdt_micro": {},
+            "dgraupeldt_micro": {},
+            "dudt_micro": {},
+            "dvdt_micro": {},
+            "dtdt_micro": {},
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
-        del (
-            self.out_vars["U0"],
-            self.out_vars["V0"],
-        )
-        self.out_vars.update({"DTDTFRIC": grid.compute_dict()})
-
-    def make_ijk_quantity(self, data, interface: bool = False) -> Quantity:
-        if interface == True:  # noqa
-            quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
-            quantity.view[:, :, :] = quantity.np.asarray(data[:, :, :])
-            return quantity
-        else:
-            quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], "n/a")
-            quantity.view[:, :, :] = quantity.np.asarray(data[:, :, :])
-            return quantity
-
-    def make_ij_quantity(self, data) -> Quantity:
-        quantity = self.quantity_factory.empty([X_DIM, Y_DIM], "n/a")
-        quantity.view[:, :] = quantity.np.asarray(data[:, :])
-        return quantity
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # Initalize GFDL_1M configuration
-        GFDL_1M_config = GFDL1MConfig(
-            LPHYS_HYDROSTATIC=bool(self.constants["LPHYS_HYDROSTATIC"]),
-            LHYDROSTATIC=bool(self.constants["LHYDROSTATIC"]),
-            DT_MOIST=self.constants["DT_MOIST"],
-            MP_TIME=self.constants["MP_TIME"],
-            T_MIN=self.constants["T_MIN"],
-            T_SUB=self.constants["T_SUB"],
-            TAU_R2G=self.constants["TAU_R2G"],
-            TAU_SMLT=self.constants["TAU_SMLT"],
-            TAU_G2R=self.constants["TAU_G2R"],
-            DW_LAND=self.constants["DW_LAND"],
-            DW_OCEAN=self.constants["DW_OCEAN"],
-            VI_FAC=self.constants["VI_FAC"],
-            VR_FAC=self.constants["VR_FAC"],
-            VS_FAC=self.constants["VS_FAC"],
-            VG_FAC=self.constants["VG_FAC"],
-            QL_MLT=self.constants["QL_MLT"],
-            DO_QA=bool(self.constants["DO_QA"]),
-            FIX_NEGATIVE=bool(self.constants["FIX_NEGATIVE"]),
-            VI_MAX=self.constants["VI_MAX"],
-            VS_MAX=self.constants["VS_MAX"],
-            VG_MAX=self.constants["VG_MAX"],
-            VR_MAX=self.constants["VR_MAX"],
-            QS_MLT=self.constants["QS_MLT"],
-            QS0_CRT=self.constants["QS0_CRT"],
-            QI_GEN=self.constants["QI_GEN"],
-            QL0_MAX=self.constants["QL0_MAX"],
-            QI0_MAX=self.constants["QI0_MAX"],
-            QI0_CRT=self.constants["QI0_CRT"],
-            QR0_CRT=self.constants["QR0_CRT"],
-            FAST_SAT_ADJ=bool(self.constants["FAST_SAT_ADJ"]),
-            RH_INC=self.constants["RH_INC"],
-            RH_INS=self.constants["RH_INS"],
-            RH_INR=self.constants["RH_INR"],
-            CONST_VI=bool(self.constants["CONST_VI"]),
-            CONST_VS=bool(self.constants["CONST_VS"]),
-            CONST_VG=bool(self.constants["CONST_VG"]),
-            CONST_VR=bool(self.constants["CONST_VR"]),
-            USE_CCN=bool(self.constants["USE_CCN"]),
-            RTHRESHU=self.constants["RTHRESHU"],
-            RTHRESHS=self.constants["RTHRESHS"],
-            CCN_L=self.constants["CCN_L"],
-            CCN_O=self.constants["CCN_O"],
-            QC_CRT=self.constants["QC_CRT"],
-            TAU_G2V=self.constants["TAU_G2V"],
-            TAU_V2G=self.constants["TAU_V2G"],
-            TAU_S2V=self.constants["TAU_S2V"],
-            TAU_V2S=self.constants["TAU_V2S"],
-            TAU_REVP=self.constants["TAU_REVP"],
-            TAU_FRZ=self.constants["TAU_FRZ"],
-            DO_BIGG=bool(self.constants["DO_BIGG"]),
-            DO_EVAP=bool(self.constants["DO_EVAP"]),
-            DO_SUBL=bool(self.constants["DO_SUBL"]),
-            SAT_ADJ0=self.constants["SAT_ADJ0"],
-            C_PIACR=self.constants["C_PIACR"],
-            TAU_IMLT=self.constants["TAU_IMLT"],
-            TAU_V2L=self.constants["TAU_V2L"],
-            TAU_L2V=self.constants["TAU_L2V"],
-            TAU_I2V=self.constants["TAU_I2V"],
-            TAU_I2S=self.constants["TAU_I2S"],
-            TAU_L2R=self.constants["TAU_L2R"],
-            QI_LIM=self.constants["QI_LIM"],
-            QL_GEN=self.constants["QL_GEN"],
-            C_PAUT=self.constants["C_PAUT"],
-            C_PSACI=self.constants["C_PSACI"],
-            C_PGACS=self.constants["C_PGACS"],
-            C_PGACI=self.constants["C_PGACI"],
-            Z_SLOPE_LIQ=bool(self.constants["Z_SLOPE_LIQ"]),
-            Z_SLOPE_ICE=bool(self.constants["Z_SLOPE_ICE"]),
-            PROG_CCN=bool(self.constants["PROG_CCN"]),
-            C_CRACW=self.constants["C_CRACW"],
-            ALIN=self.constants["ALIN"],
-            CLIN=self.constants["CLIN"],
-            PRECIPRAD=bool(self.constants["PRECIPRAD"]),
-            CLD_MIN=self.constants["CLD_MIN"],
-            USE_PPM=bool(self.constants["USE_PPM"]),
-            MONO_PROF=bool(self.constants["MONO_PROF"]),
-            DO_SEDI_HEAT=bool(self.constants["DO_SEDI_HEAT"]),
-            SEDI_TRANSPORT=bool(self.constants["SEDI_TRANSPORT"]),
-            DO_SEDI_W=bool(self.constants["DO_SEDI_W"]),
-            DE_ICE=bool(self.constants["DE_ICE"]),
-            ICLOUD_F=self.constants["ICLOUD_F"],
-            IRAIN_F=self.constants["IRAIN_F"],
-            MP_PRINT=bool(self.constants["MP_PRINT"]),
-            LMELTFRZ=bool(self.constants["LMELTFRZ"]),
-            USE_BERGERON=bool(self.constants["USE_BERGERON"]),
-            TURNRHCRIT_PARAM=self.constants["TURNRHCRIT_PARAM"],
-            PDFSHAPE=self.constants["PDFSHAPE"],
-            ANV_ICEFALL=self.constants["ANV_ICEFALL"],
-            LS_ICEFALL=self.constants["LS_ICEFALL"],
-            LIQ_RADII_PARAM=self.constants["LIQ_RADII_PARAM"],
-            ICE_RADII_PARAM=self.constants["ICE_RADII_PARAM"],
-            FAC_RI=self.constants["FAC_RI"],
-            MIN_RI=self.constants["MIN_RI"],
-            MAX_RI=self.constants["MAX_RI"],
-            FAC_RL=self.constants["FAC_RL"],
-            MIN_RL=self.constants["MIN_RL"],
-            MAX_RL=self.constants["MAX_RL"],
-            CCW_EVAP_EFF=self.constants["CCW_EVAP_EFF"],
-            CCI_EVAP_EFF=self.constants["CCI_EVAP_EFF"],
-        )
+
+        # initalize constants
+        config = GFDL1MConfig(**self.constants)
+
+        # initalize dataclasses
+        state = GFDL1MState.zeros(self.quantity_factory)
+        locals = GFDL1MLocals.zeros(self.quantity_factory)
 
         # Initalize saturation tables
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        # Initalize extra quantities
-        temporaries = Temporaries.make(self.quantity_factory)
-        masks = Masks.make(self.quantity_factory)
+        state.t.field[:] = inputs["t"]
+        state.u.field[:] = inputs["u"]
+        state.v.field[:] = inputs["v"]
+        locals.p_mb.field[:] = inputs["local_p_mb"]
+        state.radiation_field.cloud_fraction.field[:] = inputs["radiation_cloud_fraction"]
+        state.radiation_field.ice.field[:] = inputs["radiation_ice"]
+        state.radiation_field.liquid.field[:] = inputs["radiation_liquid"]
+        locals.u_unmodified.field[:] = inputs["local_u_unmodified"]
+        locals.v_unmodified.field[:] = inputs["local_v_unmodified"]
+        state.radiation_field.vapor.field[:] = inputs["radiation_vapor"]
+        state.radiation_field.rain.field[:] = inputs["radiation_rain"]
+        state.radiation_field.snow.field[:] = inputs["radiation_snow"]
+        state.radiation_field.graupel.field[:] = inputs["radiation_graupel"]
+        locals.mass.field[:] = inputs["local_mass"]
+        state.cloud_fraction.convective.field[:] = inputs["cloud_fraction_convective"]
+        state.cloud_fraction.large_scale.field[:] = inputs["cloud_fraction_large_scale"]
+        state.mixing_ratio.convective_liquid.field[:] = inputs["mixing_ratio_convective_liquid"]
+        state.mixing_ratio.convective_ice.field[:] = inputs["mixing_ratio_convective_ice"]
+        state.mixing_ratio.large_scale_ice.field[:] = inputs["mixing_ratio_large_scale_ice"]
+        state.mixing_ratio.large_scale_liquid.field[:] = inputs["mixing_ratio_large_scale_liquid"]
+        state.concentration.ice.field[:] = inputs["concentration_ice"]
+        state.concentration.liquid.field[:] = inputs["concentration_liquid"]
+        state.mixing_ratio.vapor.field[:] = inputs["mixing_ratio_vapor"]
+        state.mixing_ratio.rain.field[:] = inputs["mixing_ratio_rain"]
+        state.mixing_ratio.snow.field[:] = inputs["mixing_ratio_snow"]
+        state.mixing_ratio.graupel.field[:] = inputs["mixing_ratio_graupel"]
+        state.non_anvil_large_scale.evaporation.field[:] = inputs["non_anvil_large_scale_evaporation"]
+        state.non_anvil_large_scale.sublimation.field[:] = inputs["non_anvil_large_scale_sublimation"]
+        state.precipitation_at_surface.rain.field[:] = inputs["surface_precip_rain"]
+        state.precipitation_at_surface.snow.field[:] = inputs["surface_precip_snow"]
+        state.precipitation_at_surface.ice.field[:] = inputs["surface_precip_ice"]
+        state.precipitation_at_surface.graupel.field[:] = inputs["surface_precip_graupel"]
+        state.non_anvil_large_scale.precip.field[:] = inputs["non_anvil_large_scale_precip"]
+        state.non_anvil_large_scale.snow.field[:] = inputs["non_anvil_large_scale_snow"]
+        state.icefall.field[:] = inputs["icefall"]
+        state.freezing_rainfall.field[:] = inputs["freezing_rainfall"]
+        state.cloud_particle_effective_radius.liquid.field[:] = inputs[
+            "cloud_particle_effective_radius_liquid"
+        ]
+        state.cloud_particle_effective_radius.ice.field[:] = inputs["cloud_particle_effective_radius_ice"]
+        state.non_anvil_large_scale.liquid_precip_flux.field[:] = inputs[
+            "non_anvil_large_scale_liquid_precip_flux"
+        ]
+        state.non_anvil_large_scale.ice_precip_flux.field[:] = inputs["non_anvil_large_scale_ice_precip_flux"]
+        state.anvil.liquid_precip_flux.field[:] = inputs["anvil_liquid_precip_flux"]
+        state.anvil.ice_precip_flux.field[:] = inputs["anvil_ice_precip_flux"]
+        state.relative_humidity_after_pdf.field[:] = inputs["relative_humidity_after_pdf"]
+        state.tendencies.dvapordt_micro.field[:] = inputs["dvapordt_micro"]
+        state.tendencies.dliquiddt_micro.field[:] = inputs["dliquiddt_micro"]
+        state.tendencies.dicedt_micro.field[:] = inputs["dicedt_micro"]
+        state.tendencies.dcloud_fractiondt_micro.field[:] = inputs["dcloud_fractiondt_micro"]
+        state.tendencies.draindt_micro.field[:] = inputs["draindt_micro"]
+        state.tendencies.dsnowdt_micro.field[:] = inputs["dsnowdt_micro"]
+        state.tendencies.dgraupeldt_micro.field[:] = inputs["dgraupeldt_micro"]
+        state.tendencies.dudt_micro.field[:] = inputs["dudt_micro"]
+        state.tendencies.dvdt_micro.field[:] = inputs["dvdt_micro"]
+        state.tendencies.dtdt_micro.field[:] = inputs["dtdt_micro"]
 
-        # Make input quantities
-        t = self.make_ijk_quantity(inputs.pop("T"))
-        u = self.make_ijk_quantity(inputs.pop("U"))
-        temporaries.u_unmodified = self.make_ijk_quantity(inputs.pop("U0"))
-        v = self.make_ijk_quantity(inputs.pop("V"))
-        temporaries.v_unmodified = self.make_ijk_quantity(inputs.pop("V0"))
-        temporaries.p_mb = self.make_ijk_quantity(inputs.pop("PLmb"))
-        temporaries.mass = self.make_ijk_quantity(inputs.pop("MASS"))
-        ice_concentration = self.make_ijk_quantity(inputs.pop("NACTI"))
-        liquid_concentration = self.make_ijk_quantity(inputs.pop("NACTL"))
-        mixing_ratios = MicrophysicState.MixingRatios(
-            vapor=self.make_ijk_quantity(inputs.pop("Q")),
-            rain=self.make_ijk_quantity(inputs.pop("QRAIN")),
-            snow=self.make_ijk_quantity(inputs.pop("QSNOW")),
-            graupel=self.make_ijk_quantity(inputs.pop("QGRAUPEL")),
-            convective_liquid=self.make_ijk_quantity(inputs.pop("QLCN")),
-            convective_ice=self.make_ijk_quantity(inputs.pop("QICN")),
-            large_scale_liquid=self.make_ijk_quantity(inputs.pop("QLLS")),
-            large_scale_ice=self.make_ijk_quantity(inputs.pop("QILS")),
-        )
-        cloud_fractions = MicrophysicState.CloudFractions(
-            convective=self.make_ijk_quantity(inputs.pop("CLCN")),
-            large_scale=self.make_ijk_quantity(inputs.pop("CLLS")),
-        )
-
-        # Put driver output where in expected locations
-        driver = MicrophysicsDriver(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            GFDL_1M_config=GFDL_1M_config,
-        )
-        driver.outputs.rain = self.make_ij_quantity(inputs.pop("PRCP_RAIN"))
-        driver.outputs.snow = self.make_ij_quantity(inputs.pop("PRCP_SNOW"))
-        driver.outputs.ice = self.make_ij_quantity(inputs.pop("PRCP_ICE"))
-        driver.outputs.graupel = self.make_ij_quantity(inputs.pop("PRCP_GRAUPEL"))
-        driver.outputs.m2_rain = self.make_ijk_quantity(inputs.pop("PFL_LS"), interface=True)
-        driver.outputs.m2_sol = self.make_ijk_quantity(inputs.pop("PFI_LS"), interface=True)
-        driver.outputs.revap = self.make_ijk_quantity(inputs.pop("REV_LS"))
-        driver.outputs.isubl = self.make_ijk_quantity(inputs.pop("RSU_LS"))
-
-        # Initalize outputs to be overwritten with Fortran data
-        outputs = Outputs.zeros(self.quantity_factory)
-
-        # Bring in Fortran data from earlier in the component
-        outputs.liquid_radius.field[:] = inputs.pop("CLDREFFL")
-        outputs.ice_radius.field[:] = inputs.pop("CLDREFFI")
-        outputs.radiation_cloud_fraction.field[:] = inputs.pop("RAD_CF")
-        outputs.radiation_vapor.field[:] = inputs.pop("RAD_QV")
-        outputs.radiation_liquid.field[:] = inputs.pop("RAD_QL")
-        outputs.radiation_ice.field[:] = inputs.pop("RAD_QI")
-        outputs.radiation_rain.field[:] = inputs.pop("RAD_QR")
-        outputs.radiation_snow.field[:] = inputs.pop("RAD_QS")
-        outputs.radiation_graupel.field[:] = inputs.pop("RAD_QG")
-        outputs.du_dt_micro.field[:] = inputs.pop("DUDT_micro")
-        outputs.dv_dt_micro.field[:] = inputs.pop("DVDT_micro")
-        outputs.dt_dt_micro.field[:] = inputs.pop("DTDT_micro")
-        outputs.dvapor_dt_micro.field[:] = inputs.pop("DQVDT_micro")
-        outputs.dliquid_dt_micro.field[:] = inputs.pop("DQLDT_micro")
-        outputs.dice_dt_micro.field[:] = inputs.pop("DQIDT_micro")
-        outputs.dcloud_fraction_dt_micro.field[:] = inputs.pop("DQADT_micro")
-        outputs.drain_dt_micro.field[:] = inputs.pop("DQRDT_micro")
-        outputs.dsnow_dt_micro.field[:] = inputs.pop("DQSDT_micro")
-        outputs.dgraupel_dt_micro.field[:] = inputs.pop("DQGDT_micro")
-
-        # Construct stencils
-        self.update_tendencies = self.stencil_factory.from_dims_halo(
+        # construct test stencil
+        _update_tendencies = self.stencil_factory.from_dims_halo(
             func=update_tendencies,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "DT_MOIST": GFDL_1M_config.DT_MOIST,
-            },
+            externals={"DT_MOIST": config.DT_MOIST},
         )
 
-        finalize = Finalize(
+        code = Finalize(
             stencil_factory=self.stencil_factory,
-            GFDL_1M_config=GFDL_1M_config,
+            quantity_factory=self.quantity_factory,
+            config=config,
             saturation_tables=saturation_tables,
-            update_tendencies=self.update_tendencies,
+            update_tendencies=_update_tendencies,
         )
-
-        # Call tested code
-        finalize(
-            t=t,
-            u=u,
-            v=v,
-            ice_concentration=ice_concentration,
-            liquid_concentration=liquid_concentration,
-            mixing_ratios=mixing_ratios,
-            cloud_fractions=cloud_fractions,
-            masks=masks,
-            outputs=outputs,
-            temporaries=temporaries,
-            driver=driver,
+        code(
+            state=state,
+            locals=locals,
         )
 
         return {
-            "T": t.field,
-            "U": u.field,
-            "V": v.field,
-            "PLmb": temporaries.p_mb.field,
-            "MASS": temporaries.mass.field,
-            "RAD_CF": outputs.radiation_cloud_fraction.field,
-            "RAD_QI": outputs.radiation_ice.field,
-            "RAD_QL": outputs.radiation_liquid.field,
-            "RAD_QV": outputs.radiation_vapor.field,
-            "RAD_QR": outputs.radiation_rain.field,
-            "RAD_QS": outputs.radiation_snow.field,
-            "RAD_QG": outputs.radiation_graupel.field,
-            "CLCN": cloud_fractions.convective.field,
-            "CLLS": cloud_fractions.large_scale.field,
-            "QLCN": mixing_ratios.convective_liquid.field,
-            "QLLS": mixing_ratios.large_scale_liquid.field,
-            "NACTL": liquid_concentration.field,
-            "CLDREFFL": outputs.liquid_radius.field,
-            "QICN": mixing_ratios.convective_ice.field,
-            "QILS": mixing_ratios.large_scale_ice.field,
-            "CLDREFFI": outputs.ice_radius.field,
-            "NACTI": ice_concentration.field,
-            "Q": mixing_ratios.vapor.field,
-            "QRAIN": mixing_ratios.rain.field,
-            "QSNOW": mixing_ratios.snow.field,
-            "QGRAUPEL": mixing_ratios.graupel.field,
-            "REV_LS": outputs.large_scale_nonanvil_precipitation_evaporation.field,
-            "RSU_LS": outputs.large_scale_nonanvil_precipitation_sublimation.field,
-            "PRCP_RAIN": outputs.precipitated_rain.field,
-            "PRCP_SNOW": outputs.precipitated_snow.field,
-            "PRCP_ICE": outputs.precipitated_ice.field,
-            "PRCP_GRAUPEL": outputs.precipitated_graupel.field,
-            "PFL_LS": outputs.large_scale_nonanvil_liquid_flux.field,
-            "PFI_LS": outputs.large_scale_nonanvil_ice_flux.field,
-            "PFL_AN": outputs.anvil_liquid_flux.field,
-            "PFI_AN": outputs.anvil_ice_flux.field,
-            "LS_PRCP": outputs.large_scale_precip.field,
-            "LS_SNR": outputs.large_scale_snow.field,
-            "ICE": outputs.icefall.field,
-            "FRZR": outputs.freezing_rainfall.field,
-            "DQVDT_micro": outputs.dvapor_dt_micro.field,
-            "DQLDT_micro": outputs.dliquid_dt_micro.field,
-            "DQIDT_micro": outputs.dice_dt_micro.field,
-            "DQADT_micro": outputs.dcloud_fraction_dt_micro.field,
-            "DQRDT_micro": outputs.drain_dt_micro.field,
-            "DQSDT_micro": outputs.dsnow_dt_micro.field,
-            "DQGDT_micro": outputs.dgraupel_dt_micro.field,
-            "DUDT_micro": outputs.du_dt_micro.field,
-            "DVDT_micro": outputs.dv_dt_micro.field,
-            "DTDT_micro": outputs.dt_dt_micro.field,
-            "DTDTFRIC": outputs.moist_friction_temperature_tendency.field,
+            "t": state.t.field[:],
+            "u": state.u.field[:],
+            "v": state.v.field[:],
+            "local_p_mb": locals.p_mb.field[:],
+            "radiation_cloud_fraction": state.radiation_field.cloud_fraction.field[:],
+            "radiation_ice": state.radiation_field.ice.field[:],
+            "radiation_liquid": state.radiation_field.liquid.field[:],
+            "local_u_unmodified": locals.u_unmodified.field[:],
+            "local_v_unmodified": locals.v_unmodified.field[:],
+            "radiation_vapor": state.radiation_field.vapor.field[:],
+            "radiation_rain": state.radiation_field.rain.field[:],
+            "radiation_snow": state.radiation_field.snow.field[:],
+            "radiation_graupel": state.radiation_field.graupel.field[:],
+            "local_mass": locals.mass.field[:],
+            "cloud_fraction_convective": state.cloud_fraction.convective.field[:],
+            "cloud_fraction_large_scale": state.cloud_fraction.large_scale.field[:],
+            "mixing_ratio_convective_liquid": state.mixing_ratio.convective_liquid.field[:],
+            "mixing_ratio_convective_ice": state.mixing_ratio.convective_ice.field[:],
+            "mixing_ratio_large_scale_ice": state.mixing_ratio.large_scale_ice.field[:],
+            "mixing_ratio_large_scale_liquid": state.mixing_ratio.large_scale_liquid.field[:],
+            "concentration_ice": state.concentration.ice.field[:],
+            "concentration_liquid": state.concentration.liquid.field[:],
+            "mixing_ratio_vapor": state.mixing_ratio.vapor.field[:],
+            "mixing_ratio_rain": state.mixing_ratio.rain.field[:],
+            "mixing_ratio_snow": state.mixing_ratio.snow.field[:],
+            "mixing_ratio_graupel": state.mixing_ratio.graupel.field[:],
+            "non_anvil_large_scale_evaporation": state.non_anvil_large_scale.evaporation.field[:],
+            "non_anvil_large_scale_sublimation": state.non_anvil_large_scale.sublimation.field[:],
+            "surface_precip_rain": state.precipitation_at_surface.rain.field[:],
+            "surface_precip_snow": state.precipitation_at_surface.snow.field[:],
+            "surface_precip_ice": state.precipitation_at_surface.ice.field[:],
+            "surface_precip_graupel": state.precipitation_at_surface.graupel.field[:],
+            "non_anvil_large_scale_precip": state.non_anvil_large_scale.precip.field[:],
+            "non_anvil_large_scale_snow": state.non_anvil_large_scale.snow.field[:],
+            "icefall": state.icefall.field[:],
+            "freezing_rainfall": state.freezing_rainfall.field[:],
+            "cloud_particle_effective_radius_liquid": state.cloud_particle_effective_radius.liquid.field[:],
+            "cloud_particle_effective_radius_ice": state.cloud_particle_effective_radius.ice.field[:],
+            "non_anvil_large_scale_liquid_precip_flux": state.non_anvil_large_scale.liquid_precip_flux.field[
+                :
+            ],
+            "non_anvil_large_scale_ice_precip_flux": state.non_anvil_large_scale.ice_precip_flux.field[:],
+            "anvil_liquid_precip_flux": state.anvil.liquid_precip_flux.field[:],
+            "anvil_ice_precip_flux": state.anvil.ice_precip_flux.field[:],
+            "relative_humidity_after_pdf": state.relative_humidity_after_pdf.field[:],
+            "dvapordt_micro": state.tendencies.dvapordt_micro.field[:],
+            "dliquiddt_micro": state.tendencies.dliquiddt_micro.field[:],
+            "dicedt_micro": state.tendencies.dicedt_micro.field[:],
+            "dcloud_fractiondt_micro": state.tendencies.dcloud_fractiondt_micro.field[:],
+            "draindt_micro": state.tendencies.draindt_micro.field[:],
+            "dsnowdt_micro": state.tendencies.dsnowdt_micro.field[:],
+            "dgraupeldt_micro": state.tendencies.dgraupeldt_micro.field[:],
+            "dudt_micro": state.tendencies.dudt_micro.field[:],
+            "dvdt_micro": state.tendencies.dvdt_micro.field[:],
+            "dtdt_micro": state.tendencies.dtdt_micro.field[:],
         }
