@@ -20,7 +20,7 @@ from gt4py.cartesian.gtscript import (
 import pyMoist.constants as constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
+from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
@@ -6829,6 +6829,14 @@ def recalc_environmental_variables(
                 # End of iter loop
 
 
+def _reset_mask(
+    field: BoolFieldIJ,
+    value: Bool,
+):
+    with computation(FORWARD), interval(0, 1):
+        field = value
+
+
 def update_output_variables(
     del_CIN: FloatFieldIJ,
     umf_zint: FloatField,
@@ -7501,6 +7509,11 @@ class ComputeUwshcuInv(NDSLRuntime):
             externals={"ncnst": UW_config.NCNST},
         )
 
+        self._reset_mask = self.stencil_factory.from_dims_halo(
+            func=_reset_mask,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
         # Create masks
         # Mask that indicates if condensation has occurred (e.g., Fortran goto 333)
         self.condensation = self.make_local(quantity_factory, [X_DIM, Y_DIM], dtype=bool)
@@ -7716,9 +7729,9 @@ class ComputeUwshcuInv(NDSLRuntime):
         """
 
         # Initialize masks, default for all masks is False.
-        self.condensation.field[:] = False
-        self.stop_cin.field[:] = False
-        self.stop_buoyancy_sort.field[:] = False
+        self._reset_mask(self.condensation, False)
+        self._reset_mask(self.stop_cin, False)
+        self._reset_mask(self.stop_buoyancy_sort, False)
 
         self._compute_uwshcu_invert_before(
             # Inputs
