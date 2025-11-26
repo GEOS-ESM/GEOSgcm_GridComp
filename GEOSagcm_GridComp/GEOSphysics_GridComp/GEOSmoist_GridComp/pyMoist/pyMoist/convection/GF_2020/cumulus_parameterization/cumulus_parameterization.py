@@ -726,8 +726,8 @@ class CumulusParameterization:
                 self._downdraft_lateral_mass_flux()
 
                 # wet bulb temperature and moisture at downdraft origin level
-                # NOTE No test. This code is not executed.
-                # A raise error has been implemented in the event that this code is triggered.
+                # NOTE No test. This code is not implemented.
+                # An error will be raised if this code is exectued.
                 self._downdraft_wet_bulb(
                     state=state,
                     locals=locals,
@@ -757,7 +757,10 @@ class CumulusParameterization:
                 )
 
                 # calculate CIN for updrafts
-                # NOTE ported, not tested (should pass)
+                # NOTE test GF2020_CumulusParameterization_UpdraftCIN_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._updraft_cin(
                     state=state,
                     locals=locals,
@@ -765,6 +768,10 @@ class CumulusParameterization:
                 )
 
                 # trigger function: KE+CIN < 0 --> no convection
+                # NOTE test GF2020_CumulusParameterization_TriggerFunctionConvection_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._trigger_function_convection(
                     state=state,
                     locals=locals,
@@ -772,7 +779,10 @@ class CumulusParameterization:
                 )
 
                 # calculate in-cloud/updraft and downdraft air temperature for vertical velocity
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_InCloudTemperature_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._in_cloud_temperature(
                     state=state,
                     locals=locals,

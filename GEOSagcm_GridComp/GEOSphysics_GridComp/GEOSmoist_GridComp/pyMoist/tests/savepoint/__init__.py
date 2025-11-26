@@ -170,6 +170,24 @@ from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumul
     TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_shallow,
 )
 
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftCIN import (
+    TranslateGF2020_CumulusParameterization_UpdraftCIN_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftCIN_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftCIN_shallow,
+)
+
+from .convection.GF_2020.cumulus_parameterization.trigger_function.translate_GF2020_Cumulus_Parameterization_TriggerFunctionConvection import (
+    TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_deep,
+    TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_mid,
+    TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_shallow,
+)
+
+from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_Cumulus_Parameterization_InCloudTemperature import (
+    TranslateGF2020_CumulusParameterization_InCloudTemperature_deep,
+    TranslateGF2020_CumulusParameterization_InCloudTemperature_mid,
+    TranslateGF2020_CumulusParameterization_InCloudTemperature_shallow,
+)
+
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
     TranslateGetMeltingProfile,

@@ -65,3 +65,4 @@ class GF2020CumulusParameterizationConfig:
     DOWNDRAFT: Int
     FIRST_GUESS_W: Int
     USE_WETBULB: Int
+    DICYCLE: Int

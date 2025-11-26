@@ -34,6 +34,7 @@ class TriggerFunctionConvection:
         self._trigger_function_convection = stencil_factory.from_dims_halo(
             func=trigger_function_convection,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"DICYCLE": cumulus_parameterization_config.DICYCLE},
         )
 
     def __call__(
@@ -42,14 +43,13 @@ class TriggerFunctionConvection:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        pass
-        # self._trigger_function_convection(
-        # error_code=,
-        # plume=,
-        # DICYCLE=,
-        # cin0=,
-        # zws=,
-        # )
+
+        self._trigger_function_convection(
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            local_cloud_work_function_0=locals.cloud_work_function_0,
+            convective_scale_velosity=state.input_output.convective_scale_velosity,
+        )
 
 
 class TriggerFunctionXie:

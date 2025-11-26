@@ -94,9 +94,9 @@ class InCloudTemperature:
         self._in_cloud_updraft_air_temperature(
             error_code=state.output.error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
-            # tempcdo=,
-            # hcdo=,
-            # zo_cup=,
-            # qcdo=,
-            # tn_cup=,
+            local_incloud_air_temp_forced=locals.incloud_air_temp_forced,
+            local_hcdo=locals.hcdo,
+            local_geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+            local_incloud_water_vapor_mixing_ratio_forced=locals.incloud_water_vapor_mixing_ratio_forced,
+            local_t_cloud_levels_forced=locals.t_cloud_levels_forced,
         )

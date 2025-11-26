@@ -13,22 +13,25 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 def in_cloud_updraft_air_temperature(
     error_code: IntFieldIJ_Plume,
     plume: Int,
-    tempcdo: FloatField_Plume,
-    hcdo: FloatField_Plume,
-    zo_cup: FloatField_Plume,
-    qcdo: FloatField_Plume,
-    tn_cup: FloatField_Plume,
+    local_incloud_air_temp_forced: FloatField,
+    local_hcdo: FloatField,
+    local_geopotential_height_cloud_levels_forced: FloatField,
+    local_incloud_water_vapor_mixing_ratio_forced: FloatField,
+    local_t_cloud_levels_forced: FloatField,
 ):
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
-            tempcdo = (1.0 / cumulus_parameterization_constants.CP) * (
-                hcdo
-                - constants.MAPL_GRAV * zo_cup
-                - cumulus_parameterization_constants.XLV * qcdo
+            local_incloud_air_temp_forced = (
+                1.0 / cumulus_parameterization_constants.CP
+            ) * (
+                local_hcdo
+                - constants.MAPL_GRAV * local_geopotential_height_cloud_levels_forced
+                - cumulus_parameterization_constants.XLV
+                * local_incloud_water_vapor_mixing_ratio_forced
             )
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] != 0:
-            tempcdo = tn_cup
+            local_incloud_air_temp_forced = local_t_cloud_levels_forced
 
 
 def get_melting_profile(
