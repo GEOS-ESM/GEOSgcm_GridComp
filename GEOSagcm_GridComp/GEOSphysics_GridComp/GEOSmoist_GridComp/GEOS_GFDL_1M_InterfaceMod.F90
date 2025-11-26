@@ -16,7 +16,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
-  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail
+  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail, ifflag
 
   implicit none
 
@@ -268,6 +268,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (DT_R8 <= 150.0) do_hail = .true. 
+    if (DT_R8  > 150.0) ifflag = 3
 
     if (GFDL_MP3) then
       call gfdl_mp_init(LHYDROSTATIC,DT_MOIST)
@@ -313,7 +314,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
                                  CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
-                        cf_max =  6000.0
+                        cf_max =  1500.0
     if (DT_R8 <= 150.0) cf_max = -9999.0 ! force MoistGC to use EIS for cnv_frc
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= cf_max, RC=STATUS); VERIFY_(STATUS)
