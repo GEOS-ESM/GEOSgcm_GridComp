@@ -19,7 +19,7 @@ module GEOS_UW_InterfaceMod
 
   integer USE_TRACER_TRANSP_UW      ! transport tracers in UW
   real    :: SCLM_SHALLOW
-  logical :: JASON_UW
+  logical :: JASON_UW, JASON_MFD_SC
 
   private
 
@@ -96,9 +96,13 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_Get ( MAPL, LM=LM, RC=STATUS )
     VERIFY_(STATUS)
 
-                JASON_UW = .FALSE.
+                JASON_UW = .TRUE.
     if (LM==72) JASON_UW = .TRUE.
     call MAPL_GetResource(MAPL, JASON_UW, 'JASON_UW:', default=JASON_UW, RC=STATUS) ; VERIFY_(STATUS)
+
+                JASON_MFD_SC = .FALSE.
+    if (LM==72) JASON_MFD_SC = .TRUE.
+    call MAPL_GetResource(MAPL, JASON_MFD_SC, 'JASON_MFD_SC:', default=JASON_MFD_SC, RC=STATUS) ; VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , RC=STATUS) ; VERIFY_(STATUS)
     if (JASON_UW) then
@@ -380,7 +384,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
       !  Calculate detrained mass flux
       !--------------------------------------------------------------
-        if (JASON_UW) then
+        if (JASON_MFD_SC) then
           where (DETR_SC.ne.MAPL_UNDEF)
             MFD_SC = 0.5*(UMF_SC(:,:,1:LM)+UMF_SC(:,:,0:LM-1))*DETR_SC*DP
           elsewhere
