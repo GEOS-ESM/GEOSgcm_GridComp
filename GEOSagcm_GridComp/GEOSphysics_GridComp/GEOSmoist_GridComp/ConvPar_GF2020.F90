@@ -3110,7 +3110,8 @@ loop0:       do k=kts,ktf
           ! Combine
             tau_ecmwf(i)= tau_0 + tau_1*(1.0-cnvfrc(i))
           ! Limit
-            tau_ecmwf(i)= max(dtime,min(tau_ecmwf(i),tau_deep))
+            if(trim(cumulus)=='deep') tau_ecmwf(i)= max(tau_mid,min(tau_ecmwf(i),tau_deep))
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i)= max(dtime  ,min(tau_ecmwf(i),tau_mid))
          ENDDO
       ENDIF
       DO i=its,itf
@@ -8634,8 +8635,7 @@ loop0:  do k= kbcon(i),ktop(i)
       !-apply the scale-dependence Arakawa's approach
       DO i=its,itf
           if(ierr(i) /= 0) cycle
-          !- scale dependence (include cnv_fraction to reduce tropical drying)
-          xmb(i)=sig(i)*xmb(i)*(1.0-cnvfrc(i))
+          xmb(i)=sig(i)*xmb(i)
 
           if(xmb(i) == 0. ) ierr(i)=14
           if(xmb(i) > 100.) ierr(i)=15
