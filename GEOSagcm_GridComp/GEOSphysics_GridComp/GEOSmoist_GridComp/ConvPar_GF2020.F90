@@ -30,9 +30,10 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
         ,cum_max_edt_land  ,cum_max_edt_ocean, cum_hei_down_land           &
         ,cum_hei_down_ocean,cum_hei_updf_land, cum_hei_updf_ocean          &
         ,use_momentum_transp,cum_entr_rate,min_entr_rate                   &
-        ,zero_diff , nmp, lsmp, cnmp,moist_trigger,frac_modis,max_tq_tend  &
+        ,zero_diff_land,zero_diff_entr,zero_diff_vvel                      & 
+        ,nmp,lsmp,cnmp,moist_trigger,frac_modis,max_tq_tend                &
         ,cum_fadj_massflx, cum_use_excess, cum_ave_layer, adv_trigger      &
-        ,evap_fix,output_sound,use_cloud_dissipation      &
+        ,evap_fix,output_sound,use_cloud_dissipation                       &
         ,use_smooth_tend,GF_convpar_init,beta_sh,c0_shal                   &
         ,use_linear_subcl_mf,cap_maxs,entrversion
 
@@ -83,7 +84,10 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
 
  REAL    :: MAX_TQ_TEND         = 100.   != max T,Q tendency allowed (100 K/day)
 
- INTEGER :: ZERO_DIFF           = 0      != to get the closest solution of the stable version Dec 2019 for single-moment
+!INTEGER :: ZERO_DIFF           = 0      != to get the closest solution of the stable version Dec 2019 for single-moment
+ INTEGER :: ZERO_DIFF_ENTR      = 0      != just the zero_diff entrainment options
+ INTEGER :: ZERO_DIFF_LAND      = 0      != just the zero_diff land/ocean options
+ INTEGER :: ZERO_DIFF_VVEL      = 0      != just the zero_diff subgrid vvel options
 
  INTEGER :: USE_SMOOTH_TEND     = 0      != 0 => OFF, > 0 produces smoother tendencies (e.g.: for 1=> makes average between k-1,k,k+1)
  !---                                              deep, shallow, congestus
@@ -2125,8 +2129,8 @@ loop1:  do n=1,maxiens
 
 !
 !--- maximum depth (mb) of capping inversion (larger cap = no convection)
-!
-      IF(ZERO_DIFF==1 .or. MOIST_TRIGGER==0) THEN
+!     The option here is non ZERO_DIFF, MOIST_TRIGGER==0 is consistent with GF2019
+      IF(MOIST_TRIGGER==0) THEN
        if(trim(cumulus) == 'deep'   ) then ; cap_max_inc=20. ; endif ! cap_maxs=50.
        if(trim(cumulus) == 'mid'    ) then ; cap_max_inc=10. ; endif ! cap_maxs=50.
        if(trim(cumulus) == 'shallow') then ; cap_max_inc=25. ; endif ! cap_maxs=50.
@@ -2207,7 +2211,7 @@ loop1:  do n=1,maxiens
             !  ierr(i)=1
             !  ierrc(i)='scale_dep renders convection insignificant'
             !endif
-             if(ierr(i) /= 0) cycle
+            !if(ierr(i) /= 0) cycle
             enddo
          endif
       endif
@@ -2585,7 +2589,7 @@ loop0:       do k=kts,ktf
             else
                entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)
             endif
-            if (ZERO_DIFF==1) then
+            if (ZERO_DIFF_ENTR==1) then
                cd(i,k)=0.75e-4*(1.6-frh)
             else
                entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
@@ -3106,7 +3110,8 @@ loop0:       do k=kts,ktf
           ! Combine
             tau_ecmwf(i)= tau_0 + tau_1*(1.0-cnvfrc(i))
           ! Limit
-            tau_ecmwf(i)= max(dtime,min(tau_ecmwf(i),tau_deep))
+            if(trim(cumulus)=='deep') tau_ecmwf(i)= max(tau_mid,min(tau_ecmwf(i),tau_deep))
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i)= max(dtime  ,min(tau_ecmwf(i),tau_mid))
          ENDDO
       ENDIF
       DO i=its,itf
@@ -4189,7 +4194,7 @@ ENDIF ! vertical discretization formulation
        call cup_output_ens_3d(cumulus,xff_shal,xff_mid,xf_ens,ierr,dellat,dellaq,          &
                               dellaqc,outt, outq,outqc,zuo,pre,pwo_eff,xmb,ktop,           &
                               maxens2,maxens,ierr2,ierr3,                                  &
-                              pr_ens,maxens3,ensdim,sig,xland1,                            &
+                              pr_ens,maxens3,ensdim,sig,cnvfrc,xland1,                     &
                               ichoice,ipr,jpr,itf,ktf,its,ite, kts,kte,                    &
                               xf_dicycle,outu,outv,dellu,dellv,dtime,po_cup,kbcon,         &
                               dellabuoy,outbuoy,                                           &
@@ -4996,7 +5001,8 @@ ENDIF !- end of section for atmospheric composition
          ierrc(i)="problem2 with buoy in cup_dd_moisture"
         endif
 
-        if(ZERO_DIFF==0 .and. EVAP_FIX==1) then
+        ! ZERO_DIFF: The EVAP_FIX option is not in GF2019
+        if(EVAP_FIX==1) then
           if(abs(pwev(i)) > pwavo(i) .and. ierr(i) == 0)then
              fix_evap = pwavo(i)/(1.e-16+abs(pwev(i)))
              pwev(i)  = 0.
@@ -5873,12 +5879,11 @@ ENDIF !- end of section for atmospheric composition
 
           ENDDO
 
-          IF(ZERO_DIFF==0) THEN
-            if(pwav(i) < 0.) then
-              ierr(i)=66
-              ierrc(i)="pwav negative"
-            endif
-          ENDIF
+          ! ZERO_DIFF: not in GF2019
+          if(pwav(i) < 0.) then
+            ierr(i)=66
+            ierrc(i)="pwav negative"
+          endif
 
         ENDDO
 
@@ -6544,7 +6549,7 @@ ENDIF !- end of section for atmospheric composition
   zu =0.0
   zuh=0.0
   zul=0.0
-  IF(zero_diff==1) then
+  IF(ZERO_DIFF_LAND==1) then
    if(draft == "deep_up" .and. xland >  0.90) itest=11 !ocean
    if(draft == "deep_up" .and. xland <= 0.90) itest=12 !land
    if(draft == "mid_up"                     ) itest= 5
@@ -6805,13 +6810,12 @@ ENDIF !- end of section for atmospheric composition
       !- for gate soundings
       !if(gate) hei_updf = max(0.1, min(1.,float(JL)/100.)) ! for gate soundings
 
-!---non-zero-diff-APR-08-2020
-      IF( zero_diff==1) then
+      IF( ZERO_DIFF_LAND==1) then
         pmaxzu=psur-px*(psur-po_cup(kt))
       ELSE
         pmaxzu=psur-hei_updf*(psur-po_cup(kt))
       ENDIF
-!---non-zero-diff-APR-08-2020
+
       kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)
       kb_adj=max(kb,kb_adj)
       kb_adj=min(kb_adj,kt)
@@ -6911,13 +6915,11 @@ ENDIF !- end of section for atmospheric composition
       zuh(kts:min(kte,kt))= zuh(kts:min(kte,kt))/ (1.e-9+maxval(zuh(kts:min(kte,kt)),1))
 
      !increasing contribuition of zuh => more heating at upper levels/less precip
-!---non-zero-diff-APR-08-2020
-      IF(zero_diff==1) then
+      IF(ZERO_DIFF_LAND==1) then
          zu(:)= 0.65        *zul(:)+ 0.35     *zuh(:)
       ELSE
          zu(:)=(1.-hei_updf)*zul(:) + hei_updf*zuh(:)
       ENDIF
-!---non-zero-diff-APR-08-2020
 
       !-- special treatment below k22/klcl
       DO k=klcl,kts+1,-1
@@ -7032,9 +7034,11 @@ ENDIF !- end of section for atmospheric composition
 
       hei_down=(1.-xland)*hei_down_LAND+xland*hei_down_OCEAN
 
-!---non-zero-diff-APR-08-2020
-      IF(zero_diff==1) hei_down= 0.5
-!---non-zero-diff-APR-08-2020
+      IF(ZERO_DIFF_LAND==1) then
+         hei_down= 0.5
+      ELSE
+         hei_down=(1.-xland)*hei_down_LAND+xland*hei_down_OCEAN
+      ENDIF
 
       pmaxzu= hei_down * po_cup(kt) + (1.-hei_down)*psur
       kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)
@@ -8147,11 +8151,7 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
 
       DO i=its,itf
         if(ierr(i) /= 0) cycle
-        if(ZERO_DIFF==1) then
-           start_level(i) = klcl(i)
-        else
-           start_level(i) = start_level_(i)
-        endif
+        start_level(i) = start_level_(i)  ! start_level_ == klcl, so not a ZERO_DIFF option
 
         do k=kts,start_level(i)
            hcot(i,k) = hkbo(i) ! assumed no entraiment between these layers
@@ -8349,7 +8349,7 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
      integer, parameter :: n_smooth=1
 
      ftun1=0.25 ; ftun2=1.
-     if(ZERO_DIFF==1) then
+     if(ZERO_DIFF_VVEL==1) then
         ftun1=1. ; ftun2=0.5
      endif
 
@@ -8374,7 +8374,7 @@ loop0:  do k= kbcon(i),ktop(i)
           BU = g*( (Tv-Tve)/Tve -  ftun2*0.50*(qrco(i,k+1)+qrco(i,k) ))
 
           dw1 = 2./(f*(1.+gam)) * BU * dz
-          if(ZERO_DIFF==1) then
+          if(ZERO_DIFF_VVEL==1) then
              kx  =               max(entr_rate(i,k),cd(i,k))*dz
           else
              kx  = (1.+beta*C_d)*max(entr_rate(i,k),cd(i,k))*dz*ftun1
@@ -8391,7 +8391,7 @@ loop0:  do k= kbcon(i),ktop(i)
         enddo loop0
      enddo
      if(smooth) then
-      if(ZERO_DIFF==1) then
+      if(ZERO_DIFF_VVEL==1) then
        do i=its,itf
          if(ierr(i) /= 0)cycle
          do k=kts,ktop(i)-2
@@ -8427,7 +8427,7 @@ loop0:  do k= kbcon(i),ktop(i)
          !-- sanity check
          where(vvel2d(i,:) < 1. ) vvel2d(i,:) = 1.
          where(vvel2d(i,:) > 20.) vvel2d(i,:) = 20.
-         if(ZERO_DIFF==0)         vvel2d(i,ktop(i)+1:kte) = 0.1
+         if(ZERO_DIFF_VVEL==0)    vvel2d(i,ktop(i)+1:kte) = 0.1
 
          !-- get the column average vert velocity
          do k= kbcon(i),ktop(i)
@@ -8443,7 +8443,7 @@ loop0:  do k= kbcon(i),ktop(i)
 !------------------------------------------------------------------------------------
    SUBROUTINE cup_output_ens_3d(name,xff_shal,xff_mid,xf_ens,ierr,dellat,dellaq,dellaqc,  &
                                 outtem,outq,outqc,zu,pre,pw,xmb,ktop,                     &
-                                nx,nx2,ierr2,ierr3,pr_ens, maxens3,ensdim,sig,xland1,     &
+                                nx,nx2,ierr2,ierr3,pr_ens, maxens3,ensdim,sig,cnvfrc,xland1,     &
                                 ichoice,ipr,jpr,itf,ktf,its,ite, kts,kte,                 &
                                 xf_dicycle,outu,outv,dellu,dellv,dtime,po_cup,kbcon,       &
                                 dellabuoy,outbuoy, dellampqi,outmpqi,dellampql,outmpql,   &
@@ -8491,7 +8491,7 @@ loop0:  do k= kbcon(i),ktop(i)
         zu,po_cup
      real,   dimension (its:ite)                                       &
          ,intent (in  )                   ::                           &
-        sig
+        sig, cnvfrc
      real,   dimension (its:ite,maxens3)                               &
          ,intent (in  )                   ::                           &
         xff_mid
@@ -8633,7 +8633,6 @@ loop0:  do k= kbcon(i),ktop(i)
       !-apply the scale-dependence Arakawa's approach
       DO i=its,itf
           if(ierr(i) /= 0) cycle
-          !- scale dependence
           xmb(i)=sig(i)*xmb(i)
 
           if(xmb(i) == 0. ) ierr(i)=14
@@ -9033,7 +9032,7 @@ cycle
 !endif
 
 !---over the land, only applies closure 10.
-if(zero_diff == 0 .and. ichoice == 0) then
+if(ZERO_DIFF_LAND == 0 .and. ichoice == 0) then
   xf_ens(i,1:16)=(1.-xland(i))*xf_ens(i,10)+xland(i)*xf_ens(i,1:16)
 endif
 
@@ -11004,7 +11003,8 @@ REAL FUNCTION fract_liq_f(temp2,cnvfrc,srftype) ! temp2 in Kelvin, fraction betw
                  ,cum_max_edt_land  ,cum_max_edt_ocean, cum_hei_down_land                 &
                  ,cum_hei_down_ocean,cum_hei_updf_land, cum_hei_updf_ocean                &
                  ,cum_entr_rate ,tau_deep,tau_mid                                         &
-                 ,zero_diff ,use_momentum_transp ,moist_trigger,frac_modis                &
+                 ,zero_diff_land,zero_diff_vvel,zero_diff_entr                            &
+                 ,use_momentum_transp ,moist_trigger,frac_modis                &
                  ,cum_use_excess,cum_ave_layer,adv_trigger, evap_fix      &
                  ,use_cloud_dissipation,use_smooth_tend,use_gustiness, use_random_num     &
                  ,dcape_threshold,beta_sh,c0_shal,use_linear_subcl_mf
@@ -11059,7 +11059,9 @@ REAL FUNCTION fract_liq_f(temp2,cnvfrc,srftype) ! temp2 in Kelvin, fraction betw
       print*, 'lightning_diag     ' , lightning_diag
       print*, 'use_scale_dep      ' , use_scale_dep
       print*, 'dicycle            ' , dicycle
-      print*, 'zero_diff          ' , zero_diff
+      print*, 'zero_diff_land     ' , zero_diff_land
+      print*, 'zero_diff_vvel     ' , zero_diff_vvel
+      print*, 'zero_diff_entr     ' , zero_diff_entr
       print*, 'cum_entr           ' , real(cum_entr_rate      ,4)
       print*, 'frac_modis         ' , frac_modis
       print*, 'moist_trigger      ' , moist_trigger

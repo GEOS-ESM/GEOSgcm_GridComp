@@ -118,15 +118,17 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     endif
     IF (USE_GF2020==1) THEN
-      call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!!!!! call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)          , 'CONGESTUS:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP)      , 'CLOSURE_DEEP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)      , 'CLOSURE_SHALLOW:'       ,default= 7,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      if (INT(ZERO_DIFF) == 0) then
+      if (INT(ZERO_DIFF_ENTR) == 0) then
         call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.3e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
@@ -166,16 +168,16 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, BETA_SH                   , 'BETA_SH:'               ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF       , 'USE_LINEAR_SUBCL_MF:'   ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CAP_MAXS                  , 'CAP_MAXS:'              ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'CURRENT', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
-      if (INT(ZERO_DIFF) == 0) then
+      if (INT(ZERO_DIFF_ENTR) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-                                     SGS_W_TIMESCALE = 3 ! Hours
+                                     SGS_W_TIMESCALE = 6 ! Hours
          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default=  3600., RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 21600., RC=STATUS );VERIFY_(STATUS)
       else
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,   RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
@@ -206,7 +208,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      if (INT(ZERO_DIFF) == 0) then
+      if (INT(ZERO_DIFF_LAND) == 0) then
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
@@ -585,12 +587,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     endif
 
     IF (USE_GF2020==1) THEN
-         !- Determine which W is proper import
-         IF (all(W == 0.0)) THEN
-            TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
-         ELSE
-            TMP3D = W
-         ENDIF
+         ! Convert OMEGA (Pa/s) to W (m/s)
+         TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pa
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
