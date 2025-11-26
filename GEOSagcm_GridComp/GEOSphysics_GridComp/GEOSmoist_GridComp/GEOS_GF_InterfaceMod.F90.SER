@@ -675,6 +675,14 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_GetLCL-In
          !$ser flush_savepoint GF2020_CumulusParameterization_GetLCL-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_MeltingProfile-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_MeltingProfile-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_2-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_2-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_3-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_3-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1-In
          !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_EntrainmentRates-In
@@ -693,6 +701,16 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFluxProfile-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-In
          !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInCloudAirTemperature-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInCloudAirTemperature-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftCIN-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftCIN-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_TriggerFunctionConvection-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_TriggerFunctionConvection-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_InCloudTemperature-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_InCloudTemperature-Out
 
     ELSE
          !- call GF/GEOS5 interface routine
