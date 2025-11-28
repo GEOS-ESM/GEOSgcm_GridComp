@@ -1,7 +1,7 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
+from pyMoist.GFDL_1M.driver.driver import GFDL1MDriver
 from pyMoist.GFDL_1M.finalize import GFDL1MFinalize
 from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
@@ -95,7 +95,7 @@ class GFDL1M:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._driver = MicrophysicsDriver(
+        self._driver = GFDL1MDriver(
             self.stencil_factory,
             self.quantity_factory,
             self.GFDL_1M_config,

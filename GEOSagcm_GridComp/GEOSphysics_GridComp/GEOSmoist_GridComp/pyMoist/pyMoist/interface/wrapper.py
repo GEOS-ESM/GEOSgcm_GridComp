@@ -37,7 +37,7 @@ from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log, ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
-from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
+from pyMoist.GFDL_1M.driver.driver import GFDL1MDriver
 from pyMoist.interface.cuda_profiler import TimedCUDAProfiler
 from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
 from pyMoist.interface.mapl.memory_factory import MAPLManagedMemory, MAPLMemoryRepository
@@ -210,7 +210,7 @@ class GEOSPyMoistWrapper:
         self._aer_activation: AerActivation | None = None
 
         # GFDL 1M
-        self._GFDL_1M_driver: MicrophysicsDriver | None = None
+        self._GFDL_1M_driver: GFDL1MDriver | None = None
         self._GFDL_1M_ready: bool = False
         self._GFDL_1M_state = pyGFDL_1M.MicrophysicState.zeros(self.quantity_factory)
         self._GFDL_1M_outputs = pyGFDL_1M.Outputs.zeros(self.quantity_factory)
@@ -242,7 +242,7 @@ class GEOSPyMoistWrapper:
                 MPI.COMM_WORLD,
                 self.stencil_config.dace_config,
             ):
-                self._GFDL_1M_driver = MicrophysicsDriver(
+                self._GFDL_1M_driver = GFDL1MDriver(
                     self.stencil_factory,
                     self.quantity_factory,
                     self.GFDL_1M_config,

@@ -9,7 +9,7 @@ from pyMoist.GFDL_1M.driver.constants import constants
 
 
 @dataclass
-class ConfigConstants:
+class GFDL1MDriverConfigDependentConstants:
     C_AIR: Float
     C_VAP: Float
     P_NONHYDRO: bool

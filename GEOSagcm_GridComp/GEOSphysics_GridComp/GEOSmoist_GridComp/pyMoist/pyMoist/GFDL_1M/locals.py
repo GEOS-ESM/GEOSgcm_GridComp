@@ -61,6 +61,15 @@ class GFDL1MLocals(State):
             "dtype": Float,
         }
     )
+    dz: Quantity = dataclasses.field(
+        metadata={
+            "name": "dz",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "Pa",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     dp: Quantity = dataclasses.field(
         metadata={
             "name": "dp",
@@ -133,3 +142,107 @@ class GFDL1MLocals(State):
             "dtype": Int,
         }
     )
+    total_concentration: Quantity = dataclasses.field(
+        metadata={
+            "name": "total_concentration",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+    @dataclasses.dataclass
+    class DriverTendencies:
+        dvapordt: Quantity = dataclasses.field(
+            metadata={
+                "name": "dvapordt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dliquiddt: Quantity = dataclasses.field(
+            metadata={
+                "name": "dliquiddt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        draindt: Quantity = dataclasses.field(
+            metadata={
+                "name": "draindt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dicedt: Quantity = dataclasses.field(
+            metadata={
+                "name": "dicedt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dsnowdt: Quantity = dataclasses.field(
+            metadata={
+                "name": "dsnowdt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dgraupeldt: Quantity = dataclasses.field(
+            metadata={
+                "name": "dgraupeldt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dcloudfractiondt: Quantity = dataclasses.field(
+            metadata={
+                "name": "dcloudfractiondt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dtdt: Quantity = dataclasses.field(
+            metadata={
+                "name": "dtdt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dudt: Quantity = dataclasses.field(
+            metadata={
+                "name": "dudt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        dvdt: Quantity = dataclasses.field(
+            metadata={
+                "name": "dvdt",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
+    driver_tencencies: DriverTendencies

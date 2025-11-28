@@ -4,7 +4,7 @@ from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, s
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
+from pyMoist.GFDL_1M.driver.driver import GFDL1MDriver
 from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.state_old import MicrophysicState, Outputs
 from pyMoist.GFDL_1M.temporaries import Temporaries
