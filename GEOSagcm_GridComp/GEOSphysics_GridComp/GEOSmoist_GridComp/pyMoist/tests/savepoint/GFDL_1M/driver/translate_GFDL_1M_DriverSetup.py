@@ -53,7 +53,6 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             "w_driversetup": {},
             "driver_local_t_driversetup": {},
             "driver_local_dp_driversetup": {},
-            "driver_local_omq_driversetup": {},
             "driver_local_density_unmodified_driversetup": {},
             "driver_local_p_dry_driversetup": {},
             "driver_local_mass_driversetup": {},
@@ -151,7 +150,6 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         state.vertical_motion.velocity.field[:] = inputs["w_driversetup"][:, :, :, 0]
         driver_locals.t.field[:] = inputs["driver_local_t_driversetup"][:, :, :, 0]
         driver_locals.dp.field[:] = inputs["driver_local_dp_driversetup"][:, :, :, 0]
-        driver_locals.omq.field[:] = inputs["driver_local_omq_driversetup"][:, :, :, 0]
         driver_locals.unmodified.density.field[:] = inputs["driver_local_density_unmodified_driversetup"][
             :, :, :, 0
         ]
@@ -229,8 +227,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             w_unmodified=state.vertical_motion.velocity,
             w=driver_locals.w,
             area=state.area,
-            omq=driver_locals.omq,
-            density=driver_locals.density,
+            density_unmodified=driver_locals.unmodified.density,
             p_dry=driver_locals.p_dry,
             mass=driver_locals.mass,
             one_minus_sigma=driver_locals.one_minus_sigma,
@@ -316,7 +313,6 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         outputs["w_driversetup"][:, :, :, 0] = state.vertical_motion.velocity.field[:]
         outputs["driver_local_t_driversetup"][:, :, :, 0] = driver_locals.t.field[:]
         outputs["driver_local_dp_driversetup"][:, :, :, 0] = driver_locals.dp.field[:]
-        outputs["driver_local_omq_driversetup"][:, :, :, 0] = driver_locals.omq.field[:]
         outputs["driver_local_density_unmodified_driversetup"][:, :, :, 0] = (
             driver_locals.unmodified.density.field[:]
         )

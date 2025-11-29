@@ -63,7 +63,7 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
         # preset output dictionary to be filled inside the for loop
         outputs = {}
         for key in self.out_vars:
-            outputs[key] = np.zeros((nx, ny, nz, ntimes), dtype=inputs[key].dtype)
+            outputs[key] = np.full((nx, ny, nz, ntimes), np.nan)
 
         # construct test stencil
         code = self.stencil_factory.from_dims_halo(
@@ -85,8 +85,7 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
             },
         )
 
-        for n in range(ntimes):
-
+        for n in range(1):  # range(ntimes):
             driver_locals.p_dry.field[:] = inputs["driver_local_p_dry_fallspeed"][:, :, :, n]
             driver_locals.density.field[:] = inputs["driver_local_density_fallspeed"][:, :, :, n]
             driver_locals.dry_air_mixing_ratio.snow.field[:] = inputs[

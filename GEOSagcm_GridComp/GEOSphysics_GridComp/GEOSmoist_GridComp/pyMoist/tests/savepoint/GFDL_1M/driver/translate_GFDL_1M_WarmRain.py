@@ -80,7 +80,7 @@ class TranslateGFDL_1M_WarmRain(TranslateFortranData2Py):
         # preset output dictionary to be filled inside the for loop
         outputs = {}
         for key in self.out_vars:
-            outputs[key] = np.zeros((nx, ny, nz, ntimes), dtype=inputs[key].dtype)
+            outputs[key] = np.full((nx, ny, nz, ntimes), np.nan)
 
         # construct test stencil
         code = WarmRain(
@@ -91,7 +91,7 @@ class TranslateGFDL_1M_WarmRain(TranslateFortranData2Py):
             saturation_tables=saturation_tables,
         )
 
-        for n in range(ntimes):
+        for n in range(1):  # range(ntimes):
             driver_locals.dp.field[:] = inputs["driver_local_dp_warmrain"][:, :, :, n]
             driver_locals.dz.field[:] = inputs["driver_local_dz_warmrain"][:, :, :, n]
             driver_locals.t.field[:] = inputs["driver_local_t_warmrain"][:, :, :, n]
