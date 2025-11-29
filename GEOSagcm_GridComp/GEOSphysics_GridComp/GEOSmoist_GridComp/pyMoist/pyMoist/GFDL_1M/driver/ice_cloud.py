@@ -1369,10 +1369,6 @@ def icloud_core(
         z_slope_ice,
     )
 
-    with computation(FORWARD), interval(0, 1):
-        # initalize vtr in place of the warm rain calculations
-        terminal_fall_rain = 0
-
     # sources of cloud ice: pihom, cold rain, and the sat_adj
     # (initiation plus deposition)
     # sources of snow: cold rain, auto conversion + accretion (from cloud ice)
