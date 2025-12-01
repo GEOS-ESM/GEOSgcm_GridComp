@@ -39,7 +39,6 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             "driver_local_dry_mixing_ratio_ice_unmodified_driversetup": {},
             "driver_local_dry_mixing_ratio_snow_unmodified_driversetup": {},
             "driver_local_dry_mixing_ratio_graupel_unmodified_driversetup": {},
-            "driver_local_cloud_fraciton_unmodified_driversetup": {},
             "driver_local_dry_mixing_ratio_vapor_driversetup": {},
             "driver_local_dry_mixing_ratio_liquid_driversetup": {},
             "driver_local_dry_mixing_ratio_rain_driversetup": {},
@@ -122,9 +121,6 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         driver_locals.unmodified.mixing_ratio.graupel.field[:] = inputs[
             "driver_local_dry_mixing_ratio_graupel_unmodified_driversetup"
         ][:, :, :, 0]
-        driver_locals.unmodified.cloud_fraction.field[:] = inputs[
-            "driver_local_cloud_fraciton_unmodified_driversetup"
-        ][:, :, :, 0]
         driver_locals.dry_air_mixing_ratio.vapor.field[:] = inputs[
             "driver_local_dry_mixing_ratio_vapor_driversetup"
         ][:, :, :, 0]
@@ -150,7 +146,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         state.vertical_motion.velocity.field[:] = inputs["w_driversetup"][:, :, :, 0]
         driver_locals.t.field[:] = inputs["driver_local_t_driversetup"][:, :, :, 0]
         driver_locals.dp.field[:] = inputs["driver_local_dp_driversetup"][:, :, :, 0]
-        driver_locals.unmodified.density.field[:] = inputs["driver_local_density_unmodified_driversetup"][
+        driver_locals.density_unmodified.field[:] = inputs["driver_local_density_unmodified_driversetup"][
             :, :, :, 0
         ]
         driver_locals.p_dry.field[:] = inputs["driver_local_p_dry_driversetup"][:, :, :, 0]
@@ -211,7 +207,6 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             unmodified_mixing_ratio_ice=driver_locals.unmodified.mixing_ratio.ice,
             unmodified_mixing_ratio_snow=driver_locals.unmodified.mixing_ratio.snow,
             unmodified_mixing_ratio_graupel=driver_locals.unmodified.mixing_ratio.graupel,
-            unmodified_cloud_fraction=driver_locals.unmodified.cloud_fraction,
             dry_air_mixing_ratio_vapor=driver_locals.dry_air_mixing_ratio.vapor,
             dry_air_mixing_ratio_liquid=driver_locals.dry_air_mixing_ratio.liquid,
             dry_air_mixing_ratio_rain=driver_locals.dry_air_mixing_ratio.rain,
@@ -227,7 +222,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             w_unmodified=state.vertical_motion.velocity,
             w=driver_locals.w,
             area=state.area,
-            density_unmodified=driver_locals.unmodified.density,
+            density_unmodified=driver_locals.density_unmodified,
             p_dry=driver_locals.p_dry,
             mass=driver_locals.mass,
             one_minus_sigma=driver_locals.one_minus_sigma,
@@ -285,9 +280,6 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         outputs["driver_local_dry_mixing_ratio_graupel_unmodified_driversetup"][:, :, :, 0] = (
             driver_locals.unmodified.mixing_ratio.graupel.field[:]
         )
-        outputs["driver_local_cloud_fraciton_unmodified_driversetup"][:, :, :, 0] = (
-            driver_locals.unmodified.cloud_fraction.field[:]
-        )
         outputs["driver_local_dry_mixing_ratio_vapor_driversetup"][:, :, :, 0] = (
             driver_locals.dry_air_mixing_ratio.vapor.field[:]
         )
@@ -314,7 +306,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         outputs["driver_local_t_driversetup"][:, :, :, 0] = driver_locals.t.field[:]
         outputs["driver_local_dp_driversetup"][:, :, :, 0] = driver_locals.dp.field[:]
         outputs["driver_local_density_unmodified_driversetup"][:, :, :, 0] = (
-            driver_locals.unmodified.density.field[:]
+            driver_locals.density_unmodified.field[:]
         )
         outputs["driver_local_p_dry_driversetup"][:, :, :, 0] = driver_locals.p_dry.field[:]
         outputs["driver_local_mass_driversetup"][:, :, :, 0] = driver_locals.mass.field[:]

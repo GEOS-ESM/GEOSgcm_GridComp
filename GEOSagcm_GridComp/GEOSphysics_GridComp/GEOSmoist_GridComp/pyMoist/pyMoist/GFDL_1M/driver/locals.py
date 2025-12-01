@@ -43,18 +43,18 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    omq: Quantity = dataclasses.field(
+    cloud_fraction: Quantity = dataclasses.field(
         metadata={
-            "name": "omq",
+            "name": "cloud_fraction",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    cloud_fraction: Quantity = dataclasses.field(
+    density_unmodified: Quantity = dataclasses.field(
         metadata={
-            "name": "cloud_fraction",
+            "name": "density_unmodified",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -340,52 +340,6 @@ class GFDL1MDriverLocals(State):
 
     @dataclasses.dataclass
     class Unmodified:
-        t: Quantity = dataclasses.field(
-            metadata={
-                "name": "t",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dz: Quantity = dataclasses.field(
-            metadata={
-                "name": "dz",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dp: Quantity = dataclasses.field(
-            metadata={
-                "name": "dp",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        density: Quantity = dataclasses.field(
-            metadata={
-                "name": "density",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        cloud_fraction: Quantity = dataclasses.field(
-            metadata={
-                "name": "cloud_fraction",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-
         @dataclasses.dataclass
         class MixingRatio:
             vapor: Quantity = dataclasses.field(

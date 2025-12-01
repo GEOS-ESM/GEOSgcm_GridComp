@@ -26,7 +26,6 @@ def init_temporaries(
     unmodified_mixing_ratio_ice: FloatField,
     unmodified_mixing_ratio_snow: FloatField,
     unmodified_mixing_ratio_graupel: FloatField,
-    unmodified_cloud_fraction: FloatField,
     dry_air_mixing_ratio_vapor: FloatField,
     dry_air_mixing_ratio_liquid: FloatField,
     dry_air_mixing_ratio_rain: FloatField,
@@ -99,7 +98,6 @@ def init_temporaries(
         dry_air_mixing_ratio_snow = unmodified_mixing_ratio_snow
         dry_air_mixing_ratio_graupel = unmodified_mixing_ratio_graupel
 
-        unmodified_cloud_fraction = radiation_field_cloud_fraction
         cloud_fraction = radiation_field_cloud_fraction
 
         density_unmodified = -dp / (constants.GRAV * dz)  # density of dry air
@@ -338,7 +336,6 @@ class GFDL1MDriverSetup(NDSLRuntime):
         unmodified_mixing_ratio_ice: FloatField,
         unmodified_mixing_ratio_snow: FloatField,
         unmodified_mixing_ratio_graupel: FloatField,
-        unmodified_cloud_fraction: FloatField,
         dry_air_mixing_ratio_vapor: FloatField,
         dry_air_mixing_ratio_liquid: FloatField,
         dry_air_mixing_ratio_rain: FloatField,
@@ -399,7 +396,6 @@ class GFDL1MDriverSetup(NDSLRuntime):
                 (kg/kg), unmodified within the remaining driver
             unmodified_mixing_ratio_graupel (out): unit-converted copy of radiation_field_graupel mixing ratio
                 (kg/kg), unmodified within the remaining driver
-            unmodified_cloud_fraction (out): copy of radiation_field_cloud_fraction, unmodified within driver
             dry_air_mixing_ratio_vapor (out): copy of radiation_field_vapor (kg/kg)
             dry_air_mixing_ratio_liquid (out): copy of radiation_field_liquid (kg/kg)
             dry_air_mixing_ratio_rain (out): copy of radiation_field_rain (kg/kg)
@@ -415,7 +411,7 @@ class GFDL1MDriverSetup(NDSLRuntime):
             w_unmodified (in): vertical motion (m/s), unmodified within driver
             w (out): vertical motion (m/s), may be modified within driver
             area (in): area of grid cell
-            density (out): density of grid cell
+            density_unmodified (out): density of grid cell, unmodified in the rest of the driver
             p_dry (out): dry air pressure
             mass (out): mass of grid call
             one_minus_sigma (out): details unknown
@@ -452,7 +448,6 @@ class GFDL1MDriverSetup(NDSLRuntime):
             unmodified_mixing_ratio_ice=unmodified_mixing_ratio_ice,
             unmodified_mixing_ratio_snow=unmodified_mixing_ratio_snow,
             unmodified_mixing_ratio_graupel=unmodified_mixing_ratio_graupel,
-            unmodified_cloud_fraction=unmodified_cloud_fraction,
             dry_air_mixing_ratio_vapor=dry_air_mixing_ratio_vapor,
             dry_air_mixing_ratio_liquid=dry_air_mixing_ratio_liquid,
             dry_air_mixing_ratio_rain=dry_air_mixing_ratio_rain,

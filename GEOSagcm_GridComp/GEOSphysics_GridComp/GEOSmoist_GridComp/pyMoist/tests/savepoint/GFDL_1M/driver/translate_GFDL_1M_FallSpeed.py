@@ -110,15 +110,15 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
                 "driver_local_terminal_speed_graupel_fallspeed"
             ][:, :, :, n]
             driver_locals.t.field[:] = inputs["driver_local_t_fallspeed"][:, :, :, n]
-            driver_locals.unmodified.dz.field[:] = inputs["driver_local_dz_unmodified_fallspeed"][:, :, :, n]
+            locals.dz.field[:] = inputs["driver_local_dz_unmodified_fallspeed"][:, :, :, n]
             driver_locals.dz.field[:] = inputs["driver_local_dz_fallspeed"][:, :, :, n]
-            driver_locals.unmodified.density.field[:] = inputs["driver_local_density_unmodified_fallspeed"][
+            driver_locals.density_unmodified.field[:] = inputs["driver_local_density_unmodified_fallspeed"][
                 :, :, :, n
             ]
             driver_locals.density_factor.field[:] = inputs["driver_local_density_factor_fallspeed"][
                 :, :, :, n
             ]
-            driver_locals.unmodified.t.field[:] = inputs["driver_local_t_unmodified_fallspeed"][:, :, :, n]
+            state.t.field[:] = inputs["driver_local_t_unmodified_fallspeed"][:, :, :, n]
             state.convection_fraction.field[:] = inputs["convection_fraction_fallspeed"][:, :, 0, n]
 
             code(
@@ -126,11 +126,11 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
                 ice=driver_locals.dry_air_mixing_ratio.ice,
                 snow=driver_locals.dry_air_mixing_ratio.snow,
                 graupel=driver_locals.dry_air_mixing_ratio.graupel,
-                t_unmodified=driver_locals.unmodified.t,
+                t_unmodified=state.t,
                 t=driver_locals.t,
-                dz_unmodified=driver_locals.unmodified.dz,
+                dz_unmodified=locals.dz,
                 dz=driver_locals.dz,
-                density_unmodified=driver_locals.unmodified.density,
+                density_unmodified=driver_locals.density_unmodified,
                 density=driver_locals.density,
                 density_factor=driver_locals.density_factor,
                 ice_terminal_velocity=driver_locals.terminal_speed.ice,
@@ -164,15 +164,15 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
                 driver_locals.terminal_speed.graupel.field[:]
             )
             outputs["driver_local_t_fallspeed"][:, :, :, n] = driver_locals.t.field[:]
-            outputs["driver_local_dz_unmodified_fallspeed"][:, :, :, n] = driver_locals.unmodified.dz.field[:]
+            outputs["driver_local_dz_unmodified_fallspeed"][:, :, :, n] = locals.dz.field[:]
             outputs["driver_local_dz_fallspeed"][:, :, :, n] = driver_locals.dz.field[:]
             outputs["driver_local_density_unmodified_fallspeed"][:, :, :, n] = (
-                driver_locals.unmodified.density.field[:]
+                driver_locals.density_unmodified.field[:]
             )
             outputs["driver_local_density_factor_fallspeed"][:, :, :, n] = driver_locals.density_factor.field[
                 :
             ]
-            outputs["driver_local_t_unmodified_fallspeed"][:, :, :, n] = driver_locals.unmodified.t.field[:]
+            outputs["driver_local_t_unmodified_fallspeed"][:, :, :, n] = state.t.field[:]
 
             for k in range(nz):
                 outputs["convection_fraction_fallspeed"][:, :, k, n] = state.convection_fraction.field[:]
