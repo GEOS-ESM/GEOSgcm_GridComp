@@ -242,7 +242,6 @@ class GFDL1MDriver(NDSLRuntime):
             unmodified_mixing_ratio_ice=self._locals.unmodified.mixing_ratio.ice,
             unmodified_mixing_ratio_snow=self._locals.unmodified.mixing_ratio.snow,
             unmodified_mixing_ratio_graupel=self._locals.unmodified.mixing_ratio.graupel,
-            unmodified_cloud_fraction=cloud_fraction,
             dry_air_mixing_ratio_vapor=self._locals.dry_air_mixing_ratio.vapor,
             dry_air_mixing_ratio_liquid=self._locals.dry_air_mixing_ratio.liquid,
             dry_air_mixing_ratio_rain=self._locals.dry_air_mixing_ratio.rain,
