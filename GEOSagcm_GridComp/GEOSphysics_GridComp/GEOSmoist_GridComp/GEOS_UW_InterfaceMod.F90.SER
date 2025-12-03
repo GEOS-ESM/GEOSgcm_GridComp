@@ -200,6 +200,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: I, J, L
     integer                         :: IM,JM,LM
 
+    !$ser verbatim logical :: debug_ser
+    !$ser verbatim debug_ser = .false.
+
     call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
     
@@ -330,7 +333,15 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !$ser data idim=IM*JM k0=LM dt=UW_DT pmid0_inv=PL zmid0_inv=ZL0 exnmid0_inv=PK pifc0_inv=PLE zifc0_inv=ZLE0 
       !$ser data exnifc0_inv=PKE dp0_inv=DP u0_inv=U v0_inv=V qv0_inv=Q ql0_inv=QLTOT qi0_inv=QITOT 
       !$ser data t0_inv=T tke_inv=TKE rkfre=RKFRE kpbl_inv=KPBL_SC shfx=SH evap=EVAP cnvtr=CNPCPRATE 
-      !$ser data frland=FRLAND cush=CUSH    
+      !$ser data frland=FRLAND cush=CUSH  
+
+      !$ser verbatim if (debug_ser .eqv. .true.) then
+      !$ser savepoint PrepareInputs-In
+      !$ser data idim=IM*JM k0=LM dt=UW_DT pmid0_inv=PL zmid0_inv=ZL0 exnmid0_inv=PK pifc0_inv=PLE zifc0_inv=ZLE0 
+      !$ser data exnifc0_inv=PKE dp0_inv=DP u0_inv=U v0_inv=V qv0_inv=Q ql0_inv=QLTOT qi0_inv=QITOT 
+      !$ser data t0_inv=T tke_inv=TKE rkfre=RKFRE kpbl_inv=KPBL_SC shfx=SH evap=EVAP cnvtr=CNPCPRATE 
+      !$ser data frland=FRLAND cush=CUSH 
+      !$ser verbatim end if
 
       !  Call UW shallow convection
       !----------------------------------------------------------------
