@@ -14,7 +14,7 @@ def check_precip_get_zt(
     terminal_speed: FloatField,
     z_interface: FloatField,
     z_interface_modified: FloatField,
-    precip: FloatFieldIJ,
+    internal_precip: FloatFieldIJ,
     precip_fall: BoolFieldIJ,
 ):
     from __externals__ import dts
@@ -29,7 +29,7 @@ def check_precip_get_zt(
 
     with computation(FORWARD), interval(0, 1):
         if precip_fall == False:
-            precip = 0
+            internal_precip = 0
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == True:
@@ -48,12 +48,12 @@ def check_precip_get_zt(
 def update_dmass(
     dmass: FloatField,
     dp: FloatField,
-    vapor: FloatField,
-    liquid: FloatField,
-    rain: FloatField,
-    ice: FloatField,
-    snow: FloatField,
-    graupel: FloatField,
+    mixing_ratio_vapor: FloatField,
+    mixing_ratio_liquid: FloatField,
+    mixing_ratio_rain: FloatField,
+    mixing_ratio_ice: FloatField,
+    mixing_ratio_snow: FloatField,
+    mixing_ratio_graupel: FloatField,
     precip_fall: BoolFieldIJ,
 ):
     from __externals__ import do_sedi_w
@@ -61,7 +61,15 @@ def update_dmass(
     with computation(PARALLEL), interval(...):
         if precip_fall == True:
             if do_sedi_w == True:  # noqa
-                dmass = dp * (1.0 + vapor + liquid + rain + ice + snow + graupel)
+                dmass = dp * (
+                    1.0
+                    + mixing_ratio_vapor
+                    + mixing_ratio_liquid
+                    + mixing_ratio_rain
+                    + mixing_ratio_ice
+                    + mixing_ratio_snow
+                    + mixing_ratio_graupel
+                )
 
 
 def update_w(
@@ -102,22 +110,22 @@ def reset(
 
 @function
 def prefall_melting(
-    t: Float,
-    vapor: Float,
-    liquid: Float,
-    rain: Float,
-    graupel: Float,
-    snow: Float,
-    ice: Float,
-    ice_precip_flux: Float,
-    is_frozen: bool,
-    c_air: Float,
-    c_vap: Float,
-    d0_vap: Float,
-    dts: Float,
-    lv00: Float,
-    ql_mlt: Float,
-    tau_imlt: Float,
+    t,
+    vapor,
+    liquid,
+    rain,
+    graupel,
+    snow,
+    ice,
+    ice_precip_flux,
+    is_frozen,
+    c_air,
+    c_vap,
+    d0_vap,
+    dts,
+    lv00,
+    ql_mlt,
+    tau_imlt,
 ):
     """
     Melt cloud ice before fall
@@ -165,12 +173,12 @@ def prefall_melting(
 
 def setup(
     t: FloatField,
-    vapor: FloatField,
-    liquid: FloatField,
-    rain: FloatField,
-    graupel: FloatField,
-    snow: FloatField,
-    ice: FloatField,
+    mixing_ratio_vapor: FloatField,
+    mixing_ratio_liquid: FloatField,
+    mixing_ratio_rain: FloatField,
+    mixing_ratio_graupel: FloatField,
+    mixing_ratio_snow: FloatField,
+    mixing_ratio_ice: FloatField,
     dz: FloatField,
     ice_precip_flux: FloatField,
     z_interface: FloatField,
@@ -178,10 +186,10 @@ def setup(
     lhi: FloatField,
     icpk: FloatField,
     cvm: FloatField,
-    precip_rain: FloatFieldIJ,
-    precip_graupel: FloatFieldIJ,
-    precip_snow: FloatFieldIJ,
-    precip_ice: FloatFieldIJ,
+    internal_rain: FloatFieldIJ,
+    internal_graupel: FloatFieldIJ,
+    internal_snow: FloatFieldIJ,
+    internal_ice: FloatFieldIJ,
 ):
     from __externals__ import c_air, c_vap, d0_vap, dts, lv00, ql_mlt, tau_imlt
 
@@ -204,23 +212,25 @@ def setup(
         is_frozen = False
 
     with computation(PARALLEL), interval(...):
-        t, liquid, rain, ice, cvm, lhi, icpk, ice_precip_flux = prefall_melting(
-            t,
-            vapor,
-            liquid,
-            rain,
-            graupel,
-            snow,
-            ice,
-            ice_precip_flux,
-            is_frozen,
-            c_air,
-            c_vap,
-            d0_vap,
-            dts,
-            lv00,
-            ql_mlt,
-            tau_imlt,
+        t, mixing_ratio_liquid, mixing_ratio_rain, mixing_ratio_ice, cvm, lhi, icpk, ice_precip_flux = (
+            prefall_melting(
+                t,
+                mixing_ratio_vapor,
+                mixing_ratio_liquid,
+                mixing_ratio_rain,
+                mixing_ratio_graupel,
+                mixing_ratio_snow,
+                mixing_ratio_ice,
+                ice_precip_flux,
+                is_frozen,
+                c_air,
+                c_vap,
+                d0_vap,
+                dts,
+                lv00,
+                ql_mlt,
+                tau_imlt,
+            )
         )
 
     # if timestep is too small turn off melting (only calculate at surface)
@@ -249,10 +259,10 @@ def setup(
 
     # zero local precipitaton values
     with computation(FORWARD), interval(0, 1):
-        precip_rain = 0
-        precip_graupel = 0
-        precip_snow = 0
-        precip_ice = 0
+        internal_rain = 0
+        internal_graupel = 0
+        internal_snow = 0
+        internal_ice = 0
 
 
 def update_outputs(
@@ -260,19 +270,19 @@ def update_outputs(
     graupel: FloatFieldIJ,
     snow: FloatFieldIJ,
     ice: FloatFieldIJ,
-    precip_rain: FloatFieldIJ,
-    precip_graupel: FloatFieldIJ,
-    precip_snow: FloatFieldIJ,
-    precip_ice: FloatFieldIJ,
+    internal_rain: FloatFieldIJ,
+    internal_graupel: FloatFieldIJ,
+    internal_snow: FloatFieldIJ,
+    internal_ice: FloatFieldIJ,
 ):
     """
     ensure information for all precipitates is pushed back to the rest of the model
     """
     with computation(FORWARD), interval(0, 1):
-        rain = rain + precip_rain  # from melted snow & ice that reached the ground
-        graupel = graupel + precip_graupel
-        snow = snow + precip_snow
-        ice = ice + precip_ice
+        rain = rain + internal_rain  # from melted snow & ice that reached the ground
+        graupel = graupel + internal_graupel
+        snow = snow + internal_snow
+        ice = ice + internal_ice
 
 
 @dataclasses.dataclass
@@ -509,24 +519,24 @@ class TerminalFall(NDSLRuntime):
             ice_precip_flux (out): ice precipitation flux (kg m^-2 s^-1)
         """
         self._setup(
-            t,
-            mixing_ratio_vapor,
-            mixing_ratio_liquid,
-            mixing_ratio_rain,
-            mixing_ratio_graupel,
-            mixing_ratio_snow,
-            mixing_ratio_ice,
-            dz,
-            ice_precip_flux,
-            self._locals.z_interface,
-            self._locals.z_interface_modified,
-            self._locals.lhi,
-            self._locals.icpk,
-            self._locals.cvm,
-            self._locals.rain,
-            self._locals.graupel,
-            self._locals.snow,
-            self._locals.ice,
+            t=t,
+            mixing_ratio_vapor=mixing_ratio_vapor,
+            mixing_ratio_liquid=mixing_ratio_liquid,
+            mixing_ratio_rain=mixing_ratio_rain,
+            mixing_ratio_graupel=mixing_ratio_graupel,
+            mixing_ratio_snow=mixing_ratio_snow,
+            mixing_ratio_ice=mixing_ratio_ice,
+            dz=dz,
+            ice_precip_flux=ice_precip_flux,
+            z_interface=self._locals.z_interface,
+            z_interface_modified=self._locals.z_interface_modified,
+            lhi=self._locals.lhi,
+            icpk=self._locals.icpk,
+            cvm=self._locals.cvm,
+            internal_rain=self._locals.rain,
+            internal_graupel=self._locals.graupel,
+            internal_snow=self._locals.snow,
+            internal_ice=self._locals.ice,
         )
 
         # melting of falling cloud ice into rain
@@ -534,153 +544,153 @@ class TerminalFall(NDSLRuntime):
             self._locals.ice.view[:] = 0
         else:
             self._check_precip_get_zt(
-                mixing_ratio_ice,
-                terminal_velocity_ice,
-                self._locals.z_interface,
-                self._locals.z_interface_modified,
-                self._locals.ice,
-                self._locals.precip_fall,
+                mixing_ratio=mixing_ratio_ice,
+                terminal_speed=terminal_velocity_ice,
+                z_interface=self._locals.z_interface,
+                z_interface_modified=self._locals.z_interface_modified,
+                internal_precip=self._locals.ice,
+                precip_fall=self._locals.precip_fall,
             )
 
             self._update_dmass(
-                self._locals.dmass,
-                dp,
-                mixing_ratio_vapor,
-                mixing_ratio_liquid,
-                mixing_ratio_rain,
-                mixing_ratio_ice,
-                mixing_ratio_snow,
-                mixing_ratio_graupel,
-                self._locals.precip_fall,
+                dmass=self._locals.dmass,
+                dp=dp,
+                mixing_ratio_vapor=mixing_ratio_vapor,
+                mixing_ratio_liquid=mixing_ratio_liquid,
+                mixing_ratio_rain=mixing_ratio_rain,
+                mixing_ratio_ice=mixing_ratio_ice,
+                mixing_ratio_snow=mixing_ratio_snow,
+                mixing_ratio_graupel=mixing_ratio_graupel,
+                precip_fall=self._locals.precip_fall,
             )
 
-            if self.config.USE_PPM is False:
+            if not self.config.USE_PPM:
                 self._implicit_fall(
-                    mixing_ratio_ice,
-                    terminal_velocity_ice,
-                    self._locals.z_interface,
-                    dp,
-                    self._locals.mass,
-                    ice_precip_flux,
-                    self._locals.ice,
-                    self._locals.precip_fall,
+                    mixing_ratio=mixing_ratio_ice,
+                    terminal_speed=terminal_velocity_ice,
+                    z_interface=self._locals.z_interface,
+                    dp=dp,
+                    mass=self._locals.mass,
+                    precip_flux=ice_precip_flux,
+                    precip=self._locals.ice,
+                    precip_fall=self._locals.precip_fall,
                 )
 
             self._update_w(
-                w,
-                self._locals.dmass,
-                self._locals.mass,
-                terminal_velocity_ice,
-                self._locals.precip_fall,
+                w=w,
+                dmass=self._locals.dmass,
+                mass=self._locals.mass,
+                terminal_speed=terminal_velocity_ice,
+                precip_fall=self._locals.precip_fall,
             )
 
             self._reset(
-                self._locals.mass,
-                self._locals.precip_fall,
+                mass=self._locals.mass,
+                precip_fall=self._locals.precip_fall,
             )
 
         # melting of falling snow into rain
         self._check_precip_get_zt(
-            mixing_ratio_snow,
-            terminal_velocity_snow,
-            self._locals.z_interface,
-            self._locals.z_interface_modified,
-            self._locals.snow,
-            self._locals.precip_fall,
+            mixing_ratio=mixing_ratio_snow,
+            terminal_speed=terminal_velocity_snow,
+            z_interface=self._locals.z_interface,
+            z_interface_modified=self._locals.z_interface_modified,
+            internal_precip=self._locals.snow,
+            precip_fall=self._locals.precip_fall,
         )
 
         self._update_dmass(
-            self._locals.dmass,
-            dp,
-            mixing_ratio_vapor,
-            mixing_ratio_liquid,
-            mixing_ratio_rain,
-            mixing_ratio_ice,
-            mixing_ratio_snow,
-            mixing_ratio_graupel,
-            self._locals.precip_fall,
+            dmass=self._locals.dmass,
+            dp=dp,
+            mixing_ratio_vapor=mixing_ratio_vapor,
+            mixing_ratio_liquid=mixing_ratio_liquid,
+            mixing_ratio_rain=mixing_ratio_rain,
+            mixing_ratio_ice=mixing_ratio_ice,
+            mixing_ratio_snow=mixing_ratio_snow,
+            mixing_ratio_graupel=mixing_ratio_graupel,
+            precip_fall=self._locals.precip_fall,
         )
 
-        if self.config.USE_PPM is False:
+        if not self.config.USE_PPM:
             self._implicit_fall(
-                mixing_ratio_snow,
-                terminal_velocity_snow,
-                self._locals.z_interface,
-                dp,
-                self._locals.mass,
-                ice_precip_flux,
-                self._locals.snow,
-                self._locals.precip_fall,
+                mixing_ratio=mixing_ratio_snow,
+                terminal_speed=terminal_velocity_snow,
+                z_interface=self._locals.z_interface,
+                dp=dp,
+                mass=self._locals.mass,
+                precip_flux=ice_precip_flux,
+                precip=self._locals.snow,
+                precip_fall=self._locals.precip_fall,
             )
 
         self._update_w(
-            w,
-            self._locals.dmass,
-            self._locals.mass,
-            terminal_velocity_snow,
-            self._locals.precip_fall,
+            w=w,
+            dmass=self._locals.dmass,
+            mass=self._locals.mass,
+            terminal_speed=terminal_velocity_snow,
+            precip_fall=self._locals.precip_fall,
         )
 
         self._reset(
-            self._locals.mass,
-            self._locals.precip_fall,
+            mass=self._locals.mass,
+            precip_fall=self._locals.precip_fall,
         )
 
         # melting of falling graupel into rain
         self._check_precip_get_zt(
-            mixing_ratio_graupel,
-            terminal_velocity_graupel,
-            self._locals.z_interface,
-            self._locals.z_interface_modified,
-            self._locals.graupel,
-            self._locals.precip_fall,
+            mixing_ratio=mixing_ratio_graupel,
+            terminal_speed=terminal_velocity_graupel,
+            z_interface=self._locals.z_interface,
+            z_interface_modified=self._locals.z_interface_modified,
+            internal_precip=self._locals.graupel,
+            precip_fall=self._locals.precip_fall,
         )
 
         self._update_dmass(
-            self._locals.dmass,
-            dp,
-            mixing_ratio_vapor,
-            mixing_ratio_liquid,
-            mixing_ratio_rain,
-            mixing_ratio_ice,
-            mixing_ratio_snow,
-            mixing_ratio_graupel,
-            self._locals.precip_fall,
+            dmass=self._locals.dmass,
+            dp=dp,
+            mixing_ratio_vapor=mixing_ratio_vapor,
+            mixing_ratio_liquid=mixing_ratio_liquid,
+            mixing_ratio_rain=mixing_ratio_rain,
+            mixing_ratio_ice=mixing_ratio_ice,
+            mixing_ratio_snow=mixing_ratio_snow,
+            mixing_ratio_graupel=mixing_ratio_graupel,
+            precip_fall=self._locals.precip_fall,
         )
 
-        if self.config.USE_PPM is False:
+        if not self.config.USE_PPM:
             self._implicit_fall(
-                mixing_ratio_graupel,
-                terminal_velocity_graupel,
-                self._locals.z_interface,
-                dp,
-                self._locals.mass,
-                ice_precip_flux,
-                self._locals.graupel,
-                self._locals.precip_fall,
+                mixing_ratio=mixing_ratio_graupel,
+                terminal_speed=terminal_velocity_graupel,
+                z_interface=self._locals.z_interface,
+                dp=dp,
+                mass=self._locals.mass,
+                precip_flux=ice_precip_flux,
+                precip=self._locals.graupel,
+                precip_fall=self._locals.precip_fall,
             )
 
         self._update_w(
-            w,
-            self._locals.dmass,
-            self._locals.mass,
-            terminal_velocity_graupel,
-            self._locals.precip_fall,
+            w=w,
+            dmass=self._locals.dmass,
+            mass=self._locals.mass,
+            terminal_speed=terminal_velocity_graupel,
+            precip_fall=self._locals.precip_fall,
         )
 
         self._reset(
-            self._locals.mass,
-            self._locals.precip_fall,
+            mass=self._locals.mass,
+            precip_fall=self._locals.precip_fall,
         )
 
         # ensure information for all precipitates is pushed back to the rest of the model
         self._update_outputs(
-            rain,
-            graupel,
-            snow,
-            ice,
-            self._locals.rain,
-            self._locals.graupel,
-            self._locals.snow,
-            self._locals.ice,
+            rain=rain,
+            graupel=graupel,
+            snow=snow,
+            ice=ice,
+            internal_rain=self._locals.rain,
+            internal_graupel=self._locals.graupel,
+            internal_snow=self._locals.snow,
+            internal_ice=self._locals.ice,
         )

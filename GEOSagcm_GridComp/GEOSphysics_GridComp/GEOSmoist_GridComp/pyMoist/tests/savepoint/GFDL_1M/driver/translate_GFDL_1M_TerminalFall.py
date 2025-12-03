@@ -113,10 +113,6 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
             driver_locals.terminal_speed.graupel.field[:] = inputs[
                 "driver_local_terminal_speed_graupel_terminalfall"
             ][:, :, :, n]
-            driver_locals.rain.field[:] = inputs["driver_local_rain_terminalfall"][:, :, 0, n]
-            driver_locals.ice.field[:] = inputs["driver_local_ice_terminalfall"][:, :, 0, n]
-            driver_locals.snow.field[:] = inputs["driver_local_snow_terminalfall"][:, :, 0, n]
-            driver_locals.graupel.field[:] = inputs["driver_local_graupel_terminalfall"][:, :, 0, n]
             state.precipitation_at_surface.rain.field[:] = inputs["surface_precip_rain_terminalfall"][
                 :, :, 0, n
             ]
@@ -142,9 +138,9 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
                 mixing_ratio_ice=driver_locals.dry_air_mixing_ratio.ice,
                 dz=driver_locals.dz,
                 dp=driver_locals.dp,
-                terminal_velocity_graupel=driver_locals.terminal_speed.ice,
+                terminal_velocity_graupel=driver_locals.terminal_speed.graupel,
                 terminal_velocity_snow=driver_locals.terminal_speed.snow,
-                terminal_velocity_ice=driver_locals.terminal_speed.graupel,
+                terminal_velocity_ice=driver_locals.terminal_speed.ice,
                 rain=state.precipitation_at_surface.rain,
                 graupel=state.precipitation_at_surface.snow,
                 snow=state.precipitation_at_surface.graupel,
@@ -189,10 +185,10 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
             )
 
             for k in range(nz):
-                outputs["driver_local_rain_terminalfall"][:, :, k, n] = driver_locals.rain.field[:]
-                outputs["driver_local_ice_terminalfall"][:, :, k, n] = driver_locals.ice.field[:]
-                outputs["driver_local_snow_terminalfall"][:, :, k, n] = driver_locals.snow.field[:]
-                outputs["driver_local_graupel_terminalfall"][:, :, k, n] = driver_locals.graupel.field[:]
+                outputs["driver_local_rain_terminalfall"][:, :, k, n] = code._locals.rain.field[:]
+                outputs["driver_local_ice_terminalfall"][:, :, k, n] = code._locals.ice.field[:]
+                outputs["driver_local_snow_terminalfall"][:, :, k, n] = code._locals.snow.field[:]
+                outputs["driver_local_graupel_terminalfall"][:, :, k, n] = code._locals.graupel.field[:]
                 outputs["surface_precip_rain_terminalfall"][:, :, k, n] = (
                     state.precipitation_at_surface.rain.field[:]
                 )
