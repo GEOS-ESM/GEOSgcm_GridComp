@@ -669,8 +669,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_2-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_HydrostaticAirDensity-In
          !$ser flush_savepoint GF2020_CumulusParameterization_HydrostaticAirDensity-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_PartitionLiquidIce-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_PartitionLiquidIce-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel-In
          !$ser flush_savepoint GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_GetLCL-In
@@ -693,6 +693,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFluxProfile-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-In
          !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_FirstGuessMoistStaticEnergy-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_FirstGuessMoistStaticEnergy-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-Out
 
     ELSE
          !- call GF/GEOS5 interface routine
