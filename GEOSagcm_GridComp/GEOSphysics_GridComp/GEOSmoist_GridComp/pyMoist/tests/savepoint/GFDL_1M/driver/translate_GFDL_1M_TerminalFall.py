@@ -142,8 +142,8 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
                 terminal_velocity_snow=driver_locals.terminal_speed.snow,
                 terminal_velocity_ice=driver_locals.terminal_speed.ice,
                 rain=state.precipitation_at_surface.rain,
-                graupel=state.precipitation_at_surface.snow,
-                snow=state.precipitation_at_surface.graupel,
+                graupel=state.precipitation_at_surface.graupel,
+                snow=state.precipitation_at_surface.snow,
                 ice=state.precipitation_at_surface.ice,
                 ice_precip_flux=driver_locals.ice_precip_flux,
             )
