@@ -913,9 +913,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! Output tendencies
                                DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, DUDTmic, DVDTmic, DWDTmic, &
+                             ! Output rain re-evaporation and sublimation
+                               REV_LS, RSU_LS, &
                              ! Output mass flux during sedimentation (Pa kg/kg)
                                PFL_LS(:,:,1:LM), PFR_LS(:,:,1:LM), PFI_LS(:,:,1:LM), PFS_LS(:,:,1:LM), PFG_LS(:,:,1:LM) )
-       ! Convert cloud/precipitation flux exports from (mm/day) to (kg m-2 s-1)
+       ! Convert evap/subl/cloud/precipitation flux exports from (mm/day) to (kg m-2 s-1)
+           REV_LS = REV_LS/(86400.0)
+           RSU_LS = RSU_LS/(86400.0)
            PFL_LS = PFL_LS/(86400.0)
            PFI_LS = PFI_LS/(86400.0)
            PFR_LS = PFR_LS/(86400.0)

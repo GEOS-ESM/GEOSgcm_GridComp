@@ -96,7 +96,7 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_Get ( MAPL, LM=LM, RC=STATUS )
     VERIFY_(STATUS)
 
-                JASON_UW = .TRUE.
+                JASON_UW = .FALSE.
     if (LM==72) JASON_UW = .TRUE.
     call MAPL_GetResource(MAPL, JASON_UW, 'JASON_UW:', default=JASON_UW, RC=STATUS) ; VERIFY_(STATUS)
 
@@ -119,10 +119,10 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     else
       call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=3000.0, RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=0.9e-3, RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 11.0,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
@@ -346,7 +346,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! option to vary RKFRE by resolution
            RKFRE(i,j) = SHLWPARAMS%RKFRE
            ! support for varying rkm/mix if needed
-           RKM2D(i,j) = SHLWPARAMS%RKM*SIG + 8.0*(1.0-SIG)   ! RKM -> 8.0
+           RKM2D(i,j) = SHLWPARAMS%RKM*SIG + 6.0*(1.0-SIG)   ! RKM -> 6.0
            MIX2D(i,j) = SHLWPARAMS%MIXSCALE
         enddo
       enddo 
