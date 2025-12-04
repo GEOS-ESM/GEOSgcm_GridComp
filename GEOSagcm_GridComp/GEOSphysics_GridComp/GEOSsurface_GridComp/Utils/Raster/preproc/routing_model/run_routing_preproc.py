@@ -25,12 +25,9 @@ def main():
     file_pfafrout       = file_path + "/Pfafcatch-routing.dat"
     file_lat1m          = file_path + "/lat_1m.txt"
     file_lon1m          = file_path + "/lon_1m.txt"
-    file_lat            = {"M09": file_path + "/lat_M09.txt",
-                           "M36": file_path + "/lat_M36.txt"}
-    file_lon            = {"M09": file_path + "/lon_M09.txt",
-                           "M36": file_path + "/lon_M36.txt"}
-    file_catdef         = {"M09": file_path + "/catchment_M09.def",
-                           "M36": file_path + "/catchment_M36.def"}
+    file_lat            = file_path + "/lat_M09.txt"
+    file_lon            = file_path + "/lon_M09.txt"
+    file_catdef         = file_path + "/catchment_M09.def"
     file_clmtrunf       = file_path + "/SMAPL4_OL7000_runoff_mean_2016_2023.nc"
     file_pfafmap        = file_path + "/SRTM_PfafData.nc"
     file_ldn            = file_path + "/hyd_glo_ldn_15s.nc"
@@ -94,30 +91,23 @@ def main():
         file_lat1m, file_lon1m,
     ])
 
-    exit()
-
-    # Compute number of sub-catchments for M09 and M36 resolutions
-    for res in ("M09", "M36"):
-        run(["./build", f"get_num_sub_catchment_{res}.f90"])
-        run([f"./get_num_sub_catchment_{res}.out", file_pfafmap])
+    # Compute number of sub-catchments for M09 resolutions
+    run(["./build", f"get_num_sub_catchment_M09.f90"])
+    run([f"./get_num_sub_catchment_M09.out", file_pfafmap])
 
     # Build longitude-latitude boundary files for each resolution
-    for res in ("M09", "M36"):
-        run(["./build", f"get_lonlat_bond_{res}.f90"])
-        run([f"./get_lonlat_bond_{res}.out", file_catdef[res]])
+    run(["./build", f"get_lonlat_bond_M09.f90"])
+    run([f"./get_lonlat_bond_M09.out", file_catdef])
 
-    # Map tile longitude/latitude for M09 and M36
-    for res in ("M09", "M36"):    
-        run(["python3", f"get_lonlati_maptile_{res}.py", file_lat[res], file_lon[res]])
-    # Build and run isub calculators for both resolutions
-    for res in ("M09", "M36"):
-        run(["./build", f"get_isub_{res}.f90"])
-        run([f"./get_isub_{res}.out"])
+    # Map tile longitude/latitude for M09
+    run(["python3", f"get_lonlati_maptile_M09.py", file_lat, file_lon])
+    # Build and run isub calculators for M09
+    run(["./build", f"get_isub_M09.f90"])
+    run([f"./get_isub_M09.out"])
 
     # Calculate area of each catchment
-    for res in ("M09", "M36"):
-        run(["./build", f"get_area_{res}.f90"])
-        run([f"./get_area_{res}.out", file_pfafmap])    
+    run(["./build", f"get_area_M09.f90"])
+    run([f"./get_area_M09.out", file_pfafmap])    
 
     # Compute climatological runoff
     run(["./build", "get_Qr_clmt.f90"])
@@ -178,6 +168,7 @@ def main():
     ])
 
     subprocess.run(["rm", "-rf", "temp"], check=True)
+    subprocess.run(["rm", "*.out", "*.mod"], check=True)
 
 if __name__ == "__main__":
     main()
