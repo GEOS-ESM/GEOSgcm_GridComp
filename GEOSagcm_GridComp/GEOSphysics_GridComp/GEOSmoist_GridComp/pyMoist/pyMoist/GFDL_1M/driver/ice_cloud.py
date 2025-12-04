@@ -1601,7 +1601,7 @@ class Locals(State):
     )
 
 
-class IceCloud(NDSLRuntime):
+class GFDL1MIceCloud(NDSLRuntime):
     """
     Ice cloud microphysics processes
     bulk cloud micro - physics; processes splitting

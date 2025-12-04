@@ -10,7 +10,7 @@ from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
-from pyMoist.GFDL_1M.driver.terminal_fall import TerminalFall
+from pyMoist.GFDL_1M.driver.terminal_fall import GFDL1MTerminalFall
 from ndsl.stencils.testing.savepoint import DataLoader
 import numpy as np
 
@@ -71,7 +71,7 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
             outputs[key] = np.full((nx, ny, nz, ntimes), np.nan)
 
         # construct test stencil
-        code = TerminalFall(
+        code = GFDL1MTerminalFall(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,

@@ -10,7 +10,7 @@ from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
-from pyMoist.GFDL_1M.driver.ice_cloud import IceCloud
+from pyMoist.GFDL_1M.driver.ice_cloud import GFDL1MIceCloud
 from ndsl.stencils.testing.savepoint import DataLoader
 import numpy as np
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
@@ -75,7 +75,7 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
             outputs[key] = np.full((nx, ny, nz, ntimes), np.nan)
 
         # construct test stencil
-        code = IceCloud(
+        code = GFDL1MIceCloud(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,

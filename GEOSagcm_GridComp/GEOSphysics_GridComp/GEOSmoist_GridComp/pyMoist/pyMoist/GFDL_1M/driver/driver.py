@@ -9,13 +9,13 @@ from pyMoist.GFDL_1M.driver.check_flags import check_flags
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.fall_speed import fall_speed
 from pyMoist.GFDL_1M.driver.finish import update_tendencies
-from pyMoist.GFDL_1M.driver.ice_cloud import IceCloud
+from pyMoist.GFDL_1M.driver.ice_cloud import GFDL1MIceCloud
 from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.driver.setup import GFDL1MDriverSetup
 from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
-from pyMoist.GFDL_1M.driver.terminal_fall import TerminalFall
-from pyMoist.GFDL_1M.driver.warm_rain import WarmRain
+from pyMoist.GFDL_1M.driver.terminal_fall import GFDL1MTerminalFall
+from pyMoist.GFDL_1M.driver.warm_rain import GFDL1MWarmRain
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
@@ -103,14 +103,14 @@ class GFDL1MDriver(NDSLRuntime):
             },
         )
 
-        self._terminal_fall = TerminalFall(
+        self._terminal_fall = GFDL1MTerminalFall(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
             config=config,
             config_dependent_constants=self.config_dependent_constants,
         )
 
-        self._warm_rain = WarmRain(
+        self._warm_rain = GFDL1MWarmRain(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
             config=config,
@@ -118,7 +118,7 @@ class GFDL1MDriver(NDSLRuntime):
             saturation_tables=self.driver_saturation_tables,
         )
 
-        self._ice_cloud = IceCloud(
+        self._ice_cloud = GFDL1MIceCloud(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
             config=config,

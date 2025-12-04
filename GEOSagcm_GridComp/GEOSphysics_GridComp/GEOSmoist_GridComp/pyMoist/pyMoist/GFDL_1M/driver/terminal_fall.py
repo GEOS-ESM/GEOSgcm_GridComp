@@ -397,7 +397,7 @@ class Locals(State):
     )
 
 
-class TerminalFall(NDSLRuntime):
+class GFDL1MTerminalFall(NDSLRuntime):
     """
     Calculate terminal fall speed, accounting for melting of ice, snow, and graupel during fall
     """

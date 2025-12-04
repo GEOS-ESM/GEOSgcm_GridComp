@@ -610,7 +610,7 @@ class Locals(State):
     )
 
 
-class WarmRain(NDSLRuntime):
+class GFDL1MWarmRain(NDSLRuntime):
     """
     Warm rain cloud microphysics: evaporation, accretion
     """
