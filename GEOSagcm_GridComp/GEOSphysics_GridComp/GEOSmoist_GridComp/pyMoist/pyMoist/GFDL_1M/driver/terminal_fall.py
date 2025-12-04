@@ -410,7 +410,7 @@ class TerminalFall(NDSLRuntime):
         config_dependent_constants: GFDL1MDriverConfigDependentConstants,
     ):
         # initalize NDSLRuntime
-        super().__init__(dace_config=stencil_factory.config.dace_config)
+        super().__init__(stencil_factory)
 
         self.config = config
 

@@ -624,7 +624,7 @@ class WarmRain(NDSLRuntime):
         saturation_tables: GFDL_driver_tables,
     ):
         # initalize NDSLRuntime
-        super().__init__(dace_config=stencil_factory.config.dace_config)
+        super().__init__(stencil_factory)
 
         # make saturation tables and config available at runtime
         self.config = config

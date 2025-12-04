@@ -292,7 +292,7 @@ class GFDL1MDriverSetup(NDSLRuntime):
         temporary copies of these variables are used throughout the driver.
         """
         # init NDSLRuntime
-        super().__init__(dace_config=stencil_factory.config.dace_config)
+        super().__init__(stencil_factory)
 
         # construct stencils
         self._init_temporaries = stencil_factory.from_dims_halo(

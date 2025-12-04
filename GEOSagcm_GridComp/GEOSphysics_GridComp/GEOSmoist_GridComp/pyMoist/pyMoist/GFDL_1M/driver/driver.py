@@ -55,7 +55,7 @@ class GFDL1MDriver(NDSLRuntime):
             GFDL_1M_config: driver configuration
         """
         # init NDSLRuntime
-        super().__init__(dace_config=stencil_factory.config.dace_config)
+        super().__init__(stencil_factory)
 
         self.config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
