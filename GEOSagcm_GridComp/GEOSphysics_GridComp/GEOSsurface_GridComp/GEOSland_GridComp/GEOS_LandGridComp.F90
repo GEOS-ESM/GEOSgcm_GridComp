@@ -31,7 +31,6 @@ module GEOS_LandGridCompMod
   use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
   use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
   use GEOS_IgniGridCompMod,    only : IgniSetServices     => SetServices
-  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
   private
@@ -45,8 +44,8 @@ module GEOS_LandGridCompMod
 
 
   integer                                 :: VEGDYN
-  integer, allocatable                    :: CATCH(:), CATCHCN(:), ROUTE(:)
-  integer                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
+  integer, allocatable                    :: CATCH(:), CATCHCN(:)
+  integer                                 :: LSM_CHOICE, DO_GOSWIM
   integer                                 :: IGNI
   logical                                 :: DO_FIRE_DANGER
 
@@ -68,7 +67,7 @@ contains
 ! !DESCRIPTION:  The SetServices for the Physics GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
 !   state specs and couplings among its children.  In addition, it creates the   
-!   children GCs (VegDyn, Catch, CatchCN, Route) and runs their respective SetServices.
+!   children GCs (VegDyn, Catch, CatchCN) and runs their respective SetServices.
 
 !EOP
 
@@ -154,7 +153,6 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call MAPL_GetResource (SCF, RUN_ROUTE, label='RUN_ROUTE:',           DEFAULT=0, __RC__ )
     call MAPL_GetResource (SCF, DO_GOSWIM, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
     call MAPL_GetResource (SCF, DO_FIRE_DANGER, label='FIRE_DANGER:',    DEFAULT=.false., __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
@@ -195,22 +193,6 @@ contains
        
     END SELECT
 
-    IF(RUN_ROUTE == 1) THEN
-       allocate (ROUTE(NUM_CATCH_ENS), stat=status)
-       VERIFY_(STATUS)
-       if (NUM_CATCH_ENS == 1) then
-          ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
-          VERIFY_(STATUS)
-       else
-          do I = 1, NUM_CATCH_ENS
-             WRITE(TMP,'(I3.3)') I
-             GCName  = 'ens' // trim(TMP) // ':ROUTE'
-             ROUTE(I) = MAPL_AddChild(GC, NAME=GCName, SS=RouteSetServices, RC=STATUS)
-             VERIFY_(STATUS)
-          end do
-       end if
-    ENDIF
-   
     if (DO_FIRE_DANGER) then
         IGNI = MAPL_AddChild(GC, NAME='IGNI'//trim(tmp), SS=IgniSetServices, RC=STATUS)
         VERIFY_(STATUS)
@@ -1379,14 +1361,6 @@ contains
                               CHILD_ID = VEGDYN,&
                               RC=STATUS  )
     VERIFY_(STATUS) 
-!    IF(RUN_ROUTE == 1) THEN
-!       call MAPL_AddExportSpec ( GC, &
-!            SHORT_NAME = 'QOUTFLOW', &
-!            CHILD_ID = ROUTE(1),     &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)       
-!    ENDIF
-
 
     if (DO_FIRE_DANGER) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC',        CHILD_ID = IGNI,  __RC__ )
@@ -1455,17 +1429,6 @@ contains
               VERIFY_(STATUS)
           end if
 
-          IF(RUN_ROUTE == 1) THEN
-             call MAPL_AddConnectivity (                              &
-                  GC                                                 ,&
-                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&   ! RUNOFF = total runoff = surface runoff + baseflow
-                  SRC_ID =  CATCH(I)                                 ,&
-                  DST_ID =  ROUTE(I)                                 ,&
-                  
-                  RC=STATUS )
-             VERIFY_(STATUS)            
-          ENDIF
-
        CASE (2,3)
           call MAPL_AddConnectivity (                                    & 
             GC                                                 ,         &
@@ -1488,16 +1451,6 @@ contains
               VERIFY_(STATUS)
           end if
 
-          IF(RUN_ROUTE == 1) THEN
-             call MAPL_AddConnectivity (                              &
-                  GC                                                 ,&
-                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&   ! RUNOFF = total runoff = surface runoff + baseflow
-                  SRC_ID =  CATCHCN(I)                               ,&
-                  DST_ID =  ROUTE(I)                                 ,&
-                  
-                  RC=STATUS )
-             VERIFY_(STATUS)            
-          ENDIF
        END SELECT
     END DO
     
@@ -1671,7 +1624,6 @@ contains
 !--------------------------------
 
     DO I = 1, size(GCS)
-       if (trim(GCnames(i)) == "ROUTE") cycle
        call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
        call ESMF_GridCompRun(GCS(I), importState=GIM(I), exportState=GEX(I), &
                              CLOCK=CLOCK, PHASE=1, userRC=STATUS)
@@ -1746,11 +1698,9 @@ contains
 !--------------------------------
     DO I=1,size(GCS)
        if (I == VEGDYN) cycle
-       phase = 2
-       if (trim(GCnames(i)) == "ROUTE") phase = 1
        call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
        call ESMF_GridCompRun(GCS(I), importState=GIM(I), exportState=GEX(I), &
-                             CLOCK=CLOCK, PHASE=phase, userRC=STATUS)
+                             CLOCK=CLOCK, PHASE=2, userRC=STATUS)
        VERIFY_(STATUS)
        call MAPL_TimerOff(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
     END DO
