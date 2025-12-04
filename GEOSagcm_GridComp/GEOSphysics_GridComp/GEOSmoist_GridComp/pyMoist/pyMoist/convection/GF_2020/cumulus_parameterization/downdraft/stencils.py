@@ -264,54 +264,55 @@ alpha3 = Float(1.9)
 
 
 def cup_dd_edt(
-    ccn: FloatField,
-    cumulus: IntField,
-    edtmax: FloatField,
-    edtmin: FloatField,
-    kbcon: IntField,
-    ktop: IntField,
-    maxens2: IntField,
-    p: FloatField,
-    psum2: FloatField,
-    psumh: FloatField,
-    pwav: FloatField,
-    pwev: FloatField,
-    us: FloatField,
-    vs: FloatField,
-    z: FloatField,
-    aeroevap: IntField,
-    sdp: FloatFieldIJ,
-    vshear: FloatFieldIJ,
-    vws: FloatFieldIJ,
-    pef: FloatFieldIJ,
-    dp: FloatFieldIJ,
-    edt: FloatField,
-    edtc: FloatField,
+    ccn: FloatFieldIJ,
+    local_epsilon_max: FloatFieldIJ,
+    local_epsilon_min: FloatFieldIJ,
+    updraft_lfc_level: IntFieldIJ_Plume,
+    cloud_top: IntFieldIJ_Plume,
+    p_forced: FloatField,
+    local_psum: FloatFieldIJ,
+    local_psumh: FloatFieldIJ,
+    local_pwavo: FloatFieldIJ,
+    local_pwevo: FloatFieldIJ,
+    u: FloatField,
+    v: FloatField,
+    geopotential_height_forced: FloatField,
+    local_epsilon: FloatFieldIJ,
+    local_edtc: FloatFieldIJ,
     error_code: IntFieldIJ_Plume,
     plume: Int,
 ):
 
     with computation(FORWARD), interval(...):
-        edt = 0.0
-        vshear = 0.0
-        edtc = 0.0
+        local_epsilon = 0.0
+        vshear: FloatFieldIJ = 0.0
+        local_edtc = 0.0
     with computation(FORWARD), interval(...):
-        sdp = 0.0
-        vws = 0.0
-        if cumulus != cumulus_parameterization_constants.shallow:
+        sdp: FloatFieldIJ = 0.0
+        vws: FloatFieldIJ = 0.0
+        if plume != cumulus_parameterization_constants.shallow:
             if error_code[0, 0][plume] == 0:
-                idx = kbcon - 1
-                while idx >= kbcon - 1 and idx <= ktop - 1:
-                    dp = p.at(K=idx) - p.at(K=idx + 1)
+                idx = updraft_lfc_level[0, 0][plume] - 1
+                while (
+                    idx >= updraft_lfc_level[0, 0][plume] - 1
+                    and idx <= cloud_top[0, 0][plume] - 1
+                ):
+                    dp: FloatFieldIJ = p_forced.at(K=idx) - p_forced.at(K=idx + 1)
                     vws = vws + (
                         (
                             abs(
-                                (us.at(K=idx + 1) - us.at(K=idx))
-                                / (z.at(K=idx + 1) - z.at(K=idx))
+                                (u.at(K=idx + 1) - u.at(K=idx))
+                                / (
+                                    geopotential_height_forced.at(K=idx + 1)
+                                    - geopotential_height_forced.at(K=idx)
+                                )
                             )
                             + abs(
-                                (vs.at(K=idx + 1) - vs.at(K=idx))
-                                / (z.at(K=idx + 1) - z.at(K=idx))
+                                (v.at(K=idx + 1) - v.at(K=idx))
+                                / (
+                                    geopotential_height_forced.at(K=idx + 1)
+                                    - geopotential_height_forced.at(K=idx)
+                                )
                             )
                         )
                         * dp
@@ -321,9 +322,9 @@ def cup_dd_edt(
                 vshear = 1.0e3 * vws / sdp
 
     with computation(FORWARD), interval(...):
-        if cumulus != cumulus_parameterization_constants.shallow:
+        if plume != cumulus_parameterization_constants.shallow:
             if error_code[0, 0][plume] == 0:
-                pef = (
+                pef: FloatFieldIJ = (
                     float32(1.591)
                     - float32(0.639) * vshear
                     + float32(0.0953) * (vshear**2)
@@ -331,7 +332,10 @@ def cup_dd_edt(
                 )
                 pef = min(pef, 0.9)
                 pef = max(pef, 0.1)
-                zkbc = z.at(K=kbcon - 1) * 3.281e-3
+                zkbc = (
+                    geopotential_height_forced.at(K=updraft_lfc_level[0, 0][plume] - 1)
+                    * 3.281e-3
+                )
                 prezk = 0.02
 
                 if zkbc > 3.0:
@@ -352,15 +356,15 @@ def cup_dd_edt(
                 pefb = min(pefb, 0.9)
                 pefb = max(pefb, 0.1)
 
-                edt = 1.0 - 0.5 * (pefb + pef)
+                local_epsilon = 1.0 - 0.5 * (pefb + pef)
 
-                if aeroevap > 1:
+                if cumulus_parameterization_constants.AEROEVAP > 1:
                     aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * (
-                        (psumh) ** (alpha3 - 1)
+                        (local_psumh) ** (alpha3 - 1)
                     )
 
                     prop_c = 0.5 * (pefb + pef) / aeroadd
-                    aeroadd = (ccn**beta3) * ((psum2) ** (alpha3 - 1))
+                    aeroadd = (ccn**beta3) * ((local_psum) ** (alpha3 - 1))
 
                     aeroadd = prop_c * aeroadd
                     pefc = aeroadd
@@ -368,39 +372,39 @@ def cup_dd_edt(
                         pefc = 0.9
                     if pefc < 0.1:
                         pefc = 0.1
-                    edt = 1.0 - pefc
-                    if aeroevap == 2:
-                        edt = 1.0 - 0.25 * (pefb + pef + 2.0 * pefc)
+                    local_epsilon = 1.0 - pefc
+                    if cumulus_parameterization_constants.AEROEVAP == 2:
+                        local_epsilon = 1.0 - 0.25 * (pefb + pef + 2.0 * pefc)
 
-                einc = 0.2 * edt
-                if K <= maxens2 - 1:
-                    edtc = edt + float(int32(K) - int32(1)) * einc
+                einc = 0.2 * local_epsilon
+                if K <= cumulus_parameterization_constants.MAXENS2 - 1:
+                    local_edtc = local_epsilon + float(int32(K) - int32(1)) * einc
 
-    with computation(PARALLEL), interval(...):
-        if cumulus != cumulus_parameterization_constants.shallow:
+    with computation(FORWARD), interval(...):
+        if plume != cumulus_parameterization_constants.shallow:
             if error_code[0, 0][plume] == 0:
-                if K <= maxens2 - 1:
-                    edtc = -edtc * pwav / pwev
-                    if edtc > edtmax:
-                        edtc = edtmax
-                    if edtc < edtmin:
-                        edtc = edtmin
-
-                temp = edtc.at(K=0)
-                edtc = temp
+                if K <= cumulus_parameterization_constants.MAXENS2 - 1:
+                    local_edtc = -local_edtc * local_pwavo / local_pwevo
+                    if local_edtc > local_epsilon_max:
+                        local_edtc = local_epsilon_max
+                    if local_edtc < local_epsilon_min:
+                        local_edtc = local_epsilon_min
 
 
 def update_edto(
     error_code: IntFieldIJ_Plume,
     plume: Int,
-    maxens2: Int,
-    sigd: FloatFieldIJ,
-    edto: FloatFieldIJ,
-    # edtc: #FloatFieldIJ_Maxens2??
+    local_scale_dependence_factor_downdraft: FloatFieldIJ,
+    epsilon: FloatFieldIJ_Plume,
+    local_edtc: FloatFieldIJ,
+    local_epsilon: FloatFieldIJ,
 ):
-    with computation(PARALLEL), interval(...):
-        iedt = 1
-        while iedt <= maxens2:
+    with computation(FORWARD), interval(...):
+        iedt = 0
+        while iedt < cumulus_parameterization_constants.MAXENS2:
             if error_code[0, 0][plume] == 0:
-                edto = sigd * edtc[0, 0][iedt]
-                edt = edto
+                epsilon[0, 0][plume] = (
+                    local_scale_dependence_factor_downdraft * local_edtc
+                )
+                local_epsilon = epsilon[0, 0][plume]
+            iedt += 1

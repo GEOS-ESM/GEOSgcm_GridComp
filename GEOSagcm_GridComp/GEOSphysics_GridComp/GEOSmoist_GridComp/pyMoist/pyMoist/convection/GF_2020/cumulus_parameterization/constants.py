@@ -28,6 +28,8 @@ MAXENS3 = Int(16)  # ensemble three done in cup_forcing_ens16 for G3d
 
 USE_LCL = False
 
+AEROEVAP = 1
+
 deep = Int(2)
 shallow = Int(0)
 mid = Int(1)

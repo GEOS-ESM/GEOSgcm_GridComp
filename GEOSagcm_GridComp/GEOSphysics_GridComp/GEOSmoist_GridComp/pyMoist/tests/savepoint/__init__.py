@@ -194,6 +194,12 @@ from .convection.GF_2020.cumulus_parameterization.diurnal_cycle.translate_GF2020
     TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow,
 )
 
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cumulus_Parameterization_DowndraftWindshear import (
+    TranslateGF2020_CumulusParameterization_DowndraftWindshear_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftWindshear_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftWindshear_shallow,
+)
+
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
     TranslateGetMeltingProfile,

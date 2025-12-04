@@ -913,3 +913,48 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    edtc: Quantity = dataclasses.field(
+        metadata={
+            "name": "edtc",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    psum: Quantity = dataclasses.field(
+        metadata={
+            "name": "psum",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    psumh: Quantity = dataclasses.field(
+        metadata={
+            "name": "psumh",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    pwavo: Quantity = dataclasses.field(
+        metadata={
+            "name": "pwavo",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    pwevo: Quantity = dataclasses.field(
+        metadata={
+            "name": "pwevo",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )

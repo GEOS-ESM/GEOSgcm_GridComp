@@ -807,7 +807,10 @@ class CumulusParameterization:
                 self._trigger_function_xie()
 
                 # determine downdraft strength in terms of windshear
-                # NOTE ported, not tested
+                # NOTE test GF2020_CumulusParameterization_DowndraftWindshear_{plume}:
+                # NOTE      deep ❌ (2 ULP)
+                # NOTE      mid ❌ (7 ULP)
+                # NOTE      shallow ✅
                 self._downdraft_windshear(
                     state=state,
                     locals=locals,

@@ -19,6 +19,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft.stencils impo
     cup_dd_edt,
     update_edto,
 )
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as constants
 
 
 class DowndraftNormalizedMassFlux:
@@ -167,40 +168,33 @@ class DowndraftWindshear:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        pass
-        # self._cup_dd_edt(
-        #     ccn=ccn,
-        #     cumulus=cumulus,
-        #     edtmax=edtmax,
-        #     edtmin=edtmin,
-        #     kbcon=kbcon,
-        #     ktop=ktop,
-        #     maxens2=maxens2,
-        #     p=p,
-        #     psum2=psum2,
-        #     psumh=psumh,
-        #     pwav=pwav,
-        #     pwev=pwev,
-        #     us=us,
-        #     vs=vs,
-        #     z=z,
-        #     aeroevap=aeroevap,
-        #     sdp=sdp,
-        #     vshear=vshear,
-        #     vws=vws,
-        #     pef=pef,
-        #     dp=dp,
-        #     edt=edt,
-        #     edtc=edtc,
-        #     error_code=error_code,
-        #     plume=plume,
-        # )
+        # NOTE This code will break if MAXENS2 != 1
 
-        # self._update_edto(
-        #     error_code=,
-        #     plume=,
-        #     maxens2=,
-        #     sigd=,
-        #     edto=,
-        #     edtc=,
-        # )
+        self._cup_dd_edt(
+            ccn=state.input_output.ccn,
+            local_epsilon_max=locals.epsilon_max,
+            local_epsilon_min=locals.epsilon_min,
+            updraft_lfc_level=state.output.updraft_lfc_level,
+            cloud_top=state.output.cloud_top,
+            p_forced=state.input_output.p_forced,
+            local_psum=locals.psum,
+            local_psumh=locals.psumh,
+            local_pwavo=locals.pwavo,
+            local_pwevo=locals.pwevo,
+            u=state.input_output.u,
+            v=state.input_output.v,
+            geopotential_height_forced=state.input_output.geopotential_height_forced,
+            local_epsilon=locals.epsilon,
+            local_edtc=locals.edtc,
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
+
+        self._update_edto(
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            local_scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
+            epsilon=state.output.epsilon,
+            local_edtc=locals.edtc,
+            local_epsilon=locals.epsilon,
+        )
