@@ -251,8 +251,7 @@ class GFDL1MSetup(NDSLRuntime):
         prepare_tendencies,
     ):
         # init NDSLRuntime
-        dace_config = DaceConfig(communicator=None, backend=stencil_factory.backend)
-        super().__init__(dace_config)
+        super().__init__(stencil_factory)
 
         # make configuration and saturation tables visible at runtime
         self.config = config
