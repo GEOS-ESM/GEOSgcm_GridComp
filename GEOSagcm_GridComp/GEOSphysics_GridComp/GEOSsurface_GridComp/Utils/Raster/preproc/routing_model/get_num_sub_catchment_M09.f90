@@ -40,7 +40,7 @@ allocate(loni(nlon), lati(nlat))
 call read_ncfile_double1d(trim(file_path), "longitude", lon, nlon)
 call read_ncfile_double1d(trim(file_path), "latitude", lat, nlat)
 call read_ncfile_int2d(trim(file_path), "CatchIndex", catchind, nlon, nlat)
-call read_ncfile_real2d("temp/cellarea.nc", "data", cellarea, nlon, nlat)
+call read_ncfile_real2d("output/cellarea.nc", "data", cellarea, nlon, nlat)
 cellarea = cellarea / 1.e6   ! Convert cell area units (from m^2 to km^2)
 
 ! Read mapped grid indices for 1-minute resolution from text files:
@@ -89,10 +89,10 @@ do xi = 1, nlon
 end do
 
 ! Open output files to write the aggregated sub-catchment information:
-open(50, file="output/Pfaf_nsub_M09.txt")
-open(51, file="output/Pfaf_xsub_M09.txt")
-open(52, file="output/Pfaf_ysub_M09.txt")
-open(53, file="output/Pfaf_asub_M09.txt")
+open(50, file="temp/Pfaf_nsub_M09.txt")
+open(51, file="temp/Pfaf_xsub_M09.txt")
+open(52, file="temp/Pfaf_ysub_M09.txt")
+open(53, file="temp/Pfaf_asub_M09.txt")
 
 ! For each catchment, write:
 !   - Number of sub-areas

@@ -11,7 +11,7 @@ lati36_output_file = "temp/lati_1m_M36.txt"
 loni36_output_file = "temp/loni_1m_M36.txt"
 lati09_output_file = "temp/lati_1m_M09.txt"
 loni09_output_file = "temp/loni_1m_M09.txt"
-cellarea_output_file = "temp/cellarea.nc"
+cellarea_output_file = "output/cellarea.nc"
 
 # Grid dimensions
 nlat36, nlon36 = 406, 964

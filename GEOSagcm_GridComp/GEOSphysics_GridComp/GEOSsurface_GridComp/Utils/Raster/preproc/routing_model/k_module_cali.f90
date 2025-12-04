@@ -357,14 +357,14 @@ contains
     close(88)
 
     ! Read climate runoff data from file "output/Pfaf_qri.txt"
-    open(77, file="output/Pfaf_qri.txt")
+    open(77, file="temp/Pfaf_qri.txt")
     read(77, *) Qclmt_all
     where(Qclmt_all < 1.e-8) Qclmt_all = 1.e-8
     ! Read slope data from file "temp/Pfaf_slope.txt"
     open(77, file="temp/Pfaf_slope.txt")
     read(77, *) slp_all           
     ! Read clmt discharge data from file "output/Pfaf_qstr.txt"
-    open(77, file="output/Pfaf_qstr.txt")
+    open(77, file="temp/Pfaf_qstr.txt")
     read(77, *) Qstr_all    
     where(Qstr_all < 1.e-8) Qstr_all = 1.e-8
 
@@ -386,7 +386,7 @@ contains
     Kstr_all = fac_str * (Qstr_all**(exp_clmt)) * (slp_all**(exp_slp))
 
     ! Write stream K values to an output file
-    open(88, file="output/Pfaf_Kstr_PR_fac1_0p35_0p45_0p2_n0p2.txt")
+    open(88, file="temp/Pfaf_Kstr_PR_fac1_0p35_0p45_0p2_n0p2.txt")
     do i = 1, nc
       write(88, *) Kstr_all(i)
     end do    
@@ -774,7 +774,7 @@ contains
     end do    
 
     ! Write scaled K values for each catchment to an output file
-    open(88, file="output/Pfaf_Kv_PR_0p35_0p45_0p2_n0p2.txt")
+    open(88, file="temp/Pfaf_Kv_PR_0p35_0p45_0p2_n0p2.txt")
     do i = 1, nc
       write(88, *) Kv(i)
     end do

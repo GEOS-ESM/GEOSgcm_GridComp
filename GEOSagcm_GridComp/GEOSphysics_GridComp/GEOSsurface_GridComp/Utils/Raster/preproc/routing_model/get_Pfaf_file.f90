@@ -136,13 +136,13 @@ program main
 
   !---------------------------------------------------------------------------
   ! Write the downstream catchment IDs to an output file:
-  open(88, file="output/downstream_1D_new_noadj.txt")
+  open(88, file="temp/downstream_1D_new_noadj.txt")
   do i = 1, nc
      write(88, *) downid(i)
   end do
 
   ! Write catchment areas to an output file:
-  open(88, file="output/Pfaf_area.txt")
+  open(88, file="temp/Pfaf_area.txt")
   do i = 1, nc
      write(88, *) pfaf_area(i)
   end do
@@ -159,11 +159,11 @@ program main
       upstream(nup(did), did) = i
     end if
   end do
-  open(88, file="output/upstream_1D.txt")
+  open(88, file="temp/upstream_1D.txt")
   do i = 1, nc
     write(88, '(34(I8))') upstream(:, i)
   end do
-  open(88, file="output/Pfaf_upnum.txt")
+  open(88, file="temp/Pfaf_upnum.txt")
   do i = 1, nc
     write(88, *) nup(i)
   end do
@@ -181,7 +181,7 @@ program main
     end do
     nts(i) = k
   end do
-  open(88, file="output/Pfaf_tosink.txt")
+  open(88, file="temp/Pfaf_tosink.txt")
   do i = 1, nc
     write(88, *) nts(i)
   end do

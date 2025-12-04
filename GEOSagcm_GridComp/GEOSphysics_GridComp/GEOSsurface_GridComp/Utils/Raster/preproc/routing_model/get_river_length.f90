@@ -131,7 +131,7 @@ where(dist_ref > dist_ref2 .or. dist_ref == 0.) dist_ref = 0.5 * dist_ref2
 ! Get initial guess of river length (riv_len) based on LDN differences and elevation differences
 
 allocate(riv_len(nc), downid(nc), flag_slp(nc))
-open(77, file="output/downstream_1D_new_noadj.txt")
+open(77, file="temp/downstream_1D_new_noadj.txt")
 read(77, *) downid
 
 flag_slp = 1
@@ -184,7 +184,7 @@ do i = 1, nc
     k = k + 1
   endif
 end do
-open(88, file="output/Pfaf_lriv_PR.txt")
+open(88, file="temp/Pfaf_lriv_PR.txt")
 do i = 1, nc
   write(88, *) riv_len(i)
 end do
@@ -193,7 +193,7 @@ end do
 ! Calculate the length scale of local streams based on catchment area and river length.
 allocate(str_len(nc))
 str_len = area / riv_len / 4. * cur_avg
-open(88, file="output/Pfaf_lstr_PR.txt")
+open(88, file="temp/Pfaf_lstr_PR.txt")
 do i = 1, nc
   write(88, *) str_len(i)
 end do
