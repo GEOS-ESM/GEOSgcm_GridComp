@@ -168,7 +168,7 @@ def main():
     ])
 
     subprocess.run(["rm", "-rf", "temp"], check=True)
-    subprocess.run(["rm", "*.out", "*.mod"], check=True)
+    subprocess.run("rm -f *.out *.mod", shell=True, check=True)
 
 if __name__ == "__main__":
     main()
