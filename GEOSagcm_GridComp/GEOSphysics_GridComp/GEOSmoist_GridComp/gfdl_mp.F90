@@ -285,6 +285,9 @@ module gfdl_mp_mod
 
     logical :: do_sedi_uv = .true. ! transport of horizontal momentum in sedimentation
     logical :: do_sedi_w = .false. ! transport of vertical momentum in sedimentation
+
+    ! WMP: 01-Dec-2025
+    ! these two options make Tropical Cyclones too intense (even unphysical, may be a conversion bug for DTDT)
     logical :: do_sedi_heat = .false. ! transport of heat in sedimentation
     logical :: do_sedi_melt = .false. ! melt cloud ice, snow, and graupel during sedimentation
 
