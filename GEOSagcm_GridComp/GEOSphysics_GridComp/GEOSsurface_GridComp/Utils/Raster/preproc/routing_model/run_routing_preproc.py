@@ -90,10 +90,11 @@ def main():
     # Generate latitude/longitude indices and cell areas
     run([
         "python3", "get_latloni_cellarea.py",
-        file_lat["M36"], file_lon["M36"],
         file_lat["M09"], file_lon["M09"],        
         file_lat1m, file_lon1m,
     ])
+
+    exit()
 
     # Compute number of sub-catchments for M09 and M36 resolutions
     for res in ("M09", "M36"):
