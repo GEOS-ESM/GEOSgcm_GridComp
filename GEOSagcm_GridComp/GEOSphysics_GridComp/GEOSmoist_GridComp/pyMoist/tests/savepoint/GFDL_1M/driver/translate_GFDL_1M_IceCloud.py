@@ -83,7 +83,7 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
             saturation_tables=saturation_tables,
         )
 
-        for n in range(1):  # range(ntimes):
+        for n in range(ntimes):
             driver_locals.t.field[:] = inputs["driver_local_t_icecloud"][:, :, :, n]
             driver_locals.p_dry.field[:] = inputs["driver_local_p_dry_icecloud"][:, :, :, n]
             driver_locals.dp.field[:] = inputs["driver_local_dp_icecloud"][:, :, :, n]

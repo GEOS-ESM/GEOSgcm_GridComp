@@ -78,7 +78,7 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
             config_dependent_constants=config_dependent_constants,
         )
 
-        for n in range(1):  # range(ntimes):
+        for n in range(ntimes):
             driver_locals.t.field[:] = inputs["driver_local_t_terminalfall"][:, :, :, n]
             driver_locals.dry_air_mixing_ratio.vapor.field[:] = inputs[
                 "driver_local_dry_mixing_ratio_vapor_terminalfall"
