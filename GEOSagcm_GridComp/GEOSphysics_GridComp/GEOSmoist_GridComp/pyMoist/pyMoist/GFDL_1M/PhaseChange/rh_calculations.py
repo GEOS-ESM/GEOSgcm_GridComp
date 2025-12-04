@@ -1,5 +1,5 @@
 import pyMoist.constants as constants
-from ndsl.dsl.gt4py import PARALLEL, atan, computation, interval, sqrt, tan
+from ndsl.dsl.gt4py import PARALLEL, atan, computation, interval, sqrt, tan, FORWARD
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
@@ -8,16 +8,18 @@ def rh_calculations(
     p_mb: FloatField,
     p_interface_mb: FloatField,
     area: FloatFieldIJ,
-    alpha: FloatField,
     lcl_level: IntFieldIJ,
+    alpha: FloatField,
 ):
     from __externals__ import DW_LAND, DW_OCEAN, TURNRHCRIT_PARAM, k_end
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(0, 1):
         # Send the condensates through the pdf after convection
-        fac_eis = max(0.0, min(1.0, estimated_inversion_strength / 10.0)) ** 2
+        fac_eis: FloatFieldIJ = max(0.0, min(1.0, estimated_inversion_strength / 10.0)) ** 2
         # determine combined min_rh_crit in stable/unstable regimes
-        min_rh_crit = (1.0 - DW_OCEAN) * (1.0 - fac_eis) + (1.0 - DW_LAND) * fac_eis
+        min_rh_crit: FloatFieldIJ = (1.0 - DW_OCEAN) * (1.0 - fac_eis) + (1.0 - DW_LAND) * fac_eis
+
+    with computation(PARALLEL), interval(...):
         # determine the turn pressure using the LCL
         if TURNRHCRIT_PARAM <= 0:
             turnrhcrit = p_mb.at(K=lcl_level - 1) - 250
@@ -25,7 +27,7 @@ def rh_calculations(
             turnrhcrit = TURNRHCRIT_PARAM
 
     with computation(PARALLEL), interval(0, -1):
-        # Use Slingo-Ritter (1985) formulation for critical rel ative humidity
+        # Use Slingo-Ritter (1985) formulation for critical relative humidity
         rh_crit = 1.0
         # lower turn from maxrhcrit=1.0
         if p_mb <= turnrhcrit:
@@ -34,7 +36,7 @@ def rh_calculations(
             rh_crit = min_rh_crit + (1.0 - min_rh_crit) / (19.0) * (
                 (
                     atan(
-                        (2.0 * (p_mb - turnrhcrit) / (p_interface_mb.at(K=k_end) - turnrhcrit) - 1.0)
+                        (2.0 * (p_mb - turnrhcrit) / (p_interface_mb.at(K=k_end + 1) - turnrhcrit) - 1.0)
                         * tan(20.0 * constants.MAPL_PI / 21.0 - 0.5 * constants.MAPL_PI)
                     )
                     + 0.5 * constants.MAPL_PI
@@ -49,8 +51,12 @@ def rh_calculations(
             rh_crit = min_rh_crit
         else:
             rh_crit = 1.0
+
     with computation(PARALLEL), interval(...):
         # include grid cell area scaling and limit RHcrit to > 70%\
+        # NOTE there is a fundamental mathematical difference between the python and fortran here
+        # the double square root is resolved differently, producing errors on the order of 1e-7
+        # despite all inputs (area & rh_crit) being identical (0 ULP difference)
         alpha = max(0.0, min(0.30, (1.0 - rh_crit) * sqrt(sqrt(area / 1.0e10))))
 
 
