@@ -174,6 +174,7 @@ def hydrostatic_pdf(
     convective_cloud_fraction: FloatField,
     ice_concentration: FloatField,
     relative_humidity: FloatField,
+    pdf_iters: FloatField,
     ese: GlobalTable_saturation_tables,
     esw: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,

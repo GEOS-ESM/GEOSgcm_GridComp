@@ -45,13 +45,16 @@ class PhaseChange(NDSLRuntime):
         config: GFDL1MConfig,
         saturation_tables: SaturationVaporPressureTable,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+
         # NOTE disabled because state has changed
         # orchestrate(
         #     obj=self,
         #     config=stencil_factory.config.dace_config,
         #     dace_compiletime_args=["diagnostics"],
         # )
-        if config.USE_BERGERON is not True:
+        if not config.USE_BERGERON:
             raise NotImplementedError(
                 "Untested option for use_bergeron. Code may be missing or incomplete. "
                 "Disable this error manually to continue."
@@ -153,6 +156,7 @@ class PhaseChange(NDSLRuntime):
         estimated_inversion_strength: Quantity,
         area: Quantity,
         critical_relative_humidity_for_pdf: Quantity,
+        pdf_iters: Quantity,
         cloud_liquid_evaporation: Quantity,
         cloud_ice_sublimation: Quantity,
         convection_fraction: Quantity,
@@ -172,8 +176,8 @@ class PhaseChange(NDSLRuntime):
             p_mb=local_p_mb,
             p_interface_mb=local_p_interface_mb,
             area=area,
-            alpha=self.locals.alpha,
             lcl_level=local_lcl_level,
+            alpha=self.locals.alpha,
         )
 
         if critical_relative_humidity_for_pdf is not None:
@@ -194,6 +198,7 @@ class PhaseChange(NDSLRuntime):
             convective_cloud_fraction=cloud_fraction_convective,
             ice_concentration=concentration_ice,
             relative_humidity=relative_humidity_after_pdf,
+            pdf_iters=pdf_iters,
             ese=self._ese,
             esw=self._esw,
             esx=self._esx,
