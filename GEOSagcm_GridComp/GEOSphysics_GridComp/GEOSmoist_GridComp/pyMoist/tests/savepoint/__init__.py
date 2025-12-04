@@ -1,6 +1,6 @@
 from .GFDL_1M.translate_GFDL_1M_Setup import TranslateGFDL_1M_Setup
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_bergeron_partition import TranslateGFDL_1M_bergeron_partition
 from .GFDL_1M.PhaseChange.translate_GFDL_1M_PhaseChange import TranslateGFDL_1M_PhaseChange
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_RHCalculations import TranslateGFDL_1M_RHCalculations
 from .GFDL_1M.PhaseChange.translate_GFDL_1M_HydrostaticPDF import TranslateGFDL_1M_HydrostaticPDF
 from .GFDL_1M.PhaseChange.translate_GFDL_1M_MeltFreeze import TranslateGFDL_1M_MeltFreeze
 from .GFDL_1M.PhaseChange.translate_GFDL_1M_Evaporate import TranslateGFDL_1M_Evaporate
@@ -24,8 +24,8 @@ from .translate_compute_uwshcu import TranslateComputeUwshcuInv
 
 __all__ = [
     "TranslateGFDL_1M_Setup",
-    "TranslateGFDL_1M_bergeron_partition",
     "TranslateGFDL_1M_PhaseChange",
+    "TranslateGFDL_1M_RHCalculations",
     "TranslateGFDL_1M_HydrostaticPDF",
     "TranslateGFDL_1M_MeltFreeze",
     "TranslateGFDL_1M_Evaporate",

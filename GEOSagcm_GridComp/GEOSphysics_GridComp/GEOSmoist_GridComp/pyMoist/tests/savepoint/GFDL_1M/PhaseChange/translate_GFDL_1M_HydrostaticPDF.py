@@ -108,6 +108,7 @@ class TranslateGFDL_1M_HydrostaticPDF(TranslateFortranData2Py):
             convective_cloud_fraction=state.cloud_fraction.convective,
             ice_concentration=state.concentration.ice,
             relative_humidity=state.relative_humidity_after_pdf,
+            pdf_iters=state.hydrostatic_pdf_iterations,
             ese=saturation_tables.ese,
             esw=saturation_tables.esw,
             esx=saturation_tables.esx,
