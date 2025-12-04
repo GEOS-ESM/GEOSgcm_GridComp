@@ -904,3 +904,12 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    T_star: Quantity = dataclasses.field(
+        metadata={
+            "name": "T_star",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )

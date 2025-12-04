@@ -188,6 +188,12 @@ from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_Cumu
     TranslateGF2020_CumulusParameterization_InCloudTemperature_shallow,
 )
 
+from .convection.GF_2020.cumulus_parameterization.diurnal_cycle.translate_GF2020_Cumulus_Parameterization_DiurnalCycle import (
+    TranslateGF2020_CumulusParameterization_DiurnalCycle_deep,
+    TranslateGF2020_CumulusParameterization_DiurnalCycle_mid,
+    TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow,
+)
+
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
     TranslateGetMeltingProfile,

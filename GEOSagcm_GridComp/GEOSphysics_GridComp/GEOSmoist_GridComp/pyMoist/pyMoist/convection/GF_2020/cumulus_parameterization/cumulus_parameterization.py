@@ -790,7 +790,10 @@ class CumulusParameterization:
                 )
 
                 # diurnal cycle section
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_DiurnalCycle_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._diurnal_cycle(
                     state=state,
                     locals=locals,

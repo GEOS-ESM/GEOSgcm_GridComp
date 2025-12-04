@@ -11,11 +11,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 
 
 def diurnal_cycle(
-    cumulus: Int,
+    plume: Int,
     T_star: FloatFieldIJ,
 ):
-    with computation(PARALLEL), interval(...):
-        if cumulus == cumulus_parameterization_constants.deep:
+    with computation(FORWARD), interval(...):
+        if plume == cumulus_parameterization_constants.deep:
             T_star = 5.0
         else:
             T_star = 40.0

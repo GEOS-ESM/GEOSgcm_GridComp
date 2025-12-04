@@ -42,8 +42,8 @@ class DiurnalCycle:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        pass
-        # self._diurnal_cycle(
-        #     cumulus=,
-        #     T_star=,
-        # )
+
+        self._diurnal_cycle(
+            plume=plume_dependent_constants.PLUME_INDEX,
+            T_star=locals.T_star,
+        )
