@@ -87,7 +87,7 @@ def main():
     # Generate latitude/longitude indices and cell areas
     run([
         "python3", "get_latloni_cellarea.py",
-        file_lat["M09"], file_lon["M09"],        
+        file_lat, file_lon,        
         file_lat1m, file_lon1m,
     ])
 
