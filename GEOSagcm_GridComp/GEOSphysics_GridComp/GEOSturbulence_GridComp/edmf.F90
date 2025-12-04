@@ -23,6 +23,7 @@ real, parameter ::     &
      r        = 2.
 
  type EDMFPARAMS_TYPE
+    logical :: DOTRACERS
     integer :: DISCRETE
     integer :: IMPLICIT
     integer :: ENTRAIN
@@ -96,6 +97,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     ssrc3,                         &
                     qvsrc3,                        &
                     qlsrc3,                        &
+                    qisrc3,                        &
                     ! Outputs required for SHOC and ADG PDF
                     mfw2,                          &
                     mfw3,                          &
@@ -171,8 +173,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                                                              mfwqt,    &
                                                              mftke
 
-   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,&!mfqt2,mfhl2,&
-                                                        mfhlqt,dqrdt,dqsdt,ssrc3,qvsrc3,qlsrc3
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,&
+                                                        mfhlqt,dqrdt,dqsdt,ssrc3,qvsrc3,qlsrc3,qisrc3
 
 
   ! Diagnostic outputs
@@ -227,11 +229,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
    LOGICAL :: calc_avg_diag
 
-! velocity equation parameters
-!   REAL,PARAMETER :: Wa=1., &    ! buoyancy term
-!                     Wb=1.5      ! entrainment term
-!                    Wa=1., &    ! original
-!                    Wb=1.5
 
 ! min values to avoid singularities
    REAL,PARAMETER :: &
@@ -283,6 +280,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    ssrc3 =0.
    qvsrc3=0.
    qlsrc3=0.
+   qisrc3=0.
    buoyf =0.
    mfw2  =0.
    mfw3  =0.
@@ -309,7 +307,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
       wthl=wthl2(IH,JH)/mapl_cp
       wqt=wqt2(IH,JH)
-      !ust=ust2(IH,JH)
       pblh=pblh2(IH,JH)
 
       pblh=max(pblh,pblhmin)
@@ -318,11 +315,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ! if CLASP enabled: mass flux is input
       ! if CLASP disabled: mass-flux if positive surface buoyancy flux and
       !                    TKE at 2nd model level above threshold
-!      IF ( (wthv > 0.0 .and. TKE3(IH,JH,kte-1)>0.01 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.2e4)      &
       IF ( (wthv > 0.0 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.3e4)      &
       .or. (any(mfsrcthl(IH,JH,1:MFPARAMS%NUP) >= -2.0) .and. MFPARAMS%doclasp/=0)) then
-
-!     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl,' edmfdepth=',edmfdepth(IH,JH)
 
       if (MFPARAMS%doclasp/=0) then
        nup2 = count(mfsrcthl(IH,JH,1:MFPARAMS%NUP)>=-2.0)
@@ -442,9 +436,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           call Poisson(1,Nup2,kts,kte,ENTf,ENTi,the_seed)
           do i=1,Nup2
             do k=kts,kte
-            ENT(k,i) = (1.-MFPARAMS%STOCHFRAC) * MFPARAMS%Ent0/L0 &
-                    + MFPARAMS%STOCHFRAC * real(ENTi(k,i))*MFPARAMS%Ent0/(ZW(k)-ZW(k-1))
-               ! Increase ent above 2000m to limit deepest plumes
+               ENT(k,i) = (1.-MFPARAMS%STOCHFRAC) * MFPARAMS%Ent0/L0 &
+                        + MFPARAMS%STOCHFRAC * real(ENTi(k,i))*MFPARAMS%Ent0/(ZW(k)-ZW(k-1))
+               ! Increase ent above 2500m to limit deepest plumes
                if (ZW(k).gt.2500.) ENT(k,i) = ENT(k,i)*(1.+(ZW(k)-2500.)/500.)
             enddo
           enddo
@@ -454,12 +448,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
             do k=kts,kte
               ENT(k,i) = ((FLOAT(Nup2-i)*0.5/FLOAT(Nup2))+0.75)*( (1.-MFPARAMS%STOCHFRAC) * MFPARAMS%Ent0/L0 &
                       + MFPARAMS%STOCHFRAC * real(ENTi(k,i))*MFPARAMS%Ent0/(ZW(k)-ZW(k-1)) ) !&
-            enddo
-          enddo
-        else if (MFPARAMS%ENTRAIN==2) then
-          do i=1,Nup2   ! alternate approach from Soares et al 2004
-            do k=kts,kte
-              ENT(k,i) = MFPARAMS%Ent0*(1./(ZW(k)+ZW(k)-ZW(k-1))+1./(max(0.,L0-ZW(k))+ZW(k)-ZW(k-1)))
             enddo
           enddo
         end if
@@ -503,7 +491,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         else
           UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)
           if (MFPARAMS%UPABUOYDEP/=0) then
-!            UPA(kts-1,I)=MIN(1.0,0.5+wthv/0.2)*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
             UPA(kts-1,I)=(0.5+0.5*TANH((wthv-0.02)/0.09))*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
           else
             UPA(kts-1,I)=(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
@@ -517,7 +504,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           UPQT(kts-1,I)=QT(kts)+MFSRCQT(IH,JH,I)
           UPTHV(kts-1,I)=THV(kts)+MFSRCTHL(IH,JH,I)
         else
-!          UPQT(kts-1,I)=QT(kts)-(-1.**I)*0.32*UPW(kts-1,I)*sigmaQT/sigmaW
           UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
           UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
         end if
@@ -548,13 +534,13 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         THVsrfF = THVsrfF+UPW(kts-1,I)*UPA(kts-1,I)*(UPTHV(kts-1,I)-THV(kts))
       ENDDO
 
-      ! Adjust updraft THV so updraft flux is 90% of surface flux
+      ! Adjust updraft THV so updraft flux is <90% of surface flux
       if (THVsrfF .gt. 0.9*wthv .and. THVsrfF .gt. 0.1) then
         UPTHV(kts-1,:)=(UPTHV(kts-1,:)-THV(kts))*0.9*wthv/THVsrfF+THV(kts)
       !  print *,'adjusting surface THV perturbation by a factor',0.9*wthv/THVsrfF
       endif
 
-      ! Adjust updraft QT so updraft flux is 90% of surface flux
+      ! Adjust updraft QT so updraft flux is <90% of surface flux
       IF ( (QTsrfF .gt. 0.9*wqt) .and. (wqt .gt. 0.) )  then
         UPQT(kts-1,:)=(UPQT(kts-1,:)-QT(kts))*0.9*wqt/QTsrfF+QT(kts)
       !  print *,'adjusting surface QT perturbation by a factor',0.9*wqt/QTsrfF
@@ -579,9 +565,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
             if (MFPARAMS%ENTRAIN==3) then  ! dynamic entrainment rates
               ENT(K,I) = MFPARAMS%ENT0*max(1e-4,B)/max(0.1,UPW(K,I)**2)
             elseif (MFPARAMS%ENTRAIN==4) then
-            !   ENT(K,I) = (1.-MFPARAMS%STOCHFRAC)*MFPARAMS%Ent0/L0 &
-            !              + MFPARAMS%STOCHFRAC*MFPARAMS%ENT0*0.0032/max(0.1,UPW(K-1,I))
-            !   ENT(K,I) = 1e-3*(MFPARAMS%Ent0/(max(min(UPW(K-1,I),2.0),0.5))-0.5)
                ENT(K,I) = ENT(K,I)*(1.+3.0*sqrt(TKE3(IH,JH,I))/max(0.1,UPW(K-1,I)))
             end if
 
@@ -631,10 +614,17 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
                ! trisolver source terms due to condensation. assumes that condensation is responsible
                ! for any increase in condesate flux with height. ignores lateral mixing.
-               tmp = max(0.,UPA(K,I)*(RHOE(K)*UPW(K,I)*UPQL(K,I)-RHOE(K-1)*UPW(K-1,I)*UPQL(K-1,I)))
+               tmp = max(0.,UPA(K,I)*(RHOE(K)*UPW(K,I)*UPQL(K,I)-RHOE(K-1)*UPW(K-1,I)*UPQL(K-1,I))) ! qlflx divergence
                qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) + tmp
                qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - tmp
                ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp*MAPL_ALHL
+               tmp2 = max(0.,UPA(K,I)*(RHOE(K)*UPW(K,I)*UPQI(K,I)-RHOE(K-1)*UPW(K-1,I)*UPQI(K-1,I))) ! qiflx divergence
+               qisrc3(IH,JH,KTE+KTS-K) = qisrc3(IH,JH,KTE+KTS-K) + tmp2
+               tmp = max(0.,UPA(K,I)*(RHOE(K-1)*UPW(K-1,I)*UPQL(K-1,I)-RHOE(K)*UPW(K,I)*UPQL(K,I))) ! qlflx convergence
+               ! if ql convergence, assume ice came from ql, with remainder from qv
+               qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) - min(tmp,tmp2)
+               qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - (tmp2-min(tmp,tmp2))
+               ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp2*MAPL_ALHS
             ELSE
               UPW(K,I) = 0.
               UPA(K,I) = 0.
@@ -642,26 +632,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
             END IF
           end if ! check if updraft still rising
         ENDDO   ! I: loop over updrafts
-
-        ! Near-surface CFL: To prevent instability, rescale updraft velocities
-        ! if mass flux exceeds MFLIMFAC times the layer mass
-!        if (ZW(k)<300.) then
-!          mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
-!          factor = (2.+(MFPARAMS%MFLIMFAC-2.)*(ZW(k)/300.))*dp(K)/(1e-8+mf*MAPL_GRAV*dt)
-!          if (factor .lt. 1.0) then
-!             UPW(k,:) = UPW(k,:)*factor
-!        !                  print *,'rescaling UPW by factor: ',factor
-!          end if
-!        end if
-
-!        if (ZW(k)<100.) then
-!          mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
-!          factor = (1.5+(MFPARAMS%MFLIMFAC-1.5)*(ZW(k)/100.))*dp(K)/(1e-8+mf*MAPL_GRAV*dt)
-!          if (factor .lt. 1.0) then
-!             UPW(k,:) = UPW(k,:)*factor
-!        !                  print *,'rescaling UPW by factor: ',factor
-!          end if
-!        end if
 
       ! loop over vertical
       ENDDO vertint
@@ -693,6 +663,10 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       UPA = factor*UPA
       QR  = factor*QR
       QS  = factor*QS
+      ssrc3 = factor*ssrc3
+      qvsrc3 = factor*qvsrc3
+      qlsrc3 = factor*qlsrc3
+      qisrc3 = factor*qisrc3
 
   ! Rescale UPA if MF TKE more than half of prognostic TKE near surface
   ! Prevents instability due to MF without KH
@@ -702,13 +676,17 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       DO WHILE (ZW(K).lt.100. .and. K.lt.KTE)
          tmp = tmp + 0.5*SUM(UPA(K,:)*UPW(K,:)*UPW(K,:))
          tmp2 = tmp2 + TKE3(IH,JH,KTE-K+KTS)
-!         UPW(K,:) = UPW(K,:)*exp(-(100.-ZW(K))**2/1e4)
          K = K+1
       END DO
       if (tmp.gt.0.5*tmp2) then
-        UPA = UPA*(0.5*tmp2/tmp)
-        QR  = QR*(0.5*tmp2/tmp)
-        QS  = QS*(0.5*tmp2/tmp)
+        factor = 0.5*tmp2/tmp
+        UPA    = factor*UPA
+        QR     = factor*QR
+        QS     = factor*QS
+        ssrc3  = factor*ssrc3
+        qvsrc3 = factor*qvsrc3
+        qlsrc3 = factor*qlsrc3
+        qisrc3 = factor*qisrc3
       end if
 
       DO k=KTS,KTE
@@ -717,25 +695,11 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       DQRDT(IH,JH,KTS:KTE) = QR(KTE:KTS:-1)/DT
       DQSDT(IH,JH,KTS:KTE) = QS(KTE:KTS:-1)/DT
 
-      !
-      ! do tracer transport with 'bulk' plume
-      !
-
-!      DO n=1,NTR
-        ! Find tracer flux profile
-!        DO k=KTS-1,KTE
-!          trflx(
-!        END DO
-
-        ! Add tracer tendency directly to bundle
-        
-!      END DO
 
       !
       ! writing updraft properties for output
       ! all variables, except Areas are now multipled by the area
       !
-
       dry_a     = 0.
       moist_a   = 0.
 
@@ -933,8 +897,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
           mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
         end if
-  !      mfhl2(IH,JH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))  ! no longer needed
-  !      mfqt2(IH,JH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))  ! no longer needed
       ENDDO
 
 
@@ -1034,7 +996,7 @@ integer :: niter,i
 real :: diff,exn,t,qs,qcold
 
 ! max number of iterations
-niter=50
+niter=20
 ! minimum difference
 diff=2.e-5
 
@@ -1078,7 +1040,7 @@ integer :: niter,i
 real :: diff,exn,t,qs,qcold,wf,qc
 
 ! max number of iterations
-niter=50
+niter=20
 ! minimum difference
 diff=2.e-5
 

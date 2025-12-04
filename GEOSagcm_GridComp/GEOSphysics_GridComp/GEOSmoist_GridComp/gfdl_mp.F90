@@ -169,10 +169,11 @@ module gfdl_mp_mod
     ! predefined parameters
     ! -----------------------------------------------------------------------
 
-    real, parameter :: qpmin = 1.e-8  !< min value for suspended rain/snow/liquid/ice precip
-    real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
-    real, parameter :: qcmin = 1.0e-12 ! min value for cloud condensates (kg/kg)
-    real, parameter :: qfmin = 1.0e-8 ! min value for sedimentation (kg/kg)
+    real, parameter :: qpmin = 1.e-15 ! min value for suspended rain/snow/liquid/ice precip
+    real, parameter :: qvmin = 1.e-15 ! min value for water vapor (treated as zero)
+    real, parameter :: qcmin = 1.e-15 ! min value for cloud condensates (kg/kg)
+    real, parameter :: cfmin = 1.e-5  ! min value for cloud fraction (unitless)
+    real, parameter :: qfmin = 1.e-15 ! min value for sedimentation (kg/kg)
 
     real, parameter :: dz_min = 1.0e-2 ! used for correcting flipped height (m)
 
@@ -226,7 +227,7 @@ module gfdl_mp_mod
     ! 3: WSM6 with 0 at 0 C and fixed value at - 10 C
     ! 4: combination of 1 and 3
 
-    integer :: ifflag = 3 ! ice fall scheme
+    integer :: ifflag = 1 ! ice fall scheme
     ! 1: Deng and Mace (2008)
     ! 2: Heymsfield and Donner (1990)
     ! 3: Combination of Deng and Mace (2008) and Mishra et al (2014, JGR)
@@ -280,10 +281,12 @@ module gfdl_mp_mod
     ! 2: Mizuno (1990)
     ! 3: Murakami (1990)
 
+    logical :: do_scale_dep = .true. ! impose scale dependence using sigma function
+
     logical :: do_sedi_uv = .true. ! transport of horizontal momentum in sedimentation
     logical :: do_sedi_w = .false. ! transport of vertical momentum in sedimentation
-    logical :: do_sedi_heat = .true. ! transport of heat in sedimentation
-    logical :: do_sedi_melt = .true. ! melt cloud ice, snow, and graupel during sedimentation
+    logical :: do_sedi_heat = .false. ! transport of heat in sedimentation
+    logical :: do_sedi_melt = .false. ! melt cloud ice, snow, and graupel during sedimentation
 
     logical :: do_qa = .false. ! do inline cloud fraction
     logical :: rad_snow = .true. ! include snow in cloud fraciton calculation
@@ -346,7 +349,7 @@ module gfdl_mp_mod
 
     logical :: do_mp_diag = .false. ! enable microphysical quantities diagnostic
 
-    real :: mp_time = 150.0 ! maximum microphysics time step (s)
+    real :: mp_time = 75.0 ! maximum microphysics time step (s)
 
     real :: n0w_sig = 1.2 ! intercept parameter (significand) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
     real :: n0i_sig = 1.2 ! intercept parameter (significand) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
@@ -412,7 +415,8 @@ module gfdl_mp_mod
     real :: rthreshu =  7.0e-6 ! unstable critical cloud drop radius (micro m)
     real :: rthreshs = 10.0e-6 !   stable critical cloud drop radius (micro m)
 
-    logical :: in_cloud = .true. ! use in-cloud autoconversion
+    logical :: in_cloud_liq = .true. ! use in-cloud liquid
+    logical :: in_cloud_ice = .true. ! use in-cloud frozen
 
     real :: cld_min = 0.05 ! minimum cloud fraction
 
@@ -566,7 +570,7 @@ module gfdl_mp_mod
         do_new_acc_water, do_new_acc_ice, is_fac, ss_fac, gs_fac, rh_fac_evap, rh_fac_cond, &
         snow_grauple_combine, do_psd_water_num, do_psd_ice_num, vdiffflag, rewfac, reifac, &
         cp_heating, nconds, do_evap_timescale, delay_cond_evap, do_subgrid_proc, &
-        fast_fr_mlt, fast_dep_sub, do_mp_diag
+        fast_fr_mlt, fast_dep_sub, do_mp_diag, do_scale_dep
 
 contains
 
@@ -574,7 +578,7 @@ contains
 ! GFDL cloud microphysics initialization
 ! =======================================================================
 
-subroutine gfdl_mp_init (hydrostatic)
+subroutine gfdl_mp_init (hydrostatic,dtm)
 
     implicit none
 
@@ -583,6 +587,7 @@ subroutine gfdl_mp_init (hydrostatic)
     ! -----------------------------------------------------------------------
 
     logical, intent (in) :: hydrostatic
+    real   , intent (in) :: dtm
 
     character (len = 64) :: fn_nml = 'input.nml'
 
@@ -593,6 +598,9 @@ subroutine gfdl_mp_init (hydrostatic)
     integer :: nlunit
     integer :: ios
     logical :: exists
+
+    ! update default ntimes
+    ntimes = max (ntimes, ceiling (dtm / min (0.5*dtm, mp_time)))
 
     ! -----------------------------------------------------------------------
     ! read namelist
@@ -663,6 +671,7 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
         water, rain, ice, snow, graupel, hydrostatic, is, ie, ks, ke, ktop, &
         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, &
         pt_dt, ua_dt, va_dt, wa_dt, &
+        revap, rsubl, &
         prefluxw, prefluxr, prefluxi, prefluxs, prefluxg)
 
     implicit none
@@ -685,6 +694,7 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
     real, intent (in),  dimension (is:ie, ks:ke) :: qv, ql, qr, qi, qs, qg, qa
 
     real, intent (out), dimension (is:ie, ks:ke) :: qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, pt_dt, ua_dt, va_dt, wa_dt
+    real, intent (out), dimension (is:ie, ks:ke) :: revap, rsubl
     real, intent (out), dimension (is:ie, ks:ke) :: prefluxw, prefluxr, prefluxi, prefluxs, prefluxg
 
     real, intent (out), dimension (is:ie) :: water, rain, ice, snow, graupel
@@ -735,6 +745,9 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
     va_dt = 0.0
     wa_dt = 0.0
 
+    revap = 0.0
+    rsubl = 0.0
+
     prefluxw = 0.0
     prefluxr = 0.0
     prefluxi = 0.0
@@ -781,8 +794,9 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
 
     call mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa, &
         zet, qnl, qni, delz, is, ie, ktop, ke, dtm, water, rain, ice, snow, graupel, &
-        rhcrit, hs, cnv_frc, eis, area, srft, q_con, cappa, consv_te, adj_vmr, te, dte, prefluxw, prefluxr, &
-        prefluxi, prefluxs, prefluxg, &
+        rhcrit, hs, cnv_frc, eis, area, srft, q_con, cappa, consv_te, adj_vmr, te, dte, &
+        revap, rsubl, &
+        prefluxw, prefluxr, prefluxi, prefluxs, prefluxg, &
         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, pt_dt, ua_dt, va_dt, wa_dt, &
         mppcw, mppew, mppe1, mpper, mppdi, mppd1, &
         mppds, mppdg, mppsi, mpps1, mppss, mppsg, mppfw, mppfr, mppmi, mppms, &
@@ -1293,8 +1307,9 @@ end subroutine setup_mhc_lhc
 
 subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa, &
         zet, qnl, qni, delz, is, ie, ks, ke, dtm, water, rain, ice, snow, graupel, &
-        rhcrit, hs, cnv_frc, eis, area, srft, q_con, cappa, consv_te, adj_vmr, te, dte, prefluxw, prefluxr, &
-        prefluxi, prefluxs, prefluxg, &
+        rhcrit, hs, cnv_frc, eis, area, srft, q_con, cappa, consv_te, adj_vmr, te, dte, &
+        revap, rsubl, &
+        prefluxw, prefluxr, prefluxi, prefluxs, prefluxg, &
         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, pt_dt, ua_dt, va_dt, wa_dt, &
         mppcw, mppew, mppe1, mpper, mppdi, mppd1, &
         mppds, mppdg, mppsi, mpps1, mppss, mppsg, mppfw, mppfr, mppmi, mppms, &
@@ -1322,6 +1337,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     real, intent (in   ), dimension (:, :) :: delp, delz, pt, ua, va, wa
     real, intent (in   ), dimension (:, :) :: qv, ql, qr, qi, qs, qg, qa
     real, intent (inout), dimension (:, :) :: zet
+    real, intent (inout), dimension (:, :) :: revap, rsubl
     real, intent (inout), dimension (:, :) :: prefluxw, prefluxr, prefluxi, prefluxs, prefluxg
     real, intent (inout), dimension (:, :) :: qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, pt_dt, ua_dt, va_dt, wa_dt
 
@@ -1374,7 +1390,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     ! time steps
     ! -----------------------------------------------------------------------
 
-    ntimes = max (ntimes, int (dtm / min (dtm, mp_time)))
     dts = dtm / real (ntimes)
     rdt = 1.0 / dtm
 
@@ -1402,7 +1417,11 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         ! 1 minus sigma used to control resolution sensitive parameters
         ! -----------------------------------------------------------------------
-        onemsig = 1.0 - sigma(sqrt(area(i)))
+        if (do_scale_dep) then
+          onemsig = 1.0 - sigma(sqrt(area(i)))
+        else
+          onemsig = 1.0
+        endif
 
         ! -----------------------------------------------------------------------
         ! Use estimated inversion strength to determine stable vs unstable areas
@@ -1485,9 +1504,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 con_r8 = one_r8 - qvz (k)
             endif
 
+            ! dp0: original moist air_mass
             dp0 (k) = delp (i, k)
+            ! dp: dry air_mass
             dp (k) = delp (i, k) * con_r8
-            con_r8 = one_r8 / con_r8
+
+            con_r8  = dp0 (k) / dp (k)
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1595,7 +1617,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             call mp_fast (ks, ke, tz, qaz, qvz, qlz, qrz, qiz, qsz, qgz, dtm, dp, den, &
                 ccn, cin, mppcw (i), mppew (i), mppdi (i), mppds (i), mppdg (i), &
                 mppsi (i), mppss (i), mppsg (i), mppfw (i), mppfr (i), mppmi (i), &
-                mppms (i), mppar (i), mppas (i), denfac, convt, last_step)
+                mppms (i), mppar (i), mppas (i), denfac, rsubl (i, ks:), convt, last_step)
 
         endif
 
@@ -1607,7 +1629,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
             call mp_full (ks, ke, ntimes, tz, qaz, qvz, qlz, qrz, qiz, qsz, qgz, dp, dz, &
                 u, v, w, den, denfac, ccn, cin, dts, h_var, dte (i), &
-                water (i), rain (i), ice (i), snow (i), graupel (i), prefluxw (i, ks:), &
+                water (i), rain (i), ice (i), snow (i), graupel (i), &
+                revap (i, ks:), rsubl (i, ks:), prefluxw (i, ks:), &
                 prefluxr (i, ks:), prefluxi (i, ks:), prefluxs (i, ks:), prefluxg (i, ks:), &
                 mppcw (i), mppew (i), mppe1 (i), mpper (i), mppdi (i), mppd1 (i), &
                 mppds (i), mppdg (i), mppsi (i), mpps1 (i), mppss (i), mppsg (i), &
@@ -1710,8 +1733,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! momentum transportation during sedimentation
         ! update temperature before delp and q update
         ! -----------------------------------------------------------------------
-
-        if (do_sedi_uv) then
+        if (do_sedi_uv .and. do_sedi_heat) then
             do k = ks, ke
                 c8 = mhc (qvz (k), qlz (k), qrz (k), qiz (k), qsz (k), qgz (k)) * c_air
                 tzuv (k) = 0.5 * (ua (i, k) ** 2 + va (i, k) ** 2 - (u (k) ** 2 + v (k) ** 2)) / c8
@@ -1719,7 +1741,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             enddo
         endif
 
-        if (do_sedi_w) then
+        if (do_sedi_w .and. do_sedi_heat) then
             do k = ks, ke
                 c8 = mhc (qvz (k), qlz (k), qrz (k), qiz (k), qsz (k), qgz (k)) * c_air
                 tzw (k) = 0.5 * (wa (i, k) ** 2 - w (k) ** 2) / c8
@@ -1738,6 +1760,10 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 te_b_end_d (i), tw_b_end_d (i), .false., hydrostatic, te_loss (i))
         endif
 
+        if (fix_negative) &
+            call neg_adj (ks, ke, tz, dp, qaz, qvz, qlz, qrz, qiz, qsz, qgz, mppcw (i), &
+                mppfr (i), convt) 
+
         do k = ks, ke
 
             ! -----------------------------------------------------------------------
@@ -1751,14 +1777,16 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 con_r8 = one_r8 + qvz (k)
             endif
 
-            dp  (k) = dp (k) * con_r8
-            con_r8 = one_r8 / con_r8
+            con_r8  =  dp (k) / dp0 (k)
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
             qiz (k) = qiz (k) * con_r8
             qsz (k) = qsz (k) * con_r8
             qgz (k) = qgz (k) * con_r8
+
+            ! convert dry air mass to wet
+            dp  (k) = dp (k) * con_r8
 
             q1 = qv (i, k) + ql (i, k) + qr (i, k) + qi (i, k) + qs (i, k) + qg (i, k)
             q2 = qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
@@ -1781,7 +1809,11 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qi_dt (i, k) = rdt * (qiz (k) - qi (i, k))
             qs_dt (i, k) = rdt * (qsz (k) - qs (i, k))
             qg_dt (i, k) = rdt * (qgz (k) - qg (i, k))
-            qa_dt (i, k) = rdt * (qaz (k) - qa (i, k))
+            if (.not. do_qa) then
+               qa_dt (i, k) = rdt * &
+                      ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
+                        qa (i, k) )                                                                 ! Old Cloud
+            endif
 
             ! -----------------------------------------------------------------------
             ! calculate some more variables needed outside
@@ -1807,7 +1839,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
 
         if (do_sedi_uv) then
-            do k = ks, ke
+            if (do_sedi_heat) then
+              do k = ks, ke
                 tz (k) = tz (k) - tzuv (k)
                 q_liq (k) = qlz (k) + qrz (k)
                 q_sol (k) = qiz (k) + qsz (k) + qgz (k)
@@ -1817,7 +1850,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 tzuv (k) = (0.5 * (ua (i, k) ** 2 + va (i, k) ** 2) * dp0 (k) - &
                     0.5 * (u (k) ** 2 + v (k) ** 2) * dp (k)) / c8 / dp (k)
                 tz (k) = tz (k) + tzuv (k)
-            enddo
+              enddo
+            endif
             do k = ks, ke
 ! Don't update the state
 !               ua (i, k) = u (k)
@@ -1829,7 +1863,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         endif
 
         if (do_sedi_w) then
-            do k = ks, ke
+            if (do_sedi_heat) then
+              do k = ks, ke
                 tz (k) = tz (k) - tzw (k)
                 q_liq (k) = qlz (k) + qrz (k)
                 q_sol (k) = qiz (k) + qsz (k) + qgz (k)
@@ -1839,7 +1874,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 tzw (k) = (0.5 * (wa (i, k) ** 2) * dp0 (k) - &
                     0.5 * (w (k) ** 2) * dp (k)) / c8 / dp (k)
                 tz (k) = tz (k) + tzw (k)
-            enddo
+              enddo
+            endif
             do k = ks, ke
 ! Don't update the state
 !               wa (i, k) = w (k)
@@ -2012,14 +2048,14 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
         if (qi (k) .lt. 0.) then
             sink = min (- qi (k), max (0., qs (k)))
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., sink, - sink, 0.)
+                0., 0., 0., sink, - sink, 0., 'neg_adj')
         endif
 
         ! if snow < 0, borrow from graupel
         if (qs (k) .lt. 0.) then
             sink = min (- qs (k), max (0., qg (k)))
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., 0., sink, - sink)
+                0., 0., 0., 0., sink, - sink, 'neg_adj')
         endif
 
         ! if graupel < 0, borrow from rain
@@ -2028,7 +2064,7 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
             mppfr = mppfr + sink * dp (k) * convt
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., - sink, 0., 0., sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'neg_adj')
         endif
 
         ! -----------------------------------------------------------------------
@@ -2039,7 +2075,7 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
         if (qr (k) .lt. 0.) then
             sink = min (- qr (k), max (0., ql (k)))
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., - sink, sink, 0., 0., 0.)
+                0., - sink, sink, 0., 0., 0., 'neg_adj')
         endif
 
         ! if cloud water < 0, borrow from water vapor
@@ -2048,7 +2084,7 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
             mppcw = mppcw + sink * dp (k) * convt
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                  - sink, sink, 0., 0., 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'neg_adj')
         endif
 
     enddo
@@ -2063,6 +2099,7 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
             qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
             qv (k) = 0.
         endif
+        if (qv (k) .ne. qv (k)) stop 'qv is NAN in neg_adj'
     enddo
 
     ! if water vapor < 0, borrow water vapor from above
@@ -2071,6 +2108,8 @@ subroutine neg_adj (ks, ke, tz, dp, qa, qv, ql, qr, qi, qs, qg, mppcw, mppfr, co
         qv (ke - 1) = qv (ke - 1) - dq / dp (ke - 1)
         qv (ke) = qv (ke) + dq / dp (ke)
     endif
+    if (qv (ke-1) .ne. qv (ke-1)) stop 'qv(ke-1) is NAN in neg_adj'
+    if (qv (ke  ) .ne. qv (ke  )) stop 'qv(ke  ) is NAN in neg_adj'
 
 end subroutine neg_adj
 
@@ -2080,7 +2119,7 @@ end subroutine neg_adj
 
 subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v, w, &
         den, denfac, ccn, cin, dts, h_var, dte, water, rain, ice, &
-        snow, graupel, prefluxw, prefluxr, prefluxi, prefluxs, prefluxg, mppcw, &
+        snow, graupel, revap, rsubl, prefluxw, prefluxr, prefluxi, prefluxs, prefluxg, mppcw, &
         mppew, mppe1, mpper, mppdi, mppd1, mppds, mppdg, mppsi, mpps1, mppss, &
         mppsg, mppfw, mppfr, mppmi, mppms, mppmg, mppm1, mppm2, mppm3, mppar, &
         mppas, mppag, mpprs, mpprg, mppxr, mppxs, mppxg, convt, last_step)
@@ -2100,6 +2139,7 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
     real, intent (in), dimension (ks:ke) :: h_var, dp, dz, den, denfac
 
     real, intent (inout), dimension (ks:ke) :: qa, qv, ql, qr, qi, qs, qg, u, v, w, ccn, cin
+    real, intent (inout), dimension (ks:ke) :: revap, rsubl
     real, intent (inout), dimension (ks:ke) :: prefluxw, prefluxr, prefluxi, prefluxs, prefluxg
 
     real (kind = r8), intent (inout), dimension (ks:ke) :: tz
@@ -2151,7 +2191,7 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
         ! -----------------------------------------------------------------------
 
         call warm_rain (dts, ks, ke, dp, dz, tz, qa, qv, ql, qr, qi, qs, qg, den, &
-            denfac, vtw, vtr, ccn, h_var, mpper, mppar, mppxr, convt)
+            denfac, vtw, vtr, ccn, h_var, revap, mpper, mppar, mppxr, convt)
 
         ! -----------------------------------------------------------------------
         ! ice cloud microphysics
@@ -2169,7 +2209,7 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
 
             call subgrid_z_proc (ks, ke, den, denfac, dts, h_var, tz, qa, qv, ql, qr, &
                 qi, qs, qg, dp, ccn, cin, mppcw, mppew, mppe1, mppdi, mppd1, mppds, &
-                mppdg, mppsi, mpps1, mppss, mppsg, mppfw, convt, last_step)
+                mppdg, mppsi, mpps1, mppss, mppsg, mppfw, rsubl, convt, last_step)
 
         endif
 
@@ -2183,7 +2223,7 @@ end subroutine mp_full
 
 subroutine mp_fast (ks, ke, tz, qa, qv, ql, qr, qi, qs, qg, dtm, dp, den, ccn, &
         cin, mppcw, mppew, mppdi, mppds, mppdg, mppsi, mppss, mppsg, mppfw, &
-        mppfr, mppmi, mppms, mppar, mppas, denfac, convt, last_step)
+        mppfr, mppmi, mppms, mppar, mppas, denfac, rsubl, convt, last_step)
 
     implicit none
 
@@ -2200,6 +2240,8 @@ subroutine mp_fast (ks, ke, tz, qa, qv, ql, qr, qi, qs, qg, dtm, dp, den, ccn, &
     real, intent (in), dimension (ks:ke) :: dp, den, denfac
 
     real, intent (inout), dimension (ks:ke) :: qa, qv, ql, qr, qi, qs, qg, ccn, cin
+
+    real, intent (inout), dimension (ks:ke) :: rsubl
 
     real (kind = r8), intent (inout), dimension (ks:ke) :: tz
 
@@ -2312,7 +2354,7 @@ subroutine mp_fast (ks, ke, tz, qa, qv, ql, qr, qi, qs, qg, dtm, dp, den, ccn, &
         ! -----------------------------------------------------------------------
 
         call pidep_pisub (ks, ke, dtm, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, den, &
-            lcpk, icpk, tcpk, tcp3, cin, mppdi, mppsi, convt)
+            lcpk, icpk, tcpk, tcp3, cin, mppdi, mppsi, rsubl, convt)
 
         ! -----------------------------------------------------------------------
         ! cloud ice to snow autoconversion
@@ -2519,7 +2561,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
 
     integer :: k
 
-    real :: DIAM, C1, C0, lnP, tmp, pl, qden, viLSC, viCNV
+    real :: DIAM, C2, C1, C0, lnP, tmp, pl, qden, viLSC, viCNV
 
     real, parameter :: aa = - 4.14122e-5
     real, parameter :: bb = - 0.00538922
@@ -2532,6 +2574,12 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
     real, parameter :: ccL = - 0.0169876
     real, parameter :: ddL = 0.00410839
     real, parameter :: eeL = 1.93644
+
+    real, parameter :: aaC = - 4.18334e-5
+    real, parameter :: bbC = - 0.00525867
+    real, parameter :: ccC = - 0.0486519
+    real, parameter :: ddC = 0.00251197
+    real, parameter :: eeC = 1.91523
 
     real, dimension (ks:ke) :: tc
     real :: zero=0.0
@@ -2992,7 +3040,7 @@ end subroutine check_column
 ! =======================================================================
 
 subroutine warm_rain (dts, ks, ke, dp, dz, tz, qa, qv, ql, qr, qi, qs, qg, &
-        den, denfac, vtw, vtr, ccn, h_var, mpper, mppar, mppxr, convt)
+        den, denfac, vtw, vtr, ccn, h_var, revap, mpper, mppar, mppxr, convt)
 
     implicit none
 
@@ -3010,6 +3058,8 @@ subroutine warm_rain (dts, ks, ke, dp, dz, tz, qa, qv, ql, qr, qi, qs, qg, &
 
     real (kind = r8), intent (inout), dimension (ks:ke) :: tz
 
+    real, intent (inout), dimension (ks:ke) :: revap
+
     real, intent (inout) :: mpper, mppar, mppxr
 
     ! -----------------------------------------------------------------------
@@ -3017,7 +3067,7 @@ subroutine warm_rain (dts, ks, ke, dp, dz, tz, qa, qv, ql, qr, qi, qs, qg, &
     ! -----------------------------------------------------------------------
 
     call prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, &
-        h_var, mpper, convt)
+        h_var, revap, mpper, convt)
 
     ! -----------------------------------------------------------------------
     ! rain accretion with cloud water
@@ -3040,7 +3090,7 @@ end subroutine warm_rain
 ! =======================================================================
 
 subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, &
-        h_var, mpper, convt)
+        h_var, revap, mpper, convt)
 
     implicit none
 
@@ -3057,6 +3107,8 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
     real (kind = r8), intent (inout), dimension (ks:ke) :: tz
 
     real, intent (inout), dimension (ks:ke) :: qa, qv, qr, ql, qi, qs, qg
+
+    real, intent (inout), dimension (ks:ke) :: revap
 
     real, intent (inout) :: mpper
 
@@ -3134,11 +3186,16 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             ! tmp = min (qr (k), dim (rh_rain * qsat, qv (k)) / (1. + lcpk (k) * dqdt))
             ! sink = max (sink, tmp)
 
-            mpper = mpper + sink * dp (k) * convt
+            tmp = sink * dp (k) * convt
+
+            mpper = mpper + tmp
+
+            ! 3D re-evaporation export
+            revap (k) = revap (k) + tmp
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 sink, 0., - sink, 0., 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'prevp')
 
         endif
       endif
@@ -3195,7 +3252,7 @@ subroutine pracw (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             mppxr = mppxr + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., - sink, sink, 0., 0., 0.)
+                0., - sink, sink, 0., 0., 0., 'pracw')
 
         endif
 
@@ -3242,8 +3299,8 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
     real, dimension (ks:ke) :: ql, dl, qadum, c_praut
 
     ! Use In-Cloud condensates
-    if (in_cloud) then
-      qadum = max(qak,qcmin)
+    if (in_cloud_liq) then
+      qadum = max(qak,cfmin)
     else
       qadum = 1.0
     endif
@@ -3276,7 +3333,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
                     mppar = mppar + sink * dp (k) * convt
 
                     call update_qq (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
-                        0., - sink, sink, 0., 0., 0.)
+                        0., - sink, sink, 0., 0., 0., 'praut')
 
                 endif
 
@@ -3309,7 +3366,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
                     mppar = mppar + sink * dp (k) * convt
 
                     call update_qq (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
-                        0., - sink, sink, 0., 0., 0.)
+                        0., - sink, sink, 0., 0., 0., 'praut')
 
                 endif
 
@@ -3484,8 +3541,8 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
             ! Use In-Cloud condensates
-            if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+            if (in_cloud_ice) then
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0
             endif
@@ -3493,7 +3550,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, ql, qi)
+            newliq = new_liq_condensate(tmp, qlk (k), qik (k))/qadum
             sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
@@ -3503,13 +3560,13 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             call update_qt (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
                 0., tmp, sink - tmp, - sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pimltfrz')
 
         elseif (tz (k) <= tice .and. qlk (k) > qcmin) then
 
             ! Use In-Cloud condensates
-            if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+            if (in_cloud_ice) then
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0
             endif
@@ -3517,7 +3574,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, ql, qi)
+            newice = new_ice_condensate(tmp, qlk (k), qik (k))/qadum
             sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
@@ -3528,7 +3585,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             call update_qt (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
                 0., - sink, 0., tmp, sink - tmp, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pimltfrz')
 
         endif
 
@@ -3580,8 +3637,8 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
             ! Use In-Cloud condensates
-            if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+            if (in_cloud_ice) then
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0
             endif
@@ -3589,7 +3646,7 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, ql, qi)
+            newliq = new_liq_condensate(tmp, qlk (k), qik (k))/qadum
             sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
@@ -3599,7 +3656,7 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
             call update_qt (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
                 0., tmp, sink - tmp, - sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pimlt')
 
         endif
 
@@ -3651,8 +3708,8 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
         if (tz (k) .le. tice .and. qlk (k) .gt. qcmin) then
 
             ! Use In-Cloud condensates
-            if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+            if (in_cloud_ice) then
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0
             endif
@@ -3660,7 +3717,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, ql, qi)
+            newice = new_ice_condensate(tmp, qlk (k), qik (k))/qadum
             sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
@@ -3671,7 +3728,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
             call update_qt (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
                 0., - sink, 0., tmp, sink - tmp, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pifr')
 
         endif
 
@@ -3756,7 +3813,7 @@ subroutine psmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., tmp, sink - tmp, 0., - sink, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'psmlt')
 
         endif
 
@@ -3850,7 +3907,7 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., sink, 0., 0., - sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgmlt')
 
         endif
 
@@ -3913,7 +3970,7 @@ subroutine psaci (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, denfac, 
             mppxs = mppxs + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., - sink, sink, 0.)
+                0., 0., 0., - sink, sink, 0., 'psaci')
 
         endif
 
@@ -3953,11 +4010,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
 
-    real :: di, qi, critical_qi_factor, qadum
-
-    ! qi0_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = qi0_crt*(1.e-1*(1.0-onemsig) + onemsig)
+    real :: di, qi, qadum
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -3968,8 +4021,8 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
         if (tc .lt. 0. .and. qik (k) .gt. qcmin) then
 
             ! Use In-Cloud condensates
-            if (in_cloud) then
-              qadum = max(qak(k),qcmin)
+            if (in_cloud_ice) then
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0
             endif
@@ -3980,7 +4033,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             di  = max (di, qcmin)
             q_plus = qi + di
             ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * critical_qi_factor / qadum / den (k)
+            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * qi0_crt / qadum / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
@@ -3993,7 +4046,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             mppas = mppas + sink * dp (k) * convt
 
             call update_qq (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
-                0., 0., 0., - sink, sink, 0.)
+                0., 0., 0., - sink, sink, 0., 'psaut')
 
         endif
 
@@ -4060,7 +4113,7 @@ subroutine pgaci (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, denfac, 
             mppxg = mppxg + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., - sink, 0., sink)
+                0., 0., 0., - sink, 0., sink, 'pgaci')
 
         endif
 
@@ -4131,7 +4184,7 @@ subroutine psacr_pgfr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., - sink, 0., psacr, pgfr, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'psacr_pgfr')
 
         endif
 
@@ -4182,7 +4235,7 @@ subroutine pgacs (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, vts, vtg
             mppxg = mppxg + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., 0., - sink, sink)
+                0., 0., 0., 0., - sink, sink, 'pgacs')
 
         endif
 
@@ -4239,7 +4292,7 @@ subroutine pgaut (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mppag, c
             mppag = mppag + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., 0., - sink, sink)
+                0., 0., 0., 0., - sink, sink, 'pgaut')
 
         endif
 
@@ -4321,7 +4374,7 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - pgacw, - pgacr, 0., 0., sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgacw_pgacr')
 
         endif
 
@@ -4335,7 +4388,7 @@ end subroutine pgacw_pgacr
 
 subroutine subgrid_z_proc (ks, ke, den, denfac, dts, h_var, tz, qa, qv, ql, qr, &
         qi, qs, qg, dp, ccn, cin, mppcw, mppew, mppe1, mppdi, mppd1, mppds, &
-        mppdg, mppsi, mpps1, mppss, mppsg, mppfw, convt, last_step)
+        mppdg, mppsi, mpps1, mppss, mppsg, mppfw, rsubl, convt, last_step)
 
     implicit none
 
@@ -4352,6 +4405,8 @@ subroutine subgrid_z_proc (ks, ke, den, denfac, dts, h_var, tz, qa, qv, ql, qr, 
     real, intent (in), dimension (ks:ke) :: h_var, den, denfac, dp
 
     real, intent (inout), dimension (ks:ke) :: qa, qv, ql, qr, qi, qs, qg, ccn, cin
+
+    real, intent (inout), dimension (ks:ke) :: rsubl
 
     real, intent (inout) :: mppcw, mppew, mppe1, mppdi, mppd1, mppds
     real, intent (inout) :: mppdg, mppsi, mpps1, mppss, mppsg, mppfw
@@ -4438,7 +4493,7 @@ subroutine subgrid_z_proc (ks, ke, den, denfac, dts, h_var, tz, qa, qv, ql, qr, 
         ! -----------------------------------------------------------------------
 
         call pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, den, &
-            lcpk, icpk, tcpk, tcp3, cin, mppdi, mppsi, convt)
+            lcpk, icpk, tcpk, tcp3, cin, mppdi, mppsi, rsubl, convt)
 
         ! -----------------------------------------------------------------------
         ! snow deposition and sublimation
@@ -4492,7 +4547,7 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
 
     integer :: k
 
-    real :: sink, subl, tin, qpz, rh, dqdt, qsw, qsi, rh_adj
+    real :: evap, subl, tin, qpz, rh, dqdt, qsw, qsi, rh_adj
     real :: dq, factor, fac_l2v, rh_tem
 
     fac_l2v = 1. - exp (- dts / tau_l2v)
@@ -4505,14 +4560,26 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
 
         if (tz (k) .lt. t_min) then
 
-            sink = dim (qv (k), qcmin)
-            mppd1 = mppd1 + sink * dp (k) * convt
-
-            qa (k) = 1.0
+            subl = dim (qv (k), qcmin)
+            mppd1 = mppd1 + subl * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                 - sink, 0., 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                 - subl, 0., 0., subl, 0., 0., te8 (k), cvm (k), tz (k), &
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
+
+            ! [WMP] avoid high cloud fractions for high troposhere cirrus clouds
+            if (.not. do_qa) then
+               qa (k) = max(0.0,min(1.0,1.0 - qcmin/max(qi (k), qcmin)))
+               if ( qa (k) .lt. cfmin) then
+                  ! remove clouds and qi if qa is too small
+                  qa (k) = 0.0
+                  subl = qi (k)
+                  mppd1 = mppd1 - subl * dp (k) * convt
+                  call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
+                       subl, 0., 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
+                      lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
+               endif
+            endif
 
         endif
 
@@ -4526,12 +4593,16 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
 
         if (tin .gt. t_sub + 6.) then
 
+            ! initialize to 0s
+            evap = 0.0
+            subl = 0.0
+
             rh_adj = 1. - h_var(k) - rh_inc
             qsi = iqs (tin, den (k), dqdt)
             rh = qpz / qsi
             if (rh .lt. rh_adj) then
                 ! instant evap of all liquid & ice
-                sink = ql (k)
+                evap = ql (k)
                 subl = qi (k)
             else
                 ! partial evap of liquid
@@ -4545,24 +4616,24 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                    else
                       factor = 1.
                    endif  
-                   sink = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dqdt))
+                   evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dqdt))
                    if (use_rhc_cevap .and. rh_tem .ge. rhc_cevap) then
-                      sink = 0.
+                      evap = 0.
                    endif
                 endif
                 ! nothing for ice
                 subl = 0.0
              endif
 
-             sink = sink*onemsig ! resolution dependent evap 0:1 coarse:fine
+             evap = evap*onemsig ! resolution dependent evap 0:1 coarse:fine
              subl = subl*onemsig ! resolution dependent subl 0:1 coarse:fine
 
-             mppe1 = mppe1 + sink * dp (k) * convt
+             mppe1 = mppe1 + evap * dp (k) * convt
              mpps1 = mpps1 + subl * dp (k) * convt
 
              call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                 sink + subl, - sink, 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
-                 lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                 evap + subl, - evap, 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
+                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
 
         endif
 
@@ -4611,6 +4682,7 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
     do k = ks, ke
 
+        sink = 0.0
         tin = tz (k)
         qsw = wqs (tin, den (k), dqdt)
         qpz = qv (k) + ql (k) + qi (k)
@@ -4640,7 +4712,7 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
         call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
             sink, - sink, 0., 0., 0., 0., te8 (k), cvm (k), tz (k), &
-            lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+            lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pcond_pevap')
 
     enddo
 
@@ -4680,19 +4752,21 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
 
     integer :: k
 
-    real :: ifrac, sink
-                
+    real :: fac_frez, ifrac, sink
+
+    fac_frez = 1. - exp (- dts / tau_frez)
+
     do k = ks, ke
 
         ifrac = ice_fraction(real(tz(k)),cnv_fraction,srf_type)
         if (ifrac .eq. 1. .and. ql (k) .gt. qcmin) then
 
-            sink = ql (k)
+            sink = fac_frez * min(ql (k), ql (k) * (tice - tz (k)) / icpk (k))
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - sink, 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pcomp')
 
         endif
 
@@ -4736,13 +4810,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
 
     real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp, fac_wbf
 
-    real :: critical_qi_factor
-
     if (.not. do_wbf) return
-
-    ! qi0_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = qi0_crt*(1.e-1*(1.0-onemsig) + onemsig)
 
     fac_wbf = 1. - exp (- dts / tau_wbf)
 
@@ -4758,13 +4826,13 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
             qv (k) .gt. qsi .and. qv (k) .lt. qsw) then
 
             sink = min (fac_wbf * ql (k), tc / icpk (k))
-            qim = critical_qi_factor / den (k)
+            qim = qi0_crt / den (k)
             tmp = min (sink, dim (qim, qi (k)))
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - sink, 0., tmp, sink - tmp, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pwbf')
 
         endif
 
@@ -4828,7 +4896,7 @@ subroutine pbigg (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - sink, 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pbigg')
 
         endif
 
@@ -4841,7 +4909,7 @@ end subroutine pbigg
 ! =======================================================================
 
 subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, &
-        den, lcpk, icpk, tcpk, tcp3, cin, mppdi, mppsi, convt)
+        den, lcpk, icpk, tcpk, tcp3, cin, mppdi, mppsi, rsubl, convt)
 
     implicit none
 
@@ -4861,6 +4929,8 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
     real, intent (inout), dimension (ks:ke) :: lcpk, icpk, tcpk, tcp3
 
     real (kind = r8), intent (inout), dimension (ks:ke) :: cvm, tz
+
+    real, intent (inout), dimension (ks:ke) :: rsubl
 
     real, intent (out) :: mppdi, mppsi
 
@@ -4922,11 +4992,13 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
                 sink = max (pidep, tmp, - qi (k))
                 sink = sink*onemsig ! resolution dependent subl 0:1 coarse:fine
                 mppsi = mppsi - sink * dp (k) * convt
+                ! 3D ice sublimation export
+                rsubl (k) = rsubl (k) - sink * dp (k) * convt
             endif
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                  - sink, 0., 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pidep_pisub')
 
         endif
 
@@ -4995,7 +5067,7 @@ subroutine psdep_pssub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 sink, 0., 0., 0., - sink, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'psdep_pssub')
 
         endif
 
@@ -5070,7 +5142,7 @@ subroutine pgdep_pgsub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 sink, 0., 0., 0., 0., - sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgdep_pgsub')
 
         endif
 
@@ -5098,7 +5170,9 @@ subroutine cloud_fraction (ks, ke, pz, den, qv, ql, qr, qi, qs, qg, qa, tz, gsiz
 
     real (kind = r8), intent (in), dimension (ks:ke) :: tz
 
-    real, intent (inout), dimension (ks:ke) :: qv, ql, qr, qi, qs, qg, qa
+    real, intent (in), dimension (ks:ke) :: qv, ql, qr, qi, qs, qg
+
+    real, intent (inout), dimension (ks:ke) :: qa
 
     ! -----------------------------------------------------------------------
     ! local variables
@@ -6244,7 +6318,7 @@ subroutine pgfr_simp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8,
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., - sink, 0., 0., sink, te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgfr_simp')
 
         endif
 
@@ -6303,7 +6377,7 @@ subroutine psmlt_simp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., tmp, sink - tmp, 0., - sink, 0., te8 (k), cvm (k), tz (k), &
-                lcpk (k), icpk (k), tcpk (k), tcp3 (k))
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'psmlt_simp')
 
         endif
 
@@ -6355,7 +6429,7 @@ subroutine praut_simp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, mppar, c
             mppar = mppar + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., - sink, sink, 0., 0., 0.)
+                0., - sink, sink, 0., 0., 0., 'praut_simp')
 
         endif
 
@@ -6409,7 +6483,7 @@ subroutine psaut_simp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mpp
             mppas = mppas + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., 0., 0., - sink, sink, 0.)
+                0., 0., 0., - sink, sink, 0., 'psaut_simp')
 
         endif
 
@@ -7245,7 +7319,7 @@ end subroutine cal_mhc_lhc
 ! update hydrometeors
 ! =======================================================================
 
-subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg)
+subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, descr)
 
     implicit none
 
@@ -7256,6 +7330,8 @@ subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg)
     real, intent (in) :: dqv, dql, dqr, dqi, dqs, dqg
 
     real, intent (inout) :: qa, qv, ql, qr, qi, qs, qg
+
+    character (len = *), intent (in) :: descr
 
     real :: qc0
 
@@ -7272,6 +7348,14 @@ subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg)
     ! total new condensate / old condensate 
      if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
 
+    if (qv .ne. qv) stop 'qv is NAN in update_qq ' // trim(descr)
+    if (ql .ne. ql) stop 'ql is NAN in update_qq ' // trim(descr)
+    if (qr .ne. qr) stop 'qr is NAN in update_qq ' // trim(descr)
+    if (qi .ne. qi) stop 'qi is NAN in update_qq ' // trim(descr)
+    if (qs .ne. qs) stop 'qs is NAN in update_qq ' // trim(descr)
+    if (qg .ne. qg) stop 'qg is NAN in update_qq ' // trim(descr)
+    if (qa .ne. qa) stop 'qa is NAN in update_qq ' // trim(descr)
+
 end subroutine update_qq
 
 ! =======================================================================
@@ -7279,7 +7363,7 @@ end subroutine update_qq
 ! =======================================================================
 
 subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, te8, &
-        cvm, tk, lcpk, icpk, tcpk, tcp3)
+        cvm, tk, lcpk, icpk, tcpk, tcp3, descr)
 
     implicit none
 
@@ -7297,6 +7381,8 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
 
     real (kind = r8), intent (out) :: cvm, tk
 
+    character (len = *), intent (in) :: descr
+
     real :: qc0
 
     ! save previous total condensate
@@ -7311,6 +7397,17 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
 
     ! total new condensate / old condensate 
     if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
+
+    if (qv .ne. qv) stop 'qv is NAN in update_qt ' // trim(descr)
+    if (ql .ne. ql) stop 'ql is NAN in update_qt ' // trim(descr)
+    if (qr .ne. qr) stop 'qr is NAN in update_qt ' // trim(descr)
+    if (qi .ne. qi) stop 'qi is NAN in update_qt ' // trim(descr)
+    if (qs .ne. qs) stop 'qs is NAN in update_qt ' // trim(descr)
+    if (qg .ne. qg) stop 'qg is NAN in update_qt ' // trim(descr)
+    if (.not. do_qa) then
+       if (qc0 .ne. qc0) stop 'qc0 is NAN in update_qt ' // trim(descr)
+       if (qa  .ne. qa ) stop 'qa  is NAN in update_qt ' // trim(descr)
+    endif
 
     cvm = mhc (qv, ql, qr, qi, qs, qg)
     tk = (te8 - lv00 * qv + li00 * (qi + qs + qg)) / cvm

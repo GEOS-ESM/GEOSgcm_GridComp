@@ -49,7 +49,7 @@ module uwshcu
   type   (SHLWPARAM_TYPE) :: SHLWPARAMS
 
    private
-   public compute_uwshcu_inv, SHLWPARAMS
+   public compute_uwshcu_inv, SHLWPARAMS, LIMIT_RKFRE
 
    real, parameter :: xlv   = MAPL_ALHL             ! Latent heat of vaporization
    real, parameter :: xlf   = MAPL_ALHF             ! Latent heat of fusion
@@ -65,6 +65,10 @@ module uwshcu
    real, parameter :: qpmin = 1.e-8  !< min value for suspended rain/snow/liquid/ice precip
    real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
    real, parameter :: qcmin = 1.e-12 !< min value for cloud condensates
+
+   logical, parameter :: fix_negative = .false.
+
+   logical :: LIMIT_RKFRE = .false.
 
    real, parameter :: mintracer = 0.0
 contains
@@ -961,9 +965,13 @@ contains
                          !  'u' & 'v' by horizontal PGF during upward motion [no unit]
     real :: frc_rasn
 
+    real :: cbmf_raw, rkfre_eff
+
 !!! TEMPORARY:  should be ncnst array of minimum values for all constituents
 !!! real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
 
+    real :: tiny = 1.e-15
+    real :: arg
 
     ! ---------------------------------------- !
     ! Bulk microphysics controlling parameters !
@@ -1746,6 +1754,31 @@ contains
        endif
 
        !----------------------------------------------------------------------!
+       ! determine rkfre stability limiter based on rkfre or 1.9 x cbmf       !
+       !----------------------------------------------------------------------!
+       if (LIMIT_RKFRE) then
+         if( use_CINcin ) then
+            wcrit = sqrt(max(0.0, 2. * cin * rbuoy) )
+         else
+            wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
+         endif
+         sigmaw = sqrt(max(0.0, rkfre(i) * tkeavg + epsvarw) )
+         mu = min(wcrit/sigmaw/1.4142, 3.0)
+         rho0inv = pifc0(kinv-1)/(r*thv0top(kinv-1)*exnifc0(kinv-1))
+         cbmf_raw = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
+         ! --- compute cbmf limit based on mass availability ---
+         cbmflimit = max(tiny, 1.9*dp0(kinv-1)/g/dt)
+         ! --- adjust rkfre dynamically for stability ---
+         if (cbmf_raw > cbmflimit) then
+            rkfre_eff = min(rkfre(i), max(0.1,cbmflimit/cbmf_raw))
+         else
+            rkfre_eff = rkfre(i)
+         end if
+       else
+         rkfre_eff = rkfre(i)
+       endif
+
+       !----------------------------------------------------------------------!
        ! In order to calculate implicit 'cin' (or 'cinlcl'), save the initially !
        ! calculated 'cin' and 'cinlcl', and other related variables. These will !
        ! be restored after calculating implicit CIN.                            !
@@ -1754,7 +1787,7 @@ contains
        if( iter .eq. 1 ) then 
            cin_i       = cin
            cinlcl_i    = cinlcl
-           ke          = rbuoy / ( rkfre(i) * tkeavg + epsvarw ) 
+           ke          = rbuoy / ( rkfre_eff * tkeavg + epsvarw )
            kinv_o      = kinv     
            klcl_o      = klcl     
            klfc_o      = klfc    
@@ -2170,7 +2203,7 @@ contains
          else
             wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
          endif
-         sigmaw = sqrt(max(0.0, rkfre(i) * tkeavg + epsvarw) )
+         sigmaw = sqrt(max(0.0, rkfre_eff * tkeavg + epsvarw) )
          mu = wcrit/sigmaw/1.4142                  
          if( mu .ge. 3. ) then
             if (scverbose) then
@@ -2185,7 +2218,7 @@ contains
          ! 1. 'cbmf' constraint
          cbmflimit = 0.9*dp0(kinv-1)/g/dt
          mumin0 = 0.
-         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(max(0.0,-log(max(tiny(0.0),2.5066*cbmflimit/rho0inv/sigmaw))))
+         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmflimit/rho0inv/sigmaw))))
 ! ALT ?? if( cbmf .gt. cbmflimit ) mumin0 = sqrt(mu**2-log(cbmflimit/cbmf))
          ! 2. 'ufrcinv' constraint
          mu = max(max(mu,mumin0),mumin1)
@@ -2210,10 +2243,9 @@ contains
        ! 'ufrclcl' are smaller than ufrcmax with no instability.             !
        ! ------------------------------------------------------------------- !
 
-         cbmf = rkfre(i)*(rho0inv*sigmaw/2.5066)*exp(-mu**2)                       
+         cbmf = rkfre_eff*(rho0inv*sigmaw/2.5066)*exp(-mu**2)
          winv = sigmaw*(2./2.5066)*exp(-mu**2)/erfc(mu)
          ufrcinv = cbmf/winv/rho0inv
-
 
        ! ------------------------------------------------------------------- !
        ! Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top, !
@@ -2248,7 +2280,7 @@ contains
          endif
          ufrc(krel-1) = ufrclcl
 
-      ! ----------------------------------------------------------------------- !
+       ! ----------------------------------------------------------------------- !
        ! Below is just diagnostic output for detailed analysis of cumulus scheme !
        ! ----------------------------------------------------------------------- !
 
@@ -2670,7 +2702,7 @@ contains
           ! ------------------------------------------------------------------------ !
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
-            if (min(scaleh,mix2d(i)).gt.0.0) then
+            if (min(scaleh,mix2d(i)) .gt. tiny) then
               rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
 ! regression bug due to cnvtr
 ! WMP         rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
@@ -2678,7 +2710,11 @@ contains
               rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
             end if
 
-            if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny(0.0),dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
+! overflow  if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny,dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
+            if( xc .gt. 0.5 ) then
+                arg = dp0(k)/g/dt/max(umf(km1),tiny) + 1.0
+                rei(k) = min(rei(k),0.9*log(max(tiny,arg))/max(dpe*(2.*xc-1.), tiny))
+            endif
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
             xco(k) = xc
@@ -2699,7 +2735,12 @@ contains
 
             umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
             emf(k) = 0.
-   
+
+          ! --------------------------------------------------------- !
+          ! Limit umf based on (2x) the CFL condition
+          ! --------------------------------------------------------- !
+            umf(k) = min(umf(k),2.*dp0(k)/g/dt)
+
             dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
 !           dcm(k) = min(1.,max(0.,xsat-xc))
 
@@ -2953,7 +2994,7 @@ contains
               limit_ufrc(i) = 1. 
               ufrc(k) = rmaxfrac
               umf(k)  = rmaxfrac * rhoifc0j * wu(k)
-              fdr(k)  = fer(k) - log(max(tiny(0.0), umf(k) / umf(km1)) ) / dpe
+              fdr(k)  = fer(k) - log(max(tiny, umf(k) / umf(km1)) ) / dpe
           endif
 
           ! ------------------------------------------------------------ !
@@ -3932,6 +3973,7 @@ contains
 	   ! 
            ! ----------------------------------------------------------------- !
 
+           if (fix_negative) then
            if ( ((qc_lm+qlten_sink(k))*dt+ql0(k)).lt.0. ) then
               totsink = qc_lm+qlten_sink(k)
               if (totsink.ne.0.) then
@@ -3948,6 +3990,7 @@ contains
                 qiten_det(k) = qc_i(k) + qc_im
               end if
            end if
+           endif
 
            qlten(k) = qrten(k) + qlten_sink(k) + qlten_det(k)
            qiten(k) = qsten(k) + qiten_sink(k) + qiten_det(k)
@@ -4011,6 +4054,7 @@ contains
        !                in combination with the original computation of qlten, qiten. However,
        !                if we use new 'qlten,qiten', there is no problem.
 
+         if (fix_negative) then
          qv0_star(:k0) = qv0(:k0) + qvten(:k0) * dt
          ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
          qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
@@ -4019,6 +4063,7 @@ contains
               dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
          qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
          slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
+         endif
 
        ! --------------------- !
        ! Tendencies of tracers !

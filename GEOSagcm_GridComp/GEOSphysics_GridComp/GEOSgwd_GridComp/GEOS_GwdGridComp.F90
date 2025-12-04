@@ -76,6 +76,7 @@ module GEOS_GwdGridCompMod
       type (GEOS_GwdGridComp), pointer     :: PTR
    end type wrap_
 
+  logical :: DEBUG_TQ_ERRORS
   logical :: DEBUG_GWD
 
 contains
@@ -322,7 +323,7 @@ contains
         call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
         call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000 , _RC)
         call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000 , _RC)
-        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.3125, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.500 , _RC)
         call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.000 , _RC)
       endif
 
@@ -353,7 +354,7 @@ contains
 
 ! NCAR GWD settings
 ! -----------------
-      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=35.0, _RC) ! 0.35 hPa
+      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=50.0, _RC) ! 0.5 hPa
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
                                    NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
@@ -376,7 +377,7 @@ contains
       call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=6.4,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.TRUE., _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.FALSE., _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
       ! Beres DeepCu
@@ -422,6 +423,7 @@ contains
       endif
 
       call MAPL_GetResource( MAPL, DEBUG_GWD,   Label="DEBUG_GWD:", default=.FALSE., _RC)
+      call MAPL_GetResource( MAPL, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., _RC)
 
       allocate(self%alpha(LM+1), _STAT)
       call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
@@ -466,13 +468,14 @@ contains
       type (ESMF_Alarm       )            :: ALARM
       type (ESMF_Grid        )            :: ESMFGRID
 
+      integer                             :: I, J, L
       integer                             :: IM, JM, LM
       !integer                             :: pgwv
       real                                :: tcrib
       !real                                :: effgworo, effgwbkg
       !real                                :: CDMBGWD1, CDMBGWD2
       !real                                :: bgstressmax
-      real, pointer, dimension(:,:)       :: LATS
+      real, pointer, dimension(:,:)       :: LONS, LATS
 
       ! Rayleigh friction parameters
 
@@ -520,7 +523,7 @@ contains
 
       call MAPL_Get(MAPL, &
            IM=IM, JM=JM, LM=LM,        &
-           RUNALARM=ALARM, LATS=LATS,  &
+           RUNALARM=ALARM, LONS=LONS, LATS=LATS,  &
            _RC )
 
       ! If its time, recalculate the GWD tendency
@@ -831,6 +834,29 @@ contains
     endif
 
     if (allocated(scratch_ridge)) deallocate(scratch_ridge)
+
+    if(associated(    T_EXP ) .and. DEBUG_TQ_ERRORS) then
+        do L=1,LM
+          do J=1,JM
+           do I=1,IM
+             if (T_EXP(I,J,L) > 333.0) then
+                 print *, "Temperature spike detected : ", T_EXP(I,J,L)
+                 print *, "    GWD TOT Temp Increment : ", DTDT_GWD(I,J,L)*DT
+                 print *, "    GWD ORO Temp Increment : ", DTDT_ORG(I,J,L)*DT
+                 print *, "    GWD BKG Temp Increment : ", (DTDT_GWD(I,J,L)-DTDT_ORG(I,J,L))*DT
+                 print *, "    AFTER GWD Parameterization"
+                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
+                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
+                 print *, "  Pressure (mb)  =", PMID(I,J,L)/100.0
+                 if (associated(U_EXP) .AND. associated(V_EXP)) then
+                 print *, "            UWND =", U_EXP(I,J,L)
+                 print *, "            VWND =", V_EXP(I,J,L)
+                 endif
+             endif 
+           end do ! IM loop
+         end do ! JM loop
+       end do ! LM loop
+    endif
 
 ! All done
 !-----------
