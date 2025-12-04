@@ -220,7 +220,7 @@ def dissipative_ke_heating(
         fpi = 0
 
 
-class GFDL1MFinalize:
+class GFDL1MFinalize(NDSLRuntime):
     """
     Computes tendencies and output diagnostic fields using the following functions:
 
@@ -245,6 +245,9 @@ class GFDL1MFinalize:
         saturation_tables: SaturationVaporPressureTable,
         update_tendencies,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+
         # NOTE disabled because state has changed
         # orchestrate(
         #     obj=self,

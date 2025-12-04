@@ -37,8 +37,7 @@ class GFDL1MRadiationCoupling(NDSLRuntime):
             config (GFDL1MConfig): contains all constants for GFDL Single Moment Microphysics
         """
         # init NDSLRuntime
-        dace_config = DaceConfig(communicator=None, backend=stencil_factory.backend)
-        super().__init__(dace_config)
+        super().__init__(stencil_factory)
 
         # make config and saturation tables visible at runtime
         self.config = config
