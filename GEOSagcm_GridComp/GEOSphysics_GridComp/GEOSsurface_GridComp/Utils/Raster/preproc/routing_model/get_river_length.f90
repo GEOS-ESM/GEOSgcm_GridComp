@@ -27,10 +27,10 @@ real*8                             :: data2
 real                               :: data7, data9, data10
 real                               :: elev_temp
 
-character(len=100)                 :: file_pfafmap !input/SRTM_PfafData.nc
-character(len=100)                 :: file_ldn !input/hyd_glo_ldn_15s.nc
-character(len=100)                 :: file_hyelev !input/hyd_glo_dem_15s.nc
-character(len=100)                 :: file_pfafrout !input/Pfafcatch-routing.dat
+character(len=900)                 :: file_pfafmap !input/SRTM_PfafData.nc
+character(len=900)                 :: file_ldn !input/hyd_glo_ldn_15s.nc
+character(len=900)                 :: file_hyelev !input/hyd_glo_dem_15s.nc
+character(len=900)                 :: file_pfafrout !input/Pfafcatch-routing.dat
 
   if (command_argument_count() /= 4) then
       print *, "no <file_pfafmap> <file_ldn> <file_hyelev> <file_pfafrout> found"
