@@ -2,7 +2,8 @@
 
 import dace
 
-from ndsl import QuantityFactory, StencilFactory, orchestrate, NDSLRuntime
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.check_flags import check_flags
@@ -10,13 +11,11 @@ from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentC
 from pyMoist.GFDL_1M.driver.fall_speed import fall_speed
 from pyMoist.GFDL_1M.driver.finish import update_tendencies
 from pyMoist.GFDL_1M.driver.ice_cloud import GFDL1MIceCloud
-from pyMoist.GFDL_1M.driver.outputs import Outputs
+from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.driver.setup import GFDL1MDriverSetup
-from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
 from pyMoist.GFDL_1M.driver.terminal_fall import GFDL1MTerminalFall
 from pyMoist.GFDL_1M.driver.warm_rain import GFDL1MWarmRain
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class GFDL1MDriver(NDSLRuntime):
@@ -52,7 +51,7 @@ class GFDL1MDriver(NDSLRuntime):
         Arguments:
             stencil_factory: StencilFactory with model domain information
             quantity_factory: QuantityFactory with model domain information
-            GFDL_1M_config: driver configuration
+            config: driver configuration
         """
         # init NDSLRuntime
         super().__init__(stencil_factory)
@@ -66,16 +65,13 @@ class GFDL1MDriver(NDSLRuntime):
         )
 
         # initialize locals
-        self._locals = GFDL1MDriverLocals.zeros(quantity_factory)
+        self._locals = GFDL1MDriverLocals.zeros(quantity_factory, allocate_locals=True)
 
         # pull saturation specific humidity tables, generate if first call
         self.driver_saturation_tables = get_tables(
             stencil_factory.backend,
             stencil_factory.config.dace_config,
         )
-
-        # NOTE disabled because state has changed
-        # orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         # construct stencils
         self._setup = GFDL1MDriverSetup(

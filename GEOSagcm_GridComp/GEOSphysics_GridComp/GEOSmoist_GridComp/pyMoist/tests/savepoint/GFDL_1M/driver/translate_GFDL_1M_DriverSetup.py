@@ -1,17 +1,16 @@
+import numpy as np
 from f90nml import Namelist
 
 from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.state import GFDL1MState
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
 from pyMoist.GFDL_1M.driver.setup import GFDL1MDriverSetup
-from ndsl.stencils.testing.savepoint import DataLoader
-import numpy as np
+from pyMoist.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.GFDL_1M.state import GFDL1MState
 
 
 class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
@@ -249,55 +248,55 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
 
         outputs["t_driversetup"][:, :, :, 0] = state.t.field[:]
         outputs["local_dp_driversetup"][:, :, :, 0] = locals.dp.field[:]
-        outputs["critical_relative_humidity_for_pdf_driversetup"][:, :, :, 0] = (
-            state.critical_relative_humidity_for_pdf.field[:]
-        )
+        outputs["critical_relative_humidity_for_pdf_driversetup"][
+            :, :, :, 0
+        ] = state.critical_relative_humidity_for_pdf.field[:]
         outputs["radiation_vapor_driversetup"][:, :, :, 0] = state.radiation_field.vapor.field[:]
         outputs["radiation_liquid_driversetup"][:, :, :, 0] = state.radiation_field.liquid.field[:]
         outputs["radiation_ice_driversetup"][:, :, :, 0] = state.radiation_field.ice.field[:]
         outputs["radiation_rain_driversetup"][:, :, :, 0] = state.radiation_field.rain.field[:]
         outputs["radiation_snow_driversetup"][:, :, :, 0] = state.radiation_field.snow.field[:]
         outputs["radiation_graupel_driversetup"][:, :, :, 0] = state.radiation_field.graupel.field[:]
-        outputs["radiation_cloud_fraction_driversetup"][:, :, :, 0] = (
-            state.radiation_field.cloud_fraction.field[:]
-        )
+        outputs["radiation_cloud_fraction_driversetup"][
+            :, :, :, 0
+        ] = state.radiation_field.cloud_fraction.field[:]
         outputs["total_concentration_driversetup"][:, :, :, 0] = locals.total_concentration.field[:]
-        outputs["driver_local_dry_mixing_ratio_vapor_unmodified_driversetup"][:, :, :, 0] = (
-            driver_locals.unmodified.mixing_ratio.vapor.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_liquid_unmodified_driversetup"][:, :, :, 0] = (
-            driver_locals.unmodified.mixing_ratio.liquid.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_rain_unmodified_driversetup"][:, :, :, 0] = (
-            driver_locals.unmodified.mixing_ratio.rain.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_ice_unmodified_driversetup"][:, :, :, 0] = (
-            driver_locals.unmodified.mixing_ratio.ice.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_snow_unmodified_driversetup"][:, :, :, 0] = (
-            driver_locals.unmodified.mixing_ratio.snow.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_graupel_unmodified_driversetup"][:, :, :, 0] = (
-            driver_locals.unmodified.mixing_ratio.graupel.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_vapor_driversetup"][:, :, :, 0] = (
-            driver_locals.dry_air_mixing_ratio.vapor.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_liquid_driversetup"][:, :, :, 0] = (
-            driver_locals.dry_air_mixing_ratio.liquid.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_rain_driversetup"][:, :, :, 0] = (
-            driver_locals.dry_air_mixing_ratio.rain.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_ice_driversetup"][:, :, :, 0] = (
-            driver_locals.dry_air_mixing_ratio.ice.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_snow_driversetup"][:, :, :, 0] = (
-            driver_locals.dry_air_mixing_ratio.snow.field[:]
-        )
-        outputs["driver_local_dry_mixing_ratio_graupel_driversetup"][:, :, :, 0] = (
-            driver_locals.dry_air_mixing_ratio.graupel.field[:]
-        )
+        outputs["driver_local_dry_mixing_ratio_vapor_unmodified_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.unmodified.mixing_ratio.vapor.field[:]
+        outputs["driver_local_dry_mixing_ratio_liquid_unmodified_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.unmodified.mixing_ratio.liquid.field[:]
+        outputs["driver_local_dry_mixing_ratio_rain_unmodified_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.unmodified.mixing_ratio.rain.field[:]
+        outputs["driver_local_dry_mixing_ratio_ice_unmodified_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.unmodified.mixing_ratio.ice.field[:]
+        outputs["driver_local_dry_mixing_ratio_snow_unmodified_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.unmodified.mixing_ratio.snow.field[:]
+        outputs["driver_local_dry_mixing_ratio_graupel_unmodified_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.unmodified.mixing_ratio.graupel.field[:]
+        outputs["driver_local_dry_mixing_ratio_vapor_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.dry_air_mixing_ratio.vapor.field[:]
+        outputs["driver_local_dry_mixing_ratio_liquid_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.dry_air_mixing_ratio.liquid.field[:]
+        outputs["driver_local_dry_mixing_ratio_rain_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.dry_air_mixing_ratio.rain.field[:]
+        outputs["driver_local_dry_mixing_ratio_ice_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.dry_air_mixing_ratio.ice.field[:]
+        outputs["driver_local_dry_mixing_ratio_snow_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.dry_air_mixing_ratio.snow.field[:]
+        outputs["driver_local_dry_mixing_ratio_graupel_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.dry_air_mixing_ratio.graupel.field[:]
         outputs["driver_local_cloud_fraction_driversetup"][:, :, :, 0] = driver_locals.cloud_fraction.field[:]
         outputs["local_dz_drivesetup"][:, :, :, 0] = locals.dz.field[:]
         outputs["u_driversetup"][:, :, :, 0] = state.u.field[:]
@@ -305,9 +304,9 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         outputs["w_driversetup"][:, :, :, 0] = state.vertical_motion.velocity.field[:]
         outputs["driver_local_t_driversetup"][:, :, :, 0] = driver_locals.t.field[:]
         outputs["driver_local_dp_driversetup"][:, :, :, 0] = driver_locals.dp.field[:]
-        outputs["driver_local_density_unmodified_driversetup"][:, :, :, 0] = (
-            driver_locals.density_unmodified.field[:]
-        )
+        outputs["driver_local_density_unmodified_driversetup"][
+            :, :, :, 0
+        ] = driver_locals.density_unmodified.field[:]
         outputs["driver_local_p_dry_driversetup"][:, :, :, 0] = driver_locals.p_dry.field[:]
         outputs["driver_local_mass_driversetup"][:, :, :, 0] = driver_locals.mass.field[:]
         outputs["driver_local_u_driversetup"][:, :, :, 0] = driver_locals.u.field[:]
@@ -316,33 +315,33 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         outputs["driver_local_ccn_driversetup"][:, :, :, 0] = driver_locals.ccn.field[:]
         outputs["driver_local_c_praut_driversetup"][:, :, :, 0] = driver_locals.c_praut.field[:]
         outputs["driver_local_rh_limited_driversetup"][:, :, :, 0] = driver_locals.rh_limited.field[:]
-        outputs["non_anvil_large_scale_liquid_precip_flux_driversetup"][:, :, :, 0] = (
-            state.non_anvil_large_scale.liquid_precip_flux.field[:, :, 0:-1]
-        )
-        outputs["non_anvil_large_scale_ice_precip_flux_driversetup"][:, :, :, 0] = (
-            state.non_anvil_large_scale.ice_precip_flux.field[:, :, 0:-1]
-        )
-        outputs["non_anvil_large_scale_evaporation_driversetup"][:, :, :, 0] = (
-            state.non_anvil_large_scale.evaporation.field[:]
-        )
-        outputs["non_anvil_large_scale_sublimation_driversetup"][:, :, :, 0] = (
-            state.non_anvil_large_scale.sublimation.field[:]
-        )
+        outputs["non_anvil_large_scale_liquid_precip_flux_driversetup"][
+            :, :, :, 0
+        ] = state.non_anvil_large_scale.liquid_precip_flux.field[:, :, 0:-1]
+        outputs["non_anvil_large_scale_ice_precip_flux_driversetup"][
+            :, :, :, 0
+        ] = state.non_anvil_large_scale.ice_precip_flux.field[:, :, 0:-1]
+        outputs["non_anvil_large_scale_evaporation_driversetup"][
+            :, :, :, 0
+        ] = state.non_anvil_large_scale.evaporation.field[:]
+        outputs["non_anvil_large_scale_sublimation_driversetup"][
+            :, :, :, 0
+        ] = state.non_anvil_large_scale.sublimation.field[:]
 
         for k in range(nz):
-            outputs["driver_local_one_minus_sigma_driversetup"][:, :, k, 0] = (
-                driver_locals.one_minus_sigma.field[:]
-            )
+            outputs["driver_local_one_minus_sigma_driversetup"][
+                :, :, k, 0
+            ] = driver_locals.one_minus_sigma.field[:]
             outputs["area_driversetup"][:, :, k, 0] = state.area.field[:]
-            outputs["surface_precip_rain_driversetup"][:, :, k, 0] = (
-                state.precipitation_at_surface.rain.field[:]
-            )
-            outputs["surface_precip_snow_driversetup"][:, :, k, 0] = (
-                state.precipitation_at_surface.snow.field[:]
-            )
-            outputs["surface_precip_graupel_driversetup"][:, :, k, 0] = (
-                state.precipitation_at_surface.graupel.field[:]
-            )
+            outputs["surface_precip_rain_driversetup"][
+                :, :, k, 0
+            ] = state.precipitation_at_surface.rain.field[:]
+            outputs["surface_precip_snow_driversetup"][
+                :, :, k, 0
+            ] = state.precipitation_at_surface.snow.field[:]
+            outputs["surface_precip_graupel_driversetup"][
+                :, :, k, 0
+            ] = state.precipitation_at_surface.graupel.field[:]
             outputs["surface_precip_ice_driversetup"][:, :, k, 0] = state.precipitation_at_surface.ice.field[
                 :
             ]

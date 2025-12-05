@@ -1,5 +1,5 @@
 import pyMoist.constants as constants
-from ndsl.dsl.gt4py import PARALLEL, atan, computation, interval, sqrt, tan, FORWARD
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, atan, computation, interval, sqrt, tan
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 

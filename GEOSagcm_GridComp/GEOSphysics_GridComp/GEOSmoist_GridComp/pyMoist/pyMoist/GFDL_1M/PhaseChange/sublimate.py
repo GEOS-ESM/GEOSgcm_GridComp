@@ -24,7 +24,10 @@ def sublimate(
         # Sublimation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         es = (
-            100.0 * p_mb * saturation_specific_humidity / (constants.EPSILON + (1.0 - constants.EPSILON) * saturation_specific_humidity)
+            100.0
+            * p_mb
+            * saturation_specific_humidity
+            / (constants.EPSILON + (1.0 - constants.EPSILON) * saturation_specific_humidity)
         )  # (100s <-^ convert from mbar to Pa)
         rhx = min(vapor / saturation_specific_humidity, 1.00)
         k1 = (

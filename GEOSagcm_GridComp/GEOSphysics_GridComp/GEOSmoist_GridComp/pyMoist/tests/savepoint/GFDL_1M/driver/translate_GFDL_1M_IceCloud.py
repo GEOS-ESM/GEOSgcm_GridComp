@@ -1,19 +1,17 @@
+import numpy as np
 from f90nml import Namelist
 
 from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.GFDL_1M.state import GFDL1MState
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
-from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
 from pyMoist.GFDL_1M.driver.ice_cloud import GFDL1MIceCloud
-from ndsl.stencils.testing.savepoint import DataLoader
-import numpy as np
+from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
+from pyMoist.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.GFDL_1M.state import GFDL1MState
 
 
 class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
@@ -63,7 +61,8 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
 
         # initalize saturation tables
         saturation_tables = get_tables(
-            backend=self.stencil_factory.backend, dace_config=self.stencil_factory.config.dace_config
+            backend=self.stencil_factory.backend,
+            dace_config=self.stencil_factory.config.dace_config,
         )
 
         # get the shape of the field
@@ -153,44 +152,44 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
             outputs["driver_local_t_icecloud"][:, :, :, n] = driver_locals.t.field[:]
             outputs["driver_local_p_dry_icecloud"][:, :, :, n] = driver_locals.p_dry.field[:]
             outputs["driver_local_dp_icecloud"][:, :, :, n] = driver_locals.dp.field[:]
-            outputs["driver_local_dry_mixing_ratio_vapor_icecloud"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.vapor.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_liquid_icecloud"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.liquid.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_rain_icecloud"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.rain.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_ice_icecloud"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.ice.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_snow_icecloud"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.snow.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_graupel_icecloud"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.graupel.field[:]
-            )
+            outputs["driver_local_dry_mixing_ratio_vapor_icecloud"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.vapor.field[:]
+            outputs["driver_local_dry_mixing_ratio_liquid_icecloud"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.liquid.field[:]
+            outputs["driver_local_dry_mixing_ratio_rain_icecloud"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.rain.field[:]
+            outputs["driver_local_dry_mixing_ratio_ice_icecloud"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.ice.field[:]
+            outputs["driver_local_dry_mixing_ratio_snow_icecloud"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.snow.field[:]
+            outputs["driver_local_dry_mixing_ratio_graupel_icecloud"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.graupel.field[:]
             outputs["driver_local_cloud_fraction_icecloud"][:, :, :, n] = driver_locals.cloud_fraction.field[
                 :
             ]
-            outputs["driver_local_terminal_speed_snow_icecloud"][:, :, :, n] = (
-                driver_locals.terminal_speed.snow.field[:]
-            )
-            outputs["driver_local_terminal_speed_graupel_icecloud"][:, :, :, n] = (
-                driver_locals.terminal_speed.graupel.field[:]
-            )
-            outputs["driver_local_terminal_speed_rain_icecloud"][:, :, :, n] = (
-                driver_locals.terminal_speed.rain.field[:]
-            )
+            outputs["driver_local_terminal_speed_snow_icecloud"][
+                :, :, :, n
+            ] = driver_locals.terminal_speed.snow.field[:]
+            outputs["driver_local_terminal_speed_graupel_icecloud"][
+                :, :, :, n
+            ] = driver_locals.terminal_speed.graupel.field[:]
+            outputs["driver_local_terminal_speed_rain_icecloud"][
+                :, :, :, n
+            ] = driver_locals.terminal_speed.rain.field[:]
             outputs["driver_local_density_icecloud"][:, :, :, n] = driver_locals.density.field[:]
             outputs["driver_local_density_factor_icecloud"][:, :, :, n] = driver_locals.density_factor.field[
                 :
             ]
             outputs["driver_local_rh_limited_icecloud"][:, :, :, n] = driver_locals.rh_limited.field[:]
-            outputs["non_anvil_large_scale_sublimation_icecloud"][:, :, :, n] = (
-                state.non_anvil_large_scale.sublimation.field[:]
-            )
+            outputs["non_anvil_large_scale_sublimation_icecloud"][
+                :, :, :, n
+            ] = state.non_anvil_large_scale.sublimation.field[:]
             outputs["driver_local_ccn_icecloud"][:, :, :, n] = driver_locals.ccn.field[:]
 
             for k in range(nz):

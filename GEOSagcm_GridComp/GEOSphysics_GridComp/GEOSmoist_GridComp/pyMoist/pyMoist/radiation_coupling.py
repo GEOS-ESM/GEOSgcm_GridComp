@@ -1,20 +1,6 @@
-from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
-from ndsl.dsl.typing import Float, FloatField
-from pyMoist.saturation_tables import (
-    GlobalTable_saturation_tables,
-    saturation_specific_humidity,
-    SaturationVaporPressureTable,
-)
-from pyMoist.shared_incloud_processes import (
-    cloud_effective_radius_ice,
-    cloud_effective_radius_liquid,
-    fix_up_clouds,
-)
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.state import GFDL1MState
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
+from ndsl.dsl.typing import FloatField
+from pyMoist.shared_incloud_processes import cloud_effective_radius_ice, cloud_effective_radius_liquid
 
 
 def radiation_coupling(

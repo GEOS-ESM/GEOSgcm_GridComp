@@ -1,27 +1,14 @@
-from ndsl import QuantityFactory, StencilFactory, NDSLRuntime, State, Quantity
+import dataclasses
+
+from ndsl import NDSLRuntime, Quantity, QuantityFactory, State, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import (
-    BoolFieldIJ,
-    FloatField,
-    FloatFieldIJ,
-    Float,
-    Bool,
-)
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval
+from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
 from ndsl.stencils import set_value_2D_defn
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
-from pyMoist.GFDL_1M.driver.stencils import implicit_fall
-from ndsl.dsl.gt4py import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    exp,
-    function,
-    interval,
-)
 from pyMoist.GFDL_1M.driver.constants import constants
-import dataclasses
+from pyMoist.GFDL_1M.driver.stencils import implicit_fall
 
 
 def check_precip_get_zt(

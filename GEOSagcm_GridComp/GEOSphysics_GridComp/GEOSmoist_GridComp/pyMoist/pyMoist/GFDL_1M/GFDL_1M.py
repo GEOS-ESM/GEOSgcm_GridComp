@@ -1,22 +1,19 @@
-from ndsl import QuantityFactory, StencilFactory, orchestrate
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import GFDL1MDriver
 from pyMoist.GFDL_1M.finalize import GFDL1MFinalize
-from pyMoist.GFDL_1M.masks import Masks
+from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
 from pyMoist.GFDL_1M.setup import GFDL1MSetup
-from pyMoist.GFDL_1M.state_old import MicrophysicState, Outputs
+from pyMoist.GFDL_1M.state import GFDL1MState
 from pyMoist.GFDL_1M.stencils import (
     prepare_radiation,
-    update_radiation,
     prepare_tendencies,
+    update_radiation,
     update_tendencies,
 )
-from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
-from pyMoist.GFDL_1M.state import GFDL1MState
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
 
 
 class GFDL1M:
@@ -46,16 +43,6 @@ class GFDL1M:
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
     ):
-        # NOTE disabled because state has changed
-        # orchestrate(
-        #     obj=self,
-        #     config=stencil_factory.config.dace_config,
-        #     dace_compiletime_args=[
-        #         "state",
-        #         "outputs",
-        #     ],
-        # )
-
         if stencil_factory.grid_indexing.n_halo != 0:
             raise ValueError("halo needs to be zero for GFDL Single Moment microphysics")
 
@@ -80,6 +67,7 @@ class GFDL1M:
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
             GFDL_1M_config=config,
+            saturation_tables=saturation_tables,
         )
 
         self._update_tendencies = stencil_factory.from_dims_halo(
@@ -111,6 +99,7 @@ class GFDL1M:
 
         self._finalize = GFDL1MFinalize(
             stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
             GFDL_1M_config=self.GFDL_1M_config,
             saturation_tables=self.saturation_tables,
             update_tendencies=self._update_tendencies,

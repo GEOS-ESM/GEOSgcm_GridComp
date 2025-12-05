@@ -2,12 +2,11 @@
 I/O and errorhandling is performed here.
 Calculations can be found in deeper functions."""
 
-from typing import Optional
 import dataclasses
 
-from ndsl import QuantityFactory, StencilFactory, orchestrate, Quantity, State, NDSLRuntime
+from ndsl import NDSLRuntime, Quantity, QuantityFactory, State, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float
+from ndsl.dsl.typing import Float
 from pyMoist.constants import FLOAT_TINY
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.PhaseChange.evaporate import evaporate
@@ -15,7 +14,6 @@ from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
 from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 from pyMoist.GFDL_1M.PhaseChange.rh_calculations import fill_rh_crit_export, rh_calculations
 from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
-from pyMoist.GFDL_1M.state_old import MicrophysicsDiagnostics
 from pyMoist.saturation_tables import SaturationVaporPressureTable
 from pyMoist.shared_incloud_processes import fix_up_clouds
 
