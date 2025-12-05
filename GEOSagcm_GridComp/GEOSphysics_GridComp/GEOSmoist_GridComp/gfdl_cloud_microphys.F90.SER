@@ -68,6 +68,11 @@ module gfdl2_cloud_microphys_mod
 
     character (len = 17) :: mod_name = 'gfdl_cloud_microphys'
 
+    ! parameters to control serialization within this module. default is false (no serialization)
+    !$ser verbatim logical :: debug_serialization = .false.
+    !$ser verbatim logical :: serialize_all_iterations = .false.
+    !$ser verbatim integer :: serialize_index
+
     real, parameter :: grav = 9.80665 !< gfs: acceleration due to gravity
     real, parameter :: rdgas = 287.05 !< gfs: gas constant for dry air
     real, parameter :: rvgas = 461.50 !< gfs: gas constant for water vapor
@@ -447,6 +452,8 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     mpdt   = min (dt_in, mp_time)
     rdt    = 1. / dt_in
     ntimes = nint (dt_in / mpdt)
+    ! set final dimension of driver savepoints
+    !$ser verbatim call ser_set_D4(ntimes)
 
     ! small time step:
     dts = dt_in / real (ntimes)
@@ -536,10 +543,14 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
             ice (i, j) = ice (i, j) * convt
             graupel (i, j) = graupel (i, j) * convt
             prec_mp (i, j) = rain (i, j) + snow (i, j) + ice (i, j) + graupel (i, j)
-            !$ser verbatim ! still in GFDL_1M_driver_finish-Out
-            !$ser verbatim call ser_set_indices(i, j, 1, 1)
-            !$ser data_buffered Dx=2 rain_driver_finish=rain(i,j) snow_driver_finish=snow(i,j)
-            !$ser data_buffered Dx=2 ice_driver_finish=ice(i,j) graupel_driver_finish=graupel(i,j)
+            !$ser verbatim if (debug_serialization .eqv. .true.) then
+                !$ser verbatim ! still in GFDL_1M_DriverFinish-Out
+                !$ser verbatim call ser_set_indices(i, j, 1, 1)
+                !$ser data_buffered Dx=2 surface_precip_rain_driverfinish=rain(i,j)
+                !$ser data_buffered Dx=2 surface_precip_snow_driverfinish=snow(i,j)
+                !$ser data_buffered Dx=2 surface_precip_ice_driverfinish=ice(i,j)
+                !$ser data_buffered Dx=2 surface_precip_graupel_driverfinish=graupel(i,j)
+            !$ser verbatim endif
         enddo
     enddo
 
@@ -686,12 +697,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
 
     integer :: i, k, n
 
-    !$ser verbatim integer :: hold_0, hold_1, hold_2, hold_3, hold_4, hold_5, hold_6, hold_7, hold_8, hold_9, hold_10, hold_11, hold_12, hold_13, hold_14, hold_15, hold_16, hold_17, hold_18, hold_19, hold_20, hold_21, hold_22, hold_23, hold_24, hold_25, hold_26, hold_27, hold_28, hold_29, hold_30, hold_31, hold_32, hold_33, hold_34
-    !$ser verbatim logical :: debug_serialization, serialize_all_iterations
-    !$ser verbatim integer :: serialize_index
-    !$ser verbatim debug_serialization = .false.
-    !$ser verbatim serialize_all_iterations = .false.
-
     dts = dt_in / real (ntimes)
     rdt = 1. / dt_in
 
@@ -700,33 +705,62 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     ! -----------------------------------------------------------------------
 
     do i = is, ie
-        !$ser savepoint GFDL_1M_driver_setup-In
-        !$ser verbatim do k = ktop, kbot
-            !$ser verbatim call ser_set_indices(i, j, k, 1)
-            !$ser data_buffered Dx=3 t_driver_setup=pt(i,j,k) dp_driver_setup=delp(i,j,k)
-            !$ser data_buffered Dx=3 rhcrit3d_driver_setup=rhcrit(i,j,k) qv_driver_setup=qv(i,j,k)
-            !$ser data_buffered Dx=3 ql_driver_setup=ql(i,j,k) qi_driver_setup=qi(i,j,k)
-            !$ser data_buffered Dx=3 qr_driver_setup=qr(i,j,k) qs_driver_setup=qs(i,j,k)
-            !$ser data_buffered Dx=3 qg_driver_setup=qg(i,j,k) qa_driver_setup=qa(i,j,k)
-            !$ser data_buffered Dx=3 ice_concentration_driver_setup=qn(i,j,k)
-            !$ser data_buffered Dx=3 liquid_concentration_driver_setup=0.0 qv0_driver_setup=qv0(k)
-            !$ser data_buffered Dx=3 ql0_driver_setup=ql0(k) qr0_driver_setup=qr0(k) qi0_driver_setup=qi0(k)
-            !$ser data_buffered Dx=3 qs0_driver_setup=qs0(k) qg0_driver_setup=qg0(k) qa0_driver_setup=qa0(k)
-            !$ser data_buffered Dx=3 qv1_driver_setup=qvz(k) ql1_driver_setup=qlz(k) qr1_driver_setup=qrz(k)
-            !$ser data_buffered Dx=3 qi1_driver_setup=qiz(k) qs1_driver_setup=qsz(k) qg1_driver_setup=qgz(k)
-            !$ser data_buffered Dx=3 qa1_driver_setup=qaz(k) dz_driver_setup=dz(i,j,k)
-            !$ser data_buffered Dx=3 u_driver_setup=uin(i,j,k) v_driver_setup=vin(i,j,k)
-            !$ser data_buffered Dx=3 w_driver_setup=w(i,j,k) t1_driver_setup=tz(k) dp1_driver_setup=dp1(k)
-            !$ser data_buffered Dx=3 omq_driver_setup=omq den_driver_setup=den0(k) p_dry_driver_setup=p1(k)
-            !$ser data_buffered Dx=3 m1_driver_setup=m1(k) u1_driver_setup=u1(k) v1_driver_setup=v1(k)
-            !$ser data_buffered Dx=3 w1_driver_setup=w1(k) ccn_driver_setup=ccn(k)
-            !$ser data_buffered Dx=3 c_praut_driver_setup=c_praut(k) rh_limited_driver_setup=h_var1d(k)
-            !$ser data_buffered Dx=3 m2_rain_driver_setup=m2_rain(i,j,k) m2_sol_driver_setup=m2_sol(i,j,k)
-            !$ser data_buffered Dx=3 revap_driver_setup=revap(i,j,k) isubl_driver_setup=isubl(i,j,k)
-            !$ser data_buffered Dx=2 onemsig_driver_setup=onemsig area_driver_setup=area1(i)
-            !$ser data_buffered Dx=2 rain_driver_setup=rain(i) snow_driver_setup=snow(i)
-            !$ser data_buffered Dx=2 graupel_driver_setup=graupel(i) ice_driver_setup=ice(i)
-        !$ser verbatim enddo
+        !$ser verbatim if (debug_serialization .eqv. .true.) then
+            !$ser savepoint GFDL_1M_DriverSetup-In
+            !$ser verbatim do k = ktop, kbot
+                !$ser verbatim call ser_set_indices(i, j, k, 1)
+                !$ser data_buffered Dx=3 t_driversetup=pt(i,j,k)
+                !$ser data_buffered Dx=3 local_dp_driversetup=delp(i,j,k)
+                !$ser data_buffered Dx=3 critical_relative_humidity_for_pdf_driversetup=rhcrit(i,j,k)
+                !$ser data_buffered Dx=3 radiation_vapor_driversetup=qv(i,j,k)
+                !$ser data_buffered Dx=3 radiation_liquid_driversetup=ql(i,j,k) 
+                !$ser data_buffered Dx=3 radiation_ice_driversetup=qi(i,j,k)
+                !$ser data_buffered Dx=3 radiation_rain_driversetup=qr(i,j,k) 
+                !$ser data_buffered Dx=3 radiation_snow_driversetup=qs(i,j,k)
+                !$ser data_buffered Dx=3 radiation_graupel_driversetup=qg(i,j,k) 
+                !$ser data_buffered Dx=3 radiation_cloud_fraction_driversetup=qa(i,j,k)
+                !$ser data_buffered Dx=3 total_concentration_driversetup=qn(i,j,k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_vapor_unmodified_driversetup=qv0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_liquid_unmodified_driversetup=ql0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_unmodified_driversetup=qr0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_ice_unmodified_driversetup=qi0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_snow_unmodified_driversetup=qs0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_graupel_unmodified_driversetup=qg0(k)
+                !$ser data_buffered Dx=3 driver_local_cloud_fraciton_unmodified_driversetup=qa0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_vapor_driversetup=qvz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_liquid_driversetup=qlz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_driversetup=qrz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_ice_driversetup=qiz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_snow_driversetup=qsz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_graupel_driversetup=qgz(k)
+                !$ser data_buffered Dx=3 driver_local_cloud_fraction_driversetup=qaz(k)
+                !$ser data_buffered Dx=3 local_dz_drivesetup=dz(i,j,k)
+                !$ser data_buffered Dx=3 u_driversetup=uin(i,j,k)
+                !$ser data_buffered Dx=3 v_driversetup=vin(i,j,k)
+                !$ser data_buffered Dx=3 w_driversetup=w(i,j,k)
+                !$ser data_buffered Dx=3 driver_local_t_driversetup=tz(k)
+                !$ser data_buffered Dx=3 driver_local_dp_driversetup=dp1(k)
+                !$ser data_buffered Dx=3 driver_local_density_unmodified_driversetup=den0(k)
+                !$ser data_buffered Dx=3 driver_local_p_dry_driversetup=p1(k)
+                !$ser data_buffered Dx=3 driver_local_mass_driversetup=m1(k)
+                !$ser data_buffered Dx=3 driver_local_u_driversetup=u1(k)
+                !$ser data_buffered Dx=3 driver_local_v_driversetup=v1(k)
+                !$ser data_buffered Dx=3 driver_local_w_driversetup=w1(k)
+                !$ser data_buffered Dx=3 driver_local_ccn_driversetup=ccn(k)
+                !$ser data_buffered Dx=3 driver_local_c_praut_driversetup=c_praut(k)
+                !$ser data_buffered Dx=3 driver_local_rh_limited_driversetup=h_var1d(k)
+                !$ser data_buffered Dx=3 non_anvil_large_scale_liquid_precip_flux_driversetup=m2_rain(i,j,k)
+                !$ser data_buffered Dx=3 non_anvil_large_scale_ice_precip_flux_driversetup=m2_sol(i,j,k)
+                !$ser data_buffered Dx=3 non_anvil_large_scale_evaporation_driversetup=revap(i,j,k)
+                !$ser data_buffered Dx=3 non_anvil_large_scale_sublimation_driversetup=isubl(i,j,k)
+                !$ser data_buffered Dx=2 driver_local_one_minus_sigma_driversetup=onemsig
+                !$ser data_buffered Dx=2 area_driversetup=area1(i)
+                !$ser data_buffered Dx=2 surface_precip_rain_driversetup=rain(i)
+                !$ser data_buffered Dx=2 surface_precip_snow_driversetup=snow(i)
+                !$ser data_buffered Dx=2 surface_precip_graupel_driversetup=graupel(i)
+                !$ser data_buffered Dx=2 surface_precip_ice_driversetup=ice(i)
+            !$ser verbatim enddo
+        !$ser verbatim endif
         do k = ktop, kbot
 
             t0 (k) = pt (i, j, k)
@@ -838,40 +872,69 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         revap (i, j, :) = 0.
         isubl (i, j, :) = 0.
 
-        !$ser savepoint GFDL_1M_driver_setup-Out
-        !$ser verbatim do k = ktop, kbot
-            !$ser verbatim call ser_set_indices(i, j, k, 1)
-            !$ser data_buffered Dx=3 t_driver_setup=pt(i,j,k) dp_driver_setup=delp(i,j,k)
-            !$ser data_buffered Dx=3 rhcrit3d_driver_setup=rhcrit(i,j,k) qv_driver_setup=qv(i,j,k)
-            !$ser data_buffered Dx=3 ql_driver_setup=ql(i,j,k) qi_driver_setup=qi(i,j,k)
-            !$ser data_buffered Dx=3 qr_driver_setup=qr(i,j,k) qs_driver_setup=qs(i,j,k)
-            !$ser data_buffered Dx=3 qg_driver_setup=qg(i,j,k) qa_driver_setup=qa(i,j,k)
-            !$ser data_buffered Dx=3 ice_concentration_driver_setup=qn(i,j,k)
-            !$ser data_buffered Dx=3 liquid_concentration_driver_setup=0.0 qv0_driver_setup=qv0(k)
-            !$ser data_buffered Dx=3 ql0_driver_setup=ql0(k) qr0_driver_setup=qr0(k) qi0_driver_setup=qi0(k)
-            !$ser data_buffered Dx=3 qs0_driver_setup=qs0(k) qg0_driver_setup=qg0(k) qa0_driver_setup=qa0(k)
-            !$ser data_buffered Dx=3 qv1_driver_setup=qvz(k) ql1_driver_setup=qlz(k) qr1_driver_setup=qrz(k)
-            !$ser data_buffered Dx=3 qi1_driver_setup=qiz(k) qs1_driver_setup=qsz(k) qg1_driver_setup=qgz(k)
-            !$ser data_buffered Dx=3 qa1_driver_setup=qaz(k) dz_driver_setup=dz(i,j,k)
-            !$ser data_buffered Dx=3 u_driver_setup=uin(i,j,k) v_driver_setup=vin(i,j,k)
-            !$ser data_buffered Dx=3 w_driver_setup=w(i,j,k) t1_driver_setup=tz(k) dp1_driver_setup=dp1(k)
-            !$ser data_buffered Dx=3 omq_driver_setup=omq den_driver_setup=den0(k) p_dry_driver_setup=p1(k)
-            !$ser data_buffered Dx=3 m1_driver_setup=m1(k) u1_driver_setup=u1(k) v1_driver_setup=v1(k)
-            !$ser data_buffered Dx=3 w1_driver_setup=w1(k) ccn_driver_setup=ccn(k)
-            !$ser data_buffered Dx=3 c_praut_driver_setup=c_praut(k) rh_limited_driver_setup=h_var1d(k)
-            !$ser data_buffered Dx=3 m2_rain_driver_setup=m2_rain(i,j,k) m2_sol_driver_setup=m2_sol(i,j,k)
-            !$ser data_buffered Dx=3 revap_driver_setup=revap(i,j,k) isubl_driver_setup=isubl(i,j,k)
-            !$ser data_buffered Dx=2 onemsig_driver_setup=onemsig area_driver_setup=area1(i)
-            !$ser data_buffered Dx=2 rain_driver_setup=rain(i) snow_driver_setup=snow(i)
-            !$ser data_buffered Dx=2 graupel_driver_setup=graupel(i) ice_driver_setup=ice(i)
-        !$ser verbatim enddo
+        !$ser verbatim if (debug_serialization .eqv. .true.) then
+            !$ser savepoint GFDL_1M_DriverSetup-Out
+            !$ser verbatim do k = ktop, kbot
+                !$ser verbatim call ser_set_indices(i, j, k, 1)
+                !$ser data_buffered Dx=3 t_driversetup=pt(i,j,k)
+                !$ser data_buffered Dx=3 local_dp_driversetup=delp(i,j,k)
+                !$ser data_buffered Dx=3 critical_relative_humidity_for_pdf_driversetup=rhcrit(i,j,k)
+                !$ser data_buffered Dx=3 radiation_vapor_driversetup=qv(i,j,k)
+                !$ser data_buffered Dx=3 radiation_liquid_driversetup=ql(i,j,k) 
+                !$ser data_buffered Dx=3 radiation_ice_driversetup=qi(i,j,k)
+                !$ser data_buffered Dx=3 radiation_rain_driversetup=qr(i,j,k) 
+                !$ser data_buffered Dx=3 radiation_snow_driversetup=qs(i,j,k)
+                !$ser data_buffered Dx=3 radiation_graupel_driversetup=qg(i,j,k) 
+                !$ser data_buffered Dx=3 radiation_cloud_fraction_driversetup=qa(i,j,k)
+                !$ser data_buffered Dx=3 total_concentration_driversetup=qn(i,j,k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_vapor_unmodified_driversetup=qv0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_liquid_unmodified_driversetup=ql0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_unmodified_driversetup=qr0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_ice_unmodified_driversetup=qi0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_snow_unmodified_driversetup=qs0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_graupel_unmodified_driversetup=qg0(k)
+                !$ser data_buffered Dx=3 driver_local_cloud_fraciton_unmodified_driversetup=qa0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_vapor_driversetup=qvz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_liquid_driversetup=qlz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_driversetup=qrz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_ice_driversetup=qiz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_snow_driversetup=qsz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_graupel_driversetup=qgz(k)
+                !$ser data_buffered Dx=3 driver_local_cloud_fraction_driversetup=qaz(k)
+                !$ser data_buffered Dx=3 local_dz_drivesetup=dz(i,j,k)
+                !$ser data_buffered Dx=3 u_driversetup=uin(i,j,k)
+                !$ser data_buffered Dx=3 v_driversetup=vin(i,j,k)
+                !$ser data_buffered Dx=3 w_driversetup=w(i,j,k)
+                !$ser data_buffered Dx=3 driver_local_t_driversetup=tz(k)
+                !$ser data_buffered Dx=3 driver_local_dp_driversetup=dp1(k)
+                !$ser data_buffered Dx=3 driver_local_density_unmodified_driversetup=den0(k)
+                !$ser data_buffered Dx=3 driver_local_p_dry_driversetup=p1(k)
+                !$ser data_buffered Dx=3 driver_local_mass_driversetup=m1(k)
+                !$ser data_buffered Dx=3 driver_local_u_driversetup=u1(k)
+                !$ser data_buffered Dx=3 driver_local_v_driversetup=v1(k)
+                !$ser data_buffered Dx=3 driver_local_w_driversetup=w1(k)
+                !$ser data_buffered Dx=3 driver_local_ccn_driversetup=ccn(k)
+                !$ser data_buffered Dx=3 driver_local_c_praut_driversetup=c_praut(k)
+                !$ser data_buffered Dx=3 driver_local_rh_limited_driversetup=h_var1d(k)
+                !$ser data_buffered Dx=3 non_anvil_large_scale_liquid_precip_flux_driversetup=m2_rain(i,j,k)
+                !$ser data_buffered Dx=3 non_anvil_large_scale_ice_precip_flux_driversetup=m2_sol(i,j,k)
+                !$ser data_buffered Dx=3 non_anvil_large_scale_evaporation_driversetup=revap(i,j,k)
+                !$ser data_buffered Dx=3 non_anvil_large_scale_sublimation_driversetup=isubl(i,j,k)
+                !$ser data_buffered Dx=2 driver_local_one_minus_sigma_driversetup=onemsig
+                !$ser data_buffered Dx=2 area_driversetup=area1(i)
+                !$ser data_buffered Dx=2 surface_precip_rain_driversetup=rain(i)
+                !$ser data_buffered Dx=2 surface_precip_snow_driversetup=snow(i)
+                !$ser data_buffered Dx=2 surface_precip_graupel_driversetup=graupel(i)
+                !$ser data_buffered Dx=2 surface_precip_ice_driversetup=ice(i)
+            !$ser verbatim enddo
+        !$ser verbatim endif
 
         do n = 1, ntimes
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_all_iterations .eqv. .true.) then
                     !$ser verbatim serialize_index = n
                 !$ser verbatim else
-                    !$ser verbatim serialize_index = ntimes
+                    !$ser verbatim serialize_index = 2
                 !$ser verbatim endif
             !$ser verbatim endif
 
@@ -880,16 +943,25 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint GFDL_1M_fall_speed-In
+                    !$ser savepoint GFDL_1M_FallSpeed-In
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j, k, 1)
-                        !$ser data_buffered Dx=3 p1_fall_speed=p1(k) den1_fall_speed=den(k) qs_fall_speed=qsz(k)
-                        !$ser data_buffered Dx=3 qi_fall_speed=qiz(k) qg_fall_speed=qgz(k) ql_fall_speed=qlz(k)
-                        !$ser data_buffered Dx=3 vts_fall_speed=vtsz(k) vti_fall_speed=vtiz(k) vtg_fall_speed=vtgz(k)
-                        !$ser data_buffered Dx=3 t1_fall_speed=tz(k) dz_fall_speed=dz0(k) dz1_fall_speed=dz1(k)
-                        !$ser data_buffered Dx=3 den_fall_speed=den0(k) denfac_fall_speed=denfac(k) t_fall_speed=t0(k)
-                        !$ser data_buffered Dx=2 cnv_frc_fall_speed=cnv_fraction(i)
-                        !$ser data_buffered Dx=0 anv_icefall_fall_speed=anv_icefall lsc_icefall_fall_speed=lsc_icefall
+                        !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
+                        !$ser data_buffered Dx=4 driver_local_p_dry_fallspeed=p1(k)
+                        !$ser data_buffered Dx=4 driver_local_density_fallspeed=den(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_snow_fallspeed=qsz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_ice_fallspeed=qiz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_graupel_fallspeed=qgz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_liquid_fallspeed=qlz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_ice_fallspeed=vtiz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_snow_fallspeed=vtsz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_graupel_fallspeed=vtgz(k)
+                        !$ser data_buffered Dx=4 driver_local_t_fallspeed=tz(k)
+                        !$ser data_buffered Dx=4 driver_local_dz_unmodified_fallspeed=dz0(k)
+                        !$ser data_buffered Dx=4 driver_local_dz_fallspeed=dz1(k)
+                        !$ser data_buffered Dx=4 driver_local_density_unmodified_fallspeed=den0(k)
+                        !$ser data_buffered Dx=4 driver_local_density_factor_fallspeed=denfac(k)
+                        !$ser data_buffered Dx=4 driver_local_t_unmodified_fallspeed=t0(k)
+                        !$ser data_buffered Dx=4 convection_fraction_fallspeed=cnv_fraction(i)
                     !$ser verbatim enddo
                 !$ser verbatim endif
             !$ser verbatim endif
@@ -914,25 +986,54 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                              den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint GFDL_1M_fall_speed-Out
+                    !$ser savepoint GFDL_1M_FallSpeed-Out
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j, k, 1)
-                        !$ser data_buffered Dx=3 vts_fall_speed=vtsz(k) vti_fall_speed=vtiz(k) vtg_fall_speed=vtgz(k)
-                        !$ser data_buffered Dx=3 dz1_fall_speed=dz1(k) den1_fall_speed=den(k) denfac_fall_speed=denfac(k)
+                        !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
+                        !$ser data_buffered Dx=4 driver_local_p_dry_fallspeed=p1(k)
+                        !$ser data_buffered Dx=4 driver_local_density_fallspeed=den(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_snow_fallspeed=qsz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_ice_fallspeed=qiz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_graupel_fallspeed=qgz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_liquid_fallspeed=qlz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_ice_fallspeed=vtiz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_snow_fallspeed=vtsz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_graupel_fallspeed=vtgz(k)
+                        !$ser data_buffered Dx=4 driver_local_t_fallspeed=tz(k)
+                        !$ser data_buffered Dx=4 driver_local_dz_unmodified_fallspeed=dz0(k)
+                        !$ser data_buffered Dx=4 driver_local_dz_fallspeed=dz1(k)
+                        !$ser data_buffered Dx=4 driver_local_density_unmodified_fallspeed=den0(k)
+                        !$ser data_buffered Dx=4 driver_local_density_factor_fallspeed=denfac(k)
+                        !$ser data_buffered Dx=4 driver_local_t_unmodified_fallspeed=t0(k)
+                        !$ser data_buffered Dx=4 convection_fraction_fallspeed=cnv_fraction(i)
                     !$ser verbatim enddo
                     
-                    !$ser savepoint GFDL_1M_terminal_fall-In
+                    !$ser savepoint GFDL_1M_TerminalFall-In
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j, k, 1)
-                        !$ser data_buffered Dx=3 t1_terminal_fall=tz(k) qv_terminal_fall=qvz(k) ql_terminal_fall=qlz(k)
-                        !$ser data_buffered Dx=3 qr_terminal_fall=qrz(k) qg_terminal_fall=qgz(k) qs_terminal_fall=qsz(k)
-                        !$ser data_buffered Dx=3 qi_terminal_fall=qiz(k) m1_sol_terminal_fall=m1_sol(k) w1_terminal_fall=w1(k)
-                        !$ser data_buffered Dx=3 dz1_terminal_fall=dz1(k) dp1_terminal_fall=dp1(k)
-                        !$ser data_buffered Dx=3 vtg_terminal_fall=vtgz(k) vts_terminal_fall=vtsz(k) vti_terminal_fall=vtiz(k)
-                        !$ser data_buffered Dx=2 r1_terminal_fall=r1 g1_terminal_fall=g1 s1_terminal_fall=s1 i1_terminal_fall=i1
-                        !$ser data_buffered Dx=2 rain_terminal_fall=rain(i) snow_terminal_fall=snow(i)
-                        !$ser data_buffered Dx=2 graupel_terminal_fall=graupel(i) ice_terminal_fall=ice(i)
+                        !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
+                        !$ser data_buffered Dx=4 driver_local_t_terminalfall=tz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_vapor_terminalfall=qvz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_liquid_terminalfall=qlz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_rain_terminalfall=qrz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_graupel_terminalfall=qgz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_snow_terminalfall=qsz(k) 
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_ice_terminalfall=qiz(k)
+                        !$ser data_buffered Dx=4 driver_local_ice_precip_flux_terminalfall=m1_sol(k)
+                        !$ser data_buffered Dx=4 driver_local_w_terminalfall=w1(k)
+                        !$ser data_buffered Dx=4 driver_local_dz_terminalfall=dz1(k)
+                        !$ser data_buffered Dx=4 driver_local_dp_terminalfall=dp1(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_ice_terminalfall=vtiz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_snow_terminalfall=vtsz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_graupel_terminalfall=vtgz(k)
+                        !$ser data_buffered Dx=4 driver_local_rain_terminalfall=r1
+                        !$ser data_buffered Dx=4 driver_local_ice_terminalfall=i1
+                        !$ser data_buffered Dx=4 driver_local_snow_terminalfall=s1
+                        !$ser data_buffered Dx=4 driver_local_graupel_terminalfall=g1
+                        !$ser data_buffered Dx=4 surface_precip_rain_terminalfall=rain(i)
+                        !$ser data_buffered Dx=4 surface_precip_snow_terminalfall=snow(i)
+                        !$ser data_buffered Dx=4 surface_precip_graupel_terminalfall=graupel(i)
+                        !$ser data_buffered Dx=4 surface_precip_ice_terminalfall=ice(i)
                     !$ser verbatim enddo
+                    !$ser savepoint GFDL_1M_TerminalFall-Out
                 !$ser verbatim endif
             !$ser verbatim endif
             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
@@ -944,15 +1045,31 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ice (i) = ice (i) + i1
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint GFDL_1M_terminal_fall-Out
+                    !!$ser savepoint GFDL_1M_TerminalFall-Out
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j, k, 1)
-                        !$ser data_buffered Dx=3 t1_terminal_fall=tz(k) qv_terminal_fall=qvz(k) ql_terminal_fall=qlz(k)
-                        !$ser data_buffered Dx=3 qr_terminal_fall=qrz(k) qg_terminal_fall=qgz(k) qs_terminal_fall=qsz(k) 
-                        !$ser data_buffered Dx=3 qi_terminal_fall=qiz(k) m1_sol_terminal_fall=m1_sol(k) w1_terminal_fall=w1(k)
-                        !$ser data_buffered Dx=2 r1_terminal_fall=r1 g1_terminal_fall=g1 s1_terminal_fall=s1 i1_terminal_fall=i1
-                        !$ser data_buffered Dx=2 rain_terminal_fall=rain(i) snow_terminal_fall=snow(i)
-                        !$ser data_buffered Dx=2 graupel_terminal_fall=graupel(i) ice_terminal_fall=ice(i)
+                        !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
+                        !$ser data_buffered Dx=4 driver_local_t_terminalfall=tz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_vapor_terminalfall=qvz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_liquid_terminalfall=qlz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_rain_terminalfall=qrz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_graupel_terminalfall=qgz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_snow_terminalfall=qsz(k) 
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_ice_terminalfall=qiz(k)
+                        !$ser data_buffered Dx=4 driver_local_ice_precip_flux_terminalfall=m1_sol(k)
+                        !$ser data_buffered Dx=4 driver_local_w_terminalfall=w1(k)
+                        !$ser data_buffered Dx=4 driver_local_dz_terminalfall=dz1(k)
+                        !$ser data_buffered Dx=4 driver_local_dp_terminalfall=dp1(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_ice_terminalfall=vtiz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_snow_terminalfall=vtsz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_graupel_terminalfall=vtgz(k)
+                        !$ser data_buffered Dx=4 driver_local_rain_terminalfall=r1
+                        !$ser data_buffered Dx=4 driver_local_ice_terminalfall=i1
+                        !$ser data_buffered Dx=4 driver_local_snow_terminalfall=s1
+                        !$ser data_buffered Dx=4 driver_local_graupel_terminalfall=g1
+                        !$ser data_buffered Dx=4 surface_precip_rain_terminalfall=rain(i)
+                        !$ser data_buffered Dx=4 surface_precip_snow_terminalfall=snow(i)
+                        !$ser data_buffered Dx=4 surface_precip_graupel_terminalfall=graupel(i)
+                        !$ser data_buffered Dx=4 surface_precip_ice_terminalfall=ice(i)
                     !$ser verbatim enddo
                 !$ser verbatim endif
             !$ser verbatim endif
@@ -970,20 +1087,39 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint GFDL_1M_warm_rain-In
+                    !$ser savepoint GFDL_1M_WarmRain-In
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j, k, 1)
-                        !$ser data_buffered Dx=3 dp1_warm_rain=dp1(k) dz1_warm_rain=dz1(k) t1_warm_rain=tz(k)
-                        !$ser data_buffered Dx=3 qv_warm_rain=qvz(k) ql_warm_rain=qlz(k) qr_warm_rain=qrz(k) qi_warm_rain=qiz(k)
-                        !$ser data_buffered Dx=3 qs_warm_rain=qsz(k) qg_warm_rain=qgz(k) qa_warm_rain=qaz(k) ccn_warm_rain=ccn(k)
-                        !$ser data_buffered Dx=3 den_warm_rain=den(k) denfac_warm_rain=denfac(k) c_praut_warm_rain=c_praut(k)
-                        !$ser data_buffered Dx=3 vtr_warm_rain=vtrz(k) evap1_warm_rain=evap1(k)
-                        !$ser data_buffered Dx=3 m1_rain_warm_rain=m1_rain(k) w1_warm_rain=w1(k) rh_limited_warm_rain=h_var1d(k)
-                        !$ser data_buffered Dx=3 revap_warm_rain=revap(i,j,k) m2_rain_warm_rain=m2_rain(i,j,k)
-                        !$ser data_buffered Dx=3 m2_sol_warm_rain=m2_sol(i,j,k) m1_warm_rain=m1(k) m1_sol_warm_rain=m1_sol(k)
-                        !$ser data_buffered Dx=2 r1_warm_rain=r1 rain_warm_rain=rain(i)
-                        !$ser data_buffered Dx=2 eis_warm_rain=eis(i) onemsig_warm_rain=onemsig
+                        !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
+                        !$ser data_buffered Dx=4 driver_local_dp_warmrain=dp1(k)
+                        !$ser data_buffered Dx=4 driver_local_dz_warmrain=dz1(k)
+                        !$ser data_buffered Dx=4 driver_local_t_warmrain=tz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_vapor_warmrain=qvz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_liquid_warmrain=qlz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_rain_warmrain=qrz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_ice_warmrain=qiz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_snow_warmrain=qsz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_graupel_warmrain=qgz(k)
+                        !$ser data_buffered Dx=4 driver_local_cloud_fraction_warmrain=qaz(k)
+                        !$ser data_buffered Dx=4 driver_local_ccn_warmrain=ccn(k)
+                        !$ser data_buffered Dx=4 driver_local_density_warmrain=den(k)
+                        !$ser data_buffered Dx=4 driver_local_density_factor_warmrain=denfac(k)
+                        !$ser data_buffered Dx=4 driver_local_c_praut_warmrain=c_praut(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_rain_warmrain=vtrz(k)
+                        !$ser data_buffered Dx=4 driver_local_evaporation_warmrain=evap1(k)
+                        !$ser data_buffered Dx=4 driver_local_liquid_precip_flux_warmrain=m1_rain(k)
+                        !$ser data_buffered Dx=4 driver_local_w_warmrain=w1(k)
+                        !$ser data_buffered Dx=4 driver_local_rh_limited_warmrain=h_var1d(k)
+                        !$ser data_buffered Dx=4 non_anvil_large_scale_evaporation_warmrain=revap(i,j,k) 
+                        !$ser data_buffered Dx=4 non_anvil_large_scale_liquid_precip_flux_warmrain=m2_rain(i,j,k)
+                        !$ser data_buffered Dx=4 non_anvil_large_scale_ice_precip_flux_warmrain=m2_sol(i,j,k)
+                        !$ser data_buffered Dx=4 driver_local_mass_warmrain=m1(k)
+                        !$ser data_buffered Dx=4 driver_local_ice_precip_flux_warmrain=m1_sol(k)
+                        !$ser data_buffered Dx=4 driver_local_rain_warmrain=r1
+                        !$ser data_buffered Dx=4 surface_precip_rain_warmrain=rain(i)
+                        !$ser data_buffered Dx=4 estimated_inversion_strength_warmrain=eis(i)
+                        !$ser data_buffered Dx=4 driver_local_one_minus_sigma_warmrain=onemsig
                     !$ser verbatim enddo
+                    !$ser savepoint GFDL_1M_WarmRain-Out
                 !$ser verbatim endif
             !$ser verbatim endif
             call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
@@ -1000,17 +1136,36 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             enddo
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint GFDL_1M_warm_rain-Out
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j, k, 1)
-                        !$ser data_buffered Dx=3 t1_warm_rain=tz(k)
-                        !$ser data_buffered Dx=3 qv_warm_rain=qvz(k) ql_warm_rain=qlz(k) qr_warm_rain=qrz(k) qi_warm_rain=qiz(k)
-                        !$ser data_buffered Dx=3 qs_warm_rain=qsz(k) qg_warm_rain=qgz(k) qa_warm_rain=qaz(k)
-                        !$ser data_buffered Dx=3 vtr_warm_rain=vtrz(k) evap1_warm_rain=evap1(k)
-                        !$ser data_buffered Dx=3 m1_rain_warm_rain=m1_rain(k) w1_warm_rain=w1(k)
-                        !$ser data_buffered Dx=3 revap_warm_rain=revap(i,j,k) m2_rain_warm_rain=m2_rain(i,j,k)
-                        !$ser data_buffered Dx=3 m2_sol_warm_rain=m2_sol(i,j,k) m1_warm_rain=m1(k) m1_sol_warm_rain=m1_sol(k)
-                        !$ser data_buffered Dx=2 r1_warm_rain=r1 rain_warm_rain=rain(i)
+                        !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
+                        !$ser data_buffered Dx=4 driver_local_dp_warmrain=dp1(k)
+                        !$ser data_buffered Dx=4 driver_local_dz_warmrain=dz1(k)
+                        !$ser data_buffered Dx=4 driver_local_t_warmrain=tz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_vapor_warmrain=qvz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_liquid_warmrain=qlz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_rain_warmrain=qrz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_ice_warmrain=qiz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_snow_warmrain=qsz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_graupel_warmrain=qgz(k)
+                        !$ser data_buffered Dx=4 driver_local_cloud_fraction_warmrain=qaz(k)
+                        !$ser data_buffered Dx=4 driver_local_ccn_warmrain=ccn(k)
+                        !$ser data_buffered Dx=4 driver_local_density_warmrain=den(k)
+                        !$ser data_buffered Dx=4 driver_local_density_factor_warmrain=denfac(k)
+                        !$ser data_buffered Dx=4 driver_local_c_praut_warmrain=c_praut(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_rain_warmrain=vtrz(k)
+                        !$ser data_buffered Dx=4 driver_local_evaporation_warmrain=evap1(k)
+                        !$ser data_buffered Dx=4 driver_local_liquid_precip_flux_warmrain=m1_rain(k)
+                        !$ser data_buffered Dx=4 driver_local_w_warmrain=w1(k)
+                        !$ser data_buffered Dx=4 driver_local_rh_limited_warmrain=h_var1d(k)
+                        !$ser data_buffered Dx=4 non_anvil_large_scale_evaporation_warmrain=revap(i,j,k) 
+                        !$ser data_buffered Dx=4 non_anvil_large_scale_liquid_precip_flux_warmrain=m2_rain(i,j,k)
+                        !$ser data_buffered Dx=4 non_anvil_large_scale_ice_precip_flux_warmrain=m2_sol(i,j,k)
+                        !$ser data_buffered Dx=4 driver_local_mass_warmrain=m1(k)
+                        !$ser data_buffered Dx=4 driver_local_ice_precip_flux_warmrain=m1_sol(k)
+                        !$ser data_buffered Dx=4 driver_local_rain_warmrain=r1
+                        !$ser data_buffered Dx=4 surface_precip_rain_warmrain=rain(i)
+                        !$ser data_buffered Dx=4 estimated_inversion_strength_warmrain=eis(i)
+                        !$ser data_buffered Dx=4 driver_local_one_minus_sigma_warmrain=onemsig
                     !$ser verbatim enddo
                 !$ser verbatim endif
             !$ser verbatim endif
@@ -1021,17 +1176,29 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
 
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint GFDL_1M_ice_cloud-In
+                    !$ser savepoint GFDL_1M_IceCloud-In
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j, k, 1)
-                        !$ser data_buffered Dx=3 t1_icloud=tz(k) p1_icloud=p1(k) dp1_icloud=dp1(k)
-                        !$ser data_buffered Dx=3 qv_icloud=qvz(k) ql_icloud=qlz(k) qr_icloud=qrz(k) qi_icloud=qiz(k)
-                        !$ser data_buffered Dx=3 qs_icloud=qsz(k) qg_icloud=qgz(k) qa_icloud=qaz(k)
-                        !$ser data_buffered Dx=3 vts_icloud=vtsz(k) vtg_icloud=vtgz(k) vtr_icloud=vtrz(k)
-                        !$ser data_buffered Dx=3 den1_icloud=den(k) denfac_icloud=denfac(k)
-                        !$ser data_buffered Dx=3 subl1_icloud=subl1(k) rh_limited_icloud=h_var1d(k) isubl_icloud=isubl(i,j,k)
-                        !$ser data_buffered Dx=3 ccn_icloud=ccn(k)
-                        !$ser data_buffered Dx=2 cnv_frc_icloud=cnv_fraction(i) srf_type_icloud=srf_type(i)
+                        !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
+                        !$ser data_buffered Dx=4 driver_local_t_icecloud=tz(k)
+                        !$ser data_buffered Dx=4 driver_local_p_dry_icecloud=p1(k)
+                        !$ser data_buffered Dx=4 driver_local_dp_icecloud=dp1(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_vapor_icecloud=qvz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_liquid_icecloud=qlz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_rain_icecloud=qrz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_ice_icecloud=qiz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_snow_icecloud=qsz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_graupel_icecloud=qgz(k)
+                        !$ser data_buffered Dx=4 driver_local_cloud_fraction_icecloud=qaz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_snow_icecloud=vtsz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_graupel_icecloud=vtgz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_rain_icecloud=vtrz(k)
+                        !$ser data_buffered Dx=4 driver_local_density_icecloud=den(k)
+                        !$ser data_buffered Dx=4 driver_local_density_factor_icecloud=denfac(k)
+                        !$ser data_buffered Dx=4 driver_local_rh_limited_icecloud=h_var1d(k)
+                        !$ser data_buffered Dx=4 non_anvil_large_scale_sublimation_icecloud=isubl(i,j,k)
+                        !$ser data_buffered Dx=4 driver_local_ccn_icecloud=ccn(k)
+                        !$ser data_buffered Dx=4 convection_fraction_icecloud=cnv_fraction(i)
+                        !$ser data_buffered Dx=4 surface_type_icecloud=srf_type(i)
                     !$ser verbatim enddo
                 !$ser verbatim endif
             !$ser verbatim endif
@@ -1044,13 +1211,29 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             enddo
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !$ser savepoint GFDL_1M_ice_cloud-Out
+                    !$ser savepoint GFDL_1M_IceCloud-Out
                     !$ser verbatim do k = ktop, kbot
-                        !$ser verbatim call ser_set_indices(i, j, k, 1)
-                        !$ser data_buffered Dx=3 t1_icloud=tz(k)
-                        !$ser data_buffered Dx=3 qv_icloud=qvz(k) ql_icloud=qlz(k) qr_icloud=qrz(k) qi_icloud=qiz(k)
-                        !$ser data_buffered Dx=3 qs_icloud=qsz(k) qg_icloud=qgz(k) qa_icloud=qaz(k)
-                        !$ser data_buffered Dx=3 subl1_icloud=subl1(k) isubl_icloud=isubl(i,j,k)
+                        !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
+                        !$ser data_buffered Dx=4 driver_local_t_icecloud=tz(k)
+                        !$ser data_buffered Dx=4 driver_local_p_dry_icecloud=p1(k)
+                        !$ser data_buffered Dx=4 driver_local_dp_icecloud=dp1(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_vapor_icecloud=qvz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_liquid_icecloud=qlz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_rain_icecloud=qrz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_ice_icecloud=qiz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_snow_icecloud=qsz(k)
+                        !$ser data_buffered Dx=4 driver_local_dry_mixing_ratio_graupel_icecloud=qgz(k)
+                        !$ser data_buffered Dx=4 driver_local_cloud_fraction_icecloud=qaz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_snow_icecloud=vtsz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_graupel_icecloud=vtgz(k)
+                        !$ser data_buffered Dx=4 driver_local_terminal_speed_rain_icecloud=vtrz(k)
+                        !$ser data_buffered Dx=4 driver_local_density_icecloud=den(k)
+                        !$ser data_buffered Dx=4 driver_local_density_factor_icecloud=denfac(k)
+                        !$ser data_buffered Dx=4 driver_local_rh_limited_icecloud=h_var1d(k)
+                        !$ser data_buffered Dx=4 non_anvil_large_scale_sublimation_icecloud=isubl(i,j,k)
+                        !$ser data_buffered Dx=4 driver_local_ccn_icecloud=ccn(k)
+                        !$ser data_buffered Dx=4 convection_fraction_icecloud=cnv_fraction(i)
+                        !$ser data_buffered Dx=4 surface_type_icecloud=srf_type(i)
                     !$ser verbatim enddo
                 !$ser verbatim endif
             !$ser verbatim endif
@@ -1058,27 +1241,50 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
 
         enddo ! ntimes
 
-        !$ser savepoint GFDL_1M_driver_finish-In
+        !$ser savepoint GFDL_1M_DriverFinish-In
         !$ser verbatim do k = ktop, kbot
             !$ser verbatim call ser_set_indices(i, j, k, 1)
-            !$ser data_buffered Dx=3 qv0_driver_finish=qv0(k) ql0_driver_finish=ql0(k)
-            !$ser data_buffered Dx=3 qr0_driver_finish=qr0(k) qi0_driver_finish=qi0(k)
-            !$ser data_buffered Dx=3 qs0_driver_finish=qs0(k) qg0_driver_finish=qg0(k)
-            !$ser data_buffered Dx=3 qa0_driver_finish=qa0(k) qv1_driver_finish=qvz(k)
-            !$ser data_buffered Dx=3 ql1_driver_finish=qlz(k) qr1_driver_finish=qrz(k)
-            !$ser data_buffered Dx=3 qi1_driver_finish=qiz(k) qs1_driver_finish=qsz(k)
-            !$ser data_buffered Dx=3 qg1_driver_finish=qgz(k) qv_dt_driver_finish=qv_dt(i,j,k)
-            !$ser data_buffered Dx=3 ql_dt_driver_finish=ql_dt(i,j,k) qr_dt_driver_finish=qr_dt(i,j,k)
-            !$ser data_buffered Dx=3 qi_dt_driver_finish=qi_dt(i,j,k) qs_dt_driver_finish=qs_dt(i,j,k)
-            !$ser data_buffered Dx=3 qg_dt_driver_finish=qg_dt(i,j,k) qa_dt_driver_finish=qa_dt(i,j,k)
-            !$ser data_buffered Dx=3 t_driver_finish=t0(k) t1_driver_finish=tz(k)
-            !$ser data_buffered Dx=3 t_dt_driver_finish=pt_dt(i,j,k) w_driver_finish=w(i,j,k)
-            !$ser data_buffered Dx=3 w1_driver_finish=w1(k) u_driver_finish=u0(k) u1_driver_finish=u1(k)
-            !$ser data_buffered Dx=3 udt_driver_finish=u_dt(i,j,k) v_driver_finish=v0(k)
-            !$ser data_buffered Dx=3 v1_driver_finish=v1(k) vdt_driver_finish=v_dt(i,j,k)
-            !$ser data_buffered Dx=3 dp_driver_finish=dp0(k) dp1_driver_finish=dp1(k) m1_driver_finish=m1(k)
-            !$ser data_buffered Dx=2 rain_driver_finish=rain(i) snow_driver_finish=snow(i)
-            !$ser data_buffered Dx=2 ice_driver_finish=ice(i) graupel_driver_finish=graupel(i)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_vapor_unmodified_driverfinish=qv0(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_liquid_unmodified_driverfinish=ql0(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_unmodified_driverfinish=qr0(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_ice_unmodified_driverfinish=qi0(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_unmodified_driverfinish=qs0(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_graupel_unmodified_driverfinish=qg0(k)
+            !$ser data_buffered Dx=3 driver_local_cloud_fraciton_unmodified_driverfinish=qa0(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_vapor_driverfinish=qvz(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_liquid_driverfinish=qlz(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_driverfinish=qrz(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_ice_driverfinish=qiz(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_snow_driverfinish=qsz(k)
+            !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_graupel_driverfinish=qgz(k)
+            !$ser data_buffered Dx=3 local_dvapordt_driver_driverfinish=qv_dt(i,j,k)
+            !$ser data_buffered Dx=3 local_dliquiddt_driver_driverfinish=ql_dt(i,j,k)
+            !$ser data_buffered Dx=3 local_draindt_driver_driverfinish=qr_dt(i,j,k)
+            !$ser data_buffered Dx=3 local_dicedt_driver_driverfinish=qi_dt(i,j,k)
+            !$ser data_buffered Dx=3 local_dsnowdt_driver_driverfinish=qs_dt(i,j,k)
+            !$ser data_buffered Dx=3 local_dgraupeldt_driver_driverfinish=qg_dt(i,j,k)
+            !$ser data_buffered Dx=3 local_dcloudfractiondt_driver_driverfinish=qa_dt(i,j,k)
+            !$ser data_buffered Dx=3 driver_local_t_unmodified_driverfinish=t0(k)
+            !$ser data_buffered Dx=3 driver_local_t_driverfinish=tz(k)
+            !$ser data_buffered Dx=3 local_dtdt_driver_driverfinish=pt_dt(i,j,k)
+            !$ser data_buffered Dx=3 w_driverfinish=w(i,j,k)
+            !$ser data_buffered Dx=3 driver_local_w_driverfinish=w1(k)
+            ! because u0 (unmodified local) = uin (unmodified input)
+            !$ser data_buffered Dx=3 u_driverfinish=u0(k)
+            !$ser data_buffered Dx=3 driver_local_u_driverfinish=u1(k)
+            !$ser data_buffered Dx=3 local_dudt_driver_driverfinish=u_dt(i,j,k)
+            ! because v0 (unmodified local) = vin (unmodified input)
+            !$ser data_buffered Dx=3 v_driverfinish=v0(k)
+            !$ser data_buffered Dx=3 driver_local_v_driverfinish=v1(k)
+            !$ser data_buffered Dx=3 local_dvdt_driver_driverfinish=v_dt(i,j,k)
+            ! because dp0 (unmodified local) = delp (unmodified input)
+            !$ser data_buffered Dx=3 local_dp_driverfinish=dp0(k)
+            !$ser data_buffered Dx=3 driver_local_dp_driverfinish=dp1(k)
+            !$ser data_buffered Dx=3 driver_local_mass_driverfinish=m1(k)
+            !$ser data_buffered Dx=2 surface_precip_rain_driverfinish=rain(i)
+            !$ser data_buffered Dx=2 surface_precip_snow_driverfinish=snow(i)
+            !$ser data_buffered Dx=2 surface_precip_ice_driverfinish=ice(i)
+            !$ser data_buffered Dx=2 surface_precip_graupel_driverfinish=graupel(i)
         !$ser verbatim enddo
 
         ! -----------------------------------------------------------------------
@@ -1129,26 +1335,49 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         enddo
         endif
 
-        !$ser savepoint GFDL_1M_driver_finish-Out
-        !$ser verbatim do k = ktop, kbot
-            !$ser verbatim call ser_set_indices(i, j, k, 1)
-            !$ser data_buffered Dx=3 qv0_driver_finish=qv0(k) ql0_driver_finish=ql0(k)
-            !$ser data_buffered Dx=3 qr0_driver_finish=qr0(k) qi0_driver_finish=qi0(k)
-            !$ser data_buffered Dx=3 qs0_driver_finish=qs0(k) qg0_driver_finish=qg0(k)
-            !$ser data_buffered Dx=3 qa0_driver_finish=qa0(k) qv1_driver_finish=qvz(k)
-            !$ser data_buffered Dx=3 ql1_driver_finish=qlz(k) qr1_driver_finish=qrz(k)
-            !$ser data_buffered Dx=3 qi1_driver_finish=qiz(k) qs1_driver_finish=qsz(k)
-            !$ser data_buffered Dx=3 qg1_driver_finish=qgz(k) qv_dt_driver_finish=qv_dt(i,j,k)
-            !$ser data_buffered Dx=3 ql_dt_driver_finish=ql_dt(i,j,k) qr_dt_driver_finish=qr_dt(i,j,k)
-            !$ser data_buffered Dx=3 qi_dt_driver_finish=qi_dt(i,j,k) qs_dt_driver_finish=qs_dt(i,j,k)
-            !$ser data_buffered Dx=3 qg_dt_driver_finish=qg_dt(i,j,k) qa_dt_driver_finish=qa_dt(i,j,k)
-            !$ser data_buffered Dx=3 t_driver_finish=t0(k) t1_driver_finish=tz(k)
-            !$ser data_buffered Dx=3 t_dt_driver_finish=pt_dt(i,j,k) w_driver_finish=w(i,j,k)
-            !$ser data_buffered Dx=3 w1_driver_finish=w1(k) u_driver_finish=u0(k) u1_driver_finish=u1(k)
-            !$ser data_buffered Dx=3 udt_driver_finish=u_dt(i,j,k) v_driver_finish=v0(k)
-            !$ser data_buffered Dx=3 v1_driver_finish=v1(k) vdt_driver_finish=v_dt(i,j,k)
-            !$ser data_buffered Dx=3 dp_driver_finish=dp0(k) dp1_driver_finish=dp1(k) m1_driver_finish=m1(k)
-        !$ser verbatim enddo
+        !$ser verbatim if (debug_serialization .eqv. .true.) then
+            !$ser savepoint GFDL_1M_DriverFinish-Out
+            !$ser verbatim do k = ktop, kbot
+                !$ser verbatim call ser_set_indices(i, j, k, 1)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_vapor_unmodified_driverfinish=qv0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_liquid_unmodified_driverfinish=ql0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_unmodified_driverfinish=qr0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_ice_unmodified_driverfinish=qi0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_unmodified_driverfinish=qs0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_graupel_unmodified_driverfinish=qg0(k)
+                !$ser data_buffered Dx=3 driver_local_cloud_fraciton_unmodified_driverfinish=qa0(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_vapor_driverfinish=qvz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_liquid_driverfinish=qlz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_rain_driverfinish=qrz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_ice_driverfinish=qiz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_snow_driverfinish=qsz(k)
+                !$ser data_buffered Dx=3 driver_local_dry_mixing_ratio_graupel_driverfinish=qgz(k)
+                !$ser data_buffered Dx=3 local_dvapordt_driver_driverfinish=qv_dt(i,j,k)
+                !$ser data_buffered Dx=3 local_dliquiddt_driver_driverfinish=ql_dt(i,j,k)
+                !$ser data_buffered Dx=3 local_draindt_driver_driverfinish=qr_dt(i,j,k)
+                !$ser data_buffered Dx=3 local_dicedt_driver_driverfinish=qi_dt(i,j,k)
+                !$ser data_buffered Dx=3 local_dsnowdt_driver_driverfinish=qs_dt(i,j,k)
+                !$ser data_buffered Dx=3 local_dgraupeldt_driver_driverfinish=qg_dt(i,j,k)
+                !$ser data_buffered Dx=3 local_dcloudfractiondt_driver_driverfinish=qa_dt(i,j,k)
+                !$ser data_buffered Dx=3 driver_local_t_unmodified_driverfinish=t0(k)
+                !$ser data_buffered Dx=3 driver_local_t_driverfinish=tz(k)
+                !$ser data_buffered Dx=3 local_dtdt_driver_driverfinish=pt_dt(i,j,k)
+                !$ser data_buffered Dx=3 w_driverfinish=w(i,j,k)
+                !$ser data_buffered Dx=3 driver_local_w_driverfinish=w1(k)
+                ! because u0 (unmodified local) = uin (unmodified input)
+                !$ser data_buffered Dx=3 u_driverfinish=u0(k)
+                !$ser data_buffered Dx=3 driver_local_u_driverfinish=u1(k)
+                !$ser data_buffered Dx=3 local_dudt_driver_driverfinish=u_dt(i,j,k)
+                ! because v0 (unmodified local) = vin (unmodified input)
+                !$ser data_buffered Dx=3 v_driverfinish=v0(k)
+                !$ser data_buffered Dx=3 driver_local_v_driverfinish=v1(k)
+                !$ser data_buffered Dx=3 local_dvdt_driver_driverfinish=v_dt(i,j,k)
+                ! because dp0 (unmodified local) = delp (unmodified input)
+                !$ser data_buffered Dx=3 local_dp_driverfinish=dp0(k)
+                !$ser data_buffered Dx=3 driver_local_dp_driverfinish=dp1(k)
+                !$ser data_buffered Dx=3 driver_local_mass_driverfinish=m1(k)
+            !$ser verbatim enddo
+        !$ser verbatim endif
 
         ! -----------------------------------------------------------------------
         ! fms diagnostics:
@@ -2984,7 +3213,6 @@ subroutine implicit_fall (dt, ktop, kbot, ze, vt, dp, q, precip, m1)
     ! -----------------------------------------------------------------------
     ! update:
     ! -----------------------------------------------------------------------
-
     do k = ktop, kbot
         q (k) = qm (k) / dp (k)
     enddo
@@ -3869,16 +4097,16 @@ subroutine qsmith_init
 
         tables_are_initialized = .true.
         
-        !$ser savepoint GFDL_1M_driver_tables-In
-        !$ser data_append length_driver=length
-        !$ser flush_savepoint GFDL_1M_driver_tables-In
+        !!$ser savepoint GFDL_1M_driver_tables-In
+        !!$ser data_append length_driver=length
+        !!$ser flush_savepoint GFDL_1M_driver_tables-In
 
-        !$ser savepoint GFDL_1M_driver_tables-Out
-        !$ser verbatim do k = 1, length
-        !$ser data_append junk_variable=length table1_driver=table(k) table2_driver=tablew(k) table3_driver=table2(k) table4_driver=table3(k)
-        !$ser data_append des1_driver=des(k) des2_driver=desw(k) des3_driver=des2(k) des4_driver=des3(k)
-        !$ser verbatim enddo
-        !$ser flush_savepoint GFDL_1M_driver_tables-Out
+        !!$ser savepoint GFDL_1M_driver_tables-Out
+        !!$ser verbatim do k = 1, length
+        !!$ser data_append junk_variable=length table1_driver=table(k) table2_driver=tablew(k) table3_driver=table2(k) table4_driver=table3(k)
+        !!$ser data_append des1_driver=des(k) des2_driver=desw(k) des3_driver=des2(k) des4_driver=des3(k)
+        !!$ser verbatim enddo
+        !!$ser flush_savepoint GFDL_1M_driver_tables-Out
 
     endif
 
