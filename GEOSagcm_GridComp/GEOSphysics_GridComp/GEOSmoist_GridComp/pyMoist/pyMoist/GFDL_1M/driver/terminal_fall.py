@@ -1,10 +1,25 @@
 from ndsl import QuantityFactory, StencilFactory, NDSLRuntime, State, Quantity
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import BoolField, BoolFieldIJ, FloatField, FloatFieldIJ, Float, BoolFieldIJ, Bool
+from ndsl.dsl.typing import (
+    BoolFieldIJ,
+    FloatField,
+    FloatFieldIJ,
+    Float,
+    Bool,
+)
+from ndsl.stencils import set_value_2D_defn
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.stencils import implicit_fall
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval
+from ndsl.dsl.gt4py import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    exp,
+    function,
+    interval,
+)
 from pyMoist.GFDL_1M.driver.constants import constants
 import dataclasses
 
@@ -212,25 +227,32 @@ def setup(
         is_frozen = False
 
     with computation(PARALLEL), interval(...):
-        t, mixing_ratio_liquid, mixing_ratio_rain, mixing_ratio_ice, cvm, lhi, icpk, ice_precip_flux = (
-            prefall_melting(
-                t,
-                mixing_ratio_vapor,
-                mixing_ratio_liquid,
-                mixing_ratio_rain,
-                mixing_ratio_graupel,
-                mixing_ratio_snow,
-                mixing_ratio_ice,
-                ice_precip_flux,
-                is_frozen,
-                c_air,
-                c_vap,
-                d0_vap,
-                dts,
-                lv00,
-                ql_mlt,
-                tau_imlt,
-            )
+        (
+            t,
+            mixing_ratio_liquid,
+            mixing_ratio_rain,
+            mixing_ratio_ice,
+            cvm,
+            lhi,
+            icpk,
+            ice_precip_flux,
+        ) = prefall_melting(
+            t,
+            mixing_ratio_vapor,
+            mixing_ratio_liquid,
+            mixing_ratio_rain,
+            mixing_ratio_graupel,
+            mixing_ratio_snow,
+            mixing_ratio_ice,
+            ice_precip_flux,
+            is_frozen,
+            c_air,
+            c_vap,
+            d0_vap,
+            dts,
+            lv00,
+            ql_mlt,
+            tau_imlt,
         )
 
     # if timestep is too small turn off melting (only calculate at surface)
@@ -474,6 +496,11 @@ class GFDL1MTerminalFall(NDSLRuntime):
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
+        self._set_value_2D = stencil_factory.from_dims_halo(
+            func=set_value_2D_defn,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
     def __call__(
         self,
         t: FloatField,
@@ -541,7 +568,7 @@ class GFDL1MTerminalFall(NDSLRuntime):
 
         # melting of falling cloud ice into rain
         if self.config.VI_FAC < 1.0e-5:
-            self._locals.ice.view[:] = 0
+            self._set_value_2D(self._locals.ice, 0)
         else:
             self._check_precip_get_zt(
                 mixing_ratio=mixing_ratio_ice,
