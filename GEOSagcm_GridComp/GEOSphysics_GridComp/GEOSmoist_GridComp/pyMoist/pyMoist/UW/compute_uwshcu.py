@@ -191,6 +191,10 @@ def compute_uwshcu_invert_before(
         if isnan(cnvtrmax):
             cnvtrmax = 0.0
 
+    with computation(FORWARD), interval(...):
+        temp = tke_in[0, 0, 1]
+        tke_in = temp
+
 
 def compute_thermodynamic_variables(
     pmid0_in: FloatField,
@@ -1035,50 +1039,50 @@ def find_pbl_height(
         if not condensation:
             if kinv <= int64(1):
                 condensation = True
-                umf_out[0, 0, 1] = 0.0
-                dcm_out = 0.0
-                qvten_out = 0.0
-                qlten_out = 0.0
-                qiten_out = 0.0
-                sten_out = 0.0
-                uten_out = 0.0
-                vten_out = 0.0
-                qrten_out = 0.0
-                qsten_out = 0.0
-                cufrc_out = 0.0
-                cush_inout = -1.0
-                qldet_out = 0.0
-                qidet_out = 0.0
-                qtflx_out[0, 0, 1] = 0.0
-                slflx_out[0, 0, 1] = 0.0
-                uflx_out[0, 0, 1] = 0.0
-                # vflx_out[0, 0, 1] = 0.0
-                fer_out = constants.MAPL_UNDEF
-                fdr_out = constants.MAPL_UNDEF
+                # umf_out[0, 0, 1] = 0.0
+                # dcm_out = 0.0
+                # qvten_out = 0.0
+                # qlten_out = 0.0
+                # qiten_out = 0.0
+                # sten_out = 0.0
+                # uten_out = 0.0
+                # vten_out = 0.0
+                # qrten_out = 0.0
+                # qsten_out = 0.0
+                # cufrc_out = 0.0
+                # cush_inout = -1.0
+                # qldet_out = 0.0
+                # qidet_out = 0.0
+                # qtflx_out[0, 0, 1] = 0.0
+                # slflx_out[0, 0, 1] = 0.0
+                # uflx_out[0, 0, 1] = 0.0
+                # # vflx_out[0, 0, 1] = 0.0
+                # fer_out = constants.MAPL_UNDEF
+                # fdr_out = constants.MAPL_UNDEF
 
             if not condensation:
                 if kinv >= int64(k0 / 4):
                     condensation = True
-                    umf_out[0, 0, 1] = 0.0
-                    dcm_out = 0.0
-                    qvten_out = 0.0
-                    qlten_out = 0.0
-                    qiten_out = 0.0
-                    sten_out = 0.0
-                    uten_out = 0.0
-                    vten_out = 0.0
-                    qrten_out = 0.0
-                    qsten_out = 0.0
-                    cufrc_out = 0.0
-                    cush_inout = -1.0
-                    qldet_out = 0.0
-                    qidet_out = 0.0
-                    qtflx_out[0, 0, 1] = 0.0
-                    slflx_out[0, 0, 1] = 0.0
-                    uflx_out[0, 0, 1] = 0.0
-                    # vflx_out[0, 0, 1] = 0.0
-                    fer_out = constants.MAPL_UNDEF
-                    fdr_out = constants.MAPL_UNDEF
+                    # umf_out[0, 0, 1] = 0.0
+                    # dcm_out = 0.0
+                    # qvten_out = 0.0
+                    # qlten_out = 0.0
+                    # qiten_out = 0.0
+                    # sten_out = 0.0
+                    # uten_out = 0.0
+                    # vten_out = 0.0
+                    # qrten_out = 0.0
+                    # qsten_out = 0.0
+                    # cufrc_out = 0.0
+                    # cush_inout = -1.0
+                    # qldet_out = 0.0
+                    # qidet_out = 0.0
+                    # qtflx_out[0, 0, 1] = 0.0
+                    # slflx_out[0, 0, 1] = 0.0
+                    # uflx_out[0, 0, 1] = 0.0
+                    # # vflx_out[0, 0, 1] = 0.0
+                    # fer_out = constants.MAPL_UNDEF
+                    # fdr_out = constants.MAPL_UNDEF
 
 
 def find_pbl_averages(
@@ -1154,6 +1158,10 @@ def find_pbl_averages(
                     thvlmin[0, 0, -1],
                     min(thvl0bot, thvl0top),
                 )
+    with computation(FORWARD), interval(...):
+        if not condensation:
+            temp = thvlmin.at(K=kinv - 2)
+            thvlmin = temp
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -1168,7 +1176,7 @@ def find_pbl_averages(
                 kabove = lev + 1
                 dpi = pifc0.at(K=lev) - pifc0.at(K=kabove)
                 dpsum = dpsum + dpi
-                tkeavg = tkeavg + dpi * tke_in.at(K=kabove)
+                tkeavg = tkeavg + dpi * tke_in.at(K=lev)
                 uavg = uavg + dpi * u0.at(K=lev)
                 vavg = vavg + dpi * v0.at(K=lev)
                 thvlavg = thvlavg + dpi * thvl0.at(K=lev)
