@@ -1,24 +1,23 @@
+import numpy as np
 from f90nml import Namelist
 
+import ndsl.xumpy as xp
 from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.GFDL_1M.state import GFDL1MState
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
 from pyMoist.GFDL_1M.driver.terminal_fall import GFDL1MTerminalFall
-from ndsl.stencils.testing.savepoint import DataLoader
-import numpy as np
+from pyMoist.GFDL_1M.state import GFDL1MState
 
 
 class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
     def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
+        self.backend = self.stencil_factory.backend
         self.quantity_factory = grid.quantity_factory
 
         # FloatField Inputs
@@ -54,23 +53,22 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
 
     def compute(self, inputs):
         # initalize dataclasses
-        state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
         driver_locals = GFDL1MDriverLocals.zeros(self.quantity_factory)
-
         # initalize constants
         config = GFDL1MConfig(**self.constants)
         config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
         # get the shape of the field
+        state = GFDL1MState.zeros(self.quantity_factory)
         nx, ny, nz, ntimes = inputs["driver_local_t_terminalfall"].shape
 
         # preset output dictionary to be filled inside the for loop
         outputs = {}
         for key in self.out_vars:
-            outputs[key] = np.full((nx, ny, nz, ntimes), np.nan)
+            outputs[key] = xp.full((nx, ny, nz, ntimes), self.backend, np.nan)
 
         # construct test stencil
+        # Dev NOTE: required `extra_data_load` means we can't allocate code in __init__
         code = GFDL1MTerminalFall(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
@@ -150,56 +148,56 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
 
             # fill the output arrays so that all calls are tested
             outputs["driver_local_t_terminalfall"][:, :, :, n] = driver_locals.t.field[:]
-            outputs["driver_local_dry_mixing_ratio_vapor_terminalfall"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.vapor.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_liquid_terminalfall"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.liquid.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_rain_terminalfall"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.rain.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_graupel_terminalfall"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.graupel.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_snow_terminalfall"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.snow.field[:]
-            )
-            outputs["driver_local_dry_mixing_ratio_ice_terminalfall"][:, :, :, n] = (
-                driver_locals.dry_air_mixing_ratio.ice.field[:]
-            )
-            outputs["driver_local_ice_precip_flux_terminalfall"][:, :, :, n] = (
-                driver_locals.ice_precip_flux.field[:]
-            )
+            outputs["driver_local_dry_mixing_ratio_vapor_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.vapor.field[:]
+            outputs["driver_local_dry_mixing_ratio_liquid_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.liquid.field[:]
+            outputs["driver_local_dry_mixing_ratio_rain_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.rain.field[:]
+            outputs["driver_local_dry_mixing_ratio_graupel_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.graupel.field[:]
+            outputs["driver_local_dry_mixing_ratio_snow_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.snow.field[:]
+            outputs["driver_local_dry_mixing_ratio_ice_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.dry_air_mixing_ratio.ice.field[:]
+            outputs["driver_local_ice_precip_flux_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.ice_precip_flux.field[:]
             outputs["driver_local_w_terminalfall"][:, :, :, n] = driver_locals.w.field[:]
             outputs["driver_local_dz_terminalfall"][:, :, :, n] = driver_locals.dz.field[:]
             outputs["driver_local_dp_terminalfall"][:, :, :, n] = driver_locals.dp.field[:]
-            outputs["driver_local_terminal_speed_ice_terminalfall"][:, :, :, n] = (
-                driver_locals.terminal_speed.ice.field[:]
-            )
-            outputs["driver_local_terminal_speed_snow_terminalfall"][:, :, :, n] = (
-                driver_locals.terminal_speed.snow.field[:]
-            )
-            outputs["driver_local_terminal_speed_graupel_terminalfall"][:, :, :, n] = (
-                driver_locals.terminal_speed.graupel.field[:]
-            )
+            outputs["driver_local_terminal_speed_ice_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.terminal_speed.ice.field[:]
+            outputs["driver_local_terminal_speed_snow_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.terminal_speed.snow.field[:]
+            outputs["driver_local_terminal_speed_graupel_terminalfall"][
+                :, :, :, n
+            ] = driver_locals.terminal_speed.graupel.field[:]
 
             for k in range(nz):
                 outputs["driver_local_rain_terminalfall"][:, :, k, n] = code._locals.rain.field[:]
                 outputs["driver_local_ice_terminalfall"][:, :, k, n] = code._locals.ice.field[:]
                 outputs["driver_local_snow_terminalfall"][:, :, k, n] = code._locals.snow.field[:]
                 outputs["driver_local_graupel_terminalfall"][:, :, k, n] = code._locals.graupel.field[:]
-                outputs["surface_precip_rain_terminalfall"][:, :, k, n] = (
-                    state.precipitation_at_surface.rain.field[:]
-                )
-                outputs["surface_precip_snow_terminalfall"][:, :, k, n] = (
-                    state.precipitation_at_surface.snow.field[:]
-                )
-                outputs["surface_precip_graupel_terminalfall"][:, :, k, n] = (
-                    state.precipitation_at_surface.graupel.field[:]
-                )
-                outputs["surface_precip_ice_terminalfall"][:, :, k, n] = (
-                    state.precipitation_at_surface.ice.field[:]
-                )
+                outputs["surface_precip_rain_terminalfall"][
+                    :, :, k, n
+                ] = state.precipitation_at_surface.rain.field[:]
+                outputs["surface_precip_snow_terminalfall"][
+                    :, :, k, n
+                ] = state.precipitation_at_surface.snow.field[:]
+                outputs["surface_precip_graupel_terminalfall"][
+                    :, :, k, n
+                ] = state.precipitation_at_surface.graupel.field[:]
+                outputs["surface_precip_ice_terminalfall"][
+                    :, :, k, n
+                ] = state.precipitation_at_surface.ice.field[:]
 
         return outputs
