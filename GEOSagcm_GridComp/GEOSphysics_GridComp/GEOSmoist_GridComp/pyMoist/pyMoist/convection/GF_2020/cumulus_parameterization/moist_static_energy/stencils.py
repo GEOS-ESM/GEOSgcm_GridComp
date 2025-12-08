@@ -68,10 +68,10 @@ def first_guess_moist_static_energy(
     error_code: IntFieldIJ_Plume,
     start_level: IntFieldIJ,
     cloud_top: IntFieldIJ_Plume,
-    mass_detrainment: FloatField_Plume,
-    mass_entrainment: FloatField_Plume,
-    normalized_massflux: FloatField,
-    normalized_massflux_forced: FloatField_Plume,
+    mass_detrainment_updraft_forced: FloatField_Plume,
+    mass_entrainment_updraft_forced: FloatField_Plume,
+    normalized_massflux_updraft: FloatField,
+    normalized_massflux_updraft_forced: FloatField_Plume,
     environment_moist_static_energy_forced: FloatField,
     environment_saturation_moist_static_energy_cloud_levels_forced: FloatField,
     cloud_moist_static_energy_forced: FloatField,
@@ -84,17 +84,19 @@ def first_guess_moist_static_energy(
         if error_code[0, 0][plume] == 0:
             if K >= start_level + 1 and K <= cloud_top[0, 0][plume] + 1:  # mass cons option
                 denom: FloatFieldIJ = (
-                    normalized_massflux[0, 0, -1]
-                    - 0.5 * mass_detrainment[0, 0, -1][plume]
-                    + mass_entrainment[0, 0, -1][plume]
+                    normalized_massflux_updraft[0, 0, -1]
+                    - 0.5 * mass_detrainment_updraft_forced[0, 0, -1][plume]
+                    + mass_entrainment_updraft_forced[0, 0, -1][plume]
                 )
                 if denom > 0.0:
-                    cloud_moist_static_energy_forced = 1
                     cloud_moist_static_energy_forced = (
                         cloud_moist_static_energy_forced[0, 0, -1]
-                        * normalized_massflux_forced[0, 0, -1][plume]
-                        - 0.5 * mass_detrainment[0, 0, -1][plume] * cloud_moist_static_energy_forced[0, 0, -1]
-                        + mass_entrainment[0, 0, -1][plume] * environment_moist_static_energy_forced[0, 0, -1]
+                        * normalized_massflux_updraft_forced[0, 0, -1][plume]
+                        - 0.5
+                        * mass_detrainment_updraft_forced[0, 0, -1][plume]
+                        * cloud_moist_static_energy_forced[0, 0, -1]
+                        + mass_entrainment_updraft_forced[0, 0, -1][plume]
+                        * environment_moist_static_energy_forced[0, 0, -1]
                     ) / denom
                     if K == start_level + 1:
                         perturbation: FloatFieldIJ = (
@@ -103,10 +105,10 @@ def first_guess_moist_static_energy(
                         ) + add_buoyancy
                         cloud_moist_static_energy_forced = (
                             cloud_moist_static_energy_forced
-                            + perturbation * mass_entrainment[0, 0, -1][plume] / denom
+                            + perturbation * mass_entrainment_updraft_forced[0, 0, -1][plume] / denom
                         )
-            else:
-                cloud_moist_static_energy_forced = cloud_moist_static_energy_forced[0, 0, -1]
+                else:
+                    cloud_moist_static_energy_forced = cloud_moist_static_energy_forced[0, 0, -1]
 
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:

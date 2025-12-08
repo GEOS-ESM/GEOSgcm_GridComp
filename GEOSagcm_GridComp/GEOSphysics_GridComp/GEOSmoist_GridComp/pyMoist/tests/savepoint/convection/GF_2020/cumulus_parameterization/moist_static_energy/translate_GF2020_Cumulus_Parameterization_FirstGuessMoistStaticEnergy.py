@@ -79,9 +79,9 @@ class TestCore:
         state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_top_firstmse"] - 1
         )
-        state.output.mass_detrainment_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_detrainment_updraft_forced_firstmse"]
+        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_detrainment_updraft_forced_firstmse"]
+        )
         state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["mass_entrainment_updraft_forced_firstmse"]
         )
@@ -124,7 +124,7 @@ class TestCore:
             "local_start_level_firstmse": locals.start_level.field[:] + 1,
             "cloud_top_firstmse": state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
-            "mass_detrainment_updraft_forced_firstmse": state.output.mass_detrainment_downdraft_forced.field[
+            "mass_detrainment_updraft_forced_firstmse": state.output.mass_detrainment_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "mass_entrainment_updraft_forced_firstmse": state.output.mass_entrainment_updraft_forced.field[
