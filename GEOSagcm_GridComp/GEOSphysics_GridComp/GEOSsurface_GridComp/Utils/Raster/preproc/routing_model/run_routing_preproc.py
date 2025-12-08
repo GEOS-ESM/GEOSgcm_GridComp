@@ -60,11 +60,6 @@ def main():
     file_lakeo_lon      = file_path2 + "/Outlet_lon_lakeout.csv"
     file_lake_mantag    = file_path2 + "/catid_lake_manfix.txt"
     file_lakecat_manfix = file_path2 + "/catid_lake_multout_manfix.txt"
-
-
-    lib_path = "/discover/nobackup/yzeng3/lib"
-    old_ld = os.environ.get("LD_LIBRARY_PATH", "")
-    os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{old_ld}"
     
     # -----------------------------
     # Ensure output and temp directory exists

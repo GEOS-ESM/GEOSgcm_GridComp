@@ -5,7 +5,8 @@ The "preproc/routing_model" package is used for creating input data related to t
 Usage:
   • On NCCS/Discover:
       1. source g5_modules.sh
-      2. python3 run_routing_preproc.py under the build/src directory
+      2. build GEOSldas code
+      3. python3 run_routing_preproc.py under the build/src directory
   • Off Discover: contact yujin.zeng@nasa.gov
 
 The tasks completed by each F90 or Python program are briefly described as follows:
@@ -59,7 +60,7 @@ The tasks completed by each F90 or Python program are briefly described as follo
 
 The explanations for the input files of this package can be found in the input directory.
 
-The outputs from this package (cellarea.nc and river_input.nc) will be used as input to the make_bcs. They are listed as follows:
+The outputs from this package (cellarea.nc and river_input.nc located in the created output folder) will be used as input to the make_bcs. They are listed as follows:
 
   cellarea.nc: cell area [m^2] of the 1-min grid.
 

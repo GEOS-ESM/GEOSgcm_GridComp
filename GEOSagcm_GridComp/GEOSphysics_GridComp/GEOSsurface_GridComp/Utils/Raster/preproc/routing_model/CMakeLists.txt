@@ -32,4 +32,15 @@ foreach (src ${exe_srcs})
 endforeach ()
 
 # copy to the build directory
-configure_file(run_routing_preproc.py run_routing_preproc.py)
+set(SCRIPT_FILES
+  create_river_input.py
+  get_latloni_cellarea.py
+  process_lake_data.py
+  get_dam_data.py
+  get_lonlati_maptile.py
+  run_routing_preproc.py
+)
+
+foreach (SCRIPT ${SCRIPT_FILES})
+  configure_file(${SCRIPT} ${SCRIPT})
+endforeach()
