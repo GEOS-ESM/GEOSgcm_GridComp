@@ -31,19 +31,19 @@ def check_precip_get_zt(
             precip_fall = True
 
     with computation(FORWARD), interval(0, 1):
-        if precip_fall == False:
+        if precip_fall == False:  # noqa
             internal_precip = 0
 
     with computation(FORWARD), interval(1, None):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             z_interface_modified = z_interface - dts * (terminal_speed[0, 0, -1] + terminal_speed) / 2.0
 
     with computation(FORWARD), interval(-1, None):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             z_interface_modified[0, 0, 1] = constants.ZS - dts * terminal_speed
 
     with computation(FORWARD), interval(...):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             if z_interface_modified[0, 0, 1] >= z_interface_modified:
                 z_interface_modified[0, 0, 1] = z_interface_modified - constants.DZ_MIN
 
@@ -62,7 +62,7 @@ def update_dmass(
     from __externals__ import do_sedi_w
 
     with computation(PARALLEL), interval(...):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             if do_sedi_w == True:  # noqa
                 dmass = dp * (
                     1.0
@@ -85,12 +85,12 @@ def update_w(
     from __externals__ import do_sedi_w
 
     with computation(FORWARD), interval(0, 1):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             if do_sedi_w:
                 w = (dmass * w + mass * terminal_speed) / (dmass - mass)
 
     with computation(FORWARD), interval(1, None):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             if do_sedi_w:
                 w = (dmass * w - mass[0, 0, -1] * terminal_speed[0, 0, -1] + mass * terminal_speed) / (
                     dmass + mass[0, 0, -1] - mass
@@ -207,7 +207,7 @@ def setup(
 
     # we only want the melting layer farthest from the surface
     with computation(FORWARD), interval(1, None):
-        if is_frozen[0, 0, -1] == False and is_frozen == True:  # type: ignore[index]
+        if is_frozen[0, 0, -1] == False and is_frozen == True:  # type: ignore[index] # noqa
             is_frozen = False
 
     # force surface to "melt" for later calculations
