@@ -38,6 +38,7 @@ from .translate_aer_activation import TranslateAerActivation
 from .translate_compute_uwshcu import TranslateComputeUwshcuInv
 from .UW_translate_tests.translate_prepare_inputs import TranslatePrepareInputs
 from .UW_translate_tests.translate_find_pbl import TranslateFindPbl
+from .UW_translate_tests.translate_find_klcl import TranslateFindKlcl
 
 
 __all__ = [
