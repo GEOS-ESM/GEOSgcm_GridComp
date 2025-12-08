@@ -183,10 +183,6 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
             ] = driver_locals.terminal_speed.graupel.field[:]
 
             for k in range(nz):
-                outputs["driver_local_rain_terminalfall"][:, :, k, n] = code._locals.rain.field[:]
-                outputs["driver_local_ice_terminalfall"][:, :, k, n] = code._locals.ice.field[:]
-                outputs["driver_local_snow_terminalfall"][:, :, k, n] = code._locals.snow.field[:]
-                outputs["driver_local_graupel_terminalfall"][:, :, k, n] = code._locals.graupel.field[:]
                 outputs["surface_precip_rain_terminalfall"][
                     :, :, k, n
                 ] = state.precipitation_at_surface.rain.field[:]

@@ -1,10 +1,11 @@
 import dataclasses
 
-from ndsl import NDSLRuntime, Quantity, QuantityFactory, State, StencilFactory
+from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.debug.tooling import instrument
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
-from ndsl.stencils import set_value_2D_defn
+from ndsl.stencils import set_IJ_mask_value_defn, set_value_2D_defn, set_value_defn
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -206,7 +207,7 @@ def setup(
 
     # we only want the melting layer farthest from the surface
     with computation(FORWARD), interval(1, None):
-        if is_frozen[0, 0, -1] == False and is_frozen == True:  # noqa
+        if is_frozen[0, 0, -1] == False and is_frozen == True:  # type: ignore[index]
             is_frozen = False
 
     # force surface to "melt" for later calculations
@@ -295,8 +296,8 @@ def update_outputs(
 
 
 @dataclasses.dataclass
-class Locals(State):
-    lhi: Quantity = dataclasses.field(
+class Locals(LocalState):
+    lhi: Local = dataclasses.field(
         metadata={
             "name": "lhi",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -305,7 +306,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    icpk: Quantity = dataclasses.field(
+    icpk: Local = dataclasses.field(
         metadata={
             "name": "icpk",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -314,7 +315,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    cvm: Quantity = dataclasses.field(
+    cvm: Local = dataclasses.field(
         metadata={
             "name": "cvm",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -323,7 +324,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    mass: Quantity = dataclasses.field(
+    mass: Local = dataclasses.field(
         metadata={
             "name": "m1",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -332,7 +333,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    dmass: Quantity = dataclasses.field(
+    dmass: Local = dataclasses.field(
         metadata={
             "name": "dm",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -341,16 +342,16 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    z_interface: Quantity = dataclasses.field(
+    z_interface: Local = dataclasses.field(
         metadata={
             "name": "z_interface",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    z_interface_modified: Quantity = dataclasses.field(
+    z_interface_modified: Local = dataclasses.field(
         metadata={
             "name": "z_interface_modified",
             "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
@@ -359,7 +360,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    rain: Quantity = dataclasses.field(
+    rain: Local = dataclasses.field(
         metadata={
             "name": "rain",
             "dims": [X_DIM, Y_DIM],
@@ -368,7 +369,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    graupel: Quantity = dataclasses.field(
+    graupel: Local = dataclasses.field(
         metadata={
             "name": "graupel",
             "dims": [X_DIM, Y_DIM],
@@ -377,7 +378,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    snow: Quantity = dataclasses.field(
+    snow: Local = dataclasses.field(
         metadata={
             "name": "snow",
             "dims": [X_DIM, Y_DIM],
@@ -386,7 +387,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    ice: Quantity = dataclasses.field(
+    ice: Local = dataclasses.field(
         metadata={
             "name": "ice",
             "dims": [X_DIM, Y_DIM],
@@ -395,7 +396,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    precip_fall: Quantity = dataclasses.field(
+    precip_fall: Local = dataclasses.field(
         metadata={
             "name": "precip_fall",
             "dims": [X_DIM, Y_DIM],
@@ -424,7 +425,7 @@ class GFDL1MTerminalFall(NDSLRuntime):
         self.config = config
 
         # initalize temporaries
-        self._locals = Locals.zeros(quantity_factory)
+        self._locals: Locals = Locals.make_locals(quantity_factory)
 
         # construct stencils
         self._setup = stencil_factory.from_dims_halo(
@@ -483,11 +484,24 @@ class GFDL1MTerminalFall(NDSLRuntime):
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._set_value_2D = stencil_factory.from_dims_halo(
+        self._set_value_IJ = stencil_factory.from_dims_halo(
             func=set_value_2D_defn,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+        self._set_value = stencil_factory.from_dims_halo(
+            func=set_value_defn,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+        self._set_value_K_interface = stencil_factory.from_dims_halo(
+            func=set_value_defn,
+            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+        )
+        self._set_IJ_mask = stencil_factory.from_dims_halo(
+            func=set_IJ_mask_value_defn,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
+    @instrument
     def __call__(
         self,
         t: FloatField,
@@ -532,6 +546,21 @@ class GFDL1MTerminalFall(NDSLRuntime):
             ice (out): ice precipitation (kg m^-2 s^-1)
             ice_precip_flux (out): ice precipitation flux (kg m^-2 s^-1)
         """
+
+        # Reset locals
+        self._set_value(self._locals.lhi, 0)
+        self._set_value(self._locals.icpk, 0)
+        self._set_value(self._locals.cvm, 0)
+        self._set_value(self._locals.mass, 0)
+        self._set_value(self._locals.dmass, 0)
+        self._set_value_K_interface(self._locals.z_interface, 0)
+        self._set_value_K_interface(self._locals.z_interface_modified, 0)
+        self._set_value_IJ(self._locals.rain, 0)
+        self._set_value_IJ(self._locals.graupel, 0)
+        self._set_value_IJ(self._locals.snow, 0)
+        self._set_value_IJ(self._locals.ice, 0)
+        self._set_IJ_mask(self._locals.precip_fall, False)
+
         self._setup(
             t=t,
             mixing_ratio_vapor=mixing_ratio_vapor,
@@ -555,7 +584,7 @@ class GFDL1MTerminalFall(NDSLRuntime):
 
         # melting of falling cloud ice into rain
         if self.config.VI_FAC < 1.0e-5:
-            self._set_value_2D(self._locals.ice, 0)
+            self._set_value_IJ(self._locals.ice, 0)
         else:
             self._check_precip_get_zt(
                 mixing_ratio=mixing_ratio_ice,
