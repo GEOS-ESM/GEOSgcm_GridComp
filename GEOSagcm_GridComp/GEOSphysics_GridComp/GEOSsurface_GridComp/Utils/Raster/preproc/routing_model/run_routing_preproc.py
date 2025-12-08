@@ -19,7 +19,7 @@ def main():
 
 # Path to "bcs_shared" directory:
     file_path1  = "/discover/nobackup/projects/gmao/bcs_shared"
-    file_path2  = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing_model" 
+    file_path2  = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing/routing_model" 
 
 
     file_pfafrout       = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
