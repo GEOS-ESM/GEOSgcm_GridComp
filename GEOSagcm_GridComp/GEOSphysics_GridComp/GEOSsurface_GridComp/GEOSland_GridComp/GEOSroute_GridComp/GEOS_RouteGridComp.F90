@@ -228,11 +228,25 @@ contains
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'res_storage' ,&
          UNITS              = 'm+3'                      ,&
-         SHORT_NAME         = 'WRES'                   ,&
+         SHORT_NAME         = 'KSTR'                   ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
          _RC  )
+
+!!!!!!!!!!!!!!!!
+! Put input to restart
+!!!!!!!!!!!!!!
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'K_parameter_for_local_streams',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'KSTR'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC )
+
 
 !!!!!!!!!!!!!!!!
 ! Export
