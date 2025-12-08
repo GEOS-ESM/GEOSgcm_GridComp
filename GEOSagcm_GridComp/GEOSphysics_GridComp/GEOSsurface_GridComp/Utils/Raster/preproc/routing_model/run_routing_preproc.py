@@ -18,55 +18,48 @@ def main():
     # -----------------------------
 
 # Path to "bcs_shared" directory:
-    file_path  = "/discover/nobackup/yzeng3/data/river_preproc_input/"     # NCCS Discover
-    #file_path = "/nobackup/gmao_SIteam/ModelData/bcs_shared/"      # NAS  
+    file_path1  = "/discover/nobackup/projects/gmao/bcs_shared"
+    file_path2  = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing_model" 
 
 
-    file_pfafrout       = file_path + "/Pfafcatch-routing.dat"
-    file_lat1m          = file_path + "/lat_1m.txt"
-    file_lon1m          = file_path + "/lon_1m.txt"
-    file_lat            = {"M09": file_path + "/lat_M09.txt",
-                           "M36": file_path + "/lat_M36.txt"}
-    file_lon            = {"M09": file_path + "/lon_M09.txt",
-                           "M36": file_path + "/lon_M36.txt"}
-    file_catdef         = {"M09": file_path + "/catchment_M09.def",
-                           "M36": file_path + "/catchment_M36.def"}
-    file_clmtrunf       = file_path + "/SMAPL4_OL7000_runoff_mean_2016_2023.nc"
-    file_pfafmap        = file_path + "/SRTM_PfafData.nc"
-    file_ldn            = file_path + "/hyd_glo_ldn_15s.nc"
-    file_hyelev         = file_path + "/hyd_glo_dem_15s.nc"
-    file_vel            = file_path + "/velocity.txt"
-    file_dis            = file_path + "/discharge.txt"
-    file_usid           = file_path + "/USGSID.txt"
-    file_lats           = file_path + "/lat_for_site.txt"
-    file_lons           = file_path + "/lon_for_site.txt"
-    file_gage_id        = file_path + "/id_gagesii.txt"
-    file_gage_acar      = file_path + "/acar_gagesii.txt"
+    file_pfafrout       = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
+    file_pfafmap        = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
+    file_catdef         = file_path1 + "/fvInput/ExtData/esm/tiles/v14/land/EASEv2_M09/clsm/catchment.def"
 
-    file_latdam         = file_path + "/lat_dam_grand.txt"
-    file_londam         = file_path + "/lon_dam_grand.txt"
-    file_acadam         = file_path + "/catch_acar_grand.txt"
-    file_damcat_manfix  = file_path + "/catid_dam_manfix.txt"
-    file_dam_manflag    = file_path + "/flag_dam_manfix.txt"
-    file_dam_use        = file_path + "/main_use_grand.txt"
-    file_damflood       = file_path + "/flood_use_grand.txt"
-    file_damarea        = file_path + "/area_skm_grand.txt"
-    file_damcap         = file_path + "/cap_max_grand.txt"
+    file_lat1m          = file_path2 + "/lat_1m.txt"
+    file_lon1m          = file_path2 + "/lon_1m.txt"
+    file_lat            = file_path2 + "/lat_SMAPL4.txt"
+    file_lon            = file_path2 + "/lon_SMAPL4.txt"
+    file_clmtrunf       = file_path2 + "/SMAPL4_OL7000_runoff_mean_2016_2023.nc"
+    file_ldn            = file_path2 + "/hyd_glo_ldn_15s.nc"
+    file_hyelev         = file_path2 + "/hyd_glo_dem_15s.nc"
+    file_vel            = file_path2 + "/velocity.txt"
+    file_dis            = file_path2 + "/discharge.txt"
+    file_usid           = file_path2 + "/USGSID.txt"
+    file_lats           = file_path2 + "/lat_for_site.txt"
+    file_lons           = file_path2 + "/lon_for_site.txt"
+    file_gage_id        = file_path2 + "/id_gagesii.txt"
+    file_gage_acar      = file_path2 + "/acar_gagesii.txt"
 
-    file_lake_area      = file_path + "/Lake_area.csv"
-    file_lake_id        = file_path + "/Hylak_id_lake.csv"
-    file_lake_aca       = file_path + "/acar_lake.csv"
-    file_lakeo_lakeid   = file_path + "/Hylak_id_lakeout.csv"
-    file_lakeo_id       = file_path + "/Outlet_id_lakeout.csv"
-    file_lakeo_lat      = file_path + "/Outlet_lat_lakeout.csv"
-    file_lakeo_lon      = file_path + "/Outlet_lon_lakeout.csv"
-    file_lake_mantag    = file_path + "/catid_lake_manfix.txt"
-    file_lakecat_manfix = file_path + "/catid_lake_multout_manfix.txt"
+    file_latdam         = file_path2 + "/lat_dam_grand.txt"
+    file_londam         = file_path2 + "/lon_dam_grand.txt"
+    file_acadam         = file_path2 + "/catch_acar_grand.txt"
+    file_damcat_manfix  = file_path2 + "/catid_dam_manfix.txt"
+    file_dam_manflag    = file_path2 + "/flag_dam_manfix.txt"
+    file_dam_use        = file_path2 + "/main_use_grand.txt"
+    file_damflood       = file_path2 + "/flood_use_grand.txt"
+    file_damarea        = file_path2 + "/area_skm_grand.txt"
+    file_damcap         = file_path2 + "/cap_max_grand.txt"
 
-
-    lib_path = "/discover/nobackup/yzeng3/lib"
-    old_ld = os.environ.get("LD_LIBRARY_PATH", "")
-    os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{old_ld}"
+    file_lake_area      = file_path2 + "/Lake_area.csv"
+    file_lake_id        = file_path2 + "/Hylak_id_lake.csv"
+    file_lake_aca       = file_path2 + "/acar_lake.csv"
+    file_lakeo_lakeid   = file_path2 + "/Hylak_id_lakeout.csv"
+    file_lakeo_id       = file_path2 + "/Outlet_id_lakeout.csv"
+    file_lakeo_lat      = file_path2 + "/Outlet_lat_lakeout.csv"
+    file_lakeo_lon      = file_path2 + "/Outlet_lon_lakeout.csv"
+    file_lake_mantag    = file_path2 + "/catid_lake_manfix.txt"
+    file_lakecat_manfix = file_path2 + "/catid_lake_multout_manfix.txt"
     
     # -----------------------------
     # Ensure output and temp directory exists
@@ -84,56 +77,42 @@ def main():
     # River processing section
     # -----------------------------
     # Compile and run Pfafcatch routing generator
-    run(["./build", "get_Pfaf_file.f90"])
-    run(["./get_Pfaf_file.out", file_pfafrout])
+    run(["./get_Pfaf_file.x", file_pfafrout])
 
     # Generate latitude/longitude indices and cell areas
     run([
         "python3", "get_latloni_cellarea.py",
-        file_lat["M36"], file_lon["M36"],
-        file_lat["M09"], file_lon["M09"],        
+        file_lat, file_lon,        
         file_lat1m, file_lon1m,
     ])
 
-    # Compute number of sub-catchments for M09 and M36 resolutions
-    for res in ("M09", "M36"):
-        run(["./build", f"get_num_sub_catchment_{res}.f90"])
-        run([f"./get_num_sub_catchment_{res}.out", file_pfafmap])
+    # Compute number of sub-catchments
+    run([f"./get_num_sub_catchment.x", file_pfafmap])
 
-    # Build longitude-latitude boundary files for each resolution
-    for res in ("M09", "M36"):
-        run(["./build", f"get_lonlat_bond_{res}.f90"])
-        run([f"./get_lonlat_bond_{res}.out", file_catdef[res]])
+    # longitude-latitude boundary
+    run([f"./get_lonlat_bond.x", file_catdef])
 
-    # Map tile longitude/latitude for M09 and M36
-    for res in ("M09", "M36"):    
-        run(["python3", f"get_lonlati_maptile_{res}.py", file_lat[res], file_lon[res]])
-    # Build and run isub calculators for both resolutions
-    for res in ("M09", "M36"):
-        run(["./build", f"get_isub_{res}.f90"])
-        run([f"./get_isub_{res}.out"])
+    # Map tile longitude/latitude 
+    run(["python3", f"get_lonlati_maptile.py", file_lat, file_lon])
+    # isub calculators
+    run([f"./get_isub.x"])
 
     # Calculate area of each catchment
-    for res in ("M09", "M36"):
-        run(["./build", f"get_area_{res}.f90"])
-        run([f"./get_area_{res}.out", file_pfafmap])    
+    run([f"./get_area.x", file_pfafmap])    
 
     # Compute climatological runoff
-    run(["./build", "get_Qr_clmt.f90"])
-    run(["./get_Qr_clmt.out", file_clmtrunf])
+    run(["./get_Qr_clmt.x", file_clmtrunf])
 
     # Determine river lengths
-    run(["./build", "get_river_length.f90"])
     run([
-        "./get_river_length.out",
+        "./get_river_length.x",
         file_pfafmap, file_ldn,
         file_hyelev, file_pfafrout
     ])
 
     # Calibrate K model using velocity and discharge data
-    run(["./build", "get_K_model_calik.f90"])
     run([
-        "./get_K_model_calik.out",
+        "./get_K_model_calik.x",
         file_vel, file_dis, file_usid,
         file_lats, file_lons,
         file_lat1m, file_lon1m,
@@ -156,9 +135,8 @@ def main():
     # -----------------------------
     # Lake processing section
     # -----------------------------
-    run(["./build", "read_input_TopoCat.f90"])
     run([
-        "./read_input_TopoCat.out",
+        "./read_input_TopoCat.x",
         file_lake_area, file_lake_id,
         file_lake_aca,
         file_lakeo_lakeid, file_lakeo_id,
