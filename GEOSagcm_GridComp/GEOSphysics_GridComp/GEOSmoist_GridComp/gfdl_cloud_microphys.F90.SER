@@ -1062,10 +1062,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                         !$ser data_buffered Dx=4 driver_local_terminal_speed_ice_terminalfall=vtiz(k)
                         !$ser data_buffered Dx=4 driver_local_terminal_speed_snow_terminalfall=vtsz(k)
                         !$ser data_buffered Dx=4 driver_local_terminal_speed_graupel_terminalfall=vtgz(k)
-                        !$ser data_buffered Dx=4 driver_local_rain_terminalfall=r1
-                        !$ser data_buffered Dx=4 driver_local_ice_terminalfall=i1
-                        !$ser data_buffered Dx=4 driver_local_snow_terminalfall=s1
-                        !$ser data_buffered Dx=4 driver_local_graupel_terminalfall=g1
                         !$ser data_buffered Dx=4 surface_precip_rain_terminalfall=rain(i)
                         !$ser data_buffered Dx=4 surface_precip_snow_terminalfall=snow(i)
                         !$ser data_buffered Dx=4 surface_precip_graupel_terminalfall=graupel(i)
