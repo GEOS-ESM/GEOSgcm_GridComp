@@ -23,7 +23,7 @@ jobs:
         build-type: [Debug]
         fixture-repo: [GEOS-ESM/GEOSgcm, GEOS-ESM/GEOSldas]
         include:
-          # Set run-mepo-develop: false for all GEOSldas builds
+          # Set run-mepo-develop: false for GEOSldas builds
           - fixture-repo: GEOS-ESM/GEOSldas
             run-mepo-develop: false
           # GEOSgcm uses the default (true), so no need to specify
@@ -40,7 +40,7 @@ jobs:
       matrix:
         fixture-repo: [GEOS-ESM/GEOSgcm, GEOS-ESM/GEOSldas]
         include:
-          # Set run-mepo-develop: false for all GEOSldas builds
+          # Set run-mepo-develop: false for GEOSldas builds
           - fixture-repo: GEOS-ESM/GEOSldas
             run-mepo-develop: false
           # GEOSgcm uses the default (true), so no need to specify
