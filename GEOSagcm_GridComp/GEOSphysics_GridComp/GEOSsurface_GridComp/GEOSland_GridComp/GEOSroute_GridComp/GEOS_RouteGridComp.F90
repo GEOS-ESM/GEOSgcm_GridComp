@@ -228,7 +228,7 @@ contains
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'res_storage' ,&
          UNITS              = 'm+3'                      ,&
-         SHORT_NAME         = 'KSTR'                   ,&
+         SHORT_NAME         = 'WRES'                   ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
@@ -827,6 +827,7 @@ contains
     real, dimension(:), pointer :: WSTREAM
     real, dimension(:), pointer :: WRIVER
     real, dimension(:), pointer :: WRES
+    real, dimension(:), pointer :: KSTR
     real, dimension(:), pointer :: LRIVERMOUTH
     real, dimension(:), pointer :: ORIVERMOUTH
 
@@ -904,6 +905,8 @@ contains
     call MAPL_GetPointer(INTERNAL, WRIVER,'WRIVER', _RC )
     call MAPL_GetPointer(INTERNAL, WSTREAM,'WSTREAM', _RC)
     call MAPL_GetPointer(INTERNAL, WRES,'WRES', _RC)
+    call MAPL_GetPointer(INTERNAL, KSTR,'KSTR', _RC)
+    KSTR = route%Kstr
 
 ! export
     call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW', _RC)
@@ -991,9 +994,10 @@ contains
             route%K, route%Kstr, &
             WSTREAM,WRIVER, &
             QSFLOW_ACT,QOUTFLOW_ACT)  
-       ! Call reservoir module        
 
+       ! Call reservoir module        
        call res%calc( QOUTFLOW_ACT, QRES_ACT, WRES, real(route_dt), _RC)
+
        QOUT_CAT = QOUTFLOW_ACT              
        where(res%active_res==1) QOUT_CAT=QRES_ACT
        allocate(QINFLOW_LOCAL(n_pfaf_local))
