@@ -1467,14 +1467,14 @@ contains
             uavg   = uavg   + dpi*u0(k)
             vavg   = vavg   + dpi*v0(k)
             thvlavg = thvlavg + dpi*thvl0(k)
-            qtavg = qtavg + dpi*qt0(k)
+            if (qtsrchgt .le. 0.0) qtavg = qtavg + dpi*qt0(k)
             if( k .ne. kinv ) thvlmin = min(thvlmin,min(thvl0bot(k),thvl0top(k)))
          end do
          tkeavg  = tkeavg/dpsum
          uavg    = uavg/dpsum
          vavg    = vavg/dpsum
          thvlavg = thvlavg/dpsum
-         qtavg   = qtavg/dpsum
+         if (qtsrchgt .le. 0.0) qtavg   = qtavg/dpsum
 
         ! weighted average over lowest 20mb
 !         dpsum = 0.
@@ -1486,17 +1486,18 @@ contains
 !         qtavg   = qtavg/dpsum
  
        ! Interpolate qt to specified height
-!         k = 1
-!         do while (zmid0(k).lt.qtsrchgt)
-!         do while (zmid0(k).lt.0.5*zmid0(kinv))   ! use qt from half of inv height
-!           k = k+1
-!         end do
-!         if (k.gt.1) then
-!           qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
-!           qtavg = qtavg / (zmid0(k)-zmid0(k-1))
-!         else
-!           qtavg = qt0(1)
-!         end if
+          if (qtsrchgt > 0.0) then
+            k = 1
+            do while (zmid0(k).lt.qtsrchgt)
+              k = k+1
+            end do
+            if (k.gt.1) then
+              qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
+              qtavg = qtavg / (zmid0(k)-zmid0(k-1))
+            else
+              qtavg = qt0(1)
+            end if
+          endif
 
        ! ------------------------------------------------------------------ !
        ! Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc !
