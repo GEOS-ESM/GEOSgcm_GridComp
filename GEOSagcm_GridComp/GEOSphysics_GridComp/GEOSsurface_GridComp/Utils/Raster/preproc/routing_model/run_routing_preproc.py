@@ -18,8 +18,8 @@ def main():
     # -----------------------------
 
 # Path to "bcs_shared" directory:
-    file_path1  = "/discover/nobackup/projects/gmao/bcs_shared/"
-    file_path2  = "/discover/nobackup/yzeng3/data/river_preproc_input/" 
+    file_path1  = "/discover/nobackup/projects/gmao/bcs_shared"
+    file_path2  = "/discover/nobackup/yzeng3/data/river_preproc_input" 
 
 
     file_pfafrout       = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
@@ -82,8 +82,7 @@ def main():
     # River processing section
     # -----------------------------
     # Compile and run Pfafcatch routing generator
-    run(["./build", "get_Pfaf_file.f90"])
-    run(["./get_Pfaf_file.out", file_pfafrout])
+    run(["./get_Pfaf_file.x", file_pfafrout])
 
     # Generate latitude/longitude indices and cell areas
     run([
@@ -93,39 +92,32 @@ def main():
     ])
 
     # Compute number of sub-catchments
-    run(["./build", f"get_num_sub_catchment.f90"])
-    run([f"./get_num_sub_catchment.out", file_pfafmap])
+    run([f"./get_num_sub_catchment.x", file_pfafmap])
 
-    # Build longitude-latitude boundary files for each resolution
-    run(["./build", f"get_lonlat_bond.f90"])
-    run([f"./get_lonlat_bond.out", file_catdef])
+    # longitude-latitude boundary
+    run([f"./get_lonlat_bond.x", file_catdef])
 
     # Map tile longitude/latitude 
     run(["python3", f"get_lonlati_maptile.py", file_lat, file_lon])
-    # Build and run isub calculators
-    run(["./build", f"get_isub.f90"])
-    run([f"./get_isub.out"])
+    # isub calculators
+    run([f"./get_isub.x"])
 
     # Calculate area of each catchment
-    run(["./build", f"get_area.f90"])
-    run([f"./get_area.out", file_pfafmap])    
+    run([f"./get_area.x", file_pfafmap])    
 
     # Compute climatological runoff
-    run(["./build", "get_Qr_clmt.f90"])
-    run(["./get_Qr_clmt.out", file_clmtrunf])
+    run(["./get_Qr_clmt.x", file_clmtrunf])
 
     # Determine river lengths
-    run(["./build", "get_river_length.f90"])
     run([
-        "./get_river_length.out",
+        "./get_river_length.x",
         file_pfafmap, file_ldn,
         file_hyelev, file_pfafrout
     ])
 
     # Calibrate K model using velocity and discharge data
-    run(["./build", "get_K_model_calik.f90"])
     run([
-        "./get_K_model_calik.out",
+        "./get_K_model_calik.x",
         file_vel, file_dis, file_usid,
         file_lats, file_lons,
         file_lat1m, file_lon1m,
@@ -148,9 +140,8 @@ def main():
     # -----------------------------
     # Lake processing section
     # -----------------------------
-    run(["./build", "read_input_TopoCat.f90"])
     run([
-        "./read_input_TopoCat.out",
+        "./read_input_TopoCat.x",
         file_lake_area, file_lake_id,
         file_lake_aca,
         file_lakeo_lakeid, file_lakeo_id,
@@ -169,7 +160,6 @@ def main():
     ])
 
     subprocess.run(["rm", "-rf", "temp"], check=True)
-    subprocess.run("rm -f *.out *.mod", shell=True, check=True)
 
 if __name__ == "__main__":
     main()

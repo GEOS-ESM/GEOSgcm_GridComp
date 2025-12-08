@@ -20,6 +20,7 @@ set (exe_srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
+  LIBS NetCDF::NetCDF_Fortran
 )
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".f90" ".x" exe ${src})
