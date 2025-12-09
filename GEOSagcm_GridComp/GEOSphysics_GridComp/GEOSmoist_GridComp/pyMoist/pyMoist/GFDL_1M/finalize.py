@@ -142,9 +142,8 @@ def fix_mixing_ratio(
     with computation(PARALLEL), interval(...):
         if k_sum_2 > 0.0:
             factor = (k_sum_2 - k_sum_1) / k_sum_2
-
-        # reduce Q proportionally to the increase in TPW
-        mixing_ratio = mixing_ratio * (1.0 - factor)
+            # reduce Q proportionally to the increase in TPW
+            mixing_ratio = mixing_ratio * (1.0 - factor)
 
 
 def minimum_mixing_ratio(
