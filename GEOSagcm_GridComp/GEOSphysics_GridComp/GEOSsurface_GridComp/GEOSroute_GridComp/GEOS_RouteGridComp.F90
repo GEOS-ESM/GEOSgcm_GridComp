@@ -18,11 +18,9 @@ module GEOS_RouteGridCompMod
   use ESMF
   use MAPL_Mod
   use MAPL_ConstantsMod
-  use ROUTING_MODEL,          ONLY: river_routing_lin, river_routing_hyd, ROUTE_DT
+  use ROUTING_MODEL,          ONLY: river_routing_hyd
   use reservoirMod,           ONLY: RES_STATE, Reservoir
   use catch_constants,        ONLY: N_pfaf_g => CATCH_N_PFAFS
-
-  use, intrinsic :: iso_c_binding
   
   implicit none
 
@@ -45,16 +43,13 @@ module GEOS_RouteGridCompMod
      integer :: myPe
      integer :: minCatch
      integer :: maxCatch
+     integer :: route_dt
 
      real,    allocatable :: areacat(:)  ! m2
      real,    allocatable :: lengsc(:)   ! m
      integer, allocatable :: downid(:) 
 
-     real,    allocatable :: runoff_acc(:) 
-     real,    allocatable :: wriver_acc(:)    
-     real,    allocatable :: wstream_acc(:)        
-     real,    allocatable :: qoutflow_acc(:)
-     real,    allocatable :: qsflow_acc(:)  
+     real,    allocatable :: runoff_acc(:)  
 
      real,    allocatable :: lstr(:)         ! m
      real,    allocatable :: qri_clmt(:)     ! m3/s
@@ -341,9 +336,12 @@ contains
     integer        :: myPE
     integer        :: beforeMe, minCatch, maxCatch, i
     integer        :: n_pfaf_local, nt_global
+    integer        :: ROUTE_DT
 
-    type(ESMF_Grid)     :: tileGrid
-    type(ESMF_Grid)     :: newTileGrid, catch_grid
+    type(ESMF_Grid)            :: tileGrid
+    type(ESMF_Grid)            :: newTileGrid, catch_grid
+    character(len=ESMF_MAXSTR) :: SURFRC
+    type(ESMF_Config)          :: SCF
 
     type(MAPL_MetaComp), pointer   :: MAPL
     type(MAPL_LocStream)           :: locstream, catch_LocStream
@@ -422,6 +420,12 @@ contains
     route%n_pfaf_local= n_pfaf_local  
     route%minCatch    = minCatch
     route%maxCatch    = maxCatch 
+
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )
+    route%route_dt = ROUTE_DT
 
     call MAPL_GetResource (MAPL, RIVER_INPUT_FILE,  label = 'RIVER_INPUT_FILE:',    default = '../input/river_input.nc', RC=STATUS )
     if (MAPL_AM_I_Root()) then
@@ -504,16 +508,9 @@ contains
 
     allocate(route%runoff_acc(nt_local), source = 0.)
 
-    ! accumulated variables for output 
-    allocate(route%wriver_acc(n_pfaf_local),route%wstream_acc(n_pfaf_local),route%qoutflow_acc(n_pfaf_local),route%qsflow_acc(n_pfaf_local))
-    route%wriver_acc  =0.
-    route%wstream_acc =0.
-    route%qoutflow_acc=0.
-    route%qsflow_acc  =0.
 
     !Initial reservoir module
     route%reservoir = Reservoir(layout, trim(RIVER_INPUT_FILE), N_pfaf_g,n_pfaf_local, minCatch,maxCatch,use_res, _RC)
-    allocate(route%reservoir%qres_acc(n_pfaf_local), source =0.0)
 
     if(mapl_am_I_root()) print *,"reservoir init success" 
 
@@ -843,11 +840,12 @@ contains
     type (MAPL_LocStream)              :: LOCSTREAM
  
     integer                            :: n_pfaf_local, N_CYC
+    integer                            :: ROUTE_DT
 
     integer                                  :: I
     REAL                                     :: HEARTBEAT 
-    REAL, ALLOCATABLE, DIMENSION(:)          :: RUNOFF_ACT,AREACAT_ACT,& 
-         LENGSC_ACT, QSFLOW_ACT,QOUTFLOW_ACT,QRES_ACT,QOUT_CAT
+    REAL, ALLOCATABLE, DIMENSION(:)          :: RUNOFF_IN,AREACAT_ACT,& 
+         LENGSC_ACT, QSFLOW_OUT,QOUTFLOW_OUT,QRES_OUT,QOUT_CAT
     type(ESMF_Field) :: runoff_src
 
     integer                                :: ndes, mype
@@ -923,6 +921,7 @@ contains
     nt_global     =  route%nt_global  
     nt_local      =  route%nt_local
     res           => route%reservoir
+    ROUTE_DT      =  route%route_dt
 
     ! get the field from IMPORT
     call ESMF_StateGet(IMPORT, 'RUNOFF', field=runoff_src, RC=STATUS)
@@ -959,16 +958,16 @@ contains
             routeHandle=route%routeHandle, rc=rc)
        call ESMF_FieldGet(route%field, farrayPtr=arrayPtr, rc=status)
        VERIFY_(STATUS)
-       RUNOFF_ACT = arrayPtr * route%areacat/1000.
+       RUNOFF_IN = arrayPtr * route%areacat/1000.
 
 
        ! Prepares to conduct routing model
        allocate (AREACAT_ACT (n_pfaf_local))       
        allocate (LENGSC_ACT  (n_pfaf_local))
-       allocate (QSFLOW_ACT  (n_pfaf_local))
-       allocate (QOUTFLOW_ACT(n_pfaf_local),QRES_ACT(n_pfaf_local),QOUT_CAT(n_pfaf_local))  
+       allocate (QSFLOW_OUT  (n_pfaf_local))
+       allocate (QOUTFLOW_OUT(n_pfaf_local),QRES_OUT(n_pfaf_local),QOUT_CAT(n_pfaf_local))  
 
-       QRES_ACT=0.
+       QRES_OUT=0.
        LENGSC_ACT =route%lengsc/1.e3 !m->km
        AREACAT_ACT=route%areacat/1.e6 !m2->km2
 
@@ -977,20 +976,17 @@ contains
 
        ! Call river_routing_model
        ! ------------------------     
-       !CALL RIVER_ROUTING_LIN  (n_pfaf_local, RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,  &
-       !     WSTREAM_ACT,WRIVER_ACT, QSFLOW_ACT,QOUTFLOW_ACT) 
-
-       CALL RIVER_ROUTING_HYD  (n_pfaf_local, &
-            RUNOFF_ACT, route%lengsc, route%lstr, &
+       CALL RIVER_ROUTING_HYD  (n_pfaf_local, ROUTE_DT,&
+            RUNOFF_IN, route%lengsc, route%lstr, &
             route%qstr_clmt, route%qri_clmt, route%qin_clmt, &
             route%K, route%Kstr, &
             WSTREAM,WRIVER, &
-            QSFLOW_ACT,QOUTFLOW_ACT)  
-       ! Call reservoir module        
+            QSFLOW_OUT,QOUTFLOW_OUT)  
 
-       call res%calc( QOUTFLOW_ACT, QRES_ACT, WRES, real(route_dt), _RC)
-       QOUT_CAT = QOUTFLOW_ACT              
-       where(res%active_res==1) QOUT_CAT=QRES_ACT
+       ! Call reservoir module        
+       call res%calc( QOUTFLOW_OUT, QRES_OUT, WRES, real(route_dt), _RC)
+       QOUT_CAT = QOUTFLOW_OUT              
+       where(res%active_res==1) QOUT_CAT=QRES_OUT
        allocate(QINFLOW_LOCAL(n_pfaf_local))
        call exchange_water(QOUT_CAT, QINFLOW_LOCAL, _RC)
        WRIVER = WRIVER + QINFLOW_LOCAL*real(route_dt)
@@ -998,32 +994,15 @@ contains
        ! Check balance if needed
        !call check_balance(route,n_pfaf_local,nt_local,runoff_acc,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
 
-       ! Update accumulated variables for output
-       nstep_per_day = 86400/route_dt
-
-       route%wriver_acc   = route%wriver_acc   + WRIVER      /real(nstep_per_day)
-       route%wstream_acc  = route%wstream_acc  + WSTREAM     /real(nstep_per_day)
-       route%qoutflow_acc = route%qoutflow_acc + QOUTFLOW_ACT/real(nstep_per_day)
-       route%qsflow_acc   = route%qsflow_acc   + QSFLOW_ACT  /real(nstep_per_day)
-
-       res%qres_acc       = res%qres_acc       + QRES_ACT    /real(nstep_per_day)       
-
-       if (associated(QSFLOW))    QSFLOW  = QSFLOW_ACT
-       if (associated(QOUTFLOW)) QOUTFLOW = QOUTFLOW_ACT
+       if (associated(QSFLOW))    QSFLOW  = QSFLOW_OUT
+       if (associated(QOUTFLOW)) QOUTFLOW = QOUTFLOW_OUT
        if (associated(QRES)) then
           _ASSERT(use_res, "Set use_res be true to get QRES export")
-          QRES = QRES_ACT
+          QRES = QRES_OUT
        endif
-       deallocate(RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_ACT,QINFLOW_LOCAL,QSFLOW_ACT,WTOT_BEFORE,QRES_ACT,QOUT_CAT)
+       deallocate(RUNOFF_IN,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_OUT,QINFLOW_LOCAL,QSFLOW_OUT,WTOT_BEFORE,QRES_OUT,QOUT_CAT)
 
        route%runoff_acc = 0.
-       if (HH == 23) then
-          route%wriver_acc   = 0.
-          route%wstream_acc  = 0.
-          route%qoutflow_acc = 0.
-          route%qsflow_acc   = 0.
-          res%qres_acc       = 0.
-       endif
     else
 
        route%runoff_acc = route%runoff_acc + RUNOFF_SRC0

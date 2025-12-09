@@ -12,8 +12,8 @@ public :: get_Pfaf_frac
 
 contains 
 
-  subroutine get_Pfaf_frac(file_out, GridName)
-    character(*), intent(in) :: file_out
+  subroutine get_Pfaf_frac(file_out, BCS_PATH, GridName)
+    character(*), intent(in) :: file_out, BCS_PATH    
     character(*), intent(in) :: GridName
     integer,parameter :: nlon=21600         ! Number of longitude grid points in the original grid
     integer,parameter :: nlat=10800         ! Number of latitude grid points in the original grid
@@ -48,8 +48,11 @@ contains
     real                :: tmp_lat, tmp_lon
     
     ! Define file path for input routing data:
-    character(len=256)   :: pfafData_file = "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc" !"input/CatchIndex.nc"   
-    character(len=256)   :: cellarea_file = "/discover/nobackup/projects/gmao/bcs_shared/test/stuff/route_model/v1/cellarea.nc" 
+    character(len=256)   :: pfafData_file    
+    character(len=256)   :: cellarea_file
+
+    pfafData_file = trim(BCS_PATH)//"/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
+    cellarea_file = trim(BCS_PATH)//"../test/stuff/route_model/v2/cellarea.nc"
     call MAPL_ease_extent( trim(GridName), nc_ease, nr_ease)   
  
     ! Allocate arrays with the specified dimensions:

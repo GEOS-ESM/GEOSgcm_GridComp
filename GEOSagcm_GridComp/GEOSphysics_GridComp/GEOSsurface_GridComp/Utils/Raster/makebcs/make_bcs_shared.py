@@ -176,7 +176,7 @@ endif
 if(-f land/shared/river_input.nc ) then
     echo "river_input.nc already present in bcs dir."
 else
-    /bin/cp -p /discover/nobackup/projects/gmao/bcs_shared/test/stuff/route_model/v1/river_input.nc land/shared/river_input.nc
+    /bin/cp -p {MAKE_BCS_INPUT_DIR}/../test/stuff/route_model/v2/river_input.nc land/shared/river_input.nc
     echo "Successfully copied river_input.nc to bcs dir."
 endif
 

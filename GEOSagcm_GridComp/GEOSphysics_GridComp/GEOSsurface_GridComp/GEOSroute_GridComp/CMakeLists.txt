@@ -7,5 +7,3 @@ set (srcs
   )
 
 esma_add_library (${this} SRCS ${srcs} DEPENDENCIES MAPL GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran)
-
-install(PROGRAMS build_rivernetwork.py DESTINATION bin)

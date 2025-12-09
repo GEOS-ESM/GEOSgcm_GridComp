@@ -1,128 +1,41 @@
 MODULE routing_model
 
+  use MAPL 
+
   IMPLICIT NONE
 
   private
 
-  public :: river_routing_lin, river_routing_hyd, SEARCH_DNST, ROUTE_DT
-
-  integer, parameter :: ROUTE_DT = 3600
+  public :: river_routing_hyd, SEARCH_DNST
 
 CONTAINS
 
-  ! ==================================================================================
-  !
-  ! LINEAR ROUTING MODEL
-  !
-  ! ------------------------------------------------------------------------
-  ! Routing Model Input Parameters
-  ! ------------------------------
-  !**** NCAT      = NUMBER OF CATCHMENTS IN THE STUDY DOMAIN
-  !**** RUNCATCH  = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT [m^3/s]
-  !**** AREACAT   = AREA OF CATCHMENT [km^2]
-  !**** LENGSC    = LENGTHSCALE OF CATCHMENT FOR RIVER CALCULATION [km]
-  !                 Note: We assume LENGSC for stream to river calculation as AREACAT/LENGSC
-
-  ! Routing Model Prognostics
-  ! -------------------------
-  !**** WSTREAM   = AMOUNT OF WATER IN "LOCAL STREAM"  [m^3]
-  !**** WRIVER    = AMOUNT OF WATER IN RIVER           [m^3]
-
-  ! Routing Model Diagnostics
-  ! -------------------------
-  !**** QSFLOW    = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE [m^3/s]
-  !**** QOUTFLOW  = TRANSFER OF RIVER WATER TO THE DOWNSTREAM CATCHMENT  [m^3/s]  
-
-  SUBROUTINE RIVER_ROUTING_LIN (                &
-       NCAT,                                &
-       RUNCATCH,AREACAT,LENGSC,             &
-       WSTREAM,WRIVER,                      &
-       QSFLOW,QOUTFLOW)
-
-    IMPLICIT NONE
-    INTEGER, INTENT(IN)                     :: NCAT
-    REAL,    INTENT(IN),   DIMENSION (NCAT) :: RUNCATCH,AREACAT,LENGSC
-    REAL,    INTENT(INOUT),DIMENSION (NCAT) :: WSTREAM, WRIVER
-    REAL,    INTENT(OUT),  DIMENSION (NCAT) :: QSFLOW,QOUTFLOW
-
-    REAL,   PARAMETER    :: K_SIMPLE = 0.111902, K_RES_MAX = 0.8                       ! m1_r2com_c1
-    REAL,   PARAMETER    :: CUR_AVG = 1.4
-    REAL,   PARAMETER    :: P1 = 0.010611, P2 = 0.188556, P3 = 0.096864
-    REAL,   PARAMETER    :: P4 = 0.691310, P5 = 0.1,      P6 = 0.009831                ! m5_calib_240, ori P5 = 0.365747,
-
-    INTEGER :: N,I,J 
-    REAL    :: COEFF, LS, COEFF1, COEFF2,ROFF 
-
-    QSFLOW   = 0.
-    QOUTFLOW = 0.       
-
-    DO N=1,NCAT
-
-       ! Updating WSTREAM
-
-       WSTREAM(N)    = WSTREAM(N)  + RUNCATCH(N) * REAL (ROUTE_DT)
-       LS            = AREACAT(N) / (AMAX1(1.,LENGSC (N))) /4. * CUR_AVG
-       ROFF          = RUNCATCH(N) * AREACAT(N)
-       IF(ROFF < 2. ) THEN
-          COEFF  = RESCONST (LS, P1, P2)
-       ELSEIF(ROFF > 10.) THEN
-          COEFF  = RESCONST (LS, P3, P4)
-       ELSE
-          COEFF1 = RESCONST (LS, P1, P2)    
-          COEFF2 = RESCONST (LS, P3, P4)   
-          COEFF  = COEFF1 + (ROFF - 2.)*(COEFF2 - COEFF1)/8.
-       ENDIF
-
-       IF(COEFF > K_RES_MAX) COEFF = K_SIMPLE
-
-       QSFLOW(N)     = COEFF * WSTREAM(N)
-       WSTREAM(N)    = WSTREAM(N) - QSFLOW(N)
-       WRIVER(N)     = WRIVER(N)  + QSFLOW(N)
-       QSFLOW(N)     = QSFLOW(N) / REAL (ROUTE_DT) 
-
-       ! Updating WRIVER
-
-       LS            = AMAX1(1.,LENGSC (N)) 
-       COEFF         = RESCONST (LS, P5, P6)
-       IF(COEFF > K_RES_MAX) COEFF = K_SIMPLE 
-
-       QOUTFLOW(N)   = COEFF * WRIVER(N)
-       QOUTFLOW(N)   = MIN(QOUTFLOW(N), WRIVER(N))      ! ensure WRIVER(N) >=0.
-       WRIVER(N)     = WRIVER(N)   - QOUTFLOW(N)
-       QOUTFLOW(N)   = QOUTFLOW(N) / REAL (ROUTE_DT) 
-
-    ENDDO
-
-    RETURN
-
-  END SUBROUTINE RIVER_ROUTING_LIN
-
-  ! -------------------------------------------------------------------------------------------------------
+! -------------------------------------------------------------------------------------------------------
 
   REAL FUNCTION RESCONST (LS, P1, P2)
 
     IMPLICIT NONE
 
-    REAL, INTENT (IN) :: LS, P1, P2
+    REAL, INTENT (IN)    :: LS, P1, P2
 
     RESCONST  = P1 * ((1./LS)**P2) 
 
   END FUNCTION RESCONST
 
-  ! -------------------------------------------------------------------------------------------------------
-
+! -------------------------------------------------------------------------------------------------------
+  
   RECURSIVE SUBROUTINE SEARCH_DNST (K, NCAT_G, DNST, Pfaf_all, DNST_OUT)
-
+    
     implicit none
-
+    
     integer, intent (in)                     :: NCAT_G, K
     integer, intent (in), dimension (NCAT_G) :: Pfaf_all, DNST 
     integer, intent (inout)                  :: DNST_OUT
-
+    
     if (DNST(K) == -1) then 
        DNST_OUT = -1
     else
-
+       
        if(Pfaf_all(DNST(K)) >= 1) then
           DNST_OUT = Pfaf_all(DNST(K)) 
        else
@@ -133,11 +46,13 @@ CONTAINS
           endif
        endif
     endif
-
+    
     RETURN
-
+    
   END SUBROUTINE SEARCH_DNST
-  
+
+! -------------------------------------------------------------------------------------------------------
+
   ! ======================================================================================
   !
   ! HYDRAULIC GEOMETRY ROUTING MODEL
@@ -166,7 +81,7 @@ CONTAINS
   !**** QOUT      = TRANSFER OF RIVER WATER TO THE DOWNSTREAM CATCHMENT  [m^3/s]  
   
   SUBROUTINE RIVER_ROUTING_HYD (          &
-       NCAT,                              &
+       NCAT,ROUTE_DT,                     &
        Qrunf0,llc_ori,lstr,               &
        qstr_clmt0, qri_clmt0, qin_clmt0,  &
        K, Kstr0,                          &
@@ -175,7 +90,7 @@ CONTAINS
 
     IMPLICIT NONE
     
-    INTEGER, INTENT(IN)                     :: NCAT
+    INTEGER, INTENT(IN)                     :: NCAT,ROUTE_DT
     REAL,    INTENT(IN),   DIMENSION (NCAT) :: Qrunf0,llc_ori,lstr
     REAL,    INTENT(IN),   DIMENSION (NCAT) :: qstr_clmt0,qri_clmt0,qin_clmt0
     REAL,    INTENT(IN),   DIMENSION (NCAT) :: K, Kstr0
@@ -188,17 +103,15 @@ CONTAINS
     real, parameter :: fac_kstr = 0.01      ! Factor for local stream scaling
     real, parameter :: M        = 0.45      ! Parameter in hydraulic geometry formula
     real, parameter :: mm       = 0.35      ! Parameter in hydraulic geometry formula
-    real, parameter :: rho      = 1000.     ! Density of liquid water [kg/m3]
-    real, parameter :: cur_avg  = 1.4
 
     real,dimension(NCAT) :: Qrunf,qstr_clmt,qri_clmt,qin_clmt,Ws,Wr,Kstr
     real,dimension(NCAT) :: nume,deno,llc,alp_s,alp_r,Qs0,ks,Ws_last
     
-    real    :: dt 
+    real    :: dt, rho
 
     integer :: i,j 
 
-
+    rho = MAPL_RHOWTR
     Qrunf = Qrunf0 * rho !m3/s -> kg/s  
     !llc_ori = llc_ori0 * 1.e3 !km -> m
     !lstr = lstr0 * 1.e3 !km -> m
