@@ -28,7 +28,6 @@ contains
     integer, intent(in)            :: nl
     real, allocatable, intent(out) :: data(:,:)
     
-    character(len=100)             :: var(2)
     character(len=900)             :: filename
     character(len=100)             :: line
     character(len=100)             :: x(100)
@@ -36,8 +35,6 @@ contains
     integer                        :: i, j, l, io, k
     integer, allocatable           :: nv(:)
 
-    ! Define the variable names for the two data files
-    var = (/ "velocity", "discharge" /)
 
     ! Allocate the data array with nl rows and 2 columns
     allocate(data(nl, 2))
