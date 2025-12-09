@@ -5,7 +5,7 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.debug.tooling import instrument
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
-from ndsl.stencils import set_IJ_mask_value_defn, set_value_2D_defn, set_value_defn
+from ndsl.stencils import set_IJ_mask_value, set_value, set_value_2D
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -485,19 +485,19 @@ class GFDL1MTerminalFall(NDSLRuntime):
         )
 
         self._set_value_IJ = stencil_factory.from_dims_halo(
-            func=set_value_2D_defn,
+            func=set_value_2D,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
         self._set_value = stencil_factory.from_dims_halo(
-            func=set_value_defn,
+            func=set_value,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
         self._set_value_K_interface = stencil_factory.from_dims_halo(
-            func=set_value_defn,
+            func=set_value,
             compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
         )
         self._set_IJ_mask = stencil_factory.from_dims_halo(
-            func=set_IJ_mask_value_defn,
+            func=set_IJ_mask_value,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
