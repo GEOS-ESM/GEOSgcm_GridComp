@@ -4599,7 +4599,7 @@ end if
          do I = 1,IM
           do J = 1,JM
             LTOP = LM
-            do while (ZLE(I,J,LTOP).lt.MIN(MAX(1.5*ZPBL(I,J),2000.),6000.)) ! exclude levels above 6 km
+            do while (ZL0(I,J,LTOP).lt.MIN(MAX(1.5*ZPBL(I,J),2000.),6000.)) ! exclude levels above 6 km
               LTOP = LTOP-1
             end do
 
@@ -4627,7 +4627,7 @@ end if
                     b1 = SQRT(b1*(Cn2(I,J,L)-Cn2(I,J,LMAX)))   ! use geometric mean of up and down max-min difference
 
                     if (b1 .gt. 2.*b2 ) then  ! up/down max-min exceeds 2 std dev
-                       ZPBLRWP(I,J) = ZLE(I,J,L)
+                       ZPBLRWP(I,J) = ZL0(I,J,L)
                        RWPSNR(I,J) = b1/b2
                        exit
                     end if
