@@ -281,7 +281,7 @@ class ConvectiveCloudBaseLevel:
             cap_max_increment=locals.cap_max_increment,
             t_perturbation=state.output.t_perturbation,
             p_forced=state.input_output.p_forced,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
             plume=plume_dependent_constants.PLUME_INDEX,
         )
@@ -333,12 +333,12 @@ class CloudTop:
             geopotential_height=locals.geopotential_height_cloud_levels_forced,
             cloud_moist_static_energy=locals.cloud_moist_static_energy_forced_transported,
             error_code=state.output.error_code,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             plume=plume_dependent_constants.PLUME_INDEX,
         )
 
         self._cloud_top_checks(
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             p=state.output.p_cloud_levels_forced,
             geopotential_height=locals.geopotential_height_cloud_levels,
             error_code=state.output.error_code,

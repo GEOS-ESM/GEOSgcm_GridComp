@@ -268,7 +268,7 @@ def cup_dd_edt(
     local_epsilon_max: FloatFieldIJ,
     local_epsilon_min: FloatFieldIJ,
     updraft_lfc_level: IntFieldIJ_Plume,
-    cloud_top: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
     p_forced: FloatField,
     local_psum: FloatFieldIJ,
     local_psumh: FloatFieldIJ,
@@ -295,7 +295,7 @@ def cup_dd_edt(
                 idx = updraft_lfc_level[0, 0][plume] - 1
                 while (
                     idx >= updraft_lfc_level[0, 0][plume] - 1
-                    and idx <= cloud_top[0, 0][plume] - 1
+                    and idx <= cloud_top_level[0, 0][plume] - 1
                 ):
                     dp: FloatFieldIJ = p_forced.at(K=idx) - p_forced.at(K=idx + 1)
                     vws = vws + (

@@ -78,6 +78,8 @@ def set_constants(
             Float(0.5) * plume_dependent_constants.MINIMUM_DEPTH
         )
 
+        plume_dependent_constants.C0 = cumulus_parameterization_config.C0_SHAL
+
     elif plume == "mid":
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(1)
@@ -146,6 +148,8 @@ def set_constants(
             Float(0.5) * plume_dependent_constants.MINIMUM_DEPTH
         )
 
+        plume_dependent_constants.C0 = cumulus_parameterization_config.C0_MID
+
     elif plume == "deep":
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(2)
@@ -213,6 +217,8 @@ def set_constants(
         plume_dependent_constants.DETRAINMENT_CRITICAL_DEPTH = (
             Float(0.5) * plume_dependent_constants.MINIMUM_DEPTH
         )
+
+        plume_dependent_constants.C0 = cumulus_parameterization_config.C0_DEEP
 
     else:
         raise NotImplementedError("Unknown plume specified, corresponding constants are unavailable.")

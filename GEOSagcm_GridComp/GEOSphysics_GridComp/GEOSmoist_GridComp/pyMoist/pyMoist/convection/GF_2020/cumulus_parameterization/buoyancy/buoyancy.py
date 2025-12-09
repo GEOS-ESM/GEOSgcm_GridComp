@@ -27,7 +27,7 @@ from ndsl.dsl.gt4py import K
 def get_buoyancy(
     lcl_level: IntFieldIJ_Plume,
     updraft_lfc_level: IntFieldIJ_Plume,
-    cloud_top: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
     cloud_moist_static_energy: FloatField,
     environment_moist_static_energy: FloatField,
     environment_saturation_moist_static_energy: FloatField,
@@ -41,7 +41,7 @@ def get_buoyancy(
     Args:
         lcl_level (in): lcl level of environment
         updraft_lfc_level (in): lfc level of parcel
-        cloud_top (in): equilibrium level of cloud
+        cloud_top_level (in): equilibrium level of cloud
         cloud_moist_static_energy (in)
         environment_moist_static_energy (in)
         environment_saturation_moist_static_energy (in)
@@ -56,11 +56,8 @@ def get_buoyancy(
         if error_code[0, 0][plume] == 0:
             if K <= lcl_level[0, 0][plume]:
                 buoyancy = cloud_moist_static_energy - environment_moist_static_energy
-            if K > lcl_level[0, 0][plume] and K <= cloud_top[0, 0][plume] + 1:
-                buoyancy = (
-                    cloud_moist_static_energy
-                    - environment_saturation_moist_static_energy
-                )
+            if K > lcl_level[0, 0][plume] and K <= cloud_top_level[0, 0][plume] + 1:
+                buoyancy = cloud_moist_static_energy - environment_saturation_moist_static_energy
 
 
 class GetBuoyancy:
@@ -90,7 +87,7 @@ class GetBuoyancy:
         self._get_buoyancy(
             lcl_level=state.output.lcl_level,
             updraft_lfc_level=state.output.updraft_lfc_level,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             cloud_moist_static_energy=locals.cloud_moist_static_energy_forced,
             environment_moist_static_energy=locals.environment_moist_static_energy_cloud_levels_forced,
             environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_cloud_levels_forced,

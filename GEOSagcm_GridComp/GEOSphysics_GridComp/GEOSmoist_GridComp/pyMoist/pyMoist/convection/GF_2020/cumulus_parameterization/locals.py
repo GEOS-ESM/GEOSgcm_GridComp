@@ -529,16 +529,14 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    environment_saturation_moist_static_energy_cloud_levels: Quantity = (
-        dataclasses.field(
-            metadata={
-                "name": "environment_saturation_moist_static_energy_cloud_levels",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
+    environment_saturation_moist_static_energy_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_moist_static_energy_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
     )
     environment_saturation_moist_static_energy_forced: Quantity = dataclasses.field(
         metadata={
@@ -549,16 +547,14 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    environment_saturation_moist_static_energy_cloud_levels_forced: Quantity = (
-        dataclasses.field(
-            metadata={
-                "name": "environment_saturation_moist_static_energy_cloud_levels_forced",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
+    environment_saturation_moist_static_energy_cloud_levels_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_moist_static_energy_cloud_levels_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
     )
     environment_saturation_mixing_ratio: Quantity = dataclasses.field(
         metadata={
@@ -587,16 +583,14 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    environment_saturation_mixing_ratio_cloud_levels_forced: Quantity = (
-        dataclasses.field(
-            metadata={
-                "name": "environment_saturation_mixing_ratio_cloud_levels_forced",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
+    environment_saturation_mixing_ratio_cloud_levels_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_mixing_ratio_cloud_levels_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
     )
     p_cloud_levels: Quantity = dataclasses.field(
         metadata={
@@ -850,24 +844,73 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    incloud_air_temp: Quantity = dataclasses.field(
+    unspecifid_temperature: Quantity = dataclasses.field(
         metadata={
-            "name": "incloud_air_temp",
+            "name": "unspecifid_temperature",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    incloud_water_vapor_mixing_ratio: Quantity = dataclasses.field(
+    cloud_vapor_mixing_ratio_forced: Quantity = dataclasses.field(
         metadata={
-            "name": "incloud_water_vapor_mixing_ratio",
+            "name": "cloud_vapor_mixing_ratio_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
+    cloud_liquid_before_rain_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_liquid_before_rain_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    vertical_velocity_3d: Quantity = dataclasses.field(
+        metadata={
+            "name": "vertical_velocity_3d",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    vertical_velocity_2d: Quantity = dataclasses.field(
+        metadata={
+            "name": "vertical_velocity_2d",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+    # NOTE need more information about these fields to come up with better names
+    psum: Quantity = dataclasses.field(
+        metadata={
+            "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    psumh: Quantity = dataclasses.field(
+        metadata={
+            "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+    # NOTE may be able to remove some of these
     integ: Quantity = dataclasses.field(
         metadata={
             "name": "integ",
@@ -895,7 +938,7 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    incloud_water_vapor_mixing_ratio_forced: Quantity = dataclasses.field(
+    cloud_vapor_mixing_ratio_forced: Quantity = dataclasses.field(
         metadata={
             "name": "incloud_water_vapor_mixing_ratio_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -916,24 +959,6 @@ class GF2020CumulusParameterizationLocals(State):
     edtc: Quantity = dataclasses.field(
         metadata={
             "name": "edtc",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    psum: Quantity = dataclasses.field(
-        metadata={
-            "name": "psum",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    psumh: Quantity = dataclasses.field(
-        metadata={
-            "name": "psumh",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",

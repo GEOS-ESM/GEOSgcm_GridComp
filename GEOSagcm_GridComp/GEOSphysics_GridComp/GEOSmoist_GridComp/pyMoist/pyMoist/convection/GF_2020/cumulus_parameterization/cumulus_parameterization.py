@@ -282,7 +282,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._c1d_profile = C1DProfile()
+        self._c1d_profile = C1DProfile(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._updraft_moisture_profile = UpdraftMoistureProfile()
 
@@ -657,7 +662,15 @@ class CumulusParameterization:
                 )
 
                 # get "c1d" profile
-                self._c1d_profile()
+                # NOTE test GF2020_CumulusParameterization_C1DProfile_{plume}:
+                # NOTE      deep DOES NOT EXECUTE IN CURRENT SIMULATION
+                # NOTE      mid DOES NOT EXECUTE IN CURRENT SIMULATION
+                # NOTE      shallow DOES NOT EXECUTE IN CURRENT SIMULATION
+                self._c1d_profile(
+                    state=state,
+                    locals=locals,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # get updraft profile
                 self._updraft_moisture_profile()

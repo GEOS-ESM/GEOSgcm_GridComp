@@ -35,9 +35,9 @@ class TestCore:
             "cloud_top_firstmse": {},
             "mass_detrainment_updraft_forced_firstmse": {},
             "mass_entrainment_updraft_forced_firstmse": {},
-            "local_noramlized_massflux_updraft_firstmse": {},
+            "local_normalized_massflux_updraft_firstmse": {},
             "local_cloud_moist_static_energy_forced_firstmse": {},
-            "noramlized_massflux_updraft_forced_firstmse": {},
+            "normalized_massflux_updraft_forced_firstmse": {},
             "local_env_moist_static_energy_forced_firstmse": {},
             "local_vapor_excess_firstmse": {},
             "local_t_excess_firstmse": {},
@@ -76,7 +76,7 @@ class TestCore:
             "error_code_firstmse"
         ]
         locals.start_level.data[:] = inputs["local_start_level_firstmse"] - 1
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_top_firstmse"] - 1
         )
         state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
@@ -85,13 +85,13 @@ class TestCore:
         state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["mass_entrainment_updraft_forced_firstmse"]
         )
-        locals.normalized_massflux_updraft.data[:] = inputs["local_noramlized_massflux_updraft_firstmse"]
+        locals.normalized_massflux_updraft.data[:] = inputs["local_normalized_massflux_updraft_firstmse"]
         locals.cloud_moist_static_energy_forced.data[:] = inputs[
             "local_cloud_moist_static_energy_forced_firstmse"
         ]
         state.output.normalized_massflux_updraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["noramlized_massflux_updraft_forced_firstmse"]
+        ] = inputs["normalized_massflux_updraft_forced_firstmse"]
         locals.environment_moist_static_energy_forced.data[:] = inputs[
             "local_env_moist_static_energy_forced_firstmse"
         ]
@@ -122,7 +122,9 @@ class TestCore:
         outputs = {
             "error_code_firstmse": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_start_level_firstmse": locals.start_level.field[:] + 1,
-            "cloud_top_firstmse": state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX]
+            "cloud_top_firstmse": state.output.cloud_top_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ]
             + 1,
             "mass_detrainment_updraft_forced_firstmse": state.output.mass_detrainment_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
@@ -130,9 +132,9 @@ class TestCore:
             "mass_entrainment_updraft_forced_firstmse": state.output.mass_entrainment_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_noramlized_massflux_updraft_firstmse": locals.normalized_massflux_updraft.field[:],
+            "local_normalized_massflux_updraft_firstmse": locals.normalized_massflux_updraft.field[:],
             "local_cloud_moist_static_energy_forced_firstmse": locals.cloud_moist_static_energy_forced,
-            "noramlized_massflux_updraft_forced_firstmse": state.output.normalized_massflux_updraft_forced.field[
+            "normalized_massflux_updraft_forced_firstmse": state.output.normalized_massflux_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "local_env_moist_static_energy_forced_firstmse": locals.environment_moist_static_energy_forced.field[

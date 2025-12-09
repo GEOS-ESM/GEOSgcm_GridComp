@@ -139,7 +139,11 @@ from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumu
     TranslateGF2020_CumulusParameterization_GetBuoyancy_1_mid,
     TranslateGF2020_CumulusParameterization_GetBuoyancy_1_deep,
 )
-
+from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_CumulusParameterization_C1DProfile import (
+    TranslateGF2020_CumulusParameterization_C1DProfile_shallow,
+    TranslateGF2020_CumulusParameterization_C1DProfile_mid,
+    TranslateGF2020_CumulusParameterization_C1DProfile_deep,
+)
 from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_Cumulus_Parameterization_MeltingProfile import (
     TranslateGF2020_CumulusParameterization_MeltingProfile_shallow,
     TranslateGF2020_CumulusParameterization_MeltingProfile_mid,

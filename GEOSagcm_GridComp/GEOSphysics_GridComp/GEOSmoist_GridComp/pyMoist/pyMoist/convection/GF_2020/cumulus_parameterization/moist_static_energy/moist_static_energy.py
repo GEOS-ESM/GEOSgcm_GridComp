@@ -53,7 +53,7 @@ class ParcelMoistStaticEnergy:
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
 
-        if self.cumulus_parameterization_config.MODIS_FRACTION != 1:
+        if self.cumulus_parameterization_config.FRAC_MODIS != 1:
             ndsl_log.warning(
                 " GF2020 cumulus parameterization called ParcelMoistStaticEnergy with "
                 "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
@@ -150,7 +150,7 @@ class FirstGuessMoistStaticEnergy:
         self._first_guess_mse(
             error_code=state.output.error_code,
             start_level=locals.start_level,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
             mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
             normalized_massflux_updraft=locals.normalized_massflux_updraft,

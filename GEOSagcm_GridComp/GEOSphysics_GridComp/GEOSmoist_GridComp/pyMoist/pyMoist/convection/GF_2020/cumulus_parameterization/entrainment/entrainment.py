@@ -178,7 +178,7 @@ class CalculateMassEntrainmentDetrainment:
 
         self._compute_lateral_massflux(
             error_code=state.output.error_code,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             geopotential_height=locals.geopotential_height_cloud_levels_forced,
             normalized_massflux_updraft=state.output.normalized_massflux_updraft_forced,
             detrainment_function_updraft=locals.detrainment_function_updraft,

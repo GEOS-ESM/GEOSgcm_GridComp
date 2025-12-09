@@ -56,7 +56,7 @@ def in_cloud_updraft_air_temperature(
 def cup_up_aa0(
     local_buoyancy: FloatField,
     local_gamma_cloud_levels: FloatField,
-    cloud_top: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
     updraft_lfc_level: IntFieldIJ_Plume,
     updraft_origin_level: IntFieldIJ_Plume,
     local_geopotential_height_cloud_levels: FloatField,
@@ -83,7 +83,7 @@ def cup_up_aa0(
 
         else:
             kbeg = updraft_lfc_level[0, 0][plume] - 1
-            kend = cloud_top[0, 0][plume] - 1
+            kend = cloud_top_level[0, 0][plume] - 1
 
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:

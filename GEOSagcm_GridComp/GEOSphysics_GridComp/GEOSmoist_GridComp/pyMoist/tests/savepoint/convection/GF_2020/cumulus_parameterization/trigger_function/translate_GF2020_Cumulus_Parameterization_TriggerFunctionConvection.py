@@ -52,9 +52,7 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initalize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
             cumulus_parameterization_config, plume_dependent_constants, plume
@@ -76,15 +74,11 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["error_code_triggerfunc"]
-        )
-        locals.cloud_work_function_0.data[:] = inputs[
-            "local_cloud_work_function_0_triggerfunc"
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code_triggerfunc"
         ]
-        state.input_output.convective_scale_velosity.data[:] = inputs[
-            "convective_scale_velosity_triggerfunc"
-        ]
+        locals.cloud_work_function_0.data[:] = inputs["local_cloud_work_function_0_triggerfunc"]
+        state.input_output.convective_scale_velocity.data[:] = inputs["convective_scale_velosity_triggerfunc"]
 
         # initalize test code
         code = TriggerFunctionConvection(
@@ -107,20 +101,14 @@ class TestCore:
             "error_code_triggerfunc": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_cloud_work_function_0_triggerfunc": locals.cloud_work_function_0.field[
-                :
-            ],
-            "convective_scale_velosity_triggerfunc": state.input_output.convective_scale_velosity.field[
-                :
-            ],
+            "local_cloud_work_function_0_triggerfunc": locals.cloud_work_function_0.field[:],
+            "convective_scale_velosity_triggerfunc": state.input_output.convective_scale_velocity.field[:],
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -131,27 +119,19 @@ class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_shallow(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "shallow", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_mid(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -162,27 +142,19 @@ class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_mid(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "mid", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -193,19 +165,13 @@ class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_deep(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "deep", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
 
         return outputs

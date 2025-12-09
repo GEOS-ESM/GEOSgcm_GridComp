@@ -67,9 +67,7 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initalize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
             cumulus_parameterization_config, plume_dependent_constants, plume
@@ -91,17 +89,13 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["error_code_updraftinit"]
-        )
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code_updraftinit"
+        ]
         locals.buoyancy.data[:] = inputs["local_buoyancy_updraftinit"]
         locals.buoyancy_forced.data[:] = inputs["local_buoyancy_forced_updraftinit"]
-        locals.gamma_cloud_levels.data[:] = inputs[
-            "local_gamma_cloud_levels_updraftinit"
-        ]
-        locals.gamma_cloud_levels_forced.data[:] = inputs[
-            "local_gamma_cloud_levels_forced_updraftinit"
-        ]
+        locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels_updraftinit"]
+        locals.gamma_cloud_levels_forced.data[:] = inputs["local_gamma_cloud_levels_forced_updraftinit"]
         locals.geopotential_height_cloud_levels.data[:] = inputs[
             "local_geopotential_height_cloud_levels_updraftinit"
         ]
@@ -109,32 +103,24 @@ class TestCore:
             "local_geopotential_height_cloud_levels_forced_updraftinit"
         ]
         locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels_updraftinit"]
-        locals.t_cloud_levels_forced.data[:] = inputs[
-            "local_t_cloud_levels_forced_updraftinit"
-        ]
-        locals.normalized_massflux_updraft.data[:] = inputs[
-            "local_normalized_massflux_updraft_updraftinit"
-        ]
+        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_updraftinit"]
+        locals.normalized_massflux_updraft.data[:] = inputs["local_normalized_massflux_updraft_updraftinit"]
         locals.normalized_massflux_updraft_forced.data[:] = inputs[
             "local_normalized_massflux_updraft_forced_updraftinit"
         ]
         locals.integ.data[:] = inputs["local_integ_updraftinit"]
         locals.integ_interval.data[:] = inputs["local_integ_interval_updraftinit"]
-        locals.cloud_work_function_0.data[:] = inputs[
-            "local_cloud_work_function_0_updraftinit"
+        locals.cloud_work_function_0.data[:] = inputs["local_cloud_work_function_0_updraftinit"]
+        locals.cloud_work_function_1.data[:] = inputs["local_cloud_work_function_1_updraftinit"]
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "cloud_top_updraftinit"
         ]
-        locals.cloud_work_function_1.data[:] = inputs[
-            "local_cloud_work_function_1_updraftinit"
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_lfc_level_updraftinit"
         ]
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_updraftinit"]
-        )
-        state.output.updraft_lfc_level.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["updraft_lfc_level_updraftinit"]
-        state.output.updraft_origin_level.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["updraft_origin_level_updraftinit"]
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_origin_level_updraftinit"
+        ]
 
         # initalize test code
         code = UpdraftInitialWorkfunctions(
@@ -160,9 +146,7 @@ class TestCore:
             "local_buoyancy_updraftinit": locals.buoyancy.field[:],
             "local_buoyancy_forced_updraftinit": locals.buoyancy_forced.field[:],
             "local_gamma_cloud_levels_updraftinit": locals.gamma_cloud_levels.field[:],
-            "local_gamma_cloud_levels_forced_updraftinit": locals.gamma_cloud_levels_forced.field[
-                :
-            ],
+            "local_gamma_cloud_levels_forced_updraftinit": locals.gamma_cloud_levels_forced.field[:],
             "updraft_lfc_level_updraftinit": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
@@ -176,24 +160,16 @@ class TestCore:
                 :
             ],
             "local_t_cloud_levels_updraftinit": locals.t_cloud_levels.field[:],
-            "local_t_cloud_levels_forced_updraftinit": locals.t_cloud_levels_forced.field[
-                :
-            ],
-            "local_normalized_massflux_updraft_updraftinit": locals.normalized_massflux_updraft.field[
-                :
-            ],
+            "local_t_cloud_levels_forced_updraftinit": locals.t_cloud_levels_forced.field[:],
+            "local_normalized_massflux_updraft_updraftinit": locals.normalized_massflux_updraft.field[:],
             "local_normalized_massflux_updraft_forced_updraftinit": locals.normalized_massflux_updraft_forced.field[
                 :
             ],
             "local_integ_updraftinit": locals.integ.field[:],
             "local_integ_interval_updraftinit": locals.integ_interval.field[:],
-            "local_cloud_work_function_0_updraftinit": locals.cloud_work_function_0.field[
-                :
-            ],
-            "local_cloud_work_function_1_updraftinit": locals.cloud_work_function_1.field[
-                :
-            ],
-            "cloud_top_updraftinit": state.output.cloud_top.field[
+            "local_cloud_work_function_0_updraftinit": locals.cloud_work_function_0.field[:],
+            "local_cloud_work_function_1_updraftinit": locals.cloud_work_function_1.field[:],
+            "cloud_top_updraftinit": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
         }
@@ -201,9 +177,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -214,27 +188,19 @@ class TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_shallo
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "shallow", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_mid(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -245,27 +211,19 @@ class TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_mid(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "mid", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -276,19 +234,13 @@ class TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_deep(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "deep", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
 
         return outputs

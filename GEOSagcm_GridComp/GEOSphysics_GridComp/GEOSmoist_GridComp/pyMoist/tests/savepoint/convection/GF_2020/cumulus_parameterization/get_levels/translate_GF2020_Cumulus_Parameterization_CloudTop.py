@@ -77,7 +77,7 @@ class TranslateGF2020_CumulusParameterization_CloudTop_shallow(TranslateFortranD
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_cloudtop"
         ]
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "cloud_top_cloudtop"
         ]
         state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
@@ -125,12 +125,14 @@ class TranslateGF2020_CumulusParameterization_CloudTop_shallow(TranslateFortranD
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
+            state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
         outputs = {
             "error_code_cloudtop": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_top_cloudtop": state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_cloudtop": state.output.cloud_top_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "entrainment_rate_cloudtop": state.output.entrainment_rate.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
@@ -225,7 +227,7 @@ class TranslateGF2020_CumulusParameterization_CloudTop_mid(TranslateFortranData2
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_cloudtop"
         ]
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "cloud_top_cloudtop"
         ]
         state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
@@ -273,12 +275,14 @@ class TranslateGF2020_CumulusParameterization_CloudTop_mid(TranslateFortranData2
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
+            state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
         outputs = {
             "error_code_cloudtop": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_top_cloudtop": state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_cloudtop": state.output.cloud_top_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "entrainment_rate_cloudtop": state.output.entrainment_rate.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
@@ -373,7 +377,7 @@ class TranslateGF2020_CumulusParameterization_CloudTop_deep(TranslateFortranData
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_cloudtop"
         ]
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "cloud_top_cloudtop"
         ]
         state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
@@ -421,12 +425,14 @@ class TranslateGF2020_CumulusParameterization_CloudTop_deep(TranslateFortranData
                 plume_dependent_constants=plume_dependent_constants,
             )
 
-            state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
+            state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
 
         # write output
         outputs = {
             "error_code_cloudtop": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_top_cloudtop": state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_cloudtop": state.output.cloud_top_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "entrainment_rate_cloudtop": state.output.entrainment_rate.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],

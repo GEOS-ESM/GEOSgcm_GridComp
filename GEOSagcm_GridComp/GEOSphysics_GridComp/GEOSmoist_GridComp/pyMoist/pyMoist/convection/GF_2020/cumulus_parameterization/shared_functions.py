@@ -1,7 +1,7 @@
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from gt4py.cartesian.gtscript import log
-from ndsl.dsl.gt4py import function
+from ndsl.dsl.gt4py import function, log
 from ndsl.stencils.column_operations import column_max
+from pyMoist.shared_incloud_processes import ice_fraction
 
 
 @function
@@ -177,3 +177,26 @@ def compute_dewpoint(p, vapor):
     es = p * rr / (0.622 + rr)
     esln = log(es)
     return (35.86 * esln - 4947.2325) / (esln - 23.6837)
+
+
+@function
+def liquid_fraction(
+    t,
+    convection_fraction,
+    surface_type,
+    FRAC_MODIS,
+):
+
+    if FRAC_MODIS == 1:
+        liquid_fraction = 1.0 - ice_fraction(t, convection_fraction, surface_type)
+    else:
+        liquid_fraction = min(
+            1.0,
+            (
+                max(0.0, (t - cumulus_parameterization_constants.T_ICE))
+                / (cumulus_parameterization_constants.T_0 - cumulus_parameterization_constants.T_ICE)
+            )
+            ** 2,
+        )
+
+    return liquid_fraction

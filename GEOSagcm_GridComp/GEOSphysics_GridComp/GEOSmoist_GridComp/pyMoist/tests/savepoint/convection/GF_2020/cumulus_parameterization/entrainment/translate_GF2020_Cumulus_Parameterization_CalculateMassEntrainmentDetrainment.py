@@ -34,7 +34,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
             "error_code_massentdet": {},
             "cloud_top_massentdet": {},
             "local_geopotential_height_cloud_levels_forced_massentdet": {},
-            "noramlized_massflux_updraft_forced_massentdet": {},
+            "normalized_massflux_updraft_forced_massentdet": {},
             "local_detrainment_function_updraft_massentdet": {},
             "entrainment_rate_massentdet": {},
             "p_cloud_levels_forced_massentdet": {},
@@ -94,7 +94,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_massentdet"
         ]
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "cloud_top_massentdet"
         ]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
@@ -102,7 +102,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
         ]
         state.output.normalized_massflux_updraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["noramlized_massflux_updraft_forced_massentdet"]
+        ] = inputs["normalized_massflux_updraft_forced_massentdet"]
         locals.detrainment_function_updraft.data[:] = inputs["local_detrainment_function_updraft_massentdet"]
         state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "entrainment_rate_massentdet"
@@ -166,11 +166,13 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
             "error_code_massentdet": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "cloud_top_massentdet": state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_massentdet": state.output.cloud_top_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "local_geopotential_height_cloud_levels_forced_massentdet": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "noramlized_massflux_updraft_forced_massentdet": state.output.normalized_massflux_updraft_forced.field[
+            "normalized_massflux_updraft_forced_massentdet": state.output.normalized_massflux_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "local_detrainment_function_updraft_massentdet": locals.detrainment_function_updraft.field[:],
@@ -237,7 +239,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
             "error_code_massentdet": {},
             "cloud_top_massentdet": {},
             "local_geopotential_height_cloud_levels_forced_massentdet": {},
-            "noramlized_massflux_updraft_forced_massentdet": {},
+            "normalized_massflux_updraft_forced_massentdet": {},
             "local_detrainment_function_updraft_massentdet": {},
             "entrainment_rate_massentdet": {},
             "p_cloud_levels_forced_massentdet": {},
@@ -297,7 +299,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_massentdet"
         ]
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "cloud_top_massentdet"
         ]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
@@ -305,7 +307,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
         ]
         state.output.normalized_massflux_updraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["noramlized_massflux_updraft_forced_massentdet"]
+        ] = inputs["normalized_massflux_updraft_forced_massentdet"]
         locals.detrainment_function_updraft.data[:] = inputs["local_detrainment_function_updraft_massentdet"]
         state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "entrainment_rate_massentdet"
@@ -369,11 +371,13 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
             "error_code_massentdet": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "cloud_top_massentdet": state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_massentdet": state.output.cloud_top_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "local_geopotential_height_cloud_levels_forced_massentdet": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "noramlized_massflux_updraft_forced_massentdet": state.output.normalized_massflux_updraft_forced.field[
+            "normalized_massflux_updraft_forced_massentdet": state.output.normalized_massflux_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "local_detrainment_function_updraft_massentdet": locals.detrainment_function_updraft.field[:],
@@ -440,7 +444,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
             "error_code_massentdet": {},
             "cloud_top_massentdet": {},
             "local_geopotential_height_cloud_levels_forced_massentdet": {},
-            "noramlized_massflux_updraft_forced_massentdet": {},
+            "normalized_massflux_updraft_forced_massentdet": {},
             "local_detrainment_function_updraft_massentdet": {},
             "entrainment_rate_massentdet": {},
             "p_cloud_levels_forced_massentdet": {},
@@ -500,7 +504,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_massentdet"
         ]
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "cloud_top_massentdet"
         ]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
@@ -508,7 +512,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
         ]
         state.output.normalized_massflux_updraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["noramlized_massflux_updraft_forced_massentdet"]
+        ] = inputs["normalized_massflux_updraft_forced_massentdet"]
         locals.detrainment_function_updraft.data[:] = inputs["local_detrainment_function_updraft_massentdet"]
         state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "entrainment_rate_massentdet"
@@ -572,11 +576,13 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
             "error_code_massentdet": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "cloud_top_massentdet": state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_massentdet": state.output.cloud_top_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "local_geopotential_height_cloud_levels_forced_massentdet": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "noramlized_massflux_updraft_forced_massentdet": state.output.normalized_massflux_updraft_forced.field[
+            "normalized_massflux_updraft_forced_massentdet": state.output.normalized_massflux_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "local_detrainment_function_updraft_massentdet": locals.detrainment_function_updraft.field[:],

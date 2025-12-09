@@ -55,7 +55,7 @@ class UpdraftMassFluxProfile:
         #     geopotential_height=locals.geopotential_height_cloud_levels_forced,
         #     cloud_moist_static_energy=locals.cloud_moist_static_energy_forced_transported,
         #     error_code=state.output.error_code,
-        #     cloud_top=state.output.cloud_top,
+        #     cloud_top_level=state.output.cloud_top_level,
         #     plume=plume_dependent_constants.PLUME_INDEX,
         # )
 
@@ -104,10 +104,10 @@ class UpdraftInCloudUpdraftAirTemperature:
         self._in_cloud_updraft_air_temperature(
             error_code=state.output.error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
-            local_incloud_air_temp=locals.incloud_air_temp,
+            local_incloud_air_temp=locals.unspecifid_temperature,
             local_cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
             local_geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-            local_incloud_water_vapor_mixing_ratio=locals.incloud_water_vapor_mixing_ratio,
+            local_incloud_water_vapor_mixing_ratio=locals.cloud_vapor_mixing_ratio_forced,
             local_t_cloud_levels_forced=locals.t_cloud_levels_forced,
         )
 
@@ -144,7 +144,7 @@ class UpdraftInitialWorkfunctions:
         self._cup_up_aa0(
             local_buoyancy=locals.buoyancy,
             local_gamma_cloud_levels=locals.gamma_cloud_levels,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             updraft_lfc_level=state.output.updraft_lfc_level,
             updraft_origin_level=state.output.updraft_origin_level,
             local_geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels,
@@ -160,7 +160,7 @@ class UpdraftInitialWorkfunctions:
         self._cup_up_aa0(
             local_buoyancy=locals.buoyancy_forced,
             local_gamma_cloud_levels=locals.gamma_cloud_levels_forced,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             updraft_lfc_level=state.output.updraft_lfc_level,
             updraft_origin_level=state.output.updraft_origin_level,
             local_geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_forced,
@@ -207,7 +207,7 @@ class UpdraftCIN:
         self._cup_up_aa0(
             local_buoyancy=locals.buoyancy,
             local_gamma_cloud_levels=locals.gamma_cloud_levels,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             updraft_lfc_level=state.output.updraft_lfc_level,
             updraft_origin_level=state.output.updraft_origin_level,
             local_geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels,
@@ -223,7 +223,7 @@ class UpdraftCIN:
         self._cup_up_aa0(
             local_buoyancy=locals.buoyancy_forced,
             local_gamma_cloud_levels=locals.gamma_cloud_levels_forced,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             updraft_lfc_level=state.output.updraft_lfc_level,
             updraft_origin_level=state.output.updraft_origin_level,
             local_geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_forced,

@@ -175,7 +175,7 @@ class DowndraftWindshear:
             local_epsilon_max=locals.epsilon_max,
             local_epsilon_min=locals.epsilon_min,
             updraft_lfc_level=state.output.updraft_lfc_level,
-            cloud_top=state.output.cloud_top,
+            cloud_top_level=state.output.cloud_top_level,
             p_forced=state.input_output.p_forced,
             local_psum=locals.psum,
             local_psumh=locals.psumh,

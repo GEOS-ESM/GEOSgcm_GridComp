@@ -55,9 +55,7 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initalize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
             cumulus_parameterization_config, plume_dependent_constants, plume
@@ -79,22 +77,18 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["error_code_incloudtemp"]
-        )
-        locals.incloud_air_temp_forced.data[:] = inputs[
-            "local_incloud_air_temp_forced_incloudtemp"
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code_incloudtemp"
         ]
+        locals.incloud_air_temp_forced.data[:] = inputs["local_incloud_air_temp_forced_incloudtemp"]
         locals.hcdo.data[:] = inputs["local_hcdo_incloudtemp"]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
             "local_geopotential_height_cloud_levels_forced_incloudtemp"
         ]
-        locals.incloud_water_vapor_mixing_ratio_forced.data[:] = inputs[
+        locals.cloud_vapor_mixing_ratio_forced.data[:] = inputs[
             "local_incloud_water_vapor_mixing_ratio_forced_incloudtemp"
         ]
-        locals.t_cloud_levels_forced.data[:] = inputs[
-            "local_t_cloud_levels_forced_incloudtemp"
-        ]
+        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_incloudtemp"]
 
         # initalize test code
         code = InCloudTemperature(
@@ -117,27 +111,21 @@ class TestCore:
             "error_code_incloudtemp": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_incloud_air_temp_forced_incloudtemp": locals.incloud_air_temp_forced.field[
-                :
-            ],
+            "local_incloud_air_temp_forced_incloudtemp": locals.incloud_air_temp_forced.field[:],
             "local_hcdo_incloudtemp": locals.hcdo.field[:],
             "local_geopotential_height_cloud_levels_forced_incloudtemp": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "local_incloud_water_vapor_mixing_ratio_forced_incloudtemp": locals.incloud_water_vapor_mixing_ratio_forced.field[
+            "local_incloud_water_vapor_mixing_ratio_forced_incloudtemp": locals.cloud_vapor_mixing_ratio_forced.field[
                 :
             ],
-            "local_t_cloud_levels_forced_incloudtemp": locals.t_cloud_levels_forced.field[
-                :
-            ],
+            "local_t_cloud_levels_forced_incloudtemp": locals.t_cloud_levels_forced.field[:],
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_InCloudTemperature_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_InCloudTemperature_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -148,27 +136,19 @@ class TranslateGF2020_CumulusParameterization_InCloudTemperature_shallow(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "shallow", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_InCloudTemperature_mid(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_InCloudTemperature_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -179,27 +159,19 @@ class TranslateGF2020_CumulusParameterization_InCloudTemperature_mid(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "mid", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_InCloudTemperature_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_InCloudTemperature_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -210,19 +182,13 @@ class TranslateGF2020_CumulusParameterization_InCloudTemperature_deep(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "deep", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
 
         return outputs

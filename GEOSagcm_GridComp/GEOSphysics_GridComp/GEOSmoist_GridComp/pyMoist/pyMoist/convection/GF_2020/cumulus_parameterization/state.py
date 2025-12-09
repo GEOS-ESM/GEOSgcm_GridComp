@@ -301,9 +301,9 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Int,
             }
         )
-        cloud_top: Quantity = dataclasses.field(
+        cloud_top_level: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud_top",
+                "name": "cloud_top_level",
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
@@ -355,9 +355,9 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        pwav: Quantity = dataclasses.field(
+        total_normalized_integrated_condensate_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "pwav",
+                "name": "total_normalized_integrated_condensate",
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
@@ -799,9 +799,9 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        convective_scale_velosity: Quantity = dataclasses.field(
+        convective_scale_velocity: Quantity = dataclasses.field(
             metadata={
-                "name": "convective_scale_velosity",
+                "name": "convective_scale_velocity",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",

@@ -48,7 +48,7 @@ class TriggerFunctionConvection:
             error_code=state.output.error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
             local_cloud_work_function_0=locals.cloud_work_function_0,
-            convective_scale_velosity=state.input_output.convective_scale_velosity,
+            convective_scale_velosity=state.input_output.convective_scale_velocity,
         )
 
 

@@ -67,9 +67,7 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initalize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
             cumulus_parameterization_config, plume_dependent_constants, plume
@@ -91,20 +89,20 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["error_code_downdraftwindshear"]
-        )
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code_downdraftwindshear"
+        ]
         state.input_output.u.data[:, :, :] = inputs["u_downdraftwindshear"]
         state.input_output.v.data[:, :, :] = inputs["v_downdraftwindshear"]
         state.input_output.ccn.data[:, :] = inputs["ccn_downdraftwindshear_in_out"]
         locals.epsilon_max.data[:] = inputs["local_epsilon_max_downdraftwindshear"]
         locals.epsilon_min.data[:] = inputs["local_epsilon_min_downdraftwindshear"]
-        state.output.updraft_lfc_level.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["updraft_lfc_level_downdraftwindshear"]
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_downdraftwindshear"]
-        )
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_lfc_level_downdraftwindshear"
+        ]
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "cloud_top_downdraftwindshear"
+        ]
         state.input_output.p_forced.data[:] = inputs["p_forced_downdraftwindshear"]
         locals.psum.data[:] = inputs["local_psum_downdraftwindshear"]
         locals.psumh.data[:] = inputs["local_psumh_downdraftwindshear"]
@@ -146,7 +144,7 @@ class TestCore:
             "updraft_lfc_level_downdraftwindshear": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "cloud_top_downdraftwindshear": state.output.cloud_top.field[
+            "cloud_top_downdraftwindshear": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "u_downdraftwindshear": state.input_output.u.field[:, :, :],
@@ -175,9 +173,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DowndraftWindshear_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_DowndraftWindshear_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -188,27 +184,19 @@ class TranslateGF2020_CumulusParameterization_DowndraftWindshear_shallow(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "shallow", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DowndraftWindshear_mid(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_DowndraftWindshear_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -219,27 +207,19 @@ class TranslateGF2020_CumulusParameterization_DowndraftWindshear_mid(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "mid", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DowndraftWindshear_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_DowndraftWindshear_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -250,19 +230,13 @@ class TranslateGF2020_CumulusParameterization_DowndraftWindshear_deep(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "deep", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
 
         return outputs

@@ -39,8 +39,8 @@ class PartitionLiquidIce:
             func=partition_liquid_ice,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "MELT_ICE": cumulus_parameterization_config.MELT_ICE,
-                "MODIS_FRACTION": cumulus_parameterization_config.MODIS_FRACTION,
+                "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
+                "FRAC_MODIS": cumulus_parameterization_config.FRAC_MODIS,
             },
         )
 
@@ -51,10 +51,10 @@ class PartitionLiquidIce:
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
 
-        if self.cumulus_parameterization_config.MODIS_FRACTION != 1:
+        if self.cumulus_parameterization_config.FRAC_MODIS != 1:
             ndsl_log.warning(
                 " GF2020 cumulus parameterization called PartitionLiquidIce with "
-                "untested MODIS_FRACTION option. Running untested code... proceed with caution"
+                "untested FRAC_MODIS option. Running untested code... proceed with caution"
             )
 
         self._partition_liquid_ice(
@@ -89,8 +89,8 @@ class PrecipFactor:
         #     func=,
         #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
         #     externals={
-        #         "MELT_ICE": cumulus_parameterization_config.MELT_ICE,
-        #         "MODIS_FRACTION": cumulus_parameterization_config.MODIS_FRACTION,
+        #         "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
+        #         "FRAC_MODIS": cumulus_parameterization_config.FRAC_MODIS,
         #     },
         # )
 

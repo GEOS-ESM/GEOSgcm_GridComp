@@ -1,10 +1,15 @@
-from ndsl.dsl.typing import FloatField, IntFieldIJ, Int
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ, Int, BoolFieldIJ
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
 from gt4py.cartesian.gtscript import (
     FORWARD,
+    PARALLEL,
     computation,
     interval,
+    K,
+    sqrt,
 )
+import pyMoist.constants as constants
+from ndsl.stencils.column_operations import column_max
 
 
 def unknown_find_level(
@@ -40,3 +45,169 @@ def unknown_find_level(
                     x = array.at(K=level)
                     out_index[0, 0][plume] = level
                 level += 1
+
+
+def updraft_vertical_velocity(
+    vertical_velocity_3d: FloatField,
+    vertical_velocity_2d: FloatFieldIJ,
+    convective_scale_velocity: FloatFieldIJ,
+    entrainment_rate: FloatField_Plume,
+    detrainment_function_updraft: FloatField,
+    geopotential_height_cloud_levels_forced: FloatField,
+    t_cloud_levels_forced: FloatField,
+    unspecifid_temperature: FloatField,
+    cloud_vapor_mixing_ratio_forced: FloatField,
+    cloud_liquid_after_rain_forced: FloatField_Plume,
+    vapor_forced: FloatField,
+    updraft_lfc_level: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+):
+    from __externals__ import ZERO_DIFF, k_end
+
+    # internal constants
+    with computation(FORWARD), interval(0, 1):
+        ctea: FloatFieldIJ = 1.0 / 3.0
+        cteb: FloatFieldIJ = 2.0
+        visc: FloatFieldIJ = 2000.0
+        eps: FloatFieldIJ = 0.622
+        f: FloatFieldIJ = 2.0
+        C_d: FloatFieldIJ = 0.506
+        gam: FloatFieldIJ = 0.5
+        beta: FloatFieldIJ = 1.875
+        smooth: BoolFieldIJ = True
+        n_smooth: IntFieldIJ = 1
+
+        if ZERO_DIFF == 1:
+            ftun1: FloatFieldIJ = 1.0
+            ftun2: FloatFieldIJ = 0.5
+        else:
+            ftun1: FloatFieldIJ = 0.25
+            ftun2: FloatFieldIJ = 1.0
+
+    # initialize arrays to zero
+    with computation(PARALLEL), interval(...):
+        vertical_velocity_3d = 0.0
+
+    with computation(FORWARD), interval(0, 1):
+        vertical_velocity_2d = 0.0
+
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if K <= updraft_lfc_level[0, 0][plume]:
+                vertical_velocity_3d = max(1.0, convective_scale_velocity**2)
+
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if K >= updraft_lfc_level[0, 0][plume] and K <= cloud_top_level[0, 0][plume]:
+                dz = (
+                    geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+                )
+
+                t_ve = 0.5 * (
+                    t_cloud_levels_forced * (1.0 + (vapor_forced / eps) / (1.0 + vapor_forced))
+                    + t_cloud_levels_forced[0, 0, 1]
+                    * (1.0 + (vapor_forced[0, 0, 1] / eps) / (1.0 + vapor_forced[0, 0, 1]))
+                )
+
+                t_v = 0.5 * (
+                    unspecifid_temperature
+                    * (
+                        1.0
+                        + (cloud_vapor_mixing_ratio_forced / eps) / (1.0 + cloud_vapor_mixing_ratio_forced)
+                    )
+                    + unspecifid_temperature[0, 0, 1]
+                    * (
+                        1.0
+                        + (cloud_vapor_mixing_ratio_forced[0, 0, 1] / eps)
+                        / (1.0 + cloud_vapor_mixing_ratio_forced[0, 0, 1])
+                    )
+                )
+
+                bu = constants.MAPL_GRAV * (
+                    (t_v - t_ve) / t_ve
+                    - ftun2
+                    * 0.50
+                    * (cloud_liquid_after_rain_forced[0, 0, 1] + cloud_liquid_after_rain_forced)
+                )
+
+                dw1 = 2.0 / (f * (1.0 + gam)) * bu * dz
+                if ZERO_DIFF == 1:
+                    kx = max(entrainment_rate, detrainment_function_updraft) * dz
+                else:
+                    kx = (1.0 + beta * C_d) * max(entrainment_rate, detrainment_function_updraft) * dz * ftun1
+
+                dw2 = (vertical_velocity_3d) - 2.0 * kx * (vertical_velocity_3d)
+
+                vertical_velocity_3d[0, 0, 1] = (dw1 + dw2) / (1.0 + kx)
+
+                if vertical_velocity_3d[0, 0, 1] < 0.0:
+                    vertical_velocity_3d[0, 0, 1] = 0.5 * vertical_velocity_3d
+
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if smooth == True:  # noqa
+                if ZERO_DIFF == 1:
+                    if K <= cloud_top_level[0, 0][plume] - 2:
+                        nvs: IntFieldIJ = 0
+                        vs: FloatFieldIJ = 0.0
+                        level_inner_loop = max(K - n_smooth, 0)
+                        while level_inner_loop < min(K + n_smooth, k_end - 1):
+                            nvs = nvs + 1
+                            vs = vs + vertical_velocity_3d.at(K=level_inner_loop)
+                            level_inner_loop += 1
+                        vertical_velocity_3d = vs / (1.0e-16 + nvs)
+                else:
+                    if K <= cloud_top_level + 1:
+                        vs: FloatFieldIJ = 0.0
+                        dz1m: FloatFieldIJ = 0.0
+                        level_inner_loop = max(K - n_smooth, 0)
+                        while level_inner_loop < min(K + n_smooth, k_end - 1):
+                            dz = geopotential_height_cloud_levels_forced.at(
+                                K=level_inner_loop + 1
+                            ) - geopotential_height_cloud_levels_forced.at(K=level_inner_loop)
+                            vs = vs + dz * vertical_velocity_3d.at(K=level_inner_loop)
+                            dz1m = dz1m + dz
+                            level_inner_loop += 1
+                        vertical_velocity_3d = vs / (1.0e-16 + dz1m)
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            # convert to vertical velocity
+            vertical_velocity_3d = sqrt(max(0.1, vertical_velocity_3d))
+
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0:
+            max_val, _ = column_max(vertical_velocity_3d, 0, k_end)
+            if max_val < 1.0:
+                error_code[0, 0][plume] = 54
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0 or error_code[0, 0][plume] == 54:
+            # sanity check
+            if vertical_velocity_3d < 1.0:
+                vertical_velocity_3d = 1.0
+            if vertical_velocity_3d > 20.0:
+                vertical_velocity_3d = 20.0
+
+            if K >= cloud_top_level[0, 0][plume] + 1 and ZERO_DIFF == 0:
+                vertical_velocity_3d = 0.1
+
+    # get the column average vertical velocity
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0 or error_code[0, 0][plume] == 54:
+            if K >= updraft_lfc_level[0, 0][plume] + 1 and K <= cloud_top_level[0, 0][plume]:
+                dz = (
+                    geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+                )
+                vertical_velocity_2d = vertical_velocity_2d + vertical_velocity_3d * dz
+
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0 or error_code[0, 0][plume] == 54:
+            vertical_velocity_2d = vertical_velocity_2d / (
+                geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume] + 1)
+                - geopotential_height_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume])
+                + 1.0e-16
+            )
+            vertical_velocity_2d = max(1.0, vertical_velocity_2d)

@@ -26,3 +26,4 @@ class GF2020PlumeDependentConstants:
     MAX_UPDRAFT_ORIGIN_HEIGHT: Float = Float(0.0)
     MAX_DOWNDRAFT_ORIGIN_HEIGHt: Float = Float(0.0)
     DETRAINMENT_CRITICAL_DEPTH: Float = Float(0.0)
+    C0: Float = Float(0.0)

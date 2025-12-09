@@ -67,7 +67,7 @@ def parcel_moist_static_energy(
 def first_guess_moist_static_energy(
     error_code: IntFieldIJ_Plume,
     start_level: IntFieldIJ,
-    cloud_top: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
     mass_detrainment_updraft_forced: FloatField_Plume,
     mass_entrainment_updraft_forced: FloatField_Plume,
     normalized_massflux_updraft: FloatField,
@@ -82,7 +82,7 @@ def first_guess_moist_static_energy(
 ):
     with computation(FORWARD), interval(1, None):
         if error_code[0, 0][plume] == 0:
-            if K >= start_level + 1 and K <= cloud_top[0, 0][plume] + 1:  # mass cons option
+            if K >= start_level + 1 and K <= cloud_top_level[0, 0][plume] + 1:  # mass cons option
                 denom: FloatFieldIJ = (
                     normalized_massflux_updraft[0, 0, -1]
                     - 0.5 * mass_detrainment_updraft_forced[0, 0, -1][plume]
@@ -112,7 +112,7 @@ def first_guess_moist_static_energy(
 
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
-            if K >= cloud_top[0, 0][plume] + 2:
+            if K >= cloud_top_level[0, 0][plume] + 2:
                 cloud_moist_static_energy_forced = (
                     environment_saturation_moist_static_energy_cloud_levels_forced
                 )

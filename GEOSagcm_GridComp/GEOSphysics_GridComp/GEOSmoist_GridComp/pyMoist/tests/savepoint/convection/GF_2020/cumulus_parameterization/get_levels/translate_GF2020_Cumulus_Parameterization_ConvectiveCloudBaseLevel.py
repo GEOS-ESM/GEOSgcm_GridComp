@@ -135,7 +135,9 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
         state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "updraft_lfc_level_ccb"
         ]
-        state.output.cloud_top.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_ccb"]
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "cloud_top_ccb"
+        ]
         locals.negative_buoyancy_depth.data[:] = inputs["local_negative_buoyancy_depth_ccb"]
         locals.frh_lfc.data[:] = inputs["local_frh_lfc_ccb"]
         state.output.t_perturbation.data[:] = inputs["t_perturbation_ccb"]
@@ -210,7 +212,7 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
             "updraft_lfc_level_ccb": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "cloud_top_ccb": state.output.cloud_top.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_ccb": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_negative_buoyancy_depth_ccb": locals.negative_buoyancy_depth.field[:],
             "local_frh_lfc_ccb": locals.frh_lfc.field[:],
             "t_perturbation_ccb": state.output.t_perturbation.field[:],

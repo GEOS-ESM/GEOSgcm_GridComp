@@ -91,7 +91,7 @@ def downdraft_entrainment_profiles(
 
 def compute_lateral_massflux(
     error_code: IntFieldIJ_Plume,
-    cloud_top: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
     geopotential_height: FloatField,
     normalized_massflux_updraft: FloatField_Plume,
     detrainment_function_updraft: FloatField,
@@ -168,7 +168,7 @@ def compute_lateral_massflux(
 
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
-            if K >= max_index and K <= cloud_top[0, 0][plume]:
+            if K >= max_index and K <= cloud_top_level[0, 0][plume]:
                 # above location of maximum value normalized_massflux_updraft -> change entrainment
                 height_massflux_avg = (
                     geopotential_height[0, 0, 1] - geopotential_height
@@ -236,9 +236,8 @@ def compute_uc_vc(
         cloud_moist_static_energy_forced = 0.0
 
     with computation(PARALLEL), interval(...):
-        # need dummy field for function calls
-        # will not be read so long as compute_perturbation is False
-        dummy_field_no_read = 0
+        # make garbage field so the get_cloud_boundary_conditions call does not break (this is never touched)
+        dummy_field_no_read = 0.0
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= start_level:
