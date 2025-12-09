@@ -345,7 +345,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
       do J=1,JM
         do I=1,IM
-           SIG   = MIN(1.0,MAX(0.1,10.0/SQRT(PTR2D(i,j))))   ! Coarse  -> Fine
+           SIG   = SIGMA(SQRT(PTR2D(i,j)))   ! Coarse  -> Fine
            ! option to vary RKFRE by resolution
            RKFRE(i,j) = SHLWPARAMS%RKFRE
            ! support for varying rkm/mix if needed
