@@ -1,9 +1,10 @@
 import dataclasses
 
-from ndsl import NDSLRuntime, Quantity, QuantityFactory, State, StencilFactory
+from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, max, sqrt
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
+from ndsl.stencils import set_IJ_mask_value, set_value, set_value_2D
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -570,8 +571,8 @@ def update_outputs(
 
 
 @dataclasses.dataclass
-class Locals(State):
-    dmass: Quantity = dataclasses.field(
+class Locals(LocalState):
+    dmass: Local = dataclasses.field(
         metadata={
             "name": "dm",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -580,7 +581,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    unused_m1: Quantity = dataclasses.field(
+    unused_m1: Local = dataclasses.field(
         metadata={
             "name": "unused_m1",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -589,7 +590,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    z_interface: Quantity = dataclasses.field(
+    z_interface: Local = dataclasses.field(
         metadata={
             "name": "z_interface",
             "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
@@ -598,7 +599,7 @@ class Locals(State):
             "dtype": Float,
         }
     )
-    precip_fall: Quantity = dataclasses.field(
+    precip_fall: Local = dataclasses.field(
         metadata={
             "name": "precip_fall",
             "dims": [X_DIM, Y_DIM],
@@ -629,8 +630,8 @@ class GFDL1MWarmRain(NDSLRuntime):
         self.config = config
         self.saturation_tables = saturation_tables
 
-        # initalize temporaries
-        self._locals = Locals.zeros(quantity_factory)
+        # initalize locals
+        self._locals = Locals.make_locals(quantity_factory)
 
         # construct stencils
         self._warm_rain_step_1 = stencil_factory.from_dims_halo(
@@ -706,6 +707,22 @@ class GFDL1MWarmRain(NDSLRuntime):
             func=update_outputs,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+        self._set_value_IJ = stencil_factory.from_dims_halo(
+            func=set_value_2D,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+        self._set_value = stencil_factory.from_dims_halo(
+            func=set_value,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+        self._set_value_K_interface = stencil_factory.from_dims_halo(
+            func=set_value,
+            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+        )
+        self._set_IJ_mask = stencil_factory.from_dims_halo(
+            func=set_IJ_mask_value,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
     def __call__(
         self,
@@ -771,6 +788,12 @@ class GFDL1MWarmRain(NDSLRuntime):
             evaporation (out): model at-large non-anvil large scale evaporation (kg kg-1 s-1)
             driver_evaporation (out): in-driver non-anvil large scale evaporation (kg kg-1 s-1)
         """
+        # reset locals
+        self._set_value(self._locals.dmass, 0)
+        self._set_value(self._locals.unused_m1, 0)
+        self._set_value_K_interface(self._locals.z_interface, 0)
+        self._set_IJ_mask(self._locals.precip_fall, False)
+
         self._warm_rain_step_1(
             dp=dp,
             dz=dz,
