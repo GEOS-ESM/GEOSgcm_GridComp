@@ -4183,7 +4183,7 @@ subroutine psacr_pgfr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8
             mpprs = mpprs + psacr * dp (k) * convt
             mppfr = mppfr + pgfr * dp (k) * convt
 
-            sink = min (qr (k), psacr + pgfr)
+            sink = psacr + pgfr
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., - sink, 0., psacr, pgfr, te8 (k), cvm (k), tz (k), &
@@ -4367,9 +4367,9 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
                     acc (5), acc (6), den (k)), qr (k))
             endif
 
-            sink = pgacr + pgacw
-            factor = min (sink, dim (tice, tz (k)) / icpk (k)) / max (sink, qcmin)
+            factor = min (pgacr, qr (k), dim (tice, tz (k)) / icpk (k)) / max (pgacr, qcmin)
             pgacr = factor * pgacr
+            factor = min (pgacw, ql (k), dim (tice, tz (k)) / icpk (k)) / max (pgacw, qcmin)
             pgacw = factor * pgacw
 
             sink = pgacr + pgacw
