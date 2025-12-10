@@ -339,12 +339,12 @@ contains
     integer        :: ROUTE_DT
 
     type(ESMF_Grid)            :: tileGrid
-    type(ESMF_Grid)            :: newTileGrid, catch_grid
+    type(ESMF_Grid)            :: pfaf_tilegrid, pfaf_grid
     character(len=ESMF_MAXSTR) :: SURFRC
     type(ESMF_Config)          :: SCF
 
     type(MAPL_MetaComp), pointer   :: MAPL
-    type(MAPL_LocStream)           :: locstream, catch_LocStream
+    type(MAPL_LocStream)           :: locstream, pfaf_LocStream
 
     character(len=ESMF_MAXSTR)     :: RIVER_INPUT_FILE    
     character(len=ESMF_MAXSTR)     :: TILE_PFAF_FILE
@@ -514,20 +514,23 @@ contains
 
     if(mapl_am_I_root()) print *,"reservoir init success" 
 
-    call create_catchment_grid(catch_grid, catch_locstream, _RC)
+    pfaf_grid = create_pfaf_grid(_RC)
+    call MAPL_LocstreamCreate(pfaf_Locstream, pfaf_Grid, _RC)
+    call MAPL_LocStreamGet(pfaf_LocStream, TILEGRID=pfaf_tilegrid, _RC)
 
     call MAPL_GetResource (MAPL, TILE_PFAF_File, label = 'TILE_PFAF_FILE:',  default = '../input/tile_pfaf.nc4', RC=STATUS )
-    call create_mapping_handler(trim(TILE_PFAF_File), _RC)
 
-    call MAPL%grid%set(catch_grid, _RC)
+    call create_mapping_handler(trim(TILE_PFAF_File), tilegrid, pfaf_tilegrid, _RC)
 
-    call ESMF_GridCompSet(gc, grid=catch_grid, RC=status)
+    call MAPL%grid%set(pfaf_grid, _RC)
+
+    call ESMF_GridCompSet(gc, grid=pfaf_grid, RC=status)
     VERIFY_(STATUS)
 
-    call MAPL_set(MAPL, locstream = catch_locstream, rc=status)
+    call MAPL_set(MAPL, locstream = pfaf_locstream, rc=status)
     VERIFY_(STATUS)
 
-    call setup_exchange_water(_RC)
+    call setup_exchange_water(pfaf_tilegrid, _RC)
     
     call ESMF_TimeIntervalSet(CollectWater_DT, s=ROUTE_DT, rc=status)
     VERIFY_(status)
@@ -551,14 +554,13 @@ contains
 
   contains
 
-    subroutine create_catchment_grid(catch_Grid, catch_Locstream, rc)
-      type (ESMF_Grid), intent(out)  :: catch_grid
-      type (MAPL_LocStream), intent(out) :: catch_Locstream
+    function create_pfaf_grid(rc) result(pfaf_grid)
+      type (ESMF_Grid) :: pfaf_grid
       integer, optional, intent(out) :: rc
       integer :: status
       real(kind=8), pointer :: centers(:,:)
       ! create catchment grid and it is tile space
-      catch_Grid = ESMF_GridCreate(       &
+      pfaf_Grid = ESMF_GridCreate(       &
            name='CATCHMENT_GRID',         &
            countsPerDEDim1=IMs,           &
            countsPerDEDim2=[1],           &
@@ -571,28 +573,28 @@ contains
       ! coord and centers are required for a valid grid,
       ! even if their values don't make sense;
       ! later on, the coord will be set to catchment's lat lon.
-      call ESMF_GridAddCoord(catch_Grid, _RC)
+      call ESMF_GridAddCoord(pfaf_Grid, _RC)
       _VERIFY(status)
 
-      call ESMF_GridGetCoord(catch_Grid, coordDim=1, localDE=0, &
+      call ESMF_GridGetCoord(pfaf_Grid, coordDim=1, localDE=0, &
            staggerloc=ESMF_STAGGERLOC_CENTER, &
            farrayPtr=centers, _RC)
       centers = 0 ! ?? just assign
-      call ESMF_GridGetCoord(catch_Grid, coordDim=2, localDE=0, &
+      call ESMF_GridGetCoord(pfaf_Grid, coordDim=2, localDE=0, &
            staggerloc=ESMF_STAGGERLOC_CENTER, &
            farrayPtr=centers, _RC)
       centers = 0 ! 
 
-      call MAPL_LocstreamCreate(catch_Locstream, catch_Grid, rc=status)
-      _VERIFY(STATUS)
       _RETURN(_SUCCESS)
-    end subroutine create_catchment_grid
+    end function create_pfaf_grid
 
     ! ----------------------------------------------------
 
-    subroutine create_mapping_handler(tile_pfaf_file, rc)
+    subroutine create_mapping_handler(tile_pfaf_file, tilegrid, pfaf_tilegrid, rc)
 
       character(*),      intent(in)  :: tile_pfaf_file
+      type(ESMF_Grid),   intent(in)  :: tilegrid
+      type(ESMF_Grid),   intent(in)  :: pfaf_tilegrid
       integer, optional, intent(out) :: rc
 
       integer :: status, nWeights, nLocal_weights
@@ -609,8 +611,8 @@ contains
       ! create source for orignal tile space
       route%field_src = ESMF_FieldCreate(grid=tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
 
-      call MAPL_LocStreamGet(catch_LocStream, TILEGRID=newtilegrid, RC=status)
-      route%field     = ESMF_FieldCreate(grid=newtilegrid, typekind=ESMF_TYPEKIND_R4,_RC)
+      ! create destination for pfaf tile space
+      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R4,_RC)
 
       if (MAPL_AM_I_ROOT()) then
          call formatter%open(tile_pfaf_file, PFIO_READ, _RC)
@@ -692,7 +694,8 @@ contains
 
     ! -------------------------------------------------------------------------------------------
     
-    subroutine setup_exchange_water(rc)
+    subroutine setup_exchange_water(pfaf_tilegrid, rc)
+      type(ESMF_Grid),   intent(in)  :: pfaf_tilegrid
       integer, optional, intent(out) :: rc
       integer :: pf, down_id, rank
       integer, allocatable :: cat_to_ranks_global(:)
@@ -705,7 +708,7 @@ contains
       allocate(cat_to_ranks_global(n_pfaf_g))
       cat_to_ranks_local = mype
 
-      call ESMFL_FCollect(newtilegrid, cat_to_ranks_global, cat_to_ranks_local, _RC)
+      call ESMFL_FCollect(pfaf_tilegrid, cat_to_ranks_global, cat_to_ranks_local, _RC)
 
       allocate(route%send_count(route%ndes), source=0)
       allocate(route%recv_count(route%ndes), source=0)
