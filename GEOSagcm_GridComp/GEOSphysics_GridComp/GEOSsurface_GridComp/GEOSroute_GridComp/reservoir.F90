@@ -2,7 +2,7 @@
 
 module reservoirMod
 
-  use MAPL, only :rho=>MAPL_RHOWTR
+  use MAPL
 
   implicit none
   private
