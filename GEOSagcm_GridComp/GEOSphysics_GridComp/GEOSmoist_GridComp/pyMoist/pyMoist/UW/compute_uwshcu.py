@@ -4008,7 +4008,7 @@ def calc_ppen(
             if drage == 0.0:
                 aquad = (bogtop - bogbot) / (pifc0.at(K=kpen + 1) - pifc0.at(K=kpen))
                 bquad = 2.0 * bogbot
-                cquad = -1 * wu.at(K=kpen - 1) ** 2 * rhomid0j
+                cquad = -1 * wu.at(K=kpen) ** 2 * rhomid0j
                 xc1, xc2, status = roots(aquad, bquad, cquad)
                 if status == 0:
                     if xc1 <= 0.0 and xc2 <= 0.0:
