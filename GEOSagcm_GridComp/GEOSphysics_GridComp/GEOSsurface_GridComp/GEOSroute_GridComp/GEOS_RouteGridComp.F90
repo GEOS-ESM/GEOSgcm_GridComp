@@ -24,8 +24,6 @@ module GEOS_RouteGridCompMod
   
   implicit none
 
-  logical, parameter :: use_res  = .True.
-
   private
 
   type T_RROUTE_STATE !routing related variables
@@ -336,7 +334,7 @@ contains
     integer        :: myPE
     integer        :: beforeMe, minCatch, maxCatch, i
     integer        :: n_pfaf_local, nt_global
-    integer        :: ROUTE_DT
+    integer        :: ROUTE_DT, route_flag
 
     type(ESMF_Grid)            :: tileGrid
     type(ESMF_Grid)            :: newTileGrid, catch_grid
@@ -367,6 +365,7 @@ contains
     character(len=3) :: resname
     type(Netcdf4_Fileformatter)  :: formatter 
     integer          :: j,nt_local, mpierr
+    logical          :: use_res 
 
     ! ------------------
     ! begin
@@ -424,7 +423,13 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )
+    call MAPL_GetResource (SCF, route_flag, label='RUN_ROUTE:', DEFAULT=1, RC=STATUS )
+    if(route_flag==2)then
+        use_res=.True.
+    else
+        use_res=.False.
+    endif
+    call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )    
     route%route_dt = ROUTE_DT
 
     call MAPL_GetResource (MAPL, RIVER_INPUT_FILE,  label = 'RIVER_INPUT_FILE:',    default = '../input/river_input.nc', RC=STATUS )
@@ -995,11 +1000,8 @@ contains
        !call check_balance(route,n_pfaf_local,nt_local,runoff_acc,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
 
        if (associated(QSFLOW))    QSFLOW  = QSFLOW_OUT
-       if (associated(QOUTFLOW)) QOUTFLOW = QOUTFLOW_OUT
-       if (associated(QRES)) then
-          _ASSERT(use_res, "Set use_res be true to get QRES export")
-          QRES = QRES_OUT
-       endif
+       if (associated(QOUTFLOW))  QOUTFLOW = QOUTFLOW_OUT
+       if (associated(QRES))      QRES = QRES_OUT
        deallocate(RUNOFF_IN,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_OUT,QINFLOW_LOCAL,QSFLOW_OUT,WTOT_BEFORE,QRES_OUT,QOUT_CAT)
 
        route%runoff_acc = 0.

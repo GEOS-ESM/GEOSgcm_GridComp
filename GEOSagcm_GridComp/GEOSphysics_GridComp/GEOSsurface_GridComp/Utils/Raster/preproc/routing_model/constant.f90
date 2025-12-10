@@ -1,12 +1,12 @@
 module constant
 !module for constants used in the river routing pre-processing package  
-
+  use catch_constants,        ONLY: nc => CATCH_N_PFAFS
+  
   implicit none
   public
 
   ! Define constant parameters 
   integer,parameter :: nmax09=458         ! Maximum number of sub-catchments per catchment for M09
-  integer,parameter :: nc=291284          ! Total number of catchments
   integer,parameter :: nlon=21600         ! Number of longitude grid points in the original grid
   integer,parameter :: nlat=10800         ! Number of latitude grid points in the original grid
   integer,parameter :: nlat09=1624, nlon09=3856  ! Dimensions for the M09 grid

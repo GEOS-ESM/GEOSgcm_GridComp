@@ -120,7 +120,6 @@ contains
 
     ! Define sub-area parameters (same as in the M09 dataset)
     integer, parameter :: nmax = 458             ! Maximum number of sub-areas per catchment
-    integer, parameter :: nc = 291284            ! Total number of catchments
 
     ! Declare allocatable arrays to hold sub-area data:
     real, allocatable, dimension(:,:) :: subarea, frac  ! subarea: area of each sub-area, frac: fraction of total
