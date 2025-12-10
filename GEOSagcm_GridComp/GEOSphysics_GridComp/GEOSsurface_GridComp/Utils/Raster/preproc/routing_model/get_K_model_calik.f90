@@ -3,6 +3,7 @@ program main
 
   use k_module   ! Import custom module "k_module" which contains necessary subroutines and functions
   use constant, only: nl=>nl_USGS,nlat,nlon,nc
+  use routing_model, only: MU=>M, mm=>mm
   implicit none
 
   ! Declare variables and allocatable arrays
@@ -21,9 +22,8 @@ program main
   ! Arrays for parameter axes: M factor (MU), slope exponent (slp_axis), runoff exponent (clmt_axis), and an additional parameter axis (p_axis)
 
   ! Set model parameters and scaling factors
-  real    :: mm = 0.35, MU = 0.45, exp_slp = 0.2, exp_clmt = -0.2  ! Base model parameters (mm, MU, and exponents for slope and climatology discharge)
+  real    :: exp_slp = 0.2, exp_clmt = -0.2  ! Base model parameters (mm, MU, and exponents for slope and climatology discharge)
   !real :: mm=0.4, MU=0.1, exp_slp=0.5, exp_clmt=0.2  ! Alternative parameter set (commented out)
-  real    :: fac_str = 1.  ! Scaling factor for stream K
 
   ! Declare additional integer and real variables for looping and statistical calculations
   integer :: nt, ns, np, i, j, k, p, count
@@ -98,7 +98,7 @@ program main
   print *, "M=", MU, ", exp_slp=", exp_slp, ", exp_clmt=", exp_clmt
 
   ! Retrieve station information and associated parameter data based on grid indices and model parameters
-  call get_station_inf(file_pfafmap, ns, nc, nlat, nlon, lati, loni, catid_full, Qclmt_full, slp_full, KImodel_all, exp_slp, exp_clmt, fac_str)
+  call get_station_inf(file_pfafmap, ns, nc, nlat, nlon, lati, loni, catid_full, Qclmt_full, slp_full, KImodel_all, exp_slp, exp_clmt)
   ! filtering stations using the GAGE-II dataset criteria
   call get_valide_stations_gageii(file_gage_id, file_gage_acar, ns, nc, catid_full, flag_gageii)
   ! Perform regression analysis using the USGS data

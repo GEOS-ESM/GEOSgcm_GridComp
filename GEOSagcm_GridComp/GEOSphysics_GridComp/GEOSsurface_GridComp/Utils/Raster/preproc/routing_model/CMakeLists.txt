@@ -20,14 +20,16 @@ set (exe_srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  LIBS NetCDF::NetCDF_Fortran
-)
+  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran GEOS_CatchCNShared)  
+
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".f90" ".x" exe ${src})
   ecbuild_add_executable (
     TARGET ${exe}
     SOURCES ${src}
     NOINSTALL
+    LIBS MAPL GFTL_SHARED::gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared GEOS_CatchCNShared
+    ${this}
     LIBS    ${this} NetCDF::NetCDF_Fortran MPI::MPI_Fortran)
 endforeach ()
 

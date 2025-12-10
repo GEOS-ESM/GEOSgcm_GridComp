@@ -299,7 +299,7 @@ contains
     deallocate(lon1m)
   end subroutine find_nearest_coords
 !------------------------------------------------------------
-  subroutine get_station_inf(file_pfafmap, ns, nc, nlat, nlon, lati, loni, catid, Qclmt, slp, KImodel_all, exp_slp, exp_clmt, fac_str)
+  subroutine get_station_inf(file_pfafmap, ns, nc, nlat, nlon, lati, loni, catid, Qclmt, slp, KImodel_all, exp_slp, exp_clmt)
     !------------------------------------------------------------
     ! Subroutine: get_station_inf
     ! Purpose   : Retrieves station catchment information from a NetCDF file,
@@ -312,8 +312,7 @@ contains
     !   nlat, nlon - Dimensions of the grid.
     !   lati, loni - Grid indices for each station.
     !   exp_slp, exp_clmt - Exponents for slope and climatology discharge.
-    !   fac_str    - Scaling factor for stream.
-    !
+    !   
     ! Output:
     !   catid      - Array of catchment IDs for each station.
     !   Qclmt      - Array of climatology discharge values for stations.
@@ -326,7 +325,7 @@ contains
     integer, allocatable, intent(out) :: catid(:)
     real, allocatable, intent(out)    :: Qclmt(:), slp(:)
     real, allocatable, intent(out)    :: KImodel_all(:)
-    real, intent(in)                  :: exp_slp, exp_clmt, fac_str
+    real, intent(in)                  :: exp_slp, exp_clmt
 
     integer, allocatable              :: catchind(:,:)
     real, allocatable, dimension(:)   :: Qclmt_all, slp_all, Kstr_all, Qstr_all
@@ -380,7 +379,7 @@ contains
     KImodel_all = (Qclmt_all**(exp_clmt)) * (slp_all**(exp_slp))
 
     ! Calculate stream K values using the scaling factor
-    Kstr_all = fac_str * (Qstr_all**(exp_clmt)) * (slp_all**(exp_slp))
+    Kstr_all = (Qstr_all**(exp_clmt)) * (slp_all**(exp_slp))
 
     ! Write stream K values to an output file
     open(88, file="temp/Pfaf_Kstr_PR_fac1_0p35_0p45_0p2_n0p2.txt")

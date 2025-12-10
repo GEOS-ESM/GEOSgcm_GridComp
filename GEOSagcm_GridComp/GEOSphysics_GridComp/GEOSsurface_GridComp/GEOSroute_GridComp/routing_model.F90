@@ -6,7 +6,10 @@ MODULE routing_model
 
   private
 
-  public :: river_routing_hyd, SEARCH_DNST
+  real, parameter :: M        = 0.45      ! Parameter in hydraulic geometry formula
+  real, parameter :: mm       = 0.35      ! Parameter in hydraulic geometry formula 
+
+  public :: river_routing_hyd, SEARCH_DNST, M, mm
 
 CONTAINS
 
@@ -101,8 +104,6 @@ CONTAINS
 
     real, parameter :: small    = 1.e-20 
     real, parameter :: fac_kstr = 0.01      ! Factor for local stream scaling
-    real, parameter :: M        = 0.45      ! Parameter in hydraulic geometry formula
-    real, parameter :: mm       = 0.35      ! Parameter in hydraulic geometry formula
 
     real,dimension(NCAT) :: Qrunf,qstr_clmt,qri_clmt,qin_clmt,Ws,Wr,Kstr
     real,dimension(NCAT) :: nume,deno,llc,alp_s,alp_r,Qs0,ks,Ws_last

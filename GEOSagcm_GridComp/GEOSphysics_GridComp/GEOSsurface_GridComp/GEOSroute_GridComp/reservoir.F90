@@ -2,7 +2,7 @@
 
 module reservoirMod
 
-  use MAPL
+  use MAPL, only :rho=>MAPL_RHOWTR
 
   implicit none
   private
@@ -28,7 +28,6 @@ module reservoirMod
   real, parameter    :: fac_b_llake  = 0.60   ! Exponent for large lakes
   real, parameter    :: thr_wid_lake = 1.e5   ! Threshold lake width (in m)
 
-  real, parameter    :: rho = 1.e3            ! Water density (kg/m^3)
 
   type RES_STATE !reserver related variables
      integer, allocatable :: active_res(:)
