@@ -41,7 +41,7 @@ from .UW_translate_tests.translate_find_pbl import TranslateFindPbl
 from .UW_translate_tests.translate_find_klcl import TranslateFindKlcl
 from .UW_translate_tests.translate_compute_cin_cinlcl import TranslateComputeCinCinlcl
 from .UW_translate_tests.translate_define_prel_cbmf import TranslateDefinePrelCbmf
-from .UW_translate_tests.translate_define_updraft_properties import TranslateDefineUpdraftProperties
+from .UW_translate_tests.translate_define_env_properties import TranslateDefineEnvProperties
 
 
 __all__ = [

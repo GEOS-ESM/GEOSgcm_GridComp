@@ -166,7 +166,7 @@ class TranslateDefineUpdraftProperties(TranslateFortranData2Py):
         winv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(winv.view[:], inputs["winv"])
         thvu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        # safe_assign_array(thvu.view[:], inputs["thvu"])
+        safe_assign_array(thvu.view[:], inputs["thvu"])
 
         # Outputs
         ufrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")

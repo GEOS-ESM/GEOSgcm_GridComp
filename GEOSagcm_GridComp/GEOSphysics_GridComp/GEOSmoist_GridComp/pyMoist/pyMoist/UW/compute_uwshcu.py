@@ -2956,14 +2956,14 @@ def define_env_properties(
     with computation(FORWARD), interval(...):
         if not condensation:
             if K == (krel - 1):
-                uu = usrc + uplus
-                vu = vsrc + vplus
+                uu[0, 0, 1] = usrc + uplus
+                vu[0, 0, 1] = vsrc + vplus
 
             if dotransport == 1:
                 n = 0
                 while n < ncnst:
                     if K == krel - 1:
-                        tru[0, 0, 0][n] = trsrc[0, 0][n]
+                        tru[0, 0, 1][n] = trsrc[0, 0][n]
                     n += 1
 
             pe = 0.5 * (prel + pifc0.at(K=krel + 1))
