@@ -247,6 +247,52 @@ contains
          RESTART            = MAPL_RestartOptional       ,&
          _RC )
 
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'K_parameter_for_main_rivers',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'KRIV'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'main_river_length_scale',&
+         UNITS              = 'km'                      ,&
+         SHORT_NAME         = 'lengsc'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'local_streams_length_scale',&
+         UNITS              = 'km'                      ,&
+         SHORT_NAME         = 'lstr'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'climatology_of_catchment_inflow',&
+         UNITS              = 'm+3 s-1'                      ,&
+         SHORT_NAME         = 'qin_clmt'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'climatology_of_catchment_inflow',&
+         UNITS              = 'm+3 s-1'                      ,&
+         SHORT_NAME         = 'qin_clmt'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC )
+
+
 
 !!!!!!!!!!!!!!!!
 ! Export
