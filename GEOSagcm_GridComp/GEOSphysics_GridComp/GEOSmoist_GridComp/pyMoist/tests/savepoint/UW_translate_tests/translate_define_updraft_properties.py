@@ -166,7 +166,7 @@ class TranslateDefineUpdraftProperties(TranslateFortranData2Py):
         winv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(winv.view[:], inputs["winv"])
         thvu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        safe_assign_array(thvu.view[:], inputs["thvu"])
+        # safe_assign_array(thvu.view[:], inputs["thvu"])
 
         # Outputs
         ufrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
@@ -194,8 +194,6 @@ class TranslateDefineUpdraftProperties(TranslateFortranData2Py):
 
         # The iteration you want to test
         iter_test = int32(0)
-
-        print(condensation.view[4, 2])
 
         # # Call stencils
         self._define_updraft_properties(
@@ -231,14 +229,10 @@ class TranslateDefineUpdraftProperties(TranslateFortranData2Py):
             cush_inout=cush_inout,
         )
 
-        print(condensation.view[4, 2])
-
-        # NOTE two variables are failing - I am ignoring these failures for now. I think it is an issue
-        # with serializing the data in the wrong spot (hence why we are seeing failures where the gotos
-        # are triggered.
+        # NOTE 1 variable is failing - I am ignoring this for now.
 
         return {
             "thvu_out": thvu.view[:],  # thvu_out fails
             "ufrc": ufrc.view[:],
-            "ufrclcl": ufrclcl.view[:],  # ufrclcl fails
+            "ufrclcl": ufrclcl.view[:],
         }
