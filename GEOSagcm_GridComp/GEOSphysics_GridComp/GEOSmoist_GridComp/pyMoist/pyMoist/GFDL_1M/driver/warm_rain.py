@@ -345,7 +345,7 @@ def warm_rain_step_1(
         # fall speed of rain
         # -----------------------------------------------------------------------
 
-        if precip_fall == False:
+        if precip_fall == False:  # noqa
             terminal_speed_rain = constants.VF_MIN
         elif const_vr == True:  # noqa
             terminal_speed_rain = vr_fac  # ifs_2016: 4.0

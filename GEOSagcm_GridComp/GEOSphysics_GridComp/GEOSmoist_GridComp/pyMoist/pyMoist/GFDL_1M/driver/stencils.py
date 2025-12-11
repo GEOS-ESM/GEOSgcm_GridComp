@@ -54,43 +54,43 @@ def implicit_fall(
     from __externals__ import dts
 
     with computation(PARALLEL), interval(...):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             height_diff = z_interface - z_interface[0, 0, 1]
             dd = dts * terminal_speed
             mixing_ratio = mixing_ratio * dp
 
     # sedimentation: non - vectorizable loop
     with computation(FORWARD), interval(0, 1):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             qm = mixing_ratio / (height_diff + dd)
 
     with computation(FORWARD), interval(1, None):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             qm = (mixing_ratio + dd[0, 0, -1] * qm[0, 0, -1]) / (height_diff + dd)
 
     # qm is density at this stage
     with computation(PARALLEL), interval(...):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             qm = qm * height_diff
 
     # output mass fluxes: non - vectorizable loop
     with computation(FORWARD), interval(0, 1):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             mass = mixing_ratio - qm
 
     with computation(FORWARD), interval(1, None):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             mass = mass[0, 0, -1] + mixing_ratio - qm
 
     with computation(FORWARD), interval(-1, None):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             precip = mass
 
     # update:
     with computation(PARALLEL), interval(...):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             mixing_ratio = qm / dp
 
     with computation(PARALLEL), interval(...):
-        if precip_fall == True:
+        if precip_fall == True:  # noqa
             precip_flux = precip_flux + mass
