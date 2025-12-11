@@ -30,6 +30,9 @@ module uwshcu
      real     :: rkfre              ! fraction_of_tke_associated_with_vertical_velocity
      real     :: rkm                ! Factor controlling lateral mixing rate
      real     :: mixscale           ! Controls vertical structure of mixing
+     real     :: rkfre_hr           ! fraction_of_tke_associated_with_vertical_velocity High Resolution
+     real     :: rkm_hr             ! Factor controlling lateral mixing rate High Resolution
+     real     :: mixscale_hr        ! Controls vertical structure of mixing High Resolution
      real     :: detrhgt            ! Mixing rate increases above this height
      real     :: rmaxfrac           ! Maximum core updraft fraction
      real     :: mumin1             ! 
@@ -951,8 +954,6 @@ contains
     ! ----------------------- !
 
     real :: rle          !  For critical stopping distance for lateral entrainment [no unit]
-    real :: rkm          !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
-    real :: mixscale     !  Specify vertical structure of mixing rate
     real :: detrhgt      !  Mixing rate increases above this height to speed detrainment
     real :: rmaxfrac     !  Maximum allowable 'core' updraft fraction
     real :: mumin1       !  Normalized CIN ('mu') corresponding to 'rmaxfrac' at the PBL top
@@ -1004,8 +1005,6 @@ contains
     rpen             = shlwparams%rpen
     cridist_opt      = shlwparams%cridist_opt
     rle       = shlwparams%rle      !  For critical stopping distance for lateral entrainment [no unit]
-    rkm       = shlwparams%rkm      !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
-    mixscale  = shlwparams%mixscale !  Specifies vertical structure of mixing rate
     detrhgt   = shlwparams%detrhgt  !  Specifies vertical structure of mixing rate
     rmaxfrac  = shlwparams%rmaxfrac !  Maximum allowable 'core' updraft fraction
     mumin1    = shlwparams%mumin1
@@ -1467,14 +1466,14 @@ contains
             uavg   = uavg   + dpi*u0(k)
             vavg   = vavg   + dpi*v0(k)
             thvlavg = thvlavg + dpi*thvl0(k)
-            qtavg = qtavg + dpi*qt0(k)
+            if (qtsrchgt .le. 0.0) qtavg = qtavg + dpi*qt0(k)
             if( k .ne. kinv ) thvlmin = min(thvlmin,min(thvl0bot(k),thvl0top(k)))
          end do
          tkeavg  = tkeavg/dpsum
          uavg    = uavg/dpsum
          vavg    = vavg/dpsum
          thvlavg = thvlavg/dpsum
-         qtavg   = qtavg/dpsum
+         if (qtsrchgt .le. 0.0) qtavg   = qtavg/dpsum
 
         ! weighted average over lowest 20mb
 !         dpsum = 0.
@@ -1486,17 +1485,18 @@ contains
 !         qtavg   = qtavg/dpsum
  
        ! Interpolate qt to specified height
-!         k = 1
-!         do while (zmid0(k).lt.qtsrchgt)
-!         do while (zmid0(k).lt.0.5*zmid0(kinv))   ! use qt from half of inv height
-!           k = k+1
-!         end do
-!         if (k.gt.1) then
-!           qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
-!           qtavg = qtavg / (zmid0(k)-zmid0(k-1))
-!         else
-!           qtavg = qt0(1)
-!         end if
+          if (qtsrchgt > 0.0) then
+            k = 1
+            do while (zmid0(k).lt.qtsrchgt)
+              k = k+1
+            end do
+            if (k.gt.1) then
+              qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
+              qtavg = qtavg / (zmid0(k)-zmid0(k-1))
+            else
+              qtavg = qt0(1)
+            end if
+          endif
 
        ! ------------------------------------------------------------------ !
        ! Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc !

@@ -1456,8 +1456,8 @@ CONTAINS
          cum_ztexec(:)= ztexec(:) ; cum_zqexec(:)= zqexec(:)
        elseif (use_excess == 2) then
          do i=its,itf
-           cum_zqexec(i)=min(5.e-4, max(1.e-4,zqexec(i)))! kg kg^-1
-           cum_ztexec(i)=min(0.5,   max(0.2  ,ztexec(i)))! Kelvin
+           cum_zqexec(i)=max(1.e-4,zqexec(i))! kg kg^-1
+           cum_ztexec(i)=max(0.2  ,ztexec(i))! Kelvin
          enddo
        else
          do i=its,itf
@@ -4200,24 +4200,31 @@ ENDIF ! vertical discretization formulation
                               dellabuoy,outbuoy,                                           &
                               dellampqi,outmpqi,dellampql,outmpql,dellampcf,outmpcf,nmp    )
 
-!
-!
-!--- get the net precipitation flux (after downdraft evaporation)
-       call get_precip_fluxes(cumulus,klcl,kbcon,ktop,k22,ierr,xland,pre,xmb  &
-                             ,pwo,pwavo,edto,pwevo,pwdo,t_cup,tempco          &
-                             ,prec_flx,evap_flx                               &
-                             ,itf,ktf,its,ite, kts,kte)
+       if(USE_REBCB == 1) then
+           !--- rainfall evap below cloud base
+           call rain_evap_below_cloudbase(cumulus,itf,ktf, its,ite, kts,kte,ierr,kbcon,ktop&
+                                          ,xmb,psur,xland,qo_cup,t_cup                     &
+                                          ,po_cup,qes_cup,pwavo,edto,pwevo,pwo,pwdo        &
+                                          ,pre,prec_flx,evap_flx,outt,outq,outbuoy,evap_bcb)
+       else
+           !--- get the net precipitation flux (after downdraft evaporation)
+           call get_precip_fluxes(cumulus,klcl,kbcon,ktop,k22,ierr,xland,pre,xmb  &
+                                 ,pwo,pwavo,edto,pwevo,pwdo,t_cup,tempco          &
+                                 ,prec_flx,evap_flx                               &
+                                 ,itf,ktf,its,ite, kts,kte)
+       endif
 
 !
-!--- rainfall evap below cloud base
+!-- get the total (deep+congestus) evaporation flux for output (units kg/kg/s)
 !
-       if(USE_REBCB == 1)                                                              &
-       call rain_evap_below_cloudbase(cumulus,itf,ktf, its,ite, kts,kte,ierr,kbcon,ktop&
-                                      ,xmb,psur,xland,qo_cup,t_cup                     &
-                                      ,po_cup,qes_cup,pwavo,edto,pwevo,pwo,pwdo        &
-                                      ,pre,prec_flx,evap_flx,outt,outq,outbuoy,evap_bcb)
-
-
+       do i=its,itf                    
+           if(ierr(i) /= 0) cycle
+           do k=kts,ktop(i)
+              dp=100.*(po_cup(i,k)-po_cup(i,k+1))
+              !--- add all plumes, and convert to kg/kg/s
+              revsu_gf(i,k) = revsu_gf(i,k) + evap_flx(i,k)*g/dp
+           enddo
+       enddo
 !
 !--- includes effects of the remained cloud dissipation into the enviroment
 !
@@ -4227,17 +4234,6 @@ ENDIF ! vertical discretization formulation
                              ,outqc,zuo,vvel2d,rho_hydr,qrco,sig,tempco,qco,tn_cup &
                              ,heso_cup,zo)
 
-!
-!--- get the total (deep+congestus) evaporation flux for output (units kg/kg/s)
-!
-       do i=its,itf
-           if(ierr(i) /= 0) cycle
-           do k=kts,ktop(i)
-              dp=100.*(po_cup(i,k)-po_cup(i,k+1))
-              !--- add congestus and deep plumes, and convert to kg/kg/s
-              revsu_gf(i,k) = revsu_gf(i,k) + evap_flx(i,k)*g/dp
-           enddo
-       enddo
 !
 !
 !--- get lightning flashes density (parameterization from Lopez 2016, MWR)
@@ -6550,11 +6546,10 @@ ENDIF !- end of section for atmospheric composition
   zuh=0.0
   zul=0.0
   IF(ZERO_DIFF_LAND==1) then
-   if(draft == "deep_up" .and. xland >  0.90) itest=11 !ocean
+   if(draft == "deep_up" .and. xland >  0.90) itest=20 !ocean
    if(draft == "deep_up" .and. xland <= 0.90) itest=12 !land
-   if(draft == "mid_up"                     ) itest= 5
+   if(draft == "mid_up"                     ) itest=20
   ELSE
-!  if(draft == "deep_up"                    ) itest=21  !ocean/land
    if(draft == "deep_up"                    ) itest=20  !ocean/land
    if(draft == "mid_up"                     ) itest=20
   ENDIF
@@ -6666,25 +6661,17 @@ ENDIF !- end of section for atmospheric composition
       ENDIF
       zu(kts)=0.
   !---------------------------------------------------------
- !ELSEIF(itest==20 .and. draft == "deep_up") then       !--- land/ocean
   ELSEIF(itest==20                         ) then       !--- land/ocean
 
       hei_updf=(1.-xland)*hei_updf_LAND+xland*hei_updf_OCEAN
       !- add a randomic perturbation
       hei_updf = hei_updf + random
 
-      !- for gate soundings
-      !hei_updf = max(0.1, min(1.,float(JL)/100.))
-      !beta =1.0+float(JL)/100. * 5.
-
       !--hei_updf parameter goes from 0 to 1 = rainfall decreases with hei_updf
       pmaxzu  =  (psur-100.) * (1.- 0.5*hei_updf) + 0.6*( po_cup(kt) ) * 0.5*hei_updf
 
       !- beta parameter: must be larger than 1, higher makes the profile sharper around the maximum zu
       beta    = max(1.1, 2.1 - 0.5*hei_updf)
-
-!--- tmp IF(trim(cumulus) == 'deep') beta =beta_sh
-      !print*,"hei=",jl,pmaxzu,hei_updf,beta!(pmaxzu-(psur-100.))/( -(psur-100.) +  0.5*( 0.25*(psur-100.) + 0.75*po_cup(kt) ))
 
       kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)
       kb_adj=max(kb,kb_adj) ; kb_adj=min(kb_adj,kt)
@@ -6730,10 +6717,6 @@ ENDIF !- end of section for atmospheric composition
   ELSEIF(itest==21) then
 
       hei_updf=(1.-xland)*hei_updf_LAND+xland*hei_updf_OCEAN
-
-      !- for gate soundings
-      !if(gate) hei_updf = max(0.1, min(1.,float(JL)/160.))
-      !print*,"JL=",jl,hei_updf
 
       pmaxzu=850.
       kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)!;print*,"1=",kb_adj,po_cup(kb_adj)
@@ -6801,18 +6784,14 @@ ENDIF !- end of section for atmospheric composition
   ELSEIF(itest==12 .and. draft == "deep_up") then
       !- kb cannot be at 1st level
 
-      if(xland  < 0.90 ) then !- over land
-        hei_updf= hei_updf_LAND
-      else
-        hei_updf= hei_updf_OCEAN
-      endif
-
-      !- for gate soundings
-      !if(gate) hei_updf = max(0.1, min(1.,float(JL)/100.)) ! for gate soundings
-
       IF( ZERO_DIFF_LAND==1) then
         pmaxzu=psur-px*(psur-po_cup(kt))
       ELSE
+        if(xland  < 0.90 ) then !- over land
+          hei_updf= hei_updf_LAND
+        else
+          hei_updf= hei_updf_OCEAN
+        endif
         pmaxzu=psur-hei_updf*(psur-po_cup(kt))
       ENDIF
 
@@ -6873,16 +6852,6 @@ ENDIF !- end of section for atmospheric composition
   !---------------------------------------------------------
   ELSEIF(itest==11 .and. draft == "deep_up") then
 
-      if(xland  < 0.90 ) then !- over land
-        hei_updf= hei_updf_LAND
-      else
-        hei_updf= hei_updf_OCEAN
-      endif
-
-     !- for gate soundings
-      !if(gate) hei_updf = max(0.1, min(1.,float(JL)/100.))
-      !print*,"JL=",jl,hei_updf
-
       pmaxzu=850.
       kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)!;print*,"1=",kb_adj,po_cup(kb_adj)
       kb_adj=max(kb,kb_adj)
@@ -6918,6 +6887,11 @@ ENDIF !- end of section for atmospheric composition
       IF(ZERO_DIFF_LAND==1) then
          zu(:)= 0.65        *zul(:)+ 0.35     *zuh(:)
       ELSE
+         if(xland  < 0.90 ) then !- over land
+           hei_updf= hei_updf_LAND
+         else
+           hei_updf= hei_updf_OCEAN
+         endif
          zu(:)=(1.-hei_updf)*zul(:) + hei_updf*zuh(:)
       ENDIF
 
@@ -6966,8 +6940,6 @@ ENDIF !- end of section for atmospheric composition
       k1           = max(kbcon,kpbli_adj)
       !- location of the maximum Zu: dp_layer mbar above k1 height
       hei_updf     =(1.-xland)*hei_updf_LAND+xland*hei_updf_OCEAN
-
-     !hei_updf = (float(JL)-20)/40. ; print*,"JL=",jl,hei_updf
 
       dp_layer     = hei_updf*(po_cup(k1)-po_cup(kt))
 
@@ -7029,10 +7001,8 @@ ENDIF !- end of section for atmospheric composition
   !---------------------------------------------------------
   ELSEIF(draft == "DOWN" ) then
       IF(trim(cumulus) == 'shallow') return
-      IF(trim(cumulus) == 'mid' ) beta =2.5
+      IF(trim(cumulus) == 'mid' ) beta =6.5
       IF(trim(cumulus) == 'deep') beta =2.5
-
-      hei_down=(1.-xland)*hei_down_LAND+xland*hei_down_OCEAN
 
       IF(ZERO_DIFF_LAND==1) then
          hei_down= 0.5
@@ -9025,15 +8995,15 @@ cycle
                   xf_ens(i,1:16) =xf_ens(i,ichoice)
                 endif
 
-!---special combination for 'ensemble closure':
-!---over the land, only applies closures 1 and 10.
-!if(ichoice == 0 .and. xland(i) < 0.1)then
-!  xf_ens(i,1:16) =0.5*(xf_ens(i,10)+xf_ens(i,1))
-!endif
-
-!---over the land, only applies closure 10.
 if(ZERO_DIFF_LAND == 0 .and. ichoice == 0) then
+  !---over the land, only applies closure 10.
   xf_ens(i,1:16)=(1.-xland(i))*xf_ens(i,10)+xland(i)*xf_ens(i,1:16)
+else
+  !---special combination for 'ensemble closure':
+  !---over the land, only applies closures 1 and 10.
+  if(ichoice == 0 .and. xland(i) < 0.1)then
+    xf_ens(i,1:16) =0.5*(xf_ens(i,10)+xf_ens(i,1))
+  endif               
 endif
 
 !------------------------------------
@@ -9650,12 +9620,6 @@ ENDIF
 
      !-- critical rel humidity  - check this, if the value is too small, not evapo will take place.
       RH_cr=RH_cr_OCEAN*xland(i)+RH_cr_LAND*(1.0-xland(i))
-
-     !if(xland(i)  < 0.90 ) then !- over land
-     !  RH_cr = RH_cr_LAND
-     !else
-     !  RH_cr = RH_cr_OCEAN
-     !endif
 
      do k=ktop(i),kts,-1
 

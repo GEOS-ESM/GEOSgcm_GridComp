@@ -3202,7 +3202,7 @@ end if
      else
        call MAPL_GetResource (MAPL, JASON_BELJAARS, "JASON_BELJAARS:", default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOUIS   , "JASON_LOUIS:"   , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, JASON_LOCK    , "JASON_LOCK:"    , default=.TRUE. ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_LOCK    , "JASON_LOCK:"    , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=300.0,  RC=STATUS); VERIFY_(STATUS)
      endif
@@ -3244,7 +3244,7 @@ end if
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=150.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=450.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=150.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=3000.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,    RC=STATUS); VERIFY_(STATUS)
@@ -3269,7 +3269,7 @@ end if
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
@@ -3277,8 +3277,8 @@ end if
        call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.15e-3,RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,     RC=STATUS); VERIFY_(STATUS)
@@ -6867,11 +6867,11 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
             ! Wind shear squared
             shear_sq = ((UU(i,j,l) - UU(i,j,l+1)) * dz_inv)**2 + &
                        ((VV(i,j,l) - VV(i,j,l+1)) * dz_inv)**2
-            shear_sq = max(shear_sq, MINSHEAR**2)
             shear = sqrt(shear_sq)
             if (associated(DU_DIAG)) DU_DIAG(i,j,l) = shear
             
             ! Richardson number
+            shear_sq = max(shear_sq, MINSHEAR**2) ! Limit SHEAR^2 in RI calculation
             ri_local = (GRAV/th_avg) * dth_local * dz_inv / shear_sq
             RI(i,j,l) = ri_local
 
