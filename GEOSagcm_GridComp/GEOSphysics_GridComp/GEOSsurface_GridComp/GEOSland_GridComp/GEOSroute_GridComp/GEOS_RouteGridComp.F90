@@ -259,7 +259,7 @@ contains
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'main_river_length_scale',&
          UNITS              = 'km'                      ,&
-         SHORT_NAME         = 'lengsc'                  ,&
+         SHORT_NAME         = 'LENGSC'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartOptional       ,&
@@ -268,7 +268,7 @@ contains
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'local_streams_length_scale',&
          UNITS              = 'km'                      ,&
-         SHORT_NAME         = 'lstr'                  ,&
+         SHORT_NAME         = 'LSTR'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartOptional       ,&
@@ -277,23 +277,47 @@ contains
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'climatology_of_catchment_inflow',&
          UNITS              = 'm+3 s-1'                      ,&
-         SHORT_NAME         = 'qin_clmt'                  ,&
+         SHORT_NAME         = 'QIN_CLMT'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartOptional       ,&
          _RC )
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'climatology_of_catchment_inflow',&
+         LONG_NAME          = 'climatology_of_catchment_outflow',&
          UNITS              = 'm+3 s-1'                      ,&
-         SHORT_NAME         = 'qin_clmt'                  ,&
+         SHORT_NAME         = 'QRI_CLMT'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartOptional       ,&
          _RC )
 
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'climatology_of_catchment_stream_flow',&
+         UNITS              = 'm+3 s-1'                      ,&
+         SHORT_NAME         = 'QSTR_CLMT'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC )
 
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'downstream_catchment_id',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'DOWNID'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC )
 
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'catchment area',&
+         UNITS              = 'km+2'                      ,&
+         SHORT_NAME         = 'AREA_CATCH'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartOptional       ,&
+         _RC )
 !!!!!!!!!!!!!!!!
 ! Export
 !!!!!!!!!!!!!!!
@@ -873,7 +897,18 @@ contains
     real, dimension(:), pointer :: WSTREAM
     real, dimension(:), pointer :: WRIVER
     real, dimension(:), pointer :: WRES
-    real, dimension(:), pointer :: KSTR
+
+    real,    dimension(:), pointer :: KSTR_RS
+    real,    dimension(:), pointer :: KRIV_RS
+    real,    dimension(:), pointer :: LENGSC_RS
+    real,    dimension(:), pointer :: LSTR_RS
+    real,    dimension(:), pointer :: QIN_CLMT_RS
+    real,    dimension(:), pointer :: QRI_CLMT_RS
+    real,    dimension(:), pointer :: QSTR_CLMT_RS
+    integer, dimension(:), pointer :: DOWNID_RS
+    real,    dimension(:), pointer :: AREA_CATCH_RS
+
+
     real, dimension(:), pointer :: LRIVERMOUTH
     real, dimension(:), pointer :: ORIVERMOUTH
 
@@ -951,8 +986,26 @@ contains
     call MAPL_GetPointer(INTERNAL, WRIVER,'WRIVER', _RC )
     call MAPL_GetPointer(INTERNAL, WSTREAM,'WSTREAM', _RC)
     call MAPL_GetPointer(INTERNAL, WRES,'WRES', _RC)
-    call MAPL_GetPointer(INTERNAL, KSTR,'KSTR', _RC)
-    KSTR = route%Kstr
+
+    call MAPL_GetPointer(INTERNAL, KSTR_RS,'KSTR', _RC)
+    call MAPL_GetPointer(INTERNAL, KRIV_RS,'KRIV', _RC)
+    call MAPL_GetPointer(INTERNAL, LENGSC_RS,'LENGSC', _RC)
+    call MAPL_GetPointer(INTERNAL, LSTR_RS,'LSTR', _RC)
+    call MAPL_GetPointer(INTERNAL, QIN_CLMT_RS,'QIN_CLMT', _RC)
+    call MAPL_GetPointer(INTERNAL, QRI_CLMT_RS,'QRI_CLMT', _RC)
+    call MAPL_GetPointer(INTERNAL, QSTR_CLMT_RS,'QSTR_CLMT', _RC)
+    call MAPL_GetPointer(INTERNAL, DOWNID_RS,'DOWNID', _RC)
+    call MAPL_GetPointer(INTERNAL, AREA_CATCH_RS,'AREA_CATCH', _RC)
+
+    KSTR_RS = route%Kstr
+    KRIV_RS = route%K
+    LENGSC_RS = route%lengsc
+    LSTR_RS = route%lstr
+    QIN_CLMT_RS = route%qin_clmt
+    QRI_CLMT_RS = route%qri_clmt
+    QSTR_CLMT_RS = route%qstr_clmt
+    DOWNID_RS = route%downid
+    AREA_CATCH_RS = route%areacat
 
 ! export
     call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW', _RC)
