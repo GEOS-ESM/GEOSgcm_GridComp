@@ -1,13 +1,13 @@
 import dataclasses
 
-from ndsl import Quantity, State
+from ndsl import Local, LocalState
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
 
 
 @dataclasses.dataclass
-class GFDL1MDriverLocals(State):
-    p_dry: Quantity = dataclasses.field(
+class GFDL1MDriverLocals(LocalState):
+    p_dry: Local = dataclasses.field(
         metadata={
             "name": "p_dry",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -16,7 +16,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    t: Quantity = dataclasses.field(
+    t: Local = dataclasses.field(
         metadata={
             "name": "t",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -25,7 +25,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    dz: Quantity = dataclasses.field(
+    dz: Local = dataclasses.field(
         metadata={
             "name": "dz",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -34,7 +34,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    dp: Quantity = dataclasses.field(
+    dp: Local = dataclasses.field(
         metadata={
             "name": "dp",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -43,7 +43,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    cloud_fraction: Quantity = dataclasses.field(
+    cloud_fraction: Local = dataclasses.field(
         metadata={
             "name": "cloud_fraction",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -52,7 +52,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    density_unmodified: Quantity = dataclasses.field(
+    density_unmodified: Local = dataclasses.field(
         metadata={
             "name": "density_unmodified",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -61,7 +61,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    density: Quantity = dataclasses.field(
+    density: Local = dataclasses.field(
         metadata={
             "name": "density",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -70,7 +70,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    density_factor: Quantity = dataclasses.field(
+    density_factor: Local = dataclasses.field(
         metadata={
             "name": "density_factor",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -79,7 +79,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    mass: Quantity = dataclasses.field(
+    mass: Local = dataclasses.field(
         metadata={
             "name": "mass",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -88,7 +88,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    u: Quantity = dataclasses.field(
+    u: Local = dataclasses.field(
         metadata={
             "name": "u",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -97,7 +97,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    v: Quantity = dataclasses.field(
+    v: Local = dataclasses.field(
         metadata={
             "name": "v",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -106,7 +106,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    w: Quantity = dataclasses.field(
+    w: Local = dataclasses.field(
         metadata={
             "name": "w",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -115,7 +115,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    one_minus_sigma: Quantity = dataclasses.field(
+    one_minus_sigma: Local = dataclasses.field(
         metadata={
             "name": "one_minus_sigma",
             "dims": [X_DIM, Y_DIM],
@@ -124,7 +124,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    ccn: Quantity = dataclasses.field(
+    ccn: Local = dataclasses.field(
         metadata={
             "name": "ccn",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -133,7 +133,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    c_praut: Quantity = dataclasses.field(
+    c_praut: Local = dataclasses.field(
         metadata={
             "name": "c_praut",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -142,7 +142,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    rh_limited: Quantity = dataclasses.field(
+    rh_limited: Local = dataclasses.field(
         metadata={
             "name": "rh_limited",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -151,7 +151,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    lhi: Quantity = dataclasses.field(
+    lhi: Local = dataclasses.field(
         metadata={
             "name": "lhi",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -160,7 +160,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    icpk: Quantity = dataclasses.field(
+    icpk: Local = dataclasses.field(
         metadata={
             "name": "icpk",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -169,7 +169,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    hold_data: Quantity = dataclasses.field(
+    hold_data: Local = dataclasses.field(
         metadata={
             "name": "hold_data",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -178,7 +178,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    liquid_precip_flux: Quantity = dataclasses.field(
+    liquid_precip_flux: Local = dataclasses.field(
         metadata={
             "name": "liquid_precip_flux",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -187,7 +187,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    ice_precip_flux: Quantity = dataclasses.field(
+    ice_precip_flux: Local = dataclasses.field(
         metadata={
             "name": "ice_precip_flux",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -196,7 +196,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    rain: Quantity = dataclasses.field(
+    rain: Local = dataclasses.field(
         metadata={
             "name": "rain",
             "dims": [X_DIM, Y_DIM],
@@ -205,7 +205,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    ice: Quantity = dataclasses.field(
+    ice: Local = dataclasses.field(
         metadata={
             "name": "ice",
             "dims": [X_DIM, Y_DIM],
@@ -214,7 +214,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    snow: Quantity = dataclasses.field(
+    snow: Local = dataclasses.field(
         metadata={
             "name": "snow",
             "dims": [X_DIM, Y_DIM],
@@ -223,7 +223,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    graupel: Quantity = dataclasses.field(
+    graupel: Local = dataclasses.field(
         metadata={
             "name": "graupel",
             "dims": [X_DIM, Y_DIM],
@@ -232,7 +232,7 @@ class GFDL1MDriverLocals(State):
             "dtype": Float,
         }
     )
-    evaporation: Quantity = dataclasses.field(
+    evaporation: Local = dataclasses.field(
         metadata={
             "name": "evaporation",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -244,7 +244,7 @@ class GFDL1MDriverLocals(State):
 
     @dataclasses.dataclass
     class TerminalSpeed:
-        rain: Quantity = dataclasses.field(
+        rain: Local = dataclasses.field(
             metadata={
                 "name": "rain",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -253,7 +253,7 @@ class GFDL1MDriverLocals(State):
                 "dtype": Float,
             }
         )
-        ice: Quantity = dataclasses.field(
+        ice: Local = dataclasses.field(
             metadata={
                 "name": "ice",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -262,7 +262,7 @@ class GFDL1MDriverLocals(State):
                 "dtype": Float,
             }
         )
-        snow: Quantity = dataclasses.field(
+        snow: Local = dataclasses.field(
             metadata={
                 "name": "snow",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -271,7 +271,7 @@ class GFDL1MDriverLocals(State):
                 "dtype": Float,
             }
         )
-        graupel: Quantity = dataclasses.field(
+        graupel: Local = dataclasses.field(
             metadata={
                 "name": "graupel",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -283,7 +283,7 @@ class GFDL1MDriverLocals(State):
 
     @dataclasses.dataclass
     class DryAirMixingRatio:
-        vapor: Quantity = dataclasses.field(
+        vapor: Local = dataclasses.field(
             metadata={
                 "name": "vapor",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -292,7 +292,7 @@ class GFDL1MDriverLocals(State):
                 "dtype": Float,
             }
         )
-        liquid: Quantity = dataclasses.field(
+        liquid: Local = dataclasses.field(
             metadata={
                 "name": "liquid",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -301,7 +301,7 @@ class GFDL1MDriverLocals(State):
                 "dtype": Float,
             }
         )
-        rain: Quantity = dataclasses.field(
+        rain: Local = dataclasses.field(
             metadata={
                 "name": "rain",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -310,7 +310,7 @@ class GFDL1MDriverLocals(State):
                 "dtype": Float,
             }
         )
-        ice: Quantity = dataclasses.field(
+        ice: Local = dataclasses.field(
             metadata={
                 "name": "ice",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -319,7 +319,7 @@ class GFDL1MDriverLocals(State):
                 "dtype": Float,
             }
         )
-        snow: Quantity = dataclasses.field(
+        snow: Local = dataclasses.field(
             metadata={
                 "name": "snow",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -328,7 +328,7 @@ class GFDL1MDriverLocals(State):
                 "dtype": Float,
             }
         )
-        graupel: Quantity = dataclasses.field(
+        graupel: Local = dataclasses.field(
             metadata={
                 "name": "graupel",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -342,7 +342,7 @@ class GFDL1MDriverLocals(State):
     class Unmodified:
         @dataclasses.dataclass
         class MixingRatio:
-            vapor: Quantity = dataclasses.field(
+            vapor: Local = dataclasses.field(
                 metadata={
                     "name": "vapor",
                     "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -351,7 +351,7 @@ class GFDL1MDriverLocals(State):
                     "dtype": Float,
                 }
             )
-            liquid: Quantity = dataclasses.field(
+            liquid: Local = dataclasses.field(
                 metadata={
                     "name": "liquid",
                     "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -360,7 +360,7 @@ class GFDL1MDriverLocals(State):
                     "dtype": Float,
                 }
             )
-            rain: Quantity = dataclasses.field(
+            rain: Local = dataclasses.field(
                 metadata={
                     "name": "rain",
                     "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -369,7 +369,7 @@ class GFDL1MDriverLocals(State):
                     "dtype": Float,
                 }
             )
-            ice: Quantity = dataclasses.field(
+            ice: Local = dataclasses.field(
                 metadata={
                     "name": "ice",
                     "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -378,7 +378,7 @@ class GFDL1MDriverLocals(State):
                     "dtype": Float,
                 }
             )
-            snow: Quantity = dataclasses.field(
+            snow: Local = dataclasses.field(
                 metadata={
                     "name": "snow",
                     "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -387,7 +387,7 @@ class GFDL1MDriverLocals(State):
                     "dtype": Float,
                 }
             )
-            graupel: Quantity = dataclasses.field(
+            graupel: Local = dataclasses.field(
                 metadata={
                     "name": "graupel",
                     "dims": [X_DIM, Y_DIM, Z_DIM],

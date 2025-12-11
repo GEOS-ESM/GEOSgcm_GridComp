@@ -65,7 +65,7 @@ class GFDL1MDriver(NDSLRuntime):
         )
 
         # initialize locals
-        self._locals = GFDL1MDriverLocals.zeros(quantity_factory, allocate_locals=True)
+        self._locals = GFDL1MDriverLocals.make_locals(quantity_factory)
 
         # pull saturation specific humidity tables, generate if first call
         self.driver_saturation_tables = get_tables(
@@ -369,7 +369,7 @@ class GFDL1MDriver(NDSLRuntime):
             mixing_ratio_liquid_unmodified=self._locals.unmodified.mixing_ratio.liquid,
             mixing_ratio_rain_unmodified=self._locals.unmodified.mixing_ratio.rain,
             mixing_ratio_ice_unmodified=self._locals.unmodified.mixing_ratio.ice,
-            mixing_ratio_snow_unmodified=self._locals.unmodified.mixing_ratio.rain,
+            mixing_ratio_snow_unmodified=self._locals.unmodified.mixing_ratio.snow,
             mixing_ratio_graupel_unmodified=self._locals.unmodified.mixing_ratio.graupel,
             cloud_fraction_unmodified=cloud_fraction,
             mixing_ratio_driver_vapor=self._locals.dry_air_mixing_ratio.vapor,
