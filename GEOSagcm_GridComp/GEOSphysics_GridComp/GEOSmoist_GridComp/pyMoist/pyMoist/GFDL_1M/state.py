@@ -806,15 +806,6 @@ class GFDL1MState(State):
                 "dtype": Float,
             }
         )
-        dsnowdt_macro: Quantity = dataclasses.field(
-            metadata={
-                "name": "dsnowdt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "kg kg-1 s-1",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
         dgraupeldt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dgraupeldt_macro",
@@ -899,15 +890,6 @@ class GFDL1MState(State):
         draindt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "draindt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
-                "units": "kg kg-1 s-1",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dsnowdt_micro: Quantity = dataclasses.field(
-            metadata={
-                "name": "dsnowdt_micro",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",

@@ -532,7 +532,8 @@ class GFDL1MFinalize(NDSLRuntime):
             dgraupel_dt=dgraupeldt_micro,
         )
 
-        # NOTE need a better way to figure out if this is associated, this will never be none with the new state
+        # NOTE need a better way to figure out if this is associated
+        # this will never be none with the new state
         if large_scale_rainwater_source is not None:
             self._update_rainwater_source(
                 large_scale_rainwater_source,
@@ -540,7 +541,8 @@ class GFDL1MFinalize(NDSLRuntime):
                 draindt_micro,
             )
 
-        # NOTE need a better way to figure out if this is associated, this will never be none with the new state
+        # NOTE need a better way to figure out if this is associated
+        # this will never be none with the new state
         if dtdt_friction_pressure_weighted is not None:
             self._dissipative_ke_heating(
                 mass=local_mass,
@@ -554,7 +556,8 @@ class GFDL1MFinalize(NDSLRuntime):
             )
 
         # NOTE DISABLED DURING DEVELOPMENT.
-        # NOTE need a better way to figure out if this is associated, this will never be none with the new state
+        # NOTE need a better way to figure out if this is associated,
+        # this will never be none with the new state
         # if (
         #     outputs.simulated_reflectivity is not None
         #     or outputs.maximum_reflectivity is not None
