@@ -80,7 +80,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
     def compute(self, inputs):
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
+        locals_ = GFDL1MLocals.zeros(self.quantity_factory)
         driver_locals = GFDL1MDriverLocals.zeros(self.quantity_factory)
 
         # initalize constants
@@ -88,7 +88,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
         state.t.field[:] = inputs["t_driversetup"][:, :, :, 0]
-        locals.dp.field[:] = inputs["local_dp_driversetup"][:, :, :, 0]
+        locals_.dp.field[:] = inputs["local_dp_driversetup"][:, :, :, 0]
         state.critical_relative_humidity_for_pdf.field[:] = inputs[
             "critical_relative_humidity_for_pdf_driversetup"
         ][:, :, :, 0]
@@ -101,7 +101,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         state.radiation_field.cloud_fraction.field[:] = inputs["radiation_cloud_fraction_driversetup"][
             :, :, :, 0
         ]
-        locals.total_concentration.field[:] = inputs["total_concentration_driversetup"][:, :, :, 0]
+        locals_.total_concentration.field[:] = inputs["total_concentration_driversetup"][:, :, :, 0]
         driver_locals.unmodified.mixing_ratio.vapor.field[:] = inputs[
             "driver_local_dry_mixing_ratio_vapor_unmodified_driversetup"
         ][:, :, :, 0]
@@ -139,7 +139,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             "driver_local_dry_mixing_ratio_graupel_driversetup"
         ][:, :, :, 0]
         driver_locals.cloud_fraction.field[:] = inputs["driver_local_cloud_fraction_driversetup"][:, :, :, 0]
-        locals.dz.field[:] = inputs["local_dz_drivesetup"][:, :, :, 0]
+        locals_.dz.field[:] = inputs["local_dz_drivesetup"][:, :, :, 0]
         state.u.field[:] = inputs["u_driversetup"][:, :, :, 0]
         state.v.field[:] = inputs["v_driversetup"][:, :, :, 0]
         state.vertical_motion.velocity.field[:] = inputs["w_driversetup"][:, :, :, 0]
@@ -189,7 +189,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         code(
             unmodified_t=state.t,
             t=driver_locals.t,
-            unmodified_dp=locals.dp,
+            unmodified_dp=locals_.dp,
             dp=driver_locals.dp,
             critical_relative_humidity_for_pdf=state.critical_relative_humidity_for_pdf,
             radiation_field_vapor=state.radiation_field.vapor,
@@ -199,7 +199,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             radiation_field_snow=state.radiation_field.snow,
             radiation_field_graupel=state.radiation_field.graupel,
             radiation_field_cloud_fraction=state.radiation_field.cloud_fraction,
-            total_concentration=locals.total_concentration,
+            total_concentration=locals_.total_concentration,
             unmodified_mixing_ratio_vapor=driver_locals.unmodified.mixing_ratio.vapor,
             unmodified_mixing_ratio_liquid=driver_locals.unmodified.mixing_ratio.liquid,
             unmodified_mixing_ratio_rain=driver_locals.unmodified.mixing_ratio.rain,
@@ -213,7 +213,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             dry_air_mixing_ratio_snow=driver_locals.dry_air_mixing_ratio.snow,
             dry_air_mixing_ratio_graupel=driver_locals.dry_air_mixing_ratio.graupel,
             cloud_fraction=driver_locals.cloud_fraction,
-            dz=locals.dz,
+            dz=locals_.dz,
             u_unmodified=state.u,
             u=driver_locals.u,
             v_unmodified=state.v,
@@ -247,7 +247,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             outputs[key] = np.full((nx, ny, nz, ntimes), np.nan)
 
         outputs["t_driversetup"][:, :, :, 0] = state.t.field[:]
-        outputs["local_dp_driversetup"][:, :, :, 0] = locals.dp.field[:]
+        outputs["local_dp_driversetup"][:, :, :, 0] = locals_.dp.field[:]
         outputs["critical_relative_humidity_for_pdf_driversetup"][
             :, :, :, 0
         ] = state.critical_relative_humidity_for_pdf.field[:]
@@ -260,7 +260,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         outputs["radiation_cloud_fraction_driversetup"][
             :, :, :, 0
         ] = state.radiation_field.cloud_fraction.field[:]
-        outputs["total_concentration_driversetup"][:, :, :, 0] = locals.total_concentration.field[:]
+        outputs["total_concentration_driversetup"][:, :, :, 0] = locals_.total_concentration.field[:]
         outputs["driver_local_dry_mixing_ratio_vapor_unmodified_driversetup"][
             :, :, :, 0
         ] = driver_locals.unmodified.mixing_ratio.vapor.field[:]
@@ -298,7 +298,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             :, :, :, 0
         ] = driver_locals.dry_air_mixing_ratio.graupel.field[:]
         outputs["driver_local_cloud_fraction_driversetup"][:, :, :, 0] = driver_locals.cloud_fraction.field[:]
-        outputs["local_dz_drivesetup"][:, :, :, 0] = locals.dz.field[:]
+        outputs["local_dz_drivesetup"][:, :, :, 0] = locals_.dz.field[:]
         outputs["u_driversetup"][:, :, :, 0] = state.u.field[:]
         outputs["v_driversetup"][:, :, :, 0] = state.v.field[:]
         outputs["w_driversetup"][:, :, :, 0] = state.vertical_motion.velocity.field[:]

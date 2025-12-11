@@ -10,7 +10,6 @@ from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentC
 from pyMoist.GFDL_1M.driver.ice_cloud import GFDL1MIceCloud
 from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.state import GFDL1MState
 
 
@@ -52,8 +51,7 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
     def compute(self, inputs):
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
-        driver_locals = GFDL1MDriverLocals.zeros(self.quantity_factory)
+        driver_locals = GFDL1MDriverLocals.make_as_state(self.quantity_factory)
 
         # initalize constants
         config = GFDL1MConfig(**self.constants)
