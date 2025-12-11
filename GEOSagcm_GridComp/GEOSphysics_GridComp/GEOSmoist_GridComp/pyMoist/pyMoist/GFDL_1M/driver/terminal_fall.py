@@ -501,7 +501,6 @@ class GFDL1MTerminalFall(NDSLRuntime):
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-    @instrument
     def __call__(
         self,
         t: FloatField,
@@ -548,17 +547,17 @@ class GFDL1MTerminalFall(NDSLRuntime):
         """
 
         # Reset locals
-        self._set_value(self._locals.lhi, 0)
-        self._set_value(self._locals.icpk, 0)
-        self._set_value(self._locals.cvm, 0)
-        self._set_value(self._locals.mass, 0)
-        self._set_value(self._locals.dmass, 0)
-        self._set_value_K_interface(self._locals.z_interface, 0)
-        self._set_value_K_interface(self._locals.z_interface_modified, 0)
-        self._set_value_IJ(self._locals.rain, 0)
-        self._set_value_IJ(self._locals.graupel, 0)
-        self._set_value_IJ(self._locals.snow, 0)
-        self._set_value_IJ(self._locals.ice, 0)
+        self._set_value(self._locals.lhi, Float(0))
+        self._set_value(self._locals.icpk, Float(0))
+        self._set_value(self._locals.cvm, Float(0))
+        self._set_value(self._locals.mass, Float(0))
+        self._set_value(self._locals.dmass, Float(0))
+        self._set_value_K_interface(self._locals.z_interface, Float(0))
+        self._set_value_K_interface(self._locals.z_interface_modified, Float(0))
+        self._set_value_IJ(self._locals.rain, Float(0))
+        self._set_value_IJ(self._locals.graupel, Float(0))
+        self._set_value_IJ(self._locals.snow, Float(0))
+        self._set_value_IJ(self._locals.ice, Float(0))
         self._set_IJ_mask(self._locals.precip_fall, False)
 
         self._setup(
