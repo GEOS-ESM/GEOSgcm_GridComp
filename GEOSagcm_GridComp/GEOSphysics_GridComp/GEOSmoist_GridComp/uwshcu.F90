@@ -30,6 +30,9 @@ module uwshcu
      real     :: rkfre              ! fraction_of_tke_associated_with_vertical_velocity
      real     :: rkm                ! Factor controlling lateral mixing rate
      real     :: mixscale           ! Controls vertical structure of mixing
+     real     :: rkfre_hr           ! fraction_of_tke_associated_with_vertical_velocity High Resolution
+     real     :: rkm_hr             ! Factor controlling lateral mixing rate High Resolution
+     real     :: mixscale_hr        ! Controls vertical structure of mixing High Resolution
      real     :: detrhgt            ! Mixing rate increases above this height
      real     :: rmaxfrac           ! Maximum core updraft fraction
      real     :: mumin1             ! 
@@ -951,8 +954,6 @@ contains
     ! ----------------------- !
 
     real :: rle          !  For critical stopping distance for lateral entrainment [no unit]
-    real :: rkm          !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
-    real :: mixscale     !  Specify vertical structure of mixing rate
     real :: detrhgt      !  Mixing rate increases above this height to speed detrainment
     real :: rmaxfrac     !  Maximum allowable 'core' updraft fraction
     real :: mumin1       !  Normalized CIN ('mu') corresponding to 'rmaxfrac' at the PBL top
@@ -1004,8 +1005,6 @@ contains
     rpen             = shlwparams%rpen
     cridist_opt      = shlwparams%cridist_opt
     rle       = shlwparams%rle      !  For critical stopping distance for lateral entrainment [no unit]
-    rkm       = shlwparams%rkm      !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
-    mixscale  = shlwparams%mixscale !  Specifies vertical structure of mixing rate
     detrhgt   = shlwparams%detrhgt  !  Specifies vertical structure of mixing rate
     rmaxfrac  = shlwparams%rmaxfrac !  Maximum allowable 'core' updraft fraction
     mumin1    = shlwparams%mumin1
