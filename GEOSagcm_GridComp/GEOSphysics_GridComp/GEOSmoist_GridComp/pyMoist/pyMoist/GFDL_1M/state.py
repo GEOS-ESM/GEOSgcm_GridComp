@@ -88,7 +88,7 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
-    covariance_liquid_water_static_energy_and_total_water_specific_humudity: Quantity = dataclasses.field(
+    covariance_liquid_water_static_energy_and_total_water_specific_humidity: Quantity = dataclasses.field(
         metadata={
             "name": "covariance_liquid_water_static_energy_and_total_water_specific_humudity",
             "dims": [X_DIM, Y_DIM, Z_DIM],
