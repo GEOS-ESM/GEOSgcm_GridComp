@@ -230,7 +230,7 @@ class GEOSPyMoistWrapper:
 
         # UW
         self._UW_shallow_convection: Optional[ComputeUwshcuInv] = None
-        self.UW_config = None
+        self.UW_config: UWConfiguration | None = None
 
     @property
     def driver(self) -> Callable:
