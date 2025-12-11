@@ -187,7 +187,8 @@
 # ---- Run river routing model interactively 
 #
 #    0 : Default - NO
-#    1 : YES
+#    1 : YES without reservoir model
+#    2 : YES with reservoir model
 #
 # GEOSagcm=>RUN_ROUTE: 0
 # GEOSldas=>RUN_ROUTE: 0
