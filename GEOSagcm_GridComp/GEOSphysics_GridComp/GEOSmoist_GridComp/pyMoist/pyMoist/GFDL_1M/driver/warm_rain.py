@@ -789,9 +789,9 @@ class GFDL1MWarmRain(NDSLRuntime):
             driver_evaporation (out): in-driver non-anvil large scale evaporation (kg kg-1 s-1)
         """
         # reset locals
-        self._set_value(self._locals.dmass, 0)
-        self._set_value(self._locals.unused_m1, 0)
-        self._set_value_K_interface(self._locals.z_interface, 0)
+        self._set_value(self._locals.dmass, Float(0))
+        self._set_value(self._locals.unused_m1, Float(0))
+        self._set_value_K_interface(self._locals.z_interface, Float(0))
         self._set_IJ_mask(self._locals.precip_fall, False)
 
         self._warm_rain_step_1(
