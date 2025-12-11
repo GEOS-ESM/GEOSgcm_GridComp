@@ -82,13 +82,12 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-
         # initalize constants
         config = GFDL1MConfig(**self.constants)
 
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
+        locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Initalize saturation tables
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
@@ -96,17 +95,17 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
         state.t.field[:] = inputs["t"]
         state.u.field[:] = inputs["u"]
         state.v.field[:] = inputs["v"]
-        locals.p_mb.field[:] = inputs["local_p_mb"]
+        locals_.p_mb.field[:] = inputs["local_p_mb"]
         state.radiation_field.cloud_fraction.field[:] = inputs["radiation_cloud_fraction"]
         state.radiation_field.ice.field[:] = inputs["radiation_ice"]
         state.radiation_field.liquid.field[:] = inputs["radiation_liquid"]
-        locals.u_unmodified.field[:] = inputs["local_u_unmodified"]
-        locals.v_unmodified.field[:] = inputs["local_v_unmodified"]
+        locals_.u_unmodified.field[:] = inputs["local_u_unmodified"]
+        locals_.v_unmodified.field[:] = inputs["local_v_unmodified"]
         state.radiation_field.vapor.field[:] = inputs["radiation_vapor"]
         state.radiation_field.rain.field[:] = inputs["radiation_rain"]
         state.radiation_field.snow.field[:] = inputs["radiation_snow"]
         state.radiation_field.graupel.field[:] = inputs["radiation_graupel"]
-        locals.mass.field[:] = inputs["local_mass"]
+        locals_.mass.field[:] = inputs["local_mass"]
         state.cloud_fraction.convective.field[:] = inputs["cloud_fraction_convective"]
         state.cloud_fraction.large_scale.field[:] = inputs["cloud_fraction_large_scale"]
         state.mixing_ratio.convective_liquid.field[:] = inputs["mixing_ratio_convective_liquid"]
@@ -218,27 +217,27 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
             dvdt_macro=state.tendencies.dvdt_macro,
             draindt_macro=state.tendencies.draindt_macro,
             dtdt_friction_pressure_weighted=state.tendencies.dtdt_friction_pressure_weighted,
-            local_p_mb=locals.p_mb,
-            local_mass=locals.mass,
-            local_u_unmodified=locals.u_unmodified,
-            local_v_unmodified=locals.v_unmodified,
+            local_p_mb=locals_.p_mb,
+            local_mass=locals_.mass,
+            local_u_unmodified=locals_.u_unmodified,
+            local_v_unmodified=locals_.v_unmodified,
         )
 
         return {
             "t": state.t.field[:],
             "u": state.u.field[:],
             "v": state.v.field[:],
-            "local_p_mb": locals.p_mb.field[:],
+            "local_p_mb": locals_.p_mb.field[:],
             "radiation_cloud_fraction": state.radiation_field.cloud_fraction.field[:],
             "radiation_ice": state.radiation_field.ice.field[:],
             "radiation_liquid": state.radiation_field.liquid.field[:],
-            "local_u_unmodified": locals.u_unmodified.field[:],
-            "local_v_unmodified": locals.v_unmodified.field[:],
+            "local_u_unmodified": locals_.u_unmodified.field[:],
+            "local_v_unmodified": locals_.v_unmodified.field[:],
             "radiation_vapor": state.radiation_field.vapor.field[:],
             "radiation_rain": state.radiation_field.rain.field[:],
             "radiation_snow": state.radiation_field.snow.field[:],
             "radiation_graupel": state.radiation_field.graupel.field[:],
-            "local_mass": locals.mass.field[:],
+            "local_mass": locals_.mass.field[:],
             "cloud_fraction_convective": state.cloud_fraction.convective.field[:],
             "cloud_fraction_large_scale": state.cloud_fraction.large_scale.field[:],
             "mixing_ratio_convective_liquid": state.mixing_ratio.convective_liquid.field[:],

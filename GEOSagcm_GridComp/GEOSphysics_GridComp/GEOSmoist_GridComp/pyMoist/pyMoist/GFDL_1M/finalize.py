@@ -241,20 +241,6 @@ class GFDL1MFinalize(NDSLRuntime):
         # init NDSLRuntime
         super().__init__(stencil_factory)
 
-        # NOTE disabled because state has changed
-        # orchestrate(
-        #     obj=self,
-        #     config=stencil_factory.config.dace_config,
-        #     dace_compiletime_args=[
-        #         "mixing_ratios",
-        #         "cloud_fractions",
-        #         "masks",
-        #         "outputs",
-        #         "temporaries",
-        #         "driver",
-        #     ],
-        # )
-
         # make the config, pre-build stencil, and saturation tables visible at runtime
         self.config = config
         self.update_tendencies = update_tendencies
