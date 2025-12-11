@@ -70,7 +70,7 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
     def compute(self, inputs):
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals_ = GFDL1MLocals.zeros(self.quantity_factory)
+        locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # initalize constants
         config = GFDL1MConfig(**self.constants)
