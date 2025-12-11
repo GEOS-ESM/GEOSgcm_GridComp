@@ -1,3 +1,5 @@
+from typing import Any
+
 from f90nml import Namelist
 
 from ndsl import StencilFactory
@@ -43,7 +45,7 @@ class TranslateGFDL_1M_Setup(TranslateFortranData2Py):
             "mixing_ratio_convective_ice": {},
         }
 
-        self.out_vars = {
+        self.out_vars: dict[str, Any] = {
             "local_p_interface_mb": {},
             "local_p_mb": {},
             "local_edge_height_above_surface": {},
@@ -80,13 +82,12 @@ class TranslateGFDL_1M_Setup(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-
         # initalize constants
         config = GFDL1MConfig(**self.constants)
 
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
+        locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # fill relavent parts of dataclasses
         state.p_interface.field[:] = inputs["p_interface"]
@@ -152,36 +153,36 @@ class TranslateGFDL_1M_Setup(TranslateFortranData2Py):
             draindt_macro=state.tendencies.draindt_macro,
             dsnowdt_macro=state.tendencies.dsnowdt_macro,
             dgraupeldt_macro=state.tendencies.dgraupeldt_macro,
-            local_p_mb=locals.p_mb,
-            local_p_interface_mb=locals.p_interface_mb,
-            local_edge_height_above_surface=locals.edge_height_above_surface,
-            local_layer_height_above_surface=locals.layer_height_above_surface,
-            local_layer_thickness=locals.layer_thickness,
-            local_layer_thickness_negative=locals.layer_thickness_negative,
-            local_dp=locals.dp,
-            local_mass=locals.mass,
-            local_mass_inverse=locals.mass_inverse,
-            local_saturation_specific_humidity=locals.saturation_specific_humidity,
-            local_dsaturation_specific_humidity=locals.dsaturation_specific_humidity,
-            local_u_unmodified=locals.u_unmodified,
-            local_v_unmodified=locals.v_unmodified,
-            local_lcl_level=locals.lcl_level,
+            local_p_mb=locals_.p_mb,
+            local_p_interface_mb=locals_.p_interface_mb,
+            local_edge_height_above_surface=locals_.edge_height_above_surface,
+            local_layer_height_above_surface=locals_.layer_height_above_surface,
+            local_layer_thickness=locals_.layer_thickness,
+            local_layer_thickness_negative=locals_.layer_thickness_negative,
+            local_dp=locals_.dp,
+            local_mass=locals_.mass,
+            local_mass_inverse=locals_.mass_inverse,
+            local_saturation_specific_humidity=locals_.saturation_specific_humidity,
+            local_dsaturation_specific_humidity=locals_.dsaturation_specific_humidity,
+            local_u_unmodified=locals_.u_unmodified,
+            local_v_unmodified=locals_.v_unmodified,
+            local_lcl_level=locals_.lcl_level,
         )
 
         return {
-            "local_p_interface_mb": locals.p_interface_mb.field[:],
-            "local_p_mb": locals.p_mb.field[:],
-            "local_edge_height_above_surface": locals.edge_height_above_surface.field[:],
-            "local_layer_height_above_surface": locals.layer_height_above_surface.field[:],
-            "local_layer_thickness": locals.layer_thickness.field[:],
-            "local_dp": locals.dp.field[:],
-            "local_mass": locals.mass.field[:],
-            "local_mass_inverse": locals.mass_inverse.field[:],
-            "local_u_unmodified": locals.u_unmodified.field[:],
-            "local_v_unmodified": locals.v_unmodified.field[:],
-            "local_saturation_specific_humidity": locals.saturation_specific_humidity.field[:],
-            "local_dsaturation_specific_humidity": locals.dsaturation_specific_humidity.field[:],
-            "local_lcl_level": locals.lcl_level.field[:] + 1,  # add one to shift back to fortran indexing
+            "local_p_interface_mb": locals_.p_interface_mb.field[:],
+            "local_p_mb": locals_.p_mb.field[:],
+            "local_edge_height_above_surface": locals_.edge_height_above_surface.field[:],
+            "local_layer_height_above_surface": locals_.layer_height_above_surface.field[:],
+            "local_layer_thickness": locals_.layer_thickness.field[:],
+            "local_dp": locals_.dp.field[:],
+            "local_mass": locals_.mass.field[:],
+            "local_mass_inverse": locals_.mass_inverse.field[:],
+            "local_u_unmodified": locals_.u_unmodified.field[:],
+            "local_v_unmodified": locals_.v_unmodified.field[:],
+            "local_saturation_specific_humidity": locals_.saturation_specific_humidity.field[:],
+            "local_dsaturation_specific_humidity": locals_.dsaturation_specific_humidity.field[:],
+            "local_lcl_level": locals_.lcl_level.field[:] + 1,  # add one to shift back to fortran indexing
             "lower_tropospheric_stability": state.lower_tropospheric_stability.field[:],
             "estimated_inversion_strength": state.estimated_inversion_strength.field[:],
             "mixing_ratio_rain": state.mixing_ratio.rain.field[:],

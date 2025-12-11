@@ -1,6 +1,6 @@
 import dataclasses
 
-from ndsl import NDSLRuntime, Quantity, QuantityFactory, State, StencilFactory
+from ndsl import Local, LocalState, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
@@ -189,8 +189,8 @@ def update_precipitaiton(
 
 
 @dataclasses.dataclass
-class GFDL1MSetupLocals(State):
-    th: Quantity = dataclasses.field(
+class GFDL1MSetupLocals(LocalState):
+    th: Local = dataclasses.field(
         metadata={
             "name": "th",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -199,7 +199,7 @@ class GFDL1MSetupLocals(State):
             "dtype": Float,
         }
     )
-    t700: Quantity = dataclasses.field(
+    t700: Local = dataclasses.field(
         metadata={
             "name": "t700",
             "dims": [X_DIM, Y_DIM],
@@ -208,7 +208,7 @@ class GFDL1MSetupLocals(State):
             "dtype": Float,
         }
     )
-    th700: Quantity = dataclasses.field(
+    th700: Local = dataclasses.field(
         metadata={
             "name": "th700",
             "dims": [X_DIM, Y_DIM],
@@ -217,7 +217,7 @@ class GFDL1MSetupLocals(State):
             "dtype": Float,
         }
     )
-    z700: Quantity = dataclasses.field(
+    z700: Local = dataclasses.field(
         metadata={
             "name": "z700",
             "dims": [X_DIM, Y_DIM],
@@ -260,20 +260,7 @@ class GFDL1MSetup(NDSLRuntime):
         self._prepare_tendencies = prepare_tendencies
 
         # initalize locals
-        self._locals = GFDL1MSetupLocals.zeros(quantity_factory)
-
-        # NOTE disabled orchestration because the data map has changed
-        # orchestrate(
-        #     obj=self,
-        #     config=stencil_factory.config.dace_config,
-        #     dace_compiletime_args=[
-        #         "mixing_ratios",
-        #         "cloud_fractions",
-        #         "masks",
-        #         "outputs",
-        #         "temporaries",
-        #     ],
-        # )
+        self._locals = GFDL1MSetupLocals.make_locals(quantity_factory)
 
         # construct stencils
         self._calculate_derived_states = stencil_factory.from_dims_halo(
