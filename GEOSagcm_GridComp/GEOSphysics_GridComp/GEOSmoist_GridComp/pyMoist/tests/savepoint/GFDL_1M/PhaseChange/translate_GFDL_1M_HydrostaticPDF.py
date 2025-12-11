@@ -51,13 +51,12 @@ class TranslateGFDL_1M_HydrostaticPDF(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-
         # initalize constants
         config = GFDL1MConfig(**self.constants)
 
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
+        locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Internal from wrapper class needed for this test
         alpha = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -69,7 +68,7 @@ class TranslateGFDL_1M_HydrostaticPDF(TranslateFortranData2Py):
         state.convection_fraction.field[:] = inputs["convection_fraction"]
         state.surface_type.field[:] = inputs["surface_type"]
         alpha.field[:] = inputs["local_alpha"]
-        locals.p_mb.field[:] = inputs["local_p_mb"]
+        locals_.p_mb.field[:] = inputs["local_p_mb"]
         state.mixing_ratio.vapor.field[:] = inputs["mixing_ratio_vapor"]
         state.mixing_ratio.large_scale_liquid.field[:] = inputs["mixing_ratio_large_scale_liquid"]
         state.mixing_ratio.convective_liquid.field[:] = inputs["mixing_ratio_convective_liquid"]
@@ -97,7 +96,7 @@ class TranslateGFDL_1M_HydrostaticPDF(TranslateFortranData2Py):
             alpha=alpha,
             convection_fraction=state.convection_fraction,
             surface_type=state.surface_type,
-            p_mb=locals.p_mb,
+            p_mb=locals_.p_mb,
             vapor=state.mixing_ratio.vapor,
             large_scale_liquid=state.mixing_ratio.large_scale_liquid,
             convective_liquid=state.mixing_ratio.convective_liquid,

@@ -38,18 +38,17 @@ class TranslateGFDL_1M_Evaporate(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-
         # initalize constants
         config = GFDL1MConfig(**self.constants)
 
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
+        locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Initalize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        locals.p_mb.field[:] = inputs["local_p_mb"]
+        locals_.p_mb.field[:] = inputs["local_p_mb"]
         state.t.field[:] = inputs["t"]
         state.mixing_ratio.vapor.field[:] = inputs["mixing_ratio_vapor"]
         state.mixing_ratio.convective_liquid.field[:] = inputs["mixing_ratio_convective_liquid"]
@@ -57,7 +56,7 @@ class TranslateGFDL_1M_Evaporate(TranslateFortranData2Py):
         state.cloud_fraction.convective.field[:] = inputs["cloud_fraction_convective"]
         state.concentration.liquid.field[:] = inputs["concentration_liquid"]
         state.concentration.ice.field[:] = inputs["concentration_ice"]
-        locals.saturation_specific_humidity.field[:] = inputs["local_saturation_specific_humidity"]
+        locals_.saturation_specific_humidity.field[:] = inputs["local_saturation_specific_humidity"]
         state.cloud_liquid_evaporation.field[:] = inputs["cloud_liquid_evaporation"]
 
         # construct test stencil
@@ -67,7 +66,7 @@ class TranslateGFDL_1M_Evaporate(TranslateFortranData2Py):
             externals={"DT_MOIST": config.DT_MOIST, "CCW_EVAP_EFF": config.CCW_EVAP_EFF},
         )
         code(
-            p_mb=locals.p_mb,
+            p_mb=locals_.p_mb,
             t=state.t,
             vapor=state.mixing_ratio.vapor,
             convective_liquid=state.mixing_ratio.convective_liquid,
@@ -75,12 +74,12 @@ class TranslateGFDL_1M_Evaporate(TranslateFortranData2Py):
             convective_cloud_fraction=state.cloud_fraction.convective,
             liquid_concentration=state.concentration.liquid,
             ice_concentration=state.concentration.ice,
-            saturation_specific_humidity=locals.saturation_specific_humidity,
+            saturation_specific_humidity=locals_.saturation_specific_humidity,
             evaporation=state.cloud_liquid_evaporation,
         )
 
         return {
-            "local_p_mb": locals.p_mb.field[:],
+            "local_p_mb": locals_.p_mb.field[:],
             "t": state.t.field[:],
             "mixing_ratio_vapor": state.mixing_ratio.vapor.field[:],
             "mixing_ratio_convective_liquid": state.mixing_ratio.convective_liquid.field[:],
@@ -88,6 +87,6 @@ class TranslateGFDL_1M_Evaporate(TranslateFortranData2Py):
             "cloud_fraction_convective": state.cloud_fraction.convective.field[:],
             "concentration_liquid": state.concentration.liquid.field[:],
             "concentration_ice": state.concentration.ice.field[:],
-            "local_saturation_specific_humidity": locals.saturation_specific_humidity.field[:],
+            "local_saturation_specific_humidity": locals_.saturation_specific_humidity.field[:],
             "cloud_liquid_evaporation": state.cloud_liquid_evaporation.field[:],
         }

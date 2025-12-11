@@ -55,7 +55,7 @@ class TranslateGFDL_1M_PhaseChange(TranslateFortranData2Py):
 
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
+        locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Initalize saturation tables
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
@@ -73,12 +73,12 @@ class TranslateGFDL_1M_PhaseChange(TranslateFortranData2Py):
         state.mixing_ratio.large_scale_liquid.field[:] = inputs["mixing_ratio_large_scale_liquid"]
         state.cloud_fraction.large_scale.field[:] = inputs["cloud_fraction_large_scale"]
         state.cloud_fraction.convective.field[:] = inputs["cloud_fraction_convective"]
-        locals.lcl_level.field[:] = inputs["local_lcl_level"]
-        locals.p_mb.field[:] = inputs["local_p_mb"]
-        locals.p_interface_mb.field[:] = inputs["local_p_interface_mb"]
+        locals_.lcl_level.field[:] = inputs["local_lcl_level"]
+        locals_.p_mb.field[:] = inputs["local_p_mb"]
+        locals_.p_interface_mb.field[:] = inputs["local_p_interface_mb"]
         state.area.field[:] = inputs["area"]
         state.hydrostatic_pdf_iterations.field[:] = inputs["hydrostatic_pdf_iterations"]
-        locals.saturation_specific_humidity.field[:] = inputs["local_saturation_specific_humidity"]
+        locals_.saturation_specific_humidity.field[:] = inputs["local_saturation_specific_humidity"]
         state.cloud_liquid_evaporation.field[:] = inputs["cloud_liquid_evaporation"]
         state.cloud_ice_sublimation.field[:] = inputs["cloud_ice_sublimation"]
         state.relative_humidity_after_pdf.field[:] = inputs["relative_humidity_after_pdf"]
@@ -113,10 +113,10 @@ class TranslateGFDL_1M_PhaseChange(TranslateFortranData2Py):
             cloud_ice_sublimation=state.cloud_ice_sublimation,
             convection_fraction=state.convection_fraction,
             surface_type=state.surface_type,
-            local_lcl_level=locals.lcl_level,
-            local_p_mb=locals.p_mb,
-            local_p_interface_mb=locals.p_interface_mb,
-            local_saturation_specific_humidity=locals.saturation_specific_humidity,
+            local_lcl_level=locals_.lcl_level,
+            local_p_mb=locals_.p_mb,
+            local_p_interface_mb=locals_.p_interface_mb,
+            local_saturation_specific_humidity=locals_.saturation_specific_humidity,
         )
 
         return {
@@ -133,12 +133,12 @@ class TranslateGFDL_1M_PhaseChange(TranslateFortranData2Py):
             "mixing_ratio_large_scale_liquid": state.mixing_ratio.large_scale_liquid.field[:],
             "cloud_fraction_large_scale": state.cloud_fraction.large_scale.field[:],
             "cloud_fraction_convective": state.cloud_fraction.convective.field[:],
-            "local_lcl_level": locals.lcl_level.field[:],
-            "local_p_mb": locals.p_mb.field[:],
-            "local_p_interface_mb": locals.p_interface_mb.field[:],
+            "local_lcl_level": locals_.lcl_level.field[:],
+            "local_p_mb": locals_.p_mb.field[:],
+            "local_p_interface_mb": locals_.p_interface_mb.field[:],
             "area": state.area.field[:],
             "hydrostatic_pdf_iterations": state.hydrostatic_pdf_iterations.field[:],
-            "local_saturation_specific_humidity": locals.saturation_specific_humidity.field[:],
+            "local_saturation_specific_humidity": locals_.saturation_specific_humidity.field[:],
             "cloud_liquid_evaporation": state.cloud_liquid_evaporation.field[:],
             "cloud_ice_sublimation": state.cloud_ice_sublimation.field[:],
             "relative_humidity_after_pdf": state.relative_humidity_after_pdf.field[:],

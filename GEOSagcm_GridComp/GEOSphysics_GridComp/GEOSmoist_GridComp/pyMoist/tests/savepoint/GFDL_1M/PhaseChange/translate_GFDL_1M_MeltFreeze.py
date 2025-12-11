@@ -6,7 +6,6 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 from pyMoist.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
@@ -35,13 +34,11 @@ class TranslateGFDL_1M_MeltFreeze(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-
         # initalize constants
         config = GFDL1MConfig(**self.constants)
 
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
 
         # Initalize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)

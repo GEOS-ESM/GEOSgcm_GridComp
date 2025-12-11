@@ -2,9 +2,7 @@
 I/O and errorhandling is performed here.
 Calculations can be found in deeper functions."""
 
-import dataclasses
-
-from ndsl import NDSLRuntime, Quantity, QuantityFactory, State, StencilFactory
+from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
 from pyMoist.constants import FLOAT_TINY
@@ -16,19 +14,6 @@ from pyMoist.GFDL_1M.PhaseChange.rh_calculations import fill_rh_crit_export, rh_
 from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.saturation_tables import SaturationVaporPressureTable
 from pyMoist.shared_incloud_processes import fix_up_clouds
-
-
-@dataclasses.dataclass
-class Locals(State):
-    alpha: Quantity = dataclasses.field(
-        metadata={
-            "name": "alpha",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
 
 
 class PhaseChange(NDSLRuntime):
@@ -46,12 +31,6 @@ class PhaseChange(NDSLRuntime):
         # init NDSLRuntime
         super().__init__(stencil_factory)
 
-        # NOTE disabled because state has changed
-        # orchestrate(
-        #     obj=self,
-        #     config=stencil_factory.config.dace_config,
-        #     dace_compiletime_args=["diagnostics"],
-        # )
         if not config.USE_BERGERON:
             raise NotImplementedError(
                 "Untested option for use_bergeron. Code may be missing or incomplete. "
@@ -59,7 +38,7 @@ class PhaseChange(NDSLRuntime):
             )
 
         if config.PDFSHAPE >= 5:
-            raise NotImplementedError(f"PDF_SHAPE={config.PDFSHAPE} hasn't been ported" "from the Fortran")
+            raise NotImplementedError(f"PDF_SHAPE={config.PDFSHAPE} hasn't been portedfrom the Fortran")
 
         if config.PDFSHAPE > 1 and config.PDFSHAPE < 5:
             raise NotImplementedError(
@@ -72,7 +51,7 @@ class PhaseChange(NDSLRuntime):
         self.saturation_tables = saturation_tables
 
         # innitalize locals
-        self.locals = Locals.zeros(quantity_factory)
+        self._alpha: Local = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM], Float)
 
         # construct stencils
         self._rh_calculations = stencil_factory.from_dims_halo(
@@ -175,14 +154,14 @@ class PhaseChange(NDSLRuntime):
             p_interface_mb=local_p_interface_mb,
             area=area,
             lcl_level=local_lcl_level,
-            alpha=self.locals.alpha,
+            alpha=self._alpha,
         )
 
         if critical_relative_humidity_for_pdf is not None:
-            self._fill_rh_crit_export(self.locals.alpha, critical_relative_humidity_for_pdf)
+            self._fill_rh_crit_export(self._alpha, critical_relative_humidity_for_pdf)
 
         self._hydrostatic_pdf(
-            alpha=self.locals.alpha,
+            alpha=self._alpha,
             convection_fraction=convection_fraction,
             surface_type=surface_type,
             p_mb=local_p_mb,

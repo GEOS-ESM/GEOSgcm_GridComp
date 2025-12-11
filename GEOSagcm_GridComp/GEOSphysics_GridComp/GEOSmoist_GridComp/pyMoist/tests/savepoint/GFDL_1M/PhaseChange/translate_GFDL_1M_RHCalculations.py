@@ -9,7 +9,6 @@ from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.PhaseChange.rh_calculations import rh_calculations
 from pyMoist.GFDL_1M.state import GFDL1MState
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 class TranslateGFDL_1M_RHCalculations(TranslateFortranData2Py):
@@ -39,20 +38,17 @@ class TranslateGFDL_1M_RHCalculations(TranslateFortranData2Py):
 
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals = GFDL1MLocals.zeros(self.quantity_factory)
+        locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Internal from wrapper class needed for this test
         alpha = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
-        # Initalize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
-
         # fill relavent parts of dataclasses
         state.estimated_inversion_strength.field[:] = inputs["estimated_inversion_strength"]
-        locals.lcl_level.field[:] = inputs["local_lcl_level"]
+        locals_.lcl_level.field[:] = inputs["local_lcl_level"]
         state.area.field[:] = inputs["area"]
-        locals.p_interface_mb.field[:, :, -1] = inputs["top_of_local_p_interface_mb"]
-        locals.p_mb.field[:] = inputs["local_p_mb"]
+        locals_.p_interface_mb.field[:, :, -1] = inputs["top_of_local_p_interface_mb"]
+        locals_.p_mb.field[:] = inputs["local_p_mb"]
         alpha.field[:] = inputs["local_alpha"]
 
         # construct test stencil
@@ -67,18 +63,18 @@ class TranslateGFDL_1M_RHCalculations(TranslateFortranData2Py):
         )
         code(
             estimated_inversion_strength=state.estimated_inversion_strength,
-            p_mb=locals.p_mb,
-            p_interface_mb=locals.p_interface_mb,
+            p_mb=locals_.p_mb,
+            p_interface_mb=locals_.p_interface_mb,
             area=state.area,
-            lcl_level=locals.lcl_level,
+            lcl_level=locals_.lcl_level,
             alpha=alpha,
         )
 
         return {
             "estimated_inversion_strength": state.estimated_inversion_strength.field[:],
-            "local_lcl_level": locals.lcl_level.field[:],
+            "local_lcl_level": locals_.lcl_level.field[:],
             "area": state.area.field[:],
-            "top_of_local_p_interface_mb": locals.p_interface_mb.field[:, :, -1],
-            "local_p_mb": locals.p_mb.field[:],
+            "top_of_local_p_interface_mb": locals_.p_interface_mb.field[:, :, -1],
+            "local_p_mb": locals_.p_mb.field[:],
             "local_alpha": alpha.field[:],
         }
