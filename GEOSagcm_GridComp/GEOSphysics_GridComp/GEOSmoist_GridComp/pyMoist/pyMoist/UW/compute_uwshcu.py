@@ -4425,17 +4425,29 @@ def calc_entrainment_mass_flux(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            thlu_emf[0, 0, 1] = thlu
-            qtu_emf[0, 0, 1] = qtu
-            uu_emf[0, 0, 1] = uu
-            vu_emf[0, 0, 1] = vu
+            thlu_emf = thlu
+            qtu_emf = qtu
+            uu_emf = uu
+            vu_emf = vu
             if dotransport == 1:
                 n = 0
                 while n < ncnst:
-                    tru_emf[0, 0, 1][n] = tru[0, 0, 0][n]
+                    tru_emf[0, 0, 0][n] = tru[0, 0, 0][n]
                     n += 1
 
-    with computation(BACKWARD), interval(...):
+    with computation(FORWARD), interval(...):
+        if not condensation:
+            thlu_emf[0, 0, 1] = thlu[0, 0, 1]
+            qtu_emf[0, 0, 1] = qtu[0, 0, 1]
+            uu_emf[0, 0, 1] = uu[0, 0, 1]
+            vu_emf[0, 0, 1] = vu[0, 0, 1]
+            if dotransport == 1:
+                n = 0
+                while n < ncnst:
+                    tru_emf[0, 0, 1][n] = tru[0, 0, 1][n]
+                    n += 1
+
+    with computation(BACKWARD), interval(0, -2):
         if not condensation:
             if K <= kpen - 1 and K >= kbup:  # Here, 'k' is an interface index at which
                 rhoifc0j = pifc0[0, 0, 1] / (
@@ -4466,22 +4478,24 @@ def calc_entrainment_mass_flux(
                     # at the interface by the amount of masses within the layer just
                     # above the penetratively entraining interface.
 
-                    emf = max(
+                    emf[0, 0, 1] = max(
                         max(
-                            umf_zint * ppen * rei.at(K=kpen) * rpen,
+                            umf_zint[0, 0, 1] * ppen * rei.at(K=kpen) * rpen,
                             -0.1 * rhoifc0j,
                         ),
                         -0.9 * dp0.at(K=kpen) / constants.MAPL_GRAV / dt,
                     )
-                    thlu_emf = thl0.at(K=kpen) + ssthl0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
-                    qtu_emf = qt0.at(K=kpen) + ssqt0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
-                    uu_emf = u0.at(K=kpen) + ssu0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
-                    vu_emf = v0.at(K=kpen) + ssv0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
+                    thlu_emf[0, 0, 1] = thl0.at(K=kpen) + ssthl0.at(K=kpen) * (
+                        pifc0[0, 0, 1] - pmid0.at(K=kpen)
+                    )
+                    qtu_emf[0, 0, 1] = qt0.at(K=kpen) + ssqt0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
+                    uu_emf[0, 0, 1] = u0.at(K=kpen) + ssu0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
+                    vu_emf[0, 0, 1] = v0.at(K=kpen) + ssv0.at(K=kpen) * (pifc0[0, 0, 1] - pmid0.at(K=kpen))
 
                     if dotransport == 1:
                         n = 0
                         while n < ncnst:
-                            tru_emf[0, 0, 0][n] = tr0.at(K=kpen, ddim=[n]) + sstr0.at(K=kpen, ddim=[n]) * (
+                            tru_emf[0, 0, 1][n] = tr0.at(K=kpen, ddim=[n]) + sstr0.at(K=kpen, ddim=[n]) * (
                                 pifc0[0, 0, 1] - pmid0.at(K=kpen)
                             )
                             n += 1
@@ -4494,62 +4508,63 @@ def calc_entrainment_mass_flux(
                     # emf(k).
 
                     if use_cumpenent == 1:  # Original Cumulative Penetrative Entrainment
-                        emf = max(
+                        emf[0, 0, 1] = max(
                             max(
-                                emf[0, 0, 1] - umf_zint * dp0[0, 0, 1] * rei[0, 0, 1] * rpen,
+                                emf[0, 0, 2] - umf_zint[0, 0, 1] * dp0[0, 0, 1] * rei[0, 0, 1] * rpen,
                                 -0.1 * rhoifc0j,
                             ),
                             -0.9 * dp0[0, 0, 1] / constants.MAPL_GRAV / dt,
                         )
-                        if abs(emf) > abs(emf[0, 0, 1]):
-                            thlu_emf = (
-                                thlu_emf[0, 0, 1] * emf[0, 0, 1] + thl0[0, 0, 1] * (emf - emf[0, 0, 1])
-                            ) / emf
-                            qtu_emf = (
-                                qtu_emf[0, 0, 1] * emf[0, 0, 1] + qt0[0, 0, 1] * (emf - emf[0, 0, 1])
-                            ) / emf
-                            uu_emf = (
-                                uu_emf[0, 0, 1] * emf[0, 0, 1] + u0[0, 0, 1] * (emf - emf[0, 0, 1])
-                            ) / emf
-                            vu_emf = (
-                                vu_emf[0, 0, 1] * emf[0, 0, 1] + v0[0, 0, 1] * (emf - emf[0, 0, 1])
-                            ) / emf
+                        if abs(emf[0, 0, 1]) > abs(emf[0, 0, 2]):
+                            thlu_emf[0, 0, 1] = (
+                                thlu_emf[0, 0, 2] * emf[0, 0, 2]
+                                + thl0[0, 0, 1] * (emf[0, 0, 1] - emf[0, 0, 2])
+                            ) / emf[0, 0, 1]
+                            qtu_emf[0, 0, 1] = (
+                                qtu_emf[0, 0, 2] * emf[0, 0, 2] + qt0[0, 0, 1] * (emf[0, 0, 1] - emf[0, 0, 2])
+                            ) / emf[0, 0, 1]
+                            uu_emf[0, 0, 1] = (
+                                uu_emf[0, 0, 2] * emf[0, 0, 2] + u0[0, 0, 1] * (emf[0, 0, 1] - emf[0, 0, 2])
+                            ) / emf[0, 0, 1]
+                            vu_emf[0, 0, 1] = (
+                                vu_emf[0, 0, 2] * emf[0, 0, 2] + v0[0, 0, 1] * (emf[0, 0, 1] - emf[0, 0, 2])
+                            ) / emf[0, 0, 1]
 
                             if dotransport == 1:
                                 n = 0
                                 while n < ncnst:
-                                    tru_emf[0, 0, 0][n] = (
-                                        tru_emf[0, 0, 1][n] * emf[0, 0, 1]
-                                        + tr0[0, 0, 1][n] * (emf - emf[0, 0, 1])
-                                    ) / emf
+                                    tru_emf[0, 0, 1][n] = (
+                                        tru_emf[0, 0, 2][n] * emf[0, 0, 2]
+                                        + tr0[0, 0, 1][n] * (emf[0, 0, 1] - emf[0, 0, 2])
+                                    ) / emf[0, 0, 1]
                                     n += 1
                         else:
-                            thlu_emf = thl0[0, 0, 1]
-                            qtu_emf = qt0[0, 0, 1]
-                            uu_emf = u0[0, 0, 1]
-                            vu_emf = v0[0, 0, 1]
+                            thlu_emf[0, 0, 1] = thl0[0, 0, 1]
+                            qtu_emf[0, 0, 1] = qt0[0, 0, 1]
+                            uu_emf[0, 0, 1] = u0[0, 0, 1]
+                            vu_emf[0, 0, 1] = v0[0, 0, 1]
                             if dotransport == 1:
                                 n = 0
                                 while n < ncnst:
-                                    tru_emf[0, 0, 0][n] = tr0[0, 0, 1][n]
+                                    tru_emf[0, 0, 1][n] = tr0[0, 0, 1][n]
                                     n += 1
 
                     else:  # Alternative Non-Cumulative Penetrative Entrainment
-                        emf = max(
+                        emf[0, 0, 1] = max(
                             max(
-                                -umf_zint * dp0[0, 0, 1] * rei[0, 0, 1] * rpen,
+                                -umf_zint[0, 0, 1] * dp0[0, 0, 1] * rei[0, 0, 1] * rpen,
                                 -0.1 * rhoifc0j,
                             ),
                             -0.9 * dp0[0, 0, 1] / constants.MAPL_GRAV / dt,
                         )
-                        thlu_emf = thl0[0, 0, 1]
-                        qtu_emf = qt0[0, 0, 1]
-                        uu_emf = u0[0, 0, 1]
-                        vu_emf = v0[0, 0, 1]
+                        thlu_emf[0, 0, 1] = thl0[0, 0, 1]
+                        qtu_emf[0, 0, 1] = qt0[0, 0, 1]
+                        uu_emf[0, 0, 1] = u0[0, 0, 1]
+                        vu_emf[0, 0, 1] = v0[0, 0, 1]
                         if dotransport == 1:
                             n = 0
                             while n < ncnst:
-                                tru_emf[0, 0, 0][n] = tr0[0, 0, 1][n]
+                                tru_emf[0, 0, 1][n] = tr0[0, 0, 1][n]
                                 n += 1
 
 
