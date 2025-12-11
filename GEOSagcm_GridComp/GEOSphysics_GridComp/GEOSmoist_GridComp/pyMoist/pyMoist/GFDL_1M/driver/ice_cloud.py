@@ -1,6 +1,4 @@
-import dataclasses
-
-from ndsl import NDSLRuntime, Quantity, QuantityFactory, State, StencilFactory
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import (
     FORWARD,
@@ -1588,19 +1586,6 @@ def update_precip_total(
         driver_sublimation = 0
 
 
-@dataclasses.dataclass
-class Locals(State):
-    sublimation: Quantity = dataclasses.field(
-        metadata={
-            "name": "sublimation",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-
-
 class GFDL1MIceCloud(NDSLRuntime):
     """
     Ice cloud microphysics processes
@@ -1624,7 +1609,7 @@ class GFDL1MIceCloud(NDSLRuntime):
         self.saturation_tables = saturation_tables
 
         # initalize locals
-        self._locals = Locals.zeros(quantity_factory)
+        self._sublimation = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM], Float)
 
         # construct stencils
         self._icloud_core = stencil_factory.from_dims_halo(
@@ -1760,7 +1745,7 @@ class GFDL1MIceCloud(NDSLRuntime):
             terminal_fall_snow,
             terminal_fall_graupel,
             terminal_fall_rain,
-            self._locals.sublimation,
+            self._sublimation,
             rh_limited,
             ccn,
             convection_fraction,
@@ -1773,5 +1758,5 @@ class GFDL1MIceCloud(NDSLRuntime):
 
         self._update_output(
             sublimation,
-            self._locals.sublimation,
+            self._sublimation,
         )
