@@ -367,6 +367,7 @@ class GEOSPyMoistWrapper:
         self._mapl_import.register("OMEGA", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_import.register("PDF_A", np.float32, [X_DIM, Y_DIM, Z_DIM])
         self._mapl_import.register("SLQT", np.float32, [X_DIM, Y_DIM, Z_DIM])
+        self._mapl_import.register("KH", np.float32, [X_DIM, Y_DIM, Z_DIM])
 
         self._mapl_export.register("CNV_FRC", np.float32, [X_DIM, Y_DIM], True)
         self._mapl_export.register("SRF_TYPE", np.float32, [X_DIM, Y_DIM], True)
@@ -457,6 +458,7 @@ class GEOSPyMoistWrapper:
                         rh_crit = None
 
                     # Outputs: model fields originating from within GFDL
+                    cov_key = "covariance_liquid_water_static_energy_and_total_water_specific_humidity"
                     self._GFDL_1M_state.update_move_memory(
                         {
                             "area": mapl_import.AREA,
@@ -466,9 +468,9 @@ class GEOSPyMoistWrapper:
                             "u": mapl_import.U,
                             "v": mapl_import.V,
                             "land_fraction": mapl_import.FRLAND,
-                            "scalar_diffusivity_interface": mapl_import.KH,  # ???
+                            "scalar_diffusivity_interface": mapl_import.KH,
                             "pdf_first_plume_fractional_area": mapl_import.PDF_A,
-                            "covariance_liquid_water_static_energy_and_total_water_specific_humidity": mapl_import.SQLT,
+                            cov_key: mapl_import.SQLT,
                             "surface_temperature": mapl_import.TS,
                             "sensible_heat_flux": mapl_import.SH,
                             "omega": mapl_import.OMEGA,
@@ -615,8 +617,7 @@ class GEOSPyMoistWrapper:
 
     @property
     def UW_shallow_convection(self) -> Callable:
-        if self._UW_shallow_convection is None:
-            assert self.UW_config is not None
+        if self._UW_shallow_convection is None and self.UW_config is not None:
             with StencilBackendCompilerOverride(
                 MPI.COMM_WORLD,
                 self.stencil_config.dace_config,
