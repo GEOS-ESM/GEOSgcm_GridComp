@@ -898,15 +898,15 @@ contains
     real, dimension(:), pointer :: WRIVER
     real, dimension(:), pointer :: WRES
 
-    real,    dimension(:), pointer :: KSTR_RS
-    real,    dimension(:), pointer :: KRIV_RS
-    real,    dimension(:), pointer :: LENGSC_RS
-    real,    dimension(:), pointer :: LSTR_RS
-    real,    dimension(:), pointer :: QIN_CLMT_RS
-    real,    dimension(:), pointer :: QRI_CLMT_RS
-    real,    dimension(:), pointer :: QSTR_CLMT_RS
-    integer, dimension(:), pointer :: DOWNID_RS
-    real,    dimension(:), pointer :: AREA_CATCH_RS
+    real, dimension(:), pointer :: KSTR_RS
+    real, dimension(:), pointer :: KRIV_RS
+    real, dimension(:), pointer :: LENGSC_RS
+    real, dimension(:), pointer :: LSTR_RS
+    real, dimension(:), pointer :: QIN_CLMT_RS
+    real, dimension(:), pointer :: QRI_CLMT_RS
+    real, dimension(:), pointer :: QSTR_CLMT_RS
+    real, dimension(:), pointer :: DOWNID_RS
+    real, dimension(:), pointer :: AREA_CATCH_RS
 
 
     real, dimension(:), pointer :: LRIVERMOUTH
