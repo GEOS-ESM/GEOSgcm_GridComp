@@ -4132,11 +4132,11 @@ def recalc_condensate(
     with computation(FORWARD), interval(...):
         if not condensation:
             if fer.at(K=kpen) * (-ppen) < 1.0e-4:
-                thlu_top = thlu.at(K=kpen - 1) + (
-                    thl0.at(K=kpen) + ssthl0.at(K=kpen) * (-ppen) / 2.0 - thlu.at(K=kpen - 1)
+                thlu_top = thlu.at(K=kpen) + (
+                    thl0.at(K=kpen) + ssthl0.at(K=kpen) * (-ppen) / 2.0 - thlu.at(K=kpen)
                 ) * fer.at(K=kpen) * (-ppen)
-                qtu_top = qtu.at(K=kpen - 1) + (
-                    qt0.at(K=kpen) + ssqt0.at(K=kpen) * (-ppen) / 2.0 - qtu.at(K=kpen - 1)
+                qtu_top = qtu.at(K=kpen) + (
+                    qt0.at(K=kpen) + ssqt0.at(K=kpen) * (-ppen) / 2.0 - qtu.at(K=kpen)
                 ) * fer.at(K=kpen) * (-ppen)
             else:
                 thlu_top = (
@@ -4144,7 +4144,7 @@ def recalc_condensate(
                 ) - (
                     thl0.at(K=kpen)
                     + ssthl0.at(K=kpen) * (-ppen) / 2.0
-                    - thlu.at(K=kpen - 1)
+                    - thlu.at(K=kpen)
                     + ssthl0.at(K=kpen) / fer.at(K=kpen)
                 ) * exp(
                     -fer.at(K=kpen) * (-ppen)
@@ -4154,7 +4154,7 @@ def recalc_condensate(
                 ) - (
                     qt0.at(K=kpen)
                     + ssqt0.at(K=kpen) * (-ppen) / 2.0
-                    - qtu.at(K=kpen - 1)
+                    - qtu.at(K=kpen)
                     + ssqt0.at(K=kpen) / fer.at(K=kpen)
                 ) * exp(
                     -fer.at(K=kpen) * (-ppen)

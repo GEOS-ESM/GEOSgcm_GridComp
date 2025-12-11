@@ -43,6 +43,7 @@ from .UW_translate_tests.translate_compute_cin_cinlcl import TranslateComputeCin
 from .UW_translate_tests.translate_define_prel_cbmf import TranslateDefinePrelCbmf
 from .UW_translate_tests.translate_define_env_properties import TranslateDefineEnvProperties
 from .UW_translate_tests.translate_calc_ppen import TranslateCalcPpen
+from .UW_translate_tests.translate_recalc_condensate import TranslateRecalcCondensate
 
 __all__ = [
     "TranslateGFDL_1M_driver",
