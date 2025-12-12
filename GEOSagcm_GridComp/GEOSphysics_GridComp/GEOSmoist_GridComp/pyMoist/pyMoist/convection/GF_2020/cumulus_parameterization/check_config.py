@@ -33,7 +33,7 @@ def check_config(
             "untested FRAC_MODIS option. Running untested code... proceed with caution"
         )
 
-    if cumulus_parameterization_config.MELT_GLAC != 1:
+    if cumulus_parameterization_config.MELT_GLAC != True:
         ndsl_log.warning(
             " GF2020 cumulus parameterization: partition_liquid_ice constructed with "
             "untested MELT_GLAC option. Running untested code... proceed with caution"

@@ -941,7 +941,7 @@ class CumulusParameterization:
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
-                if self.cumulus_parameterization_config.FIRST_GUESS_W == 0:
+                if self.cumulus_parameterization_config.FIRST_GUESS_W:
                     # calculate in-cloud/updraft air temperature for vertical velocity
                     # NOTE test GF2020_CumulusParameterization_UpdraftTemperature_{plume}:
                     # NOTE      deep ✅

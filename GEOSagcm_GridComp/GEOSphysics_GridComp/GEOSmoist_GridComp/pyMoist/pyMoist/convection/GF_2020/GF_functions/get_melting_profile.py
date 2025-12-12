@@ -36,7 +36,7 @@ def get_melting_profile(
 
     with computation(FORWARD), interval(...):
         ktf = k_end - 1
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_GLAC == True and cumulus == 1:
             pwo_solid_phase = 0.0
             pwo_eff = 0.0
             melting = 0.0
@@ -47,7 +47,7 @@ def get_melting_profile(
             total_pwo_solid_phase = 0.0
 
     with computation(FORWARD), interval(...):
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_GLAC == True and cumulus == 1:
             if K <= ktf - 1:
                 if ierr == 0:
                     dp = 100.0 * (po_cup - po_cup[0, 0, 1])
@@ -56,22 +56,15 @@ def get_melting_profile(
 
                     pwo_solid_phase = (1.0 - p_liq_ice) * pwo_eff
 
-                    total_pwo_solid_phase = (
-                        total_pwo_solid_phase
-                        + pwo_solid_phase * dp / constants.MAPL_GRAV
-                    )
+                    total_pwo_solid_phase = total_pwo_solid_phase + pwo_solid_phase * dp / constants.MAPL_GRAV
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == 1 and cumulus == 1:
+        if MELT_GLAC == True and cumulus == 1:
             if K <= ktf:
                 if ierr == 0:
                     melting = melting_layer * (
                         total_pwo_solid_phase
-                        / (
-                            100
-                            * (po_cup.at(K=0) - po_cup.at(K=ktf))
-                            / constants.MAPL_GRAV
-                        )
+                        / (100 * (po_cup.at(K=0) - po_cup.at(K=ktf)) / constants.MAPL_GRAV)
                     )
         else:
             melting = 0.0

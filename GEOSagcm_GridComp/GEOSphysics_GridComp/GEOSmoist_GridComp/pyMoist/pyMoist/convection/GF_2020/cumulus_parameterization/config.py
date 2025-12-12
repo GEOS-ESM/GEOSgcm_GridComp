@@ -5,6 +5,7 @@ from ndsl.dsl.typing import Float, Int, Bool
 
 @dataclass
 class GF2020CumulusParameterizationConfig:
+    # plume dependent (one for each plume)
     DOWNDRAFT_MAX_HEIGHT_LAND_SHALLOW: Float
     DOWNDRAFT_MAX_HEIGHT_LAND_MID: Float
     DOWNDRAFT_MAX_HEIGHT_LAND_DEEP: Float
@@ -44,6 +45,10 @@ class GF2020CumulusParameterizationConfig:
     ENTRAINMENT_RATE_SHALLOW: Float
     ENTRAINMENT_RATE_MID: Float
     ENTRAINMENT_RATE_DEEP: Float
+    C0_SHAL: Float
+    C0_MID: Float
+    C0_DEEP: Float
+    # plume independent
     PLUME_ORDER: Float
     ZERO_DIFF: Int
     MOIST_TRIGGER: Int
@@ -57,15 +62,12 @@ class GF2020CumulusParameterizationConfig:
     SATURATION_CALCULATION_CHOICE: Int
     ITEST: Int
     CLOUD_LEVEL_GRID: Int
-    MELT_GLAC: Int
+    MELT_GLAC: Bool
     FRAC_MODIS: Int
     BOUNDARY_CONDITION_METHOD: Int
     OVERSHOOT: Float
     USE_MEMORY: Int
     DOWNDRAFT: Int
-    FIRST_GUESS_W: Int
+    FIRST_GUESS_W: Bool
     USE_WETBULB: Int
     DICYCLE: Int
-    C0_DEEP: Float
-    C0_MID: Float
-    C0_SHAL: Float

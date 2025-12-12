@@ -162,7 +162,7 @@ def updraft_moisture_light(
     #             )
 
     #             # add glaciation effect on the MSE
-    #             if MELT_GLAC == 1:
+    #             if MELT_GLAC == True:
     #                 delta_cloud_mse_glac = (
     #                     cloud_liquid_before_rain_forced
     #                     * (
@@ -244,7 +244,7 @@ def get_melting_profile(
 
     with computation(FORWARD), interval(...):
         ktf = k_end - 1
-        if MELT_GLAC == 1 and plume == 2:
+        if MELT_GLAC == True and plume == 2:
             pwo_solid_phase = 0.0
             pwo_eff = 0.0
             local_melting = 0.0
@@ -255,7 +255,7 @@ def get_melting_profile(
             total_pwo_solid_phase: FloatFieldIJ = 0.0
 
     with computation(FORWARD), interval(...):
-        if MELT_GLAC == 1 and plume == 2:
+        if MELT_GLAC == True and plume == 2:
             if K <= ktf - 1:
                 if error_code[0, 0][plume] == 0:
                     dp = 100.0 * (
@@ -272,7 +272,7 @@ def get_melting_profile(
                     total_pwo_solid_phase = total_pwo_solid_phase + pwo_solid_phase * dp / constants.MAPL_GRAV
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == 1 and plume == 2:
+        if MELT_GLAC == True and plume == 2:
             if K <= ktf:
                 if error_code[0, 0][plume] == 0:
                     local_melting = local_melting_layer * (
