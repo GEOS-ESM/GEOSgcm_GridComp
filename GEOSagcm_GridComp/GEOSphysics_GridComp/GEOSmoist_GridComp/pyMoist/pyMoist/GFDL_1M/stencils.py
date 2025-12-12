@@ -121,6 +121,15 @@ def update_tendencies(
         dgraupel_dt = (graupel - dgraupel_dt) / DT_MOIST
 
 
+def get_total_concentration(
+    ice_concentration: FloatField,
+    liquid_concentration: FloatField,
+    total_concentration: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        total_concentration = ice_concentration + liquid_concentration
+
+
 def prepare_radiation(
     convective_cloud_fraction: FloatField,
     large_scale_cloud_fraction: FloatField,
