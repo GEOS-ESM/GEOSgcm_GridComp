@@ -61,15 +61,6 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
-    dz: Local = dataclasses.field(
-        metadata={
-            "name": "dz",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "Pa",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     dp: Local = dataclasses.field(
         metadata={
             "name": "dp",

@@ -43,6 +43,8 @@ class GFDL1M(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
     ):
+        super().__init__(stencil_factory)
+
         if stencil_factory.grid_indexing.n_halo != 0:
             raise ValueError("halo needs to be zero for GFDL Single Moment microphysics")
 
@@ -63,13 +65,12 @@ class GFDL1M(NDSLRuntime):
             quantity_factory=quantity_factory,
             config=config,
             saturation_tables=saturation_tables,
-            prepare_tendencies=self.prepare_tendencies,
         )
 
         self._phase_change = PhaseChange(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
-            GFDL_1M_config=config,
+            config=config,
             saturation_tables=saturation_tables,
         )
 
@@ -87,9 +88,9 @@ class GFDL1M(NDSLRuntime):
         )
 
         self._driver = GFDL1MDriver(
-            self.stencil_factory,
-            self.quantity_factory,
-            self.GFDL_1M_config,
+            stencil_factory,
+            quantity_factory,
+            config,
         )
 
         self._update_radiation = stencil_factory.from_dims_halo(
@@ -103,8 +104,8 @@ class GFDL1M(NDSLRuntime):
         self._finalize = GFDL1MFinalize(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
-            GFDL_1M_config=self.GFDL_1M_config,
-            saturation_tables=self.saturation_tables,
+            config=config,
+            saturation_tables=saturation_tables,
             update_tendencies=self._update_tendencies,
         )
 
@@ -264,7 +265,7 @@ class GFDL1M(NDSLRuntime):
             u=state.u,
             v=state.v,
             w=state.vertical_motion.velocity,
-            dz=self._locals.dz,
+            dz=self._locals.layer_thickness_negative,
             dp=self._locals.dp,
             area=state.area,
             land_fraction=state.land_fraction,
