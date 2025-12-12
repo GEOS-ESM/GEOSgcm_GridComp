@@ -46,6 +46,7 @@ from .UW_translate_tests.translate_calc_ppen import TranslateCalcPpen
 from .UW_translate_tests.translate_recalc_condensate import TranslateRecalcCondensate
 from .UW_translate_tests.translate_calc_entrainment_mass_flux import TranslateCalcEntrainmentMassFlux
 from .UW_translate_tests.translate_calc_pbl_fluxes import TranslateCalcPblFluxes
+from .UW_translate_tests.translate_buoyancy_sorting_fluxes import TranslateBuoyancySortingFluxes
 
 __all__ = [
     "TranslateGFDL_1M_driver",

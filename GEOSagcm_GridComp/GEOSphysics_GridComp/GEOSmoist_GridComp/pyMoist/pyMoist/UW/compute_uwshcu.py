@@ -5112,24 +5112,24 @@ def buoyancy_sorting_fluxes(
                 slflx[0, 0, 1] = (
                     constants.MAPL_CP
                     * exnifc0[0, 0, 1]
-                    * umf_zint
-                    * (thlu - (thl0[0, 0, 1] + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])))
+                    * umf_zint[0, 0, 1]
+                    * (thlu[0, 0, 1] - (thl0[0, 0, 1] + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])))
                 )
-                qtflx[0, 0, 1] = umf_zint * (
-                    qtu - (qt0[0, 0, 1] + ssqt0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
+                qtflx[0, 0, 1] = umf_zint[0, 0, 1] * (
+                    qtu[0, 0, 1] - (qt0[0, 0, 1] + ssqt0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
-                uflx[0, 0, 1] = umf_zint * (
-                    uu - (u0[0, 0, 1] + ssu0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
+                uflx[0, 0, 1] = umf_zint[0, 0, 1] * (
+                    uu[0, 0, 1] - (u0[0, 0, 1] + ssu0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
-                vflx[0, 0, 1] = umf_zint * (
-                    vu - (v0[0, 0, 1] + ssv0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
+                vflx[0, 0, 1] = umf_zint[0, 0, 1] * (
+                    vu[0, 0, 1] - (v0[0, 0, 1] + ssv0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
 
                 if dotransport == 1:
                     n = 0
                     while n < ncnst:
-                        trflx[0, 0, 1][n] = umf_zint * (
-                            tru[0, 0, 0][n]
+                        trflx[0, 0, 1][n] = umf_zint[0, 0, 1] * (
+                            tru[0, 0, 1][n]
                             - (tr0[0, 0, 1][n] + sstr0[0, 0, 1][n] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                         )
                         n += 1
