@@ -100,6 +100,8 @@ from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_C
     TranslateGF2020_CumulusParameterization_EntrainmentRates_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_Cumulus_Parameterization_ConvectiveCloudBaseLevel import (
+    TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_shallow,
+    TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_mid,
     TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep,
 )
 from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_Cumulus_Parameterization_DowndraftEntrainmentProfiles import (
@@ -168,10 +170,10 @@ from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumul
     TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_shallow,
 )
 
-from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftInCloudAirTemperature import (
-    TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_deep,
-    TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_mid,
-    TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_shallow,
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftTemperature import (
+    TranslateGF2020_CumulusParameterization_UpdraftTemperature_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftTemperature_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftTemperature_shallow,
 )
 
 from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftCIN import (

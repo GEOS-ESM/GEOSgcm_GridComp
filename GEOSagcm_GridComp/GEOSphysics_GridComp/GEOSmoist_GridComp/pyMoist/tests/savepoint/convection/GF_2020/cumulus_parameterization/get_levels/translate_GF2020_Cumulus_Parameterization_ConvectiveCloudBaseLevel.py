@@ -11,24 +11,27 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
-from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels.get_levels import (
-    ConvectiveCloudBaseLevel,
+from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
+    set_start_level,
+    get_convective_cloud_base_level,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
-class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(TranslateFortranData2Py):
+class TestCore:
     def __init__(
         self,
         grid: Grid,
         namelist: Namelist,
         stencil_factory: StencilFactory,
+        in_vars: dict,
+        out_vars: dict,
     ):
-        super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.in_vars["data_vars"] = {
+        in_vars["data_vars"] = {
             "error_code_ccb": {},
             "local_cap_max_increment_ccb": {},
             "local_cap_max_ccb": {},
@@ -49,7 +52,7 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
             "local_maximum_updraft_origin_level_ccb": {},
             "lcl_level_ccb": {},
             "updraft_lfc_level_ccb": {},
-            "cloud_top_ccb": {},
+            "cloud_top_level_ccb": {},
             "local_negative_buoyancy_depth_ccb": {},
             "local_frh_lfc_ccb": {},
             "t_perturbation_ccb": {},
@@ -60,19 +63,15 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
             "ocean_fraction_ccb": {},
         }
 
-        self.out_vars = self.in_vars["data_vars"].copy()
+        out_vars.update(in_vars["data_vars"])
 
-    def extra_data_load(self, data_loader: DataLoader):
-        self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
-
-    def compute_func(self, **inputs):
+    def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initalize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
+        config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, "deep"
+            cumulus_parameterization_config, plume_dependent_constants, plume
         )
 
         # initalize dataclasses
@@ -136,7 +135,7 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
             "updraft_lfc_level_ccb"
         ]
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "cloud_top_ccb"
+            "cloud_top_level_ccb"
         ]
         locals.negative_buoyancy_depth.data[:] = inputs["local_negative_buoyancy_depth_ccb"]
         locals.frh_lfc.data[:] = inputs["local_frh_lfc_ccb"]
@@ -147,26 +146,59 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
         locals.add_buoyancy.data[:] = inputs["local_add_buoyancy_ccb"]
         locals.ocean_fraction.data[:] = inputs["ocean_fraction_ccb"]
 
-        # initalize test code
-        code = ConvectiveCloudBaseLevel(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        code_part_1 = self.stencil_factory.from_dims_halo(
+            func=set_start_level,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+        code_part_2 = self.stencil_factory.from_dims_halo(
+            func=get_convective_cloud_base_level,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "OVERSHOOT": cumulus_parameterization_config.OVERSHOOT,
+                "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
+                "MOIST_TRIGGER": cumulus_parameterization_config.MOIST_TRIGGER,
+                "USE_MEMORY": cumulus_parameterization_config.USE_MEMORY,
+                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
+            },
         )
 
-        # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            code(
-                state=state,
-                locals=locals,
-                plume_dependent_constants=plume_dependent_constants,
+            code_part_1(
+                updraft_origin_level=state.output.updraft_origin_level,
+                start_level=locals.start_level,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
-            state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
-            state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] += 1
+            code_part_2(
+                error_code=state.output.error_code,
+                cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
+                cap_max=locals.cap_max,
+                updraft_origin_level=state.output.updraft_origin_level,
+                start_level=locals.start_level,
+                moist_static_energy_origin_level_forced=locals.moist_static_energy_origin_level_forced,
+                updraft_lfc_level=state.output.updraft_lfc_level,
+                maximum_updraft_origin_level=locals.maximum_updraft_origin_level,
+                negative_buoyancy_depth=locals.negative_buoyancy_depth,
+                frh_lfc=locals.frh_lfc,
+                geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                entrainment_rate=state.output.entrainment_rate,
+                environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+                environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                t_excess=locals.t_excess,
+                vapor_excess=locals.vapor_excess,
+                add_buoyancy=locals.add_buoyancy,
+                p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                vapor_forced=locals.vapor_forced,
+                environment_saturation_mixing_ratio_forced=locals.environment_saturation_mixing_ratio_forced,
+                ocean_fraction=locals.ocean_fraction,
+                cap_max_increment=locals.cap_max_increment,
+                t_perturbation=state.output.t_perturbation,
+                p_forced=state.input_output.p_forced,
+                cloud_top_level=state.output.cloud_top_level,
+                AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
-        # write output
         outputs = {
             "error_code_ccb": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_cap_max_increment_ccb": locals.cap_max_increment.field[:],
@@ -212,7 +244,9 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
             "updraft_lfc_level_ccb": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "cloud_top_ccb": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_level_ccb": state.output.cloud_top_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "local_negative_buoyancy_depth_ccb": locals.negative_buoyancy_depth.field[:],
             "local_frh_lfc_ccb": locals.frh_lfc.field[:],
             "t_perturbation_ccb": state.output.t_perturbation.field[:],
@@ -222,5 +256,74 @@ class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(Tran
             "local_add_buoyancy_ccb": locals.add_buoyancy.field[:],
             "ocean_fraction_ccb": locals.ocean_fraction.field[:],
         }
+
+        return outputs
+
+
+class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_shallow(TranslateFortranData2Py):
+    def __init__(
+        self,
+        grid: Grid,
+        namelist: Namelist,
+        stencil_factory: StencilFactory,
+    ):
+        super().__init__(grid, stencil_factory)
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = grid.quantity_factory
+
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
+
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("GF2020-constants")
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
+
+    def compute_func(self, **inputs):
+        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+
+        return outputs
+
+
+class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_mid(TranslateFortranData2Py):
+    def __init__(
+        self,
+        grid: Grid,
+        namelist: Namelist,
+        stencil_factory: StencilFactory,
+    ):
+        super().__init__(grid, stencil_factory)
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = grid.quantity_factory
+
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
+
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("GF2020-constants")
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
+
+    def compute_func(self, **inputs):
+        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+
+        return outputs
+
+
+class TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep(TranslateFortranData2Py):
+    def __init__(
+        self,
+        grid: Grid,
+        namelist: Namelist,
+        stencil_factory: StencilFactory,
+    ):
+        super().__init__(grid, stencil_factory)
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = grid.quantity_factory
+
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
+
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("GF2020-constants")
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
+
+    def compute_func(self, **inputs):
+        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
 
         return outputs

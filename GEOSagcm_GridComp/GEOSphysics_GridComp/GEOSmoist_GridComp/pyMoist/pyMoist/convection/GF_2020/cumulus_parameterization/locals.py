@@ -929,15 +929,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Int,
         }
     )
-    incloud_air_temp_forced: Quantity = dataclasses.field(
-        metadata={
-            "name": "incloud_air_temp_forced",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     cloud_vapor_mixing_ratio_forced: Quantity = dataclasses.field(
         metadata={
             "name": "incloud_water_vapor_mixing_ratio_forced",

@@ -11,10 +11,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
-from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy.moist_static_energy import (
-    FirstGuessMoistStaticEnergy,
+from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy import (
+    first_guess_moist_static_energy,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class TestCore:
@@ -32,7 +33,7 @@ class TestCore:
         in_vars["data_vars"] = {
             "error_code_firstmse": {},
             "local_start_level_firstmse": {},
-            "cloud_top_firstmse": {},
+            "cloud_top_level_firstmse": {},
             "mass_detrainment_updraft_forced_firstmse": {},
             "mass_entrainment_updraft_forced_firstmse": {},
             "local_normalized_massflux_updraft_firstmse": {},
@@ -77,7 +78,7 @@ class TestCore:
         ]
         locals.start_level.data[:] = inputs["local_start_level_firstmse"] - 1
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_firstmse"] - 1
+            inputs["cloud_top_level_firstmse"] - 1
         )
         state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["mass_detrainment_updraft_forced_firstmse"]
@@ -103,26 +104,35 @@ class TestCore:
         ]
 
         # initalize test code
-        code = FirstGuessMoistStaticEnergy(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        code = self.stencil_factory.from_dims_halo(
+            func=first_guess_moist_static_energy,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
-                state=state,
-                locals=locals,
-                plume_dependent_constants=plume_dependent_constants,
+                error_code=state.output.error_code,
+                start_level=locals.start_level,
+                cloud_top_level=state.output.cloud_top_level,
+                mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
+                mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
+                normalized_massflux_updraft=locals.normalized_massflux_updraft,
+                normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+                environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+                vapor_excess=locals.vapor_excess,
+                t_excess=locals.t_excess,
+                add_buoyancy=locals.add_buoyancy,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         # write output
         outputs = {
             "error_code_firstmse": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_start_level_firstmse": locals.start_level.field[:] + 1,
-            "cloud_top_firstmse": state.output.cloud_top_level.field[
+            "cloud_top_level_firstmse": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,

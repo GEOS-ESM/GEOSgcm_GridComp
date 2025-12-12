@@ -13,11 +13,115 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.updraft.stencils import (
-    cup_up_aa0,
-    cloud_work_function_zero,
-    in_cloud_updraft_air_temperature,
+from ndsl.dsl.typing import (
+    FloatField,
+    FloatFieldIJ,
+    IntFieldIJ,
+    Int,
 )
+from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+import pyMoist.constants as constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume
+
+
+def updraft_air_temperature(
+    error_code: IntFieldIJ_Plume,
+    updraft_t: FloatField,
+    cloud_moist_static_energy_forced: FloatField,
+    geopotential_height_cloud_levels_forced: FloatField,
+    cloud_vapor_mixing_ratio_forced: FloatField,
+    t_cloud_levels_forced: FloatField,
+    plume: Int,
+):
+    from __externals__ import FIRST_GUESS_W
+
+    with computation(PARALLEL), interval(0, -1):
+        if FIRST_GUESS_W == 0:
+            if error_code[0, 0][plume] == 0:
+                updraft_t = (1.0 / cumulus_parameterization_constants.CP) * (
+                    cloud_moist_static_energy_forced
+                    - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
+                    - cumulus_parameterization_constants.XLV * cloud_vapor_mixing_ratio_forced
+                )
+
+    with computation(PARALLEL), interval(-1, None):
+        if FIRST_GUESS_W == 0:
+            if error_code[0, 0][plume] == 0:
+                updraft_t = t_cloud_levels_forced
+
+    with computation(PARALLEL), interval(...):
+        if FIRST_GUESS_W == 0:
+            if error_code[0, 0][plume] != 0:
+                updraft_t = t_cloud_levels_forced
+
+
+def cup_up_aa0(
+    local_buoyancy: FloatField,
+    local_gamma_cloud_levels: FloatField,
+    cloud_top_level: IntFieldIJ_Plume,
+    updraft_lfc_level: IntFieldIJ_Plume,
+    updraft_origin_level: IntFieldIJ_Plume,
+    local_geopotential_height_cloud_levels: FloatField,
+    local_t_cloud_levels: FloatField,
+    local_normalized_massflux_updraft: FloatField,
+    local_integ: IntFieldIJ,
+    local_integ_interval: IntFieldIJ,
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+    local_cloud_work_function: FloatFieldIJ,
+):
+    from __externals__ import k_start
+
+    with computation(FORWARD), interval(...):
+        local_cloud_work_function = 0.0
+
+        if local_integ == 1:
+            if local_integ_interval == cumulus_parameterization_constants.BL:
+                kbeg = k_start
+                kend = updraft_lfc_level[0, 0][plume] - 2
+            elif local_integ_interval == cumulus_parameterization_constants.CIN:
+                kbeg = updraft_origin_level[0, 0][plume] - 1
+                kend = updraft_lfc_level[0, 0][plume] - 2
+
+        else:
+            kbeg = updraft_lfc_level[0, 0][plume] - 1
+            kend = cloud_top_level[0, 0][plume] - 1
+
+    with computation(FORWARD), interval(0, -1):
+        if error_code[0, 0][plume] == 0:
+            if K >= kbeg and K <= kend:
+                dz = local_geopotential_height_cloud_levels[0, 0, 1] - local_geopotential_height_cloud_levels
+                aa_1 = (
+                    local_normalized_massflux_updraft
+                    * (constants.MAPL_GRAV / (cumulus_parameterization_constants.CP * local_t_cloud_levels))
+                    * local_buoyancy
+                    / (1.0 + local_gamma_cloud_levels)
+                )
+                aa_2 = (
+                    local_normalized_massflux_updraft[0, 0, 1]
+                    * (
+                        constants.MAPL_GRAV
+                        / (cumulus_parameterization_constants.CP * local_t_cloud_levels[0, 0, 1])
+                    )
+                    * local_buoyancy[0, 0, 1]
+                    / (1.0 + local_gamma_cloud_levels[0, 0, 1])
+                )
+                da = 0.5 * (aa_1 + aa_2) * dz
+
+                local_cloud_work_function = local_cloud_work_function + da
+
+
+def cloud_work_function_zero(
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+    local_cloud_work_function: FloatFieldIJ,
+):
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if local_cloud_work_function == 0.0:
+                error_code[0, 0][plume] = 17
+                # ierrc[0,0][plume]="cloud work function zero"
 
 
 class UpdraftMassFluxProfile:
@@ -74,42 +178,6 @@ class UpdraftMoistStaticEnergyAndMomentumBudget:
 
     def __call__(self, *args, **kwds):
         pass
-
-
-class UpdraftInCloudUpdraftAirTemperature:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._in_cloud_updraft_air_temperature = stencil_factory.from_dims_halo(
-            func=in_cloud_updraft_air_temperature,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"FIRST_GUESS_W": cumulus_parameterization_config.FIRST_GUESS_W},
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-        self._in_cloud_updraft_air_temperature(
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            local_incloud_air_temp=locals.unspecifid_temperature,
-            local_cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
-            local_geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-            local_incloud_water_vapor_mixing_ratio=locals.cloud_vapor_mixing_ratio_forced,
-            local_t_cloud_levels_forced=locals.t_cloud_levels_forced,
-        )
 
 
 class UpdraftInitialWorkfunctions:

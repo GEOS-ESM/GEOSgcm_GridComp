@@ -22,7 +22,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS2,
     MAXENS3,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.profiles.profiles import (
+from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import (
     MeltingProfile,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (

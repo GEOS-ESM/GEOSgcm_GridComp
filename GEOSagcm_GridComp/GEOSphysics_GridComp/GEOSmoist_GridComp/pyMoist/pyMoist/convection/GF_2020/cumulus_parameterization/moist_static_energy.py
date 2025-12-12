@@ -1,12 +1,25 @@
+from ndsl import StencilFactory, QuantityFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from pyMoist.convection.GF_2020.config import GF2020Config
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    GF2020CumulusParameterizationConfig,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
+    GF2020CumulusParameterizationLocals,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
+from ndsl.logging import ndsl_log
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
 from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-import pyMoist.constants as constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     IntFieldIJ_Plume,
-    FloatFieldIJ_Plume,
     FloatField_Plume,
-    FloatFieldIJ_Ensemble,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
     get_cloud_boundary_conditions,
@@ -172,3 +185,110 @@ def moist_static_energy_inside_cloud(
             if K >= ktop + 2:
                 xhc = xhes_cup
                 xzu = 0.0
+
+
+class ParcelMoistStaticEnergy:
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
+
+        # construct stencils and functions
+        self._parcel_moist_static_energy = stencil_factory.from_dims_halo(
+            func=parcel_moist_static_energy,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
+            },
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+
+        if self.cumulus_parameterization_config.FRAC_MODIS != 1:
+            ndsl_log.warning(
+                " GF2020 cumulus parameterization called ParcelMoistStaticEnergy with "
+                "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
+            )
+
+        self._parcel_moist_static_energy(
+            error_code=state.output.error_code,
+            t_excess=locals.t_excess,
+            vapor_excess=locals.vapor_excess,
+            add_buoyancy=locals.add_buoyancy,
+            ocean_fraction=state.input.ocean_fraction,
+            updraft_origin_level=state.output.updraft_origin_level,
+            p=state.input_output.p_forced,
+            environmenet_moist_static_energy=locals.environment_moist_static_energy_cloud_levels,
+            environmenet_moist_static_energy_forced=locals.environment_moist_static_energy_cloud_levels_forced,
+            t_perturbation=state.output.t_perturbation,
+            moist_static_energy_origin_level=locals.moist_static_energy_origin_level,
+            moist_static_energy_origin_level_forced=locals.moist_static_energy_origin_level_forced,
+            AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
+
+
+class MoistStaticEnergyInsideCloud:
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
+
+        # construct stencils and functions
+        self._moist_static_energy_inside_cloud = stencil_factory.from_dims_halo(
+            func=moist_static_energy_inside_cloud,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._moist_static_energy_inside_cloud(
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            # start_level=,
+            # xhc=,
+            # xhkb=,
+            # ktop=,
+            # up_massdetro=,
+            # up_massentro=,
+            # xzu=,
+            # xhe=,
+            # p_liq_ice=,
+            # zqexec=,
+            # ztexec=,
+            # x_add_buoy=,
+            # qrco=,
+            # xhes_cup=,
+        )
+
+        # self._get_buoyancy(
+        # hc: FloatField,
+        # he_cup: FloatField,
+        # hes_cup: FloatField,
+        # error_code: IntField,
+        # kbcon: IntField,
+        # klcl: IntField,
+        # ktop: IntField,
+        # dby: FloatField,
+        # )

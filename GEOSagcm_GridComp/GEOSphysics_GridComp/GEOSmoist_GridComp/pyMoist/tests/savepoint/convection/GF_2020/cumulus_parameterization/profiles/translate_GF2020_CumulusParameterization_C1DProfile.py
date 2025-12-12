@@ -11,8 +11,9 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
-from pyMoist.convection.GF_2020.cumulus_parameterization.profiles.profiles import C1DProfile
+from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import C1DProfile
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class TestCore:

@@ -21,12 +21,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS2,
     MAXENS3,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy.buoyancy import (
-    GetBuoyancy,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
 )
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class TestCore:
@@ -45,12 +44,12 @@ class TestCore:
             "error_code_getbuoyancy": {},
             "lcl_level_getbuoyancy": {},
             "updraft_lfc_level_getbuoyancy": {},
-            "cloud_top_getbuoyancy": {},
-            "local_cloud_moist_static_energy_forced_getbuoyancy": {},
-            "local_env_moist_static_energy_cloud_levels_forced_getbuoyancy": {},
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_getbuoyancy": {},
-            "local_buoyancy_forced_getbuoyancy": {},
-            "local_geopotential_height_cloud_levels_forced_getbuoyancy": {},
+            "cloud_top_level_getbuoyancy": {},
+            "local_cloud_moist_static_energy_getbuoyancy": {},
+            "local_env_moist_static_energy_cloud_levels_getbuoyancy": {},
+            "local_env_saturation_moist_static_energy_cloud_levels_getbuoyancy": {},
+            "local_buoyancy_getbuoyancy": {},
+            "local_geopotential_height_cloud_levels_getbuoyancy": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -90,36 +89,38 @@ class TestCore:
             inputs["updraft_lfc_level_getbuoyancy"] - 1
         )
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_getbuoyancy"] - 1
+            inputs["cloud_top_level_getbuoyancy"] - 1
         )
-        locals.cloud_moist_static_energy_forced.data[:] = inputs[
-            "local_cloud_moist_static_energy_forced_getbuoyancy"
+        locals.cloud_moist_static_energy.data[:] = inputs["local_cloud_moist_static_energy_getbuoyancy"]
+        locals.environment_moist_static_energy_cloud_levels.data[:] = inputs[
+            "local_env_moist_static_energy_cloud_levels_getbuoyancy"
         ]
-        locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
-            "local_env_moist_static_energy_cloud_levels_forced_getbuoyancy"
+        locals.environment_saturation_moist_static_energy_cloud_levels.data[:] = inputs[
+            "local_env_saturation_moist_static_energy_cloud_levels_getbuoyancy"
         ]
-        locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs[
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_getbuoyancy"
-        ]
-        locals.buoyancy.data[:] = inputs["local_buoyancy_forced_getbuoyancy"]
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced_getbuoyancy"
+        locals.buoyancy.data[:] = inputs["local_buoyancy_getbuoyancy"]
+        locals.geopotential_height_cloud_levels.data[:] = inputs[
+            "local_geopotential_height_cloud_levels_getbuoyancy"
         ]
 
         # initalize test code
-        code = GetBuoyancy(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        code = self.stencil_factory.from_dims_halo(
+            func=get_buoyancy,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
-                state=state,
-                locals=locals,
-                plume_dependent_constants=plume_dependent_constants,
+                lcl_level=state.output.lcl_level,
+                updraft_lfc_level=state.output.updraft_lfc_level,
+                cloud_top_level=state.output.cloud_top_level,
+                cloud_moist_static_energy=locals.cloud_moist_static_energy,
+                environment_moist_static_energy=locals.environment_moist_static_energy_cloud_levels,
+                environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_cloud_levels,
+                buoyancy=locals.buoyancy,
+                error_code=state.output.error_code,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         # write output
@@ -133,21 +134,19 @@ class TestCore:
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "cloud_top_getbuoyancy": state.output.cloud_top_level.field[
+            "cloud_top_level_getbuoyancy": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "local_cloud_moist_static_energy_forced_getbuoyancy": locals.cloud_moist_static_energy_forced.field[
+            "local_cloud_moist_static_energy_getbuoyancy": locals.cloud_moist_static_energy.field[:],
+            "local_env_moist_static_energy_cloud_levels_getbuoyancy": locals.environment_moist_static_energy_cloud_levels.field[
                 :
             ],
-            "local_env_moist_static_energy_cloud_levels_forced_getbuoyancy": locals.environment_moist_static_energy_cloud_levels_forced.field[
+            "local_env_saturation_moist_static_energy_cloud_levels_getbuoyancy": locals.environment_saturation_moist_static_energy_cloud_levels.field[
                 :
             ],
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_getbuoyancy": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
-                :
-            ],
-            "local_buoyancy_forced_getbuoyancy": locals.buoyancy.field[:],
-            "local_geopotential_height_cloud_levels_forced_getbuoyancy": locals.geopotential_height_cloud_levels_forced.field[
+            "local_buoyancy_getbuoyancy": locals.buoyancy.field[:],
+            "local_geopotential_height_cloud_levels_getbuoyancy": locals.geopotential_height_cloud_levels.field[
                 :
             ],
         }

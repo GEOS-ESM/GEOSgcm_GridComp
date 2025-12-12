@@ -1,3 +1,19 @@
+from ndsl import StencilFactory, QuantityFactory, ndsl_log
+from pyMoist.convection.GF_2020.config import GF2020Config
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    GF2020CumulusParameterizationConfig,
+)
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
+    GF2020CumulusParameterizationLocals,
+)
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, Int
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 import pyMoist.constants as constants
@@ -596,3 +612,45 @@ def environment_mass_flux(
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             zenv = zuo - edto * zdo
+
+
+class EnvironmentMassFlux:
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
+
+        # construct stencils and functions
+        self._environment_mass_flux = stencil_factory.from_dims_halo(
+            func=environment_mass_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        state: GF2020CumulusParameterizationState,
+        locals: GF2020CumulusParameterizationLocals,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._environment_mass_flux(
+            # zenv=,
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            # zuo=,
+            # edto=,
+            # zdo=,
+        )
+
+
+class EnvironmentalSubsidence:
+    def __init__(self):
+        pass
+
+    def __call__(self, *args, **kwds):
+        pass

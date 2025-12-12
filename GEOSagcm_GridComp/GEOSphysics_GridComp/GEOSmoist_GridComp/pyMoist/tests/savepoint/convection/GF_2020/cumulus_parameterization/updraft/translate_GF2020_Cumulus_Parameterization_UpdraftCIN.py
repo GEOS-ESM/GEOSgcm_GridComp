@@ -21,7 +21,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS2,
     MAXENS3,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.updraft.updraft import (
+from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     UpdraftCIN,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (

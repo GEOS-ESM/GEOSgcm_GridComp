@@ -21,12 +21,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS2,
     MAXENS3,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.updraft.updraft import (
-    UpdraftInCloudUpdraftAirTemperature,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import updraft_air_temperature
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
 )
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class TestCore:
@@ -42,12 +41,12 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_updraftincloud": {},
-            "local_cloud_moist_static_energy_forced_updraftincloud": {},
-            "local_geopotential_height_cloud_levels_forced_updraftincloud": {},
-            "local_t_cloud_levels_forced_updraftincloud": {},
-            "local_incloud_air_temp_updraftincloud": {},
-            "local_incloud_water_vapor_mixing_ratio_updraftincloud": {},
+            "error_code_updrafttemp": {},
+            "local_cloud_moist_static_energy_forced_updrafttemp": {},
+            "local_geopotential_height_cloud_levels_forced_updrafttemp": {},
+            "local_t_cloud_levels_forced_updrafttemp": {},
+            "local_unspecifid_temperature_updrafttemp": {},
+            "local_cloud_vapor_mixing_ratio_forced_updrafttemp": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -78,50 +77,53 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_updraftincloud"
+            "error_code_updrafttemp"
         ]
         locals.cloud_moist_static_energy_forced.data[:] = inputs[
-            "local_cloud_moist_static_energy_forced_updraftincloud"
+            "local_cloud_moist_static_energy_forced_updrafttemp"
         ]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced_updraftincloud"
+            "local_geopotential_height_cloud_levels_forced_updrafttemp"
         ]
-        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_updraftincloud"]
-        locals.unspecifid_temperature.data[:] = inputs["local_incloud_air_temp_updraftincloud"]
+        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_updrafttemp"]
+        locals.unspecifid_temperature.data[:] = inputs["local_unspecifid_temperature_updrafttemp"]
         locals.cloud_vapor_mixing_ratio_forced.data[:] = inputs[
-            "local_incloud_water_vapor_mixing_ratio_updraftincloud"
+            "local_cloud_vapor_mixing_ratio_forced_updrafttemp"
         ]
 
         # initalize test code
-        code = UpdraftInCloudUpdraftAirTemperature(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        code = self.stencil_factory.from_dims_halo(
+            func=updraft_air_temperature,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"FIRST_GUESS_W": cumulus_parameterization_config.FIRST_GUESS_W},
         )
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
-                state=state,
-                locals=locals,
-                plume_dependent_constants=plume_dependent_constants,
+                error_code=state.output.error_code,
+                updraft_t=locals.unspecifid_temperature,
+                cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+                geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         # write output
         outputs = {
-            "error_code_updraftincloud": state.output.error_code.field[
+            "error_code_updrafttemp": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_cloud_moist_static_energy_forced_updraftincloud": locals.cloud_moist_static_energy_forced.field[
+            "local_cloud_moist_static_energy_forced_updrafttemp": locals.cloud_moist_static_energy_forced.field[
                 :
             ],
-            "local_geopotential_height_cloud_levels_forced_updraftincloud": locals.geopotential_height_cloud_levels_forced.field[
+            "local_geopotential_height_cloud_levels_forced_updrafttemp": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "local_t_cloud_levels_forced_updraftincloud": locals.t_cloud_levels_forced.field[:],
-            "local_incloud_air_temp_updraftincloud": locals.unspecifid_temperature.field[:],
-            "local_incloud_water_vapor_mixing_ratio_updraftincloud": locals.cloud_vapor_mixing_ratio_forced.field[
+            "local_t_cloud_levels_forced_updrafttemp": locals.t_cloud_levels_forced.field[:],
+            "local_unspecifid_temperature_updrafttemp": locals.unspecifid_temperature.field[:],
+            "local_cloud_vapor_mixing_ratio_forced_updrafttemp": locals.cloud_vapor_mixing_ratio_forced.field[
                 :
             ],
         }
@@ -129,7 +131,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_UpdraftTemperature_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -152,7 +154,7 @@ class TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_shall
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_UpdraftTemperature_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -175,7 +177,7 @@ class TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_mid(T
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftInCloudAirTemperature_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_UpdraftTemperature_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

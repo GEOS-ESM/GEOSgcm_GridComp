@@ -66,11 +66,6 @@ class GF2020CumulusParameterizationConfig:
     FIRST_GUESS_W: Int
     USE_WETBULB: Int
     DICYCLE: Int
-    USE_C1D: Int
     C0_DEEP: Float
     C0_MID: Float
     C0_SHAL: Float
-    QRC_CRIT: Float
-    QRC_CRIT_LND: Float
-    QRC_CRIT_OCN: Float
-    C1: Float
