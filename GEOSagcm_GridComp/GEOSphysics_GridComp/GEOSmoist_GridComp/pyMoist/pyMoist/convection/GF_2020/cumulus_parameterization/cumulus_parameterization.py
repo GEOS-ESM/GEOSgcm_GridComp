@@ -308,7 +308,6 @@ class CumulusParameterization:
         self._updraft_air_temperature = stencil_factory.from_dims_halo(
             func=updraft_air_temperature,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"FIRST_GUESS_W": cumulus_parameterization_config.FIRST_GUESS_W},
         )
 
         self._vertical_velosity = VerticalVelosity()
@@ -942,24 +941,24 @@ class CumulusParameterization:
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
-                # calculate in-cloud/updraft air temperature for vertical velocity
-                # NOTE COMBINE WITH VERTICAL_VELOCITY
-                # NOTE test GF2020_CumulusParameterization_UpdraftTemperature_{plume}:
-                # NOTE      deep ✅
-                # NOTE      mid ✅
-                # NOTE      shallow ✅
-                self._updraft_air_temperature(
-                    error_code=state.output.error_code,
-                    updraft_t=locals.unspecifid_temperature,
-                    cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
-                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
-                    t_cloud_levels_forced=locals.t_cloud_levels_forced,
-                    plume=self.plume_dependent_constants.PLUME_INDEX,
-                )
+                if self.cumulus_parameterization_config.FIRST_GUESS_W == 0:
+                    # calculate in-cloud/updraft air temperature for vertical velocity
+                    # NOTE test GF2020_CumulusParameterization_UpdraftTemperature_{plume}:
+                    # NOTE      deep ✅
+                    # NOTE      mid ✅
+                    # NOTE      shallow ✅
+                    self._updraft_air_temperature(
+                        error_code=state.output.error_code,
+                        updraft_t=locals.unspecifid_temperature,
+                        cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+                        geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                        cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                        t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                        plume=self.plume_dependent_constants.PLUME_INDEX,
+                    )
 
-                # vertical velocity
-                self._vertical_velosity()
+                    # vertical velocity
+                    self._vertical_velosity()
 
                 # downdraft origin level
                 self._downdraft_origin_level()

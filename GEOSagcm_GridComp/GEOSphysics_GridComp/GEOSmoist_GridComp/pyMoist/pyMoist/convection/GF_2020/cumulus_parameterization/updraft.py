@@ -34,26 +34,21 @@ def updraft_air_temperature(
     t_cloud_levels_forced: FloatField,
     plume: Int,
 ):
-    from __externals__ import FIRST_GUESS_W
-
     with computation(PARALLEL), interval(0, -1):
-        if FIRST_GUESS_W == 0:
-            if error_code[0, 0][plume] == 0:
-                updraft_t = (1.0 / cumulus_parameterization_constants.CP) * (
-                    cloud_moist_static_energy_forced
-                    - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
-                    - cumulus_parameterization_constants.XLV * cloud_vapor_mixing_ratio_forced
-                )
+        if error_code[0, 0][plume] == 0:
+            updraft_t = (1.0 / cumulus_parameterization_constants.CP) * (
+                cloud_moist_static_energy_forced
+                - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
+                - cumulus_parameterization_constants.XLV * cloud_vapor_mixing_ratio_forced
+            )
 
     with computation(PARALLEL), interval(-1, None):
-        if FIRST_GUESS_W == 0:
-            if error_code[0, 0][plume] == 0:
-                updraft_t = t_cloud_levels_forced
+        if error_code[0, 0][plume] == 0:
+            updraft_t = t_cloud_levels_forced
 
     with computation(PARALLEL), interval(...):
-        if FIRST_GUESS_W == 0:
-            if error_code[0, 0][plume] != 0:
-                updraft_t = t_cloud_levels_forced
+        if error_code[0, 0][plume] != 0:
+            updraft_t = t_cloud_levels_forced
 
 
 def cup_up_aa0(
