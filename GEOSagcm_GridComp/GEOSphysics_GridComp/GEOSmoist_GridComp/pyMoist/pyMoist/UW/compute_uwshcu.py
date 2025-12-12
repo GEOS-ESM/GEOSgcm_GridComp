@@ -5275,19 +5275,19 @@ def penetrative_entrainment_fluxes(
                 slflx[0, 0, 1] = (
                     constants.MAPL_CP
                     * exnifc0[0, 0, 1]
-                    * emf
-                    * (thlu_emf - (thl0 + ssthl0 * (pifc0[0, 0, 1] - pmid0)))
+                    * emf[0, 0, 1]
+                    * (thlu_emf[0, 0, 1] - (thl0 + ssthl0 * (pifc0[0, 0, 1] - pmid0)))
                 )
 
-                qtflx[0, 0, 1] = emf * (qtu_emf - (qt0 + ssqt0 * (pifc0[0, 0, 1] - pmid0)))
-                uflx[0, 0, 1] = emf * (uu_emf - (u0 + ssu0 * (pifc0[0, 0, 1] - pmid0)))
-                vflx[0, 0, 1] = emf * (vu_emf - (v0 + ssv0 * (pifc0[0, 0, 1] - pmid0)))
+                qtflx[0, 0, 1] = emf[0, 0, 1] * (qtu_emf[0, 0, 1] - (qt0 + ssqt0 * (pifc0[0, 0, 1] - pmid0)))
+                uflx[0, 0, 1] = emf[0, 0, 1] * (uu_emf[0, 0, 1] - (u0 + ssu0 * (pifc0[0, 0, 1] - pmid0)))
+                vflx[0, 0, 1] = emf[0, 0, 1] * (vu_emf[0, 0, 1] - (v0 + ssv0 * (pifc0[0, 0, 1] - pmid0)))
 
                 if dotransport == 1:
                     n = 0
                     while n < ncnst:
-                        trflx[0, 0, 1][n] = emf * (
-                            tru_emf[0, 0, 0][n]
+                        trflx[0, 0, 1][n] = emf[0, 0, 1] * (
+                            tru_emf[0, 0, 1][n]
                             - (tr0[0, 0, 0][n] + sstr0[0, 0, 0][n] * (pifc0[0, 0, 1] - pmid0))
                         )
                         n += 1
@@ -5308,9 +5308,9 @@ def penetrative_entrainment_fluxes(
             if K >= (kinv - 1) and K <= (krel - 1):
                 uemf[0, 0, 1] = cbmf
             if K >= krel and K <= (kbup - 1):
-                uemf[0, 0, 1] = umf_zint
+                uemf[0, 0, 1] = umf_zint[0, 0, 1]
             if K >= kbup and K <= (kpen - 1):
-                uemf[0, 0, 1] = emf  # Only use penetrative entrainment flux consistently.
+                uemf[0, 0, 1] = emf[0, 0, 1]  # Only use penetrative entrainment flux consistently.
 
             comsub = 0.0
 
@@ -5377,7 +5377,7 @@ def penetrative_entrainment_fluxes(
 
                 if id_check == 1:
                     condensation = True
-                    umf_out[0, 0, 1] = 0.0
+                    # umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
