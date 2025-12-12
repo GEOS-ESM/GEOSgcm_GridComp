@@ -67,7 +67,7 @@ module GEOSmoist_Process_Library
   real, parameter :: taufrz  =  600.0     ! timescale for freezing
   real, parameter :: taumlt  =  300.0     ! timescale for melting
   real, parameter :: CFMIN   =  1.e-5     ! minimum cloud fraction
-  real, parameter :: QCMIN   =  1.e-8     ! minimum condensate values
+  real, parameter :: QCMIN   =  1.e-15    ! minimum condensate values
   real, parameter :: QPMIN   =  1.e-15    ! abosolute min cloud props
   ! LDRADIUS4
   ! Jason
@@ -1092,17 +1092,17 @@ module GEOSmoist_Process_Library
            RAD_QI = 0.0
         end if
         ! Total In-cloud precipitation
-        if (QRN_ALL >= QCMIN ) then
+        if (QRN_ALL >= QPMIN ) then
            RAD_QR = ( QRN_ALL ) / RAD_CF
         else
            RAD_QR = 0.0
         end if
-        if (QSN_ALL >= QCMIN ) then
+        if (QSN_ALL >= QPMIN ) then
            RAD_QS = ( QSN_ALL ) / RAD_CF
         else
            RAD_QS = 0.0
         end if
-        if (QGR_ALL >= QCMIN ) then
+        if (QGR_ALL >= QPMIN ) then
            RAD_QG = ( QGR_ALL ) / RAD_CF
         else
            RAD_QG = 0.0
@@ -1185,7 +1185,7 @@ module GEOSmoist_Process_Library
       end if
 
       ! Fix if Anvil cloud fraction too small
-      if ( AF < CFMIN ) then
+      if ( AF < 0.0 ) then
          QV  = QV + QLA + QIA
          TE  = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
          AF  = 0.
@@ -1194,7 +1194,7 @@ module GEOSmoist_Process_Library
       end if
 
       ! Fix if LS cloud fraction too small
-      if ( CF < CFMIN ) then
+      if ( CF < 0.0 ) then
          QV = QV + QLC + QIC
          TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
          CF  = 0.
@@ -1203,33 +1203,33 @@ module GEOSmoist_Process_Library
       end if
 
       ! LS LIQUID too small
-      if ( QLC  < QPMIN ) then
+      if ( QLC  < 0.0 ) then
          QV = QV + QLC
          TE = TE - (alhlbcp)*QLC
          QLC = 0.
       end if
       ! LS ICE too small
-      if ( QIC  < QPMIN ) then
+      if ( QIC  < 0.0 ) then
          QV = QV + QIC
          TE = TE - (alhsbcp)*QIC
          QIC = 0.
       end if
 
       ! Anvil LIQUID too small
-      if ( QLA  < QPMIN ) then
+      if ( QLA  < 0.0 ) then
          QV = QV + QLA
          TE = TE - (alhlbcp)*QLA
          QLA = 0.
       end if
       ! Anvil ICE too small
-      if ( QIA  < QPMIN ) then
+      if ( QIA  < 0.0 ) then
          QV = QV + QIA
          TE = TE - (alhsbcp)*QIA
          QIA = 0.
       end if
 
       ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
-      if ( ( QLA + QIA ) < QPMIN ) then
+      if ( ( QLA + QIA ) < 0.0 ) then
          QV = QV + QLA + QIA
          TE = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
          AF  = 0.
@@ -1237,7 +1237,7 @@ module GEOSmoist_Process_Library
          QIA = 0.
       end if
       ! Ditto if LS cloud LIQUID+ICE too small
-      if ( ( QLC + QIC ) < QPMIN ) then
+      if ( ( QLC + QIC ) < 0.0 ) then
          QV = QV + QLC + QIC
          TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
          CF  = 0.
@@ -2608,7 +2608,7 @@ module GEOSmoist_Process_Library
       end if
    end subroutine MELTFRZ_SC
 
-  subroutine FILLQ2ZERO( Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC )
+  subroutine FILLQ2ZERO_OLD( Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC )
 
     ! New algorithm to fill the negative q values in a mass conserving way.
     ! Conservation of TPW was checked. Donifan Barahona
@@ -2668,7 +2668,7 @@ module GEOSmoist_Process_Library
        if (ASSOCIATED(DQDT)) DQDT = Q 
     endif
  
-    WHERE (Q < 1.e-15)    
+    WHERE (Q < 0.0)    
        Q=0.0
     END WHERE
 
@@ -2689,6 +2689,119 @@ module GEOSmoist_Process_Library
     DEALLOCATE(TPW1)
     DEALLOCATE(TPW2)
     DEALLOCATE(TPWC)
+  end subroutine FILLQ2ZERO_OLD
+
+  subroutine FILLQ2ZERO(Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC)
+
+    real, dimension(:,:,:),   intent(inout)  :: Q
+    real, dimension(:,:,:),   intent(in)     :: MASS
+    real, optional,           intent(in)     :: DT
+    real, optional, pointer,  intent(out)    :: DQDT(:,:,:)
+    character(*), optional,   intent(in)     :: WARNING_LABEL
+    type(ESMF_VM), optional,  intent(in)     :: VM
+    integer,                  intent(out)    :: RC
+
+    integer :: IM, JM, LM
+    integer :: i, j, l
+    integer :: neg_count_local, total_count_local
+    integer :: I1D(2), RANK, STATUS
+    real    :: tpw_before, tpw_after, d_tpw
+    real    :: positive_mass
+    real    :: q_old
+
+    character(len=ESMF_MAXSTR) :: IAm="FILLQ2ZERO"
+
+    RC = 0
+
+    IM = size(Q,1)
+    JM = size(Q,2)
+    LM = size(Q,3)
+
+    !===============================================================
+    ! 1. Count negative values BEFORE fixing
+    !===============================================================
+    if (present(WARNING_LABEL) .and. present(VM)) then
+      neg_count_local   = count(Q < 0.0)
+      total_count_local = size(Q)
+
+      call ESMF_VMGet(VM, localPet=RANK, rc=STATUS)
+      VERIFY_(STATUS)
+
+      call ESMF_VMAllReduce(VM, sendData=[neg_count_local,total_count_local], &
+                            recvData=I1D, count=2, &
+                            reduceflag=ESMF_REDUCE_SUM, rc=STATUS)
+      VERIFY_(STATUS)
+
+      if ((RANK == 0) .and. (I1D(1) > 0)) then
+        write(*,'(A,A,A,2X,"Count: ",I0,"/",I0," (",F5.1,"%)")')  &
+             'WARNING: Negative values filled in ', trim(WARNING_LABEL), ':', &
+             I1D(1), I1D(2), real(I1D(1))/real(I1D(2))*100.0
+      endif
+    endif
+
+    !===============================================================
+    ! 2. Save original Q if tendency is requested
+    !===============================================================
+    if (present(DQDT) .and. present(DT)) then
+      if (associated(DQDT)) DQDT = Q
+    endif
+
+    !===============================================================
+    ! 3. Moisture limiter: per-column mass-conserving Q fix
+    !===============================================================
+    do j = 1, JM
+      do i = 1, IM
+
+        !--- TPW_before: using the *original* Q
+        tpw_before = 0.0
+        do l = 1, LM
+          tpw_before = tpw_before + Q(i,j,l) * MASS(i,j,l)
+        end do
+
+        !--- Clip negative Q locally
+        do l = 1, LM
+          if (Q(i,j,l) < 0.0) Q(i,j,l) = 0.0
+        end do
+
+        !--- TPW_after: using clipped Q
+        tpw_after = 0.0
+        do l = 1, LM
+          tpw_after = tpw_after + Q(i,j,l) * MASS(i,j,l)
+        end do
+
+        d_tpw = tpw_before - tpw_after   ! >0 means mass was removed
+
+        !--- Redistribute delta TPW to positive layers only
+        if (abs(d_tpw) > 1.0e-15) then
+
+          positive_mass = 0.0
+          do l = 1, LM
+            if (Q(i,j,l) > 0.0) positive_mass = positive_mass + MASS(i,j,l)
+          end do
+
+          if (positive_mass > 0.0) then
+            do l = 1, LM
+              if (Q(i,j,l) > 0.0) then
+                Q(i,j,l) = Q(i,j,l) + d_tpw * ( MASS(i,j,l) / positive_mass )
+                if (Q(i,j,l) < 0.0) Q(i,j,l) = 0.0  ! safety
+              end if
+            end do
+          end if
+
+        end if
+
+      end do
+    end do
+
+    !===============================================================
+    ! 4. Final DQDT tendencies if requested
+    !===============================================================
+    if (present(DQDT) .and. present(DT)) then
+      if (associated(DQDT) .and. DT > 0.0) then
+        DQDT = (Q - DQDT) / DT
+      endif
+    endif
+
   end subroutine FILLQ2ZERO
 
   subroutine DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR, PTYPE, PLE, TH, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
