@@ -45,6 +45,7 @@ from .UW_translate_tests.translate_define_env_properties import TranslateDefineE
 from .UW_translate_tests.translate_calc_ppen import TranslateCalcPpen
 from .UW_translate_tests.translate_recalc_condensate import TranslateRecalcCondensate
 from .UW_translate_tests.translate_calc_entrainment_mass_flux import TranslateCalcEntrainmentMassFlux
+from .UW_translate_tests.translate_calc_pbl_fluxes import TranslateCalcPblFluxes
 
 __all__ = [
     "TranslateGFDL_1M_driver",
