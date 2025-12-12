@@ -8,6 +8,7 @@ from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
 from pyMoist.GFDL_1M.setup import GFDL1MSetup
 from pyMoist.GFDL_1M.state import GFDL1MState
 from pyMoist.GFDL_1M.stencils import (
+    get_total_concentration,
     prepare_radiation,
     prepare_tendencies,
     update_radiation,
@@ -84,6 +85,11 @@ class GFDL1M(NDSLRuntime):
 
         self._prepare_radiation = stencil_factory.from_dims_halo(
             func=prepare_radiation,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._get_total_concentration = stencil_factory.from_dims_halo(
+            func=get_total_concentration,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -258,6 +264,12 @@ class GFDL1M(NDSLRuntime):
             radiation_snow=state.radiation_field.snow,
             graupel=state.mixing_ratio.graupel,
             radiation_graupel=state.radiation_field.graupel,
+        )
+
+        self._get_total_concentration(
+            ice_concentration=state.concentration.ice,
+            liquid_concentration=state.concentration.liquid,
+            total_concentration=self._locals.total_concentration,
         )
 
         self._driver(
