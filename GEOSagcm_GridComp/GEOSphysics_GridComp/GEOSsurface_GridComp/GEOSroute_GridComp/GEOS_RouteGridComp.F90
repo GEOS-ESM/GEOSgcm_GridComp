@@ -423,10 +423,10 @@ contains
     endif
     call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
     allocate(areacat_glob(n_pfaf_g))
+    tmp_real=tmp_real*1.e6
     areacat_glob = tmp_real
     allocate(route%areacat(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
-    route%areacat=route%areacat*1.e6
-
+    
    !read lengsc
     if (MAPL_AM_I_Root()) then
        call formatter%get_var('lengsc', tmp_real(:), _RC)
