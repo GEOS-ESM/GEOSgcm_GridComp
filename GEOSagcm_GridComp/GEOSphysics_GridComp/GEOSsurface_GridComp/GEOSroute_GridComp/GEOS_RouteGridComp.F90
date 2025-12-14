@@ -334,6 +334,8 @@ contains
     type (RROUTE_wrap)             :: wrap
     real, allocatable              :: tmp_real(:)
     integer, allocatable           :: tmp_int(:)
+    real, allocatable              :: areacat_glob(:)
+
 
     type(ESMF_Time)  :: CurrentTime
     type(ESMF_Alarm) :: CollectWaterAlarm
@@ -405,7 +407,6 @@ contains
     else
         use_res=.False.
     endif
-
     call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )    
     route%route_dt = ROUTE_DT
 
@@ -421,6 +422,8 @@ contains
        call formatter%get_var('area_catch', tmp_real(:), _RC)
     endif
     call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
+    allocate(areacat_glob(n_pfaf_g))
+    areacat_glob = tmp_real
     allocate(route%areacat(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
     route%areacat=route%areacat*1.e6
 
@@ -528,7 +531,7 @@ contains
          )
     VERIFY_(status)
  
-
+    deallocate(areacat_glob)
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
@@ -603,14 +606,14 @@ contains
       allocate(global_id(route%nt_global))
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
-      nweights = route%nt_global
+      nWeights = route%nt_global
 
       if (index(GNAMES(1), 'EASEv') /=0) then
 
          if (MAPL_AM_I_ROOT()) then
             call formatter%open(tile_pfaf_file, PFIO_READ, _RC)
             meta     = formatter%read(rc=status)
-            nweights = meta%get_dimension('tile')
+            nWeights = meta%get_dimension('tile')
          endif
          call MAPL_CommsBcast(layout, nWeights, 1, MAPL_Root, status)
          allocate(global_src(nWeights), global_dst(nWeights), global_frac(nWeights))
@@ -628,7 +631,7 @@ contains
          global_src = global_id
          call ESMFL_Fcollect(tilegrid, global_dst, pfaf_index, _RC)
          call ESMFL_Fcollect(tilegrid, global_area, tilearea, _RC)
-         global_frac = global_area/route%areacat(global_dst)
+         global_frac = global_area/areacat_glob(global_dst)
          deallocate(global_area)
       endif
 
