@@ -70,7 +70,7 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
-    scalar_diffusivity_interface: Quantity = dataclasses.field(
+    scalar_diffusivity_interface: Quantity | None = dataclasses.field(
         metadata={
             "name": "scalar_diffusivity_interface",
             "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
@@ -97,7 +97,7 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
-    surface_temperature: Quantity = dataclasses.field(
+    surface_temperature: Quantity | None = dataclasses.field(
         metadata={
             "name": "surface_temperature",
             "dims": [X_DIM, Y_DIM],
@@ -106,7 +106,7 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
-    sensible_heat_flux: Quantity = dataclasses.field(
+    sensible_heat_flux: Quantity | None = dataclasses.field(
         metadata={
             "name": "sensible_heat_flux",
             "dims": [X_DIM, Y_DIM],
@@ -232,7 +232,7 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
-    lcl_height: Quantity = dataclasses.field(
+    lcl_height: Quantity | None = dataclasses.field(
         metadata={
             "name": "lcl_height",
             "dims": [X_DIM, Y_DIM],
@@ -268,7 +268,7 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
-    large_scale_rainwater_source: Quantity = dataclasses.field(
+    large_scale_rainwater_source: Quantity | None = dataclasses.field(
         metadata={
             "name": "large_scale_rainwater_source",
             "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -953,7 +953,7 @@ class GFDL1MState(State):
 
     @dataclasses.dataclass
     class Radar:
-        simulated_reflectivity: Quantity = dataclasses.field(
+        simulated_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "simulated_reflectivity",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
@@ -962,7 +962,7 @@ class GFDL1MState(State):
                 "dtype": Float,
             }
         )
-        maximum_composite_reflectivity: Quantity = dataclasses.field(
+        maximum_composite_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "maximum_composite_reflectivity",
                 "dims": [X_DIM, Y_DIM],
@@ -971,7 +971,7 @@ class GFDL1MState(State):
                 "dtype": Float,
             }
         )
-        base_1km_agl_reflectivity: Quantity = dataclasses.field(
+        base_1km_agl_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "base_1km_agl_reflectivity",
                 "dims": [X_DIM, Y_DIM],
@@ -980,7 +980,7 @@ class GFDL1MState(State):
                 "dtype": Float,
             }
         )
-        echo_top_reflectivity: Quantity = dataclasses.field(
+        echo_top_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "echo_top_reflectivity",
                 "dims": [X_DIM, Y_DIM],
@@ -989,7 +989,7 @@ class GFDL1MState(State):
                 "dtype": Float,
             }
         )
-        minus_10c_reflectivity: Quantity = dataclasses.field(
+        minus_10c_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "minus_10c_reflectivity",
                 "dims": [X_DIM, Y_DIM],
