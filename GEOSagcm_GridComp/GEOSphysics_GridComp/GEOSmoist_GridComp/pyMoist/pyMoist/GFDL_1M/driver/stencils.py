@@ -85,6 +85,8 @@ def implicit_fall(
     with computation(FORWARD), interval(-1, None):
         if precip_fall == True:  # noqa
             precip = mass
+        else:
+            precip = 0
 
     # update:
     with computation(PARALLEL), interval(...):
