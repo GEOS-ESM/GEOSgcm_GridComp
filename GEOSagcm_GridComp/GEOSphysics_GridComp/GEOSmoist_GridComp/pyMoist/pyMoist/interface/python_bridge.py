@@ -50,10 +50,14 @@ class PYMOIST_WRAPPER:
         self.ready = True
 
     def finalize(self):
+        # Wrapper
         import json
 
-        with open("pymoist_timings.json", "w") as f:
+        with open("pymoist_wrapper_timings.json", "w") as f:
             json.dump(self._timings, f, indent=4)
+
+        # Component level
+        self.pymoist.finalize()
 
     def aer_activation(
         self,

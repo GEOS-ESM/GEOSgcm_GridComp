@@ -7,8 +7,9 @@ import numpy.typing as npt
 from _cffi_backend import _CDataBase as CFFIObj
 from MAPLpyish import MAPLBridge, MAPLState
 
-from ndsl import QuantityFactory, ndsl_log
+from ndsl import QuantityFactory
 from ndsl.dsl.gt4py_utils import is_gpu_backend
+from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
 
@@ -84,7 +85,6 @@ class MAPLMemoryRepository:
         except KeyError:
             raise KeyError(f"Pointer {name} was never registered.")
         if not fmem.associated:
-            ndsl_log.info(f"MAPL Bridge: skip sending back {name} - not associated")
             return
 
         fmem.python_array = self._f_py_converter.fortran_to_python(
@@ -105,7 +105,6 @@ class MAPLMemoryRepository:
         except KeyError:
             raise KeyError(f"Pointer {name} was never registered.")
         if not fmem.associated:
-            ndsl_log.info(f"MAPL Bridge: skip sending back {name} - not associated")
             return
 
         self._f_py_converter.python_to_fortran(fmem.python_array, fmem.pointer)
@@ -133,21 +132,27 @@ class MAPLManagedMemory:
 
     def __init__(self, mapl_factory: MAPLMemoryRepository) -> None:
         self._mapl_factory = mapl_factory
-        self._local_memory: dict[str, npt.NDArray] = {}
+        self._local_memory: dict[str, npt.NDArray | None] = {}
 
     def __enter__(self) -> MAPLManagedMemory:
         return self
 
     def __exit__(self, _exc_type, _exc_value, _traceback) -> None:
-        for array_name in self._local_memory:
+        for array_name, value in self._local_memory.items():
+            if value is None:
+                continue
             self._mapl_factory.send_to_fortran(array_name)
 
     def associated(self, name: str) -> bool:
         return self._mapl_factory.associated(name)
 
-    def __getattr__(self, name) -> npt.NDArray:
+    def __getattr__(self, name: str) -> npt.NDArray | None:
         if name in self._local_memory.keys():
             return self._local_memory[name]
-        array = self._mapl_factory.get_from_fortran(name)
+        if self.associated(name):
+            array = self._mapl_factory.get_from_fortran(name)
+        else:
+            ndsl_log_on_rank_0.info(f"{name} not associated")
+            array = None
         self._local_memory[name] = array
         return array
