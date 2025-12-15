@@ -326,6 +326,17 @@ class C1DProfile:
             externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
         )
 
+        if self.cumulus_parameterization_config.FIRST_GUESS_W or self.config.AUTOCONV == 4:
+            raise NotImplementedError(
+                """
+                [NDSL] C1DProfile initalized with major untested option.
+                This code has been implemented, was not execused in development experiment and has not
+                been tested. It is highly advised that you run translate tests
+                GF2020_CumulusParameterization_C1DProfile_shallow/mid/deep and compare NDSL results with
+                Fortran before proceeding. Disable this error manually to proceed.
+                """
+            )
+
     def __call__(
         self,
         state: GF2020CumulusParameterizationState,
