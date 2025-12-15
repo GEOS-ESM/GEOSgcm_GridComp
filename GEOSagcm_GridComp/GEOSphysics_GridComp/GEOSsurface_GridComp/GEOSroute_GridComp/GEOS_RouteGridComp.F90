@@ -588,9 +588,9 @@ contains
       integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:)
       real,    allocatable :: weights(:), global_frac(:), global_area(:)
       integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:)
-      integer :: unit
+      integer :: unit,ii,dst
       integer, pointer :: pfaf_index(:), local_id(:)
-      real   , pointer :: tilearea(:)
+      real   , pointer :: tilearea(:),frac_tot(:),fscale(:)
       type(Netcdf4_Fileformatter) :: formatter
       type(Filemetadata)          :: meta
       character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
@@ -631,8 +631,23 @@ contains
          global_src = global_id
          call ESMFL_Fcollect(tilegrid, global_dst, pfaf_index, _RC)
          call ESMFL_Fcollect(tilegrid, global_area, tilearea, _RC)
-         global_frac = global_area/areacat_glob(global_dst)
-         deallocate(global_area)
+         global_frac = global_area*MAPL_RADIUS**2/areacat_glob(global_dst)
+         allocate(frac_tot(N_pfaf_g),fscale(N_pfaf_g))
+         frac_tot=0.
+         do ii=1,nWeights
+           frac_tot(global_dst(ii))=frac_tot(global_dst(ii))+global_frac(ii)
+         enddo
+         fscale = 1.
+         do ii = 1, N_pfaf_g
+            if (frac_tot(ii) > 0.) then
+                fscale(ii) = 1. / frac_tot(ii)
+            endif
+         enddo
+         do ii = 1, nWeights
+            dst = global_dst(ii)
+            global_frac(ii) = global_frac(ii) * fscale(dst)
+         enddo                   
+         deallocate(global_area,frac_tot,fscale)
       endif
 
       allocate(mask(nWeights))
