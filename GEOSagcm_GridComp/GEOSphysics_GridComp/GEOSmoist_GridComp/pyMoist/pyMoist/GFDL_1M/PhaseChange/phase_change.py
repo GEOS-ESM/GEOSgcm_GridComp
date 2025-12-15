@@ -2,7 +2,7 @@
 I/O and errorhandling is performed here.
 Calculations can be found in deeper functions."""
 
-from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
+from ndsl import Local, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
 from pyMoist.constants import FLOAT_TINY
