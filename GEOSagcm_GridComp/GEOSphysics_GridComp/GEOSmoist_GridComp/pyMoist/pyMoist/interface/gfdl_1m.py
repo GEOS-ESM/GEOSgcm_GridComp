@@ -1,15 +1,17 @@
 from typing import Any
+
+import numpy as np
 from mpi4py import MPI
+
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from pyMoist.GFDL_1M import GFDL1M, GFDL1MState, GFDL1MConfig
+from pyMoist.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
 from pyMoist.interface import (
-    MAPLMemoryRepository,
     MAPLManagedMemory,
+    MAPLMemoryRepository,
     StencilBackendCompilerOverride,
     TimedCUDAProfiler,
 )
-import numpy as np
 
 
 class GFDL1MInterface:
