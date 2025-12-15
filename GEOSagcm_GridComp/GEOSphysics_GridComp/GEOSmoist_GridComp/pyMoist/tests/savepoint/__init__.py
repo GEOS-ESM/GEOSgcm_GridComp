@@ -50,6 +50,7 @@ from .UW_translate_tests.translate_buoyancy_sorting_fluxes import TranslateBuoya
 from .UW_translate_tests.translate_penetrative_entrainment_fluxes import TranslatePenetrativeEntrainmentFluxes
 from .UW_translate_tests.translate_calc_momentum_tendency import TranslateMomentumTendency
 from .UW_translate_tests.translate_calc_thermodynamic_tendencies import TranslateThermodynamicTendencies
+from .UW_translate_tests.translate_prevent_negative_condensate import TranslatePreventNegativeCondensate
 
 __all__ = [
     "TranslateGFDL_1M_driver",
