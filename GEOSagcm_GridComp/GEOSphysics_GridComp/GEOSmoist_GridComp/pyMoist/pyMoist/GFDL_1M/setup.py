@@ -16,6 +16,7 @@ from pyMoist.constants import (
     MAPL_RVAP,
 )
 from pyMoist.GFDL_1M.config import GFDL1MConfig
+from pyMoist.GFDL_1M.stencils import prepare_tendencies
 from pyMoist.interpolations import vertical_interpolation
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
@@ -247,7 +248,6 @@ class GFDL1MSetup(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
         saturation_tables: SaturationVaporPressureTable,
-        prepare_tendencies,
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
@@ -256,13 +256,15 @@ class GFDL1MSetup(NDSLRuntime):
         self.config = config
         self.saturation_tables = saturation_tables
 
-        # make the pre-built stencil visible at runtime
-        self._prepare_tendencies = prepare_tendencies
-
         # initalize locals
         self._locals = GFDL1MSetupLocals.make_locals(quantity_factory)
 
         # construct stencils
+        self._prepare_tendencies = stencil_factory.from_dims_halo(
+            func=prepare_tendencies,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
         self._calculate_derived_states = stencil_factory.from_dims_halo(
             func=calculate_derived_states,
             compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
@@ -304,50 +306,50 @@ class GFDL1MSetup(NDSLRuntime):
 
     def __call__(
         self,
-        p_interface: Quantity,
-        z_interface: Quantity,
-        u: Quantity,
-        v: Quantity,
-        t: Quantity,
-        lcl_height: Quantity,
-        lower_tropospheric_stability: Quantity,
-        estimated_inversion_strength: Quantity,
-        mixing_ratio_vapor: Quantity,
-        mixing_ratio_rain: Quantity,
-        mixing_ratio_snow: Quantity,
-        mixing_ratio_graupel: Quantity,
-        mixing_ratio_convective_liquid: Quantity,
-        mixing_ratio_convective_ice: Quantity,
-        mixing_ratio_large_scale_liquid: Quantity,
-        mixing_ratio_large_scale_ice: Quantity,
-        cloud_fraction_convective: Quantity,
-        cloud_fraction_large_scale: Quantity,
-        shallow_convection_rain: Quantity,
-        shallow_convection_snow: Quantity,
-        dudt_macro: Quantity,
-        dvdt_macro: Quantity,
-        dtdt_macro: Quantity,
-        dvapordt_macro: Quantity,
-        dliquiddt_macro: Quantity,
-        dicedt_macro: Quantity,
-        dcloud_fractiondt_macro: Quantity,
-        draindt_macro: Quantity,
-        dsnowdt_macro: Quantity,
-        dgraupeldt_macro: Quantity,
-        local_p_mb: Quantity,
-        local_p_interface_mb: Quantity,
-        local_edge_height_above_surface: Quantity,
-        local_layer_height_above_surface: Quantity,
-        local_layer_thickness: Quantity,
-        local_layer_thickness_negative: Quantity,
-        local_dp: Quantity,
-        local_mass: Quantity,
-        local_mass_inverse: Quantity,
-        local_saturation_specific_humidity: Quantity,
-        local_dsaturation_specific_humidity: Quantity,
-        local_u_unmodified: Quantity,
-        local_v_unmodified: Quantity,
-        local_lcl_level: Quantity,
+        p_interface,
+        z_interface,
+        u,
+        v,
+        t,
+        lcl_height,
+        lower_tropospheric_stability,
+        estimated_inversion_strength,
+        mixing_ratio_vapor,
+        mixing_ratio_rain,
+        mixing_ratio_snow,
+        mixing_ratio_graupel,
+        mixing_ratio_convective_liquid,
+        mixing_ratio_convective_ice,
+        mixing_ratio_large_scale_liquid,
+        mixing_ratio_large_scale_ice,
+        cloud_fraction_convective,
+        cloud_fraction_large_scale,
+        shallow_convection_rain,
+        shallow_convection_snow,
+        dudt_macro,
+        dvdt_macro,
+        dtdt_macro,
+        dvapordt_macro,
+        dliquiddt_macro,
+        dicedt_macro,
+        dcloud_fractiondt_macro,
+        draindt_macro,
+        dsnowdt_macro,
+        dgraupeldt_macro,
+        local_p_mb,
+        local_p_interface_mb,
+        local_edge_height_above_surface,
+        local_layer_height_above_surface,
+        local_layer_thickness,
+        local_layer_thickness_negative,
+        local_dp,
+        local_mass,
+        local_mass_inverse,
+        local_saturation_specific_humidity,
+        local_dsaturation_specific_humidity,
+        local_u_unmodified,
+        local_v_unmodified,
+        local_lcl_level,
     ):
         # prepare macrophysics tendencies
         self._prepare_tendencies(
