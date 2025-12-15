@@ -49,6 +49,7 @@ from .UW_translate_tests.translate_calc_pbl_fluxes import TranslateCalcPblFluxes
 from .UW_translate_tests.translate_buoyancy_sorting_fluxes import TranslateBuoyancySortingFluxes
 from .UW_translate_tests.translate_penetrative_entrainment_fluxes import TranslatePenetrativeEntrainmentFluxes
 from .UW_translate_tests.translate_calc_momentum_tendency import TranslateMomentumTendency
+from .UW_translate_tests.translate_calc_thermodynamic_tendencies import TranslateThermodynamicTendencies
 
 __all__ = [
     "TranslateGFDL_1M_driver",

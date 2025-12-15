@@ -4298,9 +4298,9 @@ def recalc_condensate(
                         xco = 0.0
 
                     # Update output variables as needed
-                    dwten_temp = dwten
-                    diten_temp = diten
-                    umf_temp[0, 0, 1] = umf_zint
+                    # dwten_temp = dwten
+                    # diten_temp = diten
+                    # umf_temp[0, 0, 1] = umf_zint
 
 
 def calc_entrainment_mass_flux(
@@ -5468,8 +5468,6 @@ def calc_thermodynamic_tendencies(
     vf: FloatField,
     dwten: FloatField,
     diten: FloatField,
-    dwten_temp: FloatField,
-    diten_temp: FloatField,
     umf_temp: FloatField,
     krel: IntField,
     prel: FloatField,
@@ -5563,8 +5561,6 @@ def calc_thermodynamic_tendencies(
     umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
     dwten [FloatField]: Detrained [?]
     diten [FloatField]: Detrained [?]
-    dwten_temp [FloatField]: Detrained [?]
-    diten_temp [FloatField]: Detrained [?]
     umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
     qtflx_out [FloatField]: Mixing ratio flux [?]
     slflx_out [FloatField]: Sensible heat flux [?]
@@ -5588,7 +5584,7 @@ def calc_thermodynamic_tendencies(
     """
     with computation(FORWARD), interval(...):
         if not condensation:
-            umf_zint[0, 0, 1] = umf_temp[0, 0, 1]  # Update umf
+            # umf_zint[0, 0, 1] = umf_temp[0, 0, 1]  # Update umf
 
             if iteration != int32(0):  # Reset some vars to zero after first iteration
                 qlten = 0.0
@@ -5632,11 +5628,11 @@ def calc_thermodynamic_tendencies(
                 # umf(kpen)=0.
 
                 dwten = (
-                    dwten_temp * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * constants.MAPL_GRAV / dp0
+                    dwten * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * constants.MAPL_GRAV / dp0
                 )  # [ kg/kg/s ]
 
                 diten = (
-                    diten_temp * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * constants.MAPL_GRAV / dp0
+                    diten * 0.5 * (umf_zint + umf_zint[0, 0, 1]) * constants.MAPL_GRAV / dp0
                 )  # [ kg/kg/s ]
 
                 # 'qrten(k)','qsten(k)' : Production rate of rain and snow within the
@@ -5699,9 +5695,7 @@ def calc_thermodynamic_tendencies(
                     qlj_2D = 0.0
                     qij_2D = 0.0
                 elif K == krel:
-                    thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
-                        prel, thlu.at(K=K - 1), qtu.at(K=K - 1), ese, esx
-                    )
+                    thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(prel, thlu, qtu, ese, esx)
 
                     if id_check == 1:
                         condensation = True
@@ -5728,7 +5722,9 @@ def calc_thermodynamic_tendencies(
                     if not condensation:
                         qlubelow = qlj_2D
                         qiubelow = qij_2D
-                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0[0, 0, 1], thlu, qtu, ese, esx)
+                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
+                            pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], ese, esx
+                        )
 
                         if id_check == 1:
                             condensation = True
@@ -5798,7 +5794,9 @@ def calc_thermodynamic_tendencies(
 
                 else:
                     if not condensation:
-                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0[0, 0, 1], thlu, qtu, ese, esx)
+                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(
+                            pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], ese, esx
+                        )
 
                         if id_check == 1:
                             condensation = True
@@ -5873,8 +5871,8 @@ def calc_thermodynamic_tendencies(
                 if K == kbup:
                     thj, qvj, ql_emf_kbup, qi_emf_kbup, qse, id_check = conden(
                         pmid0,
-                        thlu_emf,
-                        qtu_emf,
+                        thlu_emf[0, 0, 1],
+                        qtu_emf[0, 0, 1],
                         ese,
                         esx,
                     )
@@ -5909,10 +5907,10 @@ def calc_thermodynamic_tendencies(
                         if qi_emf_kbup < 0.0:
                             ni_emf_kbup = 0.0
 
-                        qc_lm = qc_lm - constants.MAPL_GRAV * emf * (ql_emf_kbup - ql0) / (
+                        qc_lm = qc_lm - constants.MAPL_GRAV * emf[0, 0, 1] * (ql_emf_kbup - ql0) / (
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
-                        qc_im = qc_im - constants.MAPL_GRAV * emf * (qi_emf_kbup - qi0) / (
+                        qc_im = qc_im - constants.MAPL_GRAV * emf[0, 0, 1] * (qi_emf_kbup - qi0) / (
                             pifc0 - pifc0[0, 0, 1]
                         )  # [ kg/kg/s ]
 
@@ -8843,8 +8841,6 @@ class ComputeUwshcuInv(NDSLRuntime):
                 vf=self.locals.vf,
                 dwten=self.locals.dwten,
                 diten=self.locals.diten,
-                dwten_temp=self.locals.dwten_temp,
-                diten_temp=self.locals.diten_temp,
                 umf_temp=self.locals.umf_temp,
                 qtflx=self.locals.qtflx,
                 krel=self.locals.krel,
