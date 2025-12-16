@@ -9,7 +9,6 @@ from MAPLpyish import MAPLBridge, MAPLState
 
 from ndsl import QuantityFactory
 from ndsl.dsl.gt4py_utils import is_gpu_backend
-from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
 
@@ -152,7 +151,6 @@ class MAPLManagedMemory:
         if self.associated(name):
             array = self._mapl_factory.get_from_fortran(name)
         else:
-            ndsl_log_on_rank_0.info(f"{name} not associated")
             array = None
         self._local_memory[name] = array
         return array

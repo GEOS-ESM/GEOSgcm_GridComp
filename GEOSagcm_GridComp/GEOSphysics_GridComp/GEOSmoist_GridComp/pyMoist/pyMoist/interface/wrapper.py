@@ -189,7 +189,7 @@ class GEOSPyMoistWrapper:
         flags: GFDL1MFlags,
         internal_state: CVoidPointer,
     ):
-        self._gfdl_1m_mapl_internal = MAPLMemoryRepository(
+        gfdl_1m_mapl_internal = MAPLMemoryRepository(
             internal_state,
             self.quantity_factory,
         )
@@ -250,18 +250,13 @@ class GEOSPyMoistWrapper:
 
         self._gfdl_1m_interface.init(
             config=config,
-            mapl_internal=self._gfdl_1m_mapl_internal,
+            mapl_internal=gfdl_1m_mapl_internal,
             mapl_import=self._mapl_import,
             mapl_export=self._mapl_export,
         )
 
     def GFDL_1M_Microphysics(self):
-        self._gfdl_1m_interface.run(
-            timings=self._timings,
-            mapl_internal_state=self._gfdl_1m_mapl_internal,
-            mapl_import_state=self._mapl_import,
-            mapl_export_state=self._mapl_export,
-        )
+        self._gfdl_1m_interface.run(self._timings)
 
     @property
     def UW_shallow_convection(self) -> Callable:
