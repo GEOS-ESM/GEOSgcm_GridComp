@@ -52,6 +52,7 @@ from .UW_translate_tests.translate_calc_momentum_tendency import TranslateMoment
 from .UW_translate_tests.translate_calc_thermodynamic_tendencies import TranslateThermodynamicTendencies
 from .UW_translate_tests.translate_prevent_negative_condensate import TranslatePreventNegativeCondensate
 from .UW_translate_tests.translate_tracer_tendencies import TranslateTracerTendencies
+from .UW_translate_tests.translate_compute_diagnostic_outputs import TranslateComputeDiagnosticOutputs
 
 __all__ = [
     "TranslateGFDL_1M_driver",

@@ -6263,9 +6263,7 @@ def compute_diagnostic_outputs(
     """
     with computation(FORWARD), interval(...):
         if not condensation:
-            thj, qvj, qlj, qij, qse, id_check = conden(
-                prel, thlu.at(K=krel - 1), qtu.at(K=krel - 1), ese, esx
-            )
+            thj, qvj, qlj, qij, qse, id_check = conden(prel, thlu.at(K=krel), qtu.at(K=krel), ese, esx)
 
             if id_check == 1:
                 condensation = True
