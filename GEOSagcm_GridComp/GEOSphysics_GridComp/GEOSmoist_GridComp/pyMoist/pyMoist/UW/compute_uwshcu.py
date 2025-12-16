@@ -6121,7 +6121,7 @@ def calc_tracer_tendencies(
                     trflx_u[0, 0, 0][n] = 0.0
                     n += 1
 
-    with computation(FORWARD), interval(1, -1):
+    with computation(FORWARD), interval(0, -1):
         if not condensation:
             if dotransport == 1:
                 n = 0
@@ -6131,12 +6131,12 @@ def calc_tracer_tendencies(
                         (tr0[0, 0, 0][n] - trmin[0, 0][n]) * pdelx / constants.MAPL_GRAV / dt
                         + trflx[0, 0, 0][n]
                         - trflx[0, 0, 1][n]
-                        + trflx_d[0, 0, -1][n]
+                        + trflx_d[0, 0, 0][n]
                     )
-                    trflx_d[0, 0, 0][n] = min(0.0, dum)
+                    trflx_d[0, 0, 1][n] = min(0.0, dum)
                     n += 1
 
-    with computation(BACKWARD), interval(2, None):
+    with computation(BACKWARD), interval(1, None):
         if not condensation:
             if dotransport == 1:
                 n = 0
@@ -6146,14 +6146,14 @@ def calc_tracer_tendencies(
                         (tr0[0, 0, 0][n] - trmin[0, 0][n]) * pdelx / constants.MAPL_GRAV / dt
                         + trflx[0, 0, 0][n]
                         - trflx[0, 0, 1][n]
-                        + trflx_d[0, 0, -1][n]
-                        - trflx_d[0, 0, 0][n]
-                        - trflx_u[0, 0, 0][n]
+                        + trflx_d[0, 0, 0][n]
+                        - trflx_d[0, 0, 1][n]
+                        - trflx_u[0, 0, 1][n]
                     )
-                    trflx_u[0, 0, -1][n] = max(0.0, -dum)
+                    trflx_u[0, 0, 0][n] = max(0.0, -dum)
                     n += 1
 
-    with computation(FORWARD), interval(0, None):
+    with computation(FORWARD), interval(...):
         if not condensation:
             if dotransport == 1:
                 n = 0
@@ -6164,9 +6164,9 @@ def calc_tracer_tendencies(
                             trflx[0, 0, 0][n]
                             - trflx[0, 0, 1][n]
                             + trflx_d[0, 0, 0][n]
-                            - trflx_d[0, 0, 0][n]
+                            - trflx_d[0, 0, 1][n]
                             + trflx_u[0, 0, 0][n]
-                            - trflx_u[0, 0, 0][n]
+                            - trflx_u[0, 0, 1][n]
                         )
                         * constants.MAPL_GRAV
                         / pdelx

@@ -51,6 +51,7 @@ from .UW_translate_tests.translate_penetrative_entrainment_fluxes import Transla
 from .UW_translate_tests.translate_calc_momentum_tendency import TranslateMomentumTendency
 from .UW_translate_tests.translate_calc_thermodynamic_tendencies import TranslateThermodynamicTendencies
 from .UW_translate_tests.translate_prevent_negative_condensate import TranslatePreventNegativeCondensate
+from .UW_translate_tests.translate_tracer_tendencies import TranslateTracerTendencies
 
 __all__ = [
     "TranslateGFDL_1M_driver",
