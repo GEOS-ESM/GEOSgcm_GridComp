@@ -86,7 +86,12 @@ class GFDL1MInterface:
 
         # MAPL_GetPointer fails on:
         # self_manage_state.register("surface_temperature", "TS", mapl_import)
-        # self_manage_state.register("scalar_diffusivity_interface", "KH", mapl_import, dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM])
+        # self._manage_state.register(
+        #     "scalar_diffusivity_interface",
+        #     "KH",
+        #     mapl_import,
+        #     dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+        # )
         # self_manage_state.register("sensible_heat_flux", "SH", mapl_import)
 
         self._managed_state.register_2D("convection_fraction", "CNV_FRC", mapl_export, alloc=True)

@@ -1,14 +1,17 @@
+from typing import Tuple
+
+import numpy.typing as npt
+
 from ndsl import State
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Float
 from pyMoist.interface import InterfaceTransferType
 from pyMoist.interface.mapl.memory_factory import MAPLMemoryRepository
-import numpy.typing as npt
 
 
 class MAPLManagedState:
     def __init__(self, py_state: State, transfer_type: InterfaceTransferType) -> None:
         self._ndsl_state = py_state
-        self._state_to_mapl_mapping: dict[str, (MAPLMemoryRepository, str)] = {}
+        self._state_to_mapl_mapping: dict[str, Tuple[MAPLMemoryRepository, str]] = {}
         self._transfer_type = transfer_type
 
     def register(
