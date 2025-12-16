@@ -20,7 +20,6 @@ class MAPLManagedState:
         dims: list[str] = [X_DIM, Y_DIM, Z_DIM],
         alloc: bool = False,
     ):
-        print(f"Register {mapl_field_name} to {mapl_state}")
         mapl_state.register(mapl_field_name, dtype=dtype, dims=dims, alloc=alloc)
         self._state_to_mapl_mapping[ndsl_field_name] = (mapl_state, mapl_field_name)
 
