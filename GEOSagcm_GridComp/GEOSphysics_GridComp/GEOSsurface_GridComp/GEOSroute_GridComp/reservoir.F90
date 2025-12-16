@@ -57,7 +57,7 @@ contains
   function new_Reservoir(GC, use_res, rc) result (res)
     
     type(RES_STATE)                   :: res
-    type(ESMF_GridComp),  intent(in)  :: GC 
+    type(ESMF_GridComp),  intent(inout)  :: GC 
     logical,              intent(in)  :: use_res
 
     integer, optional,    intent(out) :: rc
