@@ -11,9 +11,9 @@ from pyMoist.GFDL_1M.stencils import (
     get_total_concentration,
     prepare_radiation,
     prepare_tendencies,
+    reset_micro_tendencies,
     update_radiation,
     update_tendencies,
-    reset_micro_tendencies,
 )
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 
