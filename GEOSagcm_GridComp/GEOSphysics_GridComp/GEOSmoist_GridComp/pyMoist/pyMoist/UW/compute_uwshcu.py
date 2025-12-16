@@ -6381,7 +6381,9 @@ def calc_cumulus_condensate_at_interface(
                     if K == kpen:
                         thj, qvj, qlj, qij, qse, id_check = conden(pifc0 + ppen, thlu_top, qtu_top, ese, esx)
                     else:
-                        thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thlu, qtu, ese, esx)
+                        thj, qvj, qlj, qij, qse, id_check = conden(
+                            pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], ese, esx
+                        )
 
                     if id_check == 1:
                         condensation = True
