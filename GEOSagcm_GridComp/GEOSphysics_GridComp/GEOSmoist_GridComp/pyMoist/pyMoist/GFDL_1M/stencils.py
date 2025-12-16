@@ -164,3 +164,28 @@ def prepare_radiation(
         radiation_snow = snow
         # graupel
         radiation_graupel = graupel
+
+
+def reset_micro_tendencies(
+    dvapordt: FloatField,
+    dliquiddt: FloatField,
+    draindt: FloatField,
+    dicedt: FloatField,
+    dsnowdt: FloatField,
+    dgraupeldt: FloatField,
+    dcloudfractiondt: FloatField,
+    dtdt: FloatField,
+    dudt: FloatField,
+    dvdt: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        dvapordt = 0
+        dliquiddt = 0
+        draindt = 0
+        dicedt = 0
+        dsnowdt = 0
+        dgraupeldt = 0
+        dcloudfractiondt = 0
+        dtdt = 0
+        dudt = 0
+        dvdt = 0

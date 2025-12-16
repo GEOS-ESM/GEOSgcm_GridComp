@@ -13,6 +13,7 @@ from pyMoist.GFDL_1M.stencils import (
     prepare_tendencies,
     update_radiation,
     update_tendencies,
+    reset_micro_tendencies,
 )
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 
@@ -81,6 +82,11 @@ class GFDL1M(NDSLRuntime):
             externals={
                 "DT_MOIST": config.DT_MOIST,
             },
+        )
+
+        self._reset_micro_tendencies = stencil_factory.from_dims_halo(
+            func=reset_micro_tendencies,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self._prepare_radiation = stencil_factory.from_dims_halo(
@@ -234,16 +240,29 @@ class GFDL1M(NDSLRuntime):
             large_scale_ice=state.mixing_ratio.large_scale_ice,
             convective_cloud_fraction=state.cloud_fraction.convective,
             large_scale_cloud_fraction=state.cloud_fraction.large_scale,
-            du_dt=self._locals.driver_tencencies.dudt,
-            dv_dt=self._locals.driver_tencencies.dvdt,
-            dt_dt=self._locals.driver_tencencies.dtdt,
-            dvapor_dt=self._locals.driver_tencencies.dvapordt,
-            dliquid_dt=self._locals.driver_tencencies.dliquiddt,
-            dice_dt=self._locals.driver_tencencies.dicedt,
-            dcloud_fraction_dt=self._locals.driver_tencencies.dcloudfractiondt,
-            drain_dt=self._locals.driver_tencencies.draindt,
-            dsnow_dt=self._locals.driver_tencencies.dsnowdt,
-            dgraupel_dt=self._locals.driver_tencencies.dgraupeldt,
+            du_dt=state.tendencies.dudt_micro,
+            dv_dt=state.tendencies.dvdt_micro,
+            dt_dt=state.tendencies.dtdt_micro,
+            dvapor_dt=state.tendencies.dvapordt_micro,
+            dliquid_dt=state.tendencies.dliquiddt_micro,
+            dice_dt=state.tendencies.dicedt_micro,
+            dcloud_fraction_dt=state.tendencies.dcloud_fractiondt_micro,
+            drain_dt=state.tendencies.draindt_micro,
+            dsnow_dt=state.tendencies.dsnowdt_micro,
+            dgraupel_dt=state.tendencies.dgraupeldt_micro,
+        )
+
+        self._reset_micro_tendencies(
+            dvapordt=self._locals.driver_tencencies.dvapordt,
+            dliquiddt=self._locals.driver_tencencies.dliquiddt,
+            draindt=self._locals.driver_tencencies.draindt,
+            dicedt=self._locals.driver_tencencies.dicedt,
+            dsnowdt=self._locals.driver_tencencies.dsnowdt,
+            dgraupeldt=self._locals.driver_tencencies.dgraupeldt,
+            dcloudfractiondt=self._locals.driver_tencencies.dcloudfractiondt,
+            dtdt=self._locals.driver_tencencies.dtdt,
+            dudt=self._locals.driver_tencencies.dudt,
+            dvdt=self._locals.driver_tencencies.dvdt,
         )
 
         self._prepare_radiation(

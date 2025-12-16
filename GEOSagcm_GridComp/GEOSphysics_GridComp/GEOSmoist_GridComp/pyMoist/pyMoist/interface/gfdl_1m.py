@@ -17,7 +17,6 @@ from pyMoist.interface import (
 
 class GFDL1MInterface:
     def __init__(self, quantity_factory: QuantityFactory, stencil_factory: StencilFactory) -> None:
-        self._GFDL_1M_ready: bool = False
         self._stencil_factory = stencil_factory
         self._quantity_factory = quantity_factory
         self._gfdl_1m: GFDL1M | None = None
