@@ -132,9 +132,9 @@ contains
     call MAPL_CommsBcast(layout, other_grand,  nres,  MAPL_Root, _RC)
     call MAPL_CommsBcast(layout, area_grand,   nres,  MAPL_Root, _RC)
 
-    cap_grand=cap_grand*1.e6! Convert capacity from million cubic meters (MCM) to m3
+    !cap_grand=cap_grand*1.e6! Convert capacity from million cubic meters (MCM) to m3
     write(fld_thres,'(I2.2)')fac_fld
-    area_grand=area_grand*1.e6 ! Convert area from square kilometers (km2) to square meters (m2)
+    !area_grand=area_grand*1.e6 ! Convert area from square kilometers (km2) to square meters (m2)
 
     Qfld_thres=0.!buff_global(minCatch:maxCatch)
 
@@ -148,7 +148,7 @@ contains
     call MAPL_CommsBcast(layout, catid_lake, nlake,  MAPL_Root, _RC)
     call MAPL_CommsBcast(layout, flag_lake,  nlake,  MAPL_Root, _RC)
     call MAPL_CommsBcast(layout, area_lake,  nlake,  MAPL_Root, _RC)
-    area_lake=area_lake*1.e6 
+    !area_lake=area_lake*1.e6 
 
     ! Set initial reservoir ID mapping 
     cat2res_all=0
