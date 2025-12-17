@@ -205,6 +205,140 @@ contains
          _RC  )
 
 !!!!!!!!!!!!!!!!
+! parameters in restart, for rivers
+!!!!!!!!!!!!!!
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'K_parameter_for_local_streams',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'KSTR'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'K_parameter_for_main_rivers',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'K'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'main_river_length_scale',&
+         UNITS              = 'm'                      ,&
+         SHORT_NAME         = 'LENGSC'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'local_streams_length_scale',&
+         UNITS              = 'm'                      ,&
+         SHORT_NAME         = 'LSTR'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'climatology_of_catchment_inflow',&
+         UNITS              = 'm+3 s-1'                      ,&
+         SHORT_NAME         = 'QIN_CLMT'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'climatology_of_catchment_outflow',&
+         UNITS              = 'm+3 s-1'                      ,&
+         SHORT_NAME         = 'QRI_CLMT'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'climatology_of_catchment_stream_flow',&
+         UNITS              = 'm+3 s-1'                      ,&
+         SHORT_NAME         = 'QSTR_CLMT'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'downstream_catchment_id',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'DOWNID'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'catchment_area',&
+         UNITS              = 'm+2'                      ,&
+         SHORT_NAME         = 'AREA_CATCH'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+!!!!!!!!!!!!!!!!
+! parameters in restart, for reservoirs
+!!!!!!!!!!!!!!
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'active_reservoirs',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'ACTIVE_RES' ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'type_of_reservoirs',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'TYPE_RES' ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'max_capacity_of_reservoirs',&
+         UNITS              = 'm+3'                  ,&
+         SHORT_NAME         = 'CAP_RES' ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )    
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'length_scale_of_reservoirs',&
+         UNITS              = 'm'                  ,&
+         SHORT_NAME         = 'WID_RES' ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )   
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'flood_control_flag_of_reservoirs',&
+         UNITS              = '1'                  ,&
+         SHORT_NAME         = 'FLD_RES' ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )  
+
+!!!!!!!!!!!!!!!!
 ! Export
 !!!!!!!!!!!!!!!
 ! WY note: Here TileOnly is on *Pfafstetter* catchment space
@@ -316,7 +450,7 @@ contains
     type(ESMF_Grid)            :: tileGrid
     type(ESMF_Grid)            :: pfaf_tilegrid, pfaf_grid
     character(len=ESMF_MAXSTR) :: SURFRC
-    type(ESMF_Config)          :: SCF
+    type(ESMF_Config)          :: SCF, CF
 
     type(MAPL_MetaComp), pointer   :: MAPL
     type(MAPL_LocStream)           :: locstream, pfaf_LocStream
@@ -327,6 +461,16 @@ contains
     type(ESMF_Grid)     :: agrid 
     type(ESMF_DELayout) :: layout
     type(ESMF_DistGrid) :: dist_grid 
+    type (ESMF_State       )            :: INTERNAL
+    real, dimension(:), pointer :: KSTR_RS
+    real, dimension(:), pointer :: K_RS
+    real, dimension(:), pointer :: LENGSC_RS
+    real, dimension(:), pointer :: LSTR_RS
+    real, dimension(:), pointer :: QIN_CLMT_RS
+    real, dimension(:), pointer :: QRI_CLMT_RS
+    real, dimension(:), pointer :: QSTR_CLMT_RS
+    real, dimension(:), pointer :: DOWNID_RS
+    real, dimension(:), pointer :: AREA_CATCH_RS      
 
     integer, pointer :: ims(:) => NULL()
 
@@ -344,6 +488,9 @@ contains
     type(Netcdf4_Fileformatter)  :: formatter 
     integer          :: j,nt_local, mpierr
     logical          :: use_res 
+
+    real,dimension(:), pointer :: cap_res_glob(:),wid_res_glob(:)
+    integer,dimension(:), pointer :: active_res_glob(:),type_res_glob(:),fld_res_glob(:) 
 
     ! ------------------
     ! begin
@@ -410,113 +557,17 @@ contains
     call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )    
     route%route_dt = ROUTE_DT
 
-    call MAPL_GetResource (MAPL, RIVER_INPUT_FILE,  label = 'RIVER_INPUT_FILE:',    default = '../input/river_input.nc', RC=STATUS )
-    if (MAPL_AM_I_Root()) then
-       call formatter%open(RIVER_INPUT_FILE, PFIO_READ, _RC)
-    endif
-    allocate(tmp_real(n_pfaf_g))
-    allocate(tmp_int(n_pfaf_g))
-
-    ! read areacat
-    if (MAPL_AM_I_Root()) then
-       call formatter%get_var('area_catch', tmp_real(:), _RC)
-    endif
-    call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(areacat_glob(n_pfaf_g))
-    tmp_real=tmp_real*1.e6
-    areacat_glob = tmp_real
-    allocate(route%areacat(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
-    
-   !read lengsc
-    if (MAPL_AM_I_Root()) then
-       call formatter%get_var('lengsc', tmp_real(:), _RC)
-    endif
-    call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%lengsc(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
-    route%lengsc=route%lengsc*1.e3
-
-   !read downid
-    if (MAPL_AM_I_Root()) then
-       call formatter%get_var('downid', tmp_int(:), _RC)
-    endif
-    call MAPL_CommsBcast(layout, tmp_int,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%downid(n_pfaf_local), source = tmp_int(minCatch:maxCatch))
-
-   !read lstr
-    if (MAPL_AM_I_Root()) then
-       call formatter%get_var('lstr', tmp_real(:), _RC)
-    endif
-    call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%lstr(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
-    route%lstr = route%lstr*1.e3
-
-    !read K
-    if (MAPL_AM_I_Root()) then
-       call formatter%get_var('K', tmp_real(:), _RC)
-    endif
-    call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%K(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
-
-    !read Kstr
-    if (MAPL_AM_I_Root()) then
-       call formatter%get_var('Kstr', tmp_real(:), _RC)
-    endif
-    call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%Kstr(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
-
-    !read qri_clmt
-    if (MAPL_AM_I_Root()) then
-       call formatter%get_var('qri_clmt', tmp_real(:), _RC)
-    endif
-    call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%qri_clmt(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
-
-    !read qin_clmt
-    if (MAPL_AM_I_Root()) then
-       call formatter%get_var('qin_clmt', tmp_real(:), _RC)
-    endif
-    call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%qin_clmt(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
-
-  !read qstr_clmt
-    if (MAPL_AM_I_Root()) then
-       call formatter%get_var('qstr_clmt', tmp_real(:), _RC)
-    endif
-    call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%qstr_clmt(n_pfaf_local), source = tmp_real(minCatch:maxCatch))
-
-    deallocate(tmp_real, tmp_int)
-
-    if (MAPL_AM_I_Root()) then
-       call formatter%close()
-    endif
-
     allocate(route%runoff_acc(nt_local), source = 0.)
-
-
-    !Initial reservoir module
-    route%reservoir = Reservoir(layout, trim(RIVER_INPUT_FILE), N_pfaf_g,n_pfaf_local, minCatch,maxCatch,use_res, _RC)
-
-    if(mapl_am_I_root()) print *,"reservoir init success" 
 
     pfaf_grid = create_pfaf_grid(_RC)
     call MAPL_LocstreamCreate(pfaf_Locstream, pfaf_Grid, _RC)
     call MAPL_LocStreamGet(pfaf_LocStream, TILEGRID=pfaf_tilegrid, _RC)
-
-    call MAPL_GetResource (MAPL, TILE_PFAF_File, label = 'TILE_PFAF_FILE:',  default = '../input/tile_pfaf.nc4', RC=STATUS )
-
-    call create_mapping_handler(trim(TILE_PFAF_File), tilegrid, pfaf_tilegrid, _RC)
-
     call MAPL%grid%set(pfaf_grid, _RC)
-
     call ESMF_GridCompSet(gc, grid=pfaf_grid, RC=status)
     VERIFY_(STATUS)
-
     call MAPL_set(MAPL, locstream = pfaf_locstream, rc=status)
     VERIFY_(STATUS)
 
-    call setup_exchange_water(pfaf_tilegrid, _RC)
-    
     call ESMF_TimeIntervalSet(CollectWater_DT, s=ROUTE_DT, rc=status)
     VERIFY_(status)
     call ESMF_ClockGet(clock, currTime=CurrentTime, timeStep=ModelTimeStep, rc=status) 
@@ -531,10 +582,47 @@ contains
          )
     VERIFY_(status)
  
-    deallocate(areacat_glob)
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
+
+    call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
+    VERIFY_(STATUS)
+    call ESMF_GridCompGet(GC, name=COMP_NAME, CONFIG=CF, RC=STATUS )
+    VERIFY_(STATUS) 
+    call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
+    VERIFY_(STATUS)
+    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL,  _RC) 
+    call MAPL_GetPointer(INTERNAL, KSTR_RS,       'KSTR',       _RC ) 
+    call MAPL_GetPointer(INTERNAL, K_RS,          'K',          _RC ) 
+    call MAPL_GetPointer(INTERNAL, LENGSC_RS,     'LENGSC',     _RC ) 
+    call MAPL_GetPointer(INTERNAL, LSTR_RS,       'LSTR',       _RC ) 
+    call MAPL_GetPointer(INTERNAL, QIN_CLMT_RS,   'QIN_CLMT',   _RC ) 
+    call MAPL_GetPointer(INTERNAL, QRI_CLMT_RS,   'QRI_CLMT',   _RC ) 
+    call MAPL_GetPointer(INTERNAL, QSTR_CLMT_RS,  'QSTR_CLMT',  _RC ) 
+    call MAPL_GetPointer(INTERNAL, DOWNID_RS,     'DOWNID',     _RC ) 
+    call MAPL_GetPointer(INTERNAL, AREA_CATCH_RS, 'AREA_CATCH', _RC )  
+
+    allocate(route%areacat(n_pfaf_local), source = AREA_CATCH_RS)
+    allocate(route%lengsc(n_pfaf_local), source = LENGSC_RS)
+    allocate(route%downid(n_pfaf_local), source = int(DOWNID_RS))
+    allocate(route%lstr(n_pfaf_local), source = LSTR_RS)
+    allocate(route%K(n_pfaf_local), source = K_RS)
+    allocate(route%Kstr(n_pfaf_local), source = KSTR_RS)
+    allocate(route%qri_clmt(n_pfaf_local), source = QRI_CLMT_RS)
+    allocate(route%qin_clmt(n_pfaf_local), source = QIN_CLMT_RS)
+    allocate(route%qstr_clmt(n_pfaf_local), source = QSTR_CLMT_RS)    
+    !Initial reservoir module
+    route%reservoir = Reservoir(GC, use_res, _RC)
+    if(mapl_am_I_root()) print *,"reservoir init success"     
+
+    allocate(areacat_glob(n_pfaf_g))
+    call ESMFL_FCollect(pfaf_tilegrid, areacat_glob, AREA_CATCH_RS, RC=STATUS)
+    call MAPL_GetResource (MAPL, TILE_PFAF_File, label = 'TILE_PFAF_FILE:',  default = '../input/tile_pfaf.nc4', RC=STATUS )
+    call create_mapping_handler(trim(TILE_PFAF_File), tilegrid, pfaf_tilegrid, _RC)
+    call setup_exchange_water(pfaf_tilegrid, _RC)
+    deallocate(areacat_glob)
+     
     RETURN_(ESMF_SUCCESS)
 
   contains
@@ -824,6 +912,7 @@ contains
     real, dimension(:), pointer :: WSTREAM
     real, dimension(:), pointer :: WRIVER
     real, dimension(:), pointer :: WRES
+
     real, dimension(:), pointer :: LRIVERMOUTH
     real, dimension(:), pointer :: ORIVERMOUTH
 
@@ -902,7 +991,7 @@ contains
     call MAPL_GetPointer(INTERNAL, WRIVER, 'WRIVER',   _RC )
     call MAPL_GetPointer(INTERNAL, WSTREAM,'WSTREAM',  _RC)
     call MAPL_GetPointer(INTERNAL, WRES,    'WRES',    _RC)
- 
+
 ! export
     call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW',   _RC)
     call MAPL_GetPointer(EXPORT, QINFLOW,  'QINFLOW' , _RC)
