@@ -564,8 +564,8 @@ contains
     if (MAPL_AM_I_Root()) then
        call formatter%open(RIVER_INPUT_FILE, PFIO_READ, _RC)
     endif
-    !allocate(tmp_real(n_pfaf_g))
-    !allocate(tmp_int(n_pfaf_g))
+    allocate(tmp_real(n_pfaf_local))
+    allocate(tmp_int(n_pfaf_local))
 
     pfaf_grid = create_pfaf_grid(_RC)
     call MAPL_LocstreamCreate(pfaf_Locstream, pfaf_Grid, RC=STATUS)
@@ -590,6 +590,7 @@ contains
     allocate(areacat_glob(n_pfaf_g))
     call ESMFL_FCollect(pfaf_tilegrid, areacat_glob, AREA_CATCH_RS, RC=STATUS)
     !tmp_real=tmp_real*1.e6
+    tmp_real = AREA_CATCH_RS
     allocate(route%areacat(n_pfaf_local), source = AREA_CATCH_RS)
     
    !read lengsc
@@ -650,7 +651,7 @@ contains
     !call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
     allocate(route%qstr_clmt(n_pfaf_local), source = QSTR_CLMT_RS)
 
-    !deallocate(tmp_real, tmp_int)
+    deallocate(tmp_real, tmp_int)
 
     !if (MAPL_AM_I_Root()) then
     !   call formatter%close()
