@@ -9,6 +9,8 @@ from pyMoist.interface.mapl.memory_factory import MAPLMemoryRepository
 
 
 class MAPLManagedState:
+    """Manage a NDSL <> MAPL shared state by linking MAPL pointers to NDSL state fields"""
+
     def __init__(self, py_state: State, transfer_type: InterfaceTransferType) -> None:
         self._ndsl_state = py_state
         self._state_to_mapl_mapping: dict[str, Tuple[MAPLMemoryRepository, str]] = {}
@@ -42,6 +44,8 @@ class MAPLManagedState:
         return self._ndsl_state
 
     def fortran_to_ndsl(self) -> None:
+        """Copy all Fortran memory in Python"""
+
         def _pull_from_fortran(
             mapl_field_: str,
             mapl_state_: MAPLMemoryRepository,
@@ -71,6 +75,8 @@ class MAPLManagedState:
                 raise e
 
     def ndsl_to_fortran(self) -> None:
+        """Copy all Python memory back in Fortan"""
+
         def _push_back_to_fortran(
             mapl_field_: str,
             mapl_state_: MAPLMemoryRepository,
@@ -91,12 +97,6 @@ class MAPLManagedState:
                     ndsl_array = getattr(ndsl_state_, ndsl_field_).field[:]
                     mapl_array[:] = ndsl_array[:]
                     mapl_state_.send_to_fortran(mapl_field_)
-                    # flatten_py = np.ascontiguousarray(mapl_array)
-                    # mapl_state_._f_py_converter._ffi.memmove(
-                    #     mapl_state_._fortran_pointers[mapl_field_].pointer,
-                    #     flatten_py,
-                    #     4 * flatten_py.size,
-                    # )
 
         for ndsl_field, (mapl_state, mapl_field) in self._state_to_mapl_mapping.items():
             _push_back_to_fortran(mapl_field, mapl_state, ndsl_field, self._ndsl_state)
