@@ -571,87 +571,7 @@ contains
     call MAPL_LocstreamCreate(pfaf_Locstream, pfaf_Grid, RC=STATUS)
     call MAPL_LocStreamGet(pfaf_LocStream, TILEGRID=pfaf_tilegrid, RC=STATUS)
 
-    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL,  _RC)
-    call MAPL_GetPointer(INTERNAL, KSTR_RS,       'KSTR',       RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, K_RS,          'K',          RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, LENGSC_RS,     'LENGSC',     RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, LSTR_RS,       'LSTR',       RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, QIN_CLMT_RS,   'QIN_CLMT',   RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, QRI_CLMT_RS,   'QRI_CLMT',   RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, QSTR_CLMT_RS,  'QSTR_CLMT',  RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, DOWNID_RS,     'DOWNID',     RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, AREA_CATCH_RS, 'AREA_CATCH', RC=STATUS )  
 
-    ! read areacat
-    !if (MAPL_AM_I_Root()) then
-    !   call formatter%get_var('area_catch', tmp_real(:), _RC)
-    !endif
-    !call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(areacat_glob(n_pfaf_g))
-    call ESMFL_FCollect(pfaf_tilegrid, areacat_glob, AREA_CATCH_RS, RC=STATUS)
-    !tmp_real=tmp_real*1.e6
-    tmp_real = AREA_CATCH_RS
-    allocate(route%areacat(n_pfaf_local), source = AREA_CATCH_RS)
-    
-   !read lengsc
-    !if (MAPL_AM_I_Root()) then
-    !   call formatter%get_var('lengsc', tmp_real(:), _RC)
-    !endif
-    !call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%lengsc(n_pfaf_local), source = LENGSC_RS)
-    !route%lengsc=route%lengsc*1.e3
-
-   !read downid
-    !if (MAPL_AM_I_Root()) then
-    !   call formatter%get_var('downid', tmp_int(:), _RC)
-    !endif
-    !call MAPL_CommsBcast(layout, tmp_int,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%downid(n_pfaf_local), source = int(DOWNID_RS))
-
-   !read lstr
-    !if (MAPL_AM_I_Root()) then
-    !   call formatter%get_var('lstr', tmp_real(:), _RC)
-    !endif
-    !call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%lstr(n_pfaf_local), source = LSTR_RS)
-    !route%lstr = route%lstr*1.e3
-
-    !read K
-    !if (MAPL_AM_I_Root()) then
-    !   call formatter%get_var('K', tmp_real(:), _RC)
-    !endif
-    !call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%K(n_pfaf_local), source = K_RS)
-
-    !read Kstr
-    !if (MAPL_AM_I_Root()) then
-    !   call formatter%get_var('Kstr', tmp_real(:), _RC)
-    !endif
-    !call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%Kstr(n_pfaf_local), source = KSTR_RS)
-
-    !read qri_clmt
-    !if (MAPL_AM_I_Root()) then
-    !   call formatter%get_var('qri_clmt', tmp_real(:), _RC)
-    !endif
-    !call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%qri_clmt(n_pfaf_local), source = QRI_CLMT_RS)
-
-    !read qin_clmt
-    !if (MAPL_AM_I_Root()) then
-    !   call formatter%get_var('qin_clmt', tmp_real(:), _RC)
-    !endif
-    !call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%qin_clmt(n_pfaf_local), source = QIN_CLMT_RS)
-
-  !read qstr_clmt
-    !if (MAPL_AM_I_Root()) then
-    !   call formatter%get_var('qstr_clmt', tmp_real(:), _RC)
-    !endif
-    !call MAPL_CommsBcast(layout, tmp_real,   n_pfaf_g,  MAPL_Root, status)
-    allocate(route%qstr_clmt(n_pfaf_local), source = QSTR_CLMT_RS)
-
-    deallocate(tmp_real, tmp_int)
 
     !if (MAPL_AM_I_Root()) then
     !   call formatter%close()
@@ -677,7 +597,6 @@ contains
     call MAPL_set(MAPL, locstream = pfaf_locstream, rc=status)
     VERIFY_(STATUS)
 
-    call setup_exchange_water(pfaf_tilegrid, _RC)
     
     call ESMF_TimeIntervalSet(CollectWater_DT, s=ROUTE_DT, rc=status)
     VERIFY_(status)
@@ -697,6 +616,40 @@ contains
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
+
+    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL,  _RC)
+    call MAPL_GetPointer(INTERNAL, KSTR_RS,       'KSTR',       RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, K_RS,          'K',          RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, LENGSC_RS,     'LENGSC',     RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, LSTR_RS,       'LSTR',       RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, QIN_CLMT_RS,   'QIN_CLMT',   RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, QRI_CLMT_RS,   'QRI_CLMT',   RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, QSTR_CLMT_RS,  'QSTR_CLMT',  RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, DOWNID_RS,     'DOWNID',     RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, AREA_CATCH_RS, 'AREA_CATCH', RC=STATUS )  
+
+    if (MAPL_AM_I_Root()) then
+        print *,"AREA_CATCH_RS="
+        print *,AREA_CATCH_RS
+        stop
+    end if
+
+    allocate(areacat_glob(n_pfaf_g))
+    call ESMFL_FCollect(pfaf_tilegrid, areacat_glob, AREA_CATCH_RS, RC=STATUS)
+    tmp_real = AREA_CATCH_RS
+    allocate(route%areacat(n_pfaf_local), source = AREA_CATCH_RS)
+    allocate(route%lengsc(n_pfaf_local), source = LENGSC_RS)
+    allocate(route%downid(n_pfaf_local), source = int(DOWNID_RS))
+    allocate(route%lstr(n_pfaf_local), source = LSTR_RS)
+    allocate(route%K(n_pfaf_local), source = K_RS)
+    allocate(route%Kstr(n_pfaf_local), source = KSTR_RS)
+    allocate(route%qri_clmt(n_pfaf_local), source = QRI_CLMT_RS)
+    allocate(route%qin_clmt(n_pfaf_local), source = QIN_CLMT_RS)
+    allocate(route%qstr_clmt(n_pfaf_local), source = QSTR_CLMT_RS)
+    deallocate(tmp_real, tmp_int)
+
+    call setup_exchange_water(pfaf_tilegrid, _RC)
+
     RETURN_(ESMF_SUCCESS)
 
   contains
