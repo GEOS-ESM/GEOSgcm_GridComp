@@ -21,7 +21,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS2,
     MAXENS3,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import updraft_temperature
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import updraft_vertical_velocity
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
 )
@@ -41,12 +41,20 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_updrafttemp": {},
-            "local_cloud_moist_static_energy_forced_updrafttemp": {},
-            "local_geopotential_height_cloud_levels_forced_updrafttemp": {},
-            "local_t_cloud_levels_forced_updrafttemp": {},
-            "local_miscellaneous_temperature_updrafttemp": {},
-            "local_cloud_vapor_mixing_ratio_forced_updrafttemp": {},
+            "local_vertical_velocity_3d_upvvel": {},
+            "local_vertical_velocity_2d_upvvel": {},
+            "convective_scale_velocity_upvvel": {},
+            "entrainment_rate_upvvel": {},
+            "error_code_upvvel": {},
+            "local_detrainment_function_updraft_upvvel": {},
+            "local_geopotential_height_cloud_levels_forced_upvvel": {},
+            "local_t_cloud_levels_forced_upvvel": {},
+            "local_miscellaneous_temperature_upvvel": {},
+            "local_cloud_vapor_mixing_ratio_forced_upvvel": {},
+            "cloud_liquid_after_rain_forced_upvvel": {},
+            "local_vapor_forced_upvvel": {},
+            "lcl_level_upvvel": {},
+            "cloud_top_level_upvvel": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -76,62 +84,91 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
+        locals.vertical_velocity_3d.data[:] = inputs["local_vertical_velocity_3d_upvvel"]
+        locals.vertical_velocity_2d.data[:] = inputs["local_vertical_velocity_2d_upvvel"]
+        state.input_output.convective_scale_velocity.data[:] = inputs["convective_scale_velocity_upvvel"]
+        state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "entrainment_rate_upvvel"
+        ]
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_updrafttemp"
+            "error_code_upvvel"
         ]
-        locals.cloud_moist_static_energy_forced.data[:] = inputs[
-            "local_cloud_moist_static_energy_forced_updrafttemp"
-        ]
+        locals.detrainment_function_updraft.data[:] = inputs["local_detrainment_function_updraft_upvvel"]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced_updrafttemp"
+            "local_geopotential_height_cloud_levels_forced_upvvel"
         ]
-        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_updrafttemp"]
-        locals.miscellaneous_temperature.data[:] = inputs["local_miscellaneous_temperature_updrafttemp"]
+        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_upvvel"]
+        locals.miscellaneous_temperature.data[:] = inputs["local_miscellaneous_temperature_upvvel"]
         locals.cloud_vapor_mixing_ratio_forced.data[:] = inputs[
-            "local_cloud_vapor_mixing_ratio_forced_updrafttemp"
+            "local_cloud_vapor_mixing_ratio_forced_upvvel"
+        ]
+        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_liquid_after_rain_forced_upvvel"]
+        )
+        locals.vapor_forced.data[:] = inputs["local_vapor_forced_upvvel"]
+        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_upvvel"]
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "cloud_top_level_upvvel"
         ]
 
         # initalize test code
         code = self.stencil_factory.from_dims_halo(
-            func=updraft_temperature,
+            func=updraft_vertical_velocity,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
         )
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
             if cumulus_parameterization_config.FIRST_GUESS_W == 0:
                 code(
-                    error_code=state.output.error_code,
-                    updraft_t=locals.miscellaneous_temperature,
-                    cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+                    vertical_velocity_3d=locals.vertical_velocity_3d,
+                    vertical_velocity_2d=locals.vertical_velocity_2d,
+                    convective_scale_velocity=state.input_output.convective_scale_velocity,
+                    entrainment_rate=state.output.entrainment_rate,
+                    detrainment_function_updraft=locals.detrainment_function_updraft,
                     geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
                     t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                    miscellaneous_temperature=locals.miscellaneous_temperature,
+                    cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                    cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
+                    vapor_forced=locals.vapor_forced,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    cloud_top_level=state.output.cloud_top_level,
+                    error_code=state.output.error_code,
                     plume=plume_dependent_constants.PLUME_INDEX,
                 )
 
         # write output
         outputs = {
-            "error_code_updrafttemp": state.output.error_code.field[
+            "local_vertical_velocity_3d_upvvel": locals.vertical_velocity_3d.field[:],
+            "local_vertical_velocity_2d_upvvel": locals.vertical_velocity_2d.field[:],
+            "convective_scale_velocity_upvvel": state.input_output.convective_scale_velocity.field[:],
+            "entrainment_rate_upvvel": state.output.entrainment_rate.field[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "error_code_upvvel": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_detrainment_function_updraft_upvvel": locals.detrainment_function_updraft.field[:],
+            "local_geopotential_height_cloud_levels_forced_upvvel": locals.geopotential_height_cloud_levels_forced.field[
+                :
+            ],
+            "local_t_cloud_levels_forced_upvvel": locals.t_cloud_levels_forced.field[:],
+            "local_miscellaneous_temperature_upvvel": locals.miscellaneous_temperature.field[:],
+            "local_cloud_vapor_mixing_ratio_forced_upvvel": locals.cloud_vapor_mixing_ratio_forced.field[:],
+            "cloud_liquid_after_rain_forced_upvvel": state.output.cloud_liquid_after_rain_forced.field[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "local_vapor_forced_upvvel": locals.vapor_forced.field[:],
+            "lcl_level_upvvel": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_level_upvvel": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "local_cloud_moist_static_energy_forced_updrafttemp": locals.cloud_moist_static_energy_forced.field[
-                :
-            ],
-            "local_geopotential_height_cloud_levels_forced_updrafttemp": locals.geopotential_height_cloud_levels_forced.field[
-                :
-            ],
-            "local_t_cloud_levels_forced_updrafttemp": locals.t_cloud_levels_forced.field[:],
-            "local_miscellaneous_temperature_updrafttemp": locals.miscellaneous_temperature.field[:],
-            "local_cloud_vapor_mixing_ratio_forced_updrafttemp": locals.cloud_vapor_mixing_ratio_forced.field[
-                :
             ],
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftTemperature_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -154,7 +191,7 @@ class TranslateGF2020_CumulusParameterization_UpdraftTemperature_shallow(Transla
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftTemperature_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -177,7 +214,7 @@ class TranslateGF2020_CumulusParameterization_UpdraftTemperature_mid(TranslateFo
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftTemperature_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

@@ -146,6 +146,12 @@ from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_Cumu
     TranslateGF2020_CumulusParameterization_C1DProfile_mid,
     TranslateGF2020_CumulusParameterization_C1DProfile_deep,
 )
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftMoisture import (
+    TranslateGF2020_CumulusParameterization_UpdraftMoisture_shallow,
+    TranslateGF2020_CumulusParameterization_UpdraftMoisture_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftMoisture_deep,
+)
+
 from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_Cumulus_Parameterization_MeltingProfile import (
     TranslateGF2020_CumulusParameterization_MeltingProfile_shallow,
     TranslateGF2020_CumulusParameterization_MeltingProfile_mid,
@@ -175,7 +181,11 @@ from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumul
     TranslateGF2020_CumulusParameterization_UpdraftTemperature_mid,
     TranslateGF2020_CumulusParameterization_UpdraftTemperature_shallow,
 )
-
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftVerticalVelocity import (
+    TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_shallow,
+)
 from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftCIN import (
     TranslateGF2020_CumulusParameterization_UpdraftCIN_deep,
     TranslateGF2020_CumulusParameterization_UpdraftCIN_mid,

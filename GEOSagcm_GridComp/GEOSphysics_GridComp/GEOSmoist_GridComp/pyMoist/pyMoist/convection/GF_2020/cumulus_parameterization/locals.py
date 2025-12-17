@@ -358,15 +358,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    cupclw: Quantity = dataclasses.field(
-        metadata={
-            "name": "cupclw",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     qrcdo: Quantity = dataclasses.field(
         metadata={
             "name": "qrcdo",
@@ -844,9 +835,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    unspecifid_temperature: Quantity = dataclasses.field(
+    miscellaneous_temperature: Quantity = dataclasses.field(
         metadata={
-            "name": "unspecifid_temperature",
+            "name": "miscellaneous_temperature",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",

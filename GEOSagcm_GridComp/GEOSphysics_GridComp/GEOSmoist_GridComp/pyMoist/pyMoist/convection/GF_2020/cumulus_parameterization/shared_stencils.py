@@ -55,7 +55,7 @@ def updraft_vertical_velocity(
     detrainment_function_updraft: FloatField,
     geopotential_height_cloud_levels_forced: FloatField,
     t_cloud_levels_forced: FloatField,
-    unspecifid_temperature: FloatField,
+    miscellaneous_temperature: FloatField,
     cloud_vapor_mixing_ratio_forced: FloatField,
     cloud_liquid_after_rain_forced: FloatField_Plume,
     vapor_forced: FloatField,
@@ -112,12 +112,12 @@ def updraft_vertical_velocity(
                 )
 
                 t_v = 0.5 * (
-                    unspecifid_temperature
+                    miscellaneous_temperature
                     * (
                         1.0
                         + (cloud_vapor_mixing_ratio_forced / eps) / (1.0 + cloud_vapor_mixing_ratio_forced)
                     )
-                    + unspecifid_temperature[0, 0, 1]
+                    + miscellaneous_temperature[0, 0, 1]
                     * (
                         1.0
                         + (cloud_vapor_mixing_ratio_forced[0, 0, 1] / eps)
@@ -129,14 +129,22 @@ def updraft_vertical_velocity(
                     (t_v - t_ve) / t_ve
                     - ftun2
                     * 0.50
-                    * (cloud_liquid_after_rain_forced[0, 0, 1] + cloud_liquid_after_rain_forced)
+                    * (
+                        cloud_liquid_after_rain_forced[0, 0, 1][plume]
+                        + cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                    )
                 )
 
                 dw1 = 2.0 / (f * (1.0 + gam)) * bu * dz
                 if ZERO_DIFF == 1:
-                    kx = max(entrainment_rate, detrainment_function_updraft) * dz
+                    kx = max(entrainment_rate[0, 0, 0][plume], detrainment_function_updraft) * dz
                 else:
-                    kx = (1.0 + beta * C_d) * max(entrainment_rate, detrainment_function_updraft) * dz * ftun1
+                    kx = (
+                        (1.0 + beta * C_d)
+                        * max(entrainment_rate[0, 0, 0][plume], detrainment_function_updraft)
+                        * dz
+                        * ftun1
+                    )
 
                 dw2 = (vertical_velocity_3d) - 2.0 * kx * (vertical_velocity_3d)
 
@@ -159,7 +167,7 @@ def updraft_vertical_velocity(
                             level_inner_loop += 1
                         vertical_velocity_3d = vs / (1.0e-16 + nvs)
                 else:
-                    if K <= cloud_top_level + 1:
+                    if K <= cloud_top_level[0, 0][plume] + 1:
                         vs: FloatFieldIJ = 0.0
                         dz1m: FloatFieldIJ = 0.0
                         level_inner_loop = max(K - n_smooth, 0)

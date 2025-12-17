@@ -105,8 +105,45 @@ def check_config(
             "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
         )
 
-    if cumulus_parameterization_config.ZERO_DIFF != 1:
+    if cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD != 1:
+        ndsl_log.warning(
+            " GF2020 cumulus parameterization: updraft_moisture constructed with "
+            "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
+        )
+
+    if config.AUTOCONV != 1:
+        ndsl_log.warning(
+            " GF2020 cumulus parameterization: updraft_moisture constructed with "
+            "untested AUTOCONV option. Running untested code... proceed with caution"
+        )
+
+    if cumulus_parameterization_config.FRAC_MODIS != 1:
+        ndsl_log.warning(
+            " GF2020 cumulus parameterization: updraft_moisture constructed with "
+            "untested FRAC_MODIS option. Running untested code... proceed with caution"
+        )
+
+    if cumulus_parameterization_config.ZERO_DIFF != 0:
+        ndsl_log.warning(
+            " GF2020 cumulus parameterization: updraft_moisture constructed with "
+            "untested ZERO_DIFF option. Running untested code... proceed with caution"
+        )
+
+    if cumulus_parameterization_config.ZERO_DIFF != 0:
         ndsl_log.warning(
             " GF2020 cumulus parameterization: updraft_vertical_velocity constructed with "
             "untested ZERO_DIFF option. Running untested code... proceed with caution"
+        )
+
+    # generate errors after all warnings
+    # TODO find a way to generate all then fail at once, printing all simultaneously
+    if (
+        cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1
+        and cumulus_parameterization_config.ENABLE_SHALLOW == 1
+    ):
+        raise NotImplementedError(
+            "[NDSL] GF2020 cumulus parameterization called initalized with"
+            "USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1 and shallow plume enabled. This combination requires"
+            "a call to the unimplemented function get_delmix. Please implement, then disable this error"
+            "manually to proceed."
         )

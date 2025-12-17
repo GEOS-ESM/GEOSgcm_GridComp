@@ -38,7 +38,7 @@ class TestCore:
             "precipitable_water_updraft_forced_c1dprofile": {},
             "total_normalized_integrated_condensate_forced_c1dprofile": {},
             "local_cloud_moist_static_energy_forced_c1dprofile": {},
-            "local_unspecifid_temperature_c1dprofile": {},
+            "local_miscellaneous_temperature_c1dprofile": {},
             "ocean_fraction_c1dprofile": {},
             "convection_fraction_c1dprofile": {},
             "surface_type_c1dprofile": {},
@@ -124,7 +124,7 @@ class TestCore:
         locals.cloud_moist_static_energy_forced.data[:] = inputs[
             "local_cloud_moist_static_energy_forced_c1dprofile"
         ]
-        locals.unspecifid_temperature.data[:] = inputs["local_unspecifid_temperature_c1dprofile"]
+        locals.miscellaneous_temperature.data[:] = inputs["local_miscellaneous_temperature_c1dprofile"]
         state.input.ocean_fraction.data[:] = inputs["ocean_fraction_c1dprofile"]
         state.input.convection_fraction.data[:] = inputs["convection_fraction_c1dprofile"]
         state.input.surface_type.data[:] = inputs["surface_type_c1dprofile"]
@@ -214,7 +214,7 @@ class TestCore:
             "local_cloud_moist_static_energy_forced_c1dprofile": locals.cloud_moist_static_energy_forced.field[
                 :
             ],
-            "local_unspecifid_temperature_c1dprofile": locals.unspecifid_temperature.field[:],
+            "local_miscellaneous_temperature_c1dprofile": locals.miscellaneous_temperature.field[:],
             "ocean_fraction_c1dprofile": state.input.ocean_fraction.field[:],
             "convection_fraction_c1dprofile": state.input.convection_fraction.field[:],
             "surface_type_c1dprofile": state.input.surface_type.field[:],

@@ -32,7 +32,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import
 )
 
 
-def updraft_moisture_light(
+def c1d_updraft_moisture_light(
     start_level: IntFieldIJ,
     error_code: IntFieldIJ_Plume,
     geopotential_height_cloud_levels_forced: FloatField,
@@ -41,7 +41,7 @@ def updraft_moisture_light(
     precipitable_water_updraft_forced: FloatField_Plume,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
     cloud_moist_static_energy_forced: FloatField,
-    unspecifid_temperature: FloatField,
+    miscellaneous_temperature: FloatField,
     ocean_fraction: FloatFieldIJ,
     convection_fraction: FloatFieldIJ,
     surface_type: FloatFieldIJ,
@@ -89,7 +89,7 @@ def updraft_moisture_light(
         precipitable_water_updraft_forced[0, 0, 0][plume] = 0.0
         cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0
         cloud_liquid_before_rain_forced = 0.0
-        unspecifid_temperature = t_cloud_levels
+        miscellaneous_temperature = t_cloud_levels
         cloud_vapor_mixing_ratio_forced = vapor_cloud_levels_forced
 
     # with computation(FORWARD), interval(0, 1):
@@ -155,7 +155,7 @@ def updraft_moisture_light(
     #                 0.0, cloud_vapor_mixing_ratio_forced - saturation_cloud_liquid_rain_forced
     #             )
     #             # updraft temp
-    #             unspecifid_temperature = (1.0 / cumulus_parameterization_constants.CP) * (
+    #             miscellaneous_temperature = (1.0 / cumulus_parameterization_constants.CP) * (
     #                 cloud_moist_static_energy_forced
     #                 - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
     #                 - cumulus_parameterization_constants.XLV * saturation_cloud_liquid_rain_forced
@@ -168,14 +168,14 @@ def updraft_moisture_light(
     #                     * (
     #                         1.0
     #                         - liquid_fraction(
-    #                             unspecifid_temperature, convection_fraction, surface_type, FRAC_MODIS
+    #                             miscellaneous_temperature, convection_fraction, surface_type, FRAC_MODIS
     #                         )
     #                     )
     #                     * cumulus_parameterization_constants.XLF
     #                 )
 
-    #                 unspecifid_temperature = (
-    #                     unspecifid_temperature
+    #                 miscellaneous_temperature = (
+    #                     miscellaneous_temperature
     #                     + (1.0 / cumulus_parameterization_constants.CP) * delta_cloud_mse_glac
     #                 )
 
@@ -234,60 +234,55 @@ def in_cloud_updraft_air_temperature(
 def get_melting_profile(
     error_code: IntFieldIJ_Plume,
     plume: Int,
-    local_melting_layer: FloatField,
-    local_partition_liquid_ice: FloatField,
+    melting_layer: FloatField,
+    partition_liquid_ice: FloatField,
     p_cloud_levels_forced: FloatField_Plume,
     precipitable_water_updraft_forced: FloatField_Plume,
-    local_melting: FloatField,
+    melting: FloatField,
 ):
     from __externals__ import k_end, MELT_GLAC
 
     with computation(FORWARD), interval(...):
-        ktf = k_end - 1
         if MELT_GLAC == True and plume == 2:
-            pwo_solid_phase = 0.0
-            pwo_eff = 0.0
-            local_melting = 0.0
+            solid_phase_precipitable_water = 0.0
+            effective_precipitable_water = 0.0
+            melting = 0.0
 
-            if error_code[0, 0][plume] > 0:
-                local_melting = 0.0
+            total_solid_phase_precipitable_water: FloatFieldIJ = 0.0
 
-            total_pwo_solid_phase: FloatFieldIJ = 0.0
+    with computation(FORWARD), interval(0, -2):
+        if MELT_GLAC == True and plume == 2 and error_code[0, 0][plume] == 0:
+            dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
-    with computation(FORWARD), interval(...):
-        if MELT_GLAC == True and plume == 2:
-            if K <= ktf - 1:
-                if error_code[0, 0][plume] == 0:
-                    dp = 100.0 * (
-                        p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]
+            effective_precipitable_water = 0.5 * (
+                precipitable_water_updraft_forced[0, 0, 0][plume]
+                + precipitable_water_updraft_forced[0, 0, 1][plume]
+            )
+
+            solid_phase_precipitable_water = (1.0 - partition_liquid_ice) * effective_precipitable_water
+
+            total_solid_phase_precipitable_water = (
+                total_solid_phase_precipitable_water
+                + solid_phase_precipitable_water * dp / constants.MAPL_GRAV
+            )
+
+    with computation(PARALLEL), interval(0, -1):
+        if MELT_GLAC == True and plume == 2 and error_code[0, 0][plume] == 0:
+            melting = melting_layer * (
+                total_solid_phase_precipitable_water
+                / (
+                    100
+                    * (
+                        p_cloud_levels_forced.at(K=0, ddim=[plume])
+                        - p_cloud_levels_forced.at(K=k_end - 1, ddim=[plume])
                     )
-
-                    pwo_eff = 0.5 * (
-                        precipitable_water_updraft_forced[0, 0, 0][plume]
-                        + precipitable_water_updraft_forced[0, 0, 1][plume]
-                    )
-
-                    pwo_solid_phase = (1.0 - local_partition_liquid_ice) * pwo_eff
-
-                    total_pwo_solid_phase = total_pwo_solid_phase + pwo_solid_phase * dp / constants.MAPL_GRAV
+                    / constants.MAPL_GRAV
+                )
+            )
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == True and plume == 2:
-            if K <= ktf:
-                if error_code[0, 0][plume] == 0:
-                    local_melting = local_melting_layer * (
-                        total_pwo_solid_phase
-                        / (
-                            100
-                            * (
-                                p_cloud_levels_forced.at(K=0, ddim=[plume])
-                                - p_cloud_levels_forced.at(K=ktf, ddim=[plume])
-                            )
-                            / constants.MAPL_GRAV
-                        )
-                    )
-        else:
-            local_melting = 0.0
+        if not (MELT_GLAC == True and plume == 2):
+            melting = 0.0
 
 
 class C1DProfile:
@@ -309,14 +304,14 @@ class C1DProfile:
 
         # construct stencils and functions
         self._updraft_moisture_light = stencil_factory.from_dims_halo(
-            func=updraft_moisture_light,
+            func=c1d_updraft_moisture_light,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
                 "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
                 "FRAC_MODIS": cumulus_parameterization_config.FRAC_MODIS,
-                "QRC_CRIT_OCN": cumulus_parameterization_config.QRC_CRIT_OCN,
-                "QRC_CRIT_LND": cumulus_parameterization_config.QRC_CRIT_LND,
+                "QRC_CRIT_OCN": cumulus_parameterization_config.CRITICAL_MIXING_RATIO_OVER_OCEAN,
+                "QRC_CRIT_LND": cumulus_parameterization_config.CRITICAL_MIXING_RATIO_OVER_LAND,
             },
         )
 
@@ -360,7 +355,7 @@ class C1DProfile:
                 precipitable_water_updraft_forced=state.output.precipitable_water_updraft_forced,
                 total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
                 cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
-                unspecifid_temperature=locals.unspecifid_temperature,
+                miscellaneous_temperature=locals.miscellaneous_temperature,
                 ocean_fraction=locals.ocean_fraction,
                 convection_fraction=state.input.convection_fraction,
                 surface_type=state.input.surface_type,
@@ -395,7 +390,7 @@ class C1DProfile:
                 detrainment_function_updraft=locals.detrainment_function_updraft,
                 geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                 t_cloud_levels_forced=locals.t_cloud_levels_forced,
-                unspecifid_temperature=locals.unspecifid_temperature,
+                miscellaneous_temperature=locals.miscellaneous_temperature,
                 cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
                 cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
                 vapor_forced=locals.vapor_forced,
@@ -404,45 +399,6 @@ class C1DProfile:
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
-
-
-class MeltingProfile:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._get_melting_profile = stencil_factory.from_dims_halo(
-            func=get_melting_profile,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
-            },
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-
-        self._get_melting_profile(
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            local_melting_layer=locals.melting_layer,
-            local_partition_liquid_ice=locals.partition_liquid_ice,
-            p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-            precipitable_water_updraft_forced=state.output.precipitable_water_updraft_forced,
-            local_melting=locals.melting,
-        )
 
 
 class InCloudTemperature:
