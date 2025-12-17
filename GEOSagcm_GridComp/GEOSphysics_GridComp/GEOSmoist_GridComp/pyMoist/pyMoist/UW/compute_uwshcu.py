@@ -6454,7 +6454,7 @@ def calc_cumulus_condensate_at_interface(
                 # iter_cin = 1.
 
 
-def adjust_implicit_CIN_inputs(
+def adjust_implicit_CIN_inputs1(
     condensation: BoolFieldIJ,
     qv0: FloatField,
     qvten: FloatField,
@@ -6474,63 +6474,22 @@ def adjust_implicit_CIN_inputs(
     tr0_s: FloatField_NTracers,
     tr0: FloatField_NTracers,
     trten: FloatField_NTracers,
-    umf_s: FloatField,
-    umf_zint: FloatField,
-    dcm: FloatField,
-    qrten: FloatField,
-    qsten: FloatField,
-    cush: FloatFieldIJ,
-    cufrc: FloatField,
-    slflx_s: FloatField,
-    slflx: FloatField,
-    qtflx_s: FloatField,
-    qtflx: FloatField,
-    uflx_s: FloatField,
-    uflx: FloatField,
-    vflx_s: FloatField,
-    vflx: FloatField,
-    qcu: FloatField,
-    qlu: FloatField,
-    qiu: FloatField,
-    fer: FloatField,
-    fdr: FloatField,
-    xco: FloatField,
-    cin_IJ: FloatFieldIJ,
-    cinlcl_IJ: FloatFieldIJ,
-    cbmf: FloatField,
-    qc: FloatField,
-    qlten_det: FloatField,
-    qiten_det: FloatField,
-    qlten_sink: FloatField,
-    qiten_sink: FloatField,
-    ufrc_s: FloatField,
-    ufrc: FloatField,
     qv0_s: FloatField,
     ql0_s: FloatField,
     qi0_s: FloatField,
     s0_s: FloatField,
     t0_s: FloatField,
-    dcm_s: FloatField,
+    u0_s: FloatField,
+    v0_s: FloatField,
     qvten_s: FloatField,
     qlten_s: FloatField,
     qiten_s: FloatField,
     sten_s: FloatField,
     uten_s: FloatField,
     vten_s: FloatField,
-    qrten_s: FloatField,
-    qsten_s: FloatField,
-    qldet_s: FloatField,
-    qidet_s: FloatField,
-    qlsub_s: FloatField,
-    qisub_s: FloatField,
-    cush_s: FloatField,
-    cufrc_s: FloatField,
-    fer_s: FloatField,
-    fdr_s: FloatField,
-    iteration: int32,
 ):
     """
-    Stencil to adjust the original input profiles for implicit CIN
+    Stencils to adjust the original input profiles for implicit CIN
     calculation. Save the output from "iter_cin = 0".
 
     These output will be writed-out if "iter_cin = 0" was not performed
@@ -6634,14 +6593,66 @@ def adjust_implicit_CIN_inputs(
                     tr0_s[0, 0, 0][n] = tr0[0, 0, 0][n] + trten[0, 0, 0][n] * dt
                     n += 1
 
-            umf_s[0, 0, 1] = umf_zint[0, 0, 1]
-            dcm_s = dcm
             qvten_s = qvten
             qlten_s = qlten
             qiten_s = qiten
             sten_s = sten
             uten_s = uten
             vten_s = vten
+
+
+def adjust_implicit_CIN_inputs2(
+    condensation: BoolFieldIJ,
+    umf_s: FloatField,
+    umf_zint: FloatField,
+    dcm: FloatField,
+    qrten: FloatField,
+    qsten: FloatField,
+    cush: FloatFieldIJ,
+    cufrc: FloatField,
+    slflx_s: FloatField,
+    slflx: FloatField,
+    qtflx_s: FloatField,
+    qtflx: FloatField,
+    uflx_s: FloatField,
+    uflx: FloatField,
+    vflx_s: FloatField,
+    vflx: FloatField,
+    qcu: FloatField,
+    qlu: FloatField,
+    qiu: FloatField,
+    fer: FloatField,
+    fdr: FloatField,
+    xco: FloatField,
+    cin_IJ: FloatFieldIJ,
+    cinlcl_IJ: FloatFieldIJ,
+    cbmf: FloatField,
+    qc: FloatField,
+    qlten_det: FloatField,
+    qiten_det: FloatField,
+    qlten_sink: FloatField,
+    qiten_sink: FloatField,
+    ufrc_s: FloatField,
+    ufrc: FloatField,
+    dcm_s: FloatField,
+    qrten_s: FloatField,
+    qsten_s: FloatField,
+    qldet_s: FloatField,
+    qidet_s: FloatField,
+    qlsub_s: FloatField,
+    qisub_s: FloatField,
+    cush_s: FloatField,
+    cufrc_s: FloatField,
+    fer_s: FloatField,
+    fdr_s: FloatField,
+    iteration: int32,
+):
+    from __externals__ import ncnst
+
+    with computation(FORWARD), interval(...):
+        if not condensation:
+            umf_s[0, 0, 1] = umf_zint[0, 0, 1]
+            dcm_s = dcm
             qrten_s = qrten
             qsten_s = qsten
             cush_s = cush
@@ -7553,8 +7564,14 @@ class ComputeUwshcuInv(NDSLRuntime):
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._adjust_implicit_CIN_inputs = self.stencil_factory.from_dims_halo(
-            func=adjust_implicit_CIN_inputs,
+        self._adjust_implicit_CIN_inputs1 = self.stencil_factory.from_dims_halo(
+            func=adjust_implicit_CIN_inputs1,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
+
+        self._adjust_implicit_CIN_inputs2 = self.stencil_factory.from_dims_halo(
+            func=adjust_implicit_CIN_inputs2,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={"ncnst": UW_config.NCNST},
         )
@@ -8977,7 +8994,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             )
 
             if iteration != iter_cin:
-                self._adjust_implicit_CIN_inputs(
+                self._adjust_implicit_CIN_inputs1(
                     condensation=self.condensation,
                     qv0=self.locals.qv0,
                     qvten=self.locals.qvten,
@@ -8997,6 +9014,24 @@ class ComputeUwshcuInv(NDSLRuntime):
                     tr0_s=self.tr0_s,
                     tr0=self.tr0,
                     trten=self.trten,
+                    qv0_s=self.locals.qv0_s,
+                    ql0_s=self.locals.ql0_s,
+                    qi0_s=self.locals.qi0_s,
+                    s0_s=self.locals.s0_s,
+                    t0_s=self.locals.t0_s,
+                    u0_s=self.locals.u0_s,
+                    v0_s=self.locals.v0_s,
+                    qvten_s=self.locals.qvten_s,
+                    qlten_s=self.locals.qlten_s,
+                    qiten_s=self.locals.qiten_s,
+                    sten_s=self.locals.sten_s,
+                    uten_s=self.locals.uten_s,
+                    vten_s=self.locals.vten_s,
+                    iteration=iteration,
+                )
+
+                self._adjust_implicit_CIN_inputs2(
+                    condensation=self.condensation,
                     umf_s=self.locals.umf_s,
                     umf_zint=self.locals.umf_zint,
                     dcm=self.locals.dcm,
@@ -9028,18 +9063,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                     qiten_sink=self.locals.qiten_sink,
                     ufrc_s=self.locals.ufrc_s,
                     ufrc=self.locals.ufrc,
-                    qv0_s=self.locals.qv0_s,
-                    ql0_s=self.locals.ql0_s,
-                    qi0_s=self.locals.qi0_s,
-                    s0_s=self.locals.s0_s,
-                    t0_s=self.locals.t0_s,
                     dcm_s=self.locals.dcm_s,
-                    qvten_s=self.locals.qvten_s,
-                    qlten_s=self.locals.qlten_s,
-                    qiten_s=self.locals.qiten_s,
-                    sten_s=self.locals.sten_s,
-                    uten_s=self.locals.uten_s,
-                    vten_s=self.locals.vten_s,
                     qrten_s=self.locals.qrten_s,
                     qsten_s=self.locals.qsten_s,
                     qldet_s=self.locals.qldet_s,

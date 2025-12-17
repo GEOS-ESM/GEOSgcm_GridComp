@@ -131,6 +131,8 @@ class UWLocals:
     qi0_s: Local
     s0_s: Local
     t0_s: Local
+    u0_s: Local
+    v0_s: Local
     slten: Local
     qv0_o: Local
     plcl_o: Local
@@ -418,6 +420,8 @@ class UWLocals:
         qi0_s = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         s0_s = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         t0_s = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        u0_s = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        v0_s = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         slten = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         qv0_o = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         plcl_o = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
@@ -705,6 +709,8 @@ class UWLocals:
             qi0_s,
             s0_s,
             t0_s,
+            u0_s,
+            v0_s,
             slten,
             qv0_o,
             plcl_o,
