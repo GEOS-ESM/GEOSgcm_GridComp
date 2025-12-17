@@ -580,11 +580,6 @@ contains
     allocate(route%runoff_acc(nt_local), source = 0.)
 
 
-    !Initial reservoir module
-    route%reservoir = Reservoir(GC, use_res, _RC)
-
-    if(mapl_am_I_root()) print *,"reservoir init success" 
-
     call MAPL_GetResource (MAPL, TILE_PFAF_File, label = 'TILE_PFAF_FILE:',  default = '../input/tile_pfaf.nc4', RC=STATUS )
 
     call create_mapping_handler(trim(TILE_PFAF_File), tilegrid, pfaf_tilegrid, _RC)
@@ -647,6 +642,10 @@ contains
     allocate(route%qin_clmt(n_pfaf_local), source = QIN_CLMT_RS)
     allocate(route%qstr_clmt(n_pfaf_local), source = QSTR_CLMT_RS)
     deallocate(tmp_real, tmp_int)
+
+    !Initial reservoir module
+    route%reservoir = Reservoir(GC, use_res, _RC)
+    if(mapl_am_I_root()) print *,"reservoir init success" 
 
     call setup_exchange_water(pfaf_tilegrid, _RC)
 
