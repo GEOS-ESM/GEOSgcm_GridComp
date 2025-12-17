@@ -452,7 +452,7 @@ contains
     type(ESMF_Grid)            :: tileGrid
     type(ESMF_Grid)            :: pfaf_tilegrid, pfaf_grid
     character(len=ESMF_MAXSTR) :: SURFRC
-    type(ESMF_Config)          :: SCF
+    type(ESMF_Config)          :: SCF,CF
 
     type(MAPL_MetaComp), pointer   :: MAPL
     type(MAPL_LocStream)           :: locstream, pfaf_LocStream
@@ -621,8 +621,6 @@ contains
 ! Get my internal MAPL_Generic state
 ! -----------------------------------------------------------
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
-    VERIFY_(STATUS)
-    call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, RC=STATUS)
     VERIFY_(STATUS)
 
     call ESMF_ClockGetAlarm(clock, 'CollectWater', CollectWaterAlarm, _RC)
