@@ -287,5 +287,6 @@ class GEOSPyMoistWrapper:
     def finalize(self):
         import json
 
-        with open("pymoist_timings.json", "w") as f:
+        rank = MPI.COMM_WORLD.Get_rank()
+        with open(f"pymoist_timings_r{rank}.json", "w") as f:
             json.dump(self._timings, f, indent=4)
