@@ -607,7 +607,6 @@ contains
          )
     VERIFY_(status)
  
-    deallocate(areacat_glob)
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
@@ -624,9 +623,10 @@ contains
     call MAPL_GetPointer(INTERNAL, AREA_CATCH_RS, 'AREA_CATCH', RC=STATUS )  
 
     if (MAPL_AM_I_Root()) then
-        print *,"AREA_CATCH_RS="
-        print *,AREA_CATCH_RS
-        stop
+        open(unit=88,file="AREA_CATCH.txt")
+        do i=1,n_pfaf_local
+          write(88,*)AREA_CATCH_RS(i)
+        enddo
     end if
 
     allocate(areacat_glob(n_pfaf_g))
@@ -646,6 +646,7 @@ contains
     !Initial reservoir module
     route%reservoir = Reservoir(GC, use_res, _RC)
     if(mapl_am_I_root()) print *,"reservoir init success" 
+    deallocate(areacat_glob)
 
     call setup_exchange_water(pfaf_tilegrid, _RC)
 
