@@ -611,6 +611,23 @@ contains
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
 
+    call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
+    VERIFY_(STATUS)
+    route => wrap%ptr
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+    call ESMF_GridCompGet(GC, name=COMP_NAME, CONFIG=CF, RC=STATUS )
+    VERIFY_(STATUS) 
+! Get my internal MAPL_Generic state
+! -----------------------------------------------------------
+    call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
+    VERIFY_(STATUS)
+    call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_ClockGetAlarm(clock, 'CollectWater', CollectWaterAlarm, _RC)
+    !if (mapl_am_I_root()) print *, "HEARTBEAT=",HEARTBEAT     
+
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL,  _RC)
     call MAPL_GetPointer(INTERNAL, KSTR_RS,       'KSTR',       RC=STATUS ) 
     call MAPL_GetPointer(INTERNAL, K_RS,          'K',          RC=STATUS ) 
