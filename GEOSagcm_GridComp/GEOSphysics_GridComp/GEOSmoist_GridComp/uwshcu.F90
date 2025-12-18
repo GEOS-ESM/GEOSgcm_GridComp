@@ -2713,7 +2713,7 @@ contains
 ! overflow  if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny,dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
             if( xc .gt. 0.5 ) then
                 arg = dp0(k)/g/dt/max(umf(km1),tiny) + 1.0
-                rei(k) = min(rei(k),0.9*log(max(tiny,arg))/max(dpe/(2.*xc-1.), tiny))
+                rei(k) = min(rei(k),0.9*log(max(tiny,arg))/max(dpe*(2.*xc-1.), tiny))
             endif
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
