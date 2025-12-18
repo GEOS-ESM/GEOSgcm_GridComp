@@ -8,16 +8,18 @@ from make_bcs_shared import *
 
 cube_template = """
 
-if ({lbcsv} == "v14_BETA")
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v2/1440x1080 data/MOM6/1440x1080
-else
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v1/72x36 data/MOM6/72x36
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v1/540x458 data/MOM6/540x458
-    ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v1/1440x1080 data/MOM6/1440x1080
+if ({lbcsv} == 'v14') then
+    {mom6_bathy_version} == v2
 endif
+
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v1/72x36 data/MOM6/72x36
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/v1/540x458 data/MOM6/540x458
+ln -s /discover/nobackup/projects/gmao/geos_itv/skhani/Ocean_Bathymetry/NEW_OCI_BC_TEST/720x576 data/MOM6/720x576
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/1440x1080 data/MOM6/1440x1080
+ln -s /discover/nobackup/projects/gmao/geos_itv/skhani/Ocean_Bathymetry/NEW_OCI_BC_TEST/2880x2240 data/MOM6/2880x2240
 
 if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
 
@@ -41,7 +43,9 @@ if( {TRIPOL_OCEAN} == True ) then
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
     bin/FillMomGrid.x -f 0 -g Pfafstetter-M {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
     /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
-    /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
+    /bin/cp rst/Pfafstetter-M.rst rst/Pfafstetter.rst
+    bin/AdjustPfaf.x
+    /bin/cp rst/PfafstetterLake.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t {NT} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
     bin/mk_runofftbl.x -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
@@ -180,6 +184,7 @@ def make_bcs_cube(config):
            SGNAME  = SGNAME, \
            SGPARAM = SGPARAM, \
            IS_STRETCHED = IS_STRETCHED, \
+           mom6_bathy_version = config['mom6_bathy_version'],\
            NCPUS = config['NCPUS'])
 
   cube_job = open(bcjob,'wt')
