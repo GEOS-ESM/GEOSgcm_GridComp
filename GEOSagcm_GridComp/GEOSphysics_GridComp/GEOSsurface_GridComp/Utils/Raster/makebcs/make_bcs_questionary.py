@@ -65,7 +65,7 @@ def get_configs_from_answers(answers):
      
         maskfile = ''
      
-        if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6','T4MOM6']:
+        if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6', 'T4MOM6', 'T5MOM6', 'T8MOM6']:
            maskfile = 'GEOS5_10arcsec_mask_freshwater-lakes.nc'
            if lbcsv in ['F25', 'GM4', 'ICA']:
               maskfile = 'global.cat_id.catch.DL'
@@ -123,7 +123,10 @@ def get_configs_from_answers(answers):
            CUBED_SPHERE_OCEAN = True
            DATENAME = 'CF'
            POLENAME = ''
-     
+        if  lbcsv == 'v14' :
+           mom6_bathy_version = 'v2'
+           DATENAME = ''
+           POLENAME = ''
         config = {}
 
         config['LATLON_OCEAN'] = LATLON_OCEAN
@@ -151,6 +154,7 @@ def get_configs_from_answers(answers):
         config ['outdir']    = outdir
         config ['inputdir']  = make_bcs_input_dir
         config ['bcs_dir']   = bcs_dir
+        config ['mom6_bathy_version'] = mom6_bathy_version
         config ['NCPUS'] = 16
 
         for x in answers.get('Stretched_CS',[]):
@@ -174,6 +178,14 @@ def ask_questions(default_grid="Cubed-Sphere"):
    ocean resolution. ",
             "choices": ["No", "Yes"],
         },
+   
+        {"type": "select",
+         "name": "mom6_bathy_version",
+         "message": "Select ocean bathymetry version in coupled mode.",
+         "choices": [ \
+    "v1  : MOM5 bathymetries and MOM6 bathymetries with v1 ocean grids",\
+    "v2  : MOM6 bathymetries with OM4  ocean grids. For now, only  available at 1440x1080. Select v14 for next question"],  
+        }, 
 
         {
             "type": "select",
@@ -199,7 +211,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
    "v11 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2", \
    "v12 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix", \
    "v13 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix + mean land elevation fix", \
-   "v14_BETA : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix + mean land elevation fix + v2 (OM4) ocean-seaice bathymetry", \
+   "v14 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix + mean land elevation fix + MOM6 v2 (OM4) ocean-seaice bathymetry", \
    "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
    "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
    "F25 : Fortuna-2_5   (archived*: n/a)"], 
@@ -321,6 +333,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "T1MOM6 --  Tripolar (MOM6-Tripolar-Ocean:    $72x36$  )", \
                  "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $540x458$ )", \
                  "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
+                 "T5MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $720x576$)", \
+                 "T8MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $2880x2240$)", \
                  "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
             "when": lambda x:  "Stretched_CS" == x['grid_type'] or "Cubed-Sphere" == x['grid_type'],
         },
