@@ -57,6 +57,8 @@ from .UW_translate_tests.translate_calc_cumulus_condensate_at_interface import T
 from .UW_translate_tests.translate_adjust_implicit_CIN_inputs1 import TranslateAdjustImplicitCINInputs1
 from .UW_translate_tests.translate_adjust_implicit_CIN_inputs2 import TranslateAdjustImplicitCINInputs2
 from .UW_translate_tests.translate_recalc_environmental_variables import TranslateRecalcEnvVariables
+from .UW_translate_tests.translate_update_output_variables1 import TranslateUpdateOutputVars1
+from .UW_translate_tests.translate_update_output_variables2 import TranslateUpdateOutputVars2
 
 __all__ = [
     "TranslateGFDL_1M_driver",

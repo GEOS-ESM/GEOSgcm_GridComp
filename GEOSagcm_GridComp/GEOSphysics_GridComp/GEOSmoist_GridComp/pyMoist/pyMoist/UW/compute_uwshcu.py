@@ -6916,11 +6916,11 @@ def _reset_mask(
         field = value
 
 
-def update_output_variables(
-    del_CIN: FloatFieldIJ,
+def update_output_variables1(
+    condensation: BoolFieldIJ,
     umf_zint: FloatField,
-    zifc0: FloatField,
     kinv: IntField,
+    zifc0: FloatField,
     dcm: FloatField,
     qvten: FloatField,
     qlten: FloatField,
@@ -6932,44 +6932,6 @@ def update_output_variables(
     qsten: FloatField,
     cufrc: FloatField,
     cush: FloatFieldIJ,
-    qlten_det: FloatField,
-    qiten_det: FloatField,
-    qlten_sink: FloatField,
-    qiten_sink: FloatField,
-    rdrop: Float,
-    qtflx: FloatField,
-    slflx: FloatField,
-    uflx: FloatField,
-    vflx: FloatField,
-    dotransport: Int,
-    trten: FloatField_NTracers,
-    dt: Float,
-    fer: FloatField,
-    fdr: FloatField,
-    kpen: IntField,
-    umf_out: FloatField,
-    dcm_out: FloatField,
-    qvten_out: FloatField,
-    qlten_out: FloatField,
-    qiten_out: FloatField,
-    sten_out: FloatField,
-    uten_out: FloatField,
-    vten_out: FloatField,
-    qrten_out: FloatField,
-    qsten_out: FloatField,
-    cufrc_out: FloatField,
-    cush_inout: FloatFieldIJ,
-    qldet_out: FloatField,
-    qidet_out: FloatField,
-    qlsub_out: FloatField,
-    qisub_out: FloatField,
-    qtflx_out: FloatField,
-    slflx_out: FloatField,
-    uflx_out: FloatField,
-    vflx_out: FloatField,
-    tr0_inout: FloatField_NTracers,
-    fer_out: FloatField,
-    fdr_out: FloatField,
     umf_outvar: FloatField,
     dcm_outvar: FloatField,
     qvten_outvar: FloatField,
@@ -6981,21 +6943,59 @@ def update_output_variables(
     qrten_outvar: FloatField,
     qsten_outvar: FloatField,
     cufrc_outvar: FloatField,
-    cush_inoutvar: FloatFieldIJ,
+    cush_inoutvar: FloatField,
+):
+    with computation(FORWARD), interval(...):
+        if not condensation:
+            umf_outvar[0, 0, 1] = umf_zint[0, 0, 1]
+
+            if K <= kinv - 1:
+                umf_outvar = umf_zint.at(K=kinv - 1) * zifc0 / zifc0.at(K=kinv - 1)
+
+            dcm_outvar = dcm
+            qvten_outvar = qvten
+            qlten_outvar = qlten
+            qiten_outvar = qiten
+            sten_outvar = sten
+            uten_outvar = uten
+            vten_outvar = vten
+            qrten_outvar = qrten
+            qsten_outvar = qsten
+            cufrc_outvar = cufrc
+            cush_inoutvar = cush
+
+
+def update_output_variables2(
+    condensation: BoolFieldIJ,
+    dotransport: Int,
+    kpen: IntField,
     qldet_outvar: FloatField,
     qidet_outvar: FloatField,
     qlsub_outvar: FloatField,
     qisub_outvar: FloatField,
+    ndrop_out: FloatField,
+    nice_out: FloatField,
     qtflx_outvar: FloatField,
     slflx_outvar: FloatField,
     uflx_outvar: FloatField,
     vflx_outvar: FloatField,
+    fer: FloatField,
+    fdr: FloatField,
     fer_outvar: FloatField,
     fdr_outvar: FloatField,
-    ndrop_out: FloatField,
-    nice_out: FloatField,
+    dt: Float,
+    rdrop: Float,
+    qlten_det: FloatField,
+    qiten_det: FloatField,
+    qlten_sink: FloatField,
+    qiten_sink: FloatField,
+    qtflx: FloatField,
+    slflx: FloatField,
+    uflx: FloatField,
+    vflx: FloatField,
+    tr0_inout: FloatField_NTracers,
+    trten: FloatField_NTracers,
     tr0_inoutvar: FloatField_NTracers,
-    condensation: BoolFieldIJ,
 ):
     """
     Stencil to update ComputeUwshcu output variables.
@@ -7090,67 +7090,7 @@ def update_output_variables(
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
-        if condensation:
-            qlten_det = 0.0
-            fdr = constants.MAPL_UNDEF
-            fer = constants.MAPL_UNDEF
-            sten = 0.0
-            qlten_sink = 0.0
-            qiten_det = 0.0
-            dcm = 0.0
-            qiten = 0.0
-            qiten_sink = 0.0
-            qlten = 0.0
-            umf_zint[0, 0, 1] = 0.0
-            zifc0 = 0.0
-            cush = -1.0
-
-        if del_CIN <= 0.0:
-            umf_outvar = umf_out
-            dcm_outvar = dcm_out
-            qvten_outvar = qvten_out
-            qlten_outvar = qlten_out
-            qiten_outvar = qiten_out
-            sten_outvar = sten_out
-            uten_outvar = uten_out
-            vten_outvar = vten_out
-            qrten_outvar = qrten_out
-            qsten_outvar = qsten_out
-            cufrc_outvar = cufrc_out
-            cush_inoutvar = cush_inout
-            qldet_outvar = qldet_out
-            qidet_outvar = qidet_out
-            qlsub_outvar = qlsub_out
-            qisub_outvar = qisub_out
-            qtflx_outvar = qtflx_out
-            slflx_outvar = slflx_out
-            uflx_outvar = uflx_out
-            vflx_outvar = vflx_out
-            fer_outvar = fer_out
-            fdr_outvar = fdr_out
-            if dotransport == 1:
-                n = 0
-                while n < ncnst:
-                    tr0_inoutvar[0, 0, 0][n] = tr0_inout[0, 0, 0][n]
-                    n += 1
-
-        if del_CIN > 0.0:
-            umf_outvar = umf_zint
-
-            if K <= kinv - 1:
-                umf_outvar = umf_zint.at(K=kinv) * zifc0 / zifc0.at(K=kinv)
-
-            dcm_outvar = dcm
-            qvten_outvar = qvten
-            qlten_outvar = qlten
-            qiten_outvar = qiten
-            sten_outvar = sten
-            uten_outvar = uten
-            vten_outvar = vten
-            qrten_outvar = qrten
-            qsten_outvar = qsten
-            cufrc_outvar = cufrc
-            cush_inoutvar = cush
+        if not condensation:
             qldet_outvar = qlten_det
             qidet_outvar = qiten_det
             qlsub_outvar = qlten_sink
@@ -7168,8 +7108,6 @@ def update_output_variables(
                     tr0_inoutvar[0, 0, 0][n] = tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
                     n += 1
 
-            # # Below are specific diagnostic output for detailed
-            # # analysis of cumulus scheme
             fer_outvar = constants.MAPL_UNDEF
             fdr_outvar = constants.MAPL_UNDEF
             if K <= kpen:
@@ -7582,8 +7520,14 @@ class ComputeUwshcuInv(NDSLRuntime):
             externals={"ncnst": UW_config.NCNST},
         )
 
-        self._update_output_variables = self.stencil_factory.from_dims_halo(
-            func=update_output_variables,
+        self._update_output_variables1 = self.stencil_factory.from_dims_halo(
+            func=update_output_variables1,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": UW_config.NCNST},
+        )
+
+        self._update_output_variables2 = self.stencil_factory.from_dims_halo(
+            func=update_output_variables2,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={"ncnst": UW_config.NCNST},
         )
@@ -9120,11 +9064,11 @@ class ComputeUwshcuInv(NDSLRuntime):
                     iteration=iteration,
                 )
 
-        self._update_output_variables(
-            del_CIN=self.locals.del_CIN,
+        self._update_output_variables1(
+            condensation=self.condensation,
             umf_zint=self.locals.umf_zint,
-            zifc0=self.locals.zifc0_in,
             kinv=self.locals.kinv,
+            zifc0=self.locals.zifc0_in,
             dcm=self.locals.dcm,
             qvten=self.locals.qvten,
             qlten=self.locals.qlten,
@@ -9135,46 +9079,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             qrten=self.locals.qrten,
             qsten=self.locals.qsten,
             cufrc=self.locals.cufrc,
-            qlten_det=self.locals.qlten_det,
-            qiten_det=self.locals.qiten_det,
-            qlten_sink=self.locals.qlten_sink,
-            qiten_sink=self.locals.qiten_sink,
-            rdrop=rdrop,
             cush=cush,
-            qtflx=self.locals.qtflx,
-            slflx=self.locals.slflx,
-            uflx=self.locals.uflx,
-            vflx=self.locals.vflx,
-            dotransport=dotransport,
-            trten=self.trten,
-            dt=dt,
-            fer=self.locals.fer,
-            fdr=self.locals.fdr,
-            kpen=self.locals.kpen,
-            umf_out=self.locals.umf_out,
-            dcm_out=self.locals.dcm_out,
-            qvten_out=self.locals.qvten_out,
-            qlten_out=self.locals.qlten_out,
-            qiten_out=self.locals.qiten_out,
-            sten_out=self.locals.sten_out,
-            uten_out=self.locals.uten_out,
-            vten_out=self.locals.vten_out,
-            qrten_out=self.locals.qrten_out,
-            qsten_out=self.locals.qsten_out,
-            cufrc_out=self.locals.cufrc_out,
-            cush_inout=self.locals.cush_inout,
-            qldet_out=self.locals.qldet_out,
-            qidet_out=self.locals.qidet_out,
-            qlsub_out=self.locals.qlsub_out,
-            qisub_out=self.locals.qisub_out,
-            ndrop_out=self.locals.ndrop_out,
-            nice_out=self.locals.nice_out,
-            qtflx_out=self.locals.qtflx_out,
-            slflx_out=self.locals.slflx_out,
-            uflx_out=self.locals.uflx_out,
-            vflx_out=self.locals.vflx_out,
-            tr0_inout=self.tr0_inout,
-            fer_out=self.locals.fer_out,
             umf_outvar=self.locals.umf_outvar,
             dcm_outvar=self.locals.dcm_outvar,
             qvten_outvar=self.locals.qvten_outvar,
@@ -9187,19 +9092,39 @@ class ComputeUwshcuInv(NDSLRuntime):
             qsten_outvar=self.locals.qsten_outvar,
             cufrc_outvar=self.locals.cufrc_outvar,
             cush_inoutvar=self.locals.cush_inoutvar,
+        )
+
+        self._update_output_variables2(
+            condensation=self.condensation,
+            dotransport=dotransport,
+            kpen=self.locals.kpen,
             qldet_outvar=self.locals.qldet_outvar,
             qidet_outvar=self.locals.qidet_outvar,
             qlsub_outvar=self.locals.qlsub_outvar,
             qisub_outvar=self.locals.qisub_outvar,
+            ndrop_out=self.locals.ndrop_out,
+            nice_out=self.locals.nice_out,
             qtflx_outvar=self.locals.qtflx_outvar,
             slflx_outvar=self.locals.slflx_outvar,
             uflx_outvar=self.locals.uflx_outvar,
             vflx_outvar=self.locals.vflx_outvar,
-            fdr_out=self.locals.fdr_out,
+            fer=self.locals.fer,
+            fdr=self.locals.fdr,
             fer_outvar=self.locals.fer_outvar,
             fdr_outvar=self.locals.fdr_outvar,
+            dt=dt,
+            rdrop=rdrop,
+            qlten_det=self.locals.qlten_det,
+            qiten_det=self.locals.qiten_det,
+            qlten_sink=self.locals.qlten_sink,
+            qiten_sink=self.locals.qiten_sink,
+            qtflx=self.locals.qtflx,
+            slflx=self.locals.slflx,
+            uflx=self.locals.uflx,
+            vflx=self.locals.vflx,
+            tr0_inout=self.tr0_inout,
+            trten=self.trten,
             tr0_inoutvar=self.tr0_inoutvar,
-            condensation=self.condensation,
         )
 
         self._compute_uwshcu_invert_after(
