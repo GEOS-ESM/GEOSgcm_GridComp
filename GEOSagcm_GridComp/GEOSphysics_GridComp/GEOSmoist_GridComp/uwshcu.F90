@@ -1519,7 +1519,7 @@ contains
               tpert_out(i) = thlsrc_fac*shfx(i)/(zrho*wstar*cp)  ! K
               qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
             end if
-            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 1% of QT
+            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 2% of QT
             tpert_out(i) = 0.1+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
             qtsrc   = qtavg + qpert_out(i)
 !           qtsrc   = qt0(1) + qpert_out(i)
@@ -2715,6 +2715,7 @@ contains
                 arg = dp0(k)/g/dt/max(umf(km1),tiny) + 1.0
                 rei(k) = min(rei(k),0.9*log(max(tiny,arg))/max(dpe*(2.*xc-1.), tiny))
             endif
+            rei(k) = min(0.1,rei(k)) 
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
             xco(k) = xc
@@ -2994,7 +2995,7 @@ contains
               limit_ufrc(i) = 1. 
               ufrc(k) = rmaxfrac
               umf(k)  = rmaxfrac * rhoifc0j * wu(k)
-              fdr(k)  = fer(k) - log(max(tiny, umf(k) / umf(km1)) ) / dpe
+              fdr(k)  = min(0.1,fer(k) - log(max(tiny, umf(k) / umf(km1)) ) / dpe)
           endif
 
           ! ------------------------------------------------------------ !
