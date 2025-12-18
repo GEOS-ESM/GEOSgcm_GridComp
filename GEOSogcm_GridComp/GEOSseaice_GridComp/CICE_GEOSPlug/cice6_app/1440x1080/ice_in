@@ -44,7 +44,7 @@
     lonpnt(1)      =  0.
     latpnt(2)      = -65.
     lonpnt(2)      = -45.
-    histfreq       = 'm','x','x','x','x'
+    histfreq       = 'm','d','x','x','x'
     histfreq_n     =  1 , 1 , 1 , 1 , 1
     histfreq_base  = 'zero'
     hist_avg       = .true.
@@ -187,9 +187,9 @@
     dT_mlt          = 1.5
     rsnw_mlt        = 1500.
     kalg            = 0.0
-    sw_redist       = .true.
-    sw_frac         = 0.9d0
-    sw_dtemp        = 0.02d0
+    sw_redist         = .true.
+    sw_frac           = 0.9d0
+    sw_dtemp          = 0.02d0
 /
 
 &ponds_nml
