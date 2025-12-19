@@ -104,17 +104,14 @@ class FortranPythonConversion:
         swap_axes: Optional[Tuple[int, int]] = None,
     ) -> DeviceArray:
         """Upload to device & transform to Pace compatible layout"""
-        with self._current_stream:
-            device_array = cp.asarray(host_array)
-            final_array = self._transform_from_fortran_layout(
-                device_array,
-                dim,
-                swap_axes,
-            )
-            self._current_stream = (
-                self._stream_A if self._current_stream == self._stream_B else self._stream_B
-            )
-            return final_array
+        device_array = cp.asarray(host_array)
+        final_array = self._transform_from_fortran_layout(
+            device_array,
+            dim,
+            swap_axes,
+        )
+        self._current_stream = self._stream_A if self._current_stream == self._stream_B else self._stream_B
+        return final_array
 
     def _transform_from_fortran_layout(
         self,
@@ -157,20 +154,17 @@ class FortranPythonConversion:
         dtype: type,
         swap_axes: Optional[Tuple[int, int]] = None,
     ) -> np.ndarray:
-        with self._current_stream:
-            if swap_axes:
-                device_array = cp.swapaxes(
-                    device_array,
-                    swap_axes[0],
-                    swap_axes[1],
-                )
-            host_array = cp.asnumpy(
-                device_array.astype(dtype).flatten(order="F"),
+        if swap_axes:
+            device_array = cp.swapaxes(
+                device_array,
+                swap_axes[0],
+                swap_axes[1],
             )
-            self._current_stream = (
-                self._stream_A if self._current_stream == self._stream_B else self._stream_B
-            )
-            return host_array
+        host_array = cp.asnumpy(
+            device_array.astype(dtype).flatten(order="F"),
+        )
+        self._current_stream = self._stream_A if self._current_stream == self._stream_B else self._stream_B
+        return host_array
 
     def _transform_from_python_layout(
         self,
