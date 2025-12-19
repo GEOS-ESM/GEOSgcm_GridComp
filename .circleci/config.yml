@@ -21,9 +21,9 @@ workflows:
           #baselibs_version: *baselibs_version
           repo: GEOSgcm
           checkout_fixture: true
-          mepodevelop: true
-          checkout_mapl3_release_branch: true
-          persist_workspace: true # Needs to be true to run fv3/gcm experiment, costs extra
+          mepodevelop: false
+          fixture_branch: release/MAPL-v3
+          persist_workspace: false # Needs to be true to run fv3/gcm experiment, costs extra
 
       ######################################################
       # # Run AMIP GCM (1 hour, no ExtData)                #

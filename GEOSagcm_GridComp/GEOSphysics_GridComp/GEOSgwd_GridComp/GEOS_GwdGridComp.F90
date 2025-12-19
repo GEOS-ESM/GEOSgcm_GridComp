@@ -225,9 +225,8 @@ contains
       ! Local derived type aliases
 
       type(ESMF_Grid) :: grid
-      integer                             :: IM, JM !, dims_(3)
-      real, allocatable, dimension(:,:)       :: LONS
-      real, allocatable, dimension(:,:)       :: LATS
+      integer :: IM, JM !, dims_(3)
+      real, allocatable :: lats(:,:), lons(:,:)
 
       character(len=:), allocatable :: GRIDNAME
       character(len=4)           :: imchar
@@ -463,8 +462,7 @@ contains
       !real                                :: effgworo, effgwbkg
       !real                                :: CDMBGWD1, CDMBGWD2
       !real                                :: bgstressmax
-      real, allocatable, dimension(:,:)       :: LONS
-      real, allocatable, dimension(:,:)       :: LATS
+      real, allocatable, dimension(:,:)   :: LATS, LONS
       ! Rayleigh friction parameters
 
       REAL                                :: H0, HH, Z1, TAU1
@@ -503,6 +501,7 @@ contains
       ! Grid info
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
       call MAPL_GridGetCoordinates(grid, longitudes=lons, latitudes=lats, _RC)
+      call MAPL_GridGet(grid, im=IM, jm=JM, _RC)
 
       ! call ESMF_ClockGetAlarm(clock, 
 
