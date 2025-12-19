@@ -99,6 +99,7 @@ class GEOSPyMoistWrapper:
             backend=self.stencil_config.backend,
             tile_nx=self.flags.npx * self.flags.layout_x,
             tile_nz=self.flags.npz,
+            time=True,
         )
         self._is_orchestrated = self.stencil_config.dace_config.is_dace_orchestrated()
 
@@ -134,9 +135,9 @@ class GEOSPyMoistWrapper:
             f"  Orchestration : {self._is_orchestrated}\n"
             f"          Sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
-            f" Strides for 3D : {[s // 8 for s in tmp_quantity.data.strides]}\n"
-            f"     Device ord : {device_ordinal_info}\n"
-            f"     Nvidia MPS : {MPS_is_on}"
+            f" Strides for 3D : {tmp_quantity.data.strides}\n"
+            f"     Device ord : {device_ordinal_info}"
+            f"     Nvidia MPS : {MPS_is_on}\n"
         )
         del tmp_quantity
 
@@ -290,3 +291,6 @@ class GEOSPyMoistWrapper:
         rank = MPI.COMM_WORLD.Get_rank()
         with open(f"pymoist_timings_r{rank}.json", "w") as f:
             json.dump(self._timings, f, indent=4)
+
+        with open(f"internal_orchestration_r{rank}.json", "w") as f:
+            json.dump(self.stencil_config.dace_config.performance_collector.times_per_step, f, indent=4)
