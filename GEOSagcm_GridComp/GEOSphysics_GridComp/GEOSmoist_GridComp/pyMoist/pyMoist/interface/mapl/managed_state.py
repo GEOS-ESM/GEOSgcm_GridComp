@@ -6,6 +6,7 @@ from ndsl import State
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Float
 from pyMoist.interface import InterfaceTransferType
 from pyMoist.interface.mapl.memory_factory import MAPLMemoryRepository
+from ndsl.optional_imports import cupy as cp
 
 
 class MAPLManagedState:
@@ -62,6 +63,8 @@ class MAPLManagedState:
                 )
             else:
                 mapl_array = mapl_state_.get_from_fortran(mapl_field_)
+                if cp is not None:
+                    cp.cuda.runtime.deviceSynchronize()
                 if mapl_array is None:
                     setattr(ndsl_state_, ndsl_field_, None)
                 else:
@@ -100,3 +103,5 @@ class MAPLManagedState:
 
         for ndsl_field, (mapl_state, mapl_field) in self._state_to_mapl_mapping.items():
             _push_back_to_fortran(mapl_field, mapl_state, ndsl_field, self._ndsl_state)
+        if cp is not None:
+            cp.cuda.runtime.deviceSynchronize()
