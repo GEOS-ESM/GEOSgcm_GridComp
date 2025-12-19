@@ -59,6 +59,7 @@ from .UW_translate_tests.translate_adjust_implicit_CIN_inputs2 import TranslateA
 from .UW_translate_tests.translate_recalc_environmental_variables import TranslateRecalcEnvVariables
 from .UW_translate_tests.translate_update_output_variables1 import TranslateUpdateOutputVars1
 from .UW_translate_tests.translate_update_output_variables2 import TranslateUpdateOutputVars2
+from .UW_translate_tests.translate_compute_uwshcu_invert_after import TranslateComputeUwshcuInvertAfter
 
 __all__ = [
     "TranslateGFDL_1M_driver",
