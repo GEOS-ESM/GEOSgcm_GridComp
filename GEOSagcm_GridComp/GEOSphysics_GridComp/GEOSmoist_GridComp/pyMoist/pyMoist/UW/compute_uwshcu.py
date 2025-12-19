@@ -1948,8 +1948,6 @@ def compute_cin_cinlcl(
 
 def compute_del_CIN(
     condensation: BoolFieldIJ,
-    thvlmin_o: FloatField,
-    thvlmin_IJ: FloatFieldIJ,
     cin_IJ: FloatFieldIJ,
     cinlcl_IJ: FloatFieldIJ,
     cin_i: FloatFieldIJ,
@@ -1957,10 +1955,6 @@ def compute_del_CIN(
     use_CINcin: int32,
     del_CIN: FloatFieldIJ,
 ):
-    with computation(FORWARD), interval(1, None):
-        if not condensation:
-            if thvlmin_o == 0.0 and thvlmin_o[0, 0, -1] != 0.0:
-                thvlmin_IJ = thvlmin_o[0, 0, -1]
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -1996,7 +1990,7 @@ def avg_initial_and_final_cin1(
     tkeavg: FloatField,
     tkeavg_o: FloatField,
     thvlmin: FloatField,
-    thvlmin_IJ: FloatFieldIJ,
+    thvlmin_o: FloatFieldIJ,
     qtsrc: FloatField,
     qtsrc_o: FloatField,
     thvlsrc: FloatField,
@@ -2099,7 +2093,7 @@ def avg_initial_and_final_cin1(
                 plcl = plcl_o
                 plfc = plfc_o
                 tkeavg = tkeavg_o
-                thvlmin = thvlmin_IJ
+                thvlmin = thvlmin_o
                 qtsrc = qtsrc_o
                 thvlsrc = thvlsrc_o
                 thlsrc = thlsrc_o
@@ -8116,8 +8110,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             if iteration != 0:
                 self._compute_del_CIN(
                     condensation=self.condensation,
-                    thvlmin_o=self.locals.thvlmin_o,
-                    thvlmin_IJ=self.locals.thvlmin_IJ,
                     cin_IJ=self.locals.cin_IJ,
                     cinlcl_IJ=self.locals.cinlcl_IJ,
                     cin_i=self.locals.cin_i,
@@ -8149,7 +8141,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                     tkeavg=self.locals.tkeavg,
                     tkeavg_o=self.locals.tkeavg_o,
                     thvlmin=self.locals.thvlmin,
-                    thvlmin_IJ=self.locals.thvlmin_IJ,
+                    thvlmin_o=self.locals.thvlmin_o,
                     qtsrc=self.locals.qtsrc,
                     qtsrc_o=self.locals.qtsrc_o,
                     thvlsrc=self.locals.thvlsrc,
