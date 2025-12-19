@@ -438,6 +438,141 @@ def updraft_moisture(
             )
 
 
+def updraft_moist_static_energy_and_momentum_budget(
+    error_code: IntFieldIJ_Plume,
+    start_level: IntFieldIJ,
+    cloud_top_level: IntFieldIJ_Plume,
+    p_forced: FloatField,
+    environment_moist_static_energy: FloatField,
+    environment_moist_static_energy_forced: FloatField,
+    environment_moist_static_energy_cloud_levels: FloatField,
+    environment_moist_static_energy_cloud_levels_forced: FloatField,
+    environment_saturation_moist_static_energy_cloud_levels: FloatField,
+    environment_saturation_moist_static_energy_cloud_levels_forced: FloatField,
+    cloud_moist_static_energy: FloatField,
+    cloud_moist_static_energy_forced: FloatField,
+    normalized_massflux_updraft: FloatField,
+    normalized_massflux_updraft_forced: FloatField,
+    mass_entrainment_updraft: FloatField,
+    mass_detrainment_updraft: FloatField,
+    mass_entrainment_u_updraft: FloatField,
+    mass_detrainment_u_updraft: FloatField,
+    mass_detrainment_updraft_forced: FloatField_Plume,
+    mass_entrainment_updraft_forced: FloatField_Plume,
+    u: FloatField,
+    v: FloatField,
+    u_c: FloatField,
+    v_c: FloatField,
+    u_cloud_levels: FloatField,
+    v_cloud_levels: FloatField,
+    partition_liquid_ice: FloatField,
+    cloud_liquid_after_rain_forced: FloatField_Plume,
+    vapor_excess: FloatFieldIJ,
+    t_excess: FloatFieldIJ,
+    add_buoyancy: FloatFieldIJ,
+    plume: Int,
+):
+    from __externals__ import USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES, PRESSURE_GRADIENT_CONSTANT
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0 and plume == 0 and USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1:
+            # only for shallow plume
+            get_delmix_implementation_here = True
+
+    with computation(FORWARD), interval(1, None):
+        if error_code[0, 0][plume] == 0:
+            if K >= start_level + 1 and K <= cloud_top_level[0, 0][plume] + 1:
+                denom = (
+                    normalized_massflux_updraft[0, 0, -1]
+                    - 0.5 * mass_detrainment_updraft[0, 0, -1]
+                    + mass_entrainment_updraft[0, 0, -1]
+                )
+                denom_u = (
+                    normalized_massflux_updraft[0, 0, -1]
+                    - 0.5 * mass_detrainment_u_updraft[0, 0, -1]
+                    + mass_entrainment_u_updraft[0, 0, -1]
+                )
+
+                if denom > 0.0 and denom_u > 0.0:
+                    cloud_moist_static_energy = (
+                        cloud_moist_static_energy[0, 0, -1] * normalized_massflux_updraft[0, 0, -1]
+                        - (0.5 * mass_detrainment_updraft[0, 0, -1]) * cloud_moist_static_energy[0, 0, -1]
+                        + mass_entrainment_updraft[0, 0, -1] * environment_moist_static_energy[0, 0, -1]
+                    ) / denom
+
+                    cloud_moist_static_energy_forced = (
+                        cloud_moist_static_energy_forced[0, 0, -1]
+                        * normalized_massflux_updraft_forced[0, 0, -1]
+                        - 0.5
+                        * mass_detrainment_updraft_forced[0, 0, -1][plume]
+                        * cloud_moist_static_energy_forced[0, 0, -1]
+                        + mass_entrainment_updraft_forced[0, 0, -1][plume]
+                        * environment_moist_static_energy_forced[0, 0, -1]
+                    ) / denom
+
+                    if K == start_level + 1:
+                        modification = (
+                            cumulus_parameterization_constants.XLV * vapor_excess
+                            + cumulus_parameterization_constants.CP * t_excess
+                        ) + add_buoyancy
+                        cloud_moist_static_energy_forced = (
+                            cloud_moist_static_energy_forced
+                            + modification * mass_entrainment_updraft_forced[0, 0, -1][plume] / denom
+                        )
+                        cloud_moist_static_energy = (
+                            cloud_moist_static_energy
+                            + modification * mass_entrainment_updraft[0, 0, -1] / denom
+                        )
+
+                    u_c = (
+                        u_c[0, 0, -1] * normalized_massflux_updraft[0, 0, -1]
+                        - 0.5 * mass_detrainment_u_updraft[0, 0, -1] * u_c[0, 0, -1]
+                        + mass_entrainment_u_updraft[0, 0, -1] * u[0, 0, -1]
+                        - PRESSURE_GRADIENT_CONSTANT
+                        * 0.5
+                        * (normalized_massflux_updraft + normalized_massflux_updraft[0, 0, -1])
+                        * (u_cloud_levels - u_cloud_levels[0, 0, -1])
+                    ) / denom_u
+
+                    v_c = (
+                        v_c[0, 0, -1] * normalized_massflux_updraft[0, 0, -1]
+                        - 0.5 * mass_detrainment_u_updraft[0, 0, -1] * v_c[0, 0, -1]
+                        + mass_entrainment_u_updraft[0, 0, -1] * v[0, 0, -1]
+                        - PRESSURE_GRADIENT_CONSTANT
+                        * 0.5
+                        * (normalized_massflux_updraft + normalized_massflux_updraft[0, 0, -1])
+                        * (v_cloud_levels - v_cloud_levels[0, 0, -1])
+                    ) / denom_u
+
+                else:
+                    cloud_moist_static_energy = cloud_moist_static_energy[0, 0, -1]
+                    cloud_moist_static_energy_forced = cloud_moist_static_energy_forced[0, 0, -1]
+                    u_c = u_c[0, 0, -1]
+                    v_c = v_c[0, 0, -1]
+
+                cloud_moist_static_energy = (
+                    cloud_moist_static_energy
+                    + (1.0 - partition_liquid_ice)
+                    * cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                    * cumulus_parameterization_constants.XLF
+                )
+                cloud_moist_static_energy_forced = (
+                    cloud_moist_static_energy_forced
+                    + (1.0 - partition_liquid_ice)
+                    * cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                    * cumulus_parameterization_constants.XLF
+                )
+
+    with computation(PARALLEL), interval(0, -1):
+        if error_code[0, 0][plume] == 0 and K >= cloud_top_level[0, 0][plume] + 2:
+            cloud_moist_static_energy = environment_saturation_moist_static_energy_cloud_levels
+            u_c = u_cloud_levels
+            v_c = v_cloud_levels
+            cloud_moist_static_energy_forced = environment_saturation_moist_static_energy_cloud_levels_forced
+            normalized_massflux_updraft = 0.0
+            normalized_massflux_updraft_forced = 0.0
+
+
 def updraft_temperature(
     error_code: IntFieldIJ_Plume,
     updraft_t: FloatField,
@@ -570,22 +705,6 @@ class UpdraftMassFluxProfile:
         #     cloud_top_level=state.output.cloud_top_level,
         #     plume=plume_dependent_constants.PLUME_INDEX,
         # )
-
-
-class UpdraftMoisture:
-    def __init__():
-        pass
-
-    def __call__(self, *args, **kwds):
-        pass
-
-
-class UpdraftMoistStaticEnergyAndMomentumBudget:
-    def __init__(self):
-        pass
-
-    def __call__(self, *args, **kwds):
-        pass
 
 
 class UpdraftInitialWorkfunctions:

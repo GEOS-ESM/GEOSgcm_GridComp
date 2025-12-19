@@ -142,8 +142,8 @@ def check_config(
         and cumulus_parameterization_config.ENABLE_SHALLOW == 1
     ):
         raise NotImplementedError(
-            "[NDSL] GF2020 cumulus parameterization called initalized with"
+            "[NDSL] GF2020 cumulus parameterization initalized with"
             "USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1 and shallow plume enabled. This combination requires"
-            "a call to the unimplemented function get_delmix. Please implement, then disable this error"
-            "manually to proceed."
+            "a call to the unimplemented function get_delmix in CumulusParameterization and updraft_moisture."
+            "Please implement, then disable this error manually to proceed."
         )

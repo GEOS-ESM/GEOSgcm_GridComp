@@ -157,7 +157,11 @@ from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_Cumu
     TranslateGF2020_CumulusParameterization_MeltingProfile_mid,
     TranslateGF2020_CumulusParameterization_MeltingProfile_deep,
 )
-
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftMoistStaticEnergyAndMomentumBudget import (
+    TranslateGF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget_shallow,
+    TranslateGF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget_deep,
+)
 from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumulus_Parameterization_GetBuoyancy_2 import (
     TranslateGF2020_CumulusParameterization_GetBuoyancy_2_shallow,
     TranslateGF2020_CumulusParameterization_GetBuoyancy_2_mid,
