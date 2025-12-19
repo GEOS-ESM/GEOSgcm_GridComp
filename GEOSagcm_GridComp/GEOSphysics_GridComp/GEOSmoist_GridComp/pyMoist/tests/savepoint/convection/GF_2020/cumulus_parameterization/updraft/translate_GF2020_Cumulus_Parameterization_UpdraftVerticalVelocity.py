@@ -106,10 +106,12 @@ class TestCore:
             inputs["cloud_liquid_after_rain_forced_upvvel"]
         )
         locals.vapor_forced.data[:] = inputs["local_vapor_forced_upvvel"]
-        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_upvvel"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "cloud_top_level_upvvel"
-        ]
+        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["lcl_level_upvvel"] - 1
+        )
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_top_level_upvvel"] - 1
+        )
 
         # initalize test code
         code = self.stencil_factory.from_dims_halo(
@@ -159,10 +161,11 @@ class TestCore:
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "local_vapor_forced_upvvel": locals.vapor_forced.field[:],
-            "lcl_level_upvvel": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "lcl_level_upvvel": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "cloud_top_level_upvvel": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            ]
+            + 1,
         }
 
         return outputs
