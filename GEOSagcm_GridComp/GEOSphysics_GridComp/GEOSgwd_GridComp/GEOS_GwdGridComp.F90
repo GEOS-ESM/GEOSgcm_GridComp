@@ -48,7 +48,7 @@ module GEOS_GwdGridCompMod
    use mapl3g_RestartModes, only: MAPL_RESTART_SKIP
    use mapl3g_VerticalStaggerLoc, only: VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE
    use mapl3g_UngriddedDims, only: UngriddedDims
-   use mapl3g_Geom_API, only: MAPL_GridGet
+   use mapl3g_Geom_API, only: MAPL_GridGet, MAPL_GridGetCoordinates
    use mapl3g_State_API, only: MAPL_StateGetPointer
    use mapl3g_UngriddedDim, only: UngriddedDim
 
@@ -226,7 +226,8 @@ contains
 
       type(ESMF_Grid) :: grid
       integer                             :: IM, JM !, dims_(3)
-      real, pointer, dimension(:,:)       :: LATS
+      real, allocatable, dimension(:,:)       :: LONS
+      real, allocatable, dimension(:,:)       :: LATS
 
       character(len=:), allocatable :: GRIDNAME
       character(len=4)           :: imchar
@@ -284,7 +285,8 @@ contains
 
       ! Grid info
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
-      call MAPL_GridGet(grid, im=IM, jm=JM, latitudes=lats, _RC)
+      call MAPL_GridGet(grid, im=IM, jm=JM, _RC)
+      call MAPL_GridGetCoordinates(grid, longitudes=lons, latitudes=lats, _RC)
 
       ! Get grid name to determine IMSIZE
       call MAPL_GridCompGetResource(gc, 'AGCM.GRIDNAME', GRIDNAME, _RC)
@@ -461,7 +463,8 @@ contains
       !real                                :: effgworo, effgwbkg
       !real                                :: CDMBGWD1, CDMBGWD2
       !real                                :: bgstressmax
-      real, pointer, dimension(:,:)       :: LATS
+      real, allocatable, dimension(:,:)       :: LONS
+      real, allocatable, dimension(:,:)       :: LATS
       ! Rayleigh friction parameters
 
       REAL                                :: H0, HH, Z1, TAU1
@@ -499,7 +502,7 @@ contains
 
       ! Grid info
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
-      call MAPL_GridGet(grid, im=IM, jm=JM, latitudes=lats, _RC)
+      call MAPL_GridGetCoordinates(grid, longitudes=lons, latitudes=lats, _RC)
 
       ! call ESMF_ClockGetAlarm(clock, 
 
