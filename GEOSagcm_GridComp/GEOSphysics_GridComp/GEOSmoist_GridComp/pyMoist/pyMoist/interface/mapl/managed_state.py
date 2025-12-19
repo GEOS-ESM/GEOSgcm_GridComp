@@ -4,9 +4,9 @@ import numpy.typing as npt
 
 from ndsl import State
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Float
+from ndsl.optional_imports import cupy as cp
 from pyMoist.interface import InterfaceTransferType
 from pyMoist.interface.mapl.memory_factory import MAPLMemoryRepository
-from ndsl.optional_imports import cupy as cp
 
 
 class MAPLManagedState:
