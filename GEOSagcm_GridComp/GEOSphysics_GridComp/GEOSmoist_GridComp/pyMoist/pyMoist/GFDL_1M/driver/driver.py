@@ -2,31 +2,30 @@
 
 import dace
 
-from ndsl import QuantityFactory, StencilFactory, orchestrate
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.check_flags import check_flags
-from pyMoist.GFDL_1M.driver.config_constants import ConfigConstants
-from pyMoist.GFDL_1M.driver.fall_speed.main import FallSpeed
-from pyMoist.GFDL_1M.driver.finish.main import Finish
-from pyMoist.GFDL_1M.driver.ice_cloud.main import IceCloud
-from pyMoist.GFDL_1M.driver.masks import Masks
-from pyMoist.GFDL_1M.driver.outputs import Outputs
+from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
+from pyMoist.GFDL_1M.driver.fall_speed import fall_speed
+from pyMoist.GFDL_1M.driver.finish import update_tendencies
+from pyMoist.GFDL_1M.driver.ice_cloud import GFDL1MIceCloud
+from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
-from pyMoist.GFDL_1M.driver.setup.main import Setup
-from pyMoist.GFDL_1M.driver.temporaries import Temporaries
-from pyMoist.GFDL_1M.driver.terminal_fall.main import TerminalFall
-from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
+from pyMoist.GFDL_1M.driver.setup import GFDL1MDriverSetup
+from pyMoist.GFDL_1M.driver.terminal_fall import GFDL1MTerminalFall
+from pyMoist.GFDL_1M.driver.warm_rain import GFDL1MWarmRain
 
 
-class MicrophysicsDriver:
+class GFDL1MDriver(NDSLRuntime):
     """
     Computes precipitates and microphysics tendencies using the following functions:
     __init__:
         - checks validity of constants and trigger parameters for unimplemented options
         - initalizes internal fields
         - constructs stencils
-        Arguments: StencilFactory, QuantityFactory, MicrophysicsConfiguration
+        Arguments: StencilFactory, QuantityFactory, GFDL1MConfig
 
     __call__:
         Evaluate the microphysics driver. The driver call is broken into six parts:
@@ -36,14 +35,14 @@ class MicrophysicsDriver:
         - WarmRain: warm rain cloud microphysics
         - IceCloud: ice cloud microphysical processes
         - Finish: compute output tendencies
-        Arguments: various state fields (pressure, temperature, wind) and mixing ratios
+        Arguments: various state fields (pressure, temperature, wind, mixing ratios, etc)
     """
 
     def __init__(
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        GFDL_1M_config: GFDL1MConfig,
+        config: GFDL1MConfig,
     ):
         """
         Perform setup for the microphysics driver. Check flags for unimplemented options,
@@ -52,94 +51,96 @@ class MicrophysicsDriver:
         Arguments:
             stencil_factory: StencilFactory with model domain information
             quantity_factory: QuantityFactory with model domain information
-            GFDL_1M_config: driver configuration
+            config: driver configuration
         """
-        self.config_dependent_constants = ConfigConstants.make(GFDL_1M_config)
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
 
-        # Check values for untested code paths
+        self.config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
+
+        # Check constants for unimplemented and untested code paths
         check_flags(
-            GFDL_1M_config,
+            config,
             self.config_dependent_constants.DTS,
         )
 
-        # -----------------------------------------------------------------------
-        # initialize precipitation outputs
-        # -----------------------------------------------------------------------
+        # initialize locals
+        self._locals = GFDL1MDriverLocals.make_locals(quantity_factory)
 
-        self.outputs = Outputs.make(quantity_factory)
-
-        # -----------------------------------------------------------------------
-        # initialize temporaries
-        # -----------------------------------------------------------------------
-
-        self.temporaries = Temporaries.make(quantity_factory)
-
-        # -----------------------------------------------------------------------
-        # initialize masks
-        # -----------------------------------------------------------------------
-
-        self.masks = Masks.make(quantity_factory)
-
-        # -----------------------------------------------------------------------
-        # generate saturation specific humidity tables
-        # -----------------------------------------------------------------------
-
-        self.sat_tables = get_tables(
+        # pull saturation specific humidity tables, generate if first call
+        self.driver_saturation_tables = get_tables(
             stencil_factory.backend,
             stencil_factory.config.dace_config,
         )
 
-        # -----------------------------------------------------------------------
-        # initialize stencils
-        # -----------------------------------------------------------------------
-
-        orchestrate(obj=self, config=stencil_factory.config.dace_config)
-
-        self._setup = Setup(
-            stencil_factory,
-            GFDL_1M_config,
-            self.config_dependent_constants,
+        # construct stencils
+        self._setup = GFDL1MDriverSetup(
+            stencil_factory=stencil_factory,
+            config=config,
+            config_dependent_constants=self.config_dependent_constants,
         )
 
-        self._fall_speed = FallSpeed(
-            stencil_factory,
-            quantity_factory,
-            GFDL_1M_config,
-            self.config_dependent_constants,
+        self._fall_speed = stencil_factory.from_dims_halo(
+            func=fall_speed,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "p_nonhydro": self.config_dependent_constants.P_NONHYDRO,
+                "const_vi": config.CONST_VI,
+                "const_vs": config.CONST_VS,
+                "const_vg": config.CONST_VG,
+                "vi_fac": config.VI_FAC,
+                "vi_max": config.VI_MAX,
+                "vs_fac": config.VS_FAC,
+                "vs_max": config.VS_MAX,
+                "vg_fac": config.VG_FAC,
+                "vg_max": config.VG_MAX,
+                "anv_icefall": config.ANV_ICEFALL,
+                "ls_icefall": config.LS_ICEFALL,
+            },
         )
 
-        self._terminal_fall = TerminalFall(
-            stencil_factory,
-            quantity_factory,
-            GFDL_1M_config,
-            self.config_dependent_constants,
+        self._terminal_fall = GFDL1MTerminalFall(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            config_dependent_constants=self.config_dependent_constants,
         )
 
-        self._warm_rain = WarmRain(
-            stencil_factory,
-            quantity_factory,
-            GFDL_1M_config,
-            self.config_dependent_constants,
+        self._warm_rain = GFDL1MWarmRain(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            config_dependent_constants=self.config_dependent_constants,
+            saturation_tables=self.driver_saturation_tables,
         )
 
-        self._ice_cloud = IceCloud(
-            stencil_factory,
-            GFDL_1M_config,
-            self.config_dependent_constants,
+        self._ice_cloud = GFDL1MIceCloud(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            config_dependent_constants=self.config_dependent_constants,
+            saturation_tables=self.driver_saturation_tables,
         )
 
-        self._finish = Finish(
-            stencil_factory,
-            GFDL_1M_config,
-            self.config_dependent_constants,
+        self._finish = stencil_factory.from_dims_halo(
+            func=update_tendencies,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "c_air": self.config_dependent_constants.C_AIR,
+                "c_vap": self.config_dependent_constants.C_VAP,
+                "rdt": self.config_dependent_constants.RDT,
+                "do_sedi_w": config.DO_SEDI_W,
+                "sedi_transport": config.SEDI_TRANSPORT,
+                "do_qa": config.DO_QA,
+            },
         )
 
     def __call__(
         self,
         t: FloatField,
-        w: FloatField,
         u: FloatField,
         v: FloatField,
+        w: FloatField,
         dz: FloatField,
         dp: FloatField,
         area: FloatFieldIJ,
@@ -147,7 +148,7 @@ class MicrophysicsDriver:
         convection_fraction: FloatFieldIJ,
         surface_type: FloatFieldIJ,
         estimated_inversion_strength: FloatFieldIJ,
-        rh_crit: FloatField,
+        critical_relative_humidity_for_pdf: FloatField,
         vapor: FloatField,
         liquid: FloatField,
         rain: FloatField,
@@ -155,34 +156,41 @@ class MicrophysicsDriver:
         snow: FloatField,
         graupel: FloatField,
         cloud_fraction: FloatField,
-        ice_concentration: FloatField,
-        liquid_concentration: FloatField,
-        dvapor_dt: FloatField,
-        dliquid_dt: FloatField,
-        drain_dt: FloatField,
-        dice_dt: FloatField,
-        dsnow_dt: FloatField,
-        dgraupel_dt: FloatField,
-        dcloud_fraction_dt: FloatField,
-        dt_dt: FloatField,
-        du_dt: FloatField,
-        dv_dt: FloatField,
+        total_concentration: FloatField,
+        dvapordt: FloatField,
+        dliquiddt: FloatField,
+        draindt: FloatField,
+        dicedt: FloatField,
+        dsnowdt: FloatField,
+        dgraupeldt: FloatField,
+        dcloudfractiondt: FloatField,
+        dtdt: FloatField,
+        dudt: FloatField,
+        dvdt: FloatField,
+        liquid_precip_flux: FloatField,
+        ice_precip_flux: FloatField,
+        evaporation: FloatField,
+        sublimation: FloatField,
+        surface_precip_rain: FloatFieldIJ,
+        surface_precip_snow: FloatFieldIJ,
+        surface_precip_ice: FloatFieldIJ,
+        surface_precip_graupel: FloatFieldIJ,
     ):
         """
 
         Arguments:
             t (in): atmospheric temperature (K)
-            w (in): vertical velocity (m/s)
             u (in): eastward winds (m/s)
             v (in): northward winds (m/s)
+            w (in): vertical velocity (m/s)
             dz (in): layer thickness (m)
-            dp (in): change in pressure between model levels (mb)
+            dp (in): change in pressure between model levels (Pa)
             area (in): grid cell area
             land_fraction (in): land fraction
             convection_fraction (in): convection fraction
             surface_type (in): surface type
-            estimated_inversion_strength (in): estimated inversion strength
-            rh_crit (in): critical relative humidity for pdf
+            estimated_inversion_strength (in): estimated inversion strength (K)
+            critical_relative_humidity_for_pdf (in): critical relative humidity for pdf
             vapor: (in): water vapor mixing ratio (kg/kg)
             liquid (in): in cloud liquid mixing radio (kg/kg)
             rain (in): falling rain (kg/kg)
@@ -190,232 +198,209 @@ class MicrophysicsDriver:
             snow (in): in cloud snow mixing radio (kg/kg)
             graupel (in): in cloud graupel mixing radio (kg/kg)
             cloud_fraction (in): cloud fraction (convective + large scale)
-            ice_concentration (in): ice concentration (m^-3)
-            liquid_concentration (in): liquid concentration (m^-3)
-            dvapor_dt (out): water vapor tendency
-            dliquid_dt (out): in cloud liquid water tendency
-            drain_dt (out): falling rain tendency
-            dice_dt (out): in cloud frozen water tendency
-            dsnow_dt (out): in cloud snow tendency
-            dgraupel_dt (out): in cloud graupel tendency
-            dcloud_fraction_dt (out): cloud fraction (convective + large scale) tendency
-            dt_dt (out): atmospheric temperature tendency
-            du_dt (out): eastward wind tendency
-            dv_dt (out): northward wind tendency
-            anv_icefall (in): internal parameter related to convective cloud icefall, details unknown
-            ls_icefall (in): internal parameter related to large scale cloud icefall, details unknown
+            total_concentration (in): total ice + liquid concentration (m^-3)
+            dvapordt (out): water vapor tendency
+            dliquiddt (out): in cloud liquid water tendency
+            draindt (out): falling rain tendency
+            dicedt (out): in cloud frozen water tendency
+            dsnowdt (out): in cloud snow tendency
+            dgraupeldt (out): in cloud graupel tendency
+            dcloudfractiondt (out): cloud fraction (convective + large scale) tendency
+            dtdt (out): atmospheric temperature tendency
+            dudt (out): eastward wind tendency
+            dvdt (out): northward wind tendency
+            liquid_precip_flux (out): non-anvil large scale liquid precip flux
+            ice_precip_flux (out): non-anvil large scale ice precip flux
+            evaporation (out): non-anvil large scale evaporation
+            sublimation (out): non-anvil large scale sublimation
+            surface_precip_rain (out): rain precip at surface (kg/m^2/s)
+            surface_precip_snow (out): snow precip at surface (kg/m^2/s)
+            surface_precip_ice (out): ice precip at surface (kg/m^2/s)
+            surface_precip_graupel (out): graupel precip at surface (kg/m^2/s)
         """
         self._setup(
-            t,
-            dp,
-            rh_crit,
-            vapor,
-            liquid,
-            ice,
-            rain,
-            snow,
-            graupel,
-            cloud_fraction,
-            ice_concentration,
-            liquid_concentration,
-            self.temporaries.qv0,
-            self.temporaries.ql0,
-            self.temporaries.qr0,
-            self.temporaries.qi0,
-            self.temporaries.qs0,
-            self.temporaries.qg0,
-            self.temporaries.qa0,
-            self.temporaries.qv1,
-            self.temporaries.ql1,
-            self.temporaries.qr1,
-            self.temporaries.qi1,
-            self.temporaries.qs1,
-            self.temporaries.qg1,
-            self.temporaries.qa1,
-            dz,
-            u,
-            v,
-            w,
-            area,
-            self.temporaries.t1,
-            self.temporaries.dp1,
-            self.temporaries.omq,
-            self.temporaries.den,
-            self.temporaries.p_dry,
-            self.temporaries.m1,
-            self.temporaries.u1,
-            self.temporaries.v1,
-            self.temporaries.w1,
-            self.temporaries.onemsig,
-            self.temporaries.ccn,
-            self.temporaries.c_praut,
-            self.temporaries.rh_limited,
-            self.outputs.rain,
-            self.outputs.snow,
-            self.outputs.graupel,
-            self.outputs.ice,
-            self.outputs.m2_rain,
-            self.outputs.m2_sol,
-            self.outputs.revap,
-            self.outputs.isubl,
+            unmodified_t=t,
+            t=self._locals.t,
+            unmodified_dp=dp,
+            dp=self._locals.dp,
+            critical_relative_humidity_for_pdf=critical_relative_humidity_for_pdf,
+            radiation_field_vapor=vapor,
+            radiation_field_liquid=liquid,
+            radiation_field_ice=ice,
+            radiation_field_rain=rain,
+            radiation_field_snow=snow,
+            radiation_field_graupel=graupel,
+            radiation_field_cloud_fraction=cloud_fraction,
+            total_concentration=total_concentration,
+            unmodified_mixing_ratio_vapor=self._locals.unmodified.mixing_ratio.vapor,
+            unmodified_mixing_ratio_liquid=self._locals.unmodified.mixing_ratio.liquid,
+            unmodified_mixing_ratio_rain=self._locals.unmodified.mixing_ratio.rain,
+            unmodified_mixing_ratio_ice=self._locals.unmodified.mixing_ratio.ice,
+            unmodified_mixing_ratio_snow=self._locals.unmodified.mixing_ratio.snow,
+            unmodified_mixing_ratio_graupel=self._locals.unmodified.mixing_ratio.graupel,
+            dry_air_mixing_ratio_vapor=self._locals.dry_air_mixing_ratio.vapor,
+            dry_air_mixing_ratio_liquid=self._locals.dry_air_mixing_ratio.liquid,
+            dry_air_mixing_ratio_rain=self._locals.dry_air_mixing_ratio.rain,
+            dry_air_mixing_ratio_ice=self._locals.dry_air_mixing_ratio.ice,
+            dry_air_mixing_ratio_snow=self._locals.dry_air_mixing_ratio.snow,
+            dry_air_mixing_ratio_graupel=self._locals.dry_air_mixing_ratio.graupel,
+            cloud_fraction=self._locals.cloud_fraction,
+            dz=dz,
+            u_unmodified=u,
+            u=self._locals.u,
+            v_unmodified=v,
+            v=self._locals.v,
+            w_unmodified=w,
+            w=self._locals.w,
+            area=area,
+            density_unmodified=self._locals.density_unmodified,
+            p_dry=self._locals.p_dry,
+            mass=self._locals.mass,
+            one_minus_sigma=self._locals.one_minus_sigma,
+            ccn=self._locals.ccn,
+            c_praut=self._locals.c_praut,
+            rh_limited=self._locals.rh_limited,
+            rain=surface_precip_rain,
+            snow=surface_precip_snow,
+            graupel=surface_precip_graupel,
+            ice=surface_precip_ice,
+            liquid_precip_flux=liquid_precip_flux,
+            ice_precip_flux=ice_precip_flux,
+            evaporation=evaporation,
+            sublimation=sublimation,
         )
 
         for _ in dace.nounroll(range(self.config_dependent_constants.NTIMES)):
             self._fall_speed(
-                self.temporaries.ql1,
-                self.temporaries.qi1,
-                self.temporaries.qs1,
-                self.temporaries.qg1,
-                t,
-                self.temporaries.t1,
-                dz,
-                self.temporaries.dz1,
-                self.temporaries.den,
-                self.temporaries.den1,
-                self.temporaries.denfac,
-                self.temporaries.p_dry,
-                self.temporaries.vti,
-                self.temporaries.vts,
-                self.temporaries.vtg,
-                convection_fraction,
+                liquid=self._locals.dry_air_mixing_ratio.liquid,
+                ice=self._locals.dry_air_mixing_ratio.ice,
+                snow=self._locals.dry_air_mixing_ratio.snow,
+                graupel=self._locals.dry_air_mixing_ratio.graupel,
+                t_unmodified=t,
+                t=self._locals.t,
+                dz_unmodified=dz,
+                dz=self._locals.dz,
+                density_unmodified=self._locals.density_unmodified,
+                density=self._locals.density,
+                density_factor=self._locals.density_factor,
+                ice_terminal_velocity=self._locals.terminal_speed.ice,
+                snow_terminal_velocity=self._locals.terminal_speed.snow,
+                graupel_terminal_velosity=self._locals.terminal_speed.graupel,
+                convection_fraction=convection_fraction,
             )
 
             self._terminal_fall(
-                self.temporaries.t1,
-                self.temporaries.qv1,
-                self.temporaries.ql1,
-                self.temporaries.qr1,
-                self.temporaries.qg1,
-                self.temporaries.qs1,
-                self.temporaries.qi1,
-                self.temporaries.dz1,
-                self.temporaries.dp1,
-                self.temporaries.vtg,
-                self.temporaries.vts,
-                self.temporaries.vti,
-                self.outputs.rain,
-                self.outputs.graupel,
-                self.outputs.snow,
-                self.outputs.ice,
-                self.temporaries.rain1,
-                self.temporaries.graupel1,
-                self.temporaries.snow1,
-                self.temporaries.ice1,
-                self.temporaries.m1_sol,
-                self.temporaries.w1,
-                self.temporaries.ze,
-                self.temporaries.zt,
-                self.masks.is_frozen,
-                self.masks.precip_fall,
+                t=self._locals.t,
+                w=self._locals.w,
+                mixing_ratio_vapor=self._locals.dry_air_mixing_ratio.vapor,
+                mixing_ratio_liquid=self._locals.dry_air_mixing_ratio.liquid,
+                mixing_ratio_rain=self._locals.dry_air_mixing_ratio.rain,
+                mixing_ratio_graupel=self._locals.dry_air_mixing_ratio.graupel,
+                mixing_ratio_snow=self._locals.dry_air_mixing_ratio.snow,
+                mixing_ratio_ice=self._locals.dry_air_mixing_ratio.ice,
+                dz=self._locals.dz,
+                dp=self._locals.dp,
+                terminal_velocity_graupel=self._locals.terminal_speed.ice,
+                terminal_velocity_snow=self._locals.terminal_speed.snow,
+                terminal_velocity_ice=self._locals.terminal_speed.graupel,
+                rain=surface_precip_rain,
+                graupel=surface_precip_graupel,
+                snow=surface_precip_snow,
+                ice=surface_precip_ice,
+                ice_precip_flux=self._locals.ice_precip_flux,
             )
 
             self._warm_rain(
-                self.temporaries.dz1,
-                self.temporaries.t1,
-                self.temporaries.qv1,
-                self.temporaries.dp1,
-                self.temporaries.ql1,
-                self.temporaries.qr1,
-                self.temporaries.qi1,
-                self.temporaries.qs1,
-                self.temporaries.qg1,
-                self.temporaries.qa1,
-                self.temporaries.ccn,
-                self.temporaries.den,
-                self.temporaries.denfac,
-                self.temporaries.c_praut,
-                self.temporaries.vtr,
-                self.temporaries.evap1,
-                self.temporaries.m1_rain,
-                self.temporaries.w1,
-                self.temporaries.rh_limited,
-                estimated_inversion_strength,
-                self.temporaries.onemsig,
-                self.temporaries.rain1,
-                self.temporaries.ze,
-                self.temporaries.zt,
-                self.temporaries.m1,
-                self.temporaries.m1_sol,
-                self.outputs.rain,
-                self.outputs.revap,
-                self.outputs.m2_rain,
-                self.outputs.m2_sol,
-                self.masks.precip_fall,
-                self.sat_tables.table1,
-                self.sat_tables.table2,
-                self.sat_tables.table3,
-                self.sat_tables.table4,
-                self.sat_tables.des1,
-                self.sat_tables.des2,
-                self.sat_tables.des3,
-                self.sat_tables.des4,
+                t=self._locals.t,
+                dp=self._locals.dp,
+                dz=self._locals.dz,
+                w=self._locals.w,
+                mixing_ratio_vapor=self._locals.dry_air_mixing_ratio.vapor,
+                mixing_ratio_liquid=self._locals.dry_air_mixing_ratio.liquid,
+                mixing_ratio_rain=self._locals.dry_air_mixing_ratio.rain,
+                mixing_ratio_ice=self._locals.dry_air_mixing_ratio.ice,
+                mixing_ratio_snow=self._locals.dry_air_mixing_ratio.snow,
+                mixing_ratio_graupel=self._locals.dry_air_mixing_ratio.graupel,
+                cloud_fraction=self._locals.cloud_fraction,
+                ccn=self._locals.ccn,
+                density=self._locals.density,
+                density_factor=self._locals.density_factor,
+                c_praut=self._locals.c_praut,
+                terminal_speed_rain=self._locals.terminal_speed.rain,
+                rh_limited=self._locals.rh_limited,
+                estimated_inversion_strength=estimated_inversion_strength,
+                one_minus_sigma=self._locals.one_minus_sigma,
+                mass=self._locals.mass,
+                rain=surface_precip_rain,
+                driver_rain=self._locals.rain,
+                ice_precip_flux=ice_precip_flux,
+                driver_ice_precip_flux=self._locals.ice_precip_flux,
+                liquid_precip_flux=liquid_precip_flux,
+                driver_liquid_precip_flux=self._locals.liquid_precip_flux,
+                evaporation=evaporation,
+                driver_evaporation=self._locals.evaporation,
             )
 
             self._ice_cloud(
-                self.temporaries.t1,
-                self.temporaries.p_dry,
-                self.temporaries.dp1,
-                self.temporaries.qv1,
-                self.temporaries.ql1,
-                self.temporaries.qr1,
-                self.temporaries.qi1,
-                self.temporaries.qs1,
-                self.temporaries.qg1,
-                self.temporaries.qa1,
-                self.temporaries.den1,
-                self.temporaries.denfac,
-                self.temporaries.vts,
-                self.temporaries.vtg,
-                self.temporaries.vtr,
-                self.temporaries.subl1,
-                self.outputs.isubl,
-                self.temporaries.rh_limited,
-                self.temporaries.ccn,
-                convection_fraction,
-                surface_type,
-                self.sat_tables.table2,
-                self.sat_tables.table3,
-                self.sat_tables.des2,
-                self.sat_tables.des3,
+                t=self._locals.t,
+                p_dry=self._locals.p_dry,
+                dp=self._locals.dp,
+                vapor=self._locals.dry_air_mixing_ratio.vapor,
+                liquid=self._locals.dry_air_mixing_ratio.liquid,
+                rain=self._locals.dry_air_mixing_ratio.rain,
+                ice=self._locals.dry_air_mixing_ratio.ice,
+                snow=self._locals.dry_air_mixing_ratio.snow,
+                graupel=self._locals.dry_air_mixing_ratio.graupel,
+                cloud_fraction=self._locals.cloud_fraction,
+                density=self._locals.density,
+                density_factor=self._locals.density_factor,
+                terminal_fall_snow=self._locals.terminal_speed.snow,
+                terminal_fall_graupel=self._locals.terminal_speed.graupel,
+                terminal_fall_rain=self._locals.terminal_speed.rain,
+                sublimation=sublimation,
+                rh_limited=self._locals.rh_limited,
+                ccn=self._locals.ccn,
+                convection_fraction=convection_fraction,
+                surface_type=surface_type,
             )
 
         self._finish(
-            self.temporaries.qv0,
-            self.temporaries.ql0,
-            self.temporaries.qr0,
-            self.temporaries.qi0,
-            self.temporaries.qs0,
-            self.temporaries.qg0,
-            self.temporaries.qa0,
-            self.temporaries.qv1,
-            self.temporaries.ql1,
-            self.temporaries.qr1,
-            self.temporaries.qi1,
-            self.temporaries.qs1,
-            self.temporaries.qg1,
-            dvapor_dt,
-            dliquid_dt,
-            drain_dt,
-            dice_dt,
-            dsnow_dt,
-            dgraupel_dt,
-            dcloud_fraction_dt,
-            t,
-            self.temporaries.t1,
-            dt_dt,
-            w,
-            self.temporaries.w1,
-            u,
-            self.temporaries.u1,
-            du_dt,
-            v,
-            self.temporaries.v1,
-            dv_dt,
-            dp,
-            self.temporaries.dp1,
-            self.temporaries.m1,
-            self.outputs.rain,
-            self.outputs.snow,
-            self.outputs.ice,
-            self.outputs.graupel,
+            mixing_ratio_vapor_unmodified=self._locals.unmodified.mixing_ratio.vapor,
+            mixing_ratio_liquid_unmodified=self._locals.unmodified.mixing_ratio.liquid,
+            mixing_ratio_rain_unmodified=self._locals.unmodified.mixing_ratio.rain,
+            mixing_ratio_ice_unmodified=self._locals.unmodified.mixing_ratio.ice,
+            mixing_ratio_snow_unmodified=self._locals.unmodified.mixing_ratio.snow,
+            mixing_ratio_graupel_unmodified=self._locals.unmodified.mixing_ratio.graupel,
+            cloud_fraction_unmodified=cloud_fraction,
+            mixing_ratio_driver_vapor=self._locals.dry_air_mixing_ratio.vapor,
+            mixing_ratio_driver_liquid=self._locals.dry_air_mixing_ratio.liquid,
+            mixing_ratio_driver_rain=self._locals.dry_air_mixing_ratio.rain,
+            mixing_ratio_driver_ice=self._locals.dry_air_mixing_ratio.ice,
+            mixing_ratio_driver_snow=self._locals.dry_air_mixing_ratio.snow,
+            mixing_ratio_driver_graupel=self._locals.dry_air_mixing_ratio.graupel,
+            dvapordt=dvapordt,
+            dliquiddt=dliquiddt,
+            draindt=draindt,
+            dicedt=dicedt,
+            dsnowdt=dsnowdt,
+            dgraupeldt=dgraupeldt,
+            dcloudfractiondt=dcloudfractiondt,
+            t_unmodified=t,
+            driver_t=self._locals.t,
+            dtdt=dtdt,
+            w_unmodified=w,
+            driver_w=self._locals.w,
+            u_unmodified=u,
+            driver_u=self._locals.u,
+            dudt=dudt,
+            v_unmodified=v,
+            driver_v=self._locals.v,
+            dvdt=dvdt,
+            dp_unmodified=dp,
+            driver_dp=self._locals.dp,
+            driver_mass=self._locals.mass,
+            rain=surface_precip_rain,
+            snow=surface_precip_snow,
+            ice=surface_precip_ice,
+            graupel=surface_precip_graupel,
         )

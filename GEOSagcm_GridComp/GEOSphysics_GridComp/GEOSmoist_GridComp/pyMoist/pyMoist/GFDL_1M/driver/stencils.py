@@ -1,5 +1,5 @@
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, int32, interval, trunc
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
@@ -39,69 +39,60 @@ def wqs2(
 
 
 def implicit_fall(
-    q: FloatField,
-    vt: FloatField,
-    ze: FloatField,
-    dp1: FloatField,
-    m1: FloatField,
-    m1_sol: FloatField,
+    mixing_ratio: FloatField,
+    terminal_speed: FloatField,
+    z_interface: FloatField,
+    dp: FloatField,
+    mass: FloatField,
+    precip_flux: FloatField,
     precip: FloatFieldIJ,
-    precip_fall: FloatFieldIJ,
+    precip_fall: BoolFieldIJ,
 ):
     """
     Compute the time-implicit monotonic scheme
-
-    reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
-    Fortran author: Shian-Jiann Lin, 2016
     """
     from __externals__ import dts
 
     with computation(PARALLEL), interval(...):
-        if precip_fall == 1:
-            height_diff = ze - ze[0, 0, 1]
-            dd = dts * vt
-            q = q * dp1
+        if precip_fall == True:  # noqa
+            height_diff = z_interface - z_interface[0, 0, 1]
+            dd = dts * terminal_speed
+            mixing_ratio = mixing_ratio * dp
 
-    # -----------------------------------------------------------------------
     # sedimentation: non - vectorizable loop
-    # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
-        if precip_fall == 1:
-            qm = q / (height_diff + dd)
+        if precip_fall == True:  # noqa
+            qm = mixing_ratio / (height_diff + dd)
 
     with computation(FORWARD), interval(1, None):
-        if precip_fall == 1:
-            qm = (q + dd[0, 0, -1] * qm[0, 0, -1]) / (height_diff + dd)
+        if precip_fall == True:  # noqa
+            qm = (mixing_ratio + dd[0, 0, -1] * qm[0, 0, -1]) / (height_diff + dd)
 
-    # -----------------------------------------------------------------------
     # qm is density at this stage
-    # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        if precip_fall == 1:
+        if precip_fall == True:  # noqa
             qm = qm * height_diff
 
-    # -----------------------------------------------------------------------
     # output mass fluxes: non - vectorizable loop
-    # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
-        if precip_fall == 1:
-            m1 = q - qm
+        if precip_fall == True:  # noqa
+            mass = mixing_ratio - qm
 
     with computation(FORWARD), interval(1, None):
-        if precip_fall == 1:
-            m1 = m1[0, 0, -1] + q - qm
+        if precip_fall == True:  # noqa
+            mass = mass[0, 0, -1] + mixing_ratio - qm
 
     with computation(FORWARD), interval(-1, None):
-        if precip_fall == 1:
-            precip = m1
+        if precip_fall == True:  # noqa
+            precip = mass
+        else:
+            precip = 0
 
-    # -----------------------------------------------------------------------
     # update:
-    # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        if precip_fall == 1:
-            q = qm / dp1
+        if precip_fall == True:  # noqa
+            mixing_ratio = qm / dp
 
     with computation(PARALLEL), interval(...):
-        if precip_fall == 1:
-            m1_sol = m1_sol + m1
+        if precip_fall == True:  # noqa
+            precip_flux = precip_flux + mass

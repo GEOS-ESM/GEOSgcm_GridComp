@@ -40,7 +40,7 @@ def prepare_tendencies(
         dgraupel_dt = graupel
 
 
-def _update_radiation(
+def update_radiation(
     t: FloatField,
     u: FloatField,
     v: FloatField,
@@ -52,31 +52,31 @@ def _update_radiation(
     radiation_snow: FloatField,
     radiation_graupel: FloatField,
     dcloud_fraction_dt: FloatField,
-    dt_dt: FloatField,
-    du_dt: FloatField,
-    dv_dt: FloatField,
-    dice_dt: FloatField,
-    dliquid_dt: FloatField,
-    dvapor_dt: FloatField,
-    drain_dt: FloatField,
-    dsnow_dt: FloatField,
-    dgraupel_dt: FloatField,
+    dtdt: FloatField,
+    dudt: FloatField,
+    dvdt: FloatField,
+    dicedt: FloatField,
+    dliquiddt: FloatField,
+    dvapordt: FloatField,
+    draindt: FloatField,
+    dsnowdt: FloatField,
+    dgraupeldt: FloatField,
 ):
     from __externals__ import DT_MOIST
 
     with computation(PARALLEL), interval(...):
-        t = t + dt_dt * DT_MOIST
-        u = u + du_dt * DT_MOIST
-        v = v + dv_dt * DT_MOIST
+        t = t + dtdt * DT_MOIST
+        u = u + dudt * DT_MOIST
+        v = v + dvdt * DT_MOIST
         radiation_cloud_fraction = min(
             1.0, max(0.0, radiation_cloud_fraction + dcloud_fraction_dt * DT_MOIST)
         )
-        radiation_ice = radiation_ice + dice_dt * DT_MOIST
-        radiation_liquid = radiation_liquid + dliquid_dt * DT_MOIST
-        radiation_vapor = radiation_vapor + dvapor_dt * DT_MOIST
-        radiation_rain = radiation_rain + drain_dt * DT_MOIST
-        radiation_snow = radiation_snow + dsnow_dt * DT_MOIST
-        radiation_graupel = radiation_graupel + dgraupel_dt * DT_MOIST
+        radiation_ice = radiation_ice + dicedt * DT_MOIST
+        radiation_liquid = radiation_liquid + dliquiddt * DT_MOIST
+        radiation_vapor = radiation_vapor + dvapordt * DT_MOIST
+        radiation_rain = radiation_rain + draindt * DT_MOIST
+        radiation_snow = radiation_snow + dsnowdt * DT_MOIST
+        radiation_graupel = radiation_graupel + dgraupeldt * DT_MOIST
 
 
 def update_tendencies(
@@ -121,7 +121,16 @@ def update_tendencies(
         dgraupel_dt = (graupel - dgraupel_dt) / DT_MOIST
 
 
-def _prepare_radiation(
+def get_total_concentration(
+    ice_concentration: FloatField,
+    liquid_concentration: FloatField,
+    total_concentration: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        total_concentration = ice_concentration + liquid_concentration
+
+
+def prepare_radiation(
     convective_cloud_fraction: FloatField,
     large_scale_cloud_fraction: FloatField,
     radiation_cloud_fraction: FloatField,
@@ -155,3 +164,28 @@ def _prepare_radiation(
         radiation_snow = snow
         # graupel
         radiation_graupel = graupel
+
+
+def reset_micro_tendencies(
+    dvapordt: FloatField,
+    dliquiddt: FloatField,
+    draindt: FloatField,
+    dicedt: FloatField,
+    dsnowdt: FloatField,
+    dgraupeldt: FloatField,
+    dcloudfractiondt: FloatField,
+    dtdt: FloatField,
+    dudt: FloatField,
+    dvdt: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        dvapordt = 0
+        dliquiddt = 0
+        draindt = 0
+        dicedt = 0
+        dsnowdt = 0
+        dgraupeldt = 0
+        dcloudfractiondt = 0
+        dtdt = 0
+        dudt = 0
+        dvdt = 0

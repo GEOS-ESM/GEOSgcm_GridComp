@@ -140,8 +140,15 @@ contains
 
     ! Set the Run entry point
     ! -----------------------
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=status )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run, RC=status )
     VERIFY_(STATUS)
+
+#ifdef PYMOIST_INTEGRATION
+    ! When using the NDSL integration we need a hook for some tooling/cleanup
+    ! -----------------------
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE, Finalize, RC=status )
+    VERIFY_(status)
+#endif
 
     ! Get the configuration from the component
     !-----------------------------------------
@@ -6137,6 +6144,37 @@ contains
     RETURN_(ESMF_SUCCESS)
 
   end subroutine RUN
+
+#ifdef PYMOIST_INTEGRATION
+  subroutine FINALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
+    type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
+    type(ESMF_State),    intent(inout) :: import ! Import state
+    type(ESMF_State),    intent(inout) :: export ! Export state
+    type(ESMF_Clock),    intent(inout) :: clock  ! The clock
+    integer, optional,   intent(  out) :: rc     ! Error code
+
+    ! ErrLog variables
+    integer :: status
+    character(len=ESMF_MAXSTR) :: Iam
+    character(len=ESMF_MAXSTR) :: comp_name
+    ! Begin...
+    ! Get component's name and setup traceback handle
+    call ESMF_GridCompget(gc, name=comp_name, rc=status)
+    VERIFY_(status)
+    Iam = trim(comp_name) // "::Finalize"
+
+    ! Clean up pymoist
+    call pymoist_interface_f_finalize()
+
+
+    ! Call Finalize for every child
+    call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
+    VERIFY_(status)
+    ! End
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine FINALIZE
+#endif
 
 end module GEOS_MoistGridCompMod
 

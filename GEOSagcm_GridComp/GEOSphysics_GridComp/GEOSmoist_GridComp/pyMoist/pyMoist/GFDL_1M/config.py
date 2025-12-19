@@ -5,8 +5,8 @@ from ndsl.dsl.typing import Float, Int
 
 @dataclass
 class GFDL1MConfig:
-    PHYS_HYDROSTATIC: bool
-    HYDROSTATIC: bool
+    LPHYS_HYDROSTATIC: bool
+    LHYDROSTATIC: bool
     DT_MOIST: Float
     MP_TIME: Float
     T_MIN: Float
@@ -88,10 +88,10 @@ class GFDL1MConfig:
     ICLOUD_F: Float
     IRAIN_F: Float
     MP_PRINT: bool
-    MELTFRZ: bool
+    LMELTFRZ: bool
     USE_BERGERON: bool
     TURNRHCRIT_PARAM: Float
-    PDF_SHAPE: Int
+    PDFSHAPE: Int
     ANV_ICEFALL: Float
     LS_ICEFALL: Float
     LIQ_RADII_PARAM: Int
