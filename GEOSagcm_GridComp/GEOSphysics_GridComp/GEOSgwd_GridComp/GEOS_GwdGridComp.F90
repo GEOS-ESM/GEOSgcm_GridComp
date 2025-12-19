@@ -285,7 +285,7 @@ contains
       ! Grid info
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
       call MAPL_GridGet(grid, im=IM, jm=JM, _RC)
-      call MAPL_GridGetCoordinates(grid, latitudes=lats, longitudes=lons, _RC)
+      call MAPL_GridGetCoordinates(grid, longitudes=lons, latitudes=lats, _RC)
 
       ! Get grid name to determine IMSIZE
       call MAPL_GridCompGetResource(gc, 'AGCM.GRIDNAME', GRIDNAME, _RC)
@@ -500,8 +500,8 @@ contains
 
       ! Grid info
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
+      call MAPL_GridGetCoordinates(grid, longitudes=lons, latitudes=lats, _RC)
       call MAPL_GridGet(grid, im=IM, jm=JM, _RC)
-      call MAPL_GridGetCoordinates(grid, latitudes=lats, longitudes=lons, _RC)
 
       ! call ESMF_ClockGetAlarm(clock, 
 
