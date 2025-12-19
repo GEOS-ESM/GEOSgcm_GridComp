@@ -721,7 +721,7 @@ contains
       real       plcl, plfc, prel, wrel
       real       ee2, ud2, wtw, wtwb
       real       xc
-      real       cldhgt, scaleh, tscaleh, cridis
+      real       cldhgt, scaleh, tscaleh, cridis, rei_base
       real       sigmaw, tkeavg, qtavg, thvlavg, uavg, vavg, dpsum, dpi, thvlmin
       real       thlxsat, qtxsat, thvxsat, x_cu, x_en, thv_x0, thv_x1
       real       dpe, exne, thvebot, thle, qte, ue, ve, thlue, qtue, wue
@@ -972,7 +972,7 @@ contains
 !!! real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
 
     real :: tiny = 1.e-15
-    real :: arg
+    real :: arg, den
 
     ! ---------------------------------------- !
     ! Bulk microphysics controlling parameters !
@@ -1519,7 +1519,7 @@ contains
               tpert_out(i) = thlsrc_fac*shfx(i)/(zrho*wstar*cp)  ! K
               qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
             end if
-            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 1% of QT
+            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 2% of QT
             tpert_out(i) = 0.1+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
             qtsrc   = qtavg + qpert_out(i)
 !           qtsrc   = qt0(1) + qpert_out(i)
@@ -2523,32 +2523,49 @@ contains
           wue   = wu(km1)
           wtwb  = wtw  
 
+          ! ---------------------------------------------------------------- !
+          ! Calculate environmental saturation 'excess' at 'pe' - once only !
+          ! ---------------------------------------------------------------- !
+          call conden(pe,thle,qte,thj,qvj,qlj,qij,qse,id_check)
+          if( id_check .eq. 1 ) then
+             exit_conden(i) = 1.
+             id_exit = .true.
+             if (scverbose) then
+               call write_parallel('------- UW ShCu: exit, conden')
+             end if
+             go to 333
+          end if
+          thv0j    = thj * ( 1. + zvir*qvj - qlj - qij )
+          rhomid0j    = pe / ( r * thv0j * exne )
+          qsat_arg = thle*exne
+          qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)     
+          excess0  = qte - qs
+
+          ! ----------------------------------------------------------------- !
+          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
+          ! ----------------------------------------------------------------- !
+          if (cridist_opt.eq.0) then
+           cridis = rle*scaleh                 ! Original code
+          else
+           cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
+          end if 
+
+          ! ------------------------------------------------------------------ !
+          ! Base rei calculation - will be modified by xc limiter in iteration !
+          ! ------------------------------------------------------------------ !
+          if (min(scaleh,mix2d(i)) .gt. tiny) then
+            rei_base = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )
+          else
+            rei_base = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j )
+          end if
+
          do iter_xc = 1, niter_xc
           
             wtw = wu(km1) * wu(km1)
 
           ! ---------------------------------------------------------------- !
-          ! Calculate environmental and cumulus saturation 'excess' at 'pe'. !
-          ! Note that in order to calculate saturation excess, we should use ! 
-          ! liquid water temperature instead of temperature  as the argument !
-          ! of "qsat". But note normal argument of "qsat" is temperature.    !
+          ! Calculate cumulus saturation 'excess' at 'pe'.                  !
           ! ---------------------------------------------------------------- !
-
-            call conden(pe,thle,qte,thj,qvj,qlj,qij,qse,id_check)
-            if( id_check .eq. 1 ) then
-               exit_conden(i) = 1.
-               id_exit = .true.
-               if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
-               end if
-               go to 333
-            end if
-            thv0j    = thj * ( 1. + zvir*qvj - qlj - qij )
-            rhomid0j    = pe / ( r * thv0j * exne )
-            qsat_arg = thle*exne
-            qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)     
-            excess0  = qte - qs
-
             call conden(pe,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
             if( id_check .eq. 1 ) then
                exit_conden(i) = 1.
@@ -2560,12 +2577,7 @@ contains
             end if
           ! ----------------------------------------------------------------- !
           ! Detrain excessive condensate larger than 'criqc' from the cumulus ! 
-          ! updraft before performing buoyancy sorting. All I should to do is !
-          ! to update 'thlue' &  'que' here. Below modification is completely !
-          ! compatible with the other part of the code since 'thule' & 'qtue' !
-          ! are used only for buoyancy sorting. I found that as long as I use !
-          ! 'niter_xc >= 2',  detraining excessive condensate before buoyancy !
-          ! sorting has negligible influence on the buoyancy sorting results. !   
+          ! updraft before performing buoyancy sorting.                      !
           ! ----------------------------------------------------------------- !
             if( (qlj + qij) .gt. criqc ) then
                exql  = ( ( qlj + qij ) - criqc ) * qlj / ( qlj + qij )
@@ -2589,35 +2601,8 @@ contains
             excessu  = qtue - qs
 
           ! ------------------------------------------------------------------- !
-          ! Calculate critical mixing fraction, 'xc'. Mixture with mixing ratio !
-          ! smaller than 'xc' will be entrained into cumulus updraft.  Both the !
-          ! saturated updrafts with 'positive buoyancy' or 'negative buoyancy + ! 
-          ! strong vertical velocity enough to rise certain threshold distance' !
-          ! are kept into the updraft in the below program. If the core updraft !
-          ! is unsaturated, we can set 'xc = 0' and let the cumulus  convection !
-          ! still works or we may exit.                                         !
-          ! Current below code does not entrain unsaturated mixture. However it !
-          ! should be modified such that it also entrain unsaturated mixture.   !
+          ! Calculate critical mixing fraction, 'xc'. 'Buoyancy Sorting'       !
           ! ------------------------------------------------------------------- !
-
-          ! ----------------------------------------------------------------- !
-          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
-          !          scaleh is only used here.                                !
-          ! ----------------------------------------------------------------- !
-
-           if (cridist_opt.eq.0) then
-            cridis = rle*scaleh                 ! Original code
-           else
-            cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
-           end if 
-
-          ! ---------------- !
-          ! Buoyancy Sorting !
-          ! ---------------- !                   
-
-          ! ----------------------------------------------------------------- !
-          ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
-          ! ----------------------------------------------------------------- !
             xsat = 0.
 
             if( ( excessu .le. 0. .and. excess0 .le. 0. ) .or. ( excessu .ge. 0. .and. excess0 .ge. 0. ) ) then
@@ -2689,210 +2674,147 @@ contains
 
           ! ------------------------------------------------------------------------ !
           ! Compute fractional lateral entrainment & detrainment rate in each layers.!
-          ! The unit of rei(k), fer(k), and fdr(k) is [Pa-1].  Alternative choice of !
-          ! 'rei(k)' is also shown below, where coefficient 0.5 was from approximate !
-          ! tuning against the BOMEX case.                                           !
-          ! In order to prevent the onset of instability in association with cumulus !
-          ! induced subsidence advection, cumulus mass flux at the top interface  in !
-          ! any layer should be smaller than ( 90% of ) total mass within that layer.!
-          ! I imposed limits on 'rei(k)' as below,  in such that stability condition ! 
-          ! is always satisfied.                                                     !
-          ! Below limiter of 'rei(k)' becomes negative for some cases, causing error.!
-          ! So, for the time being, I came back to the original limiter.             !
           ! ------------------------------------------------------------------------ !
+            rei(k) = rei_base
+            
+            if (xc .gt. 0.5) then
+               arg = dp0(k) / g / dt / max(umf(km1), tiny) + 1.0
+               den = dpe * (2.0*xc - 1.0)
+               if (den > tiny) then
+                  rei(k) = min(rei(k), 0.9*log(max(tiny, arg)) / den)
+               endif
+            endif
+
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
-            if (min(scaleh,mix2d(i)) .gt. tiny) then
-              rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
-! regression bug due to cnvtr
-! WMP         rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
-            else
-              rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
-            end if
-
-! overflow  if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny,dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
-            if( xc .gt. 0.5 ) then
-                arg = dp0(k)/g/dt/max(umf(km1),tiny) + 1.0
-                rei(k) = min(rei(k),0.9*log(max(tiny,arg))/max(dpe*(2.*xc-1.), tiny))
-            endif
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
             xco(k) = xc
 
-          
-
-
-          ! ------------------------------------------------------------------------------ !
-          ! Iteration Start due to 'maxufrc' constraint [ ****************************** ] ! 
-          ! ------------------------------------------------------------------------------ !
-
-          ! -------------------------------------------------------------------------- !
-          ! Calculate cumulus updraft mass flux and penetrative entrainment mass flux. !
-          ! Note that  non-zero penetrative entrainment mass flux will be asigned only !
-          ! to interfaces from the top interface of 'kbup' layer to the base interface !
-          ! of 'kpen' layer as will be shown later.                                    !
-          ! -------------------------------------------------------------------------- !
-
-            umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
-            emf(k) = 0.
-
-          ! --------------------------------------------------------- !
-          ! Limit umf based on (2x) the CFL condition
-          ! --------------------------------------------------------- !
-            umf(k) = min(umf(k),2.*dp0(k)/g/dt)
-
-            dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
-!           dcm(k) = min(1.,max(0.,xsat-xc))
-
-          ! --------------------------------------------------------- !
-          ! Compute cumulus updraft properties at the top interface.  !
-          ! Also use Tayler expansion in order to treat limiting case !
-          ! --------------------------------------------------------- !
-
-            if( fer(k)*dpe .lt. 1.e-4 ) then
-              thlu(k) = thlu(km1) + ( thle + ssthl0(k) * dpe / 2. - thlu(km1) ) * fer(k) * dpe
-              qtu(k)  =  qtu(km1) + ( qte  +  ssqt0(k) * dpe / 2. -  qtu(km1) ) * fer(k) * dpe
-              uu(k)   =   uu(km1) + ( ue   +   ssu0(k) * dpe / 2. -   uu(km1) ) * fer(k) * dpe - PGFc * ssu0(k) * dpe
-              vu(k)   =   vu(km1) + ( ve   +   ssv0(k) * dpe / 2. -   vu(km1) ) * fer(k) * dpe - PGFc * ssv0(k) * dpe
-              if (dotransport.eq.1) then
-              do m = 1, ncnst
-                 tru(k,m)  =  tru(km1,m) + ( tre(m)  + sstr0(k,m) * dpe / 2.  -  tru(km1,m) ) * fer(k) * dpe
-              enddo
-              end if
-            else
-              thlu(k) = ( thle + ssthl0(k) / fer(k) - ssthl0(k) * dpe / 2. ) -          &
-                        ( thle + ssthl0(k) * dpe / 2. - thlu(km1) + ssthl0(k) / fer(k) ) * exp(-fer(k) * dpe)
-              qtu(k)  = ( qte  +  ssqt0(k) / fer(k) -  ssqt0(k) * dpe / 2. ) -          &  
-                        ( qte  +  ssqt0(k) * dpe / 2. -  qtu(km1) +  ssqt0(k) / fer(k) ) * exp(-fer(k) * dpe)
-              uu(k) =   ( ue + ( 1. - PGFc ) * ssu0(k) / fer(k) - ssu0(k) * dpe / 2. ) - &
-                        ( ue +     ssu0(k) * dpe / 2. -   uu(km1) + ( 1. - PGFc ) * ssu0(k) / fer(k) ) * exp(-fer(k) * dpe)
-              vu(k) =   ( ve + ( 1. - PGFc ) * ssv0(k) / fer(k) - ssv0(k) * dpe / 2. ) - &
-                        ( ve +     ssv0(k) * dpe / 2. -   vu(km1) + ( 1. - PGFc ) * ssv0(k) / fer(k) ) * exp(-fer(k) * dpe)
-              if (dotransport.eq.1) then
-              do m = 1, ncnst
-                 tru(k,m)  = ( tre(m)  + sstr0(k,m) / fer(k) - sstr0(k,m) * dpe / 2. ) - &  
-                             ( tre(m)  + sstr0(k,m) * dpe / 2. - tru(km1,m) + sstr0(k,m) / fer(k) ) * exp(-fer(k) * dpe)
-              enddo
-              end if
-            end if
-
-          !------------------------------------------------------------------- !
-          ! Expel some of cloud water and ice from cumulus  updraft at the top !
-          ! interface.  Note that this is not 'detrainment' term  but a 'sink' !
-          ! term of cumulus updraft qt ( or one part of 'source' term of  mean !
-          ! environmental qt ). At this stage, as the most simplest choice, if !
-          ! condensate amount within cumulus updraft is larger than a critical !
-          ! value, 'criqc', expels the surplus condensate from cumulus updraft !
-          ! to the environment. A certain fraction ( e.g., 'frc_sus' ) of this !
-          ! expelled condesnate will be in a form that can be suspended in the !
-          ! layer k where it was formed, while the other fraction, '1-frc_sus' ! 
-          ! will be in a form of precipitatble (e.g.,can potentially fall down !
-          ! across the base interface of layer k ). In turn we should describe !
-          ! subsequent falling of precipitable condensate ('1-frc_sus') across !
-          ! the base interface of the layer k, &  evaporation of precipitating !
-          ! water in the below layer k-1 and associated evaporative cooling of !
-          ! the later, k-1, and falling of 'non-evaporated precipitating water !
-          ! ( which was initially formed in layer k ) and a newly-formed preci !
-          ! pitable water in the layer, k-1', across the base interface of the !
-          ! lower layer k-1.  Cloud microphysics should correctly describe all !
-          ! of these process.  In a near future, I should significantly modify !
-          ! this cloud microphysics, including precipitation-induced downdraft !
-          ! also.                                                              !
-          ! ------------------------------------------------------------------ !
-
-            call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
-            if( id_check .eq. 1 ) then
-              exit_conden(i) = 1.
-              id_exit = .true.
-              if (scverbose) then
-                call write_parallel('------- UW ShCu: exit, conden')
-              end if
-              go to 333
-            end if
-            if( (qlj + qij) .gt. criqc ) then
-               exql    = ( ( qlj + qij ) - criqc ) * qlj / ( qlj + qij )
-               exqi    = ( ( qlj + qij ) - criqc ) * qij / ( qlj + qij )
-               ! ---------------------------------------------------------------- !
-               ! It is very important to re-update 'qtu' and 'thlu'  at the upper ! 
-               ! interface after expelling condensate from cumulus updraft at the !
-               ! top interface of the layer. As mentioned above, this is a 'sink' !
-               ! of cumulus qt (or equivalently, a 'source' of environmentasl qt),!
-               ! not a regular convective'detrainment'.                           !
-               ! ---------------------------------------------------------------- !
-               qtu(k)  = qtu(k) - exql - exqi
-               thlu(k) = thlu(k) + (xlv/exnifc0(k)/cp)*exql + (xls/exnifc0(k)/cp)*exqi 
-               ! ---------------------------------------------------------------- !
-               ! Expelled cloud condensate into the environment from the updraft. ! 
-               ! After all the calculation later, 'dwten' and 'diten' will have a !
-               ! unit of [ kg/kg/s ], because it is a tendency of qt. Restoration !
-               ! of 'dwten' and 'diten' to this correct unit through  multiplying !
-               ! 'umf(k)*g/dp0(k)' will be performed later after finally updating !
-               ! 'umf' using a 'rmaxfrac' constraint near the end of this updraft !
-               ! buoyancy sorting loop.                                           !
-               ! ---------------------------------------------------------------- !
-               dwten(k) = exql   
-               diten(k) = exqi
-            else
-               dwten(k) = 0.
-               diten(k) = 0.
+          ! -------------------------------------------------------------------- !
+          ! Prepare for next iteration if not the final one                     !
+          ! -------------------------------------------------------------------- !
+            if( iter_xc .lt. niter_xc ) then
+              if( wtw .gt. 0. ) then   
+                thlue = 0.5 * ( thlu(km1) + thlu(k) )
+                qtue  = 0.5 * ( qtu(km1)  +  qtu(k) )         
+                wue   = 0.5 *   sqrt( max( wtwb + wtw, 0. ) )
+              else
+                go to 111
+              endif 
             endif
-
-          ! ----------------------------------------------------------------- ! 
-          ! Update 'thvu(k)' after detraining condensate from cumulus updraft.!
-          ! ----------------------------------------------------------------- ! 
-            call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
-            if( id_check .eq. 1 ) then
-               exit_conden(i) = 1.
-               id_exit = .true.
-               if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
-               end if
-               go to 333
-            end if  
-            thvu(k) = thj * ( 1. + zvir * qvj - qlj - qij )
-
-          ! ----------------------------------------------------------- ! 
-          ! Calculate updraft vertical velocity at the upper interface. !
-          ! In order to calculate 'wtw' at the upper interface, we use  !
-          ! 'wtw' at the lower interface. Note  'wtw'  is continuously  ! 
-          ! updated as cumulus updraft rises.                           !
-          ! ----------------------------------------------------------- !
-
-            bogbot = rbuoy * ( thvu(km1) / thvebot  - 1. ) ! Cloud buoyancy at base interface
-            bogtop = rbuoy * ( thvu(k) / thv0top(k) - 1. ) ! Cloud buoyancy at top  interface
-
-            delbog = bogtop - bogbot
-            drage  = fer(k) * ( 1. + rdrag )
-            expfac = exp(-2.*drage*dpe)
-
-            wtwb = wtw
-            if( drage*dpe .gt. 1.e-3 ) then
-              wtw = wtw*expfac + (delbog + (1.-expfac)*(bogbot + delbog/(-2.*drage*dpe)))/(rhomid0j*drage)
-            else
-              wtw = wtw + dpe * ( bogbot + bogtop ) / rhomid0j
-            endif
-
-        ! Force the plume rise at least to klfc of the undiluted plume.
-        ! Because even the below is not complete, I decided not to include this.
-
-        ! if( k .le. klfc ) then
-        !     wtw = max( 1.e-2, wtw )
-        ! endif 
-         
-          ! -------------------------------------------------------------- !
-          ! Repeat 'iter_xc' iteration loop until 'iter_xc = niter_xc'.    !
-          ! Also treat the case even when wtw < 0 at the 'kpen' interface. !
-          ! -------------------------------------------------------------- !  
-          
-            if( wtw .gt. 0. ) then   
-              thlue = 0.5 * ( thlu(km1) + thlu(k) )
-              qtue  = 0.5 * ( qtu(km1)  +  qtu(k) )         
-              wue   = 0.5 *   sqrt( max( wtwb + wtw, 0. ) )
-            else
-              go to 111
-            endif 
 
          end do  ! iter_xc loop
+
+         ! ------------------------------------------------------------------------------ !
+         ! FINAL CALCULATIONS - Only execute after all iterations complete              !
+         ! ------------------------------------------------------------------------------ !
+
+         ! -------------------------------------------------------------------------- !
+         ! Calculate cumulus updraft mass flux and penetrative entrainment mass flux. !
+         ! -------------------------------------------------------------------------- !
+         umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
+         emf(k) = 0.
+
+         ! --------------------------------------------------------- !
+         ! Limit umf based on (2x) the CFL condition               !
+         ! --------------------------------------------------------- !
+         umf(k) = min(umf(k),2.*dp0(k)/g/dt)
+
+         dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
+
+         ! --------------------------------------------------------- !
+         ! Compute cumulus updraft properties at the top interface. !
+         ! --------------------------------------------------------- !
+         if( fer(k)*dpe .lt. 1.e-4 ) then
+           thlu(k) = thlu(km1) + ( thle + ssthl0(k) * dpe / 2. - thlu(km1) ) * fer(k) * dpe
+           qtu(k)  =  qtu(km1) + ( qte  +  ssqt0(k) * dpe / 2. -  qtu(km1) ) * fer(k) * dpe
+           uu(k)   =   uu(km1) + ( ue   +   ssu0(k) * dpe / 2. -   uu(km1) ) * fer(k) * dpe - PGFc * ssu0(k) * dpe
+           vu(k)   =   vu(km1) + ( ve   +   ssv0(k) * dpe / 2. -   vu(km1) ) * fer(k) * dpe - PGFc * ssv0(k) * dpe
+           if (dotransport.eq.1) then
+           do m = 1, ncnst
+              tru(k,m)  =  tru(km1,m) + ( tre(m)  + sstr0(k,m) * dpe / 2.  -  tru(km1,m) ) * fer(k) * dpe
+           enddo
+           end if
+         else
+           thlu(k) = ( thle + ssthl0(k) / fer(k) - ssthl0(k) * dpe / 2. ) -          &
+                     ( thle + ssthl0(k) * dpe / 2. - thlu(km1) + ssthl0(k) / fer(k) ) * exp(-fer(k) * dpe)
+           qtu(k)  = ( qte  +  ssqt0(k) / fer(k) -  ssqt0(k) * dpe / 2. ) -          &  
+                     ( qte  +  ssqt0(k) * dpe / 2. -  qtu(km1) +  ssqt0(k) / fer(k) ) * exp(-fer(k) * dpe)
+           uu(k) =   ( ue + ( 1. - PGFc ) * ssu0(k) / fer(k) - ssu0(k) * dpe / 2. ) - &
+                     ( ue +     ssu0(k) * dpe / 2. -   uu(km1) + ( 1. - PGFc ) * ssu0(k) / fer(k) ) * exp(-fer(k) * dpe)
+           vu(k) =   ( ve + ( 1. - PGFc ) * ssv0(k) / fer(k) - ssv0(k) * dpe / 2. ) - &
+                     ( ve +     ssv0(k) * dpe / 2. -   vu(km1) + ( 1. - PGFc ) * ssv0(k) / fer(k) ) * exp(-fer(k) * dpe)
+           if (dotransport.eq.1) then
+           do m = 1, ncnst
+              tru(k,m)  = ( tre(m)  + sstr0(k,m) / fer(k) - sstr0(k,m) * dpe / 2. ) - &  
+                          ( tre(m)  + sstr0(k,m) * dpe / 2. - tru(km1,m) + sstr0(k,m) / fer(k) ) * exp(-fer(k) * dpe)
+           enddo
+           end if
+         end if
+
+         !------------------------------------------------------------------- !
+         ! Expel some of cloud water and ice from cumulus  updraft at the top !
+         ! interface.                                                         !
+         ! ------------------------------------------------------------------ !
+         call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+         if( id_check .eq. 1 ) then
+           exit_conden(i) = 1.
+           id_exit = .true.
+           if (scverbose) then
+             call write_parallel('------- UW ShCu: exit, conden')
+           end if
+           go to 333
+         end if
+         if( (qlj + qij) .gt. criqc ) then
+            exql    = ( ( qlj + qij ) - criqc ) * qlj / ( qlj + qij )
+            exqi    = ( ( qlj + qij ) - criqc ) * qij / ( qlj + qij )
+            qtu(k)  = qtu(k) - exql - exqi
+            thlu(k) = thlu(k) + (xlv/exnifc0(k)/cp)*exql + (xls/exnifc0(k)/cp)*exqi 
+            dwten(k) = exql   
+            diten(k) = exqi
+         else
+            dwten(k) = 0.
+            diten(k) = 0.
+         endif
+
+         ! ----------------------------------------------------------------- ! 
+         ! Update 'thvu(k)' after detraining condensate from cumulus updraft.!
+         ! ----------------------------------------------------------------- ! 
+         call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+         if( id_check .eq. 1 ) then
+            exit_conden(i) = 1.
+            id_exit = .true.
+            if (scverbose) then
+              call write_parallel('------- UW ShCu: exit, conden')
+            end if
+            go to 333
+         end if  
+         thvu(k) = thj * ( 1. + zvir * qvj - qlj - qij )
+
+         ! ----------------------------------------------------------- ! 
+         ! Calculate updraft vertical velocity at the upper interface. !
+         ! ----------------------------------------------------------- !
+         bogbot = rbuoy * ( thvu(km1) / thvebot  - 1. ) ! Cloud buoyancy at base interface
+         bogtop = rbuoy * ( thvu(k) / thv0top(k) - 1. ) ! Cloud buoyancy at top  interface
+
+         delbog = bogtop - bogbot
+         drage  = fer(k) * ( 1. + rdrag )
+         expfac = exp(-2.*drage*dpe)
+
+         wtwb = wtw
+         if( drage*dpe .gt. 1.e-3 ) then
+           wtw = wtw*expfac + (delbog + (1.-expfac)*(bogbot + delbog/(-2.*drage*dpe)))/(rhomid0j*drage)
+         else
+           wtw = wtw + dpe * ( bogbot + bogtop ) / rhomid0j
+         endif
+
+         ! -------------------------------------------------------------- !
+         ! Check for updraft termination                                 !
+         ! -------------------------------------------------------------- !  
+         if( wtw .le. 0. ) then   
+           go to 111
+         endif 
 
      111 continue
 
