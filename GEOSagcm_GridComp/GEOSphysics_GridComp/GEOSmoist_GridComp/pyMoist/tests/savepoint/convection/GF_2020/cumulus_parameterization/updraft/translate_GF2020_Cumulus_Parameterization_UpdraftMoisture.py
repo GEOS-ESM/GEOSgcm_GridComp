@@ -20,6 +20,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS1,
     MAXENS2,
     MAXENS3,
+    NUMBER_OF_PLUMES,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import updraft_moisture
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
@@ -90,7 +91,7 @@ class TestCore:
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
-                "plumes": 3,
+                "plumes": NUMBER_OF_PLUMES,
             },
         )
 

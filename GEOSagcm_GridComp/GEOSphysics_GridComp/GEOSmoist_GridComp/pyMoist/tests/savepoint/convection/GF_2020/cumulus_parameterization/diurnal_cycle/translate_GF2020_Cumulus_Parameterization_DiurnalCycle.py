@@ -20,6 +20,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS1,
     MAXENS2,
     MAXENS3,
+    NUMBER_OF_PLUMES,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle.diurnal_cycle import (
     DiurnalCycle,
@@ -50,9 +51,7 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initalize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
             cumulus_parameterization_config, plume_dependent_constants, plume
@@ -62,7 +61,7 @@ class TestCore:
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
-                "plumes": 3,
+                "plumes": NUMBER_OF_PLUMES,
             },
         )
 
@@ -100,9 +99,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -113,20 +110,14 @@ class TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "shallow", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
 
         return outputs
 
@@ -142,27 +133,19 @@ class TranslateGF2020_CumulusParameterization_DiurnalCycle_mid(TranslateFortranD
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "mid", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DiurnalCycle_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_DiurnalCycle_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -173,19 +156,13 @@ class TranslateGF2020_CumulusParameterization_DiurnalCycle_deep(
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.test_core = TestCore(
-            grid, namelist, stencil_factory, self.in_vars, self.out_vars
-        )
+        self.test_core = TestCore(grid, namelist, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, "deep", **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
 
         return outputs

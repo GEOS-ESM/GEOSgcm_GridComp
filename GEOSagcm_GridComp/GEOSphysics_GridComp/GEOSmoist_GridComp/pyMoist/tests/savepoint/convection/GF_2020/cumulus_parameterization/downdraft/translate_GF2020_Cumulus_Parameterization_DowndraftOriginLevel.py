@@ -22,12 +22,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.trigger_function.trigger_function import (
-    TriggerFunctionConvection,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import DowndraftOriginLevel
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
 )
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class TestCore:
@@ -43,9 +42,16 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_triggerfunc": {},
-            "convective_scale_velosity_triggerfunc": {},
-            "local_cloud_work_function_0_triggerfunc": {},
+            "error_code_downorigin": {},
+            "cloud_top_level_downorigin": {},
+            "updraft_origin_level_downorigin": {},
+            "local_downdraft_origin_level_downorigin": {},
+            "local_detrainment_start_level_downorigin": {},
+            "updraft_lfc_level_downorigin": {},
+            "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin": {},
+            "local_geopotential_height_cloud_levels_forced_downorigin": {},
+            "topography_height_no_negative_downorigin": {},
+            "local_melting_layer_downorigin": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -76,13 +82,32 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_triggerfunc"
+            "error_code_downorigin"
         ]
-        locals.cloud_work_function_0.data[:] = inputs["local_cloud_work_function_0_triggerfunc"]
-        state.input_output.convective_scale_velocity.data[:] = inputs["convective_scale_velosity_triggerfunc"]
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "cloud_top_level_downorigin"
+        ]
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_origin_level_downorigin"
+        ]
+        locals.downdraft_origin_level.data[:] = inputs["local_downdraft_origin_level_downorigin"]
+        locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level_downorigin"]
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_lfc_level_downorigin"
+        ]
+        locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs[
+            "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin"
+        ]
+        locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
+            "local_geopotential_height_cloud_levels_forced_downorigin"
+        ]
+        state.input_output.topography_height_no_negative.data[:] = inputs[
+            "topography_height_no_negative_downorigin"
+        ]
+        locals.melting_layer.data[:] = inputs["local_melting_layer_downorigin"]
 
         # initalize test code
-        code = TriggerFunctionConvection(
+        code = DowndraftOriginLevel(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
@@ -91,25 +116,53 @@ class TestCore:
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            code(
-                state=state,
-                locals=locals,
-                plume_dependent_constants=plume_dependent_constants,
-            )
+            if cumulus_parameterization_config.FIRST_GUESS_W == 0:
+                code(
+                    error_code=state.output.error_code,
+                    cloud_top_level=state.output.cloud_top_level,
+                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                    topography_height_no_negative=state.input_output.topography_height_no_negative,
+                    environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                    updraft_origin_level=state.output.updraft_origin_level,
+                    downdraft_origin_level=locals.downdraft_origin_level,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    detrainment_start_level=locals.detrainment_start_level,
+                    melting_layer=locals.melting_layer,
+                    plume_dependent_constants=plume_dependent_constants,
+                )
 
         # write output
         outputs = {
-            "error_code_triggerfunc": state.output.error_code.field[
+            "error_code_downorigin": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_cloud_work_function_0_triggerfunc": locals.cloud_work_function_0.field[:],
-            "convective_scale_velosity_triggerfunc": state.input_output.convective_scale_velocity.field[:],
+            "cloud_top_level_downorigin": state.output.cloud_top_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "updraft_origin_level_downorigin": state.output.updraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "local_downdraft_origin_level_downorigin": locals.downdraft_origin_level.field[:],
+            "local_detrainment_start_level_downorigin": locals.detrainment_start_level.field[:],
+            "updraft_lfc_level_downorigin": state.output.updraft_lfc_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
+                :
+            ],
+            "local_geopotential_height_cloud_levels_forced_downorigin": locals.geopotential_height_cloud_levels_forced.field[
+                :
+            ],
+            "topography_height_no_negative_downorigin": state.input_output.topography_height_no_negative.field[
+                :
+            ],
+            "local_melting_layer_downorigin": locals.melting_layer.field[:],
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -132,7 +185,7 @@ class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_shallow(
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -155,7 +208,7 @@ class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_mid(Tran
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

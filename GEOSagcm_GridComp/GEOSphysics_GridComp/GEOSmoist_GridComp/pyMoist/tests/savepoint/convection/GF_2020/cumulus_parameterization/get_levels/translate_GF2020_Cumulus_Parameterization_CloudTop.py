@@ -10,7 +10,12 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020Cum
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
+    MAXENS1,
+    MAXENS2,
+    MAXENS3,
+    NUMBER_OF_PLUMES,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import updraft_rates_pdf, cloud_top_checks
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -58,7 +63,7 @@ class TestCore:
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
-                "plumes": 3,
+                "plumes": NUMBER_OF_PLUMES,
             },
         )
 

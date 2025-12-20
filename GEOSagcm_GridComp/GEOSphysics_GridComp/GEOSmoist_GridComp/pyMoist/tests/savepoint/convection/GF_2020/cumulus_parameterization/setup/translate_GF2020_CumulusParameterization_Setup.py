@@ -22,6 +22,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS1,
     MAXENS2,
     MAXENS3,
+    NUMBER_OF_PLUMES,
 )
 import numpy as np
 
@@ -138,7 +139,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
-                "plumes": 3,
+                "plumes": NUMBER_OF_PLUMES,
             },
         )
 
@@ -381,7 +382,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
-                "plumes": 3,
+                "plumes": NUMBER_OF_PLUMES,
             },
         )
 
@@ -624,7 +625,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
-                "plumes": 3,
+                "plumes": NUMBER_OF_PLUMES,
             },
         )
 
