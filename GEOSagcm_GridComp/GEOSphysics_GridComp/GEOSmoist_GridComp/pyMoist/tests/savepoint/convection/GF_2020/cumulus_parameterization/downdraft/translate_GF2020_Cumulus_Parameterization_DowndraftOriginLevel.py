@@ -84,17 +84,17 @@ class TestCore:
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_downorigin"
         ]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "cloud_top_level_downorigin"
-        ]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "updraft_origin_level_downorigin"
-        ]
-        locals.downdraft_origin_level.data[:] = inputs["local_downdraft_origin_level_downorigin"]
-        locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level_downorigin"]
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "updraft_lfc_level_downorigin"
-        ]
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_top_level_downorigin"] - 1
+        )
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_downorigin"] - 1
+        )
+        locals.downdraft_origin_level.data[:] = inputs["local_downdraft_origin_level_downorigin"] - 1
+        locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level_downorigin"] - 1
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_lfc_level_downorigin"] - 1
+        )
         locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin"
         ]
@@ -138,15 +138,18 @@ class TestCore:
             ],
             "cloud_top_level_downorigin": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            ]
+            + 1,
             "updraft_origin_level_downorigin": state.output.updraft_origin_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "local_downdraft_origin_level_downorigin": locals.downdraft_origin_level.field[:],
-            "local_detrainment_start_level_downorigin": locals.detrainment_start_level.field[:],
+            ]
+            + 1,
+            "local_downdraft_origin_level_downorigin": locals.downdraft_origin_level.field[:] + 1,
+            "local_detrainment_start_level_downorigin": locals.detrainment_start_level.field[:] + 1,
             "updraft_lfc_level_downorigin": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            ]
+            + 1,
             "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
                 :
             ],

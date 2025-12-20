@@ -880,8 +880,18 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    downdraft_origin_level: Quantity = dataclasses.field(
+        metadata={
+            "name": "downdraft_origin_level",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Int,
+        }
+    )
 
     # NOTE need more information about these fields to come up with better names
+    # NOTE these can potentially be removed as well with more analysis
     psum: Quantity = dataclasses.field(
         metadata={
             "name": "NEED BETTER NAME. WHAT IS THIS FIELD",

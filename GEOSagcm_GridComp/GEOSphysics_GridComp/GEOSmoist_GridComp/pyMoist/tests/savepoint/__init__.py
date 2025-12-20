@@ -173,13 +173,11 @@ from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumu
     TranslateGF2020_CumulusParameterization_GetBuoyancy_3_mid,
     TranslateGF2020_CumulusParameterization_GetBuoyancy_3_deep,
 )
-
 from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftInitialWorkfunctions import (
     TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_deep,
     TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_mid,
     TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_shallow,
 )
-
 from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftTemperature import (
     TranslateGF2020_CumulusParameterization_UpdraftTemperature_deep,
     TranslateGF2020_CumulusParameterization_UpdraftTemperature_mid,
@@ -190,6 +188,13 @@ from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumul
     TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_mid,
     TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_shallow,
 )
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cumulus_Parameterization_DowndraftOriginLevel import (
+    TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_shallow,
+)
+
+# NOTE need to organize everything below here
 from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftCIN import (
     TranslateGF2020_CumulusParameterization_UpdraftCIN_deep,
     TranslateGF2020_CumulusParameterization_UpdraftCIN_mid,

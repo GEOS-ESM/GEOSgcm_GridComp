@@ -48,7 +48,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
     get_convective_cloud_base_level,
     updraft_rates_pdf,
     cloud_top_checks,
-    DowndraftOriginLevel,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers.convective_tracers import (
     ColdPoolParameterization,
@@ -86,7 +85,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
 from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_velosity.vertical_velosity import (
     VerticalVelosity,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft.downdraft import (
+from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
+    DowndraftOriginLevel,
     DowndraftNormalizedMassFlux,
     DowndraftLateralMassFlux,
     DowndraftWetBlub,
@@ -340,7 +340,12 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._downdraft_origin_level = DowndraftOriginLevel()
+        self._downdraft_origin_level = DowndraftOriginLevel(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._downdraft_normalized_mass_flux = DowndraftNormalizedMassFlux()
 
@@ -921,8 +926,8 @@ class CumulusParameterization:
 
                 # calculate moisture properties of updraft
                 # NOTE test GF2020_CumulusParameterization_UpdraftMoisture_{plume}:
-                # NOTE      deep ⚠️❌ NEEDS ATTENTION, TEST FAILS BADLY
-                # NOTE      mid ⚠️❌ NEEDS ATTENTION, TEST FAILS BADLY
+                # NOTE      deep ❌ NEEDS ATTENTION, TEST FAILS BADLY
+                # NOTE      mid ❌ NEEDS ATTENTION, TEST FAILS BADLY
                 # NOTE      shallow ✅
                 self._updraft_moisture_profile(
                     start_level=locals.start_level,
@@ -1068,8 +1073,8 @@ class CumulusParameterization:
 
                     # vertical velocity
                     # NOTE test GF2020_CumulusParameterization_UpdraftVerticalVelocity_{plume}:
-                    # NOTE      deep ⚠️❌ NEEDS ATTENTION, TEST FAILS BADLY
-                    # NOTE      mid ⚠️❌ NEEDS ATTENTION, TEST FAILS BADLY
+                    # NOTE      deep ❌ NEEDS ATTENTION, TEST FAILS BADLY
+                    # NOTE      mid ❌ NEEDS ATTENTION, TEST FAILS BADLY
                     # NOTE      shallow ✅
                     self._updraft_vertical_velosity(
                         vertical_velocity_3d=locals.vertical_velocity_3d,
@@ -1090,7 +1095,23 @@ class CumulusParameterization:
                     )
 
                 # downdraft origin level
-                self._downdraft_origin_level()
+                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftOriginLevel_{plume}:
+                # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE. current version is brittle, likely need solver mechanics
+                # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE. current version is brittle, likely need solver mechanics
+                # NOTE      shallow ❌ RUNS BUT DOES NOT VALIDATE. current version is brittle, likely need solver mechanics
+                self._downdraft_origin_level(
+                    error_code=state.output.error_code,
+                    cloud_top_level=state.output.cloud_top_level,
+                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                    topography_height_no_negative=state.input_output.topography_height_no_negative,
+                    environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                    updraft_origin_level=state.output.updraft_origin_level,
+                    downdraft_origin_level=locals.downdraft_origin_level,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    detrainment_start_level=locals.detrainment_start_level,
+                    melting_layer=locals.melting_layer,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # downdraft normalized mass flux
                 self._downdraft_normalized_mass_flux()

@@ -970,11 +970,3 @@ class CloudTop:
             MINIMUM_DEPTH=plume_dependent_constants.MINIMUM_DEPTH,
             plume=plume_dependent_constants.PLUME_INDEX,
         )
-
-
-class DowndraftOriginLevel:
-    def __init__(self):
-        pass
-
-    def __call__(self, *args, **kwds):
-        pass
