@@ -721,7 +721,7 @@ contains
       real       plcl, plfc, prel, wrel
       real       ee2, ud2, wtw, wtwb
       real       xc
-      real       cldhgt, scaleh, tscaleh, cridis, rei_base
+      real       cldhgt, scaleh, tscaleh, cridis
       real       sigmaw, tkeavg, qtavg, thvlavg, uavg, vavg, dpsum, dpi, thvlmin
       real       thlxsat, qtxsat, thvxsat, x_cu, x_en, thv_x0, thv_x1
       real       dpe, exne, thvebot, thle, qte, ue, ve, thlue, qtue, wue
@@ -1455,48 +1455,52 @@ contains
        ! interface values of 'thvl' in each layers within the PBL.                  !
        ! -------------------------------------------------------------------------- !
        
+       ! averaged within the boundary layer
          dpsum    = 0.
          thvlmin  = 1000.
          thvlavg  = 0.
          qtavg = 0.
-         do k = 1,kinv ! max(kinv-1,1)    ! Here, 'k' is an interfacial layer index.  
+         do k = 1,kinv ! Here, 'k' is an interfacial layer index.  
             dpi = pifc0(k-1) - pifc0(k)
             dpsum  = dpsum  + dpi 
             tkeavg = tkeavg + dpi*tke(k)
             uavg   = uavg   + dpi*u0(k)
             vavg   = vavg   + dpi*v0(k)
             thvlavg = thvlavg + dpi*thvl0(k)
-            if (qtsrchgt .le. 0.0) qtavg = qtavg + dpi*qt0(k)
+            qtavg = qtavg + dpi*qt0(k)
             if( k .ne. kinv ) thvlmin = min(thvlmin,min(thvl0bot(k),thvl0top(k)))
          end do
          tkeavg  = tkeavg/dpsum
          uavg    = uavg/dpsum
          vavg    = vavg/dpsum
          thvlavg = thvlavg/dpsum
-         if (qtsrchgt .le. 0.0) qtavg   = qtavg/dpsum
+         qtavg   = qtavg/dpsum
 
-        ! weighted average over lowest 20mb
-!         dpsum = 0.
-!         do k = 1,kinv
-!             dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
-!             qtavg  = qtavg  + dpi*qt0(k)
-!             dpsum = dpsum + dpi
-!         end do
-!         qtavg   = qtavg/dpsum
+!       ! weighted average over lowest 20mb
+!        dpsum = 0.
+!        qtavg = 0.
+!        do k = 1,kinv
+!            dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
+!            qtavg  = qtavg  + dpi*qt0(k)
+!            dpsum = dpsum + dpi
+!        end do
+!        qtavg = qtavg/dpsum
  
-       ! Interpolate qt to specified height
-          if (qtsrchgt > 0.0) then
+       ! Interpolate qt to specified height or the PBL edge height
+         if (qtsrchgt > 1.0) then
             k = 1
-            do while (zmid0(k).lt.qtsrchgt)
+            do while (zmid0(k).gt.qtsrchgt)
               k = k+1
             end do
-            if (k.gt.1) then
-              qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
-              qtavg = qtavg / (zmid0(k)-zmid0(k-1))
-            else
-              qtavg = qt0(1)
-            end if
-          endif
+         else
+            k = kinv
+         endif
+         if (k.gt.1) then
+            qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
+            qtavg = qtavg / (zmid0(k)-zmid0(k-1))
+         else
+            qtavg = qt0(1)
+         endif
 
        ! ------------------------------------------------------------------ !
        ! Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc !
@@ -1507,11 +1511,12 @@ contains
        ! ------------------------------------------------------------------ !
 
          if (windsrcavg) then
-            zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
-            buoyflx = (-shfx(i)/cp-0.608*t0(1)*evap(i))/zrho ! K m s-1
-!            delzg = (zifc0(1)-zifc0(0))*g
-            delzg = (50.0)*g   ! assume 50m surface scale
-            wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(1)) ! m3 s-3
+            zrho = pifc0(0)/(287.04*(t0(kinv-1)*(1.+0.608*qv0(kinv-1))))
+            buoyflx = (-shfx(i)/cp-0.608*t0(kinv-1)*evap(i))/zrho ! K m s-1
+            delzg = max(zifc0(kinv-1)-zifc0(0),50.0)*g ! Matches Deardorff scaling
+!           delzg = (zifc0(1)-zifc0(0))*g ! just the surface parcel
+!           delzg = (50.0)*g              ! assume 50m surface scale
+            wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(kinv-1)) ! m3 s-3
             qpert_out(i) = 0.0
             tpert_out(i) = 0.0
             if (wstar > 0.001) then
@@ -1519,17 +1524,16 @@ contains
               tpert_out(i) = thlsrc_fac*shfx(i)/(zrho*wstar*cp)  ! K
               qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
             end if
-            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 2% of QT
+            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(kinv-1)),0.)  ! limit to 2% of QT
             tpert_out(i) = 0.1+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
             qtsrc   = qtavg + qpert_out(i)
-!           qtsrc   = qt0(1) + qpert_out(i)
-!           thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
-            thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
+!           thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(kinv-1)
+            thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(kinv-1)
             thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc  = uavg
             vsrc  = vavg
          else
-            qtsrc   = qt0(1)
+            qtsrc   = qt0(kinv-1)
             thvlsrc = thvlmin
             thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc    = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
@@ -1656,7 +1660,7 @@ contains
 !             exit
 !           end if
 !        end do
-!        lts = lts - t0(1)/exnmid0(1)
+!        lts = lts - t0(kinv-1)/exnmid0(kinv-1)
 
         !------------------------------------------------------------------------!
         ! Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' ) !
@@ -2536,11 +2540,10 @@ contains
           ! Base rei calculation - will be modified by xc limiter in iteration !
           ! ------------------------------------------------------------------ !
           if (min(scaleh,mix2d(i)) .gt. tiny) then
-            rei_base = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )
+            rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )
           else
-            rei_base = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j )
+            rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j )
           end if
-          rei(k) = rei_base
 
           ! ---------------------------------------------------------------- !
           ! Calculate environmental saturation 'excess' at 'pe' - once only !
