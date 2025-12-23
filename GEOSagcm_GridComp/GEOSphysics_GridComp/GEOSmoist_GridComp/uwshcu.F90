@@ -2526,24 +2526,7 @@ contains
           qtue  = qtu(km1)    
           wue   = wu(km1)
           wtwb  = wtw  
-
-          ! ----------------------------------------------------------------- !
-          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
-          ! ----------------------------------------------------------------- !
-          if (cridist_opt.eq.0) then
-           cridis = rle*scaleh                 ! Original code
-          else
-           cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
-          end if 
-
-          ! ------------------------------------------------------------------ !
-          ! Base rei calculation - will be modified by xc limiter in iteration !
-          ! ------------------------------------------------------------------ !
-          if (min(scaleh,mix2d(i)) .gt. tiny) then
-            rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )
-          else
-            rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j )
-          end if
+          wtw   = wu(km1) * wu(km1)
 
           ! ---------------------------------------------------------------- !
           ! Calculate environmental saturation 'excess' at 'pe' - once only !
@@ -2563,7 +2546,23 @@ contains
           qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)
           excess0  = qte - qs
 
-          wtw = wu(km1) * wu(km1)
+          ! ----------------------------------------------------------------- !
+          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
+          ! ----------------------------------------------------------------- !
+          if (cridist_opt.eq.0) then
+           cridis = rle*scaleh                 ! Original code
+          else
+           cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
+          end if 
+              
+          ! ------------------------------------------------------------------ !
+          ! Base rei calculation - will be modified by xc limiter in iteration !
+          ! ------------------------------------------------------------------ !
+          if (min(scaleh,mix2d(i)) .gt. tiny) then
+            rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )
+          else 
+            rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j )
+          end if
 
          do iter_xc = 1, niter_xc
           
