@@ -821,10 +821,10 @@ class CumulusParameterization:
                 )
 
                 # determine the normalized mass flux profile for updraft
-                # NOTE test GF2020_CumulusParameterization_UpdraftMassFluxProfile_{plume}:
-                # NOTE      deep ⚠️⚠️⚠️ UNFINISHED, TEST DOES NOT EXIST
-                # NOTE      mid ⚠️⚠️⚠️ UNFINISHED, TEST DOES NOT EXIST
-                # NOTE      shallow ⚠️⚠️⚠️ UNFINISHED, TEST DOES NOT EXIST
+                # NOTE test GF2020_CumulusParameterization_UpdraftMassFlux_{plume}:
+                # NOTE      deep ❌ NEEDS ATTENTION, TEST FAILS BADLY
+                # NOTE      mid ❌ NEEDS ATTENTION, TEST FAILS BADLY
+                # NOTE      shallow ❌ NEEDS ATTENTION, TEST FAILS BADLY
                 self._updraft_mass_flux(
                     state=state,
                     locals=locals,
