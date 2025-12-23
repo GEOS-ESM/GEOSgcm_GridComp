@@ -1489,17 +1489,17 @@ contains
        ! Interpolate qt to specified height or the PBL edge height
          if (qtsrchgt > 1.0) then
             k = 1
-            do while (zmid0(k).gt.qtsrchgt)
+            do while (zmid0(k).lt.qtsrchgt)
               k = k+1
             end do
+            if (k.gt.1) then
+               qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
+               qtavg = qtavg / (zmid0(k)-zmid0(k-1))
+            else
+               qtavg = qt0(1)
+            endif
          else
-            k = kinv
-         endif
-         if (k.gt.1) then
-            qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
-            qtavg = qtavg / (zmid0(k)-zmid0(k-1))
-         else
-            qtavg = qt0(1)
+            qtavg = qt0(kinv-1)
          endif
 
        ! ------------------------------------------------------------------ !
@@ -2526,24 +2526,7 @@ contains
           qtue  = qtu(km1)    
           wue   = wu(km1)
           wtwb  = wtw  
-
-          ! ----------------------------------------------------------------- !
-          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
-          ! ----------------------------------------------------------------- !
-          if (cridist_opt.eq.0) then
-           cridis = rle*scaleh                 ! Original code
-          else
-           cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
-          end if 
-
-          ! ------------------------------------------------------------------ !
-          ! Base rei calculation - will be modified by xc limiter in iteration !
-          ! ------------------------------------------------------------------ !
-          if (min(scaleh,mix2d(i)) .gt. tiny) then
-            rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )
-          else
-            rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j )
-          end if
+          wtw   = wu(km1) * wu(km1)
 
           ! ---------------------------------------------------------------- !
           ! Calculate environmental saturation 'excess' at 'pe' - once only !
@@ -2563,7 +2546,23 @@ contains
           qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)
           excess0  = qte - qs
 
-          wtw = wu(km1) * wu(km1)
+          ! ----------------------------------------------------------------- !
+          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
+          ! ----------------------------------------------------------------- !
+          if (cridist_opt.eq.0) then
+           cridis = rle*scaleh                 ! Original code
+          else
+           cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
+          end if 
+              
+          ! ------------------------------------------------------------------ !
+          ! Base rei calculation - will be modified by xc limiter in iteration !
+          ! ------------------------------------------------------------------ !
+          if (min(scaleh,mix2d(i)) .gt. tiny) then
+            rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )
+          else 
+            rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j )
+          end if
 
          do iter_xc = 1, niter_xc
           
