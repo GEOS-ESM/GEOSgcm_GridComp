@@ -57,7 +57,7 @@ class TestCore:
             "local_cloud_moist_static_energy_upmsemomentumo": {},
             "local_cloud_moist_static_energy_forced_upmsemomentumo": {},
             "local_normalized_massflux_updraft_upmsemomentumo": {},
-            "local_normalized_massflux_updraft_forced_upmsemomentumo": {},
+            "normalized_massflux_updraft_forced_upmsemomentumo": {},
             "local_mass_entrainment_updraft_upmsemomentumo": {},
             "local_mass_detrainment_updraft_upmsemomentumo": {},
             "local_mass_entrainment_u_updraft_upmsemomentumo": {},
@@ -137,9 +137,9 @@ class TestCore:
         locals.normalized_massflux_updraft.data[:] = inputs[
             "local_normalized_massflux_updraft_upmsemomentumo"
         ]
-        locals.normalized_massflux_updraft_forced.data[:] = inputs[
-            "local_normalized_massflux_updraft_forced_upmsemomentumo"
-        ]
+        state.output.normalized_massflux_updraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["normalized_massflux_updraft_forced_upmsemomentumo"]
         locals.mass_entrainment_updraft.data[:] = inputs["local_mass_entrainment_updraft_upmsemomentumo"]
         locals.mass_detrainment_updraft.data[:] = inputs["local_mass_detrainment_updraft_upmsemomentumo"]
         locals.mass_entrainment_u_updraft.data[:] = inputs["local_mass_entrainment_u_updraft_upmsemomentumo"]
@@ -191,7 +191,7 @@ class TestCore:
                     cloud_moist_static_energy=locals.cloud_moist_static_energy,
                     cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                     normalized_massflux_updraft=locals.normalized_massflux_updraft,
-                    normalized_massflux_updraft_forced=locals.normalized_massflux_updraft_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
                     mass_entrainment_updraft=locals.mass_entrainment_updraft,
                     mass_detrainment_updraft=locals.mass_detrainment_updraft,
                     mass_entrainment_u_updraft=locals.mass_entrainment_u_updraft,
@@ -244,8 +244,8 @@ class TestCore:
                 :
             ],
             "local_normalized_massflux_updraft_upmsemomentumo": locals.normalized_massflux_updraft.field[:],
-            "local_normalized_massflux_updraft_forced_upmsemomentumo": locals.normalized_massflux_updraft_forced.field[
-                :
+            "normalized_massflux_updraft_forced_upmsemomentumo": state.output.normalized_massflux_updraft_forced.field[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "local_mass_entrainment_updraft_upmsemomentumo": locals.mass_entrainment_updraft.field[:],
             "local_mass_detrainment_updraft_upmsemomentumo": locals.mass_detrainment_updraft.field[:],

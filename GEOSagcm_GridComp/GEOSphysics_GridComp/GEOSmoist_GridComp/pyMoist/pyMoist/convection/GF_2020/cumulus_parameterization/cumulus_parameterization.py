@@ -74,7 +74,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import (
     InCloudTemperature,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
-    UpdraftMassFluxProfile,
+    UpdraftMassFlux,
     updraft_moisture,
     updraft_moist_static_energy_and_momentum_budget,
     updraft_temperature,
@@ -262,7 +262,7 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._updraft_mass_flux_profile = UpdraftMassFluxProfile(
+        self._updraft_mass_flux = UpdraftMassFlux(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
             config=config,
@@ -822,7 +822,7 @@ class CumulusParameterization:
                 # NOTE      deep ⚠️⚠️⚠️ UNFINISHED, TEST DOES NOT EXIST
                 # NOTE      mid ⚠️⚠️⚠️ UNFINISHED, TEST DOES NOT EXIST
                 # NOTE      shallow ⚠️⚠️⚠️ UNFINISHED, TEST DOES NOT EXIST
-                self._updraft_mass_flux_profile(
+                self._updraft_mass_flux(
                     state=state,
                     locals=locals,
                     plume_dependent_constants=self.plume_dependent_constants,

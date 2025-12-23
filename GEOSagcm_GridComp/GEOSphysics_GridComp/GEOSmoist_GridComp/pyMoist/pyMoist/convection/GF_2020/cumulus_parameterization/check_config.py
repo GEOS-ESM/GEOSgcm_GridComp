@@ -147,3 +147,10 @@ def check_config(
             "a call to the unimplemented function get_delmix in CumulusParameterization and updraft_moisture."
             "Please implement, then disable this error manually to proceed."
         )
+
+    if cumulus_parameterization_config.ZERO_DIFF == 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020 cumulus parameterization initalized with ZERO_DIFF == 1. This combination requires"
+            "an unimplemented porion of UpdraftMassFlux. Please implement, then disable this error"
+            "manually to proceed."
+        )

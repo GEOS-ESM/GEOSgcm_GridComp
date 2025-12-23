@@ -799,9 +799,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    normalized_massflux_updraft_forced: Quantity = dataclasses.field(
+    normalized_massflux_updraft_modified: Quantity = dataclasses.field(
         metadata={
-            "name": "normalized_massflux_updraft_forced",
+            "name": "normalized_massflux_updraft_modified",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
