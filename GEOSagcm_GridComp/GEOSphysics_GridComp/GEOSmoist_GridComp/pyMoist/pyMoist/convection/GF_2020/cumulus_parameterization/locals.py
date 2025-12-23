@@ -889,6 +889,60 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Int,
         }
     )
+    normalized_massflux_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "normalized_massflux_downdraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    normalized_massflux_downdraft_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "normalized_massflux_downdraft_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    mass_entrainment_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "mass_entrainment_downdraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    mass_detrainment_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "mass_detrainment_downdraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    mass_entrainment_u_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "mass_entrainment_u_downdraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    mass_detrainment_u_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "mass_detrainment_u_downdraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
 
     # NOTE need more information about these fields to come up with better names
     # NOTE these can potentially be removed as well with more analysis

@@ -37,7 +37,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Ensemble,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import unknown_find_level
-from ndsl.stencils.column_operations import column_max
+from ndsl.stencils.column_operations import column_max, column_max_ddim
 
 
 def get_critical_level(
@@ -194,6 +194,145 @@ def get_downdraft_origin_level(
                 < MINIMUM_DEPTH
             ):
                 error_code[0, 0][plume] = 6
+
+
+def downdraft_lateral_massflux(
+    error_code: IntFieldIJ_Plume,
+    downdraft_origin_level: IntFieldIJ,
+    geopotential_height_cloud_levels_forced: FloatField,
+    normalized_massflux_downdraft: FloatField,
+    normalized_massflux_downdraft_forced: FloatField_Plume,
+    normalized_massflux_downdraft_modified: FloatField,
+    detrainment_function_downdraft: FloatField,
+    entrainment_rate_downdraft: FloatField,
+    mass_entrainment_downdraft: FloatField,
+    mass_detrainment_downdraft: FloatField,
+    mass_entrainment_downdraft_forced: FloatField_Plume,
+    mass_detrainment_downdraft_forced: FloatField_Plume,
+    mass_entrainment_u_downdraft: FloatField,
+    mass_detrainment_u_downdraft: FloatField,
+    LAMBDA_DOWN: Float,
+    plume: Int,
+):
+    """
+    Get the lateral massfluxes for the downdraft.
+
+    For mid and deep plumes massfluxes are computed, for shallow plumes massfluxes are forced to zero.
+
+    Args:
+        error_code
+        downdraft_origin_level
+        geopotential_height_cloud_levels_forced
+        normalized_massflux_downdraft
+        normalized_massflux_downdraft_forced
+        normalized_massflux_downdraft_modified
+        detrainment_function_downdraft
+        entrainment_rate_downdraft
+        mass_entrainment_downdraft
+        mass_detrainment_downdraft
+        mass_entrainment_downdraft_forced
+        mass_detrainment_downdraft_forced
+        mass_entrainment_u_downdraft
+        mass_detrainment_u_downdraft
+        plume
+    """
+    from __externals__ import k_end
+
+    with computation(PARALLEL), interval(...):
+        # zero out entrainment/detrainment
+        detrainment_function_downdraft = 0.0
+        mass_entrainment_downdraft = 0.0
+        mass_detrainment_downdraft = 0.0
+        mass_entrainment_downdraft_forced[0, 0, 0][plume] = 0.0
+        mass_detrainment_downdraft_forced[0, 0, 0][plume] = 0.0
+        mass_entrainment_u_downdraft = 0.0
+        mass_detrainment_u_downdraft = 0.0
+
+    with computation(PARALLEL), interval(0, downdraft_origin_level - 1):
+        if plume != 0 and error_code[0, 0][plume] == 0:
+            detrainment_function_downdraft = entrainment_rate_downdraft
+
+    with computation(FORWARD), interval(0, 1):
+        entrainment_rate_downdraft = 0.0
+
+        # get max_loc for next block
+        _, _max_loc = column_max_ddim(normalized_massflux_downdraft_forced, plume, 0, k_end)
+        max_loc: IntFieldIJ = _max_loc
+
+    with computation(BACKWARD), interval(max_loc, downdraft_origin_level):
+        if error_code[0, 0][plume] == 0:
+            # from downdraft_origin_level to maximum value of
+            # normalized_massflux_downdraft_forced -> change entrainment
+            normalized_massflux_downdraft_forced[0, 0, 0][plume] = (
+                geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+            )
+            mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
+                detrainment_function_downdraft
+                * normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+            )
+
+            mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
+                normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                - normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                + mass_detrainment_downdraft_forced[0, 0, 0][plume]
+            )
+            mass_entrainment_downdraft_forced[0, 0, 0][plume] = max(
+                0.0, mass_entrainment_downdraft_forced[0, 0, 0][plume]
+            )
+
+            # check mass_detrainment_downdraft_forced in case
+            # mass_entrainment_downdraft_forced has been changed above
+            mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
+                mass_entrainment_downdraft_forced[0, 0, 0][plume]
+                - normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                + normalized_massflux_downdraft_forced[0, 0, 1][plume]
+            )
+
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0:
+            # get max_loc for next block
+            _, _max_loc = column_max_ddim(normalized_massflux_downdraft_forced, plume, 0, k_end)
+            max_loc: IntFieldIJ = _max_loc
+
+    with computation(BACKWARD), interval(0, max_loc):
+        if error_code[0, 0][plume] == 0:
+            # from maximum value normalized_massflux_downdraft_forced to surface -> change detrainment
+            dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+            mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
+                entrainment_rate_downdraft * dz * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+            )
+
+            mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
+                normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                + mass_entrainment_downdraft_forced[0, 0, 0][plume]
+                - normalized_massflux_downdraft_forced[0, 0, 0][plume]
+            )
+            mass_detrainment_downdraft_forced[0, 0, 0][plume] = max(
+                0.0, mass_detrainment_downdraft_forced[0, 0, 0][plume]
+            )
+            # check mass_entrainment_downdraft_forced in case
+            # mass_detrainment_downdraft_forced has been changed above
+            mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
+                mass_detrainment_downdraft_forced[0, 0, 0][plume]
+                + normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                - normalized_massflux_downdraft_forced[0, 0, 1][plume]
+            )
+
+    with computation(BACKWARD), interval(0, downdraft_origin_level):
+        if error_code[0, 0][plume] == 0:
+            normalized_massflux_downdraft_modified = normalized_massflux_downdraft_forced[0, 0, 0][plume]
+            normalized_massflux_downdraft = normalized_massflux_downdraft_forced[0, 0, 0][plume]
+            mass_entrainment_downdraft = mass_entrainment_downdraft_forced[0, 0, 0][plume]
+            mass_detrainment_downdraft = mass_detrainment_downdraft_forced[0, 0, 0][plume]
+            mass_entrainment_u_downdraft = (
+                mass_entrainment_downdraft_forced[0, 0, 0][plume]
+                + LAMBDA_DOWN * mass_detrainment_downdraft_forced[0, 0, 0][plume]
+            )
+            mass_detrainment_u_downdraft = (
+                mass_detrainment_downdraft_forced[0, 0, 0][plume]
+                + LAMBDA_DOWN * mass_detrainment_downdraft_forced[0, 0, 0][plume]
+            )
 
 
 class DowndraftOriginLevel(NDSLRuntime):

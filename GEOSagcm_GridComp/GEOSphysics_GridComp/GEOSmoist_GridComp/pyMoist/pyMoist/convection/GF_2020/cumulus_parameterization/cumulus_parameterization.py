@@ -88,7 +88,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_velosity.verti
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     DowndraftOriginLevel,
     DowndraftNormalizedMassFlux,
-    DowndraftLateralMassFlux,
+    downdraft_lateral_massflux,
     DowndraftWetBlub,
     DowndraftMoistStaticEnergyAndMoistureBudget,
     DowndraftMoistureProperties,
@@ -349,7 +349,10 @@ class CumulusParameterization:
 
         self._downdraft_normalized_mass_flux = DowndraftNormalizedMassFlux()
 
-        self._downdraft_lateral_mass_flux = DowndraftLateralMassFlux()
+        self._downdraft_lateral_mass_flux = stencil_factory.from_dims_halo(
+            func=downdraft_lateral_massflux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
         self._downdraft_wet_bulb = DowndraftWetBlub()
 
@@ -1117,7 +1120,28 @@ class CumulusParameterization:
                 self._downdraft_normalized_mass_flux()
 
                 # lateral mass fluxes associated with downdrafts
-                self._downdraft_lateral_mass_flux()
+                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftLateralMassFlux_{plume}:
+                # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
+                # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
+                # NOTE      shallow ✅
+                self._downdraft_lateral_mass_flux(
+                    error_code=state.output.error_code,
+                    downdraft_origin_level=locals.downdraft_origin_level,
+                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                    normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_modified=locals.normalized_massflux_downdraft_modified,
+                    detrainment_function_downdraft=locals.detrainment_function_downdraft,
+                    entrainment_rate_downdraft=locals.entrainment_rate_downdraft,
+                    mass_entrainment_downdraft=locals.mass_entrainment_downdraft,
+                    mass_detrainment_downdraft=locals.mass_detrainment_downdraft,
+                    mass_entrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
+                    mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
+                    mass_entrainment_u_downdraft=locals.mass_entrainment_u_downdraft,
+                    mass_detrainment_u_downdraft=locals.mass_detrainment_u_downdraft,
+                    LAMBDA_DOWN=self.plume_dependent_constants.LAMBDA_DOWN,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                )
 
                 # wet bulb temperature and moisture at downdraft origin level
                 # NOTE No test. This code is not implemented.

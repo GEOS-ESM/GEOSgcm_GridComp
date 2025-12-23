@@ -438,7 +438,7 @@ class GF2020CumulusParameterizationState(State):
         )
         normalized_massflux_downdraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "normalized_massflux_downdraft",
+                "name": "normalized_massflux_downdraft_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
