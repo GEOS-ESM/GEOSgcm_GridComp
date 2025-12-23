@@ -1489,17 +1489,17 @@ contains
        ! Interpolate qt to specified height or the PBL edge height
          if (qtsrchgt > 1.0) then
             k = 1
-            do while (zmid0(k).gt.qtsrchgt)
+            do while (zmid0(k).lt.qtsrchgt)
               k = k+1
             end do
+            if (k.gt.1) then
+               qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
+               qtavg = qtavg / (zmid0(k)-zmid0(k-1))
+            else
+               qtavg = qt0(1)
+            endif
          else
-            k = kinv
-         endif
-         if (k.gt.1) then
-            qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
-            qtavg = qtavg / (zmid0(k)-zmid0(k-1))
-         else
-            qtavg = qt0(1)
+            qtavg = qt0(kinv-1)
          endif
 
        ! ------------------------------------------------------------------ !
