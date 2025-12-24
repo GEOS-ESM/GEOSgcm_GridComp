@@ -675,14 +675,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_GetLCL-In
          !$ser flush_savepoint GF2020_CumulusParameterization_GetLCL-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_MeltingProfile-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_MeltingProfile-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_2-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_2-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_3-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_3-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1-In
          !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_EntrainmentRates-In
@@ -705,8 +697,31 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_FirstGuessMoistStaticEnergy-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-In
          !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInCloudAirTemperature-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInCloudAirTemperature-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_C1DProfile-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_C1DProfile-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMoisture-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMoisture-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_MeltingProfile-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_MeltingProfile-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_2-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_2-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_3-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_3-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftTemperature-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftTemperature-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftVerticalVelocity-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftVerticalVelocity-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftOriginLevel-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftOriginLevel-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftLateralMassFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftLateralMassFlux-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMSEAndBuoyancy-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMSEAndBuoyancy-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMoisture-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMoisture-Out
+
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-In
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftCIN-In
