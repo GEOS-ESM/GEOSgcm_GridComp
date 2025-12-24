@@ -456,7 +456,6 @@ contains
     type(MAPL_LocStream)           :: locstream, pfaf_LocStream
 
     character(len=ESMF_MAXSTR)     :: RIVER_INPUT_FILE    
-    character(len=ESMF_MAXSTR)     :: TILE_PFAF_FILE
     
     type(ESMF_Grid)     :: agrid 
     type(ESMF_DELayout) :: layout
@@ -615,8 +614,7 @@ contains
     route%reservoir = Reservoir(GC, use_res, _RC)
     if(mapl_am_I_root()) print *,"reservoir init success"     
 
-    call MAPL_GetResource (MAPL, TILE_PFAF_File, label = 'TILE_PFAF_FILE:',  default = '../input/tile_pfaf.nc4', RC=STATUS )
-    call create_mapping_handler(trim(TILE_PFAF_File), tilegrid, pfaf_tilegrid, _RC)
+    call create_mapping_handler(tilegrid, pfaf_tilegrid, _RC)
     call setup_exchange_water(pfaf_tilegrid, _RC)
      
     RETURN_(ESMF_SUCCESS)
@@ -659,9 +657,8 @@ contains
 
     ! ----------------------------------------------------
 
-    subroutine create_mapping_handler(tile_pfaf_file, tilegrid, pfaf_tilegrid, rc)
+    subroutine create_mapping_handler(tilegrid, pfaf_tilegrid, rc)
 
-      character(*),      intent(in)  :: tile_pfaf_file
       type(ESMF_Grid),   intent(in)  :: tilegrid
       type(ESMF_Grid),   intent(in)  :: pfaf_tilegrid
       integer, optional, intent(out) :: rc
@@ -679,6 +676,7 @@ contains
       type(Netcdf4_Fileformatter) :: formatter
       type(Filemetadata)          :: meta
       character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
+      character(len=ESMF_MAXSTR)     :: tile_pfaf_file
 
       ! create source for orignal tile space
       route%field_src = ESMF_FieldCreate(grid=tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
@@ -695,6 +693,7 @@ contains
 
       if (index(GNAMES(1), 'EASEv') /=0) then
 
+         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'TILE_PFAF_FILE:',  default = '../input/tile_pfaf.nc4', RC=STATUS )         
          if (MAPL_AM_I_ROOT()) then
             call formatter%open(tile_pfaf_file, PFIO_READ, _RC)
             meta     = formatter%read(rc=status)
