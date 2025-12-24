@@ -478,7 +478,6 @@ contains
     type (RROUTE_wrap)             :: wrap
     real, allocatable              :: tmp_real(:)
     integer, allocatable           :: tmp_int(:)
-    real, allocatable              :: areacat_glob(:)
 
 
     type(ESMF_Time)  :: CurrentTime
@@ -616,12 +615,9 @@ contains
     route%reservoir = Reservoir(GC, use_res, _RC)
     if(mapl_am_I_root()) print *,"reservoir init success"     
 
-    allocate(areacat_glob(n_pfaf_g))
-    call ESMFL_FCollect(pfaf_tilegrid, areacat_glob, AREA_CATCH_RS, RC=STATUS)
     call MAPL_GetResource (MAPL, TILE_PFAF_File, label = 'TILE_PFAF_FILE:',  default = '../input/tile_pfaf.nc4', RC=STATUS )
     call create_mapping_handler(trim(TILE_PFAF_File), tilegrid, pfaf_tilegrid, _RC)
     call setup_exchange_water(pfaf_tilegrid, _RC)
-    deallocate(areacat_glob)
      
     RETURN_(ESMF_SUCCESS)
 
@@ -676,6 +672,7 @@ contains
       integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:)
       real,    allocatable :: weights(:), global_frac(:), global_area(:)
       integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:)
+      real,    allocatable :: areacat_glob(:)
       integer :: unit,ii,dst
       integer, pointer :: pfaf_index(:), local_id(:)
       real   , pointer :: tilearea(:),frac_tot(:),fscale(:)
@@ -719,23 +716,15 @@ contains
          global_src = global_id
          call ESMFL_Fcollect(tilegrid, global_dst, pfaf_index, _RC)
          call ESMFL_Fcollect(tilegrid, global_area, tilearea, _RC)
-         global_frac = global_area*MAPL_RADIUS**2/areacat_glob(global_dst)
-         allocate(frac_tot(N_pfaf_g),fscale(N_pfaf_g))
-         frac_tot=0.
+         global_area = global_area*MAPL_RADIUS**2
+         allocate(areacat_glob(N_pfaf_g),source=0.)
          do ii=1,nWeights
-           frac_tot(global_dst(ii))=frac_tot(global_dst(ii))+global_frac(ii)
+           dst=global_dst(ii)
+           areacat_glob(dst)=areacat_glob(dst)+global_area(ii)
          enddo
-         fscale = 1.
-         do ii = 1, N_pfaf_g
-            if (frac_tot(ii) > 0.) then
-                fscale(ii) = 1. / frac_tot(ii)
-            endif
-         enddo
-         do ii = 1, nWeights
-            dst = global_dst(ii)
-            global_frac(ii) = global_frac(ii) * fscale(dst)
-         enddo                   
-         deallocate(global_area,frac_tot,fscale)
+         where(areacat_glob==0.) areacat_glob=1.
+         global_frac = global_area/areacat_glob(global_dst)
+         deallocate(areacat_glob)
       endif
 
       allocate(mask(nWeights))
