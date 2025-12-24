@@ -835,6 +835,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    d_buoyancy: Quantity = dataclasses.field(
+        metadata={
+            "name": "d_buoyancy",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     d_buoyancy_forced: Quantity = dataclasses.field(
         metadata={
             "name": "d_buoyancy_forced",
