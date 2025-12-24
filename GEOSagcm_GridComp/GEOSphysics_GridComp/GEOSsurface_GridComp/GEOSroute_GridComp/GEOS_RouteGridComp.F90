@@ -745,16 +745,9 @@ contains
       weights   = pack(global_frac(:), mask)
       deallocate(global_src, global_dst, global_frac)
 
-      ! mapping form local to global index
       nLocal_weights = count(mask)
-      allocate(srcIndices(nLocal_weights))
-      do i =1, nLocal_weights
-         positions = pack([(j, j=1, nt_global)], global_id == local_src(i))
-         srcIndices(i) = positions(1)
-      enddo
-
-      allocate(factorIndexList(2, nlocal_weights))
-      factorIndexList(1,:) = srcIndices
+      allocate(factorIndexList(2, nLocal_weights))
+      factorIndexList(1,:) = local_src
       factorIndexList(2,:) = local_dst
       call ESMF_FieldSMMStore(route%field_src, route%field, &
            routeHandle=route%routeHandle, &
