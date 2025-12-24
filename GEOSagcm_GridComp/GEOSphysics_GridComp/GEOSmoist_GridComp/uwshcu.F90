@@ -1511,12 +1511,11 @@ contains
        ! ------------------------------------------------------------------ !
 
          if (windsrcavg) then
-            zrho = pifc0(0)/(287.04*(t0(kinv-1)*(1.+0.608*qv0(kinv-1))))
-            buoyflx = (-shfx(i)/cp-0.608*t0(kinv-1)*evap(i))/zrho ! K m s-1
-            delzg = max(zifc0(kinv-1)-zifc0(0),50.0)*g ! Matches Deardorff scaling
-!           delzg = (zifc0(1)-zifc0(0))*g ! just the surface parcel
-!           delzg = (50.0)*g              ! assume 50m surface scale
-            wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(kinv-1)) ! m3 s-3
+            zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
+            buoyflx = (-shfx(i)/cp-0.608*t0(1)*evap(i))/zrho ! K m s-1
+!            delzg = (zifc0(1)-zifc0(0))*g
+            delzg = (50.0)*g   ! assume 50m surface scale
+            wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(1)) ! m3 s-3
             qpert_out(i) = 0.0
             tpert_out(i) = 0.0
             if (wstar > 0.001) then
@@ -1524,16 +1523,17 @@ contains
               tpert_out(i) = thlsrc_fac*shfx(i)/(zrho*wstar*cp)  ! K
               qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
             end if
-            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(kinv-1)),0.)  ! limit to 2% of QT
+            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 1% of QT
             tpert_out(i) = 0.1+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
             qtsrc   = qtavg + qpert_out(i)
-!           thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(kinv-1)
-            thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(kinv-1)
+!           qtsrc   = qt0(1) + qpert_out(i)
+!           thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
+            thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
             thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc  = uavg
             vsrc  = vavg
          else
-            qtsrc   = qt0(kinv-1)
+            qtsrc   = qt0(1)
             thvlsrc = thvlmin
             thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc    = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
@@ -1660,7 +1660,7 @@ contains
 !             exit
 !           end if
 !        end do
-!        lts = lts - t0(kinv-1)/exnmid0(kinv-1)
+!        lts = lts - t0(1)/exnmid0(1)
 
         !------------------------------------------------------------------------!
         ! Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' ) !
