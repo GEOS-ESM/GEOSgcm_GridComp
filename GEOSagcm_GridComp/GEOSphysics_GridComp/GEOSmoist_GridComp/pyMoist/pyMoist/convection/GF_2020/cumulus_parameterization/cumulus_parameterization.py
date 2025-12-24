@@ -90,7 +90,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     DowndraftNormalizedMassFlux,
     downdraft_lateral_massflux,
     DowndraftWetBlub,
-    downdraft_moist_static_energy_and_moisture_budget,
+    downdraft_moist_static_energy_and_buoyancy,
     DowndraftMoistureProperties,
     DowndraftWindshear,
 )
@@ -357,7 +357,7 @@ class CumulusParameterization:
         self._downdraft_wet_bulb = DowndraftWetBlub()
 
         self._downdraft_moist_static_energy_and_moisture_budget = stencil_factory.from_dims_halo(
-            func=downdraft_moist_static_energy_and_moisture_budget,
+            func=downdraft_moist_static_energy_and_buoyancy,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "USE_WETBULB": cumulus_parameterization_config.USE_WETBULB,

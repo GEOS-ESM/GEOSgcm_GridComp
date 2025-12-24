@@ -335,7 +335,7 @@ def downdraft_lateral_massflux(
             )
 
 
-def downdraft_moist_static_energy_and_moisture_budget(
+def downdraft_moist_static_energy_and_buoyancy(
     error_code: IntFieldIJ_Plume,
     downdraft_origin_level: IntFieldIJ,
     u: FloatField,
@@ -360,7 +360,7 @@ def downdraft_moist_static_energy_and_moisture_budget(
     plume: Int,
 ):
     """
-    Compute moist static energy and moisture budget for the downdraft.
+    Compute moist static energy and buoyancy for the downdraft.
 
     For shallow plumes: majority of the code is skipped. buoyancy_downdraft_forced is forced to zero,
     u_c_downdraft and v_c_downdraft are forced to u_cloud_levels and v_cloud_levels, respectively, and
