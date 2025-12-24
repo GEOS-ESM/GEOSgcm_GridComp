@@ -335,6 +335,157 @@ def downdraft_lateral_massflux(
             )
 
 
+def downdraft_moist_static_energy_and_moisture_budget(
+    error_code: IntFieldIJ_Plume,
+    downdraft_origin_level: IntFieldIJ,
+    u: FloatField,
+    u_cloud_levels: FloatField,
+    u_c_downdraft: FloatField,
+    v: FloatField,
+    v_cloud_levels: FloatField,
+    v_c_downdraft: FloatField,
+    environment_moist_static_energy_forced: FloatField,
+    environment_saturation_moist_static_energy_cloud_levels_forced: FloatField,
+    cloud_moist_static_energy: FloatField,
+    cloud_moist_static_energy_downdraft_forced: FloatField,
+    buoyancy_downdraft_forced: FloatField,
+    t_wetbulb: FloatFieldIJ,
+    vapor_wetbulb: FloatFieldIJ,
+    geopotential_height_cloud_levels_forced: FloatField,
+    normalized_massflux_downdraft_forced: FloatField_Plume,
+    mass_entrainment_downdraft_forced: FloatField_Plume,
+    mass_detrainment_downdraft_forced: FloatField_Plume,
+    mass_entrainment_u_downdraft: FloatField,
+    mass_detrainment_u_downdraft: FloatField,
+    plume: Int,
+):
+    """
+    Compute moist static energy and moisture budget for the downdraft.
+
+    For shallow plumes: majority of the code is skipped. buoyancy_downdraft_forced is forced to zero,
+    u_c_downdraft and v_c_downdraft are forced to u_cloud_levels and v_cloud_levels, respectively, and
+    cloud_moist_static_energy_downdraft_forced is forced to environment_saturation_moist_static_energy.
+
+    Args:
+        error_code
+        downdraft_origin_level
+        u
+        u_cloud_levels
+        u_c_downdraft
+        v
+        v_cloud_levels
+        v_c_downdraft
+        environment_moist_static_energy_forced
+        environment_saturation_moist_static_energy_cloud_levels_forced
+        cloud_moist_static_energy
+        cloud_moist_static_energy_downdraft_forced
+        buoyancy_downdraft_forced
+        t_wetbulb
+        vapor_wetbulb
+        geopotential_height_cloud_levels_forced
+        normalized_massflux_downdraft_forced
+        mass_entrainment_downdraft_forced
+        mass_detrainment_downdraft_forced
+        mass_entrainment_u_downdraft
+        mass_detrainment_u_downdraft
+        plume
+    """
+    from __externals__ import USE_WETBULB, PRESSURE_GRADIENT_CONSTANT
+
+    with computation(PARALLEL), interval(...):
+        cloud_moist_static_energy_downdraft_forced = (
+            environment_saturation_moist_static_energy_cloud_levels_forced
+        )
+        u_c_downdraft = u_cloud_levels
+        v_c_downdraft = v_cloud_levels
+        buoyancy_downdraft_forced = 0.0
+        buoyancy_downdraft = 0.0
+
+    with computation(FORWARD), interval(downdraft_origin_level, downdraft_origin_level + 1):
+        buoyancy_downdraft: FloatFieldIJ = 0.0
+        if error_code[0, 0][plume] == 0 and plume != 0:
+            wetbulb_adjustment: IntFieldIJ = 0
+            # for future test)
+            if USE_WETBULB == 1:
+                cloud_moist_static_energy_downdraft_forced = 0.5 * (
+                    cumulus_parameterization_constants.CP * t_wetbulb
+                    + cumulus_parameterization_constants.XLV * vapor_wetbulb
+                    + geopotential_height_cloud_levels_forced * constants.MAPL_GRAV
+                    + cloud_moist_static_energy
+                )
+                wetbulb_adjustment = 1
+
+            buoyancy_downdraft_forced = (
+                cloud_moist_static_energy_downdraft_forced
+                - environment_saturation_moist_static_energy_cloud_levels_forced
+            )
+            buoyancy_downdraft = buoyancy_downdraft_forced * (
+                geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+            )
+
+    with computation(BACKWARD), interval(0, downdraft_origin_level):
+        if error_code[0, 0][plume] == 0 and plume != 0:
+            denom = (
+                normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                - 0.5 * mass_detrainment_downdraft_forced[0, 0, 0][plume]
+                + mass_entrainment_downdraft_forced[0, 0, 0][plume]
+            )
+            denom_u = (
+                normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                - 0.5 * mass_detrainment_u_downdraft
+                + mass_entrainment_u_downdraft
+            )
+
+            # tmp fix for denominator being zero
+            if denom > 0.0 and denom_u > 0.0:
+                dz = (
+                    geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+                )
+
+                u_c_downdraft = (
+                    u_c_downdraft[0, 0, 1] * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    - 0.5 * mass_detrainment_u_downdraft * u_c_downdraft[0, 0, 1]
+                    + mass_entrainment_u_downdraft * u
+                    - PRESSURE_GRADIENT_CONSTANT
+                    * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    * (u[0, 0, 1] - u)
+                ) / denom_u
+                v_c_downdraft = (
+                    v_c_downdraft[0, 0, 1] * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    - 0.5 * mass_detrainment_u_downdraft * v_c_downdraft[0, 0, 1]
+                    + mass_entrainment_u_downdraft * v
+                    - PRESSURE_GRADIENT_CONSTANT
+                    * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    * (v[0, 0, 1] - v)
+                ) / denom_u
+
+                cloud_moist_static_energy_downdraft_forced = (
+                    cloud_moist_static_energy_downdraft_forced[0, 0, 1]
+                    * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    - 0.5
+                    * mass_detrainment_downdraft_forced[0, 0, 0][plume]
+                    * cloud_moist_static_energy_downdraft_forced[0, 0, 1]
+                    + mass_entrainment_downdraft_forced[0, 0, 0][plume]
+                    * environment_moist_static_energy_forced
+                ) / denom
+
+                buoyancy_downdraft_forced = (
+                    cloud_moist_static_energy_downdraft_forced
+                    - environment_saturation_moist_static_energy_cloud_levels_forced
+                )
+                buoyancy_downdraft = buoyancy_downdraft + buoyancy_downdraft_forced * dz
+            else:
+                u_c_downdraft = u_c_downdraft[0, 0, 1]
+                v_c_downdraft = v_c_downdraft[0, 0, 1]
+                cloud_moist_static_energy_downdraft_forced = cloud_moist_static_energy_downdraft_forced[
+                    0, 0, 1
+                ]
+
+    with computation(FORWARD), interval(0, 1):
+        if buoyancy_downdraft > 0:
+            error_code[0, 0][plume] = 7
+
+
 class DowndraftOriginLevel(NDSLRuntime):
     def __init__(
         self,
@@ -442,230 +593,15 @@ class DowndraftOriginLevel(NDSLRuntime):
         )
 
 
+class DowndraftWetBlub:
+    def __init__(self):
+        pass
+
+    def __call__(self, *args, **kwds):
+        pass
+
+
 ######## NOTE TODO NOTE README NOTE TODO TODO NOTE EVERYTHING BELOW HERE NEEDS TO BE REWORKED
-
-# Parameters needed for get_wetbulb
-RD = 287.06
-RV = 461.52
-RCPD = 1004.71
-RTT = 273.16
-HOH2O = 1000.0
-RLVTT = 2.5008e6
-RLSTT = 2.8345e6
-RETV = RV / RD - 1.0
-RLMLT = RLSTT - RLVTT
-RCPV = 4.0 * RV
-R2ES = 611.21 * RD / RV
-R3LES = 17.502
-R3IES = 22.587
-R4LES = 32.19
-R4IES = -0.7
-R5LES = R3LES * (RTT - R4LES)
-R5IES = R3IES * (RTT - R4IES)
-R5ALVCP = R5LES * RLVTT / RCPD
-R5ALSCP = R5IES * RLSTT / RCPD
-RALVDCP = RLVTT / RCPD
-RALSDCP = RLSTT / RCPD
-RALFDCP = RLMLT / RCPD
-RTWAT = RTT
-RTBER = RTT - 5.0
-RTBERCU = RTT - 5.0
-RTICE = RTT - 23.0
-RTICECU = RTT - 23.0
-RTWAT_RTICE_R = 1.0 / (RTWAT - RTICE)
-RTWAT_RTICECU_R = 1.0 / (RTWAT - RTICECU)
-RVTMP2 = RCPV / RCPD - 1.0
-ZQMAX = 0.5
-
-
-@function
-def get_wetbulb(
-    local_t_cloud_levels,
-    local_vapor_cloud_levels_forced,
-    p_cloud_levels_forced,
-):
-    PT = local_t_cloud_levels
-    PQ = local_vapor_cloud_levels_forced
-    PSP = p_cloud_levels_forced * 100.0
-
-    if PT > RTT:
-        Z3ES = R3LES
-        Z4ES = R4LES
-        Z5ALCP = R5ALVCP
-        ZALDCP = RALVDCP
-    else:
-        Z3ES = R3IES
-        Z4ES = R4IES
-        Z5ALCP = R5ALSCP
-        ZALDCP = RALSDCP
-
-    PTARE = PT
-    ZQP = 1.0 / PSP
-
-    FOEALFCU = min(1.0, ((max(RTICECU, min(RTWAT, PTARE)) - RTICECU) * RTWAT_RTICECU_R) ** 2)
-    FOEEWMCU = R2ES * (
-        FOEALFCU * exp(R3LES * (PTARE - RTT) / (PTARE - R4LES))
-        + (1.0 - FOEALFCU) * exp(R3IES * (PTARE - RTT) / (PTARE - R4IES))
-    )
-    ZQSAT = FOEEWMCU * ZQP
-
-    ZQSAT = min(cumulus_parameterization_constants.MAX_QSAT, ZQSAT)
-    ZCOR = 1.0 / (1.0 - RETV * ZQSAT)
-    ZQSAT = ZQSAT * ZCOR
-
-    FOEDEMCU = FOEALFCU * R5ALVCP * (1.0 / (PTARE - R4LES) ** 2) + (1.0 - FOEALFCU) * R5ALSCP * (
-        1.0 / (PTARE - R4IES) ** 2
-    )
-
-    ZCOND = (PQ - ZQSAT) / (1.0 + ZQSAT * ZCOR * FOEDEMCU)
-
-    ZCOND = min(ZCOND, 0.0)
-
-    FOELDCPMCU = FOEALFCU * RALVDCP + (1.0 - FOEALFCU) * RALSDCP
-    PT = PT + FOELDCPMCU * ZCOND
-
-    PQ = PQ - ZCOND
-
-    PTARE = PT
-
-    FOEALFCU = min(1.0, ((max(RTICECU, min(RTWAT, PTARE)) - RTICECU) * RTWAT_RTICECU_R) ** 2)
-    FOEEWMCU = R2ES * (
-        FOEALFCU * exp(R3LES * (PTARE - RTT) / (PTARE - R4LES))
-        + (1.0 - FOEALFCU) * exp(R3IES * (PTARE - RTT) / (PTARE - R4IES))
-    )
-    ZQSAT = FOEEWMCU * ZQP
-
-    ZQSAT = min(0.5, ZQSAT)
-    ZCOR = 1.0 / (1.0 - RETV * ZQSAT)
-    ZQSAT = ZQSAT * ZCOR
-
-    FOEDEMCU = FOEALFCU * R5ALVCP * (1.0 / (PTARE - R4LES) ** 2) + (1.0 - FOEALFCU) * R5ALSCP * (
-        1.0 / (PTARE - R4IES) ** 2
-    )
-    ZCOND1 = (PQ - ZQSAT) / (1.0 + ZQSAT * ZCOR * FOEDEMCU)
-
-    if ZCOND == 0.0:
-        ZCOND1 = min(ZCOND1, 0.0)
-
-    FOELDCPMCU = FOEALFCU * RALVDCP + (1.0 - FOEALFCU) * RALSDCP
-    PT = PT + FOELDCPMCU * ZCOND1
-    PQ = PQ - ZCOND1
-
-    local_vapor_wetbulb = PQ
-    local_t_wetbulb = PT
-    evap = -ZCOND1
-
-    return (local_vapor_wetbulb, local_t_wetbulb)
-
-
-def downdraft_wet_bulb(
-    error_code: IntFieldIJ_Plume,
-    plume: Int,
-    jmin: IntFieldIJ,
-    local_vapor_cloud_levels_forced: FloatField,
-    local_t_cloud_levels: FloatField,
-    p_cloud_levels_forced: FloatField,
-    local_vapor_wetbulb: FloatFieldIJ,
-    local_t_wetbulb: FloatFieldIJ,
-):
-    from __externals__ import USE_WETBULB
-
-    with computation(PARALLEL), interval(...):
-        if USE_WETBULB == 1 and plume != cumulus_parameterization_constants.shallow:
-            if error_code[0, 0][plume] == 0:
-                lev: IntFieldIJ = jmin
-                local_vapor_wetbulb, local_t_wetbulb = get_wetbulb(
-                    local_vapor_cloud_levels_forced.at(K=lev),
-                    local_t_cloud_levels.at(K=lev),
-                    p_cloud_levels_forced.at(K=lev),
-                )
-
-
-def moist_static_energy_and_moisture_budget(
-    error_code: IntFieldIJ_Plume,
-    plume: Int,
-    heso_cup: FloatField_Plume,
-    u_cup: FloatField_Plume,
-    v_cup: FloatField_Plume,
-    cumulus: Int,
-    use_wetbulb: Int,
-    jmin: IntFieldIJ_Plume,
-    t_wetbulb: FloatFieldIJ_Plume,
-    q_wetbulb: FloatFieldIJ_Plume,
-    zo_cup: FloatField_Plume,
-    hc: FloatField_Plume,
-    zdo: FloatField_Plume,
-    dd_massdetro: FloatField_Plume,
-    dd_massentro: FloatField_Plume,
-    dd_massdetru: FloatField_Plume,
-    dd_massentru: FloatField_Plume,
-    us: FloatField_Plume,
-    vs: FloatField_Plume,
-    pgcon: FloatFieldIJ_Plume,
-    heo: FloatField_Plume,
-    hcdo: FloatField_Plume,
-):
-    with computation(PARALLEL), interval(...):
-        hcdo = heso_cup
-        ucd = u_cup
-        vcd = v_cup
-        dbydo = 0.0
-        bud = 0.0
-
-    with computation(PARALLEL), interval(...):
-        if error_code[0, 0][plume] == 0 or cumulus != cumulus_parameterization_constants.shallow:
-            i_wb = 0
-            if use_wetbulb == 1:
-                if K == jmin:
-                    hcdo = 0.5 * (
-                        cumulus_parameterization_constants.CP * t_wetbulb
-                        + cumulus_parameterization_constants.XLV * q_wetbulb
-                        + zo_cup * constants.MAPL_GRAV
-                        + hc
-                    )
-                i_wb = 1
-            if K == jmin:
-                dbydo = hcdo - heso_cup
-                bud: FloatFieldIJ = dbydo * (zo_cup.at(K=jmin + 1) - zo_cup)
-
-    with computation(BACKWARD), interval(...):
-        if error_code[0, 0][plume] == 0 or cumulus != cumulus_parameterization_constants.shallow:
-            if K <= jmin - i_wb:
-                denom: FloatFieldIJ = zdo[0, 0, 1] - 0.5 * dd_massdetro + dd_massentro
-                denomU: FloatFieldIJ = zdo[0, 0, 1] - 0.5 * dd_massdetru + dd_massentru
-                if denom > 0.0 and denomU > 0.0:
-                    dzo: FloatFieldIJ = zo_cup[0, 0, 1] - zo_cup
-
-                    ucd = (
-                        ucd[0, 0, 1] * zdo[0, 0, 1]
-                        - 0.5 * dd_massdetru * ucd[0, 0, 1]
-                        + dd_massentru * us
-                        - pgcon * zdo[0, 0, 1] * (us[0, 0, 1] - us)
-                    ) / denomU
-                    vcd = (
-                        vcd[0, 0, 1] * zdo[0, 0, 1]
-                        - 0.5 * dd_massdetru * vcd[0, 0, 1]
-                        + dd_massentru * vs
-                        - pgcon * zdo[0, 0, 1] * (vs[0, 0, 1] - vs)
-                    ) / denomU
-
-                    hcdo = (
-                        hcdo[0, 0, 1] * zdo[0, 0, 1] - 0.5 * dd_massdetro * hcdo[0, 0, 1] + dd_massentro * heo
-                    ) / denom
-
-                    dbydo = hcdo - heso_cup
-
-                    bud = bud + dbydo * dzo
-                else:
-                    ucd = ucd[0, 0, 1]
-                    vcd = vcd[0, 0, 1]
-                    hcdo = hcdo[0, 0, 1]
-
-    with computation(PARALLEL), interval(...):
-        if error_code[0, 0][plume] == 0 or cumulus != cumulus_parameterization_constants.shallow:
-            if bud > 0:
-                ierr = 7
-                # ierrc(i)='downdraft is not negatively buoyant '
 
 
 beta3 = Float(-1.13)
@@ -820,99 +756,6 @@ class DowndraftLateralMassFlux:
 
     def __call__(self, *args, **kwds):
         pass
-
-
-class DowndraftWetBlub:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._downdraft_wet_bulb = stencil_factory.from_dims_halo(
-            func=downdraft_wet_bulb,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"USE_WETBULB": cumulus_parameterization_config.USE_WETBULB},
-        )
-
-        if self.cumulus_parameterization_config.USE_WETBULB == 1:
-            raise NotImplementedError(
-                f"Coding limitation: USE_WETBULB = 0 is expected, getting USE_WETBULB = 1"
-            )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-        pass
-        # self._downdraft_wet_bulb(
-        #     error_code= state.output.error_code,
-        #     plume=plume_dependent_constants.PLUME_INDEX,
-        #     jmin=,
-        #     local_vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
-        #     local_t_cloud_levels=locals.t_cloud_levels,
-        #     p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-        #     local_vapor_wetbulb=locals.vapor_wetbulb,
-        #     local_t_wetbulb=locals.t_wetbulb,
-        # )
-
-
-class DowndraftMoistStaticEnergyAndMoistureBudget:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._moist_static_energy_and_moisture_budget = stencil_factory.from_dims_halo(
-            func=moist_static_energy_and_moisture_budget,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-        self._moist_static_energy_and_moisture_budget(
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            # heso_cup=,
-            # u_cup=,
-            # v_cup=,
-            # cumulus=,
-            # use_wetbulb=,
-            # jmin=,
-            # t_wetbulb=,
-            # q_wetbulb=,
-            # zo_cup=,
-            # hc=,
-            # zdo=,
-            # dd_massdetro=,
-            # dd_massentro=,
-            # dd_massdetru=,
-            # dd_massentru=,
-            # us=,
-            # vs=,
-            # pgcon=,
-            # heo=,
-            # hcdo=,
-        )
 
 
 class DowndraftMoistureProperties:

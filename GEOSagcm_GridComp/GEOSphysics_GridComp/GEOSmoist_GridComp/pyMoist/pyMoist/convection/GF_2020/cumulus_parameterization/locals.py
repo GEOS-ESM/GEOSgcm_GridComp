@@ -349,15 +349,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    hcdo: Quantity = dataclasses.field(
-        metadata={
-            "name": "hcdo",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     qrcdo: Quantity = dataclasses.field(
         metadata={
             "name": "qrcdo",
@@ -610,6 +601,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    u_c_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "u_c_downdraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     v_cloud_levels: Quantity = dataclasses.field(
         metadata={
             "name": "v_cloud_levels",
@@ -622,6 +622,15 @@ class GF2020CumulusParameterizationLocals(State):
     v_c: Quantity = dataclasses.field(
         metadata={
             "name": "v_c",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    v_c_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "v_c_downdraft",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -727,6 +736,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    cloud_moist_static_energy_downdraft_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_moist_static_energy_downdraft_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     cloud_moist_static_energy_forced_transported: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_moist_static_energy_forced_transported",
@@ -820,6 +838,15 @@ class GF2020CumulusParameterizationLocals(State):
     buoyancy_forced: Quantity = dataclasses.field(
         metadata={
             "name": "buoyancy_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    d_buoyancy_downdraft_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "d_buoyancy_downdraft_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",

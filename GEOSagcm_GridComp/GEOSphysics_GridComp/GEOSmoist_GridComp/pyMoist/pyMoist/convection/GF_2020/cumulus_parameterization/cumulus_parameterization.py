@@ -90,7 +90,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     DowndraftNormalizedMassFlux,
     downdraft_lateral_massflux,
     DowndraftWetBlub,
-    DowndraftMoistStaticEnergyAndMoistureBudget,
+    downdraft_moist_static_energy_and_moisture_budget,
     DowndraftMoistureProperties,
     DowndraftWindshear,
 )
@@ -356,11 +356,13 @@ class CumulusParameterization:
 
         self._downdraft_wet_bulb = DowndraftWetBlub()
 
-        self._downdraft_moist_static_energy_and_moisture_budget = DowndraftMoistStaticEnergyAndMoistureBudget(
-            stencil_factory=stencil_factory,
-            quantity_factory=quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        self._downdraft_moist_static_energy_and_moisture_budget = stencil_factory.from_dims_halo(
+            func=downdraft_moist_static_energy_and_moisture_budget,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "USE_WETBULB": cumulus_parameterization_config.USE_WETBULB,
+                "PGCON": cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT,
+            },
         )
 
         self._downdraft_moisture_properties = DowndraftMoistureProperties()
@@ -1144,20 +1146,42 @@ class CumulusParameterization:
                 )
 
                 # wet bulb temperature and moisture at downdraft origin level
-                # NOTE No test. This code is not implemented.
-                # An error will be raised if this code is exectued.
-                self._downdraft_wet_bulb(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
-                )
+                # NOTE this section does not run in the test case, and has not been implemented.
+                # NOTE an error will stop execution during initalization if this would be called
+                if (
+                    self.cumulus_parameterization_config.USE_WETBULB
+                    and self.plume_dependent_constants.PLUME_INDEX != 0
+                ):
+                    self._downdraft_wet_bulb()
 
                 # downdraft moist static energy + moisture budget
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMSEAndMoisture{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._downdraft_moist_static_energy_and_moisture_budget(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    error_code=state.output.error_code,
+                    downdraft_origin_level=locals.downdraft_origin_level,
+                    u=state.input_output.u,
+                    u_cloud_levels=locals.u_cloud_levels,
+                    u_c_downdraft=locals.u_c_downdraft,
+                    v=state.input_output.v,
+                    v_cloud_levels=locals.v_cloud_levels,
+                    v_c_downdraft=locals.v_c_downdraft,
+                    environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+                    environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                    cloud_moist_static_energy=locals.cloud_moist_static_energy,
+                    cloud_moist_static_energy_downdraft_forced=locals.cloud_moist_static_energy_downdraft_forced,
+                    buoyancy_downdraft_forced=locals.d_buoyancy_downdraft_forced,
+                    t_wetbulb=locals.t_wetbulb,
+                    vapor_wetbulb=locals.vapor_wetbulb,
+                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    mass_entrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
+                    mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
+                    mass_entrainment_u_downdraft=locals.mass_entrainment_u_downdraft,
+                    mass_detrainment_u_downdraft=locals.mass_detrainment_u_downdraft,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
                 # calculate moisture properties of downdraft

@@ -154,3 +154,11 @@ def check_config(
             "an unimplemented porion of UpdraftMassFlux. Please implement, then disable this error"
             "manually to proceed."
         )
+
+    if cumulus_parameterization_config.USE_WETBULB == 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020 cumulus parameterization initalized with USE_WETBULB == 1. This setting requires"
+            "the unimplemented function get_wetbulb and an unimplemented option in"
+            "downdraft_moist_static_energy_and_moisture_budget. Please implement, then disable this error"
+            "manually to proceed."
+        )
