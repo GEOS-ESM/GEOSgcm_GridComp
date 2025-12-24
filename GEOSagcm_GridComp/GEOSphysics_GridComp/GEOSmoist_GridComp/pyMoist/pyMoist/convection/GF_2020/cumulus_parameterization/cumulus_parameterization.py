@@ -91,7 +91,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     downdraft_lateral_massflux,
     DowndraftWetBlub,
     downdraft_moist_static_energy_and_buoyancy,
-    DowndraftMoistureProperties,
+    downdraft_moisture,
     DowndraftWindshear,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.trigger_function.trigger_function import (
@@ -356,7 +356,7 @@ class CumulusParameterization:
 
         self._downdraft_wet_bulb = DowndraftWetBlub()
 
-        self._downdraft_moist_static_energy_and_moisture_budget = stencil_factory.from_dims_halo(
+        self._downdraft_moist_static_energy_and_buoyancy = stencil_factory.from_dims_halo(
             func=downdraft_moist_static_energy_and_buoyancy,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
@@ -365,7 +365,15 @@ class CumulusParameterization:
             },
         )
 
-        self._downdraft_moisture_properties = DowndraftMoistureProperties()
+        self._downdraft_moisture = stencil_factory.from_dims_halo(
+            func=downdraft_moisture,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "USE_WETBULB": cumulus_parameterization_config.USE_WETBULB,
+                "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
+                "EVAP_FIX": cumulus_parameterization_config.EVAP_FIX,
+            },
+        )
 
         self._updraft_initial_workfunctions = UpdraftInitialWorkfunctions()
 
@@ -1155,11 +1163,11 @@ class CumulusParameterization:
                     self._downdraft_wet_bulb()
 
                 # downdraft moist static energy + moisture budget
-                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMSEAndMoisture{plume}:
+                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMSEAnBuoyancy{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._downdraft_moist_static_energy_and_moisture_budget(
+                self._downdraft_moist_static_energy_and_buoyancy(
                     error_code=state.output.error_code,
                     downdraft_origin_level=locals.downdraft_origin_level,
                     u=state.input_output.u,
@@ -1185,7 +1193,36 @@ class CumulusParameterization:
                 )
 
                 # calculate moisture properties of downdraft
-                self._downdraft_moisture_properties()
+                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMoisture{plume}:
+                # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
+                # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
+                # NOTE      shallow ✅
+                self._downdraft_moisture(
+                    error_code=state.output.error_code,
+                    downdraft_origin_level=locals.downdraft_origin_level,
+                    t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                    t_wetbulb=locals.t_wetbulb,
+                    vapor_forced=locals.vapor_forced,
+                    vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
+                    environment_saturation_mixing_ratio_cloud_levels_forced=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+                    cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
+                    cloud_total_water_after_entrainment_downdraft_forced=locals.cloud_total_water_after_entrainment_downdraft_forced,
+                    downdraft_saturation_vapor_forced=locals.downdraft_saturation_vapor_forced,
+                    vapor_wetbulb=locals.vapor_wetbulb,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+                    environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                    cloud_moist_static_energy_downdraft_forced=locals.cloud_moist_static_energy_downdraft_forced,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                    mass_entrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
+                    mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
+                    gamma_cloud_levels_forced=locals.gamma_cloud_levels_forced,
+                    total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
+                    total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                    buoyancy=locals.buoyancy,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                )
 
                 # calculate workfunctions for updrafts
                 # NOTE test GF2020_CumulusParameterization_UpdraftInitialWorkfunctions_{plume}:

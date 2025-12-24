@@ -47,7 +47,7 @@ class TestCore:
             "local_geopotential_height_cloud_levels_forced_updrafttemp": {},
             "local_t_cloud_levels_forced_updrafttemp": {},
             "local_miscellaneous_temperature_updrafttemp": {},
-            "local_cloud_vapor_mixing_ratio_forced_updrafttemp": {},
+            "local_cloud_total_water_after_entrainment_forced_updrafttemp": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -88,9 +88,7 @@ class TestCore:
         ]
         locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_updrafttemp"]
         locals.miscellaneous_temperature.data[:] = inputs["local_miscellaneous_temperature_updrafttemp"]
-        locals.cloud_vapor_mixing_ratio_forced.data[:] = inputs[
-            "local_cloud_vapor_mixing_ratio_forced_updrafttemp"
-        ]
+        locals.cloud_total_water_after_entrainment_forced.data[:] = inputs["local_cloud_total_water_after_entrainment_forced_updrafttemp"]
 
         # initalize test code
         code = self.stencil_factory.from_dims_halo(
@@ -106,7 +104,7 @@ class TestCore:
                     updraft_t=locals.miscellaneous_temperature,
                     cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                     geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                    cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
                     t_cloud_levels_forced=locals.t_cloud_levels_forced,
                     plume=plume_dependent_constants.PLUME_INDEX,
                 )
@@ -124,9 +122,7 @@ class TestCore:
             ],
             "local_t_cloud_levels_forced_updrafttemp": locals.t_cloud_levels_forced.field[:],
             "local_miscellaneous_temperature_updrafttemp": locals.miscellaneous_temperature.field[:],
-            "local_cloud_vapor_mixing_ratio_forced_updrafttemp": locals.cloud_vapor_mixing_ratio_forced.field[
-                :
-            ],
+            "local_cloud_total_water_after_entrainment_forced_updrafttemp": locals.cloud_total_water_after_entrainment_forced.field[:],
         }
 
         return outputs

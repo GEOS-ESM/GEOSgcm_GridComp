@@ -486,6 +486,220 @@ def downdraft_moist_static_energy_and_buoyancy(
             error_code[0, 0][plume] = 7
 
 
+def downdraft_moisture(
+    error_code: IntFieldIJ_Plume,
+    downdraft_origin_level: IntFieldIJ,
+    t_cloud_levels_forced: FloatField,
+    t_wetbulb: FloatFieldIJ,
+    vapor_forced: FloatField,
+    vapor_cloud_levels_forced: FloatField,
+    environment_saturation_mixing_ratio_cloud_levels_forced: FloatField,
+    cloud_total_water_after_entrainment_forced: FloatField,
+    cloud_total_water_after_entrainment_downdraft_forced: FloatField,
+    downdraft_saturation_vapor_forced: FloatField,
+    vapor_wetbulb: FloatFieldIJ,
+    normalized_massflux_downdraft_forced: FloatField_Plume,
+    environment_moist_static_energy_forced: FloatField,
+    environment_saturation_moist_static_energy_cloud_levels_forced: FloatField,
+    cloud_moist_static_energy_downdraft_forced: FloatField,
+    evaporate_in_downdraft_forced: FloatField_Plume,
+    geopotential_height_cloud_levels_forced: FloatField,
+    mass_entrainment_downdraft_forced: FloatField_Plume,
+    mass_detrainment_downdraft_forced: FloatField_Plume,
+    gamma_cloud_levels_forced: FloatField,
+    total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
+    total_normalized_integrated_evaporate_forced: FloatFieldIJ_Plume,
+    buoyancy: FloatFieldIJ,
+    plume: Int,
+):
+    """
+    Compute the moisture profile for the downdraft.
+
+    For shallow plumes outputs are forced to zero and calculation is terminated.
+
+    Args:
+        error_code
+        downdraft_origin_level
+        t_cloud_levels_forced
+        t_wetbulb
+        vapor_forced
+        vapor_cloud_levels_forced
+        environment_saturation_mixing_ratio_cloud_levels_forced
+        cloud_total_water_after_entrainment_forced
+        cloud_total_water_after_entrainment_downdraft_forced
+        downdraft_saturation_vapor_forced
+        vapor_wetbulb
+        normalized_massflux_downdraft_forced
+        environment_moist_static_energy_forced
+        environment_saturation_moist_static_energy_cloud_levels_forced
+        cloud_moist_static_energy_downdraft_forced
+        evaporate_in_downdraft_forced
+        geopotential_height_cloud_levels_forced
+        mass_entrainment_downdraft_forced
+        mass_detrainment_downdraft_forced
+        gamma_cloud_levels_forced
+        total_normalized_integrated_condensate_forced
+        total_normalized_integrated_evaporate_forced
+        buoyancy
+        plume
+    """
+    from __externals__ import USE_WETBULB, ZERO_DIFF, EVAP_FIX
+
+    with computation(FORWARD), interval(0, 1):
+        internal_loop_constant: IntFieldIJ = 1
+
+    with computation(FORWARD), interval(0, 1):
+        # prefill outputs with zero
+        buoyancy = 0.0
+        total_normalized_integrated_evaporate_forced[0, 0][plume] = 0.0
+
+    with computation(PARALLEL), interval(...):
+        # prefill outputs with zero
+        cloud_total_water_after_entrainment_downdraft_forced = 0.0
+        downdraft_saturation_vapor_forced = 0.0
+        evaporate_in_downdraft_forced[0, 0, 0][plume] = 0.0
+
+    with computation(FORWARD), interval(downdraft_origin_level, downdraft_origin_level + 1):
+        if error_code[0, 0][plume] == 0 and plume != 0:
+            # boundary condition at downdraft_origin_level ('level of free sinking')
+            dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+
+            cloud_total_water_after_entrainment_downdraft_forced = vapor_cloud_levels_forced
+
+            if USE_WETBULB == 1:
+                # mixture 50% env air + updraft
+                cloud_total_water_after_entrainment_downdraft_forced = 0.5 * (
+                    vapor_wetbulb + cloud_total_water_after_entrainment_forced
+                )
+
+            d_moist_static_energy = (
+                cloud_moist_static_energy_downdraft_forced
+                - environment_saturation_moist_static_energy_cloud_levels_forced
+            )
+
+            if d_moist_static_energy < 0:
+                downdraft_saturation_vapor_forced = (
+                    environment_saturation_mixing_ratio_cloud_levels_forced
+                    + (1.0 / cumulus_parameterization_constants.XLV)
+                    * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced))
+                    * d_moist_static_energy
+                )
+            else:
+                downdraft_saturation_vapor_forced = environment_saturation_mixing_ratio_cloud_levels_forced
+
+            evaporate_in_downdraft_forced[0, 0, 0][plume] = normalized_massflux_downdraft_forced[0, 0, 0][
+                plume
+            ] * min(
+                0.0, cloud_total_water_after_entrainment_downdraft_forced - downdraft_saturation_vapor_forced
+            )
+            cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced
+            total_normalized_integrated_evaporate_forced[0, 0][plume] = (
+                total_normalized_integrated_evaporate_forced[0, 0][plume]
+                + evaporate_in_downdraft_forced[0, 0, 0][plume]
+            )
+            buoyancy = dz * d_moist_static_energy
+
+    with computation(BACKWARD), interval(0, downdraft_origin_level):
+        if error_code[0, 0][plume] == 0 and plume != 0:
+            dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+
+            # downward transport + mixing
+            denom = (
+                normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                - 0.5 * mass_detrainment_downdraft_forced[0, 0, 0][plume]
+                + mass_entrainment_downdraft_forced[0, 0, 0][plume]
+            )
+            if denom == 0.0:
+                cloud_total_water_after_entrainment_downdraft_forced = (
+                    cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
+                )
+            else:
+                cloud_total_water_after_entrainment_downdraft_forced = (
+                    cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
+                    * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    - 0.5
+                    * mass_detrainment_downdraft_forced[0, 0, 0][plume]
+                    * cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
+                    + mass_entrainment_downdraft_forced[0, 0, 0][plume] * vapor_forced
+                ) / denom
+
+            # to be negatively buoyant, hcd should be smaller than hes!
+            # ideally, dh should be negative till dd hits ground, but that is not always the case
+            d_moist_static_energy = (
+                cloud_moist_static_energy_downdraft_forced
+                - environment_saturation_moist_static_energy_cloud_levels_forced
+            )
+            buoyancy = buoyancy + dz * d_moist_static_energy
+            downdraft_saturation_vapor_forced = (
+                environment_saturation_mixing_ratio_cloud_levels_forced
+                + (1.0 / cumulus_parameterization_constants.XLV)
+                * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced))
+                * d_moist_static_energy
+            )
+
+            # rain water evaporation amount at layer k
+            dq_eva = cloud_total_water_after_entrainment_downdraft_forced - downdraft_saturation_vapor_forced
+
+            if dq_eva > 0.0:
+                dq_eva = 0.0
+                downdraft_saturation_vapor_forced = cloud_total_water_after_entrainment_downdraft_forced
+            # amount of the evaporated rain water
+            evaporate_in_downdraft_forced[0, 0, 0][plume] = (
+                normalized_massflux_downdraft_forced[0, 0, 0][plume] * dq_eva
+            )  # kg[water vapor]/kg[air]
+
+            # source term for in-downdraft water vapor mixing ratio
+            cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced  # => equiv to qcd = qcd - dq_eva !( -dq_eva >0 => source term for qcd)
+
+            # total evaporated rain water
+            total_normalized_integrated_evaporate_forced[0, 0][plume] = (
+                total_normalized_integrated_evaporate_forced[0, 0][plume]
+                + evaporate_in_downdraft_forced[0, 0, 0][plume]
+            )
+
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0 and plume != 0:
+            if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0 and internal_loop_constant == 1:
+                error_code[0, 0][plume] = 70
+
+            if buoyancy >= 0 and internal_loop_constant == 1:
+                error_code[0, 0][plume] = 73
+
+            if ZERO_DIFF == 0 and EVAP_FIX == 1:
+                if (
+                    abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
+                    > total_normalized_integrated_condensate_forced[0, 0][plume]
+                    and error_code[0, 0][plume] == 0
+                ):
+                    fix_evap = total_normalized_integrated_condensate_forced[0, 0][plume] / (
+                        1.0e-16 + abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
+                    )
+                    total_normalized_integrated_evaporate_forced[0, 0][plume] = 0.0
+
+    with computation(BACKWARD), interval(0, downdraft_origin_level + 1):
+        if error_code[0, 0][plume] == 0 and plume != 0:
+            if ZERO_DIFF == 0 and EVAP_FIX == 1:
+                evaporate_in_downdraft_forced[0, 0, 0][plume] = (
+                    evaporate_in_downdraft_forced[0, 0, 0][plume] * fix_evap
+                )
+                total_normalized_integrated_evaporate_forced[0, 0][plume] = (
+                    total_normalized_integrated_evaporate_forced[0, 0][plume]
+                    + evaporate_in_downdraft_forced[0, 0, 0][plume]
+                )
+                dq_eva = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
+                    1.0e-16 + normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                )
+                cloud_total_water_after_entrainment_downdraft_forced = (
+                    downdraft_saturation_vapor_forced + dq_eva
+                )
+
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0 and plume != 0:
+            if ZERO_DIFF == 0 and EVAP_FIX == 1:
+                if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0.0:
+                    error_code[0, 0][plume] = 70
+
+
 class DowndraftOriginLevel(NDSLRuntime):
     def __init__(
         self,

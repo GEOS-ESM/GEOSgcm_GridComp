@@ -36,9 +36,9 @@ def c1d_updraft_moisture_light(
     start_level: IntFieldIJ,
     error_code: IntFieldIJ_Plume,
     geopotential_height_cloud_levels_forced: FloatField,
-    cloud_vapor_mixing_ratio_forced: FloatField,
+    cloud_total_water_after_entrainment_forced: FloatField,
     cloud_liquid_after_rain_forced: FloatField_Plume,
-    precipitable_water_updraft_forced: FloatField_Plume,
+    condensate_to_fall_forced: FloatField_Plume,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
     cloud_moist_static_energy_forced: FloatField,
     miscellaneous_temperature: FloatField,
@@ -86,11 +86,11 @@ def c1d_updraft_moisture_light(
         dummy_field_no_read = 0.0 + BOUNDARY_CONDITION_METHOD
 
     with computation(PARALLEL), interval(...):
-        precipitable_water_updraft_forced[0, 0, 0][plume] = 0.0
+        condensate_to_fall_forced[0, 0, 0][plume] = 0.0
         cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0
         cloud_liquid_before_rain_forced = 0.0
         miscellaneous_temperature = t_cloud_levels
-        cloud_vapor_mixing_ratio_forced = vapor_cloud_levels_forced
+        cloud_total_water_after_entrainment_forced = vapor_cloud_levels_forced
 
     # with computation(FORWARD), interval(0, 1):
     #     if error_code[0, 0][plume] == 0:
@@ -237,7 +237,7 @@ def get_melting_profile(
     melting_layer: FloatField,
     partition_liquid_ice: FloatField,
     p_cloud_levels_forced: FloatField_Plume,
-    precipitable_water_updraft_forced: FloatField_Plume,
+    condensate_to_fall_forced: FloatField_Plume,
     melting: FloatField,
 ):
     from __externals__ import k_end, MELT_GLAC
@@ -255,8 +255,8 @@ def get_melting_profile(
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
             effective_precipitable_water = 0.5 * (
-                precipitable_water_updraft_forced[0, 0, 0][plume]
-                + precipitable_water_updraft_forced[0, 0, 1][plume]
+                condensate_to_fall_forced[0, 0, 0][plume]
+                + condensate_to_fall_forced[0, 0, 1][plume]
             )
 
             solid_phase_precipitable_water = (1.0 - partition_liquid_ice) * effective_precipitable_water
@@ -350,9 +350,9 @@ class C1DProfile:
                 start_level=locals.start_level,
                 error_code=state.output.error_code,
                 geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
                 cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
-                precipitable_water_updraft_forced=state.output.precipitable_water_updraft_forced,
+                condensate_to_fall_forced=state.output.condensate_to_fall_forced,
                 total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
                 cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                 miscellaneous_temperature=locals.miscellaneous_temperature,
@@ -391,7 +391,7 @@ class C1DProfile:
                 geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                 t_cloud_levels_forced=locals.t_cloud_levels_forced,
                 miscellaneous_temperature=locals.miscellaneous_temperature,
-                cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
                 cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
                 vapor_forced=locals.vapor_forced,
                 updraft_lfc_level=state.output.updraft_lfc_level,

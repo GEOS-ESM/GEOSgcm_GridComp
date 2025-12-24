@@ -307,9 +307,9 @@ def updraft_moisture(
     start_level: IntFieldIJ,
     error_code: IntFieldIJ_Plume,
     geopotential_height_cloud_levels_forced: FloatField,
-    cloud_vapor_mixing_ratio_forced: FloatField,
+    cloud_total_water_after_entrainment_forced: FloatField,
     cloud_liquid_after_rain_forced: FloatField_Plume,
-    precipitable_water_updraft_forced: FloatField_Plume,
+    condensate_to_fall_forced: FloatField_Plume,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
     cloud_moist_static_energy_forced: FloatField,
     miscellaneous_temperature: FloatField,
@@ -323,7 +323,7 @@ def updraft_moisture(
     t_cloud_levels: FloatField,
     vapor_forced: FloatField,
     gamma_cloud_levels_forced: FloatField,
-    normalized_massflux_updraft_forced: FloatField,
+    normalized_massflux_updraft_forced: FloatField_Plume,
     environment_saturation_mixing_ratio_cloud_levels_forced: FloatField,
     updraft_origin_level: IntFieldIJ_Plume,
     vapor_cloud_levels_forced: FloatField,
@@ -370,11 +370,11 @@ def updraft_moisture(
         psumh = 0.0
 
     with computation(PARALLEL), interval(...):
-        precipitable_water_updraft_forced[0, 0, 0][plume] = 0.0
+        condensate_to_fall_forced[0, 0, 0][plume] = 0.0
         miscellaneous_temperature = t_cloud_levels
         cloud_liquid_before_rain_forced = 0.0
         cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0  # liq/ice water
-        cloud_vapor_mixing_ratio_forced = 0.0  # total water: liq/ice = vapor water
+        cloud_total_water_after_entrainment_forced = 0.0  # total water: liq/ice = vapor water
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
@@ -393,7 +393,7 @@ def updraft_moisture(
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= start_level:
-            cloud_vapor_mixing_ratio_forced = (
+            cloud_total_water_after_entrainment_forced = (
                 vapor_source + vapor_excess + 0.5 * add_buoyancy / cumulus_parameterization_constants.XLV
             )
             cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0
@@ -426,35 +426,39 @@ def updraft_moisture(
                 #    1. steady state plume equation, for what could
                 #       be in cloud without condensation
                 denom = (
-                    normalized_massflux_updraft_forced[0, 0, -1]
+                    normalized_massflux_updraft_forced[0, 0, -1][plume]
                     - 0.5 * mass_detrainment_updraft[0, 0, -1]
                     + mass_entrainment_updraft[0, 0, -1]
                 )
 
                 if denom > 0.0:
-                    cloud_vapor_mixing_ratio_forced = (
-                        cloud_vapor_mixing_ratio_forced[0, 0, -1]
-                        * normalized_massflux_updraft_forced[0, 0, -1]
-                        - 0.5 * mass_detrainment_updraft[0, 0, -1] * cloud_vapor_mixing_ratio_forced[0, 0, -1]
+                    cloud_total_water_after_entrainment_forced = (
+                        cloud_total_water_after_entrainment_forced[0, 0, -1]
+                        * normalized_massflux_updraft_forced[0, 0, -1][plume]
+                        - 0.5
+                        * mass_detrainment_updraft[0, 0, -1]
+                        * cloud_total_water_after_entrainment_forced[0, 0, -1]
                         + mass_entrainment_updraft[0, 0, -1] * vapor_forced[0, 0, -1]
                     ) / denom
 
                     if K == start_level + 1:
-                        cloud_vapor_mixing_ratio_forced = (
-                            cloud_vapor_mixing_ratio_forced
+                        cloud_total_water_after_entrainment_forced = (
+                            cloud_total_water_after_entrainment_forced
                             + vapor_excess * mass_entrainment_updraft[0, 0, -1] / denom
                         )
                     # assuming no liq/ice water in the environment
                     cloud_liquid_after_rain_forced[0, 0, 0][plume] = (
                         cloud_liquid_after_rain_forced[0, 0, -1][plume]
-                        * normalized_massflux_updraft_forced[0, 0, -1]
+                        * normalized_massflux_updraft_forced[0, 0, -1][plume]
                         - 0.5
                         * mass_detrainment_updraft[0, 0, -1]
                         * cloud_liquid_after_rain_forced[0, 0, -1][plume]
                     ) / denom
 
                 else:
-                    cloud_vapor_mixing_ratio_forced = cloud_vapor_mixing_ratio_forced[0, 0, -1]
+                    cloud_total_water_after_entrainment_forced = cloud_total_water_after_entrainment_forced[
+                        0, 0, -1
+                    ]
                     cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[0, 0, -1][
                         plume
                     ]
@@ -467,7 +471,7 @@ def updraft_moisture(
                 )
 
                 # total condensed water before rainout
-                cloud_liquid_before_rain_forced = max(0.0, cloud_vapor_mixing_ratio_forced - qrch)
+                cloud_liquid_before_rain_forced = max(0.0, cloud_total_water_after_entrainment_forced - qrch)
 
                 cloud_liquid_after_rain_forced[0, 0, 0][plume] = min(
                     cloud_liquid_before_rain_forced, cloud_liquid_after_rain_forced[0, 0, 0][plume]
@@ -477,7 +481,7 @@ def updraft_moisture(
                 cup = (
                     max(
                         0.0,
-                        cloud_vapor_mixing_ratio_forced
+                        cloud_total_water_after_entrainment_forced
                         - qrch
                         - cloud_liquid_after_rain_forced[0, 0, 0][plume],
                     )
@@ -486,11 +490,16 @@ def updraft_moisture(
 
                 if C0 < 1.0e-6:
                     cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                    cloud_vapor_mixing_ratio_forced = cloud_liquid_after_rain_forced[0, 0, 0][plume] + min(
-                        cloud_vapor_mixing_ratio_forced, qrch
-                    )
+                    cloud_total_water_after_entrainment_forced = cloud_liquid_after_rain_forced[0, 0, 0][
+                        plume
+                    ] + min(cloud_total_water_after_entrainment_forced, qrch)
                     total_normalized_integrated_condensate_forced[0, 0][plume] = 0.0
-                    psum = psum + cloud_liquid_before_rain_forced * normalized_massflux_updraft_forced * dz
+                    psum = (
+                        psum
+                        + cloud_liquid_before_rain_forced
+                        * normalized_massflux_updraft_forced[0, 0, 0][plume]
+                        * dz
+                    )
 
                     stop_current_index = True
 
@@ -504,13 +513,13 @@ def updraft_moisture(
                         cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced / (
                             1.0 + cx0
                         )
-                        precipitable_water_updraft_forced[0, 0, 0][plume] = cx0 * max(
+                        condensate_to_fall_forced[0, 0, 0][plume] = cx0 * max(
                             0.0, cloud_liquid_after_rain_forced[0, 0, 0][plume] - min_liq
                         )  # units kg[rain]/kg[air]
                         # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                        precipitable_water_updraft_forced[0, 0, 0][plume] = (
-                            precipitable_water_updraft_forced[0, 0, 0][plume]
-                            * normalized_massflux_updraft_forced
+                        condensate_to_fall_forced[0, 0, 0][plume] = (
+                            condensate_to_fall_forced[0, 0, 0][plume]
+                            * normalized_massflux_updraft_forced[0, 0, 0][plume]
                         )
 
                     elif AUTOCONV == 2:
@@ -529,13 +538,13 @@ def updraft_moisture(
                         cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced / (
                             1.0 + cx0
                         )
-                        precipitable_water_updraft_forced[0, 0, 0][plume] = cx0 * max(
+                        condensate_to_fall_forced[0, 0, 0][plume] = cx0 * max(
                             0.0, cloud_liquid_after_rain_forced[0, 0, 0][plume] - min_liq
                         )  # units kg[rain]/kg[air]
                         # --- convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                        precipitable_water_updraft_forced[0, 0, 0][plume] = (
-                            precipitable_water_updraft_forced[0, 0, 0][plume]
-                            * normalized_massflux_updraft_forced
+                        condensate_to_fall_forced[0, 0, 0][plume] = (
+                            condensate_to_fall_forced[0, 0, 0][plume]
+                            * normalized_massflux_updraft_forced[0, 0, 0][plume]
                         )
 
                     elif AUTOCONV == 3:
@@ -545,7 +554,7 @@ def updraft_moisture(
                         )
                         if cloud_liquid_before_rain_forced <= min_liq:
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = 0.0
+                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
                         else:
                             cx0 = C0 * liquid_fraction(
                                 miscellaneous_temperature, convection_fraction, surface_type, FRAC_MODIS
@@ -558,14 +567,14 @@ def updraft_moisture(
                                 cloud_liquid_before_rain_forced,
                                 cloud_liquid_after_rain_forced[0, 0, 0][plume],
                             )
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = (
+                            condensate_to_fall_forced[0, 0, 0][plume] = (
                                 cloud_liquid_before_rain_forced
                                 - cloud_liquid_after_rain_forced[0, 0, 0][plume]
                             )
                             # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = (
-                                precipitable_water_updraft_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced
+                            condensate_to_fall_forced[0, 0, 0][plume] = (
+                                condensate_to_fall_forced[0, 0, 0][plume]
+                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
                             )
 
                     elif AUTOCONV == 4:
@@ -575,7 +584,7 @@ def updraft_moisture(
                         )
                         if cloud_liquid_before_rain_forced <= min_liq:
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = 0.0
+                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
                         else:
                             tem1 = liquid_fraction(
                                 miscellaneous_temperature, convection_fraction, surface_type, FRAC_MODIS
@@ -600,15 +609,15 @@ def updraft_moisture(
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
                                 0, 0, 0
                             ][plume] * exp(-cx0 * dz) + (cup / cx0) * (1.0 - exp(-cx0 * dz))
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = max(
+                            condensate_to_fall_forced[0, 0, 0][plume] = max(
                                 cloud_liquid_before_rain_forced
                                 - cloud_liquid_after_rain_forced[0, 0, 0][plume],
                                 0.0,
                             )
                             # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = (
-                                precipitable_water_updraft_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced
+                            condensate_to_fall_forced[0, 0, 0][plume] = (
+                                condensate_to_fall_forced[0, 0, 0][plume]
+                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
                             )
 
                     elif AUTOCONV == 5:
@@ -618,7 +627,7 @@ def updraft_moisture(
                         )
                         if cloud_liquid_before_rain_forced <= min_liq:
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = 0.0
+                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
                         else:
                             cx0 = (c1d + C0) * (
                                 1.0
@@ -630,19 +639,18 @@ def updraft_moisture(
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
                                 0, 0, 0
                             ][plume] * exp(-cx0 * dz) + (cup / cx0) * (1.0 - exp(-cx0 * dz))
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = max(
+                            condensate_to_fall_forced[0, 0, 0][plume] = max(
                                 0.0,
                                 cloud_liquid_before_rain_forced
                                 - cloud_liquid_after_rain_forced[0, 0, 0][plume],
                             )  # units kg[rain]/kg[air]
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = (
-                                cloud_liquid_before_rain_forced
-                                - precipitable_water_updraft_forced[0, 0, 0][plume]
+                                cloud_liquid_before_rain_forced - condensate_to_fall_forced[0, 0, 0][plume]
                             )
                             # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = (
-                                precipitable_water_updraft_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced
+                            condensate_to_fall_forced[0, 0, 0][plume] = (
+                                condensate_to_fall_forced[0, 0, 0][plume]
+                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
                             )
 
                     elif AUTOCONV == 6:
@@ -652,20 +660,20 @@ def updraft_moisture(
                         )
                         if cloud_liquid_before_rain_forced <= min_liq:
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = 0.0
+                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
                         else:
                             cx0 = (c1d + C0) * dz
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = (
                                 cloud_liquid_before_rain_forced
                             ) * exp(-cx0)
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = (
+                            condensate_to_fall_forced[0, 0, 0][plume] = (
                                 cloud_liquid_before_rain_forced
                                 - cloud_liquid_after_rain_forced[0, 0, 0][plume]
                             )
                             # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = (
-                                precipitable_water_updraft_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced
+                            condensate_to_fall_forced[0, 0, 0][plume] = (
+                                condensate_to_fall_forced[0, 0, 0][plume]
+                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
                             )
 
                     elif AUTOCONV == 7:
@@ -675,25 +683,24 @@ def updraft_moisture(
                         )
                         if cloud_liquid_before_rain_forced <= min_liq:
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = 0.0
+                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
                         else:
                             cx0 = c1d + C0
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
                                 0, 0, 0
                             ][plume] * exp(-cx0 * dz) + (cup / cx0) * (1.0 - exp(-cx0 * dz))
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = max(
+                            condensate_to_fall_forced[0, 0, 0][plume] = max(
                                 cloud_liquid_before_rain_forced
                                 - cloud_liquid_after_rain_forced[0, 0, 0][plume],
                                 0.0,
                             )
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = (
-                                cloud_liquid_before_rain_forced
-                                - precipitable_water_updraft_forced[0, 0, 0][plume]
+                                cloud_liquid_before_rain_forced - condensate_to_fall_forced[0, 0, 0][plume]
                             )
                             # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            precipitable_water_updraft_forced[0, 0, 0][plume] = (
-                                precipitable_water_updraft_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced
+                            condensate_to_fall_forced[0, 0, 0][plume] = (
+                                condensate_to_fall_forced[0, 0, 0][plume]
+                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
                             )
 
             if ZERO_DIFF == 0 and total_normalized_integrated_condensate_forced[0, 0][plume] < 0.0:
@@ -702,8 +709,8 @@ def updraft_moisture(
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume] + 1:
             # get back cloud_vapor_mixing_ratio_forced
-            cloud_vapor_mixing_ratio_forced = (
-                cloud_vapor_mixing_ratio_forced - cloud_liquid_after_rain_forced[0, 0, 0][plume]
+            cloud_total_water_after_entrainment_forced = (
+                cloud_total_water_after_entrainment_forced - cloud_liquid_after_rain_forced[0, 0, 0][plume]
             )
 
 
@@ -847,7 +854,7 @@ def updraft_temperature(
     updraft_t: FloatField,
     cloud_moist_static_energy_forced: FloatField,
     geopotential_height_cloud_levels_forced: FloatField,
-    cloud_vapor_mixing_ratio_forced: FloatField,
+    cloud_total_water_after_entrainment_forced: FloatField,
     t_cloud_levels_forced: FloatField,
     plume: Int,
 ):
@@ -856,7 +863,7 @@ def updraft_temperature(
             updraft_t = (1.0 / cumulus_parameterization_constants.CP) * (
                 cloud_moist_static_energy_forced
                 - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
-                - cumulus_parameterization_constants.XLV * cloud_vapor_mixing_ratio_forced
+                - cumulus_parameterization_constants.XLV * cloud_total_water_after_entrainment_forced
             )
 
     with computation(PARALLEL), interval(-1, None):

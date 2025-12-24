@@ -349,9 +349,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    qrcdo: Quantity = dataclasses.field(
+    downdraft_saturation_vapor_forced: Quantity = dataclasses.field(
         metadata={
-            "name": "qrcdo",
+            "name": "downdraft_saturation_vapor_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -829,7 +829,7 @@ class GF2020CumulusParameterizationLocals(State):
     buoyancy: Quantity = dataclasses.field(
         metadata={
             "name": "buoyancy",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -871,9 +871,18 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    cloud_vapor_mixing_ratio_forced: Quantity = dataclasses.field(
+    cloud_total_water_after_entrainment_forced: Quantity = dataclasses.field(
         metadata={
-            "name": "cloud_vapor_mixing_ratio_forced",
+            "name": "cloud_total_water_after_entrainment_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    cloud_total_water_after_entrainment_downdraft_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_total_water_after_entrainment_downdraft_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -1009,15 +1018,6 @@ class GF2020CumulusParameterizationLocals(State):
             "units": "?",
             "intent": "?",
             "dtype": Int,
-        }
-    )
-    cloud_vapor_mixing_ratio_forced: Quantity = dataclasses.field(
-        metadata={
-            "name": "incloud_water_vapor_mixing_ratio_forced",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
         }
     )
     T_star: Quantity = dataclasses.field(

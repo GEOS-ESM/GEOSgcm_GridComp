@@ -206,6 +206,11 @@ from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cum
     TranslateGF2020_CumulusParameterization_DowndraftMSEAndBuoyancy_mid,
     TranslateGF2020_CumulusParameterization_DowndraftMSEAndBuoyancy_shallow,
 )
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cumulus_Parameterization_DowndraftMoisture import (
+    TranslateGF2020_CumulusParameterization_DowndraftMoisture_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftMoisture_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftMoisture_shallow,
+)
 
 # NOTE need to organize everything below here
 from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftCIN import (

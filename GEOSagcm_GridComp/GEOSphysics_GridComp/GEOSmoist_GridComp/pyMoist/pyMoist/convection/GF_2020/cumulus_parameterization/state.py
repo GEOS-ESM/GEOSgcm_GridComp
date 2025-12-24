@@ -357,7 +357,16 @@ class GF2020CumulusParameterizationState(State):
         )
         total_normalized_integrated_condensate_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "total_normalized_integrated_condensate",
+                "name": "total_normalized_integrated_condensate_forced",
+                "dims": [X_DIM, Y_DIM, "plumes"],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        total_normalized_integrated_evaporate_forced: Quantity = dataclasses.field(
+            metadata={
+                "name": "total_normalized_integrated_evaporate_forced",
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
@@ -445,18 +454,18 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        precipitable_water_updraft_forced: Quantity = dataclasses.field(
+        condensate_to_fall_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "precipitable_water_updraft_forced",
+                "name": "condensate_to_fall_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        precipitable_water_downdraft_forced: Quantity = dataclasses.field(
+        evaporate_in_downdraft_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "precipitable_water_downdraft_forced",
+                "name": "evaporate_in_downdraft_forced",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",

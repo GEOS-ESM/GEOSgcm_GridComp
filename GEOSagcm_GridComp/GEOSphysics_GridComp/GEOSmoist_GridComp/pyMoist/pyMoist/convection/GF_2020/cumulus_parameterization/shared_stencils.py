@@ -56,7 +56,7 @@ def updraft_vertical_velocity(
     geopotential_height_cloud_levels_forced: FloatField,
     t_cloud_levels_forced: FloatField,
     miscellaneous_temperature: FloatField,
-    cloud_vapor_mixing_ratio_forced: FloatField,
+    cloud_total_water_after_entrainment_forced: FloatField,
     cloud_liquid_after_rain_forced: FloatField_Plume,
     vapor_forced: FloatField,
     updraft_lfc_level: IntFieldIJ_Plume,
@@ -115,13 +115,13 @@ def updraft_vertical_velocity(
                     miscellaneous_temperature
                     * (
                         1.0
-                        + (cloud_vapor_mixing_ratio_forced / eps) / (1.0 + cloud_vapor_mixing_ratio_forced)
+                        + (cloud_total_water_after_entrainment_forced / eps) / (1.0 + cloud_total_water_after_entrainment_forced)
                     )
                     + miscellaneous_temperature[0, 0, 1]
                     * (
                         1.0
-                        + (cloud_vapor_mixing_ratio_forced[0, 0, 1] / eps)
-                        / (1.0 + cloud_vapor_mixing_ratio_forced[0, 0, 1])
+                        + (cloud_total_water_after_entrainment_forced[0, 0, 1] / eps)
+                        / (1.0 + cloud_total_water_after_entrainment_forced[0, 0, 1])
                     )
                 )
 

@@ -135,6 +135,12 @@ def check_config(
             "untested ZERO_DIFF option. Running untested code... proceed with caution"
         )
 
+    if cumulus_parameterization_config.USE_WETBULB != 0:
+        ndsl_log.warning(
+            " GF2020 cumulus parameterization: downdraft_moisture constructed with "
+            "untested USE_WETBULB option. Running untested code... proceed with caution"
+        )
+
     # generate errors after all warnings
     # TODO find a way to generate all then fail at once, printing all simultaneously
     if (

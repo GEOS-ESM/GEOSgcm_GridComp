@@ -51,7 +51,7 @@ class TestCore:
             "local_geopotential_height_cloud_levels_forced_upvvel": {},
             "local_t_cloud_levels_forced_upvvel": {},
             "local_miscellaneous_temperature_upvvel": {},
-            "local_cloud_vapor_mixing_ratio_forced_upvvel": {},
+            "local_cloud_total_water_after_entrainment_forced_upvvel": {},
             "cloud_liquid_after_rain_forced_upvvel": {},
             "local_vapor_forced_upvvel": {},
             "lcl_level_upvvel": {},
@@ -100,9 +100,7 @@ class TestCore:
         ]
         locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_upvvel"]
         locals.miscellaneous_temperature.data[:] = inputs["local_miscellaneous_temperature_upvvel"]
-        locals.cloud_vapor_mixing_ratio_forced.data[:] = inputs[
-            "local_cloud_vapor_mixing_ratio_forced_upvvel"
-        ]
+        locals.cloud_total_water_after_entrainment_forced.data[:] = inputs["local_cloud_total_water_after_entrainment_forced_upvvel"]
         state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_liquid_after_rain_forced_upvvel"]
         )
@@ -133,7 +131,7 @@ class TestCore:
                     geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                     t_cloud_levels_forced=locals.t_cloud_levels_forced,
                     miscellaneous_temperature=locals.miscellaneous_temperature,
-                    cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                    cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
                     cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
                     vapor_forced=locals.vapor_forced,
                     updraft_lfc_level=state.output.updraft_lfc_level,
@@ -157,7 +155,7 @@ class TestCore:
             ],
             "local_t_cloud_levels_forced_upvvel": locals.t_cloud_levels_forced.field[:],
             "local_miscellaneous_temperature_upvvel": locals.miscellaneous_temperature.field[:],
-            "local_cloud_vapor_mixing_ratio_forced_upvvel": locals.cloud_vapor_mixing_ratio_forced.field[:],
+            "local_cloud_total_water_after_entrainment_forced_upvvel": locals.cloud_total_water_after_entrainment_forced.field[:],
             "cloud_liquid_after_rain_forced_upvvel": state.output.cloud_liquid_after_rain_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],

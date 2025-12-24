@@ -75,3 +75,4 @@ class GF2020CumulusParameterizationConfig:
     CRITICAL_MIXING_RATIO_OVER_OCEAN: Float
     CRITICAL_MIXING_RATIO_OVER_LAND: Float
     BETA_SHALLOW: Float
+    EVAP_FIX: Int

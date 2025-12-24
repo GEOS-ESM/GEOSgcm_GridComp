@@ -48,7 +48,7 @@ class TestCore:
             "local_melting_layer_getmeltpro": {},
             "local_partition_liquid_ice_getmeltpro": {},
             "p_cloud_levels_forced_getmeltpro": {},
-            "precipitable_water_updraft_forced": {},
+            "condensate_to_fall_forced_getmeltpro": {},
             "local_melting_getmeltpro": {},
         }
 
@@ -87,9 +87,9 @@ class TestCore:
             "p_cloud_levels_forced_getmeltpro"
         ]
 
-        state.output.precipitable_water_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["precipitable_water_updraft_forced"]
+        state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "condensate_to_fall_forced_getmeltpro"
+        ]
 
         locals.melting_layer.data[:] = inputs["local_melting_layer_getmeltpro"]
 
@@ -114,7 +114,7 @@ class TestCore:
                 melting_layer=locals.melting_layer,
                 partition_liquid_ice=locals.partition_liquid_ice,
                 p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-                precipitable_water_updraft_forced=state.output.precipitable_water_updraft_forced,
+                condensate_to_fall_forced=state.output.condensate_to_fall_forced,
                 melting=locals.melting,
             )
 
@@ -126,7 +126,7 @@ class TestCore:
             "p_cloud_levels_forced": state.output.p_cloud_levels_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "precipitable_water_updraft_forced": state.output.precipitable_water_updraft_forced.field[
+            "condensate_to_fall_forced_getmeltpro": state.output.condensate_to_fall_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "local_melting_layer_getmeltpro": locals.melting_layer.field[:],

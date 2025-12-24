@@ -45,9 +45,9 @@ class TestCore:
             "local_start_level_upmoisture": {},
             "error_code_upmoisture": {},
             "local_geopotential_height_cloud_levels_forced_upmoisture": {},
-            "local_cloud_vapor_mixing_ratio_forced_upmoisture": {},
+            "local_cloud_total_water_after_entrainment_forced_upmoisture": {},
             "cloud_liquid_after_rain_forced_upmoisture": {},
-            "precipitable_water_updraft_forced_upmoisture": {},
+            "condensate_to_fall_forced_upmoisture": {},
             "total_normalized_integrated_condensate_forced_upmoisture": {},
             "local_cloud_moist_static_energy_forced_upmoisture": {},
             "local_miscellaneous_temperature_upmoisture": {},
@@ -110,15 +110,15 @@ class TestCore:
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
             "local_geopotential_height_cloud_levels_forced_upmoisture"
         ]
-        locals.cloud_vapor_mixing_ratio_forced.data[:] = inputs[
-            "local_cloud_vapor_mixing_ratio_forced_upmoisture"
+        locals.cloud_total_water_after_entrainment_forced.data[:] = inputs[
+            "local_cloud_total_water_after_entrainment_forced_upmoisture"
         ]
         state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_liquid_after_rain_forced_upmoisture"]
         )
-        state.output.precipitable_water_updraft_forced.data[
+        state.output.condensate_to_fall_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["precipitable_water_updraft_forced_upmoisture"]
+        ] = inputs["condensate_to_fall_forced_upmoisture"]
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["total_normalized_integrated_condensate_forced_upmoisture"]
@@ -182,9 +182,9 @@ class TestCore:
                     start_level=locals.start_level,
                     error_code=state.output.error_code,
                     geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                    cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
                     cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
-                    precipitable_water_updraft_forced=state.output.precipitable_water_updraft_forced,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
                     total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
                     cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                     miscellaneous_temperature=locals.miscellaneous_temperature,
@@ -198,7 +198,7 @@ class TestCore:
                     t_cloud_levels=locals.t_cloud_levels,
                     vapor_forced=locals.vapor_forced,
                     gamma_cloud_levels_forced=locals.gamma_cloud_levels_forced,
-                    normalized_massflux_updraft_forced=locals.normalized_massflux_updraft_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
                     environment_saturation_mixing_ratio_cloud_levels_forced=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
                     updraft_origin_level=state.output.updraft_origin_level,
                     vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
@@ -225,13 +225,13 @@ class TestCore:
             "local_geopotential_height_cloud_levels_forced_upmoisture": locals.geopotential_height_cloud_levels_forced.data[
                 :
             ],
-            "local_cloud_vapor_mixing_ratio_forced_upmoisture": locals.cloud_vapor_mixing_ratio_forced.data[
+            "local_cloud_total_water_after_entrainment_forced_upmoisture": locals.cloud_total_water_after_entrainment_forced.data[
                 :
             ],
             "cloud_liquid_after_rain_forced_upmoisture": state.output.cloud_liquid_after_rain_forced.data[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "precipitable_water_updraft_forced_upmoisture": state.output.precipitable_water_updraft_forced.data[
+            "condensate_to_fall_forced_upmoisture": state.output.condensate_to_fall_forced.data[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "total_normalized_integrated_condensate_forced_upmoisture": state.output.total_normalized_integrated_condensate_forced.data[
