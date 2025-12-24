@@ -56,7 +56,7 @@ class TestCore:
             "surface_type_upmoisture": {},
             "p_forced_upmoisture": {},
             "cloud_top_level_upmoisture": {},
-            "local_buoyancy_forced_upmoisture": {},
+            "local_d_buoyancy_forced_upmoisture": {},
             "local_cloud_liquid_before_rain_forced_upmoisture": {},
             "local_t_cloud_levels_upmoisture": {},
             "local_vapor_forced_upmoisture": {},
@@ -133,7 +133,7 @@ class TestCore:
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "cloud_top_level_upmoisture"
         ]
-        locals.buoyancy_forced.data[:] = inputs["local_buoyancy_forced_upmoisture"]
+        locals.d_buoyancy_forced.data[:] = inputs["local_d_buoyancy_forced_upmoisture"]
         locals.cloud_liquid_before_rain_forced.data[:] = inputs[
             "local_cloud_liquid_before_rain_forced_upmoisture"
         ]
@@ -193,7 +193,7 @@ class TestCore:
                     surface_type=state.input.surface_type,
                     p_forced=state.input_output.p_forced,
                     cloud_top_level=state.output.cloud_top_level,
-                    buoyancy_forced=locals.buoyancy_forced,
+                    d_buoyancy_forced=locals.d_buoyancy_forced,
                     cloud_liquid_before_rain_forced=locals.cloud_liquid_before_rain_forced,
                     t_cloud_levels=locals.t_cloud_levels,
                     vapor_forced=locals.vapor_forced,
@@ -248,7 +248,7 @@ class TestCore:
             "cloud_top_level_upmoisture": state.output.cloud_top_level.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_buoyancy_forced_upmoisture": locals.buoyancy_forced.data[:],
+            "local_d_buoyancy_forced_upmoisture": locals.d_buoyancy_forced.data[:],
             "local_cloud_liquid_before_rain_forced_upmoisture": locals.cloud_liquid_before_rain_forced.data[
                 :
             ],

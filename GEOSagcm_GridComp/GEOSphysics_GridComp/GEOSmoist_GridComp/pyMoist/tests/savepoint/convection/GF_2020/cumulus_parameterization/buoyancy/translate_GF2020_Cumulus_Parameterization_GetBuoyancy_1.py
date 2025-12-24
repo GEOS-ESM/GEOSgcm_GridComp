@@ -49,7 +49,7 @@ class TestCore:
             "local_cloud_moist_static_energy_forced_getbuoyancy": {},
             "local_env_moist_static_energy_cloud_levels_forced_getbuoyancy": {},
             "local_env_saturation_moist_static_energy_cloud_levels_forced_getbuoyancy": {},
-            "local_buoyancy_forced_getbuoyancy": {},
+            "local_d_buoyancy_forced_getbuoyancy": {},
             "local_geopotential_height_cloud_levels_forced_getbuoyancy": {},
         }
 
@@ -101,7 +101,7 @@ class TestCore:
         locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_saturation_moist_static_energy_cloud_levels_forced_getbuoyancy"
         ]
-        locals.buoyancy.data[:] = inputs["local_buoyancy_forced_getbuoyancy"]
+        locals.buoyancy.data[:] = inputs["local_d_buoyancy_forced_getbuoyancy"]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
             "local_geopotential_height_cloud_levels_forced_getbuoyancy"
         ]
@@ -150,7 +150,7 @@ class TestCore:
             "local_env_saturation_moist_static_energy_cloud_levels_forced_getbuoyancy": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
                 :
             ],
-            "local_buoyancy_forced_getbuoyancy": locals.buoyancy.field[:],
+            "local_d_buoyancy_forced_getbuoyancy": locals.buoyancy.field[:],
             "local_geopotential_height_cloud_levels_forced_getbuoyancy": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],

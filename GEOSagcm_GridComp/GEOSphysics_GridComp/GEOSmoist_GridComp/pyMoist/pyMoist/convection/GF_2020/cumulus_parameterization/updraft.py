@@ -318,7 +318,7 @@ def updraft_moisture(
     surface_type: FloatFieldIJ,
     p_forced: FloatField,
     cloud_top_level: IntFieldIJ_Plume,
-    buoyancy_forced: FloatField,
+    d_buoyancy_forced: FloatField,
     cloud_liquid_before_rain_forced: FloatField,
     t_cloud_levels: FloatField,
     vapor_forced: FloatField,
@@ -420,7 +420,7 @@ def updraft_moisture(
                     environment_saturation_mixing_ratio_cloud_levels_forced
                     + (1.0 / cumulus_parameterization_constants.XLV)
                     * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced))
-                    * buoyancy_forced
+                    * d_buoyancy_forced
                 )
 
                 #    1. steady state plume equation, for what could
@@ -1053,7 +1053,7 @@ class UpdraftInitialWorkfunctions:
         )
 
         self._cup_up_aa0(
-            local_buoyancy=locals.buoyancy_forced,
+            local_buoyancy=locals.d_buoyancy_forced,
             local_gamma_cloud_levels=locals.gamma_cloud_levels_forced,
             cloud_top_level=state.output.cloud_top_level,
             updraft_lfc_level=state.output.updraft_lfc_level,
@@ -1116,7 +1116,7 @@ class UpdraftCIN:
         )
 
         self._cup_up_aa0(
-            local_buoyancy=locals.buoyancy_forced,
+            local_buoyancy=locals.d_buoyancy_forced,
             local_gamma_cloud_levels=locals.gamma_cloud_levels_forced,
             cloud_top_level=state.output.cloud_top_level,
             updraft_lfc_level=state.output.updraft_lfc_level,

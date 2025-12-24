@@ -52,7 +52,7 @@ class TestCore:
             "updraft_lfc_level_c1dprofile": {},
             "cloud_top_level_c1dprofile": {},
             "local_detrainment_function_updraft_c1dprofile": {},
-            "local_buoyancy_forced_c1dprofile": {},
+            "local_d_buoyancy_forced_c1dprofile": {},
             "local_cloud_liquid_before_rain_forced_c1dprofile": {},
             "local_t_cloud_levels_c1dprofile": {},
             "local_vapor_forced_c1dprofile": {},
@@ -142,7 +142,7 @@ class TestCore:
             "cloud_top_level_c1dprofile"
         ]
         locals.detrainment_function_updraft.data[:] = inputs["local_detrainment_function_updraft_c1dprofile"]
-        locals.buoyancy_forced.data[:] = inputs["local_buoyancy_forced_c1dprofile"]
+        locals.d_buoyancy_forced.data[:] = inputs["local_d_buoyancy_forced_c1dprofile"]
         locals.cloud_liquid_before_rain_forced.data[:] = inputs[
             "local_cloud_liquid_before_rain_forced_c1dprofile"
         ]
@@ -232,7 +232,7 @@ class TestCore:
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "local_detrainment_function_updraft_c1dprofile": locals.detrainment_function_updraft.field[:],
-            "local_buoyancy_forced_c1dprofile": locals.buoyancy_forced.field[:],
+            "local_d_buoyancy_forced_c1dprofile": locals.d_buoyancy_forced.field[:],
             "local_cloud_liquid_before_rain_forced_c1dprofile": locals.cloud_liquid_before_rain_forced.field[
                 :
             ],

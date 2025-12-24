@@ -47,7 +47,7 @@ def c1d_updraft_moisture_light(
     surface_type: FloatFieldIJ,
     p_forced: FloatField,
     cloud_top_level: IntFieldIJ_Plume,
-    buoyancy_forced: FloatField,
+    d_buoyancy_forced: FloatField,
     cloud_liquid_before_rain_forced: FloatField,
     t_cloud_levels: FloatField,
     vapor_forced: FloatField,
@@ -126,7 +126,7 @@ def c1d_updraft_moisture_light(
     #                 environment_saturation_mixing_ratio_cloud_levels_forced
     #                 + (1 / cumulus_parameterization_constants.XLV)
     #                 * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced))
-    #                 * buoyancy_forced
+    #                 * d_buoyancy_forced
     #             )
 
     #             # 1. steady state plume equation, for what could be in cloud without condensation
@@ -361,7 +361,7 @@ class C1DProfile:
                 surface_type=state.input.surface_type,
                 p_forced=state.input_output.p_forced,
                 cloud_top_level=state.output.cloud_top_level,
-                buoyancy_forced=locals.buoyancy_forced,
+                d_buoyancy_forced=locals.d_buoyancy_forced,
                 cloud_liquid_before_rain_forced=locals.cloud_liquid_before_rain_forced,
                 t_cloud_levels=locals.t_cloud_levels,
                 vapor_forced=locals.vapor_forced,

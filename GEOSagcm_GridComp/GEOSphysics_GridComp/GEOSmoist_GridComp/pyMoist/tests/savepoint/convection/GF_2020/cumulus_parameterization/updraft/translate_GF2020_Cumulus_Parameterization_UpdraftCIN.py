@@ -94,7 +94,7 @@ class TestCore:
             "error_code_updraftcin"
         ]
         locals.buoyancy.data[:] = inputs["local_buoyancy_updraftcin"]
-        locals.buoyancy_forced.data[:] = inputs["local_buoyancy_forced_updraftcin"]
+        locals.d_buoyancy_forced.data[:] = inputs["local_buoyancy_forced_updraftcin"]
         locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels_updraftcin"]
         locals.gamma_cloud_levels_forced.data[:] = inputs["local_gamma_cloud_levels_forced_updraftcin"]
         locals.geopotential_height_cloud_levels.data[:] = inputs[
@@ -145,7 +145,7 @@ class TestCore:
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "local_buoyancy_updraftcin": locals.buoyancy.field[:],
-            "local_buoyancy_forced_updraftcin": locals.buoyancy_forced.field[:],
+            "local_buoyancy_forced_updraftcin": locals.d_buoyancy_forced.field[:],
             "local_gamma_cloud_levels_updraftcin": locals.gamma_cloud_levels.field[:],
             "local_gamma_cloud_levels_forced_updraftcin": locals.gamma_cloud_levels_forced.field[:],
             "updraft_lfc_level_updraftcin": state.output.updraft_lfc_level.field[

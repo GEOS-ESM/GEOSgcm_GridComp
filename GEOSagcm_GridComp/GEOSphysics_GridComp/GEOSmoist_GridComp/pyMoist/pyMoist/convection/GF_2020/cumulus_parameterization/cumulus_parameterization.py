@@ -949,7 +949,7 @@ class CumulusParameterization:
                     surface_type=state.input.surface_type,
                     p_forced=state.input_output.p_forced,
                     cloud_top_level=state.output.cloud_top_level,
-                    buoyancy_forced=locals.buoyancy_forced,
+                    d_buoyancy_forced=locals.d_buoyancy_forced,
                     cloud_liquid_before_rain_forced=locals.cloud_liquid_before_rain_forced,
                     t_cloud_levels=locals.t_cloud_levels,
                     vapor_forced=locals.vapor_forced,
