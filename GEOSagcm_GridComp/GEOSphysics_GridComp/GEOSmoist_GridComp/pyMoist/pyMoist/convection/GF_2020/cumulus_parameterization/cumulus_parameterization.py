@@ -1290,11 +1290,11 @@ class CumulusParameterization:
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._convection_trigger(
-                error_code=state.output.error_code,
-                convective_scale_velosity=state.input_output.convective_scale_velocity,
-                cin_0=locals.cin_0,
-                plume=self.plume_dependent_constants.PLUME_INDEX,
-            )
+                    error_code=state.output.error_code,
+                    convective_scale_velosity=state.input_output.convective_scale_velocity,
+                    cin_0=locals.cin_0,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                )
 
                 # calculate in-cloud/updraft and downdraft air temperature for vertical velocity
                 # NOTE test GF2020_CumulusParameterization_InCloudTemperature_{plume}:
