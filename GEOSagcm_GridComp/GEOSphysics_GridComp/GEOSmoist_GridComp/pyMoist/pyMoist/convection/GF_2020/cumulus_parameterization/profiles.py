@@ -32,7 +32,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import
 )
 
 
-def c1d_updraft_moisture_light(
+def updraft_moisture_light(
     start_level: IntFieldIJ,
     error_code: IntFieldIJ_Plume,
     geopotential_height_cloud_levels_forced: FloatField,
@@ -41,7 +41,7 @@ def c1d_updraft_moisture_light(
     condensate_to_fall_forced: FloatField_Plume,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
     cloud_moist_static_energy_forced: FloatField,
-    miscellaneous_temperature: FloatField,
+    updraft_column_temperature_forced: FloatField,
     ocean_fraction: FloatFieldIJ,
     convection_fraction: FloatFieldIJ,
     surface_type: FloatFieldIJ,
@@ -89,7 +89,7 @@ def c1d_updraft_moisture_light(
         condensate_to_fall_forced[0, 0, 0][plume] = 0.0
         cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0
         cloud_liquid_before_rain_forced = 0.0
-        miscellaneous_temperature = t_cloud_levels
+        updraft_column_temperature_forced = t_cloud_levels
         cloud_total_water_after_entrainment_forced = vapor_cloud_levels_forced
 
     # with computation(FORWARD), interval(0, 1):
@@ -155,7 +155,7 @@ def c1d_updraft_moisture_light(
     #                 0.0, cloud_vapor_mixing_ratio_forced - saturation_cloud_liquid_rain_forced
     #             )
     #             # updraft temp
-    #             miscellaneous_temperature = (1.0 / cumulus_parameterization_constants.CP) * (
+    #             updraft_column_temperature_forced = (1.0 / cumulus_parameterization_constants.CP) * (
     #                 cloud_moist_static_energy_forced
     #                 - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
     #                 - cumulus_parameterization_constants.XLV * saturation_cloud_liquid_rain_forced
@@ -168,14 +168,14 @@ def c1d_updraft_moisture_light(
     #                     * (
     #                         1.0
     #                         - liquid_fraction(
-    #                             miscellaneous_temperature, convection_fraction, surface_type, FRAC_MODIS
+    #                             updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
     #                         )
     #                     )
     #                     * cumulus_parameterization_constants.XLF
     #                 )
 
-    #                 miscellaneous_temperature = (
-    #                     miscellaneous_temperature
+    #                 updraft_column_temperature_forced = (
+    #                     updraft_column_temperature_forced
     #                     + (1.0 / cumulus_parameterization_constants.CP) * delta_cloud_mse_glac
     #                 )
 
@@ -304,7 +304,7 @@ class C1DProfile:
 
         # construct stencils and functions
         self._updraft_moisture_light = stencil_factory.from_dims_halo(
-            func=c1d_updraft_moisture_light,
+            func=updraft_moisture_light,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
@@ -355,7 +355,7 @@ class C1DProfile:
                 condensate_to_fall_forced=state.output.condensate_to_fall_forced,
                 total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
                 cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
-                miscellaneous_temperature=locals.miscellaneous_temperature,
+                updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
                 ocean_fraction=locals.ocean_fraction,
                 convection_fraction=state.input.convection_fraction,
                 surface_type=state.input.surface_type,
@@ -390,7 +390,7 @@ class C1DProfile:
                 detrainment_function_updraft=locals.detrainment_function_updraft,
                 geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                 t_cloud_levels_forced=locals.t_cloud_levels_forced,
-                miscellaneous_temperature=locals.miscellaneous_temperature,
+                updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
                 cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
                 cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
                 vapor_forced=locals.vapor_forced,

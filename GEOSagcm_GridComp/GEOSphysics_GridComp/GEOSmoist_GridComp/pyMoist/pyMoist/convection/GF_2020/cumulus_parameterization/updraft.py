@@ -312,7 +312,7 @@ def updraft_moisture(
     condensate_to_fall_forced: FloatField_Plume,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
     cloud_moist_static_energy_forced: FloatField,
-    miscellaneous_temperature: FloatField,
+    updraft_column_temperature_forced: FloatField,
     ocean_fraction: FloatFieldIJ,
     convection_fraction: FloatFieldIJ,
     surface_type: FloatFieldIJ,
@@ -371,7 +371,7 @@ def updraft_moisture(
 
     with computation(PARALLEL), interval(...):
         condensate_to_fall_forced[0, 0, 0][plume] = 0.0
-        miscellaneous_temperature = t_cloud_levels
+        updraft_column_temperature_forced = t_cloud_levels
         cloud_liquid_before_rain_forced = 0.0
         cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0  # liq/ice water
         cloud_total_water_after_entrainment_forced = 0.0  # total water: liq/ice = vapor water
@@ -464,7 +464,7 @@ def updraft_moisture(
                     ]
 
                 # updraft temp
-                miscellaneous_temperature = (1.0 / cumulus_parameterization_constants.CP) * (
+                updraft_column_temperature_forced = (1.0 / cumulus_parameterization_constants.CP) * (
                     cloud_moist_static_energy_forced
                     - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
                     - cumulus_parameterization_constants.XLV * qrch
@@ -532,7 +532,7 @@ def updraft_moisture(
                             (c1d + C0)
                             * dz
                             * liquid_fraction(
-                                miscellaneous_temperature, convection_fraction, surface_type, FRAC_MODIS
+                                updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
                             )
                         )
                         cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced / (
@@ -557,7 +557,7 @@ def updraft_moisture(
                             condensate_to_fall_forced[0, 0, 0][plume] = 0.0
                         else:
                             cx0 = C0 * liquid_fraction(
-                                miscellaneous_temperature, convection_fraction, surface_type, FRAC_MODIS
+                                updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
                             )
                             cx0 = max(cx0, 0.50 * C0)
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
@@ -587,12 +587,12 @@ def updraft_moisture(
                             condensate_to_fall_forced[0, 0, 0][plume] = 0.0
                         else:
                             tem1 = liquid_fraction(
-                                miscellaneous_temperature, convection_fraction, surface_type, FRAC_MODIS
+                                updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
                             )
                             cbf = 1.0
-                            if miscellaneous_temperature < T_BF:
+                            if updraft_column_temperature_forced < T_BF:
                                 cbf = 1.0 + 0.5 * sqrt(
-                                    min(max(T_BF - miscellaneous_temperature, 0.0), T_BF - T_ICE_BF)
+                                    min(max(T_BF - updraft_column_temperature_forced, 0.0), T_BF - T_ICE_BF)
                                 )
                             qrc_crit_BF = ccn / cbf
                             cx0 = (
@@ -633,7 +633,7 @@ def updraft_moisture(
                                 1.0
                                 + 0.33
                                 * liquid_fraction(
-                                    miscellaneous_temperature, convection_fraction, surface_type, FRAC_MODIS
+                                    updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
                                 )
                             )
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
@@ -851,7 +851,7 @@ def updraft_moist_static_energy_and_momentum_budget(
 
 def updraft_temperature(
     error_code: IntFieldIJ_Plume,
-    updraft_t: FloatField,
+    updraft_column_temperature_forced: FloatField,
     cloud_moist_static_energy_forced: FloatField,
     geopotential_height_cloud_levels_forced: FloatField,
     cloud_total_water_after_entrainment_forced: FloatField,
@@ -860,7 +860,7 @@ def updraft_temperature(
 ):
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
-            updraft_t = (1.0 / cumulus_parameterization_constants.CP) * (
+            updraft_column_temperature_forced = (1.0 / cumulus_parameterization_constants.CP) * (
                 cloud_moist_static_energy_forced
                 - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
                 - cumulus_parameterization_constants.XLV * cloud_total_water_after_entrainment_forced
@@ -868,11 +868,11 @@ def updraft_temperature(
 
     with computation(PARALLEL), interval(-1, None):
         if error_code[0, 0][plume] == 0:
-            updraft_t = t_cloud_levels_forced
+            updraft_column_temperature_forced = t_cloud_levels_forced
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] != 0:
-            updraft_t = t_cloud_levels_forced
+            updraft_column_temperature_forced = t_cloud_levels_forced
 
 
 def cloud_workfunction_aa0(

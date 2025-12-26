@@ -961,7 +961,7 @@ class CumulusParameterization:
                     precipitable_water_updraft_forced=state.output.precipitable_water_updraft_forced,
                     total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
                     cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
-                    miscellaneous_temperature=locals.miscellaneous_temperature,
+                    updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
                     ocean_fraction=locals.ocean_fraction,
                     convection_fraction=state.input.convection_fraction,
                     surface_type=state.input.surface_type,
@@ -1086,7 +1086,7 @@ class CumulusParameterization:
                     # NOTE      shallow ✅
                     self._updraft_temperature(
                         error_code=state.output.error_code,
-                        updraft_t=locals.miscellaneous_temperature,
+                        updraft_t=locals.updraft_column_temperature_forced,
                         cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                         geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                         cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
@@ -1107,7 +1107,7 @@ class CumulusParameterization:
                         detrainment_function_updraft=locals.detrainment_function_updraft,
                         geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                         t_cloud_levels_forced=locals.t_cloud_levels_forced,
-                        miscellaneous_temperature=locals.miscellaneous_temperature,
+                        updraft_vertical_velocity=locals.updraft_vertical_velocity,
                         cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
                         cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
                         vapor_forced=locals.vapor_forced,

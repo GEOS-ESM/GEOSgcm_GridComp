@@ -880,9 +880,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    miscellaneous_temperature: Quantity = dataclasses.field(
+    updraft_column_temperature_forced: Quantity = dataclasses.field(
         metadata={
-            "name": "miscellaneous_temperature",
+            "name": "updraft_column_temperature_forced",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",

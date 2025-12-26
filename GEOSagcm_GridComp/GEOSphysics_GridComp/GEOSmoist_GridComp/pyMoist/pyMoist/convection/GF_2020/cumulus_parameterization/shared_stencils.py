@@ -55,7 +55,7 @@ def updraft_vertical_velocity(
     detrainment_function_updraft: FloatField,
     geopotential_height_cloud_levels_forced: FloatField,
     t_cloud_levels_forced: FloatField,
-    miscellaneous_temperature: FloatField,
+    updraft_column_temperature_forced: FloatField,
     cloud_total_water_after_entrainment_forced: FloatField,
     cloud_liquid_after_rain_forced: FloatField_Plume,
     vapor_forced: FloatField,
@@ -112,12 +112,12 @@ def updraft_vertical_velocity(
                 )
 
                 t_v = 0.5 * (
-                    miscellaneous_temperature
+                    updraft_column_temperature_forced
                     * (
                         1.0
                         + (cloud_total_water_after_entrainment_forced / eps) / (1.0 + cloud_total_water_after_entrainment_forced)
                     )
-                    + miscellaneous_temperature[0, 0, 1]
+                    + updraft_column_temperature_forced[0, 0, 1]
                     * (
                         1.0
                         + (cloud_total_water_after_entrainment_forced[0, 0, 1] / eps)

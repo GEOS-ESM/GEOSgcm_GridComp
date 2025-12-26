@@ -46,7 +46,7 @@ class TestCore:
             "local_cloud_moist_static_energy_forced_updrafttemp": {},
             "local_geopotential_height_cloud_levels_forced_updrafttemp": {},
             "local_t_cloud_levels_forced_updrafttemp": {},
-            "local_miscellaneous_temperature_updrafttemp": {},
+            "local_updraft_column_temperature_forced_updrafttemp": {},
             "local_cloud_total_water_after_entrainment_forced_updrafttemp": {},
         }
 
@@ -87,7 +87,7 @@ class TestCore:
             "local_geopotential_height_cloud_levels_forced_updrafttemp"
         ]
         locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_updrafttemp"]
-        locals.miscellaneous_temperature.data[:] = inputs["local_miscellaneous_temperature_updrafttemp"]
+        locals.updraft_column_temperature_forced.data[:] = inputs["local_updraft_column_temperature_forced_updrafttemp"]
         locals.cloud_total_water_after_entrainment_forced.data[:] = inputs["local_cloud_total_water_after_entrainment_forced_updrafttemp"]
 
         # initalize test code
@@ -101,7 +101,7 @@ class TestCore:
             if cumulus_parameterization_config.FIRST_GUESS_W == 0:
                 code(
                     error_code=state.output.error_code,
-                    updraft_t=locals.miscellaneous_temperature,
+                    updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
                     cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                     geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                     cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
@@ -121,7 +121,7 @@ class TestCore:
                 :
             ],
             "local_t_cloud_levels_forced_updrafttemp": locals.t_cloud_levels_forced.field[:],
-            "local_miscellaneous_temperature_updrafttemp": locals.miscellaneous_temperature.field[:],
+            "local_updraft_column_temperature_forced_updrafttemp": locals.updraft_column_temperature_forced.field[:],
             "local_cloud_total_water_after_entrainment_forced_updrafttemp": locals.cloud_total_water_after_entrainment_forced.field[:],
         }
 
