@@ -721,15 +721,14 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMSEAndBuoyancy-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMoisture-In
          !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMoisture-Out
-
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-In
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftCIN-In
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftCIN-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_TriggerFunctionConvection-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_TriggerFunctionConvection-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_InCloudTemperature-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_InCloudTemperature-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_ConvectionTrigger-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_ConvectionTrigger-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftTemperature-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftTemperature-Out
 
     ELSE
          !- call GF/GEOS5 interface routine
