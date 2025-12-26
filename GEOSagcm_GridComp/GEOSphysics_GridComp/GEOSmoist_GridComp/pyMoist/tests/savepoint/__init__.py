@@ -221,13 +221,13 @@ from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumul
     TranslateGF2020_CumulusParameterization_UpdraftCIN_mid,
     TranslateGF2020_CumulusParameterization_UpdraftCIN_shallow,
 )
-# NOTE need to organize everything below here
-from .convection.GF_2020.cumulus_parameterization.trigger_function.translate_GF2020_Cumulus_Parameterization_TriggerFunctionConvection import (
-    TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_deep,
-    TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_mid,
-    TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_shallow,
+from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumulus_Parameterization_ConvectionTrigger import (
+    TranslateGF2020_CumulusParameterization_ConvectionTrigger_deep,
+    TranslateGF2020_CumulusParameterization_ConvectionTrigger_mid,
+    TranslateGF2020_CumulusParameterization_ConvectionTrigger_shallow,
 )
 
+# NOTE need to organize everything below here
 from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_Cumulus_Parameterization_InCloudTemperature import (
     TranslateGF2020_CumulusParameterization_InCloudTemperature_deep,
     TranslateGF2020_CumulusParameterization_InCloudTemperature_mid,

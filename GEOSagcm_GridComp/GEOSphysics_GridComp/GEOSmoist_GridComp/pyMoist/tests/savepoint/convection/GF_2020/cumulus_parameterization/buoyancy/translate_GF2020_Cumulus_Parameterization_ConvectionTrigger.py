@@ -22,12 +22,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.trigger_function.trigger_function import (
-    TriggerFunctionConvection,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import convection_trigger
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
 )
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class TestCore:
@@ -43,9 +42,9 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_triggerfunc": {},
-            "convective_scale_velosity_triggerfunc": {},
-            "local_cloud_work_function_0_triggerfunc": {},
+            "error_code_convectiontrigger": {},
+            "convective_scale_velocity_convectiontrigger": {},
+            "local_cin_0_convectiontrigger": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -76,40 +75,44 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_triggerfunc"
+            "error_code_convectiontrigger"
         ]
-        locals.cloud_work_function_0.data[:] = inputs["local_cloud_work_function_0_triggerfunc"]
-        state.input_output.convective_scale_velocity.data[:] = inputs["convective_scale_velosity_triggerfunc"]
+        state.input_output.convective_scale_velocity.data[:] = inputs[
+            "convective_scale_velocity_convectiontrigger"
+        ]
+        locals.cin_0.data[:] = inputs["local_cin_0_convectiontrigger"]
 
         # initalize test code
-        code = TriggerFunctionConvection(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        code = self.stencil_factory.from_dims_halo(
+            func=convection_trigger,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"DICYCLE": cumulus_parameterization_config.DICYCLE},
         )
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
-                state=state,
-                locals=locals,
-                plume_dependent_constants=plume_dependent_constants,
+                error_code=state.output.error_code,
+                convective_scale_velosity=state.input_output.convective_scale_velocity,
+                cin_0=locals.cin_0,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         # write output
         outputs = {
-            "error_code_triggerfunc": state.output.error_code.field[
+            "error_code_convectiontrigger": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_cloud_work_function_0_triggerfunc": locals.cloud_work_function_0.field[:],
-            "convective_scale_velosity_triggerfunc": state.input_output.convective_scale_velocity.field[:],
+            "convective_scale_velocity_convectiontrigger": state.input_output.convective_scale_velocity.field[
+                :
+            ],
+            "local_cin_0_convectiontrigger": locals.cin_0.field[:],
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_ConvectionTrigger_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -132,7 +135,7 @@ class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_shallow(
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_ConvectionTrigger_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -155,7 +158,7 @@ class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_mid(Tran
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TriggerFunctionConvection_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_ConvectionTrigger_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

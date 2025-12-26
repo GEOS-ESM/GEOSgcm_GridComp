@@ -1,26 +1,8 @@
 from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
-from ndsl.dsl.typing import FloatField, Int
-from ndsl import StencilFactory, QuantityFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
     IntFieldIJ_Plume,
 )
-import pyMoist.constants as constants
 from ndsl.dsl.gt4py import K
 
 
@@ -59,3 +41,19 @@ def get_buoyancy(
                 d_buoyancy = cloud_moist_static_energy - environment_moist_static_energy
             if K > lcl_level[0, 0][plume] and K <= cloud_top_level[0, 0][plume] + 1:
                 d_buoyancy = cloud_moist_static_energy - environment_saturation_moist_static_energy
+
+
+def convection_trigger(
+    error_code: IntFieldIJ_Plume,
+    convective_scale_velosity: FloatFieldIJ,
+    cin_0: FloatFieldIJ,
+    plume: Int,
+):
+    from __externals__ import DICYCLE
+
+    with computation(FORWARD), interval(...):
+        if DICYCLE > 1:
+            if error_code[0, 0][plume] == 0:
+                # think about including the grid scale vertical velocity at KE calculation
+                if cin_0 + 0.5 * convective_scale_velosity**2 < 0.0:
+                    error_code[0, 0][plume] = 19

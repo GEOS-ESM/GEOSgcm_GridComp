@@ -67,7 +67,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy imp
     MoistStaticEnergyInsideCloud,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import updraft_vertical_velocity
-from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
+from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy, convection_trigger
 from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import (
     C1DProfile,
     get_melting_profile,
@@ -93,10 +93,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     downdraft_moist_static_energy_and_buoyancy,
     downdraft_moisture,
     DowndraftWindshear,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.trigger_function.trigger_function import (
-    TriggerFunctionConvection,
-    TriggerFunctionXie,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle.diurnal_cycle import (
     DiurnalCycle,
@@ -389,7 +385,11 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._trigger_function_convection = TriggerFunctionConvection()
+        self._convection_trigger = stencil_factory.from_dims_halo(
+            func=convection_trigger,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"DICYCLE": cumulus_parameterization_config.DICYCLE},
+        )
 
         self._in_cloud_temperature = InCloudTemperature()
 
@@ -1285,15 +1285,16 @@ class CumulusParameterization:
                 )
 
                 # trigger function: KE+CIN < 0 --> no convection
-                # NOTE test GF2020_CumulusParameterization_TriggerFunctionConvection_{plume}:
+                # NOTE test GF2020_CumulusParameterization_ConvectionTrigger_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._trigger_function_convection(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
-                )
+                self._convection_trigger(
+                error_code=state.output.error_code,
+                convective_scale_velosity=state.input_output.convective_scale_velocity,
+                cin_0=locals.cin_0,
+                plume=self.plume_dependent_constants.PLUME_INDEX,
+            )
 
                 # calculate in-cloud/updraft and downdraft air temperature for vertical velocity
                 # NOTE test GF2020_CumulusParameterization_InCloudTemperature_{plume}:
