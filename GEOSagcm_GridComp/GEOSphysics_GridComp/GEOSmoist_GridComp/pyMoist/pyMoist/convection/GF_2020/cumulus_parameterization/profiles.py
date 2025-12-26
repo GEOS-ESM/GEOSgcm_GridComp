@@ -210,27 +210,6 @@ def updraft_moisture_light(
     #             )
 
 
-def in_cloud_updraft_air_temperature(
-    error_code: IntFieldIJ_Plume,
-    plume: Int,
-    local_incloud_air_temp_forced: FloatField,
-    local_hcdo: FloatField,
-    local_geopotential_height_cloud_levels_forced: FloatField,
-    local_incloud_water_vapor_mixing_ratio_forced: FloatField,
-    local_t_cloud_levels_forced: FloatField,
-):
-    with computation(PARALLEL), interval(0, -1):
-        if error_code[0, 0][plume] == 0:
-            local_incloud_air_temp_forced = (1.0 / cumulus_parameterization_constants.CP) * (
-                local_hcdo
-                - constants.MAPL_GRAV * local_geopotential_height_cloud_levels_forced
-                - cumulus_parameterization_constants.XLV * local_incloud_water_vapor_mixing_ratio_forced
-            )
-    with computation(PARALLEL), interval(...):
-        if error_code[0, 0][plume] != 0:
-            local_incloud_air_temp_forced = local_t_cloud_levels_forced
-
-
 def get_melting_profile(
     error_code: IntFieldIJ_Plume,
     plume: Int,
@@ -255,8 +234,7 @@ def get_melting_profile(
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
             effective_precipitable_water = 0.5 * (
-                condensate_to_fall_forced[0, 0, 0][plume]
-                + condensate_to_fall_forced[0, 0, 1][plume]
+                condensate_to_fall_forced[0, 0, 0][plume] + condensate_to_fall_forced[0, 0, 1][plume]
             )
 
             solid_phase_precipitable_water = (1.0 - partition_liquid_ice) * effective_precipitable_water
@@ -399,39 +377,3 @@ class C1DProfile:
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
-
-
-class InCloudTemperature:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._in_cloud_updraft_air_temperature = stencil_factory.from_dims_halo(
-            func=in_cloud_updraft_air_temperature,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-        pass
-        self._in_cloud_updraft_air_temperature(
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            local_incloud_air_temp_forced=locals.incloud_air_temp_forced,
-            local_hcdo=locals.hcdo,
-            local_geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-            local_incloud_water_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
-            local_t_cloud_levels_forced=locals.t_cloud_levels_forced,
-        )

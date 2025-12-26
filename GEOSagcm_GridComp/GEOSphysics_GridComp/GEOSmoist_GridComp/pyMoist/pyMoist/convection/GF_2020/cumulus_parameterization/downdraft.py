@@ -700,6 +700,27 @@ def downdraft_moisture(
                     error_code[0, 0][plume] = 70
 
 
+def downdraft_temperature(
+    error_code: IntFieldIJ_Plume,
+    downdraft_column_temperature_forced: FloatField,
+    cloud_moist_static_energy_downdraft_forced: FloatField,
+    geopotential_height_cloud_levels_forced: FloatField,
+    cloud_total_water_after_entrainment_downdraft_forced: FloatField,
+    t_cloud_levels_forced: FloatField,
+    plume: Int,
+):
+    with computation(PARALLEL), interval(0, -1):
+        if error_code[0, 0][plume] == 0:
+            downdraft_column_temperature_forced = (1.0 / cumulus_parameterization_constants.CP) * (
+                cloud_moist_static_energy_downdraft_forced
+                - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
+                - cumulus_parameterization_constants.XLV * cloud_total_water_after_entrainment_downdraft_forced
+            )
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] != 0:
+            downdraft_column_temperature_forced = t_cloud_levels_forced
+
+
 class DowndraftOriginLevel(NDSLRuntime):
     def __init__(
         self,

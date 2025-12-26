@@ -71,7 +71,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buo
 from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import (
     C1DProfile,
     get_melting_profile,
-    InCloudTemperature,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     UpdraftMassFlux,
@@ -92,6 +91,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     DowndraftWetBlub,
     downdraft_moist_static_energy_and_buoyancy,
     downdraft_moisture,
+    downdraft_temperature,
     DowndraftWindshear,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle.diurnal_cycle import (
@@ -391,7 +391,10 @@ class CumulusParameterization:
             externals={"DICYCLE": cumulus_parameterization_config.DICYCLE},
         )
 
-        self._in_cloud_temperature = InCloudTemperature()
+        self._downdraft_temperature = stencil_factory.from_dims_halo(
+            func=downdraft_temperature,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
         self._diurnal_cycle = DiurnalCycle()
 
@@ -1296,12 +1299,12 @@ class CumulusParameterization:
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
-                # calculate in-cloud/updraft and downdraft air temperature for vertical velocity
-                # NOTE test GF2020_CumulusParameterization_InCloudTemperature_{plume}:
+                # calculate downdraft air temperature for vertical velocitys
+                # NOTE test GF2020_CumulusParameterization_DowndraftTemperature_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._in_cloud_temperature(
+                self._downdraft_temperature(
                     state=state,
                     locals=locals,
                     plume_dependent_constants=self.plume_dependent_constants,

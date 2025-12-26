@@ -889,6 +889,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    downdraft_column_temperature_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "downdraft_column_temperature_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     cloud_total_water_after_entrainment_forced: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_total_water_after_entrainment_forced",

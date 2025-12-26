@@ -226,14 +226,13 @@ from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumu
     TranslateGF2020_CumulusParameterization_ConvectionTrigger_mid,
     TranslateGF2020_CumulusParameterization_ConvectionTrigger_shallow,
 )
-
-# NOTE need to organize everything below here
-from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_Cumulus_Parameterization_InCloudTemperature import (
-    TranslateGF2020_CumulusParameterization_InCloudTemperature_deep,
-    TranslateGF2020_CumulusParameterization_InCloudTemperature_mid,
-    TranslateGF2020_CumulusParameterization_InCloudTemperature_shallow,
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cumulus_Parameterization_DowndraftTemperature import (
+    TranslateGF2020_CumulusParameterization_DowndraftTemperature_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftTemperature_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftTemperature_shallow,
 )
 
+# NOTE need to organize everything below here
 from .convection.GF_2020.cumulus_parameterization.diurnal_cycle.translate_GF2020_Cumulus_Parameterization_DiurnalCycle import (
     TranslateGF2020_CumulusParameterization_DiurnalCycle_deep,
     TranslateGF2020_CumulusParameterization_DiurnalCycle_mid,
