@@ -43,24 +43,22 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_updraftcin": {},
-            "local_buoyancy_updraftcin": {},
-            "local_buoyancy_forced_updraftcin": {},
-            "local_gamma_cloud_levels_updraftcin": {},
-            "local_gamma_cloud_levels_forced_updraftcin": {},
-            "cloud_top_updraftcin": {},
-            "updraft_lfc_level_updraftcin": {},
-            "updraft_origin_level_updraftcin": {},
-            "local_geopotential_height_cloud_levels_updraftcin": {},
-            "local_geopotential_height_cloud_levels_forced_updraftcin": {},
-            "local_t_cloud_levels_updraftcin": {},
-            "local_t_cloud_levels_forced_updraftcin": {},
-            "local_normalized_massflux_updraft_updraftcin": {},
-            "local_normalized_massflux_updraft_forced_updraftcin": {},
-            "local_integ_updraftcin": {},
-            "local_integ_interval_updraftcin": {},
-            "local_cloud_work_function_0_updraftcin": {},
-            "local_cloud_work_function_1_updraftcin": {},
+            "error_code_upcin": {},
+            "updraft_origin_level_upcin": {},
+            "updraft_lfc_level_upcin": {},
+            "cloud_top_level_upcin": {},
+            "local_geopotential_height_cloud_levels_upcin": {},
+            "local_geopotential_height_cloud_levels_forced_upcin": {},
+            "local_normalized_massflux_updraft_upcin": {},
+            "normalized_massflux_updraft_forced_upcin": {},
+            "local_d_buoyancy_upcin": {},
+            "local_d_buoyancy_forced_upcin": {},
+            "local_gamma_cloud_levels_upcin": {},
+            "local_gamma_cloud_levels_forced_upcin": {},
+            "local_t_cloud_levels_upcin": {},
+            "local_t_cloud_levels_forced_upcin": {},
+            "local_cin_0_upcin": {},
+            "local_cin_1_upcin": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -90,38 +88,34 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_updraftcin"
-        ]
-        locals.buoyancy.data[:] = inputs["local_buoyancy_updraftcin"]
-        locals.d_buoyancy_forced.data[:] = inputs["local_buoyancy_forced_updraftcin"]
-        locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels_updraftcin"]
-        locals.gamma_cloud_levels_forced.data[:] = inputs["local_gamma_cloud_levels_forced_updraftcin"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code_upcin"]
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_upcin"] - 1
+        )
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_lfc_level_upcin"] - 1
+        )
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_top_level_upcin"] - 1
+        )
         locals.geopotential_height_cloud_levels.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_updraftcin"
+            "local_geopotential_height_cloud_levels_upcin"
         ]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced_updraftcin"
+            "local_geopotential_height_cloud_levels_forced_upcin"
         ]
-        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels_updraftcin"]
-        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_updraftcin"]
-        locals.normalized_massflux_updraft.data[:] = inputs["local_normalized_massflux_updraft_updraftcin"]
-        locals.normalized_massflux_updraft_forced.data[:] = inputs[
-            "local_normalized_massflux_updraft_forced_updraftcin"
-        ]
-        locals.integ.data[:] = inputs["local_integ_updraftcin"]
-        locals.integ_interval.data[:] = inputs["local_integ_interval_updraftcin"]
-        locals.cloud_work_function_0.data[:] = inputs["local_cloud_work_function_0_updraftcin"]
-        locals.cloud_work_function_1.data[:] = inputs["local_cloud_work_function_1_updraftcin"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "cloud_top_updraftcin"
-        ]
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "updraft_lfc_level_updraftcin"
-        ]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "updraft_origin_level_updraftcin"
-        ]
+        locals.normalized_massflux_updraft.data[:] = inputs["local_normalized_massflux_updraft_upcin"]
+        state.output.normalized_massflux_updraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["normalized_massflux_updraft_forced_upcin"]
+        locals.d_buoyancy.data[:] = inputs["local_d_buoyancy_upcin"]
+        locals.d_buoyancy_forced.data[:] = inputs["local_d_buoyancy_forced_upcin"]
+        locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels_upcin"]
+        locals.gamma_cloud_levels_forced.data[:] = inputs["local_gamma_cloud_levels_forced_upcin"]
+        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels_upcin"]
+        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_upcin"]
+        locals.cin_0.data[:] = inputs["local_cin_0_upcin"]
+        locals.cin_1.data[:] = inputs["local_cin_1_upcin"]
 
         # initalize test code
         code = UpdraftCIN(
@@ -134,45 +128,56 @@ class TestCore:
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
-                state=state,
-                locals=locals,
+                error_code=state.output.error_code,
+                updraft_origin_level=state.output.updraft_origin_level,
+                updraft_lfc_level=state.output.updraft_lfc_level,
+                cloud_top_level=state.output.cloud_top_level,
+                geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels,
+                geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                normalized_massflux_updraft=locals.normalized_massflux_updraft,
+                normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                d_buoyancy=locals.d_buoyancy,
+                d_buoyancy_forced=locals.d_buoyancy_forced,
+                gamma_cloud_levels=locals.gamma_cloud_levels,
+                gamma_cloud_levels_forced=locals.gamma_cloud_levels_forced,
+                t_cloud_levels=locals.t_cloud_levels,
+                t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                cin_0=locals.cin_0,
+                cin_1=locals.cin_1,
                 plume_dependent_constants=plume_dependent_constants,
             )
 
         # write output
         outputs = {
-            "error_code_updraftcin": state.output.error_code.field[
+            "error_code_upcin": state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX],
+            "updraft_origin_level_upcin": state.output.updraft_origin_level.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "local_buoyancy_updraftcin": locals.buoyancy.field[:],
-            "local_buoyancy_forced_updraftcin": locals.d_buoyancy_forced.field[:],
-            "local_gamma_cloud_levels_updraftcin": locals.gamma_cloud_levels.field[:],
-            "local_gamma_cloud_levels_forced_updraftcin": locals.gamma_cloud_levels_forced.field[:],
-            "updraft_lfc_level_updraftcin": state.output.updraft_lfc_level.field[
+            ]
+            + 1,
+            "updraft_lfc_level_upcin": state.output.updraft_lfc_level.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "updraft_origin_level_updraftcin": state.output.updraft_origin_level.field[
+            ]
+            + 1,
+            "cloud_top_level_upcin": state.output.cloud_top_level.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "local_geopotential_height_cloud_levels_updraftcin": locals.geopotential_height_cloud_levels.field[
+            ]
+            + 1,
+            "local_geopotential_height_cloud_levels_upcin": locals.geopotential_height_cloud_levels.data[:],
+            "local_geopotential_height_cloud_levels_forced_upcin": locals.geopotential_height_cloud_levels_forced.data[
                 :
             ],
-            "local_geopotential_height_cloud_levels_forced_updraftcin": locals.geopotential_height_cloud_levels_forced.field[
-                :
+            "local_normalized_massflux_updraft_upcin": locals.normalized_massflux_updraft.data[:],
+            "normalized_massflux_updraft_forced_upcin": state.output.normalized_massflux_updraft_forced.data[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_t_cloud_levels_updraftcin": locals.t_cloud_levels.field[:],
-            "local_t_cloud_levels_forced_updraftcin": locals.t_cloud_levels_forced.field[:],
-            "local_normalized_massflux_updraft_updraftcin": locals.normalized_massflux_updraft.field[:],
-            "local_normalized_massflux_updraft_forced_updraftcin": locals.normalized_massflux_updraft_forced.field[
-                :
-            ],
-            "local_integ_updraftcin": locals.integ.field[:],
-            "local_integ_interval_updraftcin": locals.integ_interval.field[:],
-            "local_cloud_work_function_0_updraftcin": locals.cloud_work_function_0.field[:],
-            "local_cloud_work_function_1_updraftcin": locals.cloud_work_function_1.field[:],
-            "cloud_top_updraftcin": state.output.cloud_top_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            "local_d_buoyancy_upcin": locals.d_buoyancy.data[:],
+            "local_d_buoyancy_forced_upcin": locals.d_buoyancy_forced.data[:],
+            "local_gamma_cloud_levels_upcin": locals.gamma_cloud_levels.data[:],
+            "local_gamma_cloud_levels_forced_upcin": locals.gamma_cloud_levels_forced.data[:],
+            "local_t_cloud_levels_upcin": locals.t_cloud_levels.data[:],
+            "local_t_cloud_levels_forced_upcin": locals.t_cloud_levels_forced.data[:],
+            "local_cin_0_upcin": locals.cin_0.data[:],
+            "local_cin_1_upcin": locals.cin_1.data[:],
         }
 
         return outputs

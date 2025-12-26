@@ -268,9 +268,18 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    cin1: Quantity = dataclasses.field(
+    cin_0: Quantity = dataclasses.field(
         metadata={
-            "name": "cin1",
+            "name": "cin_0",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    cin_1: Quantity = dataclasses.field(
+        metadata={
+            "name": "cin_1",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",

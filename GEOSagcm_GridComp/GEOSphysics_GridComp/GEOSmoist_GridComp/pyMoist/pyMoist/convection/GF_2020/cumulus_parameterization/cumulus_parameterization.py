@@ -382,7 +382,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._updraft_cin = UpdraftCIN()
+        self._updraft_cin = UpdraftCIN(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._trigger_function_convection = TriggerFunctionConvection()
 
@@ -1260,8 +1265,22 @@ class CumulusParameterization:
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._updraft_cin(
-                    state=state,
-                    locals=locals,
+                    error_code=state.output.error_code,
+                    updraft_origin_level=state.output.updraft_origin_level,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    cloud_top_level=state.output.cloud_top_level,
+                    geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels,
+                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                    normalized_massflux_updraft=locals.normalized_massflux_updraft,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    d_buoyancy=locals.d_buoyancy,
+                    d_buoyancy_forced=locals.d_buoyancy_forced,
+                    gamma_cloud_levels=locals.gamma_cloud_levels,
+                    gamma_cloud_levels_forced=locals.gamma_cloud_levels_forced,
+                    t_cloud_levels=locals.t_cloud_levels,
+                    t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                    cin_0=locals.cin_0,
+                    cin_1=locals.cin_1,
                     plume_dependent_constants=self.plume_dependent_constants,
                 )
 
