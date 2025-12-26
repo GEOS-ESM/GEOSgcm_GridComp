@@ -205,7 +205,7 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    cloud_work_function_0: Quantity = dataclasses.field(
+    cloud_workfunction_0: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_work_function_0",
             "dims": [X_DIM, Y_DIM],
@@ -214,7 +214,7 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    cloud_work_function_1: Quantity = dataclasses.field(
+    cloud_workfunction_1: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_work_function_1",
             "dims": [X_DIM, Y_DIM],

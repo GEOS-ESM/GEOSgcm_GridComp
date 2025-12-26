@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity
+from ndsl import StencilFactory, QuantityFactory, Quantity, Local
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
@@ -875,72 +875,90 @@ def updraft_temperature(
             updraft_t = t_cloud_levels_forced
 
 
-def cup_up_aa0(
-    local_buoyancy: FloatField,
-    local_gamma_cloud_levels: FloatField,
-    cloud_top_level: IntFieldIJ_Plume,
-    updraft_lfc_level: IntFieldIJ_Plume,
+def cloud_workfunction_aa0(
+    error_code: IntFieldIJ_Plume,
     updraft_origin_level: IntFieldIJ_Plume,
-    local_geopotential_height_cloud_levels: FloatField,
-    local_t_cloud_levels: FloatField,
-    local_normalized_massflux_updraft: FloatField,
-    local_integ: IntFieldIJ,
-    local_integ_interval: IntFieldIJ,
-    error_code: IntFieldIJ_Plume,
+    updraft_lfc_level: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    geopotential_height: FloatField,
+    normalized_massflux_updraft: FloatField,
+    d_buoyancy: FloatField,
+    gamma_cloud_levels: FloatField,
+    t_cloud_levels: FloatField,
+    workfunction: FloatFieldIJ,
+    mode: Int,
     plume: Int,
-    local_cloud_work_function: FloatFieldIJ,
 ):
-    from __externals__ import k_start
+    """
+    Compute cloud workfunction aa0
 
-    with computation(FORWARD), interval(...):
-        local_cloud_work_function = 0.0
+    Stencil calculation is controlled my "mode" argument:
+        mode = 0: default. uses dynamic bounds (updraft_lfc_level --> cloud_top_level)
+        mode = 1: boundary layer. uses fixed lower bound (surface --> updraft_lfc_level - 1)
+        mode = 2: convective inhibition. uses alternate dynamic bounds
+            (updraft_origin_level --> updraft_lfc_level - 1)
 
-        if local_integ == 1:
-            if local_integ_interval == cumulus_parameterization_constants.BL:
-                kbeg = k_start
-                kend = updraft_lfc_level[0, 0][plume] - 2
-            elif local_integ_interval == cumulus_parameterization_constants.CIN:
-                kbeg = updraft_origin_level[0, 0][plume] - 1
-                kend = updraft_lfc_level[0, 0][plume] - 2
+    Args:
+        error_code
+        updraft_origin_level
+        updraft_lfc_level
+        cloud_top_level
+        geopotential_height
+        normalized_massflux_updraft
+        d_buoyancy
+        gamma_cloud_levels
+        t_cloud_levels
+        workfunction
+        mode
+        plume
+    """
 
-        else:
-            kbeg = updraft_lfc_level[0, 0][plume] - 1
-            kend = cloud_top_level[0, 0][plume] - 1
+    with computation(FORWARD), interval(0, 1):
+        # initialize workfunction to zero
+        workfunction = 0.0
 
-    with computation(FORWARD), interval(0, -1):
+        # set up bounds for next block
+        if mode == 0:
+            lower_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume]
+            upper_bound: IntFieldIJ = cloud_top_level[0, 0][plume]
+        elif mode == 1:
+            lower_bound: IntFieldIJ = 0
+            upper_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume] - 1
+        elif mode == 2:
+            lower_bound: IntFieldIJ = updraft_origin_level[0, 0][plume]
+            upper_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume] - 1
+
+        upper_bound = upper_bound + 1
+
+    with computation(FORWARD), interval(lower_bound, upper_bound):
         if error_code[0, 0][plume] == 0:
-            if K >= kbeg and K <= kend:
-                dz = local_geopotential_height_cloud_levels[0, 0, 1] - local_geopotential_height_cloud_levels
-                aa_1 = (
-                    local_normalized_massflux_updraft
-                    * (constants.MAPL_GRAV / (cumulus_parameterization_constants.CP * local_t_cloud_levels))
-                    * local_buoyancy
-                    / (1.0 + local_gamma_cloud_levels)
-                )
-                aa_2 = (
-                    local_normalized_massflux_updraft[0, 0, 1]
-                    * (
-                        constants.MAPL_GRAV
-                        / (cumulus_parameterization_constants.CP * local_t_cloud_levels[0, 0, 1])
-                    )
-                    * local_buoyancy[0, 0, 1]
-                    / (1.0 + local_gamma_cloud_levels[0, 0, 1])
-                )
-                da = 0.5 * (aa_1 + aa_2) * dz
+            dz = geopotential_height[0, 0, 1] - geopotential_height
+            workfunction_current_level = (
+                normalized_massflux_updraft
+                * (constants.MAPL_GRAV / (cumulus_parameterization_constants.CP * t_cloud_levels))
+                * d_buoyancy
+                / (1.0 + gamma_cloud_levels)
+            )
+            workfunction_level_above = (
+                normalized_massflux_updraft[0, 0, 1]
+                * (constants.MAPL_GRAV / (cumulus_parameterization_constants.CP * t_cloud_levels[0, 0, 1]))
+                * d_buoyancy[0, 0, 1]
+                / (1.0 + gamma_cloud_levels[0, 0, 1])
+            )
+            d_workfunction = 0.5 * (workfunction_current_level + workfunction_level_above) * dz
 
-                local_cloud_work_function = local_cloud_work_function + da
+            workfunction = workfunction + d_workfunction
 
 
-def cloud_work_function_zero(
+def check_cloud_workfunction_1(
     error_code: IntFieldIJ_Plume,
+    cloud_workfunction_1: FloatFieldIJ,
     plume: Int,
-    local_cloud_work_function: FloatFieldIJ,
 ):
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            if local_cloud_work_function == 0.0:
+            if cloud_workfunction_1 == 0.0:
                 error_code[0, 0][plume] = 17
-                # ierrc[0,0][plume]="cloud work function zero"
 
 
 class UpdraftMassFlux:
@@ -958,8 +976,8 @@ class UpdraftMassFlux:
         # add dimension to quantityfactory and create classes for constants
         quantity_factory.add_data_dimensions({"UpdraftMassFlux_constants": len(_X_ALPHA)})
 
-        self._X_ALPHA = quantity_factory.zeros(["UpdraftMassFlux_constants"], "n/a")
-        self._G_ALPHA = quantity_factory.zeros(["UpdraftMassFlux_constants"], "n/a")
+        self._X_ALPHA: Local = quantity_factory.zeros(["UpdraftMassFlux_constants"], "n/a")
+        self._G_ALPHA: Local = quantity_factory.zeros(["UpdraftMassFlux_constants"], "n/a")
 
         self._X_ALPHA.field[:] = _X_ALPHA
         self._G_ALPHA.field[:] = _G_ALPHA
@@ -1027,58 +1045,81 @@ class UpdraftInitialWorkfunctions:
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         # construct stencils and functions
-        self._cup_up_aa0 = stencil_factory.from_dims_halo(
-            func=cup_up_aa0,
+        self._cloud_workfunction_aa0 = stencil_factory.from_dims_halo(
+            func=cloud_workfunction_aa0,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._cloud_work_function_zero = stencil_factory.from_dims_halo(
-            func=cloud_work_function_zero,
+        self._check_cloud_workfunction_1 = stencil_factory.from_dims_halo(
+            func=check_cloud_workfunction_1,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        # initalize local field
+        self._normalized_massflux_updraft_forced_3d: Local = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM], "n/a"
         )
 
     def __call__(
         self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
+        error_code: Quantity,
+        updraft_origin_level: Quantity,
+        updraft_lfc_level: Quantity,
+        cloud_top_level: Quantity,
+        geopotential_height_cloud_levels: Quantity,
+        geopotential_height_cloud_levels_forced: Quantity,
+        normalized_massflux_updraft: Quantity,
+        normalized_massflux_updraft_forced: Quantity,
+        d_buoyancy: Quantity,
+        d_buoyancy_forced: Quantity,
+        gamma_cloud_levels: Quantity,
+        gamma_cloud_levels_forced: Quantity,
+        t_cloud_levels: Quantity,
+        t_cloud_levels_forced: Quantity,
+        cloud_workfunction_0: Quantity,
+        cloud_workfunction_1: Quantity,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        self._cup_up_aa0(
-            local_buoyancy=locals.buoyancy,
-            local_gamma_cloud_levels=locals.gamma_cloud_levels,
-            cloud_top_level=state.output.cloud_top_level,
-            updraft_lfc_level=state.output.updraft_lfc_level,
-            updraft_origin_level=state.output.updraft_origin_level,
-            local_geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels,
-            local_t_cloud_levels=locals.t_cloud_levels,
-            local_normalized_massflux_updraft=locals.normalized_massflux_updraft,
-            local_integ=locals.integ,
-            local_integ_interval=locals.integ_interval,
-            error_code=state.output.error_code,
+        self._cloud_workfunction_aa0(
+            error_code=error_code,
+            updraft_origin_level=updraft_origin_level,
+            updraft_lfc_level=updraft_lfc_level,
+            cloud_top_level=cloud_top_level,
+            geopotential_height=geopotential_height_cloud_levels,
+            normalized_massflux_updraft=normalized_massflux_updraft,
+            d_buoyancy=d_buoyancy,
+            gamma_cloud_levels=gamma_cloud_levels,
+            t_cloud_levels=t_cloud_levels,
+            workfunction=cloud_workfunction_0,
+            mode=Int(0),
             plume=plume_dependent_constants.PLUME_INDEX,
-            local_cloud_work_function=locals.cloud_work_function_0,
         )
 
-        self._cup_up_aa0(
-            local_buoyancy=locals.d_buoyancy_forced,
-            local_gamma_cloud_levels=locals.gamma_cloud_levels_forced,
-            cloud_top_level=state.output.cloud_top_level,
-            updraft_lfc_level=state.output.updraft_lfc_level,
-            updraft_origin_level=state.output.updraft_origin_level,
-            local_geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_forced,
-            local_t_cloud_levels=locals.t_cloud_levels_forced,
-            local_normalized_massflux_updraft=locals.normalized_massflux_updraft_forced,
-            local_integ=locals.integ,
-            local_integ_interval=locals.integ_interval,
-            error_code=state.output.error_code,
+        self._normalized_massflux_updraft_forced_3d.field[:] = normalized_massflux_updraft_forced.field[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ]
+        self._cloud_workfunction_aa0(
+            error_code=error_code,
+            updraft_origin_level=updraft_origin_level,
+            updraft_lfc_level=updraft_lfc_level,
+            cloud_top_level=cloud_top_level,
+            geopotential_height=geopotential_height_cloud_levels_forced,
+            normalized_massflux_updraft=self._normalized_massflux_updraft_forced_3d,
+            d_buoyancy=d_buoyancy_forced,
+            gamma_cloud_levels=gamma_cloud_levels_forced,
+            t_cloud_levels=t_cloud_levels_forced,
+            workfunction=cloud_workfunction_1,
+            mode=Int(0),
             plume=plume_dependent_constants.PLUME_INDEX,
-            local_cloud_work_function=locals.cloud_work_function_1,
+        )
+        normalized_massflux_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            self._normalized_massflux_updraft_forced_3d.field[:]
         )
 
-        self._cloud_work_function_zero(
-            error_code=state.output.error_code,
+        self._check_cloud_workfunction_1(
+            error_code=error_code,
+            cloud_workfunction_1=cloud_workfunction_1,
             plume=plume_dependent_constants.PLUME_INDEX,
-            local_cloud_work_function=locals.cloud_work_function_1,
         )
 
 
@@ -1096,7 +1137,7 @@ class UpdraftCIN:
 
         # construct stencils and functions
         self._cup_up_aa0 = stencil_factory.from_dims_halo(
-            func=cup_up_aa0,
+            func=cloud_workfunction_aa0,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 

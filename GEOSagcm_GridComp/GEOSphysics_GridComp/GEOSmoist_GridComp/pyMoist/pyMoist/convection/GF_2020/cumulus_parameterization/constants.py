@@ -33,6 +33,3 @@ AEROEVAP = 1
 deep = Int(2)
 shallow = Int(0)
 mid = Int(1)
-
-BL = Int(1)
-CIN = Int(2)
