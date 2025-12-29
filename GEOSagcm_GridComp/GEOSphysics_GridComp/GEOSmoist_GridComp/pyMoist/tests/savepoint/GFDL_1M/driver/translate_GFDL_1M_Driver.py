@@ -100,7 +100,7 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
         safe_assign_array(state.u.field[:], inputs["u"])
         safe_assign_array(state.v.field[:], inputs["v"])
         safe_assign_array(state.vertical_motion.velocity.field[:], inputs["w"])
-        safe_assign_array(locals_.dz.field[:], inputs["local_dz"])
+        safe_assign_array(locals_.layer_thickness_negative.field[:], inputs["local_dz"])
         safe_assign_array(locals_.dp.field[:], inputs["local_dp"])
         safe_assign_array(state.area.field[:], inputs["area"])
         safe_assign_array(state.land_fraction.field[:], inputs["land_fraction"])
@@ -141,7 +141,7 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
             u=state.u,
             v=state.v,
             w=state.vertical_motion.velocity,
-            dz=locals_.dz,
+            dz=locals_.layer_thickness_negative,
             dp=locals_.dp,
             area=state.area,
             land_fraction=state.land_fraction,
@@ -234,7 +234,7 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
                     u=state.u,
                     v=state.v,
                     w=state.vertical_motion.velocity,
-                    dz=locals_.dz,
+                    dz=locals_.layer_thickness_negative,
                     dp=locals_.dp,
                     area=state.area,
                     land_fraction=state.land_fraction,
