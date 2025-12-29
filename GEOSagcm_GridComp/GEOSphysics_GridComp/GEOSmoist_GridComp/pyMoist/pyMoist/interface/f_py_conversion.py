@@ -1,18 +1,19 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from math import prod
 from types import ModuleType
 from typing import Tuple, TypeAlias
 
 import cffi
 import numpy as np
+import numpy.lib as npl
 import numpy.typing as npt
 from _cffi_backend import _CDataBase as CFFIObj
 
 from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
-import numpy.lib as npl
-from functools import lru_cache
+
 
 # Dev note: we would like to use cp.ndarray for Device and
 # Union of np and cp ndarray for Python but we can't

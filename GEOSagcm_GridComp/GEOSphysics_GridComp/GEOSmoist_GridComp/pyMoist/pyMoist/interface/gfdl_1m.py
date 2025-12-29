@@ -4,7 +4,6 @@ from mpi4py import MPI
 
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.gt4py_utils import is_gpu_backend
 from pyMoist.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
 from pyMoist.interface import (
     InterfaceTransferType,

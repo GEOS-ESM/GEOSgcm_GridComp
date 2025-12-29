@@ -27,7 +27,7 @@ from ndsl import (
     TilePartitioner,
 )
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py_utils import is_gpu_backend, backend_is_fortran_aligned
+from ndsl.dsl.gt4py_utils import backend_is_fortran_aligned, is_gpu_backend
 from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
