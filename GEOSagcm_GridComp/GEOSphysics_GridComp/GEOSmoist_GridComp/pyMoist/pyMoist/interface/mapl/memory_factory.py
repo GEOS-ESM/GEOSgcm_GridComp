@@ -29,7 +29,7 @@ class MAPLMemoryRepository:
         """Is the pointer properly associated in Fortran"""
         shape: tuple[int, ...]
         """Shape of the array"""
-        python_array: npt.NDArray
+        python_array: npt.NDArray | None
         """Synced python memory, check dirty"""
         dirty: bool = False
         """Does the memory need to be synced"""
@@ -71,24 +71,33 @@ class MAPLMemoryRepository:
             pointer=cast_ptr,
             associated=is_associated,
             shape=self._quantity_factory.sizer.get_extent(dims),
-            python_array=np.empty((0)),
+            python_array=None,
         )
 
     def get_from_fortran(
         self,
         name: str,
-    ) -> npt.NDArray:
+        *,
+        allow_device_transfer: bool = True,
+    ) -> npt.NDArray | None:
         """Retrieve the data from Fortran. Prefer using a MAPLManager."""
         try:
             fmem = self._fortran_pointers[name]
         except KeyError:
             raise KeyError(f"Pointer {name} was never registered.")
+
         if not fmem.associated:
-            return
+            return None
+
+        # We rely here on `fmem.pointer` constant, therefore we could
+        # go ahead an _not_ re-map. We don't because we want to introduce
+        # a ZERO TRUST mode where we don't rely on Fortran  being constant
+        #     return fmem.python_array
 
         fmem.python_array = self._f_py_converter.fortran_to_python(
             fptr=fmem.pointer,
-            dim=list(fmem.shape),
+            dims=list(fmem.shape),
+            allow_device_transfer=allow_device_transfer,
         )
 
         return fmem.python_array

@@ -27,7 +27,7 @@ from ndsl import (
     TilePartitioner,
 )
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py_utils import is_gpu_backend
+from ndsl.dsl.gt4py_utils import is_gpu_backend, backend_is_fortran_aligned
 from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
@@ -108,17 +108,25 @@ class GEOSPyMoistWrapper:
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(sizer=sizer, comm=self.communicator)
         self.stencil_factory = StencilFactory(config=self.stencil_config, grid_indexing=self._grid_indexing)
 
+        # Figure out the interface mode
+        tmp_quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], units="")
+        default_3D_memory_desc = (tmp_quantity.data.shape, tmp_quantity.data.strides)
         if fortran_mem_space != MemorySpace.CPU:
             raise NotImplementedError("Interface cannot stream Fortran memory resident on GPU")
-        self._interface_type = (
-            InterfaceTransferType.CPU_TO_GPU_TO_CPU
-            if is_gpu_backend(backend)
-            else InterfaceTransferType.ALL_CPU
-        )
+        if is_gpu_backend(backend):
+            self._interface_type = InterfaceTransferType.CPU_TO_GPU_TO_CPU
+        else:
+            if backend_is_fortran_aligned(backend):
+                # This is Fortran layout - we can Map the memory
+                self._interface_type = InterfaceTransferType.CPU_MAP
+            else:
+                # All other layout have to copy the data in/out of Fortran layout
+                self._interface_type = InterfaceTransferType.CPU_COPY
+        del tmp_quantity
 
         # Feedback information
         device_ordinal_info = (
-            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}\n" if is_gpu_backend(backend) else "N/A"
+            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}" if is_gpu_backend(backend) else "N/A"
         )
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = (
@@ -126,20 +134,18 @@ class GEOSPyMoistWrapper:
             and is_gpu_backend(backend)
             and os.path.exists(f"{MPS_pipe_directory}/log")
         )
-        tmp_quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], units="")
         ndsl_log_on_rank_0.info(
-            "pyMoist <> GEOS wrapper initialized (Rank 0): \n"
-            f"         Bridge : {self._interface_type.name} \n"
+            "pyMoist <> GEOS wrapper initialized (Rank 0):\n"
+            f"         Bridge : {self._interface_type.name}\n"
             f"        Backend : {backend}\n"
-            f"      Precision : {get_precision()}bit\n"
+            f"      Precision : {get_precision()} bit\n"
             f"  Orchestration : {self._is_orchestrated}\n"
             f"          Sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
-            f" Strides for 3D : {tmp_quantity.data.strides}\n"
-            f"     Device ord : {device_ordinal_info}"
+            f" Strides for 3D : {default_3D_memory_desc[1]}\n"
+            f"     Device ord : {device_ordinal_info}\n"
             f"     Nvidia MPS : {MPS_is_on}\n"
         )
-        del tmp_quantity
 
         # Timer result dict
         self._timings: dict[str, list[float]] = {}
@@ -150,7 +156,11 @@ class GEOSPyMoistWrapper:
         self._aer_activation: AerActivation | None = None
 
         # GFDL 1M
-        self._gfdl_1m_interface = GFDL1MInterface(self.quantity_factory, self.stencil_factory)
+        self._gfdl_1m_interface = GFDL1MInterface(
+            self.quantity_factory,
+            self.stencil_factory,
+            self._interface_type,
+        )
 
         # UW
         self._UW_shallow_convection: Optional[ComputeUwshcuInv] = None
@@ -294,3 +304,6 @@ class GEOSPyMoistWrapper:
 
         with open(f"internal_orchestration_r{rank}.json", "w") as f:
             json.dump(self.stencil_config.dace_config.performance_collector.times_per_step, f, indent=4)
+
+        with open(f"internal_gt4py_timings_r{rank}.json", "w") as f:
+            json.dump(self.stencil_factory.timing_collector.exec_info, f, indent=4)

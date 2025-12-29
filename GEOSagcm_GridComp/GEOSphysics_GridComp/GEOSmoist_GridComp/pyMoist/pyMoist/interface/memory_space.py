@@ -7,5 +7,6 @@ class MemorySpace(enum.Enum):
 
 
 class InterfaceTransferType(enum.Enum):
-    ALL_CPU = enum.auto()
+    CPU_COPY = enum.auto()  # Copies because of layout mismatch
+    CPU_MAP = enum.auto()  # No copy - memory map - same layout
     CPU_TO_GPU_TO_CPU = enum.auto()

@@ -16,16 +16,15 @@ from pyMoist.interface import (
 
 
 class GFDL1MInterface:
-    def __init__(self, quantity_factory: QuantityFactory, stencil_factory: StencilFactory) -> None:
+    def __init__(
+        self,
+        quantity_factory: QuantityFactory,
+        stencil_factory: StencilFactory,
+        transfer_type: InterfaceTransferType,
+    ) -> None:
         self._stencil_factory = stencil_factory
         self._quantity_factory = quantity_factory
         self._gfdl_1m: GFDL1M | None = None
-
-        if is_gpu_backend(quantity_factory.backend):
-            transfer_type = InterfaceTransferType.CPU_TO_GPU_TO_CPU
-        else:
-            transfer_type = InterfaceTransferType.ALL_CPU
-
         self._managed_state = MAPLManagedState(
             GFDL1MState.zeros(quantity_factory),
             transfer_type,
