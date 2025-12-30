@@ -41,6 +41,8 @@ from .UW_translate_tests.translate_find_pbl import TranslateFindPbl
 from .UW_translate_tests.translate_find_klcl import TranslateFindKlcl
 from .UW_translate_tests.translate_compute_cin_cinlcl import TranslateComputeCinCinlcl
 from .UW_translate_tests.translate_compute_del_CIN import TranslateComputeDelCIN
+from .UW_translate_tests.translate_average_initial_and_final_CIN1 import TranslateAverageInitialFinalCIN1
+from .UW_translate_tests.translate_average_initial_and_final_CIN3 import TranslateAverageInitialFinalCIN3
 from .UW_translate_tests.translate_define_prel_cbmf import TranslateDefinePrelCbmf
 from .UW_translate_tests.translate_define_env_properties import TranslateDefineEnvProperties
 from .UW_translate_tests.translate_calc_ppen import TranslateCalcPpen
@@ -61,6 +63,7 @@ from .UW_translate_tests.translate_recalc_environmental_variables import Transla
 from .UW_translate_tests.translate_update_output_variables1 import TranslateUpdateOutputVars1
 from .UW_translate_tests.translate_update_output_variables2 import TranslateUpdateOutputVars2
 from .UW_translate_tests.translate_compute_uwshcu_invert_after import TranslateComputeUwshcuInvertAfter
+from .UW_translate_tests.translate_buoyancy_sorting import TranslateBuoyancySorting
 
 __all__ = [
     "TranslateGFDL_1M_driver",

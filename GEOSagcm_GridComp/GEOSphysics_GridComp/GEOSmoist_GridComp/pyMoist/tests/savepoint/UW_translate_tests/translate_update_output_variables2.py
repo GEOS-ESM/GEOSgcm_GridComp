@@ -183,17 +183,17 @@ class TranslateUpdateOutputVars2(TranslateFortranData2Py):
         safe_assign_array(vflx.view[:], inputs["vflx"])
 
         # Outputs
-        fdr_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        fer_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qidet_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qisub_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qldet_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qlsub_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qtflx_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        slflx_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        tr0_inoutvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
-        uflx_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        vflx_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        fdr_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        fer_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qidet_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qisub_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qldet_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qlsub_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qtflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        slflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        tr0_inout = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
+        uflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        vflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         ndrop_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         nice_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
@@ -204,21 +204,21 @@ class TranslateUpdateOutputVars2(TranslateFortranData2Py):
         self._update_output_vars2(
             condensation=condensation,
             dotransport=dotransport,
-            qldet_outvar=qldet_outvar,
-            qidet_outvar=qidet_outvar,
-            qlsub_outvar=qlsub_outvar,
-            qisub_outvar=qisub_outvar,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            qlsub_out=qlsub_out,
+            qisub_out=qisub_out,
             ndrop_out=ndrop_out,
             nice_out=nice_out,
-            qtflx_outvar=qtflx_outvar,
-            slflx_outvar=slflx_outvar,
-            uflx_outvar=uflx_outvar,
-            vflx_outvar=vflx_outvar,
+            qtflx_out=qtflx_out,
+            slflx_out=slflx_out,
+            uflx_out=uflx_out,
+            vflx_out=vflx_out,
             fer=fer,
             fdr=fdr,
             kpen=kpen,
-            fer_outvar=fer_outvar,
-            fdr_outvar=fdr_outvar,
+            fer_out=fer_out,
+            fdr_out=fdr_out,
             dt=dt,
             rdrop=rdrop,
             qlten_det=qlten_det,
@@ -231,21 +231,20 @@ class TranslateUpdateOutputVars2(TranslateFortranData2Py):
             vflx=vflx,
             tr0_inout=tr0_inout,
             trten=trten,
-            tr0_inoutvar=tr0_inoutvar,
         )
 
         return {
-            "fdr_out": fdr_outvar.view[:],
-            "fer_out": fer_outvar.view[:],
-            "qidet_out": qidet_outvar.view[:],
-            "qisub_out": qisub_outvar.view[:],
-            "qldet_out": qldet_outvar.view[:],
-            "qlsub_out": qlsub_outvar.view[:],
-            "qtflx_out": qtflx_outvar.view[:],
-            "slflx_out": slflx_outvar.view[:],
-            "tr0_inout": tr0_inoutvar.view[:],
-            "uflx_out": uflx_outvar.view[:],
-            "vflx_out": vflx_outvar.view[:],
+            "fdr_out": fdr_out.view[:],
+            "fer_out": fer_out.view[:],
+            "qidet_out": qidet_out.view[:],
+            "qisub_out": qisub_out.view[:],
+            "qldet_out": qldet_out.view[:],
+            "qlsub_out": qlsub_out.view[:],
+            "qtflx_out": qtflx_out.view[:],
+            "slflx_out": slflx_out.view[:],
+            "tr0_inout": tr0_inout.view[:],
+            "uflx_out": uflx_out.view[:],
+            "vflx_out": vflx_out.view[:],
             "ndrop_out": ndrop_out.view[:],
             "nice_out": nice_out.view[:],
         }

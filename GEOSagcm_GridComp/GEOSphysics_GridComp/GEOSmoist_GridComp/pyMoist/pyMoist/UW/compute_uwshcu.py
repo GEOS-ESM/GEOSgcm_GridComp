@@ -345,7 +345,7 @@ def compute_thermodynamic_variables(
 
     with computation(FORWARD), interval(...):
         # Initialize output variables defined for all grid points
-        umf_out[0, 0, 1] = 0.0
+        # umf_out[0, 0, 1] = 0.0
         dcm_out = 0.0
         cufrc_out = 0.0
         fer_out = constants.MAPL_UNDEF
@@ -356,10 +356,10 @@ def compute_thermodynamic_variables(
         qisub_out = 0.0
         ndrop_out = 0.0
         nice_out = 0.0
-        qtflx_out[0, 0, 1] = 0.0
-        slflx_out[0, 0, 1] = 0.0
-        uflx_out[0, 0, 1] = 0.0
-        vflx_out[0, 0, 1] = 0.0
+        # qtflx_out[0, 0, 1] = 0.0
+        # slflx_out[0, 0, 1] = 0.0
+        # uflx_out[0, 0, 1] = 0.0
+        # vflx_out[0, 0, 1] = 0.0
         tpert_out = 0.0
         qpert_out = 0.0
 
@@ -1990,7 +1990,7 @@ def avg_initial_and_final_cin1(
     tkeavg: FloatField,
     tkeavg_o: FloatField,
     thvlmin: FloatField,
-    thvlmin_o: FloatFieldIJ,
+    thvlmin_o: FloatField,
     qtsrc: FloatField,
     qtsrc_o: FloatField,
     thvlsrc: FloatField,
@@ -2213,8 +2213,6 @@ def avg_initial_and_final_cin2(
                 fdr = 0.0
                 xco = 0.0
                 qc = 0.0
-                # qldet        = 0.0
-                # qidet        = 0.0
                 qlten_sub = 0.0
                 qiten_sub = 0.0
                 qc_l = 0.0
@@ -2299,14 +2297,11 @@ def avg_initial_and_final_cin3(
     with computation(FORWARD), interval(...):
         if not condensation:
             if del_CIN <= 0.0:  # When 'del_CIN < 0', use explicit CIN instead of implicit CIN.
-                # Identifier showing whether explicit or implicit CIN is used
-                ind_delcin = 1.0
 
                 # Restore original output values of "iter_cin = 1" and exit
-
                 umf_out[0, 0, 1] = umf_s[0, 0, 1]
-                if K >= 0 and K <= (kinv - 1):
-                    umf_out = umf_s.at(K=kinv - 1) * zifc0 / zifc0.at(K=kinv - 1)
+                if K <= (kinv - 1):
+                    umf_out[0, 0, 1] = umf_s.at(K=kinv) * zifc0[0, 0, 1] / zifc0.at(K=kinv)
 
                 dcm_out = dcm_s
                 qvten_out = qvten_s
@@ -2328,10 +2323,6 @@ def avg_initial_and_final_cin3(
                 uflx_out[0, 0, 1] = uflx_s[0, 0, 1]
                 vflx_out[0, 0, 1] = vflx_s[0, 0, 1]
 
-                # Below are diagnostic output variables for detailed analysis of cumulus
-                # scheme.
-                # The order of vertical index is reversed for this internal diagnostic
-                # output.
                 fer_out = fer_s
                 fdr_out = fdr_s
 
@@ -3067,6 +3058,12 @@ def buoyancy_sorting(
     stop_buoyancy_sort: BoolFieldIJ,
     iteration: int32,
     cush_inout: FloatFieldIJ,
+    testvar_zinterface1: FloatField,
+    testvar3D_1: FloatField,
+    testvar3D_2: FloatField,
+    testvar3D_3: FloatField,
+    testvar3D_4: FloatField,
+    testvar3D_5: FloatField,
 ):
     """
     Buoyancy-Sorting Mixing
@@ -3151,7 +3148,7 @@ def buoyancy_sorting(
             # do loop. Similarily, I need initializations of environmental
             # properties at 'krel' layer as below.
 
-            wtw = wlcl * wlcl
+            wtw: FloatFieldIJ = wlcl * wlcl
             pe = 0.5 * (prel + pifc0.at(K=krel + 1))
             dpe = prel - pifc0.at(K=krel + 1)
             exne = exnerfn(pe)
@@ -3190,16 +3187,16 @@ def buoyancy_sorting(
                 stop_buoyancy_sort = False  # Indicates that buoyancy sorting processes are done
                 # (e.g., Fortran go to 45)
 
-    with computation(FORWARD), interval(1, -2):
+    with computation(FORWARD), interval(1, -1):
         if K >= krel and K < k0 - 1 and not stop_buoyancy_sort and not condensation:
-            thlue = thlu[0, 0, -1]
-            qtue = qtu[0, 0, -1]
-            wue = wu[0, 0, -1]
+            thlue = thlu
+            qtue = qtu
+            wue = wu
             wtwb = wtw
 
             iter_xc = 1
             while iter_xc <= niter_xc and not condensation:
-                wtw = wu[0, 0, -1] * wu[0, 0, -1]
+                wtw = wu * wu
 
                 # Calculate environmental and cumulus saturation 'excess' at 'pe'.
                 # Note that in order to calculate saturation excess, we should use
@@ -3338,7 +3335,6 @@ def buoyancy_sorting(
 
                             else:
                                 cridis = rle * (zifc0[0, 0, 1] - zifc0)
-
                                 # New code
 
                             # Buoyancy Sorting
@@ -3366,6 +3362,7 @@ def buoyancy_sorting(
                                 cquad = 0.0
                                 if excessu > 0.0:
                                     xsat = 1.0
+
                                 else:
                                     xsat = 0.0
 
@@ -3413,9 +3410,9 @@ def buoyancy_sorting(
                                             thv_x1 = (1.0 - 1.0 / xsat) * thvj + (1.0 / xsat) * thvxsat
                                         else:
                                             thv_x1 = thv0j
-                                            thv_x0 = ((xsat / (xsat - 1.0)) * thv0j) + (
-                                                (1.0 / (1.0 - xsat)) * thvxsat
-                                            )
+                                            thv_x0 = (xsat / (xsat - 1.0)) * thv0j + (
+                                                1.0 / (1.0 - xsat)
+                                            ) * thvxsat
 
                                         aquad = wue**2
                                         bquad = (
@@ -3436,6 +3433,7 @@ def buoyancy_sorting(
                                             / thv0j
                                             + wue**2
                                         )
+
                                         if kk == 1:
                                             if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
                                                 xs1, xs2, status = roots(aquad, bquad, cquad)
@@ -3446,6 +3444,7 @@ def buoyancy_sorting(
                                                         min(xsat, min(xs1, xs2)),
                                                     ),
                                                 )
+
                                             else:
                                                 x_cu = xsat
 
@@ -3459,6 +3458,7 @@ def buoyancy_sorting(
                                                         max(xsat, min(xs1, xs2)),
                                                     ),
                                                 )
+
                                             else:
                                                 x_en = 1.0
 
@@ -3508,7 +3508,7 @@ def buoyancy_sorting(
                                     rei = min(
                                         rei,
                                         0.9
-                                        * log(dp0 / constants.MAPL_GRAV / dt / umf_zint[0, 0, -1] + 1.0)
+                                        * log(dp0 / constants.MAPL_GRAV / dt / umf_zint + 1.0)
                                         / dpe
                                         / (2.0 * xc - 1.0),
                                     )
@@ -3525,13 +3525,13 @@ def buoyancy_sorting(
                                 # layer to the base interface of 'kpen' layer as will
                                 # be shown later.
 
-                                umf_zint = umf_zint[0, 0, -1] * exp(dpe * (fer - fdr))
+                                umf_zint[0, 0, 1] = umf_zint * exp(dpe * (fer - fdr))
 
-                                emf = 0.0
+                                emf[0, 0, 1] = 0.0
 
                                 dcm = (
                                     0.5
-                                    * (umf_zint + umf_zint[0, 0, -1])
+                                    * (umf_zint[0, 0, 1] + umf_zint)
                                     * rei
                                     * dpe
                                     * min(1.0, max(0.0, xsat - xc))
@@ -3542,33 +3542,24 @@ def buoyancy_sorting(
                                 # treat limiting case
 
                                 if fer * dpe < 1.0e-4:
-                                    thlu = (
-                                        thlu[0, 0, -1]
-                                        + (thle + ssthl0 * dpe / 2.0 - thlu[0, 0, -1]) * fer * dpe
+                                    thlu[0, 0, 1] = thlu + (thle + ssthl0 * dpe / 2.0 - thlu) * fer * dpe
+                                    qtu[0, 0, 1] = qtu + (qte + ssqt0 * dpe / 2.0 - qtu) * fer * dpe
+                                    uu[0, 0, 1] = (
+                                        uu + (ue + ssu0 * dpe / 2.0 - uu) * fer * dpe - PGFc * ssu0 * dpe
                                     )
-                                    qtu = (
-                                        qtu[0, 0, -1] + (qte + ssqt0 * dpe / 2.0 - qtu[0, 0, -1]) * fer * dpe
-                                    )
-                                    uu = (
-                                        uu[0, 0, -1]
-                                        + (ue + ssu0 * dpe / 2.0 - uu[0, 0, -1]) * fer * dpe
-                                        - PGFc * ssu0 * dpe
-                                    )
-                                    vu = (
-                                        vu[0, 0, -1]
-                                        + (ve + ssv0 * dpe / 2.0 - vu[0, 0, -1]) * fer * dpe
-                                        - PGFc * ssv0 * dpe
+                                    vu[0, 0, 1] = (
+                                        vu + (ve + ssv0 * dpe / 2.0 - vu) * fer * dpe - PGFc * ssv0 * dpe
                                     )
 
                                     if dotransport == 1:
                                         n = 0
                                         while n < ncnst:
-                                            tru[0, 0, 0][n] = (
-                                                tru[0, 0, -1][n]
+                                            tru[0, 0, 1][n] = (
+                                                tru[0, 0, 0][n]
                                                 + (
                                                     tre[0, 0][n]
-                                                    + sstr0[0, 0, -1][n] * dpe / 2.0
-                                                    - tru[0, 0, -1][n]
+                                                    + sstr0[0, 0, 0][n] * dpe / 2.0
+                                                    - tru[0, 0, 0][n]
                                                 )
                                                 * fer
                                                 * dpe
@@ -3576,32 +3567,32 @@ def buoyancy_sorting(
                                             n += 1
 
                                 else:
-                                    thlu = (thle + ssthl0 / fer - ssthl0 * dpe / 2.0) - (
-                                        thle + ssthl0 * dpe / 2.0 - thlu[0, 0, -1] + ssthl0 / fer
+                                    thlu[0, 0, 1] = (thle + ssthl0 / fer - ssthl0 * dpe / 2.0) - (
+                                        thle + ssthl0 * dpe / 2.0 - thlu + ssthl0 / fer
                                     ) * exp(-fer * dpe)
 
-                                    qtu = (qte + ssqt0 / fer - ssqt0 * dpe / 2.0) - (
-                                        qte + ssqt0 * dpe / 2.0 - qtu[0, 0, -1] + ssqt0 / fer
+                                    qtu[0, 0, 1] = (qte + ssqt0 / fer - ssqt0 * dpe / 2.0) - (
+                                        qte + ssqt0 * dpe / 2.0 - qtu + ssqt0 / fer
                                     ) * exp(-fer * dpe)
-                                    uu = (ue + (1.0 - PGFc) * ssu0 / fer - ssu0 * dpe / 2.0) - (
-                                        ue + ssu0 * dpe / 2.0 - uu[0, 0, -1] + (1.0 - PGFc) * ssu0 / fer
+                                    uu[0, 0, 1] = (ue + (1.0 - PGFc) * ssu0 / fer - ssu0 * dpe / 2.0) - (
+                                        ue + ssu0 * dpe / 2.0 - uu + (1.0 - PGFc) * ssu0 / fer
                                     ) * exp(-fer * dpe)
 
-                                    vu = (ve + (1.0 - PGFc) * ssv0 / fer - ssv0 * dpe / 2.0) - (
-                                        ve + ssv0 * dpe / 2.0 - vu[0, 0, -1] + (1.0 - PGFc) * ssv0 / fer
+                                    vu[0, 0, 1] = (ve + (1.0 - PGFc) * ssv0 / fer - ssv0 * dpe / 2.0) - (
+                                        ve + ssv0 * dpe / 2.0 - vu + (1.0 - PGFc) * ssv0 / fer
                                     ) * exp(-fer * dpe)
 
                                     if dotransport == 1:
                                         n = 0
                                         while n < ncnst:
-                                            tru[0, 0, 0][n] = (
+                                            tru[0, 0, 1][n] = (
                                                 tre[0, 0][n]
                                                 + sstr0[0, 0, 0][n] / fer
                                                 - sstr0[0, 0, 0][n] * dpe / 2.0
                                             ) - (
                                                 tre[0, 0][n]
                                                 + sstr0[0, 0, 0][n] * dpe / 2.0
-                                                - tru[0, 0, -1][n]
+                                                - tru[0, 0, 0][n]
                                                 + sstr0[0, 0, 0][n] / fer
                                             ) * exp(
                                                 -fer * dpe
@@ -3639,8 +3630,8 @@ def buoyancy_sorting(
 
                                 thj, qvj, qlj, qij, qse, id_check = conden(
                                     pifc0[0, 0, 1],
-                                    thlu,
-                                    qtu,
+                                    thlu[0, 0, 1],
+                                    qtu[0, 0, 1],
                                     ese,
                                     esx,
                                 )
@@ -3682,9 +3673,9 @@ def buoyancy_sorting(
                                         # of environmentasl qt), not a regular
                                         # convective'detrainment'.
 
-                                        qtu = qtu - exql - exqi
-                                        thlu = (
-                                            thlu
+                                        qtu[0, 0, 1] = qtu[0, 0, 1] - exql - exqi
+                                        thlu[0, 0, 1] = (
+                                            thlu[0, 0, 1]
                                             + (
                                                 constants.MAPL_LATENT_HEAT_VAPORIZATION
                                                 / exnifc0[0, 0, 1]
@@ -3722,8 +3713,8 @@ def buoyancy_sorting(
                                     # from cumulus updraft.
                                     thj, qvj, qlj, qij, qse, id_check = conden(
                                         pifc0[0, 0, 1],
-                                        thlu,
-                                        qtu,
+                                        thlu[0, 0, 1],
+                                        qtu[0, 0, 1],
                                         ese,
                                         esx,
                                     )
@@ -3752,7 +3743,7 @@ def buoyancy_sorting(
                                         fdr_out = constants.MAPL_UNDEF
 
                                     if not condensation:
-                                        thvu = thj * (1.0 + zvir * qvj - qlj - qij)
+                                        thvu[0, 0, 1] = thj * (1.0 + zvir * qvj - qlj - qij)
 
                                         # Calculate updraft vertical velocity at the
                                         # upper interface. In order to calculate
@@ -3762,10 +3753,10 @@ def buoyancy_sorting(
                                         # rises.
 
                                         bogbot = rbuoy * (
-                                            thvu[0, 0, -1] / thvebot - 1.0
+                                            thvu / thvebot - 1.0
                                         )  # Cloud buoyancy at base interface
                                         bogtop = rbuoy * (
-                                            thvu / thv0top - 1.0
+                                            thvu[0, 0, 1] / thv0top - 1.0
                                         )  # Cloud buoyancy at top  interface
 
                                         delbog = bogtop - bogbot
@@ -3792,8 +3783,8 @@ def buoyancy_sorting(
                                         # even when wtw < 0 at the 'kpen' interface.
 
                                         if wtw > 0.0:
-                                            thlue = 0.5 * (thlu[0, 0, -1] + thlu)
-                                            qtue = 0.5 * (qtu[0, 0, -1] + qtu)
+                                            thlue = 0.5 * (thlu + thlu[0, 0, 1])
+                                            qtue = 0.5 * (qtu + qtu[0, 0, 1])
                                             wue = 0.5 * sqrt(max(wtwb + wtw, 0.0))
 
                                         else:
@@ -3826,10 +3817,11 @@ def buoyancy_sorting(
                         0.5 * constants.MAPL_GRAV * (bogbot + bogtop) / (max(wtw, 0.0) + 1.0e-4),
                         0.0,
                     )
+                    umf_zint[0, 0, 1] = umf_zint[0, 0, 1] * exp(
+                        0.637 * (dpe / rhomid0j / constants.MAPL_GRAV) * autodet
+                    )
 
-                    umf_zint = umf_zint * exp(0.637 * (dpe / rhomid0j / constants.MAPL_GRAV) * autodet)
-
-                if umf_zint == 0.0:
+                if umf_zint[0, 0, 1] == 0.0:
                     wtw = -1.0
 
                 # 'kbup' is the upper most layer in which cloud buoyancy  is positive
@@ -3850,9 +3842,9 @@ def buoyancy_sorting(
                     stop_buoyancy_sort = True  # Done calculating updraft properties, break out of loop
 
                 if not stop_buoyancy_sort:
-                    wu = sqrt(wtw)
+                    wu[0, 0, 1] = sqrt(wtw)
 
-                    if wu > 100.0:
+                    if wu[0, 0, 1] > 100.0:
                         condensation = True
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
@@ -3899,12 +3891,12 @@ def buoyancy_sorting(
                             constants.MAPL_RDRY * 0.5 * (thv0bot[0, 0, 1] + thv0top) * exnifc0[0, 0, 1]
                         )
 
-                        ufrc[0, 0, 1] = umf_zint / (rhoifc0j * wu)
+                        ufrc[0, 0, 1] = umf_zint[0, 0, 1] / (rhoifc0j * wu[0, 0, 1])
 
                         if ufrc[0, 0, 1] > rmaxfrac:
                             ufrc[0, 0, 1] = rmaxfrac
-                            umf_zint = rmaxfrac * rhoifc0j * wu
-                            fdr = fer - log(umf_zint / umf_zint[0, 0, -1]) / dpe
+                            umf_zint[0, 0, 1] = rmaxfrac * rhoifc0j * wu[0, 0, 1]
+                            fdr = fer - log(umf_zint[0, 0, 1] / umf_zint) / dpe
 
                         # Update environmental properties for at the mid-point of next
                         # upper layer for use in buoyancy sorting.
@@ -6641,7 +6633,6 @@ def adjust_implicit_CIN_inputs2(
     fdr_s: FloatField,
     iteration: int32,
 ):
-    from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -6874,7 +6865,7 @@ def recalc_environmental_variables(
 
                 if id_check == 1:
                     condensation = True
-                    umf_out[0, 0, 1] = 0.0
+                    # umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -6888,9 +6879,9 @@ def recalc_environmental_variables(
                     cush_inout = -1.0
                     qldet_out = 0.0
                     qidet_out = 0.0
-                    qtflx_out[0, 0, 1] = 0.0
-                    slflx_out[0, 0, 1] = 0.0
-                    uflx_out[0, 0, 1] = 0.0
+                    # qtflx_out[0, 0, 1] = 0.0
+                    # slflx_out[0, 0, 1] = 0.0
+                    # uflx_out[0, 0, 1] = 0.0
                     # vflx_out[0, 0, 1] = 0.0
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
@@ -6926,57 +6917,57 @@ def update_output_variables1(
     qsten: FloatField,
     cufrc: FloatField,
     cush: FloatFieldIJ,
-    umf_outvar: FloatField,
-    dcm_outvar: FloatField,
-    qvten_outvar: FloatField,
-    qlten_outvar: FloatField,
-    qiten_outvar: FloatField,
-    sten_outvar: FloatField,
-    uten_outvar: FloatField,
-    vten_outvar: FloatField,
-    qrten_outvar: FloatField,
-    qsten_outvar: FloatField,
-    cufrc_outvar: FloatField,
-    cush_inoutvar: FloatField,
+    umf_out: FloatField,
+    dcm_out: FloatField,
+    qvten_out: FloatField,
+    qlten_out: FloatField,
+    qiten_out: FloatField,
+    sten_out: FloatField,
+    uten_out: FloatField,
+    vten_out: FloatField,
+    qrten_out: FloatField,
+    qsten_out: FloatField,
+    cufrc_out: FloatField,
+    cush_inout: FloatField,
 ):
     with computation(FORWARD), interval(...):
         if not condensation:
-            umf_outvar[0, 0, 1] = umf_zint[0, 0, 1]
+            # umf_out[0, 0, 1] = umf_zint[0, 0, 1]
 
-            if K <= kinv - 1:
-                umf_outvar = umf_zint.at(K=kinv - 1) * zifc0 / zifc0.at(K=kinv - 1)
+            # if K <= kinv - 1:
+            #     umf_out = umf_zint.at(K=kinv - 1) * zifc0 / zifc0.at(K=kinv - 1)
 
-            dcm_outvar = dcm
-            qvten_outvar = qvten
-            qlten_outvar = qlten
-            qiten_outvar = qiten
-            sten_outvar = sten
-            uten_outvar = uten
-            vten_outvar = vten
-            qrten_outvar = qrten
-            qsten_outvar = qsten
-            cufrc_outvar = cufrc
-            cush_inoutvar = cush
+            dcm_out = dcm
+            qvten_out = qvten
+            qlten_out = qlten
+            qiten_out = qiten
+            sten_out = sten
+            uten_out = uten
+            vten_out = vten
+            # qrten_out = qrten
+            # qsten_out = qsten
+            # cufrc_out = cufrc
+            # cush_inout = cush
 
 
 def update_output_variables2(
     condensation: BoolFieldIJ,
     dotransport: Int,
     kpen: IntField,
-    qldet_outvar: FloatField,
-    qidet_outvar: FloatField,
-    qlsub_outvar: FloatField,
-    qisub_outvar: FloatField,
+    qldet_out: FloatField,
+    qidet_out: FloatField,
+    qlsub_out: FloatField,
+    qisub_out: FloatField,
     ndrop_out: FloatField,
     nice_out: FloatField,
-    qtflx_outvar: FloatField,
-    slflx_outvar: FloatField,
-    uflx_outvar: FloatField,
-    vflx_outvar: FloatField,
+    qtflx_out: FloatField,
+    slflx_out: FloatField,
+    uflx_out: FloatField,
+    vflx_out: FloatField,
     fer: FloatField,
     fdr: FloatField,
-    fer_outvar: FloatField,
-    fdr_outvar: FloatField,
+    fer_out: FloatField,
+    fdr_out: FloatField,
     dt: Float,
     rdrop: Float,
     qlten_det: FloatField,
@@ -6989,7 +6980,6 @@ def update_output_variables2(
     vflx: FloatField,
     tr0_inout: FloatField_NTracers,
     trten: FloatField_NTracers,
-    tr0_inoutvar: FloatField_NTracers,
 ):
     """
     Stencil to update ComputeUwshcu output variables.
@@ -7055,89 +7045,89 @@ def update_output_variables2(
     fdr_out [FloatField]: Fractional lateral detrainment rate [1/Pa]
 
     Outputs:
-    umf_outvar [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
-    dcm_outvar [FloatField]: Detrained cloudy air mass
-    qvten_outvar [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
-    qlten_outvar [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
-    qiten_outvar [FloatField]: Tendency of ice specific humidity [kg/kg/s]
-    sten_outvar [FloatField]: Tendency of dry static energy [J/kg/s]
-    uten_outvar [FloatField]: Tendency of zonal wind [m/s2]
-    vten_outvar [FloatField]: Tendency of meridional wind [m/s2]
-    qrten_outvar [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
-    qsten_outvar [FloatField]: Tendency of snow specific humidity [kg/kg/s]
-    cufrc_outvar [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
-    cush_inoutvar [FloatFieldIJ]: Convective scale height [m]
-    qldet_outvar [FloatField]: [?]
-    qidet_outvar [FloatField]: [?]
-    qlsub_outvar [FloatField]: [?]
-    qisub_outvar [FloatField]: [?]
-    qtflx_outvar [FloatField]: [?]
-    slflx_outvar [FloatField]: [?]
-    uflx_outvar [FloatField]: [?]
-    vflx_outvar [FloatField]: [?]
-    fer_outvar [FloatField]: Fractional lateral entrainment rate [1/Pa]
-    fdr_outvar [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    dcm_out [FloatField]: Detrained cloudy air mass
+    qvten_out [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    qlten_out [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    qiten_out [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    sten_out [FloatField]: Tendency of dry static energy [J/kg/s]
+    uten_out [FloatField]: Tendency of zonal wind [m/s2]
+    vten_out [FloatField]: Tendency of meridional wind [m/s2]
+    qrten_out [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten_out [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    cufrc_out [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    cush_inout [FloatFieldIJ]: Convective scale height [m]
+    qldet_out [FloatField]: [?]
+    qidet_out [FloatField]: [?]
+    qlsub_out [FloatField]: [?]
+    qisub_out [FloatField]: [?]
+    qtflx_out [FloatField]: [?]
+    slflx_out [FloatField]: [?]
+    uflx_out [FloatField]: [?]
+    vflx_out [FloatField]: [?]
+    fer_out [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr_out [FloatField]: Fractional lateral detrainment rate [1/Pa]
     ndrop_out [FloatField]: [?]
     nice_out [FloatField]: [?]
-    tr0_inoutvar [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
     """
     from __externals__ import ncnst
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            qldet_outvar = qlten_det
-            qidet_outvar = qiten_det
-            qlsub_outvar = qlten_sink
-            qisub_outvar = qiten_sink
+            qldet_out = qlten_det
+            qidet_out = qiten_det
+            qlsub_out = qlten_sink
+            qisub_out = qiten_sink
             ndrop_out = qlten_det / (4188.787 * rdrop**3)
             nice_out = qiten_det / (3.0e-10)
-            qtflx_outvar = qtflx
-            slflx_outvar = slflx
-            uflx_outvar = uflx
-            vflx_outvar = vflx
+            qtflx_out = qtflx
+            slflx_out = slflx
+            uflx_out = uflx
+            vflx_out = vflx
 
             if dotransport == 1:
                 n = 0
                 while n < ncnst:
-                    tr0_inoutvar[0, 0, 0][n] = tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
+                    tr0_inout[0, 0, 0][n] = tr0_inout[0, 0, 0][n] + trten[0, 0, 0][n] * dt
                     n += 1
 
-            fer_outvar = constants.MAPL_UNDEF
-            fdr_outvar = constants.MAPL_UNDEF
+            fer_out = constants.MAPL_UNDEF
+            fdr_out = constants.MAPL_UNDEF
             if K <= kpen:
-                fer_outvar = fer
-                fdr_outvar = fdr
+                fer_out = fer
+                fdr_out = fdr
 
 
 def compute_uwshcu_invert_after(
     # Inputs
     k0: Int,
-    umf_outvar: FloatField,
-    qtflx_outvar: FloatField,
-    slflx_outvar: FloatField,
-    uflx_outvar: FloatField,
-    vflx_outvar: FloatField,
-    dcm_outvar: FloatField,
-    qvten_outvar: FloatField,
-    qlten_outvar: FloatField,
-    qiten_outvar: FloatField,
-    sten_outvar: FloatField,
-    uten_outvar: FloatField,
-    vten_outvar: FloatField,
-    qrten_outvar: FloatField,
-    qsten_outvar: FloatField,
-    cufrc_outvar: FloatField,
-    qldet_outvar: FloatField,
-    qidet_outvar: FloatField,
-    qlsub_outvar: FloatField,
-    qisub_outvar: FloatField,
-    fer_outvar: FloatField,
-    fdr_outvar: FloatField,
+    umf_out: FloatField,
+    qtflx_out: FloatField,
+    slflx_out: FloatField,
+    uflx_out: FloatField,
+    vflx_out: FloatField,
+    dcm_out: FloatField,
+    qvten_out: FloatField,
+    qlten_out: FloatField,
+    qiten_out: FloatField,
+    sten_out: FloatField,
+    uten_out: FloatField,
+    vten_out: FloatField,
+    qrten_out: FloatField,
+    qsten_out: FloatField,
+    cufrc_out: FloatField,
+    qldet_out: FloatField,
+    qidet_out: FloatField,
+    qlsub_out: FloatField,
+    qisub_out: FloatField,
+    fer_out: FloatField,
+    fdr_out: FloatField,
     ndrop_out: FloatField,
     nice_out: FloatField,
     tr0: FloatField_NTracers,
-    tr0_inoutvar: FloatField_NTracers,
-    cush_inoutvar: FloatFieldIJ,
+    tr0_inout: FloatField_NTracers,
+    cush_inout: FloatFieldIJ,
     # Outputs
     umf_inv: FloatField,
     dcm_inv: FloatField,
@@ -7171,31 +7161,31 @@ def compute_uwshcu_invert_after(
 
     Inputs:
     k0 [Int]: Number of levels
-    umf_outvar [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
-    qtflx_outvar [FloatField]: [?]
-    slflx_outvar [FloatField]: [?]
-    uflx_outvar [FloatField]: [?]
-    vflx_outvar [FloatField]: [?]
-    dcm_outvar [FloatField]: Detrained cloudy air mass
-    qvten_outvar [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
-    qlten_outvar [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
-    qiten_outvar [FloatField]: Tendency of ice specific humidity [kg/kg/s]
-    sten_outvar [FloatField]: Tendency of dry static energy [J/kg/s]
-    uten_outvar [FloatField]: Tendency of zonal wind [m/s2]
-    vten_outvar [FloatField]: Tendency of meridional wind [m/s2]
-    qrten_outvar [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
-    qsten_outvar [FloatField]: Tendency of snow specific humidity [kg/kg/s]
-    cufrc_outvar [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
-    qldet_outvar [FloatField]: [?]
-    qidet_outvar [FloatField]: [?]
-    qlsub_outvar [FloatField]: [?]
-    qisub_outvar [FloatField]: [?]
-    fer_outvar [FloatField]: Fractional lateral entrainment rate [1/Pa]
-    fdr_outvar [FloatField]: Fractional lateral detrainment rate [1/Pa]
+    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
+    qtflx_out [FloatField]: [?]
+    slflx_out [FloatField]: [?]
+    uflx_out [FloatField]: [?]
+    vflx_out [FloatField]: [?]
+    dcm_out [FloatField]: Detrained cloudy air mass
+    qvten_out [FloatField]: Tendency of water vapor specific humidity [kg/kg/s]
+    qlten_out [FloatField]: Tendency of liquid water specific humidity [kg/kg/s]
+    qiten_out [FloatField]: Tendency of ice specific humidity [kg/kg/s]
+    sten_out [FloatField]: Tendency of dry static energy [J/kg/s]
+    uten_out [FloatField]: Tendency of zonal wind [m/s2]
+    vten_out [FloatField]: Tendency of meridional wind [m/s2]
+    qrten_out [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
+    qsten_out [FloatField]: Tendency of snow specific humidity [kg/kg/s]
+    cufrc_out [FloatField]: Shallow cumulus cloud fraction at the layer mid-point [fraction]
+    qldet_out [FloatField]: [?]
+    qidet_out [FloatField]: [?]
+    qlsub_out [FloatField]: [?]
+    qisub_out [FloatField]: [?]
+    fer_out [FloatField]: Fractional lateral entrainment rate [1/Pa]
+    fdr_out [FloatField]: Fractional lateral detrainment rate [1/Pa]
     ndrop_out [FloatField]: [?]
     nice_out [FloatField]: [?]
     tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-    tr0_inoutvar [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+    tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
 
     Outputs:
     umf_inv [FloatField]: Updraft mass flux at interfaces [kg/m2/s]
@@ -7228,42 +7218,42 @@ def compute_uwshcu_invert_after(
     from __externals__ import k_end, ncnst
 
     with computation(FORWARD), interval(...):
-        cush = cush_inoutvar
+        cush = cush_inout
         # Revert interface variables
         k_inv = k_end + 1 - K
-        umf_inv = umf_outvar.at(K=k_inv)
-        qtflx_inv = qtflx_outvar.at(K=k_inv)
-        slflx_inv = slflx_outvar.at(K=k_inv)
-        uflx_inv = uflx_outvar.at(K=k_inv)
-        vflx_inv = vflx_outvar.at(K=k_inv)
+        umf_inv = umf_out.at(K=k_inv)
+        qtflx_inv = qtflx_out.at(K=k_inv)
+        slflx_inv = slflx_out.at(K=k_inv)
+        uflx_inv = uflx_out.at(K=k_inv)
+        vflx_inv = vflx_out.at(K=k_inv)
 
     with computation(FORWARD), interval(-1, None):
         # Revert interface variables
-        umf_inv[0, 0, 1] = umf_outvar.at(K=0)
-        qtflx_inv[0, 0, 1] = qtflx_outvar.at(K=0)
-        slflx_inv[0, 0, 1] = slflx_outvar.at(K=0)
-        uflx_inv[0, 0, 1] = uflx_outvar.at(K=0)
-        vflx_inv[0, 0, 1] = vflx_outvar.at(K=0)
+        umf_inv[0, 0, 1] = umf_out.at(K=0)
+        qtflx_inv[0, 0, 1] = qtflx_out.at(K=0)
+        slflx_inv[0, 0, 1] = slflx_out.at(K=0)
+        uflx_inv[0, 0, 1] = uflx_out.at(K=0)
+        vflx_inv[0, 0, 1] = vflx_out.at(K=0)
 
     with computation(FORWARD), interval(...):
         # Revert mid-level variables
         k_inv = k0 - K - 1
-        dcm_inv = dcm_outvar.at(K=k_inv)
-        qvten_inv = qvten_outvar.at(K=k_inv)
-        qlten_inv = qlten_outvar.at(K=k_inv)
-        qiten_inv = qiten_outvar.at(K=k_inv)
-        tten_inv = sten_outvar.at(K=k_inv) / constants.MAPL_CP
-        uten_inv = uten_outvar.at(K=k_inv)
-        vten_inv = vten_outvar.at(K=k_inv)
-        qrten_inv = qrten_outvar.at(K=k_inv)
-        qsten_inv = qsten_outvar.at(K=k_inv)
-        cufrc_inv = cufrc_outvar.at(K=k_inv)
-        fer_inv = fer_outvar.at(K=k_inv)
-        fdr_inv = fdr_outvar.at(K=k_inv)
-        qldet_inv = qldet_outvar.at(K=k_inv)
-        qidet_inv = qidet_outvar.at(K=k_inv)
-        qlsub_inv = qlsub_outvar.at(K=k_inv)
-        qisub_inv = qisub_outvar.at(K=k_inv)
+        dcm_inv = dcm_out.at(K=k_inv)
+        qvten_inv = qvten_out.at(K=k_inv)
+        qlten_inv = qlten_out.at(K=k_inv)
+        qiten_inv = qiten_out.at(K=k_inv)
+        tten_inv = sten_out.at(K=k_inv) / constants.MAPL_CP
+        uten_inv = uten_out.at(K=k_inv)
+        vten_inv = vten_out.at(K=k_inv)
+        qrten_inv = qrten_out.at(K=k_inv)
+        qsten_inv = qsten_out.at(K=k_inv)
+        cufrc_inv = cufrc_out.at(K=k_inv)
+        fer_inv = fer_out.at(K=k_inv)
+        fdr_inv = fdr_out.at(K=k_inv)
+        qldet_inv = qldet_out.at(K=k_inv)
+        qidet_inv = qidet_out.at(K=k_inv)
+        qlsub_inv = qlsub_out.at(K=k_inv)
+        qisub_inv = qisub_out.at(K=k_inv)
         ndrop_inv = ndrop_out.at(K=k_inv)
         nice_inv = nice_out.at(K=k_inv)
 
@@ -7271,7 +7261,7 @@ def compute_uwshcu_invert_after(
         if dotransport == 1:
             n = 0
             while n < ncnst:
-                tr0[0, 0, 0][n] = max(mintracer, tr0_inoutvar[0, 0, 0][n])
+                tr0[0, 0, 0][n] = max(mintracer, tr0_inout[0, 0, 0][n])
                 CNV_Tracers[0, 0, 0][n] = tr0.at(K=k_inv, ddim=[n])
                 n += 1
 
@@ -7505,7 +7495,6 @@ class ComputeUwshcuInv(NDSLRuntime):
         self._adjust_implicit_CIN_inputs2 = self.stencil_factory.from_dims_halo(
             func=adjust_implicit_CIN_inputs2,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ncnst": UW_config.NCNST},
         )
 
         self._recalc_environmental_variables = self.stencil_factory.from_dims_halo(
@@ -7517,7 +7506,6 @@ class ComputeUwshcuInv(NDSLRuntime):
         self._update_output_variables1 = self.stencil_factory.from_dims_halo(
             func=update_output_variables1,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ncnst": UW_config.NCNST},
         )
 
         self._update_output_variables2 = self.stencil_factory.from_dims_halo(
@@ -7559,7 +7547,7 @@ class ComputeUwshcuInv(NDSLRuntime):
         self.sstr0_o = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "ntracers"])
         self.trten = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "ntracers"])
         self.tr0_s = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "ntracers"])
-        self.tr0_inoutvar = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "ntracers"])
+        self.tr0_inout = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "ntracers"])
         self.tr0_inout = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM, "ntracers"])
         self.trflx = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"])
         self.tru = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"])
@@ -7571,6 +7559,15 @@ class ComputeUwshcuInv(NDSLRuntime):
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
+
+        # Testvars
+        self.testvar3D_1 = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        self.testvar3D_2 = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        self.testvar3D_3 = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        self.testvar3D_4 = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        self.testvar3D_5 = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        self.testvar_zinterface1 = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
+        self.testvar2D_1 = self.make_local(quantity_factory, [X_DIM, Y_DIM])
 
     def __call__(
         self,
@@ -7937,6 +7934,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             ssv0_o=self.locals.ssv0_o,
             cush_inout=self.locals.cush_inout,
         )
+        print(self.condensation.view[:], "compute_thv0_thvl0")
 
         # This 'iteration' loop is for implicit CIN closure
 
@@ -7956,13 +7954,14 @@ class ComputeUwshcuInv(NDSLRuntime):
                 umf_out=self.locals.umf_out,
                 qtflx_out=self.locals.qtflx_out,
                 slflx_out=self.locals.slflx_out,
-                uflx_out=self.locals.uflx,
-                vflx_out=self.locals.vflx,
+                uflx_out=self.locals.uflx_out,
+                vflx_out=self.locals.vflx_out,
                 kinv=self.locals.kinv,
                 cush=cush,
                 tscaleh=self.locals.tscaleh,
                 cush_inout=self.locals.cush_inout,
             )
+            print(self.condensation.view[:], "find_pbl_height", iteration)
 
             self._find_pbl_averages(
                 condensation=self.condensation,
@@ -7985,6 +7984,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 qtavg=self.locals.qtavg,
                 iteration=iteration,
             )
+            print(self.condensation.view[:], "find_pbl_average", iteration)
 
             self._find_cumulus_characteristics(
                 condensation=self.condensation,
@@ -8019,6 +8019,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 qpert_out=qpert_out,
                 iteration=iteration,
             )
+            print(self.condensation.view[:], "find_cumulus_characteristics", iteration)
 
             self._find_klcl(
                 condensation=self.condensation,
@@ -8046,6 +8047,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 cush_inout=self.locals.cush_inout,
                 iteration=iteration,
             )
+            print(self.condensation.view[:], "find_klcl", iteration)
 
             self._compute_cin_cinlcl(
                 condensation=self.condensation,
@@ -8107,6 +8109,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 cinlcl=self.locals.cinlcl,
                 cush_inout=self.locals.cush_inout,
             )
+            print(self.condensation.view[:], "compute_cin", iteration)
+
             if iteration != 0:
                 self._compute_del_CIN(
                     condensation=self.condensation,
@@ -8117,6 +8121,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                     use_CINcin=use_CINcin,
                     del_CIN=self.locals.del_CIN,
                 )
+                print(self.condensation.view[:], "compute_delcin", iteration)
                 # Dev note: The below stencil was broken in 3 because NVCC
                 # dies on compile with the amount of template-nest in GridTools
                 self._avg_initial_and_final_cin1(
@@ -8198,6 +8203,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                     ssv0=self.locals.ssv0,
                     ssv0_o=self.locals.ssv0_o,
                 )
+                print(self.condensation.view[:], "compute_initialfinal_cin1", iteration)
                 self._avg_initial_and_final_cin2(
                     condensation=self.condensation,
                     del_CIN=self.locals.del_CIN,
@@ -8244,6 +8250,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                     tru=self.tru,
                     tru_emf=self.tru_emf,
                 )
+                print(self.condensation.view[:], "compute_initialfinal_cin2", iteration)
+
                 self._avg_initial_and_final_cin3(
                     condensation=self.condensation,
                     del_CIN=self.locals.del_CIN,
@@ -8294,6 +8302,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                     fdr_out=self.locals.fdr_out,
                     fdr_s=self.locals.fdr_s,
                 )
+                print(self.condensation.view[:], "compute_initialfinal_cin3", iteration)
 
             self._define_prel_krel(
                 condensation=self.condensation,
@@ -8308,6 +8317,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 prel=self.locals.prel,
                 thv0rel=self.locals.thv0rel,
             )
+            print(self.condensation.view[:], "define_prel_krel", iteration)
 
             self._calc_cumulus_base_mass_flux(
                 condensation=self.condensation,
@@ -8339,6 +8349,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 wcrit=self.locals.wcrit,
                 cush_inout=self.locals.cush_inout,
             )
+            print(self.condensation.view[:], "calc_cumulusbasemasflux", iteration)
 
             self._define_updraft_properties(
                 condensation=self.condensation,
@@ -8372,6 +8383,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 ufrclcl=self.locals.ufrclcl,
                 cush_inout=self.locals.cush_inout,
             )
+            print(self.condensation.view[:], "define_updraftproperties", iteration)
 
             self._define_env_properties(
                 condensation=self.condensation,
@@ -8415,6 +8427,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 ue=self.locals.ue,
                 ve=self.locals.ve,
             )
+            print(self.condensation.view[:], "define_env_properties", iteration)
 
             self._buoyancy_sorting(
                 condensation=self.condensation,
@@ -8504,7 +8517,14 @@ class ComputeUwshcuInv(NDSLRuntime):
                 cush_inout=self.locals.cush_inout,
                 stop_buoyancy_sort=self.stop_buoyancy_sort,
                 iteration=iteration,
+                testvar_zinterface1=self.testvar_zinterface1,
+                testvar3D_1=self.testvar3D_1,
+                testvar3D_2=self.testvar3D_2,
+                testvar3D_3=self.testvar3D_3,
+                testvar3D_4=self.testvar3D_4,
+                testvar3D_5=self.testvar3D_5,
             )
+            print(self.condensation.view[:], "buoyancysorting", iteration)
 
             self._calc_ppen(
                 condensation=self.condensation,
@@ -8521,6 +8541,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 ppen=self.locals.ppen,
                 iteration=iteration,
             )
+            print(self.condensation.view[:], "calc_ppen", iteration)
 
             self._recalc_condensate(
                 condensation=self.condensation,
@@ -8567,6 +8588,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 cush_inout=self.locals.cush_inout,
                 iteration=iteration,
             )
+            print(self.condensation.view[:], "recalc_condensate", iteration)
 
             self._calc_entrainment_mass_flux(
                 condensation=self.condensation,
@@ -8609,6 +8631,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 emf=self.locals.emf,
                 iteration=iteration,
             )
+            print(self.condensation.view[:], "entrainment_mass_flux", iteration)
 
             self._calc_pbl_fluxes(
                 condensation=self.condensation,
@@ -8643,6 +8666,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 iteration=iteration,
                 xflx_ndim=self.xflx_ndim,
             )
+            print(self.condensation.view[:], "calc_pbl_fluxes", iteration)
 
             self._non_buoyancy_sorting_fluxes(
                 condensation=self.condensation,
@@ -8678,6 +8702,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 vplus=self.locals.vplus,
                 iteration=iteration,
             )
+            print(self.condensation.view[:], "non_buoyancysortingfluxes", iteration)
 
             self._buoyancy_sorting_fluxes(
                 condensation=self.condensation,
@@ -8710,6 +8735,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 slflx=self.locals.slflx,
                 iteration=iteration,
             )
+
+            print(self.condensation.view[:], "buoyancysortingfluxes", iteration)
 
             self._penetrative_entrainment_fluxes(
                 condensation=self.condensation,
@@ -8763,6 +8790,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 iteration=iteration,
             )
 
+            print(self.condensation.view[:], "penetratvieentrainmentfluxes", iteration)
+
             self._calc_momentum_tendency(
                 condensation=self.condensation,
                 kpen=self.locals.kpen,
@@ -8778,6 +8807,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 vf=self.locals.vf,
                 iteration=iteration,
             )
+
+            print(self.condensation.view[:], "calcmomentumtendency", iteration)
 
             self._calc_thermodynamic_tendencies(
                 condensation=self.condensation,
@@ -8840,6 +8871,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 iteration=iteration,
             )
 
+            print(self.condensation.view[:], "calcthermotendency", iteration)
+
             self._prevent_negative_condensate(
                 condensation=self.condensation,
                 qv0=self.locals.qv0,
@@ -8856,6 +8889,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 qmin=self.locals.qmin,
                 iteration=iteration,
             )
+            print(self.condensation.view[:], "prevent_negative_condensate", iteration)
 
             self._calc_tracer_tendencies(
                 condensation=self.condensation,
@@ -8893,6 +8927,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 riwp=self.locals.riwp,
                 cush_inout=self.locals.cush_inout,
             )
+            print(self.condensation.view[:], "tracertendencies", iteration)
 
             self._calc_cumulus_condensate_at_interfaces(
                 condensation=self.condensation,
@@ -8928,8 +8963,9 @@ class ComputeUwshcuInv(NDSLRuntime):
                 cush_inout=self.locals.cush_inout,
                 iteration=iteration,
             )
+            print(self.condensation.view[:], "cumuluscondensateatinterface", iteration)
 
-            if iteration != iter_cin:
+            if iteration == 0:
                 self._adjust_implicit_CIN_inputs1(
                     condensation=self.condensation,
                     qv0=self.locals.qv0,
@@ -8963,8 +8999,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                     sten_s=self.locals.sten_s,
                     uten_s=self.locals.uten_s,
                     vten_s=self.locals.vten_s,
-                    iteration=iteration,
                 )
+                print(self.condensation.view[:], "adjustCINinputs1", iteration)
 
                 self._adjust_implicit_CIN_inputs2(
                     condensation=self.condensation,
@@ -9012,6 +9048,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                     fdr_s=self.locals.fdr_s,
                     iteration=iteration,
                 )
+                print(self.condensation.view[:], "adjustCINinputs2", iteration)
 
                 self._recalc_environmental_variables(
                     condensation=self.condensation,
@@ -9055,6 +9092,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                     cush_inout=self.locals.cush_inout,
                     iteration=iteration,
                 )
+                print(self.condensation.view[:], "recaclenvvariables", iteration)
 
         self._update_output_variables1(
             condensation=self.condensation,
@@ -9072,38 +9110,39 @@ class ComputeUwshcuInv(NDSLRuntime):
             qsten=self.locals.qsten,
             cufrc=self.locals.cufrc,
             cush=cush,
-            umf_outvar=self.locals.umf_outvar,
-            dcm_outvar=self.locals.dcm_outvar,
-            qvten_outvar=self.locals.qvten_outvar,
-            qlten_outvar=self.locals.qlten_outvar,
-            qiten_outvar=self.locals.qiten_outvar,
-            sten_outvar=self.locals.sten_outvar,
-            uten_outvar=self.locals.uten_outvar,
-            vten_outvar=self.locals.vten_outvar,
-            qrten_outvar=self.locals.qrten_outvar,
-            qsten_outvar=self.locals.qsten_outvar,
-            cufrc_outvar=self.locals.cufrc_outvar,
-            cush_inoutvar=self.locals.cush_inoutvar,
+            umf_out=self.locals.umf_out,
+            dcm_out=self.locals.dcm_out,
+            qvten_out=self.locals.qvten_out,
+            qlten_out=self.locals.qlten_out,
+            qiten_out=self.locals.qiten_out,
+            sten_out=self.locals.sten_out,
+            uten_out=self.locals.uten_out,
+            vten_out=self.locals.vten_out,
+            qrten_out=self.locals.qrten_out,
+            qsten_out=self.locals.qsten_out,
+            cufrc_out=self.locals.cufrc_out,
+            cush_inout=self.locals.cush_inout,
         )
+        print(self.condensation.view[:], "updaetoutput1", iteration)
 
         self._update_output_variables2(
             condensation=self.condensation,
             dotransport=dotransport,
             kpen=self.locals.kpen,
-            qldet_outvar=self.locals.qldet_outvar,
-            qidet_outvar=self.locals.qidet_outvar,
-            qlsub_outvar=self.locals.qlsub_outvar,
-            qisub_outvar=self.locals.qisub_outvar,
+            qldet_out=self.locals.qldet_out,
+            qidet_out=self.locals.qidet_out,
+            qlsub_out=self.locals.qlsub_out,
+            qisub_out=self.locals.qisub_out,
             ndrop_out=self.locals.ndrop_out,
             nice_out=self.locals.nice_out,
-            qtflx_outvar=self.locals.qtflx_outvar,
-            slflx_outvar=self.locals.slflx_outvar,
-            uflx_outvar=self.locals.uflx_outvar,
-            vflx_outvar=self.locals.vflx_outvar,
+            qtflx_out=self.locals.qtflx_out,
+            slflx_out=self.locals.slflx_out,
+            uflx_out=self.locals.uflx_out,
+            vflx_out=self.locals.vflx_out,
             fer=self.locals.fer,
             fdr=self.locals.fdr,
-            fer_outvar=self.locals.fer_outvar,
-            fdr_outvar=self.locals.fdr_outvar,
+            fer_out=self.locals.fer_out,
+            fdr_out=self.locals.fdr_out,
             dt=dt,
             rdrop=rdrop,
             qlten_det=self.locals.qlten_det,
@@ -9116,39 +9155,39 @@ class ComputeUwshcuInv(NDSLRuntime):
             vflx=self.locals.vflx,
             tr0_inout=self.tr0_inout,
             trten=self.trten,
-            tr0_inoutvar=self.tr0_inoutvar,
         )
+        print(self.condensation.view[:], "updateoutput2", iteration)
 
         self._compute_uwshcu_invert_after(
             # Inputs
             k0=k0,
-            umf_outvar=self.locals.umf_outvar,
-            qtflx_outvar=self.locals.qtflx_outvar,
-            slflx_outvar=self.locals.slflx_outvar,
-            uflx_outvar=self.locals.uflx_outvar,
-            vflx_outvar=self.locals.vflx_outvar,
-            dcm_outvar=self.locals.dcm_outvar,
-            qvten_outvar=self.locals.qvten_outvar,
-            qlten_outvar=self.locals.qlten_outvar,
-            qiten_outvar=self.locals.qiten_outvar,
-            sten_outvar=self.locals.sten_outvar,
-            uten_outvar=self.locals.uten_outvar,
-            vten_outvar=self.locals.vten_outvar,
-            qrten_outvar=self.locals.qrten_outvar,
-            qsten_outvar=self.locals.qsten_outvar,
-            cufrc_outvar=self.locals.cufrc_outvar,
-            qldet_outvar=self.locals.qldet_outvar,
-            qidet_outvar=self.locals.qidet_outvar,
-            qlsub_outvar=self.locals.qlsub_outvar,
-            qisub_outvar=self.locals.qisub_outvar,
-            fer_outvar=self.locals.fer_outvar,
-            fdr_outvar=self.locals.fdr_outvar,
+            umf_out=self.locals.umf_out,
+            qtflx_out=self.locals.qtflx_out,
+            slflx_out=self.locals.slflx_out,
+            uflx_out=self.locals.uflx_out,
+            vflx_out=self.locals.vflx_out,
+            dcm_out=self.locals.dcm_out,
+            qvten_out=self.locals.qvten_out,
+            qlten_out=self.locals.qlten_out,
+            qiten_out=self.locals.qiten_out,
+            sten_out=self.locals.sten_out,
+            uten_out=self.locals.uten_out,
+            vten_out=self.locals.vten_out,
+            qrten_out=self.locals.qrten_out,
+            qsten_out=self.locals.qsten_out,
+            cufrc_out=self.locals.cufrc_out,
+            qldet_out=self.locals.qldet_out,
+            qidet_out=self.locals.qidet_out,
+            qlsub_out=self.locals.qlsub_out,
+            qisub_out=self.locals.qisub_out,
+            fer_out=self.locals.fer_out,
+            fdr_out=self.locals.fdr_out,
             ndrop_out=self.locals.ndrop_out,
             nice_out=self.locals.nice_out,
             tr0=self.tr0,
-            tr0_inoutvar=self.tr0_inoutvar,
+            tr0_inout=self.tr0_inout,
             CNV_Tracers=CNV_Tracers,
-            cush_inoutvar=self.locals.cush_inoutvar,
+            cush_inout=self.locals.cush_inout,
             # Outputs
             umf_inv=umf_inv,
             dcm_inv=dcm_inv,
