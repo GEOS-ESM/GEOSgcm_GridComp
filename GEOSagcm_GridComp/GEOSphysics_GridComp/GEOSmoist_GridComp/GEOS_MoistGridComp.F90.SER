@@ -5625,7 +5625,6 @@ contains
        if (associated(PTR3D)) PTR3D = NACTI*1.e-6
 
        call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
-       !$ser off
        if (SH_MD_DP) then
          !$ser verbatim if (timestep .eq. 2) then
          !$ser on
@@ -5640,7 +5639,6 @@ contains
          ! $ser off
        else
          if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-         !$ser on
          if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          !$ser off
          !$ser verbatim if (timestep .eq. 2) then
