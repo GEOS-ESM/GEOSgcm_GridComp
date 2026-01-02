@@ -1,20 +1,15 @@
 from f90nml import Namelist
+from gt4py.cartesian.gtscript import int32
 
-from ndsl import Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatField, Int, Bool
+import pyMoist.constants as constants
+from ndsl import StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
-from pyMoist.UW.compute_uwshcu import (
-    adjust_implicit_CIN_inputs1,
-)
-from gt4py.cartesian.gtscript import int32
+from pyMoist.UW.compute_uwshcu import adjust_implicit_CIN_inputs1
 from pyMoist.UW.config import UWConfiguration
-import pyMoist.constants as constants
-from pyMoist.saturation_tables import (
-    get_saturation_vapor_pressure_table,
-)
 
 
 class TranslateAdjustImplicitCINInputs1(TranslateFortranData2Py):

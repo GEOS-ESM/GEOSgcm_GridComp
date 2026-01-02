@@ -1,22 +1,20 @@
 from f90nml import Namelist
 
-from ndsl import Quantity, QuantityFactory, StencilFactory
+import pyMoist.constants as constants
+from ndsl import Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, FloatField, Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
+from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.UW.compute_uwshcu import (
-    compute_uwshcu_invert_before,
+    _reset_mask,
     compute_thermodynamic_variables,
     compute_thv0_thvl0,
-    _reset_mask,
+    compute_uwshcu_invert_before,
 )
 from pyMoist.UW.config import UWConfiguration
-import pyMoist.constants as constants
-from pyMoist.saturation_tables import (
-    get_saturation_vapor_pressure_table,
-)
 
 
 # Dev NOTE: The data for this translate test comes from combining two files in
@@ -159,9 +157,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         return qty
 
     def compute(self, inputs):
-        self.UW_config = UWConfiguration(
-            Int(inputs["ncnst"]), Int(inputs["k0"]), Int(inputs["windsrcavg"])
-        )
+        self.UW_config = UWConfiguration(Int(inputs["ncnst"]), Int(inputs["k0"]), Int(inputs["windsrcavg"]))
 
         self.quantity_factory.add_data_dimensions(
             {
@@ -200,13 +196,9 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         iter_cin = Int(inputs["iter_cin"])
 
         # Field inputs
-        pifc0_inv = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        pifc0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         safe_assign_array(pifc0_inv.view[:, :, :], inputs["pifc0_inv"])
-        zifc0_inv = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        zifc0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         safe_assign_array(zifc0_inv.view[:, :, :], inputs["zifc0_inv"])
         pmid0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(pmid0_inv.view[:, :, :], inputs["pmid0_inv"])
@@ -214,13 +206,9 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         safe_assign_array(zmid0_inv.view[:, :, :], inputs["zmid0_inv"])
         kpbl_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
         safe_assign_array(kpbl_inv.view[:, :], inputs["kpbl_inv"])
-        exnmid0_inv = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        exnmid0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(exnmid0_inv.view[:, :, :], inputs["exnmid0_inv"])
-        exnifc0_inv = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        exnifc0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         safe_assign_array(exnifc0_inv.view[:, :, :], inputs["exnifc0_inv"])
         dp0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(dp0_inv.view[:, :, :], inputs["dp0_inv"])
@@ -238,9 +226,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         safe_assign_array(t0_inv.view[:, :, :], inputs["t0_inv"])
         frland = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
         safe_assign_array(frland.view[:, :], inputs["frland"])
-        tke_inv = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        tke_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         safe_assign_array(tke_inv.view[:, :, :], inputs["tke_inv"])
         rkfre = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
         safe_assign_array(rkfre.view[:, :], inputs["rkfre"])
@@ -254,27 +240,15 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         cnvtr = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
         safe_assign_array(cnvtr.view[:, :], inputs["cnvtr"])
 
-        CNV_Tracers = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a"
-        )
+        CNV_Tracers = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
         safe_assign_array(CNV_Tracers.view[:, :, :, :], inputs["CNV_Tracers"])
-        tr0_inout = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a"
-        )
+        tr0_inout = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
 
         # FloatFieldNTracers
-        sstr0 = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a"
-        )
-        sstr0_o = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a"
-        )
-        tr0_o = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a"
-        )
-        trten = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a"
-        )
+        sstr0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
+        sstr0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
+        tr0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
+        trten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
 
         # FloatFields
         qt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
@@ -296,27 +270,17 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         u0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         v0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         zmid0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        exnmid0_in = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        exnmid0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         dp0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qv0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         ql0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qi0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         th0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         tke_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        pifc0_in = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        zifc0_in = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        exnifc0_in = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        kpbl_in = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM], dtype=Int, units="n/a"
-        )
+        pifc0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        zifc0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        exnifc0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        kpbl_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], dtype=Int, units="n/a")
         cnvtrmax = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
 
         # # Call stencils
@@ -364,24 +328,12 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         # _compute_thermodynamics_variables locals
         u0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         v0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        tr0 = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a"
-        )
-        umf_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        qtflx_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        slflx_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        uflx_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        vflx_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        tr0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
+        umf_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        qtflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        slflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        uflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        vflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         qv0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qi0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         pmid0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
@@ -436,9 +388,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             qpert_out=qpert_out,
         )
 
-        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(
-            self.stencil_factory.backend
-        )
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
@@ -446,72 +396,30 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             func=_reset_mask,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self.condensation = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM], dtype=bool, units="n/a"
-        )
+        self.condensation = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], dtype=bool, units="n/a")
         self._reset_mask(self.condensation, False)
 
         # _compute_thv0_thvl0 locals
-        trflx = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="n/a"
-        )
-        tru = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="n/a"
-        )
-        tru_emf = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="n/a"
-        )
-        umf_zint = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        emf = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        slflx = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        qtflx = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        uflx = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        vflx = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        thlu = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        qtu = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        uu = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        vu = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        wu = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        thvu = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        thlu_emf = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        qtu_emf = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        uu_emf = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        vu_emf = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        uemf = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        trflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="n/a")
+        tru = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="n/a")
+        tru_emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="n/a")
+        umf_zint = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        slflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        qtflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        uflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        vflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        thlu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        qtu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        uu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        vu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        wu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        thvu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        thlu_emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        qtu_emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        uu_emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        vu_emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        uemf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         ql0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
         uten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
@@ -520,17 +428,11 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         qlu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qiu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         cufrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        ufrc = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        ufrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         qlten_det = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qiten_det = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qlten_sink = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
-        qiten_sink = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        qlten_sink = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qiten_sink = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         sten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         slten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qiten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
@@ -548,12 +450,8 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         ssqt0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         thv0bot_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         thv0top_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        thvl0bot_o = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
-        thvl0top_o = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        thvl0bot_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        thvl0top_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         ssu0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         ssv0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         cush_inout = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")

@@ -1,21 +1,15 @@
 from f90nml import Namelist
+from gt4py.cartesian.gtscript import int32
 
-from ndsl import Quantity, QuantityFactory, StencilFactory
+import pyMoist.constants as constants
+from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatField, Int, Bool
+from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
-from pyMoist.UW.compute_uwshcu import (
-    find_pbl_height,
-    find_pbl_averages,
-)
-from gt4py.cartesian.gtscript import int32
+from pyMoist.UW.compute_uwshcu import find_pbl_averages, find_pbl_height
 from pyMoist.UW.config import UWConfiguration
-import pyMoist.constants as constants
-from pyMoist.saturation_tables import (
-    get_saturation_vapor_pressure_table,
-)
 
 
 # Dev NOTE: The data for this translate test comes from combining two files in
@@ -111,9 +105,7 @@ class TranslateFindPbl(TranslateFortranData2Py):
         }
 
     def compute(self, inputs):
-        self.UW_config = UWConfiguration(
-            Int(inputs["ncnst"]), Int(inputs["k0"]), Int(inputs["windsrcavg"])
-        )
+        self.UW_config = UWConfiguration(Int(inputs["ncnst"]), Int(inputs["k0"]), Int(inputs["windsrcavg"]))
 
         self.quantity_factory.add_data_dimensions(
             {
@@ -152,9 +144,7 @@ class TranslateFindPbl(TranslateFortranData2Py):
         iter_cin = Int(inputs["iter_cin"])
 
         # Field inputs
-        condensation = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM], units="n/a", dtype=bool
-        )
+        condensation = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a", dtype=bool)
 
         for i in range(0, 24):
             for j in range(0, 24):
@@ -165,13 +155,9 @@ class TranslateFindPbl(TranslateFortranData2Py):
 
         cush = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
         safe_assign_array(cush.view[:, :], inputs["cush"])
-        kpbl_in = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM], units="n/a", dtype=Int
-        )
+        kpbl_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a", dtype=Int)
         safe_assign_array(kpbl_in.view[:, :], inputs["kpbl_in"])
-        pifc0 = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
+        pifc0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         safe_assign_array(pifc0.view[:, :, :], inputs["pifc0"])
         qt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(qt0.view[:, :, :], inputs["qt0"])
@@ -191,9 +177,7 @@ class TranslateFindPbl(TranslateFortranData2Py):
         safe_assign_array(zmid0.view[:, :, :], inputs["zmid0"])
 
         # Outputs
-        kinv = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int
-        )
+        kinv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int)
         qtavg = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         thvlavg = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         thvlmin = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
@@ -202,24 +186,12 @@ class TranslateFindPbl(TranslateFortranData2Py):
         vavg = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         tscaleh = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
 
-        umf_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        qtflx_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        slflx_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        uflx_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        vflx_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        cush_inout = umf_out = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM], units="n/a"
-        )
+        umf_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        qtflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        slflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        uflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        vflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        cush_inout = umf_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
 
         # The iteration you want to test
         iter_test = int32(0)
@@ -271,7 +243,5 @@ class TranslateFindPbl(TranslateFortranData2Py):
             "tkeavg": tkeavg.view[:],
             "uavg": uavg.view[:],
             "vavg": vavg.view[:],
-            "tscaleh": tscaleh.view[
-                :
-            ],  # Its okay if tscaleh fails here, its not used until iteration = 2
+            "tscaleh": tscaleh.view[:],  # Its okay if tscaleh fails here, its not used until iteration = 2
         }

@@ -1,20 +1,16 @@
 from f90nml import Namelist
+from gt4py.cartesian.gtscript import int32
 
-from ndsl import Quantity, QuantityFactory, StencilFactory
+import pyMoist.constants as constants
+from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatField, Int, Bool
+from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
-from pyMoist.UW.compute_uwshcu import (
-    recalc_environmental_variables,
-)
-from gt4py.cartesian.gtscript import int32
+from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
+from pyMoist.UW.compute_uwshcu import recalc_environmental_variables
 from pyMoist.UW.config import UWConfiguration
-import pyMoist.constants as constants
-from pyMoist.saturation_tables import (
-    get_saturation_vapor_pressure_table,
-)
 
 
 class TranslateRecalcEnvVariables(TranslateFortranData2Py):
@@ -90,7 +86,6 @@ class TranslateRecalcEnvVariables(TranslateFortranData2Py):
         # FloatField Outputs
         self.out_vars = {
             "qi0": self.grid.compute_dict(),
-            "ql0": self.grid.compute_dict(),
             "ql0": self.grid.compute_dict(),
             "qt0": self.grid.compute_dict(),
             "qv0": self.grid.compute_dict(),
@@ -183,7 +178,6 @@ class TranslateRecalcEnvVariables(TranslateFortranData2Py):
         # Outputs
         qi0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         ql0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        ql0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qv0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         s0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
@@ -261,7 +255,6 @@ class TranslateRecalcEnvVariables(TranslateFortranData2Py):
 
         return {
             "qi0": qi0.view[:],
-            "ql0": ql0.view[:],
             "ql0": ql0.view[:],
             "qt0": qt0.view[:],
             "qv0": qv0.view[:],
