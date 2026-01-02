@@ -844,7 +844,7 @@
 
 !**** 4. URBAN FRACTION
 !CC    print*,'energy urban'
-      CH_UR = 0.018 !just for test
+      !CH_UR = 0.018 !just for test
       BLW_UR = EMIS_UR*stefan_boltzmann*TC_UR*TC_UR*TC_UR
       ALW_UR = -3.0*BLW_UR*TC_UR
       BLW_UR =  4.0*BLW_UR  
