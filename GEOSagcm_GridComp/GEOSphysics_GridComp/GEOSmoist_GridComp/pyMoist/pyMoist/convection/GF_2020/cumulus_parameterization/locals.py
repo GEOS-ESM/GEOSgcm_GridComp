@@ -385,6 +385,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    environment_massflux: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_massflux",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     mass_flux_ensemble: Quantity = dataclasses.field(
         metadata={
             "name": "mass_flux_ensemble",

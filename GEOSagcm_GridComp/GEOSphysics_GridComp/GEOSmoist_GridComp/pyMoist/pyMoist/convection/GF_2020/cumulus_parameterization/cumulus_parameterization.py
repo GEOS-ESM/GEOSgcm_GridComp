@@ -413,7 +413,10 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._environment_mass_flux = EnvironmentMassFlux()
+        self._environment_mass_flux = stencil_factory.from_dims_halo(
+            func=environment_mass_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
         self._mass_conservation = MassConservation()
 
@@ -1215,7 +1218,7 @@ class CumulusParameterization:
                 )
 
                 # calculate moisture properties of downdraft
-                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMoisture{plume}:
+                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMoisture_{plume}:
                 # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
                 # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
                 # NOTE      shallow ✅
@@ -1382,11 +1385,17 @@ class CumulusParameterization:
                 )
 
                 # get the environmental mass flux
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_EnvironmentMassFlux_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._environment_mass_flux(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    error_code=state.output.error_code,
+                    epsilon_forced=state.output.epsilon_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    environment_massflux=locals.environment_massflux,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
                 # check mass conservation
