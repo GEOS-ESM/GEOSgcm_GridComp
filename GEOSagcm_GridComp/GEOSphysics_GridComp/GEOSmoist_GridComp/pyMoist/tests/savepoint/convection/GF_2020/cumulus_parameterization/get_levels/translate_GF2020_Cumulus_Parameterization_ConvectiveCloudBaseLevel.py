@@ -90,6 +90,9 @@ class TestCore:
         locals = GF2020CumulusParameterizationLocals.zeros(
             self.quantity_factory,
             data_dimensions={
+                "ensemble_1": MAXENS1,
+                "ensemble_2": MAXENS2,
+                "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
             },
         )

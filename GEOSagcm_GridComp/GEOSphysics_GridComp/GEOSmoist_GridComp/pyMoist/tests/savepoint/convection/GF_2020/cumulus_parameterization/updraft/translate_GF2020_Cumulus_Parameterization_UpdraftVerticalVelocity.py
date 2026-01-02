@@ -80,6 +80,9 @@ class TestCore:
         locals = GF2020CumulusParameterizationLocals.zeros(
             self.quantity_factory,
             data_dimensions={
+                "ensemble_1": MAXENS1,
+                "ensemble_2": MAXENS2,
+                "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
             },
         )
@@ -99,8 +102,12 @@ class TestCore:
             "local_geopotential_height_cloud_levels_forced_upvvel"
         ]
         locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_upvvel"]
-        locals.updraft_column_temperature_forced.data[:] = inputs["local_updraft_column_temperature_forced_upvvel"]
-        locals.cloud_total_water_after_entrainment_forced.data[:] = inputs["local_cloud_total_water_after_entrainment_forced_upvvel"]
+        locals.updraft_column_temperature_forced.data[:] = inputs[
+            "local_updraft_column_temperature_forced_upvvel"
+        ]
+        locals.cloud_total_water_after_entrainment_forced.data[:] = inputs[
+            "local_cloud_total_water_after_entrainment_forced_upvvel"
+        ]
         state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_liquid_after_rain_forced_upvvel"]
         )
@@ -154,8 +161,12 @@ class TestCore:
                 :
             ],
             "local_t_cloud_levels_forced_upvvel": locals.t_cloud_levels_forced.field[:],
-            "local_updraft_column_temperature_forced_upvvel": locals.updraft_column_temperature_forced.field[:],
-            "local_cloud_total_water_after_entrainment_forced_upvvel": locals.cloud_total_water_after_entrainment_forced.field[:],
+            "local_updraft_column_temperature_forced_upvvel": locals.updraft_column_temperature_forced.field[
+                :
+            ],
+            "local_cloud_total_water_after_entrainment_forced_upvvel": locals.cloud_total_water_after_entrainment_forced.field[
+                :
+            ],
             "cloud_liquid_after_rain_forced_upvvel": state.output.cloud_liquid_after_rain_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],

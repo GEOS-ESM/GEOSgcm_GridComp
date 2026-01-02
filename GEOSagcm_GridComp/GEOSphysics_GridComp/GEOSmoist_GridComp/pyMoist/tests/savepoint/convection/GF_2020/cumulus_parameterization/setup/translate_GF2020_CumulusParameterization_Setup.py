@@ -146,6 +146,9 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
         locals = GF2020CumulusParameterizationLocals.zeros(
             self.quantity_factory,
             data_dimensions={
+                "ensemble_1": MAXENS1,
+                "ensemble_2": MAXENS2,
+                "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
             },
         )
@@ -163,7 +166,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
         state.input_output.geopotential_height_forced.data[:] = inputs[
             "geopotential_height_forced_cu_param_setup"
         ]
-        state.output.epsilon.data[:, :, 0] = inputs["epsilon_cu_param_setup"]  # plume dependent
+        state.output.epsilon_forced.data[:, :, 0] = inputs["epsilon_cu_param_setup"]  # plume dependent
         state.output.precip.data[:, :, 0] = inputs["precip_cu_param_setup"]  # plume dependent
         state.output.scale_dependence_factor.data[:, :, 0] = inputs[
             "scale_dependence_factor_cu_param_setup"
@@ -204,7 +207,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
 
         outputs = {
             # state fields
-            "epsilon_cu_param_setup": state.output.epsilon.field[:, :, 0],
+            "epsilon_cu_param_setup": state.output.epsilon_forced.field[:, :, 0],
             "precip_cu_param_setup": state.output.precip.field[:, :, 0],
             "scale_dependence_factor_cu_param_setup": state.output.scale_dependence_factor.field[:, :, 0],
             "lightning_density_cu_param_setup": state.output.lightning_density.field[:],
@@ -242,7 +245,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
             "local_pbl_time_scale_cu_param_setup": locals.pbl_time_scale.field[:],
             "local_t_wetbulb_cu_param_setup": locals.t_wetbulb.field[:],
             "local_vapor_wetbulb_cu_param_setup": locals.vapor_wetbulb.field[:],
-            "local_tau_ecmwf_cu_param_setup": locals.tau_ecmwf.field[:],
+            "local_tau_ecmwf_cu_param_setup": locals.cape_removal_time_scale.field[:],
             "local_f_dicycle_modified_cu_param_setup": locals.f_dicycle_modified.field[:],
             "local_add_buoy_cu_param_setup": locals.add_buoyancy.field[:],
             "local_hcdo_cu_param_setup": locals.hcdo.field[:],
@@ -389,6 +392,9 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
         locals = GF2020CumulusParameterizationLocals.zeros(
             self.quantity_factory,
             data_dimensions={
+                "ensemble_1": MAXENS1,
+                "ensemble_2": MAXENS2,
+                "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
             },
         )
@@ -406,7 +412,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
         state.input_output.geopotential_height_forced.data[:] = inputs[
             "geopotential_height_forced_cu_param_setup"
         ]
-        state.output.epsilon.data[:, :, 1] = inputs["epsilon_cu_param_setup"]  # plume dependent
+        state.output.epsilon_forced.data[:, :, 1] = inputs["epsilon_cu_param_setup"]  # plume dependent
         state.output.precip.data[:, :, 1] = inputs["precip_cu_param_setup"]  # plume dependent
         state.output.scale_dependence_factor.data[:, :, 1] = inputs[
             "scale_dependence_factor_cu_param_setup"
@@ -447,7 +453,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
 
         outputs = {
             # state fields
-            "epsilon_cu_param_setup": state.output.epsilon.field[:, :, 1],
+            "epsilon_cu_param_setup": state.output.epsilon_forced.field[:, :, 1],
             "precip_cu_param_setup": state.output.precip.field[:, :, 1],
             "scale_dependence_factor_cu_param_setup": state.output.scale_dependence_factor.field[:, :, 1],
             "lightning_density_cu_param_setup": state.output.lightning_density.field[:],
@@ -485,7 +491,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
             "local_pbl_time_scale_cu_param_setup": locals.pbl_time_scale.field[:],
             "local_t_wetbulb_cu_param_setup": locals.t_wetbulb.field[:],
             "local_vapor_wetbulb_cu_param_setup": locals.vapor_wetbulb.field[:],
-            "local_tau_ecmwf_cu_param_setup": locals.tau_ecmwf.field[:],
+            "local_tau_ecmwf_cu_param_setup": locals.cape_removal_time_scale.field[:],
             "local_f_dicycle_modified_cu_param_setup": locals.f_dicycle_modified.field[:],
             "local_add_buoy_cu_param_setup": locals.add_buoyancy.field[:],
             "local_hcdo_cu_param_setup": locals.hcdo.field[:],
@@ -632,6 +638,9 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
         locals = GF2020CumulusParameterizationLocals.zeros(
             self.quantity_factory,
             data_dimensions={
+                "ensemble_1": MAXENS1,
+                "ensemble_2": MAXENS2,
+                "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
             },
         )
@@ -649,7 +658,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
         state.input_output.geopotential_height_forced.data[:] = inputs[
             "geopotential_height_forced_cu_param_setup"
         ]
-        state.output.epsilon.data[:, :, 2] = inputs["epsilon_cu_param_setup"]  # plume dependent
+        state.output.epsilon_forced.data[:, :, 2] = inputs["epsilon_cu_param_setup"]  # plume dependent
         state.output.precip.data[:, :, 2] = inputs["precip_cu_param_setup"]  # plume dependent
         state.output.scale_dependence_factor.data[:, :, 2] = inputs[
             "scale_dependence_factor_cu_param_setup"
@@ -690,7 +699,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
 
         outputs = {
             # state fields
-            "epsilon_cu_param_setup": state.output.epsilon.field[:, :, 2],
+            "epsilon_cu_param_setup": state.output.epsilon_forced.field[:, :, 2],
             "precip_cu_param_setup": state.output.precip.field[:, :, 2],
             "scale_dependence_factor_cu_param_setup": state.output.scale_dependence_factor.field[:, :, 2],
             "lightning_density_cu_param_setup": state.output.lightning_density.field[:],
@@ -728,7 +737,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             "local_pbl_time_scale_cu_param_setup": locals.pbl_time_scale.field[:],
             "local_t_wetbulb_cu_param_setup": locals.t_wetbulb.field[:],
             "local_vapor_wetbulb_cu_param_setup": locals.vapor_wetbulb.field[:],
-            "local_tau_ecmwf_cu_param_setup": locals.tau_ecmwf.field[:],
+            "local_tau_ecmwf_cu_param_setup": locals.cape_removal_time_scale.field[:],
             "local_f_dicycle_modified_cu_param_setup": locals.f_dicycle_modified.field[:],
             "local_add_buoy_cu_param_setup": locals.add_buoyancy.field[:],
             "local_hcdo_cu_param_setup": locals.hcdo.field[:],

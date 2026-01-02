@@ -34,7 +34,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     IntFieldIJ_Plume,
     FloatFieldIJ_Plume,
     FloatField_Plume,
-    FloatFieldIJ_Ensemble,
+    FloatFieldIJ_ensemble_2,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import unknown_find_level
 from ndsl.stencils.column_operations import column_max, column_max_ddim
@@ -714,11 +714,155 @@ def downdraft_temperature(
             downdraft_column_temperature_forced = (1.0 / cumulus_parameterization_constants.CP) * (
                 cloud_moist_static_energy_downdraft_forced
                 - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
-                - cumulus_parameterization_constants.XLV * cloud_total_water_after_entrainment_downdraft_forced
+                - cumulus_parameterization_constants.XLV
+                * cloud_total_water_after_entrainment_downdraft_forced
             )
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] != 0:
             downdraft_column_temperature_forced = t_cloud_levels_forced
+
+
+def downdraft_windshear(
+    error_code: IntFieldIJ_Plume,
+    updraft_lfc_level: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    geopotential_height_forced: FloatField,
+    p_forced: FloatField,
+    u: FloatField,
+    v: FloatField,
+    ccn: FloatFieldIJ,
+    psum: FloatFieldIJ,
+    psumh: FloatFieldIJ,
+    total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
+    total_normalized_integrated_evaporate_forced: FloatFieldIJ_Plume,
+    epsilon: FloatFieldIJ,
+    epsilon_min: FloatFieldIJ,
+    epsilon_max: FloatFieldIJ,
+    epsilon_computed: FloatFieldIJ_ensemble_2,
+    plume: Int,
+):
+    from __externals__ import AEROEVAP
+
+    with computation(FORWARD), interval(0, 1):
+        # initalize internal constants
+        alpha3: FloatFieldIJ = 1.9
+        beta3: FloatFieldIJ = -1.13
+
+        # zero input fields
+        epsilon = 0.0
+
+        # zero every part of the ensemble dimension
+        count = 0
+        while count < cumulus_parameterization_constants.MAXENS2:
+            epsilon_computed[0, 0][count] = 0.0
+            count += 1
+
+        # initalize internal 2d temporaries
+        vshear: FloatFieldIJ = 0.0
+        sdp: FloatFieldIJ = 0.0
+        vws: FloatFieldIJ = 0.0
+
+        lower_bound: FloatFieldIJ = updraft_lfc_level[0, 0][plume]
+        upper_bound: FloatFieldIJ = cloud_top_level[0, 0][plume]
+
+    with computation(FORWARD), interval(lower_bound, upper_bound):
+        if plume != 0 and error_code[0, 0][plume] == 0:
+            dp = p_forced - p_forced[0, 0, 1]
+            vws = (
+                vws
+                + (
+                    abs((u[0, 0, 1] - u) / (geopotential_height_forced[0, 0, 1] - geopotential_height_forced))
+                    + abs(
+                        (v[0, 0, 1] - v) / (geopotential_height_forced[0, 0, 1] - geopotential_height_forced)
+                    )
+                )
+                * dp
+            )
+            sdp = sdp + dp
+
+    with computation(FORWARD), interval(0, 1):
+        if plume != 0 and error_code[0, 0][plume] == 0:
+            vshear = 1.0e3 * vws / sdp
+
+    with computation(FORWARD), interval(...):
+        if plume != 0 and error_code[0, 0][plume] == 0:
+            precip_efficiency = 1.591 - 0.639 * vshear + 0.0953 * (vshear**2) - 0.00496 * (vshear**3)
+            precip_efficiency = min(precip_efficiency, 0.9)
+            precip_efficiency = max(precip_efficiency, 0.1)
+
+            # cloud base precip efficiency
+            zkbc = geopotential_height_forced.at(K=updraft_lfc_level[0, 0][plume]) * 3.281e-3
+            prezk = 0.02
+            if zkbc > 3.0:
+                prezk = 0.96729352 + zkbc * (
+                    -0.70034167
+                    + zkbc * (0.162179896 + zkbc * (-1.2569798e-2 + zkbc * (4.2772e-4 - zkbc * 5.44e-6)))
+                )
+            if zkbc > 25.0:
+                prezk = 2.4
+
+            precip_efficiency_b = 1.0 / (1.0 + prezk)
+            precip_efficiency_b = min(precip_efficiency_b, 0.9)
+            precip_efficiency_b = max(precip_efficiency_b, 0.1)
+
+            epsilon = 1.0 - 0.5 * (precip_efficiency_b + precip_efficiency)
+
+            if AEROEVAP > 1:
+                aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * (
+                    (psumh) ** (alpha3 - 1)
+                )  # *1.e6
+                prop_c = 0.5 * (precip_efficiency_b + precip_efficiency) / aeroadd
+                aeroadd = (ccn**beta3) * ((psum) ** (alpha3 - 1))  # *1.e6
+                aeroadd = prop_c * aeroadd
+                precip_efficiency_c = aeroadd
+                if precip_efficiency_c > 0.9:
+                    precip_efficiency_c = 0.9
+                if precip_efficiency_c < 0.1:
+                    precip_efficiency_c = 0.1
+                epsilon = 1.0 - precip_efficiency_c
+                if AEROEVAP == 2:
+                    epsilon = 1.0 - 0.25 * (
+                        precip_efficiency_b + precip_efficiency + 2.0 * precip_efficiency_c
+                    )
+
+            # epsilon here is 1-precip_efficiency!
+            einc = 0.2 * epsilon
+            count = 0
+            while count < cumulus_parameterization_constants.MAXENS2:
+                epsilon_computed[0, 0][count] = epsilon + count - 2 * einc
+                count += 1
+
+            count = 0
+            while count < cumulus_parameterization_constants.MAXENS2:
+                epsilon_computed[0, 0][count] = (
+                    -epsilon_computed[0, 0][count]
+                    * total_normalized_integrated_condensate_forced[0, 0][plume]
+                    / total_normalized_integrated_evaporate_forced[0, 0][plume]
+                )
+                if epsilon_computed[0, 0][count] > epsilon_max:
+                    epsilon_computed[0, 0][count] = epsilon_max
+                if epsilon_computed[0, 0][count] < epsilon_min:
+                    epsilon_computed[0, 0][count] = epsilon_min
+                count += 1
+
+
+def update_epsilon_forced(
+    error_code: IntFieldIJ_Plume,
+    scale_dependence_factor_downdraft: FloatFieldIJ,
+    epsilon_computed: FloatFieldIJ_ensemble_2,
+    epsilon: FloatFieldIJ,
+    epsilon_forced: FloatFieldIJ_Plume,
+    plume: Int,
+):
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0:
+            count = 0
+            while count < cumulus_parameterization_constants.MAXENS2:
+                epsilon_forced[0, 0][plume] = (
+                    scale_dependence_factor_downdraft * epsilon_computed[0, 0][count]
+                )
+                epsilon = epsilon_forced[0, 0][plume]
+                count += 1
 
 
 class DowndraftOriginLevel(NDSLRuntime):
@@ -836,145 +980,83 @@ class DowndraftWetBlub:
         pass
 
 
+class DowndraftWindShear:
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
+
+        # construct stencils and functions
+        self._downdraft_windshear = stencil_factory.from_dims_halo(
+            func=downdraft_windshear,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"AEROEVAP": cumulus_parameterization_config.AEROEVAP},
+        )
+
+        self._update_epsilon_forced = stencil_factory.from_dims_halo(
+            func=update_epsilon_forced,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        error_code: Quantity,
+        updraft_lfc_level: Quantity,
+        cloud_top_level: Quantity,
+        geopotential_height_forced: Quantity,
+        p_forced: Quantity,
+        u: Quantity,
+        v: Quantity,
+        ccn: Quantity,
+        psum: Quantity,
+        psumh: Quantity,
+        total_normalized_integrated_condensate_forced: Quantity,
+        total_normalized_integrated_evaporate_forced: Quantity,
+        scale_dependence_factor_downdraft: Quantity,
+        epsilon: Quantity,
+        epsilon_min: Quantity,
+        epsilon_max: Quantity,
+        epsilon_computed: Quantity,
+        epsilon_forced: Quantity,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._downdraft_windshear(
+            error_code=error_code,
+            updraft_lfc_level=updraft_lfc_level,
+            cloud_top_level=cloud_top_level,
+            geopotential_height_forced=geopotential_height_forced,
+            p_forced=p_forced,
+            u=u,
+            v=v,
+            ccn=ccn,
+            psum=psum,
+            psumh=psumh,
+            total_normalized_integrated_condensate_forced=total_normalized_integrated_condensate_forced,
+            total_normalized_integrated_evaporate_forced=total_normalized_integrated_evaporate_forced,
+            epsilon=epsilon,
+            epsilon_min=epsilon_min,
+            epsilon_max=epsilon_max,
+            epsilon_computed=epsilon_computed,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
+
+        self._update_epsilon_forced(
+            error_code=error_code,
+            scale_dependence_factor_downdraft=scale_dependence_factor_downdraft,
+            epsilon_computed=epsilon_computed,
+            epsilon=epsilon,
+            epsilon_forced=epsilon_forced,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
+
+
 ######## NOTE TODO NOTE README NOTE TODO TODO NOTE EVERYTHING BELOW HERE NEEDS TO BE REWORKED
-
-
-beta3 = Float(-1.13)
-alpha3 = Float(1.9)
-
-
-def cup_dd_edt(
-    ccn: FloatFieldIJ,
-    local_epsilon_max: FloatFieldIJ,
-    local_epsilon_min: FloatFieldIJ,
-    updraft_lfc_level: IntFieldIJ_Plume,
-    cloud_top_level: IntFieldIJ_Plume,
-    p_forced: FloatField,
-    local_psum: FloatFieldIJ,
-    local_psumh: FloatFieldIJ,
-    local_pwavo: FloatFieldIJ,
-    local_pwevo: FloatFieldIJ,
-    u: FloatField,
-    v: FloatField,
-    geopotential_height_forced: FloatField,
-    local_epsilon: FloatFieldIJ,
-    local_edtc: FloatFieldIJ,
-    error_code: IntFieldIJ_Plume,
-    plume: Int,
-):
-
-    with computation(FORWARD), interval(...):
-        local_epsilon = 0.0
-        vshear: FloatFieldIJ = 0.0
-        local_edtc = 0.0
-    with computation(FORWARD), interval(...):
-        sdp: FloatFieldIJ = 0.0
-        vws: FloatFieldIJ = 0.0
-        if plume != cumulus_parameterization_constants.shallow:
-            if error_code[0, 0][plume] == 0:
-                idx = updraft_lfc_level[0, 0][plume] - 1
-                while idx >= updraft_lfc_level[0, 0][plume] - 1 and idx <= cloud_top_level[0, 0][plume] - 1:
-                    dp: FloatFieldIJ = p_forced.at(K=idx) - p_forced.at(K=idx + 1)
-                    vws = vws + (
-                        (
-                            abs(
-                                (u.at(K=idx + 1) - u.at(K=idx))
-                                / (
-                                    geopotential_height_forced.at(K=idx + 1)
-                                    - geopotential_height_forced.at(K=idx)
-                                )
-                            )
-                            + abs(
-                                (v.at(K=idx + 1) - v.at(K=idx))
-                                / (
-                                    geopotential_height_forced.at(K=idx + 1)
-                                    - geopotential_height_forced.at(K=idx)
-                                )
-                            )
-                        )
-                        * dp
-                    )
-                    sdp = sdp + dp
-                    idx += 1
-                vshear = 1.0e3 * vws / sdp
-
-    with computation(FORWARD), interval(...):
-        if plume != cumulus_parameterization_constants.shallow:
-            if error_code[0, 0][plume] == 0:
-                pef: FloatFieldIJ = (
-                    float32(1.591)
-                    - float32(0.639) * vshear
-                    + float32(0.0953) * (vshear**2)
-                    - float32(0.00496) * (vshear**3)
-                )
-                pef = min(pef, 0.9)
-                pef = max(pef, 0.1)
-                zkbc = geopotential_height_forced.at(K=updraft_lfc_level[0, 0][plume] - 1) * 3.281e-3
-                prezk = 0.02
-
-                if zkbc > 3.0:
-                    prezk = 0.96729352 + zkbc * (
-                        -0.70034167
-                        + zkbc * (0.162179896 + zkbc * (-1.2569798e-2 + zkbc * (4.2772e-4 - zkbc * 5.44e-6)))
-                    )
-
-                if zkbc > 25.0:
-                    prezk = 2.4
-
-                pefb = 1.0 / (1.0 + prezk)
-                pefb = min(pefb, 0.9)
-                pefb = max(pefb, 0.1)
-
-                local_epsilon = 1.0 - 0.5 * (pefb + pef)
-
-                if cumulus_parameterization_constants.AEROEVAP > 1:
-                    aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * (
-                        (local_psumh) ** (alpha3 - 1)
-                    )
-
-                    prop_c = 0.5 * (pefb + pef) / aeroadd
-                    aeroadd = (ccn**beta3) * ((local_psum) ** (alpha3 - 1))
-
-                    aeroadd = prop_c * aeroadd
-                    pefc = aeroadd
-                    if pefc > 0.9:
-                        pefc = 0.9
-                    if pefc < 0.1:
-                        pefc = 0.1
-                    local_epsilon = 1.0 - pefc
-                    if cumulus_parameterization_constants.AEROEVAP == 2:
-                        local_epsilon = 1.0 - 0.25 * (pefb + pef + 2.0 * pefc)
-
-                einc = 0.2 * local_epsilon
-                if K <= cumulus_parameterization_constants.MAXENS2 - 1:
-                    local_edtc = local_epsilon + float(int32(K) - int32(1)) * einc
-
-    with computation(FORWARD), interval(...):
-        if plume != cumulus_parameterization_constants.shallow:
-            if error_code[0, 0][plume] == 0:
-                if K <= cumulus_parameterization_constants.MAXENS2 - 1:
-                    local_edtc = -local_edtc * local_pwavo / local_pwevo
-                    if local_edtc > local_epsilon_max:
-                        local_edtc = local_epsilon_max
-                    if local_edtc < local_epsilon_min:
-                        local_edtc = local_epsilon_min
-
-
-def update_edto(
-    error_code: IntFieldIJ_Plume,
-    plume: Int,
-    local_scale_dependence_factor_downdraft: FloatFieldIJ,
-    epsilon: FloatFieldIJ_Plume,
-    local_edtc: FloatFieldIJ,
-    local_epsilon: FloatFieldIJ,
-):
-    with computation(FORWARD), interval(...):
-        iedt = 0
-        while iedt < cumulus_parameterization_constants.MAXENS2:
-            if error_code[0, 0][plume] == 0:
-                epsilon[0, 0][plume] = local_scale_dependence_factor_downdraft * local_edtc
-                local_epsilon = epsilon[0, 0][plume]
-            iedt += 1
 
 
 class DowndraftNormalizedMassFlux:
@@ -999,64 +1081,3 @@ class DowndraftMoistureProperties:
 
     def __call__(self, *args, **kwds):
         pass
-
-
-class DowndraftWindshear:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._cup_dd_edt = stencil_factory.from_dims_halo(
-            func=cup_dd_edt,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-        self._update_edto = stencil_factory.from_dims_halo(
-            func=update_edto,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-        # NOTE This code will break if MAXENS2 != 1
-
-        self._cup_dd_edt(
-            ccn=state.input_output.ccn,
-            local_epsilon_max=locals.epsilon_max,
-            local_epsilon_min=locals.epsilon_min,
-            updraft_lfc_level=state.output.updraft_lfc_level,
-            cloud_top_level=state.output.cloud_top_level,
-            p_forced=state.input_output.p_forced,
-            local_psum=locals.psum,
-            local_psumh=locals.psumh,
-            local_pwavo=locals.pwavo,
-            local_pwevo=locals.pwevo,
-            u=state.input_output.u,
-            v=state.input_output.v,
-            geopotential_height_forced=state.input_output.geopotential_height_forced,
-            local_epsilon=locals.epsilon,
-            local_edtc=locals.edtc,
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
-
-        self._update_edto(
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            local_scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
-            epsilon=state.output.epsilon,
-            local_edtc=locals.edtc,
-            local_epsilon=locals.epsilon,
-        )

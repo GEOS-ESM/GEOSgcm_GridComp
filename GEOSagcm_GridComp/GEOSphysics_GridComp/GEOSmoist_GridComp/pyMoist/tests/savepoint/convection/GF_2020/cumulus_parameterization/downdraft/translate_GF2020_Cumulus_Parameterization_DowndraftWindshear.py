@@ -23,7 +23,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     NUMBER_OF_PLUMES,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
-    DowndraftWindshear,
+    DowndraftWindShear,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
@@ -43,24 +43,24 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_downdraftwindshear": {},
-            "u_downdraftwindshear": {},
-            "v_downdraftwindshear": {},
-            "geopotential_height_forced_downdraftwindshear": {},
-            "cloud_top_downdraftwindshear": {},
-            "updraft_lfc_level_downdraftwindshear": {},
-            "local_epsilon_downdraftwindshear": {},
-            "p_forced_downdraftwindshear": {},
-            "local_pwavo_downdraftwindshear": {},
-            "ccn_downdraftwindshear_in_out": {},
-            "local_pwevo_downdraftwindshear": {},
-            "local_epsilon_min_downdraftwindshear": {},
-            "local_epsilon_max_downdraftwindshear": {},
-            "local_psum_downdraftwindshear": {},
-            "local_psumh_downdraftwindshear": {},
-            "epsilon_downdraftwindshear": {},
-            "local_scale_dependence_factor_downdraft_downdraftwindshear": {},
-            "local_edtc_downdraftwindshear": {},
+            "error_code_downwindshear": {},
+            "updraft_lfc_level_downwindshear": {},
+            "cloud_top_level_downwindshear": {},
+            "geopotential_height_forced_downwindshear": {},
+            "p_forced_downwindshear": {},
+            "u_downwindshear": {},
+            "v_downwindshear": {},
+            "ccn_downwindshear": {},
+            "total_normalized_integrated_condensate_forced_downmoisture": {},
+            "total_normalized_integrated_evaporate_forced_downmoisture": {},
+            "local_psum_downwindshear": {},
+            "local_psumh_downwindshear": {},
+            "local_scale_dependence_factor_downdraft_downwindshear": {},
+            "local_epsilon_downwindshear": {},
+            "local_epsilon_min_downwindshear": {},
+            "local_epsilon_max_downwindshear": {},
+            "local_epsilon_computed_downwindshear": {},
+            "epsilon_forced_downwindshear": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -85,44 +85,53 @@ class TestCore:
         locals = GF2020CumulusParameterizationLocals.zeros(
             self.quantity_factory,
             data_dimensions={
+                "ensemble_1": MAXENS1,
+                "ensemble_2": MAXENS2,
+                "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
             },
         )
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_downdraftwindshear"
+            "error_code_downwindshear"
         ]
-        state.input_output.u.data[:, :, :] = inputs["u_downdraftwindshear"]
-        state.input_output.v.data[:, :, :] = inputs["v_downdraftwindshear"]
-        state.input_output.ccn.data[:, :] = inputs["ccn_downdraftwindshear_in_out"]
-        locals.epsilon_max.data[:] = inputs["local_epsilon_max_downdraftwindshear"]
-        locals.epsilon_min.data[:] = inputs["local_epsilon_min_downdraftwindshear"]
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "updraft_lfc_level_downdraftwindshear"
-        ]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "cloud_top_downdraftwindshear"
-        ]
-        state.input_output.p_forced.data[:] = inputs["p_forced_downdraftwindshear"]
-        locals.psum.data[:] = inputs["local_psum_downdraftwindshear"]
-        locals.psumh.data[:] = inputs["local_psumh_downdraftwindshear"]
-        locals.pwavo.data[:] = inputs["local_pwavo_downdraftwindshear"]
-        locals.pwevo.data[:] = inputs["local_pwevo_downdraftwindshear"]
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_lfc_level_downwindshear"] - 1
+        )
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_top_level_downwindshear"] - 1
+        )
         state.input_output.geopotential_height_forced.data[:] = inputs[
-            "geopotential_height_forced_downdraftwindshear"
+            "geopotential_height_forced_downwindshear"
         ]
-        locals.epsilon.data[:] = inputs["local_epsilon_downdraftwindshear"]
-        locals.edtc.data[:] = inputs["local_edtc_downdraftwindshear"]
+        state.input_output.p_forced.data[:] = inputs["p_forced_downwindshear"]
+        state.input_output.u.data[:] = inputs["u_downwindshear"]
+        state.input_output.v.data[:] = inputs["v_downwindshear"]
+        state.input_output.ccn.data[:] = inputs["ccn_downwindshear"]
+        state.output.total_normalized_integrated_condensate_forced.data[
+            :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["total_normalized_integrated_condensate_forced_downmoisture"]
+        state.output.total_normalized_integrated_evaporate_forced.data[
+            :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["total_normalized_integrated_evaporate_forced_downmoisture"]
+        locals.psum.data[:] = inputs["local_psum_downwindshear"]
+        locals.psumh.data[:] = inputs["local_psumh_downwindshear"]
         locals.scale_dependence_factor_downdraft.data[:] = inputs[
-            "local_scale_dependence_factor_downdraft_downdraftwindshear"
+            "local_scale_dependence_factor_downdraft_downwindshear"
         ]
-        state.output.epsilon.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "epsilon_downdraftwindshear"
+        locals.epsilon.data[:] = inputs["local_epsilon_downwindshear"]
+        locals.epsilon_min.data[:] = inputs["local_epsilon_min_downwindshear"]
+        locals.epsilon_max.data[:] = inputs["local_epsilon_max_downwindshear"]
+        print(inputs["local_epsilon_computed_downwindshear"])
+        # if len(inputs["local_epsilon_computed_downwindshear"].shape) == 2:
+        locals.epsilon_computed.data[:] = inputs["local_epsilon_computed_downwindshear"]
+        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "epsilon_forced_downwindshear"
         ]
 
         # initalize test code
-        code = DowndraftWindshear(
+        code = DowndraftWindShear(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
@@ -132,43 +141,65 @@ class TestCore:
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
-                state=state,
-                locals=locals,
+                error_code=state.output.error_code,
+                updraft_lfc_level=state.output.updraft_lfc_level,
+                cloud_top_level=state.output.cloud_top_level,
+                geopotential_height_forced=state.input_output.geopotential_height_forced,
+                p_forced=state.input_output.p_forced,
+                u=state.input_output.u,
+                v=state.input_output.v,
+                ccn=state.input_output.ccn,
+                psum=locals.psum,
+                psumh=locals.psumh,
+                total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
+                total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
+                epsilon=locals.epsilon,
+                epsilon_min=locals.epsilon_min,
+                epsilon_max=locals.epsilon_max,
+                epsilon_computed=locals.epsilon_computed,
+                epsilon_forced=state.output.epsilon_forced,
                 plume_dependent_constants=plume_dependent_constants,
             )
 
         # write output
         outputs = {
-            "error_code_downdraftwindshear": state.output.error_code.field[
+            "error_code_downwindshear": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "updraft_lfc_level_downdraftwindshear": state.output.updraft_lfc_level.field[
+            "updraft_lfc_level_downwindshear": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "cloud_top_downdraftwindshear": state.output.cloud_top_level.field[
+            ]
+            + 1,
+            "cloud_top_level_downwindshear": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "u_downdraftwindshear": state.input_output.u.field[:, :, :],
-            "v_downdraftwindshear": state.input_output.v.field[:, :, :],
-            "geopotential_height_forced_downdraftwindshear": state.input_output.geopotential_height_forced.field[
-                :, :, :
-            ],
-            "local_epsilon_downdraftwindshear": locals.epsilon.data[:],
-            "p_forced_downdraftwindshear": state.input_output.p_forced.field[:, :, :],
-            "local_pwavo_downdraftwindshear": locals.pwavo.data[:],
-            "ccn_downdraftwindshear_in_out": state.input_output.ccn.field[:, :],
-            "local_pwevo_downdraftwindshear": locals.pwevo.data[:],
-            "local_epsilon_min_downdraftwindshear": locals.epsilon_min.data[:],
-            "local_epsilon_max_downdraftwindshear": locals.epsilon_max.data[:],
-            "local_psum_downdraftwindshear": locals.psum.data[:],
-            "local_psumh_downdraftwindshear": locals.psumh.data[:],
-            "epsilon_downdraftwindshear": state.output.epsilon.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "local_scale_dependence_factor_downdraft_downdraftwindshear": locals.scale_dependence_factor_downdraft.data[
+            ]
+            + 1,
+            "geopotential_height_forced_downwindshear": state.input_output.geopotential_height_forced.field[
                 :
             ],
-            "local_edtc_downdraftwindshear": locals.edtc.data[:, :],
+            "p_forced_downwindshear": state.input_output.p_forced.field[:],
+            "u_downwindshear": state.input_output.u.field[:],
+            "v_downwindshear": state.input_output.v.field[:],
+            "ccn_downwindshear": state.input_output.ccn.field[:],
+            "total_normalized_integrated_condensate_forced_downmoisture": state.output.total_normalized_integrated_condensate_forced.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "total_normalized_integrated_evaporate_forced_downmoisture": state.output.total_normalized_integrated_evaporate_forced.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "local_psum_downwindshear": locals.psum.field[:],
+            "local_psumh_downwindshear": locals.psumh.field[:],
+            "local_scale_dependence_factor_downdraft_downwindshear": locals.scale_dependence_factor_downdraft.field[
+                :
+            ],
+            "local_epsilon_downwindshear": locals.epsilon.field[:],
+            "local_epsilon_min_downwindshear": locals.epsilon_min.field[:],
+            "local_epsilon_max_downwindshear": locals.epsilon_max.field[:],
+            "local_epsilon_computed_downwindshear": locals.epsilon_computed.field[:],
+            "epsilon_forced_downwindshear": state.output.epsilon_forced.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
         }
 
         return outputs

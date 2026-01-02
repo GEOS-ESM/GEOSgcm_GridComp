@@ -141,6 +141,12 @@ def check_config(
             "untested USE_WETBULB option. Running untested code... proceed with caution"
         )
 
+    if cumulus_parameterization_config.SGS_W_TIMESCALE != 1:
+        ndsl_log.warning(
+            " GF2020 cumulus parameterization: DiurnalCycle initalized with "
+            "untested SGS_W_TIMESCALE option. Running untested code... proceed with caution"
+        )
+
     # generate errors after all warnings
     # TODO find a way to generate all then fail at once, printing all simultaneously
     if (
@@ -148,7 +154,7 @@ def check_config(
         and cumulus_parameterization_config.ENABLE_SHALLOW == 1
     ):
         raise NotImplementedError(
-            "[NDSL] GF2020 cumulus parameterization initalized with"
+            "[NDSL] GF2020-->CumulusParameterization initalized with"
             "USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1 and shallow plume enabled. This combination requires"
             "a call to the unimplemented function get_delmix in CumulusParameterization and updraft_moisture."
             "Please implement, then disable this error manually to proceed."
@@ -156,15 +162,29 @@ def check_config(
 
     if cumulus_parameterization_config.ZERO_DIFF == 1:
         raise NotImplementedError(
-            "[NDSL] GF2020 cumulus parameterization initalized with ZERO_DIFF == 1. This combination requires"
+            "[NDSL] GF2020-->CumulusParameterization initalized with ZERO_DIFF == 1. This combination requires"
             "an unimplemented porion of UpdraftMassFlux. Please implement, then disable this error"
             "manually to proceed."
         )
 
     if cumulus_parameterization_config.USE_WETBULB == 1:
         raise NotImplementedError(
-            "[NDSL] GF2020 cumulus parameterization initalized with USE_WETBULB == 1. This setting requires"
+            "[NDSL] GF2020-->CumulusParameterization initalized with USE_WETBULB == 1. This setting requires"
             "the unimplemented function get_wetbulb and an unimplemented option in"
             "downdraft_moist_static_energy_and_moisture_budget. Please implement, then disable this error"
+            "manually to proceed."
+        )
+
+    if cumulus_parameterization_config.DIURNAL_CYCLE != 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with DIURNAL_CYCLE != 1. This setting requires"
+            "the unimplemented options for multiple stencils in DiurnalCycle. Please implement, then"
+            "disable this error manually to proceed."
+        )
+
+    if config.ADV_TRIGGER == 3:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with ADV_TRIGGER == 3. This setting requires"
+            "the unimplemented XieTriggerFunction. Please implement, then disable this error"
             "manually to proceed."
         )

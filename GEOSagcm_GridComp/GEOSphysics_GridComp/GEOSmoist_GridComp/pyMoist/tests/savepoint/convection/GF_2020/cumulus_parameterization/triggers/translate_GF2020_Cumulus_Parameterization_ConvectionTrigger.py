@@ -22,7 +22,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import convection_trigger
+from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import convection_trigger
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
 )
@@ -69,6 +69,9 @@ class TestCore:
         locals = GF2020CumulusParameterizationLocals.zeros(
             self.quantity_factory,
             data_dimensions={
+                "ensemble_1": MAXENS1,
+                "ensemble_2": MAXENS2,
+                "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
             },
         )
@@ -86,7 +89,7 @@ class TestCore:
         code = self.stencil_factory.from_dims_halo(
             func=convection_trigger,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"DICYCLE": cumulus_parameterization_config.DICYCLE},
+            externals={"DICYCLE": cumulus_parameterization_config.DIURNAL_CYCLE},
         )
 
         # call test code

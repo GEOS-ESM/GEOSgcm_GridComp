@@ -346,9 +346,9 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        epsilon: Quantity = dataclasses.field(
+        epsilon_forced: Quantity = dataclasses.field(
             metadata={
-                "name": "epsilon",
+                "name": "epsilon_forced",
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
@@ -553,18 +553,18 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        pbl_time_scale: Quantity = dataclasses.field(
+        cape_removal_time_scale: Quantity = dataclasses.field(
             metadata={
-                "name": "pbl_time_scale",
+                "name": "cape_removal_time_scale",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        cape_removal_time_scale: Quantity = dataclasses.field(
+        pbl_time_scale: Quantity = dataclasses.field(
             metadata={
-                "name": "cape_removal_time_scale",
+                "name": "pbl_time_scale",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
@@ -625,7 +625,7 @@ class GF2020CumulusParameterizationState(State):
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
-                "dtype": Float,
+                "dtype": Int,
             }
         )
         ccn: Quantity = dataclasses.field(

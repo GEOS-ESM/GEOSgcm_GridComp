@@ -48,8 +48,11 @@ class GF2020CumulusParameterizationConfig:
     C0_SHAL: Float
     C0_MID: Float
     C0_DEEP: Float
+    TAU_MID: Float
+    TAU_DEEP: Float
     # plume independent
     PLUME_ORDER: Float
+    DTIME: Float
     ZERO_DIFF: Int
     MOIST_TRIGGER: Int
     LAMBDA_DEEP: Float
@@ -70,9 +73,11 @@ class GF2020CumulusParameterizationConfig:
     DOWNDRAFT: Int
     FIRST_GUESS_W: Bool
     USE_WETBULB: Int
-    DICYCLE: Int
+    DIURNAL_CYCLE: Int
     USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES: Int
     CRITICAL_MIXING_RATIO_OVER_OCEAN: Float
     CRITICAL_MIXING_RATIO_OVER_LAND: Float
     BETA_SHALLOW: Float
     EVAP_FIX: Int
+    SGS_W_TIMESCALE: Int
+    AEROEVAP: Int

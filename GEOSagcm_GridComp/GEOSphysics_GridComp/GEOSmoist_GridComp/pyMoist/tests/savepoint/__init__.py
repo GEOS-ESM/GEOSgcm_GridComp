@@ -221,7 +221,7 @@ from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumul
     TranslateGF2020_CumulusParameterization_UpdraftCIN_mid,
     TranslateGF2020_CumulusParameterization_UpdraftCIN_shallow,
 )
-from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumulus_Parameterization_ConvectionTrigger import (
+from .convection.GF_2020.cumulus_parameterization.triggers.translate_GF2020_Cumulus_Parameterization_ConvectionTrigger import (
     TranslateGF2020_CumulusParameterization_ConvectionTrigger_deep,
     TranslateGF2020_CumulusParameterization_ConvectionTrigger_mid,
     TranslateGF2020_CumulusParameterization_ConvectionTrigger_shallow,
@@ -231,20 +231,18 @@ from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cum
     TranslateGF2020_CumulusParameterization_DowndraftTemperature_mid,
     TranslateGF2020_CumulusParameterization_DowndraftTemperature_shallow,
 )
-
-# NOTE need to organize everything below here
 from .convection.GF_2020.cumulus_parameterization.diurnal_cycle.translate_GF2020_Cumulus_Parameterization_DiurnalCycle import (
     TranslateGF2020_CumulusParameterization_DiurnalCycle_deep,
     TranslateGF2020_CumulusParameterization_DiurnalCycle_mid,
     TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow,
 )
-
 from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cumulus_Parameterization_DowndraftWindshear import (
     TranslateGF2020_CumulusParameterization_DowndraftWindshear_deep,
     TranslateGF2020_CumulusParameterization_DowndraftWindshear_mid,
     TranslateGF2020_CumulusParameterization_DowndraftWindshear_shallow,
 )
 
+# NOTE need to organize everything below here
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
     TranslateGetMeltingProfile,

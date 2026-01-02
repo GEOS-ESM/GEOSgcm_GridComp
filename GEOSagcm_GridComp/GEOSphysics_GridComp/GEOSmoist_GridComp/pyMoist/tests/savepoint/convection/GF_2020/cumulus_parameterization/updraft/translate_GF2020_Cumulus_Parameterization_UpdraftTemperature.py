@@ -72,6 +72,9 @@ class TestCore:
         locals = GF2020CumulusParameterizationLocals.zeros(
             self.quantity_factory,
             data_dimensions={
+                "ensemble_1": MAXENS1,
+                "ensemble_2": MAXENS2,
+                "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
             },
         )
@@ -87,8 +90,12 @@ class TestCore:
             "local_geopotential_height_cloud_levels_forced_updrafttemp"
         ]
         locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_updrafttemp"]
-        locals.updraft_column_temperature_forced.data[:] = inputs["local_updraft_column_temperature_forced_updrafttemp"]
-        locals.cloud_total_water_after_entrainment_forced.data[:] = inputs["local_cloud_total_water_after_entrainment_forced_updrafttemp"]
+        locals.updraft_column_temperature_forced.data[:] = inputs[
+            "local_updraft_column_temperature_forced_updrafttemp"
+        ]
+        locals.cloud_total_water_after_entrainment_forced.data[:] = inputs[
+            "local_cloud_total_water_after_entrainment_forced_updrafttemp"
+        ]
 
         # initalize test code
         code = self.stencil_factory.from_dims_halo(
@@ -121,8 +128,12 @@ class TestCore:
                 :
             ],
             "local_t_cloud_levels_forced_updrafttemp": locals.t_cloud_levels_forced.field[:],
-            "local_updraft_column_temperature_forced_updrafttemp": locals.updraft_column_temperature_forced.field[:],
-            "local_cloud_total_water_after_entrainment_forced_updrafttemp": locals.cloud_total_water_after_entrainment_forced.field[:],
+            "local_updraft_column_temperature_forced_updrafttemp": locals.updraft_column_temperature_forced.field[
+                :
+            ],
+            "local_cloud_total_water_after_entrainment_forced_updrafttemp": locals.cloud_total_water_after_entrainment_forced.field[
+                :
+            ],
         }
 
         return outputs

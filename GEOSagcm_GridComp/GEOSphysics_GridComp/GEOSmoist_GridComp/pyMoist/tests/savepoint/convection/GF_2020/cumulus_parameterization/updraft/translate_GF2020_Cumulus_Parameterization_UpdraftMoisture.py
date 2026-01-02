@@ -98,6 +98,9 @@ class TestCore:
         locals = GF2020CumulusParameterizationLocals.zeros(
             self.quantity_factory,
             data_dimensions={
+                "ensemble_1": MAXENS1,
+                "ensemble_2": MAXENS2,
+                "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
             },
         )
@@ -116,16 +119,18 @@ class TestCore:
         state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_liquid_after_rain_forced_upmoisture"]
         )
-        state.output.condensate_to_fall_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["condensate_to_fall_forced_upmoisture"]
+        state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "condensate_to_fall_forced_upmoisture"
+        ]
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["total_normalized_integrated_condensate_forced_upmoisture"]
         locals.cloud_moist_static_energy_forced.data[:] = inputs[
             "local_cloud_moist_static_energy_forced_upmoisture"
         ]
-        locals.updraft_column_temperature_forced.data[:] = inputs["local_updraft_column_temperature_forced_upmoisture"]
+        locals.updraft_column_temperature_forced.data[:] = inputs[
+            "local_updraft_column_temperature_forced_upmoisture"
+        ]
         state.input.ocean_fraction.data[:] = inputs["ocean_fraction_upmoisture"]
         state.input.convection_fraction.data[:] = inputs["convection_fraction_upmoisture"]
         state.input.surface_type.data[:] = inputs["surface_type_upmoisture"]
@@ -240,7 +245,9 @@ class TestCore:
             "local_cloud_moist_static_energy_forced_upmoisture": locals.cloud_moist_static_energy_forced.data[
                 :
             ],
-            "local_updraft_column_temperature_forced_upmoisture": locals.updraft_column_temperature_forced.data[:],
+            "local_updraft_column_temperature_forced_upmoisture": locals.updraft_column_temperature_forced.data[
+                :
+            ],
             "ocean_fraction_upmoisture": state.input.ocean_fraction.data[:],
             "convection_fraction_upmoisture": state.input.convection_fraction.data[:],
             "surface_type_upmoisture": state.input.surface_type.data[:],

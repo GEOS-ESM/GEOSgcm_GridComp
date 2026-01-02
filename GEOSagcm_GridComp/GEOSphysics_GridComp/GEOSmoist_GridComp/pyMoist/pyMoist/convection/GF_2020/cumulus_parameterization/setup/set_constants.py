@@ -80,6 +80,14 @@ def set_constants(
 
         plume_dependent_constants.C0 = cumulus_parameterization_config.C0_SHAL
 
+        # temperature for diurnal cycle section
+        plume_dependent_constants.T_STAR = Float(40.0)
+
+        # timescale of cape removal
+        plume_dependent_constants.TAU_CAPE_REMOVAL = (
+            -999
+        )  # not used - ideally should not exist for this plume
+
     elif plume == "mid":
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(1)
@@ -150,6 +158,12 @@ def set_constants(
 
         plume_dependent_constants.C0 = cumulus_parameterization_config.C0_MID
 
+        # temperature for diurnal cycle section
+        plume_dependent_constants.T_STAR = Float(40.0)
+
+        # timescale of cape removal
+        plume_dependent_constants.TAU_CAPE_REMOVAL = cumulus_parameterization_config.TAU_MID
+
     elif plume == "deep":
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(2)
@@ -219,6 +233,12 @@ def set_constants(
         )
 
         plume_dependent_constants.C0 = cumulus_parameterization_config.C0_DEEP
+
+        # temperature for diurnal cycle section
+        plume_dependent_constants.T_STAR = Float(5.0)  # temp scale in original paper = 1 K
+
+        # timescale of cape removal
+        plume_dependent_constants.TAU_CAPE_REMOVAL = cumulus_parameterization_config.TAU_DEEP
 
     else:
         raise NotImplementedError("Unknown plume specified, corresponding constants are unavailable.")

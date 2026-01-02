@@ -67,7 +67,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy imp
     MoistStaticEnergyInsideCloud,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import updraft_vertical_velocity
-from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy, convection_trigger
+from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
 from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import (
     C1DProfile,
     get_melting_profile,
@@ -81,6 +81,10 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     UpdraftCIN,
     UpdraftUpdateWorkfunctions,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
+    convection_trigger,
+    XieTriggerFunction,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_velosity.vertical_velosity import (
     VerticalVelosity,
 )
@@ -92,13 +96,10 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     downdraft_moist_static_energy_and_buoyancy,
     downdraft_moisture,
     downdraft_temperature,
-    DowndraftWindshear,
+    DowndraftWindShear,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle.diurnal_cycle import (
+from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import (
     DiurnalCycle,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.cape_removal.cape_removal import (
-    CAPERemoval,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation.mass_conservation import (
     MassConservation,
@@ -388,7 +389,7 @@ class CumulusParameterization:
         self._convection_trigger = stencil_factory.from_dims_halo(
             func=convection_trigger,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"DICYCLE": cumulus_parameterization_config.DICYCLE},
+            externals={"DICYCLE": cumulus_parameterization_config.DIURNAL_CYCLE},
         )
 
         self._downdraft_temperature = stencil_factory.from_dims_halo(
@@ -396,13 +397,21 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._diurnal_cycle = DiurnalCycle()
+        self._diurnal_cycle = DiurnalCycle(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
-        self._cape_removal = CAPERemoval()
+        self._Xie_trigger_function = XieTriggerFunction()
 
-        self._trigger_function_xie = TriggerFunctionXie()
-
-        self._downdraft_windshear = DowndraftWindshear()
+        self._downdraft_windshear = DowndraftWindShear(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._environment_mass_flux = EnvironmentMassFlux()
 
@@ -1173,7 +1182,7 @@ class CumulusParameterization:
                     self.cumulus_parameterization_config.USE_WETBULB
                     and self.plume_dependent_constants.PLUME_INDEX != 0
                 ):
-                    self._downdraft_wet_bulb()
+                    self.gi()
 
                 # downdraft moist static energy + moisture budget
                 # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMSEAnBuoyancy{plume}:
@@ -1316,22 +1325,40 @@ class CumulusParameterization:
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._diurnal_cycle(
-                    state=state,
-                    locals=locals,
+                    error_code=state.output.error_code,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    cloud_top_level=state.output.cloud_top_level,
+                    pbl_level=state.input_output.pbl_level,
+                    grid_length=state.input_output.grid_length,
+                    ocean_fraction=state.input.ocean_fraction,
+                    topography_height_no_negative=state.input_output.topography_height_no_negative,
+                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                    t_old=state.input_output.t_old,
+                    t_new=locals.t_new,
+                    t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                    vapor_old=state.input_output.vapor_old,
+                    vapor_forced=locals.vapor_forced,
+                    u=state.input_output.u,
+                    v=state.input_output.v,
+                    vertical_velocity_2d=locals.vertical_velocity_2d,
+                    cape_removal_time_scale=locals.cape_removal_time_scale,
+                    cape_removal_time_scale_from_state=state.output.cape_removal_time_scale,
+                    pbl_time_scale=locals.pbl_time_scale,
+                    pbl_time_scale_from_state=state.output.pbl_time_scale,
+                    cloud_work_function_1_pbl=locals.cloud_work_function_1_pbl,
+                    cloud_work_function_1_fa=locals.cloud_work_function_1_fa,
                     plume_dependent_constants=self.plume_dependent_constants,
                 )
 
-                # Bechtold et al 2008 time-scale of cape removal
-                self._cape_removal()
-
                 # Trigger function based on Xie et al 2019
-                self._trigger_function_xie()
+                # NOTE not implemented, does not run with test config
+                self._Xie_trigger_function()
 
                 # determine downdraft strength in terms of windshear
                 # NOTE test GF2020_CumulusParameterization_DowndraftWindshear_{plume}:
-                # NOTE      deep ❌ (2 ULP)
-                # NOTE      mid ❌ (7 ULP)
-                # NOTE      shallow ✅
+                # NOTE      deep ❌ DOES NOT RUN, need to deal with ensemble_dimensions in translate test
+                # NOTE      mid ❌ DOES NOT RUN, need to deal with ensemble_dimensions in translate test
+                # NOTE      shallow ❌ DOES NOT RUN, need to deal with ensemble_dimensions in translate test
                 self._downdraft_windshear(
                     state=state,
                     locals=locals,

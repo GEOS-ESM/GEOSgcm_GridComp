@@ -304,6 +304,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    cape_removal_time_scale: Quantity = dataclasses.field(
+        metadata={
+            "name": "cape_removal_time_scale",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     pbl_time_scale: Quantity = dataclasses.field(
         metadata={
             "name": "pbl_time_scale",
@@ -325,15 +334,6 @@ class GF2020CumulusParameterizationLocals(State):
     vapor_wetbulb: Quantity = dataclasses.field(
         metadata={
             "name": "vapor_wetbulb",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    tau_ecmwf: Quantity = dataclasses.field(
-        metadata={
-            "name": "tau_ecmwf",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
@@ -1006,6 +1006,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    epsilon_computed: Quantity = dataclasses.field(
+        metadata={
+            "name": "epsilon_computed",
+            "dims": [X_DIM, Y_DIM, "ensemble_2"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
 
     # NOTE need more information about these fields to come up with better names
     # NOTE these can potentially be removed as well with more analysis
@@ -1021,62 +1030,6 @@ class GF2020CumulusParameterizationLocals(State):
     psumh: Quantity = dataclasses.field(
         metadata={
             "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-
-    # NOTE may be able to remove some of these
-    integ: Quantity = dataclasses.field(
-        metadata={
-            "name": "integ",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Int,
-        }
-    )
-    integ_interval: Quantity = dataclasses.field(
-        metadata={
-            "name": "integ_interval",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Int,
-        }
-    )
-    T_star: Quantity = dataclasses.field(
-        metadata={
-            "name": "T_star",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    edtc: Quantity = dataclasses.field(
-        metadata={
-            "name": "edtc",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    pwavo: Quantity = dataclasses.field(
-        metadata={
-            "name": "pwavo",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    pwevo: Quantity = dataclasses.field(
-        metadata={
-            "name": "pwevo",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
