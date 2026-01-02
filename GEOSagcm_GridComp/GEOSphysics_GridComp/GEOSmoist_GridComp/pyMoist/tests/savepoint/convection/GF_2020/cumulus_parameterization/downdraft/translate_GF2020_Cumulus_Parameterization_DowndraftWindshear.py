@@ -123,9 +123,13 @@ class TestCore:
         locals.epsilon.data[:] = inputs["local_epsilon_downwindshear"]
         locals.epsilon_min.data[:] = inputs["local_epsilon_min_downwindshear"]
         locals.epsilon_max.data[:] = inputs["local_epsilon_max_downwindshear"]
-        print(inputs["local_epsilon_computed_downwindshear"])
-        # if len(inputs["local_epsilon_computed_downwindshear"].shape) == 2:
-        locals.epsilon_computed.data[:] = inputs["local_epsilon_computed_downwindshear"]
+        size_epsilon_computed = len(inputs["local_epsilon_computed_downwindshear"].shape)
+        if size_epsilon_computed == 2:
+            import numpy as np
+
+            locals.epsilon_computed.data[:] = inputs["local_epsilon_computed_downwindshear"][:, :, np.newaxis]
+        else:
+            locals.epsilon_computed.data[:] = inputs["local_epsilon_computed_downwindshear"]
         state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "epsilon_forced_downwindshear"
         ]

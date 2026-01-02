@@ -1356,12 +1356,28 @@ class CumulusParameterization:
 
                 # determine downdraft strength in terms of windshear
                 # NOTE test GF2020_CumulusParameterization_DowndraftWindshear_{plume}:
-                # NOTE      deep ❌ DOES NOT RUN, need to deal with ensemble_dimensions in translate test
-                # NOTE      mid ❌ DOES NOT RUN, need to deal with ensemble_dimensions in translate test
-                # NOTE      shallow ❌ DOES NOT RUN, need to deal with ensemble_dimensions in translate test
+                # NOTE      deep ✅
+                # NOTE      mid ❌ one field, one point (0.17%), 4 ULP
+                # NOTE      shallow ✅
                 self._downdraft_windshear(
-                    state=state,
-                    locals=locals,
+                    error_code=state.output.error_code,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    cloud_top_level=state.output.cloud_top_level,
+                    geopotential_height_forced=state.input_output.geopotential_height_forced,
+                    p_forced=state.input_output.p_forced,
+                    u=state.input_output.u,
+                    v=state.input_output.v,
+                    ccn=state.input_output.ccn,
+                    psum=locals.psum,
+                    psumh=locals.psumh,
+                    total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
+                    total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                    scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
+                    epsilon=locals.epsilon,
+                    epsilon_min=locals.epsilon_min,
+                    epsilon_max=locals.epsilon_max,
+                    epsilon_computed=locals.epsilon_computed,
+                    epsilon_forced=state.output.epsilon_forced,
                     plume_dependent_constants=self.plume_dependent_constants,
                 )
 

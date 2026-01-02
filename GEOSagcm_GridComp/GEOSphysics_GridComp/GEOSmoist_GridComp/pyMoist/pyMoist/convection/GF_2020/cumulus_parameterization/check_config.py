@@ -147,6 +147,12 @@ def check_config(
             "untested SGS_W_TIMESCALE option. Running untested code... proceed with caution"
         )
 
+    if cumulus_parameterization_config.AEROEVAP != 1:
+        ndsl_log.warning(
+            " GF2020 cumulus parameterization: DowndraftWindshear initalized with "
+            "untested AEROEVAP option. Running untested code... proceed with caution"
+        )
+
     # generate errors after all warnings
     # TODO find a way to generate all then fail at once, printing all simultaneously
     if (
