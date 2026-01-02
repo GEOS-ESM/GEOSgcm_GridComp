@@ -5083,6 +5083,13 @@ loop0:       do k=kts,ktf
       else
            T_star=40.
       endif
+      ! $ser savepoint GF2020_CumulusParameterization_DiurnalCycle-Out
+      ! $ser verbatim do i=its,ite
+      !   $ser verbatim do k=kts,kte
+      !      $ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      $ser data_buffered Dx=4 local_T_star_diurnalcycle=T_star
+      !   $ser verbatim enddo
+      ! $ser verbatim enddo
 !
 !--- Bechtold et al 2008 time-scale of cape removal
 !
@@ -5513,8 +5520,6 @@ ENDIF
             endif
          enddo   ! k
       enddo
-
-
 !
 !--- change per unit mass that a model cloud would modify the environment
 !

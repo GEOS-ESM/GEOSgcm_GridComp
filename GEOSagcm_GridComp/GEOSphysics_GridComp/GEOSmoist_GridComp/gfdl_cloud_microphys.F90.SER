@@ -4094,17 +4094,19 @@ subroutine qsmith_init
         desw (length) = desw (length - 1)
 
         tables_are_initialized = .true.
-        
-        !!$ser savepoint GFDL_1M_driver_tables-In
-        !!$ser data_append length_driver=length
-        !!$ser flush_savepoint GFDL_1M_driver_tables-In
 
-        !!$ser savepoint GFDL_1M_driver_tables-Out
-        !!$ser verbatim do k = 1, length
-        !!$ser data_append junk_variable=length table1_driver=table(k) table2_driver=tablew(k) table3_driver=table2(k) table4_driver=table3(k)
-        !!$ser data_append des1_driver=des(k) des2_driver=desw(k) des3_driver=des2(k) des4_driver=des3(k)
-        !!$ser verbatim enddo
-        !!$ser flush_savepoint GFDL_1M_driver_tables-Out
+        ! NOTE This needs to be turned off for UW to serialize properly
+        ! $ser savepoint GFDL_1M_driver_tables-In
+        ! $ser data_append length_driver=length
+        ! $ser flush_savepoint GFDL_1M_driver_tables-In
+
+        ! NOTE This needs to be turned off for UW to serialize properly
+        ! $ser savepoint GFDL_1M_driver_tables-Out
+        ! $ser verbatim do k = 1, length
+        ! $ser data_append junk_variable=length table1_driver=table(k) table2_driver=tablew(k) table3_driver=table2(k) table4_driver=table3(k)
+        ! $ser data_append des1_driver=des(k) des2_driver=desw(k) des3_driver=des2(k) des4_driver=des3(k)
+        ! $ser verbatim enddo
+        ! $ser flush_savepoint GFDL_1M_driver_tables-Out
 
     endif
 
