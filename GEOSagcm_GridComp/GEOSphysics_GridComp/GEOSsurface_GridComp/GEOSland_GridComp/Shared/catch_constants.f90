@@ -71,13 +71,13 @@ module catch_constants
        1./(CATCH_N_SNOW-1.), 1./(CATCH_N_SNOW-1.)                            &  ! -  "sigma" distribution 
        /) 
   ! constants for urban
-  REAL,    PARAMETER, PUBLIC :: CATCH_EMIS_URBAN    = 0.95
-  REAL,    PARAMETER, PUBLIC :: CATCH_C_URBAN       = 120000.  ! J/K - heat capacity associated w/ urban  
-  REAL,    PARAMETER, PUBLIC :: CATCH_tkdry_URBAN   = 0.9
+  REAL,    PARAMETER, PUBLIC :: CATCH_EMIS_URBAN    = 0.90
+  REAL,    PARAMETER, PUBLIC :: CATCH_C_URBAN       = 700000.  ! J/K - heat capacity associated w/ urban  
+  REAL,    PARAMETER, PUBLIC :: CATCH_tkdry_URBAN   = 2.0
   !REAL,    PARAMETER, PUBLIC :: CATCH_CH_URBAN      = 0.018    ! kg/m^2/s
   !REAL,    PARAMETER, PUBLIC :: AR_URBAN            = 0.3  
-  REAL,    PARAMETER, PUBLIC :: CATCH_Z0_URBAN      = 1.5     !m
-  REAL,    PARAMETER, PUBLIC :: CATCH_D0_URBAN      = 10.0    !m  
+  REAL,    PARAMETER, PUBLIC :: CATCH_Z0_URBAN      = 2.0     !m
+  REAL,    PARAMETER, PUBLIC :: CATCH_D0_URBAN      = 12.0    !m  
   REAL,    PARAMETER, PUBLIC :: factor_impervious_URBAN = 1.0 
   ! ---------------------------------------------------------------------------
   !
