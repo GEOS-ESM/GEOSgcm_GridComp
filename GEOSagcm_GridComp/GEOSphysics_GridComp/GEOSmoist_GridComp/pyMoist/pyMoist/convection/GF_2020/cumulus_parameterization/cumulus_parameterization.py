@@ -85,9 +85,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
     convection_trigger,
     XieTriggerFunction,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_velosity.vertical_velosity import (
-    VerticalVelosity,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     DowndraftOriginLevel,
     DowndraftNormalizedMassFlux,
@@ -98,12 +95,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     downdraft_temperature,
     DowndraftWindShear,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import (
-    DiurnalCycle,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation.mass_conservation import (
-    MassConservation,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import DiurnalCycle
+from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation import MassConservation
 from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization.vertical_discretization import (
     VerticalDiscretization,
 )
@@ -117,12 +110,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.cloud_base_mass_flux.cl
 from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.kinetic_energy_to_heating import (
     KineticEnergyToHeating,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback import (
-    Feedback,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output.prepare_output import (
-    PrepareOutput,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback import Feedback
+from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output.prepare_output import PrepareOutput
 
 
 class CumulusParameterization:
@@ -1399,6 +1388,13 @@ class CumulusParameterization:
                 )
 
                 # check mass conservation
+                # NOTE This code runs in the Fortran and only has one output: totmas (total mass).
+                # totmas has only one use: a conditional log write if total mass is above a 1e-6.
+                # This conditional also has a disabled fatal error call.
+                # Since the only consequential outcome is disabled, and this port has thus far not
+                # implemented other log writes, this code not been implemented.
+                # If totmas is needed in the future, or this fatal call is reimplemented,
+                # this code will be revisited
                 self._mass_conservation()
 
                 # change per unit mass that a model cloud would modify the environment
