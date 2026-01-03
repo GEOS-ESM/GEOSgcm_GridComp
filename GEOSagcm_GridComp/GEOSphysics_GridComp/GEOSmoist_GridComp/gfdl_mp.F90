@@ -35,7 +35,7 @@
 
 module gfdl_mp_mod
 
-    use GEOSmoist_Process_Library, only: sigma, ice_fraction, LDRADIUS4
+    use GEOSmoist_Process_Library, only: get_fac_eis, sigma, ice_fraction, LDRADIUS4
     use MAPL, only: MAPL_AM_I_ROOT
 
     implicit none
@@ -1413,11 +1413,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         ! Use estimated inversion strength to determine stable vs unstable areas
         ! -----------------------------------------------------------------------
-        if (srf_type < 2.0) then ! exclude snow/ice covered regions
-          fac_eis = min(1.0,eis(i)/10.0)**2 ! Estimated inversion strength determine stable regime
-        else
-          fac_eis = 0.0
-        endif
+        fac_eis = get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
 
         ! -----------------------------------------------------------------------
         ! adjust autoconversion rates and thresholds for stable vs unstable 

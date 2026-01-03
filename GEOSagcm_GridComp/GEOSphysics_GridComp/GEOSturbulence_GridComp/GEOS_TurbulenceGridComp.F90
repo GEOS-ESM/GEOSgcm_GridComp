@@ -540,6 +540,16 @@ contains
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC,                             &    
+        SHORT_NAME         = 'EIS',                               &
+        LONG_NAME          = 'estimated_inversion_strength',      &
+        UNITS              = 'K',                                 &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'FRLAND',                            &
         LONG_NAME          = 'land_fraction',                     &
@@ -2983,7 +2993,7 @@ end if
 
 !     real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
-     real, dimension(:,:  ), pointer     :: Z0, Z0H
+     real, dimension(:,:  ), pointer     :: Z0, Z0H, EIS
      real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND,TRINVBS,TRINVFRQ,TRINVDELT
      real, dimension(:,:  ), pointer     :: TCZPBL => null()
      real, dimension(:,:  ), pointer     :: ZPBL2 => null()
@@ -3184,6 +3194,7 @@ end if
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,    Z0,      'Z0', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,   Z0H,     'Z0H', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,   EIS,     'EIS', RC=STATUS); VERIFY_(STATUS)
 
      ! Imports for CLASP heterogeneity coupling in EDMF
 !     call MAPL_GetPointer(IMPORT, MFTHSRC, 'MFTHSRC',RC=STATUS); VERIFY_(STATUS)
@@ -3270,18 +3281,18 @@ end if
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=0.9,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.65,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.3,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.15,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.0e-3, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,          RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,     RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.0e-3,     RC=STATUS); VERIFY_(STATUS)
      endif
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
@@ -4118,6 +4129,7 @@ end if
          ALLOCATE(PFULL_dev(IM,JM,LM), __STAT__)
          ALLOCATE(ZHALF_dev(IM,JM,LM+1), __STAT__)
          ALLOCATE(PHALF_dev(IM,JM,LM+1), __STAT__)
+         ALLOCATE(EIS_dev(IM,JM), __STAT__)                     
 
          ! Inoutputs - Lock
          ! ----------------
@@ -4205,6 +4217,7 @@ end if
                   V_dev        = V
                   ZFULL_dev    = Z
                   PFULL_dev    = PLO
+                  EIS_dev      = EIS
          ZHALF_dev(:,:,1:LM+1) = ZL0(:,:,0:LM)
          PHALF_dev(:,:,1:LM+1) = PLE(:,:,0:LM)
 
@@ -4236,6 +4249,7 @@ end if
                                       PFULL_dev,      &
                                       ZHALF_dev,      &
                                       PHALF_dev,      &
+                                      EIS_dev,        &
                                       ! Inoutputs
                                       DIFF_M_dev,     &
                                       DIFF_T_dev,     &
@@ -4440,6 +4454,7 @@ end if
                       PLO,                      &
                       ZL0,                      &
                       PLE,                      &
+                      EIS,                      &
                       ! Inoutputs
                       KM,                       &
                       KH,                       &

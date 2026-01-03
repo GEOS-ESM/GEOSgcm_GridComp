@@ -52,7 +52,7 @@ module uwshcu
   type   (SHLWPARAM_TYPE) :: SHLWPARAMS
 
    private
-   public compute_uwshcu_inv, SHLWPARAMS, LIMIT_RKFRE
+   public compute_uwshcu_inv, SHLWPARAMS
 
    real, parameter :: xlv   = MAPL_ALHL             ! Latent heat of vaporization
    real, parameter :: xlf   = MAPL_ALHF             ! Latent heat of fusion
@@ -70,8 +70,6 @@ module uwshcu
    real, parameter :: qcmin = 1.e-12 !< min value for cloud condensates
 
    logical, parameter :: fix_negative = .false.
-
-   logical :: LIMIT_RKFRE = .false.
 
    real, parameter :: mintracer = 0.0
 contains
@@ -1511,12 +1509,11 @@ contains
        ! ------------------------------------------------------------------ !
 
          if (windsrcavg) then
-            zrho = pifc0(0)/(287.04*(t0(kinv-1)*(1.+0.608*qv0(kinv-1))))
-            buoyflx = (-shfx(i)/cp-0.608*t0(kinv-1)*evap(i))/zrho ! K m s-1
-            delzg = max(zifc0(kinv-1)-zifc0(0),50.0)*g ! Matches Deardorff scaling
-!           delzg = (zifc0(1)-zifc0(0))*g ! just the surface parcel
-!           delzg = (50.0)*g              ! assume 50m surface scale
-            wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(kinv-1)) ! m3 s-3
+            zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
+            buoyflx = (-shfx(i)/cp-0.608*t0(1)*evap(i))/zrho ! K m s-1
+!            delzg = (zifc0(1)-zifc0(0))*g
+            delzg = (50.0)*g   ! assume 50m surface scale
+            wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(1)) ! m3 s-3
             qpert_out(i) = 0.0
             tpert_out(i) = 0.0
             if (wstar > 0.001) then
@@ -1524,16 +1521,17 @@ contains
               tpert_out(i) = thlsrc_fac*shfx(i)/(zrho*wstar*cp)  ! K
               qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
             end if
-            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(kinv-1)),0.)  ! limit to 2% of QT
+            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 1% of QT
             tpert_out(i) = 0.1+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
             qtsrc   = qtavg + qpert_out(i)
-!           thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(kinv-1)
-            thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(kinv-1)
+!           qtsrc   = qt0(1) + qpert_out(i)
+!           thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
+            thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
             thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc  = uavg
             vsrc  = vavg
          else
-            qtsrc   = qt0(kinv-1)
+            qtsrc   = qt0(1)
             thvlsrc = thvlmin
             thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc    = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
@@ -1660,7 +1658,7 @@ contains
 !             exit
 !           end if
 !        end do
-!        lts = lts - t0(kinv-1)/exnmid0(kinv-1)
+!        lts = lts - t0(1)/exnmid0(1)
 
         !------------------------------------------------------------------------!
         ! Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' ) !
@@ -1758,31 +1756,6 @@ contains
        endif
 
        !----------------------------------------------------------------------!
-       ! determine rkfre stability limiter based on rkfre or 1.9 x cbmf       !
-       !----------------------------------------------------------------------!
-       if (LIMIT_RKFRE) then
-         if( use_CINcin ) then
-            wcrit = sqrt(max(0.0, 2. * cin * rbuoy) )
-         else
-            wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
-         endif
-         sigmaw = sqrt(max(0.0, rkfre(i) * tkeavg + epsvarw) )
-         mu = min(wcrit/sigmaw/1.4142, 3.0)
-         rho0inv = pifc0(kinv-1)/(r*thv0top(kinv-1)*exnifc0(kinv-1))
-         cbmf_raw = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
-         ! --- compute cbmf limit based on mass availability ---
-         cbmflimit = max(tiny, 1.9*dp0(kinv-1)/g/dt)
-         ! --- adjust rkfre dynamically for stability ---
-         if (cbmf_raw > cbmflimit) then
-            rkfre_eff = min(rkfre(i), max(0.1,cbmflimit/cbmf_raw))
-         else
-            rkfre_eff = rkfre(i)
-         end if
-       else
-         rkfre_eff = rkfre(i)
-       endif
-
-       !----------------------------------------------------------------------!
        ! In order to calculate implicit 'cin' (or 'cinlcl'), save the initially !
        ! calculated 'cin' and 'cinlcl', and other related variables. These will !
        ! be restored after calculating implicit CIN.                            !
@@ -1791,7 +1764,7 @@ contains
        if( iter .eq. 1 ) then 
            cin_i       = cin
            cinlcl_i    = cinlcl
-           ke          = rbuoy / ( rkfre_eff * tkeavg + epsvarw )
+           ke          = rbuoy / ( rkfre(i) * tkeavg + epsvarw )
            kinv_o      = kinv     
            klcl_o      = klcl     
            klfc_o      = klfc    
@@ -2202,12 +2175,16 @@ contains
        ! that buoyancy sorting does not occur when cumulus updraft is unsaturated.   !
        ! ---------------------------------------------------------------------------
  
-         if( use_CINcin ) then       
+       ! ---------------------------------------------------------------------------
+       ! Raw calculations for wcrit, sigmaw, mu and cbmf
+       ! ---------------------------------------------------------------------------
+
+        if( use_CINcin ) then       
             wcrit = sqrt(max(0.0, 2. * cin * rbuoy) )
          else
             wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
          endif
-         sigmaw = sqrt(max(0.0, rkfre_eff * tkeavg + epsvarw) )
+         sigmaw = sqrt(max(0.0, tkeavg + epsvarw) )
          mu = wcrit/sigmaw/1.4142                  
          if( mu .ge. 3. ) then
             if (scverbose) then
@@ -2219,12 +2196,16 @@ contains
          rho0inv = pifc0(kinv-1)/(r*thv0top(kinv-1)*exnifc0(kinv-1))
          cbmf = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
 
-         ! 1. 'cbmf' constraint
-         cbmflimit = 0.9*dp0(kinv-1)/g/dt
-         mumin0 = 0.
-         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmflimit/rho0inv/sigmaw))))
-! ALT ?? if( cbmf .gt. cbmflimit ) mumin0 = sqrt(mu**2-log(cbmflimit/cbmf))
+       ! ---------------------------------------------------------------------------
+       ! Limiters
+       ! ---------------------------------------------------------------------------
+
+         ! 1. 'cbmf' and 'sigmaw' constraints
+         rkfre_eff = min(rkfre(i), max(0.1,(0.9*dp0(kinv-1)/g/dt)/cbmf))
+         cbmflimit = rkfre_eff*cbmf
+         sigmaw = rkfre_eff*sigmaw
          ! 2. 'ufrcinv' constraint
+         mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmflimit/rho0inv/sigmaw))))
          mu = max(max(mu,mumin0),mumin1)
          ! 3. 'ufrclcl' constraint      
          mulcl = sqrt(max(0.0,2.*cinlcl*rbuoy))/1.4142/sigmaw
@@ -2713,6 +2694,18 @@ contains
             fdr(k) = rei(k) * ud2
             xco(k) = xc
 
+            if (fer(k).gt.0.1) then
+               print *,"fer(k) = rei(k) * ee2 > 0.1! fer=",fer(k)
+               id_exit = .true.
+               go to 333
+            end if
+
+            if (fdr(k).gt.0.1) then
+               print *,"fdr(k) = rei(k) * ud2 > 0.1! fdr=",fdr(k)
+               id_exit = .true.
+               go to 333
+            end if
+
           ! ------------------------------------------------------------------------------ !
           ! Iteration Start due to 'maxufrc' constraint [ ****************************** ] ! 
           ! ------------------------------------------------------------------------------ !
@@ -2977,6 +2970,11 @@ contains
               ufrc(k) = rmaxfrac
               umf(k)  = rmaxfrac * rhoifc0j * wu(k)
               fdr(k)  = fer(k) - log(max(tiny, umf(k) / umf(km1)) ) / dpe
+              if (fdr(k).gt.0.1) then
+                 print *,"fdr(k) [updated] > 0.1! fdr=",fdr(k)
+                 id_exit = .true.
+                 go to 333
+              end if
           endif
 
           ! ------------------------------------------------------------ !

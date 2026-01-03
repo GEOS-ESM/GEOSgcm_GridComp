@@ -44,7 +44,7 @@ module GEOS_GFDL_1M_InterfaceMod
 
   ! Local resource variables
   real    :: TURNRHCRIT_PARAM
-  real    :: MIN_RH_UNSTABLE, MIN_RH_STABLE
+  real    :: MIN_RH_UNSTABLE, MIN_RH_STABLE, MIN_RH_STRATUS
   real    :: TAU_EVAP, CCW_EVAP_EFF
   real    :: TAU_SUBL, CCI_EVAP_EFF
   integer :: PDFSHAPE
@@ -296,8 +296,13 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
                         DEFAULT= refl10cm_allow_wet_snow, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9750, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.9125, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9500, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.8750, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_STRATUS  , 'MIN_RH_STRATUS:'  , DEFAULT= 0.8500, RC=STATUS); VERIFY_(STATUS)  ! New parameter
+    ! validate parameter ordering
+    MIN_RH_STRATUS = min(MIN_RH_STRATUS, MIN_RH_STABLE)
+    MIN_RH_STABLE  = min(MIN_RH_STABLE,  MIN_RH_UNSTABLE)
+
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_LSC_VFALL_PARAM, 'ICE_LSC_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_CNV_VFALL_PARAM, 'ICE_CNV_VFALL_PARAM:',DEFAULT= 2, RC=STATUS); VERIFY_(STATUS)
@@ -646,9 +651,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           do J=1,JM
            do I=1,IM
            ! Send the condensates through the pdf after convection [0:1 , unstable:stable]
-             facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
-           ! determine combined minrhcrit in unstable/stable regimes
-             minrhcrit = MIN_RH_UNSTABLE*(1.0-facEIS) + MIN_RH_STABLE*facEIS
+             facEIS = get_fac_eis(EIS(I,J),SRF_TYPE(I,J))
+           ! Enhanced EIS-dependent RH critical threshold
+             ! Smooth interpolation across all three RH thresholds
+             ! facEIS = 0.0 : MIN_RH_UNSTABLE
+             ! facEIS = 0.5 : blend of UNSTABLE and STABLE  
+             ! facEIS = 1.0 : MIN_RH_STRATUS
+             minrhcrit = MIN_RH_UNSTABLE * (1.0 - facEIS)**2 + &
+                         MIN_RH_STABLE   * 2.0 * facEIS * (1.0 - facEIS) + &
+                         MIN_RH_STRATUS  * facEIS**2
            ! include grid cell area scaling and limit RHcrit to > 70%
              minrhcrit = 1.0 - min(0.3,(1.0-minrhcrit)*SQRT(SQRT(AREA(I,J)/1.e10))+0.01)
              if (TURNRHCRIT_PARAM <= 0.0) then

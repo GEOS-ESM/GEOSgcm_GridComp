@@ -95,7 +95,7 @@ module LockEntrain
 #ifndef _CUDA
    private
 
-   logical :: use_kludges = .true.
+   logical :: use_kludges = .false.
 
 !-----------------------------------------------------------------------
 !
@@ -126,6 +126,7 @@ module LockEntrain
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: PFULL_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: ZHALF_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: PHALF_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: EIS_dev
 
    ! Inoutputs
    ! ---------
@@ -311,6 +312,7 @@ contains
          pfull,          &
          zhalf,          &
          phalf,          &
+         eis,            &
 ! Inoutputs
          diff_m,         &
          diff_t,         &
@@ -471,7 +473,7 @@ contains
       real,    value,  intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
+      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh,eis
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
       real,    device, intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
@@ -489,7 +491,7 @@ contains
       integer, intent(in)                                    :: icol,jcol,nlev
 
       real,    intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
+      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh,eis
       real,    intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
       real,    intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
@@ -542,7 +544,7 @@ contains
       real, dimension(GPU_MAXLEVS) :: dqs
       !real, dimension(GPU_MAXLEVS) :: qs ! Not used in current code
       real                         :: qs_dummy
-
+      real                         :: eis_stability, surface_suppression, radiative_modulation
 !-----------------------------------------------------------------------
 !
 !     initialize variables
@@ -603,6 +605,18 @@ contains
          k_m_entr(i,j,nlev+1)   = 0.0
          k_sfc(i,j,nlev+1) = 0.0
          k_rad(i,j,nlev+1) = 0.0
+
+         ! Use EIS to determine appropriate depth threshold
+         if (eis(i,j) >= 12.0) then        
+            ! Very stable regime
+            eis_stability = 1.0
+         elseif (eis(i,j) <= 0.0) then
+            ! Very unstable regime  
+            eis_stability = 0.0
+         else
+            ! Smooth cubic interpolation from 0 to 1 over EIS range 0-12
+            eis_stability = (eis(i,j) / 12.0)**1.5
+         endif
 
 !--------------------------------------------------------------------------
 ! Initialize optional outputs
@@ -775,7 +789,11 @@ contains
 ! for shallow boundary layers, and increase for 
 ! deep ones. Linear from 0 to 1600m
             if (use_kludges) then
-            wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
+              wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
+            else
+              ! Surface entrainment: Reduce in stable conditions (high EIS)
+              surface_suppression = 1.0 - 0.8*eis_stability  ! Range: 1.0 to 0.2
+              wentr_tmp = wentr_tmp * max(0.1, surface_suppression)
             endif
 !-----------------------------------------
 
@@ -1016,12 +1034,20 @@ contains
 !----------------------------------------
 ! adjust velocity scales to prevent jumps 
 ! near zradtop=zcldtopmax
-         if ( zradtop .gt. zcldtopmax-500. ) then 
-            vrad3 = vrad3*(zcldtopmax - zradtop)/500.  
-            vbr3  = vbr3 *(zcldtopmax - zradtop)/500.  
+         if (use_kludges) then
+           if ( zradtop .gt. zcldtopmax-500. ) then 
+              vrad3 = vrad3*(zcldtopmax - zradtop)/500.  
+              vbr3  = vbr3 *(zcldtopmax - zradtop)/500.  
+           endif
+           vrad3=max( vrad3, 0. ) ! these really should not be needed
+           vbr3 =max( vbr3,  0. )
+         else
+           ! Replace hard zradtop height limit with physics-based EIS limit
+           if (eis(i,j) < 2.0) then  ! Very unstable - not suitable for Lock scheme
+             vrad3 = vrad3 * max(0.0, eis(i,j)/2.0)  ! Taper based on stability
+             vbr3  = vbr3  * max(0.0, eis(i,j)/2.0)
+           endif
          endif
-         vrad3=max( vrad3, 0. ) ! these really should not be needed
-         vbr3 =max( vbr3,  0. )
 !-----------------------------------------
 
 
@@ -1040,11 +1066,15 @@ contains
 ! for shallow boundary layers, and increase for 
 ! deep ones: piecewise linear function 500-800m & 800-2400m 
          if (use_kludges) then
-         if ( zradtop .le. 800. ) then
-            wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
+           if ( zradtop .le. 800. ) then
+              wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
+           else
+              wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
+           endif
          else
-            wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
-         endif
+           ! Radiative entrainment: Modulate based on inversion strength  
+           radiative_modulation = 0.5 + 1.5*eis_stability  ! Range: 0.5 to 2.0
+           wentr_rad = wentr_rad * radiative_modulation
          endif
 !-----------------------------------------
 
