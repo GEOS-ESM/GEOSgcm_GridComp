@@ -97,7 +97,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import DiurnalCycle
 from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation import MassConservation
-from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization.vertical_discretization import (
+from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization import (
     VerticalDiscretization,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.smoothing.smoothing import (
@@ -409,7 +409,12 @@ class CumulusParameterization:
 
         self._mass_conservation = MassConservation()
 
-        self._vertical_discretization = VerticalDiscretization()
+        self._vertical_discretization = VerticalDiscretization(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._environmental_subsidence = EnvironmentalSubsidence()
 

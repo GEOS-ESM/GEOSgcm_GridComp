@@ -3,6 +3,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import Floa
 from gt4py.cartesian.gtscript import (
     FORWARD,
     PARALLEL,
+    BACKWARD,
     computation,
     interval,
     K,
@@ -115,7 +116,8 @@ def updraft_vertical_velocity(
                     updraft_column_temperature_forced
                     * (
                         1.0
-                        + (cloud_total_water_after_entrainment_forced / eps) / (1.0 + cloud_total_water_after_entrainment_forced)
+                        + (cloud_total_water_after_entrainment_forced / eps)
+                        / (1.0 + cloud_total_water_after_entrainment_forced)
                     )
                     + updraft_column_temperature_forced[0, 0, 1]
                     * (
@@ -219,3 +221,35 @@ def updraft_vertical_velocity(
                 + 1.0e-16
             )
             vertical_velocity_2d = max(1.0, vertical_velocity_2d)
+
+
+def tridiag(m: IntFieldIJ, a: FloatField, b: FloatField, c: FloatField, f: FloatField):
+    """
+    this routine solves the problem: aa*f(k-1,t+1) + bb*f(k,t+1) + cc*f(k+1,t+1) = dd
+    an updated "f" at time t+1 is the output
+
+    Args:
+        m
+        a
+        b
+        c
+        f
+    """
+    with computation(FORWARD), interval(0, 1):
+        # prepare bounds for subsequent computation
+        upper_bound: IntFieldIJ = m + 1
+
+    with computation(FORWARD), interval(m, upper_bound):
+        c = 0.0
+
+    with computation(FORWARD), interval(0, 1):
+        q = -c / b
+        f = f / b
+
+    with computation(FORWARD), interval(1, upper_bound):
+        p = 1.0 / (b + a * q[0, 0, -1])
+        q = -c * p
+        f = p * (f - a * f[0, 0, -1])
+
+    with computation(BACKWARD), interval(0, m):
+        f = f + q * f[0, 0, 1]

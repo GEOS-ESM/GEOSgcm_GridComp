@@ -1024,8 +1024,163 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    del_u_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_u_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_v_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_v_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_moist_static_energy_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_moist_static_energy_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_t_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_t_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_vapor_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_vapor_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_cloud_liquid_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_cloud_liquidu_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_buoyancy_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_buoyancy_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    t_tendency_from_environmental_subsidence: Quantity = dataclasses.field(
+        metadata={
+            "name": "t_tendency_from_environmental_subsidence",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    moist_static_energy_tendency_from_environmental_subsidence: Quantity = dataclasses.field(
+        metadata={
+            "name": "moist_static_energy_tendency_from_environmental_subsidence",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    vapor_tendency_from_environmental_subsidence: Quantity = dataclasses.field(
+        metadata={
+            "name": "vapor_tendency_from_environmental_subsidence",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
 
     # NOTE need more information about these fields to come up with better names
+    fp: Quantity = dataclasses.field(
+        metadata={
+            "name": "fp",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    fm: Quantity = dataclasses.field(
+        metadata={
+            "name": "fm",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    aa: Quantity = dataclasses.field(
+        metadata={
+            "name": "aa",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    bb: Quantity = dataclasses.field(
+        metadata={
+            "name": "bb",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    cc: Quantity = dataclasses.field(
+        metadata={
+            "name": "cc",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    ddu: Quantity = dataclasses.field(
+        metadata={
+            "name": "ddu",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    ddv: Quantity = dataclasses.field(
+        metadata={
+            "name": "ddv",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+
     # NOTE these can potentially be removed as well with more analysis
     psum: Quantity = dataclasses.field(
         metadata={

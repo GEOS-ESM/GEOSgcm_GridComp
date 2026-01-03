@@ -81,3 +81,5 @@ class GF2020CumulusParameterizationConfig:
     EVAP_FIX: Int
     SGS_W_TIMESCALE: Int
     AEROEVAP: Int
+    VERTICAL_DISCRETIZATION_OPTION: Int
+    ALP1: Float
