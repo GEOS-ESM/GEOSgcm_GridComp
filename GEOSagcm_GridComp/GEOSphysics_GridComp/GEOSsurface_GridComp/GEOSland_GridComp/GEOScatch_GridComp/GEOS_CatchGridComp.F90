@@ -52,7 +52,7 @@ module GEOS_CatchGridCompMod
        SNWALB_NIRMAX  => CATCH_SNOW_NIRMAX,    &
        SLOPE          => CATCH_SNOW_SLOPE,     &
        PEATCLSM_POROS_THRESHOLD,               &
-       Z0_UR          => CATCH_Z0_URBAN,       &
+       !Z0_UR          => CATCH_Z0_URBAN,       &
        D0_UR          => CATCH_D0_URBAN               
        !CH_UR          => CATCH_CH_URBAN    
 
@@ -3381,6 +3381,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                :: SCALE4ZVG
     real                :: SCALE4Z0_u
     real                :: MIN_VEG_HEIGHT 
+    real                :: Z0_UR
     
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
@@ -3810,6 +3811,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     end do SUBTILES
 
 !  For Urban
+    Z0_UR = 0.15*D0_UR
     Z0T_UR(:,1) = Z0_UR
     D0T_UR = D0_UR
     DZE_UR = max(DZ - D0T_UR, 10.)
