@@ -223,7 +223,15 @@ def updraft_vertical_velocity(
             vertical_velocity_2d = max(1.0, vertical_velocity_2d)
 
 
-def tridiag(m: IntFieldIJ, a: FloatField, b: FloatField, c: FloatField, f: FloatField):
+def tridiag(
+    m: IntFieldIJ_Plume,
+    a: FloatField,
+    b: FloatField,
+    c: FloatField,
+    f: FloatField,
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+):
     """
     this routine solves the problem: aa*f(k-1,t+1) + bb*f(k,t+1) + cc*f(k+1,t+1) = dd
     an updated "f" at time t+1 is the output
@@ -235,21 +243,21 @@ def tridiag(m: IntFieldIJ, a: FloatField, b: FloatField, c: FloatField, f: Float
         c
         f
     """
-    with computation(FORWARD), interval(0, 1):
-        # prepare bounds for subsequent computation
-        upper_bound: IntFieldIJ = m + 1
-
-    with computation(FORWARD), interval(m, upper_bound):
-        c = 0.0
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0 and K == m[0, 0][plume]:
+            c = 0
 
     with computation(FORWARD), interval(0, 1):
-        q = -c / b
-        f = f / b
+        if error_code[0, 0][plume] == 0:
+            q = -c / b
+            f = f / b
 
-    with computation(FORWARD), interval(1, upper_bound):
-        p = 1.0 / (b + a * q[0, 0, -1])
-        q = -c * p
-        f = p * (f - a * f[0, 0, -1])
+    with computation(FORWARD), interval(1, None):
+        if error_code[0, 0][plume] == 0 and K <= m[0, 0][plume]:
+            p = 1.0 / (b + a * q[0, 0, -1])
+            q = -c * p
+            f = p * (f - a * f[0, 0, -1])
 
-    with computation(BACKWARD), interval(0, m):
-        f = f + q * f[0, 0, 1]
+    with computation(BACKWARD), interval(...):
+        if error_code[0, 0][plume] == 0 and K < m[0, 0][plume]:
+            f = f + q * f[0, 0, 1]
