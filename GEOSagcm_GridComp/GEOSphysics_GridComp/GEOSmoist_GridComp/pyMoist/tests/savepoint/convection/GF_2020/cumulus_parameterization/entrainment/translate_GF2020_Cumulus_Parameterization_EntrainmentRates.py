@@ -40,6 +40,7 @@ class TestCore:
             "lcl_level_entrainmentrates": {},
             "entrainment_rate_entrainmentrates": {},
             "local_updraft_detrainment_function_entrainmentrates": {},
+            "min_entr_rate": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -88,6 +89,7 @@ class TestCore:
         locals.detrainment_function_updraft.data[:] = inputs[
             "local_updraft_detrainment_function_entrainmentrates"
         ]
+        locals.min_entr_rate.data[:] = inputs["min_entr_rate"]
 
         code = self.stencil_factory.from_dims_halo(
             func=entrainment_rates,
@@ -98,6 +100,7 @@ class TestCore:
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
                 vapor=locals.vapor_cloud_levels_forced,
+                min_entr_rate=locals.min_entr_rate,
                 environment_saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
                 lcl_level=state.output.lcl_level,
                 error_code=state.output.error_code,

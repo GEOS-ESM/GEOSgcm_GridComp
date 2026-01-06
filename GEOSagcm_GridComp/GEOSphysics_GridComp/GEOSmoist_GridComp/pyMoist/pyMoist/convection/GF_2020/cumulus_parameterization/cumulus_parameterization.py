@@ -717,8 +717,8 @@ class CumulusParameterization:
 
                 # determine the vertical entrainment/detrainment rates
                 # NOTE test GF2020_CumulusParameterization_EntrainmentRates_{plume}:
-                # NOTE      deep ⚠️⚠️⚠️ NEEDS ATTENTION (maybe bad constant?)
-                # NOTE      mid ⚠️⚠️⚠️ NEEDS ATTENTION (maybe bad constant?)
+                # NOTE      deep ❌ (2 ULP)
+                # NOTE      mid ❌ (2 ULP)
                 # NOTE      shallow ✅
                 self._entrainment_rates(
                     vapor=locals.vapor_cloud_levels_forced,

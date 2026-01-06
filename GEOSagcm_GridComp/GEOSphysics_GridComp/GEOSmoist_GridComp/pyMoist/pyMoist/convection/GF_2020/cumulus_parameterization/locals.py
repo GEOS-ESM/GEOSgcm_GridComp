@@ -1179,7 +1179,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-
+    min_entr_rate: Quantity = dataclasses.field(
+        metadata={
+            "name": "min_entr_rate",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
 
     # NOTE these can potentially be removed as well with more analysis
     psum: Quantity = dataclasses.field(
