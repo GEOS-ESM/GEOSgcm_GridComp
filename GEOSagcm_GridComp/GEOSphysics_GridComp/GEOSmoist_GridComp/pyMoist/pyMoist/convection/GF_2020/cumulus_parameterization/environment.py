@@ -30,6 +30,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import
     saturation_vapor_pressure,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    FloatField_Plume,
+    FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
 
@@ -600,52 +602,21 @@ def environment_cloud_levels(
 
 
 def environment_mass_flux(
-    zenv: FloatField,
     error_code: IntFieldIJ_Plume,
+    epsilon_forced: FloatFieldIJ_Plume,
+    normalized_massflux_updraft_forced: FloatField_Plume,
+    normalized_massflux_downdraft_forced: FloatField_Plume,
+    environment_massflux: FloatField,
     plume: Int,
-    zuo: FloatField,
-    edto: FloatFieldIJ,
-    zdo: FloatField,
 ):
     with computation(PARALLEL), interval(...):
-        zenv = 0.0
-    with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
-            zenv = zuo - edto * zdo
-
-
-class EnvironmentMassFlux:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._environment_mass_flux = stencil_factory.from_dims_halo(
-            func=environment_mass_flux,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-        self._environment_mass_flux(
-            # zenv=,
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            # zuo=,
-            # edto=,
-            # zdo=,
-        )
+            environment_massflux = (
+                normalized_massflux_updraft_forced[0, 0, 0][plume]
+                - epsilon_forced[0, 0][plume] * normalized_massflux_downdraft_forced[0, 0, 0][plume]
+            )
+        else:
+            environment_massflux = 0.0
 
 
 class EnvironmentalSubsidence:

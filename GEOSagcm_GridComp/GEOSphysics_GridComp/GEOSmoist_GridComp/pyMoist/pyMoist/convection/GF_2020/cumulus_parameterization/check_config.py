@@ -147,6 +147,18 @@ def check_config(
             "untested SGS_W_TIMESCALE option. Running untested code... proceed with caution"
         )
 
+    if cumulus_parameterization_config.AEROEVAP != 1:
+        ndsl_log.warning(
+            " GF2020 cumulus parameterization: DowndraftWindshear initalized with "
+            "untested AEROEVAP option. Running untested code... proceed with caution"
+        )
+
+    if cumulus_parameterization_config.ALP1 != 1:
+        ndsl_log.warning(
+            " GF2020 cumulus parameterization: VerticalDiscretization initalized with "
+            "untested ALP1 option. Running untested code... proceed with caution"
+        )
+
     # generate errors after all warnings
     # TODO find a way to generate all then fail at once, printing all simultaneously
     if (
@@ -187,4 +199,11 @@ def check_config(
             "[NDSL] GF2020-->CumulusParameterization initalized with ADV_TRIGGER == 3. This setting requires"
             "the unimplemented XieTriggerFunction. Please implement, then disable this error"
             "manually to proceed."
+        )
+
+    if cumulus_parameterization_config.VERTICAL_DISCRETIZATION_OPTION != 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with VERTICAL_DISCRETIZATION_OPTION != 1."
+            "This setting requires an unimplemented option in VerticalDiscretization. Please implement,"
+            "then disable this error manually to proceed."
         )

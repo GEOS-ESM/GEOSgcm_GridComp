@@ -85,9 +85,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
     convection_trigger,
     XieTriggerFunction,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_velosity.vertical_velosity import (
-    VerticalVelosity,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     DowndraftOriginLevel,
     DowndraftNormalizedMassFlux,
@@ -98,13 +95,9 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     downdraft_temperature,
     DowndraftWindShear,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import (
-    DiurnalCycle,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation.mass_conservation import (
-    MassConservation,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization.vertical_discretization import (
+from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import DiurnalCycle
+from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation import MassConservation
+from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization import (
     VerticalDiscretization,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.smoothing.smoothing import (
@@ -117,12 +110,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.cloud_base_mass_flux.cl
 from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.kinetic_energy_to_heating import (
     KineticEnergyToHeating,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback import (
-    Feedback,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output.prepare_output import (
-    PrepareOutput,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback import Feedback
+from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output.prepare_output import PrepareOutput
 
 
 class CumulusParameterization:
@@ -413,11 +402,19 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._environment_mass_flux = EnvironmentMassFlux()
+        self._environment_mass_flux = stencil_factory.from_dims_halo(
+            func=environment_mass_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
         self._mass_conservation = MassConservation()
 
-        self._vertical_discretization = VerticalDiscretization()
+        self._vertical_discretization = VerticalDiscretization(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._environmental_subsidence = EnvironmentalSubsidence()
 
@@ -1215,7 +1212,7 @@ class CumulusParameterization:
                 )
 
                 # calculate moisture properties of downdraft
-                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMoisture{plume}:
+                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMoisture_{plume}:
                 # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
                 # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
                 # NOTE      shallow ✅
@@ -1356,24 +1353,53 @@ class CumulusParameterization:
 
                 # determine downdraft strength in terms of windshear
                 # NOTE test GF2020_CumulusParameterization_DowndraftWindshear_{plume}:
-                # NOTE      deep ❌ DOES NOT RUN, need to deal with ensemble_dimensions in translate test
-                # NOTE      mid ❌ DOES NOT RUN, need to deal with ensemble_dimensions in translate test
-                # NOTE      shallow ❌ DOES NOT RUN, need to deal with ensemble_dimensions in translate test
+                # NOTE      deep ✅
+                # NOTE      mid ❌ one field, one point (0.17%), 4 ULP
+                # NOTE      shallow ✅
                 self._downdraft_windshear(
-                    state=state,
-                    locals=locals,
+                    error_code=state.output.error_code,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    cloud_top_level=state.output.cloud_top_level,
+                    geopotential_height_forced=state.input_output.geopotential_height_forced,
+                    p_forced=state.input_output.p_forced,
+                    u=state.input_output.u,
+                    v=state.input_output.v,
+                    ccn=state.input_output.ccn,
+                    psum=locals.psum,
+                    psumh=locals.psumh,
+                    total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
+                    total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                    scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
+                    epsilon=locals.epsilon,
+                    epsilon_min=locals.epsilon_min,
+                    epsilon_max=locals.epsilon_max,
+                    epsilon_computed=locals.epsilon_computed,
+                    epsilon_forced=state.output.epsilon_forced,
                     plume_dependent_constants=self.plume_dependent_constants,
                 )
 
                 # get the environmental mass flux
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_EnvironmentMassFlux_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._environment_mass_flux(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    error_code=state.output.error_code,
+                    epsilon_forced=state.output.epsilon_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    environment_massflux=locals.environment_massflux,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
                 # check mass conservation
+                # NOTE This code runs in the Fortran and only has one output: totmas (total mass).
+                # totmas has only one use: a conditional log write if total mass is above a 1e-6.
+                # This conditional also has a disabled fatal error call.
+                # Since the only consequential outcome is disabled, and this port has thus far not
+                # implemented other log writes, this code not been implemented.
+                # If totmas is needed in the future, or this fatal call is reimplemented,
+                # this code will be revisited
                 self._mass_conservation()
 
                 # change per unit mass that a model cloud would modify the environment

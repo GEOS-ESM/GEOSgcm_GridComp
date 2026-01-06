@@ -763,7 +763,7 @@ def downdraft_windshear(
         vws: FloatFieldIJ = 0.0
 
         lower_bound: FloatFieldIJ = updraft_lfc_level[0, 0][plume]
-        upper_bound: FloatFieldIJ = cloud_top_level[0, 0][plume]
+        upper_bound: FloatFieldIJ = cloud_top_level[0, 0][plume] + 1
 
     with computation(FORWARD), interval(lower_bound, upper_bound):
         if plume != 0 and error_code[0, 0][plume] == 0:
@@ -784,7 +784,7 @@ def downdraft_windshear(
         if plume != 0 and error_code[0, 0][plume] == 0:
             vshear = 1.0e3 * vws / sdp
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, 1):
         if plume != 0 and error_code[0, 0][plume] == 0:
             precip_efficiency = 1.591 - 0.639 * vshear + 0.0953 * (vshear**2) - 0.00496 * (vshear**3)
             precip_efficiency = min(precip_efficiency, 0.9)
@@ -829,7 +829,7 @@ def downdraft_windshear(
             einc = 0.2 * epsilon
             count = 0
             while count < cumulus_parameterization_constants.MAXENS2:
-                epsilon_computed[0, 0][count] = epsilon + count - 2 * einc
+                epsilon_computed[0, 0][count] = epsilon + (count - 1) * einc
                 count += 1
 
             count = 0

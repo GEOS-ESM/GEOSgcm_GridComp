@@ -241,6 +241,16 @@ from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cum
     TranslateGF2020_CumulusParameterization_DowndraftWindshear_mid,
     TranslateGF2020_CumulusParameterization_DowndraftWindshear_shallow,
 )
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentMassFlux import (
+    TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.mass_conservation.translate_GF2020_Cumulus_Parameterization_MassConservation import (
+    TranslateGF2020_CumulusParameterization_MassConservation_deep,
+    TranslateGF2020_CumulusParameterization_MassConservation_mid,
+    TranslateGF2020_CumulusParameterization_MassConservation_shallow,
+)
 
 # NOTE need to organize everything below here
 # in progress tests
