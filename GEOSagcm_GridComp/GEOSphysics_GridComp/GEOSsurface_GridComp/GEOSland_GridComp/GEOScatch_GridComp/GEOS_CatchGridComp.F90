@@ -3386,7 +3386,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
 
-    type(MAPL_MetaComp), pointer   :: MAPL
     type (MAPL_LocStream       )            :: LOCSTREAM 
     integer :: nt_local , i 
 
