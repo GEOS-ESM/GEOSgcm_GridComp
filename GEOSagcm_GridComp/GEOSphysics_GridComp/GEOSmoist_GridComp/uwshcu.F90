@@ -1769,7 +1769,7 @@ contains
        if( iter .eq. 1 ) then 
            cin_i       = cin
            cinlcl_i    = cinlcl
-           ke          = rbuoy / ( rkfre(i) * tkeavg + epsvarw )
+           ke          = rbuoy / ( tkeavg + epsvarw )
            kinv_o      = kinv     
            klcl_o      = klcl     
            klfc_o      = klfc    
