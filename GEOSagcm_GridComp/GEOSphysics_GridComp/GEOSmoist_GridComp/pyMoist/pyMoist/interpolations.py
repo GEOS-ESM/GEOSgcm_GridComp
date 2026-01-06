@@ -7,9 +7,6 @@ def vertical_interpolation_interface(
     interpolated_field: FloatFieldIJ,
     p_interface_mb: FloatField,
     target_pressure: Float,
-    pb: FloatFieldIJ,
-    pt: FloatFieldIJ,
-    boolean_2d_mask: BoolFieldIJ,
 ):
     """
     Interpolate to a specific vertical level on interface.
@@ -21,29 +18,17 @@ def vertical_interpolation_interface(
         interpolated_field (out): output two dimension field of interpolated values
         p_interface_mb (in): interface pressure in mb
         target_pressure (in): target pressure for interpolation in Pascals
-        pb (in): placeholder 2d quantity, can be removed onces 2d temporaries are available
-        pt (in): placeholder 2d quantity, can be removed onces 2d temporaries are available
-        boolean_2d_mask (in): boolean mask to track when each cell is modified
     """
-    # mask tracks which points have been touched. check later on ensures that every point has been touched
-    with computation(FORWARD), interval(0, 1):
-        boolean_2d_mask = False
 
     with computation(FORWARD), interval(-1, None):
-        pb = log(p_interface_mb * 100)
+        pb: FloatFieldIJ = log(p_interface_mb * 100)
 
     with computation(BACKWARD), interval(0, -1):
-        pt = log(p_interface_mb * 100)
+        pt: FloatFieldIJ = log(p_interface_mb * 100)
         if log(target_pressure) > pt and log(target_pressure) <= pb:
             al = (pb - log(target_pressure)) / (pb - pt)
             interpolated_field = field * al + field[0, 0, 1] * (1.0 - al)
-            boolean_2d_mask = True
         pb = pt
-    # reset masks and temporaries for later use
-    with computation(FORWARD), interval(0, 1):
-        boolean_2d_mask = False
-        pb = 0
-        pt = 0
 
 
 def vertical_interpolation(
@@ -51,9 +36,6 @@ def vertical_interpolation(
     interpolated_field: FloatFieldIJ,
     p_interface_mb: FloatField,
     target_pressure: Float,
-    pb: FloatFieldIJ,
-    pt: FloatFieldIJ,
-    boolean_2d_mask: BoolFieldIJ,
 ):
     """
     Interpolate to a specific vertical level.
@@ -65,45 +47,35 @@ def vertical_interpolation(
         interpolated_field (out): output two dimension field of interpolated values
         p_interface_mb (in): interface pressure in mb
         target_pressure (in): target pressure for interpolation in Pascals
-        pb (in): placeholder 2d quantity, can be removed onces 2d temporaries are available
-        pt (in): placeholder 2d quantity, can be removed onces 2d temporaries are available
-        boolean_2d_mask (in): boolean mask to track when each cell is modified
     """
     # mask tracks which points have been touched. check later on ensures that every point has been touched
     with computation(FORWARD), interval(0, 1):
-        boolean_2d_mask = False
+        track_points: BoolFieldIJ = False
 
     # with computation(PARALLEL), interval(...):
     #     p = log(p_interface_mb * 100)
 
     with computation(FORWARD), interval(-1, None):
-        pb = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, 1] * 100))
+        pb: FloatFieldIJ = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, 1] * 100))
 
     with computation(BACKWARD), interval(1, None):
-        pt = 0.5 * (log(p_interface_mb[0, 0, -1] * 100) + log(p_interface_mb * 100))
-        if log(target_pressure) > pt and log(target_pressure) <= pb and not boolean_2d_mask:
+        pt: FloatFieldIJ = 0.5 * (log(p_interface_mb[0, 0, -1] * 100) + log(p_interface_mb * 100))
+        if log(target_pressure) > pt and log(target_pressure) <= pb and not track_points:
             al = (pb - log(target_pressure)) / (pb - pt)
             interpolated_field = field[0, 0, -1] * al + field * (1.0 - al)
-            boolean_2d_mask = True
+            track_points = True
         pb = pt
 
     with computation(FORWARD), interval(-1, None):
-        pt = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, -1] * 100))
-        pb = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, 1] * 100))
+        pb2: FloatFieldIJ = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, 1] * 100))
         if (
-            log(target_pressure) > pb
+            log(target_pressure) > pb2
             and log(target_pressure) <= log(p_interface_mb[0, 0, 1] * 100)
-            and not boolean_2d_mask
+            and not track_points
         ):
             interpolated_field = field
-            boolean_2d_mask = True
+            track_points = True
 
         # ensure every point was actually touched
-        if boolean_2d_mask == False:  # noqa
+        if track_points == False:  # noqa
             interpolated_field = field
-
-    # reset masks and temporaries for later use
-    with computation(FORWARD), interval(0, 1):
-        boolean_2d_mask = False
-        pb = 0
-        pt = 0

@@ -3,13 +3,10 @@ Wraps pyMoist for GEOS interface use.
 """
 
 import dataclasses
-import enum
-import logging
 import os
-from typing import Callable, Optional
+from typing import Callable, Optional, get_type_hints
 
 import numpy as np
-from gt4py.cartesian.config import build_settings as gt_build_settings
 from MAPLpyish import CVoidPointer
 from mpi4py import MPI
 
@@ -19,7 +16,6 @@ from ndsl import (
     CubedSphereCommunicator,
     CubedSpherePartitioner,
     DaceConfig,
-    DaCeOrchestration,
     GridIndexing,
     MPIComm,
     NullComm,
@@ -30,82 +26,21 @@ from ndsl import (
     SubtileGridSizer,
     TilePartitioner,
 )
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.dace.build import set_distributed_caches
-from ndsl.dsl.gt4py_utils import is_gpu_backend
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py_utils import backend_is_fortran_aligned, is_gpu_backend
 from ndsl.dsl.typing import get_precision
-from ndsl.logging import ndsl_log, ndsl_log_on_rank_0
+from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
-from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
-from pyMoist.interface.cuda_profiler import TimedCUDAProfiler
+from pyMoist.interface import (
+    InterfaceTransferType,
+    MAPLMemoryRepository,
+    MemorySpace,
+    StencilBackendCompilerOverride,
+)
 from pyMoist.interface.flags import GFDL1MFlags, MoistFlags
-from pyMoist.interface.mapl.memory_factory import MAPLManagedMemory, MAPLMemoryRepository
+from pyMoist.interface.gfdl_1m import GFDL1MInterface
 from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv, UWConfiguration
-
-
-class MemorySpace(enum.Enum):
-    HOST = 0
-    DEVICE = 1
-
-
-class StencilBackendCompilerOverride:
-    """Override the NDSL global stencil JIT to allow for 9-rank build
-    on any setup.
-
-    This is a workaround that requires to know _exactly_ when build is happening.
-    Using this as a context manager, we leverage the DaCe build system to override
-    the name and build the 9 codepaths required- while every other rank wait.
-
-    This should be removed when we refactor the GT JIT to distribute building
-    much more efficiently
-    """
-
-    def __init__(self, comm: MPI.Intracomm, config: DaceConfig | None):
-        self.comm = comm
-
-        if config is None:
-            raise ValueError("DaCe Config can't be None")
-
-        self.config = config
-
-        # Orchestration or mono-node is not concerned
-        self.no_op = self.config.is_dace_orchestrated() or self.comm.Get_size() == 1
-
-        # We abuse the DaCe build system
-        if not self.no_op:
-            config._orchestrate = DaCeOrchestration.Build
-            set_distributed_caches(config)
-            config._orchestrate = DaCeOrchestration.Python
-
-        # We remove warnings from the stencils compiling when in critical and/or
-        # error
-        if ndsl_log.level > logging.WARNING:
-            gt_build_settings["extra_compile_args"]["cxx"].append("-w")
-            gt_build_settings["extra_compile_args"]["cuda"].append("-w")
-
-    def __enter__(self):
-        if self.no_op:
-            return
-        if self.config.do_compile:
-            ndsl_log.info(f"Stencil backend compiles on {self.comm.Get_rank()}")
-        else:
-            ndsl_log.info(f"Stencil backend waits on {self.comm.Get_rank()}")
-            self.comm.Barrier()
-            ndsl_log.info(f"Stencil backend released on {self.comm.Get_rank()}")
-
-    def __exit__(self, type, value, traceback):
-        if self.no_op:
-            return
-        if not self.config.do_compile:
-            ndsl_log.info(f"Stencil backend read cache on {self.comm.Get_rank()}")
-        else:
-            ndsl_log.info(
-                f"Stencil backend was compiled on {self.comm.Get_rank()} \
-                    now waiting for other ranks"
-            )
-            self.comm.Barrier()
-        ndsl_log.info(f"Rank {self.comm.Get_rank()} ready for execution")
 
 
 @dataclasses.dataclass
@@ -121,7 +56,7 @@ class GEOSPyMoistWrapper:
         mapl_states: MAPLStates,
         flags: MoistFlags,
         backend="numpy",
-        fortran_mem_space: MemorySpace = MemorySpace.HOST,
+        fortran_mem_space: MemorySpace = MemorySpace.CPU,
     ) -> None:
         # Look for an override to run on a single node
         single_rank_override = int(os.getenv("GEOS_PYFV3_SINGLE_RANK_OVERRIDE", -1))
@@ -164,6 +99,7 @@ class GEOSPyMoistWrapper:
             backend=self.stencil_config.backend,
             tile_nx=self.flags.npx * self.flags.layout_x,
             tile_nz=self.flags.npz,
+            time=True,
         )
         self._is_orchestrated = self.stencil_config.dace_config.is_dace_orchestrated()
 
@@ -172,12 +108,25 @@ class GEOSPyMoistWrapper:
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(sizer=sizer, comm=self.communicator)
         self.stencil_factory = StencilFactory(config=self.stencil_config, grid_indexing=self._grid_indexing)
 
-        self._fortran_mem_space = fortran_mem_space
-        self._pace_mem_space = MemorySpace.DEVICE if is_gpu_backend(backend) else MemorySpace.HOST
+        # Figure out the interface mode
+        tmp_quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], units="")
+        default_3D_memory_desc = (tmp_quantity.data.shape, tmp_quantity.data.strides)
+        if fortran_mem_space != MemorySpace.CPU:
+            raise NotImplementedError("Interface cannot stream Fortran memory resident on GPU")
+        if is_gpu_backend(backend):
+            self._interface_type = InterfaceTransferType.CPU_TO_GPU_TO_CPU
+        else:
+            if backend_is_fortran_aligned(backend):
+                # This is Fortran layout - we can Map the memory
+                self._interface_type = InterfaceTransferType.CPU_MAP
+            else:
+                # All other layout have to copy the data in/out of Fortran layout
+                self._interface_type = InterfaceTransferType.CPU_COPY
+        del tmp_quantity
 
         # Feedback information
         device_ordinal_info = (
-            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}\n" if is_gpu_backend(backend) else "N/A"
+            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}" if is_gpu_backend(backend) else "N/A"
         )
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = (
@@ -185,21 +134,18 @@ class GEOSPyMoistWrapper:
             and is_gpu_backend(backend)
             and os.path.exists(f"{MPS_pipe_directory}/log")
         )
-        tmp_quantity = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], units="")
         ndsl_log_on_rank_0.info(
-            "pyMoist <> GEOS wrapper initialized (Rank 0): \n"
-            f"         Bridge : {self._fortran_mem_space}"
-            f" > {self._pace_mem_space}\n"
+            "pyMoist <> GEOS wrapper initialized (Rank 0):\n"
+            f"         Bridge : {self._interface_type.name}\n"
             f"        Backend : {backend}\n"
-            f"      Precision : {get_precision()}bit\n"
+            f"      Precision : {get_precision()} bit\n"
             f"  Orchestration : {self._is_orchestrated}\n"
             f"          Sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
-            f" Strides for 3D : {[s // 8 for s in tmp_quantity.data.strides]}\n"
+            f" Strides for 3D : {default_3D_memory_desc[1]}\n"
             f"     Device ord : {device_ordinal_info}\n"
-            f"     Nvidia MPS : {MPS_is_on}"
+            f"     Nvidia MPS : {MPS_is_on}\n"
         )
-        del tmp_quantity
 
         # Timer result dict
         self._timings: dict[str, list[float]] = {}
@@ -210,10 +156,15 @@ class GEOSPyMoistWrapper:
         self._aer_activation: AerActivation | None = None
 
         # GFDL 1M
-        self._GFDL_1M_driver: MicrophysicsDriver | None = None
-        self._GFDL_1M_ready: bool = False
-        self._GFDL_1M_state = pyGFDL_1M.MicrophysicState.zeros(self.quantity_factory)
-        self._GFDL_1M_outputs = pyGFDL_1M.Outputs.zeros(self.quantity_factory)
+        self._gfdl_1m_interface = GFDL1MInterface(
+            self.quantity_factory,
+            self.stencil_factory,
+            self._interface_type,
+        )
+
+        # UW
+        self._UW_shallow_convection: Optional[ComputeUwshcuInv] = None
+        self.UW_config: UWConfiguration | None = None
 
         # Initalize MAPL Memory Respositories
         self._mapl_import = MAPLMemoryRepository(
@@ -228,26 +179,6 @@ class GEOSPyMoistWrapper:
             mapl_states.mapl_comp,
             self.quantity_factory,
         )
-
-        # UW
-        self._UW_shallow_convection: Optional[ComputeUwshcuInv] = None
-        self.UW_config = None
-
-    @property
-    def driver(self) -> Callable:
-        if not self._GFDL_1M_driver:
-            if self.GFDL_1M_config is None:
-                raise RuntimeError("GFDL_1M configuration not initalized")
-            with StencilBackendCompilerOverride(
-                MPI.COMM_WORLD,
-                self.stencil_config.dace_config,
-            ):
-                self._GFDL_1M_driver = MicrophysicsDriver(
-                    self.stencil_factory,
-                    self.quantity_factory,
-                    self.GFDL_1M_config,
-                )
-        return self._GFDL_1M_driver
 
     @property
     def aer_activation(self) -> Callable:
@@ -269,16 +200,21 @@ class GEOSPyMoistWrapper:
         flags: GFDL1MFlags,
         internal_state: CVoidPointer,
     ):
-        self._mapl_internal = MAPLMemoryRepository(
+        gfdl_1m_mapl_internal = MAPLMemoryRepository(
             internal_state,
             self.quantity_factory,
         )
         # Get namelist/non-constant parameters passed through the interface
+        # Dev NOTE:
+        # - data will come as default python POD, e.g. not respecting precision
+        # - get_type_hints makes sure we resolve the annotation of the dataclass
+        # - we force cast to make sure precision is correct and code generation
+        #   respects the intended precision
         upper_case_dict = {}
-        for field in dataclasses.fields(GFDL1MFlags):
+        for name, type_ in get_type_hints(GFDL1MFlags).items():
             # Don't bring the magic number
-            if field.name.upper() != "MN_123456789":
-                upper_case_dict[field.name] = getattr(flags, field.name.upper())
+            if name.upper() != "MN_123456789":
+                upper_case_dict[name] = type_(getattr(flags, name.upper()))
 
         # Get remaining required parameters from MAPL
         HYDROSTATIC = self._mapl_comp.get_resource("HYDROSTATIC:", bool, default=True)
@@ -302,12 +238,12 @@ class GEOSPyMoistWrapper:
         CCW_EVAP_EFF = self._mapl_comp.get_resource("CCW_EVAP_EFF:", np.float32, default=1e-2)
         CCI_EVAP_EFF = self._mapl_comp.get_resource("CCI_EVAP_EFF:", np.float32, default=1e-2)
 
-        self.GFDL_1M_config = pyGFDL_1M.GFDL1MConfig(
-            HYDROSTATIC=HYDROSTATIC,  # type: ignore # bool are stupid in numpy
-            PHYS_HYDROSTATIC=PHYS_HYDROSTATIC,  # type: ignore
-            MELTFRZ=MELTFRZ,  # type: ignore
+        config = pyGFDL_1M.GFDL1MConfig(
+            LHYDROSTATIC=HYDROSTATIC,  # type: ignore # bool are stupid in numpy
+            LPHYS_HYDROSTATIC=PHYS_HYDROSTATIC,  # type: ignore
+            LMELTFRZ=MELTFRZ,  # type: ignore
             TURNRHCRIT_PARAM=TURNRHCRIT,
-            PDF_SHAPE=PDF_SHAPE,
+            PDFSHAPE=PDF_SHAPE,
             ANV_ICEFALL=ANV_ICEFALL,
             LS_ICEFALL=LS_ICEFALL,
             LIQ_RADII_PARAM=LIQ_RADII_PARAM,
@@ -323,282 +259,19 @@ class GEOSPyMoistWrapper:
             **upper_case_dict,
         )
 
-        # Initalize the module
-        with StencilBackendCompilerOverride(
-            MPI.COMM_WORLD,
-            self.stencil_config.dace_config,
-        ):
-            self.gfdl_1m = pyGFDL_1M.GFDL1M(self.stencil_factory, self.quantity_factory, self.GFDL_1M_config)
-
-        # Link Fortran memory to Python memory #####
-        # Fortran memory will only be modified if GFDL1M.__call__
-        # is called from within a "with MAPLManagedMemory" statement #####
-        # Not all linked fields are modified #####
-        self._mapl_internal.register("Q", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("QRAIN", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("QSNOW", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("QGRAUPEL", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("QLCN", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("QICN", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("QLLS", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("QILS", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("CLCN", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("CLLS", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("NACTL", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_internal.register("NACTI", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("AREA", np.float32, [X_DIM, Y_DIM])
-        self._mapl_import.register("PLE", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
-        self._mapl_import.register("ZLE", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
-        self._mapl_import.register("T", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("U", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("V", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("FRLAND", np.float32, [X_DIM, Y_DIM])
-        self._mapl_import.register("W", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("W2", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("W3", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("WSL", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("SL2", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("SL3", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("WQT", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("QT2", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_import.register("QT3", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("CNV_FRC", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("SRF_TYPE", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("SHLW_PRC3", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("SHLW_SNO3", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("RHCRIT", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("RL", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("RI", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("EVAPC", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("SUBLC", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("PRCP_RAIN", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("PRCP_SNOW", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("PRCP_ICE", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("PRCP_GRAUPEL", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("FCLD", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-
-        self._mapl_export.register("QV", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("QL", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("QI", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("QR", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("QS", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("QG", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("LTS", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("EIS", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("ZLCL", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("DUDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DTDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQVDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQLDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQIDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQADT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQRDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQSDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQGDT_macro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DUDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DTDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQVDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQLDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQIDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQADT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQRDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQSDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("DQGDT_micro", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("LS_PRCP", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("LS_SNR", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("ICE", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("FRZR", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("RHX", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("REV_LS", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("RSU_LS", np.float32, [X_DIM, Y_DIM, Z_DIM], True)
-        self._mapl_export.register("PFL_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
-        self._mapl_export.register("PFI_LS", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
-        self._mapl_export.register("PFL_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
-        self._mapl_export.register("PFI_AN", np.float32, [X_DIM, Y_DIM, Z_INTERFACE_DIM], True)
-        self._mapl_export.register("DQRL", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DTDTFRIC", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DBZ", np.float32, [X_DIM, Y_DIM, Z_DIM])
-        self._mapl_export.register("DBZ_MAX", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("DBZ_1KM", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("DBZ_TOP", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("DBZ_M10C", np.float32, [X_DIM, Y_DIM])
-        self._mapl_export.register("CN_PRCP", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("AN_PRCP", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("SC_PRCP", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("CN_SNR", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("AN_SNR", np.float32, [X_DIM, Y_DIM], True)
-        self._mapl_export.register("SC_SNR", np.float32, [X_DIM, Y_DIM], True)
+        self._gfdl_1m_interface.init(
+            config=config,
+            mapl_internal=gfdl_1m_mapl_internal,
+            mapl_import=self._mapl_import,
+            mapl_export=self._mapl_export,
+        )
 
     def GFDL_1M_Microphysics(self):
-        with MAPLManagedMemory(self._mapl_internal) as mapl_internal:
-            with MAPLManagedMemory(self._mapl_import) as mapl_import:
-                with MAPLManagedMemory(self._mapl_export) as mapl_export:
-                    # Pull the data from the linked Fortran memory
-                    self._GFDL_1M_state.update_move_memory(
-                        {
-                            "mixing_ratios": {
-                                "vapor": mapl_internal.Q,
-                                "rain": mapl_internal.QRAIN,
-                                "snow": mapl_internal.QSNOW,
-                                "graupel": mapl_internal.QGRAUPEL,
-                                "convective_liquid": mapl_internal.QLCN,
-                                "convective_ice": mapl_internal.QICN,
-                                "large_scale_liquid": mapl_internal.QLLS,
-                                "large_scale_ice": mapl_internal.QILS,
-                            },
-                            "cloud_fractions": {
-                                "convective": mapl_internal.CLCN,
-                                "large_scale": mapl_internal.CLLS,
-                            },
-                            "vertical_motion": {
-                                "velocity": mapl_import.W,
-                                "variance": mapl_import.W2,
-                                "third_moment": mapl_import.W3,
-                            },
-                        },
-                        # We follow fortran strides and because we do this consistently
-                        # it doesn't break orchestration
-                        check_shape_and_strides=False,
-                    )
-
-                    # Diagnostic for un-tested code
-                    #
-                    # liquid_water_static_energy = LiquidWaterStaticEnergy(
-                    #     flux=mapl_import.WSL,
-                    #     variance=mapl_import.SL2,
-                    #     third_moment=mapl_import.SL3,
-                    # )
-                    # total_water = TotalWater(
-                    #     flux=mapl_import.WQT,
-                    #     variance=mapl_import.QT2,
-                    #     third_moment=mapl_import.QT3,
-                    # )
-
-                    if mapl_export.associated("SHLW_PRC3"):
-                        shallow_convective_rain = mapl_export.SHLW_PRC3
-                    else:
-                        shallow_convective_rain = None
-                    if mapl_export.associated("SHLW_SNO3"):
-                        shallow_convective_snow = mapl_export.SHLW_SNO3
-                    else:
-                        shallow_convective_rain = None
-                    if mapl_export.associated("RHCRIT"):
-                        rh_crit = mapl_export.RHCRIT
-                    else:
-                        rh_crit = None
-
-                    # Outputs: model fields originating from within GFDL
-                    self._GFDL_1M_outputs.update_move_memory(
-                        {
-                            "liquid_radius": mapl_export.RL,
-                            "ice_radius": mapl_export.RI,
-                            "precipitated_rain": mapl_export.PRCP_RAIN,
-                            "precipitated_snow": mapl_export.PRCP_SNOW,
-                            "precipitated_ice": mapl_export.PRCP_ICE,
-                            "precipitated_graupel": mapl_export.PRCP_GRAUPEL,
-                            "radiation_cloud_fraction": mapl_export.FCLD,
-                            "radiation_vapor": mapl_export.QV,
-                            "radiation_liquid": mapl_export.QL,
-                            "radiation_ice": mapl_export.QI,
-                            "radiation_rain": mapl_export.QR,
-                            "radiation_snow": mapl_export.QS,
-                            "radiation_graupel": mapl_export.QG,
-                            "lower_tropospheric_stability": mapl_export.LTS,
-                            "estimated_inversion_strength": mapl_export.EIS,
-                            "z_lcl": (mapl_export.ZLCL if mapl_export.associated("ZLCL") else None),
-                            "du_dt_macro": mapl_export.DUDT_macro,
-                            "dv_dt_macro": mapl_export.DVDT_macro,
-                            "dt_dt_macro": mapl_export.DTDT_macro,
-                            "dvapor_dt_macro": mapl_export.DQVDT_macro,
-                            "dliquid_dt_macro": mapl_export.DQLDT_macro,
-                            "dice_dt_macro": mapl_export.DQIDT_macro,
-                            "dcloud_fraction_dt_macro": mapl_export.DQADT_macro,
-                            "drain_dt_macro": mapl_export.DQRDT_macro,
-                            "dsnow_dt_macro": mapl_export.DQSDT_macro,
-                            "dgraupel_dt_macro": mapl_export.DQGDT_macro,
-                            "du_dt_micro": mapl_export.DUDT_micro,
-                            "dv_dt_micro": mapl_export.DVDT_micro,
-                            "dt_dt_micro": mapl_export.DTDT_micro,
-                            "dvapor_dt_micro": mapl_export.DQVDT_micro,
-                            "dliquid_dt_micro": mapl_export.DQLDT_micro,
-                            "dice_dt_micro": mapl_export.DQIDT_micro,
-                            "dcloud_fraction_dt_micro": mapl_export.DQADT_micro,
-                            "drain_dt_micro": mapl_export.DQRDT_micro,
-                            "dsnow_dt_micro": mapl_export.DQSDT_micro,
-                            "dgraupel_dt_micro": mapl_export.DQGDT_micro,
-                            "large_scale_precip": mapl_export.LS_PRCP,
-                            "large_scale_snow": mapl_export.LS_SNR,
-                            "icefall": mapl_export.ICE,
-                            "freezing_rainfall": mapl_export.FRZR,
-                            "relative_humidity_after_pdf": mapl_export.RHX,
-                            "large_scale_nonanvil_precipitation_evaporation": mapl_export.REV_LS,
-                            "large_scale_nonanvil_precipitation_sublimation": mapl_export.RSU_LS,
-                            # PFL_* are 0-72 in the fortran, but index 0 is always 0
-                            "large_scale_nonanvil_liquid_flux": mapl_export.PFL_LS[:, :, 1:],
-                            "large_scale_nonanvil_ice_flux": mapl_export.PFI_LS[:, :, 1:],
-                            "anvil_liquid_flux": mapl_export.PFL_AN[:, :, 1:],
-                            "anvil_ice_flux": mapl_export.PFI_AN[:, :, 1:],
-                            "large_scale_rainwater_source": mapl_export.DQRL
-                            if mapl_export.associated("DQRL")
-                            else None,
-                            "moist_friction_temperature_tendency": mapl_export.DTDTFRIC
-                            if mapl_export.associated("DTDTFRIC")
-                            else None,
-                            "simulated_reflectivity": mapl_export.DBZ
-                            if mapl_export.associated("DBZ")
-                            else None,
-                            "maximum_reflectivity": mapl_export.DBZ_MAX
-                            if mapl_export.associated("DBZ_MAX")
-                            else None,
-                            "one_km_agl_reflectivity": mapl_export.DBZ_1KM
-                            if mapl_export.associated("DBZ_1KM")
-                            else None,
-                            "echo_top_reflectivity": mapl_export.DBZ_TOP
-                            if mapl_export.associated("DBZ_TOP")
-                            else None,
-                            "minus_10c_reflectivity": mapl_export.DBZ_M10C
-                            if mapl_export.associated("DBZ_M10C")
-                            else None,
-                            "deep_convective_precipitation": mapl_export.CN_PRCP,
-                            "anvil_precipitation": mapl_export.AN_PRCP,
-                            "shallow_convective_precipitation": mapl_export.SC_PRCP,
-                            "deep_convective_snow": mapl_export.CN_SNR,
-                            "anvil_snow": mapl_export.AN_SNR,
-                            "shallow_convective_snow": mapl_export.SC_SNR,
-                        },
-                        # We follow fortran strides and because we do this consistently
-                        # it doesn't break orchestration
-                        check_shape_and_strides=False,
-                    )
-
-                    # Call the module
-                    with TimedCUDAProfiler("GFDL 1M", self._timings):
-                        self.gfdl_1m(
-                            geopotential_height_interface=mapl_import.ZLE,
-                            p_interface=mapl_import.PLE,
-                            t=mapl_import.T,
-                            u=mapl_import.U,
-                            v=mapl_import.V,
-                            shallow_convective_rain=shallow_convective_rain,
-                            shallow_convective_snow=shallow_convective_snow,
-                            state=self._GFDL_1M_state,
-                            outputs=self._GFDL_1M_outputs,
-                            area=mapl_import.AREA,
-                            convection_fraction=mapl_export.CNV_FRC,
-                            surface_type=mapl_export.SRF_TYPE,
-                            liquid_concentration=mapl_internal.NACTL,
-                            ice_concentration=mapl_internal.NACTI,
-                            land_fraction=mapl_import.FRLAND,
-                            rh_crit=rh_crit,
-                            evapc=mapl_export.EVAPC,
-                            sublc=mapl_export.SUBLC,
-                        )
+        self._gfdl_1m_interface.run(self._timings)
 
     @property
     def UW_shallow_convection(self) -> Callable:
-        if self._UW_shallow_convection is None:
+        if self._UW_shallow_convection is None and self.UW_config is not None:
             with StencilBackendCompilerOverride(
                 MPI.COMM_WORLD,
                 self.stencil_config.dace_config,
@@ -621,3 +294,16 @@ class GEOSPyMoistWrapper:
             k0=k0,
             windsrcavg=windsrcavg,
         )
+
+    def finalize(self):
+        import json
+
+        rank = MPI.COMM_WORLD.Get_rank()
+        with open(f"pymoist_timings_r{rank}.json", "w") as f:
+            json.dump(self._timings, f, indent=4)
+
+        with open(f"internal_orchestration_r{rank}.json", "w") as f:
+            json.dump(self.stencil_config.dace_config.performance_collector.times_per_step, f, indent=4)
+
+        with open(f"internal_gt4py_timings_r{rank}.json", "w") as f:
+            json.dump(self.stencil_factory.timing_collector.exec_info, f, indent=4)

@@ -1,5 +1,3 @@
-from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
 from pyMoist.constants import ALHLBCP, ALHSBCP
@@ -18,6 +16,22 @@ def redistribute_clouds(
     vapor: FloatField,
     temperature: FloatField,
 ):
+    """
+    Redistribute non-physical in-cloud quantities.
+
+    Args:
+        cloud_fraction (3D inout): total cloud fraction (unitless)
+        convective_cloud_fraction (3D inout): convective cloud fraction (unitless)
+        large_scale_cloud_fraction (3D inout): large scale cloud fraction (unitless)
+        liquid (3D inout): in-cloud liquid mixing ratio (kg/kg)
+        convective_liquid (3D inout): convective cloud liquid mixing ratio (unitless)
+        large_scale_liquid (3D inout): large scale cloud liquid mixing ratio (unitless)
+        ice (3D inout): in-cloud liquid mixing ratio (kg/kg)
+        convective_ice (3D inout): convective cloud ice mixing ratio (unitless)
+        large_scale_ice (3D inout): large scale cloud liquid mixing ratio (unitless)
+        vapor (3D inout): water vapor mixing ratio (kg/kg)
+        temperature (3D inout): temperature (Kelvin)
+    """
     with computation(PARALLEL), interval(...):
 
         # Fix cloud quants if too small
@@ -86,58 +100,3 @@ def redistribute_clouds(
         # Any loss of condensate uses the FCN ratio
         convective_cloud_fraction = convective_cloud_fraction + dqc * local_cloud_fraction
         large_scale_cloud_fraction = large_scale_cloud_fraction + dqc * (1.0 - local_cloud_fraction)
-
-
-class RedistributeClouds:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-    ) -> None:
-        self._redistribute_clouds = stencil_factory.from_dims_halo(
-            func=redistribute_clouds,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-    def __call__(
-        self,
-        cloud_fraction: FloatField,
-        convective_cloud_fraction: FloatField,
-        large_scale_cloud_fraction: FloatField,
-        liquid: FloatField,
-        convective_liquid: FloatField,
-        large_scale_liquid: FloatField,
-        ice: FloatField,
-        convective_ice: FloatField,
-        large_scale_ice: FloatField,
-        vapor: FloatField,
-        temperature: FloatField,
-    ):
-        """
-        Redistribute non-physical in-cloud quantities.
-
-        Parameters:
-        cloud_fraction (3D inout): total cloud fraction (unitless)
-        convective_cloud_fraction (3D inout): convective cloud fraction (unitless)
-        large_scale_cloud_fraction (3D inout): large scale cloud fraction (unitless)
-        liquid (3D inout): in-cloud liquid mixing ratio (kg/kg)
-        convective_liquid (3D inout): convective cloud liquid mixing ratio (unitless)
-        large_scale_liquid (3D inout): large scale cloud liquid mixing ratio (unitless)
-        ice (3D inout): in-cloud liquid mixing ratio (kg/kg)
-        convective_ice (3D inout): convective cloud ice mixing ratio (unitless)
-        large_scale_ice (3D inout): large scale cloud liquid mixing ratio (unitless)
-        vapor (3D inout): water vapor mixing ratio (kg/kg)
-        temperature (3D inout): temperature (Kelvin)
-        """
-        self._redistribute_clouds(
-            cloud_fraction=cloud_fraction,
-            convective_cloud_fraction=convective_cloud_fraction,
-            large_scale_cloud_fraction=large_scale_cloud_fraction,
-            liquid=liquid,
-            convective_liquid=convective_liquid,
-            large_scale_liquid=large_scale_liquid,
-            ice=ice,
-            convective_ice=convective_ice,
-            large_scale_ice=large_scale_ice,
-            vapor=vapor,
-            temperature=temperature,
-        )

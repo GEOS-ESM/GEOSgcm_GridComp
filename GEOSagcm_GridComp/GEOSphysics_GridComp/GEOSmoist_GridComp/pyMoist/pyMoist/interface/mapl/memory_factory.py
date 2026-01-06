@@ -7,7 +7,7 @@ import numpy.typing as npt
 from _cffi_backend import _CDataBase as CFFIObj
 from MAPLpyish import MAPLBridge, MAPLState
 
-from ndsl import QuantityFactory, ndsl_log
+from ndsl import QuantityFactory
 from ndsl.dsl.gt4py_utils import is_gpu_backend
 from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
@@ -29,7 +29,7 @@ class MAPLMemoryRepository:
         """Is the pointer properly associated in Fortran"""
         shape: tuple[int, ...]
         """Shape of the array"""
-        python_array: npt.NDArray
+        python_array: npt.NDArray | None
         """Synced python memory, check dirty"""
         dirty: bool = False
         """Does the memory need to be synced"""
@@ -71,25 +71,33 @@ class MAPLMemoryRepository:
             pointer=cast_ptr,
             associated=is_associated,
             shape=self._quantity_factory.sizer.get_extent(dims),
-            python_array=np.empty((0)),
+            python_array=None,
         )
 
     def get_from_fortran(
         self,
         name: str,
-    ) -> npt.NDArray:
+        *,
+        allow_device_transfer: bool = True,
+    ) -> npt.NDArray | None:
         """Retrieve the data from Fortran. Prefer using a MAPLManager."""
         try:
             fmem = self._fortran_pointers[name]
         except KeyError:
             raise KeyError(f"Pointer {name} was never registered.")
+
         if not fmem.associated:
-            ndsl_log.info(f"MAPL Bridge: skip sending back {name} - not associated")
-            return
+            return None
+
+        # We rely here on `fmem.pointer` constant, therefore we could
+        # go ahead an _not_ re-map. We don't because we want to introduce
+        # a ZERO TRUST mode where we don't rely on Fortran  being constant
+        #     return fmem.python_array
 
         fmem.python_array = self._f_py_converter.fortran_to_python(
             fptr=fmem.pointer,
-            dim=list(fmem.shape),
+            dims=list(fmem.shape),
+            allow_device_transfer=allow_device_transfer,
         )
 
         return fmem.python_array
@@ -105,7 +113,6 @@ class MAPLMemoryRepository:
         except KeyError:
             raise KeyError(f"Pointer {name} was never registered.")
         if not fmem.associated:
-            ndsl_log.info(f"MAPL Bridge: skip sending back {name} - not associated")
             return
 
         self._f_py_converter.python_to_fortran(fmem.python_array, fmem.pointer)
@@ -133,21 +140,26 @@ class MAPLManagedMemory:
 
     def __init__(self, mapl_factory: MAPLMemoryRepository) -> None:
         self._mapl_factory = mapl_factory
-        self._local_memory: dict[str, npt.NDArray] = {}
+        self._local_memory: dict[str, npt.NDArray | None] = {}
 
     def __enter__(self) -> MAPLManagedMemory:
         return self
 
     def __exit__(self, _exc_type, _exc_value, _traceback) -> None:
-        for array_name in self._local_memory:
+        for array_name, value in self._local_memory.items():
+            if value is None:
+                continue
             self._mapl_factory.send_to_fortran(array_name)
 
     def associated(self, name: str) -> bool:
         return self._mapl_factory.associated(name)
 
-    def __getattr__(self, name) -> npt.NDArray:
+    def __getattr__(self, name: str) -> npt.NDArray | None:
         if name in self._local_memory.keys():
             return self._local_memory[name]
-        array = self._mapl_factory.get_from_fortran(name)
+        if self.associated(name):
+            array = self._mapl_factory.get_from_fortran(name)
+        else:
+            array = None
         self._local_memory[name] = array
         return array

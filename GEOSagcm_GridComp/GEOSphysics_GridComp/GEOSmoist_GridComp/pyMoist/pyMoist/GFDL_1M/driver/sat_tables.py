@@ -168,7 +168,7 @@ def des_tables(
     table3: FloatField,
     table4: FloatField,
 ):
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         des1 = max(0.0, table1[0, 0, 1] - table1)
         des2 = max(0.0, table2[0, 0, 1] - table2)
         des3 = max(0.0, table3[0, 0, 1] - table3)

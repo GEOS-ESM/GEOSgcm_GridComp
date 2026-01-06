@@ -1,21 +1,21 @@
-from .GFDL_1M.driver.translate_GFDL_1M_driver import TranslateGFDL_1M_driver
-from .GFDL_1M.driver.translate_GFDL_1M_driver_finish import TranslateGFDL_1M_driver_finish
-from .GFDL_1M.driver.translate_GFDL_1M_driver_setup import TranslateGFDL_1M_driver_setup
-from .GFDL_1M.driver.translate_GFDL_1M_fall_speed import TranslateGFDL_1M_fall_speed
-from .GFDL_1M.driver.translate_GFDL_1M_ice_cloud import TranslateGFDL_1M_ice_cloud
-from .GFDL_1M.driver.translate_GFDL_1M_terminal_fall import TranslateGFDL_1M_terminal_fall
-from .GFDL_1M.driver.translate_GFDL_1M_warm_rain import TranslateGFDL_1M_warm_rain
+from .GFDL_1M.driver.translate_GFDL_1M_Driver import TranslateGFDL_1M_Driver
+from .GFDL_1M.driver.translate_GFDL_1M_DriverFinish import TranslateGFDL_1M_DriverFinish
+from .GFDL_1M.driver.translate_GFDL_1M_DriverSetup import TranslateGFDL_1M_DriverSetup
+from .GFDL_1M.driver.translate_GFDL_1M_FallSpeed import TranslateGFDL_1M_FallSpeed
+from .GFDL_1M.driver.translate_GFDL_1M_IceCloud import TranslateGFDL_1M_IceCloud
+from .GFDL_1M.driver.translate_GFDL_1M_TerminalFall import TranslateGFDL_1M_TerminalFall
+from .GFDL_1M.driver.translate_GFDL_1M_WarmRain import TranslateGFDL_1M_WarmRain
 from .GFDL_1M.driver.translate_GFDL_driver_tables import TranslateGFDL_driver_tables
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_bergeron_partition import TranslateGFDL_1M_bergeron_partition
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_evaporate import TranslateGFDL_1M_evaporate
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_hydrostatic_pdf import TranslateGFDL_1M_hydrostatic_pdf
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_melt_freeze import TranslateGFDL_1M_melt_freeze
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_phase_change import TranslateGFDL_1M_phase_change
-from .GFDL_1M.PhaseChange.translate_GFDL_1M_sublimate import TranslateGFDL_1M_sublimate
-from .GFDL_1M.translate_GFDL_1M_finalize import TranslateGFDL_1M_finalize
-from .GFDL_1M.translate_GFDL_1M_radiation_coupling import TranslateGFDL_1M_radiation_coupling
-from .GFDL_1M.translate_GFDL_1M_redistribute_clouds import TranslateGFDL_1M_redistribute_clouds
-from .GFDL_1M.translate_GFDL_1M_setup import TranslateGFDL_1M_setup
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_Evaporate import TranslateGFDL_1M_Evaporate
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_HydrostaticPDF import TranslateGFDL_1M_HydrostaticPDF
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_MeltFreeze import TranslateGFDL_1M_MeltFreeze
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_PhaseChange import TranslateGFDL_1M_PhaseChange
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_RHCalculations import TranslateGFDL_1M_RHCalculations
+from .GFDL_1M.PhaseChange.translate_GFDL_1M_Sublimate import TranslateGFDL_1M_Sublimate
+from .GFDL_1M.translate_GFDL_1M_Finalize import TranslateGFDL_1M_Finalize
+from .GFDL_1M.translate_GFDL_1M_RadiationCoupling import TranslateGFDL_1M_RadiationCoupling
+from .GFDL_1M.translate_GFDL_1M_RedistributeClouds import TranslateGFDL_1M_RedistributeClouds
+from .GFDL_1M.translate_GFDL_1M_Setup import TranslateGFDL_1M_Setup
 from .saturation_tables.translate_qsat_functions import Translateqsat_functions
 from .saturation_tables.translate_saturation_tables import Translatesaturation_tables
 from .translate_aer_activation import TranslateAerActivation
@@ -51,24 +51,24 @@ from .UW_translate_tests.translate_update_output_variables2 import TranslateUpda
 
 
 __all__ = [
-    "TranslateGFDL_1M_driver",
-    "TranslateGFDL_1M_driver_finish",
-    "TranslateGFDL_1M_driver_setup",
-    "TranslateGFDL_1M_fall_speed",
-    "TranslateGFDL_1M_ice_cloud",
-    "TranslateGFDL_1M_terminal_fall",
-    "TranslateGFDL_1M_warm_rain",
+    "TranslateGFDL_1M_Setup",
+    "TranslateGFDL_1M_PhaseChange",
+    "TranslateGFDL_1M_RHCalculations",
+    "TranslateGFDL_1M_HydrostaticPDF",
+    "TranslateGFDL_1M_MeltFreeze",
+    "TranslateGFDL_1M_Evaporate",
+    "TranslateGFDL_1M_Sublimate",
+    "TranslateGFDL_1M_Driver",
     "TranslateGFDL_driver_tables",
-    "TranslateGFDL_1M_bergeron_partition",
-    "TranslateGFDL_1M_evaporate",
-    "TranslateGFDL_1M_hydrostatic_pdf",
-    "TranslateGFDL_1M_melt_freeze",
-    "TranslateGFDL_1M_phase_change",
-    "TranslateGFDL_1M_sublimate",
-    "TranslateGFDL_1M_finalize",
-    "TranslateGFDL_1M_radiation_coupling",
-    "TranslateGFDL_1M_redistribute_clouds",
-    "TranslateGFDL_1M_setup",
+    "TranslateGFDL_1M_DriverSetup",
+    "TranslateGFDL_1M_FallSpeed",
+    "TranslateGFDL_1M_TerminalFall",
+    "TranslateGFDL_1M_WarmRain",
+    "TranslateGFDL_1M_IceCloud",
+    "TranslateGFDL_1M_DriverFinish",
+    "TranslateGFDL_1M_Finalize",
+    "TranslateGFDL_1M_RadiationCoupling",
+    "TranslateGFDL_1M_RedistributeClouds",
     "Translateqsat_functions",
     "Translatesaturation_tables",
     "TranslateAerActivation",
