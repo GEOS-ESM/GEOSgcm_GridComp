@@ -33,7 +33,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import
     get_cloud_boundary_conditions,
     liquid_fraction,
 )
-from ndsl.stencils.column_operations import column_min
+from ndsl.stencils.column_operations import column_min, column_max_ddim
 
 # initalize constants and field type for UpdraftMassFlux stencil
 DO_SMOOTHING = False
@@ -126,7 +126,12 @@ def updraft_mass_flux(
     X_ALPHA: _CONSTANTS_TABLES_TYPE,
     G_ALPHA: _CONSTANTS_TABLES_TYPE,
 ):
-    from __externals__ import ZERO_DIFF, k_end, BETA_SHALLOW, USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES
+    from __externals__ import (
+        ZERO_DIFF,
+        k_end,
+        BETA_SHALLOW,
+        USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
+    )
 
     with computation(FORWARD), interval(0, 1):
         # initalize constants
@@ -169,61 +174,95 @@ def updraft_mass_flux(
     ##### EXECUTION CHOICE 20 #####
     with computation(FORWARD), interval(0, 1):
         # land/ocean
-        if execution_choice == 20:
+        if error_code[0, 0][plume] == 0:
+            if execution_choice == 20:
 
-            height_updraft = (
-                1.0 - ocean_fraction
-            ) * UPDRAFT_MAX_HEIGHT_LAND + ocean_fraction * UPDRAFT_MAX_HEIGHT_OCEAN
-            # add a randomic perturbation
-            height_updraft = height_updraft + random_number
+                height_updraft: FloatFieldIJ = (
+                    1.0 - ocean_fraction
+                ) * UPDRAFT_MAX_HEIGHT_LAND + ocean_fraction * UPDRAFT_MAX_HEIGHT_OCEAN
+                # add a randomic perturbation
+                height_updraft = height_updraft + random_number
 
-            # height_updraft parameter goes from 0 to 1 = rainfall decreases with height_updraft
-            p_max_normalized_massflux_updraft: FloatFieldIJ = (p_surface - 100.0) * (
-                1.0 - 0.5 * height_updraft
-            ) + 0.6 * p_cloud_levels_forced.at(
-                K=cloud_top_level[0, 0][plume], ddim=[plume]
-            ) * 0.5 * height_updraft
+                # height_updraft parameter goes from 0 to 1 = rainfall decreases with height_updraft
+                p_max_normalized_massflux_updraft: FloatFieldIJ = (p_surface - 100.0) * (
+                    1.0 - 0.5 * height_updraft
+                ) + 0.6 * p_cloud_levels_forced.at(
+                    K=cloud_top_level[0, 0][plume], ddim=[plume]
+                ) * 0.5 * height_updraft
 
-            # beta parameter: must be larger than 1, higher makes the profile sharper around the maximum zu
-            beta: FloatFieldIJ = max(1.1, 2.1 - 0.5 * height_updraft)
-
-    with computation(PARALLEL), interval(...):
-        if execution_choice == 20:
-            p_internal = abs(p_cloud_levels_forced[0, 0, 0][plume] - p_max_normalized_massflux_updraft)
-
-    with computation(FORWARD), interval(0, 1):
-        if execution_choice == 20:
-            _, _min_loc = column_min(p_internal, 0, cloud_top_level[0, 0][plume])
-            updraft_origin_level_adj: IntFieldIJ = _min_loc
-            updraft_origin_level_adj = max(updraft_origin_level[0, 0][plume], updraft_origin_level_adj)
-            updraft_origin_level_adj = min(updraft_origin_level_adj, cloud_top_level[0, 0][plume])
-
-            # this alpha constrains the location of the maximun normalized_massflux_updraft_forced to be at "updraft_origin_level_adj" vertical level
-            alpha: FloatFieldIJ = 1.0 + (beta - 1.0) * (
-                updraft_origin_level_adj / (cloud_top_level[0, 0][plume] + 1)
-            ) / (1.0 - ((updraft_origin_level_adj) / (cloud_top_level[0, 0][plume] + 1)))
+                # beta parameter: must be larger than 1, higher makes the profile sharper around the maximum zu
+                beta: FloatFieldIJ = max(1.1, 2.1 - 0.5 * height_updraft)
 
     with computation(PARALLEL), interval(...):
-        if (
-            execution_choice == 20
-            and K >= updraft_lfc_level[0, 0][plume] - 1
-            and K <= min(k_end, cloud_top_level[0, 0][plume])
-        ):
-            ratio = float(K) / (cloud_top_level[0, 0][plume] + 1)
-            normalized_massflux_updraft_forced[0, 0, 0][plume] = ratio ** (alpha - 1.0) * (1.0 - ratio) ** (
-                beta - 1.0
-            )
+        if error_code[0, 0][plume] == 0:
+            if execution_choice == 20:
+                p_internal = abs(p_cloud_levels_forced[0, 0, 0][plume] - p_max_normalized_massflux_updraft)
+
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if execution_choice == 20:
+                _, _min_loc = column_min(p_internal, 0, cloud_top_level[0, 0][plume])
+                updraft_origin_level_adj: IntFieldIJ = _min_loc + 1
+                updraft_origin_level_adj = max(
+                    updraft_origin_level[0, 0][plume] + 1, updraft_origin_level_adj
+                )
+                updraft_origin_level_adj = min(updraft_origin_level_adj, cloud_top_level[0, 0][plume] + 1)
+
+                # this alpha constrains the location of the maximun normalized_massflux_updraft_forced to be at "updraft_origin_level_adj" vertical level
+                alpha: FloatFieldIJ = 1.0 + (
+                    (beta - 1.0)
+                    * ((updraft_origin_level_adj / (cloud_top_level[0, 0][plume] + 2)))
+                    / (1.0 - ((updraft_origin_level_adj) / (cloud_top_level[0, 0][plume] + 2)))
+                )
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if (
+                execution_choice == 20
+                and K >= lcl_level[0, 0][plume] - 1
+                and K <= min(k_end, cloud_top_level[0, 0][plume])
+            ):
+                ratio = float(K + 1) / (cloud_top_level[0, 0][plume] + 2)
+                normalized_massflux_updraft_forced[0, 0, 0][plume] = (ratio ** (alpha - 1.0)) * (
+                    (1.0 - ratio) ** (beta - 1.0)
+                )
 
     with computation(BACKWARD), interval(1, -1):
-        if execution_choice == 20 and K <= updraft_lfc_level[0, 0][plume]:
-            # special treatment below updraft_origin_level/updraft_lcl_level
-            normalized_massflux_updraft_forced[0, 0, 0][plume] = (
-                normalized_massflux_updraft_forced[0, 0, 1][plume] * 0.5
-            )
+        if error_code[0, 0][plume] == 0:
+            if execution_choice == 20 and K <= lcl_level[0, 0][plume]:
+                # special treatment below updraft_origin_level/updraft_lcl_level
+                normalized_massflux_updraft_forced[0, 0, 0][plume] = (
+                    normalized_massflux_updraft_forced[0, 0, 1][plume] * 0.5
+                )
 
     with computation(FORWARD), interval(0, 1):
-        if execution_choice == 20:
-            normalized_massflux_updraft_forced[0, 0, 0][plume] = 0.0
+        if error_code[0, 0][plume] == 0:
+            if execution_choice == 20:
+                normalized_massflux_updraft_forced[0, 0, 0][plume] = 0.0
+
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            zu_max, _ = column_max_ddim(
+                normalized_massflux_updraft_forced,
+                plume,
+                0,
+                min(k_end, cloud_top_level[0, 0][plume] + 1),
+            )
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if zu_max <= 0:
+                normalized_massflux_updraft_forced[0, 0, 0][plume] = 0.0
+                error_code[0, 0][plume] = 51
+            else:
+                if K <= min(k_end, cloud_top_level[0, 0][plume] + 1):
+                    normalized_massflux_updraft_forced[0, 0, 0][plume] = normalized_massflux_updraft_forced[
+                        0, 0, 0
+                    ][plume] / (1.0e-9 + zu_max)
+
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0:
+            normalized_massflux_updraft_modified = normalized_massflux_updraft_forced[0, 0, 0][plume]
+            normalized_massflux_updraft = normalized_massflux_updraft_forced[0, 0, 0][plume]
 
     ##### SHALLOW PLUME #####
     # with computation(FORWARD), interval(0, 1):
@@ -532,7 +571,10 @@ def updraft_moisture(
                             (c1d + C0)
                             * dz
                             * liquid_fraction(
-                                updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
+                                updraft_column_temperature_forced,
+                                convection_fraction,
+                                surface_type,
+                                FRAC_MODIS,
                             )
                         )
                         cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced / (
@@ -557,7 +599,10 @@ def updraft_moisture(
                             condensate_to_fall_forced[0, 0, 0][plume] = 0.0
                         else:
                             cx0 = C0 * liquid_fraction(
-                                updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
+                                updraft_column_temperature_forced,
+                                convection_fraction,
+                                surface_type,
+                                FRAC_MODIS,
                             )
                             cx0 = max(cx0, 0.50 * C0)
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
@@ -587,7 +632,10 @@ def updraft_moisture(
                             condensate_to_fall_forced[0, 0, 0][plume] = 0.0
                         else:
                             tem1 = liquid_fraction(
-                                updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
+                                updraft_column_temperature_forced,
+                                convection_fraction,
+                                surface_type,
+                                FRAC_MODIS,
                             )
                             cbf = 1.0
                             if updraft_column_temperature_forced < T_BF:
@@ -633,7 +681,10 @@ def updraft_moisture(
                                 1.0
                                 + 0.33
                                 * liquid_fraction(
-                                    updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
+                                    updraft_column_temperature_forced,
+                                    convection_fraction,
+                                    surface_type,
+                                    FRAC_MODIS,
                                 )
                             )
                             cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
