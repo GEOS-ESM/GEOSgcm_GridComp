@@ -80,8 +80,8 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
     def compute(self, inputs):
         # initalize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
-        locals_ = GFDL1MLocals.zeros(self.quantity_factory)
-        driver_locals = GFDL1MDriverLocals.zeros(self.quantity_factory)
+        locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
+        driver_locals = GFDL1MDriverLocals.make_as_state(self.quantity_factory)
 
         # initalize constants
         config = GFDL1MConfig(**self.constants)
@@ -139,7 +139,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             "driver_local_dry_mixing_ratio_graupel_driversetup"
         ][:, :, :, 0]
         driver_locals.cloud_fraction.field[:] = inputs["driver_local_cloud_fraction_driversetup"][:, :, :, 0]
-        locals_.dz.field[:] = inputs["local_dz_drivesetup"][:, :, :, 0]
+        locals_.layer_height_above_surface.field[:] = inputs["local_dz_drivesetup"][:, :, :, 0]
         state.u.field[:] = inputs["u_driversetup"][:, :, :, 0]
         state.v.field[:] = inputs["v_driversetup"][:, :, :, 0]
         state.vertical_motion.velocity.field[:] = inputs["w_driversetup"][:, :, :, 0]
@@ -213,7 +213,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             dry_air_mixing_ratio_snow=driver_locals.dry_air_mixing_ratio.snow,
             dry_air_mixing_ratio_graupel=driver_locals.dry_air_mixing_ratio.graupel,
             cloud_fraction=driver_locals.cloud_fraction,
-            dz=locals_.dz,
+            dz=locals_.layer_height_above_surface,
             u_unmodified=state.u,
             u=driver_locals.u,
             v_unmodified=state.v,
@@ -298,7 +298,7 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
             :, :, :, 0
         ] = driver_locals.dry_air_mixing_ratio.graupel.field[:]
         outputs["driver_local_cloud_fraction_driversetup"][:, :, :, 0] = driver_locals.cloud_fraction.field[:]
-        outputs["local_dz_drivesetup"][:, :, :, 0] = locals_.dz.field[:]
+        outputs["local_dz_drivesetup"][:, :, :, 0] = locals_.layer_height_above_surface.field[:]
         outputs["u_driversetup"][:, :, :, 0] = state.u.field[:]
         outputs["v_driversetup"][:, :, :, 0] = state.v.field[:]
         outputs["w_driversetup"][:, :, :, 0] = state.vertical_motion.velocity.field[:]
