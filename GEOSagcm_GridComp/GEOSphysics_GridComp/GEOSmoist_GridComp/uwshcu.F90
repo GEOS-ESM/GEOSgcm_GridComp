@@ -35,6 +35,7 @@ module uwshcu
      real     :: mixscale_hr        ! Controls vertical structure of mixing High Resolution
      real     :: detrhgt            ! Mixing rate increases above this height
      real     :: rmaxfrac           ! Maximum core updraft fraction
+     real     :: rmaxfrac_hr        ! Maximum core updraft fraction  High Resolution
      real     :: mumin1             ! 
      real     :: rbuoy              ! Non-hydro pressure effect on updraft
      real     :: rdrag              ! Drag coefficient
@@ -83,7 +84,7 @@ contains
    subroutine compute_uwshcu_inv(idim, k0,        dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
-         t0_inv, tke_inv, rkfre, kpbl_inv, shfx,evap, cnvtr, frland, rkm2d, mix2d, & 
+         t0_inv, tke_inv, rkfre, kpbl_inv, shfx,evap, cnvtr, frland, rkm2d, mix2d, rmaxfrac, & 
          cush,                                                      & ! INOUT
          umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, tten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
@@ -129,6 +130,7 @@ contains
       real, intent(in)    :: frland(idim)               ! land fraction
       real, intent(in)    :: rkm2d(idim)                !  Resolution dependent lateral mixing parameter
       real, intent(in)    :: mix2d(idim)                !  Resolution dependent lateral mixing depth
+      real, intent(in)    :: rmaxfrac(idim)             !  Resolution dependent Maximum core updraft fraction
       real, intent(inout) :: cush(idim)                 !  Convective scale height [m]
 
       real, intent(out)   :: umf_inv(idim,k0+1)         !  Updraft mass flux at interfaces [kg/m2/s]
@@ -309,7 +311,8 @@ contains
 
       call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
            exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
-           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, rkm2d, mix2d, cush, umf, &
+           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, rkm2d, mix2d, rmaxfrac, &
+           cush, umf, &
            dcm, qvten, qlten, qiten, sten, uten, vten,      &
            qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
            qlsub, qisub, ndrop, nice,                       &
@@ -406,7 +409,8 @@ contains
    subroutine compute_uwshcu(idim, k0, dt,ncnst, pifc0_in,zifc0_in,& ! IN
          exnifc0_in, pmid0_in, zmid0_in, exnmid0_in, dp0_in,       &
          u0_in, v0_in, qv0_in, ql0_in, qi0_in, th0_in,             &
-         tr0_inout, kpbl_in, frland_in, tke_in, rkfre, rkm2d, mix2d, cush_inout, & ! OUT
+         tr0_inout, kpbl_in, frland_in, tke_in, rkfre, rkm2d, mix2d, rmaxfrac, &
+         cush_inout, & ! OUT
          umf_out, dcm_out, qvten_out, qlten_out, qiten_out,        &
          sten_out, uten_out, vten_out, qrten_out,                  &
          qsten_out, cufrc_out, fer_out, fdr_out, qldet_out,        &
@@ -468,6 +472,7 @@ contains
       real, intent(in)    :: rkfre(idim)              ! Resolution dependent Vertical velocity variance as fraction of tke. 
       real, intent(in)    :: rkm2d(idim)              ! Resolution dependent lateral mixing parameter
       real, intent(in)    :: mix2d(idim)              ! Resolution dependent lateral mixing depth
+      real, intent(in)    :: rmaxfrac(idim)           ! Resolution dependent Maximum core updraft fraction
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
       real, intent(in)    :: cnvtr(idim)              ! Convective tracer
@@ -880,6 +885,8 @@ contains
     real, dimension(ncnst)       :: trsrc_o
     integer                          :: ixnumliq, ixnumice, ixcldliq, ixcldice
 
+    ! Adaptive fer/fdr limits for vertical resolution changes from L72
+    real :: layer_thickness_mb, reference_thickness, resolution_factor, fer_fdr_limit
 
     ! ------------------ !
     !                    !
@@ -953,7 +960,6 @@ contains
 
     real :: rle          !  For critical stopping distance for lateral entrainment [no unit]
     real :: detrhgt      !  Mixing rate increases above this height to speed detrainment
-    real :: rmaxfrac     !  Maximum allowable 'core' updraft fraction
     real :: mumin1       !  Normalized CIN ('mu') corresponding to 'rmaxfrac' at the PBL top
                          !  obtaind by inverting 'rmaxfrac = 0.5*erfc(mumin1)'.
                          !  [rmaxfrac:mumin1]=[ 0.05:1.163, 0.075:1.018, 0.1:0.906, 0.15:0.733, 0.2:0.595, 0.25:0.477]
@@ -1004,7 +1010,6 @@ contains
     cridist_opt      = shlwparams%cridist_opt
     rle       = shlwparams%rle      !  For critical stopping distance for lateral entrainment [no unit]
     detrhgt   = shlwparams%detrhgt  !  Specifies vertical structure of mixing rate
-    rmaxfrac  = shlwparams%rmaxfrac !  Maximum allowable 'core' updraft fraction
     mumin1    = shlwparams%mumin1
     rbuoy     = shlwparams%rbuoy    !  For nonhydrostatic pressure effects on updraft [no unit]
     rdrag     = shlwparams%rdrag    !  Drag coefficient [no unit]
@@ -2209,9 +2214,9 @@ contains
          mu = max(max(mu,mumin0),mumin1)
          ! 3. 'ufrclcl' constraint      
          mulcl = sqrt(max(0.0,2.*cinlcl*rbuoy))/1.4142/sigmaw
-         mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac**2)))
+         mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac(i)**2)))
          if( mulcl .gt. 1.e-8 .and. mulcl .gt. mulclstar ) then
-            mumin2 = compute_mumin2(mulcl,rmaxfrac,mu)
+            mumin2 = compute_mumin2(mulcl,rmaxfrac(i),mu)
             if( mu .gt. mumin2 ) then
                  call write_parallel('Critical error in mu calculation in UW_ShCu')
 !                call endrun
@@ -2331,28 +2336,6 @@ contains
          enddo
          endif
 
-       ! -------------------------------------------------------------------------- !
-       ! Define environmental properties at the level where buoyancy sorting occurs !
-       ! ('pe', normally, layer midpoint except in the 'krel' layer). In the 'krel' !
-       ! layer where buoyancy sorting starts to occur, however, 'pe' is defined     !
-       ! differently because LCL is regarded as lower interface for mixing purpose. !
-       ! -------------------------------------------------------------------------- !
-
-         pe      = 0.5 * ( prel + pifc0(krel) )
-         qsat_pe = 0.5 * ( prel + pifc0(krel) )
-         dpe     = prel - pifc0(krel)
-         exne    = exnerfn(pe)
-         thvebot = thv0rel
-         thle    = thl0(krel) + ssthl0(krel) * ( pe - pmid0(krel) )
-         qte     = qt0(krel)  + ssqt0(krel)  * ( pe - pmid0(krel) )
-         ue      = u0(krel)   + ssu0(krel)   * ( pe - pmid0(krel) )
-         ve      = v0(krel)   + ssv0(krel)   * ( pe - pmid0(krel) )
-         if (dotransport.eq.1) then
-         do m = 1, ncnst
-            tre(m) = tr0(krel,m)  + sstr0(krel,m) * ( pe - pmid0(krel) )
-         enddo
-         end if
-
        !-------------------------! 
        ! Buoyancy-Sorting Mixing !
        !-------------------------!------------------------------------------------ !
@@ -2467,7 +2450,8 @@ contains
 
          wtw     = wlcl * wlcl
          pe      = 0.5 * ( prel + pifc0(krel) )
-         dpe     = prel - pifc0(krel)
+         dpe     = max(prel - pifc0(krel), 100.0) ! Global protection: minimum 1 hPa
+                                                  ! as prel approaches pifc0
          exne    = exnerfn(pe)
          thvebot = thv0rel
          thle    = thl0(krel) + ssthl0(krel) * ( pe - pmid0(krel) )
@@ -2694,17 +2678,25 @@ contains
             fdr(k) = rei(k) * ud2
             xco(k) = xc
 
-            if (fer(k).gt.0.1) then
-               print *,"fer(k) = rei(k) * ee2 > 0.1! fer=",fer(k)
-               id_exit = .true.
-               go to 333
-            end if
+          ! Adaptive fer/fdr limits for vertical resolution changes from L72
+            layer_thickness_mb = dp0(k)
+            reference_thickness = 2500.0  ! 25 hPa is GEOS L72 reference layer thickness
+            if (layer_thickness_mb > 0) then
+               resolution_factor = reference_thickness / layer_thickness_mb
+               fer_fdr_limit = 0.1 * min(6.0, max(1.0, resolution_factor))
+            else
+               fer_fdr_limit = 0.1  ! Fallback
+            endif
 
-            if (fdr(k).gt.0.1) then
-               print *,"fdr(k) = rei(k) * ud2 > 0.1! fdr=",fdr(k)
-               id_exit = .true.
-               go to 333
-            end if
+          ! Use capping instead of exiting to handle the transition smoothly
+            if (fer(k) > fer_fdr_limit) then
+                print *,"fer(k) = rei(k) * ee2 > ",fer_fdr_limit," ! fer=",fer(k)
+                fer(k) = fer_fdr_limit * 0.95
+            endif
+            if (fdr(k) > fer_fdr_limit) then
+                print *,"fdr(k) = rei(k) * ud2 > ",fer_fdr_limit," ! fdr=",fdr(k)
+                fdr(k) = fer_fdr_limit * 0.95
+            endif
 
           ! ------------------------------------------------------------------------------ !
           ! Iteration Start due to 'maxufrc' constraint [ ****************************** ] ! 
@@ -2965,15 +2957,15 @@ contains
             
           rhoifc0j  = pifc0(k) / ( r * 0.5 * ( thv0bot(k+1) + thv0top(k) )*exnifc0(k) )
           ufrc(k) = umf(k) / ( rhoifc0j * wu(k) )
-          if( ufrc(k) .gt. rmaxfrac ) then
+          if( ufrc(k) .gt. rmaxfrac(i) ) then
               limit_ufrc(i) = 1. 
-              ufrc(k) = rmaxfrac
-              umf(k)  = rmaxfrac * rhoifc0j * wu(k)
+              ufrc(k) = rmaxfrac(i)
+              umf(k)  = rmaxfrac(i) * rhoifc0j * wu(k)
               fdr(k)  = fer(k) - log(max(tiny, umf(k) / umf(km1)) ) / dpe
-              if (fdr(k).gt.0.1) then
-                 print *,"fdr(k) [updated] > 0.1! fdr=",fdr(k)
-                 id_exit = .true.
-                 go to 333
+              if (fdr(k).gt.fer_fdr_limit) then
+                 print *,"fdr(k) [updated] > ",fer_fdr_limit," ! fdr=",fdr(k)," dpe=",dpe/100.0
+                !id_exit = .true.
+                !go to 333
               end if
           endif
 
