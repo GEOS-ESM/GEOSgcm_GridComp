@@ -1,4 +1,34 @@
 program create_example
+!------------------------------------------------------------------------------
+! Program: create_example
+!
+! Purpose:
+!   Convert a raw, unformatted 2D topography field (binary) into:
+!     (a) GEOS-style NetCDF with Xdim/Ydim and a 2D variable "z"   (--output)
+!     (b) NCAR/SE-style NetCDF with 1D "ncol" and variable "PHIS" (--ncar)
+!
+! Inputs:
+!   -i, --input   <path>     : raw unformatted binary (REAL*4/REAL*8) of size (IM, JM)
+!   --im          <int>      : IM (x) size of the field
+!   --jm          <int>      : JM (y) size; if omitted, assumes a cubed-sphere layout with JM=IM*6
+!
+! Outputs (optional; supply flags to enable):
+!   -o, --output  <path>     : write GEOS-style NetCDF to this path
+!   --ncar        <path>     : write NCAR/SE-style NetCDF to this path
+!
+! Notes:
+!   * If --jm is not provided, JM defaults to IM*6 (cubed-sphere “isCube” mode).
+!   * GEOS output:
+!       - Dimensions: Xdim=IM, Ydim=JM
+!       - Variable:   z(Xdim,Ydim) [units: m], with coordinate vars Xdim/Ydim (1..IM, 1..JM)
+!   * NCAR output:
+!       - Dimension:  ncol = IM*JM (row-major flattening)
+!       - Variable:   PHIS(ncol) [units: m]
+!   * Basic error handling via subroutine `check` (aborts with NetCDF error message).
+!
+!------------------------------------------------------------------------------
+
+  
 use netcdf
 use, intrinsic :: iso_fortran_env, only: REAL64
 implicit none
