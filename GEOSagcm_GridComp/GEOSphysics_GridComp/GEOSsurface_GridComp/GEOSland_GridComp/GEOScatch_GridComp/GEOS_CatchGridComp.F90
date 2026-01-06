@@ -3817,14 +3817,14 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     Z0_UR = 0.15*D0_UR
     Z0T_UR(:,1) = Z0_UR
     D0T_UR = D0_UR
-    DZE_UR = max(DZ - D0T_UR, 10.)
+    DZE_UR = max(DZ - D0T_UR, 30.)
     if(CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.0) then
         WW_UR(:,1) = 0.
         CM0_UR(:,1) = 0.
         TC0_UR(:,1) = TC_UR
         QC0_UR(:,1) = QC_UR
 
-        call louissurface(3,1,UU,WW_UR,PS,TA,TC0_UR,QA,QC0_UR,PCU,LAI,Z0T_UR,DZE_UR,CM0_UR,CN_UR,RIB_UR,ZT_UR,ZQ_UR,CH0_UR,CQ0_UR,UUU_UR,UCN_UR,RE_UR)
+        call louissurface(10,1,UU,WW_UR,PS,TA,TC0_UR,QA,QC0_UR,PCU,LAI,Z0T_UR,DZE_UR,CM0_UR,CN_UR,RIB_UR,ZT_UR,ZQ_UR,CH0_UR,CQ0_UR,UUU_UR,UCN_UR,RE_UR)
 
         CM_UR = CM0_UR(:,1)
         CH_UR = CH0_UR(:,1)
