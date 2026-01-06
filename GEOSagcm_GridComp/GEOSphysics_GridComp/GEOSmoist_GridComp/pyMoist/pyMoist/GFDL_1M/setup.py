@@ -51,8 +51,6 @@ def calculate_derived_states(
     """
     Computes derived state fields required for the rest of the GFDL single moment
     microphysics module.
-
-    This stencil MUST be built using Z_INTERFACE_DIM to function properly.
     """
     from __externals__ import k_end
 
@@ -377,7 +375,6 @@ class GFDL1MSetup(NDSLRuntime):
             dsnow_dt=dsnowdt_macro,
             dgraupel_dt=dgraupeldt_macro,
         )
-
         self._calculate_derived_states(
             p_interface=p_interface,
             p_interface_mb=local_p_interface_mb,

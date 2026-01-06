@@ -4,6 +4,7 @@ import numpy.typing as npt
 
 from ndsl import State
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Float
+from ndsl.optional_imports import cupy as cp
 from pyMoist.interface import InterfaceTransferType
 from pyMoist.interface.mapl.memory_factory import MAPLMemoryRepository
 
@@ -11,7 +12,11 @@ from pyMoist.interface.mapl.memory_factory import MAPLMemoryRepository
 class MAPLManagedState:
     """Manage a NDSL <> MAPL shared state by linking MAPL pointers to NDSL state fields"""
 
-    def __init__(self, py_state: State, transfer_type: InterfaceTransferType) -> None:
+    def __init__(
+        self,
+        py_state: State,
+        transfer_type: InterfaceTransferType,
+    ) -> None:
         self._ndsl_state = py_state
         self._state_to_mapl_mapping: dict[str, Tuple[MAPLMemoryRepository, str]] = {}
         self._transfer_type = transfer_type
@@ -62,10 +67,16 @@ class MAPLManagedState:
                 )
             else:
                 mapl_array = mapl_state_.get_from_fortran(mapl_field_)
+                if self._transfer_type == InterfaceTransferType.CPU_TO_GPU_TO_CPU:
+                    cp.cuda.runtime.deviceSynchronize()
                 if mapl_array is None:
                     setattr(ndsl_state_, ndsl_field_, None)
-                else:
+                elif self._transfer_type == InterfaceTransferType.CPU_COPY:
                     getattr(ndsl_state_, ndsl_field_).field[:] = mapl_array[:]
+                elif self._transfer_type == InterfaceTransferType.CPU_MAP:
+                    getattr(ndsl_state_, ndsl_field_).data = mapl_array
+                else:
+                    raise ValueError("Transfer type unknown for Fortran/NDSL")
 
         for ndsl_field, (mapl_state, mapl_field) in self._state_to_mapl_mapping.items():
             try:
@@ -76,6 +87,10 @@ class MAPLManagedState:
 
     def ndsl_to_fortran(self) -> None:
         """Copy all Python memory back in Fortan"""
+
+        # Skip sending back - we are mapped
+        if self._transfer_type == InterfaceTransferType.CPU_MAP:
+            return
 
         def _push_back_to_fortran(
             mapl_field_: str,
@@ -93,10 +108,18 @@ class MAPLManagedState:
                 )
             else:
                 mapl_array = mapl_state_.get_from_fortran(mapl_field_)
-                if mapl_array is not None:
+                if mapl_array is None:
+                    pass
+                elif self._transfer_type == InterfaceTransferType.CPU_COPY:
                     ndsl_array = getattr(ndsl_state_, ndsl_field_).field[:]
                     mapl_array[:] = ndsl_array[:]
                     mapl_state_.send_to_fortran(mapl_field_)
+                elif self._transfer_type == InterfaceTransferType.CPU_MAP:
+                    raise RuntimeError("Coding issue. We should never send back mapped data")
+                else:
+                    raise ValueError("Transfer type unknown for NDSL/Fortran")
 
         for ndsl_field, (mapl_state, mapl_field) in self._state_to_mapl_mapping.items():
             _push_back_to_fortran(mapl_field, mapl_state, ndsl_field, self._ndsl_state)
+        if self._transfer_type == InterfaceTransferType.CPU_TO_GPU_TO_CPU:
+            cp.cuda.runtime.deviceSynchronize()

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from math import prod
 from types import ModuleType
-from typing import List, Optional, Tuple, TypeAlias
+from typing import Tuple, TypeAlias
 
 import cffi
 import numpy as np
+import numpy.lib as npl
 import numpy.typing as npt
 from _cffi_backend import _CDataBase as CFFIObj
 
@@ -34,9 +36,19 @@ class NullStream:
         pass
 
 
+@lru_cache
+def _compute_fortran_strides(shape: Tuple[int, ...], dtype: npt.DTypeLike) -> tuple[int, ...]:
+    cshp = np.cumprod(shape)
+    return np.concatenate(([1], cshp[:-1])) * np.dtype(dtype).itemsize
+
+
 class FortranPythonConversion:
     """
-    Convert Fortran arrays to NumPy and vice-versa
+    Convert Fortran arrays to NumPy and vice-versa.
+
+    The python memory will be laid out Fortran-like,
+        e.g. column-order,
+        e.g. 3D strides will be [1, dim0, dim0*dim1].
     """
 
     def __init__(
@@ -81,115 +93,81 @@ class FortranPythonConversion:
     def _fortran_to_numpy(
         self,
         fptr: cffi.FFI.CData,
-        dim: Optional[List[int]] = None,
+        dims: list[int] | None,
     ) -> np.ndarray:
         """
         Input: Fortran data pointed to by fptr and of shape dim = (i, j, k)
-        Output: C-ordered double precision NumPy data of shape (i, j, k)
+        Output: F-ordered NumPy data of shape (i, j, k) - strides are the same as input
         """
-        if not dim:
-            dim = [self._npx, self._npy, self._npz]
+        if not dims:
+            dims = [self._npx, self._npy, self._npz]
         ftype = self._ffi.getctype(self._ffi.typeof(fptr).item)
         if ftype not in self._TYPEMAP:
             raise ValueError(f"Fortran Python memory converter: cannot convert type {ftype}")
         return np.frombuffer(
-            self._ffi.buffer(fptr, prod(dim) * self._ffi.sizeof(ftype)),
+            self._ffi.buffer(fptr, prod(dims) * self._ffi.sizeof(ftype)),
             self._TYPEMAP[ftype],
         )
 
     def _upload_and_transform(
         self,
         host_array: np.ndarray,
-        dim: Optional[List[int]] = None,
-        swap_axes: Optional[Tuple[int, int]] = None,
+        dims: list[int] | None,
     ) -> DeviceArray:
         """Upload to device & transform to Pace compatible layout"""
-        with self._current_stream:
-            device_array = cp.asarray(host_array)
-            final_array = self._transform_from_fortran_layout(
-                device_array,
-                dim,
-                swap_axes,
-            )
-            self._current_stream = (
-                self._stream_A if self._current_stream == self._stream_B else self._stream_B
-            )
-            return final_array
+        device_array = cp.asarray(host_array)
+        final_array = self._transform_from_fortran_layout(device_array, dims)
+        self._current_stream = self._stream_A if self._current_stream == self._stream_B else self._stream_B
+        return final_array
 
     def _transform_from_fortran_layout(
         self,
         array: PythonArray,
-        dim: Optional[List[int]] = None,
-        swap_axes: Optional[Tuple[int, int]] = None,
+        dims: list[int] | None,
     ) -> PythonArray:
         """Transform from Fortran layout into a Pace compatible layout"""
-        if not dim:
-            dim = [self._npx, self._npy, self._npz]
-        trf_array = array.reshape(tuple(reversed(dim))).transpose().astype(Float)
-        if swap_axes:
-            trf_array = self._target_np.swapaxes(
-                trf_array,
-                swap_axes[0],
-                swap_axes[1],
-            )
+        if not dims:
+            dims = [self._npx, self._npy, self._npz]
+        trf_array = npl.stride_tricks.as_strided(
+            array,
+            shape=dims,
+            strides=_compute_fortran_strides(tuple(dims), Float),
+        )
         return trf_array
 
     def fortran_to_python(
         self,
         fptr: cffi.FFI.CData,
-        dim: Optional[List[int]] = None,
-        swap_axes: Optional[Tuple[int, int]] = None,
+        dims: list[int] | None,
+        *,
+        allow_device_transfer: bool = True,
     ) -> PythonArray:
-        """Move fortran memory into python space"""
-        np_array = self._fortran_to_numpy(fptr, dim)
-        if self._python_targets_gpu:
-            return self._upload_and_transform(np_array, dim, swap_axes)
+        """Move fortran memory into python space."""
+        np_array = self._fortran_to_numpy(fptr, dims)
+        if allow_device_transfer and self._python_targets_gpu:
+            return self._upload_and_transform(np_array, dims)
         else:
             return self._transform_from_fortran_layout(
                 np_array,
-                dim,
-                swap_axes,
+                dims,
             )
 
-    def _transform_and_download(
-        self,
-        device_array: DeviceArray,
-        dtype: type,
-        swap_axes: Optional[Tuple[int, int]] = None,
-    ) -> np.ndarray:
-        with self._current_stream:
-            if swap_axes:
-                device_array = cp.swapaxes(
-                    device_array,
-                    swap_axes[0],
-                    swap_axes[1],
-                )
-            host_array = cp.asnumpy(
-                device_array.astype(dtype).flatten(order="F"),
-            )
-            self._current_stream = (
-                self._stream_A if self._current_stream == self._stream_B else self._stream_B
-            )
-            return host_array
+    def _transform_and_download(self, device_array: DeviceArray, dtype: type) -> np.ndarray:
+        host_array = cp.asnumpy(device_array.astype(dtype).flatten(order="F"))
+        self._current_stream = self._stream_A if self._current_stream == self._stream_B else self._stream_B
+        return host_array
 
     def _transform_from_python_layout(
         self,
         array: PythonArray,
         dtype: type,
-        swap_axes: Optional[Tuple[int, int]] = None,
     ) -> np.ndarray:
         """Copy back a numpy array in python layout to Fortran"""
 
         if self._python_targets_gpu:
-            numpy_array = self._transform_and_download(array, dtype, swap_axes)
+            numpy_array = self._transform_and_download(array, dtype)
         else:
             numpy_array = array.astype(dtype).flatten(order="F")
-            if swap_axes:
-                numpy_array = np.swapaxes(
-                    numpy_array,
-                    swap_axes[0],
-                    swap_axes[1],
-                )
         return numpy_array
 
     def python_to_fortran(
@@ -197,20 +175,15 @@ class FortranPythonConversion:
         array: PythonArray,
         fptr: cffi.FFI.CData,
         ptr_offset: int = 0,
-        swap_axes: Optional[Tuple[int, int]] = None,
     ) -> None:
         """
         Input: Fortran data pointed to by fptr and of shape dim = (i, j, k)
-        Output: C-ordered double precision NumPy data of shape (i, j, k)
+        Output: F-ordered NumPy data of shape (i, j, k)
         """
         ftype = self._ffi.getctype(self._ffi.typeof(fptr).item)
         assert ftype in self._TYPEMAP
         dtype = self._TYPEMAP[ftype]
-        numpy_array = self._transform_from_python_layout(
-            array,
-            dtype,
-            swap_axes,
-        )
+        numpy_array = self._transform_from_python_layout(array, dtype)
         self._ffi.memmove(fptr + ptr_offset, numpy_array, 4 * numpy_array.size)
 
     def cast(self, dtype: npt.DTypeLike, void_ptr: CFFIObj) -> CFFIObj:

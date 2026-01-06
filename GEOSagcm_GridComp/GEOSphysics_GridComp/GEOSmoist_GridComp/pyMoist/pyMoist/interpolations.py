@@ -67,10 +67,9 @@ def vertical_interpolation(
         pb = pt
 
     with computation(FORWARD), interval(-1, None):
-        pt = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, -1] * 100))
-        pb = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, 1] * 100))
+        pb2: FloatFieldIJ = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, 1] * 100))
         if (
-            log(target_pressure) > pb
+            log(target_pressure) > pb2
             and log(target_pressure) <= log(p_interface_mb[0, 0, 1] * 100)
             and not track_points
         ):
@@ -80,9 +79,3 @@ def vertical_interpolation(
         # ensure every point was actually touched
         if track_points == False:  # noqa
             interpolated_field = field
-
-    # reset masks and temporaries for later use
-    with computation(FORWARD), interval(0, 1):
-        track_points = False
-        pb = 0
-        pt = 0
