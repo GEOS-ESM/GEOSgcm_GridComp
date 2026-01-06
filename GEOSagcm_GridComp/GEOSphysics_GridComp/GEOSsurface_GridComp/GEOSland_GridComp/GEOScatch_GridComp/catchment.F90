@@ -94,7 +94,8 @@
            PEATCLSM_POROS_THRESHOLD,                 &
            PEATCLSM_ZBARMAX_4_SYSOIL,                &
            EMIS_UR           => CATCH_EMIS_URBAN,    &
-           CSOIL_UR          => CATCH_C_URBAN
+           D0_UR             => CATCH_D0_URBAN,      &
+           CBASE_UR          => CATCH_C_URBAN
 
       USE SURFPARAMS,       ONLY:                    &
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
@@ -304,7 +305,7 @@
               RTBS_UR,EPFRC_UR
 
 
-
+      REAL :: CSOIL_UR
 
       LOGICAL :: ldum
 
@@ -526,6 +527,8 @@
       else
         AR_UR=FRAC_UR      
       endif
+
+      CSOIL_UR = CBASE_UR + 20000.*D0_UR
 
 !**** ---------------------------------------------------
 !**** PRE-PROCESS DATA AS NECESSARY:

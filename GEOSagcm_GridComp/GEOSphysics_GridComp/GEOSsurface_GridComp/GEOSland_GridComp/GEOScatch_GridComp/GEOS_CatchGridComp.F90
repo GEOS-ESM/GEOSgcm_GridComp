@@ -3386,6 +3386,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
 
+    type(MAPL_MetaComp), pointer   :: MAPL
+    type (MAPL_LocStream       )            :: LOCSTREAM 
+    integer :: nt_local , i 
+
 !=============================================================================
 ! Begin...
 ! ------------------------------------------------------------------------------
@@ -3845,6 +3849,19 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
         CH_UR  = VKH_UR
         CQ_UR  = VKH_UR
 
+    endif
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
+    call MAPL_LocStreamGet(LOCSTREAM, nt_local=nt_local, RC=status)
+    if (MAPL_AM_I_ROOT()) then
+      open(88,file="CH_UR.txt")
+      write(88,*)D0_UR
+      write(88,*)sum(CH_UR)/nt_local
+      do i=1,nt_local
+        write(88,*)CH_UR(i)
+      enddo
+      stop
     endif
 ! End for Urban    
 
