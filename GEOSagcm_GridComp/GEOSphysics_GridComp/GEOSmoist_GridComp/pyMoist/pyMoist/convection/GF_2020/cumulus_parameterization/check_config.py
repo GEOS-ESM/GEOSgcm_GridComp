@@ -184,7 +184,7 @@ def check_config(
     if cumulus_parameterization_config.DIURNAL_CYCLE != 1:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initalized with DIURNAL_CYCLE != 1. This setting requires"
-            "the unimplemented options for multiple stencils in DiurnalCycle. Please implement, then"
+            "an unimplemented option for multiple stencils in DiurnalCycle. Please implement, then"
             "disable this error manually to proceed."
         )
 
@@ -199,5 +199,12 @@ def check_config(
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initalized with VERTICAL_DISCRETIZATION_OPTION != 1."
             "This setting requires an unimplemented option in VerticalDiscretization. Please implement,"
+            "then disable this error manually to proceed."
+        )
+
+    if cumulus_parameterization_config.USE_FCT != 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with USE_FCT != 0. This setting requires"
+            "an unimplemented option for multiple stencils in VerticalDiscretization. Please implement,"
             "then disable this error manually to proceed."
         )

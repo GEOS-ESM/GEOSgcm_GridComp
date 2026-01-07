@@ -15,6 +15,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
 )
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import tridiag
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 
 
 def zero_tendencies(
@@ -191,6 +192,309 @@ def update_after_tridiag(
             out_field = (in_field - wind) / DTIME
 
 
+def convective_transport_of_mse_and_liquid_water(
+    error_code: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    p_cloud_levels_forced: FloatField_Plume,
+    normalized_massflux_updraft_forced: FloatField_Plume,
+    normalized_massflux_downdraft_forced: FloatField_Plume,
+    cloud_moist_static_energy_forced: FloatField,
+    cloud_moist_static_energy_downdraft_forced: FloatField,
+    environment_moist_static_energy_cloud_levels_forced: FloatField,
+    cloud_liquid_after_rain_forced: FloatField_Plume,
+    melting: FloatField,
+    partition_liquid_ice: FloatField,
+    epsilon_forced: FloatFieldIJ_Plume,
+    del_moist_static_energy_cloud_ensemble: FloatField,
+    t_tendency_from_environmental_subsidence: FloatField,
+    plume: Int,
+):
+    from __externals__ import USE_FCT
+
+    with computation(FORWARD), interval(0, -1):
+        if error_code[0, 0][plume] == 0:
+            # moist static energy : flux form + source/sink terms + time explicit
+            if USE_FCT == 0:
+                if K <= cloud_top_level[0, 0][plume]:
+                    dp = 100.0 * (
+                        p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]
+                    )
+
+                    del_moist_static_energy_cloud_ensemble = (
+                        -(
+                            normalized_massflux_updraft_forced[0, 0, 1][plume]
+                            * (
+                                cloud_moist_static_energy_forced[0, 0, 1]
+                                - environment_moist_static_energy_cloud_levels_forced[0, 0, 1]
+                            )
+                            - normalized_massflux_updraft_forced[0, 0, 0][plume]
+                            * (
+                                cloud_moist_static_energy_forced
+                                - environment_moist_static_energy_cloud_levels_forced
+                            )
+                        )
+                        * constants.MAPL_GRAV
+                        / dp
+                        + (
+                            normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                            * (
+                                cloud_moist_static_energy_downdraft_forced[0, 0, 1]
+                                - environment_moist_static_energy_cloud_levels_forced[0, 0, 1]
+                            )
+                            - normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                            * (
+                                cloud_moist_static_energy_downdraft_forced
+                                - environment_moist_static_energy_cloud_levels_forced
+                            )
+                        )
+                        * constants.MAPL_GRAV
+                        / dp
+                        * epsilon_forced[0, 0][plume]
+                    )
+
+                    del_moist_static_energy_cloud_ensemble = (
+                        del_moist_static_energy_cloud_ensemble
+                        + cumulus_parameterization_constants.XLF
+                        * (
+                            (1.0 - partition_liquid_ice)
+                            * 0.5
+                            * (
+                                cloud_liquid_after_rain_forced[0, 0, 1][plume]
+                                + cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                            )
+                            - melting
+                        )
+                        * constants.MAPL_GRAV
+                        / dp
+                    )
+
+                    # for output only
+                    t_tendency_from_environmental_subsidence = (
+                        -(
+                            normalized_massflux_updraft_forced[0, 0, 1][plume]
+                            * (-environment_moist_static_energy_cloud_levels_forced[0, 0, 1])
+                            - normalized_massflux_updraft_forced[0, 0, 0][plume]
+                            * (-environment_moist_static_energy_cloud_levels_forced)
+                        )
+                        * constants.MAPL_GRAV
+                        / dp
+                        + (
+                            normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                            * (-environment_moist_static_energy_cloud_levels_forced[0, 0, 1])
+                            - normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                            * (-environment_moist_static_energy_cloud_levels_forced)
+                        )
+                        * constants.MAPL_GRAV
+                        / dp
+                        * epsilon_forced[0, 0][plume]
+                    )
+
+
+def convective_transport_of_water_vapor_and_condensates(
+    error_code: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    p_cloud_levels_forced: FloatField_Plume,
+    geopotential_height_cloud_levels_forced: FloatField,
+    normalized_massflux_updraft_forced: FloatField_Plume,
+    normalized_massflux_downdraft_forced: FloatField_Plume,
+    mass_detrainment_updraft_forced: FloatField_Plume,
+    mass_detrainment_downdraft_forced: FloatField_Plume,
+    c1d: FloatField,
+    vapor_cloud_levels_forced: FloatField,
+    cloud_total_water_after_entrainment_forced: FloatField,
+    cloud_total_water_after_entrainment_downdraft_forced: FloatField,
+    cloud_liquid_after_rain_forced: FloatField_Plume,
+    condensate_to_fall_forced: FloatField_Plume,
+    evaporate_in_downdraft_forced: FloatField_Plume,
+    epsilon_forced: FloatFieldIJ_Plume,
+    d_buoyancy_downdraft_forced: FloatField,
+    del_cloud_liquid_cloud_ensemble: FloatField,
+    del_vapor_cloud_ensemble: FloatField,
+    moist_static_energy_tendency_from_environmental_subsidence: FloatField,
+    plume: Int,
+):
+    from __externals__ import C1, USE_FCT
+
+    with computation(FORWARD), interval(0, -1):
+        if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume]:
+            dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
+
+            # take out cloud liquid/ice water for detrainment
+            if plume == 0 or plume == 1:  # shallow or mid plume
+                del_cloud_liquid_cloud_ensemble = (
+                    mass_detrainment_updraft_forced[0, 0, 0][plume]
+                    * 0.5
+                    * (
+                        cloud_liquid_after_rain_forced[0, 0, 1][plume]
+                        + cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                    )
+                    * constants.MAPL_GRAV
+                    / dp
+                )
+            elif plume == 2:  # deep plume
+                if not (abs(C1) > 0):
+                    del_cloud_liquid_cloud_ensemble = (
+                        mass_detrainment_updraft_forced[0, 0, 0][plume]
+                        * 0.5
+                        * (
+                            cloud_liquid_after_rain_forced[0, 0, 1][plume]
+                            + cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                        )
+                        * constants.MAPL_GRAV
+                        / dp
+                    )
+                elif C1 > 0.0:
+                    if K == cloud_top_level[0, 0][plume]:
+                        del_cloud_liquid_cloud_ensemble = (
+                            mass_detrainment_updraft_forced[0, 0, 0][plume]
+                            * 0.5
+                            * (
+                                cloud_liquid_after_rain_forced[0, 0, 1][plume]
+                                + cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                            )
+                            * constants.MAPL_GRAV
+                            / dp
+                        )
+                    else:
+                        dz = (
+                            geopotential_height_cloud_levels_forced[0, 0, 1]
+                            - geopotential_height_cloud_levels_forced
+                        )
+                        del_cloud_liquid_cloud_ensemble = (
+                            normalized_massflux_updraft_forced[0, 0, 0][plume]
+                            * c1d
+                            * cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                            * dz
+                            / dp
+                            * constants.MAPL_GRAV
+                        )
+                else:
+                    if K == cloud_top_level[0, 0][plume]:
+                        del_cloud_liquid_cloud_ensemble = (
+                            mass_detrainment_updraft_forced[0, 0, 0][plume]
+                            * 0.5
+                            * (
+                                cloud_liquid_after_rain_forced[0, 0, 1][plume]
+                                + cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                            )
+                            * constants.MAPL_GRAV
+                            / dp
+                        )
+                    else:
+                        dz = (
+                            geopotential_height_cloud_levels_forced[0, 0, 1]
+                            - geopotential_height_cloud_levels_forced
+                        )
+                        del_cloud_liquid_cloud_ensemble = (
+                            normalized_massflux_updraft_forced[0, 0, 0][plume]
+                            * c1d
+                            * cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                            * dz
+                            / dp
+                            * constants.MAPL_GRAV
+                            + mass_detrainment_updraft_forced[0, 0, 0][plume]
+                            * 0.5
+                            * (
+                                cloud_liquid_after_rain_forced[0, 0, 1][plume]
+                                + cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                            )
+                            * constants.MAPL_GRAV
+                            / dp
+                        ) * 0.5
+
+            g_rain = (
+                0.5
+                * (condensate_to_fall_forced[0, 0, 0][plume] + condensate_to_fall_forced[0, 0, 1][plume])
+                * constants.MAPL_GRAV
+                / dp
+            )
+            e_dn = (
+                -0.5
+                * (
+                    evaporate_in_downdraft_forced[0, 0, 0][plume]
+                    + evaporate_in_downdraft_forced[0, 0, 1][plume]
+                )
+                * constants.MAPL_GRAV
+                / dp
+                * epsilon_forced[0, 0][plume]
+            )  # pwdo < 0 and E_dn must > 0
+            # condensation source term = detrained + flux divergence of
+            # cloud liquid/ice water (cloud_liquid_after_rain_forced) + converted to rain
+            c_up = (
+                del_cloud_liquid_cloud_ensemble
+                + (
+                    normalized_massflux_updraft_forced[0, 0, 1][plume]
+                    * cloud_liquid_after_rain_forced[0, 0, 1][plume]
+                    - normalized_massflux_updraft_forced[0, 0, 0][plume]
+                    * cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                )
+                * constants.MAPL_GRAV
+                / dp
+                + g_rain
+            )
+
+            # water vapor budget
+            # = flux divergence z*(Q_c - Q_env)_up_and_down  - condensation term + evaporation
+            del_vapor_cloud_ensemble = (
+                -(
+                    normalized_massflux_updraft_forced[0, 0, 1][plume]
+                    * cloud_total_water_after_entrainment_forced[0, 0, 1]
+                    - normalized_massflux_updraft_forced[0, 0, 0][plume]
+                    * cloud_total_water_after_entrainment_forced
+                )
+                * constants.MAPL_GRAV
+                / dp
+                + (
+                    normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    * cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
+                    - normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                    * cloud_total_water_after_entrainment_downdraft_forced
+                )
+                * constants.MAPL_GRAV
+                / dp
+                * epsilon_forced[0, 0][plume]
+                - c_up
+                + e_dn
+            )
+
+            del_buoyancy_cloud_ensemble = (
+                epsilon_forced[0, 0][plume]
+                * mass_detrainment_downdraft_forced[0, 0, 0][plume]
+                * 0.5
+                * (d_buoyancy_downdraft_forced[0, 0, 1] + d_buoyancy_downdraft_forced)
+                * constants.MAPL_GRAV
+                / dp
+            )
+
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0 and USE_FCT == 0 and K <= cloud_top_level[0, 0][plume]:
+            dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
+            subsidence_tendency = (
+                -(
+                    normalized_massflux_updraft_forced[0, 0, 1][plume] * (-vapor_cloud_levels_forced[0, 0, 1])
+                    - normalized_massflux_updraft_forced[0, 0, 0][plume] * (-vapor_cloud_levels_forced)
+                )
+                * constants.MAPL_GRAV
+                / dp
+                + (
+                    normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    * (-vapor_cloud_levels_forced[0, 0, 1])
+                    - normalized_massflux_downdraft_forced[0, 0, 0][plume] * (-vapor_cloud_levels_forced)
+                )
+                * constants.MAPL_GRAV
+                / dp
+                * epsilon_forced[0, 0][plume]
+            )
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume]:
+            # add the contribuition from the environmental subsidence
+            del_vapor_cloud_ensemble = del_vapor_cloud_ensemble + subsidence_tendency
+
+            # for output only
+            moist_static_energy_tendency_from_environmental_subsidence = subsidence_tendency
+
+
 class VerticalDiscretization:
     def __init__(
         self,
@@ -238,14 +542,30 @@ class VerticalDiscretization:
             externals={"DTIME": cumulus_parameterization_config.DTIME},
         )
 
+        self._convective_transport_of_mse_and_liquid_water = stencil_factory.from_dims_halo(
+            func=convective_transport_of_mse_and_liquid_water,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"USE_FCT": cumulus_parameterization_config.USE_FCT},
+        )
+
+        self._convective_transport_of_water_vapor_and_condensates = stencil_factory.from_dims_halo(
+            func=convective_transport_of_water_vapor_and_condensates,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"C1": config.C1, "USE_FCT": cumulus_parameterization_config.USE_FCT},
+        )
+
     def __call__(
         self,
         error_code: Quantity,
         cloud_top_level: Quantity,
         p_cloud_levels_forced: Quantity,
+        geopotential_height_cloud_levels_forced: Quantity,
         normalized_massflux_updraft_forced: Quantity,
         normalized_massflux_downdraft_forced: Quantity,
         environment_massflux: Quantity,
+        mass_detrainment_updraft_forced: Quantity,
+        mass_detrainment_downdraft_forced: Quantity,
+        c1d: Quantity,
         u: Quantity,
         v: Quantity,
         u_cloud_levels: Quantity,
@@ -254,6 +574,19 @@ class VerticalDiscretization:
         v_c: Quantity,
         u_c_downdraft: Quantity,
         v_c_downdraft: Quantity,
+        cloud_moist_static_energy_forced: Quantity,
+        cloud_moist_static_energy_downdraft_forced: Quantity,
+        environment_moist_static_energy_cloud_levels_forced: Quantity,
+        vapor_cloud_levels_forced: Quantity,
+        cloud_total_water_after_entrainment_forced: Quantity,
+        cloud_total_water_after_entrainment_downdraft_forced: Quantity,
+        cloud_liquid_after_rain_forced: Quantity,
+        condensate_to_fall_forced: Quantity,
+        evaporate_in_downdraft_forced: Quantity,
+        melting: Quantity,
+        partition_liquid_ice: Quantity,
+        epsilon_forced: Quantity,
+        d_buoyancy_downdraft_forced: Quantity,
         del_u_cloud_ensemble: Quantity,
         del_v_cloud_ensemble: Quantity,
         del_moist_static_energy_cloud_ensemble: Quantity,
@@ -264,7 +597,6 @@ class VerticalDiscretization:
         t_tendency_from_environmental_subsidence: Quantity,
         moist_static_energy_tendency_from_environmental_subsidence: Quantity,
         vapor_tendency_from_environmental_subsidence: Quantity,
-        epsilon_forced: Quantity,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
         self._zero_tendencies(
@@ -280,68 +612,112 @@ class VerticalDiscretization:
             vapor_tendency_from_environmental_subsidence=vapor_tendency_from_environmental_subsidence,
         )
 
-        self._convective_transport_of_momentum(
-            error_code=error_code,
-            cloud_top_level=cloud_top_level,
-            p_cloud_levels_forced=p_cloud_levels_forced,
-            normalized_massflux_updraft_forced=normalized_massflux_updraft_forced,
-            normalized_massflux_downdraft_forced=normalized_massflux_downdraft_forced,
-            environment_massflux=environment_massflux,
-            u=u,
-            v=v,
-            u_cloud_levels=u_cloud_levels,
-            v_cloud_levels=v_cloud_levels,
-            u_c=u_c,
-            v_c=v_c,
-            u_c_downdraft=u_c_downdraft,
-            v_c_downdraft=v_c_downdraft,
-            del_u_cloud_ensemble=del_u_cloud_ensemble,
-            del_v_cloud_ensemble=del_v_cloud_ensemble,
-            epsilon_forced=epsilon_forced,
-            fp=self._fp,
-            fm=self._fm,
-            aa=self._aa,
-            bb=self._bb,
-            cc=self._cc,
-            ddu=self._ddu,
-            ddv=self._ddv,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
+        if self.cumulus_parameterization_config.VERTICAL_DISCRETIZATION_OPTION in (0, 1):
+            self._convective_transport_of_momentum(
+                error_code=error_code,
+                cloud_top_level=cloud_top_level,
+                p_cloud_levels_forced=p_cloud_levels_forced,
+                normalized_massflux_updraft_forced=normalized_massflux_updraft_forced,
+                normalized_massflux_downdraft_forced=normalized_massflux_downdraft_forced,
+                environment_massflux=environment_massflux,
+                u=u,
+                v=v,
+                u_cloud_levels=u_cloud_levels,
+                v_cloud_levels=v_cloud_levels,
+                u_c=u_c,
+                v_c=v_c,
+                u_c_downdraft=u_c_downdraft,
+                v_c_downdraft=v_c_downdraft,
+                del_u_cloud_ensemble=del_u_cloud_ensemble,
+                del_v_cloud_ensemble=del_v_cloud_ensemble,
+                epsilon_forced=epsilon_forced,
+                fp=self._fp,
+                fm=self._fm,
+                aa=self._aa,
+                bb=self._bb,
+                cc=self._cc,
+                ddu=self._ddu,
+                ddv=self._ddv,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
-        self._tridiag(
-            m=cloud_top_level,
-            a=self._aa,
-            b=self._bb,
-            c=self._cc,
-            f=self._ddu,
-            error_code=error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
+        if self.cumulus_parameterization_config.VERTICAL_DISCRETIZATION_OPTION == 1:
+            self._tridiag(
+                m=cloud_top_level,
+                a=self._aa,
+                b=self._bb,
+                c=self._cc,
+                f=self._ddu,
+                error_code=error_code,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
-        self._update_after_tridiag(
-            error_code=error_code,
-            cloud_top_level=cloud_top_level,
-            in_field=self._ddu,
-            out_field=del_u_cloud_ensemble,
-            wind=u,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
+            self._update_after_tridiag(
+                error_code=error_code,
+                cloud_top_level=cloud_top_level,
+                in_field=self._ddu,
+                out_field=del_u_cloud_ensemble,
+                wind=u,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
-        self._tridiag(
-            m=cloud_top_level,
-            a=self._aa,
-            b=self._bb,
-            c=self._cc,
-            f=self._ddv,
-            error_code=error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
+            self._tridiag(
+                m=cloud_top_level,
+                a=self._aa,
+                b=self._bb,
+                c=self._cc,
+                f=self._ddv,
+                error_code=error_code,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
-        self._update_after_tridiag(
-            error_code=error_code,
-            cloud_top_level=cloud_top_level,
-            in_field=self._ddv,
-            out_field=del_v_cloud_ensemble,
-            wind=v,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
+            self._update_after_tridiag(
+                error_code=error_code,
+                cloud_top_level=cloud_top_level,
+                in_field=self._ddv,
+                out_field=del_v_cloud_ensemble,
+                wind=v,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
+
+            self._convective_transport_of_mse_and_liquid_water(
+                error_code=error_code,
+                cloud_top_level=cloud_top_level,
+                p_cloud_levels_forced=p_cloud_levels_forced,
+                normalized_massflux_updraft_forced=normalized_massflux_updraft_forced,
+                normalized_massflux_downdraft_forced=normalized_massflux_downdraft_forced,
+                cloud_moist_static_energy_forced=cloud_moist_static_energy_forced,
+                cloud_moist_static_energy_downdraft_forced=cloud_moist_static_energy_downdraft_forced,
+                environment_moist_static_energy_cloud_levels_forced=environment_moist_static_energy_cloud_levels_forced,
+                cloud_liquid_after_rain_forced=cloud_liquid_after_rain_forced,
+                melting=melting,
+                partition_liquid_ice=partition_liquid_ice,
+                epsilon_forced=epsilon_forced,
+                del_moist_static_energy_cloud_ensemble=del_moist_static_energy_cloud_ensemble,
+                t_tendency_from_environmental_subsidence=t_tendency_from_environmental_subsidence,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
+
+            self._convective_transport_of_water_vapor_and_condensates(
+                error_code=error_code,
+                cloud_top_level=cloud_top_level,
+                p_cloud_levels_forced=p_cloud_levels_forced,
+                geopotential_height_cloud_levels_forced=geopotential_height_cloud_levels_forced,
+                normalized_massflux_updraft_forced=normalized_massflux_updraft_forced,
+                normalized_massflux_downdraft_forced=normalized_massflux_downdraft_forced,
+                mass_detrainment_updraft_forced=mass_detrainment_updraft_forced,
+                mass_detrainment_downdraft_forced=mass_detrainment_downdraft_forced,
+                c1d=c1d,
+                vapor_cloud_levels_forced=vapor_cloud_levels_forced,
+                cloud_total_water_after_entrainment_forced=cloud_total_water_after_entrainment_forced,
+                cloud_total_water_after_entrainment_downdraft_forced=cloud_total_water_after_entrainment_downdraft_forced,
+                cloud_liquid_after_rain_forced=cloud_liquid_after_rain_forced,
+                condensate_to_fall_forced=condensate_to_fall_forced,
+                evaporate_in_downdraft_forced=evaporate_in_downdraft_forced,
+                epsilon_forced=epsilon_forced,
+                d_buoyancy_downdraft_forced=d_buoyancy_downdraft_forced,
+                del_cloud_liquid_cloud_ensemble=del_cloud_liquid_cloud_ensemble,
+                del_vapor_cloud_ensemble=del_vapor_cloud_ensemble,
+                moist_static_energy_tendency_from_environmental_subsidence=moist_static_energy_tendency_from_environmental_subsidence,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
