@@ -2547,10 +2547,14 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    qden = q (k) * den (k)
-                    vt (k) = (3. + log10 (qden)) * (tc (k) * (aa * tc (k) + bb) + cc) + &
-                        dd * tc (k) + ee
-                    vt (k) = 0.01 * v_fac * exp (vt (k) * log (10.))
+                    qden = q (k) * den (k) * 1.e3
+                    ! Large-scale settling SGP
+                    viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
+                    ! Convective settling TWP
+                    viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
+                    ! Combine
+                    vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+                    vt (k) = 0.01 * v_fac * vt (k)
                 endif
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)
@@ -3964,7 +3968,13 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
 
-    real :: di, qi, qadum
+    real :: di, qi, critical_qi_factor, qadum
+
+    ! qi0_crt (ice to snow conversion) has strong resolution dependence
+    !    account for this using onemsig to convert more ice to snow at coarser resolutions
+    critical_qi_factor = qi0_crt*(1.e-1*(1.0-onemsig) + onemsig)
+    !    keep the enhanced conversion only in the deep convective regimes
+    critical_qi_factor = cnv_fraction*critical_qi_factor + (1.0-cnv_fraction)*qi0_crt
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -3987,7 +3997,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             di  = max (di, qcmin)
             q_plus = qi + di
             ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * qi0_crt / qadum / den (k)
+            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * critical_qi_factor / qadum / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di

@@ -272,7 +272,6 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (DT_R8 <= 150.0) do_hail = .true. 
-    if (DT_R8  > 150.0) ifflag = 3
 
     if (GFDL_MP3) then
       call gfdl_mp_init(LHYDROSTATIC,DT_MOIST)
