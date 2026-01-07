@@ -172,13 +172,14 @@ class TestCore:
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code_part_1(
-                updraft_origin_level=state.output.updraft_origin_level,
+                lcl_level=state.output.lcl_level,
                 start_level=locals.start_level,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
 
             code_part_2(
                 error_code=state.output.error_code,
+                lcl_level=state.output.lcl_level,
                 cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
                 cap_max=locals.cap_max,
                 updraft_origin_level=state.output.updraft_origin_level,

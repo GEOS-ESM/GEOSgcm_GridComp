@@ -305,13 +305,14 @@ def find_lcl(
                 t_perturbation = -2.0
 
 
-def set_start_level(updraft_origin_level: IntFieldIJ_Plume, start_level: IntFieldIJ, plume: Int):
+def set_start_level(lcl_level: IntFieldIJ_Plume, start_level: IntFieldIJ, plume: Int):
     with computation(FORWARD), interval(...):
-        updraft_origin_level[0, 0][plume] = start_level
+        start_level = lcl_level[0, 0][plume]
 
 
 def get_convective_cloud_base_level(
     error_code: IntFieldIJ_Plume,
+    lcl_level: IntFieldIJ_Plume,
     cloud_moist_static_energy_forced_transported: FloatField,
     cap_max: FloatFieldIJ,
     updraft_origin_level: IntFieldIJ_Plume,
@@ -399,7 +400,7 @@ def get_convective_cloud_base_level(
         stop_solver = False
 
         # prefill some fields
-        start_level = 0
+        start_level_internal = 0
         cap_max_internal = cap_max
         # default value
         updraft_lfc_level[0, 0][plume] = maximum_updraft_origin_level + 3
@@ -407,7 +408,7 @@ def get_convective_cloud_base_level(
         frh_lfc = 0.0
         if error_code[0, 0][plume] == 0:
             if ZERO_DIFF == 1:
-                start_level_internal = updraft_origin_level[0, 0][plume]
+                start_level_internal = lcl_level[0, 0][plume]
             else:
                 start_level_internal = start_level
 
@@ -803,109 +804,6 @@ class HighestMoistStaticEnergyLevel:
             error_code=state.output.error_code,
             maximum_updraft_origin_level=locals.maximum_updraft_origin_level,
             updraft_origin_level=state.output.updraft_origin_level,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
-
-
-class ConvectiveCloudBaseLevel:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._set_start_level = stencil_factory.from_dims_halo(
-            func=set_start_level,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-        self._convective_cloud_base_level = stencil_factory.from_dims_halo(
-            func=get_convective_cloud_base_level,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "OVERSHOOT": cumulus_parameterization_config.OVERSHOOT,
-                "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
-                "MOIST_TRIGGER": cumulus_parameterization_config.MOIST_TRIGGER,
-                "USE_MEMORY": cumulus_parameterization_config.USE_MEMORY,
-                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
-            },
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-
-        if self.cumulus_parameterization_config.OVERSHOOT != 0:
-            ndsl_log.warning(
-                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
-                "untested ZERO_DIFF option. Running untested code... proceed with caution"
-            )
-
-        if self.cumulus_parameterization_config.ZERO_DIFF != 0:
-            ndsl_log.warning(
-                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
-                "untested ZERO_DIFF option. Running untested code... proceed with caution"
-            )
-
-        if self.cumulus_parameterization_config.MOIST_TRIGGER != 0:
-            ndsl_log.warning(
-                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
-                "untested MOIST_TRIGGER option. Running untested code... proceed with caution"
-            )
-
-        if self.cumulus_parameterization_config.USE_MEMORY != -1:
-            ndsl_log.warning(
-                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
-                "untested USE_MEMORY option. Running untested code... proceed with caution"
-            )
-
-        if self.cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD != 1:
-            ndsl_log.warning(
-                " GF2020 cumulus parameterization called ConvectiveCloudBaseLevel with "
-                "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
-            )
-
-        self._set_start_level(
-            updraft_origin_level=state.output.updraft_origin_level,
-            start_level=locals.start_level,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
-
-        self._convective_cloud_base_level(
-            error_code=state.output.error_code,
-            cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
-            cap_max=locals.cap_max,
-            updraft_origin_level=state.output.updraft_origin_level,
-            start_level=locals.start_level,
-            moist_static_energy_origin_level_forced=locals.moist_static_energy_origin_level_forced,
-            updraft_lfc_level=state.output.updraft_lfc_level,
-            maximum_updraft_origin_level=locals.maximum_updraft_origin_level,
-            negative_buoyancy_depth=locals.negative_buoyancy_depth,
-            frh_lfc=locals.frh_lfc,
-            geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-            entrainment_rate=state.output.entrainment_rate,
-            environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
-            environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
-            t_excess=locals.t_excess,
-            vapor_excess=locals.vapor_excess,
-            add_buoyancy=locals.add_buoyancy,
-            p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-            vapor_forced=locals.vapor_forced,
-            environment_saturation_mixing_ratio_forced=locals.environment_saturation_mixing_ratio_forced,
-            ocean_fraction=locals.ocean_fraction,
-            cap_max_increment=locals.cap_max_increment,
-            t_perturbation=state.output.t_perturbation,
-            p_forced=state.input_output.p_forced,
-            cloud_top_level=state.output.cloud_top_level,
-            AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
             plume=plume_dependent_constants.PLUME_INDEX,
         )
 
