@@ -5,6 +5,6 @@
 
 ## NOTE This CODEOWNERS is for dsl/develop work ##
 
-# Everything in GEOSgcm_GridComp should be owned by the GCM Gatekeepers
+# Everything in GEOSgcm_GridComp should be owned by the SMT Team
 * @GEOS-ESM/software-modernization-team-smt
 
