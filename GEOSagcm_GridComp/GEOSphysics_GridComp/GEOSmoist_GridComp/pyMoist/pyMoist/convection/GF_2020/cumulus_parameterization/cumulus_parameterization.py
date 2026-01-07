@@ -1403,7 +1403,54 @@ class CumulusParameterization:
                 self._mass_conservation()
 
                 # change per unit mass that a model cloud would modify the environment
-                self._vertical_discretization()
+                # NOTE test GF2020_CumulusParameterization_VerticalDiscretization_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._vertical_discretization(
+                    error_code=state.output.error_code,
+                    cloud_top_level=state.output.cloud_top_level,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    environment_massflux=locals.environment_massflux,
+                    mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
+                    mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
+                    c1d=locals.c1d,
+                    u=state.input_output.u,
+                    v=state.input_output.v,
+                    u_cloud_levels=locals.u_cloud_levels,
+                    v_cloud_levels=locals.v_cloud_levels,
+                    u_c=locals.u_c,
+                    v_c=locals.v_c,
+                    u_c_downdraft=locals.u_c_downdraft,
+                    v_c_downdraft=locals.v_c_downdraft,
+                    cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+                    cloud_moist_static_energy_downdraft_forced=locals.cloud_moist_static_energy_downdraft_forced,
+                    environment_moist_static_energy_cloud_levels_forced=locals.environment_moist_static_energy_cloud_levels_forced,
+                    vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
+                    cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
+                    cloud_total_water_after_entrainment_downdraft_forced=locals.cloud_total_water_after_entrainment_downdraft_forced,
+                    cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    melting=locals.melting,
+                    partition_liquid_ice=locals.partition_liquid_ice,
+                    epsilon_forced=state.output.epsilon_forced,
+                    d_buoyancy_downdraft_forced=locals.d_buoyancy_downdraft_forced,
+                    del_u_cloud_ensemble=locals.del_u_cloud_ensemble,
+                    del_v_cloud_ensemble=locals.del_v_cloud_ensemble,
+                    del_moist_static_energy_cloud_ensemble=locals.del_moist_static_energy_cloud_ensemble,
+                    del_t_cloud_ensemble=locals.del_t_cloud_ensemble,
+                    del_vapor_cloud_ensemble=locals.del_vapor_cloud_ensemble,
+                    del_cloud_liquid_cloud_ensemble=locals.del_cloud_liquid_cloud_ensemble,
+                    del_buoyancy_cloud_ensemble=locals.del_buoyancy_cloud_ensemble,
+                    t_tendency_from_environmental_subsidence=locals.t_tendency_from_environmental_subsidence,
+                    moist_static_energy_tendency_from_environmental_subsidence=locals.moist_static_energy_tendency_from_environmental_subsidence,
+                    vapor_tendency_from_environmental_subsidence=locals.vapor_tendency_from_environmental_subsidence,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # apply environmental subsidence on grid-scale ice and
                 # liq water contents, and cloud fraction (Upwind scheme)
