@@ -1217,7 +1217,7 @@ class CumulusParameterization:
                 )
 
                 # calculate moisture properties of downdraft
-                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMoisture_{plume}:
+                # NOTE test GF2020_CumulusParameterization_DowndraftMoisture_{plume}:
                 # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
                 # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
                 # NOTE      shallow ✅
