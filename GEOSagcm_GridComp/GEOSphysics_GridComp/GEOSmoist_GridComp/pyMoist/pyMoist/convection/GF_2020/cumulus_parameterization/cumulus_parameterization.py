@@ -966,9 +966,9 @@ class CumulusParameterization:
                     start_level=locals.start_level,
                     error_code=state.output.error_code,
                     geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                    cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
                     cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
-                    precipitable_water_updraft_forced=state.output.precipitable_water_updraft_forced,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
                     total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
                     cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                     updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
@@ -982,7 +982,7 @@ class CumulusParameterization:
                     t_cloud_levels=locals.t_cloud_levels,
                     vapor_forced=locals.vapor_forced,
                     gamma_cloud_levels_forced=locals.gamma_cloud_levels_forced,
-                    normalized_massflux_updraft_forced=locals.normalized_massflux_updraft_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
                     environment_saturation_mixing_ratio_cloud_levels_forced=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
                     updraft_origin_level=state.output.updraft_origin_level,
                     vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
@@ -1008,11 +1008,11 @@ class CumulusParameterization:
                 self._melting_profile(
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
-                    local_melting_layer=locals.melting_layer,
-                    local_partition_liquid_ice=locals.partition_liquid_ice,
+                    melting_layer=locals.melting_layer,
+                    partition_liquid_ice=locals.partition_liquid_ice,
                     p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-                    precipitable_water_updraft_forced=state.output.precipitable_water_updraft_forced,
-                    local_melting=locals.melting,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
+                    melting=locals.melting,
                 )
 
                 # updraft moist static energy + momentum budget
@@ -1034,7 +1034,7 @@ class CumulusParameterization:
                     cloud_moist_static_energy=locals.cloud_moist_static_energy,
                     cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                     normalized_massflux_updraft=locals.normalized_massflux_updraft,
-                    normalized_massflux_updraft_forced=locals.normalized_massflux_updraft_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
                     mass_entrainment_updraft=locals.mass_entrainment_updraft,
                     mass_detrainment_updraft=locals.mass_detrainment_updraft,
                     mass_entrainment_u_updraft=locals.mass_entrainment_u_updraft,
@@ -1096,10 +1096,10 @@ class CumulusParameterization:
                     # NOTE      shallow ✅
                     self._updraft_temperature(
                         error_code=state.output.error_code,
-                        updraft_t=locals.updraft_column_temperature_forced,
+                        updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
                         cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                         geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                        cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                        cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
                         t_cloud_levels_forced=locals.t_cloud_levels_forced,
                         plume=self.plume_dependent_constants.PLUME_INDEX,
                     )
@@ -1117,8 +1117,8 @@ class CumulusParameterization:
                         detrainment_function_updraft=locals.detrainment_function_updraft,
                         geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                         t_cloud_levels_forced=locals.t_cloud_levels_forced,
-                        updraft_vertical_velocity=locals.updraft_vertical_velocity,
-                        cloud_vapor_mixing_ratio_forced=locals.cloud_vapor_mixing_ratio_forced,
+                        updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
+                        cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
                         cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
                         vapor_forced=locals.vapor_forced,
                         updraft_lfc_level=state.output.updraft_lfc_level,
@@ -1180,7 +1180,11 @@ class CumulusParameterization:
                     self.cumulus_parameterization_config.USE_WETBULB
                     and self.plume_dependent_constants.PLUME_INDEX != 0
                 ):
-                    self.gi()
+                    raise NotImplementedError(
+                        "wet bulb functionality is not implemented. You should not be here,"
+                        "there are multiple layers of errors that should have caught you first."
+                        "If you are seeing this (at runtime), seek help."
+                    )
 
                 # downdraft moist static energy + moisture budget
                 # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMSEAnBuoyancy{plume}:
