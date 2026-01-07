@@ -84,18 +84,18 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
         safe_assign_array(state.radiation_field.graupel.field[:], inputs["radiation_graupel"])
         safe_assign_array(state.radiation_field.cloud_fraction.field[:], inputs["radiation_cloud_fraction"])
         safe_assign_array(locals_.total_concentration.field[:], inputs["local_total_concentration"])
-        safe_assign_array(locals_.driver_tencencies.dvapordt.field[:], inputs["local_dvapordt_driver"])
-        safe_assign_array(locals_.driver_tencencies.dliquiddt.field[:], inputs["local_dliquiddt_driver"])
-        safe_assign_array(locals_.driver_tencencies.draindt.field[:], inputs["local_draindt_driver"])
-        safe_assign_array(locals_.driver_tencencies.dicedt.field[:], inputs["local_dicedt_driver"])
-        safe_assign_array(locals_.driver_tencencies.dsnowdt.field[:], inputs["local_dsnowdt_driver"])
-        safe_assign_array(locals_.driver_tencencies.dgraupeldt.field[:], inputs["local_dgraupeldt_driver"])
+        safe_assign_array(locals_.driver_tendencies.dvapordt.field[:], inputs["local_dvapordt_driver"])
+        safe_assign_array(locals_.driver_tendencies.dliquiddt.field[:], inputs["local_dliquiddt_driver"])
+        safe_assign_array(locals_.driver_tendencies.draindt.field[:], inputs["local_draindt_driver"])
+        safe_assign_array(locals_.driver_tendencies.dicedt.field[:], inputs["local_dicedt_driver"])
+        safe_assign_array(locals_.driver_tendencies.dsnowdt.field[:], inputs["local_dsnowdt_driver"])
+        safe_assign_array(locals_.driver_tendencies.dgraupeldt.field[:], inputs["local_dgraupeldt_driver"])
         safe_assign_array(
-            locals_.driver_tencencies.dcloudfractiondt.field[:], inputs["local_dcloudfractiondt_driver"]
+            locals_.driver_tendencies.dcloudfractiondt.field[:], inputs["local_dcloudfractiondt_driver"]
         )
-        safe_assign_array(locals_.driver_tencencies.dtdt.field[:], inputs["local_dtdt_driver"])
-        safe_assign_array(locals_.driver_tencencies.dudt.field[:], inputs["local_dudt_driver"])
-        safe_assign_array(locals_.driver_tencencies.dvdt.field[:], inputs["local_dvdt_driver"])
+        safe_assign_array(locals_.driver_tendencies.dtdt.field[:], inputs["local_dtdt_driver"])
+        safe_assign_array(locals_.driver_tendencies.dudt.field[:], inputs["local_dudt_driver"])
+        safe_assign_array(locals_.driver_tendencies.dvdt.field[:], inputs["local_dvdt_driver"])
         safe_assign_array(state.t.field[:], inputs["t"])
         safe_assign_array(state.u.field[:], inputs["u"])
         safe_assign_array(state.v.field[:], inputs["v"])
@@ -157,16 +157,16 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
             graupel=state.radiation_field.graupel,
             cloud_fraction=state.radiation_field.cloud_fraction,
             total_concentration=locals_.total_concentration,
-            dvapordt=locals_.driver_tencencies.dvapordt,
-            dliquiddt=locals_.driver_tencencies.dliquiddt,
-            draindt=locals_.driver_tencencies.draindt,
-            dicedt=locals_.driver_tencencies.dicedt,
-            dsnowdt=locals_.driver_tencencies.dsnowdt,
-            dgraupeldt=locals_.driver_tencencies.dgraupeldt,
-            dcloudfractiondt=locals_.driver_tencencies.dcloudfractiondt,
-            dtdt=locals_.driver_tencencies.dtdt,
-            dudt=locals_.driver_tencencies.dudt,
-            dvdt=locals_.driver_tencencies.dvdt,
+            dvapordt=locals_.driver_tendencies.dvapordt,
+            dliquiddt=locals_.driver_tendencies.dliquiddt,
+            draindt=locals_.driver_tendencies.draindt,
+            dicedt=locals_.driver_tendencies.dicedt,
+            dsnowdt=locals_.driver_tendencies.dsnowdt,
+            dgraupeldt=locals_.driver_tendencies.dgraupeldt,
+            dcloudfractiondt=locals_.driver_tendencies.dcloudfractiondt,
+            dtdt=locals_.driver_tendencies.dtdt,
+            dudt=locals_.driver_tendencies.dudt,
+            dvdt=locals_.driver_tendencies.dvdt,
             liquid_precip_flux=state.non_anvil_large_scale.liquid_precip_flux,
             ice_precip_flux=state.non_anvil_large_scale.ice_precip_flux,
             evaporation=state.non_anvil_large_scale.evaporation,
@@ -186,16 +186,16 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
             "radiation_graupel": copy.copy(state.radiation_field.graupel.field[:]),
             "radiation_cloud_fraction": copy.copy(state.radiation_field.cloud_fraction.field[:]),
             "local_total_concentration": copy.copy(locals_.total_concentration.field[:]),
-            "local_dvapordt_driver": copy.copy(locals_.driver_tencencies.dvapordt.field[:]),
-            "local_dliquiddt_driver": copy.copy(locals_.driver_tencencies.dliquiddt.field[:]),
-            "local_draindt_driver": copy.copy(locals_.driver_tencencies.draindt.field[:]),
-            "local_dicedt_driver": copy.copy(locals_.driver_tencencies.dicedt.field[:]),
-            "local_dsnowdt_driver": copy.copy(locals_.driver_tencencies.dsnowdt.field[:]),
-            "local_dgraupeldt_driver": copy.copy(locals_.driver_tencencies.dgraupeldt.field[:]),
-            "local_dcloudfractiondt_driver": copy.copy(locals_.driver_tencencies.dcloudfractiondt.field[:]),
-            "local_dtdt_driver": copy.copy(locals_.driver_tencencies.dtdt.field[:]),
-            "local_dudt_driver": copy.copy(locals_.driver_tencencies.dudt.field[:]),
-            "local_dvdt_driver": copy.copy(locals_.driver_tencencies.dvdt.field[:]),
+            "local_dvapordt_driver": copy.copy(locals_.driver_tendencies.dvapordt.field[:]),
+            "local_dliquiddt_driver": copy.copy(locals_.driver_tendencies.dliquiddt.field[:]),
+            "local_draindt_driver": copy.copy(locals_.driver_tendencies.draindt.field[:]),
+            "local_dicedt_driver": copy.copy(locals_.driver_tendencies.dicedt.field[:]),
+            "local_dsnowdt_driver": copy.copy(locals_.driver_tendencies.dsnowdt.field[:]),
+            "local_dgraupeldt_driver": copy.copy(locals_.driver_tendencies.dgraupeldt.field[:]),
+            "local_dcloudfractiondt_driver": copy.copy(locals_.driver_tendencies.dcloudfractiondt.field[:]),
+            "local_dtdt_driver": copy.copy(locals_.driver_tendencies.dtdt.field[:]),
+            "local_dudt_driver": copy.copy(locals_.driver_tendencies.dudt.field[:]),
+            "local_dvdt_driver": copy.copy(locals_.driver_tendencies.dvdt.field[:]),
             "t": copy.copy(state.t.field[:]),
             "u": copy.copy(state.u.field[:]),
             "v": copy.copy(state.v.field[:]),
@@ -250,16 +250,16 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
                     graupel=state.radiation_field.graupel,
                     cloud_fraction=state.radiation_field.cloud_fraction,
                     total_concentration=locals_.total_concentration,
-                    dvapordt=locals_.driver_tencencies.dvapordt,
-                    dliquiddt=locals_.driver_tencencies.dliquiddt,
-                    draindt=locals_.driver_tencencies.draindt,
-                    dicedt=locals_.driver_tencencies.dicedt,
-                    dsnowdt=locals_.driver_tencencies.dsnowdt,
-                    dgraupeldt=locals_.driver_tencencies.dgraupeldt,
-                    dcloudfractiondt=locals_.driver_tencencies.dcloudfractiondt,
-                    dtdt=locals_.driver_tencencies.dtdt,
-                    dudt=locals_.driver_tencencies.dudt,
-                    dvdt=locals_.driver_tencencies.dvdt,
+                    dvapordt=locals_.driver_tendencies.dvapordt,
+                    dliquiddt=locals_.driver_tendencies.dliquiddt,
+                    draindt=locals_.driver_tendencies.draindt,
+                    dicedt=locals_.driver_tendencies.dicedt,
+                    dsnowdt=locals_.driver_tendencies.dsnowdt,
+                    dgraupeldt=locals_.driver_tendencies.dgraupeldt,
+                    dcloudfractiondt=locals_.driver_tendencies.dcloudfractiondt,
+                    dtdt=locals_.driver_tendencies.dtdt,
+                    dudt=locals_.driver_tendencies.dudt,
+                    dvdt=locals_.driver_tendencies.dvdt,
                     liquid_precip_flux=state.non_anvil_large_scale.liquid_precip_flux,
                     ice_precip_flux=state.non_anvil_large_scale.ice_precip_flux,
                     evaporation=state.non_anvil_large_scale.evaporation,
