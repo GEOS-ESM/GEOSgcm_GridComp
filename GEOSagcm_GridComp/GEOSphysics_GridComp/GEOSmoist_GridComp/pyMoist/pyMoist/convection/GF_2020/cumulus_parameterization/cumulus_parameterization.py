@@ -736,13 +736,14 @@ class CumulusParameterization:
                 # NOTE      mid ⚠️⚠️⚠️ MATH ERROR. major flaw in get_convective_cloud_base
                 # NOTE      shallow ✅
                 self._set_start_level(
-                    updraft_origin_level=state.output.updraft_origin_level,
+                    lcl_level=state.output.lcl_level,
                     start_level=locals.start_level,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
                 self._get_convective_cloud_base_level(
                     error_code=state.output.error_code,
+                    lcl_level=state.output.lcl_level,
                     cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
                     cap_max=locals.cap_max,
                     updraft_origin_level=state.output.updraft_origin_level,
