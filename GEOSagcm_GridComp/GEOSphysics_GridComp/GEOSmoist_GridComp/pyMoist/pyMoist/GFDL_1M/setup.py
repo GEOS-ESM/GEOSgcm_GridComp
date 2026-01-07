@@ -254,7 +254,7 @@ class GFDL1MSetup(NDSLRuntime):
         self.config = config
         self.saturation_tables = saturation_tables
 
-        # initalize locals
+        # initialize locals
         self._locals = GFDL1MSetupLocals.make_locals(quantity_factory)
 
         # construct stencils

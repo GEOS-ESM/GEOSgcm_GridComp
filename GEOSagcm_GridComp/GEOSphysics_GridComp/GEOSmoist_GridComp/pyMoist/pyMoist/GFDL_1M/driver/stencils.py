@@ -15,7 +15,7 @@ def wqs2(
     Compute the saturated specific humidity for table2
     with additional calculation of gradient (dq/dt)
 
-    pure water phase; universal dry / moist formular using air density
+    pure water phase; universal dry / moist formula using air density
     input "den" can be either dry or moist air density
 
     reference Fortran: gfdl_cloud_microphys.F90: function wqs2

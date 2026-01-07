@@ -60,7 +60,7 @@ def init_temporaries(
     sublimation: FloatField,
 ):
     """
-    Initalize temporary copies of many fields
+    Initialize temporary copies of many fields
 
     modification to quantities made inside of the driver are not returned to the rest of the model
     """
@@ -214,7 +214,7 @@ def fix_negative_values(
     adjusts/removes negative mixing ratios
     updates qv based on new values
 
-    refernce Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
     """
     from __externals__ import c_air, c_vap, d0_vap, lv00
 
@@ -368,7 +368,7 @@ class GFDL1MDriverSetup(NDSLRuntime):
         sublimation: FloatField,
     ):
         """
-        Setup the driver: initalize/prefill locals and ensure there are no negative mixing ratios.
+        Setup the driver: initialize/prefill locals and ensure there are no negative mixing ratios.
 
         Args:
             unmodified_t (in): temperature from the model state (K), unmodified within driver
@@ -379,7 +379,7 @@ class GFDL1MDriverSetup(NDSLRuntime):
             radiation_field_vapor (in): water vapor mixing ratio - used in radiation scheme (kg/kg)
             radiation_field_liquid (in): liquid water mixing ratio - used in radiation scheme (kg/kg)
             radiation_field_ice (in): ice mixing ratio - used in radiation scheme (kg/kg)
-            radiation_field_rain (in): rain moxing ratio - used in radiation scheme (kg/kg)
+            radiation_field_rain (in): rain mixing ratio - used in radiation scheme (kg/kg)
             radiation_field_snow (in): snow mixing ratio - used in radiation scheme (kg/kg)
             radiation_field_graupel (in): graupel mixing ratio - used in radiation scheme (kg/kg)
             radiation_field_cloud_fraction (in): cloud fraction - used in radiation scheme

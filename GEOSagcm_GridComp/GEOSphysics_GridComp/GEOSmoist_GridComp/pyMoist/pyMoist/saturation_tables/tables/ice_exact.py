@@ -297,7 +297,7 @@ def ice_exact(
     else:
         t = t_in
 
-    dx = 0.0  # only calulcated when DQ is not none
+    dx = 0.0  # only calculated when DQ is not none
     ex = _saturation_formulation(
         t,
         formulation,
@@ -421,7 +421,7 @@ def ice_exact_no_stencil(
     else:
         t = t_in
 
-    dx = Float(0.0)  # only calulcated when DQ is not none
+    dx = Float(0.0)  # only calculated when DQ is not none
     ex = _saturation_formulation_no_stencil(t=t, formulation=formulation)
 
     if dq is not None:

@@ -38,14 +38,14 @@ class TranslateGFDL_1M_Evaporate(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # initalize constants
+        # initialize constants
         config = GFDL1MConfig(**self.constants)
 
-        # initalize dataclasses
+        # initialize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
         locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
-        # Initalize saturation tables
+        # Initialize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         locals_.p_mb.field[:] = inputs["local_p_mb"]

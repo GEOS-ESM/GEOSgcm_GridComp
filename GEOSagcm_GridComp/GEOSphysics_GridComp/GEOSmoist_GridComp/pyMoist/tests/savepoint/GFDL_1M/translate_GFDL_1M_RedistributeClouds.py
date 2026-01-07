@@ -36,7 +36,7 @@ class TranslateGFDL_1M_RedistributeClouds(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # initalize dataclasses
+        # initialize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
 
         state.radiation_field.cloud_fraction.field[:] = inputs["radiation_cloud_fraction"]

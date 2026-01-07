@@ -25,7 +25,7 @@ def check_precip_get_zt(
     with computation(FORWARD), interval(...):
         # determine if any precip falls in the column
         # if it falls anywhere in the column, the entire column becomes true
-        # precip_fall initalized to 0 (false), potentially changed to 1 (true)
+        # precip_fall initialized to 0 (false), potentially changed to 1 (true)
         if mixing_ratio > constants.QPMIN:
             precip_fall = True
 
@@ -254,7 +254,7 @@ def setup(
         z_interface_modified = z_interface
 
     # -----------------------------------------------------------------------
-    # update capacity heat and latend heat coefficient
+    # update capacity heat and latent heat coefficient
     # -----------------------------------------------------------------------
 
     with computation(PARALLEL), interval(...):
@@ -266,7 +266,7 @@ def setup(
         lhi = constants.LI00 + constants.DC_ICE * t
         icpk = lhi / cvm
 
-    # zero local precipitaton values
+    # zero local precipitation values
     with computation(FORWARD), interval(0, 1):
         internal_rain = 0
         internal_graupel = 0
@@ -418,12 +418,12 @@ class GFDL1MTerminalFall(NDSLRuntime):
         config: GFDL1MConfig,
         config_dependent_constants: GFDL1MDriverConfigDependentConstants,
     ):
-        # initalize NDSLRuntime
+        # initialize NDSLRuntime
         super().__init__(stencil_factory)
 
         self.config = config
 
-        # initalize temporaries
+        # initialize temporaries
         self._locals: Locals = Locals.make_locals(quantity_factory)
 
         # construct stencils

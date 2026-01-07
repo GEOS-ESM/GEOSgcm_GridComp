@@ -166,7 +166,7 @@ class GEOSPyMoistWrapper:
         self._UW_shallow_convection: Optional[ComputeUwshcuInv] = None
         self.UW_config: UWConfiguration | None = None
 
-        # Initalize MAPL Memory Respositories
+        # Initialize MAPL Memory Repositories
         self._mapl_import = MAPLMemoryRepository(
             mapl_states.import_,
             self.quantity_factory,

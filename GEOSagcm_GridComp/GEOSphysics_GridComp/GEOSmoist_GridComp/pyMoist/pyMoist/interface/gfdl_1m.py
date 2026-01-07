@@ -36,7 +36,7 @@ class GFDL1MInterface:
         mapl_import: MAPLMemoryRepository,
         mapl_export: MAPLMemoryRepository,
     ):
-        # Initalize the module
+        # Initialize the module
         with StencilBackendCompilerOverride(
             MPI.COMM_WORLD,
             self._stencil_factory.config.dace_config,

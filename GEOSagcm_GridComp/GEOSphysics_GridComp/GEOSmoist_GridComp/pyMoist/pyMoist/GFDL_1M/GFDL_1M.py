@@ -28,7 +28,7 @@ class GFDL1M(NDSLRuntime):
 
     Performs the following functions to achieve this goal:
     __init__
-        - initalize saturaiton vapor pressure tables, initalize temporary/output fields, construct stencils
+        - initialize saturation vapor pressure tables, intialize temporary/output fields, construct stencils
         Arguments: StencilFactory, QuantityFactory, GFDL1MConfig
 
     __call__
@@ -50,7 +50,7 @@ class GFDL1M(NDSLRuntime):
         if stencil_factory.grid_indexing.n_halo != 0:
             raise ValueError("halo needs to be zero for GFDL Single Moment microphysics")
 
-        # Initalize saturation tables
+        # Initialize saturation tables
         saturation_tables = get_saturation_vapor_pressure_table(stencil_factory.backend)
 
         # Locals

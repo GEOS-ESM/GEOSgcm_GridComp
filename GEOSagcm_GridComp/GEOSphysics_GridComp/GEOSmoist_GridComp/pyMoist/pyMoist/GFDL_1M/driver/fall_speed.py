@@ -28,8 +28,8 @@ def fall_speed(
         ice (inout): in cloud ice mixing radio (kg/kg)
         snow (inout): in cloud snow mixing radio (kg/kg)
         graupel (inout): in cloud graupel mixing radio (kg/kg)
-        t_unmodified (in): atmopsheric temperature, unmodified throughout the driver (K)
-        t (in): atmospheric temperature, modified thorughout the driver (K)
+        t_unmodified (in): atmospheric temperature, unmodified throughout the driver (K)
+        t (in): atmospheric temperature, modified throughout the driver (K)
         dz_unmodified (in): layer thickness (m)
         dz (out): layer thickness
         density_unmodified (in): density

@@ -78,12 +78,12 @@ class TranslateGFDL_1M_DriverSetup(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # initalize dataclasses
+        # initialize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
         locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
         driver_locals = GFDL1MDriverLocals.make_as_state(self.quantity_factory)
 
-        # initalize constants
+        # initialize constants
         config = GFDL1MConfig(**self.constants)
         config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 

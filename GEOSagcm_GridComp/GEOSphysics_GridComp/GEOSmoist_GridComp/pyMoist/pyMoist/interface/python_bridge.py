@@ -41,7 +41,7 @@ class PYMOIST_WRAPPER:
             numpy_module,
         )
 
-        # Initalize pyMoist
+        # Initialize pyMoist
         self.pymoist = GEOSPyMoistWrapper(mapl_states, self.flags, backend)
 
         self._timings: Dict[str, List[float]] = {}
