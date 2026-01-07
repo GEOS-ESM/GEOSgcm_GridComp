@@ -153,12 +153,6 @@ def check_config(
             "untested AEROEVAP option. Running untested code... proceed with caution"
         )
 
-    if cumulus_parameterization_config.ALP1 != 1:
-        ndsl_log.warning(
-            " GF2020 cumulus parameterization: VerticalDiscretization initalized with "
-            "untested ALP1 option. Running untested code... proceed with caution"
-        )
-
     # generate errors after all warnings
     # TODO find a way to generate all then fail at once, printing all simultaneously
     if (

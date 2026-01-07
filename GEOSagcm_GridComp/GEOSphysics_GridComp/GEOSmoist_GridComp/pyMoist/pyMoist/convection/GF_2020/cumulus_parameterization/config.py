@@ -83,3 +83,4 @@ class GF2020CumulusParameterizationConfig:
     AEROEVAP: Int
     VERTICAL_DISCRETIZATION_OPTION: Int
     ALP1: Float
+    USE_FCT: Int
