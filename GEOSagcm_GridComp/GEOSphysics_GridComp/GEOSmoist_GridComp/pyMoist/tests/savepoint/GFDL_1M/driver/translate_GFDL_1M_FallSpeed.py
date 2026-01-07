@@ -131,7 +131,7 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
                 density_factor=driver_locals.density_factor,
                 ice_terminal_velocity=driver_locals.terminal_speed.ice,
                 snow_terminal_velocity=driver_locals.terminal_speed.snow,
-                graupel_terminal_velosity=driver_locals.terminal_speed.graupel,
+                graupel_terminal_velocity=driver_locals.terminal_speed.graupel,
                 convection_fraction=state.convection_fraction,
             )
 

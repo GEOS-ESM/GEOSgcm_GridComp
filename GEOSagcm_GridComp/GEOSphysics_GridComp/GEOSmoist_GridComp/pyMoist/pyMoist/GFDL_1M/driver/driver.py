@@ -285,7 +285,7 @@ class GFDL1MDriver(NDSLRuntime):
                 density_factor=self._locals.density_factor,
                 ice_terminal_velocity=self._locals.terminal_speed.ice,
                 snow_terminal_velocity=self._locals.terminal_speed.snow,
-                graupel_terminal_velosity=self._locals.terminal_speed.graupel,
+                graupel_terminal_velocity=self._locals.terminal_speed.graupel,
                 convection_fraction=convection_fraction,
             )
 
