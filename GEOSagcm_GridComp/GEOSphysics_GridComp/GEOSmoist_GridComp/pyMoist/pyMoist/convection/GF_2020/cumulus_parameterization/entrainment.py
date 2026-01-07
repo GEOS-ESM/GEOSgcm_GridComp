@@ -38,7 +38,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import
 
 def entrainment_rates(
     vapor: FloatField,
-    min_entr_rate: FloatFieldIJ,
     environment_saturation_mixing_ratio: FloatField,
     lcl_level: IntFieldIJ_Plume,
     error_code: IntFieldIJ_Plume,
@@ -46,7 +45,7 @@ def entrainment_rates(
     detrainment_function_updraft: FloatField,
     plume: Int,
 ):
-    from __externals__ import ZERO_DIFF
+    from __externals__ import ZERO_DIFF, MIN_ENTRAINMENT_RATE
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
@@ -73,7 +72,7 @@ def entrainment_rates(
             if ZERO_DIFF == 1:
                 detrainment_function_updraft = 0.75e-4 * (1.6 - frh)
             else:
-                entrainment_rate[0, 0, 0][plume] = max(entrainment_rate[0, 0, 0][plume], min_entr_rate)
+                entrainment_rate[0, 0, 0][plume] = max(entrainment_rate[0, 0, 0][plume], MIN_ENTRAINMENT_RATE)
                 if plume == 0:
                     detrainment_function_updraft = 0.75 * entrainment_rate[0, 0, 0][plume]
                 if plume == 1:

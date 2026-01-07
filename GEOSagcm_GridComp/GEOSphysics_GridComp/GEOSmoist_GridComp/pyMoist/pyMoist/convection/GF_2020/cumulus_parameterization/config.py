@@ -84,3 +84,4 @@ class GF2020CumulusParameterizationConfig:
     VERTICAL_DISCRETIZATION_OPTION: Int
     ALP1: Float
     USE_FCT: Int
+    MIN_ENTRAINMENT_RATE: Float

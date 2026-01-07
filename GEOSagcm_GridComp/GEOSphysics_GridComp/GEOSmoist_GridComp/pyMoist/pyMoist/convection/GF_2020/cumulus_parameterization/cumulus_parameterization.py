@@ -717,8 +717,8 @@ class CumulusParameterization:
 
                 # determine the vertical entrainment/detrainment rates
                 # NOTE test GF2020_CumulusParameterization_EntrainmentRates_{plume}:
-                # NOTE      deep ❌ (2 ULP)
-                # NOTE      mid ❌ (2 ULP)
+                # NOTE      deep ❌ (worst fail 2.41% - max 4 ULP)
+                # NOTE      mid ❌ (worst fail 0.88% - max 2 ULP)
                 # NOTE      shallow ✅
                 self._entrainment_rates(
                     vapor=locals.vapor_cloud_levels_forced,
