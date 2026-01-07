@@ -33,7 +33,7 @@ def calculate_derived_states(
     edge_height_above_surface: FloatField,
     layer_height_above_surface: FloatField,
     layer_thickness: FloatField,
-    layer_thinkness_negative: FloatField,
+    layer_thickness_negative: FloatField,
     dp: FloatField,
     mass: FloatField,
     mass_inverse: FloatField,
@@ -61,7 +61,7 @@ def calculate_derived_states(
         p_mb = 0.5 * (p_interface_mb + p_interface_mb[0, 0, 1])
         layer_height_above_surface = 0.5 * (edge_height_above_surface + edge_height_above_surface[0, 0, 1])
         layer_thickness = edge_height_above_surface - edge_height_above_surface[0, 0, 1]
-        layer_thinkness_negative = -1.0 * layer_thickness
+        layer_thickness_negative = -1.0 * layer_thickness
         dp = p_interface[0, 0, 1] - p_interface
         mass = dp / MAPL_GRAV
         mass_inverse = 1 / mass
@@ -383,7 +383,7 @@ class GFDL1MSetup(NDSLRuntime):
             edge_height_above_surface=local_edge_height_above_surface,
             layer_height_above_surface=local_layer_height_above_surface,
             layer_thickness=local_layer_thickness,
-            layer_thinkness_negative=local_layer_thickness_negative,
+            layer_thickness_negative=local_layer_thickness_negative,
             dp=local_dp,
             mass=local_mass,
             mass_inverse=local_mass_inverse,
