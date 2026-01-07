@@ -732,7 +732,13 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_DiurnalCycle-In
          !$ser flush_savepoint GF2020_CumulusParameterization_DiurnalCycle-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftWindShear-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftWindShear-Out                                 
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftWindShear-Out     
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentMassFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentMassFlux-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_MassConservation-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_MassConservation-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_VerticalDiscretization-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_VerticalDiscretization-Out
 
     ELSE
          !- call GF/GEOS5 interface routine
