@@ -324,6 +324,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
                         cf_max =  1500.0
     if (DT_R8 <= 150.0) cf_max = -9999.0 ! force MoistGC to use EIS for cnv_frc
+                        cf_max = -9999.0 ! force MoistGC to use EIS for cnv_frc
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= cf_max, RC=STATUS); VERIFY_(STATUS)
 
