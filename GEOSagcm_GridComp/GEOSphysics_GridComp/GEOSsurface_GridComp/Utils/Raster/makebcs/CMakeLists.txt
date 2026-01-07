@@ -38,7 +38,6 @@ else ()
   target_compile_definitions(${this} PRIVATE STDC)
 endif ()
 
-esma_add_subdirectories (@ncar_topo utils_topo)
 
 ecbuild_add_executable (TARGET CombineRasters.x SOURCES CombineRasters.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkCatchParam.x SOURCES mkCatchParam.F90 LIBS MAPL ${this} OpenMP::OpenMP_Fortran)

@@ -1,4 +1,39 @@
 program create_example
+!------------------------------------------------------------------------------
+! Program: convert_to_gmao_output   (entry point: program create_example)
+!
+! Purpose:
+!   Convert NCAR-format PE topography outputs (with PHIS, SGH, SGH30) into
+!   GMAO-standard NetCDF and binary files, split into three deliverables:
+!
+!     * gmted_DYN_ave_IMxJM.{nc4,data}  → mean elevation (DYN), in meters
+!     * gmted_GWD_var_IMxJM.{nc4,data}  → variance for Gravity Wave Drag (GWD), m^2
+!     * gmted_TRB_var_IMxJM.{nc4,data}  → variance for Turbulent Orography (TRB), m^2
+!
+! Inputs:
+!   -i, --input  <path>   : NCAR-style NetCDF containing
+!                           * PHIS  (m^2 s^-2)  → converted to meters by dividing g
+!                           * SGH   (std. dev. for GWD, m)
+!                           * SGH30 (std. dev. for TRB, m)
+!   --im        <int>     : IM (x) size of the grid
+!   --jm        <int>     : JM (y) size of the grid; if omitted, JM = IM*6 (cubed-sphere)
+!
+! Outputs:
+!   * NetCDF4 + raw unformatted binary pairs (.nc4 + .data) for each of DYN/GWD/TRB.
+!   * Dimensions: lon=IM, lat=JM.
+!   * Units:
+!       - DYN: meters (mean elevation)
+!       - GWD: m^2 (variance of subgrid orography for GWD)
+!       - TRB: m^2 (variance of subgrid orography for TRB)
+!
+! Notes:
+!   * Converts PHIS → elevation by dividing by g=9.80616.
+!   * Squares SGH/SGH30 (std. dev. in m) to produce variance in m^2.
+!   * Guards against missing/sentinel values (≈1e36).
+!   * Optionally smooths the poles in lat-lon mode (--jm given).
+!
+!------------------------------------------------------------------------------
+
 use netcdf
 implicit none
 

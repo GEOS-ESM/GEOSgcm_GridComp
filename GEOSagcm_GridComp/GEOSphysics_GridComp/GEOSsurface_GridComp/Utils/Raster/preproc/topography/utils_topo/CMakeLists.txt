@@ -27,5 +27,4 @@ endif ()
 
 install(PROGRAMS scrip_to_cube_topo.py DESTINATION bin)
 install(PROGRAMS scrip_to_restart_topo.py DESTINATION bin)
-install(PROGRAMS generate_topo.sh DESTINATION bin)
 install(PROGRAMS make_topo.py DESTINATION bin)
