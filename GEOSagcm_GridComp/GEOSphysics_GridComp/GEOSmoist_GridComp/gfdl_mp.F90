@@ -3973,8 +3973,6 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     ! qi0_crt (ice to snow conversion) has strong resolution dependence
     !    account for this using onemsig to convert more ice to snow at coarser resolutions
     critical_qi_factor = qi0_crt*(1.e-1*(1.0-onemsig) + onemsig)
-    !    keep the enhanced conversion only in the deep convective regimes
-    critical_qi_factor = cnv_fraction*critical_qi_factor + (1.0-cnv_fraction)*qi0_crt
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 

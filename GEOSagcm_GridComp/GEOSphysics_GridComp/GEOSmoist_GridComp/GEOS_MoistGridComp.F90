@@ -5858,8 +5858,8 @@ contains
               CNV_FRC = 1.0
            END WHERE
        else
-         ! use -1*EIS range 0:1
-           CNV_FRC = MAX(0.0,MIN(1.0,-1*EIS))
+         ! use -1.0*EIS so CNV_FRC 0:1 for EIS 0:-1
+           CNV_FRC = MAX(0.0,MIN(1.0,-1.0*EIS))
        endif
 
        ! Extract convective tracers from the TR bundle
