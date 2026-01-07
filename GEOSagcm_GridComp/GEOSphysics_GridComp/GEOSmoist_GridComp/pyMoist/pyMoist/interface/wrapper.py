@@ -17,8 +17,8 @@ from ndsl import (
     CubedSpherePartitioner,
     DaceConfig,
     GridIndexing,
+    LocalComm,
     MPIComm,
-    NullComm,
     PerformanceCollector,
     QuantityFactory,
     StencilConfig,
@@ -62,7 +62,7 @@ class GEOSPyMoistWrapper:
         single_rank_override = int(os.getenv("GEOS_PYFV3_SINGLE_RANK_OVERRIDE", -1))
         comm = MPIComm()
         if single_rank_override >= 0:
-            comm = NullComm(single_rank_override, 6, 42)
+            comm = LocalComm(rank=single_rank_override, total_ranks=6, buffer_dict={})
 
         self.backend = backend
         self.flags = flags
@@ -85,7 +85,7 @@ class GEOSPyMoistWrapper:
             tile_partitioner=partitioner.tile,
             tile_rank=self.communicator.tile.rank,
         )
-        self.quantity_factory = QuantityFactory.from_backend(sizer=sizer, backend=backend)
+        self.quantity_factory = QuantityFactory(sizer=sizer, backend=backend)
 
         self.stencil_config = StencilConfig(
             compilation_config=CompilationConfig(backend=backend, rebuild=False, validate_args=True),
