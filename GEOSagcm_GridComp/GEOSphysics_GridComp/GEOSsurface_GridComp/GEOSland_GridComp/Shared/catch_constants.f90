@@ -77,7 +77,7 @@ module catch_constants
   !REAL,    PARAMETER, PUBLIC :: CATCH_CH_URBAN      = 0.018    ! kg/m^2/s
   !REAL,    PARAMETER, PUBLIC :: AR_URBAN            = 0.3  
   !REAL,    PARAMETER, PUBLIC :: CATCH_Z0_URBAN      = 2.0     !m
-  REAL,    PARAMETER, PUBLIC :: CATCH_D0_URBAN      = 3.0    !m  
+  REAL,    PARAMETER, PUBLIC :: CATCH_D0_URBAN      = 18.0    !m  
   REAL,    PARAMETER, PUBLIC :: factor_impervious_URBAN = 1.0 
   ! ---------------------------------------------------------------------------
   !

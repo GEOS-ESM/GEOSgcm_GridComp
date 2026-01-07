@@ -3850,18 +3850,18 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     endif
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
-    call MAPL_LocStreamGet(LOCSTREAM, nt_local=nt_local, RC=status)
-    if (MAPL_AM_I_ROOT()) then
-      open(88,file="CH_UR.txt")
-      write(88,*)D0_UR
-      write(88,*)sum(CH_UR)/nt_local
-      do i=1,nt_local
-        write(88,*)CH_UR(i)
-      enddo
-      stop
-    endif
+    !call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    !call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
+    !call MAPL_LocStreamGet(LOCSTREAM, nt_local=nt_local, RC=status)
+    !if (MAPL_AM_I_ROOT()) then
+    !  open(88,file="CH_UR.txt")
+    !  write(88,*)D0_UR
+    !  write(88,*)sum(CH_UR)/nt_local
+    !  do i=1,nt_local
+    !    write(88,*)CH_UR(i)
+    !  enddo
+    !  stop
+    !endif
 ! End for Urban    
 
     if(associated( TH)) TH  = TH /CHX
