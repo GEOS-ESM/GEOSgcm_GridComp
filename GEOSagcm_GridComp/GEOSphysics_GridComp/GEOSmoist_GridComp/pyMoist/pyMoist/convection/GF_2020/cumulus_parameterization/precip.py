@@ -126,7 +126,7 @@ def partition_liquid_ice(
             # normalize vertical integral of melting_layer to 1
             norm: FloatFieldIJ = 0.0
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -2):
         if MELT_GLAC == True and plume == 2:
             if error_code[0, 0][plume] == 0:
                 # normalize vertical integral of melting_layer to 1
@@ -140,7 +140,11 @@ def partition_liquid_ice(
                 melting_layer = (
                     melting_layer
                     / (norm + 1.0e-6)
-                    * (100 * (p[0, 0, 0][plume] - p.at(K=k_end - 1, ddim=[plume])) / constants.MAPL_GRAV)
+                    * (
+                        100
+                        * (p.at(K=0, ddim=[plume]) - p.at(K=k_end - 1, ddim=[plume]))
+                        / constants.MAPL_GRAV
+                    )
                 )
 
 

@@ -241,7 +241,7 @@ class TestCore:
             "entrainment_rate_ccb": state.output.entrainment_rate.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_env_saturation_mixing_ratio_forced_ccb": locals.cloud_moist_static_energy_forced_transported.field[
+            "local_cloud_moist_static_energy_forced_transported_ccb": locals.cloud_moist_static_energy_forced_transported.field[
                 :
             ],
             "updraft_origin_level_ccb": state.output.updraft_origin_level.field[

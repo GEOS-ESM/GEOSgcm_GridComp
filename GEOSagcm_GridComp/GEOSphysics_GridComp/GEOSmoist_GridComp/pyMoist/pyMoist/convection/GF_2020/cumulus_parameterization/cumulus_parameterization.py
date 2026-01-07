@@ -611,7 +611,7 @@ class CumulusParameterization:
 
                 # partition between liq/ice cloud contents
                 # NOTE test GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_{plume}:
-                # NOTE      deep ⚠️⚠️⚠️ NEEDS ATTENTION
+                # NOTE      deep ❌ 1 var failing (500 ULP) -> ice_fraction function causing issues
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._partition_liquid_ice(
