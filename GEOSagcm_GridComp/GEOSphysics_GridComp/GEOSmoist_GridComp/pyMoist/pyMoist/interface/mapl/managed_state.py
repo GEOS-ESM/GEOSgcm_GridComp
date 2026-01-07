@@ -86,7 +86,7 @@ class MAPLManagedState:
                 raise e
 
     def ndsl_to_fortran(self) -> None:
-        """Copy all Python memory back in Fortan"""
+        """Copy all Python memory back in Fortran"""
 
         # Skip sending back - we are mapped
         if self._transfer_type == InterfaceTransferType.CPU_MAP:

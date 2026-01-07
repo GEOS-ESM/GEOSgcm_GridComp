@@ -45,11 +45,11 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # initalize dataclasses
+        # initialize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
         driver_locals = GFDL1MDriverLocals.make_as_state(self.quantity_factory)
 
-        # initalize constants
+        # initialize constants
         config = GFDL1MConfig(**self.constants)
         config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
@@ -131,7 +131,7 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
                 density_factor=driver_locals.density_factor,
                 ice_terminal_velocity=driver_locals.terminal_speed.ice,
                 snow_terminal_velocity=driver_locals.terminal_speed.snow,
-                graupel_terminal_velosity=driver_locals.terminal_speed.graupel,
+                graupel_terminal_velocity=driver_locals.terminal_speed.graupel,
                 convection_fraction=state.convection_fraction,
             )
 

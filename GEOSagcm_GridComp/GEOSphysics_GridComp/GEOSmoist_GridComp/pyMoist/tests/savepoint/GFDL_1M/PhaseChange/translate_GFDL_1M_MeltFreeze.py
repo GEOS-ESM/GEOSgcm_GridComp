@@ -34,13 +34,13 @@ class TranslateGFDL_1M_MeltFreeze(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # initalize constants
+        # initialize constants
         config = GFDL1MConfig(**self.constants)
 
-        # initalize dataclasses
+        # initialize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
 
-        # Initalize saturation tables
+        # Initialize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         state.t.field[:] = inputs["t"]

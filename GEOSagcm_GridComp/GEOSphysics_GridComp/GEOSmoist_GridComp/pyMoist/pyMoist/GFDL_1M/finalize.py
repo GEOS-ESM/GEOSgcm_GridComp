@@ -196,7 +196,7 @@ def dissipative_ke_heating(
     with computation(FORWARD), interval(...):
         # total KE dissipation estimate
         dts = dts - ((du_dt_macro + du_dt_micro) * u0 + (dv_dt_macro + dv_dt_micro) * v0) * mass
-        # [sic] fpi needed for calcualtion of conversion to pot. energyintegrated
+        # [sic] fpi needed for calculation of conversion to pot. energy integrated
         ke = sqrt(
             (du_dt_macro + du_dt_micro) * (du_dt_macro + du_dt_micro)
             + (dv_dt_macro + dv_dt_micro) * (dv_dt_macro + dv_dt_micro)
@@ -218,7 +218,7 @@ class GFDL1MFinalize(NDSLRuntime):
     Computes tendencies and output diagnostic fields using the following functions:
 
     redistribute_clouds: ensure in-cloud fields have physically reasonable values
-    finalize_precip: ensure precipitaiton values are physically readonable and have the correct units
+    finalize_precip: ensure precipitation values are physically reasonable and have the correct units
     radiation_coupling: send data to relevant fields for subsequent radiation calculations
     fix_humidity (conditional): recompute humidity post phase_change and driver components
     fix_mixing_ratio: remove negative mixing ratio values, maintaining mass conservation
@@ -226,7 +226,7 @@ class GFDL1MFinalize(NDSLRuntime):
     fix_radii: fix ice/liquid radii values where ice/liquid is absent
     update_tendencies: update microphysics tendencies
     large_scale_rainwater_source (conditional): update rainwater if output is enabled
-    dissipative_ke_heating (condtional): compute temperature tendency due to friction
+    dissipative_ke_heating (conditional): compute temperature tendency due to friction
 
     """
 

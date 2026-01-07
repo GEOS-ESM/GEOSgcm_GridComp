@@ -73,21 +73,21 @@ class TranslateGFDL_1M_Setup(TranslateFortranData2Py):
             "dgraupeldt_macro": {},
         }
 
-        # Initalize saturation tables
+        # Initialize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # initalize constants
+        # initialize constants
         config = GFDL1MConfig(**self.constants)
 
-        # initalize dataclasses
+        # initialize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
         locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
-        # fill relavent parts of dataclasses
+        # fill relevant parts of dataclasses
         state.p_interface.field[:] = inputs["p_interface"]
         state.z_interface.field[:] = inputs["z_interface"]
         state.t.field[:] = inputs["t"]
@@ -104,7 +104,7 @@ class TranslateGFDL_1M_Setup(TranslateFortranData2Py):
         state.mixing_ratio.large_scale_ice.field[:] = inputs["mixing_ratio_large_scale_ice"]
         state.mixing_ratio.convective_ice.field[:] = inputs["mixing_ratio_convective_ice"]
 
-        # initalize test class
+        # initialize test class
         code = GFDL1MSetup(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,

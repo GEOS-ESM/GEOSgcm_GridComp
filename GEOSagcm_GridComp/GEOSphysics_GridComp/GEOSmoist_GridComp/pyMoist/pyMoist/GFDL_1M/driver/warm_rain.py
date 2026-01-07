@@ -209,7 +209,7 @@ def warm_rain_step_1(
     # reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
     # determine if any precip falls in the column
     # if it falls anywhere in the column, the entire column becomes true
-    # initalized to 0 (false), potentially changed to 1 (true)
+    # initialized to 0 (false), potentially changed to 1 (true)
     with computation(FORWARD), interval(...):
         if mixing_ratio_rain > constants.QPMIN:
             precip_fall = True
@@ -241,7 +241,7 @@ def warm_rain_step_1(
     with computation(PARALLEL), interval(...):
         if irain_f != 0:
             # -----------------------------------------------------------------------
-            # no subgrid varaibility
+            # no subgrid variability
             # -----------------------------------------------------------------------
             if cloud_fraction_limited > one_minus_sigma:
                 if t > constants.T_WFR:
@@ -623,14 +623,14 @@ class GFDL1MWarmRain(NDSLRuntime):
         config_dependent_constants: GFDL1MDriverConfigDependentConstants,
         saturation_tables: GFDL_driver_tables,
     ):
-        # initalize NDSLRuntime
+        # initialize NDSLRuntime
         super().__init__(stencil_factory)
 
         # make saturation tables and config available at runtime
         self.config = config
         self.saturation_tables = saturation_tables
 
-        # initalize locals
+        # initialize locals
         self._locals = Locals.make_locals(quantity_factory)
 
         # construct stencils

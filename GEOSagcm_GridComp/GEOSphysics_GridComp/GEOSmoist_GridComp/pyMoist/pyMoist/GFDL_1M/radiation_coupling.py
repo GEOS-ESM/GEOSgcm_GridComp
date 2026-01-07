@@ -72,7 +72,7 @@ class GFDL1MRadiationCoupling(NDSLRuntime):
         if config.DO_QA:
             ndsl_log.log(
                 "[Radiation Coupling] DO_QA option implemented, but untested. "
-                "Running untested code... procees with caution"
+                "Running untested code... proceed with caution"
             )
 
     def __call__(

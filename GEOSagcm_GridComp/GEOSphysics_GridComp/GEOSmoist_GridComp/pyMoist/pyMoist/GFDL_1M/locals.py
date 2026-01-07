@@ -236,4 +236,4 @@ class GFDL1MLocals(LocalState):
             }
         )
 
-    driver_tencencies: DriverTendencies
+    driver_tendencies: DriverTendencies

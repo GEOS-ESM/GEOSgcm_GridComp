@@ -106,7 +106,7 @@ def icloud_melt_freeze(
     elif frez > 0.0 and t <= constants.TICE and liquid > constants.QCMIN:
         # -----------------------------------------------------------------------
         # pihom: homogeneous freezing of cloud water into cloud ice
-        # this is the 1st occurance of liquid water freezing in the split mp process
+        # this is the 1st occurrence of liquid water freezing in the split mp process
         # -----------------------------------------------------------------------
         qi_crt = ice_fraction(t, convection_fraction, surface_type) * qi0_crt / density
         if qi_crt - ice > 0:
@@ -1064,7 +1064,7 @@ def subgrid_z_proc(
                 # trigger checked in driver `check_flags` function
 
                 # dev NOTE: unsure how to handle pssub. In Fortran this variable is
-                # initalized to nan then used here (at least when do_subl is False,
+                # initialized to nan then used here (at least when do_subl is False,
                 # maybe do_subl has other unknown effects)
                 # # sublimation
                 # if do_subl == True: #noqa
@@ -1398,7 +1398,7 @@ def icloud_core(
         if z_slope_ice == True:  # noqa
             q_linear_prof = ice
             h_var_linear_prof = rh_limited
-            dm_linear_prof = q_linear_prof  # initalized here to ensure it is created as a 3d field
+            dm_linear_prof = q_linear_prof  # initialized here to ensure it is created as a 3d field
 
     with computation(FORWARD), interval(1, None):
         if z_slope_ice == True:  # noqa
@@ -1602,13 +1602,13 @@ class GFDL1MIceCloud(NDSLRuntime):
         config_dependent_constants: GFDL1MDriverConfigDependentConstants,
         saturation_tables: GFDL_driver_tables,
     ):
-        # initalize NDSLRuntime
+        # initialize NDSLRuntime
         super().__init__(stencil_factory)
 
         # make saturation tables visible at runtime
         self.saturation_tables = saturation_tables
 
-        # initalize locals
+        # initialize locals
         self._sublimation = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM], Float)
 
         # construct stencils

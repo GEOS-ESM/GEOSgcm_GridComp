@@ -8,7 +8,7 @@ def check_flags(
 ):
     """
     Checks for any flags that are no meeting the expected value.
-    Failing flags are likely not implemetned,
+    Failing flags are likely not implemented,
     or at the very least not fully implemented
     """
     failed_keywords = []
