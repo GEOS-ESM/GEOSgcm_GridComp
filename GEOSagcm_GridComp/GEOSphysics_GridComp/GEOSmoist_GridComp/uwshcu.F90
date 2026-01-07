@@ -2205,14 +2205,22 @@ contains
        ! Limiters
        ! ---------------------------------------------------------------------------
 
-         ! 1. 'cbmf' and 'sigmaw' constraints
-         rkfre_eff = min(rkfre(i), max(0.1,(0.9*dp0(kinv-1)/g/dt)/cbmf))
+         ! 1. 'cbmf' constraint
+         if (cbmf > 1.0e-12) then
+          ! limit and normalize by raw cbmf  [0.1 : 1.0]
+           rkfre_eff = min(rkfre(i), min(1.0,max(0.1,(0.9*dp0(kinv-1)/g/dt)/cbmf)))
+         else
+          ! When no cloud base mass flux, limit to rkfre only
+           rkfre_eff = min(rkfre(i), 1.0)
+         endif
          cbmflimit = rkfre_eff*cbmf
+         if( rkfre_eff .lt. 1.0 ) limit_cbmf(i) = 1.
+         ! 2. limited sigmaw
          sigmaw = rkfre_eff*sigmaw
-         ! 2. 'ufrcinv' constraint
+         ! 3. 'ufrcinv' constraint
          mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmflimit/rho0inv/sigmaw))))
          mu = max(max(mu,mumin0),mumin1)
-         ! 3. 'ufrclcl' constraint      
+         ! 4. 'ufrclcl' constraint
          mulcl = sqrt(max(0.0,2.*cinlcl*rbuoy))/1.4142/sigmaw
          mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac(i)**2)))
          if( mulcl .gt. 1.e-8 .and. mulcl .gt. mulclstar ) then
@@ -2224,7 +2232,6 @@ contains
             mu = max(mu,mumin2)
             if( mu .eq. mumin2 ) limit_ufrc(i) = 1.
          endif
-         if( mu .eq. mumin0 ) limit_cbmf(i) = 1.
          if( mu .eq. mumin1 ) limit_ufrc(i) = 1.
 
        ! ------------------------------------------------------------------- !    
