@@ -1151,8 +1151,8 @@ class CumulusParameterization:
 
                 # lateral mass fluxes associated with downdrafts
                 # NOTE test GF2020_CumulusParameterization_DowndraftLateralMassFlux_{plume}:
-                # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
-                # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
+                # NOTE      deep ✅
+                # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._downdraft_lateral_mass_flux(
                     error_code=state.output.error_code,
