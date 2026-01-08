@@ -959,8 +959,8 @@ class CumulusParameterization:
 
                 # calculate moisture properties of updraft
                 # NOTE test GF2020_CumulusParameterization_UpdraftMoisture_{plume}:
-                # NOTE      deep ✅
-                # NOTE      mid ✅
+                # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
+                # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
                 # NOTE      shallow ✅
                 self._updraft_moisture_profile(
                     start_level=locals.start_level,
