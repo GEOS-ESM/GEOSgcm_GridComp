@@ -126,6 +126,32 @@ def updraft_mass_flux(
     X_ALPHA: _CONSTANTS_TABLES_TYPE,
     G_ALPHA: _CONSTANTS_TABLES_TYPE,
 ):
+    """
+    Handle mass fluxes in the updraft. This code has a number of potential paths depending on configuration
+    settings - some of these paths are not yet implemented.
+
+    This code may execute for all plumes - shallow plume execution is currently not implemented.
+
+    Args:
+        error_code
+        updraft_origin_level
+        cloud_top_level
+        pbl_level
+        updraft_lfc_level
+        lcl_level
+        p_cloud_levels_forced
+        p_surface
+        ocean_fraction
+        normalized_massflux_updraft
+        normalized_massflux_updraft_forced
+        normalized_massflux_updraft_modified
+        random_number
+        UPDRAFT_MAX_HEIGHT_LAND
+        UPDRAFT_MAX_HEIGHT_OCEAN
+        plume
+        X_ALPHA
+        G_ALPHA
+    """
     from __externals__ import (
         ZERO_DIFF,
         k_end,
