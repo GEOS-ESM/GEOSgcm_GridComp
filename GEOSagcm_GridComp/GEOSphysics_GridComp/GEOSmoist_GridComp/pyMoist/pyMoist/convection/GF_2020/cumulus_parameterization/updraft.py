@@ -378,6 +378,22 @@ def updraft_moisture(
     C0: Float,
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
+    qc_1: FloatField,
+    qrc_1: FloatField,
+    qc_2: FloatField,
+    qrc_2: FloatField,
+    qrch_debug: FloatField,
+    denom_debug: FloatField,
+    qc_in_if_1: FloatField,
+    qc_in_if_2: FloatField,
+    qrc_in_if_1: FloatField,
+    qc_in_else_1: FloatField,
+    qrc_in_else_1: FloatField,
+    zu: FloatField,
+    up_massentr: FloatField,
+    up_massdetr: FloatField,
+    q: FloatField,
+    zqexec: FloatField,
 ):
     from __externals__ import (
         k_end,
@@ -404,6 +420,7 @@ def updraft_moisture(
         XEXP: FloatFieldIJ = 2.0
 
     with computation(FORWARD), interval(0, 1):
+        # no precip for small clouds
         total_normalized_integrated_condensate_forced[0, 0][plume] = 0.0
         psum = 0.0
         psumh = 0.0
@@ -413,10 +430,13 @@ def updraft_moisture(
         updraft_column_temperature_forced = t_cloud_levels
         cloud_liquid_before_rain_forced = 0.0
         cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0  # liq/ice water
-        cloud_total_water_after_entrainment_forced = 0.0  # total water: liq/ice = vapor water
+        cloud_total_water_after_entrainment_forced = (
+            vapor_cloud_levels_forced  # total water: liq/ice = vapor water
+        )
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
+            # get boundary condition for cloud_total_water_after_entrainment_forced
             vapor_source: FloatFieldIJ = get_cloud_boundary_conditions(
                 field=vapor_cloud_levels_forced,
                 scalar_perturbation=0,
@@ -432,15 +452,20 @@ def updraft_moisture(
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= start_level:
+            # get boundary condition for cloud_total_water_after_entrainment_forced
             cloud_total_water_after_entrainment_forced = (
                 vapor_source + vapor_excess + 0.5 * add_buoyancy / cumulus_parameterization_constants.XLV
             )
             cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0
 
+            qc_1 = cloud_total_water_after_entrainment_forced
+            qrc_1 = cloud_liquid_after_rain_forced[0, 0, 0][plume]
+
     with computation(FORWARD), interval(0, 1):
         if (
             error_code[0, 0][plume] == 0 and USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1 and plume == 0
         ):  # only for shallow plume
+            # option to produce linear fluxes in the sub-cloud layer
             get_delmix_implementation_here = True
 
     with computation(PARALLEL), interval(...):
@@ -461,6 +486,7 @@ def updraft_moisture(
                     * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced))
                     * d_buoyancy_forced
                 )
+                qrch_debug = qrch
 
                 #    1. steady state plume equation, for what could
                 #       be in cloud without condensation
@@ -469,6 +495,7 @@ def updraft_moisture(
                     - 0.5 * mass_detrainment_updraft[0, 0, -1]
                     + mass_entrainment_updraft[0, 0, -1]
                 )
+                denom_debug = denom
 
                 if denom > 0.0:
                     cloud_total_water_after_entrainment_forced = (
@@ -480,11 +507,23 @@ def updraft_moisture(
                         + mass_entrainment_updraft[0, 0, -1] * vapor_forced[0, 0, -1]
                     ) / denom
 
+                    # qc (i,k) = (
+                    #     qc(i,k-1)
+                    #     * zu(i,k-1)
+                    #     - .5
+                    #     * up_massdetr(i,k-1)
+                    #     * qc(i,k-1)
+                    #     + up_massentr(i,k-1) * q(i,k-1)
+                    # ) / denom
+
+                    qc_in_if_1 = cloud_total_water_after_entrainment_forced
+
                     if K == start_level + 1:
                         cloud_total_water_after_entrainment_forced = (
                             cloud_total_water_after_entrainment_forced
                             + vapor_excess * mass_entrainment_updraft[0, 0, -1] / denom
                         )
+                    qc_in_if_2 = cloud_total_water_after_entrainment_forced
                     # assuming no liq/ice water in the environment
                     cloud_liquid_after_rain_forced[0, 0, 0][plume] = (
                         cloud_liquid_after_rain_forced[0, 0, -1][plume]
@@ -493,14 +532,25 @@ def updraft_moisture(
                         * mass_detrainment_updraft[0, 0, -1]
                         * cloud_liquid_after_rain_forced[0, 0, -1][plume]
                     ) / denom
+                    qrc_in_if_1 = cloud_liquid_after_rain_forced[0, 0, 0][plume]
 
                 else:
                     cloud_total_water_after_entrainment_forced = cloud_total_water_after_entrainment_forced[
                         0, 0, -1
                     ]
+                    qc_in_else_1 = cloud_total_water_after_entrainment_forced
                     cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[0, 0, -1][
                         plume
                     ]
+                    qrc_in_else_1 = cloud_liquid_after_rain_forced[0, 0, 0][plume]
+
+                qc_2 = cloud_total_water_after_entrainment_forced
+                qrc_2 = cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                zu = normalized_massflux_updraft_forced[0, 0, 0][plume]
+                up_massentr = mass_entrainment_updraft
+                up_massdetr = mass_detrainment_updraft
+                q = vapor_forced
+                zqexec = vapor_excess
 
                 # updraft temp
                 updraft_column_temperature_forced = (1.0 / cumulus_parameterization_constants.CP) * (
