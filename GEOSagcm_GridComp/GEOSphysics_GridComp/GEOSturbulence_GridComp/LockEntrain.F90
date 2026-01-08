@@ -95,8 +95,6 @@ module LockEntrain
 #ifndef _CUDA
    private
 
-   logical :: use_kludges = .false.
-
 !-----------------------------------------------------------------------
 !
 !  public interfaces
@@ -342,6 +340,7 @@ contains
          cldradf_diag,   &
          radrcode_diag,  &
 ! Constants
+         use_eis,        &
          prandtlsfc,     &
          prandtlrad,     &
          beta_surf,      &
@@ -468,6 +467,7 @@ contains
 #ifdef _CUDA
       integer, value,  intent(in) :: icol,jcol,nlev
 
+      logical, value,  intent(in) :: use_eis
       real,    value,  intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
       real,    value,  intent(in) :: khradfac,tpfac_sfc,entrate_sfc,vscale_sfc
       real,    value,  intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
@@ -500,6 +500,7 @@ contains
       real,    intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_rad,k_sfc
       real,    intent(out),   dimension(icol,jcol)           :: zsml,zradml,zcloud,zradbase
 
+      logical, intent(in) :: use_eis
       real,    intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
       real,    intent(in) :: khradfac,tpfac_sfc,entrate_sfc, vscale_sfc
       real,    intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
@@ -788,12 +789,12 @@ contains
 ! AMM fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
 ! deep ones. Linear from 0 to 1600m
-            if (use_kludges) then
-              wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
-            else
+            if (use_eis) then
               ! Surface entrainment: Reduce in stable conditions (high EIS)
               surface_suppression = 1.0 - 0.8*eis_stability  ! Range: 1.0 to 0.2
               wentr_tmp = wentr_tmp * max(0.1, surface_suppression)
+            else
+              wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
             endif
 !-----------------------------------------
 
@@ -1034,19 +1035,19 @@ contains
 !----------------------------------------
 ! adjust velocity scales to prevent jumps 
 ! near zradtop=zcldtopmax
-         if (use_kludges) then
+         if (use_eis) then
+           ! Replace hard zradtop height limit with physics-based EIS limit
+           if (eis(i,j) < 2.0) then  ! Very unstable - not suitable for Lock scheme
+             vrad3 = vrad3 * max(0.0, eis(i,j)/2.0)  ! Taper based on stability
+             vbr3  = vbr3  * max(0.0, eis(i,j)/2.0)
+           endif 
+         else
            if ( zradtop .gt. zcldtopmax-500. ) then 
               vrad3 = vrad3*(zcldtopmax - zradtop)/500.  
               vbr3  = vbr3 *(zcldtopmax - zradtop)/500.  
            endif
            vrad3=max( vrad3, 0. ) ! these really should not be needed
            vbr3 =max( vbr3,  0. )
-         else
-           ! Replace hard zradtop height limit with physics-based EIS limit
-           if (eis(i,j) < 2.0) then  ! Very unstable - not suitable for Lock scheme
-             vrad3 = vrad3 * max(0.0, eis(i,j)/2.0)  ! Taper based on stability
-             vbr3  = vbr3  * max(0.0, eis(i,j)/2.0)
-           endif
          endif
 !-----------------------------------------
 
@@ -1065,16 +1066,16 @@ contains
 ! AMM107 fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
 ! deep ones: piecewise linear function 500-800m & 800-2400m 
-         if (use_kludges) then
+         if (use_eis) then
+           ! Radiative entrainment: Modulate based on inversion strength  
+           radiative_modulation = 0.5 + 1.5*eis_stability  ! Range: 0.5 to 2.0
+           wentr_rad = wentr_rad * radiative_modulation
+         else
            if ( zradtop .le. 800. ) then
               wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
            else
               wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
            endif
-         else
-           ! Radiative entrainment: Modulate based on inversion strength  
-           radiative_modulation = 0.5 + 1.5*eis_stability  ! Range: 0.5 to 2.0
-           wentr_rad = wentr_rad * radiative_modulation
          endif
 !-----------------------------------------
 

@@ -2343,6 +2343,28 @@ contains
          enddo
          endif
 
+       ! -------------------------------------------------------------------------- !
+       ! Define environmental properties at the level where buoyancy sorting occurs !
+       ! ('pe', normally, layer midpoint except in the 'krel' layer). In the 'krel' !
+       ! layer where buoyancy sorting starts to occur, however, 'pe' is defined     !
+       ! differently because LCL is regarded as lower interface for mixing purpose. !
+       ! -------------------------------------------------------------------------- !
+
+         pe      = 0.5 * ( prel + pifc0(krel) )
+         qsat_pe = 0.5 * ( prel + pifc0(krel) )
+         dpe     = prel - pifc0(krel)
+         exne    = exnerfn(pe)
+         thvebot = thv0rel
+         thle    = thl0(krel) + ssthl0(krel) * ( pe - pmid0(krel) )
+         qte     = qt0(krel)  + ssqt0(krel)  * ( pe - pmid0(krel) )
+         ue      = u0(krel)   + ssu0(krel)   * ( pe - pmid0(krel) )
+         ve      = v0(krel)   + ssv0(krel)   * ( pe - pmid0(krel) )
+         if (dotransport.eq.1) then
+         do m = 1, ncnst
+            tre(m) = tr0(krel,m)  + sstr0(krel,m) * ( pe - pmid0(krel) )
+         enddo
+         end if
+
        !-------------------------! 
        ! Buoyancy-Sorting Mixing !
        !-------------------------!------------------------------------------------ !
@@ -2498,61 +2520,42 @@ contains
           qtue  = qtu(km1)    
           wue   = wu(km1)
           wtwb  = wtw  
-          wtw   = wu(km1) * wu(km1)
-
-          ! ---------------------------------------------------------------- !
-          ! Calculate environmental saturation 'excess' at 'pe' - once only !
-          ! ---------------------------------------------------------------- !
-          call conden(pe,thle,qte,thj,qvj,qlj,qij,qse,id_check)
-          if( id_check .eq. 1 ) then
-             exit_conden(i) = 1.
-             id_exit = .true.
-             if (scverbose) then
-               call write_parallel('------- UW ShCu: exit, conden')
-             end if
-             go to 333
-          end if
-          thv0j    = thj * ( 1. + zvir*qvj - qlj - qij )
-          rhomid0j    = pe / ( r * thv0j * exne )
-          qsat_arg = thle*exne
-          qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)
-          excess0  = qte - qs
-
-          ! ----------------------------------------------------------------- !
-          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
-          ! ----------------------------------------------------------------- !
-          if (cridist_opt.eq.0) then
-           cridis = rle*scaleh                 ! Original code
-          else
-           cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
-          end if 
-              
-          ! ------------------------------------------------------------------ !
-          ! Base rei calculation - will be modified by xc limiter in iteration !
-          ! ------------------------------------------------------------------ !
-          if (min(scaleh,mix2d(i)) .gt. tiny) then
-            rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )
-          else 
-            rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j )
-          end if
 
          do iter_xc = 1, niter_xc
           
+            wtw = wu(km1) * wu(km1)
 
           ! ---------------------------------------------------------------- !
-          ! Calculate cumulus saturation 'excess' at 'pe'.                  !
+          ! Calculate environmental and cumulus saturation 'excess' at 'pe'. !
+          ! Note that in order to calculate saturation excess, we should use ! 
+          ! liquid water temperature instead of temperature  as the argument !
+          ! of "qsat". But note normal argument of "qsat" is temperature.    !
           ! ---------------------------------------------------------------- !
-            if (iter_xc .gt. 1) then
-              call conden(pe,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
-              if( id_check .eq. 1 ) then
-                 exit_conden(i) = 1.
-                 id_exit = .true.
-                 if (scverbose) then
-                   call write_parallel('------- UW ShCu: exit, conden')
-                 end if
-                 go to 333
-              end if
-            endif
+
+            call conden(pe,thle,qte,thj,qvj,qlj,qij,qse,id_check)
+            if( id_check .eq. 1 ) then
+               exit_conden(i) = 1.
+               id_exit = .true.
+               if (scverbose) then
+                 call write_parallel('------- UW ShCu: exit, conden')
+               end if
+               go to 333
+            end if
+            thv0j    = thj * ( 1. + zvir*qvj - qlj - qij )
+            rhomid0j    = pe / ( r * thv0j * exne )
+            qsat_arg = thle*exne
+            qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)     
+            excess0  = qte - qs
+
+            call conden(pe,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
+            if( id_check .eq. 1 ) then
+               exit_conden(i) = 1.
+               id_exit = .true.
+               if (scverbose) then
+                 call write_parallel('------- UW ShCu: exit, conden')
+               end if
+               go to 333
+            end if
           ! ----------------------------------------------------------------- !
           ! Detrain excessive condensate larger than 'criqc' from the cumulus ! 
           ! updraft before performing buoyancy sorting. All I should to do is !
@@ -2594,13 +2597,27 @@ contains
           ! Current below code does not entrain unsaturated mixture. However it !
           ! should be modified such that it also entrain unsaturated mixture.   !
           ! ------------------------------------------------------------------- !
+
+          ! ----------------------------------------------------------------- !
+          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
+          !          scaleh is only used here.                                !
+          ! ----------------------------------------------------------------- !
+
+           if (cridist_opt.eq.0) then
+            cridis = rle*scaleh                 ! Original code
+           else
+            cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
+           end if 
+
           ! ---------------- !
           ! Buoyancy Sorting !
           ! ---------------- !                   
-            xsat = 0.
+
           ! ----------------------------------------------------------------- !
           ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
           ! ----------------------------------------------------------------- !
+            xsat = 0.
+
             if( ( excessu .le. 0. .and. excess0 .le. 0. ) .or. ( excessu .ge. 0. .and. excess0 .ge. 0. ) ) then
                 xc = min(1.,max(0.,1.-2.*rbuoy*g*cridis/wue**2.*(1.-thvj/thv0j)))
               ! Below 3 lines are diagnostic output not influencing
@@ -2669,18 +2686,33 @@ contains
             endif
 
           ! ------------------------------------------------------------------------ !
-          ! Limit fractional lateral entrainment & detrainment rate in each layers.!
+          ! Compute fractional lateral entrainment & detrainment rate in each layers.!
+          ! The unit of rei(k), fer(k), and fdr(k) is [Pa-1].  Alternative choice of !
+          ! 'rei(k)' is also shown below, where coefficient 0.5 was from approximate !
+          ! tuning against the BOMEX case.                                           !
+          ! In order to prevent the onset of instability in association with cumulus !
+          ! induced subsidence advection, cumulus mass flux at the top interface  in !
+          ! any layer should be smaller than ( 90% of ) total mass within that layer.!
+          ! I imposed limits on 'rei(k)' as below,  in such that stability condition ! 
+          ! is always satisfied.                                                     !
+          ! Below limiter of 'rei(k)' becomes negative for some cases, causing error.!
+          ! So, for the time being, I came back to the original limiter.             !
           ! ------------------------------------------------------------------------ !
-            if (xc .gt. 0.5) then
-               arg = dp0(k) / g / dt / max(umf(km1), tiny) + 1.0
-               den = dpe * (2.0*xc - 1.0)
-               if (den > tiny) then
-                  rei(k) = min(rei(k), 0.9*log(max(tiny, arg)) / den)
-               endif
-            endif
-
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
+            if (min(scaleh,mix2d(i)) .gt. tiny) then
+              rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
+! regression bug due to cnvtr
+! WMP         rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
+            else
+              rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
+            end if
+
+! overflow  if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny,dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
+            if( xc .gt. 0.5 ) then
+                arg = dp0(k)/g/dt/max(umf(km1),tiny) + 1.0
+                rei(k) = min(rei(k),0.9*log(max(tiny,arg))/max(dpe*(2.*xc-1.), tiny))
+            endif
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
             xco(k) = xc
@@ -2708,6 +2740,24 @@ contains
           ! ------------------------------------------------------------------------------ !
           ! Iteration Start due to 'maxufrc' constraint [ ****************************** ] ! 
           ! ------------------------------------------------------------------------------ !
+
+          ! -------------------------------------------------------------------------- !
+          ! Calculate cumulus updraft mass flux and penetrative entrainment mass flux. !
+          ! Note that  non-zero penetrative entrainment mass flux will be asigned only !
+          ! to interfaces from the top interface of 'kbup' layer to the base interface !
+          ! of 'kpen' layer as will be shown later.                                    !
+          ! -------------------------------------------------------------------------- !
+
+            umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
+            emf(k) = 0.
+
+          ! --------------------------------------------------------- !
+          ! Limit umf based on (2x) the CFL condition
+          ! --------------------------------------------------------- !
+            umf(k) = min(umf(k),2.*dp0(k)/g/dt)
+
+            dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
+!           dcm(k) = min(1.,max(0.,xsat-xc))
 
           ! --------------------------------------------------------- !
           ! Compute cumulus updraft properties at the top interface.  !
@@ -2837,6 +2887,13 @@ contains
               wtw = wtw + dpe * ( bogbot + bogtop ) / rhomid0j
             endif
 
+        ! Force the plume rise at least to klfc of the undiluted plume.
+        ! Because even the below is not complete, I decided not to include this.
+
+        ! if( k .le. klfc ) then
+        !     wtw = max( 1.e-2, wtw )
+        ! endif 
+         
           ! -------------------------------------------------------------- !
           ! Repeat 'iter_xc' iteration loop until 'iter_xc = niter_xc'.    !
           ! Also treat the case even when wtw < 0 at the 'kpen' interface. !
@@ -2847,28 +2904,12 @@ contains
               qtue  = 0.5 * ( qtu(km1)  +  qtu(k) )         
               wue   = 0.5 *   sqrt( max( wtwb + wtw, 0. ) )
             else
-              exit   ! <-- exit iter_xc loop ONLY
+              go to 111
             endif 
 
          end do  ! iter_xc loop
 
-          ! -------------------------------------------------------------------------- !
-          ! Calculate cumulus updraft mass flux and penetrative entrainment mass flux. !
-          ! Note that  non-zero penetrative entrainment mass flux will be asigned only !
-          ! to interfaces from the top interface of 'kbup' layer to the base interface !
-          ! of 'kpen' layer as will be shown later.                                    !
-          ! -------------------------------------------------------------------------- !
-         
-            umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
-            emf(k) = 0.
-          
-          ! --------------------------------------------------------- !
-          ! Limit umf based on (2x) the CFL condition
-          ! --------------------------------------------------------- !
-            umf(k) = min(umf(k),2.*dp0(k)/g/dt)
-          
-            dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
-!           dcm(k) = min(1.,max(0.,xsat-xc))
+     111 continue
 
           ! --------------------------------------------------------------------------- ! 
           ! Add the contribution of self-detrainment  to vertical variations of cumulus !

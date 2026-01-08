@@ -6364,33 +6364,11 @@ contains
 
        ! diagnosed stratiform precip (rain+snow)
        call MAPL_GetPointer(EXPORT, PREC_STRAT, 'PREC_STRAT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(PREC_STRAT)) then
-          if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-             PREC_STRAT = (1.0-CNV_FRC)*TPREC
-          else
-             PREC_STRAT = 0.0
-             call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-             if (associated(PTR2D)) PREC_STRAT = PREC_STRAT + PTR2D
-             call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-             if (associated(PTR2D)) PREC_STRAT = PREC_STRAT + PTR2D
-          endif
-          PREC_STRAT = MAX(PREC_STRAT, 0.0)
-       endif
+       if (associated(PREC_STRAT)) PREC_STRAT = MAX((1.0-CNV_FRC)*TPREC, 0.0)
 
        ! diagnosed convective precip (rain+snow)
        call MAPL_GetPointer(EXPORT, PREC_CONV, 'PREC_CONV', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(PREC_CONV)) then
-          if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-             PREC_CONV = CNV_FRC*TPREC
-          else
-             PREC_CONV = 0.0
-             call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-             if (associated(PTR2D)) PREC_CONV = PREC_CONV + PTR2D
-             call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-             if (associated(PTR2D)) PREC_CONV = PREC_CONV + PTR2D
-          endif
-          PREC_CONV = MAX(PREC_CONV, 0.0)
-       endif
+       if (associated(PREC_CONV)) PREC_CONV = MAX(CNV_FRC*TPREC, 0.0)
 
      ! Diagnostic precip types:
        call MAPL_GetPointer(EXPORT, ICE,   'ICE',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
