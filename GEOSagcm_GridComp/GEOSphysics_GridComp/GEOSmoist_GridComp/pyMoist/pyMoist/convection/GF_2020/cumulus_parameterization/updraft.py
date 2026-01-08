@@ -425,7 +425,7 @@ def updraft_moisture(
         psum = 0.0
         psumh = 0.0
 
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0, -1):
         condensate_to_fall_forced[0, 0, 0][plume] = 0.0
         updraft_column_temperature_forced = t_cloud_levels
         cloud_liquid_before_rain_forced = 0.0
@@ -450,7 +450,7 @@ def updraft_moisture(
                 perturbation_field=dummy_field_no_read,
             )
 
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0 and K <= start_level:
             # get boundary condition for cloud_total_water_after_entrainment_forced
             cloud_total_water_after_entrainment_forced = (

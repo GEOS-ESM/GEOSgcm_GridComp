@@ -959,8 +959,8 @@ class CumulusParameterization:
 
                 # calculate moisture properties of updraft
                 # NOTE test GF2020_CumulusParameterization_UpdraftMoisture_{plume}:
-                # NOTE      deep ❌ NEEDS ATTENTION, TEST FAILS BADLY
-                # NOTE      mid ❌ NEEDS ATTENTION, TEST FAILS BADLY
+                # NOTE      deep ✅
+                # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._updraft_moisture_profile(
                     start_level=locals.start_level,
@@ -1106,8 +1106,8 @@ class CumulusParameterization:
 
                     # vertical velocity
                     # NOTE test GF2020_CumulusParameterization_UpdraftVerticalVelocity_{plume}:
-                    # NOTE      deep ❌ NEEDS ATTENTION, TEST FAILS BADLY
-                    # NOTE      mid ❌ NEEDS ATTENTION, TEST FAILS BADLY
+                    # NOTE      deep ✅
+                    # NOTE      mid ✅
                     # NOTE      shallow ✅
                     self._updraft_vertical_velosity(
                         vertical_velocity_3d=locals.vertical_velocity_3d,
