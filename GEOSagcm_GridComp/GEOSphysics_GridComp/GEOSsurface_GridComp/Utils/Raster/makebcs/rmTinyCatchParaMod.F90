@@ -105,6 +105,7 @@ contains
     !   NGDC      : Soil parameters from Reynolds et al. 2000, doi:10.1029/2000WR900130 (MERRA-2, Fortuna, Ganymed, Icarus)
     !   HWSD      : Merged HWSDv1.21-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     !   HWSD_b    : As in HWSD but with surgical fix of Argentina peatland issue (38S,60W)
+    !   HWSD_c    : HWSD updated from v1.2 to v2. And sub and top are D2 layer
     !
     ! OUTLETV: Definition of outlet locations.  DEFAULT : N/A
     !   N/A       : No information (do not create routing "TRN" files).
@@ -125,6 +126,7 @@ contains
        GNU     = 2.17
        use_PEATMAP = .false.
        jpl_height  = .false.
+       PEATMAP_STRICT_GPA22= .false.
        
     case ("GM4", "ICA")
        LAIBCS  = 'GSWP2'
@@ -135,6 +137,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
+       PEATMAP_STRICT_GPA22= .false.
 
     case ("NL3")
        LAIBCS  = 'MODGEO'
@@ -145,6 +148,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
+       PEATMAP_STRICT_GPA22= .false.
 
     case ("NL4")
        LAIBCS  = 'MODGEO'
@@ -155,6 +159,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .true.
+       PEATMAP_STRICT_GPA22= .false.
 
     case ("NL5")
        LAIBCS  = 'MODGEO'
@@ -165,6 +170,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
+       PEATMAP_STRICT_GPA22= .false.
 
     case ("v06")   
        LAIBCS  = 'MODGEO'
@@ -175,6 +181,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
+       PEATMAP_STRICT_GPA22= .false.
 
     case ("v07")   
        LAIBCS  = 'MODGEO'
@@ -185,6 +192,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
+       PEATMAP_STRICT_GPA22= .false.
        
     case ("v08")   
        LAIBCS  = 'MODGEO'
@@ -195,6 +203,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
+       PEATMAP_STRICT_GPA22= .false.
        
     case ("v09")   
        LAIBCS  = 'MODGEO'
@@ -205,6 +214,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
+       PEATMAP_STRICT_GPA22= .false.
 
     case ("v10")   
        LAIBCS  = 'MODGEO'
@@ -215,6 +225,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
+       PEATMAP_STRICT_GPA22= .false.
 
     case ("v11")   
        LAIBCS  = 'MODGEO'
@@ -225,6 +236,7 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
+       PEATMAP_STRICT_GPA22= .false.
 
     case ("v12","v13")  
 
@@ -241,6 +253,19 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
+       PEATMAP_STRICT_GPA22= .false.
+
+    case ("v15")  
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD_c'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061v2'
+       OUTLETV = "v2"       
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .true.
+       PEATMAP_STRICT_GPA22= .true.
+      
 
     case default
        

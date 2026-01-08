@@ -16,7 +16,7 @@ library(ncdf4)
 #
 # Run environment (Discover):
 #   $ module load R/4.3.1
-#   $ Rscript vectorized_final_processing_soil.R
+#   $ Rscript STEP1_vectorized_final_processing_soil.R
 #
 # Outputs:
 #   - NetCDF tiles written as 10° x 10° files per layer (D1..D7), named like:

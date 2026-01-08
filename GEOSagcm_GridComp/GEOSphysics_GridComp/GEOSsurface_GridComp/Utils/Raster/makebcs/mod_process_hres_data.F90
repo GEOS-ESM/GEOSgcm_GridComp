@@ -3654,13 +3654,11 @@ contains
     !   of soildepth data read above but is the same as of 29 Apr 2022).
 
     if      (trim(SOILBCS)=='HWSD_b')  then
-       ! New soil files with HWSDv2 - D2 layer both top and sub
-       tmpversion = 'v4' 
-       ! just for testing purpose.. will these be new bcs? like v15? 
-       !tmpversion = 'v3'
-    !else if (trim(SOILBCS)=='HWSD_c')    then
+       tmpversion = 'v3'
+    else if (trim(SOILBCS)=='HWSD_c')    then
        ! v4 is /discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/soil/soil_properties/v2/out_HWSDv2_NGDC_STATSGO_noMASK/
-     !  tmpversion = 'v4'
+       ! New soil files with HWSDv2 - D2 layer both top and sub
+       tmpversion = 'v4'
     else if (trim(SOILBCS)=='HWSD')    then
        tmpversion = 'v2'
     else
@@ -3784,37 +3782,54 @@ contains
     ! Note: in PEATMAP mode, subsurface can’t be peat based on HWSD (it gets knocked down to 8/sf). 
     ! So the “HWSD deciding peat” problem is mainly oc_top, not oc_sub.       
     ! ----------------------------------------------------------------------------
-     if(use_PEATMAP) then
+     if (use_PEATMAP) then
         print *, 'PEATMAP_THRESHOLD_1 : ', PEATMAP_THRESHOLD_1
-        allocate(pmapr (1:i_highd,1:j_highd))
-
-        ! GPA22-based peat mask (Conservative option - from GPA22 original input we say 1 is peat 2 & zero are not
-        status  = NF_OPEN (trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/v2/PEATMAP_from_GPA22_like_old_conservative.nc4', NF_NOWRITE, ncid) ; VERIFY_(STATUS)
-        status  = NF_GET_VARA_REAL (ncid,NC_VarID(NCID,'PEATMAP'), (/1,1/),(/i_highd, j_highd/), pmapr) ; VERIFY_(STATUS)
+        allocate(pmapr(1:i_highd,1:j_highd))
+     
+        if (PEATMAP_STRICT_GPA22) then
+           ! GPA22-based peat mask (Conservative option - from GPA22 original input we say 1 is peat 2 & zero are not
+           status = NF_OPEN(trim(MAKE_BCS_INPUT_DIR)// &
+                '/land/soil/SOIL-DATA/v2/PEATMAP_from_GPA22_like_old_conservative.nc4', &
+                NF_NOWRITE, ncid) ; VERIFY_(STATUS)
+        else
+           ! Legacy peat mask
+           status = NF_OPEN(trim(MAKE_BCS_INPUT_DIR)// &
+                '/land/soil/SOIL-DATA/PEATMAP_mask.nc4', &
+                NF_NOWRITE, ncid) ; VERIFY_(STATUS)
+        endif
+     
+        status = NF_GET_VARA_REAL(ncid, NC_VarID(ncid,'PEATMAP'), (/1,1/), (/i_highd,j_highd/), pmapr) ; VERIFY_(STATUS)
 
         !------------------------------------------------------------
-        ! NEW: 
+        ! NEW (v15): 
         ! Make it impossible for HWSD oc_top to create peat outside GPA22.
         ! This preserves all downstream "science logic" unchanged.
         !   oc_top*sf >= cF_lim(4)  <=>  GPA22 peat
         !------------------------------------------------------------
-        where (pmapr < PEATMAP_THRESHOLD_1)
-           oc_top = min(oc_top, NINT((cF_lim(4) - 1.0e-6)/sf))
-        endwhere
+        if (PEATMAP_STRICT_GPA22) then
+           where (pmapr < PEATMAP_THRESHOLD_1)
+              oc_top = min(oc_top, NINT((cF_lim(4) - 1.0e-6)/sf))
+           endwhere
+        endif
+     
+        ! Subsurface peat is not allowed in PEATMAP mode (all variants):
+        ! move HWSD sub-surface peat to peat-rich mineral Group 3
 
-        ! Keep existing intent: subsurface peat does NOT exist as peat in PEATMAP mode
         where (oc_sub*sf >= cF_lim(4))
            oc_sub = NINT(8./sf)
         endwhere
+     
+        ! Peatmask pixels force top layer to peat OC (all variants):
+        ! (legacy hybridization behavior retained; strict mode additionally clamps oc_top outside peat)
 
-        ! Keep existing intent: GPA22 peat pixels force top layer to peat OC
         where (pmapr >= PEATMAP_THRESHOLD_1)
            oc_top = NINT(33.0/sf)
         endwhere
-
+     
         deallocate(pmapr)
-        status = NF_CLOSE(ncid); VERIFY_(STATUS)
-     endif
+        status = NF_CLOSE(ncid) ; VERIFY_(STATUS)
+     endif    
+
     ! ----------------------------------------------------------------------------
     ! ----------------------------------------------------------------------------
 
