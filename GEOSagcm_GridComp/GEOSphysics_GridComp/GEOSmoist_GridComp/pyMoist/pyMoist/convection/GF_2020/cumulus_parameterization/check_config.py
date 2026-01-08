@@ -111,12 +111,6 @@ def check_config(
             "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
         )
 
-    if config.AUTOCONV != 1:
-        ndsl_log.warning(
-            " GF2020 cumulus parameterization: updraft_moisture constructed with "
-            "untested AUTOCONV option. Running untested code... proceed with caution"
-        )
-
     if cumulus_parameterization_config.FRAC_MODIS != 1:
         ndsl_log.warning(
             " GF2020 cumulus parameterization: updraft_moisture constructed with "
@@ -171,6 +165,13 @@ def check_config(
             "[NDSL] GF2020-->CumulusParameterization initalized with ZERO_DIFF == 1. This combination requires"
             "an unimplemented porion of UpdraftMassFlux. Please implement, then disable this error"
             "manually to proceed."
+        )
+
+    if config.AUTOCONV != 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with AUTOCONV != 1. This requires"
+            "an unimplemented option in updraft_moisture. Please implement, then disable this"
+            "error manually to proceed."
         )
 
     if cumulus_parameterization_config.USE_WETBULB == 1:

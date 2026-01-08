@@ -77,26 +77,6 @@ class TestCore:
         }
 
         out_vars.update(in_vars["data_vars"])
-        # out_vars.update(
-        #     {
-        #         "qc_1": {},
-        #         "qrc_1": {},
-        #         "qc_2": {},
-        #         "qrc_2": {},
-        #         "qrch": {},
-        #         "denom": {},
-        #         "zu": {},
-        #         "up_massentr": {},
-        #         "up_massdetr": {},
-        #         "q": {},
-        #         "zqexec": {},
-        #         "qc_in_if_1": {},
-        #         "qc_in_if_2": {},
-        #         "qrc_in_if_1": {},
-        #         # "qc_in_else_1": {},
-        #         # "qrc_in_else_1": {},
-        #     }
-        # )
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initalize constants
@@ -200,40 +180,6 @@ class TestCore:
             },
         )
 
-        qc_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        qrc_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        qc_2 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        qrc_2 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        qrch = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        denom = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        qc_in_if_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        qc_in_if_2 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        qrc_in_if_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        qc_in_else_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        qrc_in_else_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        zu = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        up_massentr = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        up_massdetr = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        q = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        zqexec = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        import numpy as np
-
-        qc_1.field[:] = np.nan
-        qrc_1.field[:] = np.nan
-        qc_2.field[:] = np.nan
-        qrc_2.field[:] = np.nan
-        qrch.field[:] = np.nan
-        denom.field[:] = np.nan
-        qc_in_if_1.field[:] = np.nan
-        qc_in_if_2.field[:] = np.nan
-        qrc_in_if_1.field[:] = np.nan
-        qc_in_else_1.field[:] = np.nan
-        qrc_in_else_1.field[:] = np.nan
-        zu.field[:] = np.nan
-        up_massentr.field[:] = np.nan
-        up_massdetr.field[:] = np.nan
-        q.field[:] = np.nan
-        zqexec.field[:] = np.nan
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
             if cumulus_parameterization_config.FIRST_GUESS_W == 0:
@@ -273,23 +219,6 @@ class TestCore:
                     C0=plume_dependent_constants.C0,
                     AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
                     plume=plume_dependent_constants.PLUME_INDEX,
-                    # DEBUG
-                    qc_1=qc_1,
-                    qrc_1=qrc_1,
-                    qc_2=qc_2,
-                    qrc_2=qrc_2,
-                    qrch_debug=qrch,
-                    denom_debug=denom,
-                    qc_in_if_1=qc_in_if_1,
-                    qc_in_if_2=qc_in_if_2,
-                    qrc_in_if_1=qrc_in_if_1,
-                    qc_in_else_1=qc_in_else_1,
-                    qrc_in_else_1=qrc_in_else_1,
-                    zu=zu,
-                    up_massentr=up_massentr,
-                    up_massdetr=up_massdetr,
-                    q=q,
-                    zqexec=zqexec,
                 )
 
         # write output
@@ -354,23 +283,6 @@ class TestCore:
             "local_c1d_upmoisture": locals.c1d.data[:],
             "local_add_buoyancy_upmoisture": locals.add_buoyancy.data[:],
             "local_vertical_velocity_3d_upmoisture": locals.vertical_velocity_3d.data[:],
-            # DEBUG
-            "qc_1": qc_1.field[:],
-            "qrc_1": qrc_1.field[:],
-            "qc_2": qc_2.field[:],
-            "qrc_2": qrc_2.field[:],
-            "qrch": qrch.field[:],
-            "denom": denom.field[:],
-            "qc_in_if_1": qc_in_if_1.field[:],
-            "qc_in_if_2": qc_in_if_2.field[:],
-            "qrc_in_if_1": qrc_in_if_1.field[:],
-            # "qc_in_else_1": qc_in_else_1.field[:],
-            # "qrc_in_else_1": qrc_in_else_1.field[:],
-            "zu": zu.field[:],
-            "up_massentr": up_massentr.field[:],
-            "up_massdetr": up_massdetr.field[:],
-            "q": q.field[:],
-            "zqexec": zqexec.field[:],
         }
 
         return outputs

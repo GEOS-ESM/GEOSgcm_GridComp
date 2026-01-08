@@ -378,22 +378,6 @@ def updraft_moisture(
     C0: Float,
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
-    qc_1: FloatField,
-    qrc_1: FloatField,
-    qc_2: FloatField,
-    qrc_2: FloatField,
-    qrch_debug: FloatField,
-    denom_debug: FloatField,
-    qc_in_if_1: FloatField,
-    qc_in_if_2: FloatField,
-    qrc_in_if_1: FloatField,
-    qc_in_else_1: FloatField,
-    qrc_in_else_1: FloatField,
-    zu: FloatField,
-    up_massentr: FloatField,
-    up_massdetr: FloatField,
-    q: FloatField,
-    zqexec: FloatField,
 ):
     from __externals__ import (
         k_end,
@@ -458,9 +442,6 @@ def updraft_moisture(
             )
             cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0
 
-            qc_1 = cloud_total_water_after_entrainment_forced
-            qrc_1 = cloud_liquid_after_rain_forced[0, 0, 0][plume]
-
     with computation(FORWARD), interval(0, 1):
         if (
             error_code[0, 0][plume] == 0 and USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1 and plume == 0
@@ -480,13 +461,12 @@ def updraft_moisture(
                     - geopotential_height_cloud_levels_forced[0, 0, -1]
                 )
                 # saturation  in cloud, this is what is allowed to be in it
-                qrch = (
+                saturation_cloud_liquid = (
                     environment_saturation_mixing_ratio_cloud_levels_forced
                     + (1.0 / cumulus_parameterization_constants.XLV)
                     * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced))
                     * d_buoyancy_forced
                 )
-                qrch_debug = qrch
 
                 #    1. steady state plume equation, for what could
                 #       be in cloud without condensation
@@ -495,7 +475,6 @@ def updraft_moisture(
                     - 0.5 * mass_detrainment_updraft[0, 0, -1]
                     + mass_entrainment_updraft[0, 0, -1]
                 )
-                denom_debug = denom
 
                 if denom > 0.0:
                     cloud_total_water_after_entrainment_forced = (
@@ -516,14 +495,11 @@ def updraft_moisture(
                     #     + up_massentr(i,k-1) * q(i,k-1)
                     # ) / denom
 
-                    qc_in_if_1 = cloud_total_water_after_entrainment_forced
-
                     if K == start_level + 1:
                         cloud_total_water_after_entrainment_forced = (
                             cloud_total_water_after_entrainment_forced
                             + vapor_excess * mass_entrainment_updraft[0, 0, -1] / denom
                         )
-                    qc_in_if_2 = cloud_total_water_after_entrainment_forced
                     # assuming no liq/ice water in the environment
                     cloud_liquid_after_rain_forced[0, 0, 0][plume] = (
                         cloud_liquid_after_rain_forced[0, 0, -1][plume]
@@ -532,35 +508,26 @@ def updraft_moisture(
                         * mass_detrainment_updraft[0, 0, -1]
                         * cloud_liquid_after_rain_forced[0, 0, -1][plume]
                     ) / denom
-                    qrc_in_if_1 = cloud_liquid_after_rain_forced[0, 0, 0][plume]
 
                 else:
                     cloud_total_water_after_entrainment_forced = cloud_total_water_after_entrainment_forced[
                         0, 0, -1
                     ]
-                    qc_in_else_1 = cloud_total_water_after_entrainment_forced
                     cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[0, 0, -1][
                         plume
                     ]
-                    qrc_in_else_1 = cloud_liquid_after_rain_forced[0, 0, 0][plume]
-
-                qc_2 = cloud_total_water_after_entrainment_forced
-                qrc_2 = cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                zu = normalized_massflux_updraft_forced[0, 0, 0][plume]
-                up_massentr = mass_entrainment_updraft
-                up_massdetr = mass_detrainment_updraft
-                q = vapor_forced
-                zqexec = vapor_excess
 
                 # updraft temp
                 updraft_column_temperature_forced = (1.0 / cumulus_parameterization_constants.CP) * (
                     cloud_moist_static_energy_forced
                     - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
-                    - cumulus_parameterization_constants.XLV * qrch
+                    - cumulus_parameterization_constants.XLV * saturation_cloud_liquid
                 )
 
                 # total condensed water before rainout
-                cloud_liquid_before_rain_forced = max(0.0, cloud_total_water_after_entrainment_forced - qrch)
+                cloud_liquid_before_rain_forced = max(
+                    0.0, cloud_total_water_after_entrainment_forced - saturation_cloud_liquid
+                )
 
                 cloud_liquid_after_rain_forced[0, 0, 0][plume] = min(
                     cloud_liquid_before_rain_forced, cloud_liquid_after_rain_forced[0, 0, 0][plume]
@@ -571,7 +538,7 @@ def updraft_moisture(
                     max(
                         0.0,
                         cloud_total_water_after_entrainment_forced
-                        - qrch
+                        - saturation_cloud_liquid
                         - cloud_liquid_after_rain_forced[0, 0, 0][plume],
                     )
                     / dz
@@ -581,7 +548,7 @@ def updraft_moisture(
                     cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
                     cloud_total_water_after_entrainment_forced = cloud_liquid_after_rain_forced[0, 0, 0][
                         plume
-                    ] + min(cloud_total_water_after_entrainment_forced, qrch)
+                    ] + min(cloud_total_water_after_entrainment_forced, saturation_cloud_liquid)
                     total_normalized_integrated_condensate_forced[0, 0][plume] = 0.0
                     psum = (
                         psum
@@ -611,198 +578,22 @@ def updraft_moisture(
                             * normalized_massflux_updraft_forced[0, 0, 0][plume]
                         )
 
-                    elif AUTOCONV == 2:
-                        # this is similar to AUTOCONV == 1 with temperature dependence
-                        min_liq = (
-                            ocean_fraction * CRITICAL_MIXING_RATIO_OVER_OCEAN
-                            + (1.0 - ocean_fraction) * CRITICAL_MIXING_RATIO_OVER_LAND
-                        )
-                        cx0 = (
-                            (c1d + C0)
-                            * dz
-                            * liquid_fraction(
-                                updraft_column_temperature_forced,
-                                convection_fraction,
-                                surface_type,
-                                FRAC_MODIS,
-                            )
-                        )
-                        cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced / (
-                            1.0 + cx0
-                        )
-                        condensate_to_fall_forced[0, 0, 0][plume] = cx0 * max(
-                            0.0, cloud_liquid_after_rain_forced[0, 0, 0][plume] - min_liq
-                        )  # units kg[rain]/kg[air]
-                        # --- convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                        condensate_to_fall_forced[0, 0, 0][plume] = (
-                            condensate_to_fall_forced[0, 0, 0][plume]
-                            * normalized_massflux_updraft_forced[0, 0, 0][plume]
-                        )
+                    # total water (vapor + condensed) in updraft after the rainout
+                    cloud_total_water_after_entrainment_forced = cloud_liquid_after_rain_forced[0, 0, 0][
+                        plume
+                    ] + min(cloud_total_water_after_entrainment_forced, saturation_cloud_liquid)
 
-                    elif AUTOCONV == 3:
-                        min_liq = (
-                            ocean_fraction * CRITICAL_MIXING_RATIO_OVER_OCEAN
-                            + (1.0 - ocean_fraction) * CRITICAL_MIXING_RATIO_OVER_LAND
-                        )
-                        if cloud_liquid_before_rain_forced <= min_liq:
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
-                        else:
-                            cx0 = C0 * liquid_fraction(
-                                updraft_column_temperature_forced,
-                                convection_fraction,
-                                surface_type,
-                                FRAC_MODIS,
-                            )
-                            cx0 = max(cx0, 0.50 * C0)
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
-                                0, 0, 0
-                            ][plume] * exp(-cx0 * dz) + (cup / cx0) * (1.0 - exp(-cx0 * dz))
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = min(
-                                cloud_liquid_before_rain_forced,
-                                cloud_liquid_after_rain_forced[0, 0, 0][plume],
-                            )
-                            condensate_to_fall_forced[0, 0, 0][plume] = (
-                                cloud_liquid_before_rain_forced
-                                - cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                            )
-                            # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = (
-                                condensate_to_fall_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            )
-
-                    elif AUTOCONV == 4:
-                        min_liq = (
-                            ocean_fraction * CRITICAL_MIXING_RATIO_OVER_OCEAN
-                            + (1.0 - ocean_fraction) * CRITICAL_MIXING_RATIO_OVER_LAND
-                        )
-                        if cloud_liquid_before_rain_forced <= min_liq:
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
-                        else:
-                            tem1 = liquid_fraction(
-                                updraft_column_temperature_forced,
-                                convection_fraction,
-                                surface_type,
-                                FRAC_MODIS,
-                            )
-                            cbf = 1.0
-                            if updraft_column_temperature_forced < T_BF:
-                                cbf = 1.0 + 0.5 * sqrt(
-                                    min(max(T_BF - updraft_column_temperature_forced, 0.0), T_BF - T_ICE_BF)
-                                )
-                            qrc_crit_BF = ccn / cbf
-                            cx0 = (
-                                C0
-                                * cbf
-                                * (tem1 * 1.3 + (1.0 - tem1))
-                                / (0.75 * min(15.0, max(vertical_velocity_3d, 1.0)))
-                            )
-                            # analytical solution
-                            cx0 = cx0 * (
-                                1.0
-                                - exp(-((cloud_liquid_after_rain_forced[0, 0, 0][plume] / qrc_crit_BF) ** 2))
-                            )
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
-                                0, 0, 0
-                            ][plume] * exp(-cx0 * dz) + (cup / cx0) * (1.0 - exp(-cx0 * dz))
-                            condensate_to_fall_forced[0, 0, 0][plume] = max(
-                                cloud_liquid_before_rain_forced
-                                - cloud_liquid_after_rain_forced[0, 0, 0][plume],
-                                0.0,
-                            )
-                            # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = (
-                                condensate_to_fall_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            )
-
-                    elif AUTOCONV == 5:
-                        min_liq = (
-                            ocean_fraction * CRITICAL_MIXING_RATIO_OVER_OCEAN
-                            + (1.0 - ocean_fraction) * CRITICAL_MIXING_RATIO_OVER_LAND
-                        )
-                        if cloud_liquid_before_rain_forced <= min_liq:
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
-                        else:
-                            cx0 = (c1d + C0) * (
-                                1.0
-                                + 0.33
-                                * liquid_fraction(
-                                    updraft_column_temperature_forced,
-                                    convection_fraction,
-                                    surface_type,
-                                    FRAC_MODIS,
-                                )
-                            )
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
-                                0, 0, 0
-                            ][plume] * exp(-cx0 * dz) + (cup / cx0) * (1.0 - exp(-cx0 * dz))
-                            condensate_to_fall_forced[0, 0, 0][plume] = max(
-                                0.0,
-                                cloud_liquid_before_rain_forced
-                                - cloud_liquid_after_rain_forced[0, 0, 0][plume],
-                            )  # units kg[rain]/kg[air]
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = (
-                                cloud_liquid_before_rain_forced - condensate_to_fall_forced[0, 0, 0][plume]
-                            )
-                            # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = (
-                                condensate_to_fall_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            )
-
-                    elif AUTOCONV == 6:
-                        min_liq = (
-                            ocean_fraction * CRITICAL_MIXING_RATIO_OVER_OCEAN
-                            + (1.0 - ocean_fraction) * CRITICAL_MIXING_RATIO_OVER_LAND
-                        )
-                        if cloud_liquid_before_rain_forced <= min_liq:
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
-                        else:
-                            cx0 = (c1d + C0) * dz
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = (
-                                cloud_liquid_before_rain_forced
-                            ) * exp(-cx0)
-                            condensate_to_fall_forced[0, 0, 0][plume] = (
-                                cloud_liquid_before_rain_forced
-                                - cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                            )
-                            # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = (
-                                condensate_to_fall_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            )
-
-                    elif AUTOCONV == 7:
-                        min_liq = (
-                            ocean_fraction * CRITICAL_MIXING_RATIO_OVER_OCEAN
-                            + (1.0 - ocean_fraction) * CRITICAL_MIXING_RATIO_OVER_LAND
-                        )
-                        if cloud_liquid_before_rain_forced <= min_liq:
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
-                        else:
-                            cx0 = c1d + C0
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_after_rain_forced[
-                                0, 0, 0
-                            ][plume] * exp(-cx0 * dz) + (cup / cx0) * (1.0 - exp(-cx0 * dz))
-                            condensate_to_fall_forced[0, 0, 0][plume] = max(
-                                cloud_liquid_before_rain_forced
-                                - cloud_liquid_after_rain_forced[0, 0, 0][plume],
-                                0.0,
-                            )
-                            cloud_liquid_after_rain_forced[0, 0, 0][plume] = (
-                                cloud_liquid_before_rain_forced - condensate_to_fall_forced[0, 0, 0][plume]
-                            )
-                            # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
-                            condensate_to_fall_forced[0, 0, 0][plume] = (
-                                condensate_to_fall_forced[0, 0, 0][plume]
-                                * normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            )
+                    # integrated normalized condensates
+                    total_normalized_integrated_condensate_forced[0, 0][plume] = (
+                        total_normalized_integrated_condensate_forced[0, 0][plume]
+                        + condensate_to_fall_forced[0, 0, 0][plume]
+                    )
+                    psum = (
+                        psum
+                        + cloud_liquid_before_rain_forced
+                        * normalized_massflux_updraft_forced[0, 0, 0][plume]
+                        * dz
+                    )
 
             if ZERO_DIFF == 0 and total_normalized_integrated_condensate_forced[0, 0][plume] < 0.0:
                 error_code[0, 0][plume] = 66

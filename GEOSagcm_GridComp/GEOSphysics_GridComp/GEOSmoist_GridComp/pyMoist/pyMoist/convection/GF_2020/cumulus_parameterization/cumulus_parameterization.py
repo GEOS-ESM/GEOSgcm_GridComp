@@ -290,10 +290,10 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
-                "USE_LINEAR_SUBCL_MF": cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
+                "USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES": cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
                 "AUTOCONV": config.AUTOCONV,
-                "QRC_CRIT_OCN": cumulus_parameterization_config.CRITICAL_MIXING_RATIO_OVER_OCEAN,
-                "QRC_CRIT_LND": cumulus_parameterization_config.CRITICAL_MIXING_RATIO_OVER_LAND,
+                "CRITICAL_MIXING_RATIO_OVER_OCEAN": cumulus_parameterization_config.CRITICAL_MIXING_RATIO_OVER_OCEAN,
+                "CRITICAL_MIXING_RATIO_OVER_LAND": cumulus_parameterization_config.CRITICAL_MIXING_RATIO_OVER_LAND,
                 "FRAC_MODIS": cumulus_parameterization_config.FRAC_MODIS,
                 "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
             },
@@ -959,8 +959,8 @@ class CumulusParameterization:
 
                 # calculate moisture properties of updraft
                 # NOTE test GF2020_CumulusParameterization_UpdraftMoisture_{plume}:
-                # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
-                # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
+                # NOTE      deep ✅
+                # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._updraft_moisture_profile(
                     start_level=locals.start_level,
@@ -972,7 +972,7 @@ class CumulusParameterization:
                     total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
                     cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
                     updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
-                    ocean_fraction=locals.ocean_fraction,
+                    ocean_fraction=state.input.ocean_fraction,
                     convection_fraction=state.input.convection_fraction,
                     surface_type=state.input.surface_type,
                     p_forced=state.input_output.p_forced,
