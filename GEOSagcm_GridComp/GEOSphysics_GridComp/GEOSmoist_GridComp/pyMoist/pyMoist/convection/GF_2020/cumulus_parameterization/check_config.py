@@ -167,6 +167,13 @@ def check_config(
             "manually to proceed."
         )
 
+    if cumulus_parameterization_config.ENABLE_SHALLOW == 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with shallow plume enabled. This requires"
+            "an unimplemented porion of UpdraftMassFlux. Please implement, then disable this error"
+            "manually to proceed."
+        )
+
     if config.AUTOCONV != 1:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initalized with AUTOCONV != 1. This requires"
