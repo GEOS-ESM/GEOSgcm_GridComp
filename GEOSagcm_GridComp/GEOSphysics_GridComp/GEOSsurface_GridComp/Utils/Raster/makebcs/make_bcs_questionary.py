@@ -65,7 +65,7 @@ def get_configs_from_answers(answers):
      
         maskfile = ''
      
-        if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6','T4MOM6']:
+        if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6', 'T4MOM6', 'T5MOM6', 'T8MOM6']:
            maskfile = 'GEOS5_10arcsec_mask_freshwater-lakes.nc'
            if lbcsv in ['F25', 'GM4', 'ICA']:
               maskfile = 'global.cat_id.catch.DL'
@@ -321,6 +321,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "T1MOM6 --  Tripolar (MOM6-Tripolar-Ocean:    $72x36$  )", \
                  "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $540x458$ )", \
                  "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
+                 "T5MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $720x576$)", \
+                 "T8MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $2880x2240$)", \
                  "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
             "when": lambda x:  "Stretched_CS" == x['grid_type'] or "Cubed-Sphere" == x['grid_type'],
         },
