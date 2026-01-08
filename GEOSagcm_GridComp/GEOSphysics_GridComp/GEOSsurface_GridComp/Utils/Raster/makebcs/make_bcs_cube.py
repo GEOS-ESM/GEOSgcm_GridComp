@@ -13,7 +13,7 @@ cube_template = """
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
-<<<<<<< HEAD
+
 if ( {TRIPOL_OCEAN} == True ) then
   set mom6v    = {mom6_bathy_version}
   set mom6root = {MAKE_BCS_INPUT_DIR}/ocean/MOM6/$mom6v
@@ -35,7 +35,7 @@ ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/540x458 data/MOM6/540
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/1440x1080 data/MOM6/1440x1080
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/720x576 data/MOM6/720x576
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/2880x2240 data/MOM6/2880x2240
->>>>>>> 086cb4ec (New ocean grids 720x576 and 2880x2240 for  mom6/v2 are added)
+=======
 
 
 if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
