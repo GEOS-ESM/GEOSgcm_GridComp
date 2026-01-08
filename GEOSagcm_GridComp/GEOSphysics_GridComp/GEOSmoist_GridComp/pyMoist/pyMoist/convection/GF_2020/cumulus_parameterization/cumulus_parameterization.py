@@ -1128,7 +1128,7 @@ class CumulusParameterization:
                     )
 
                 # downdraft origin level
-                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftOriginLevel_{plume}:
+                # NOTE test GF2020_CumulusParameterization_DowndraftOriginLevel_{plume}:
                 # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE. current version is brittle, likely need solver mechanics
                 # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE. current version is brittle, likely need solver mechanics
                 # NOTE      shallow ❌ RUNS BUT DOES NOT VALIDATE. current version is brittle, likely need solver mechanics
@@ -1150,7 +1150,7 @@ class CumulusParameterization:
                 self._downdraft_normalized_mass_flux()
 
                 # lateral mass fluxes associated with downdrafts
-                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftLateralMassFlux_{plume}:
+                # NOTE test GF2020_CumulusParameterization_DowndraftLateralMassFlux_{plume}:
                 # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
                 # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
                 # NOTE      shallow ✅
@@ -1187,7 +1187,7 @@ class CumulusParameterization:
                     )
 
                 # downdraft moist static energy + moisture budget
-                # NOTE test GF2020_CumulusParameterization_GF2020_CumulusParameterization_DowndraftMSEAnBuoyancy{plume}:
+                # NOTE test GF2020_CumulusParameterization_DowndraftMSEAnBuoyancy{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
