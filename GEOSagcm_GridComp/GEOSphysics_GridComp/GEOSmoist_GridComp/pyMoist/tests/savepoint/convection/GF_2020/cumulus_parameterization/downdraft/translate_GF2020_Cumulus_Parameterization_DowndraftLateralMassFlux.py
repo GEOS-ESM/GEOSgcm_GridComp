@@ -143,7 +143,7 @@ class TestCore:
                     downdraft_origin_level=locals.downdraft_origin_level,
                     geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                     normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
-                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
                     normalized_massflux_downdraft_modified=locals.normalized_massflux_downdraft_modified,
                     detrainment_function_downdraft=locals.detrainment_function_downdraft,
                     entrainment_rate_downdraft=locals.entrainment_rate_downdraft,

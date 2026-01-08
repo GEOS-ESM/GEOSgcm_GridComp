@@ -239,7 +239,7 @@ def downdraft_lateral_massflux(
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
-        # zero out entrainment/detrainment
+        # set entrainment/detrainment to zero
         detrainment_function_downdraft = 0.0
         mass_entrainment_downdraft = 0.0
         mass_detrainment_downdraft = 0.0
@@ -248,28 +248,28 @@ def downdraft_lateral_massflux(
         mass_entrainment_u_downdraft = 0.0
         mass_detrainment_u_downdraft = 0.0
 
-    with computation(PARALLEL), interval(0, downdraft_origin_level - 1):
-        if plume != 0 and error_code[0, 0][plume] == 0:
+    # rest of this stencil does not execute for shallow plumes (plume = 0)
+    with computation(PARALLEL), interval(...):
+        if plume != 0 and error_code[0, 0][plume] == 0 and K < downdraft_origin_level:
             detrainment_function_downdraft = entrainment_rate_downdraft
 
     with computation(FORWARD), interval(0, 1):
-        entrainment_rate_downdraft = 0.0
+        if plume != 0 and error_code[0, 0][plume] == 0:
+            entrainment_rate_downdraft = 0.0
 
-        # get max_loc for next block
-        _, _max_loc = column_max_ddim(normalized_massflux_downdraft_forced, plume, 0, k_end)
-        max_loc: IntFieldIJ = _max_loc
+    with computation(FORWARD), interval(0, 1):
+        if plume != 0 and error_code[0, 0][plume] == 0:
+            # get maximum index for next block
+            _, _max_loc = column_max_ddim(normalized_massflux_downdraft_forced, plume, 0, k_end)
+            max_loc: IntFieldIJ = _max_loc
 
-    with computation(BACKWARD), interval(max_loc, downdraft_origin_level):
-        if error_code[0, 0][plume] == 0:
-            # from downdraft_origin_level to maximum value of
-            # normalized_massflux_downdraft_forced -> change entrainment
-            normalized_massflux_downdraft_forced[0, 0, 0][plume] = (
-                geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
-            )
+    with computation(BACKWARD), interval(0, -1):
+        if plume != 0 and error_code[0, 0][plume] == 0 and K >= max_loc and K <= downdraft_origin_level:
+
+            # from downdraft_origin_level to maximum value of normalized_massflux_downdraft, change entrainment
+            dzo = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
             mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
-                detrainment_function_downdraft
-                * normalized_massflux_downdraft_forced[0, 0, 0][plume]
-                * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                detrainment_function_downdraft * dzo * normalized_massflux_downdraft_forced[0, 0, 1][plume]
             )
 
             mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
@@ -280,27 +280,19 @@ def downdraft_lateral_massflux(
             mass_entrainment_downdraft_forced[0, 0, 0][plume] = max(
                 0.0, mass_entrainment_downdraft_forced[0, 0, 0][plume]
             )
-
-            # check mass_detrainment_downdraft_forced in case
-            # mass_entrainment_downdraft_forced has been changed above
+            # check dd_massdetro in case of dd_massentro has been changed above
             mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
                 mass_entrainment_downdraft_forced[0, 0, 0][plume]
                 - normalized_massflux_downdraft_forced[0, 0, 0][plume]
                 + normalized_massflux_downdraft_forced[0, 0, 1][plume]
             )
 
-    with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0:
-            # get max_loc for next block
-            _, _max_loc = column_max_ddim(normalized_massflux_downdraft_forced, plume, 0, k_end)
-            max_loc: IntFieldIJ = _max_loc
-
-    with computation(BACKWARD), interval(0, max_loc):
-        if error_code[0, 0][plume] == 0:
-            # from maximum value normalized_massflux_downdraft_forced to surface -> change detrainment
-            dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+    with computation(BACKWARD), interval(0, -1):
+        if plume != 0 and error_code[0, 0][plume] == 0 and K < max_loc:
+            # from maximum value zd to surface -> change detrainment
+            dzo = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
             mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
-                entrainment_rate_downdraft * dz * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                entrainment_rate_downdraft * dzo * normalized_massflux_downdraft_forced[0, 0, 1][plume]
             )
 
             mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
@@ -311,16 +303,15 @@ def downdraft_lateral_massflux(
             mass_detrainment_downdraft_forced[0, 0, 0][plume] = max(
                 0.0, mass_detrainment_downdraft_forced[0, 0, 0][plume]
             )
-            # check mass_entrainment_downdraft_forced in case
-            # mass_detrainment_downdraft_forced has been changed above
+            # check dd_massentro in case of dd_massdetro has been changed above
             mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
                 mass_detrainment_downdraft_forced[0, 0, 0][plume]
                 + normalized_massflux_downdraft_forced[0, 0, 0][plume]
                 - normalized_massflux_downdraft_forced[0, 0, 1][plume]
             )
 
-    with computation(BACKWARD), interval(0, downdraft_origin_level):
-        if error_code[0, 0][plume] == 0:
+    with computation(BACKWARD), interval(0, -1):
+        if plume != 0 and error_code[0, 0][plume] == 0 and K <= downdraft_origin_level:
             normalized_massflux_downdraft_modified = normalized_massflux_downdraft_forced[0, 0, 0][plume]
             normalized_massflux_downdraft = normalized_massflux_downdraft_forced[0, 0, 0][plume]
             mass_entrainment_downdraft = mass_entrainment_downdraft_forced[0, 0, 0][plume]
