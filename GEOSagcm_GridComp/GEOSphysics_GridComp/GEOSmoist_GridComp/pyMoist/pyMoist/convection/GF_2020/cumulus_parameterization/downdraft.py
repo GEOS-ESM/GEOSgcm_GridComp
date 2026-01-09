@@ -269,12 +269,16 @@ def downdraft_mass_flux(
             min_loc: IntFieldIJ = _min_loc
 
             # this alpha constrains the location of the maximun ZU to be at "kb_adj" vertical level
-            alpha = 1.0 + (beta - 1.0) * ((min_loc + 1) / (downdraft_origin_level[0, 0][plume] + 2)) / (
-                1.0 - ((min_loc + 1) / (downdraft_origin_level[0, 0][plume] + 2))
-            )
+            alpha: FloatFieldIJ = 1.0 + (beta - 1.0) * (
+                (min_loc + 1) / (downdraft_origin_level[0, 0][plume] + 2)
+            ) / (1.0 - ((min_loc + 1) / (downdraft_origin_level[0, 0][plume] + 2)))
 
-    with computation(PARALLEL), interval(...):
-        if plume != 0 and error_code[0, 0][plume] == 0:
+    with computation(PARALLEL), interval(1, None):
+        if (
+            plume != 0
+            and error_code[0, 0][plume] == 0
+            and K <= min(downdraft_origin_level[0, 0][plume] + 1, k_end - 1)
+        ):
             ratio = float(K + 1) / (downdraft_origin_level[0, 0][plume] + 2)
             normalized_massflux_downdraft_forced[0, 0, 0][plume] = ratio ** (alpha - 1.0) * (1.0 - ratio) ** (
                 beta - 1.0

@@ -90,20 +90,20 @@ class TestCore:
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_downmassflux"
         ]
-        locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level_downmassflux"]
-        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "downdraft_origin_level_downmassflux"
-        ]
-        state.input_output.pbl_level.data[:] = inputs["pbl_level_downmassflux"]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "updraft_origin_level_downmassflux"
-        ]
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "updraft_lfc_level_downmassflux"
-        ]
-        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "lcl_level_downmassflux"
-        ]
+        locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level_downmassflux"] - 1
+        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["downdraft_origin_level_downmassflux"] - 1
+        )
+        state.input_output.pbl_level.data[:] = inputs["pbl_level_downmassflux"] - 1
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_downmassflux"] - 1
+        )
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_lfc_level_downmassflux"] - 1
+        )
+        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["lcl_level_downmassflux"] - 1
+        )
         state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "p_cloud_levels_forced_downmassflux"
         ]
@@ -151,20 +151,22 @@ class TestCore:
             "error_code_downmassflux": state.output.error_code.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_detrainment_start_level_downmassflux": locals.detrainment_start_level.data[:],
+            "local_detrainment_start_level_downmassflux": locals.detrainment_start_level.data[:] + 1,
             "downdraft_origin_level_downmassflux": state.output.downdraft_origin_level.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "pbl_level_downmassflux": state.input_output.pbl_level.data[:],
+            ]
+            + 1,
+            "pbl_level_downmassflux": state.input_output.pbl_level.data[:] + 1,
             "updraft_origin_level_downmassflux": state.output.updraft_origin_level.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            ]
+            + 1,
             "updraft_lfc_level_downmassflux": state.output.updraft_lfc_level.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "lcl_level_downmassflux": state.output.lcl_level.data[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            ]
+            + 1,
+            "lcl_level_downmassflux": state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX]
+            + 1,
             "p_cloud_levels_forced_downmassflux": state.output.p_cloud_levels_forced.data[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
