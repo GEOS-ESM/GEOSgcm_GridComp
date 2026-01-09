@@ -1193,14 +1193,6 @@ class DowndraftWindShear:
 ######## NOTE TODO NOTE README NOTE TODO TODO NOTE EVERYTHING BELOW HERE NEEDS TO BE REWORKED
 
 
-class DowndraftMassFlux:
-    def __init__(self):
-        pass
-
-    def __call__(self, *args, **kwds):
-        pass
-
-
 class DowndraftLateralMassFlux:
     def __init__(self):
         pass

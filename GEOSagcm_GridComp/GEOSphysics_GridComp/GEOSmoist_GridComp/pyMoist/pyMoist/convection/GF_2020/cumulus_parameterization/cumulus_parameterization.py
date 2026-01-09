@@ -87,7 +87,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     DowndraftOriginLevel,
-    DowndraftMassFlux,
+    downdraft_mass_flux,
     downdraft_lateral_massflux,
     DowndraftWetBlub,
     downdraft_moist_static_energy_and_buoyancy,
@@ -333,7 +333,11 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._downdraft_mass_flux = DowndraftMassFlux()
+        self._downdraft_mass_flux = stencil_factory.from_dims_halo(
+            func=downdraft_mass_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
+        )
 
         self._downdraft_lateral_mass_flux = stencil_factory.from_dims_halo(
             func=downdraft_lateral_massflux,
@@ -1139,7 +1143,7 @@ class CumulusParameterization:
                     topography_height_no_negative=state.input_output.topography_height_no_negative,
                     environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                     updraft_origin_level=state.output.updraft_origin_level,
-                    downdraft_origin_level=locals.downdraft_origin_level,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
                     updraft_lfc_level=state.output.updraft_lfc_level,
                     detrainment_start_level=locals.detrainment_start_level,
                     melting_layer=locals.melting_layer,
@@ -1147,7 +1151,28 @@ class CumulusParameterization:
                 )
 
                 # downdraft normalized mass flux
-                self._downdraft_mass_flux()
+                # NOTE test GF2020_CumulusParameterization_DowndraftMassFlux_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._downdraft_mass_flux(
+                    error_code=state.output.error_code,
+                    detrainment_start_level=locals.detrainment_start_level,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
+                    pbl_level=state.input_output.pbl_level,
+                    updraft_origin_level=state.output.updraft_origin_level,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    lcl_level=state.output.lcl_level,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    p_surface=state.input_output.p_surface,
+                    normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    ocean_fraction=state.input.ocean_fraction,
+                    random_number=locals.random_number,
+                    DOWNDRAFT_MAX_HEIGHT_LAND=self.plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_LAND,
+                    DOWNDRAFT_MAX_HEIGHT_OCEAN=self.plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_OCEAN,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                )
 
                 # lateral mass fluxes associated with downdrafts
                 # NOTE test GF2020_CumulusParameterization_DowndraftLateralMassFlux_{plume}:
@@ -1156,7 +1181,7 @@ class CumulusParameterization:
                 # NOTE      shallow ✅
                 self._downdraft_lateral_mass_flux(
                     error_code=state.output.error_code,
-                    downdraft_origin_level=locals.downdraft_origin_level,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
                     geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                     normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
                     normalized_massflux_downdraft_forced=state.output.normalized_massflux_updraft_forced,
@@ -1193,7 +1218,7 @@ class CumulusParameterization:
                 # NOTE      shallow ✅
                 self._downdraft_moist_static_energy_and_buoyancy(
                     error_code=state.output.error_code,
-                    downdraft_origin_level=locals.downdraft_origin_level,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
                     u=state.input_output.u,
                     u_cloud_levels=locals.u_cloud_levels,
                     u_c_downdraft=locals.u_c_downdraft,
@@ -1223,7 +1248,7 @@ class CumulusParameterization:
                 # NOTE      shallow ✅
                 self._downdraft_moisture(
                     error_code=state.output.error_code,
-                    downdraft_origin_level=locals.downdraft_origin_level,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
                     t_cloud_levels_forced=locals.t_cloud_levels_forced,
                     t_wetbulb=locals.t_wetbulb,
                     vapor_forced=locals.vapor_forced,
