@@ -43,7 +43,7 @@ class TestCore:
 
         in_vars["data_vars"] = {
             "error_code_downlateralmassflux": {},
-            "local_downdraft_origin_level_downlateralmassflux": {},
+            "downdraft_origin_level_downlateralmassflux": {},
             "local_geopotential_height_cloud_levels_forced_downlateralmassflux": {},
             "local_normalized_massflux_downdraft_downlateralmassflux": {},
             "normalized_massflux_downdraft_forced_downlateralmassflux": {},
@@ -91,7 +91,7 @@ class TestCore:
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_downlateralmassflux"
         ]
-        locals.downdraft_origin_level.data[:] = inputs["local_downdraft_origin_level_downlateralmassflux"] - 1
+        state.output.downdraft_origin_level.data[:,:,plume_dependent_constants.PLUME_INDEX] = inputs["downdraft_origin_level_downlateralmassflux"] - 1
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
             "local_geopotential_height_cloud_levels_forced_downlateralmassflux"
         ]
@@ -140,7 +140,7 @@ class TestCore:
             if cumulus_parameterization_config.FIRST_GUESS_W == 0:
                 code(
                     error_code=state.output.error_code,
-                    downdraft_origin_level=locals.downdraft_origin_level,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
                     geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                     normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
                     normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
@@ -162,7 +162,7 @@ class TestCore:
             "error_code_downlateralmassflux": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_downdraft_origin_level_downlateralmassflux": locals.downdraft_origin_level.field[:] + 1,
+            "downdraft_origin_level_downlateralmassflux": state.output.downdraft_origin_level.field[:,:,plume_dependent_constants.PLUME_INDEX] + 1,
             "local_geopotential_height_cloud_levels_forced_downlateralmassflux": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],

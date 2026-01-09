@@ -952,15 +952,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    downdraft_origin_level: Quantity = dataclasses.field(
-        metadata={
-            "name": "downdraft_origin_level",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Int,
-        }
-    )
     normalized_massflux_downdraft: Quantity = dataclasses.field(
         metadata={
             "name": "normalized_massflux_downdraft",

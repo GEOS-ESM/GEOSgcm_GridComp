@@ -45,7 +45,7 @@ class TestCore:
 
         in_vars["data_vars"] = {
             "error_code_downmsebuoyancy": {},
-            "local_downdraft_origin_level_downmsebuoyancy": {},
+            "downdraft_origin_level_downmsebuoyancy": {},
             "u_downmsebuoyancy": {},
             "local_u_cloud_levels_downmsebuoyancy": {},
             "local_u_c_downdraft_downmsebuoyancy": {},
@@ -100,7 +100,9 @@ class TestCore:
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_downmsebuoyancy"
         ]
-        locals.downdraft_origin_level.data[:] = inputs["local_downdraft_origin_level_downmsebuoyancy"]
+        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "downdraft_origin_level_downmsebuoyancy"
+        ]
         state.input_output.u.data[:] = inputs["u_downmsebuoyancy"]
         locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels_downmsebuoyancy"]
         locals.u_c_downdraft.data[:] = inputs["local_u_c_downdraft_downmsebuoyancy"]
@@ -156,7 +158,7 @@ class TestCore:
             if cumulus_parameterization_config.FIRST_GUESS_W == 0:
                 code(
                     error_code=state.output.error_code,
-                    downdraft_origin_level=locals.downdraft_origin_level,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
                     u=state.input_output.u,
                     u_cloud_levels=locals.u_cloud_levels,
                     u_c_downdraft=locals.u_c_downdraft,
@@ -184,7 +186,9 @@ class TestCore:
             "error_code_downmsebuoyancy": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_downdraft_origin_level_downmsebuoyancy": locals.downdraft_origin_level.field[:],
+            "downdraft_origin_level_downmsebuoyancy": state.output.downdraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "u_downmsebuoyancy": state.input_output.u.field[:],
             "local_u_cloud_levels_downmsebuoyancy": locals.u_cloud_levels.field[:],
             "local_u_c_downdraft_downmsebuoyancy": locals.u_c_downdraft.field[:],

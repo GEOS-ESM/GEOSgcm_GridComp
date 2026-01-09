@@ -271,7 +271,7 @@ class GF2020CumulusParameterizationState(State):
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
-                "dtype": Float,
+                "dtype": Int,
             }
         )
         lcl_level: Quantity = dataclasses.field(

@@ -33,3 +33,6 @@ AEROEVAP = 1
 deep = Int(2)
 shallow = Int(0)
 mid = Int(1)
+
+# control if smoothing is performed in updraft_mass_flux and downdraft_mass_flux stencils
+DO_SMOOTHING = False

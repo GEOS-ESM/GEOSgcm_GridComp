@@ -36,8 +36,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import
 from ndsl.stencils.column_operations import column_min, column_max_ddim
 
 # initalize constants and field type for UpdraftMassFlux stencil
-DO_SMOOTHING = False
-
 _X_ALPHA = [
     3.699999,
     3.699999,
@@ -170,9 +168,6 @@ def updraft_mass_flux(
         stop_computation: BoolFieldIJ = False
         stop_do_loop: BoolFieldIJ = False
 
-        # gama pdf
-        DO_SMOOTH: BoolFieldIJ = False
-
         if ZERO_DIFF == 1:
             if plume == 2 and ocean_fraction > 0.90:
                 # deep plume over ocean
@@ -266,24 +261,26 @@ def updraft_mass_flux(
             if execution_choice == 20:
                 normalized_massflux_updraft_forced[0, 0, 0][plume] = 0.0
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            zu_max, _ = column_max_ddim(
+            _max_val, _ = column_max_ddim(
                 normalized_massflux_updraft_forced,
                 plume,
                 0,
                 min(k_end, cloud_top_level[0, 0][plume] + 1),
             )
+            max_val: FloatFieldIJ = _max_val
+
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
-            if zu_max <= 0:
+            if max_val <= 0:
                 normalized_massflux_updraft_forced[0, 0, 0][plume] = 0.0
                 error_code[0, 0][plume] = 51
             else:
                 if K <= min(k_end, cloud_top_level[0, 0][plume] + 1):
                     normalized_massflux_updraft_forced[0, 0, 0][plume] = normalized_massflux_updraft_forced[
                         0, 0, 0
-                    ][plume] / (1.0e-9 + zu_max)
+                    ][plume] / (1.0e-9 + max_val)
 
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:

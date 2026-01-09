@@ -196,6 +196,11 @@ from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cum
     TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_mid,
     TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_shallow,
 )
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cumulus_Parameterization_DowndraftMassFlux import (
+    TranslateGF2020_CumulusParameterization_DowndraftMassFlux_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftMassFlux_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftMassFlux_shallow,
+)
 from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_Cumulus_Parameterization_DowndraftLateralMassFlux import (
     TranslateGF2020_CumulusParameterization_DowndraftLateralMassFlux_deep,
     TranslateGF2020_CumulusParameterization_DowndraftLateralMassFlux_mid,

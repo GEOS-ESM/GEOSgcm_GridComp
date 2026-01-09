@@ -45,7 +45,7 @@ class TestCore:
 
         in_vars["data_vars"] = {
             "error_code_downmoisture": {},
-            "local_downdraft_origin_level_downmoisture": {},
+            "downdraft_origin_level_downmoisture": {},
             "local_t_cloud_levels_forced_downmoisture": {},
             "local_t_wetbulb_downmoisture": {},
             "local_vapor_forced_downmoisture": {},
@@ -102,7 +102,9 @@ class TestCore:
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_downmoisture"
         ]
-        locals.downdraft_origin_level.data[:] = inputs["local_downdraft_origin_level_downmoisture"]
+        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "downdraft_origin_level_downmoisture"
+        ]
         locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_downmoisture"]
         locals.t_wetbulb.data[:] = inputs["local_t_wetbulb_downmoisture"]
         locals.vapor_forced.data[:] = inputs["local_vapor_forced_downmoisture"]
@@ -169,7 +171,7 @@ class TestCore:
             if cumulus_parameterization_config.FIRST_GUESS_W == 0:
                 code(
                     error_code=state.output.error_code,
-                    downdraft_origin_level=locals.downdraft_origin_level,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
                     t_cloud_levels_forced=locals.t_cloud_levels_forced,
                     t_wetbulb=locals.t_wetbulb,
                     vapor_forced=locals.vapor_forced,
@@ -199,7 +201,9 @@ class TestCore:
             "error_code_downmoisture": state.output.error_code.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_downdraft_origin_level_downmoisture": locals.downdraft_origin_level.data[:],
+            "downdraft_origin_level_downmoisture": state.output.downdraft_origin_level.data[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "local_t_cloud_levels_forced_downmoisture": locals.t_cloud_levels_forced.data[:],
             "local_t_wetbulb_downmoisture": locals.t_wetbulb.data[:],
             "local_vapor_forced_downmoisture": locals.vapor_forced.data[:],

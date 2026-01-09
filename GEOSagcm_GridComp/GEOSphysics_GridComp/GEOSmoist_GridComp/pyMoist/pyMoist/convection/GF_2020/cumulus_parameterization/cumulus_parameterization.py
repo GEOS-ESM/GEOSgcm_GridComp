@@ -87,7 +87,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     DowndraftOriginLevel,
-    DowndraftNormalizedMassFlux,
+    DowndraftMassFlux,
     downdraft_lateral_massflux,
     DowndraftWetBlub,
     downdraft_moist_static_energy_and_buoyancy,
@@ -333,7 +333,7 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._downdraft_normalized_mass_flux = DowndraftNormalizedMassFlux()
+        self._downdraft_mass_flux = DowndraftMassFlux()
 
         self._downdraft_lateral_mass_flux = stencil_factory.from_dims_halo(
             func=downdraft_lateral_massflux,
@@ -1147,7 +1147,7 @@ class CumulusParameterization:
                 )
 
                 # downdraft normalized mass flux
-                self._downdraft_normalized_mass_flux()
+                self._downdraft_mass_flux()
 
                 # lateral mass fluxes associated with downdrafts
                 # NOTE test GF2020_CumulusParameterization_DowndraftLateralMassFlux_{plume}:

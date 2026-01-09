@@ -22,7 +22,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import DowndraftOriginLevel
+from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import downdraft_mass_flux
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
 )
@@ -42,16 +42,19 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_downorigin": {},
-            "cloud_top_level_downorigin": {},
-            "updraft_origin_level_downorigin": {},
-            "downdraft_origin_level_downorigin": {},
-            "local_detrainment_start_level_downorigin": {},
-            "updraft_lfc_level_downorigin": {},
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin": {},
-            "local_geopotential_height_cloud_levels_forced_downorigin": {},
-            "topography_height_no_negative_downorigin": {},
-            "local_melting_layer_downorigin": {},
+            "error_code_downmassflux": {},
+            "local_detrainment_start_level_downmassflux": {},
+            "downdraft_origin_level_downmassflux": {},
+            "pbl_level_downmassflux": {},
+            "updraft_origin_level_downmassflux": {},
+            "updraft_lfc_level_downmassflux": {},
+            "lcl_level_downmassflux": {},
+            "p_cloud_levels_forced_downmassflux": {},
+            "p_surface_downmassflux": {},
+            "local_normalized_massflux_downdraft_downmassflux": {},
+            "normalized_massflux_downdraft_forced_downmassflux": {},
+            "ocean_fraction_downmassflux": {},
+            "local_random_number_downmassflux": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -85,38 +88,40 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_downorigin"
+            "error_code_downmassflux"
         ]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_level_downorigin"] - 1
-        )
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_origin_level_downorigin"] - 1
-        )
-        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["downdraft_origin_level_downorigin"] - 1
-        )
-        locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level_downorigin"] - 1
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_lfc_level_downorigin"] - 1
-        )
-        locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs[
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin"
+        locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level_downmassflux"]
+        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "downdraft_origin_level_downmassflux"
         ]
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced_downorigin"
+        state.input_output.pbl_level.data[:] = inputs["pbl_level_downmassflux"]
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_origin_level_downmassflux"
         ]
-        state.input_output.topography_height_no_negative.data[:] = inputs[
-            "topography_height_no_negative_downorigin"
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_lfc_level_downmassflux"
         ]
-        locals.melting_layer.data[:] = inputs["local_melting_layer_downorigin"]
+        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "lcl_level_downmassflux"
+        ]
+        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "p_cloud_levels_forced_downmassflux"
+        ]
+        state.input_output.p_surface.data[:] = inputs["p_surface_downmassflux"]
+        locals.normalized_massflux_downdraft.data[:] = inputs[
+            "local_normalized_massflux_downdraft_downmassflux"
+        ]
+        state.output.normalized_massflux_downdraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["normalized_massflux_downdraft_forced_downmassflux"]
+        state.input.ocean_fraction.data[:] = inputs["ocean_fraction_downmassflux"]
+        locals.random_number.data[:] = inputs["local_random_number_downmassflux"]
 
         # initalize test code
-        code = DowndraftOriginLevel(
-            stencil_factory=self.stencil_factory,
-            quantity_factory=self.quantity_factory,
-            config=config,
-            cumulus_parameterization_config=cumulus_parameterization_config,
+        code = self.stencil_factory.from_dims_halo(
+            func=downdraft_mass_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
         )
 
         # call test code
@@ -124,56 +129,58 @@ class TestCore:
             if cumulus_parameterization_config.FIRST_GUESS_W == 0:
                 code(
                     error_code=state.output.error_code,
-                    cloud_top_level=state.output.cloud_top_level,
-                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    topography_height_no_negative=state.input_output.topography_height_no_negative,
-                    environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
-                    updraft_origin_level=state.output.updraft_origin_level,
-                    downdraft_origin_level=state.output.downdraft_origin_level,
-                    updraft_lfc_level=state.output.updraft_lfc_level,
                     detrainment_start_level=locals.detrainment_start_level,
-                    melting_layer=locals.melting_layer,
-                    plume_dependent_constants=plume_dependent_constants,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
+                    pbl_level=state.input_output.pbl_level,
+                    updraft_origin_level=state.output.updraft_origin_level,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    lcl_level=state.output.lcl_level,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    p_surface=state.input_output.p_surface,
+                    normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    ocean_fraction=state.input.ocean_fraction,
+                    random_number=locals.random_number,
+                    DOWNDRAFT_MAX_HEIGHT_LAND=plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_LAND,
+                    DOWNDRAFT_MAX_HEIGHT_OCEAN=plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_OCEAN,
+                    plume=plume_dependent_constants.PLUME_INDEX,
                 )
 
         # write output
         outputs = {
-            "error_code_downorigin": state.output.error_code.field[
+            "error_code_downmassflux": state.output.error_code.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "cloud_top_level_downorigin": state.output.cloud_top_level.field[
+            "local_detrainment_start_level_downmassflux": locals.detrainment_start_level.data[:],
+            "downdraft_origin_level_downmassflux": state.output.downdraft_origin_level.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "updraft_origin_level_downorigin": state.output.updraft_origin_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "downdraft_origin_level_downorigin": state.output.downdraft_origin_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "local_detrainment_start_level_downorigin": locals.detrainment_start_level.field[:] + 1,
-            "updraft_lfc_level_downorigin": state.output.updraft_lfc_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
-                :
             ],
-            "local_geopotential_height_cloud_levels_forced_downorigin": locals.geopotential_height_cloud_levels_forced.field[
-                :
+            "pbl_level_downmassflux": state.input_output.pbl_level.data[:],
+            "updraft_origin_level_downmassflux": state.output.updraft_origin_level.data[
+                :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "topography_height_no_negative_downorigin": state.input_output.topography_height_no_negative.field[
-                :
+            "updraft_lfc_level_downmassflux": state.output.updraft_lfc_level.data[
+                :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_melting_layer_downorigin": locals.melting_layer.field[:],
+            "lcl_level_downmassflux": state.output.lcl_level.data[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "p_cloud_levels_forced_downmassflux": state.output.p_cloud_levels_forced.data[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "p_surface_downmassflux": state.input_output.p_surface.data[:],
+            "local_normalized_massflux_downdraft_downmassflux": locals.normalized_massflux_downdraft.data[:],
+            "normalized_massflux_downdraft_forced_downmassflux": state.output.normalized_massflux_downdraft_forced.data[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "ocean_fraction_downmassflux": state.input.ocean_fraction.data[:],
+            "local_random_number_downmassflux": locals.random_number.data[:],
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_DowndraftMassFlux_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -196,7 +203,7 @@ class TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_shallow(Trans
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_DowndraftMassFlux_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -219,7 +226,7 @@ class TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_mid(Translate
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_DowndraftMassFlux_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
