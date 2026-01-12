@@ -619,9 +619,24 @@ def environment_mass_flux(
             environment_massflux = 0.0
 
 
+def modify_environment_profiles(
+    
+):
 class EnvironmentalSubsidence:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
     def __call__(self, *args, **kwds):
-        pass
+        if self.cumulus_parameterization_config.APPLY_SUB_MP != 0:
+            raise NotImplementedError(
+                "[NDSL] GF2020-->CumulusParameterization-->EnvironmentalSubsidence this code"
+                "has not been impemented. You should have been caught before getting here, but here we are."
+                "Please choose another option for APPLY_SUB_MP or implement to continue."
+            )

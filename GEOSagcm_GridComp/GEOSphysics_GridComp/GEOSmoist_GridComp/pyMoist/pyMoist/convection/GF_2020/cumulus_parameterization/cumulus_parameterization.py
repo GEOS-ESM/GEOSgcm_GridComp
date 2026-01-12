@@ -100,10 +100,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation impor
 from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization import (
     VerticalDiscretization,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.smoothing.smoothing import (
-    MakeSmoother,
-    ApplySmoother,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.smoothing import smooth_tendencies
 from pyMoist.convection.GF_2020.cumulus_parameterization.cloud_base_mass_flux.cloud_base_mass_flux import (
     CloudBaseMassFlux,
 )
@@ -397,7 +394,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._Xie_trigger_function = XieTriggerFunction()
+        self._Xie_trigger_function = XieTriggerFunction(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._downdraft_windshear = DowndraftWindShear(
             stencil_factory=stencil_factory,
@@ -420,11 +422,18 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._environmental_subsidence = EnvironmentalSubsidence()
+        self._environmental_subsidence = EnvironmentalSubsidence(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
-        self._make_smoother = MakeSmoother()
-
-        self._apply_smoother = ApplySmoother()
+        self._smooth_tendencies = stencil_factory.from_dims_halo(
+            func=smooth_tendencies,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"USE_SMOOTH_TENDENCIES": cumulus_parameterization_config.USE_SMOOTH_TENDENCIES},
+        )
 
         self._moist_static_energy_inside_cloud = MoistStaticEnergyInsideCloud()
 
@@ -1379,7 +1388,7 @@ class CumulusParameterization:
 
                 # Trigger function based on Xie et al 2019
                 # NOTE not implemented, does not run with test config
-                self._Xie_trigger_function()
+                self._Xie_trigger_function(plume_dependent_constants=self.plume_dependent_constants)
 
                 # determine downdraft strength in terms of windshear
                 # NOTE test GF2020_CumulusParameterization_DowndraftWindshear_{plume}:
@@ -1484,10 +1493,25 @@ class CumulusParameterization:
 
                 # apply environmental subsidence on grid-scale ice and
                 # liq water contents, and cloud fraction (Upwind scheme)
+                # NOTE not implemented, does not run with test config
                 self._environmental_subsidence()
 
                 # make the smoothness procedure
-                self._make_smoother()
+                # NOTE test GF2020_CumulusParameterization_SmoothTendencies_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._smooth_tendencies(
+                error_code=state.output.error_code,
+                cloud_top_level=state.output.cloud_top_level,
+                p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                del_moist_static_energy_cloud_ensemble=locals.del_moist_static_energy_cloud_ensemble,
+                del_vapor_cloud_ensemble=locals.del_vapor_cloud_ensemble,
+                del_cloud_liquid_cloud_ensemble=locals.del_cloud_liquid_cloud_ensemble,
+                del_u_cloud_ensemble=locals.del_u_cloud_ensemble,
+                del_v_cloud_ensemble=locals.del_v_cloud_ensemble,
+                plume=self.plume_dependent_constants.PLUME_INDEX,
+            )
 
                 # using smoothed tendencies, calculate changed environmental profiles
                 self._apply_smoother()
