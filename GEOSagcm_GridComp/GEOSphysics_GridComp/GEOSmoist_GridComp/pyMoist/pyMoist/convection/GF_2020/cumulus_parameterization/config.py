@@ -85,3 +85,4 @@ class GF2020CumulusParameterizationConfig:
     ALP1: Float
     USE_FCT: Int
     MIN_ENTRAINMENT_RATE: Float
+    APPLY_SUB_MP: Int

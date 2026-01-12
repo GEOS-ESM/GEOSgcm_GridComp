@@ -102,9 +102,9 @@ class TestCore:
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_downmoisture"
         ]
-        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "downdraft_origin_level_downmoisture"
-        ]
+        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["downdraft_origin_level_downmoisture"] - 1
+        )
         locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced_downmoisture"]
         locals.t_wetbulb.data[:] = inputs["local_t_wetbulb_downmoisture"]
         locals.vapor_forced.data[:] = inputs["local_vapor_forced_downmoisture"]
@@ -203,7 +203,8 @@ class TestCore:
             ],
             "downdraft_origin_level_downmoisture": state.output.downdraft_origin_level.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            ]
+            + 1,
             "local_t_cloud_levels_forced_downmoisture": locals.t_cloud_levels_forced.data[:],
             "local_t_wetbulb_downmoisture": locals.t_wetbulb.data[:],
             "local_vapor_forced_downmoisture": locals.vapor_forced.data[:],

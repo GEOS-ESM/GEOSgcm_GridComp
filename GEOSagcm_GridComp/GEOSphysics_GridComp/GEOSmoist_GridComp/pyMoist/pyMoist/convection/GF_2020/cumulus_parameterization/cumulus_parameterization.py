@@ -1243,8 +1243,8 @@ class CumulusParameterization:
 
                 # calculate moisture properties of downdraft
                 # NOTE test GF2020_CumulusParameterization_DowndraftMoisture_{plume}:
-                # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE
-                # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE
+                # NOTE      deep ✅
+                # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._downdraft_moisture(
                     error_code=state.output.error_code,

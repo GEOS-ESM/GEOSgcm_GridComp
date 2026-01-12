@@ -675,16 +675,15 @@ def downdraft_moisture(
         downdraft_saturation_vapor_forced = 0.0
         evaporate_in_downdraft_forced[0, 0, 0][plume] = 0.0
 
-    with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0 and plume != 0:
-            # set bounds for next block
-            lower_bound: IntFieldIJ = downdraft_origin_level[0, 0][plume]
-            upper_bound: IntFieldIJ = downdraft_origin_level[0, 0][plume] + 1
-
-    with computation(FORWARD), interval(lower_bound, upper_bound):
-        if error_code[0, 0][plume] == 0 and plume != 0:
+    with computation(FORWARD), interval(0, -1):
+        # NOTE this K level check should be a dynamic interval for the sake of performance, but the current
+        # of dynamic intervals does not currently work with single levels e.g. interval(field, field+1)
+        # will revisit when dynamic intervals are more stable
+        if error_code[0, 0][plume] == 0 and plume != 0 and K == downdraft_origin_level[0, 0][plume]:
             # boundary condition at downdraft_origin_level ('level of free sinking')
-            dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+            dz: FloatFieldIJ = (
+                geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+            )
 
             cloud_total_water_after_entrainment_downdraft_forced = vapor_cloud_levels_forced
 
@@ -694,7 +693,7 @@ def downdraft_moisture(
                     vapor_wetbulb + cloud_total_water_after_entrainment_forced
                 )
 
-            d_moist_static_energy = (
+            d_moist_static_energy: FloatFieldIJ = (
                 cloud_moist_static_energy_downdraft_forced
                 - environment_saturation_moist_static_energy_cloud_levels_forced
             )
@@ -709,6 +708,8 @@ def downdraft_moisture(
             else:
                 downdraft_saturation_vapor_forced = environment_saturation_mixing_ratio_cloud_levels_forced
 
+    with computation(FORWARD), interval(0, -1):
+        if error_code[0, 0][plume] == 0 and plume != 0 and K == downdraft_origin_level[0, 0][plume]:
             evaporate_in_downdraft_forced[0, 0, 0][plume] = normalized_massflux_downdraft_forced[0, 0, 0][
                 plume
             ] * min(
@@ -719,15 +720,16 @@ def downdraft_moisture(
                 total_normalized_integrated_evaporate_forced[0, 0][plume]
                 + evaporate_in_downdraft_forced[0, 0, 0][plume]
             )
-            buoyancy = dz * d_moist_static_energy
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and plume != 0:
-            # set bounds for next block
-            upper_bound = downdraft_origin_level[0, 0][plume]
+            buoyancy = dz * d_moist_static_energy
 
-    with computation(BACKWARD), interval(0, upper_bound):
-        if error_code[0, 0][plume] == 0 and plume != 0:
+    with computation(BACKWARD), interval(0, -1):
+        # NOTE this K level check should be a dynamic interval, but the current version of dynamic
+        # intervals does not work here - it gets stuck (as if in an infinite loop)
+        # will revisit when dynamic intervals are more stable
+        if error_code[0, 0][plume] == 0 and plume != 0 and K < downdraft_origin_level[0, 0][plume]:
             dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
 
             # downward transport + mixing
@@ -785,6 +787,7 @@ def downdraft_moisture(
             )
 
     with computation(FORWARD), interval(0, 1):
+        # check for problems that stop the convective scheme
         if error_code[0, 0][plume] == 0 and plume != 0:
             if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0 and internal_loop_constant == 1:
                 error_code[0, 0][plume] = 70
@@ -792,44 +795,60 @@ def downdraft_moisture(
             if buoyancy >= 0 and internal_loop_constant == 1:
                 error_code[0, 0][plume] = 73
 
-            if ZERO_DIFF == 0 and EVAP_FIX == 1:
-                if (
-                    abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
-                    > total_normalized_integrated_condensate_forced[0, 0][plume]
-                    and error_code[0, 0][plume] == 0
-                ):
-                    fix_evap = total_normalized_integrated_condensate_forced[0, 0][plume] / (
-                        1.0e-16 + abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
-                    )
-                    total_normalized_integrated_evaporate_forced[0, 0][plume] = 0.0
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0 and plume != 0:
+            # initalize a 2d field to be filled in the next block
+            abs_check: BoolFieldIJ = False
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and plume != 0:
-            # set bounds for next block
-            upper_bound = downdraft_origin_level[0, 0][plume] + 1
+            if (
+                ZERO_DIFF == 0
+                and EVAP_FIX == 1
+                and abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
+                > total_normalized_integrated_condensate_forced[0, 0][plume]
+                and error_code[0, 0][plume] == 0
+            ):
+                # note whether the absolute value check is true so that the conditional can be replicated
+                # in the next block, even after part of it has been changed
+                abs_check = True
 
-    with computation(BACKWARD), interval(0, upper_bound):
-        if error_code[0, 0][plume] == 0 and plume != 0:
-            if ZERO_DIFF == 0 and EVAP_FIX == 1:
-                evaporate_in_downdraft_forced[0, 0, 0][plume] = (
-                    evaporate_in_downdraft_forced[0, 0, 0][plume] * fix_evap
+                fix_evap: FloatFieldIJ = total_normalized_integrated_condensate_forced[0, 0][plume] / (
+                    1.0e-16 + abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
                 )
-                total_normalized_integrated_evaporate_forced[0, 0][plume] = (
-                    total_normalized_integrated_evaporate_forced[0, 0][plume]
-                    + evaporate_in_downdraft_forced[0, 0, 0][plume]
-                )
-                dq_eva = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
-                    1.0e-16 + normalized_massflux_downdraft_forced[0, 0, 0][plume]
-                )
-                cloud_total_water_after_entrainment_downdraft_forced = (
-                    downdraft_saturation_vapor_forced + dq_eva
-                )
+                total_normalized_integrated_evaporate_forced[0, 0][plume] = 0.0
+
+    with computation(BACKWARD), interval(...):
+        if (
+            error_code[0, 0][plume] == 0
+            and plume != 0
+            and ZERO_DIFF == 0
+            and EVAP_FIX == 1
+            and abs_check == True
+            and K <= downdraft_origin_level[0, 0][plume]
+        ):
+            evaporate_in_downdraft_forced[0, 0, 0][plume] = (
+                evaporate_in_downdraft_forced[0, 0, 0][plume] * fix_evap
+            )
+            total_normalized_integrated_evaporate_forced[0, 0][plume] = (
+                total_normalized_integrated_evaporate_forced[0, 0][plume]
+                + evaporate_in_downdraft_forced[0, 0, 0][plume]
+            )
+            dq_eva = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
+                1.0e-16 + normalized_massflux_downdraft_forced[0, 0, 0][plume]
+            )
+            cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced + dq_eva
 
     with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0 and plume != 0:
-            if ZERO_DIFF == 0 and EVAP_FIX == 1:
-                if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0.0:
-                    error_code[0, 0][plume] = 70
+        if (
+            error_code[0, 0][plume] == 0
+            and plume != 0
+            and ZERO_DIFF == 0
+            and EVAP_FIX == 1
+            and abs_check == True
+        ):
+            if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0.0:
+                error_code[0, 0][plume] = 70
 
 
 def downdraft_temperature(
