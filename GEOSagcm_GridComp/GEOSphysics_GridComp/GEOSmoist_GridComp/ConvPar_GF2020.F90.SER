@@ -418,7 +418,7 @@ CONTAINS
    !$ser data CLOUD_LEVEL_GRID=CLEV_GRID DIURNAL_CYCLE=DICYCLE BOUNDARY_CONDITION_METHOD=BC_METH
    !$ser data BETA_SHALLOW=BETA_SH EVAP_FIX=EVAP_FIX SGS_W_TIMESCALE=SGS_W_TIMESCALE OVERSHOOT=OVERSHOOT
    !$ser data VERTICAL_DISCRETIZATION_OPTION=VERT_DISCR ALP1=ALP1 USE_FCT=use_fct
-   !$ser data MIN_ENTRAINMENT_RATE=min_entr_rate
+   !$ser data MIN_ENTRAINMENT_RATE=min_entr_rate APPLY_SUB_MP=APPLY_SUB_MP
    !$ser data_writeonly AEROEVAP=aeroevap
    !$ser verbatim if (SH_MD_DP) then
       !$ser verbatim SER_VAR_1 = 0
@@ -4578,7 +4578,7 @@ loop0:       do k=kts,ktf
       !      !$ser data_buffered Dx=4 error_code_downorigin=ierr(i)
       !      !$ser data_buffered Dx=4 cloud_top_level_downorigin=ktop(i)
       !      !$ser data_buffered Dx=4 updraft_origin_level_downorigin=k22(i)
-      !      !$ser data_buffered Dx=4 local_downdraft_origin_level_downorigin=jmin(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downorigin=jmin(i)
       !      !$ser data_buffered Dx=4 local_detrainment_start_level_downorigin=kdet(i)
       !      !$ser data_buffered Dx=4 updraft_lfc_level_downorigin=kbcon(i)
       !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin=heso_cup(i,k)
@@ -4614,7 +4614,7 @@ loop0:       do k=kts,ktf
       !      !$ser data_buffered Dx=4 error_code_downorigin=ierr(i)
       !      !$ser data_buffered Dx=4 cloud_top_level_downorigin=ktop(i)
       !      !$ser data_buffered Dx=4 updraft_origin_level_downorigin=k22(i)
-      !      !$ser data_buffered Dx=4 local_downdraft_origin_level_downorigin=jmin(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downorigin=jmin(i)
       !      !$ser data_buffered Dx=4 local_detrainment_start_level_downorigin=kdet(i)
       !      !$ser data_buffered Dx=4 updraft_lfc_level_downorigin=kbcon(i)
       !      !$ser data_buffered Dx=4 local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin=heso_cup(i,k)
@@ -4626,12 +4626,50 @@ loop0:       do k=kts,ktf
 !
 !--- this calls routine to get downdrafts normalized mass flux
 !
+      !!$ser savepoint GF2020_CumulusParameterization_DowndraftMassFlux-In
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 error_code_downmassflux=ierr(i)
+      !      !$ser data_buffered Dx=4 local_detrainment_start_level_downmassflux=kdet(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downmassflux=jmin(i)
+      !      !$ser data_buffered Dx=4 pbl_level_downmassflux=kpbl(i)
+      !      !$ser data_buffered Dx=4 updraft_origin_level_downmassflux=k22(i)
+      !      !$ser data_buffered Dx=4 updraft_lfc_level_downmassflux=kbcon(i)
+      !      !$ser data_buffered Dx=4 lcl_level_downmassflux=klcl(i)
+      !      !$ser data_buffered Dx=4 p_cloud_levels_forced_downmassflux=po_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_surface_downmassflux=psur(i)
+      !      !$ser data_buffered Dx=4 local_normalized_massflux_downdraft_downmassflux=zd(i,k)
+      !      !$ser data_buffered Dx=4 normalized_massflux_downdraft_forced_downmassflux=zdo(i,k)
+      !      !$ser data_buffered Dx=4 ocean_fraction_downmassflux=xland(i)
+      !      !$ser data_buffered Dx=4 local_random_number_downmassflux=random(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
        do i=its,itf
          zd(i,:)=0.
          if(ierr(i) /= 0) cycle
          call get_zu_zd_pdf(trim(cumulus),"DOWN",ierr(i),kdet(i),jmin(i),zdo(i,:),kts,kte,ktf&
                            ,kpbl(i),k22(i),kbcon(i),klcl(i),po_cup(i,kts:kte),psur(i),xland(i),random(i))
        enddo
+      !!$ser savepoint GF2020_CumulusParameterization_DowndraftMassFlux-Out
+      !!$ser verbatim do i=its,ite
+      !   !$ser verbatim do k=kts,kte
+      !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+      !      !$ser data_buffered Dx=4 error_code_downmassflux=ierr(i)
+      !      !$ser data_buffered Dx=4 local_detrainment_start_level_downmassflux=kdet(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downmassflux=jmin(i)
+      !      !$ser data_buffered Dx=4 pbl_level_downmassflux=kpbl(i)
+      !      !$ser data_buffered Dx=4 updraft_origin_level_downmassflux=k22(i)
+      !      !$ser data_buffered Dx=4 updraft_lfc_level_downmassflux=kbcon(i)
+      !      !$ser data_buffered Dx=4 lcl_level_downmassflux=klcl(i)
+      !      !$ser data_buffered Dx=4 p_cloud_levels_forced_downmassflux=po_cup(i,k)
+      !      !$ser data_buffered Dx=4 p_surface_downmassflux=psur(i)
+      !      !$ser data_buffered Dx=4 local_normalized_massflux_downdraft_downmassflux=zd(i,k)
+      !      !$ser data_buffered Dx=4 normalized_massflux_downdraft_forced_downmassflux=zdo(i,k)
+      !      !$ser data_buffered Dx=4 ocean_fraction_downmassflux=xland(i)
+      !      !$ser data_buffered Dx=4 local_random_number_downmassflux=random(i)
+      !   !$ser verbatim enddo
+      !!$ser verbatim enddo
 !
 !---  calls routine to get lateral mass fluxes associated with downdrafts
 !
@@ -4640,7 +4678,7 @@ loop0:       do k=kts,ktf
       !   !$ser verbatim do k=kts,kte
       !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
       !      !$ser data_buffered Dx=4 error_code_downlateralmassflux=ierr(i)
-      !      !$ser data_buffered Dx=4 local_downdraft_origin_level_downlateralmassflux=jmin(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downlateralmassflux=jmin(i)
       !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_forced_downlateralmassflux=zo_cup(i,k)
       !      !$ser data_buffered Dx=4 local_normalized_massflux_downdraft_downlateralmassflux=zd(i,k)
       !      !$ser data_buffered Dx=4 normalized_massflux_downdraft_forced_downlateralmassflux=zdo(i,k)
@@ -4664,7 +4702,7 @@ loop0:       do k=kts,ktf
       !   !$ser verbatim do k=kts,kte
       !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
       !      !$ser data_buffered Dx=4 error_code_downlateralmassflux=ierr(i)
-      !      !$ser data_buffered Dx=4 local_downdraft_origin_level_downlateralmassflux=jmin(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downlateralmassflux=jmin(i)
       !      !$ser data_buffered Dx=4 local_geopotential_height_cloud_levels_forced_downlateralmassflux=zo_cup(i,k)
       !      !$ser data_buffered Dx=4 local_normalized_massflux_downdraft_downlateralmassflux=zd(i,k)
       !      !$ser data_buffered Dx=4 normalized_massflux_downdraft_forced_downlateralmassflux=zdo(i,k)
@@ -4700,7 +4738,7 @@ loop0:       do k=kts,ktf
       !   !$ser verbatim do k=kts,kte
       !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
       !      !$ser data_buffered Dx=4 error_code_downmsebuoyancy=ierr(i)
-      !      !$ser data_buffered Dx=4 local_downdraft_origin_level_downmsebuoyancy=jmin(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downmsebuoyancy=jmin(i)
       !      !$ser data_buffered Dx=4 u_downmsebuoyancy=us(i,k)
       !      !$ser data_buffered Dx=4 local_u_cloud_levels_downmsebuoyancy=u_cup(i,k)
       !      !$ser data_buffered Dx=4 local_u_c_downdraft_downmsebuoyancy=ucd(i,k)
@@ -4781,7 +4819,7 @@ loop0:       do k=kts,ktf
       !   !$ser verbatim do k=kts,kte
       !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
       !      !$ser data_buffered Dx=4 error_code_downmsebuoyancy=ierr(i)
-      !      !$ser data_buffered Dx=4 local_downdraft_origin_level_downmsebuoyancy=jmin(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downmsebuoyancy=jmin(i)
       !      !$ser data_buffered Dx=4 u_downmsebuoyancy=us(i,k)
       !      !$ser data_buffered Dx=4 local_u_cloud_levels_downmsebuoyancy=u_cup(i,k)
       !      !$ser data_buffered Dx=4 local_u_c_downdraft_downmsebuoyancy=ucd(i,k)
@@ -4811,7 +4849,7 @@ loop0:       do k=kts,ktf
       !   !$ser verbatim do k=kts,kte
       !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
       !      !$ser data_buffered Dx=4 error_code_downmoisture=ierr(i)
-      !      !$ser data_buffered Dx=4 local_downdraft_origin_level_downmoisture=jmin(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downmoisture=jmin(i)
       !      !$ser data_buffered Dx=4 local_t_cloud_levels_forced_downmoisture=tn_cup(i,k)
       !      !$ser data_buffered Dx=4 local_t_wetbulb_downmoisture=t_wetbulb(i)
       !      !$ser data_buffered Dx=4 local_vapor_forced_downmoisture=qo(i,k)
@@ -4835,7 +4873,7 @@ loop0:       do k=kts,ktf
       !      !$ser data_buffered Dx=4 local_buoyancy_downmoisture=bu(i)
       !   !$ser verbatim enddo
       !!$ser verbatim enddo
-      call cup_dd_moisture(cumulus,ierrc,zdo,hcdo,heso_cup,qcdo,qeso_cup,     &
+       call cup_dd_moisture(cumulus,ierrc,zdo,hcdo,heso_cup,qcdo,qeso_cup,     &
            pwdo,qo_cup,zo_cup,dd_massentro,dd_massdetro,jmin,ierr,gammao_cup, &
 !--test    pwevo,bu,qrcdo,qo,heo,t_cup,1,t_wetbulb,q_wetbulb,qco,pwavo,       &
            pwevo,bu,qrcdo,qo,heo,tn_cup,1,t_wetbulb,q_wetbulb,qco,pwavo,      &
@@ -4845,7 +4883,7 @@ loop0:       do k=kts,ktf
       !   !$ser verbatim do k=kts,kte
       !      !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
       !      !$ser data_buffered Dx=4 error_code_downmoisture=ierr(i)
-      !      !$ser data_buffered Dx=4 local_downdraft_origin_level_downmoisture=jmin(i)
+      !      !$ser data_buffered Dx=4 downdraft_origin_level_downmoisture=jmin(i)
       !      !$ser data_buffered Dx=4 local_t_cloud_levels_forced_downmoisture=tn_cup(i,k)
       !      !$ser data_buffered Dx=4 local_t_wetbulb_downmoisture=t_wetbulb(i)
       !      !$ser data_buffered Dx=4 local_vapor_forced_downmoisture=qo(i,k)

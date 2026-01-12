@@ -715,6 +715,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftVerticalVelocity-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftOriginLevel-In
          !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftOriginLevel-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMassFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMassFlux-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftLateralMassFlux-In
          !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftLateralMassFlux-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMSEAndBuoyancy-In
