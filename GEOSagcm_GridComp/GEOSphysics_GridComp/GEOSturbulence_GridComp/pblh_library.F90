@@ -19,6 +19,7 @@ module GEOSturbulence_PBLH_Library
   public :: find_qv_pblh
   public :: return_surface_inversion_stats
   public :: return_trade_inversion_stats
+  public :: find_turning_angle
   
 contains
 
@@ -416,6 +417,28 @@ contains
       if (associated(trinvdelt)) trinvdelt = tmpdelt
       
    end subroutine return_trade_inversion_stats
+
+   subroutine find_turning_angle(im,jm,lm,u,v,z,zpbl,kpbl,turnangle)
+
+      integer,                      intent(in)  :: im, jm, lm
+      real   , dimension(im,jm,lm), intent(in)  :: u, v, z
+      real   , dimension(im,jm)   , intent(in)  :: zpbl, kpbl
+      real   , dimension(im,jm)   , intent(out) :: turnangle
+
+      ! Local vars
+      integer                :: i, j, k
+      real, dimension(im,jm) :: utop, vtop
+      
+      do i = 1,im
+         do j = 1,jm
+            k = nint(kpbl(i,j))
+            utop(i,j) = u(i,j,k) + (zpbl(i,j)-z(i,j,k)) * (u(i,j,k)-u(i,j,k+1))/(z(i,j,k)-z(i,j,k+1))
+            vtop(i,j) = v(i,j,k) + (zpbl(i,j)-z(i,j,k)) * (v(i,j,k)-v(i,j,k+1))/(z(i,j,k)-z(i,j,k+1))
+         end do
+      end do
+      turnangle = (180./3.14159)*atan2( utop*v(:,:,lm)-vtop*u(:,:,lm), utop*u(:,:,lm) + vtop*v(:,:,lm) )
+
+    end subroutine find_turning_angle
    
 end module GEOSturbulence_PBLH_Library
 

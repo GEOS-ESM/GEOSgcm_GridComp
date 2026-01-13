@@ -186,7 +186,7 @@ contains
     endif
 
     call MAPL_GetResource( CF, PDFSHAPE, Label="PDFSHAPE:",  default=1, RC=STATUS) ; VERIFY_(STATUS)
-    if (PDFSHAPE.eq.5) then
+    if (PDFSHAPE.ge.5) then
        gfEnvRestartSkip = MAPL_RestartOptional
     else
        gfEnvRestartSkip = MAPL_RestartSkip
@@ -1949,6 +1949,14 @@ contains
          SHORT_NAME = 'CFPDFX'  ,                                    &
          LONG_NAME = 'cloud_fraction_internal_in_PDF_scheme',       &
          UNITS     = '1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'SIGMA_S'  ,                                 &
+         LONG_NAME = 'total_water_std_dev_over_qsat',              &
+         UNITS     = '1',                                          &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)

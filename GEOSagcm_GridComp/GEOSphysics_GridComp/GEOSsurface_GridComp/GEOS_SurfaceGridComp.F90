@@ -1612,6 +1612,15 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'tile_stddev_of_sensible_heat_flux' ,&
+    UNITS              = 'W m-2'                     ,&
+    SHORT_NAME         = 'SHFXSTD'                     ,&
+    DIMS               = MAPL_DimsHorzOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'land_surface_skin_temperature' ,&
     UNITS              = 'K'                             ,&
     SHORT_NAME         = 'LST'                           ,&
@@ -2056,6 +2065,15 @@ module GEOS_SurfaceGridCompMod
     LONG_NAME          = 'total_latent_heat_flux_consistent_with_evaporation_from_turbulence'  ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'LHFX'                      ,&
+    DIMS               = MAPL_DimsHorzOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'tile_stddev_of_total_latent_heat_flux', &
+    UNITS              = 'W m-2'                     ,&
+    SHORT_NAME         = 'LHFXSTD'                   ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
@@ -5483,6 +5501,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: FRLAND    => NULL()
     real, pointer, dimension(:,:) :: FRLANDICE => NULL()
     real, pointer, dimension(:,:) :: HLATN     => NULL()
+    real, pointer, dimension(:,:) :: HLATNSTD  => NULL()
     real, pointer, dimension(:,:) :: PS_       => NULL()
 
 
@@ -5555,6 +5574,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: EVAPOU       => NULL()
     real, pointer, dimension(:,:) :: SUBLIM       => NULL()
     real, pointer, dimension(:,:) :: SHOU         => NULL()
+    real, pointer, dimension(:,:) :: SHFXSTD      => NULL()
     real, pointer, dimension(:,:) :: HLWUP        => NULL()
     real, pointer, dimension(:,:) :: LWNDSRF      => NULL()
     real, pointer, dimension(:,:) :: SWNDSRF      => NULL()
@@ -6680,6 +6700,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , TA      , 'TA'     ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , QA      , 'QA'     ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , HLATN   , 'LHFX'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , HLATNSTD, 'LHFXSTD',  RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT  , DCOOL   , 'DCOOL'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DWARM   , 'DWARM'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6769,6 +6790,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , EVAPOU  , 'EVAPOUT',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SUBLIM  , 'SUBLIM' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SHOU    , 'SHOUT'  ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SHFXSTD , 'SHFXSTD',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , HLWUP   , 'HLWUP'  ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , LWNDSRF , 'LWNDSRF',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SWNDSRF , 'SWNDSRF',  RC=STATUS); VERIFY_(STATUS)
@@ -7859,6 +7881,11 @@ module GEOS_SurfaceGridCompMod
        call MAPL_LocStreamTransform( LOCSTREAM, HLATN,   HLATNTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
+    if(associated(HLATNSTD)) then
+       call MAPL_LocStreamTransform( LOCSTREAM, HLATNSTD,HLATNTILE,variance=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       HLATNSTD = SQRT( HLATNSTD )
+    endif
 
     if(associated(  HLATWTR)) then
        call MAPL_LocStreamTransform( LOCSTREAM, HLATWTR,   HLATWTRTILE, RC=STATUS)
@@ -8177,6 +8204,11 @@ module GEOS_SurfaceGridCompMod
     if(associated(  SHOU)) then
        call MAPL_LocStreamTransform( LOCSTREAM, SHOU,   SHOUTILE, RC=STATUS)
        VERIFY_(STATUS)
+    endif
+    if(associated(SHFXSTD)) then
+       call MAPL_LocStreamTransform( LOCSTREAM, SHFXSTD,SHOUTILE,variance=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       SHFXSTD = SQRT( SHFXSTD )
     endif
     if(associated(   LST)) then
        call MAPL_LocStreamTransform( LOCSTREAM,  LST,   LSTTILE, RC=STATUS)

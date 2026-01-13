@@ -1728,6 +1728,15 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'wind_turning_angle_across_boundary_layer',              &
+       SHORT_NAME = 'TURNANG',                                               &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_based_inversion_frequency',                     &
        SHORT_NAME = 'SBIFRQ',                                                &
        UNITS      = '1',                                                     &
@@ -2905,6 +2914,7 @@ end if
      real, dimension(:,:  ), pointer     :: ZPBLRFRCT => null()
      real, dimension(:,:  ), pointer     :: SBIFRQ => null()
      real, dimension(:,:  ), pointer     :: SBITOP => null()
+     real, dimension(:,:  ), pointer     :: TURNANG => null()
      real, dimension(:,:  ), pointer     :: KPBL => null()
      real, dimension(:,:  ), pointer     :: KPBL_SC => null()
      real, dimension(:,:  ), pointer     :: ZPBL_SC => null()                
@@ -2977,7 +2987,7 @@ end if
                                 !    all fluxes from surface layer theory
                                 ! else: use prescribed surface exchange coefficients
      real    :: SCM_SH          ! prescribed surface sensible heat flux (Wm-1) (for SCM_SL_FLUX == 1)
-     real    :: SCM_EVAP        ! prescribed surface latent heat flux (Wm-1) (for SCM_SL_FLUX == 1)
+     real    :: SCM_LH          ! prescribed surface latent heat flux (Wm-1) (for SCM_SL_FLUX == 1)
      real    :: SCM_Z0          ! surface roughness length (m)
      real    :: SCM_ZETA        ! Monin-Obkhov length scale (m) (for SCM_SL_FLUX == 3)
      real    :: SCM_RH_SURF     ! Surface relative humidity
@@ -3195,11 +3205,11 @@ end if
      call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 1600.0, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOCANUTO,   'DOCANUTO:',   DEFAULT = 0,      RC=STATUS); VERIFY_(STATUS)
-
+     
 ! Get pointers from export state...
 !-----------------------------------
 
-     PDFALLOC = (PDFSHAPE.eq.5)
+     PDFALLOC = (PDFSHAPE.ge.5)
 
      call MAPL_GetPointer(EXPORT,      KH,      'KH', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -3235,7 +3245,7 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBL10p,  'ZPBL10p',           RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    TKE,  'TKE',         RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    TKE,  'TKE',                   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLRI,  'ZPBLRI',             RC=STATUS)
      VERIFY_(STATUS)
@@ -3243,13 +3253,15 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLQV,  'ZPBLQV',           RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLQV,  'ZPBLQV',             RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLRFRCT, 'ZPBLRFRCT',           RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLRFRCT, 'ZPBLRFRCT',        RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    SBIFRQ,  'SBIFRQ',           RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    SBIFRQ,  'SBIFRQ',             RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    SBITOP,  'SBITOP',           RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    SBITOP,  'SBITOP',             RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,   TURNANG,  'TURNANG',            RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,   LWCRT,   'LWCRT', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -3619,7 +3631,7 @@ if (SCM_SL /= 0) then
 
     call MAPL_GetResource(MAPL, SCM_SL_FLUX,   'SCM_SL_FLUX:', DEFAULT=0 )
     call MAPL_GetResource(MAPL, SCM_SH,        'SCM_SH:',      DEFAULT=0. )
-    call MAPL_GetResource(MAPL, SCM_EVAP,      'SCM_EVAP:',    DEFAULT=0. )
+    call MAPL_GetResource(MAPL, SCM_LH,        'SCM_LH:',      DEFAULT=0. )
     call MAPL_GetResource(MAPL, SCM_Z0,        'SCM_Z0:',      DEFAULT=1.E-4 )
     call MAPL_GetResource(MAPL, SCM_RH_SURF,   'SCM_RH_SURF:', DEFAULT=0.98 )
     call MAPL_GetResource(MAPL, SCM_TSURF,     'SCM_TSURF:',   DEFAULT=298.76 ) ! S6
@@ -3639,7 +3651,7 @@ if (SCM_SL /= 0) then
 
        if ( SCM_SL_FLUX == 1 ) then
           sh_scm(:,:)   = scm_sh
-          evap_scm(:,:) = scm_evap/MAPL_ALHL
+          evap_scm(:,:) = scm_lh/MAPL_ALHL
        elseif ( SCM_SL_FLUX == 2 ) then
           sh_scm(:,:)   = shobs
           evap_scm(:,:) = lhobs/MAPL_ALHL
@@ -4421,11 +4433,7 @@ end if
                           sl3,            &
                           w2,             &
                           w3,             &
-!                          w3canuto,       &
                           slqt,           &
-!                          qt2diag,        &
-!                          sl2diag,        &
-!                          slqtdiag,       &
                           doprogqt2,      &  ! tuning parameters
                           sl2tune,        &
                           qt2tune,        &
@@ -4465,6 +4473,9 @@ end if
 
       ! Trade inversion base height, temperature jump, frequency
       if (associated(TRINVBS))   call return_trade_inversion_stats(im,jm,lm,plo,t,trinvbs,trinvdelt,trinvfrq)
+
+      ! Wind turning angle from PBL top to surface
+      if (associated(TURNANG))   call find_turning_angle(im,jm,lm,u,v,z,tczpbl,kpbltc,turnang)
 
       
                             ZPBL = MAPL_UNDEF
@@ -4858,7 +4869,7 @@ end if
 
     ! Parameters for idealized SCM surface layer
     integer :: SCM_SL, SCM_SL_FLUX
-    real    :: SCM_SH, SCM_EVAP
+    real    :: SCM_SH, SCM_LH
 
     ! EDMF transport
     real    :: EntExp, EntDyn
@@ -4892,7 +4903,7 @@ end if
        VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, SCM_SH,   'SCM_SH:',   default=0., RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, SCM_EVAP, 'SCM_EVAP:', default=0., RC=STATUS)
+       call MAPL_GetResource(MAPL, SCM_LH,   'SCM_LH:', default=0., RC=STATUS)
        VERIFY_(STATUS)
 
        CU => cu_scm
@@ -5159,7 +5170,7 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
              if ( trim(name) == 'S' ) then
                 SF(:,:) = scm_sh
              elseif ( trim(name) == 'Q' ) then
-                SF(:,:) = scm_evap/mapl_alhl
+                SF(:,:) = scm_lh/mapl_alhl
              end if
           else if ( SCM_SL /= 0 .and. SCM_SL_FLUX ==2 ) then
              if ( trim(name) == 'S' ) then
@@ -5217,7 +5228,7 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
        if(FRIENDLY) then
           S = SX
        end if
-
+       
 ! Fill exports of U,V and S after diffusion
       if( trim(name) == 'U' ) then
           if(associated(UAFDIFFUSE)) UAFDIFFUSE = SX
