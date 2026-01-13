@@ -261,6 +261,11 @@ from .convection.GF_2020.cumulus_parameterization.smoothing.translate_GF2020_Cum
     TranslateGF2020_CumulusParameterization_SmoothTendencies_mid,
     TranslateGF2020_CumulusParameterization_SmoothTendencies_shallow,
 )
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_ModifyEnvironmentProfiles import (
+    TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_deep,
+    TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_mid,
+    TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_shallow,
+)
 
 # NOTE need to organize everything below here
 # in progress tests

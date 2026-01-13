@@ -1105,6 +1105,42 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    t_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "t_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    vapor_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "vapor_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_moist_static_energy_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_moist_static_energy_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    moist_static_energy_origin_level_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "moist_static_energy_origin_level_modified",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
 
     # NOTE need more information about these fields to come up with better names
     fp: Quantity = dataclasses.field(

@@ -219,7 +219,7 @@ def check_config(
 
     if cumulus_parameterization_config.APPLY_SUB_MP != 0:
         raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization initalized with APPLY_SUB_MP != 0. This setting requires"
+            "[NDSL] GF2020-->CumulusParameterization initalized with APPLY_SUBSIDENCE_MICROPHYSICS != 0. This setting requires"
             "an unimeplemented code in EnvironmentalSubsidence. Please implement, then disable this error"
             "manually to proceed."
         )
