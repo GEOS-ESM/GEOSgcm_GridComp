@@ -42,14 +42,14 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_smoothtend": {},
-            "cloud_top_level_smoothtend": {},
-            "p_cloud_levels_forced_smoothtend": {},
-            "local_del_moist_static_energy_cloud_ensemble_smoothtend": {},
-            "local_del_vapor_cloud_ensemble_smoothtend": {},
-            "local_del_cloud_liquid_cloud_ensemble_smoothtend": {},
-            "local_del_u_cloud_ensemble_smoothtend": {},
-            "local_del_v_cloud_ensemble_smoothtend": {},
+            "error_code": {},
+            "cloud_top_level": {},
+            "p_cloud_levels_forced": {},
+            "local_del_moist_static_energy_cloud_ensemble": {},
+            "local_del_vapor_cloud_ensemble": {},
+            "local_del_cloud_liquid_cloud_ensemble": {},
+            "local_del_u_cloud_ensemble": {},
+            "local_del_v_cloud_ensemble": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -82,24 +82,20 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_smoothtend"
-        ]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_level_smoothtend"] - 1
+            inputs["cloud_top_level"] - 1
         )
         state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "p_cloud_levels_forced_smoothtend"
+            "p_cloud_levels_forced"
         ]
         locals.del_moist_static_energy_cloud_ensemble.data[:] = inputs[
-            "local_del_moist_static_energy_cloud_ensemble_smoothtend"
+            "local_del_moist_static_energy_cloud_ensemble"
         ]
-        locals.del_vapor_cloud_ensemble.data[:] = inputs["local_del_vapor_cloud_ensemble_smoothtend"]
-        locals.del_cloud_liquid_cloud_ensemble.data[:] = inputs[
-            "local_del_cloud_liquid_cloud_ensemble_smoothtend"
-        ]
-        locals.del_u_cloud_ensemble.data[:] = inputs["local_del_u_cloud_ensemble_smoothtend"]
-        locals.del_v_cloud_ensemble.data[:] = inputs["local_del_v_cloud_ensemble_smoothtend"]
+        locals.del_vapor_cloud_ensemble.data[:] = inputs["local_del_vapor_cloud_ensemble"]
+        locals.del_cloud_liquid_cloud_ensemble.data[:] = inputs["local_del_cloud_liquid_cloud_ensemble"]
+        locals.del_u_cloud_ensemble.data[:] = inputs["local_del_u_cloud_ensemble"]
+        locals.del_v_cloud_ensemble.data[:] = inputs["local_del_v_cloud_ensemble"]
 
         # initalize test code
         code = self.stencil_factory.from_dims_halo(
@@ -124,25 +120,19 @@ class TestCore:
 
         # write output
         outputs = {
-            "error_code_smoothtend": state.output.error_code.data[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "cloud_top_level_smoothtend": state.output.cloud_top_level.data[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
+            "error_code": state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
-            "p_cloud_levels_forced_smoothtend": state.output.p_cloud_levels_forced.data[
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.data[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_del_moist_static_energy_cloud_ensemble_smoothtend": locals.del_moist_static_energy_cloud_ensemble.data[
+            "local_del_moist_static_energy_cloud_ensemble": locals.del_moist_static_energy_cloud_ensemble.data[
                 :
             ],
-            "local_del_vapor_cloud_ensemble_smoothtend": locals.del_vapor_cloud_ensemble.data[:],
-            "local_del_cloud_liquid_cloud_ensemble_smoothtend": locals.del_cloud_liquid_cloud_ensemble.data[
-                :
-            ],
-            "local_del_u_cloud_ensemble_smoothtend": locals.del_u_cloud_ensemble.data[:],
-            "local_del_v_cloud_ensemble_smoothtend": locals.del_v_cloud_ensemble.data[:],
+            "local_del_vapor_cloud_ensemble": locals.del_vapor_cloud_ensemble.data[:],
+            "local_del_cloud_liquid_cloud_ensemble": locals.del_cloud_liquid_cloud_ensemble.data[:],
+            "local_del_u_cloud_ensemble": locals.del_u_cloud_ensemble.data[:],
+            "local_del_v_cloud_ensemble": locals.del_v_cloud_ensemble.data[:],
         }
 
         return outputs
