@@ -6467,7 +6467,7 @@ ENDIF ! vertical discretization
                         xhes_cup,xz_cup,po_cup,gamma_cup,xt_cup,psur,tsur,    &
                         ierr,z1,itf,ktf,its,ite, kts,kte)
       !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
-         !$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_3-In
+         !$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_3-Out
          !$ser verbatim do i=its,ite
             !$ser verbatim do k=kts,kte
                !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
