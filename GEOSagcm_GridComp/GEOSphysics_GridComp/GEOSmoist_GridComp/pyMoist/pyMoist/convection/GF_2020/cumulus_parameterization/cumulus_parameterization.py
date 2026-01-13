@@ -19,6 +19,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.environment import (
     environment_conditions,
     environment_cloud_levels,
     environment_mass_flux,
+    modify_environment_profiles,
     EnvironmentalSubsidence,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.sounding.sounding import (
@@ -435,6 +436,14 @@ class CumulusParameterization:
             externals={"USE_SMOOTH_TENDENCIES": cumulus_parameterization_config.USE_SMOOTH_TENDENCIES},
         )
 
+        self._modify_environment_profiles = stencil_factory.from_dims_halo(
+            func=modify_environment_profiles,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "COUPLE_MICROPHYSICS": cumulus_parameterization_config.COUPLE_MICROPHYSICS,
+                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
+            },
+        )
         self._moist_static_energy_inside_cloud = MoistStaticEnergyInsideCloud()
 
         self._updraft_update_workfunctions = UpdraftUpdateWorkfunctions()
@@ -1502,25 +1511,74 @@ class CumulusParameterization:
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._smooth_tendencies(
-                error_code=state.output.error_code,
-                cloud_top_level=state.output.cloud_top_level,
-                p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-                del_moist_static_energy_cloud_ensemble=locals.del_moist_static_energy_cloud_ensemble,
-                del_vapor_cloud_ensemble=locals.del_vapor_cloud_ensemble,
-                del_cloud_liquid_cloud_ensemble=locals.del_cloud_liquid_cloud_ensemble,
-                del_u_cloud_ensemble=locals.del_u_cloud_ensemble,
-                del_v_cloud_ensemble=locals.del_v_cloud_ensemble,
-                plume=self.plume_dependent_constants.PLUME_INDEX,
-            )
+                    error_code=state.output.error_code,
+                    cloud_top_level=state.output.cloud_top_level,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    del_moist_static_energy_cloud_ensemble=locals.del_moist_static_energy_cloud_ensemble,
+                    del_vapor_cloud_ensemble=locals.del_vapor_cloud_ensemble,
+                    del_cloud_liquid_cloud_ensemble=locals.del_cloud_liquid_cloud_ensemble,
+                    del_u_cloud_ensemble=locals.del_u_cloud_ensemble,
+                    del_v_cloud_ensemble=locals.del_v_cloud_ensemble,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                )
 
                 # using smoothed tendencies, calculate changed environmental profiles
-                self._apply_smoother()
+                # NOTE test GF2020_CumulusParameterization_ModifyEnvironmentProfiles_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._modify_environment_profiles()
 
                 # calculate moist static energy, heights, environmental saturation mixing ratio
-                self._environment_conditions()
+                # NOTE test GF2020_CumulusParameterization_EnvironmentConditions_3_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ❌ (1 var, 1 point off by 2 ULP)
+                # NOTE      shallow ✅
+                self._environment_conditions(
+                    p=state.input_output.p_forced,
+                    p_surface=state.input_output.p_surface,
+                    t=locals.t_new,
+                    vapor=locals.vapor_forced,
+                    topography_height_no_negative=state.input_output.topography_height_no_negative,
+                    moist_static_energy=locals.environment_moist_static_energy_forced,
+                    saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_forced,
+                    saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_forced,
+                    geopotential_height=state.input_output.geopotential_height_forced,
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                )
 
                 # environmental values on cloud levels
-                self._environment_cloud_levels()
+                # NOTE test GF2020_CumulusParameterization_EnvironmentCloudLevels_3_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._environment_cloud_levels(
+                    p=state.input_output.p_forced,
+                    p_surface=state.input_output.p_surface,
+                    p_cloud_levels=p_3d,
+                    topography_height_no_negative=state.input_output.topography_height_no_negative,
+                    geopotential_height=state.input_output.geopotential_height_forced,
+                    geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_forced,
+                    t=locals.t_new,
+                    t_surface=state.input_output.t_surface,
+                    t_cloud_levels=locals.t_cloud_levels_forced,
+                    vapor=locals.vapor_forced,
+                    vapor_cloud_levels=locals.vapor_cloud_levels_forced,
+                    u=state.input_output.u,
+                    v=state.input_output.v,
+                    u_cloud_levels=locals.u_cloud_levels,
+                    v_cloud_levels=locals.v_cloud_levels,
+                    environment_saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_forced,
+                    environment_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+                    environment_moist_static_energy=locals.environment_moist_static_energy_forced,
+                    environment_moist_static_energy_cloud_levels=locals.environment_moist_static_energy_cloud_levels_forced,
+                    environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_forced,
+                    environment_saturation_moist_static_energy_cloud_levels=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                    gamma_cloud_levels=locals.gamma_cloud_levels_forced,
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                )
 
                 # static control
                 # moist static energy inside cloud
