@@ -69,6 +69,7 @@ class TestCore:
         }
 
         out_vars.update(in_vars["data_vars"])
+        out_vars.update({"testvar": {}})
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initalize constants
@@ -134,21 +135,21 @@ class TestCore:
         locals.cloud_moist_static_energy_forced_transported.data[:] = inputs[
             "local_cloud_moist_static_energy_forced_transported_ccb"
         ]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "updraft_origin_level_ccb"
-        ]
-        locals.maximum_updraft_origin_level.data[:] = inputs["local_maximum_updraft_origin_level_ccb"]
-        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_ccb"]
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "updraft_lfc_level_ccb"
-        ]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "cloud_top_level_ccb"
-        ]
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_origin_level_ccb"] - 1
+        )
+        locals.maximum_updraft_origin_level.data[:] = inputs["local_maximum_updraft_origin_level_ccb"] - 1
+        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_ccb"] - 1
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_lfc_level_ccb"] - 1
+        )
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_top_level_ccb"] - 1
+        )
         locals.negative_buoyancy_depth.data[:] = inputs["local_negative_buoyancy_depth_ccb"]
         locals.frh_lfc.data[:] = inputs["local_frh_lfc_ccb"]
         state.output.t_perturbation.data[:] = inputs["t_perturbation_ccb"]
-        locals.start_level.data[:] = inputs["local_start_level_ccb"]
+        locals.start_level.data[:] = inputs["local_start_level_ccb"] - 1
         locals.vapor_excess.data[:] = inputs["local_vapor_excess_ccb"]
         locals.t_excess.data[:] = inputs["local_t_excess_ccb"]
         locals.add_buoyancy.data[:] = inputs["local_add_buoyancy_ccb"]
@@ -169,6 +170,11 @@ class TestCore:
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
             },
         )
+
+        testvar = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="n/a")
+        import numpy
+
+        testvar.field[:] = numpy.nan
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code_part_1(
@@ -206,6 +212,7 @@ class TestCore:
                 cloud_top_level=state.output.cloud_top_level,
                 AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
                 plume=plume_dependent_constants.PLUME_INDEX,
+                testvar=testvar,
             )
 
         outputs = {
@@ -247,23 +254,27 @@ class TestCore:
             ],
             "updraft_origin_level_ccb": state.output.updraft_origin_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "local_maximum_updraft_origin_level_ccb": locals.maximum_updraft_origin_level.field[:],
-            "lcl_level_ccb": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            ]
+            + 1,
+            "local_maximum_updraft_origin_level_ccb": locals.maximum_updraft_origin_level.field[:] + 1,
+            "lcl_level_ccb": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "updraft_lfc_level_ccb": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            ]
+            + 1,
             "cloud_top_level_ccb": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            ]
+            + 1,
             "local_negative_buoyancy_depth_ccb": locals.negative_buoyancy_depth.field[:],
             "local_frh_lfc_ccb": locals.frh_lfc.field[:],
             "t_perturbation_ccb": state.output.t_perturbation.field[:],
-            "local_start_level_ccb": locals.start_level.field[:],
+            "local_start_level_ccb": locals.start_level.field[:] + 1,
             "local_vapor_excess_ccb": locals.vapor_excess.field[:],
             "local_t_excess_ccb": locals.t_excess.field[:],
             "local_add_buoyancy_ccb": locals.add_buoyancy.field[:],
             "ocean_fraction_ccb": locals.ocean_fraction.field[:],
+            "testvar": testvar.field[:],
         }
 
         return outputs
