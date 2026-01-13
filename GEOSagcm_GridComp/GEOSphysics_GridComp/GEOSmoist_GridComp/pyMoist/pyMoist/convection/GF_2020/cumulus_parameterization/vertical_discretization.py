@@ -26,9 +26,9 @@ def zero_tendencies(
     del_vapor_cloud_ensemble: FloatField,
     del_cloud_liquid_cloud_ensemble: FloatField,
     del_buoyancy_cloud_ensemble: FloatField,
-    t_tendency_from_environmental_subsidence: FloatField,
     moist_static_energy_tendency_from_environmental_subsidence: FloatField,
     vapor_tendency_from_environmental_subsidence: FloatField,
+    t_tendency_from_environmental_subsidence: FloatField,
 ):
     with computation(PARALLEL), interval(...):
         del_u_cloud_ensemble = 0.0
@@ -38,9 +38,9 @@ def zero_tendencies(
         del_vapor_cloud_ensemble = 0.0
         del_cloud_liquid_cloud_ensemble = 0.0
         del_buoyancy_cloud_ensemble = 0.0
-        t_tendency_from_environmental_subsidence = 0.0
         moist_static_energy_tendency_from_environmental_subsidence = 0.0
         vapor_tendency_from_environmental_subsidence = 0.0
+        t_tendency_from_environmental_subsidence = 0.0
 
 
 def convective_transport_of_momentum(
@@ -206,7 +206,7 @@ def convective_transport_of_mse_and_liquid_water(
     partition_liquid_ice: FloatField,
     epsilon_forced: FloatFieldIJ_Plume,
     del_moist_static_energy_cloud_ensemble: FloatField,
-    t_tendency_from_environmental_subsidence: FloatField,
+    moist_static_energy_tendency_from_environmental_subsidence: FloatField,
     plume: Int,
 ):
     from __externals__ import USE_FCT
@@ -269,7 +269,7 @@ def convective_transport_of_mse_and_liquid_water(
                     )
 
                     # for output only
-                    t_tendency_from_environmental_subsidence = (
+                    moist_static_energy_tendency_from_environmental_subsidence = (
                         -(
                             normalized_massflux_updraft_forced[0, 0, 1][plume]
                             * (-environment_moist_static_energy_cloud_levels_forced[0, 0, 1])
@@ -310,7 +310,7 @@ def convective_transport_of_water_vapor_and_condensates(
     d_buoyancy_downdraft_forced: FloatField,
     del_cloud_liquid_cloud_ensemble: FloatField,
     del_vapor_cloud_ensemble: FloatField,
-    moist_static_energy_tendency_from_environmental_subsidence: FloatField,
+    vapor_tendency_from_environmental_subsidence: FloatField,
     plume: Int,
 ):
     from __externals__ import C1, USE_FCT
@@ -492,7 +492,7 @@ def convective_transport_of_water_vapor_and_condensates(
             del_vapor_cloud_ensemble = del_vapor_cloud_ensemble + subsidence_tendency
 
             # for output only
-            moist_static_energy_tendency_from_environmental_subsidence = subsidence_tendency
+            vapor_tendency_from_environmental_subsidence = subsidence_tendency
 
 
 class VerticalDiscretization:
@@ -594,9 +594,9 @@ class VerticalDiscretization:
         del_vapor_cloud_ensemble: Quantity,
         del_cloud_liquid_cloud_ensemble: Quantity,
         del_buoyancy_cloud_ensemble: Quantity,
-        t_tendency_from_environmental_subsidence: Quantity,
         moist_static_energy_tendency_from_environmental_subsidence: Quantity,
         vapor_tendency_from_environmental_subsidence: Quantity,
+        t_tendency_from_environmental_subsidence: Quantity,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
         self._zero_tendencies(
@@ -607,9 +607,9 @@ class VerticalDiscretization:
             del_vapor_cloud_ensemble=del_vapor_cloud_ensemble,
             del_cloud_liquid_cloud_ensemble=del_cloud_liquid_cloud_ensemble,
             del_buoyancy_cloud_ensemble=del_buoyancy_cloud_ensemble,
-            t_tendency_from_environmental_subsidence=t_tendency_from_environmental_subsidence,
             moist_static_energy_tendency_from_environmental_subsidence=moist_static_energy_tendency_from_environmental_subsidence,
             vapor_tendency_from_environmental_subsidence=vapor_tendency_from_environmental_subsidence,
+            t_tendency_from_environmental_subsidence=t_tendency_from_environmental_subsidence,
         )
 
         if self.cumulus_parameterization_config.VERTICAL_DISCRETIZATION_OPTION in (0, 1):
@@ -694,7 +694,7 @@ class VerticalDiscretization:
                 partition_liquid_ice=partition_liquid_ice,
                 epsilon_forced=epsilon_forced,
                 del_moist_static_energy_cloud_ensemble=del_moist_static_energy_cloud_ensemble,
-                t_tendency_from_environmental_subsidence=t_tendency_from_environmental_subsidence,
+                moist_static_energy_tendency_from_environmental_subsidence=moist_static_energy_tendency_from_environmental_subsidence,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
 
@@ -718,6 +718,6 @@ class VerticalDiscretization:
                 d_buoyancy_downdraft_forced=d_buoyancy_downdraft_forced,
                 del_cloud_liquid_cloud_ensemble=del_cloud_liquid_cloud_ensemble,
                 del_vapor_cloud_ensemble=del_vapor_cloud_ensemble,
-                moist_static_energy_tendency_from_environmental_subsidence=moist_static_energy_tendency_from_environmental_subsidence,
+                vapor_tendency_from_environmental_subsidence=vapor_tendency_from_environmental_subsidence,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
