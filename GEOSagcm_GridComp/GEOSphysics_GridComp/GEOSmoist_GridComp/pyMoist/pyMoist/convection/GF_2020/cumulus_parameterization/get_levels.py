@@ -182,7 +182,8 @@ def find_lcl(
     from __externals__ import k_end, BOUNDARY_CONDITION_METHOD, ADV_TRIGGER
 
     with computation(PARALLEL), interval(...):
-        # make garbage field so the get_cloud_boundary_conditions call does not break (this is never touched)
+        # make garbage field so the get_cloud_boundary_conditions call does not break
+        # this is never touched so long as compute_perturbation=False
         dummy_field_no_read = 0.0
 
     with computation(FORWARD), interval(0, 1):
