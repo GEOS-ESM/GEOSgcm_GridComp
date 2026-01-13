@@ -41,47 +41,47 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_vertdisc": {},
-            "cloud_top_level_vertdisc": {},
-            "p_cloud_levels_forced_vertdisc": {},
-            "local_geopotential_height_cloud_levels_forced_vertdisc": {},
-            "normalized_massflux_updraft_forced_vertdisc": {},
-            "normalized_massflux_downdraft_forced_vertdisc": {},
-            "local_environment_massflux_vertdisc": {},
-            "mass_detrainment_updraft_forced_vertdisc": {},
-            "mass_detrainment_downdraft_forced_vertdisc": {},
-            "local_c1d_vertdisc": {},
-            "u_vertdisc": {},
-            "v_vertdisc": {},
-            "local_u_cloud_levels_vertdisc": {},
-            "local_v_cloud_levels_vertdisc": {},
-            "local_u_c_vertdisc": {},
-            "local_v_c_vertdisc": {},
-            "local_u_c_downdraft_vertdisc": {},
-            "local_v_c_downdraft_vertdisc": {},
-            "local_cloud_moist_static_energy_forced_vertdisc": {},
-            "local_cloud_moist_static_energy_downdraft_forced_vertdisc": {},
-            "local_env_moist_static_energy_cloud_levels_forced_vertdisc": {},
-            "local_vapor_cloud_levels_forced_vertdisc": {},
-            "local_cloud_total_water_after_entrainment_forced_vertdisc": {},
-            "local_cloud_total_water_after_entrainment_downdraft_forced_vertdisc": {},
-            "cloud_liquid_after_rain_forced_vertdisc": {},
-            "condensate_to_fall_forced_vertdisc": {},
-            "evaporate_in_downdraft_forced_vertdisc": {},
-            "local_melting_vertdisc": {},
-            "local_partition_liquid_ice_vertdisc": {},
-            "epsilon_forced_vertdisc": {},
-            "local_d_buoyancy_downdraft_forced_vertdisc": {},
-            "local_del_u_cloud_ensemble_vertdisc": {},
-            "local_del_v_cloud_ensemble_vertdisc": {},
-            "local_del_moist_static_energy_cloud_ensemble_vertdisc": {},
-            "local_del_t_cloud_ensemble_vertdisc": {},
-            "local_del_vapor_cloud_ensemble_vertdisc": {},
-            "local_del_cloud_liquid_cloud_ensemble_vertdisc": {},
-            "local_del_buoyancy_cloud_ensemble_vertdisc": {},
-            "local_t_tendency_from_environmental_subsidence_vertdisc": {},
-            "local_moist_static_energy_tendency_from_environmental_subsidence_vertdisc": {},
-            "local_vapor_tendency_from_environmental_subsidence_vertdisc": {},
+            "error_code": {},
+            "cloud_top_level": {},
+            "p_cloud_levels_forced": {},
+            "local_geopotential_height_cloud_levels_forced": {},
+            "normalized_massflux_updraft_forced": {},
+            "normalized_massflux_downdraft_forced": {},
+            "local_environment_massflux": {},
+            "mass_detrainment_updraft_forced": {},
+            "mass_detrainment_downdraft_forced": {},
+            "local_c1d": {},
+            "u": {},
+            "v": {},
+            "local_u_cloud_levels": {},
+            "local_v_cloud_levels": {},
+            "local_u_c": {},
+            "local_v_c": {},
+            "local_u_c_downdraft": {},
+            "local_v_c_downdraft": {},
+            "local_cloud_moist_static_energy_forced": {},
+            "local_cloud_moist_static_energy_downdraft_forced": {},
+            "local_env_moist_static_energy_cloud_levels_forced": {},
+            "local_vapor_cloud_levels_forced": {},
+            "local_cloud_total_water_after_entrainment_forced": {},
+            "local_cloud_total_water_after_entrainment_downdraft_forced": {},
+            "cloud_liquid_after_rain_forced": {},
+            "condensate_to_fall_forced": {},
+            "evaporate_in_downdraft_forced": {},
+            "local_melting": {},
+            "local_partition_liquid_ice": {},
+            "epsilon_forced": {},
+            "local_d_buoyancy_downdraft_forced": {},
+            "local_del_u_cloud_ensemble": {},
+            "local_del_v_cloud_ensemble": {},
+            "local_del_moist_static_energy_cloud_ensemble": {},
+            "local_del_t_cloud_ensemble": {},
+            "local_del_vapor_cloud_ensemble": {},
+            "local_del_cloud_liquid_cloud_ensemble": {},
+            "local_del_buoyancy_cloud_ensemble": {},
+            "local_moist_static_energy_tendency_from_environmental_subsidence": {},
+            "local_vapor_tendency_from_environmental_subsidence": {},
+            "local_t_tendency_from_environmental_subsidence": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -114,90 +114,84 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_vertdisc"
-        ]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_level_vertdisc"] - 1
+            inputs["cloud_top_level"] - 1
         )
         state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "p_cloud_levels_forced_vertdisc"
+            "p_cloud_levels_forced"
         ]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced_vertdisc"
+            "local_geopotential_height_cloud_levels_forced"
         ]
         state.output.normalized_massflux_updraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["normalized_massflux_updraft_forced_vertdisc"]
+        ] = inputs["normalized_massflux_updraft_forced"]
         state.output.normalized_massflux_downdraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["normalized_massflux_downdraft_forced_vertdisc"]
-        locals.environment_massflux.data[:] = inputs["local_environment_massflux_vertdisc"]
+        ] = inputs["normalized_massflux_downdraft_forced"]
+        locals.environment_massflux.data[:] = inputs["local_environment_massflux"]
         state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["mass_detrainment_updraft_forced_vertdisc"]
+            inputs["mass_detrainment_updraft_forced"]
         )
         state.output.mass_detrainment_downdraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_detrainment_downdraft_forced_vertdisc"]
-        locals.c1d.data[:] = inputs["local_c1d_vertdisc"]
-        state.input_output.u.data[:] = inputs["u_vertdisc"]
-        state.input_output.v.data[:] = inputs["v_vertdisc"]
-        locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels_vertdisc"]
-        locals.v_cloud_levels.data[:] = inputs["local_v_cloud_levels_vertdisc"]
-        locals.u_c.data[:] = inputs["local_u_c_vertdisc"]
-        locals.v_c.data[:] = inputs["local_v_c_vertdisc"]
-        locals.u_c_downdraft.data[:] = inputs["local_u_c_downdraft_vertdisc"]
-        locals.v_c_downdraft.data[:] = inputs["local_v_c_downdraft_vertdisc"]
-        locals.cloud_moist_static_energy_forced.data[:] = inputs[
-            "local_cloud_moist_static_energy_forced_vertdisc"
-        ]
+        ] = inputs["mass_detrainment_downdraft_forced"]
+        locals.c1d.data[:] = inputs["local_c1d"]
+        state.input_output.u.data[:] = inputs["u"]
+        state.input_output.v.data[:] = inputs["v"]
+        locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels"]
+        locals.v_cloud_levels.data[:] = inputs["local_v_cloud_levels"]
+        locals.u_c.data[:] = inputs["local_u_c"]
+        locals.v_c.data[:] = inputs["local_v_c"]
+        locals.u_c_downdraft.data[:] = inputs["local_u_c_downdraft"]
+        locals.v_c_downdraft.data[:] = inputs["local_v_c_downdraft"]
+        locals.cloud_moist_static_energy_forced.data[:] = inputs["local_cloud_moist_static_energy_forced"]
         locals.cloud_moist_static_energy_downdraft_forced.data[:] = inputs[
-            "local_cloud_moist_static_energy_downdraft_forced_vertdisc"
+            "local_cloud_moist_static_energy_downdraft_forced"
         ]
         locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
-            "local_env_moist_static_energy_cloud_levels_forced_vertdisc"
+            "local_env_moist_static_energy_cloud_levels_forced"
         ]
-        locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced_vertdisc"]
+        locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced"]
         locals.cloud_total_water_after_entrainment_forced.data[:] = inputs[
-            "local_cloud_total_water_after_entrainment_forced_vertdisc"
+            "local_cloud_total_water_after_entrainment_forced"
         ]
         locals.cloud_total_water_after_entrainment_downdraft_forced.data[:] = inputs[
-            "local_cloud_total_water_after_entrainment_downdraft_forced_vertdisc"
+            "local_cloud_total_water_after_entrainment_downdraft_forced"
         ]
         state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_liquid_after_rain_forced_vertdisc"]
+            inputs["cloud_liquid_after_rain_forced"]
         )
         state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "condensate_to_fall_forced_vertdisc"
+            "condensate_to_fall_forced"
         ]
         state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["evaporate_in_downdraft_forced_vertdisc"]
+            inputs["evaporate_in_downdraft_forced"]
         )
-        locals.melting.data[:] = inputs["local_melting_vertdisc"]
-        locals.partition_liquid_ice.data[:] = inputs["local_partition_liquid_ice_vertdisc"]
+        locals.melting.data[:] = inputs["local_melting"]
+        locals.partition_liquid_ice.data[:] = inputs["local_partition_liquid_ice"]
         state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "epsilon_forced_vertdisc"
+            "epsilon_forced"
         ]
-        locals.d_buoyancy_downdraft_forced.data[:] = inputs["local_d_buoyancy_downdraft_forced_vertdisc"]
-        locals.del_u_cloud_ensemble.data[:] = inputs["local_del_u_cloud_ensemble_vertdisc"]
-        locals.del_v_cloud_ensemble.data[:] = inputs["local_del_v_cloud_ensemble_vertdisc"]
+        locals.d_buoyancy_downdraft_forced.data[:] = inputs["local_d_buoyancy_downdraft_forced"]
+        locals.del_u_cloud_ensemble.data[:] = inputs["local_del_u_cloud_ensemble"]
+        locals.del_v_cloud_ensemble.data[:] = inputs["local_del_v_cloud_ensemble"]
         locals.del_moist_static_energy_cloud_ensemble.data[:] = inputs[
-            "local_del_moist_static_energy_cloud_ensemble_vertdisc"
+            "local_del_moist_static_energy_cloud_ensemble"
         ]
-        locals.del_t_cloud_ensemble.data[:] = inputs["local_del_t_cloud_ensemble_vertdisc"]
-        locals.del_vapor_cloud_ensemble.data[:] = inputs["local_del_vapor_cloud_ensemble_vertdisc"]
-        locals.del_cloud_liquid_cloud_ensemble.data[:] = inputs[
-            "local_del_cloud_liquid_cloud_ensemble_vertdisc"
-        ]
-        locals.del_buoyancy_cloud_ensemble.data[:] = inputs["local_del_buoyancy_cloud_ensemble_vertdisc"]
-        locals.t_tendency_from_environmental_subsidence.data[:] = inputs[
-            "local_t_tendency_from_environmental_subsidence_vertdisc"
-        ]
+        locals.del_t_cloud_ensemble.data[:] = inputs["local_del_t_cloud_ensemble"]
+        locals.del_vapor_cloud_ensemble.data[:] = inputs["local_del_vapor_cloud_ensemble"]
+        locals.del_cloud_liquid_cloud_ensemble.data[:] = inputs["local_del_cloud_liquid_cloud_ensemble"]
+        locals.del_buoyancy_cloud_ensemble.data[:] = inputs["local_del_buoyancy_cloud_ensemble"]
         locals.moist_static_energy_tendency_from_environmental_subsidence.data[:] = inputs[
-            "local_moist_static_energy_tendency_from_environmental_subsidence_vertdisc"
+            "local_moist_static_energy_tendency_from_environmental_subsidence"
         ]
         locals.vapor_tendency_from_environmental_subsidence.data[:] = inputs[
-            "local_vapor_tendency_from_environmental_subsidence_vertdisc"
+            "local_vapor_tendency_from_environmental_subsidence"
+        ]
+        locals.t_tendency_from_environmental_subsidence.data[:] = inputs[
+            "local_t_tendency_from_environmental_subsidence"
         ]
 
         # initalize test code
@@ -249,94 +243,88 @@ class TestCore:
                 del_vapor_cloud_ensemble=locals.del_vapor_cloud_ensemble,
                 del_cloud_liquid_cloud_ensemble=locals.del_cloud_liquid_cloud_ensemble,
                 del_buoyancy_cloud_ensemble=locals.del_buoyancy_cloud_ensemble,
-                t_tendency_from_environmental_subsidence=locals.t_tendency_from_environmental_subsidence,
                 moist_static_energy_tendency_from_environmental_subsidence=locals.moist_static_energy_tendency_from_environmental_subsidence,
                 vapor_tendency_from_environmental_subsidence=locals.vapor_tendency_from_environmental_subsidence,
+                t_tendency_from_environmental_subsidence=locals.t_tendency_from_environmental_subsidence,
                 plume_dependent_constants=plume_dependent_constants,
             )
 
         # write output
         outputs = {
-            "error_code_vertdisc": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_top_level_vertdisc": state.output.cloud_top_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
-            "p_cloud_levels_forced_vertdisc": state.output.p_cloud_levels_forced.field[
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_geopotential_height_cloud_levels_forced_vertdisc": locals.geopotential_height_cloud_levels_forced.field[
+            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "normalized_massflux_updraft_forced_vertdisc": state.output.normalized_massflux_updraft_forced.field[
+            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "normalized_massflux_downdraft_forced_vertdisc": state.output.normalized_massflux_downdraft_forced.field[
+            "normalized_massflux_downdraft_forced": state.output.normalized_massflux_downdraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_environment_massflux_vertdisc": locals.environment_massflux.field[:],
-            "mass_detrainment_updraft_forced_vertdisc": state.output.mass_detrainment_updraft_forced.field[
+            "local_environment_massflux": locals.environment_massflux.field[:],
+            "mass_detrainment_updraft_forced": state.output.mass_detrainment_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "mass_detrainment_downdraft_forced_vertdisc": state.output.mass_detrainment_downdraft_forced.data[
+            "mass_detrainment_downdraft_forced": state.output.mass_detrainment_downdraft_forced.data[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_c1d_vertdisc": locals.c1d.field[:],
-            "u_vertdisc": state.input_output.u.field[:],
-            "v_vertdisc": state.input_output.v.field[:],
-            "local_u_cloud_levels_vertdisc": locals.u_cloud_levels.field[:],
-            "local_v_cloud_levels_vertdisc": locals.v_cloud_levels.field[:],
-            "local_u_c_vertdisc": locals.u_c.field[:],
-            "local_v_c_vertdisc": locals.v_c.field[:],
-            "local_u_c_downdraft_vertdisc": locals.u_c_downdraft.field[:],
-            "local_v_c_downdraft_vertdisc": locals.v_c_downdraft.field[:],
-            "local_cloud_moist_static_energy_forced_vertdisc": locals.cloud_moist_static_energy_forced.field[
+            "local_c1d": locals.c1d.field[:],
+            "u": state.input_output.u.field[:],
+            "v": state.input_output.v.field[:],
+            "local_u_cloud_levels": locals.u_cloud_levels.field[:],
+            "local_v_cloud_levels": locals.v_cloud_levels.field[:],
+            "local_u_c": locals.u_c.field[:],
+            "local_v_c": locals.v_c.field[:],
+            "local_u_c_downdraft": locals.u_c_downdraft.field[:],
+            "local_v_c_downdraft": locals.v_c_downdraft.field[:],
+            "local_cloud_moist_static_energy_forced": locals.cloud_moist_static_energy_forced.field[:],
+            "local_cloud_moist_static_energy_downdraft_forced": locals.cloud_moist_static_energy_downdraft_forced.field[
                 :
             ],
-            "local_cloud_moist_static_energy_downdraft_forced_vertdisc": locals.cloud_moist_static_energy_downdraft_forced.field[
+            "local_env_moist_static_energy_cloud_levels_forced": locals.environment_moist_static_energy_cloud_levels_forced.field[
                 :
             ],
-            "local_env_moist_static_energy_cloud_levels_forced_vertdisc": locals.environment_moist_static_energy_cloud_levels_forced.field[
+            "local_vapor_cloud_levels_forced": locals.vapor_cloud_levels_forced.data[:],
+            "local_cloud_total_water_after_entrainment_forced": locals.cloud_total_water_after_entrainment_forced.field[
                 :
             ],
-            "local_vapor_cloud_levels_forced_vertdisc": locals.vapor_cloud_levels_forced.data[:],
-            "local_cloud_total_water_after_entrainment_forced_vertdisc": locals.cloud_total_water_after_entrainment_forced.field[
+            "local_cloud_total_water_after_entrainment_downdraft_forced": locals.cloud_total_water_after_entrainment_downdraft_forced.field[
                 :
             ],
-            "local_cloud_total_water_after_entrainment_downdraft_forced_vertdisc": locals.cloud_total_water_after_entrainment_downdraft_forced.field[
-                :
-            ],
-            "cloud_liquid_after_rain_forced_vertdisc": state.output.cloud_liquid_after_rain_forced.field[
+            "cloud_liquid_after_rain_forced": state.output.cloud_liquid_after_rain_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "condensate_to_fall_forced_vertdisc": state.output.condensate_to_fall_forced.field[
+            "condensate_to_fall_forced": state.output.condensate_to_fall_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "evaporate_in_downdraft_forced_vertdisc": state.output.evaporate_in_downdraft_forced.field[
+            "evaporate_in_downdraft_forced": state.output.evaporate_in_downdraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_melting_vertdisc": locals.melting.field[:],
-            "local_partition_liquid_ice_vertdisc": locals.partition_liquid_ice.field[:],
-            "epsilon_forced_vertdisc": state.output.epsilon_forced.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "local_d_buoyancy_downdraft_forced_vertdisc": locals.d_buoyancy_downdraft_forced.data[:],
-            "local_del_u_cloud_ensemble_vertdisc": locals.del_u_cloud_ensemble.field[:],
-            "local_del_v_cloud_ensemble_vertdisc": locals.del_v_cloud_ensemble.field[:],
-            "local_del_moist_static_energy_cloud_ensemble_vertdisc": locals.del_moist_static_energy_cloud_ensemble.field[
+            "local_melting": locals.melting.field[:],
+            "local_partition_liquid_ice": locals.partition_liquid_ice.field[:],
+            "epsilon_forced": state.output.epsilon_forced.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_d_buoyancy_downdraft_forced": locals.d_buoyancy_downdraft_forced.data[:],
+            "local_del_u_cloud_ensemble": locals.del_u_cloud_ensemble.field[:],
+            "local_del_v_cloud_ensemble": locals.del_v_cloud_ensemble.field[:],
+            "local_del_moist_static_energy_cloud_ensemble": locals.del_moist_static_energy_cloud_ensemble.field[
                 :
             ],
-            "local_del_t_cloud_ensemble_vertdisc": locals.del_t_cloud_ensemble.field[:],
-            "local_del_vapor_cloud_ensemble_vertdisc": locals.del_vapor_cloud_ensemble.field[:],
-            "local_del_cloud_liquid_cloud_ensemble_vertdisc": locals.del_cloud_liquid_cloud_ensemble.field[:],
-            "local_del_buoyancy_cloud_ensemble_vertdisc": locals.del_buoyancy_cloud_ensemble.field[:],
-            "local_t_tendency_from_environmental_subsidence_vertdisc": locals.t_tendency_from_environmental_subsidence.field[
+            "local_del_t_cloud_ensemble": locals.del_t_cloud_ensemble.field[:],
+            "local_del_vapor_cloud_ensemble": locals.del_vapor_cloud_ensemble.field[:],
+            "local_del_cloud_liquid_cloud_ensemble": locals.del_cloud_liquid_cloud_ensemble.field[:],
+            "local_del_buoyancy_cloud_ensemble": locals.del_buoyancy_cloud_ensemble.field[:],
+            "local_moist_static_energy_tendency_from_environmental_subsidence": locals.moist_static_energy_tendency_from_environmental_subsidence.field[
                 :
             ],
-            "local_moist_static_energy_tendency_from_environmental_subsidence_vertdisc": locals.moist_static_energy_tendency_from_environmental_subsidence.field[
+            "local_vapor_tendency_from_environmental_subsidence": locals.vapor_tendency_from_environmental_subsidence.field[
                 :
             ],
-            "local_vapor_tendency_from_environmental_subsidence_vertdisc": locals.vapor_tendency_from_environmental_subsidence.field[
+            "local_t_tendency_from_environmental_subsidence": locals.t_tendency_from_environmental_subsidence.field[
                 :
             ],
         }

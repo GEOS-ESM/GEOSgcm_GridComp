@@ -82,7 +82,8 @@ def updraft_moisture_light(
         psumh = 0.0
 
     with computation(PARALLEL), interval(...):
-        # make garbage field so the get_cloud_boundary_conditions call does not break (this is never touched)
+        # make garbage field so the get_cloud_boundary_conditions call does not break
+        # this is never touched so long as compute_perturbation=False
         dummy_field_no_read = 0.0 + BOUNDARY_CONDITION_METHOD
 
     with computation(PARALLEL), interval(...):

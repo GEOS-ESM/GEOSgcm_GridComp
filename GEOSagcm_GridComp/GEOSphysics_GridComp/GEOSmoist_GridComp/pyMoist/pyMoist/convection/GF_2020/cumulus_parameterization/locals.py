@@ -1105,66 +1105,37 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-
-    # NOTE need more information about these fields to come up with better names
-    fp: Quantity = dataclasses.field(
+    t_modified: Quantity = dataclasses.field(
         metadata={
-            "name": "fp",
+            "name": "t_modified",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    fm: Quantity = dataclasses.field(
+    vapor_modified: Quantity = dataclasses.field(
         metadata={
-            "name": "fm",
+            "name": "vapor_modified",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    aa: Quantity = dataclasses.field(
+    environment_moist_static_energy_modified: Quantity = dataclasses.field(
         metadata={
-            "name": "aa",
+            "name": "environment_moist_static_energy_modified",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    bb: Quantity = dataclasses.field(
+    moist_static_energy_origin_level_modified: Quantity = dataclasses.field(
         metadata={
-            "name": "bb",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    cc: Quantity = dataclasses.field(
-        metadata={
-            "name": "cc",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    ddu: Quantity = dataclasses.field(
-        metadata={
-            "name": "ddu",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    ddv: Quantity = dataclasses.field(
-        metadata={
-            "name": "ddv",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "name": "moist_static_energy_origin_level_modified",
+            "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

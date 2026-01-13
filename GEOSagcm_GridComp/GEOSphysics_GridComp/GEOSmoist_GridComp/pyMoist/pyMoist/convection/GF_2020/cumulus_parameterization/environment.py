@@ -14,7 +14,7 @@ from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, Int
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 import pyMoist.constants as constants
 from gt4py.cartesian.gtscript import (
@@ -28,6 +28,7 @@ from gt4py.cartesian.gtscript import (
 from ndsl.dsl.gt4py import function
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
     saturation_vapor_pressure,
+    get_cloud_boundary_conditions,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_Plume,
@@ -619,9 +620,155 @@ def environment_mass_flux(
             environment_massflux = 0.0
 
 
+def modify_environment_profiles(
+    error_code: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    updraft_origin_level: IntFieldIJ_Plume,
+    ocean_fraction: FloatFieldIJ,
+    p_forced: FloatField,
+    t_new: FloatField,
+    t_modified: FloatField,
+    vapor_forced: FloatField,
+    vapor_modified: FloatField,
+    environment_moist_static_energy_forced: FloatField,
+    environment_moist_static_energy_modified: FloatField,
+    moist_static_energy_origin_level_forced: FloatFieldIJ,
+    moist_static_energy_origin_level_modified: FloatFieldIJ,
+    partition_liquid_ice: FloatField,
+    del_moist_static_energy_cloud_ensemble: FloatField,
+    del_t_cloud_ensemble: FloatField,
+    del_vapor_cloud_ensemble: FloatField,
+    del_cloud_liquid_cloud_ensemble: FloatField,
+    del_u_cloud_ensemble: FloatField,
+    del_v_cloud_ensemble: FloatField,
+    t_tendency_from_environmental_subsidence: FloatField,
+    moist_static_energy_tendency_from_environmental_subsidence: FloatField,
+    vapor_tendency_from_environmental_subsidence: FloatField,
+    arbitrary_numerical_parameter: FloatFieldIJ,
+    AVERAGE_LAYER_DEPTH: Float,
+    plume: Int,
+    debug_var_1: FloatFieldIJ,
+    debug_var_2: FloatFieldIJ,
+    debug_var_3: FloatFieldIJ,
+    debug_var_4: FloatFieldIJ,
+    debug_var_5: FloatFieldIJ,
+    debug_var_6: FloatFieldIJ,
+):
+    from __externals__ import COUPLE_MICROPHYSICS, BOUNDARY_CONDITION_METHOD, k_end
+
+    with computation(PARALLEL), interval(...):
+        # make garbage field so the get_cloud_boundary_conditions call does not break
+        # this is never touched so long as compute_perturbation=False
+        dummy_field_no_read = 0.0
+
+    with computation(PARALLEL), interval(0, -1):
+        del_t_cloud_ensemble = 0.0
+
+        if error_code[0, 0][plume] == 0:
+            environment_moist_static_energy_modified = (
+                del_moist_static_energy_cloud_ensemble * arbitrary_numerical_parameter
+                + environment_moist_static_energy_forced
+            )
+            vapor_modified = (
+                del_vapor_cloud_ensemble + del_cloud_liquid_cloud_ensemble
+            ) * arbitrary_numerical_parameter + vapor_forced
+            if vapor_modified <= 0.0:
+                vapor_modified = 1.0e-08
+
+            # do not feed del_t_cloud_ensemble with del_cloud_liquid_cloud_ensemble if the
+            # detrainment of liquid water will be used as a source for cloud microphysics
+            if COUPLE_MICROPHYSICS == True:
+                del_t_cloud_ensemble = (1.0 / cumulus_parameterization_constants.CP) * (
+                    del_moist_static_energy_cloud_ensemble
+                    - cumulus_parameterization_constants.XLV * del_vapor_cloud_ensemble
+                )
+            else:
+                # melt glac
+                del_t_cloud_ensemble = (1.0 / cumulus_parameterization_constants.CP) * (
+                    del_moist_static_energy_cloud_ensemble
+                    - cumulus_parameterization_constants.XLV
+                    * (del_vapor_cloud_ensemble + del_cloud_liquid_cloud_ensemble)
+                    * (
+                        1.0
+                        + (cumulus_parameterization_constants.XLF / cumulus_parameterization_constants.XLV)
+                        * (1.0 - partition_liquid_ice)
+                    )
+                )
+
+                # adding dellaqc to dellaq:
+                del_vapor_cloud_ensemble = del_vapor_cloud_ensemble + del_cloud_liquid_cloud_ensemble
+                del_cloud_liquid_cloud_ensemble = 0.0
+
+            # melt glac
+            t_modified = (
+                (1.0 / cumulus_parameterization_constants.CP) * del_moist_static_energy_cloud_ensemble
+                - (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
+                * (
+                    del_vapor_cloud_ensemble
+                    + del_cloud_liquid_cloud_ensemble
+                    * (
+                        1.0
+                        + (cumulus_parameterization_constants.XLF / cumulus_parameterization_constants.XLV)
+                        * (1.0 - partition_liquid_ice)
+                    )
+                )
+            ) * arbitrary_numerical_parameter + t_new
+
+            # temp tendency due to the environmental subsidence
+            t_tendency_from_environmental_subsidence = (1.0 / cumulus_parameterization_constants.CP) * (
+                moist_static_energy_tendency_from_environmental_subsidence
+                - cumulus_parameterization_constants.XLV * vapor_tendency_from_environmental_subsidence
+            )
+
+    with computation(FORWARD), interval(-2, -1):
+        if error_code[0, 0][plume] == 0:
+            environment_moist_static_energy_modified = environment_moist_static_energy_forced
+            vapor_modified = vapor_forced
+            t_modified = t_new
+            if vapor_modified <= 0.0:
+                vapor_modified = 1.0e-08
+
+    with computation(FORWARD), interval(0, 1):
+        # new way for defining moist static energy at updraft origin level
+        if error_code[0, 0][plume] == 0:
+            # note that moist_static_energy_origin_level_forced already contains the contribuition from
+            # t_excess and vapor_excess
+            mse_boundary_condition = get_cloud_boundary_conditions(
+                field=del_moist_static_energy_cloud_ensemble,
+                scalar_perturbation=0,
+                p=p_forced,
+                updraft_origin_level=updraft_origin_level[0, 0][plume],
+                ocean_fraction=ocean_fraction,
+                BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
+                AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
+                k_end=k_end,
+                compute_perturbation=False,
+                perturbation_field=dummy_field_no_read,
+            )
+            debug_var_1 = mse_boundary_condition
+            debug_var_2 = arbitrary_numerical_parameter
+            debug_var_3 = moist_static_energy_origin_level_forced
+            moist_static_energy_origin_level_modified = (
+                mse_boundary_condition * arbitrary_numerical_parameter
+                + moist_static_energy_origin_level_forced
+            )
+
+
 class EnvironmentalSubsidence:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
     def __call__(self, *args, **kwds):
-        pass
+        if self.cumulus_parameterization_config.APPLY_SUB_MP != 0:
+            raise NotImplementedError(
+                "[NDSL] GF2020-->CumulusParameterization-->EnvironmentalSubsidence this code"
+                "has not been impemented. You should have been caught before getting here, but here we are."
+                "Please choose another option for APPLY_SUB_MP or implement to continue."
+            )

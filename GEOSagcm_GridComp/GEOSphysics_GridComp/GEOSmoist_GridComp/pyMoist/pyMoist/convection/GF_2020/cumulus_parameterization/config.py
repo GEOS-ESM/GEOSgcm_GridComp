@@ -85,3 +85,6 @@ class GF2020CumulusParameterizationConfig:
     ALP1: Float
     USE_FCT: Int
     MIN_ENTRAINMENT_RATE: Float
+    APPLY_SUBSIDENCE_MICROPHYSICS: Int
+    USE_SMOOTH_TENDENCIES: Int
+    COUPLE_MICROPHYSICS: Bool

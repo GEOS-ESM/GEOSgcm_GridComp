@@ -1,6 +1,12 @@
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume
 from ndsl.dsl.typing import FloatFieldIJ, Int
 from ndsl.dsl.gt4py import computation, FORWARD, interval
+from ndsl import StencilFactory, QuantityFactory
+from pyMoist.convection.GF_2020.config import GF2020Config
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
 
 
 def convection_trigger(
@@ -20,12 +26,23 @@ def convection_trigger(
 
 
 class XieTriggerFunction:
-    def __init__(self):
-        raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization-->XieTriggerFunction this code"
-            "has not been impemented. You should have been caught before getting here, but here we are. Please"
-            "choose another option for ADV_TRIGGER or implement to continue."
-        )
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+    def __call__(self, plume_dependent_constants: GF2020PlumeDependentConstants):
+
+        if self.config.ADV_TRIGGER == 3 and (
+            plume_dependent_constants.PLUME_INDEX in (1, 2)
+        ):
+            raise NotImplementedError(
+                "[NDSL] GF2020-->CumulusParameterization-->XieTriggerFunction this code"
+                "has not been impemented. You should have been caught before getting here, but here we are."
+                "Please choose another option for ADV_TRIGGER or implement to continue."
+            )

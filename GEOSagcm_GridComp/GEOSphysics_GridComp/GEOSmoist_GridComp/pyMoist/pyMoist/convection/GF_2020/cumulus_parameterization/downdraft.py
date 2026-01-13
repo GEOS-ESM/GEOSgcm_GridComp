@@ -93,7 +93,7 @@ def get_downdraft_origin_level(
     cloud_top_level: IntFieldIJ_Plume,
     updraft_lfc_level: IntFieldIJ_Plume,
     detrainment_start_level: IntFieldIJ,
-    downdraft_origin_level: IntFieldIJ,
+    downdraft_origin_level: IntFieldIJ_Plume,
     environment_saturation_moist_static_energy_cloud_levels_forced: FloatField,
     geopotential_height_cloud_levels_forced: FloatField,
     melting_layer: FloatField,
@@ -122,72 +122,70 @@ def get_downdraft_origin_level(
 
     with computation(FORWARD), interval(0, 1):
         if plume == 0:
-            downdraft_origin_level = 0
+            downdraft_origin_level[0, 0][plume] = 0
         elif plume == 1:
             # setup internal constants
-            beta: FloatFieldIJ = 0.05
+            beta: FloatFieldIJ = 0.02
         elif plume == 2:
             # setup internal constants
-            beta: FloatFieldIJ = 0.02
+            beta: FloatFieldIJ = 0.05
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             # predefine field for next block
-            moist_static_energy_internal = 0
+            moist_static_energy_internal: FloatFieldIJ = 0.0
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             if plume == 2 and MELT_GLAC == True:  # noqa
                 _, max_index = column_max(melting_layer, 0, k_end)
-                downdraft_origin_level = max(downdraft_origin_level, max_index)
+                downdraft_origin_level[0, 0][plume] = max(downdraft_origin_level[0, 0][plume], max_index)
 
-                downdraft_origin_level_internal = downdraft_origin_level
-                keep_going = True
-                while keep_going == True:
-                    keep_going = False
-                    if downdraft_origin_level_internal - 1 < detrainment_start_level:
-                        detrainment_start_level = downdraft_origin_level_internal - 1
-                    if downdraft_origin_level_internal >= cloud_top_level[0, 0][plume] - 1:
-                        downdraft_origin_level_internal = cloud_top_level[0, 0][plume] - 2
-                        level_initial = downdraft_origin_level_internal
-                        moist_static_energy_internal[0, 0, level_initial] = (
-                            environment_saturation_moist_static_energy_cloud_levels_forced.at(K=level_initial)
+            # check whether it would have buoyancy, if there where
+            # no entrainment/detrainment
+            downdraft_origin_level_internal = downdraft_origin_level[0, 0][plume]
+            keep_going = True
+            while keep_going == True:
+                keep_going = False
+                if downdraft_origin_level_internal - 1 < detrainment_start_level:
+                    detrainment_start_level = downdraft_origin_level_internal - 1
+                if downdraft_origin_level_internal >= cloud_top_level[0, 0][plume] - 1:
+                    downdraft_origin_level_internal = cloud_top_level[0, 0][plume] - 2
+                    level_initial = downdraft_origin_level_internal
+                    dh = 0
+                    level = level_initial
+                    stop_k_while_loop = False
+                    while level >= 0 and stop_k_while_loop == False:
+                        moist_static_energy_internal = (
+                            environment_saturation_moist_static_energy_cloud_levels_forced.at(
+                                K=downdraft_origin_level_internal
+                            )
                         )
-                        # dz = geopotential_height_cloud_levels_forced.at(K=level_initial+1) - geopotential_height_cloud_levels_forced.at(K=level_initial)
-                        dh = 0
-                        level = level_initial
-                        stop_while_level = False
-                        while level >= 0 and stop_while_level == False:
-                            moist_static_energy_internal[0, 0, level] = (
-                                environment_saturation_moist_static_energy_cloud_levels_forced.at(
-                                    K=level_initial
-                                )
-                            )
-                            dz = geopotential_height_cloud_levels_forced.at(
-                                K=level + 1
-                            ) - geopotential_height_cloud_levels_forced.at(K=level)
-                            dh = dh + dz * (
-                                moist_static_energy_internal.at(K=level)
-                                - environment_saturation_moist_static_energy_cloud_levels_forced.at(K=level)
-                            )
-                            if dh >= 0:
-                                downdraft_origin_level_internal = downdraft_origin_level_internal - 1
-                                if downdraft_origin_level_internal >= 5:
-                                    keep_going = True
-                                else:
-                                    error_code[0, 0][plume] = 9
-                                    stop_while_level = True
-                            level -= 1
+                        dz = geopotential_height_cloud_levels_forced.at(
+                            K=level + 1
+                        ) - geopotential_height_cloud_levels_forced.at(K=level)
+                        dh = dh + dz * (
+                            moist_static_energy_internal
+                            - environment_saturation_moist_static_energy_cloud_levels_forced.at(K=level)
+                        )
+                        if dh > 0:
+                            downdraft_origin_level_internal = downdraft_origin_level_internal - 1
+                            if downdraft_origin_level_internal > 5:
+                                keep_going = True
+                            else:
+                                error_code[0, 0][plume] = 9
+                                stop_k_while_loop = True
+                        level -= 1
 
-                downdraft_origin_level = downdraft_origin_level_internal
+                downdraft_origin_level[0, 0][plume] = downdraft_origin_level_internal
                 if downdraft_origin_level_internal <= 5:
                     error_code[0, 0][plume] = 4
 
     with computation(FORWARD), interval(0, 1):
         # must have at least depth_min m between cloud convective base and cloud top.
         if error_code[0, 0][plume] == 0:
-            if downdraft_origin_level - 1 <= detrainment_start_level:
-                detrainment_start_level = downdraft_origin_level - 1
+            if downdraft_origin_level[0, 0][plume] - 1 < detrainment_start_level:
+                detrainment_start_level = downdraft_origin_level[0, 0][plume] - 1
             if (
                 -geopotential_height_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume])
                 + geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume])
@@ -677,16 +675,15 @@ def downdraft_moisture(
         downdraft_saturation_vapor_forced = 0.0
         evaporate_in_downdraft_forced[0, 0, 0][plume] = 0.0
 
-    with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0 and plume != 0:
-            # set bounds for next block
-            lower_bound: IntFieldIJ = downdraft_origin_level[0, 0][plume]
-            upper_bound: IntFieldIJ = downdraft_origin_level[0, 0][plume] + 1
-
-    with computation(FORWARD), interval(lower_bound, upper_bound):
-        if error_code[0, 0][plume] == 0 and plume != 0:
+    with computation(FORWARD), interval(0, -1):
+        # NOTE this K level check should be a dynamic interval for the sake of performance, but the current
+        # of dynamic intervals does not currently work with single levels e.g. interval(field, field+1)
+        # will revisit when dynamic intervals are more stable
+        if error_code[0, 0][plume] == 0 and plume != 0 and K == downdraft_origin_level[0, 0][plume]:
             # boundary condition at downdraft_origin_level ('level of free sinking')
-            dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+            dz: FloatFieldIJ = (
+                geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
+            )
 
             cloud_total_water_after_entrainment_downdraft_forced = vapor_cloud_levels_forced
 
@@ -696,7 +693,7 @@ def downdraft_moisture(
                     vapor_wetbulb + cloud_total_water_after_entrainment_forced
                 )
 
-            d_moist_static_energy = (
+            d_moist_static_energy: FloatFieldIJ = (
                 cloud_moist_static_energy_downdraft_forced
                 - environment_saturation_moist_static_energy_cloud_levels_forced
             )
@@ -711,6 +708,8 @@ def downdraft_moisture(
             else:
                 downdraft_saturation_vapor_forced = environment_saturation_mixing_ratio_cloud_levels_forced
 
+    with computation(FORWARD), interval(0, -1):
+        if error_code[0, 0][plume] == 0 and plume != 0 and K == downdraft_origin_level[0, 0][plume]:
             evaporate_in_downdraft_forced[0, 0, 0][plume] = normalized_massflux_downdraft_forced[0, 0, 0][
                 plume
             ] * min(
@@ -721,15 +720,16 @@ def downdraft_moisture(
                 total_normalized_integrated_evaporate_forced[0, 0][plume]
                 + evaporate_in_downdraft_forced[0, 0, 0][plume]
             )
-            buoyancy = dz * d_moist_static_energy
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and plume != 0:
-            # set bounds for next block
-            upper_bound = downdraft_origin_level[0, 0][plume]
+            buoyancy = dz * d_moist_static_energy
 
-    with computation(BACKWARD), interval(0, upper_bound):
-        if error_code[0, 0][plume] == 0 and plume != 0:
+    with computation(BACKWARD), interval(0, -1):
+        # NOTE this K level check should be a dynamic interval, but the current version of dynamic
+        # intervals does not work here - it gets stuck (as if in an infinite loop)
+        # will revisit when dynamic intervals are more stable
+        if error_code[0, 0][plume] == 0 and plume != 0 and K < downdraft_origin_level[0, 0][plume]:
             dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
 
             # downward transport + mixing
@@ -787,6 +787,7 @@ def downdraft_moisture(
             )
 
     with computation(FORWARD), interval(0, 1):
+        # check for problems that stop the convective scheme
         if error_code[0, 0][plume] == 0 and plume != 0:
             if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0 and internal_loop_constant == 1:
                 error_code[0, 0][plume] = 70
@@ -794,44 +795,60 @@ def downdraft_moisture(
             if buoyancy >= 0 and internal_loop_constant == 1:
                 error_code[0, 0][plume] = 73
 
-            if ZERO_DIFF == 0 and EVAP_FIX == 1:
-                if (
-                    abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
-                    > total_normalized_integrated_condensate_forced[0, 0][plume]
-                    and error_code[0, 0][plume] == 0
-                ):
-                    fix_evap = total_normalized_integrated_condensate_forced[0, 0][plume] / (
-                        1.0e-16 + abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
-                    )
-                    total_normalized_integrated_evaporate_forced[0, 0][plume] = 0.0
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0 and plume != 0:
+            # initalize a 2d field to be filled in the next block
+            abs_check: BoolFieldIJ = False
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and plume != 0:
-            # set bounds for next block
-            upper_bound = downdraft_origin_level[0, 0][plume] + 1
+            if (
+                ZERO_DIFF == 0
+                and EVAP_FIX == 1
+                and abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
+                > total_normalized_integrated_condensate_forced[0, 0][plume]
+                and error_code[0, 0][plume] == 0
+            ):
+                # note whether the absolute value check is true so that the conditional can be replicated
+                # in the next block, even after part of it has been changed
+                abs_check = True
 
-    with computation(BACKWARD), interval(0, upper_bound):
-        if error_code[0, 0][plume] == 0 and plume != 0:
-            if ZERO_DIFF == 0 and EVAP_FIX == 1:
-                evaporate_in_downdraft_forced[0, 0, 0][plume] = (
-                    evaporate_in_downdraft_forced[0, 0, 0][plume] * fix_evap
+                fix_evap: FloatFieldIJ = total_normalized_integrated_condensate_forced[0, 0][plume] / (
+                    1.0e-16 + abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
                 )
-                total_normalized_integrated_evaporate_forced[0, 0][plume] = (
-                    total_normalized_integrated_evaporate_forced[0, 0][plume]
-                    + evaporate_in_downdraft_forced[0, 0, 0][plume]
-                )
-                dq_eva = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
-                    1.0e-16 + normalized_massflux_downdraft_forced[0, 0, 0][plume]
-                )
-                cloud_total_water_after_entrainment_downdraft_forced = (
-                    downdraft_saturation_vapor_forced + dq_eva
-                )
+                total_normalized_integrated_evaporate_forced[0, 0][plume] = 0.0
+
+    with computation(BACKWARD), interval(...):
+        if (
+            error_code[0, 0][plume] == 0
+            and plume != 0
+            and ZERO_DIFF == 0
+            and EVAP_FIX == 1
+            and abs_check == True
+            and K <= downdraft_origin_level[0, 0][plume]
+        ):
+            evaporate_in_downdraft_forced[0, 0, 0][plume] = (
+                evaporate_in_downdraft_forced[0, 0, 0][plume] * fix_evap
+            )
+            total_normalized_integrated_evaporate_forced[0, 0][plume] = (
+                total_normalized_integrated_evaporate_forced[0, 0][plume]
+                + evaporate_in_downdraft_forced[0, 0, 0][plume]
+            )
+            dq_eva = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
+                1.0e-16 + normalized_massflux_downdraft_forced[0, 0, 0][plume]
+            )
+            cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced + dq_eva
 
     with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0 and plume != 0:
-            if ZERO_DIFF == 0 and EVAP_FIX == 1:
-                if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0.0:
-                    error_code[0, 0][plume] = 70
+        if (
+            error_code[0, 0][plume] == 0
+            and plume != 0
+            and ZERO_DIFF == 0
+            and EVAP_FIX == 1
+            and abs_check == True
+        ):
+            if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0.0:
+                error_code[0, 0][plume] = 70
 
 
 def downdraft_temperature(
@@ -1010,21 +1027,12 @@ class DowndraftOriginLevel(NDSLRuntime):
         # init NDSLRuntime
         super().__init__(stencil_factory)
 
-        # make a modifyable copy of the QuantityFactory and add a data dimension
-        self.quantity_factory = quantity_factory
-        self.quantity_factory.add_data_dimensions(
-            {"plume": cumulus_parameterization_constants.NUMBER_OF_PLUMES}
-        )
-
         # make config and cumulus_parameterization_config visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         # initalize locals
         self._critical_level: Local = self.make_local(quantity_factory, [X_DIM, Y_DIM], Int)
-        self._downdraft_origin_level_ddim: Local = self.make_local(
-            self.quantity_factory, [X_DIM, Y_DIM, "plume"], Int
-        )
 
         # construct stencils
         self._get_critical_level = stencil_factory.from_dims_halo(
@@ -1032,18 +1040,8 @@ class DowndraftOriginLevel(NDSLRuntime):
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._fill_plume_data_dimension = stencil_factory.from_dims_halo(
-            func=fill_plume_data_dimension,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
         self._unknown_find_level = stencil_factory.from_dims_halo(
             func=unknown_find_level,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-        self._fill_from_plume_data_dimension = stencil_factory.from_dims_halo(
-            func=fill_from_plume_data_dimension,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -1077,17 +1075,11 @@ class DowndraftOriginLevel(NDSLRuntime):
             plume=plume_dependent_constants.PLUME_INDEX,
         )
 
-        self._fill_plume_data_dimension(
-            data=downdraft_origin_level,
-            data_dimension_field=self._downdraft_origin_level_ddim,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
-
         self._unknown_find_level(
             array=environment_saturation_moist_static_energy_cloud_levels_forced,
             start_index=updraft_origin_level,
             end_index=self._critical_level,
-            out_index=self._downdraft_origin_level_ddim,
+            out_index=downdraft_origin_level,
             error_code=error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
         )
