@@ -6275,7 +6275,7 @@ ENDIF ! vertical discretization
 !
 !--- using dellas, calculate changed environmental profiles
 !
-      !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+      !!$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
          !$ser savepoint GF2020_CumulusParameterization_ModifyEnvironmentProfiles-In
          !$ser verbatim do i=its,ite
             !$ser verbatim do k=kts,kte
@@ -6306,7 +6306,7 @@ ENDIF ! vertical discretization
                !$ser data_buffered Dx=4 local_arbitrary_numerical_parameter=mbdt(i)
             !$ser verbatim enddo
          !$ser verbatim enddo
-      !$ser verbatim endif
+      !!$ser verbatim endif
       do k=kts,ktf
        do i=its,itf
          dellat(i,k)=0.
@@ -6431,7 +6431,7 @@ ENDIF ! vertical discretization
 !
 !--- environmental values on cloud levels
 !
-      !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+      !!$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
          !$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_3-In
          !$ser verbatim do i=its,ite
             !$ser verbatim do k=kts,kte
@@ -6461,12 +6461,12 @@ ENDIF ! vertical discretization
                !$ser data_buffered Dx=4 topography_height_no_negative=z1(i)
             !$ser verbatim enddo
          !$ser verbatim enddo
-      !$ser verbatim endif
+      !!$ser verbatim endif
       call cup_env_clev(xt,xqes,xq,xhe,xhes,xz,po,xqes_cup,xq_cup, xhe_cup,   &
                         us,vs,u_cup,v_cup,                                    &
                         xhes_cup,xz_cup,po_cup,gamma_cup,xt_cup,psur,tsur,    &
                         ierr,z1,itf,ktf,its,ite, kts,kte)
-      !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+      !!$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
          !$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_3-Out
          !$ser verbatim do i=its,ite
             !$ser verbatim do k=kts,kte
@@ -6496,12 +6496,33 @@ ENDIF ! vertical discretization
                !$ser data_buffered Dx=4 topography_height_no_negative=z1(i)
             !$ser verbatim enddo
          !$ser verbatim enddo
-      !$ser verbatim endif
+      !!$ser verbatim endif
 !
 !--- static control
 !
 !--- moist static energy inside cloud
 !
+
+     !!$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+         !$ser savepoint GF2020_CumulusParameterization_MoistStaticEnergyInsideCloud-In
+         !$ser verbatim do i=its,ite
+            !$ser verbatim do k=kts,kte
+               !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+               !$ser data_buffered Dx=4 local_cloud_moist_static_energy_mseic=xhc(i,k) error_code_mseic=ierr(i)
+               !$ser data_buffered Dx=4 local_start_level=start_level(i)
+               !$ser data_buffered Dx=4 local_moist_static_energy_origin_level_mseic=xhkb(i) cloud_top_level=ktop(i)
+               !$ser data_buffered Dx=4 mass_detrainment_updraft_forced=up_massdetro(i,k)
+               !$ser data_buffered Dx=4 mass_entrainment_updraft_forced=up_massentro(i,k)
+               !$ser data_buffered Dx=4 local_normalized_massflux_updraft_modified_mseic=xzu(i,k) local_env_saturation_moist_static_energy_modified=xhe(i,k)
+               !$ser data_buffered Dx=4 local_partition_liquid_ice=p_liq_ice(i,k)
+               !$ser data_buffered Dx=4 local_vapor_excess_mseic=zqexec(i) local_t_excess_mseic=ztexec(i)
+               !$ser data_buffered Dx=4 local_add_buoyancy_mseic=x_add_buoy(i)
+               !$ser data_buffered Dx=4 cloud_liquid_after_rain_forced=qrco(i,k) local_env_saturation_moist_static_energy_cloud_levels_modified=xhes_cup(i,k)
+               !$ser data_buffered Dx=4 local_d_buoyancy_modified_mseic=xdby(i,k) local_env_moist_static_energy_cloud_levels_modified=xhe_cup(i,k)
+               !$ser data_buffered Dx=4 lcl_level_mseic=klcl(i) updraft_lfc_level_mseic=kbcon(i)
+            !$ser verbatim enddo
+         !$ser verbatim enddo
+      !!$ser verbatim endif
       do i=its,itf
         xhc(i,:)=0.
         if(ierr(i)/= 0)CYCLE
@@ -6535,6 +6556,27 @@ ENDIF ! vertical discretization
         enddo
       enddo
       call get_buoyancy(itf,ktf, its,ite, kts,kte,ierr,klcl,kbcon,ktop,xhc,xhe_cup,xhes_cup,xdby,xz_cup)
+      !!$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+         !$ser savepoint GF2020_CumulusParameterization_MoistStaticEnergyInsideCloud-Out
+         !$ser verbatim do i=its,ite
+            !$ser verbatim do k=kts,kte
+               !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+               !$ser data_buffered Dx=4 local_cloud_moist_static_energy_mseic=xhc(i,k) error_code_mseic=ierr(i)
+               !$ser data_buffered Dx=4 local_start_level=start_level(i)
+               !$ser data_buffered Dx=4 local_moist_static_energy_origin_level_mseic=xhkb(i) cloud_top_level=ktop(i)
+               !$ser data_buffered Dx=4 mass_detrainment_updraft_forced=up_massdetro(i,k)
+               !$ser data_buffered Dx=4 mass_entrainment_updraft_forced=up_massentro(i,k)
+               !$ser data_buffered Dx=4 local_normalized_massflux_updraft_modified_mseic=xzu(i,k) local_env_saturation_moist_static_energy_modified=xhe(i,k)
+               !$ser data_buffered Dx=4 local_partition_liquid_ice=p_liq_ice(i,k)
+               !$ser data_buffered Dx=4 local_vapor_excess_mseic=zqexec(i) local_t_excess_mseic=ztexec(i)
+               !$ser data_buffered Dx=4 local_add_buoyancy_mseic=x_add_buoy(i)
+               !$ser data_buffered Dx=4 cloud_liquid_after_rain_forced=qrco(i,k) local_env_saturation_moist_static_energy_cloud_levels_modified=xhes_cup(i,k)
+               !$ser data_buffered Dx=4 local_d_buoyancy_modified_mseic=xdby(i,k) local_env_moist_static_energy_cloud_levels_modified=xhe_cup(i,k)
+               !$ser data_buffered Dx=4 lcl_level_mseic=klcl(i) updraft_lfc_level_mseic=kbcon(i)
+            !$ser verbatim enddo
+         !$ser verbatim enddo
+      !!$ser verbatim endif
+
 !
 !--- workfunctions for updraft
 !
