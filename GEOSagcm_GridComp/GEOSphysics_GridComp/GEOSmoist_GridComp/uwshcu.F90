@@ -762,7 +762,6 @@ contains
     real  thvlsrc_out(idim)                    !  Source air thvl [ K ]
     real  emfkbup_out(idim)                    !  Penetrative downward mass flux at 'kbup' interface [ kg/m2/s ]
     real  cinlclh_out(idim)                    !  Convective INhibition upto LCL (CIN) [ J/kg = m2/s2 ]
-    real  cbmflimit_out(idim)                  !  Cloud base mass flux limiter [ kg/m2/s ]
     real  zinv_out(idim)                       !  PBL top height [ m ]
     real  rcwp_out(idim)                       !  Layer mean Cumulus LWP+IWP [ kg/m2 ] 
     real  rlwp_out(idim)                       !  Layer mean Cumulus LWP [ kg/m2 ] 
@@ -845,9 +844,9 @@ contains
     real       limit_cbmf(idim)
 
     real :: ufrcinvbase_s, ufrclcl_s, winvbase_s, wlcl_s, plcl_s, pinv_s, prel_s, plfc_s, &
-              qtsrc_s, thlsrc_s, thvlsrc_s, emfkbup_s, cinlcl_s, pbup_s, ppen_s, cbmflimit_s, &
+              qtsrc_s, thlsrc_s, thvlsrc_s, emfkbup_s, cinlcl_s, pbup_s, ppen_s, &
               tkeavg_s, zinv_s, rcwp_s, rlwp_s, riwp_s 
-    real :: ufrcinvbase, winvbase, emfkbup, cbmflimit
+    real :: ufrcinvbase, winvbase, emfkbup
 
     !----- Variables for implicit CIN computation
 
@@ -1088,7 +1087,6 @@ contains
     thlsrc_out(:idim)            = 0.0
     thvlsrc_out(:idim)           = 0.0
     emfkbup_out(:idim)           = 0.0
-    cbmflimit_out(:idim)         = 0.0
     tkeavg_out(:idim)            = 0.0
     zinv_out(:idim)              = 0.0
     rcwp_out(:idim)              = 0.0
@@ -1337,7 +1335,6 @@ contains
       winvbase            = 0.0
       wlcl                = 0.0
       emfkbup             = 0.0 
-      cbmflimit           = 0.0
 #ifdef UWDIAG
       excessu_arr(:k0)   = 0.0
       excess0_arr(:k0)   = 0.0
@@ -1965,7 +1962,6 @@ contains
                winvbase           = 0.0
                wlcl               = 0.0
                emfkbup            = 0.0 
-               cbmflimit          = 0.0
 #ifdef UWDIAG
                excessu_arr(:k0)   = 0.0
                excess0_arr(:k0)   = 0.0
@@ -2053,7 +2049,6 @@ contains
                thlsrc_out(i)            = thlsrc_s
                thvlsrc_out(i)           = thvlsrc_s
                emfkbup_out(i)           = emfkbup_s
-               cbmflimit_out(i)         = cbmflimit_s
                tkeavg_out(i)            = tkeavg_s
                zinv_out(i)              = zinv_s
                rcwp_out(i)              = rcwp_s
@@ -2213,12 +2208,12 @@ contains
           ! When no cloud base mass flux, limit to rkfre only
            rkfre_eff = min(rkfre(i), 1.0)
          endif
-         cbmflimit = rkfre_eff*cbmf
+         cbmf = rkfre_eff*cbmf
          if( rkfre_eff .lt. 1.0 ) limit_cbmf(i) = 1.
-         ! 2. limited sigmaw
-         sigmaw = rkfre_eff*sigmaw
+         ! 2. limited sigmaw (solving for sigmaw using limited cbmf)
+         sigmaw = 2.5066 * cbmf * exp(mu**2) / rho0inv
          ! 3. 'ufrcinv' constraint
-         mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmflimit/rho0inv/sigmaw))))
+         mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmf/rho0inv/sigmaw))))
          mu = max(max(mu,mumin0),mumin1)
          ! 4. 'ufrclcl' constraint
          mulcl = sqrt(max(0.0,2.*cinlcl*rbuoy))/1.4142/sigmaw
@@ -2240,7 +2235,7 @@ contains
        ! 'ufrclcl' are smaller than ufrcmax with no instability.             !
        ! ------------------------------------------------------------------- !
 
-         cbmf = rkfre_eff*(rho0inv*sigmaw/2.5066)*exp(-mu**2)
+         cbmf = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
          winv = sigmaw*(2./2.5066)*exp(-mu**2)/erfc(mu)
          ufrcinv = cbmf/winv/rho0inv
 
@@ -2344,26 +2339,8 @@ contains
          endif
 
        ! -------------------------------------------------------------------------- !
-       ! Define environmental properties at the level where buoyancy sorting occurs !
-       ! ('pe', normally, layer midpoint except in the 'krel' layer). In the 'krel' !
-       ! layer where buoyancy sorting starts to occur, however, 'pe' is defined     !
-       ! differently because LCL is regarded as lower interface for mixing purpose. !
+       ! All of this environment stuff moved below inside iter_scaleh
        ! -------------------------------------------------------------------------- !
-
-         pe      = 0.5 * ( prel + pifc0(krel) )
-         qsat_pe = 0.5 * ( prel + pifc0(krel) )
-         dpe     = prel - pifc0(krel)
-         exne    = exnerfn(pe)
-         thvebot = thv0rel
-         thle    = thl0(krel) + ssthl0(krel) * ( pe - pmid0(krel) )
-         qte     = qt0(krel)  + ssqt0(krel)  * ( pe - pmid0(krel) )
-         ue      = u0(krel)   + ssu0(krel)   * ( pe - pmid0(krel) )
-         ve      = v0(krel)   + ssv0(krel)   * ( pe - pmid0(krel) )
-         if (dotransport.eq.1) then
-         do m = 1, ncnst
-            tre(m) = tr0(krel,m)  + sstr0(krel,m) * ( pe - pmid0(krel) )
-         enddo
-         end if
 
        !-------------------------! 
        ! Buoyancy-Sorting Mixing !
@@ -2413,10 +2390,7 @@ contains
      !             the updated 'cush' by the first implicit cin. So, this updating has an effect of
      !             doing one iteration for cush calculation, which is good. 
      !             So, only this setting of 'iter_scaleh = 1' is sufficient-enough to save computation time.
-     ! OK
-
-!         do iter_scaleh = 1, 3
-         iter_scaleh = 1
+         do iter_scaleh = 1, 1
 
        ! ---------------------------------------------------------------- !
        ! Initialization of 'kbup' and 'kpen'                              !
@@ -2479,19 +2453,42 @@ contains
 
          wtw     = wlcl * wlcl
          pe      = 0.5 * ( prel + pifc0(krel) )
+         qsat_pe = 0.5 * ( prel + pifc0(krel) )
          dpe     = max(prel - pifc0(krel), 100.0) ! Global protection: minimum 1 hPa
                                                   ! as prel approaches pifc0
          exne    = exnerfn(pe)
-         thvebot = thv0rel
+         thvebot = thv0rel                        
          thle    = thl0(krel) + ssthl0(krel) * ( pe - pmid0(krel) )
          qte     = qt0(krel)  + ssqt0(krel)  * ( pe - pmid0(krel) )
          ue      = u0(krel)   + ssu0(krel)   * ( pe - pmid0(krel) )
          ve      = v0(krel)   + ssv0(krel)   * ( pe - pmid0(krel) )
          if (dotransport.eq.1) then
          do m = 1, ncnst
-            tre(m) = tr0(krel,m)  + sstr0(krel,m)  * ( pe - pmid0(krel) )
+            tre(m) = tr0(krel,m)  + sstr0(krel,m) * ( pe - pmid0(krel) )
          enddo
-         endif
+         end if
+
+       ! ---------------------------------------------------------------- !
+       ! Calculate environmental and cumulus saturation 'excess' at 'pe'. !
+       ! Note that in order to calculate saturation excess, we should use ! 
+       ! liquid water temperature instead of temperature  as the argument !
+       ! of "qsat". But note normal argument of "qsat" is temperature.    !
+       ! ---------------------------------------------------------------- !
+
+         call conden(pe,thle,qte,thj,qvj,qlj,qij,qse,id_check)
+         if( id_check .eq. 1 ) then
+            exit_conden(i) = 1.
+            id_exit = .true.
+            if (scverbose) then
+              call write_parallel('------- UW ShCu: exit, conden')
+            end if
+            go to 333
+         end if
+         thv0j    = thj * ( 1. + zvir*qvj - qlj - qij )
+         rhomid0j    = pe / ( r * thv0j * exne )
+         qsat_arg = thle*exne
+         qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)
+         excess0  = qte - qs
 
        ! ----------------------------------------------------------------------- !
        ! Cumulus rises upward from 'prel' ( or base interface of  'krel' layer ) !
@@ -2514,48 +2511,16 @@ contains
 
        do k = krel, k0 - 1 ! Here, 'k' is a layer index.
 
-          km1 = k - 1
-
-          thlue = thlu(km1)
-          qtue  = qtu(km1)    
-          wue   = wu(km1)
-          wtwb  = wtw  
+         km1 = k - 1
+         thlue = thlu(km1)
+         qtue  = qtu(km1)
+         wue   = wu(km1)
+         wtwb  = wu(km1) * wu(km1)
 
          do iter_xc = 1, niter_xc
-          
-            wtw = wu(km1) * wu(km1)
 
-          ! ---------------------------------------------------------------- !
-          ! Calculate environmental and cumulus saturation 'excess' at 'pe'. !
-          ! Note that in order to calculate saturation excess, we should use ! 
-          ! liquid water temperature instead of temperature  as the argument !
-          ! of "qsat". But note normal argument of "qsat" is temperature.    !
-          ! ---------------------------------------------------------------- !
+            wtw   = wtwb ! reset wtw to the base value for next iteration
 
-            call conden(pe,thle,qte,thj,qvj,qlj,qij,qse,id_check)
-            if( id_check .eq. 1 ) then
-               exit_conden(i) = 1.
-               id_exit = .true.
-               if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
-               end if
-               go to 333
-            end if
-            thv0j    = thj * ( 1. + zvir*qvj - qlj - qij )
-            rhomid0j    = pe / ( r * thv0j * exne )
-            qsat_arg = thle*exne
-            qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)     
-            excess0  = qte - qs
-
-            call conden(pe,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
-            if( id_check .eq. 1 ) then
-               exit_conden(i) = 1.
-               id_exit = .true.
-               if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
-               end if
-               go to 333
-            end if
           ! ----------------------------------------------------------------- !
           ! Detrain excessive condensate larger than 'criqc' from the cumulus ! 
           ! updraft before performing buoyancy sorting. All I should to do is !
@@ -2565,6 +2530,15 @@ contains
           ! 'niter_xc >= 2',  detraining excessive condensate before buoyancy !
           ! sorting has negligible influence on the buoyancy sorting results. !   
           ! ----------------------------------------------------------------- !
+            call conden(pe,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
+            if( id_check .eq. 1 ) then
+               exit_conden(i) = 1.
+               id_exit = .true.
+               if (scverbose) then
+                 call write_parallel('------- UW ShCu: exit, conden')
+               end if
+               go to 333
+            end if
             if( (qlj + qij) .gt. criqc ) then
                exql  = ( ( qlj + qij ) - criqc ) * qlj / ( qlj + qij )
                exqi  = ( ( qlj + qij ) - criqc ) * qij / ( qlj + qij )
@@ -2750,12 +2724,7 @@ contains
 
             umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
             emf(k) = 0.
-
-          ! --------------------------------------------------------- !
-          ! Limit umf based on (2x) the CFL condition
-          ! --------------------------------------------------------- !
-            umf(k) = min(umf(k),2.*dp0(k)/g/dt)
-
+   
             dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
 !           dcm(k) = min(1.,max(0.,xsat-xc))
 
@@ -2902,7 +2871,7 @@ contains
             if( wtw .gt. 0. ) then   
               thlue = 0.5 * ( thlu(km1) + thlu(k) )
               qtue  = 0.5 * ( qtu(km1)  +  qtu(k) )         
-              wue   = 0.5 *   sqrt( max( wtwb + wtw, 0. ) )
+              wue   = 0.5 * sqrt( max( wtwb + wtw, 0. ) )
             else
               go to 111
             endif 
@@ -3156,7 +3125,7 @@ contains
          cush   = zifc0(kpen-1) - ppen/rhoifc0j/g
          scaleh = cush 
 
-!         end do  ! iter_scaleh loop
+         end do  ! iter_scaleh loop
 
        ! -------------------------------------------------------------------- !   
        ! The 'forcedCu' is logical identifier saying whether cumulus updraft  !
@@ -4302,7 +4271,6 @@ contains
            thlsrc_s             = thlsrc
            thvlsrc_s            = thvlsrc
            emfkbup_s            = emf(kbup)
-           cbmflimit_s          = cbmflimit
            tkeavg_s             = tkeavg
            zinv_s               = zifc0(kinv-1)
            rcwp_s               = rcwp
@@ -4485,7 +4453,6 @@ contains
      thlsrc_out(i)                = thlsrc
      thvlsrc_out(i)               = thvlsrc
      emfkbup_out(i)               = emf(kbup)
-     cbmflimit_out(i)             = cbmflimit
      tkeavg_out(i)                = tkeavg
      zinv_out(i)                  = zifc0(kinv-1)
      rcwp_out(i)                  = rcwp
@@ -4590,7 +4557,6 @@ contains
      thlsrc_out(i)                = MAPL_UNDEF    
      thvlsrc_out(i)               = MAPL_UNDEF
      emfkbup_out(i)               = 0.
-     cbmflimit_out(i)             = 0.    
      tkeavg_out(i)                = tkeavg    
      zinv_out(i)                  = 0.    
      rcwp_out(i)                  = 0.    
