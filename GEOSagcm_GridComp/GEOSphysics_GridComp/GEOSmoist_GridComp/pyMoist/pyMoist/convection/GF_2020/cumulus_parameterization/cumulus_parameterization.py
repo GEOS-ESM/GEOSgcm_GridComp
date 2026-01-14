@@ -754,8 +754,8 @@ class CumulusParameterization:
 
                 # determine level of convective cloud base
                 # NOTE test GF2020_CumulusParameterization_ConvectiveCloudBaseLevel_{plume}:
-                # NOTE      deep ⚠️⚠️⚠️ MATH ERROR. major flaw in get_convective_cloud_base
-                # NOTE      mid ⚠️⚠️⚠️ MATH ERROR. major flaw in get_convective_cloud_base
+                # NOTE      deep ✅
+                # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._set_start_level(
                     lcl_level=state.output.lcl_level,
