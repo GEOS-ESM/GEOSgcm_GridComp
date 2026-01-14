@@ -194,7 +194,7 @@ module gfdl_mp_mod
     ! namelist parameters
     ! -----------------------------------------------------------------------
 
-    integer :: ntimes = 1 ! cloud microphysics sub cycles
+    integer :: ntimes = 2 ! cloud microphysics sub cycles
 
     integer :: nconds = 1 ! condensation sub cycles
 
@@ -352,7 +352,7 @@ module gfdl_mp_mod
 
     logical :: do_mp_diag = .false. ! enable microphysical quantities diagnostic
 
-    real :: mp_time = 75.0 ! maximum microphysics time step (s)
+    real :: mp_time = 150.0 ! maximum microphysics time step (s)
 
     real :: n0w_sig = 1.2 ! intercept parameter (significand) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
     real :: n0i_sig = 1.2 ! intercept parameter (significand) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
@@ -1364,7 +1364,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     integer :: i, k
 
     real :: ccn0, cin0, q1, q2
-    real :: convt, dts, q_cond, tmp, nl, ni
+    real :: convt, rdt, dts, q_cond, tmp, nl, ni
 
     real, dimension (ks:ke) :: h_var
     real, dimension (ks:ke) :: q_liq, q_sol, dp, dz, dp0
@@ -1378,7 +1378,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     real, dimension (ks:ke) :: pcs, eds, oes, rrs, tvs
     real, dimension (ks:ke) :: pcg, edg, oeg, rrg, tvg
 
-    real (kind = r8) :: rdt8, con_r8, c8, cp8
+    real (kind = r8) :: con_r8, c8, cp8
 
     real (kind = r8), dimension (is:ie, ks:ke) :: te_beg_d, te_end_d, tw_beg_d, tw_end_d
     real (kind = r8), dimension (is:ie, ks:ke) :: te_beg_m, te_end_m, tw_beg_m, tw_end_m
@@ -1393,7 +1393,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     ! -----------------------------------------------------------------------
 
     dts = dtm / real (ntimes)
-    rdt8 = 1.d0 / dtm
+    rdt = 1.0 / dtm
 
     ! -----------------------------------------------------------------------
     ! initialization of total energy difference
@@ -1801,14 +1801,14 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 !           qg (i, k) = qgz (k)
 !           qa (i, k) = qaz (k)
 ! Instead return tendencies
-            qv_dt (i, k) = rdt8 * (qvz (k) - qv (i, k))
-            ql_dt (i, k) = rdt8 * (qlz (k) - ql (i, k))
-            qr_dt (i, k) = rdt8 * (qrz (k) - qr (i, k))
-            qi_dt (i, k) = rdt8 * (qiz (k) - qi (i, k))
-            qs_dt (i, k) = rdt8 * (qsz (k) - qs (i, k))
-            qg_dt (i, k) = rdt8 * (qgz (k) - qg (i, k))
+            qv_dt (i, k) = rdt * (qvz (k) - qv (i, k))
+            ql_dt (i, k) = rdt * (qlz (k) - ql (i, k))
+            qr_dt (i, k) = rdt * (qrz (k) - qr (i, k))
+            qi_dt (i, k) = rdt * (qiz (k) - qi (i, k))
+            qs_dt (i, k) = rdt * (qsz (k) - qs (i, k))
+            qg_dt (i, k) = rdt * (qgz (k) - qg (i, k))
             if (.not. do_qa) then
-               qa_dt (i, k) = rdt8 * &
+               qa_dt (i, k) = rdt * &
                       ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
                         qa (i, k) )                                                                 ! Old Cloud
             endif
@@ -1855,8 +1855,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 !               ua (i, k) = u (k)
 !               va (i, k) = v (k)
 ! Instead return tendencies
-                ua_dt (i, k) = rdt8 * (u (k) - ua (i, k))
-                va_dt (i, k) = rdt8 * (v (k) - va (i, k))
+                ua_dt (i, k) = rdt * (u (k) - ua (i, k))
+                va_dt (i, k) = rdt * (v (k) - va (i, k))
             enddo
         endif
 
@@ -1878,7 +1878,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 ! Don't update the state
 !               wa (i, k) = w (k)
 ! Instead return tendencies
-                wa_dt (i, k) = rdt8 * (w (k) - wa (i, k))
+                wa_dt (i, k) = rdt * (w (k) - wa (i, k))
             enddo
         endif
 
@@ -1926,12 +1926,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 !                   pt (i, k) = pt (i, k) + (tz (k) * ((1. + zvir * qvz (k)) * (1. - q_cond)) - pt (i, k)) * c8 / cp8
 !                   dz (k) = dz (k) * pt (i, k)
 ! Instead return tendencies
-                    pt_dt (i, k) = rdt8 * (tz (k) * ((1. + zvir * qvz (k)) * (1. - q_cond)) - pt (i, k)) * c8 / cp8
+                    pt_dt (i, k) = rdt * (tz (k) * ((1. + zvir * qvz (k)) * (1. - q_cond)) - pt (i, k)) * c8 / cp8
                 else
 ! Don't update the state
 !                   pt (i, k) = tz (k) * ((1. + zvir * qvz (k)) * (1. - q_cond))
 ! Instead return tendencies
-                    pt_dt (i, k) = rdt8 * (tz (k) * ((1. + zvir * qvz (k)) * (1. - q_cond)) - pt (i, k) )
+                    pt_dt (i, k) = rdt * (tz (k) * ((1. + zvir * qvz (k)) * (1. - q_cond)) - pt (i, k) )
                 endif
             enddo
         else
@@ -1944,7 +1944,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 ! Don't update the state
 !               pt (i, k) = pt (i, k) + (tz (k) - pt (i, k)) * c8 / cp_air
 ! Instead return tendencies
-                pt_dt (i, k) = rdt8 * (tz (k) - pt (i, k)) * c8 / cp_air
+                pt_dt (i, k) = rdt * (tz (k) - pt (i, k)) * c8 / cp_air
             enddo
         endif
 
