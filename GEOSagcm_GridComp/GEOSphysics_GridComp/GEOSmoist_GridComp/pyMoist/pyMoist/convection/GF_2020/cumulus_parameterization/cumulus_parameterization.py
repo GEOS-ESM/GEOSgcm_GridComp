@@ -1582,7 +1582,10 @@ class CumulusParameterization:
 
                 # static control
                 # moist static energy inside cloud
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_MoistStaticEnergyInsideCloud_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._moist_static_energy_inside_cloud(
                     state=state,
                     locals=locals,

@@ -115,9 +115,9 @@ class TestCore:
         locals.moist_static_energy_origin_level.data[:] = inputs[
             "local_moist_static_energy_origin_level_mseic"
         ]
-        locals.normalized_massflux_updraft_modified.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["local_normalized_massflux_updraft_modified_mseic"]
-        )
+        locals.normalized_massflux_updraft_modified.data[:] = inputs[
+            "local_normalized_massflux_updraft_modified_mseic"
+        ]
         locals.vapor_excess.data[:] = inputs["local_vapor_excess_mseic"]
         locals.t_excess.data[:] = inputs["local_t_excess_mseic"]
         state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
@@ -125,6 +125,9 @@ class TestCore:
         )
         locals.environment_moist_static_energy_cloud_levels_modified.data[:] = inputs[
             "local_env_moist_static_energy_cloud_levels_modified"
+        ]
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "updraft_lfc_level_mseic"
         ]
 
         # initalize test code
@@ -164,9 +167,9 @@ class TestCore:
                 updraft_lfc_level=state.output.updraft_lfc_level,
                 cloud_top_level=state.output.cloud_top_level,
                 cloud_moist_static_energy=locals.cloud_moist_static_energy,
-                environment_moist_static_energy=locals.moist_static_energy_origin_level,
-                environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_modified,
-                buoyancy=locals.d_buoyancy,
+                environment_moist_static_energy=locals.environment_moist_static_energy_cloud_levels_modified,
+                environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_cloud_levels_modified,
+                d_buoyancy=locals.d_buoyancy_modified,
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
@@ -174,12 +177,19 @@ class TestCore:
         # write output
         outputs = {
             "error_code_mseic": state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_top_level": state.output.cloud_top_level.data[:],
+            "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX]
+            + 1,
             "local_partition_liquid_ice": locals.partition_liquid_ice.data[:],
-            "cloud_liquid_after_rain_forced": state.output.cloud_liquid_after_rain_forced.data[:],
-            "local_start_level": locals.start_level.data[:],
-            "mass_detrainment_updraft_forced": state.output.mass_detrainment_updraft_forced.data[:],
-            "mass_entrainment_updraft_forced": state.output.mass_entrainment_updraft_forced.data[:],
+            "cloud_liquid_after_rain_forced": state.output.cloud_liquid_after_rain_forced.data[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "local_start_level": locals.start_level.data[:] + 1,
+            "mass_detrainment_updraft_forced": state.output.mass_detrainment_updraft_forced.data[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "mass_entrainment_updraft_forced": state.output.mass_entrainment_updraft_forced.data[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             "local_add_buoyancy_mseic": locals.add_buoyancy.data[:],
             "local_d_buoyancy_modified_mseic": locals.d_buoyancy_modified.data[:],
             "local_cloud_moist_static_energy_mseic": locals.cloud_moist_static_energy.data[:],
@@ -195,9 +205,12 @@ class TestCore:
             ],
             "local_vapor_excess_mseic": locals.vapor_excess.data[:],
             "local_t_excess_mseic": locals.t_excess.data[:],
-            "lcl_level_mseic": state.output.lcl_level.data[:],
+            "lcl_level_mseic": state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "local_env_moist_static_energy_cloud_levels_modified": locals.environment_moist_static_energy_cloud_levels_modified.data[
                 :
+            ],
+            "updraft_lfc_level_mseic": state.output.updraft_lfc_level.data[
+                :, :, plume_dependent_constants.PLUME_INDEX
             ],
         }
 

@@ -188,18 +188,18 @@ def moist_static_energy_inside_cloud(
                             + x_add * mass_entrainment_updraft_forced.at(K=K - 1, ddim=[plume]) / denom
                         )
 
-                # cloud_moist_static_energy = (
-                #     cloud_moist_static_energy
-                #     + cumulus_parameterization_constants.XLF
-                #     * (1.0 - partition_liquid_ice)
-                #     * cloud_liquid_after_rain_forced
-                # )
+                cloud_moist_static_energy = (
+                    cloud_moist_static_energy
+                    + cumulus_parameterization_constants.XLF
+                    * (1.0 - partition_liquid_ice)
+                    * cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                )
 
-    # with computation(PARALLEL), interval(0, -1):
-    #     if error_code[0, 0][plume] == 0:
-    #         if K >= cloud_top_level + 2:
-    #             cloud_moist_static_energy = env_saturation_moist_static_energy_cloud_levels_modified
-    #             normalized_massflux_updraft_modified = 0.0
+    with computation(PARALLEL), interval(0, -1):
+        if error_code[0, 0][plume] == 0:
+            if K >= cloud_top_level[0, 0][plume] + 2:
+                cloud_moist_static_energy = env_saturation_moist_static_energy_cloud_levels_modified
+                normalized_massflux_updraft_modified = 0.0
 
 
 class ParcelMoistStaticEnergy:
@@ -307,9 +307,9 @@ class MoistStaticEnergyInsideCloud:
             updraft_lfc_level=state.output.updraft_lfc_level,
             cloud_top_level=state.output.cloud_top_level,
             cloud_moist_static_energy=locals.cloud_moist_static_energy,
-            environment_moist_static_energy=locals.moist_static_energy_origin_level,
-            environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_modified,
-            buoyancy=locals.d_buoyancy,
+            environment_moist_static_energy=locals.environment_moist_static_energy_cloud_levels_modified,
+            environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_cloud_levels_modified,
+            d_buoyancy=locals.d_buoyancy_modified,
             error_code=state.output.error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
         )
