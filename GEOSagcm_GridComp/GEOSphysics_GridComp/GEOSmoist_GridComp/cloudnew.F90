@@ -1986,7 +1986,8 @@ contains
          if (pdfflag.lt.5) then
            call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
            call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
-         elseif (pdfflag.eq.5) then
+           wthv2 = 0.
+        elseif (pdfflag.ge.5) then
 
             ! Update the liquid water static energy
             ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
@@ -1996,6 +1997,7 @@ contains
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &
+                                 QSn,          &
                                  0.0,          & ! assume OMEGA=0
                                  ZL,           &
                                  PL*100.,      &
