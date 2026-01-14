@@ -37,39 +37,38 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_ccb": {},
-            "local_cap_max_increment_ccb": {},
-            "local_cap_max_ccb": {},
-            "local_env_moist_static_energy_cloud_levels_forced_ccb": {},
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_ccb": {},
-            "local_vapor_cloud_levels_forced_ccb": {},
-            "local_env_saturation_mixing_ratio_cloud_levels_forced_ccb": {},
-            "p_forced_ccb": {},
-            "p_cloud_levels_forced_ccb": {},
-            "local_geopotential_height_cloud_levels_forced_ccb": {},
-            "local_env_moist_static_energy_forced_ccb": {},
-            "local_moist_static_energy_origin_level_forced_ccb": {},
-            "local_vapor_forced_ccb": {},
-            "local_env_saturation_mixing_ratio_forced_ccb": {},
-            "entrainment_rate_ccb": {},
-            "local_cloud_moist_static_energy_forced_transported_ccb": {},
-            "updraft_origin_level_ccb": {},
-            "local_maximum_updraft_origin_level_ccb": {},
-            "lcl_level_ccb": {},
-            "updraft_lfc_level_ccb": {},
-            "cloud_top_level_ccb": {},
-            "local_negative_buoyancy_depth_ccb": {},
-            "local_frh_lfc_ccb": {},
-            "t_perturbation_ccb": {},
-            "local_start_level_ccb": {},
-            "local_vapor_excess_ccb": {},
-            "local_t_excess_ccb": {},
-            "local_add_buoyancy_ccb": {},
-            "ocean_fraction_ccb": {},
+            "error_code": {},
+            "local_cap_max_increment": {},
+            "local_cap_max": {},
+            "local_env_moist_static_energy_cloud_levels_forced": {},
+            "local_env_saturation_moist_static_energy_cloud_levels_forced": {},
+            "local_vapor_cloud_levels_forced": {},
+            "local_env_saturation_mixing_ratio_cloud_levels_forced": {},
+            "p_forced": {},
+            "p_cloud_levels_forced": {},
+            "local_geopotential_height_cloud_levels_forced": {},
+            "local_env_moist_static_energy_forced": {},
+            "local_moist_static_energy_origin_level_forced": {},
+            "local_vapor_forced": {},
+            "local_env_saturation_mixing_ratio_forced": {},
+            "entrainment_rate": {},
+            "local_cloud_moist_static_energy_forced_transported": {},
+            "updraft_origin_level": {},
+            "local_maximum_updraft_origin_level": {},
+            "lcl_level": {},
+            "updraft_lfc_level": {},
+            "cloud_top_level": {},
+            "local_negative_buoyancy_depth": {},
+            "local_frh_lfc": {},
+            "t_perturbation": {},
+            "local_start_level": {},
+            "local_vapor_excess": {},
+            "local_t_excess": {},
+            "local_add_buoyancy": {},
+            "ocean_fraction": {},
         }
 
         out_vars.update(in_vars["data_vars"])
-        out_vars.update({"testvar": {}})
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initalize constants
@@ -99,61 +98,59 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code_ccb"]
-        locals.cap_max_increment.data[:] = inputs["local_cap_max_increment_ccb"]
-        locals.cap_max.data[:] = inputs["local_cap_max_ccb"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.cap_max_increment.data[:] = inputs["local_cap_max_increment"]
+        locals.cap_max.data[:] = inputs["local_cap_max"]
         locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
-            "local_env_moist_static_energy_cloud_levels_forced_ccb"
+            "local_env_moist_static_energy_cloud_levels_forced"
         ]
         locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs[
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_ccb"
+            "local_env_saturation_moist_static_energy_cloud_levels_forced"
         ]
-        locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced_ccb"]
+        locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced"]
         locals.environment_saturation_mixing_ratio_cloud_levels_forced.data[:] = inputs[
-            "local_env_saturation_mixing_ratio_cloud_levels_forced_ccb"
+            "local_env_saturation_mixing_ratio_cloud_levels_forced"
         ]
-        state.input_output.p_forced.data[:] = inputs["p_forced_ccb"]
+        state.input_output.p_forced.data[:] = inputs["p_forced"]
         state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "p_cloud_levels_forced_ccb"
+            "p_cloud_levels_forced"
         ]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced_ccb"
+            "local_geopotential_height_cloud_levels_forced"
         ]
-        locals.environment_moist_static_energy_forced.data[:] = inputs[
-            "local_env_moist_static_energy_forced_ccb"
-        ]
+        locals.environment_moist_static_energy_forced.data[:] = inputs["local_env_moist_static_energy_forced"]
         locals.moist_static_energy_origin_level_forced.data[:] = inputs[
-            "local_moist_static_energy_origin_level_forced_ccb"
+            "local_moist_static_energy_origin_level_forced"
         ]
-        locals.vapor_forced.data[:] = inputs["local_vapor_forced_ccb"]
+        locals.vapor_forced.data[:] = inputs["local_vapor_forced"]
         locals.environment_saturation_mixing_ratio_forced.data[:] = inputs[
-            "local_env_saturation_mixing_ratio_forced_ccb"
+            "local_env_saturation_mixing_ratio_forced"
         ]
         state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "entrainment_rate_ccb"
+            "entrainment_rate"
         ]
         locals.cloud_moist_static_energy_forced_transported.data[:] = inputs[
-            "local_cloud_moist_static_energy_forced_transported_ccb"
+            "local_cloud_moist_static_energy_forced_transported"
         ]
         state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_origin_level_ccb"] - 1
+            inputs["updraft_origin_level"] - 1
         )
-        locals.maximum_updraft_origin_level.data[:] = inputs["local_maximum_updraft_origin_level_ccb"] - 1
-        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level_ccb"] - 1
+        locals.maximum_updraft_origin_level.data[:] = inputs["local_maximum_updraft_origin_level"] - 1
+        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
         state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_lfc_level_ccb"] - 1
+            inputs["updraft_lfc_level"] - 1
         )
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_level_ccb"] - 1
+            inputs["cloud_top_level"] - 1
         )
-        locals.negative_buoyancy_depth.data[:] = inputs["local_negative_buoyancy_depth_ccb"]
-        locals.frh_lfc.data[:] = inputs["local_frh_lfc_ccb"]
-        state.output.t_perturbation.data[:] = inputs["t_perturbation_ccb"]
-        locals.start_level.data[:] = inputs["local_start_level_ccb"] - 1
-        locals.vapor_excess.data[:] = inputs["local_vapor_excess_ccb"]
-        locals.t_excess.data[:] = inputs["local_t_excess_ccb"]
-        locals.add_buoyancy.data[:] = inputs["local_add_buoyancy_ccb"]
-        locals.ocean_fraction.data[:] = inputs["ocean_fraction_ccb"]
+        locals.negative_buoyancy_depth.data[:] = inputs["local_negative_buoyancy_depth"]
+        locals.frh_lfc.data[:] = inputs["local_frh_lfc"]
+        state.output.t_perturbation.data[:] = inputs["t_perturbation"]
+        locals.start_level.data[:] = inputs["local_start_level"] - 1
+        locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
+        locals.t_excess.data[:] = inputs["local_t_excess"]
+        locals.add_buoyancy.data[:] = inputs["local_add_buoyancy"]
+        locals.ocean_fraction.data[:] = inputs["ocean_fraction"]
 
         code_part_1 = self.stencil_factory.from_dims_halo(
             func=set_start_level,
@@ -170,11 +167,6 @@ class TestCore:
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
             },
         )
-
-        testvar = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="n/a")
-        import numpy
-
-        testvar.field[:] = numpy.nan
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code_part_1(
@@ -198,6 +190,7 @@ class TestCore:
                 geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
                 entrainment_rate=state.output.entrainment_rate,
                 environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+                environment_moist_static_energy_cloud_levels_forced=locals.environment_moist_static_energy_cloud_levels_forced,
                 environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                 t_excess=locals.t_excess,
                 vapor_excess=locals.vapor_excess,
@@ -212,69 +205,63 @@ class TestCore:
                 cloud_top_level=state.output.cloud_top_level,
                 AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
                 plume=plume_dependent_constants.PLUME_INDEX,
-                testvar=testvar,
             )
 
         outputs = {
-            "error_code_ccb": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "local_cap_max_increment_ccb": locals.cap_max_increment.field[:],
-            "local_cap_max_ccb": locals.cap_max.field[:],
-            "local_env_moist_static_energy_cloud_levels_forced_ccb": locals.environment_moist_static_energy_cloud_levels_forced.field[
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_cap_max_increment": locals.cap_max_increment.field[:],
+            "local_cap_max": locals.cap_max.field[:],
+            "local_env_moist_static_energy_cloud_levels_forced": locals.environment_moist_static_energy_cloud_levels_forced.field[
                 :
             ],
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_ccb": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
+            "local_env_saturation_moist_static_energy_cloud_levels_forced": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
                 :
             ],
-            "local_vapor_cloud_levels_forced_ccb": locals.vapor_cloud_levels_forced.field[:],
-            "local_env_saturation_mixing_ratio_cloud_levels_forced_ccb": locals.environment_saturation_mixing_ratio_cloud_levels_forced.field[
+            "local_vapor_cloud_levels_forced": locals.vapor_cloud_levels_forced.field[:],
+            "local_env_saturation_mixing_ratio_cloud_levels_forced": locals.environment_saturation_mixing_ratio_cloud_levels_forced.field[
                 :
             ],
-            "p_forced_ccb": state.input_output.p_forced.field[:],
-            "p_cloud_levels_forced_ccb": state.output.p_cloud_levels_forced.field[
+            "p_forced": state.input_output.p_forced.field[:],
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_geopotential_height_cloud_levels_forced_ccb": locals.geopotential_height_cloud_levels_forced.field[
+            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "local_env_moist_static_energy_forced_ccb": locals.environment_moist_static_energy_forced.field[
+            "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.field[:],
+            "local_moist_static_energy_origin_level_forced": locals.moist_static_energy_origin_level_forced.field[
                 :
             ],
-            "local_moist_static_energy_origin_level_forced_ccb": locals.moist_static_energy_origin_level_forced.field[
+            "local_vapor_forced": locals.vapor_forced.field[:],
+            "local_env_saturation_mixing_ratio_forced": locals.environment_saturation_mixing_ratio_forced.field[
                 :
             ],
-            "local_vapor_forced_ccb": locals.vapor_forced.field[:],
-            "local_env_saturation_mixing_ratio_forced_ccb": locals.environment_saturation_mixing_ratio_forced.field[
-                :
-            ],
-            "entrainment_rate_ccb": state.output.entrainment_rate.field[
+            "entrainment_rate": state.output.entrainment_rate.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_cloud_moist_static_energy_forced_transported_ccb": locals.cloud_moist_static_energy_forced_transported.field[
+            "local_cloud_moist_static_energy_forced_transported": locals.cloud_moist_static_energy_forced_transported.field[
                 :
             ],
-            "updraft_origin_level_ccb": state.output.updraft_origin_level.field[
+            "updraft_origin_level": state.output.updraft_origin_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "local_maximum_updraft_origin_level_ccb": locals.maximum_updraft_origin_level.field[:] + 1,
-            "lcl_level_ccb": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "updraft_lfc_level_ccb": state.output.updraft_lfc_level.field[
+            "local_maximum_updraft_origin_level": locals.maximum_updraft_origin_level.field[:] + 1,
+            "lcl_level": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "cloud_top_level_ccb": state.output.cloud_top_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
-            "local_negative_buoyancy_depth_ccb": locals.negative_buoyancy_depth.field[:],
-            "local_frh_lfc_ccb": locals.frh_lfc.field[:],
-            "t_perturbation_ccb": state.output.t_perturbation.field[:],
-            "local_start_level_ccb": locals.start_level.field[:] + 1,
-            "local_vapor_excess_ccb": locals.vapor_excess.field[:],
-            "local_t_excess_ccb": locals.t_excess.field[:],
-            "local_add_buoyancy_ccb": locals.add_buoyancy.field[:],
-            "ocean_fraction_ccb": locals.ocean_fraction.field[:],
-            "testvar": testvar.field[:],
+            "local_negative_buoyancy_depth": locals.negative_buoyancy_depth.field[:],
+            "local_frh_lfc": locals.frh_lfc.field[:],
+            "t_perturbation": state.output.t_perturbation.field[:],
+            "local_start_level": locals.start_level.field[:] + 1,
+            "local_vapor_excess": locals.vapor_excess.field[:],
+            "local_t_excess": locals.t_excess.field[:],
+            "local_add_buoyancy": locals.add_buoyancy.field[:],
+            "ocean_fraction": locals.ocean_fraction.field[:],
         }
 
         return outputs
