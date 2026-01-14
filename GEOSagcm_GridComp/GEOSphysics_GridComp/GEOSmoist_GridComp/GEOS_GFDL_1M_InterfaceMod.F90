@@ -44,7 +44,7 @@ module GEOS_GFDL_1M_InterfaceMod
 
   ! Local resource variables
   real    :: TURNRHCRIT_PARAM
-  real    :: MIN_RH_UNSTABLE, MIN_RH_STABLE, MIN_RH_STRATUS
+  real    :: MIN_RH_UNSTABLE, MIN_RH_STABLE
   real    :: TAU_EVAP, CCW_EVAP_EFF
   real    :: TAU_SUBL, CCI_EVAP_EFF
   integer :: PDFSHAPE
@@ -59,7 +59,7 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: LHYDROSTATIC
   logical :: LPHYS_HYDROSTATIC
   logical :: LMELTFRZ
-  real    :: GFDL_MP_PLID
+  real    :: GFDL_MP_KLID
 
   logical :: REPORT_GFDL_1M_NEGATIVES
 
@@ -295,13 +295,8 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
                         DEFAULT= refl10cm_allow_wet_snow, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9750, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.8750, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_STRATUS  , 'MIN_RH_STRATUS:'  , DEFAULT= 0.8500, RC=STATUS); VERIFY_(STATUS)  ! New parameter
-    ! validate parameter ordering
-    MIN_RH_STRATUS = min(MIN_RH_STRATUS, MIN_RH_STABLE)
-    MIN_RH_STABLE  = min(MIN_RH_STABLE,  MIN_RH_UNSTABLE)
-
+    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9125, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.9125, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_LSC_VFALL_PARAM, 'ICE_LSC_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_CNV_VFALL_PARAM, 'ICE_CNV_VFALL_PARAM:',DEFAULT= 2, RC=STATUS); VERIFY_(STATUS)
@@ -324,12 +319,15 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
                         cf_min =   500.0
     if (DT_R8 <= 150.0) cf_min = -9999.0 ! force MoistGC to use EIS for cnv_frc
-                        cf_max =  1500.0
+    ! variations on max CAPE for convective fraction as timestep changes with resolution
+    cf_max = 100.0 * NINT( (1500.0+2500.0*(1-(DT_R8-30.0)/(900.0-30.0))**2) /100.0 )
+    if (cf_max < 1500.0) cf_max = 1500.0
+    if (cf_max > 4000.0) cf_max = 4000.0
     if (DT_R8 <= 150.0) cf_max = -9999.0 ! force MoistGC to use EIS for cnv_frc
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT= cf_min, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= cf_max, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, GFDL_MP_PLID    , 'GFDL_MP_PLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, GFDL_MP_KLID    , 'GFDL_MP_KLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
 
     call init_refl10cm()
 
@@ -501,6 +499,18 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( DQST3(IM,JM,LM  ) )
     ALLOCATE (  QST3(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
+     ! Local tendencies
+    ALLOCATE ( DQVDTmic(IM,JM,LM  ) )
+    ALLOCATE ( DQLDTmic(IM,JM,LM  ) )
+    ALLOCATE ( DQIDTmic(IM,JM,LM  ) )
+    ALLOCATE ( DQRDTmic(IM,JM,LM  ) )
+    ALLOCATE ( DQSDTmic(IM,JM,LM  ) )
+    ALLOCATE ( DQGDTmic(IM,JM,LM  ) )
+    ALLOCATE ( DQADTmic(IM,JM,LM  ) )
+    ALLOCATE (  DUDTmic(IM,JM,LM  ) )
+    ALLOCATE (  DVDTmic(IM,JM,LM  ) )
+    ALLOCATE (  DTDTmic(IM,JM,LM  ) )
+    ALLOCATE (  DWDTmic(IM,JM,LM  ) )      
      ! 2D Variables
     ALLOCATE ( TMP2D   (IM,JM     ) )
      ! 1D Variables
@@ -521,8 +531,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     U0       = U
     V0       = V
     KLCL     = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
-    if (GFDL_MP_PLID > 0.0) then
-        KLID = FIND_KLID( GFDL_MP_PLID, PLE, RC=STATUS ); VERIFY_(STATUS)
+    if (GFDL_MP_KLID > 0.0) then
+        KLID = GFDL_MP_KLID
     else
         KLID = 1
     endif
@@ -651,16 +661,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         do L=1,LM
           do J=1,JM
            do I=1,IM
+           ! cleanup clouds
+             call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
+                                                     QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
+                                                     REMOVE_CLOUDS=(L < KLID) )
            ! Send the condensates through the pdf after convection [0:1 , unstable:stable]
              facEIS = get_fac_eis(EIS(I,J),SRF_TYPE(I,J))
-           ! Enhanced EIS-dependent RH critical threshold
-             ! Smooth interpolation across all three RH thresholds
-             ! facEIS = 0.0 : MIN_RH_UNSTABLE
-             ! facEIS = 0.5 : blend of UNSTABLE and STABLE  
-             ! facEIS = 1.0 : MIN_RH_STRATUS
-             minrhcrit = MIN_RH_UNSTABLE * (1.0 - facEIS)**2 + &
-                         MIN_RH_STABLE   * 2.0 * facEIS * (1.0 - facEIS) + &
-                         MIN_RH_STRATUS  * facEIS**2
+           ! determine combined minrhcrit in unstable/stable regimes
+             minrhcrit = MIN_RH_UNSTABLE*(1.0-facEIS) + MIN_RH_STABLE*facEIS
            ! include grid cell area scaling and limit RHcrit to > 70%
              minrhcrit = 1.0 - min(0.3,(1.0-minrhcrit)*SQRT(SQRT(AREA(I,J)/1.e10))+0.01)
              if (TURNRHCRIT_PARAM <= 0.0) then
@@ -771,6 +779,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
              endif
              endif
+           ! cleanup clouds
+             call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
+                                                     QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), & 
+                                                     REMOVE_CLOUDS=(L < KLID) )
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
@@ -863,6 +875,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         ! Delta-Z layer thickness (gfdl expects this to be negative)
          DZ = -1.0*DZET
+        ! Zero-out local microphysics tendencies
+         DQVDTmic = 0.
+         DQLDTmic = 0.
+         DQRDTmic = 0.
+         DQIDTmic = 0.
+         DQSDTmic = 0.
+         DQGDTmic = 0.
+         DQADTmic = 0.
+          DUDTmic = 0.
+          DVDTmic = 0.
+          DTDTmic = 0.
        ! Zero-out 3D Precipitation Fluxes
         ! Ice
          PFI_LS = 0.
@@ -895,6 +918,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                PRCP_WATER, PRCP_RAIN, PRCP_ICE, PRCP_SNOW, PRCP_GRAUPEL, &
                              ! constant grid/time information
                                LHYDROSTATIC, 1, IM*JM, 1,LM, KLID, &
+                             ! Output tendencies
+                               DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
+                               DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, DUDTmic, DVDTmic, DWDTmic, &
                              ! Output rain re-evaporation and sublimation
                                REV_LS, RSU_LS, &
                              ! Output mass flux during sedimentation (Pa kg/kg)
@@ -908,18 +934,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFS_LS = PFS_LS/(86400.0)  
            PFG_LS = PFG_LS/(86400.0)
          else
-       ! Local tendencies
-         ALLOCATE ( DQVDTmic(IM,JM,LM  ) )
-         ALLOCATE ( DQLDTmic(IM,JM,LM  ) )
-         ALLOCATE ( DQIDTmic(IM,JM,LM  ) )
-         ALLOCATE ( DQRDTmic(IM,JM,LM  ) )
-         ALLOCATE ( DQSDTmic(IM,JM,LM  ) )
-         ALLOCATE ( DQGDTmic(IM,JM,LM  ) )
-         ALLOCATE ( DQADTmic(IM,JM,LM  ) )
-         ALLOCATE (  DUDTmic(IM,JM,LM  ) )
-         ALLOCATE (  DVDTmic(IM,JM,LM  ) )
-         ALLOCATE (  DTDTmic(IM,JM,LM  ) )
-         ALLOCATE (  DWDTmic(IM,JM,LM  ) )    
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTL, NACTI, &
@@ -948,19 +962,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFR_LS = 0.0
            PFS_LS = 0.0
            PFG_LS = 0.0
-       ! Apply tendencies
-           T = T + DTDTmic * DT_MOIST
-           U = U + DUDTmic * DT_MOIST
-           V = V + DVDTmic * DT_MOIST
-       ! Apply moist/cloud species tendencies
-           RAD_QV = RAD_QV + DQVDTmic * DT_MOIST
-           RAD_QL = RAD_QL + DQLDTmic * DT_MOIST
-           RAD_QR = RAD_QR + DQRDTmic * DT_MOIST
-           RAD_QI = RAD_QI + DQIDTmic * DT_MOIST
-           RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
-           RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
-           RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
-      endif
+         endif
+     ! Apply tendencies
+         call apply_microphysics_tendencies(IM, JM, LM, DT_MOIST, &
+                    RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, &
+                    T, U, V, &
+                    DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
+                    DQSDTmic, DQGDTmic, DQADTmic, &
+                    DTDTmic, DUDTmic, DVDTmic)
      ! CleanUp Negative Water Vapor, cloud liquid/ice, and condensates
          if (REPORT_GFDL_1M_NEGATIVES) then
            call FILLQ2ZERO(RAD_QV, MASS, WARNING_LABEL="QV   After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
@@ -1055,6 +1064,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                 QLLS(I,J,L)  , &
                                 QILS(I,J,L) )
                endif
+              ! cleanup clouds
+               call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
+                                                       QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
+                                                       REMOVE_CLOUDS=(L < KLID) )
               ! get radiative properties
                call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &

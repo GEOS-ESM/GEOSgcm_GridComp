@@ -4702,21 +4702,16 @@ end subroutine apply_microphysics_tendencies
 
 real function get_fac_eis (eis, SRF_TYPE)
     real, intent(in) :: eis, SRF_TYPE
-    select case (nint(SRF_TYPE))
-      case (SRF_TYPE_SNOW, SRF_TYPE_ICE)
-         get_fac_eis = 0.0
-      case default
-         if (eis >= 12.0) then
-            ! Very stable regime
-            get_fac_eis = 1.0
-         elseif (eis <= 0.0) then
-            ! Very unstable regime  
-            get_fac_eis = 0.0
-         else
-            ! Smooth cubic interpolation from 0 to 1 over EIS range 0-12
-            get_fac_eis = (eis / 12.0)**1.5
-         endif
-      end select
+    if (eis >= 10.0) then
+       ! Very stable regime
+       get_fac_eis = 1.0
+    elseif (eis <= 0.0) then
+       ! Very unstable regime  
+       get_fac_eis = 0.0
+    else
+       ! Smooth function from 0 to 1
+       get_fac_eis = (eis / 10.0)**2
+    endif
 end function get_fac_eis
 
 end module GEOSmoist_Process_Library
