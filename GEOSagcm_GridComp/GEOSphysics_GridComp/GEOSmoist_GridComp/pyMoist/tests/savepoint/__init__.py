@@ -285,6 +285,12 @@ from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_
     TranslateGF2020_CumulusParameterization_MoistStaticEnergyInsideCloud_shallow,
 )
 
+from .convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.translate_GF2020_Cumulus_Parameterization_KeToHeating import (
+    TranslateGF2020_CumulusParameterization_KeToHeating_deep,
+    TranslateGF2020_CumulusParameterization_KeToHeating_mid,
+    TranslateGF2020_CumulusParameterization_KeToHeating_shallow,
+)
+
 # NOTE need to organize everything below here
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (

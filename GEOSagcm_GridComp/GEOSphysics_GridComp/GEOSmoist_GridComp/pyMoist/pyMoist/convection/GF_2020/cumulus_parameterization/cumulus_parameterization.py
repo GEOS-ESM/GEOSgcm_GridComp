@@ -1600,11 +1600,20 @@ class CumulusParameterization:
                 self._cloud_base_mass_flux()
 
                 # Include kinetic energy dissipation converted to heating
-                # NOTE ported, but untested
+                # NOTE test GF2020_CumulusParameterization_KeToHeating_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._kinetic_energy_to_heating(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    del_u_cloud_ensemble=locals.del_u_cloud_ensemble,
+                    del_v_cloud_ensemble=locals.del_v_cloud_ensemble,
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                    cloud_top_level=state.output.cloud_top_level,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    u=state.input_output.u,
+                    v=state.input_output.v,
+                    del_t_cloud_ensemble=locals.del_t_cloud_ensemble,
                 )
 
                 # feedback

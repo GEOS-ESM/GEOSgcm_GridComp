@@ -11,15 +11,15 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 
 
 def ke_to_heating(
-    dellu: FloatField,
-    dellv: FloatField,
+    del_u_cloud_ensemble: FloatField,
+    del_v_cloud_ensemble: FloatField,
     error_code: IntFieldIJ_Plume,
     plume: Int,
-    ktop: IntFieldIJ,
-    po_cup: FloatField,
-    us: FloatField,
-    vs: FloatField,
-    dellat: FloatField,
+    cloud_top_level: IntFieldIJ_Plume,
+    p_cloud_levels_forced: FloatField_Plume,
+    u: FloatField,
+    v: FloatField,
+    del_t_cloud_ensemble: FloatField,
 ):
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
@@ -27,17 +27,35 @@ def ke_to_heating(
             fpi: FloatFieldIJ = 0.0
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
-            if K <= ktop - 1:
-                dp = (po_cup - po_cup[0, 0, 1]) * 100.0
+            if K <= cloud_top_level[0, 0][plume]:
+                dp = (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]) * 100.0
 
-                dts = dts - (((dellu * us) + (dellv * vs)) * dp / constants.MAPL_GRAV)
+                dts = dts - (
+                    ((del_u_cloud_ensemble * u) + (del_v_cloud_ensemble * v)) * dp / constants.MAPL_GRAV
+                )
 
-                fpi = fpi + (sqrt((dellu * dellu) + (dellv * dellv)) * dp)
+                fpi = fpi + (
+                    sqrt(
+                        (del_u_cloud_ensemble * del_u_cloud_ensemble)
+                        + (del_v_cloud_ensemble * del_v_cloud_ensemble)
+                    )
+                    * dp
+                )
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             if fpi > 0.0:
-                if K <= ktop - 1:
-                    fp = sqrt((dellu * dellu + dellv * dellv)) / fpi
+                if K <= cloud_top_level[0, 0][plume]:
+                    fp = (
+                        sqrt(
+                            (
+                                del_u_cloud_ensemble * del_u_cloud_ensemble
+                                + del_v_cloud_ensemble * del_v_cloud_ensemble
+                            )
+                        )
+                        / fpi
+                    )
 
-                    dellat = dellat + (fp * dts * constants.MAPL_GRAV / cumulus_parameterization_constants.CP)
+                    del_t_cloud_ensemble = del_t_cloud_ensemble + (
+                        fp * dts * constants.MAPL_GRAV / cumulus_parameterization_constants.CP
+                    )

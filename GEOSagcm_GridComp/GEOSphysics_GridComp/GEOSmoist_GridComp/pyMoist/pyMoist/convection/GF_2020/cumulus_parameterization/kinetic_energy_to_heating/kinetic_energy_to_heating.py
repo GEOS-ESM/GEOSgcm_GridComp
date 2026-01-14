@@ -43,13 +43,13 @@ class KineticEnergyToHeating:
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
         self._ke_to_heating(
+            del_u_cloud_ensemble=locals.del_u_cloud_ensemble,
+            del_v_cloud_ensemble=locals.del_v_cloud_ensemble,
             error_code=state.output.error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
-            # dellu=,
-            # dellv=,
-            # ktop=,
-            # po_cup=,
-            # us=,
-            # vs=,
-            # dellat=,
+            cloud_top_level=state.output.cloud_top_level,
+            p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+            u=state.input_output.u,
+            v=state.input_output.v,
+            del_t_cloud_ensemble=locals.del_t_cloud_ensemble,
         )
