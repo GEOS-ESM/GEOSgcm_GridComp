@@ -1161,3 +1161,39 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    environment_saturation_moist_static_energy_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_moist_static_energy_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_moist_static_energy_cloud_levels_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_moist_static_energy_cloud_levels_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_moist_static_energy_cloud_levels_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_moist_static_energy_cloud_levels_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    d_buoyancy_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "d_buoyancy_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )

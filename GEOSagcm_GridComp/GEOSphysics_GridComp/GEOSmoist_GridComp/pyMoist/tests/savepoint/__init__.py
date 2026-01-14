@@ -267,6 +267,24 @@ from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_C
     TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_shallow,
 )
 
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentConditions_3 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_shallow,
+)
+
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentCloudLevels_3 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_3_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_3_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_3_shallow,
+)
+
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_MoistStaticEnergyInsideCloud import (
+    TranslateGF2020_CumulusParameterization_MoistStaticEnergyInsideCloud_deep,
+    TranslateGF2020_CumulusParameterization_MoistStaticEnergyInsideCloud_mid,
+    TranslateGF2020_CumulusParameterization_MoistStaticEnergyInsideCloud_shallow,
+)
+
 # NOTE need to organize everything below here
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (

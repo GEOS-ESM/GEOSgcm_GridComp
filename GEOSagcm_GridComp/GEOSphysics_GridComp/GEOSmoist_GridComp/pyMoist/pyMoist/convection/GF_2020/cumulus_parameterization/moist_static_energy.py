@@ -24,6 +24,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
     get_cloud_boundary_conditions,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
 
 
 def parcel_moist_static_energy(
@@ -135,56 +136,70 @@ def moist_static_energy_inside_cloud(
     error_code: IntFieldIJ_Plume,
     plume: Int,
     start_level: IntFieldIJ,
-    xhc: FloatField,
-    xhkb: FloatFieldIJ,
-    ktop: IntFieldIJ,
-    up_massdetro: FloatField,
-    up_massentro: FloatField,
-    xzu: FloatField,
-    xhe: FloatField,
-    p_liq_ice: FloatField,
-    zqexec: FloatFieldIJ,
-    ztexec: FloatFieldIJ,
-    x_add_buoy: FloatFieldIJ,
-    qrco: FloatField,
-    xhes_cup: FloatField,
+    cloud_moist_static_energy: FloatField,
+    moist_static_energy_origin_level: FloatFieldIJ,
+    cloud_top_level: IntFieldIJ_Plume,
+    mass_detrainment_updraft_forced: FloatField_Plume,
+    mass_entrainment_updraft_forced: FloatField_Plume,
+    normalized_massflux_updraft_modified: FloatField,
+    env_saturation_moist_static_energy_modified: FloatField,
+    partition_liquid_ice: FloatField,
+    vapor_excess: FloatFieldIJ,
+    t_excess: FloatFieldIJ,
+    add_buoyancy: FloatFieldIJ,
+    cloud_liquid_after_rain_forced: FloatField_Plume,
+    env_saturation_moist_static_energy_cloud_levels_modified: FloatField,
 ):
     with computation(PARALLEL), interval(...):
-        xhc = 0.0
+        cloud_moist_static_energy = 0.0
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= start_level:
-                xhc = xhkb
+                cloud_moist_static_energy = moist_static_energy_origin_level
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
-            if K >= start_level + 1 and K <= ktop + 1:
+            if K >= start_level + 1 and K <= cloud_top_level[0, 0][plume] + 1:
                 denom: FloatFieldIJ = (
-                    xzu.at(K=K - 1) - 0.5 * up_massdetro.at(K=K - 1) + up_massentro.at(K=K - 1)
+                    normalized_massflux_updraft_modified.at(K=K - 1)
+                    - 0.5 * mass_detrainment_updraft_forced.at(K=K - 1, ddim=[plume])
+                    + mass_entrainment_updraft_forced.at(K=K - 1, ddim=[plume])
                 )
                 if denom == 0.0:
-                    xhc = xhc.at(K=K - 1)
+                    cloud_moist_static_energy = cloud_moist_static_energy.at(K=K - 1)
                 else:
-                    xhc = (
-                        xhc.at(K=K - 1) * xzu.at(K=K - 1)
-                        - 0.5 * up_massdetro.at(K=K - 1) * xhc.at(K=K - 1)
-                        + up_massentro.at(K=K - 1) * xhe.at(K=K - 1)
+                    cloud_moist_static_energy = (
+                        cloud_moist_static_energy.at(K=K - 1)
+                        * normalized_massflux_updraft_modified.at(K=K - 1)
+                        - 0.5
+                        * mass_detrainment_updraft_forced.at(K=K - 1, ddim=[plume])
+                        * cloud_moist_static_energy.at(K=K - 1)
+                        + mass_entrainment_updraft_forced.at(K=K - 1, ddim=[plume])
+                        * env_saturation_moist_static_energy_modified.at(K=K - 1)
                     ) / denom
                     if K == start_level + 1:
                         x_add: FloatFieldIJ = (
-                            cumulus_parameterization_constants.XLV * zqexec
-                            + cumulus_parameterization_constants.CP * ztexec
-                        ) + x_add_buoy
-                        xhc = xhc + x_add * up_massentro.at(K=K - 1) / denom
+                            cumulus_parameterization_constants.XLV * vapor_excess
+                            + cumulus_parameterization_constants.CP * t_excess
+                        ) + add_buoyancy
+                        cloud_moist_static_energy = (
+                            cloud_moist_static_energy
+                            + x_add * mass_entrainment_updraft_forced.at(K=K - 1, ddim=[plume]) / denom
+                        )
 
-                xhc = xhc + cumulus_parameterization_constants.XLF * (1.0 - p_liq_ice) * qrco
+                # cloud_moist_static_energy = (
+                #     cloud_moist_static_energy
+                #     + cumulus_parameterization_constants.XLF
+                #     * (1.0 - partition_liquid_ice)
+                #     * cloud_liquid_after_rain_forced
+                # )
 
-    with computation(PARALLEL), interval(0, -1):
-        if error_code[0, 0][plume] == 0:
-            if K >= ktop + 2:
-                xhc = xhes_cup
-                xzu = 0.0
+    # with computation(PARALLEL), interval(0, -1):
+    #     if error_code[0, 0][plume] == 0:
+    #         if K >= cloud_top_level + 2:
+    #             cloud_moist_static_energy = env_saturation_moist_static_energy_cloud_levels_modified
+    #             normalized_massflux_updraft_modified = 0.0
 
 
 class ParcelMoistStaticEnergy:
@@ -257,6 +272,11 @@ class MoistStaticEnergyInsideCloud:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
+        self._get_buoyancy = stencil_factory.from_dims_halo(
+            func=get_buoyancy,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
     def __call__(
         self,
         state: GF2020CumulusParameterizationState,
@@ -266,29 +286,30 @@ class MoistStaticEnergyInsideCloud:
         self._moist_static_energy_inside_cloud(
             error_code=state.output.error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
-            # start_level=,
-            # xhc=,
-            # xhkb=,
-            # ktop=,
-            # up_massdetro=,
-            # up_massentro=,
-            # xzu=,
-            # xhe=,
-            # p_liq_ice=,
-            # zqexec=,
-            # ztexec=,
-            # x_add_buoy=,
-            # qrco=,
-            # xhes_cup=,
+            start_level=locals.start_level,
+            cloud_moist_static_energy=locals.cloud_moist_static_energy,
+            moist_static_energy_origin_level=locals.moist_static_energy_origin_level,
+            cloud_top_level=state.output.cloud_top_level,
+            mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
+            mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
+            normalized_massflux_updraft_modified=locals.normalized_massflux_updraft_modified,
+            env_saturation_moist_static_energy_modified=locals.environment_saturation_moist_static_energy_modified,
+            partition_liquid_ice=locals.partition_liquid_ice,
+            vapor_excess=locals.vapor_excess,
+            t_excess=locals.t_excess,
+            add_buoyancy=locals.add_buoyancy,
+            cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
+            env_saturation_moist_static_energy_cloud_levels_modified=locals.environment_saturation_moist_static_energy_cloud_levels_modified,
         )
 
-        # self._get_buoyancy(
-        # hc: FloatField,
-        # he_cup: FloatField,
-        # hes_cup: FloatField,
-        # error_code: IntField,
-        # kbcon: IntField,
-        # klcl: IntField,
-        # ktop: IntField,
-        # dby: FloatField,
-        # )
+        self._get_buoyancy(
+            lcl_level=state.output.lcl_level,
+            updraft_lfc_level=state.output.updraft_lfc_level,
+            cloud_top_level=state.output.cloud_top_level,
+            cloud_moist_static_energy=locals.cloud_moist_static_energy,
+            environment_moist_static_energy=locals.moist_static_energy_origin_level,
+            environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_modified,
+            buoyancy=locals.d_buoyancy,
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
