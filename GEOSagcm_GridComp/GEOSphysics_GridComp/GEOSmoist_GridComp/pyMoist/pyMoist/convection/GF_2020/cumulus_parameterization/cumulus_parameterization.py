@@ -1620,11 +1620,20 @@ class CumulusParameterization:
                 self._feedback()
 
                 # net precipitation flux (after downdraft evaporation)
-                # NOTE ported, not tested
+                # NOTE test GF2020_CumulusParameterization_PrecipitationFlux_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._precipitation_flux(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    epsilon_forced=state.output.epsilon_forced,
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                    cloud_top_level=state.output.cloud_top_level,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
+                    cloud_base_mass_flux=state.output.cloud_base_mass_flux,
+                    prec_flux=locals.prec_flux,
+                    evap_flux=locals.evap_flux,
                 )
 
                 # rainfall evap below cloud base
@@ -1642,6 +1651,7 @@ class CumulusParameterization:
                 )
 
                 # lightning flashes density (parameterization from Lopez 2016, MWR)
+                # Not needed right now
                 self._lightning_flash_density()
 
                 # output precipitation (only deep plume)
@@ -1669,6 +1679,7 @@ class CumulusParameterization:
                 )
 
                 # outputs a model sounding for the stand-alone code (part 2)
+                # Not needed right now
                 self._sounding()
 
                 # section for atmospheric composition

@@ -29,6 +29,7 @@ import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_Plume,
     IntFieldIJ_Plume,
+    FloatFieldIJ_Plume,
 )
 from pyMoist.shared_incloud_processes import ice_fraction
 
@@ -149,24 +150,35 @@ def partition_liquid_ice(
 
 
 def get_precip_fluxes(
-    edto: FloatField,
+    epsilon_forced: FloatFieldIJ_Plume,
     error_code: IntFieldIJ_Plume,
     plume: Int,
-    ktop: IntField,
-    pwdo: FloatField,
-    pwo: FloatField,
-    xmb: FloatField,
-    prec_flx: FloatField,
-    evap_flx: FloatField,
+    cloud_top_level: IntFieldIJ_Plume,
+    evaporate_in_downdraft_forced: FloatField_Plume,
+    condensate_to_fall_forced: FloatField_Plume,
+    cloud_base_mass_flux: FloatFieldIJ_Plume,
+    prec_flux: FloatField,
+    evap_flux: FloatField,
 ):
+    with computation(PARALLEL), interval(...):
+        prec_flux = 0.0
+        evap_flux = 0.0
     with computation(BACKWARD), interval(...):
         if error_code[0, 0][plume] == 0:
-            if K < ktop:
-                prec_flx = prec_flx[0, 0, 1] + xmb * (pwo + edto * pwdo)
-                prec_flx = max(0.0, prec_flx)
+            if K <= cloud_top_level[0, 0][plume]:
+                prec_flux = prec_flux[0, 0, 1] + cloud_base_mass_flux[0, 0][plume] * (
+                    condensate_to_fall_forced[0, 0, 0][plume]
+                    + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
+                )
+                prec_flux = max(0.0, prec_flux)
 
-                evap_flx = evap_flx[0, 0, 1] - xmb * edto * pwdo
-                evap_flx = max(0.0, evap_flx)
+                evap_flux = (
+                    evap_flux[0, 0, 1]
+                    - cloud_base_mass_flux[0, 0][plume]
+                    * epsilon_forced[0, 0][plume]
+                    * evaporate_in_downdraft_forced[0, 0, 0][plume]
+                )
+                evap_flux = max(0.0, evap_flux)
 
 
 def output_evaporation_flux(
@@ -251,15 +263,15 @@ class PrecipitationFlux:
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
         self._get_precip_fluxes(
-            # edto=,
-            # error_code=,
-            # plume=,
-            # ktop=,
-            # pwdo=,
-            # pwo=,
-            # xmb=,
-            # prec_flx=,
-            # evap_flx=,
+            epsilon_forced=state.output.epsilon_forced,
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            cloud_top_level=state.output.cloud_top_level,
+            evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+            condensate_to_fall_forced=state.output.condensate_to_fall_forced,
+            cloud_base_mass_flux=state.output.cloud_base_mass_flux,
+            prec_flux=locals.prec_flux,
+            evap_flux=locals.evap_flux,
         )
 
 
@@ -306,7 +318,7 @@ class OutputEvaporationFlux:
         self._output_evaporation_flux(
             # error_code=,
             # plume=,
-            # ktop=,
+            # cloud_top_level=,
             # po_cup=,
             # evap_flx=,
             # revsu_gf=,
@@ -349,7 +361,7 @@ class OutputDeepPrecipitation:
             # cumulus=,
             # error_code=,
             # plume=,
-            # ktop=,
+            # cloud_top_level=,
             # prec_flx=,
             # prfil_gf=,
         )

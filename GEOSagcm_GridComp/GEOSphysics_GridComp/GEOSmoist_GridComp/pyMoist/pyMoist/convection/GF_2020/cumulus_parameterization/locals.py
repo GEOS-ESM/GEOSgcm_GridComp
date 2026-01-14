@@ -1197,3 +1197,21 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    prec_flux: Quantity = dataclasses.field(
+        metadata={
+            "name": "prec_flux",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    evap_flux: Quantity = dataclasses.field(
+        metadata={
+            "name": "evap_flux",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )

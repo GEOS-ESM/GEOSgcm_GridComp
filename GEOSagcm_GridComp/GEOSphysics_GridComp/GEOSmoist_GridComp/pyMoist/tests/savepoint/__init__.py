@@ -291,6 +291,12 @@ from .convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.tran
     TranslateGF2020_CumulusParameterization_KeToHeating_shallow,
 )
 
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_PrecipitationFlux import (
+    TranslateGF2020_CumulusParameterization_PrecipitationFlux_deep,
+    TranslateGF2020_CumulusParameterization_PrecipitationFlux_mid,
+    TranslateGF2020_CumulusParameterization_PrecipitationFlux_shallow,
+)
+
 # NOTE need to organize everything below here
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
