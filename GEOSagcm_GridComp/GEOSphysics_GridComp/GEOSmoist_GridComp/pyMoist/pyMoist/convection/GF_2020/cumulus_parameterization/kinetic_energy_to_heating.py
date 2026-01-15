@@ -21,10 +21,11 @@ def kinetic_energy_to_heating(
     del_t_cloud_ensemble: FloatField,
     plume: Int,
 ):
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             dts: FloatFieldIJ = 0.0
             fpi: FloatFieldIJ = 0.0
+
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
