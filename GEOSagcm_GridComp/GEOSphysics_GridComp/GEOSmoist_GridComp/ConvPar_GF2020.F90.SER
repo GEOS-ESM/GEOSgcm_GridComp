@@ -423,7 +423,8 @@ CONTAINS
    !$ser data BETA_SHALLOW=BETA_SH EVAP_FIX=EVAP_FIX SGS_W_TIMESCALE=SGS_W_TIMESCALE OVERSHOOT=OVERSHOOT
    !$ser data VERTICAL_DISCRETIZATION_OPTION=VERT_DISCR ALP1=ALP1 USE_FCT=use_fct
    !$ser data MIN_ENTRAINMENT_RATE=min_entr_rate APPLY_SUBSIDENCE_MICROPHYSICS=APPLY_SUB_MP
-   !$ser data USE_SMOOTH_TENDENCIES=USE_SMOOTH_TEND
+   !$ser data USE_SMOOTH_TENDENCIES=USE_SMOOTH_TEND USE_RAIN_EVAP_BELOW_CLOUD_BASE=USE_REBCB
+   !$ser data USE_CLOUD_DISSIPATION=use_cloud_dissipation LIGHTNING_DIAGNOSTICS=LIGHTNING_DIAG
    !$ser data_writeonly AEROEVAP=aeroevap COUPLE_MICROPHYSICS=COUPL_MPHYSICS
    !$ser verbatim if (SH_MD_DP) then
       !$ser verbatim SER_VAR_1 = 0
@@ -4597,7 +4598,7 @@ loop0:       do k=kts,ktf
                !$ser data_buffered Dx=4 local_melting_layer=melting_layer(i,k)
             !$ser verbatim enddo
          !$ser verbatim enddo
-      !ser verbatim endif
+      !$ser verbatim endif
       DO i=its,itf
          kzdown(i)=0
          if(ierr(i).eq.0)then
