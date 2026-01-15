@@ -80,7 +80,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     updraft_temperature,
     UpdraftInitialWorkfunctions,
     UpdraftCIN,
-    UpdraftUpdateWorkfunctions,
+    UpdraftWorkfunctions,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
     convection_trigger,
@@ -451,7 +451,7 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._updraft_update_workfunctions = UpdraftUpdateWorkfunctions()
+        self._updraft_workfunctions = UpdraftWorkfunctions()
 
         self._cloud_base_mass_flux = CloudBaseMassFlux()
 
@@ -1576,13 +1576,13 @@ class CumulusParameterization:
                 self._environment_conditions(
                     p=state.input_output.p_forced,
                     p_surface=state.input_output.p_surface,
-                    t=locals.t_new,
-                    vapor=locals.vapor_forced,
+                    t=locals.t_modified,
+                    vapor=locals.vapor_modified,
                     topography_height_no_negative=state.input_output.topography_height_no_negative,
-                    moist_static_energy=locals.environment_moist_static_energy_forced,
-                    saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_forced,
-                    saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_forced,
-                    geopotential_height=state.input_output.geopotential_height_forced,
+                    moist_static_energy=locals.environment_moist_static_energy_modified,
+                    saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_modified,
+                    saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_modified,
+                    geopotential_height=locals.geopotential_height_modified,
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
@@ -1592,32 +1592,34 @@ class CumulusParameterization:
                 # NOTE      deep ✅
                 # NOTE      mid ❌ one field, one point (0.0%), 32 ULP
                 # NOTE      shallow ❌ one field, one point (0.0%), 32 ULP
+                p_3d = state.output.p_cloud_levels_forced.field[:, :, :, self.plume_dependent_constants.PLUME_INDEX]
                 self._environment_cloud_levels(
                     p=state.input_output.p_forced,
                     p_surface=state.input_output.p_surface,
                     p_cloud_levels=p_3d,
                     topography_height_no_negative=state.input_output.topography_height_no_negative,
-                    geopotential_height=state.input_output.geopotential_height_forced,
-                    geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_forced,
-                    t=locals.t_new,
+                    geopotential_height=locals.geopotential_height_modified,
+                    geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_modified,
+                    t=locals.t_modified,
                     t_surface=state.input_output.t_surface,
-                    t_cloud_levels=locals.t_cloud_levels_forced,
-                    vapor=locals.vapor_forced,
-                    vapor_cloud_levels=locals.vapor_cloud_levels_forced,
+                    t_cloud_levels=locals.t_cloud_levels_modified,
+                    vapor=locals.vapor_modified,
+                    vapor_cloud_levels=locals.vapor_cloud_levels_modified,
                     u=state.input_output.u,
                     v=state.input_output.v,
                     u_cloud_levels=locals.u_cloud_levels,
                     v_cloud_levels=locals.v_cloud_levels,
-                    environment_saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_forced,
-                    environment_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
-                    environment_moist_static_energy=locals.environment_moist_static_energy_forced,
-                    environment_moist_static_energy_cloud_levels=locals.environment_moist_static_energy_cloud_levels_forced,
-                    environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_forced,
-                    environment_saturation_moist_static_energy_cloud_levels=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
-                    gamma_cloud_levels=locals.gamma_cloud_levels_forced,
+                    environment_saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_modified,
+                    environment_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels_modified,
+                    environment_moist_static_energy=locals.environment_moist_static_energy_modified,
+                    environment_moist_static_energy_cloud_levels=locals.environment_moist_static_energy_cloud_levels_modified,
+                    environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_modified,
+                    environment_saturation_moist_static_energy_cloud_levels=locals.environment_saturation_moist_static_energy_cloud_levels_modified,
+                    gamma_cloud_levels=locals.gamma_cloud_levels,
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
+                state.output.p_cloud_levels_forced.field[:, :, :, self.plume_dependent_constants.PLUME_INDEX] = p_3d
 
                 # static control
                 # NOTE test GF2020_CumulusParameterization_StaticControl_{plume}:
@@ -1648,7 +1650,7 @@ class CumulusParameterization:
                 )
 
                 # workfunctions for updraft
-                self._updraft_update_workfunctions()
+                self._updraft_workfunctions()
 
                 # large scale forcing
                 # calculate cloud base mass flux

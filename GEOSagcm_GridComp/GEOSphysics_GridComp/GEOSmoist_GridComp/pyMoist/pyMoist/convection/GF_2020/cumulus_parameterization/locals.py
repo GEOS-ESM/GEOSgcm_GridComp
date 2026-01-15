@@ -34,6 +34,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    t_cloud_levels_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "t_cloud_levels_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     t_excess: Quantity = dataclasses.field(
         metadata={
             "name": "t_excess",
@@ -73,6 +82,15 @@ class GF2020CumulusParameterizationLocals(State):
     vapor_cloud_levels_forced: Quantity = dataclasses.field(
         metadata={
             "name": "vapor_cloud_levels_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    vapor_cloud_levels_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "vapor_cloud_levels_modified",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -205,9 +223,27 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    geopotential_height_cloud_levels_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "geopotential_height_cloud_levels_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     cloud_workfunction_0: Quantity = dataclasses.field(
         metadata={
-            "name": "cloud_work_function_0",
+            "name": "cloud_workfunction_0",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    cloud_workfunction_0_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_workfunction_0_modified",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
@@ -586,6 +622,24 @@ class GF2020CumulusParameterizationLocals(State):
     environment_saturation_mixing_ratio_cloud_levels_forced: Quantity = dataclasses.field(
         metadata={
             "name": "environment_saturation_mixing_ratio_cloud_levels_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_mixing_ratio_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_mixing_ratio_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    environment_saturation_mixing_ratio_cloud_levels_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "environment_saturation_mixing_ratio_cloud_levels_modified",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",

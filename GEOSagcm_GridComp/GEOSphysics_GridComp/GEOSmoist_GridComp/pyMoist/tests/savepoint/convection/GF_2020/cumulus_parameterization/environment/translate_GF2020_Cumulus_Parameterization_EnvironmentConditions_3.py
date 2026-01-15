@@ -78,17 +78,18 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.input_output.geopotential_height_forced.data[:] = inputs["local_geopotential_height_modified"]
-        locals.environment_saturation_mixing_ratio_forced.data[:] = inputs[
+        locals.geopotential_height_modified.data[:] = inputs["local_geopotential_height_modified"]
+        locals.environment_saturation_mixing_ratio_modified.data[:] = inputs[
             "local_env_saturation_mixing_ratio_modified"
         ]
-        locals.environment_moist_static_energy_forced.data[:] = inputs[
+        locals.environment_moist_static_energy_modified.data[:] = inputs[
             "local_env_moist_static_energy_modified"
         ]
-        locals.environment_saturation_moist_static_energy_forced.data[:] = inputs[
+        locals.environment_saturation_moist_static_energy_modified.data[:] = inputs[
             "local_env_saturation_moist_static_energy_modified"
         ]
-        locals.t_new.data[:] = inputs["local_t_modified"]
+        locals.t_modified.data[:] = inputs["local_t_modified"]
+        locals.vapor_modified.data[:] = inputs["local_vapor_modified"]
         locals.vapor_forced.data[:] = inputs["local_vapor_modified"]
         state.input_output.p_forced.data[:] = inputs["p_forced"]
         state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
@@ -107,27 +108,30 @@ class TestCore:
             code(
                 p=state.input_output.p_forced,
                 p_surface=state.input_output.p_surface,
-                t=locals.t_new,
-                vapor=locals.vapor_forced,
+                t=locals.t_modified,
+                vapor=locals.vapor_modified,
                 topography_height_no_negative=state.input_output.topography_height_no_negative,
-                moist_static_energy=locals.environment_moist_static_energy_forced,
-                saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_forced,
-                saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_forced,
-                geopotential_height=state.input_output.geopotential_height_forced,
+                moist_static_energy=locals.environment_moist_static_energy_modified,
+                saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_modified,
+                saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_modified,
+                geopotential_height=locals.geopotential_height_modified,
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         outputs = {
-            "geopotential_height_modified": state.input_output.geopotential_height_forced.field[:],
-            "local_env_saturation_mixing_ratio_modified": locals.environment_saturation_mixing_ratio_forced.field[
+            "local_geopotential_height_modified": locals.geopotential_height_modified.field[:],
+            "local_env_saturation_mixing_ratio_modified": locals.environment_saturation_mixing_ratio_modified.field[
                 :
             ],
-            "local_env_moist_static_energy_modified": locals.environment_moist_static_energy_forced.field[:],
-            "local_env_saturation_moist_static_energy_modified": locals.environment_saturation_moist_static_energy_forced.field[
+            "local_env_moist_static_energy_modified": locals.environment_moist_static_energy_modified.field[
                 :
             ],
-            "local_t_modified": locals.t_new.field[:],
+            "local_env_saturation_moist_static_energy_modified": locals.environment_saturation_moist_static_energy_modified.field[
+                :
+            ],
+            "local_t_modified": locals.t_modified.field[:],
+            "local_vapor_modified": locals.vapor_modified.field[:],
             "local_vapor_modified": locals.vapor_forced.field[:],
             "p_forced": state.input_output.p_forced.field[:],
             "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
