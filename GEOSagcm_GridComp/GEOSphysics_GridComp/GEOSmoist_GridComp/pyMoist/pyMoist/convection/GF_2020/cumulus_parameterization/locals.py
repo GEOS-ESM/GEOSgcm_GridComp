@@ -754,6 +754,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    cloud_moist_static_energy_modified: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_moist_static_energy_modified",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     cloud_moist_static_energy_downdraft_forced: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_moist_static_energy_downdraft_forced",
@@ -1141,26 +1150,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-
-    # NOTE these can potentially be removed as well with more analysis
-    psum: Quantity = dataclasses.field(
-        metadata={
-            "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    psumh: Quantity = dataclasses.field(
-        metadata={
-            "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     environment_saturation_moist_static_energy_modified: Quantity = dataclasses.field(
         metadata={
             "name": "environment_saturation_moist_static_energy_modified",
@@ -1192,6 +1181,26 @@ class GF2020CumulusParameterizationLocals(State):
         metadata={
             "name": "d_buoyancy_modified",
             "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+    # NOTE these can potentially be removed with a better analysis of what they do/where they go
+    psum: Quantity = dataclasses.field(
+        metadata={
+            "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    psumh: Quantity = dataclasses.field(
+        metadata={
+            "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
+            "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

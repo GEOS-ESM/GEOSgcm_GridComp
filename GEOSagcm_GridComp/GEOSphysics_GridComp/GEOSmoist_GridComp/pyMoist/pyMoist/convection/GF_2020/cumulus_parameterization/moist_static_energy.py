@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory
+from ndsl import StencilFactory, QuantityFactory, Quantity
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
@@ -134,26 +134,24 @@ def first_guess_moist_static_energy(
 
 def moist_static_energy_inside_cloud(
     error_code: IntFieldIJ_Plume,
-    plume: Int,
-    start_level: IntFieldIJ,
-    cloud_moist_static_energy: FloatField,
-    moist_static_energy_origin_level: FloatFieldIJ,
     cloud_top_level: IntFieldIJ_Plume,
+    start_level: IntFieldIJ,
+    moist_static_energy_origin_level: FloatFieldIJ,
+    cloud_moist_static_energy: FloatField,
+    environment_saturation_moist_static_energy_modified: FloatField,
+    environment_saturation_moist_static_energy_cloud_levels_modified: FloatField,
     mass_detrainment_updraft_forced: FloatField_Plume,
     mass_entrainment_updraft_forced: FloatField_Plume,
     normalized_massflux_updraft_modified: FloatField,
-    env_saturation_moist_static_energy_modified: FloatField,
     partition_liquid_ice: FloatField,
     vapor_excess: FloatFieldIJ,
     t_excess: FloatFieldIJ,
     add_buoyancy: FloatFieldIJ,
     cloud_liquid_after_rain_forced: FloatField_Plume,
-    env_saturation_moist_static_energy_cloud_levels_modified: FloatField,
+    plume: Int,
 ):
     with computation(PARALLEL), interval(...):
         cloud_moist_static_energy = 0.0
-
-    with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= start_level:
                 cloud_moist_static_energy = moist_static_energy_origin_level
@@ -176,7 +174,7 @@ def moist_static_energy_inside_cloud(
                         * mass_detrainment_updraft_forced.at(K=K - 1, ddim=[plume])
                         * cloud_moist_static_energy.at(K=K - 1)
                         + mass_entrainment_updraft_forced.at(K=K - 1, ddim=[plume])
-                        * env_saturation_moist_static_energy_modified.at(K=K - 1)
+                        * environment_saturation_moist_static_energy_modified.at(K=K - 1)
                     ) / denom
                     if K == start_level + 1:
                         x_add: FloatFieldIJ = (
@@ -188,6 +186,7 @@ def moist_static_energy_inside_cloud(
                             + x_add * mass_entrainment_updraft_forced.at(K=K - 1, ddim=[plume]) / denom
                         )
 
+                # include glaciation effects on cloud_moist_static_energy
                 cloud_moist_static_energy = (
                     cloud_moist_static_energy
                     + cumulus_parameterization_constants.XLF
@@ -198,63 +197,11 @@ def moist_static_energy_inside_cloud(
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if K >= cloud_top_level[0, 0][plume] + 2:
-                cloud_moist_static_energy = env_saturation_moist_static_energy_cloud_levels_modified
+                cloud_moist_static_energy = environment_saturation_moist_static_energy_cloud_levels_modified
                 normalized_massflux_updraft_modified = 0.0
 
 
-class ParcelMoistStaticEnergy:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._parcel_moist_static_energy = stencil_factory.from_dims_halo(
-            func=parcel_moist_static_energy,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
-            },
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-
-        if self.cumulus_parameterization_config.FRAC_MODIS != 1:
-            ndsl_log.warning(
-                " GF2020 cumulus parameterization called ParcelMoistStaticEnergy with "
-                "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
-            )
-
-        self._parcel_moist_static_energy(
-            error_code=state.output.error_code,
-            t_excess=locals.t_excess,
-            vapor_excess=locals.vapor_excess,
-            add_buoyancy=locals.add_buoyancy,
-            ocean_fraction=state.input.ocean_fraction,
-            updraft_origin_level=state.output.updraft_origin_level,
-            p=state.input_output.p_forced,
-            environmenet_moist_static_energy=locals.environment_moist_static_energy_cloud_levels,
-            environmenet_moist_static_energy_forced=locals.environment_moist_static_energy_cloud_levels_forced,
-            t_perturbation=state.output.t_perturbation,
-            moist_static_energy_origin_level=locals.moist_static_energy_origin_level,
-            moist_static_energy_origin_level_forced=locals.moist_static_energy_origin_level_forced,
-            AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
-            plume=plume_dependent_constants.PLUME_INDEX,
-        )
-
-
-class MoistStaticEnergyInsideCloud:
+class StaticControl:
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -279,37 +226,54 @@ class MoistStaticEnergyInsideCloud:
 
     def __call__(
         self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
+        error_code: Quantity,
+        start_level: Quantity,
+        lcl_level: Quantity,
+        updraft_lfc_level: Quantity,
+        cloud_top_level: Quantity,
+        cloud_moist_static_energy_modified: Quantity,
+        moist_static_energy_origin_level_modified: Quantity,
+        environment_saturation_moist_static_energy_modified: Quantity,
+        environment_moist_static_energy_cloud_levels_modified: Quantity,
+        environment_saturation_moist_static_energy_cloud_levels_modified: Quantity,
+        mass_detrainment_updraft_forced: Quantity,
+        mass_entrainment_updraft_forced: Quantity,
+        normalized_massflux_updraft_modified: Quantity,
+        partition_liquid_ice: Quantity,
+        vapor_excess: Quantity,
+        t_excess: Quantity,
+        add_buoyancy: Quantity,
+        cloud_liquid_after_rain_forced: Quantity,
+        d_buoyancy_modified: Quantity,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
         self._moist_static_energy_inside_cloud(
-            error_code=state.output.error_code,
+            error_code=error_code,
+            cloud_top_level=cloud_top_level,
+            start_level=start_level,
+            moist_static_energy_origin_level=moist_static_energy_origin_level_modified,
+            cloud_moist_static_energy=cloud_moist_static_energy_modified,
+            environment_saturation_moist_static_energy_modified=environment_saturation_moist_static_energy_modified,
+            environment_saturation_moist_static_energy_cloud_levels_modified=environment_saturation_moist_static_energy_cloud_levels_modified,
+            mass_detrainment_updraft_forced=mass_detrainment_updraft_forced,
+            mass_entrainment_updraft_forced=mass_entrainment_updraft_forced,
+            normalized_massflux_updraft_modified=normalized_massflux_updraft_modified,
+            partition_liquid_ice=partition_liquid_ice,
+            vapor_excess=vapor_excess,
+            t_excess=t_excess,
+            add_buoyancy=add_buoyancy,
+            cloud_liquid_after_rain_forced=cloud_liquid_after_rain_forced,
             plume=plume_dependent_constants.PLUME_INDEX,
-            start_level=locals.start_level,
-            cloud_moist_static_energy=locals.cloud_moist_static_energy,
-            moist_static_energy_origin_level=locals.moist_static_energy_origin_level,
-            cloud_top_level=state.output.cloud_top_level,
-            mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
-            mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
-            normalized_massflux_updraft_modified=locals.normalized_massflux_updraft_modified,
-            env_saturation_moist_static_energy_modified=locals.environment_saturation_moist_static_energy_modified,
-            partition_liquid_ice=locals.partition_liquid_ice,
-            vapor_excess=locals.vapor_excess,
-            t_excess=locals.t_excess,
-            add_buoyancy=locals.add_buoyancy,
-            cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
-            env_saturation_moist_static_energy_cloud_levels_modified=locals.environment_saturation_moist_static_energy_cloud_levels_modified,
         )
 
         self._get_buoyancy(
-            lcl_level=state.output.lcl_level,
-            updraft_lfc_level=state.output.updraft_lfc_level,
-            cloud_top_level=state.output.cloud_top_level,
-            cloud_moist_static_energy=locals.cloud_moist_static_energy,
-            environment_moist_static_energy=locals.environment_moist_static_energy_cloud_levels_modified,
-            environment_saturation_moist_static_energy=locals.environment_saturation_moist_static_energy_cloud_levels_modified,
-            d_buoyancy=locals.d_buoyancy_modified,
-            error_code=state.output.error_code,
+            lcl_level=lcl_level,
+            updraft_lfc_level=updraft_lfc_level,
+            cloud_top_level=cloud_top_level,
+            cloud_moist_static_energy=cloud_moist_static_energy_modified,
+            environment_moist_static_energy=environment_moist_static_energy_cloud_levels_modified,
+            environment_saturation_moist_static_energy=environment_saturation_moist_static_energy_cloud_levels_modified,
+            d_buoyancy=d_buoyancy_modified,
+            error_code=error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
         )

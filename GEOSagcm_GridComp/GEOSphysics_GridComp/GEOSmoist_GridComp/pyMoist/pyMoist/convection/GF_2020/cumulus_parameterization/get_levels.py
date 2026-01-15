@@ -573,18 +573,6 @@ def get_convective_cloud_base_level(
                     * environment_moist_static_energy_forced[0, 0, -1]
                 ) / denom
 
-    # DEBUG
-    with computation(PARALLEL), interval(...):
-        if error_code[0, 0][plume] == 0:
-            debug_var_1 = entrainment_rate[0, 0, 0][plume]
-            debug_var_2 = cloud_moist_static_energy_forced_transported
-
-    # DEBUG
-    with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0:
-            debug_var_3 = start_level_internal + 1
-            debug_var_4 = updraft_lfc_level[0, 0][plume] + 1
-
     with computation(FORWARD), interval(0, -2):
         if error_code[0, 0][plume] == 0 and K > start_level_internal and found_level == False:
             if (
@@ -593,16 +581,6 @@ def get_convective_cloud_base_level(
             ):
                 cloud_top_level[0, 0][plume] = K - 1
                 found_level = True
-
-    # DEBUG
-    with computation(PARALLEL), interval(...):
-        if error_code[0, 0][plume] == 0:
-            debug_var_5 = cloud_moist_static_energy_forced_transported
-
-    # DEBUG
-    with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0:
-            debug_var_6 = cloud_top_level[0, 0][plume] + 1
 
     with computation(FORWARD), interval(0, 1):
         if (

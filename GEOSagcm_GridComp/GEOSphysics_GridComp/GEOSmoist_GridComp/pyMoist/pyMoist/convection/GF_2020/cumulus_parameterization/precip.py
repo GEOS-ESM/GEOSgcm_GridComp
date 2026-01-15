@@ -150,15 +150,15 @@ def partition_liquid_ice(
 
 
 def get_precip_fluxes(
-    epsilon_forced: FloatFieldIJ_Plume,
     error_code: IntFieldIJ_Plume,
-    plume: Int,
     cloud_top_level: IntFieldIJ_Plume,
-    evaporate_in_downdraft_forced: FloatField_Plume,
+    cloud_base_mass_flux_modified: FloatFieldIJ_Plume,
+    epsilon_forced: FloatFieldIJ_Plume,
     condensate_to_fall_forced: FloatField_Plume,
-    cloud_base_mass_flux: FloatFieldIJ_Plume,
+    evaporate_in_downdraft_forced: FloatField_Plume,
     prec_flux: FloatField,
     evap_flux: FloatField,
+    plume: Int,
 ):
     with computation(PARALLEL), interval(...):
         prec_flux = 0.0
@@ -166,7 +166,7 @@ def get_precip_fluxes(
     with computation(BACKWARD), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
-                prec_flux = prec_flux[0, 0, 1] + cloud_base_mass_flux[0, 0][plume] * (
+                prec_flux = prec_flux[0, 0, 1] + cloud_base_mass_flux_modified[0, 0][plume] * (
                     condensate_to_fall_forced[0, 0, 0][plume]
                     + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
                 )
@@ -174,7 +174,7 @@ def get_precip_fluxes(
 
                 evap_flux = (
                     evap_flux[0, 0, 1]
-                    - cloud_base_mass_flux[0, 0][plume]
+                    - cloud_base_mass_flux_modified[0, 0][plume]
                     * epsilon_forced[0, 0][plume]
                     * evaporate_in_downdraft_forced[0, 0, 0][plume]
                 )
@@ -236,43 +236,6 @@ class PrecipFactor:
 
     def __call__(self, *args, **kwds):
         pass
-
-
-class PrecipitationFlux:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._get_precip_fluxes = stencil_factory.from_dims_halo(
-            func=get_precip_fluxes,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-        self._get_precip_fluxes(
-            epsilon_forced=state.output.epsilon_forced,
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            cloud_top_level=state.output.cloud_top_level,
-            evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
-            condensate_to_fall_forced=state.output.condensate_to_fall_forced,
-            cloud_base_mass_flux=state.output.cloud_base_mass_flux,
-            prec_flux=locals.prec_flux,
-            evap_flux=locals.evap_flux,
-        )
 
 
 class RainEvapBelowCloudBase:

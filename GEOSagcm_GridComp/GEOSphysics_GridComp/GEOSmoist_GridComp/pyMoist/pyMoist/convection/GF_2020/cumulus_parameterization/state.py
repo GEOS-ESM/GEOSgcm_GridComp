@@ -337,9 +337,9 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        cloud_base_mass_flux: Quantity = dataclasses.field(
+        cloud_base_mass_flux_modified: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud_base_mass_flux",
+                "name": "cloud_base_mass_flux_modified",
                 "dims": [X_DIM, Y_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",

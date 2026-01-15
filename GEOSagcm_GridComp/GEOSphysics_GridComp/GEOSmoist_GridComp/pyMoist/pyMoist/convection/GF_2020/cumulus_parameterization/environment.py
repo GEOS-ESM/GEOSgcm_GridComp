@@ -647,12 +647,6 @@ def modify_environment_profiles(
     arbitrary_numerical_parameter: FloatFieldIJ,
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
-    debug_var_1: FloatFieldIJ,
-    debug_var_2: FloatFieldIJ,
-    debug_var_3: FloatFieldIJ,
-    debug_var_4: FloatFieldIJ,
-    debug_var_5: FloatFieldIJ,
-    debug_var_6: FloatFieldIJ,
 ):
     from __externals__ import COUPLE_MICROPHYSICS, BOUNDARY_CONDITION_METHOD, k_end
 
@@ -745,9 +739,6 @@ def modify_environment_profiles(
                 compute_perturbation=False,
                 perturbation_field=dummy_field_no_read,
             )
-            debug_var_1 = mse_boundary_condition
-            debug_var_2 = arbitrary_numerical_parameter
-            debug_var_3 = moist_static_energy_origin_level_forced
             moist_static_energy_origin_level_modified = (
                 mse_boundary_condition * arbitrary_numerical_parameter
                 + moist_static_energy_origin_level_forced

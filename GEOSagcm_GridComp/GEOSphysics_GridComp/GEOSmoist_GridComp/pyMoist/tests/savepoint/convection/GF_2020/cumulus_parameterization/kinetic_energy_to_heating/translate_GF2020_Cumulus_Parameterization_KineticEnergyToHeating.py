@@ -16,8 +16,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.stencils import (
-    ke_to_heating,
+from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating import (
+    kinetic_energy_to_heating,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -36,7 +36,7 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_kth": {},
+            "error_code": {},
             "p_cloud_levels_forced": {},
             "u": {},
             "v": {},
@@ -76,7 +76,7 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code_kth"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_top_level"] - 1
         )
@@ -89,26 +89,26 @@ class TestCore:
         locals.del_v_cloud_ensemble.data[:] = inputs["local_del_v_cloud_ensemble"]
         locals.del_t_cloud_ensemble.data[:] = inputs["local_del_t_cloud_ensemble"]
 
-        code_part_1 = self.stencil_factory.from_dims_halo(
-            func=ke_to_heating,
+        code = self.stencil_factory.from_dims_halo(
+            func=kinetic_energy_to_heating,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            code_part_1(
-                del_u_cloud_ensemble=locals.del_u_cloud_ensemble,
-                del_v_cloud_ensemble=locals.del_v_cloud_ensemble,
+            code(
                 error_code=state.output.error_code,
-                plume=plume_dependent_constants.PLUME_INDEX,
                 cloud_top_level=state.output.cloud_top_level,
                 p_cloud_levels_forced=state.output.p_cloud_levels_forced,
                 u=state.input_output.u,
                 v=state.input_output.v,
+                del_u_cloud_ensemble=locals.del_u_cloud_ensemble,
+                del_v_cloud_ensemble=locals.del_v_cloud_ensemble,
                 del_t_cloud_ensemble=locals.del_t_cloud_ensemble,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         outputs = {
-            "error_code_kth": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
             "p_cloud_levels_forced": state.output.p_cloud_levels_forced.data[
@@ -124,7 +124,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_KeToHeating_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -147,7 +147,7 @@ class TranslateGF2020_CumulusParameterization_KeToHeating_shallow(TranslateFortr
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_KeToHeating_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -170,7 +170,7 @@ class TranslateGF2020_CumulusParameterization_KeToHeating_mid(TranslateFortranDa
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_KeToHeating_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

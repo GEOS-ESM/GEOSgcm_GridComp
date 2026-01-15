@@ -266,29 +266,26 @@ from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_C
     TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_mid,
     TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_shallow,
 )
-
 from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentConditions_3 import (
     TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_deep,
     TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_mid,
     TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_shallow,
 )
-
 from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_Cumulus_Parameterization_EnvironmentCloudLevels_3 import (
     TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_3_deep,
     TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_3_mid,
     TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_3_shallow,
 )
-
-from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_MoistStaticEnergyInsideCloud import (
-    TranslateGF2020_CumulusParameterization_MoistStaticEnergyInsideCloud_deep,
-    TranslateGF2020_CumulusParameterization_MoistStaticEnergyInsideCloud_mid,
-    TranslateGF2020_CumulusParameterization_MoistStaticEnergyInsideCloud_shallow,
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_Cumulus_Parameterization_StaticControl import (
+    TranslateGF2020_CumulusParameterization_StaticControl_deep,
+    TranslateGF2020_CumulusParameterization_StaticControl_mid,
+    TranslateGF2020_CumulusParameterization_StaticControl_shallow,
 )
 
-from .convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.translate_GF2020_Cumulus_Parameterization_KeToHeating import (
-    TranslateGF2020_CumulusParameterization_KeToHeating_deep,
-    TranslateGF2020_CumulusParameterization_KeToHeating_mid,
-    TranslateGF2020_CumulusParameterization_KeToHeating_shallow,
+from .convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.translate_GF2020_Cumulus_Parameterization_KineticEnergyToHeating import (
+    TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_deep,
+    TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_mid,
+    TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_shallow,
 )
 
 from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_PrecipitationFlux import (

@@ -35,14 +35,14 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
+            "error_code": {},
             "cloud_top_level": {},
-            "error_code_gpf": {},
-            "cloud_base_mass_flux_gpf": {},
+            "cloud_base_mass_flux_modified": {},
             "epsilon_forced": {},
             "condensate_to_fall_forced": {},
             "evaporate_in_downdraft_forced": {},
-            "prec_flux_gpf": {},
-            "evap_flux_gpf": {},
+            "precipitation_flux": {},
+            "evaporation_flux": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -75,12 +75,12 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code_gpf"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_top_level"] - 1
         )
-        state.output.cloud_base_mass_flux.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "cloud_base_mass_flux_gpf"
+        state.output.cloud_base_mass_flux_modified.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "cloud_base_mass_flux_modified"
         ]
         state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "epsilon_forced"
@@ -91,32 +91,32 @@ class TestCore:
         state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["evaporate_in_downdraft_forced"]
         )
-        locals.prec_flux.data[:] = inputs["prec_flux_gpf"]
-        locals.evap_flux.data[:] = inputs["evap_flux_gpf"]
+        locals.prec_flux.data[:] = inputs["precipitation_flux"]
+        locals.evap_flux.data[:] = inputs["evaporation_flux"]
 
-        code_part_1 = self.stencil_factory.from_dims_halo(
+        code = self.stencil_factory.from_dims_halo(
             func=get_precip_fluxes,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            code_part_1(
-                epsilon_forced=state.output.epsilon_forced,
+            code(
                 error_code=state.output.error_code,
-                plume=plume_dependent_constants.PLUME_INDEX,
                 cloud_top_level=state.output.cloud_top_level,
-                evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
+                epsilon_forced=state.output.epsilon_forced,
                 condensate_to_fall_forced=state.output.condensate_to_fall_forced,
-                cloud_base_mass_flux=state.output.cloud_base_mass_flux,
+                evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
                 prec_flux=locals.prec_flux,
                 evap_flux=locals.evap_flux,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         outputs = {
-            "error_code_gpf": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
-            "cloud_base_mass_flux_gpf": state.output.cloud_base_mass_flux.data[
+            "cloud_base_mass_flux_modified": state.output.cloud_base_mass_flux_modified.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
             "epsilon_forced": state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX],
@@ -126,8 +126,8 @@ class TestCore:
             "evaporate_in_downdraft_forced": state.output.evaporate_in_downdraft_forced.data[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "prec_flux_gpf": locals.prec_flux.data[:],
-            "evap_flux_gpf": locals.evap_flux.data[:],
+            "precipitation_flux": locals.prec_flux.data[:],
+            "evaporation_flux": locals.evap_flux.data[:],
         }
 
         return outputs

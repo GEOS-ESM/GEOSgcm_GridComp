@@ -144,21 +144,6 @@ class TestCore:
             },
         )
 
-        debug_var_1 = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        debug_var_2 = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        debug_var_3 = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        debug_var_4 = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        debug_var_5 = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        debug_var_6 = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        import numpy as np
-
-        debug_var_1.field[:] = np.nan
-        debug_var_2.field[:] = np.nan
-        debug_var_3.field[:] = np.nan
-        debug_var_4.field[:] = np.nan
-        debug_var_5.field[:] = np.nan
-        debug_var_6.field[:] = np.nan
-
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
                 error_code=state.output.error_code,
@@ -187,12 +172,6 @@ class TestCore:
                 arbitrary_numerical_parameter=locals.arbitrary_numerical_parameter,
                 AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
                 plume=plume_dependent_constants.PLUME_INDEX,
-                debug_var_1=debug_var_1,
-                debug_var_2=debug_var_2,
-                debug_var_3=debug_var_3,
-                debug_var_4=debug_var_4,
-                debug_var_5=debug_var_5,
-                debug_var_6=debug_var_6,
             )
 
         outputs = {
@@ -236,12 +215,6 @@ class TestCore:
                 :
             ],
             "local_arbitrary_numerical_parameter": locals.arbitrary_numerical_parameter.data[:],
-            "debug_var_1": debug_var_1.field[:],
-            "debug_var_2": debug_var_2.field[:],
-            "debug_var_3": debug_var_3.field[:],
-            "debug_var_4": debug_var_4.field[:],
-            "debug_var_5": debug_var_5.field[:],
-            "debug_var_6": debug_var_6.field[:],
         }
 
         return outputs

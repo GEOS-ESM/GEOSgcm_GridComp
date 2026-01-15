@@ -10,16 +10,16 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 )
 
 
-def ke_to_heating(
-    del_u_cloud_ensemble: FloatField,
-    del_v_cloud_ensemble: FloatField,
+def kinetic_energy_to_heating(
     error_code: IntFieldIJ_Plume,
-    plume: Int,
     cloud_top_level: IntFieldIJ_Plume,
     p_cloud_levels_forced: FloatField_Plume,
     u: FloatField,
     v: FloatField,
+    del_u_cloud_ensemble: FloatField,
+    del_v_cloud_ensemble: FloatField,
     del_t_cloud_ensemble: FloatField,
+    plume: Int,
 ):
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
