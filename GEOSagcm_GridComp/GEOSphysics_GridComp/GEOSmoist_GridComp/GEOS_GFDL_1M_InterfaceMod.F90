@@ -58,7 +58,8 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: MAX_RI
   logical :: LHYDROSTATIC
   logical :: LPHYS_HYDROSTATIC
-  logical :: LMELTFRZ
+  logical :: LMELTFRZ_CLDMACRO
+  logical :: LMELTFRZ_CLDMICRO
   real    :: GFDL_MP_KLID
 
   logical :: REPORT_GFDL_1M_NEGATIVES
@@ -253,8 +254,10 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     LHYDROSTATIC = LPHYS_HYDROSTATIC
-    call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.TRUE., RC=STATUS)
+    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMACRO, Label="MELTFRZ_CLDMACRO:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMICRO, Label="MELTFRZ_CLDMICRO:",  default=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)   
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
@@ -661,7 +664,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         do L=1,LM
           do J=1,JM
            do I=1,IM
-           ! cleanup clouds
+           ! cleanup clouds before cldmacro
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
                                                      QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
                                                      REMOVE_CLOUDS=(L < KLID) )
@@ -731,7 +734,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       .false.        , &
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
-             if (LMELTFRZ) then
+             if (LMELTFRZ_CLDMACRO) then
            ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
                             CNV_FRC(I,J) , &
@@ -779,7 +782,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
              endif
              endif
-           ! cleanup clouds
+           ! cleanup clouds after cldmacro
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
                                                      QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), & 
                                                      REMOVE_CLOUDS=(L < KLID) )
@@ -919,8 +922,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! constant grid/time information
                                LHYDROSTATIC, 1, IM*JM, 1,LM, KLID, &
                              ! Output tendencies
-                               DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
-                               DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, DUDTmic, DVDTmic, DWDTmic, &
+                               DQADTmic, &
                              ! Output rain re-evaporation and sublimation
                                REV_LS, RSU_LS, &
                              ! Output mass flux during sedimentation (Pa kg/kg)
@@ -962,32 +964,31 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFR_LS = 0.0
            PFS_LS = 0.0
            PFG_LS = 0.0
+           T = T + DTDTmic * DT_MOIST
+           U = U + DUDTmic * DT_MOIST
+           V = V + DVDTmic * DT_MOIST
+       ! Apply moist/cloud species tendencies
+           RAD_QV = RAD_QV + DQVDTmic * DT_MOIST
+           RAD_QL = RAD_QL + DQLDTmic * DT_MOIST
+           RAD_QR = RAD_QR + DQRDTmic * DT_MOIST
+           RAD_QI = RAD_QI + DQIDTmic * DT_MOIST
+           RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
+           RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          endif
-     ! Apply tendencies
-         call apply_microphysics_tendencies(IM, JM, LM, DT_MOIST, &
-                    RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, &
-                    T, U, V, &
-                    DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
-                    DQSDTmic, DQGDTmic, DQADTmic, &
-                    DTDTmic, DUDTmic, DVDTmic)
-     ! CleanUp Negative Water Vapor, cloud liquid/ice, and condensates
+     ! CleanUp Negative Water Species
          if (REPORT_GFDL_1M_NEGATIVES) then
-           call FILLQ2ZERO(RAD_QV, MASS, WARNING_LABEL="QV   After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QL, MASS, WARNING_LABEL="QL   After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QI, MASS, WARNING_LABEL="QI   After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QR, MASS, WARNING_LABEL="QR   After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QS, MASS, WARNING_LABEL="QS   After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QG, MASS, WARNING_LABEL="QG   After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_CF, MASS, WARNING_LABEL="QA   After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call neg_adj_external(IM, JM, LM, RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, &
+                                 WARNING_LABEL="After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
          else
-           call FILLQ2ZERO(RAD_QV, MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QL, MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QI, MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QR, MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QS, MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_QG, MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-           call FILLQ2ZERO(RAD_CF, MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call neg_adj_external(IM, JM, LM, RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, &
+                                 VM=VMG, RC=STATUS); VERIFY_(STATUS)
          endif
+     ! Update cloud fraction
+         where (RAD_QL+RAD_QI > 0.0)
+            RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
+         elsewhere
+            RAD_CF = 0.0
+         end where
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Fill vapor/rain/snow/graupel state
@@ -1048,7 +1049,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          do L = 1, LM
            do J = 1, JM
              do I = 1, IM
-               if (LMELTFRZ) then
+               if (LMELTFRZ_CLDMICRO) then
                 ! meltfrz new condensates
                  call MELTFRZ ( DT_MOIST     , &
                                 CNV_FRC(I,J) , &
@@ -1063,11 +1064,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                 T(I,J,L)     , &
                                 QLLS(I,J,L)  , &
                                 QILS(I,J,L) )
+                ! cleanup clouds
+                 call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
+                                                         QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
+                                                         REMOVE_CLOUDS=(L < KLID) )
                endif
-              ! cleanup clouds
-               call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
-                                                       QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
-                                                       REMOVE_CLOUDS=(L < KLID) )
               ! get radiative properties
                call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
