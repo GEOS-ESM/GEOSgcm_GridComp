@@ -1686,8 +1686,8 @@ class CumulusParameterization:
                     epsilon_forced=state.output.epsilon_forced,
                     condensate_to_fall_forced=state.output.condensate_to_fall_forced,
                     evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
-                    prec_flux=locals.prec_flux,
-                    evap_flux=locals.evap_flux,
+                    precipitation_flux=locals.precipitation_flux,
+                    evaporation_flux=locals.evaporation_flux,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 

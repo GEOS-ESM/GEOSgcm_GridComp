@@ -91,8 +91,8 @@ class TestCore:
         state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["evaporate_in_downdraft_forced"]
         )
-        locals.prec_flux.data[:] = inputs["precipitation_flux"]
-        locals.evap_flux.data[:] = inputs["evaporation_flux"]
+        locals.precipitation_flux.data[:] = inputs["precipitation_flux"]
+        locals.evaporation_flux.data[:] = inputs["evaporation_flux"]
 
         code = self.stencil_factory.from_dims_halo(
             func=get_precip_fluxes,
@@ -107,8 +107,8 @@ class TestCore:
                 epsilon_forced=state.output.epsilon_forced,
                 condensate_to_fall_forced=state.output.condensate_to_fall_forced,
                 evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
-                prec_flux=locals.prec_flux,
-                evap_flux=locals.evap_flux,
+                precipitation_flux=locals.precipitation_flux,
+                evaporation_flux=locals.evaporation_flux,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
 
@@ -126,8 +126,8 @@ class TestCore:
             "evaporate_in_downdraft_forced": state.output.evaporate_in_downdraft_forced.data[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "precipitation_flux": locals.prec_flux.data[:],
-            "evaporation_flux": locals.evap_flux.data[:],
+            "precipitation_flux": locals.precipitation_flux.data[:],
+            "evaporation_flux": locals.evaporation_flux.data[:],
         }
 
         return outputs

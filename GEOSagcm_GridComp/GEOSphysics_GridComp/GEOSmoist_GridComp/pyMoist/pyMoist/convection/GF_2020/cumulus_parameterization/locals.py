@@ -1186,6 +1186,24 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    precipitation_flux: Quantity = dataclasses.field(
+        metadata={
+            "name": "prec_flux",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    evaporation_flux: Quantity = dataclasses.field(
+        metadata={
+            "name": "evap_flux",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
 
     # NOTE these can potentially be removed with a better analysis of what they do/where they go
     psum: Quantity = dataclasses.field(
@@ -1201,24 +1219,6 @@ class GF2020CumulusParameterizationLocals(State):
         metadata={
             "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
             "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    prec_flux: Quantity = dataclasses.field(
-        metadata={
-            "name": "prec_flux",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    evap_flux: Quantity = dataclasses.field(
-        metadata={
-            "name": "evap_flux",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

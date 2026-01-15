@@ -156,29 +156,32 @@ def get_precip_fluxes(
     epsilon_forced: FloatFieldIJ_Plume,
     condensate_to_fall_forced: FloatField_Plume,
     evaporate_in_downdraft_forced: FloatField_Plume,
-    prec_flux: FloatField,
-    evap_flux: FloatField,
+    precipitation_flux: FloatField,
+    evaporation_flux: FloatField,
     plume: Int,
 ):
     with computation(PARALLEL), interval(...):
-        prec_flux = 0.0
-        evap_flux = 0.0
+        precipitation_flux = 0.0
+        evaporation_flux = 0.0
+
     with computation(BACKWARD), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
-                prec_flux = prec_flux[0, 0, 1] + cloud_base_mass_flux_modified[0, 0][plume] * (
+                precipitation_flux = precipitation_flux[0, 0, 1] + cloud_base_mass_flux_modified[0, 0][
+                    plume
+                ] * (
                     condensate_to_fall_forced[0, 0, 0][plume]
                     + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
                 )
-                prec_flux = max(0.0, prec_flux)
+                precipitation_flux = max(0.0, precipitation_flux)
 
-                evap_flux = (
-                    evap_flux[0, 0, 1]
+                evaporation_flux = (
+                    evaporation_flux[0, 0, 1]
                     - cloud_base_mass_flux_modified[0, 0][plume]
                     * epsilon_forced[0, 0][plume]
                     * evaporate_in_downdraft_forced[0, 0, 0][plume]
                 )
-                evap_flux = max(0.0, evap_flux)
+                evaporation_flux = max(0.0, evaporation_flux)
 
 
 def output_evaporation_flux(
