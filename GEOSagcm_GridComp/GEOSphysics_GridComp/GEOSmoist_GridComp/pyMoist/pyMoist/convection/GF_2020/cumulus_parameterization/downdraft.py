@@ -105,6 +105,11 @@ def get_downdraft_origin_level(
 
     For shallow plume, return 0 (downdraft is disabled). For mid and deep plume, perform full calculation.
 
+    NOTE this stencil is a good candidate for testing a "solver" mechanic. Right now, the success of this
+    stencil depends on the interval only operating at K = 0 (the bottom level). Any change will break the
+    relative offsets (which rely on the idea that they are always offseting from index 0), and break the math.
+    This is a poor design, but it is the only way to implement this pattern within a stencil at the moment.
+
     Args:
         error_code
         cloud_top_level
@@ -149,37 +154,38 @@ def get_downdraft_origin_level(
                 keep_going = False
                 if downdraft_origin_level_internal - 1 < detrainment_start_level:
                     detrainment_start_level = downdraft_origin_level_internal - 1
+
                 if downdraft_origin_level_internal >= cloud_top_level[0, 0][plume] - 1:
                     downdraft_origin_level_internal = cloud_top_level[0, 0][plume] - 2
-                    level_initial = downdraft_origin_level_internal
-                    dh = 0
-                    level = level_initial
-                    stop_k_while_loop = False
-                    while level >= 0 and stop_k_while_loop == False:
-                        moist_static_energy_internal = (
-                            environment_saturation_moist_static_energy_cloud_levels_forced.at(
-                                K=downdraft_origin_level_internal
-                            )
-                        )
-                        dz = geopotential_height_cloud_levels_forced.at(
-                            K=level + 1
-                        ) - geopotential_height_cloud_levels_forced.at(K=level)
-                        dh = dh + dz * (
-                            moist_static_energy_internal
-                            - environment_saturation_moist_static_energy_cloud_levels_forced.at(K=level)
-                        )
-                        if dh > 0:
-                            downdraft_origin_level_internal = downdraft_origin_level_internal - 1
-                            if downdraft_origin_level_internal > 5:
-                                keep_going = True
-                            else:
-                                error_code[0, 0][plume] = 9
-                                stop_k_while_loop = True
-                        level -= 1
 
-                downdraft_origin_level[0, 0][plume] = downdraft_origin_level_internal
-                if downdraft_origin_level_internal <= 5:
-                    error_code[0, 0][plume] = 4
+                level_initial = downdraft_origin_level_internal
+                dh = 0.0
+                level = level_initial - 1
+                stop_k_while_loop = False
+                while level >= 0 and stop_k_while_loop == False:
+                    moist_static_energy_internal = environment_saturation_moist_static_energy_cloud_levels_forced[
+                        0, 0, downdraft_origin_level_internal
+                    ]
+                    dz = (
+                        geopotential_height_cloud_levels_forced[0, 0, level + 1]
+                        - geopotential_height_cloud_levels_forced[0, 0, level]
+                    )
+                    dh = dh + dz * (
+                        moist_static_energy_internal
+                        - environment_saturation_moist_static_energy_cloud_levels_forced[0, 0, level]
+                    )
+                    if dh > 0:
+                        downdraft_origin_level_internal = downdraft_origin_level_internal - 1
+                        if downdraft_origin_level_internal > 4:
+                            keep_going = True
+                        else:
+                            error_code[0, 0][plume] = 9
+                            stop_k_while_loop = True
+                    level -= 1
+
+            downdraft_origin_level[0, 0][plume] = downdraft_origin_level_internal
+            if downdraft_origin_level_internal <= 4:
+                error_code[0, 0][plume] = 4
 
     with computation(FORWARD), interval(0, 1):
         # must have at least depth_min m between cloud convective base and cloud top.

@@ -42,16 +42,16 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_downorigin": {},
-            "cloud_top_level_downorigin": {},
-            "updraft_origin_level_downorigin": {},
-            "downdraft_origin_level_downorigin": {},
-            "local_detrainment_start_level_downorigin": {},
-            "updraft_lfc_level_downorigin": {},
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin": {},
-            "local_geopotential_height_cloud_levels_forced_downorigin": {},
-            "topography_height_no_negative_downorigin": {},
-            "local_melting_layer_downorigin": {},
+            "error_code": {},
+            "cloud_top_level": {},
+            "updraft_origin_level": {},
+            "downdraft_origin_level": {},
+            "local_detrainment_start_level": {},
+            "updraft_lfc_level": {},
+            "local_env_saturation_moist_static_energy_cloud_levels_forced": {},
+            "local_geopotential_height_cloud_levels_forced": {},
+            "topography_height_no_negative": {},
+            "local_melting_layer": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -84,32 +84,28 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_downorigin"
-        ]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_level_downorigin"] - 1
+            inputs["cloud_top_level"] - 1
         )
         state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_origin_level_downorigin"] - 1
+            inputs["updraft_origin_level"] - 1
         )
         state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["downdraft_origin_level_downorigin"] - 1
+            inputs["downdraft_origin_level"] - 1
         )
-        locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level_downorigin"] - 1
+        locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level"] - 1
         state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_lfc_level_downorigin"] - 1
+            inputs["updraft_lfc_level"] - 1
         )
         locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs[
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin"
+            "local_env_saturation_moist_static_energy_cloud_levels_forced"
         ]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced_downorigin"
+            "local_geopotential_height_cloud_levels_forced"
         ]
-        state.input_output.topography_height_no_negative.data[:] = inputs[
-            "topography_height_no_negative_downorigin"
-        ]
-        locals.melting_layer.data[:] = inputs["local_melting_layer_downorigin"]
+        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
+        locals.melting_layer.data[:] = inputs["local_melting_layer"]
 
         # initalize test code
         code = DowndraftOriginLevel(
@@ -138,36 +134,30 @@ class TestCore:
 
         # write output
         outputs = {
-            "error_code_downorigin": state.output.error_code.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "cloud_top_level_downorigin": state.output.cloud_top_level.field[
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
+            + 1,
+            "updraft_origin_level": state.output.updraft_origin_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "updraft_origin_level_downorigin": state.output.updraft_origin_level.field[
+            "downdraft_origin_level": state.output.downdraft_origin_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "downdraft_origin_level_downorigin": state.output.downdraft_origin_level.field[
+            "local_detrainment_start_level": locals.detrainment_start_level.field[:] + 1,
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "local_detrainment_start_level_downorigin": locals.detrainment_start_level.field[:] + 1,
-            "updraft_lfc_level_downorigin": state.output.updraft_lfc_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "local_env_saturation_moist_static_energy_cloud_levels_forced_downorigin": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
+            "local_env_saturation_moist_static_energy_cloud_levels_forced": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
                 :
             ],
-            "local_geopotential_height_cloud_levels_forced_downorigin": locals.geopotential_height_cloud_levels_forced.field[
+            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "topography_height_no_negative_downorigin": state.input_output.topography_height_no_negative.field[
-                :
-            ],
-            "local_melting_layer_downorigin": locals.melting_layer.field[:],
+            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
+            "local_melting_layer": locals.melting_layer.field[:],
         }
 
         return outputs
