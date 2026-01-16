@@ -8,6 +8,35 @@
 # c90 1 node  : 3h
 # c24 2 nodes : 8h
 # c12 2 nodes : 19h - has to be run with qos=long
+#!/usr/bin/env python3
+"""
+make_topo.py
+
+Purpose
+-------
+Interactive driver for the topography build pipeline. Prompts the user
+for paths and resolutions, then writes a Slurm job script
+(topo_<res>.j) that runs the full sequence:
+
+  1. Build/reuse c3000 intermediate from GMTED lat-lon.
+  2. Generate a SCRIP descriptor (uniform or Schmidt-stretched).
+  3. Compute rrfac_max (stretched grids only).
+  4. Run cube_to_target.x with smoothing/alpha.
+  5. Convert outputs to GMAO restart and deliverables.
+
+Key knobs
+---------
+- smoothing_scale : controls roughness → GWD amplitude (all grids).
+- alpha           : Laplacian scaling (stretched only).
+- stretch center/factor : hard-coded for SG001/SG002, can be modified.
+- runtime         : varies by resolution; edit nodes/time in job if needed.
+
+Usage
+-----
+  ./make_topo.py    # interactively answer prompts
+  sbatch topo_<res>.j   # submit generated job script
+"""
+
 #
 import os
 import subprocess
