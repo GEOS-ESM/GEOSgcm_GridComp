@@ -451,7 +451,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._updraft_workfunctions = UpdraftWorkfunctions()
+        self._updraft_workfunctions = UpdraftWorkfunctions(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._cloud_base_mass_flux = CloudBaseMassFlux()
 
@@ -1592,7 +1597,9 @@ class CumulusParameterization:
                 # NOTE      deep ✅
                 # NOTE      mid ❌ one field, one point (0.0%), 32 ULP
                 # NOTE      shallow ❌ one field, one point (0.0%), 32 ULP
-                p_3d = state.output.p_cloud_levels_forced.field[:, :, :, self.plume_dependent_constants.PLUME_INDEX]
+                p_3d = state.output.p_cloud_levels_forced.field[
+                    :, :, :, self.plume_dependent_constants.PLUME_INDEX
+                ]
                 self._environment_cloud_levels(
                     p=state.input_output.p_forced,
                     p_surface=state.input_output.p_surface,
@@ -1619,7 +1626,9 @@ class CumulusParameterization:
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
-                state.output.p_cloud_levels_forced.field[:, :, :, self.plume_dependent_constants.PLUME_INDEX] = p_3d
+                state.output.p_cloud_levels_forced.field[
+                    :, :, :, self.plume_dependent_constants.PLUME_INDEX
+                ] = p_3d
 
                 # static control
                 # NOTE test GF2020_CumulusParameterization_StaticControl_{plume}:
@@ -1650,7 +1659,27 @@ class CumulusParameterization:
                 )
 
                 # workfunctions for updraft
-                self._updraft_workfunctions()
+                # NOTE test GF2020_CumulusParameterization_UpdraftWorkfunctions_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._updraft_workfunctions(
+                    error_code=state.output.error_code,
+                    updraft_origin_level=state.output.updraft_origin_level,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    cloud_top_level=state.output.cloud_top_level,
+                    geopotential_height_cloud_levels_modified=locals.geopotential_height_cloud_levels_modified,
+                    normalized_massflux_updraft_modified=locals.normalized_massflux_updraft_modified,
+                    d_buoyancy_modified=locals.d_buoyancy_modified,
+                    gamma_cloud_levels=locals.gamma_cloud_levels,
+                    t_cloud_levels_modified=locals.t_cloud_levels_modified,
+                    cloud_workfunction_0_modified=locals.cloud_workfunction_0_modified,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    epsilon_forced=state.output.epsilon_forced,
+                    precipitation_ensemble=locals.precipitation_ensemble,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # large scale forcing
                 # calculate cloud base mass flux
