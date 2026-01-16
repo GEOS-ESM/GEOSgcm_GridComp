@@ -6440,7 +6440,7 @@ ENDIF ! vertical discretization
 !
 !--- environmental values on cloud levels
 !
-      !!$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+      !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
          !$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_3-In
          !$ser verbatim do i=its,ite
             !$ser verbatim do k=kts,kte
@@ -6470,12 +6470,12 @@ ENDIF ! vertical discretization
                !$ser data_buffered Dx=4 local_gamma_cloud_levels=gamma_cup(i,k)
             !$ser verbatim enddo
          !$ser verbatim enddo
-      !!$ser verbatim endif
+      !$ser verbatim endif
       call cup_env_clev(xt,xqes,xq,xhe,xhes,xz,po,xqes_cup,xq_cup, xhe_cup,   &
                         us,vs,u_cup,v_cup,                                    &
                         xhes_cup,xz_cup,po_cup,gamma_cup,xt_cup,psur,tsur,    &
                         ierr,z1,itf,ktf,its,ite, kts,kte)
-      !!$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+      !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
          !$ser savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_3-Out
          !$ser verbatim do i=its,ite
             !$ser verbatim do k=kts,kte
@@ -6505,7 +6505,7 @@ ENDIF ! vertical discretization
                !$ser data_buffered Dx=4 local_gamma_cloud_levels=gamma_cup(i,k)
             !$ser verbatim enddo
          !$ser verbatim enddo
-      !!$ser verbatim endif
+      !$ser verbatim endif
 !
 !--- static control
 !
@@ -6603,7 +6603,7 @@ ENDIF ! vertical discretization
 !
 !--- workfunctions for updraft
 !
-      !!$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+      !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
          !$ser savepoint GF2020_CumulusParameterization_UpdraftWorkfunctions-In
          !$ser verbatim do i=its,ite
            !$ser verbatim do k=kts,kte
@@ -6622,15 +6622,15 @@ ENDIF ! vertical discretization
                !$ser data_buffered Dx=4 evaporate_in_downdraft_forced=pwdo(i,k)
                !$ser data_buffered Dx=4 epsilon_forced=edto(i)
                !$ser verbatim call ser_set_D4(MAXIENS*ENSDIM)
-               !$ser verbatim do kk=1,ENSDIM
-                  !$ser verbatim call ser_set_idx_d4(kk*3+SER_CURRENT_PLUME-3)
-                  !$ser data_buffered Dx=4 local_precipitation_ensemble=pr_ens(i,kk)
+               !$ser verbatim do kk=ENSDIM*(SER_CURRENT_PLUME-1)+1,ENSDIM*SER_CURRENT_PLUME
+                  !$ser verbatim call ser_set_idx_d4(kk)
+                  !$ser data_buffered Dx=4 local_precipitation_ensemble=pr_ens(i,kk-16*(SER_CURRENT_PLUME-1))
                !$ser verbatim enddo
                !$ser verbatim call ser_set_D4(MAXIENS)
                !$ser verbatim call ser_set_idx_d4(SER_CURRENT_PLUME)
            !$ser verbatim enddo
          !$ser verbatim enddo
-      !!$ser verbatim endif
+      !$ser verbatim endif
       call cup_up_aa0(xaa0,xz_cup,xzu,xdby,GAMMA_CUP,xt_cup, k22,klcl,kbcon,ktop,ierr,itf,ktf,its,ite, kts,kte)
 
       do nens=1,maxens
@@ -6667,7 +6667,7 @@ ENDIF ! vertical discretization
          enddo
        enddo
       enddo
-      !!$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+      !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
          !$ser savepoint GF2020_CumulusParameterization_UpdraftWorkfunctions-Out
          !$ser verbatim do i=its,ite
            !$ser verbatim do k=kts,kte
@@ -6681,20 +6681,20 @@ ENDIF ! vertical discretization
                !$ser data_buffered Dx=4 local_d_buoyancy_modified=xdby(i,k)
                !$ser data_buffered Dx=4 local_gamma_cloud_levels=gamma_cup(i,k)
                !$ser data_buffered Dx=4 local_t_cloud_levels_modified=xt_cup(i,k)
-               !$ser data_buffered Dx=4 local_cloud_workfunction_0_modified=aa0(i)
+               !$ser data_buffered Dx=4 local_cloud_workfunction_0_modified=xaa0(i)
                !$ser data_buffered Dx=4 condensate_to_fall_forced=pwo(i,k)
                !$ser data_buffered Dx=4 evaporate_in_downdraft_forced=pwdo(i,k)
                !$ser data_buffered Dx=4 epsilon_forced=edto(i)
                !$ser verbatim call ser_set_D4(MAXIENS*ENSDIM)
-               !$ser verbatim do kk=1,ENSDIM
-                  !$ser verbatim call ser_set_idx_d4(kk*3+SER_CURRENT_PLUME-3)
-                  !$ser data_buffered Dx=4 local_precipitation_ensemble=pr_ens(i,kk)
+               !$ser verbatim do kk=ENSDIM*(SER_CURRENT_PLUME-1)+1,ENSDIM*SER_CURRENT_PLUME
+                  !$ser verbatim call ser_set_idx_d4(kk)
+                  !$ser data_buffered Dx=4 local_precipitation_ensemble=pr_ens(i,kk-16*(SER_CURRENT_PLUME-1))
                !$ser verbatim enddo
                !$ser verbatim call ser_set_D4(MAXIENS)
                !$ser verbatim call ser_set_idx_d4(SER_CURRENT_PLUME)
            !$ser verbatim enddo
          !$ser verbatim enddo
-      !!$ser verbatim endif
+      !$ser verbatim endif
 !
 !--- LARGE SCALE FORCING
 !
