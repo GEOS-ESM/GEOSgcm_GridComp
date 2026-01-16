@@ -11,15 +11,15 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 
 
 def tracer_output(
-    error_code: FloatFieldIJ_Plume,
+    error_code: IntFieldIJ_Plume,
     plume: Int,
-    tup: FloatField,
-    tempco: FloatField,
-    t_cup: FloatField,
+    t_updraft: FloatField_Plume,
+    updraft_column_temperature_forced: FloatField,
+    t_cloud_levels: FloatField,
 ):
     with computation(PARALLEL), interval(0, -1):
-        if error_code[0, 0][plume]:
-            tup = tempco
+        if error_code[0, 0][plume] == 0:
+            t_updraft[0, 0, 0][plume] = updraft_column_temperature_forced
     with computation(PARALLEL), interval(-1, None):
-        if error_code[0, 0][plume]:
-            tup = t_cup
+        if error_code[0, 0][plume] == 0:
+            t_updraft[0, 0, 0][plume] = t_cloud_levels

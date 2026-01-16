@@ -50,14 +50,14 @@ class TracerOutput:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        pass
-        # self._tracer_output(
-        # error_code=,
-        # plume=,
-        # tup=,
-        # tempco=,
-        # t_cup=,
-        # )
+
+        self._tracer_output(
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            t_updraft=state.output.t_updraft,
+            updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
+            t_cloud_levels=locals.t_cloud_levels,
+        )
 
 
 class AtmosphericComposition:

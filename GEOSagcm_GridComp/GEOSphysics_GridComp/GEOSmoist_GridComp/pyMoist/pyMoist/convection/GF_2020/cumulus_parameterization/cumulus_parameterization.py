@@ -1758,11 +1758,16 @@ class CumulusParameterization:
                 )
 
                 # for tracer convective transport / outputs
-                # NOTE ported, not tested
+                # NOTE test GF2020_CumulusParameterization_TracerOutput_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._tracer_output(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                    t_updraft=state.output.t_updraft,
+                    updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
+                    t_cloud_levels=locals.t_cloud_levels,
                 )
 
                 # convert mass fluxes, etc...
