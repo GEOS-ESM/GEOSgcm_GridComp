@@ -133,7 +133,7 @@ class GF2020CumulusParameterizationState(State):
         t: Quantity = dataclasses.field(
             metadata={
                 "name": "t",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -142,7 +142,7 @@ class GF2020CumulusParameterizationState(State):
         dvapordt: Quantity = dataclasses.field(
             metadata={
                 "name": "dvapordt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -196,7 +196,7 @@ class GF2020CumulusParameterizationState(State):
         dbuoyancydt: Quantity = dataclasses.field(
             metadata={
                 "name": "dbuoyancydt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -583,7 +583,7 @@ class GF2020CumulusParameterizationState(State):
         evap_subl_tendency: Quantity = dataclasses.field(
             metadata={
                 "name": "evap_subl_tendency",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
