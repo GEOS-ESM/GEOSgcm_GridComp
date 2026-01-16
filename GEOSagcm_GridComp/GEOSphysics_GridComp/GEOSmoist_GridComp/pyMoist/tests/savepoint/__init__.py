@@ -294,6 +294,36 @@ from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulu
     TranslateGF2020_CumulusParameterization_PrecipitationFlux_shallow,
 )
 
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_RainEvapBelowCloudbase import (
+    TranslateGF2020_CumulusParameterization_RainEvapBelowCloudbase_deep,
+    TranslateGF2020_CumulusParameterization_RainEvapBelowCloudbase_mid,
+    TranslateGF2020_CumulusParameterization_RainEvapBelowCloudbase_shallow,
+)
+
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_OutputEvaporationFlux import (
+    TranslateGF2020_CumulusParameterization_OutputEvaporationFlux_deep,
+    TranslateGF2020_CumulusParameterization_OutputEvaporationFlux_mid,
+    TranslateGF2020_CumulusParameterization_OutputEvaporationFlux_shallow,
+)
+
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_OutputDeepPrecipitation import (
+    TranslateGF2020_CumulusParameterization_OutputDeepPrecipitation_deep,
+    TranslateGF2020_CumulusParameterization_OutputDeepPrecipitation_mid,
+    TranslateGF2020_CumulusParameterization_OutputDeepPrecipitation_shallow,
+)
+
+from .convection.GF_2020.cumulus_parameterization.convective_tracers.translate_GF2020_Cumulus_Parameterization_TracerOutput import (
+    TranslateGF2020_CumulusParameterization_TracerOutput_deep,
+    TranslateGF2020_CumulusParameterization_TracerOutput_mid,
+    TranslateGF2020_CumulusParameterization_TracerOutput_shallow,
+)
+
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_Cumulus_Parameterization_PrepareOutput import (
+    TranslateGF2020_CumulusParameterization_PrepareOutput_deep,
+    TranslateGF2020_CumulusParameterization_PrepareOutput_mid,
+    TranslateGF2020_CumulusParameterization_PrepareOutput_shallow,
+)
+
 # NOTE need to organize everything below here
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (

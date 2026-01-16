@@ -80,7 +80,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     updraft_temperature,
     UpdraftInitialWorkfunctions,
     UpdraftCIN,
-    UpdraftWorkfunctions,
+    # UpdraftWorkfunctions,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
     convection_trigger,
@@ -1723,17 +1723,48 @@ class CumulusParameterization:
                 )
 
                 # rainfall evap below cloud base
-                self._rain_evap_below_cloud_base()
+                # NOTE test GF2020_CumulusParameterization_RainEvapBelowCloudbase_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._rain_evap_below_cloud_base(
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                    epsilon_forced=state.output.epsilon_forced,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    cloud_top_level=state.output.cloud_top_level,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    p_surface=state.input_output.p_surface,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
+                    local_env_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels,
+                    local_vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
+                    ocean_fraction=locals.ocean_fraction,
+                    cloud_base_mass_flux=state.output.cloud_base_mass_flux,
+                    local_evap_bcb=locals.evap_bcb,
+                    evap_flux=locals.evap_flux,
+                    dbuoyancydt=state.output.dbuoyancydt,
+                    dvapordt=state.output.dvapordt,
+                    t=state.output.t,
+                    precip=state.output.precip,
+                    prec_flux=locals.prec_flux,
+                )
 
                 # includes effects of the remained cloud dissipation into the enviroment
                 self._cloud_dissapation()
 
                 # total (deep+mid) evaporation flux for output (units kg/kg/s)
-                # NOTE ported, not tested
+                # NOTE test GF2020_CumulusParameterization_OutputEvaporationFlux_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._output_evaporation_flux(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                    cloud_top_level=state.output.cloud_top_level,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    evap_flux=locals.evap_flux,
+                    evap_subl_tendency=state.output.evap_subl_tendency,
                 )
 
                 # lightning flashes density (parameterization from Lopez 2016, MWR)
@@ -1741,7 +1772,10 @@ class CumulusParameterization:
                 self._lightning_flash_density()
 
                 # output precipitation (only deep plume)
-                # NOTE ported, not tested
+                # NOTE test GF2020_CumulusParameterization_OutputDeepPrecipitation_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._output_deep_precipitation(
                     state=state,
                     locals=locals,
@@ -1749,19 +1783,41 @@ class CumulusParameterization:
                 )
 
                 # for tracer convective transport / outputs
-                # NOTE ported, not tested
+                # NOTE test GF2020_CumulusParameterization_TracerOutput_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._tracer_output(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                    t_updraft=state.output.t_updraft,
+                    updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
+                    t_cloud_levels=locals.t_cloud_levels,
                 )
 
                 # convert mass fluxes, etc...
-                # NOTE ported, not tested
+                # NOTE test GF2020_CumulusParameterization_PrepareOutput_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._prepare_output(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                    cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
+                    total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
+                    total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
+                    mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
+                    mass_entrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
+                    mass_detrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
+                    environment_massflux=locals.environment_massflux,
+                    vapor_tendency_from_environmental_subsidence=locals.vapor_tendency_from_environmental_subsidence,
+                    moist_static_energy_tendency_from_environmental_subsidence=locals.moist_static_energy_tendency_from_environmental_subsidence,
+                    t_tendency_from_environmental_subsidence=locals.t_tendency_from_environmental_subsidence,
                 )
 
                 # outputs a model sounding for the stand-alone code (part 2)
