@@ -95,8 +95,6 @@ module LockEntrain
 #ifndef _CUDA
    private
 
-   logical :: use_kludges = .true.
-
 !-----------------------------------------------------------------------
 !
 !  public interfaces
@@ -126,6 +124,7 @@ module LockEntrain
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: PFULL_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: ZHALF_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: PHALF_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: EIS_dev
 
    ! Inoutputs
    ! ---------
@@ -311,6 +310,7 @@ contains
          pfull,          &
          zhalf,          &
          phalf,          &
+         eis,            &
 ! Inoutputs
          diff_m,         &
          diff_t,         &
@@ -340,11 +340,13 @@ contains
          cldradf_diag,   &
          radrcode_diag,  &
 ! Constants
+         use_eis,        &
          prandtlsfc,     &
          prandtlrad,     &
          beta_surf,      &
          beta_rad,       &
-         tpfac_sfc,      &
+         tpfac_min,      &
+         tpfac_max,      &
          entrate_sfc,    &
          pceff_sfc,      &
          vscale_sfc,     &
@@ -466,12 +468,13 @@ contains
 #ifdef _CUDA
       integer, value,  intent(in) :: icol,jcol,nlev
 
+      logical, value,  intent(in) :: use_eis
       real,    value,  intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    value,  intent(in) :: khradfac,tpfac_sfc,entrate_sfc,vscale_sfc
+      real,    value,  intent(in) :: khradfac,tpfac_min,tpfac_max,entrate_sfc,vscale_sfc
       real,    value,  intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
+      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh,eis
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
       real,    device, intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
@@ -489,7 +492,7 @@ contains
       integer, intent(in)                                    :: icol,jcol,nlev
 
       real,    intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
+      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh,eis
       real,    intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
       real,    intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
@@ -498,8 +501,9 @@ contains
       real,    intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_rad,k_sfc
       real,    intent(out),   dimension(icol,jcol)           :: zsml,zradml,zcloud,zradbase
 
+      logical, intent(in) :: use_eis
       real,    intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    intent(in) :: khradfac,tpfac_sfc,entrate_sfc, vscale_sfc
+      real,    intent(in) :: khradfac,tpfac_min,tpfac_max,entrate_sfc, vscale_sfc
       real,    intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real, pointer, dimension(:,:) :: wentr_rad_diag, wentr_sfc_diag ,del_buoy_diag
@@ -542,7 +546,7 @@ contains
       real, dimension(GPU_MAXLEVS) :: dqs
       !real, dimension(GPU_MAXLEVS) :: qs ! Not used in current code
       real                         :: qs_dummy
-
+      real                         :: eis_stability, surface_suppression, radiative_modulation
 !-----------------------------------------------------------------------
 !
 !     initialize variables
@@ -603,6 +607,18 @@ contains
          k_m_entr(i,j,nlev+1)   = 0.0
          k_sfc(i,j,nlev+1) = 0.0
          k_rad(i,j,nlev+1) = 0.0
+
+         ! Use EIS to determine appropriate depth threshold
+         if (eis(i,j) >= 12.0) then        
+            ! Very stable regime
+            eis_stability = 1.0
+         elseif (eis(i,j) <= 0.0) then
+            ! Very unstable regime  
+            eis_stability = 0.0
+         else
+            ! Smooth cubic interpolation from 0 to 1 over EIS range 0-12
+            eis_stability = (eis(i,j) / 12.0)**1.5
+         endif
 
 !--------------------------------------------------------------------------
 ! Initialize optional outputs
@@ -702,7 +718,8 @@ contains
 ! through phase changes to find parcel top
 
             call mpbl_depth(i,j,icol,jcol,nlev,&
-                  tpfac_sfc,        &
+                  tpfac_min,        &
+                  tpfac_max,        &
                   entrate_sfc,      &
                   pceff_sfc,        &
                   vscale_sfc,       & 
@@ -712,6 +729,7 @@ contains
                   v,                &
                   zfull,            &
                   pfull,            &
+                  frland,           &
                   b_star,           &
                   u_star,           &
                   evap,             &
@@ -774,8 +792,12 @@ contains
 ! AMM fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
 ! deep ones. Linear from 0 to 1600m
-            if (use_kludges) then
-            wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
+            if (use_eis) then
+              ! Surface entrainment: Reduce in stable conditions (high EIS)
+              surface_suppression = 1.0 - 0.8*eis_stability  ! Range: 1.0 to 0.2
+              wentr_tmp = wentr_tmp * max(0.1, surface_suppression)
+            else
+              wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
             endif
 !-----------------------------------------
 
@@ -1016,12 +1038,20 @@ contains
 !----------------------------------------
 ! adjust velocity scales to prevent jumps 
 ! near zradtop=zcldtopmax
-         if ( zradtop .gt. zcldtopmax-500. ) then 
-            vrad3 = vrad3*(zcldtopmax - zradtop)/500.  
-            vbr3  = vbr3 *(zcldtopmax - zradtop)/500.  
+         if (use_eis) then
+           ! Replace hard zradtop height limit with physics-based EIS limit
+           if (eis(i,j) < 2.0) then  ! Very unstable - not suitable for Lock scheme
+             vrad3 = vrad3 * max(0.0, eis(i,j)/2.0)  ! Taper based on stability
+             vbr3  = vbr3  * max(0.0, eis(i,j)/2.0)
+           endif 
+         else
+           if ( zradtop .gt. zcldtopmax-500. ) then 
+              vrad3 = vrad3*(zcldtopmax - zradtop)/500.  
+              vbr3  = vbr3 *(zcldtopmax - zradtop)/500.  
+           endif
+           vrad3=max( vrad3, 0. ) ! these really should not be needed
+           vbr3 =max( vbr3,  0. )
          endif
-         vrad3=max( vrad3, 0. ) ! these really should not be needed
-         vbr3 =max( vbr3,  0. )
 !-----------------------------------------
 
 
@@ -1039,12 +1069,16 @@ contains
 ! AMM107 fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
 ! deep ones: piecewise linear function 500-800m & 800-2400m 
-         if (use_kludges) then
-         if ( zradtop .le. 800. ) then
-            wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
+         if (use_eis) then
+           ! Radiative entrainment: Modulate based on inversion strength  
+           radiative_modulation = 0.5 + 1.5*eis_stability  ! Range: 0.5 to 2.0
+           wentr_rad = wentr_rad * radiative_modulation
          else
-            wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
-         endif
+           if ( zradtop .le. 800. ) then
+              wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
+           else
+              wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
+           endif
          endif
 !-----------------------------------------
 
@@ -1183,7 +1217,7 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine mpbl_depth(i,j,icol,jcol,nlev,tpfac, entrate, pceff, vscale, t, q, u, v, z, p, b_star, u_star , evap, sh, ipbl, ztop )
+   subroutine mpbl_depth(i,j,icol,jcol,nlev, tpfac_min, tpfac_max, entrate, pceff, vscale, t, q, u, v, z, p, frland, b_star, u_star , evap, sh, ipbl, ztop )
 
 !
 !  -----
@@ -1211,40 +1245,16 @@ contains
 
       integer, intent(in   )                            :: i, j, nlev, icol, jcol
       real,    intent(in   ), dimension(icol,jcol,nlev) :: t, z, q, p, u, v
-      real,    intent(in   ), dimension(icol,jcol)      :: b_star, u_star, evap, sh
-      real,    intent(in   )                            :: tpfac, entrate, pceff, vscale
+      real,    intent(in   ), dimension(icol,jcol)      :: frland, b_star, u_star, evap, sh
+      real,    intent(in   )                            :: tpfac_min, tpfac_max, entrate, pceff, vscale
       integer, intent(  out)                            :: ipbl
       real,    intent(  out),dimension(icol,jcol)       :: ztop
 
 
-      real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
+      real     :: lts_min,lts_max,lts_fac
+      real     :: tpfac,tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
       real     :: entfr,entrate_x,lts,zrho,buoyflx,delzg,wstar
       integer  :: k
-
-
-      !real, dimension(nlev) :: qst ! Not used in this code?
-
-
-!calculate surface parcel properties
-
-    if (tpfac == 0) then
-      zrho = p(i,j,nlev)/(MAPL_RDRY*(t(i,j,nlev)*(1.+MAPL_VIREPS*q(i,j,nlev))))
-      buoyflx = (sh(i,j)/MAPL_CP+MAPL_VIREPS*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1
-      delzg = 50.0*MAPL_GRAV   ! assume 50m surface scale
-      wstar = max(0.,0.001+0.41*buoyflx*delzg/t(i,j,nlev)) ! m3 s-3
-      if (wstar > 0.0) then
-        wstar = wstar**r13
-        tep  = t(i,j,nlev) + 0.4 + 2.*  sh(i,j)/(zrho*wstar*MAPL_CP)
-        qp   = q(i,j,nlev) +       2.*evap(i,j)/(zrho*wstar)
-      else
-        tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01, b_star(i,j)/MAPL_GRAV))
-        qp   = q(i,j,nlev)
-      end if
-    else   ! tpfac scales up bstar by inv. ratio of
-           ! heat-bubble area to stagnant area
-      tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
-      qp   = q(i,j,nlev)
-    end if
 
 !--------------------------------------------
 ! wind dependence of plume character. 
@@ -1268,6 +1278,45 @@ contains
       end do
       lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
 
+     ! Linear LTS factor
+      LTS_MIN = 10.0  ! Weak inversion threshold
+      if (frland(i,j) < 0.1) then ! over water
+         LTS_MAX = 22.0  ! Strong inversion threshold
+      else
+         LTS_MAX = LTS_MIN
+      endif
+      if (LTS <= LTS_MIN) then
+         LTS_FAC = 0.0
+      elseif (LTS >= LTS_MAX) then
+         LTS_FAC = 1.0
+      else
+         LTS_FAC = (LTS - LTS_MIN) / (LTS_MAX - LTS_MIN)
+      endif
+
+!calculate surface parcel properties
+
+      if (tpfac_max == 0) then
+        zrho = p(i,j,nlev)/(MAPL_RDRY*(t(i,j,nlev)*(1.+MAPL_VIREPS*q(i,j,nlev))))
+        buoyflx = (sh(i,j)/MAPL_CP+MAPL_VIREPS*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1
+        delzg = 50.0*MAPL_GRAV   ! assume 50m surface scale
+        wstar = max(0.,0.001+0.41*buoyflx*delzg/t(i,j,nlev)) ! m3 s-3
+        if (wstar > 0.0) then
+          wstar = wstar**r13
+          tep  = t(i,j,nlev) + 0.4 + 2.*  sh(i,j)/(zrho*wstar*MAPL_CP)
+          qp   = q(i,j,nlev) +       2.*evap(i,j)/(zrho*wstar)
+        else
+          tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01, b_star(i,j)/MAPL_GRAV))
+          qp   = q(i,j,nlev)
+        end if
+      else
+        ! tpfac scales up bstar by inv. ratio of
+        ! heat-bubble area to stagnant area
+        ! Linear interpolation for TPFAC based on LTS
+        tpfac = TPFAC_MIN*(1.0-LTS_FAC) + TPFAC_MAX*LTS_FAC
+        tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
+        qp   = q(i,j,nlev)
+      end if
+
       t1   = t(i,j,nlev)
       v1   = v(i,j,nlev)
       u1   = u(i,j,nlev)
@@ -1283,7 +1332,8 @@ contains
          du = sqrt ( ( u2 - u1 )**2 + ( v2 - v1 )**2 ) / (z2-z1)
          du = min(du,1.0e-8)
 
-         entrate_x = entrate * ( 1.0 + du / vscale )
+         entrate_x = (entrate - 0.6e-3*LTS_FAC) * & ! adjust entrate based on LTS_FAC
+                     ( 1.0 + du / vscale )
 
          entfr = min( entrate_x*(z2-z1), 0.99 )
 
