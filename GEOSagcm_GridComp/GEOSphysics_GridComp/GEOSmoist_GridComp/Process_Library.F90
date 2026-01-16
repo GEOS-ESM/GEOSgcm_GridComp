@@ -73,7 +73,9 @@ module GEOSmoist_Process_Library
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
   real, parameter :: taufrz  =  600.0     ! timescale for freezing
   real, parameter :: taumlt  =  300.0     ! timescale for melting
-  real, parameter :: QCMIN   =  1.e-8     ! minimum condensate values
+  real, parameter :: CFMIN   =  1.e-5     ! minimum cloud fraction
+  real, parameter :: QCMIN   =  1.e-15    ! minimum condensate values
+  real, parameter :: QPMIN   =  1.e-15    ! abosolute min cloud props
   ! LDRADIUS4
   ! Jason
   real, parameter :: abeta = 0.07
@@ -262,6 +264,7 @@ module GEOSmoist_Process_Library
   public :: sigma
   public :: pdf_alpha
   public :: init_refl10cm, calc_refl10cm
+  public :: apply_microphysics_tendencies
 
   contains
 
@@ -1087,7 +1090,7 @@ module GEOSmoist_Process_Library
       ! Total cloud fraction
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       RAD_CF = MAX(MIN(CF+AF,1.0),0.0)
-      if ( RAD_CF >= 1.e-5 ) then
+      if ( RAD_CF >= CFMIN ) then
         ! Total In-cloud liquid
         if ( (QClLS + QClAN) >= QCMIN ) then
            RAD_QL = ( QClLS + QClAN ) / RAD_CF
@@ -1101,17 +1104,17 @@ module GEOSmoist_Process_Library
            RAD_QI = 0.0
         end if
         ! Total In-cloud precipitation
-        if (QRN_ALL >= QCMIN ) then
+        if (QRN_ALL >= QPMIN ) then
            RAD_QR = ( QRN_ALL ) / RAD_CF
         else
            RAD_QR = 0.0
         end if
-        if (QSN_ALL >= QCMIN ) then
+        if (QSN_ALL >= QPMIN ) then
            RAD_QS = ( QSN_ALL ) / RAD_CF
         else
            RAD_QS = 0.0
         end if
-        if (QGR_ALL >= QCMIN ) then
+        if (QGR_ALL >= QPMIN ) then
            RAD_QG = ( QGR_ALL ) / RAD_CF
         else
            RAD_QG = 0.0
@@ -1132,7 +1135,7 @@ module GEOSmoist_Process_Library
       RAD_QG = MIN( RAD_QG, 0.01 )
 
      ! LIQUID RADII
-      if (RAD_QL > QCMIN) then
+      if (RAD_QL > 0.0) then
         !-BRAMS formulation
         RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NL,NI,1)
         ! apply limits
@@ -1142,7 +1145,7 @@ module GEOSmoist_Process_Library
       end if
 
     ! ICE RADII
-      if (RAD_QI > QCMIN) then
+      if (RAD_QI > 0.0) then
         !-BRAMS formulation
         RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2)
         ! apply limits
@@ -1172,7 +1175,7 @@ module GEOSmoist_Process_Library
                                   RM_CLDS = .false.
       if (present(REMOVE_CLOUDS)) RM_CLDS = REMOVE_CLOUDS
 
-      if (RM_CLDS .AND. (QLA+QIA+QLC+QIC > QCMIN)) then
+      if (RM_CLDS) then
 
       ! Remove ALL cloud quants above the klid
          QV = QV + QLA + QIA + QLC + QIC
@@ -1194,7 +1197,7 @@ module GEOSmoist_Process_Library
       end if
 
       ! Fix if Anvil cloud fraction too small
-      if ( (AF == 0.0) .AND. (QLA+QIA > QCMIN) ) then
+      if ( AF < 0.0 ) then
          QV  = QV + QLA + QIA
          TE  = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
          AF  = 0.
@@ -1203,7 +1206,50 @@ module GEOSmoist_Process_Library
       end if
 
       ! Fix if LS cloud fraction too small
-      if ( (CF == 0.0) .AND. (QLC+QIC > QCMIN) ) then
+      if ( CF < 0.0 ) then
+         QV = QV + QLC + QIC
+         TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
+         CF  = 0.
+         QLC = 0.
+         QIC = 0.
+      end if
+
+      ! LS LIQUID too small
+      if ( QLC  < 0.0 ) then
+         QV = QV + QLC
+         TE = TE - (alhlbcp)*QLC
+         QLC = 0.
+      end if
+      ! LS ICE too small
+      if ( QIC  < 0.0 ) then
+         QV = QV + QIC
+         TE = TE - (alhsbcp)*QIC
+         QIC = 0.
+      end if
+
+      ! Anvil LIQUID too small
+      if ( QLA  < 0.0 ) then
+         QV = QV + QLA
+         TE = TE - (alhlbcp)*QLA
+         QLA = 0.
+      end if
+      ! Anvil ICE too small
+      if ( QIA  < 0.0 ) then
+         QV = QV + QIA
+         TE = TE - (alhsbcp)*QIA
+         QIA = 0.
+      end if
+
+      ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
+      if ( ( QLA + QIA ) < 0.0 ) then
+         QV = QV + QLA + QIA
+         TE = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
+         AF  = 0.
+         QLA = 0.
+         QIA = 0.
+      end if
+      ! Ditto if LS cloud LIQUID+ICE too small
+      if ( ( QLC + QIC ) < 0.0 ) then
          QV = QV + QLC + QIC
          TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
          CF  = 0.
@@ -2340,7 +2386,7 @@ module GEOSmoist_Process_Library
       end if
 
       ! Clean-up cloud if fractions are too small
-      if ( CLLS < 1.e-5 ) then
+      if ( CLLS < CFMIN ) then
          dQILS = -QILS
          dQLLS = -QLLS
       end if
@@ -2556,17 +2602,16 @@ module GEOSmoist_Process_Library
       real, intent(inout) :: TE,QL,QI
       real  :: fQi,dQil
       integer :: K
-      ! freeze liquid first
       if ( TE <= MAPL_TICE ) then
+        ! freeze liquid 
          fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
          dQil = Ql *(1.0 - EXP( -DT * fQi / max(DT,taufrz) ) )
          dQil = max(  0., dQil )
          Qi   = Qi + dQil
          Ql   = Ql - dQil
          TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
-      end if
-      ! melt ice above 0^C
-      if ( TE > MAPL_TICE ) then
+      else
+        ! melt ice above 0^C
          dQil = -Qi *(1.0 - EXP( -DT / max(DT,taumlt) ) )
          dQil = min(  0., dQil )
          Qi   = Qi + dQil
@@ -2575,7 +2620,7 @@ module GEOSmoist_Process_Library
       end if
    end subroutine MELTFRZ_SC
 
-  subroutine FILLQ2ZERO( Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC )
+  subroutine FILLQ2ZERO_OLD( Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC )
 
     ! New algorithm to fill the negative q values in a mass conserving way.
     ! Conservation of TPW was checked. Donifan Barahona
@@ -2635,13 +2680,13 @@ module GEOSmoist_Process_Library
        if (ASSOCIATED(DQDT)) DQDT = Q 
     endif
  
-    WHERE (Q < 1.e-15)    
-       Q=1.e-15
+    WHERE (Q < 0.0)    
+       Q=0.0
     END WHERE
 
     TPW2 = SUM( Q*MASS, 3 )
-  
-    WHERE (TPW2 > 1.e-15)
+
+    WHERE (TPW2 > 0.0)
        TPWC=(TPW2-TPW1)/TPW2
     END WHERE
   
@@ -2656,6 +2701,119 @@ module GEOSmoist_Process_Library
     DEALLOCATE(TPW1)
     DEALLOCATE(TPW2)
     DEALLOCATE(TPWC)
+  end subroutine FILLQ2ZERO_OLD
+
+  subroutine FILLQ2ZERO(Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC)
+
+    real, dimension(:,:,:),   intent(inout)  :: Q
+    real, dimension(:,:,:),   intent(in)     :: MASS
+    real, optional,           intent(in)     :: DT
+    real, optional, pointer,  intent(out)    :: DQDT(:,:,:)
+    character(*), optional,   intent(in)     :: WARNING_LABEL
+    type(ESMF_VM), optional,  intent(in)     :: VM
+    integer,                  intent(out)    :: RC
+
+    integer :: IM, JM, LM
+    integer :: i, j, l
+    integer :: neg_count_local, total_count_local
+    integer :: I1D(2), RANK, STATUS
+    real    :: tpw_before, tpw_after, d_tpw
+    real    :: positive_mass
+    real    :: q_old
+
+    character(len=ESMF_MAXSTR) :: IAm="FILLQ2ZERO"
+
+    RC = 0
+
+    IM = size(Q,1)
+    JM = size(Q,2)
+    LM = size(Q,3)
+
+    !===============================================================
+    ! 1. Count negative values BEFORE fixing
+    !===============================================================
+    if (present(WARNING_LABEL) .and. present(VM)) then
+      neg_count_local   = count(Q < 0.0)
+      total_count_local = size(Q)
+
+      call ESMF_VMGet(VM, localPet=RANK, rc=STATUS)
+      VERIFY_(STATUS)
+
+      call ESMF_VMAllReduce(VM, sendData=[neg_count_local,total_count_local], &
+                            recvData=I1D, count=2, &
+                            reduceflag=ESMF_REDUCE_SUM, rc=STATUS)
+      VERIFY_(STATUS)
+
+      if ((RANK == 0) .and. (I1D(1) > 0)) then
+        write(*,'(A,A,A,2X,"Count: ",I0,"/",I0," (",F5.1,"%)")')  &
+             'WARNING: Negative values filled in ', trim(WARNING_LABEL), ':', &
+             I1D(1), I1D(2), real(I1D(1))/real(I1D(2))*100.0
+      endif
+    endif
+
+    !===============================================================
+    ! 2. Save original Q if tendency is requested
+    !===============================================================
+    if (present(DQDT) .and. present(DT)) then
+      if (associated(DQDT)) DQDT = Q
+    endif
+
+    !===============================================================
+    ! 3. Moisture limiter: per-column mass-conserving Q fix
+    !===============================================================
+    do j = 1, JM
+      do i = 1, IM
+
+        !--- TPW_before: using the *original* Q
+        tpw_before = 0.0
+        do l = 1, LM
+          tpw_before = tpw_before + Q(i,j,l) * MASS(i,j,l)
+        end do
+
+        !--- Clip negative Q locally
+        do l = 1, LM
+          if (Q(i,j,l) < 0.0) Q(i,j,l) = 0.0
+        end do
+
+        !--- TPW_after: using clipped Q
+        tpw_after = 0.0
+        do l = 1, LM
+          tpw_after = tpw_after + Q(i,j,l) * MASS(i,j,l)
+        end do
+
+        d_tpw = tpw_before - tpw_after   ! >0 means mass was removed
+
+        !--- Redistribute delta TPW to positive layers only
+        if (abs(d_tpw) > 1.0e-15) then
+
+          positive_mass = 0.0
+          do l = 1, LM
+            if (Q(i,j,l) > 0.0) positive_mass = positive_mass + MASS(i,j,l)
+          end do
+
+          if (positive_mass > 0.0) then
+            do l = 1, LM
+              if (Q(i,j,l) > 0.0) then
+                Q(i,j,l) = Q(i,j,l) + d_tpw * ( MASS(i,j,l) / positive_mass )
+                if (Q(i,j,l) < 0.0) Q(i,j,l) = 0.0  ! safety
+              end if
+            end do
+          end if
+
+        end if
+
+      end do
+    end do
+
+    !===============================================================
+    ! 4. Final DQDT tendencies if requested
+    !===============================================================
+    if (present(DQDT) .and. present(DT)) then
+      if (associated(DQDT) .and. DT > 0.0) then
+        DQDT = (Q - DQDT) / DT
+      endif
+    endif
+
   end subroutine FILLQ2ZERO
 
   subroutine DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, RAIN_LS, RAIN_CU, RAIN, SNOW, ICE, FRZR, PTYPE, PLE, TH, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
@@ -3542,15 +3700,15 @@ subroutine update_cld( &
       subroutine FIX_NEGATIVE_PRECIP(QRAIN, QSNOW, QGRAUPEL)
           real, dimension(:,:,:), intent(inout) :: QRAIN, QSNOW, QGRAUPEL
 
-          WHERE (QRAIN < QCMIN)
+          WHERE (QRAIN < QPMIN)
             QRAIN = 0.0
           END WHERE
 
-          WHERE (QSNOW < QCMIN)
+          WHERE (QSNOW < QPMIN)
             QSNOW = 0.0
           END WHERE
 
-          WHERE (QGRAUPEL < QCMIN)
+          WHERE (QGRAUPEL < QPMIN)
             QGRAUPEL = 0.0
           END WHERE
 
@@ -4309,5 +4467,236 @@ subroutine update_cld( &
       endif
 
       end subroutine calc_refl10cm
+
+! =======================================================================
+! Apply tendencies safely - preserving conservation while preventing negatives
+! Returns adjusted tendencies that were actually applied
+! =======================================================================
+
+subroutine apply_microphysics_tendencies(IM, JM, LM, DT_MOIST, RAD_QV, RAD_QL, RAD_QR, &
+                                        RAD_QI, RAD_QS, RAD_QG, RAD_CF, T, U, V, &
+                                        DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
+                                        DQSDTmic, DQGDTmic, DQADTmic, &
+                                        DTDTmic, DUDTmic, DVDTmic)
+
+    implicit none
+    
+    ! -----------------------------------------------------------------------
+    ! Input/output arguments
+    ! -----------------------------------------------------------------------
+    
+    integer, intent(in) :: IM, JM, LM       ! Grid dimensions
+    real, intent(in) :: DT_MOIST            ! Timestep
+    
+    real, intent(inout), dimension(IM,JM,LM) :: RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF
+    real, intent(inout), dimension(IM,JM,LM) :: T, U, V
+    
+    ! Tendencies are now INOUT - adjusted tendencies will be returned
+    real, intent(inout), dimension(IM,JM,LM) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, DQSDTmic, DQGDTmic, DQADTmic
+    real, intent(inout), dimension(IM,JM,LM) :: DTDTmic, DUDTmic, DVDTmic
+    
+    ! -----------------------------------------------------------------------
+    ! Local variables
+    ! -----------------------------------------------------------------------
+    
+    integer :: I, J, L, K
+    real :: q_old(6), q_new(6), q_tend(6), q_tend_adj(6)
+    real :: total_water_old, total_water_new, energy_old, energy_new
+    real :: scale_factor, deficit_total, excess_total, energy_adjust
+    real :: T_old, T_new, cp_factor, total_condensate, scaling, excess_water, deficit
+    real :: dt_old, dt_new, da_old, da_new, du_old, du_new, dv_old, dv_new
+    logical :: has_negative
+    real, parameter :: safety_factor = 0.95
+    real, parameter :: qv_min = 1.0e-15
+    real, parameter :: T_min = 100.0     ! Minimum allowable temperature (K)
+    
+    ! Constants for energy calculation
+    real, parameter :: cp_air = MAPL_CP                    ! Heat capacity of dry air (J/kg/K)
+    real, parameter :: lv = MAPL_LATENT_HEAT_VAPORIZATION  ! Latent heat of evaporation (J/kg)
+    real, parameter :: ls = MAPL_LATENT_HEAT_SUBLIMATION   ! Latent heat of sublimation (J/kg)
+    real, parameter :: lf = MAPL_LATENT_HEAT_FUSION        ! Latent heat of fusion (J/kg)
+    
+    ! Process each grid cell independently
+    do L = 1, LM
+        do J = 1, JM
+            do I = 1, IM
+                ! Store original values
+                q_old(1) = RAD_QV(I,J,L)
+                q_old(2) = RAD_QL(I,J,L)
+                q_old(3) = RAD_QR(I,J,L)
+                q_old(4) = RAD_QI(I,J,L)
+                q_old(5) = RAD_QS(I,J,L)
+                q_old(6) = RAD_QG(I,J,L)
+                T_old = T(I,J,L)
+                
+                ! Store original tendencies
+                q_tend(1) = DQVDTmic(I,J,L) * DT_MOIST
+                q_tend(2) = DQLDTmic(I,J,L) * DT_MOIST
+                q_tend(3) = DQRDTmic(I,J,L) * DT_MOIST
+                q_tend(4) = DQIDTmic(I,J,L) * DT_MOIST
+                q_tend(5) = DQSDTmic(I,J,L) * DT_MOIST
+                q_tend(6) = DQGDTmic(I,J,L) * DT_MOIST
+                dt_old = DTDTmic(I,J,L) * DT_MOIST
+                du_old = DUDTmic(I,J,L) * DT_MOIST
+                dv_old = DVDTmic(I,J,L) * DT_MOIST
+                da_old = DQADTmic(I,J,L) * DT_MOIST
+                
+                ! Calculate new states with original tendencies
+                q_new = q_old + q_tend
+                T_new = T_old + dt_old
+                
+                ! Calculate total water for conservation check
+                total_water_old = sum(q_old)
+                total_water_new = sum(q_new)
+                
+                ! Check for negative values
+                has_negative = any(q_new < 0.0) .or. q_new(1) < qv_min
+                
+                if (has_negative) then
+                    ! Initialize adjusted tendencies
+                    q_tend_adj = q_tend
+                    
+                    ! Calculate deficits and excesses
+                    deficit_total = 0.0
+                    excess_total = 0.0
+                    
+                    do K = 1, 6
+                        if (q_new(K) < 0.0 .or. (K == 1 .and. q_new(K) < qv_min)) then
+                            if (K == 1) then  ! Water vapor minimum is qv_min
+                                deficit_total = deficit_total + (qv_min - q_new(K))
+                            else              ! All others can be zero
+                                deficit_total = deficit_total - q_new(K)
+                            endif
+                        else
+                            if (K == 1) then  ! Don't count minimum vapor as excess
+                                excess_total = excess_total + max(0.0, q_new(K) - qv_min)
+                            else
+                                excess_total = excess_total + q_new(K)
+                            endif
+                        endif
+                    enddo
+                    
+                    ! Method 1: Apply simple limiting to negative tendencies
+                    do K = 1, 6
+                        if (q_tend(K) < 0.0) then
+                            if (K == 1) then  ! Water vapor
+                                q_tend_adj(K) = max(q_tend(K), -safety_factor * (q_old(K) - qv_min))
+                            else              ! Other species
+                                q_tend_adj(K) = max(q_tend(K), -safety_factor * q_old(K))
+                            endif
+                        endif
+                    enddo
+                    
+                    ! Method 2: If still negative or water not conserved, use more complex redistribution
+                    q_new = q_old + q_tend_adj
+                    if (any(q_new < 0.0) .or. q_new(1) < qv_min .or. abs(sum(q_tend_adj) - sum(q_tend)) > 1.0e-10) then
+                        ! First limit negative tendencies to avoid negative values
+                        do K = 1, 6
+                            if (K == 1) then  ! Water vapor (leave minimum)
+                                q_new(K) = max(qv_min, q_old(K) + q_tend(K))
+                            else              ! Other species can be zero
+                                q_new(K) = max(0.0, q_old(K) + q_tend(K))
+                            endif
+                        enddo
+                        
+                        ! Scale all water species to conserve total water
+                        if (abs(sum(q_new) - total_water_old) > 1.0e-10) then
+                            if (sum(q_new) > qv_min) then
+                                ! Calculate non-vapor water (liquid and ice)
+                                total_condensate = sum(q_new(2:6))
+                                
+                                if (total_condensate > 0.0) then
+                                    ! Adjust non-vapor species proportionally
+                                    scale_factor = (total_water_old - q_new(1)) / total_condensate
+                                    if (scale_factor > 0.0) then
+                                        q_new(2:6) = q_new(2:6) * scale_factor
+                                    else
+                                        ! Put excess in vapor
+                                        q_new(1) = total_water_old
+                                        q_new(2:6) = 0.0
+                                    endif
+                                else
+                                    ! Put excess in vapor
+                                    q_new(1) = total_water_old
+                                endif
+                            else
+                                ! Edge case - all water becomes vapor
+                                q_new(1) = total_water_old
+                                q_new(2:6) = 0.0
+                            endif
+                        endif
+                        
+                        ! Calculate adjusted tendencies
+                        q_tend_adj = q_new - q_old
+                    endif
+                    
+                    ! Apply adjusted tendencies to state
+                    RAD_QV(I,J,L) = q_old(1) + q_tend_adj(1)
+                    RAD_QL(I,J,L) = q_old(2) + q_tend_adj(2)
+                    RAD_QR(I,J,L) = q_old(3) + q_tend_adj(3)
+                    RAD_QI(I,J,L) = q_old(4) + q_tend_adj(4)
+                    RAD_QS(I,J,L) = q_old(5) + q_tend_adj(5)
+                    RAD_QG(I,J,L) = q_old(6) + q_tend_adj(6)
+                    
+                    ! Adjust temperature to conserve energy
+                    energy_old = cp_air * T_old + &
+                                 lv * (q_old(1) + q_old(2) + q_old(3)) + &
+                                 ls * (q_old(4) + q_old(5) + q_old(6))
+                                 
+                    energy_new = cp_air * (T_old + dt_old) + &
+                                 lv * (RAD_QV(I,J,L) + RAD_QL(I,J,L) + RAD_QR(I,J,L)) + &
+                                 ls * (RAD_QI(I,J,L) + RAD_QS(I,J,L) + RAD_QG(I,J,L))
+                    
+                    ! Calculate needed temperature adjustment
+                    energy_adjust = energy_old - energy_new
+                    cp_factor = cp_air
+                    
+                    ! Apply adjustment but ensure T doesn't go below minimum
+                    T_new = T_old + dt_old + energy_adjust / cp_factor
+                    T_new = max(T_min, T_new)
+                    T(I,J,L) = T_new
+                    
+                    ! Calculate adjusted temperature tendency
+                    dt_new = T_new - T_old
+                    
+                    ! Update tendencies with adjusted values (divide by DT_MOIST to get rates)
+                    DQVDTmic(I,J,L) = q_tend_adj(1) / DT_MOIST
+                    DQLDTmic(I,J,L) = q_tend_adj(2) / DT_MOIST
+                    DQRDTmic(I,J,L) = q_tend_adj(3) / DT_MOIST
+                    DQIDTmic(I,J,L) = q_tend_adj(4) / DT_MOIST
+                    DQSDTmic(I,J,L) = q_tend_adj(5) / DT_MOIST
+                    DQGDTmic(I,J,L) = q_tend_adj(6) / DT_MOIST
+                    DTDTmic(I,J,L) = dt_new / DT_MOIST
+                    
+                else
+                    ! No negatives - apply tendencies normally
+                    RAD_QV(I,J,L) = RAD_QV(I,J,L) + q_tend(1)
+                    RAD_QL(I,J,L) = RAD_QL(I,J,L) + q_tend(2)
+                    RAD_QR(I,J,L) = RAD_QR(I,J,L) + q_tend(3)
+                    RAD_QI(I,J,L) = RAD_QI(I,J,L) + q_tend(4)
+                    RAD_QS(I,J,L) = RAD_QS(I,J,L) + q_tend(5)
+                    RAD_QG(I,J,L) = RAD_QG(I,J,L) + q_tend(6)
+                    T(I,J,L) = T(I,J,L) + dt_old
+                    
+                    ! Tendencies remain unchanged (already correct values)
+                endif
+                
+                ! Apply momentum tendencies (these typically don't need adjustment)
+                U(I,J,L) = U(I,J,L) + du_old
+                V(I,J,L) = V(I,J,L) + dv_old
+                
+                ! Apply cloud fraction tendency with bounds
+                da_new = MIN(1.0, MAX(0.0, RAD_CF(I,J,L) + da_old)) - RAD_CF(I,J,L)
+                RAD_CF(I,J,L) = RAD_CF(I,J,L) + da_new
+                DQADTmic(I,J,L) = da_new / DT_MOIST
+                
+                ! Momentum tendencies remain unchanged (usually no need to adjust)
+                ! DUDTmic(I,J,L) and DVDTmic(I,J,L) keep their original values
+                
+            enddo
+        enddo
+    enddo
+
+end subroutine apply_microphysics_tendencies
 
 end module GEOSmoist_Process_Library

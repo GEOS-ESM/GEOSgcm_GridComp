@@ -96,6 +96,7 @@ contains
     type (ESMF_Config)                      :: CF
 
     logical                                 :: BLEND_AT_PBL
+    logical                                 :: BLEND_QV_AT_TP
 #ifdef HAS_PYMLINC
     ! IEEE trapping see below
     logical                                 :: halting_mode(5)
@@ -121,6 +122,11 @@ contains
 
     call MAPL_GetResource(MAPL, BLEND_AT_PBL,    LABEL="REPLAY_BLEND_AT_PBL:",   default=.FALSE., RC=status)
     VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
+    VERIFY_(STATUS)
+
+    if ( BLEND_AT_PBL ) BLEND_QV_AT_TP = .FALSE.
 
 ! Set the Run entry points (phase 1 for regular IAU and phase 2 for clearing
 ! --------------------------------------------------------------------------
@@ -290,6 +296,17 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                               &
          VLOCATION  = MAPL_VLocationNone,                              &
          RC=STATUS  )
+    VERIFY_(STATUS)
+    endif
+
+    if( BLEND_QV_AT_TP ) then
+    call MAPL_AddImportSpec(GC,                                        &
+         SHORT_NAME = 'TROPP_BLENDED',                                 &
+         LONG_NAME  = 'tropopause_pressure_based_on_blended_estimate', &
+         UNITS      = 'Pa',                                            &
+         DIMS       = MAPL_DimsHorzOnly,                               &
+         VLOCATION  = MAPL_VLocationNone,                              &
+         RC=STATUS  )                 
     VERIFY_(STATUS)
     endif
 
@@ -640,6 +657,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real,     pointer, dimension(:,:,:) :: pdum1 => null()
   real,     pointer, dimension(:,:,:) :: pdum2 => null()
   real,     pointer, dimension(:,:)   :: blnpp => null()
+  real,     pointer, dimension(:,:)   :: tropp => null()
 
   real, allocatable, dimension(:,:,:) ::  du_fix
   real, allocatable, dimension(:,:,:) ::  dv_fix
@@ -705,6 +723,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: FACP1, FACP0, FACM1, FACM2
   real                                :: DAMPBEG, DAMPEND
   logical                             :: BLEND_AT_PBL
+  logical                             :: BLEND_QV_AT_TP
   integer                             :: i,j,L,n
   integer                             :: nt,nvars,natts
   integer                             :: nymd, nhms
@@ -939,6 +958,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource(MAPL, BLEND_AT_PBL,  LABEL="REPLAY_BLEND_AT_PBL:", default=.FALSE., RC=status)
     VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
+    VERIFY_(STATUS)                   
 
        CREMAP = ESMF_UtilStringUpperCase(CREMAP)
       FIXWIND = ESMF_UtilStringUpperCase(FIXWIND)
@@ -2197,7 +2219,7 @@ CONTAINS
 ! ****   with option to blend QV specially, starting at tropopause. ****
 ! **********************************************************************
 
-      if( DAMPBEG.ne.DAMPEND .or. BLEND_AT_PBL ) then
+      if( DAMPBEG.ne.DAMPEND .or. BLEND_AT_PBL .or. BLEND_QV_AT_TP ) then
 
           if(first .and. MAPL_AM_I_ROOT()) then
              if(DAMPBEG.ne.DAMPEND) then
@@ -2210,8 +2232,20 @@ CONTAINS
              else
                 print *, 'No blending based on PBL'
              endif
+             if(BLEND_QV_AT_TP) then
+                if(BLEND_AT_PBL) then
+                   print *, 'Blending at PBL supercedes QV blending at TROPP'
+                else
+                   print *, 'Blending ANA and BKG QV based on TROPP'
+                endif
+             else
+                print *, 'No blending of QV based on TROPP'
+             endif
              print *
           endif
+
+          ! Enforce priority now that warning has been logged
+          if ( BLEND_AT_PBL ) BLEND_QV_AT_TP = .FALSE.
 
           if( BLEND_AT_PBL ) then
              allocate ( pdum1(IMbkg,JMbkg,1) )
@@ -2230,13 +2264,30 @@ CONTAINS
              endif
              blnpp => pdum2(:,:,1)
           endif
+          if( BLEND_QV_AT_TP ) then
+             allocate ( pdum1(IMbkg,JMbkg,1) )
+             allocate ( pdum2(IM,   JM,   1) )
+             pdum1=0.0
+
+             call MAPL_GetPointer(import, ptr2d, 'TROPP_BLENDED', RC=STATUS)
+             VERIFY_(STATUS)
+             pdum1(:,:,1) = ptr2d
+
+             if (trim(GRIDINC)=="ANA" .and. do_transforms) then
+                call mkiau_internal_state%bkg2ana_regridder%regrid(pdum1, pdum2, RC=STATUS)
+                VERIFY_(STATUS)
+             else
+                pdum2=pdum1
+             endif
+             tropp => pdum2(:,:,1)
+          endif
 
           call blend ( ple_ana,u_ana,v_ana,t_ana,q_ana,o3_ana,     &
                        ple_bkg,u_bkg,v_bkg,t_bkg,q_bkg,o3_bkg,     &
                        im,jm,LMbkg, DAMPBEG,DAMPEND, BLEND_AT_PBL,  &
-                       blnpp=blnpp )
+                       BLEND_QV_AT_TP, blnpp=blnpp, tropp=tropp )
 
-          if( BLEND_AT_PBL ) then
+          if( BLEND_AT_PBL .or. BLEND_QV_AT_TP ) then
              deallocate ( pdum1 )
              deallocate ( pdum2 )
           endif
@@ -2680,17 +2731,21 @@ CONTAINS
   subroutine blend ( plea,ua,va,ta,qa,oa,     &
                      pleb,ub,vb,tb,qb,ob,     &
                      im,jm,lm, pabove,pbelow, &
-                     BLEND_AT_PBL, blnpp    )
+                     BLEND_AT_PBL,            &
+                     BLEND_QV_AT_TP,          &
+                     blnpp, tropp    )
 
 ! Blends Anaylsis and Background values.
-! This routine is called if pabove /= pbelow or BLEND_AT_PBL
+! This routine is called if pabove /= pbelow or BLEND_AT_PBL or BLEND_QV_AT_TP
 ! ***************************************************************************
 
       implicit none
       integer, intent(IN)    :: im,jm,lm
       real,    intent(IN)    :: pabove,pbelow
       logical, intent(IN)    :: BLEND_AT_PBL
+      logical, intent(IN)    :: BLEND_QV_AT_TP
 
+      ! Background values
       real,    intent(IN)    :: pleb(im,jm,lm+1)
       real,    intent(IN)    ::   ub(im,jm,lm)
       real,    intent(IN)    ::   vb(im,jm,lm)
@@ -2698,6 +2753,8 @@ CONTAINS
       real,    intent(IN)    ::   qb(im,jm,lm)
       real,    intent(IN)    ::   ob(im,jm,lm)
 
+      ! IN: Anaylsis values
+      ! OUT: Blended values
       real,    intent(INOUT) :: plea(im,jm,lm+1)
       real,    intent(INOUT) ::   ua(im,jm,lm)
       real,    intent(INOUT) ::   va(im,jm,lm)
@@ -2706,43 +2763,94 @@ CONTAINS
       real,    intent(INOUT) ::   oa(im,jm,lm)
 
       real,    intent(IN), optional, pointer :: blnpp(:,:)   ! blending pressure when BLEND_AT_PBL is TRUE
+      real,    intent(IN), optional, pointer :: tropp(:,:)   ! Tropopause Pressure used when BLEND_QV_AT_TP is TRUE
 
 ! Locals
 ! ------
+      real pkea(im,jm,lm+1)
+      real pkeb(im,jm,lm+1)
+      real phia(im,jm,lm+1)
+      real phib(im,jm,lm+1)
+
+      real  thva(im,jm,lm)
+      real  thvb(im,jm,lm)
+      real   pka(im,jm,lm)
+      real   pkb(im,jm,lm)
+
       real pabove_BL,pbelow_BL
       real bl_press
 
-      real alf,p
+      real pabove_QV,pbelow_QV  ! compute from tropp
+      real tp_press
+
+      real alf,eps,p
       integer i,j,L
+
+       eps = MAPL_RVAP/MAPL_RGAS-1.0
+      pkea = plea**MAPL_KAPPA
+      pkeb = pleb**MAPL_KAPPA
+
+      do L=1,lm
+       pka(:,:,L) = ( pkea(:,:,L+1)-pkea(:,:,L) ) / ( MAPL_KAPPA*log(plea(:,:,L+1)/plea(:,:,L)) )
+       pkb(:,:,L) = ( pkeb(:,:,L+1)-pkeb(:,:,L) ) / ( MAPL_KAPPA*log(pleb(:,:,L+1)/pleb(:,:,L)) )
+      thva(:,:,L) = ta(:,:,L)*(1.0+eps*qa(:,:,L)) / pka(:,:,L)
+      thvb(:,:,L) = tb(:,:,L)*(1.0+eps*qb(:,:,L)) / pkb(:,:,L)
+      enddo
+
+      phia(:,:,lm+1) = 0.0
+      phib(:,:,lm+1) = 0.0
+      do L=lm,1,-1
+      phia(:,:,L) = phia(:,:,L+1) + MAPL_CP*thva(:,:,L)*( pkea(:,:,L+1)-pkea(:,:,L) )
+      phib(:,:,L) = phib(:,:,L+1) + MAPL_CP*thvb(:,:,L)*( pkeb(:,:,L+1)-pkeb(:,:,L) )
+      enddo
 
       if ( pabove /= pbelow ) then
 
-           do j=1,jm
-           do i=1,im
-           do L=1,lm
-             p = 0.5*( plea(i,j,L)+plea(i,j,L+1) )
-             if( p.le.pabove ) then
-                 alf = 0.0   !  use the analysis value
-             else if( p.gt.pabove .and. p.le.pbelow ) then
-                 alf = ((LOG(p)     -LOG(pabove))/ &
-                        (LOG(pbelow)-LOG(pabove)))**3
-             else
-                 alf = 1.0   !  use the background value
-             endif
+! Blend mid-level u,v,q and o3
+! ----------------------------
+      do L=1,lm
+      do j=1,jm
+      do i=1,im
+         p = 0.5*( plea(i,j,L)+plea(i,j,L+1) )
+         if( p.le.pabove ) then
+             alf = 0.0
+         else if( p.gt.pabove .and. p.le.pbelow ) then
+             alf = (p-pabove)/(pbelow-pabove)
+         else
+             alf = 1.0
+         endif
+                                   ua(i,j,L) =   ub(i,j,L) + alf*(   ua(i,j,L)-  ub(i,j,L) )
+                                   va(i,j,L) =   vb(i,j,L) + alf*(   va(i,j,L)-  vb(i,j,L) )
+                                   oa(i,j,L) =   ob(i,j,L) + alf*(   oa(i,j,L)-  ob(i,j,L) )
+         IF (.NOT. BLEND_QV_AT_TP) qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+      enddo
+      enddo
+      enddo
 
-           plea(i,j,L) = pleb(i,j,L) + alf*( plea(i,j,L)- pleb(i,j,L) )
-             ua(i,j,L) =   ub(i,j,L) + alf*(   ua(i,j,L)-   ub(i,j,L) )
-             va(i,j,L) =   vb(i,j,L) + alf*(   va(i,j,L)-   vb(i,j,L) )
-             ta(i,j,L) =   tb(i,j,L) + alf*(   ta(i,j,L)-   tb(i,j,L) )
-             qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-   qb(i,j,L) )
-             oa(i,j,L) =   ob(i,j,L) + alf*(   oa(i,j,L)-   ob(i,j,L) )
+! Blend edge-level phi
+! --------------------
+      do L=1,lm+1
+      do j=1,jm
+      do i=1,im
+         p = plea(i,j,L)
+         if( p.le.pabove ) then
+             alf = 0.0
+         else if( p.gt.pabove .and. p.le.pbelow ) then
+             alf = (p-pabove)/(pbelow-pabove)
+         else
+             alf = 1.0
+         endif
+         phia(i,j,L) = phib(i,j,L) + alf*( phia(i,j,L)-phib(i,j,L) )
+      enddo
+      enddo
+      enddo
 
-           enddo
-           plea(i,j,LM+1) = pleb(i,j,LM+1)
-
-           enddo
-           enddo
-
+! Compute T based on blended phi
+! ------------------------------
+      do L=1,lm
+        ta(:,:,L) = ( phia(:,:,L)-phia(:,:,L+1) )/( pkea(:,:,L+1)-pkea(:,:,L) ) &
+                  / (MAPL_CP*(1.0+eps*qa(:,:,L))) * pka(:,:,L)
+      enddo
       endif
 
 ! Blend from surface to blnpp
@@ -2779,6 +2887,41 @@ CONTAINS
 
            enddo
            plea(i,j,LM+1) = pleb(i,j,LM+1)
+
+           enddo
+           enddo
+      endif
+
+! Use Analysis values of water vapor in the troposphere
+! Relax to Background values in the stratosphere
+! -----------------------------------------------------
+      if ( BLEND_QV_AT_TP ) then
+           do j=1,jm
+           do i=1,im
+
+           IF ( tropp(i,j) == MAPL_UNDEF ) THEN
+                tp_press = 100.0 * 100.0   ! 100 hPa
+           ELSE
+                tp_press = tropp(i,j)
+           ENDIF
+
+           pabove_QV = tp_press * 0.5
+           pbelow_QV = tp_press * 1.0
+
+           do L=1,lm
+             p = 0.5*( pleb(i,j,L)+pleb(i,j,L+1) )
+             if( p.le.pabove_QV ) then
+                 alf = 0.0   !  use the background value
+             else if( p.gt.pabove_QV .and. p.le.pbelow_QV ) then
+                 alf = (LOG(p)        -LOG(pabove_QV))/ &
+                       (LOG(pbelow_QV)-LOG(pabove_QV))
+             else
+                 alf = 1.0   !  use the analysis value
+             endif
+
+             qa(i,j,L) = qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+
+           enddo
 
            enddo
            enddo

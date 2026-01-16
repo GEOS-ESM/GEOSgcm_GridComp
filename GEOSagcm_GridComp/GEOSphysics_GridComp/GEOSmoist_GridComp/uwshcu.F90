@@ -30,6 +30,9 @@ module uwshcu
      real     :: rkfre              ! fraction_of_tke_associated_with_vertical_velocity
      real     :: rkm                ! Factor controlling lateral mixing rate
      real     :: mixscale           ! Controls vertical structure of mixing
+     real     :: rkfre_hr           ! fraction_of_tke_associated_with_vertical_velocity High Resolution
+     real     :: rkm_hr             ! Factor controlling lateral mixing rate High Resolution
+     real     :: mixscale_hr        ! Controls vertical structure of mixing High Resolution
      real     :: detrhgt            ! Mixing rate increases above this height
      real     :: rmaxfrac           ! Maximum core updraft fraction
      real     :: mumin1             ! 
@@ -49,7 +52,7 @@ module uwshcu
   type   (SHLWPARAM_TYPE) :: SHLWPARAMS
 
    private
-   public compute_uwshcu_inv, SHLWPARAMS
+   public compute_uwshcu_inv, SHLWPARAMS, LIMIT_RKFRE
 
    real, parameter :: xlv   = MAPL_ALHL             ! Latent heat of vaporization
    real, parameter :: xlf   = MAPL_ALHF             ! Latent heat of fusion
@@ -65,6 +68,10 @@ module uwshcu
    real, parameter :: qpmin = 1.e-8  !< min value for suspended rain/snow/liquid/ice precip
    real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
    real, parameter :: qcmin = 1.e-12 !< min value for cloud condensates
+
+   logical, parameter :: fix_negative = .false.
+
+   logical :: LIMIT_RKFRE = .false.
 
    real, parameter :: mintracer = 0.0
 contains
@@ -947,8 +954,6 @@ contains
     ! ----------------------- !
 
     real :: rle          !  For critical stopping distance for lateral entrainment [no unit]
-    real :: rkm          !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
-    real :: mixscale     !  Specify vertical structure of mixing rate
     real :: detrhgt      !  Mixing rate increases above this height to speed detrainment
     real :: rmaxfrac     !  Maximum allowable 'core' updraft fraction
     real :: mumin1       !  Normalized CIN ('mu') corresponding to 'rmaxfrac' at the PBL top
@@ -961,9 +966,13 @@ contains
                          !  'u' & 'v' by horizontal PGF during upward motion [no unit]
     real :: frc_rasn
 
+    real :: cbmf_raw, rkfre_eff
+
 !!! TEMPORARY:  should be ncnst array of minimum values for all constituents
 !!! real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
 
+    real :: tiny = 1.e-15
+    real :: arg, den
 
     ! ---------------------------------------- !
     ! Bulk microphysics controlling parameters !
@@ -996,8 +1005,6 @@ contains
     rpen             = shlwparams%rpen
     cridist_opt      = shlwparams%cridist_opt
     rle       = shlwparams%rle      !  For critical stopping distance for lateral entrainment [no unit]
-    rkm       = shlwparams%rkm      !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
-    mixscale  = shlwparams%mixscale !  Specifies vertical structure of mixing rate
     detrhgt   = shlwparams%detrhgt  !  Specifies vertical structure of mixing rate
     rmaxfrac  = shlwparams%rmaxfrac !  Maximum allowable 'core' updraft fraction
     mumin1    = shlwparams%mumin1
@@ -1448,11 +1455,12 @@ contains
        ! interface values of 'thvl' in each layers within the PBL.                  !
        ! -------------------------------------------------------------------------- !
        
+       ! averaged within the boundary layer
          dpsum    = 0.
          thvlmin  = 1000.
          thvlavg  = 0.
          qtavg = 0.
-         do k = 1,kinv ! max(kinv-1,1)    ! Here, 'k' is an interfacial layer index.  
+         do k = 1,kinv ! Here, 'k' is an interfacial layer index.  
             dpi = pifc0(k-1) - pifc0(k)
             dpsum  = dpsum  + dpi 
             tkeavg = tkeavg + dpi*tke(k)
@@ -1468,27 +1476,31 @@ contains
          thvlavg = thvlavg/dpsum
          qtavg   = qtavg/dpsum
 
-        ! weighted average over lowest 20mb
-!         dpsum = 0.
-!         do k = 1,kinv
-!             dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
-!             qtavg  = qtavg  + dpi*qt0(k)
-!             dpsum = dpsum + dpi
-!         end do
-!         qtavg   = qtavg/dpsum
+!       ! weighted average over lowest 20mb
+!        dpsum = 0.
+!        qtavg = 0.
+!        do k = 1,kinv
+!            dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
+!            qtavg  = qtavg  + dpi*qt0(k)
+!            dpsum = dpsum + dpi
+!        end do
+!        qtavg = qtavg/dpsum
  
-       ! Interpolate qt to specified height
-!         k = 1
-!         do while (zmid0(k).lt.qtsrchgt)
-!         do while (zmid0(k).lt.0.5*zmid0(kinv))   ! use qt from half of inv height
-!           k = k+1
-!         end do
-!         if (k.gt.1) then
-!           qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
-!           qtavg = qtavg / (zmid0(k)-zmid0(k-1))
-!         else
-!           qtavg = qt0(1)
-!         end if
+       ! Interpolate qt to specified height or the PBL edge height
+         if (qtsrchgt > 1.0) then
+            k = 1
+            do while (zmid0(k).lt.qtsrchgt)
+              k = k+1
+            end do
+            if (k.gt.1) then
+               qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
+               qtavg = qtavg / (zmid0(k)-zmid0(k-1))
+            else
+               qtavg = qt0(1)
+            endif
+         else
+            qtavg = qt0(kinv-1)
+         endif
 
        ! ------------------------------------------------------------------ !
        ! Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc !
@@ -1499,11 +1511,12 @@ contains
        ! ------------------------------------------------------------------ !
 
          if (windsrcavg) then
-            zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
-            buoyflx = (-shfx(i)/cp-0.608*t0(1)*evap(i))/zrho ! K m s-1
-!            delzg = (zifc0(1)-zifc0(0))*g
-            delzg = (50.0)*g   ! assume 50m surface scale
-            wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(1)) ! m3 s-3
+            zrho = pifc0(0)/(287.04*(t0(kinv-1)*(1.+0.608*qv0(kinv-1))))
+            buoyflx = (-shfx(i)/cp-0.608*t0(kinv-1)*evap(i))/zrho ! K m s-1
+            delzg = max(zifc0(kinv-1)-zifc0(0),50.0)*g ! Matches Deardorff scaling
+!           delzg = (zifc0(1)-zifc0(0))*g ! just the surface parcel
+!           delzg = (50.0)*g              ! assume 50m surface scale
+            wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(kinv-1)) ! m3 s-3
             qpert_out(i) = 0.0
             tpert_out(i) = 0.0
             if (wstar > 0.001) then
@@ -1511,17 +1524,16 @@ contains
               tpert_out(i) = thlsrc_fac*shfx(i)/(zrho*wstar*cp)  ! K
               qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
             end if
-            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 1% of QT
+            qpert_out(i) = max(min(qpert_out(i),0.02*qt0(kinv-1)),0.)  ! limit to 2% of QT
             tpert_out(i) = 0.1+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
             qtsrc   = qtavg + qpert_out(i)
-!           qtsrc   = qt0(1) + qpert_out(i)
-!           thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
-            thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
+!           thvlsrc = thvlavg + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(kinv-1)
+            thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(kinv-1)
             thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc  = uavg
             vsrc  = vavg
          else
-            qtsrc   = qt0(1)
+            qtsrc   = qt0(kinv-1)
             thvlsrc = thvlmin
             thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc    = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
@@ -1648,7 +1660,7 @@ contains
 !             exit
 !           end if
 !        end do
-!        lts = lts - t0(1)/exnmid0(1)
+!        lts = lts - t0(kinv-1)/exnmid0(kinv-1)
 
         !------------------------------------------------------------------------!
         ! Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' ) !
@@ -1746,6 +1758,31 @@ contains
        endif
 
        !----------------------------------------------------------------------!
+       ! determine rkfre stability limiter based on rkfre or 1.9 x cbmf       !
+       !----------------------------------------------------------------------!
+       if (LIMIT_RKFRE) then
+         if( use_CINcin ) then
+            wcrit = sqrt(max(0.0, 2. * cin * rbuoy) )
+         else
+            wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
+         endif
+         sigmaw = sqrt(max(0.0, rkfre(i) * tkeavg + epsvarw) )
+         mu = min(wcrit/sigmaw/1.4142, 3.0)
+         rho0inv = pifc0(kinv-1)/(r*thv0top(kinv-1)*exnifc0(kinv-1))
+         cbmf_raw = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
+         ! --- compute cbmf limit based on mass availability ---
+         cbmflimit = max(tiny, 1.9*dp0(kinv-1)/g/dt)
+         ! --- adjust rkfre dynamically for stability ---
+         if (cbmf_raw > cbmflimit) then
+            rkfre_eff = min(rkfre(i), max(0.1,cbmflimit/cbmf_raw))
+         else
+            rkfre_eff = rkfre(i)
+         end if
+       else
+         rkfre_eff = rkfre(i)
+       endif
+
+       !----------------------------------------------------------------------!
        ! In order to calculate implicit 'cin' (or 'cinlcl'), save the initially !
        ! calculated 'cin' and 'cinlcl', and other related variables. These will !
        ! be restored after calculating implicit CIN.                            !
@@ -1754,7 +1791,7 @@ contains
        if( iter .eq. 1 ) then 
            cin_i       = cin
            cinlcl_i    = cinlcl
-           ke          = rbuoy / ( rkfre(i) * tkeavg + epsvarw ) 
+           ke          = rbuoy / ( rkfre_eff * tkeavg + epsvarw )
            kinv_o      = kinv     
            klcl_o      = klcl     
            klfc_o      = klfc    
@@ -2170,7 +2207,7 @@ contains
          else
             wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
          endif
-         sigmaw = sqrt(max(0.0, rkfre(i) * tkeavg + epsvarw) )
+         sigmaw = sqrt(max(0.0, rkfre_eff * tkeavg + epsvarw) )
          mu = wcrit/sigmaw/1.4142                  
          if( mu .ge. 3. ) then
             if (scverbose) then
@@ -2185,7 +2222,7 @@ contains
          ! 1. 'cbmf' constraint
          cbmflimit = 0.9*dp0(kinv-1)/g/dt
          mumin0 = 0.
-         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(max(0.0,-log(max(tiny(0.0),2.5066*cbmflimit/rho0inv/sigmaw))))
+         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmflimit/rho0inv/sigmaw))))
 ! ALT ?? if( cbmf .gt. cbmflimit ) mumin0 = sqrt(mu**2-log(cbmflimit/cbmf))
          ! 2. 'ufrcinv' constraint
          mu = max(max(mu,mumin0),mumin1)
@@ -2210,10 +2247,9 @@ contains
        ! 'ufrclcl' are smaller than ufrcmax with no instability.             !
        ! ------------------------------------------------------------------- !
 
-         cbmf = rkfre(i)*(rho0inv*sigmaw/2.5066)*exp(-mu**2)                       
+         cbmf = rkfre_eff*(rho0inv*sigmaw/2.5066)*exp(-mu**2)
          winv = sigmaw*(2./2.5066)*exp(-mu**2)/erfc(mu)
          ufrcinv = cbmf/winv/rho0inv
-
 
        ! ------------------------------------------------------------------- !
        ! Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top, !
@@ -2248,7 +2284,7 @@ contains
          endif
          ufrc(krel-1) = ufrclcl
 
-      ! ----------------------------------------------------------------------- !
+       ! ----------------------------------------------------------------------- !
        ! Below is just diagnostic output for detailed analysis of cumulus scheme !
        ! ----------------------------------------------------------------------- !
 
@@ -2490,42 +2526,61 @@ contains
           qtue  = qtu(km1)    
           wue   = wu(km1)
           wtwb  = wtw  
+          wtw   = wu(km1) * wu(km1)
+
+          ! ---------------------------------------------------------------- !
+          ! Calculate environmental saturation 'excess' at 'pe' - once only !
+          ! ---------------------------------------------------------------- !
+          call conden(pe,thle,qte,thj,qvj,qlj,qij,qse,id_check)
+          if( id_check .eq. 1 ) then
+             exit_conden(i) = 1.
+             id_exit = .true.
+             if (scverbose) then
+               call write_parallel('------- UW ShCu: exit, conden')
+             end if
+             go to 333
+          end if
+          thv0j    = thj * ( 1. + zvir*qvj - qlj - qij )
+          rhomid0j    = pe / ( r * thv0j * exne )
+          qsat_arg = thle*exne
+          qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)
+          excess0  = qte - qs
+
+          ! ----------------------------------------------------------------- !
+          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
+          ! ----------------------------------------------------------------- !
+          if (cridist_opt.eq.0) then
+           cridis = rle*scaleh                 ! Original code
+          else
+           cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
+          end if 
+              
+          ! ------------------------------------------------------------------ !
+          ! Base rei calculation - will be modified by xc limiter in iteration !
+          ! ------------------------------------------------------------------ !
+          if (min(scaleh,mix2d(i)) .gt. tiny) then
+            rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )
+          else 
+            rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j )
+          end if
 
          do iter_xc = 1, niter_xc
           
-            wtw = wu(km1) * wu(km1)
 
           ! ---------------------------------------------------------------- !
-          ! Calculate environmental and cumulus saturation 'excess' at 'pe'. !
-          ! Note that in order to calculate saturation excess, we should use ! 
-          ! liquid water temperature instead of temperature  as the argument !
-          ! of "qsat". But note normal argument of "qsat" is temperature.    !
+          ! Calculate cumulus saturation 'excess' at 'pe'.                  !
           ! ---------------------------------------------------------------- !
-
-            call conden(pe,thle,qte,thj,qvj,qlj,qij,qse,id_check)
-            if( id_check .eq. 1 ) then
-               exit_conden(i) = 1.
-               id_exit = .true.
-               if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
-               end if
-               go to 333
-            end if
-            thv0j    = thj * ( 1. + zvir*qvj - qlj - qij )
-            rhomid0j    = pe / ( r * thv0j * exne )
-            qsat_arg = thle*exne
-            qs =  GEOS_QSAT(qsat_arg,qsat_pe/100.)     
-            excess0  = qte - qs
-
-            call conden(pe,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
-            if( id_check .eq. 1 ) then
-               exit_conden(i) = 1.
-               id_exit = .true.
-               if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
-               end if
-               go to 333
-            end if
+            if (iter_xc .gt. 1) then
+              call conden(pe,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
+              if( id_check .eq. 1 ) then
+                 exit_conden(i) = 1.
+                 id_exit = .true.
+                 if (scverbose) then
+                   call write_parallel('------- UW ShCu: exit, conden')
+                 end if
+                 go to 333
+              end if
+            endif
           ! ----------------------------------------------------------------- !
           ! Detrain excessive condensate larger than 'criqc' from the cumulus ! 
           ! updraft before performing buoyancy sorting. All I should to do is !
@@ -2567,27 +2622,13 @@ contains
           ! Current below code does not entrain unsaturated mixture. However it !
           ! should be modified such that it also entrain unsaturated mixture.   !
           ! ------------------------------------------------------------------- !
-
-          ! ----------------------------------------------------------------- !
-          ! cridis : Critical stopping distance for buoyancy sorting purpose. !
-          !          scaleh is only used here.                                !
-          ! ----------------------------------------------------------------- !
-
-           if (cridist_opt.eq.0) then
-            cridis = rle*scaleh                 ! Original code
-           else
-            cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
-           end if 
-
           ! ---------------- !
           ! Buoyancy Sorting !
           ! ---------------- !                   
-
+            xsat = 0.
           ! ----------------------------------------------------------------- !
           ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
           ! ----------------------------------------------------------------- !
-            xsat = 0.
-
             if( ( excessu .le. 0. .and. excess0 .le. 0. ) .or. ( excessu .ge. 0. .and. excess0 .ge. 0. ) ) then
                 xc = min(1.,max(0.,1.-2.*rbuoy*g*cridis/wue**2.*(1.-thvj/thv0j)))
               ! Below 3 lines are diagnostic output not influencing
@@ -2656,52 +2697,25 @@ contains
             endif
 
           ! ------------------------------------------------------------------------ !
-          ! Compute fractional lateral entrainment & detrainment rate in each layers.!
-          ! The unit of rei(k), fer(k), and fdr(k) is [Pa-1].  Alternative choice of !
-          ! 'rei(k)' is also shown below, where coefficient 0.5 was from approximate !
-          ! tuning against the BOMEX case.                                           !
-          ! In order to prevent the onset of instability in association with cumulus !
-          ! induced subsidence advection, cumulus mass flux at the top interface  in !
-          ! any layer should be smaller than ( 90% of ) total mass within that layer.!
-          ! I imposed limits on 'rei(k)' as below,  in such that stability condition ! 
-          ! is always satisfied.                                                     !
-          ! Below limiter of 'rei(k)' becomes negative for some cases, causing error.!
-          ! So, for the time being, I came back to the original limiter.             !
+          ! Limit fractional lateral entrainment & detrainment rate in each layers.!
           ! ------------------------------------------------------------------------ !
+            if (xc .gt. 0.5) then
+               arg = dp0(k) / g / dt / max(umf(km1), tiny) + 1.0
+               den = dpe * (2.0*xc - 1.0)
+               if (den > tiny) then
+                  rei(k) = min(rei(k), 0.9*log(max(tiny, arg)) / den)
+               endif
+            endif
+
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
-            if (min(scaleh,mix2d(i)).gt.0.0) then
-              rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
-! regression bug due to cnvtr
-! WMP         rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
-            else
-              rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
-            end if
-
-            if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny(0.0),dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
             xco(k) = xc
 
-          
-
-
           ! ------------------------------------------------------------------------------ !
           ! Iteration Start due to 'maxufrc' constraint [ ****************************** ] ! 
           ! ------------------------------------------------------------------------------ !
-
-          ! -------------------------------------------------------------------------- !
-          ! Calculate cumulus updraft mass flux and penetrative entrainment mass flux. !
-          ! Note that  non-zero penetrative entrainment mass flux will be asigned only !
-          ! to interfaces from the top interface of 'kbup' layer to the base interface !
-          ! of 'kpen' layer as will be shown later.                                    !
-          ! -------------------------------------------------------------------------- !
-
-            umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
-            emf(k) = 0.
-   
-            dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
-!           dcm(k) = min(1.,max(0.,xsat-xc))
 
           ! --------------------------------------------------------- !
           ! Compute cumulus updraft properties at the top interface.  !
@@ -2831,13 +2845,6 @@ contains
               wtw = wtw + dpe * ( bogbot + bogtop ) / rhomid0j
             endif
 
-        ! Force the plume rise at least to klfc of the undiluted plume.
-        ! Because even the below is not complete, I decided not to include this.
-
-        ! if( k .le. klfc ) then
-        !     wtw = max( 1.e-2, wtw )
-        ! endif 
-         
           ! -------------------------------------------------------------- !
           ! Repeat 'iter_xc' iteration loop until 'iter_xc = niter_xc'.    !
           ! Also treat the case even when wtw < 0 at the 'kpen' interface. !
@@ -2848,12 +2855,28 @@ contains
               qtue  = 0.5 * ( qtu(km1)  +  qtu(k) )         
               wue   = 0.5 *   sqrt( max( wtwb + wtw, 0. ) )
             else
-              go to 111
+              exit   ! <-- exit iter_xc loop ONLY
             endif 
 
          end do  ! iter_xc loop
 
-     111 continue
+          ! -------------------------------------------------------------------------- !
+          ! Calculate cumulus updraft mass flux and penetrative entrainment mass flux. !
+          ! Note that  non-zero penetrative entrainment mass flux will be asigned only !
+          ! to interfaces from the top interface of 'kbup' layer to the base interface !
+          ! of 'kpen' layer as will be shown later.                                    !
+          ! -------------------------------------------------------------------------- !
+         
+            umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
+            emf(k) = 0.
+          
+          ! --------------------------------------------------------- !
+          ! Limit umf based on (2x) the CFL condition
+          ! --------------------------------------------------------- !
+            umf(k) = min(umf(k),2.*dp0(k)/g/dt)
+          
+            dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
+!           dcm(k) = min(1.,max(0.,xsat-xc))
 
           ! --------------------------------------------------------------------------- ! 
           ! Add the contribution of self-detrainment  to vertical variations of cumulus !
@@ -2953,7 +2976,7 @@ contains
               limit_ufrc(i) = 1. 
               ufrc(k) = rmaxfrac
               umf(k)  = rmaxfrac * rhoifc0j * wu(k)
-              fdr(k)  = fer(k) - log(max(tiny(0.0), umf(k) / umf(km1)) ) / dpe
+              fdr(k)  = fer(k) - log(max(tiny, umf(k) / umf(km1)) ) / dpe
           endif
 
           ! ------------------------------------------------------------ !
@@ -3932,6 +3955,7 @@ contains
 	   ! 
            ! ----------------------------------------------------------------- !
 
+           if (fix_negative) then
            if ( ((qc_lm+qlten_sink(k))*dt+ql0(k)).lt.0. ) then
               totsink = qc_lm+qlten_sink(k)
               if (totsink.ne.0.) then
@@ -3948,6 +3972,7 @@ contains
                 qiten_det(k) = qc_i(k) + qc_im
               end if
            end if
+           endif
 
            qlten(k) = qrten(k) + qlten_sink(k) + qlten_det(k)
            qiten(k) = qsten(k) + qiten_sink(k) + qiten_det(k)
@@ -4011,6 +4036,7 @@ contains
        !                in combination with the original computation of qlten, qiten. However,
        !                if we use new 'qlten,qiten', there is no problem.
 
+         if (fix_negative) then
          qv0_star(:k0) = qv0(:k0) + qvten(:k0) * dt
          ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
          qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
@@ -4019,6 +4045,7 @@ contains
               dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
          qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
          slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
+         endif
 
        ! --------------------- !
        ! Tendencies of tracers !

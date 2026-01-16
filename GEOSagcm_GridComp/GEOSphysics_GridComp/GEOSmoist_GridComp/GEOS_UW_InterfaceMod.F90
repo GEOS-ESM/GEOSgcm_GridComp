@@ -19,7 +19,8 @@ module GEOS_UW_InterfaceMod
 
   integer USE_TRACER_TRANSP_UW      ! transport tracers in UW
   real    :: SCLM_SHALLOW
-  logical :: JASON_UW
+  logical :: JASON_UW, JASON_MFD_SC
+  logical :: REPORT_UW_NEGATIVES
 
   private
 
@@ -96,34 +97,50 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_Get ( MAPL, LM=LM, RC=STATUS )
     VERIFY_(STATUS)
 
+                JASON_UW = .FALSE.
+    if (LM==72) JASON_UW = .TRUE.
+    call MAPL_GetResource(MAPL, JASON_UW, 'JASON_UW:', default=JASON_UW, RC=STATUS) ; VERIFY_(STATUS)
+
+                JASON_MFD_SC = .FALSE.
+    if (LM==72) JASON_MFD_SC = .TRUE.
+    call MAPL_GetResource(MAPL, JASON_MFD_SC, 'JASON_MFD_SC:', default=JASON_MFD_SC, RC=STATUS) ; VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, REPORT_UW_NEGATIVES, 'REPORT_UW_NEGATIVES:', default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
+
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , RC=STATUS) ; VERIFY_(STATUS)
-    if (LM==72) then
-      call MAPL_GetResource(MAPL, JASON_UW,                  'JASON_UW:'            ,default= .TRUE. , RC=STATUS) ; VERIFY_(STATUS)
-    else
-      call MAPL_GetResource(MAPL, JASON_UW,                  'JASON_UW:'            ,default= .FALSE., RC=STATUS) ; VERIFY_(STATUS)
-    endif
     if (JASON_UW) then
       call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=0.0,    RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, LIMIT_RKFRE,                 'LIMIT_RKFRE:'     ,DEFAULT= .FALSE., RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
     else
       call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=3000.0, RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=0.9e-3, RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE_HR,      'MIXSCALE_HR:'     ,DEFAULT=2500.0, RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 11.0,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE_HR,         'RKFRE_HR:'        ,DEFAULT= 0.2,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 10.0,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM_HR,           'RKM_HR:'          ,DEFAULT= 14.0,  RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, LIMIT_RKFRE,                 'LIMIT_RKFRE:'     ,DEFAULT= .TRUE., RC=STATUS) ; VERIFY_(STATUS) 
+      SHLWPARAMS%NITER_XC = min(5,max(2, CEILING(UW_DT/225.0)))
+      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=SHLWPARAMS%NITER_XC, RC=STATUS) ; VERIFY_(STATUS)
     endif
-    call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%CRIDIST_OPT,      'CRIDIST_OPT:'     ,DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
@@ -141,9 +158,6 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%KEVP,             'KEVP:'            ,DEFAULT=2.e-6,  RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RDROP,            'SHLW_RDROP:'      ,DEFAULT=8.e-6,  RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%DETRHGT,          'DETRHGT:'         ,DEFAULT=1800.0, RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT=40.0,   RC=STATUS) ; VERIFY_(STATUS)
-
 end subroutine UW_Initialize
 
 subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
@@ -337,12 +351,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
       do J=1,JM
         do I=1,IM
-          !! option to vary RKFRE by resolution
-           SIG   = sigma(SQRT(PTR2D(i,j)))                      ! Param -> Resolved
-           RKFRE(i,j) = SHLWPARAMS%RKFRE
-           ! support for varying rkm/mix if needed              ! Param -> Resolved
-           RKM2D(i,j) = SHLWPARAMS%RKM*SIG + 8.0*(1.0-SIG)      ! RKM   -> 8.0
-           MIX2D(i,j) = SHLWPARAMS%MIXSCALE
+           SIG   = SIGMA(SQRT(PTR2D(i,j)))                    ! Coarse     -> Fine
+           ! Support for varying UW parameters by resolution  ! Coarse*SIG -> Fine*(1.0-SIG)
+           RKFRE(i,j) = SHLWPARAMS%RKFRE   *SIG  + SHLWPARAMS%RKFRE_HR   *(1.0-SIG) 
+           RKM2D(i,j) = SHLWPARAMS%RKM     *SIG  + SHLWPARAMS%RKM_HR     *(1.0-SIG) 
+           MIX2D(i,j) = SHLWPARAMS%MIXSCALE*SIG  + SHLWPARAMS%MIXSCALE_HR*(1.0-SIG)
         enddo
       enddo 
     endif
@@ -379,7 +392,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
       !  Calculate detrained mass flux
       !--------------------------------------------------------------
-        if (JASON_UW) then
+        if (JASON_MFD_SC) then
           where (DETR_SC.ne.MAPL_UNDEF)
             MFD_SC = 0.5*(UMF_SC(:,:,1:LM)+UMF_SC(:,:,0:LM-1))*DETR_SC*DP
           elsewhere
@@ -471,11 +484,19 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_SC', RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_SC', RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_SC', RC=STATUS); VERIFY_(STATUS)
-  call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-  call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-  call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-  call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-  call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+  if (REPORT_UW_NEGATIVES) then
+    call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+  else
+    call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+  endif
 
   if (DEBUG_TQ_ERRORS) then
         do L=1,LM                

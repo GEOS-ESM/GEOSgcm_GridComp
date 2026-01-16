@@ -400,7 +400,7 @@ CONTAINS
       alpha = (gravity/(rgasjmol*tkelvin))*((wmolmass*heatvap)/(cpair*tkelvin) - amolmass)    ! [1/m]
       gamma = (rgasjmol*tkelvin)/(wpe*wmolmass) &
            + (wmolmass*heatvap*heatvap)/(cpair*ptot*amolmass*tkelvin)                        ! [m^3/kg]
-      where (wupdraft > 0.0)
+      where (wupdraft > 1.e-2)
         dum = sqrt(alpha*wupdraft/g)                  ! [1/m]
         zeta = 2.*a*dum/3.                    ! [1]
       else where
@@ -415,7 +415,8 @@ CONTAINS
       smax(:) = 0.0
       do n=1, nmodes
          do i = 1, im
-            if ((bibar(i,n) > 0.4) .and. (rg(i,n) > 0.0) .and. (wupdraft(i) > 0.0) .and. (xnap(i,n) > 0.0)) then
+            if ( (wupdraft(i) > 1.e-2) .and. (bibar(i,n) > 0.4) .and. (gamma(i) > 1.e-12) .and. &
+                 (xnap(i,n) > 1.e4) .and. (rg(i,n) > 1.e-3) ) then
                sm(i,n)  = (2.0/sqrt(bibar(i,n))) * (a(i)/(3.0* rg(i,n)))**1.5
                eta = dum(i)**3 / (twopi * denh2o * gamma(i) * xnap(i,n))
                f1 = 0.5 * exp(2.50* xlogsigm(i,n)**2)
