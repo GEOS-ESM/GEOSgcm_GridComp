@@ -28,6 +28,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_Plume,
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
+    FloatFieldIJ_Ensemble,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
     get_cloud_boundary_conditions,
@@ -800,6 +801,44 @@ def check_cloud_workfunction_1(
                 error_code[0, 0][plume] = 17
 
 
+def compute_precipitation_ensemble(
+    error_code: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    condensate_to_fall_forced: FloatField_Plume,
+    evaporate_in_downdraft_forced: FloatField_Plume,
+    epsilon_forced: FloatFieldIJ_Plume,
+    precipitation_ensemble: FloatFieldIJ_Ensemble,
+    plume: Int,
+):
+    from __externals__ import ENSEMBLE_MEMBERS, C0_MID
+
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume]:
+            member = 0
+            while member < ENSEMBLE_MEMBERS:
+                precipitation_ensemble[0, 0][member] = (
+                    precipitation_ensemble[0, 0][member]
+                    + condensate_to_fall_forced[0, 0, 0][plume]
+                    + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
+                )
+                member += 1
+
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0:
+            if precipitation_ensemble[0, 0][6] < 1.0e-6 and C0_MID > 0.0 and plume != 0:
+                error_code[0, 0][plume] = 18
+                member = 0
+                while member < ENSEMBLE_MEMBERS:
+                    precipitation_ensemble[0, 0][member] = 0.0
+                member += 1
+
+            member = 0
+            while member < ENSEMBLE_MEMBERS:
+                if precipitation_ensemble[0, 0][plume] < 1.0e-5:
+                    precipitation_ensemble[0, 0][plume] = 0.0
+                member += 1
+
+
 class UpdraftMassFlux:
     def __init__(
         self,
@@ -1042,9 +1081,74 @@ class UpdraftCIN:
         )
 
 
-class UpdraftUpdateWorkfunctions:
-    def __init__(self):
-        pass
+class UpdraftWorkfunctions:
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # make configuration visible at runtime
+        self.config = config
+        self.cumulus_parameterization_config = cumulus_parameterization_config
 
-    def __call__(self, *args, **kwds):
-        pass
+        # construct stencils and functions
+        self._cloud_workfunction_aa0 = stencil_factory.from_dims_halo(
+            func=cloud_workfunction_aa0,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._compute_precipitation_ensemble = stencil_factory.from_dims_halo(
+            func=compute_precipitation_ensemble,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "ENSEMBLE_MEMBERS": cumulus_parameterization_constants.MAXENS1
+                * cumulus_parameterization_constants.MAXENS2
+                * cumulus_parameterization_constants.MAXENS3,
+                "C0_MID": cumulus_parameterization_config.C0_MID,
+            },
+        )
+
+    def __call__(
+        self,
+        error_code: Quantity,
+        updraft_origin_level: Quantity,
+        updraft_lfc_level: Quantity,
+        cloud_top_level: Quantity,
+        geopotential_height_cloud_levels_modified: Quantity,
+        normalized_massflux_updraft_modified: Quantity,
+        d_buoyancy_modified: Quantity,
+        gamma_cloud_levels: Quantity,
+        t_cloud_levels_modified: Quantity,
+        cloud_workfunction_0_modified: Quantity,
+        condensate_to_fall_forced: Quantity,
+        evaporate_in_downdraft_forced: Quantity,
+        epsilon_forced: Quantity,
+        precipitation_ensemble: Quantity,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._cloud_workfunction_aa0(
+            error_code=error_code,
+            updraft_origin_level=updraft_origin_level,
+            updraft_lfc_level=updraft_lfc_level,
+            cloud_top_level=cloud_top_level,
+            geopotential_height=geopotential_height_cloud_levels_modified,
+            normalized_massflux_updraft=normalized_massflux_updraft_modified,
+            d_buoyancy=d_buoyancy_modified,
+            gamma_cloud_levels=gamma_cloud_levels,
+            t_cloud_levels=t_cloud_levels_modified,
+            workfunction=cloud_workfunction_0_modified,
+            mode=Int(0),
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
+
+        self._compute_precipitation_ensemble(
+            error_code=error_code,
+            cloud_top_level=cloud_top_level,
+            condensate_to_fall_forced=condensate_to_fall_forced,
+            evaporate_in_downdraft_forced=evaporate_in_downdraft_forced,
+            epsilon_forced=epsilon_forced,
+            precipitation_ensemble=precipitation_ensemble,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )

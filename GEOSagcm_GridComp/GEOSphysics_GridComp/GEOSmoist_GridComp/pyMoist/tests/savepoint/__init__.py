@@ -281,13 +281,16 @@ from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_
     TranslateGF2020_CumulusParameterization_StaticControl_mid,
     TranslateGF2020_CumulusParameterization_StaticControl_shallow,
 )
-
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumulus_Parameterization_UpdraftWorkfunctions import (
+    TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_shallow,
+)
 from .convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.translate_GF2020_Cumulus_Parameterization_KineticEnergyToHeating import (
     TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_deep,
     TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_mid,
     TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_shallow,
 )
-
 from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_PrecipitationFlux import (
     TranslateGF2020_CumulusParameterization_PrecipitationFlux_deep,
     TranslateGF2020_CumulusParameterization_PrecipitationFlux_mid,
