@@ -204,18 +204,17 @@ def output_evaporation_flux(
 
 
 def output_deep_precipitation(
-    cumulus: Int,
     error_code: IntFieldIJ_Plume,
     plume: Int,
-    ktop: IntFieldIJ,
-    prec_flx: FloatField,
-    prfil_gf: FloatField,
+    cloud_top_level: IntFieldIJ_Plume,
+    precipitation_flux: FloatField,
+    convective_precip_flux: FloatField,
 ):
     with computation(PARALLEL), interval(...):
-        if cumulus == cumulus_parameterization_constants.deep:
+        if plume == cumulus_parameterization_constants.deep:
             if error_code[0, 0][plume] == 0:
-                if K <= ktop + 1:
-                    prfil_gf = prec_flx
+                if K <= cloud_top_level[0, 0][plume] + 1:
+                    convective_precip_flux = precipitation_flux
 
 
 # Parameters needed for rain_evap_below_cloudbase
@@ -493,12 +492,11 @@ class OutputDeepPrecipitation:
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
         self._output_deep_precipitation(
-            # cumulus=,
-            # error_code=,
-            # plume=,
-            # cloud_top_level=,
-            # prec_flx=,
-            # prfil_gf=,
+            error_code=state.output.error_code,
+            plume=plume_dependent_constants.PLUME_INDEX,
+            cloud_top_level=state.output.cloud_top_level,
+            precipitation_flux=locals.precipitation_flux,
+            convective_precip_flux=state.output.convective_precip_flux,
         )
 
 

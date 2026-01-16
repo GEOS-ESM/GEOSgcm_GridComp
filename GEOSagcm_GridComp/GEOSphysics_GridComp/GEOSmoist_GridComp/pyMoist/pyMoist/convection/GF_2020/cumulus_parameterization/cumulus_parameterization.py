@@ -80,7 +80,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     updraft_temperature,
     UpdraftInitialWorkfunctions,
     UpdraftCIN,
-    UpdraftWorkfunctions,
+    # UpdraftWorkfunctions,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
     convection_trigger,
@@ -451,7 +451,7 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._updraft_workfunctions = UpdraftWorkfunctions()
+        # self._updraft_workfunctions = UpdraftWorkfunctions()
 
         self._cloud_base_mass_flux = CloudBaseMassFlux()
 
@@ -1592,7 +1592,9 @@ class CumulusParameterization:
                 # NOTE      deep ✅
                 # NOTE      mid ❌ one field, one point (0.0%), 32 ULP
                 # NOTE      shallow ❌ one field, one point (0.0%), 32 ULP
-                p_3d = state.output.p_cloud_levels_forced.field[:, :, :, self.plume_dependent_constants.PLUME_INDEX]
+                p_3d = state.output.p_cloud_levels_forced.field[
+                    :, :, :, self.plume_dependent_constants.PLUME_INDEX
+                ]
                 self._environment_cloud_levels(
                     p=state.input_output.p_forced,
                     p_surface=state.input_output.p_surface,
@@ -1619,7 +1621,9 @@ class CumulusParameterization:
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
-                state.output.p_cloud_levels_forced.field[:, :, :, self.plume_dependent_constants.PLUME_INDEX] = p_3d
+                state.output.p_cloud_levels_forced.field[
+                    :, :, :, self.plume_dependent_constants.PLUME_INDEX
+                ] = p_3d
 
                 # static control
                 # NOTE test GF2020_CumulusParameterization_StaticControl_{plume}:
@@ -1650,7 +1654,7 @@ class CumulusParameterization:
                 )
 
                 # workfunctions for updraft
-                self._updraft_workfunctions()
+                # self._updraft_workfunctions()
 
                 # large scale forcing
                 # calculate cloud base mass flux
@@ -1743,7 +1747,10 @@ class CumulusParameterization:
                 self._lightning_flash_density()
 
                 # output precipitation (only deep plume)
-                # NOTE ported, not tested
+                # NOTE test GF2020_CumulusParameterization_OutputDeepPrecipitation_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._output_deep_precipitation(
                     state=state,
                     locals=locals,

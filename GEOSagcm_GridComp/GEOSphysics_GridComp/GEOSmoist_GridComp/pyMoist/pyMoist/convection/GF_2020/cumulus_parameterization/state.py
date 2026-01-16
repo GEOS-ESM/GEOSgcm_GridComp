@@ -592,7 +592,7 @@ class GF2020CumulusParameterizationState(State):
         convective_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_precip_flux",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,

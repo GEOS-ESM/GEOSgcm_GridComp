@@ -306,6 +306,12 @@ from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulu
     TranslateGF2020_CumulusParameterization_OutputEvaporationFlux_shallow,
 )
 
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_OutputDeepPrecipitation import (
+    TranslateGF2020_CumulusParameterization_OutputDeepPrecipitation_deep,
+    TranslateGF2020_CumulusParameterization_OutputDeepPrecipitation_mid,
+    TranslateGF2020_CumulusParameterization_OutputDeepPrecipitation_shallow,
+)
+
 # NOTE need to organize everything below here
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (
