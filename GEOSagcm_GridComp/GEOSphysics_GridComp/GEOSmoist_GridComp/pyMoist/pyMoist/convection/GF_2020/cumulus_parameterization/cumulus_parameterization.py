@@ -1771,11 +1771,28 @@ class CumulusParameterization:
                 )
 
                 # convert mass fluxes, etc...
-                # NOTE ported, not tested
+                # NOTE test GF2020_CumulusParameterization_PrepareOutput_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._prepare_output(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    error_code=state.output.error_code,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                    cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
+                    total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
+                    total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
+                    mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
+                    mass_entrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
+                    mass_detrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
+                    environment_massflux=locals.environment_massflux,
+                    vapor_tendency_from_environmental_subsidence=locals.vapor_tendency_from_environmental_subsidence,
+                    moist_static_energy_tendency_from_environmental_subsidence=locals.moist_static_energy_tendency_from_environmental_subsidence,
+                    t_tendency_from_environmental_subsidence=locals.t_tendency_from_environmental_subsidence,
                 )
 
                 # outputs a model sounding for the stand-alone code (part 2)
