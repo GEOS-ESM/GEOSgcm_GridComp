@@ -34,10 +34,10 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "local_geopotential_height_cloud_levels_forced_air_density": {},
-            "p_cloud_levels_forced_air_density": {},
-            "error_code_air_density": {},
-            "local_hydrostatic_air_density_air_density": {},
+            "local_geopotential_height_cloud_levels_forced": {},
+            "p_cloud_levels_forced": {},
+            "error_code": {},
+            "local_hydrostatic_air_density": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -71,15 +71,13 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced_air_density"
+            "local_geopotential_height_cloud_levels_forced"
         ]
         state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "p_cloud_levels_forced_air_density"
+            "p_cloud_levels_forced"
         ]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code_air_density"
-        ]
-        locals.hydrostatic_air_density.data[:] = inputs["local_hydrostatic_air_density_air_density"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.hydrostatic_air_density.data[:] = inputs["local_hydrostatic_air_density"]
 
         code = self.stencil_factory.from_dims_halo(
             func=hydrostatic_air_density,
@@ -96,16 +94,14 @@ class TestCore:
             )
 
         outputs = {
-            "local_geopotential_height_cloud_levels_forced_air_density": locals.geopotential_height_cloud_levels_forced.field[
+            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "p_cloud_levels_forced_air_density": state.output.p_cloud_levels_forced.field[
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "error_code_air_density": state.output.error_code.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "local_hydrostatic_air_density_air_density": locals.hydrostatic_air_density.field[:],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_hydrostatic_air_density": locals.hydrostatic_air_density.field[:],
         }
 
         return outputs
