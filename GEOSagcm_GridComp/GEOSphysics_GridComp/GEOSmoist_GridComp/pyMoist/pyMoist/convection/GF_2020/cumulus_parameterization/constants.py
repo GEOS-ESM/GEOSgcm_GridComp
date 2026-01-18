@@ -30,9 +30,10 @@ USE_LCL = False
 
 AEROEVAP = 1
 
-deep = Int(2)
-shallow = Int(0)
-mid = Int(1)
+# plume identifiers
+SHALLOW = Int(0)
+MID = Int(1)
+DEEP = Int(2)
 
 # control if smoothing is performed in updraft_mass_flux and downdraft_mass_flux stencils
 DO_SMOOTHING = False

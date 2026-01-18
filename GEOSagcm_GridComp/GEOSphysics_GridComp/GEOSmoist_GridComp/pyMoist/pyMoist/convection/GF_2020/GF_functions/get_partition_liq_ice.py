@@ -63,13 +63,13 @@ def get_partition_liq_ice(
         ktf = k_end - 1
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == True and cumulus == cumulus_parameterization_constants.deep:
+        if MELT_GLAC == True and cumulus == cumulus_parameterization_constants.DEEP:
             if K <= ktf:
                 if ierr == 0:
                     p_liq_ice = fract_liq_f(tn, cnvfrc, srftype, FRAC_MODIS)
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == True and cumulus == cumulus_parameterization_constants.deep:
+        if MELT_GLAC == True and cumulus == cumulus_parameterization_constants.DEEP:
             if K <= ktf:
                 if ierr == 0:
                     if tn <= (cumulus_parameterization_constants.T_0 - delT):
@@ -88,14 +88,14 @@ def get_partition_liq_ice(
                     melting_layer = melting_layer * (1.0 - melting_layer)
 
     with computation(FORWARD), interval(...):
-        if MELT_GLAC == True and cumulus == cumulus_parameterization_constants.deep:
+        if MELT_GLAC == True and cumulus == cumulus_parameterization_constants.DEEP:
             if K <= ktf - 1:
                 if ierr == 0:
                     dp = 100.0 * (po_cup - po_cup[0, 0, 1])
                     norm = norm + melting_layer * dp / constants.MAPL_GRAV
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == True and cumulus == cumulus_parameterization_constants.deep:
+        if MELT_GLAC == True and cumulus == cumulus_parameterization_constants.DEEP:
             if ierr == 0:
                 melting_layer = (
                     melting_layer

@@ -163,13 +163,13 @@ def cup_up_moisture(
 
     with computation(PARALLEL), interval(...):
         # No precip for small clouds
-        if name == cumulus_parameterization_constants.shallow:
+        if name == cumulus_parameterization_constants.SHALLOW:
             c0 = c0_shal
             AVERAGE_LAYER_DEPTH = cum_ave_layer_shal
-        if name == cumulus_parameterization_constants.mid:
+        if name == cumulus_parameterization_constants.MID:
             c0 = c0_mid
             AVERAGE_LAYER_DEPTH = cum_ave_layer_mid
-        if name == cumulus_parameterization_constants.deep:
+        if name == cumulus_parameterization_constants.DEEP:
             c0 = c0_deep
             AVERAGE_LAYER_DEPTH = cum_ave_layer_deep
 

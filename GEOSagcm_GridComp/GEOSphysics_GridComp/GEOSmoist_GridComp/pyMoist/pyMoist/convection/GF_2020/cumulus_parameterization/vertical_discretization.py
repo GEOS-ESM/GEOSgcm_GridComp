@@ -320,7 +320,10 @@ def convective_transport_of_water_vapor_and_condensates(
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
             # take out cloud liquid/ice water for detrainment
-            if plume == 0 or plume == 1:  # shallow or mid plume
+            if (
+                plume == cumulus_parameterization_constants.SHALLOW
+                or plume == cumulus_parameterization_constants.MID
+            ):  # shallow or mid plume
                 del_cloud_liquid_cloud_ensemble = (
                     mass_detrainment_updraft_forced[0, 0, 0][plume]
                     * 0.5
@@ -331,7 +334,7 @@ def convective_transport_of_water_vapor_and_condensates(
                     * constants.MAPL_GRAV
                     / dp
                 )
-            elif plume == 2:  # deep plume
+            elif plume == cumulus_parameterization_constants.DEEP:  # deep plume
                 if not (abs(C1) > 0):
                     del_cloud_liquid_cloud_ensemble = (
                         mass_detrainment_updraft_forced[0, 0, 0][plume]

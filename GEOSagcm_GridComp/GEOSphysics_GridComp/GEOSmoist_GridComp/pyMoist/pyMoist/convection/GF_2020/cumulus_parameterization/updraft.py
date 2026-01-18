@@ -170,20 +170,20 @@ def updraft_mass_flux(
         stop_do_loop: BoolFieldIJ = False
 
         if ZERO_DIFF == 1:
-            if plume == 2 and ocean_fraction > 0.90:
+            if plume == cumulus_parameterization_constants.DEEP and ocean_fraction > 0.90:
                 # deep plume over ocean
                 execution_choice = 11
-            if plume == 2 and ocean_fraction <= 0.90:
+            if plume == cumulus_parameterization_constants.DEEP and ocean_fraction <= 0.90:
                 # deep plume over land
                 execution_choice = 12
-            if plume == 1:
+            if plume == cumulus_parameterization_constants.MID:
                 # mid plume
                 execution_choice = 5
         else:
-            if plume == 2:
+            if plume == cumulus_parameterization_constants.DEEP:
                 # deep plume
                 execution_choice = 20
-            if plume == 1:
+            if plume == cumulus_parameterization_constants.MID:
                 # mid plume
                 execution_choice = 20
 
@@ -392,7 +392,9 @@ def updraft_moisture(
 
     with computation(FORWARD), interval(0, 1):
         if (
-            error_code[0, 0][plume] == 0 and USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1 and plume == 0
+            error_code[0, 0][plume] == 0
+            and USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1
+            and plume == cumulus_parameterization_constants.SHALLOW
         ):  # only for shallow plume
             # option to produce linear fluxes in the sub-cloud layer
             get_delmix_implementation_here = True
@@ -591,7 +593,11 @@ def updraft_moist_static_energy_and_momentum_budget(
     from __externals__ import USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES, PRESSURE_GRADIENT_CONSTANT
 
     with computation(PARALLEL), interval(...):
-        if error_code[0, 0][plume] == 0 and plume == 0 and USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1:
+        if (
+            error_code[0, 0][plume] == 0
+            and plume == cumulus_parameterization_constants.SHALLOW
+            and USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1
+        ):
             # only for shallow plume
             get_delmix_implementation_here = True
 

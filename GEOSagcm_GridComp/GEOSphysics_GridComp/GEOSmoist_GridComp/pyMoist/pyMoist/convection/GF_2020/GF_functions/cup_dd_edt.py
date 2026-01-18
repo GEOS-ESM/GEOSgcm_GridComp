@@ -53,21 +53,15 @@ def cup_dd_edt(
     with computation(FORWARD), interval(...):
         sdp = 0.0
         vws = 0.0
-        if cumulus != cumulus_parameterization_constants.shallow:
+        if cumulus != cumulus_parameterization_constants.SHALLOW:
             if ierr == 0:
                 idx = kbcon - 1
                 while idx >= kbcon - 1 and idx <= ktop - 1:
                     dp = p.at(K=idx) - p.at(K=idx + 1)
                     vws = vws + (
                         (
-                            abs(
-                                (us.at(K=idx + 1) - us.at(K=idx))
-                                / (z.at(K=idx + 1) - z.at(K=idx))
-                            )
-                            + abs(
-                                (vs.at(K=idx + 1) - vs.at(K=idx))
-                                / (z.at(K=idx + 1) - z.at(K=idx))
-                            )
+                            abs((us.at(K=idx + 1) - us.at(K=idx)) / (z.at(K=idx + 1) - z.at(K=idx)))
+                            + abs((vs.at(K=idx + 1) - vs.at(K=idx)) / (z.at(K=idx + 1) - z.at(K=idx)))
                         )
                         * dp
                     )
@@ -76,7 +70,7 @@ def cup_dd_edt(
                 vshear = 1.0e3 * vws / sdp
 
     with computation(FORWARD), interval(...):
-        if cumulus != cumulus_parameterization_constants.shallow:
+        if cumulus != cumulus_parameterization_constants.SHALLOW:
             if ierr == 0:
                 pef = (
                     float32(1.591)
@@ -92,12 +86,7 @@ def cup_dd_edt(
                 if zkbc > 3.0:
                     prezk = 0.96729352 + zkbc * (
                         -0.70034167
-                        + zkbc
-                        * (
-                            0.162179896
-                            + zkbc
-                            * (-1.2569798e-2 + zkbc * (4.2772e-4 - zkbc * 5.44e-6))
-                        )
+                        + zkbc * (0.162179896 + zkbc * (-1.2569798e-2 + zkbc * (4.2772e-4 - zkbc * 5.44e-6)))
                     )
 
                 if zkbc > 25.0:
@@ -110,9 +99,7 @@ def cup_dd_edt(
                 edt = 1.0 - 0.5 * (pefb + pef)
 
                 if aeroevap > 1:
-                    aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * (
-                        (psumh) ** (alpha3 - 1)
-                    )
+                    aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * ((psumh) ** (alpha3 - 1))
 
                     prop_c = 0.5 * (pefb + pef) / aeroadd
                     aeroadd = (ccn**beta3) * ((psum2) ** (alpha3 - 1))
@@ -132,7 +119,7 @@ def cup_dd_edt(
                     edtc = edt + float(int32(K) - int32(1)) * einc
 
     with computation(PARALLEL), interval(...):
-        if cumulus != cumulus_parameterization_constants.shallow:
+        if cumulus != cumulus_parameterization_constants.SHALLOW:
             if ierr == 0:
                 if K <= maxens2 - 1:
                     edtc = -edtc * pwav / pwev
@@ -160,21 +147,11 @@ class CupDDEdt:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._sdp = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
-        self._vshear = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
-        self._vws = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
-        self._pef = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
-        self._dp = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
+        self._sdp = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
+        self._vshear = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
+        self._vws = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
+        self._pef = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
+        self._dp = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
 
     def __call__(
         self,
@@ -201,9 +178,7 @@ class CupDDEdt:
         ierr: IntField,
     ):
         if aeroevap.view[:].all() > Int(1):
-            raise NotImplementedError(
-                f"Warning: This code has not been ported!! Expected aeroevap == 1"
-            )
+            raise NotImplementedError(f"Warning: This code has not been ported!! Expected aeroevap == 1")
 
         self._cup_dd_edt(
             # In

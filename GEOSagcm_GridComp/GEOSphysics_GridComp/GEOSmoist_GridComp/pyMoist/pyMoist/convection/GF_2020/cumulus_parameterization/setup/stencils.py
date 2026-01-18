@@ -195,7 +195,7 @@ def compute_scale_dependence_factor(
         if USE_SCALE_DEP == 0:
             scale_dependence_factor[0, 0][plume] = 1.0
         elif USE_SCALE_DEP == 1:
-            if plume == 0:
+            if plume == cumulus_parameterization_constants.SHALLOW:
                 scale_dependence_factor[0, 0][plume] = 1.0
             else:
                 if seed_convection < 0.0:
@@ -222,7 +222,7 @@ def get_random_number(
     from __externals__ import USE_RANDOM_NUMBER
 
     with computation(FORWARD), interval(0, 1):
-        if plume == 2 and USE_RANDOM_NUMBER > 1.0e-6:
+        if plume == cumulus_parameterization_constants.DEEP and USE_RANDOM_NUMBER > 1.0e-6:
             # need to figure out how to get system clock data
             random_number = random_number  # keep input data from fortran for now
         else:

@@ -73,11 +73,11 @@ def entrainment_rates(
                 detrainment_function_updraft = 0.75e-4 * (1.6 - frh)
             else:
                 entrainment_rate[0, 0, 0][plume] = max(entrainment_rate[0, 0, 0][plume], MIN_ENTRAINMENT_RATE)
-                if plume == 0:
+                if plume == cumulus_parameterization_constants.SHALLOW:
                     detrainment_function_updraft = 0.75 * entrainment_rate[0, 0, 0][plume]
-                if plume == 1:
+                if plume == cumulus_parameterization_constants.MID:
                     detrainment_function_updraft = 0.5 * entrainment_rate[0, 0, 0][plume]
-                if plume == 2:
+                if plume == cumulus_parameterization_constants.DEEP:
                     detrainment_function_updraft = 0.1 * entrainment_rate[0, 0, 0][plume]
 
 
@@ -147,7 +147,7 @@ def compute_lateral_massflux(
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             # will not allow detrainment below cloud base or in the PBL
-            if plume == 0:
+            if plume == cumulus_parameterization_constants.SHALLOW:
                 if (
                     K
                     <= max(

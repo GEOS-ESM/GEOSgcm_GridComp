@@ -100,7 +100,7 @@ def find_highest_moist_static_energy_level(
         # prefil output
         updraft_origin_level[0, 0][plume] = 0
 
-        if plume == 0:
+        if plume == cumulus_parameterization_constants.SHALLOW:
             # start at surface for shallow plume
             start_level: IntFieldIJ = 0
         else:
@@ -119,7 +119,7 @@ def find_highest_moist_static_energy_level(
             updraft_origin_level[0, 0][plume] = updraft_origin_level[0, 0][plume] + start_level - 1
             updraft_origin_level[0, 0][plume] = max(updraft_origin_level[0, 0][plume], start_level)
 
-            if plume == 0:
+            if plume == cumulus_parameterization_constants.SHALLOW:
                 # for shallow plumes
                 updraft_origin_level[0, 0][plume] = min(2, updraft_origin_level[0, 0][plume])
                 if updraft_origin_level[0, 0][plume] > maximum_updraft_origin_level:
@@ -262,10 +262,13 @@ def find_lcl(
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             lcl_level[0, 0][plume] = min(lcl_level[0, 0][plume], k_end - 5)
-            if cumulus_parameterization_constants.USE_LCL == True and plume == 1:
+            if (
+                cumulus_parameterization_constants.USE_LCL == True
+                and plume == cumulus_parameterization_constants.MID
+            ):
                 error_code[0, 0][plume] = 21
 
-            if ADV_TRIGGER == 1 and plume == 0:
+            if ADV_TRIGGER == 1 and plume == cumulus_parameterization_constants.SHALLOW:
                 wkf: FloatFieldIJ = 0.02  # m/s
 
                 level = lcl_level[0, 0][plume]
@@ -296,7 +299,11 @@ def find_lcl(
                         wkflcl = wkflcl - ckf
 
     with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0 and ADV_TRIGGER == 1 and plume == 0:
+        if (
+            error_code[0, 0][plume] == 0
+            and ADV_TRIGGER == 1
+            and plume == cumulus_parameterization_constants.SHALLOW
+        ):
             # Kain (2004) Eq. 1
             t_perturbation = 4.64 * wkflcl ** (1.0 / 3.0)
 
@@ -698,19 +705,19 @@ def cloud_top_checks(
 ):
     # check if cloud_top_level is too low for deep convection
     with computation(FORWARD), interval(0, 1):
-        if plume == 2 and error_code[0, 0][plume] == 0:
+        if plume == cumulus_parameterization_constants.DEEP and error_code[0, 0][plume] == 0:
             if p.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) > 400:
                 error_code[0, 0][plume] = 22
 
     # check if cloud_top_level is too high for mid convection
     with computation(FORWARD), interval(0, 1):
-        if plume == 1 and error_code[0, 0][plume] == 0:
+        if plume == cumulus_parameterization_constants.MID and error_code[0, 0][plume] == 0:
             if p.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) < 400:
                 error_code[0, 0][plume] = 22
 
     # check if cloud_top_level is too high for shallow convection
     with computation(FORWARD), interval(0, 1):
-        if plume == 0 and error_code[0, 0][plume] == 0:
+        if plume == cumulus_parameterization_constants.SHALLOW and error_code[0, 0][plume] == 0:
             if p.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) < 400:
                 error_code[0, 0][plume] = 23
 

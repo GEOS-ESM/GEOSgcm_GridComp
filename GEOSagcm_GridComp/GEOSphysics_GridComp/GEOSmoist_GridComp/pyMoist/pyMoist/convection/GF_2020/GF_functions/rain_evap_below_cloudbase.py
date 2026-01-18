@@ -49,7 +49,7 @@ def rain_evap_below_cloudbase(
     prec_flx: FloatField,
 ):
     with computation(FORWARD), interval(...):
-        if cumulus == cumulus_parameterization_constants.shallow:
+        if cumulus == cumulus_parameterization_constants.SHALLOW:
             RH_cr_OCEAN = 1.0
             RH_cr_LAND = 1.0
             eff_c_conv = min(0.2, max(xmb, c_conv))
@@ -78,13 +78,7 @@ def rain_evap_below_cloudbase(
                         eff_c_conv
                         * alpha1
                         * q_deficit
-                        * (
-                            sqrt(po_cup / psur)
-                            / alpha2
-                            * prec_flx[0, 0, 1]
-                            / eff_c_conv
-                        )
-                        ** alpha3
+                        * (sqrt(po_cup / psur) / alpha2 * prec_flx[0, 0, 1] / eff_c_conv) ** alpha3
                     )
 
                     evap_bcb = evap_bcb * dp / constants.MAPL_GRAV
@@ -106,10 +100,7 @@ def rain_evap_below_cloudbase(
                     -evap_bcb
                     * constants.MAPL_GRAV
                     / dp
-                    * (
-                        cumulus_parameterization_constants.xlv
-                        / cumulus_parameterization_constants.CP
-                    )
+                    * (cumulus_parameterization_constants.xlv / cumulus_parameterization_constants.CP)
                 )
 
                 outq = outq + del_q
@@ -140,21 +131,13 @@ class RainEvapBelowCloudbase:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._q_deficit = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
+        self._q_deficit = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
 
-        self._RH_cr = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
+        self._RH_cr = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
 
-        self._dp = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
+        self._dp = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
 
-        self._evap_bcb = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
+        self._evap_bcb = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
 
     def __call__(
         self,

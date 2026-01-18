@@ -126,12 +126,12 @@ def get_downdraft_origin_level(
     from __externals__ import MELT_GLAC, k_end
 
     with computation(FORWARD), interval(0, 1):
-        if plume == 0:
+        if plume == cumulus_parameterization_constants.SHALLOW:
             downdraft_origin_level[0, 0][plume] = 0
-        elif plume == 1:
+        elif plume == cumulus_parameterization_constants.MID:
             # setup internal constants
             beta: FloatFieldIJ = 0.02
-        elif plume == 2:
+        elif plume == cumulus_parameterization_constants.DEEP:
             # setup internal constants
             beta: FloatFieldIJ = 0.05
 
@@ -142,7 +142,7 @@ def get_downdraft_origin_level(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            if plume == 2 and MELT_GLAC == True:  # noqa
+            if plume == cumulus_parameterization_constants.DEEP and MELT_GLAC == True:  # noqa
                 _, max_index = column_max(melting_layer, 0, k_end)
                 downdraft_origin_level[0, 0][plume] = max(downdraft_origin_level[0, 0][plume], max_index)
 
@@ -163,9 +163,11 @@ def get_downdraft_origin_level(
                 level = level_initial - 1
                 stop_k_while_loop = False
                 while level >= 0 and stop_k_while_loop == False:
-                    moist_static_energy_internal = environment_saturation_moist_static_energy_cloud_levels_forced[
-                        0, 0, downdraft_origin_level_internal
-                    ]
+                    moist_static_energy_internal = (
+                        environment_saturation_moist_static_energy_cloud_levels_forced[
+                            0, 0, downdraft_origin_level_internal
+                        ]
+                    )
                     dz = (
                         geopotential_height_cloud_levels_forced[0, 0, level + 1]
                         - geopotential_height_cloud_levels_forced[0, 0, level]

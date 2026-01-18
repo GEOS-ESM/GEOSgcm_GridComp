@@ -38,18 +38,18 @@ def rates_up_pdf(
         ktop_flag2 = 0.0
 
     with computation(FORWARD), interval(...):
-        if name != cumulus_parameterization_constants.shallow:
+        if name != cumulus_parameterization_constants.SHALLOW:
             ktopIJ = k_end - 3
 
     with computation(PARALLEL), interval(...):
-        if name != cumulus_parameterization_constants.shallow:
+        if name != cumulus_parameterization_constants.SHALLOW:
             if ierr == 0:
                 start_level = kbcon - 1
                 if K <= start_level:
                     hcot = hkbo
 
     with computation(FORWARD), interval(1, None):
-        if name != cumulus_parameterization_constants.shallow:
+        if name != cumulus_parameterization_constants.SHALLOW:
             if ierr == 0:
                 idx = start_level + 1
                 while K >= idx and K <= k_end - 3:
@@ -62,7 +62,7 @@ def rates_up_pdf(
                     idx += 1
 
     with computation(FORWARD), interval(...):
-        if name != cumulus_parameterization_constants.shallow:
+        if name != cumulus_parameterization_constants.SHALLOW:
             if ierr == 0:
                 idx = start_level + 1
                 while K >= idx and K <= k_end - 3:
@@ -72,13 +72,13 @@ def rates_up_pdf(
                     idx += 1
 
     with computation(PARALLEL), interval(...):
-        if name != cumulus_parameterization_constants.shallow:
+        if name != cumulus_parameterization_constants.SHALLOW:
             if ierr == 0:
                 if ktopIJ <= kbcon:
                     ierr = 41
 
     with computation(FORWARD), interval(...):
-        if name != cumulus_parameterization_constants.shallow:
+        if name != cumulus_parameterization_constants.SHALLOW:
             if OVERSHOOT > 0.0 and ierr == 0:
                 Z_overshoot = (1.0 + delz_oversh) * z_cup.at(K=ktopIJ)
                 idx = ktopIJ
@@ -89,7 +89,7 @@ def rates_up_pdf(
                     idx += 1
 
     with computation(PARALLEL), interval(...):
-        if name != cumulus_parameterization_constants.shallow:
+        if name != cumulus_parameterization_constants.SHALLOW:
             ktop = ktopIJ
 
 
@@ -107,16 +107,10 @@ class RatesUpPdf:
             func=rates_up_pdf,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._hcot = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a"
-        )
+        self._hcot = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
-        self._ktop_flag1 = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
-        self._ktop_flag2 = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a"
-        )
+        self._ktop_flag1 = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
+        self._ktop_flag2 = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
 
     def __call__(
         self,

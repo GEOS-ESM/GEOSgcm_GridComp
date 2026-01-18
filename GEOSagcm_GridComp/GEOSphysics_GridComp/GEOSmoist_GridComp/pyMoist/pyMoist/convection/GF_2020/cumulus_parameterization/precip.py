@@ -100,13 +100,13 @@ def partition_liquid_ice(
         melting_layer = 0.0
 
     with computation(PARALLEL), interval(0, -1):
-        if MELT_GLAC == True and plume == 2:
+        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # get function of T for partition of total condensate into liq and ice phases
                 part_liquid_ice = liquid_fraction(t, convection_fraction, surface_type, FRAC_MODIS)
 
     with computation(PARALLEL), interval(0, -1):
-        if MELT_GLAC == True and plume == 2:
+        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # define the melting layer (the layer will be between T_0+1 < TEMP < T_1
                 if t <= (cumulus_parameterization_constants.T_0 - del_t):
@@ -125,19 +125,19 @@ def partition_liquid_ice(
                 melting_layer = melting_layer * (1.0 - melting_layer)
 
     with computation(FORWARD), interval(0, 1):
-        if MELT_GLAC == True and plume == 2:
+        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             # normalize vertical integral of melting_layer to 1
             norm: FloatFieldIJ = 0.0
 
     with computation(FORWARD), interval(0, -2):
-        if MELT_GLAC == True and plume == 2:
+        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # normalize vertical integral of melting_layer to 1
                 dp = 100.0 * (p[0, 0, 0][plume] - p[0, 0, 1][plume])
                 norm = norm + melting_layer * dp / constants.MAPL_GRAV
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == True and plume == 2:
+        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # normalize vertical integral of melting_layer to 1
                 melting_layer = (
@@ -211,7 +211,7 @@ def output_deep_precipitation(
     convective_precip_flux: FloatField,
 ):
     with computation(PARALLEL), interval(...):
-        if plume == cumulus_parameterization_constants.deep:
+        if plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 if K <= cloud_top_level[0, 0][plume] + 1:
                     convective_precip_flux = precipitation_flux
@@ -248,7 +248,7 @@ def rain_evaporation_below_cloud_base(
         c_conv: FloatFieldIJ = 0.05
 
     with computation(FORWARD), interval(0, 1):
-        if plume == cumulus_parameterization_constants.shallow:
+        if plume == cumulus_parameterization_constants.SHALLOW:
             critical_rh_ocean: FloatFieldIJ = 1.0
             critical_rh_land: FloatFieldIJ = 1.0
             eff_c_conv: FloatFieldIJ = min(0.2, max(cloud_base_mass_flux_modified[0, 0][plume], c_conv))
