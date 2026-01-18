@@ -33,8 +33,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.precip import (
     partition_liquid_ice,
     get_precip_fluxes,
     PrecipFactor,
-    RainEvapBelowCloudBase,
-    CloudDissipation,
+    rain_evaporation_below_cloud_base,
+    cloud_dissapation,
     OutputEvaporationFlux,
     LightningFlassDensity,
     OutputDeepPrecipitation,
@@ -472,9 +472,20 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._rain_evap_below_cloud_base = RainEvapBelowCloudBase()
+        self._rain_evaporation_below_cloud_base = stencil_factory.from_dims_halo(
+            func=rain_evaporation_below_cloud_base,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        self._cloud_dissapation = CloudDissipation()
+        self._cloud_dissapation = stencil_factory.from_dims_halo(
+            func=cloud_dissapation,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "USE_CLOUD_DISSIPATION": cumulus_parameterization_config.USE_CLOUD_DISSIPATION,
+                "DTIME": cumulus_parameterization_config.DTIME,
+                "COUPLE_MICROPHYSICS": cumulus_parameterization_config.COUPLE_MICROPHYSICS,
+            },
+        )
 
         self._output_evaporation_flux = OutputEvaporationFlux()
 
@@ -1723,35 +1734,59 @@ class CumulusParameterization:
                 )
 
                 # rainfall evap below cloud base
-                # NOTE test GF2020_CumulusParameterization_RainEvapBelowCloudbase_{plume}:
+                # NOTE test GF2020_CumulusParameterization_RainEvaporationBelowCloudBase_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._rain_evap_below_cloud_base(
+                self._rain_evaporation_below_cloud_base(
                     error_code=state.output.error_code,
-                    plume=self.plume_dependent_constants.PLUME_INDEX,
-                    epsilon_forced=state.output.epsilon_forced,
                     updraft_lfc_level=state.output.updraft_lfc_level,
                     cloud_top_level=state.output.cloud_top_level,
+                    ocean_fraction=state.input.ocean_fraction,
                     p_cloud_levels_forced=state.output.p_cloud_levels_forced,
                     p_surface=state.input_output.p_surface,
-                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    t_cloud_levels=locals.t_cloud_levels,
+                    vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
+                    environment_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels,
+                    epsilon_forced=state.output.epsilon_forced,
+                    cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
                     condensate_to_fall_forced=state.output.condensate_to_fall_forced,
-                    local_env_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels,
-                    local_vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
-                    ocean_fraction=locals.ocean_fraction,
-                    cloud_base_mass_flux=state.output.cloud_base_mass_flux,
-                    local_evap_bcb=locals.evap_bcb,
-                    evap_flux=locals.evap_flux,
-                    dbuoyancydt=state.output.dbuoyancydt,
-                    dvapordt=state.output.dvapordt,
-                    t=state.output.t,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
                     precip=state.output.precip,
-                    prec_flux=locals.prec_flux,
+                    precipitation_flux=locals.precipitation_flux,
+                    evaporation_flux=locals.evaporation_flux,
+                    evaporation_below_cloud_base=locals.evaporation_below_cloud_base,
+                    dtdt=state.output.dtdt,
+                    dvapordt=state.output.dvapordt,
+                    dbuoyancydt=state.output.dbuoyancydt,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
                 # includes effects of the remained cloud dissipation into the enviroment
-                self._cloud_dissapation()
+                # NOTE test GF2020_CumulusParameterization_CloudDissipation_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._cloud_dissapation(
+                    error_code=state.output.error_code,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    cloud_top_level=state.output.cloud_top_level,
+                    hydrostatic_air_density=locals.hydrostatic_air_density,
+                    geopotential_height_forced=state.input_output.geopotential_height_forced,
+                    t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
+                    vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
+                    cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
+                    environment_saturation_mixing_ratio_cloud_levels_forced=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+                    environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                    vertical_velocity_3d=locals.vertical_velocity_3d,
+                    scale_dependence_factor=state.output.scale_dependence_factor,
+                    dtdt=state.output.dtdt,
+                    dvapordt=state.output.dvapordt,
+                    dcloudicedt=state.output.dcloudicedt,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                )
 
                 # total (deep+mid) evaporation flux for output (units kg/kg/s)
                 # NOTE test GF2020_CumulusParameterization_OutputEvaporationFlux_{plume}:

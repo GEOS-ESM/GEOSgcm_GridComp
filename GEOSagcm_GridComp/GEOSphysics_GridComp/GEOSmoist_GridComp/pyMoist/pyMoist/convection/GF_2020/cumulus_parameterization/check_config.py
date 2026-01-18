@@ -217,9 +217,16 @@ def check_config(
             "then disable this error manually to proceed."
         )
 
-    if cumulus_parameterization_config.APPLY_SUB_MP != 0:
+    if cumulus_parameterization_config.APPLY_SUBSIDENCE_MICROPHYSICS != 0:
         raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization initalized with APPLY_SUBSIDENCE_MICROPHYSICS != 0. This setting requires"
-            "an unimeplemented code in EnvironmentalSubsidence. Please implement, then disable this error"
-            "manually to proceed."
+            "[NDSL] GF2020-->CumulusParameterization initalized with APPLY_SUBSIDENCE_MICROPHYSICS != 0. This"
+            "setting requires an unimeplemented option in EnvironmentalSubsidence. Please implement, then"
+            "disable this error manually to proceed."
+        )
+
+    if cumulus_parameterization_config.COUPLE_MICROPHYSICS != True:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with COUPLE_MICROPHYSICS != True. This"
+            "setting requires an unimeplemented option in cloud_dissipation. Please implement, then"
+            "disable this error manually to proceed."
         )

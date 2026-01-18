@@ -151,7 +151,7 @@ class GF2020CumulusParameterizationState(State):
         dcloudicedt: Quantity = dataclasses.field(
             metadata={
                 "name": "dcloudicedt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
