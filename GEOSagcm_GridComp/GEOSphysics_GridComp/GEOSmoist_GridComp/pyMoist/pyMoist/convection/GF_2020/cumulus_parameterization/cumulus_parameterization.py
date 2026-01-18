@@ -80,7 +80,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     updraft_temperature,
     UpdraftInitialWorkfunctions,
     UpdraftCIN,
-    # UpdraftWorkfunctions,
+    UpdraftWorkfunctions,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
     convection_trigger,

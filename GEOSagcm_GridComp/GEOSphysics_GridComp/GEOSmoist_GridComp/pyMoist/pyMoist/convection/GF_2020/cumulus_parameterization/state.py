@@ -130,7 +130,7 @@ class GF2020CumulusParameterizationState(State):
 
     @dataclasses.dataclass
     class Output:
-        t: Quantity = dataclasses.field(
+        dtdt: Quantity = dataclasses.field(
             metadata={
                 "name": "t",
                 "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],

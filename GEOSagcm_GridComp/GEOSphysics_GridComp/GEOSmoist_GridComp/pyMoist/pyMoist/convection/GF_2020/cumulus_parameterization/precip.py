@@ -217,54 +217,57 @@ def output_deep_precipitation(
                     convective_precip_flux = precipitation_flux
 
 
-# Parameters needed for rain_evap_below_cloudbase
-alpha1 = Float(5.44e-4)
-alpha2 = Float(5.09e-3)
-alpha3 = Float(0.5777)
-c_conv = Float(0.05)
-
-
-def rain_evap_below_cloudbase(
-    # In
-    plume: Int,
-    epsilon_forced: FloatFieldIJ_Plume,
+def rain_evaporation_below_cloud_base(
     error_code: IntFieldIJ_Plume,
     updraft_lfc_level: IntFieldIJ_Plume,
     cloud_top_level: IntFieldIJ_Plume,
+    ocean_fraction: FloatFieldIJ,
     p_cloud_levels_forced: FloatField_Plume,
     p_surface: FloatFieldIJ,
-    evaporate_in_downdraft_forced: FloatField_Plume,
+    t_cloud_levels: FloatField,
+    vapor_cloud_levels_forced: FloatField,
+    environment_saturation_mixing_ratio_cloud_levels: FloatField,
+    epsilon_forced: FloatFieldIJ_Plume,
+    cloud_base_mass_flux_modified: FloatFieldIJ_Plume,
     condensate_to_fall_forced: FloatField_Plume,
-    local_env_saturation_mixing_ratio_cloud_levels: FloatField,
-    local_vapor_cloud_levels_forced: FloatField,
-    ocean_fraction: FloatFieldIJ,
-    cloud_base_mass_flux: FloatFieldIJ_Plume,
-    # Out
-    local_evap_bcb: FloatField,
-    evap_flux: FloatField,
-    dbuoyancydt: FloatField_Plume,
-    dvapordt: FloatField_Plume,
-    t: FloatField_Plume,
+    evaporate_in_downdraft_forced: FloatField_Plume,
     precip: FloatFieldIJ_Plume,
-    prec_flux: FloatField,
+    precipitation_flux: FloatField,
+    evaporation_flux: FloatField,
+    evaporation_below_cloud_base: FloatField,
+    dtdt: FloatField_Plume,
+    dvapordt: FloatField_Plume,
+    dbuoyancydt: FloatField_Plume,
+    plume: Int,
 ):
-    with computation(FORWARD), interval(...):
-        if plume == cumulus_parameterization_constants.shallow:
-            RH_cr_OCEAN = 1.0
-            RH_cr_LAND = 1.0
-            eff_c_conv = min(0.2, max(cloud_base_mass_flux[0, 0][plume], c_conv))
-        else:
-            RH_cr_OCEAN = 0.95
-            RH_cr_LAND = 0.85
-            eff_c_conv = c_conv
+    with computation(FORWARD), interval(0, 1):
+        # setup internal constants
+        alpha1: FloatFieldIJ = 5.44e-4
+        alpha2: FloatFieldIJ = 5.09e-3
+        alpha3: FloatFieldIJ = 0.5777
+        c_conv: FloatFieldIJ = 0.05
 
-        prec_flux = 0.0
-        evap_flx = 0.0
-        tot_evap_bcb = 0.0
+    with computation(FORWARD), interval(0, 1):
+        if plume == cumulus_parameterization_constants.shallow:
+            critical_rh_ocean: FloatFieldIJ = 1.0
+            critical_rh_land: FloatFieldIJ = 1.0
+            eff_c_conv: FloatFieldIJ = min(0.2, max(cloud_base_mass_flux_modified[0, 0][plume], c_conv))
+        else:
+            critical_rh_ocean: FloatFieldIJ = 0.95
+            critical_rh_land: FloatFieldIJ = 0.85
+            eff_c_conv: FloatFieldIJ = c_conv
+
+        total_evaporation_below_cloud_base: FloatFieldIJ = 0.0
+
+    with computation(PARALLEL), interval(...):
+        precipitation_flux = 0.0
+        evaporation_flux = 0.0
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            RH_cr: FloatFieldIJ = RH_cr_OCEAN * ocean_fraction + RH_cr_LAND * (1.0 - ocean_fraction)
+            critical_rh: FloatFieldIJ = critical_rh_ocean * ocean_fraction + critical_rh_land * (
+                1.0 - ocean_fraction
+            )
 
     with computation(BACKWARD), interval(...):
         if error_code[0, 0][plume] == 0:
@@ -274,72 +277,74 @@ def rain_evap_below_cloudbase(
                 )
 
                 if K <= updraft_lfc_level[0, 0][plume]:
-                    q_deficit: FloatFieldIJ = max(
+                    vapor_deficit: FloatFieldIJ = max(
                         0.0,
                         (
-                            RH_cr * local_env_saturation_mixing_ratio_cloud_levels
-                            - local_vapor_cloud_levels_forced
+                            critical_rh * environment_saturation_mixing_ratio_cloud_levels
+                            - vapor_cloud_levels_forced
                         ),
                     )
 
-                    local_evap_bcb = (
+                    evaporation_below_cloud_base = (
                         eff_c_conv
                         * alpha1
-                        * q_deficit
+                        * vapor_deficit
                         * (
                             sqrt(p_cloud_levels_forced[0, 0, 0][plume] / p_surface)
                             / alpha2
-                            * prec_flux[0, 0, 1]
+                            * precipitation_flux[0, 0, 1]
                             / eff_c_conv
                         )
                         ** alpha3
                     )
 
-                    local_evap_bcb = local_evap_bcb * dp / constants.MAPL_GRAV
+                    evaporation_below_cloud_base = evaporation_below_cloud_base * dp / constants.MAPL_GRAV
 
                 else:
 
-                    local_evap_bcb = 0.0
+                    evaporation_below_cloud_base = 0.0
 
-                prec_flux = (
-                    prec_flux[0, 0, 1]
-                    - local_evap_bcb
-                    + cloud_base_mass_flux[0, 0][plume]
+                precipitation_flux = (
+                    precipitation_flux[0, 0, 1]
+                    - evaporation_below_cloud_base
+                    + cloud_base_mass_flux_modified[0, 0][plume]
                     * (
                         condensate_to_fall_forced[0, 0, 0][plume]
                         + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
                     )
                 )
-                prec_flux = max(0.0, prec_flux)
+                precipitation_flux = max(0.0, precipitation_flux)
 
-                evap_flux = (
-                    evap_flux[0, 0, 1]
-                    + local_evap_bcb
-                    - cloud_base_mass_flux[0, 0][plume]
+                evaporation_flux = (
+                    evaporation_flux[0, 0, 1]
+                    + evaporation_below_cloud_base
+                    - cloud_base_mass_flux_modified[0, 0][plume]
                     * epsilon_forced[0, 0][plume]
                     * evaporate_in_downdraft_forced[0, 0, 0][plume]
                 )
-                evap_flux = max(0.0, evap_flux)
+                evaporation_flux = max(0.0, evaporation_flux)
 
-                tot_evap_bcb = tot_evap_bcb + local_evap_bcb
+                total_evaporation_below_cloud_base = (
+                    total_evaporation_below_cloud_base + evaporation_below_cloud_base
+                )
 
-                del_q: FloatFieldIJ = local_evap_bcb * constants.MAPL_GRAV / dp
-                del_t: FloatFieldIJ = (
-                    -local_evap_bcb
+                del_vapor = evaporation_below_cloud_base * constants.MAPL_GRAV / dp
+                del_t = (
+                    -evaporation_below_cloud_base
                     * constants.MAPL_GRAV
                     / dp
                     * (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
                 )
 
-                dvapordt[0, 0, 0][plume] = dvapordt[0, 0, 0][plume] + del_q
-                t[0, 0, 0][plume] = t[0, 0, 0][plume] + del_t
+                dvapordt[0, 0, 0][plume] = dvapordt[0, 0, 0][plume] + del_vapor
+                dtdt[0, 0, 0][plume] = dtdt[0, 0, 0][plume] + del_t
                 dbuoyancydt[0, 0, 0][plume] = (
                     dbuoyancydt[0, 0, 0][plume]
                     + cumulus_parameterization_constants.CP * del_t
-                    + cumulus_parameterization_constants.XLV * del_q
+                    + cumulus_parameterization_constants.XLV * del_vapor
                 )
 
-                precip[0, 0][plume] = precip[0, 0][plume] - local_evap_bcb
+                precip[0, 0][plume] = precip[0, 0][plume] - evaporation_below_cloud_base
 
 
 class PrecipFactor:
@@ -383,7 +388,7 @@ class RainEvapBelowCloudBase:
 
         # construct stencils and functions
         self._rain_evap_below_cloudbase = stencil_factory.from_dims_halo(
-            func=rain_evap_below_cloudbase,
+            func=rain_evaporation_below_cloud_base,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -411,7 +416,7 @@ class RainEvapBelowCloudBase:
             evap_flux=locals.evap_flux,
             dbuoyancydt=state.output.dbuoyancydt,
             dvapordt=state.output.dvapordt,
-            t=state.output.t,
+            t=state.output.dtdt,
             precip=state.output.precip,
             prec_flux=locals.prec_flux,
         )

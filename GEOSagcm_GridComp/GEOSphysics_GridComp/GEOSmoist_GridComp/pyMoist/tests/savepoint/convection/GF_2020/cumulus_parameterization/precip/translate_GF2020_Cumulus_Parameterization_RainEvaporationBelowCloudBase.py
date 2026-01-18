@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.precip import rain_evap_below_cloudbase
+from pyMoist.convection.GF_2020.cumulus_parameterization.precip import rain_evaporation_below_cloud_base
 
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -35,25 +35,26 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_rebc": {},
-            "updraft_lfc_level_rebc": {},
+            "error_code": {},
+            "updraft_lfc_level": {},
             "cloud_top_level": {},
-            "p_surface": {},
             "ocean_fraction": {},
-            "epsilon_forced_rebc": {},
-            "cloud_base_mass_flux_rebc": {},
             "p_cloud_levels_forced": {},
+            "p_surface": {},
+            "local_t_cloud_levels": {},
             "local_vapor_cloud_levels_forced": {},
-            "local_env_saturation_mixing_ratio_cloud_levels_rebc": {},
-            "condensate_to_fall_forced_rebc": {},
+            "local_env_saturation_mixing_ratio_cloud_levels": {},
+            "epsilon_forced": {},
+            "cloud_base_mass_flux_modified": {},
+            "condensate_to_fall_forced": {},
             "evaporate_in_downdraft_forced": {},
-            "precip_rebc": {},
-            "t_rebc": {},
-            "dvapordt_rebc": {},
-            "dbuoyancydt_rebc": {},
-            "prec_flux_rebc": {},
-            "evap_flux_rebc": {},
-            "local_evap_bcb_rebc": {},
+            "precip": {},
+            "local_precipitation_flux": {},
+            "local_evaporation_flux": {},
+            "local_evaporation_below_cloud_base": {},
+            "dtdt": {},
+            "dvapordt": {},
+            "dbuoyancydt": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -86,115 +87,114 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code_rebc"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_lfc_level"] - 1
+        )
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_top_level"] - 1
         )
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_lfc_level_rebc"] - 1
-        )
-        state.input_output.p_surface.data[:] = inputs["p_surface"]
-        locals.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "epsilon_forced_rebc"
-        ]
-        state.output.cloud_base_mass_flux.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "cloud_base_mass_flux_rebc"
-        ]
+        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
         state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "p_cloud_levels_forced"
         ]
+        state.input_output.p_surface.data[:] = inputs["p_surface"]
+        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels"]
         locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced"]
         locals.environment_saturation_mixing_ratio_cloud_levels.data[:] = inputs[
-            "local_env_saturation_mixing_ratio_cloud_levels_rebc"
+            "local_env_saturation_mixing_ratio_cloud_levels"
+        ]
+        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "epsilon_forced"
+        ]
+        state.output.cloud_base_mass_flux_modified.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "cloud_base_mass_flux_modified"
         ]
         state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "condensate_to_fall_forced_rebc"
+            "condensate_to_fall_forced"
         ]
         state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["evaporate_in_downdraft_forced"]
         )
-        state.output.precip.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["precip_rebc"]
-        state.output.t.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["t_rebc"]
-        state.output.dvapordt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dvapordt_rebc"]
-        state.output.dbuoyancydt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "dbuoyancydt_rebc"
-        ]
-        locals.prec_flux.data[:] = inputs["prec_flux_rebc"]
-        locals.evap_flux.data[:] = inputs["evap_flux_rebc"]
-        locals.evap_bcb.data[:] = inputs["local_evap_bcb_rebc"]
+        state.output.precip.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["precip"]
+        locals.precipitation_flux.data[:] = inputs["local_precipitation_flux"]
+        locals.evaporation_flux.data[:] = inputs["local_evaporation_flux"]
+        locals.evaporation_below_cloud_base.data[:] = inputs["local_evaporation_below_cloud_base"]
+        state.output.dtdt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dtdt"]
+        state.output.dvapordt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dvapordt"]
+        state.output.dbuoyancydt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dbuoyancydt"]
 
-        code_part_1 = self.stencil_factory.from_dims_halo(
-            func=rain_evap_below_cloudbase,
+        code = self.stencil_factory.from_dims_halo(
+            func=rain_evaporation_below_cloud_base,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            code_part_1(
+            code(
                 error_code=state.output.error_code,
-                plume=plume_dependent_constants.PLUME_INDEX,
-                epsilon_forced=state.output.epsilon_forced,
                 updraft_lfc_level=state.output.updraft_lfc_level,
                 cloud_top_level=state.output.cloud_top_level,
+                ocean_fraction=state.input.ocean_fraction,
                 p_cloud_levels_forced=state.output.p_cloud_levels_forced,
                 p_surface=state.input_output.p_surface,
-                evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                t_cloud_levels=locals.t_cloud_levels,
+                vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
+                environment_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels,
+                epsilon_forced=state.output.epsilon_forced,
+                cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
                 condensate_to_fall_forced=state.output.condensate_to_fall_forced,
-                local_env_saturation_mixing_ratio_cloud_levels=locals.environment_saturation_mixing_ratio_cloud_levels,
-                local_vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
-                ocean_fraction=locals.ocean_fraction,
-                cloud_base_mass_flux=state.output.cloud_base_mass_flux,
-                local_evap_bcb=locals.evap_bcb,
-                evap_flux=locals.evap_flux,
-                dbuoyancydt=state.output.dbuoyancydt,
-                dvapordt=state.output.dvapordt,
-                t=state.output.t,
+                evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
                 precip=state.output.precip,
-                prec_flux=locals.prec_flux,
+                precipitation_flux=locals.precipitation_flux,
+                evaporation_flux=locals.evaporation_flux,
+                evaporation_below_cloud_base=locals.evaporation_below_cloud_base,
+                dtdt=state.output.dtdt,
+                dvapordt=state.output.dvapordt,
+                dbuoyancydt=state.output.dbuoyancydt,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         outputs = {
-            "error_code_rebc": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX]
-            + 1,
-            "updraft_lfc_level_rebc": state.output.updraft_lfc_level.data[
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "p_surface": state.input_output.p_surface.data[:],
-            "ocean_fraction": locals.ocean_fraction.data[:],
-            "epsilon_forced_rebc": state.output.epsilon_forced.data[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "cloud_base_mass_flux_rebc": state.output.cloud_base_mass_flux.data[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.data[
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
+            + 1,
+            "ocean_fraction": state.input.ocean_fraction.field[:],
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_vapor_cloud_levels_forced": locals.vapor_cloud_levels_forced.data[:],
-            "local_env_saturation_mixing_ratio_cloud_levels_rebc": locals.environment_saturation_mixing_ratio_cloud_levels.data[
+            "p_surface": state.input_output.p_surface.field[:],
+            "local_t_cloud_levels": locals.t_cloud_levels.field[:],
+            "local_vapor_cloud_levels_forced": locals.vapor_cloud_levels_forced.field[:],
+            "local_env_saturation_mixing_ratio_cloud_levels": locals.environment_saturation_mixing_ratio_cloud_levels.field[
                 :
             ],
-            "condensate_to_fall_forced_rebc": state.output.condensate_to_fall_forced.data[
+            "epsilon_forced": state.output.epsilon_forced.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_base_mass_flux_modified": state.output.cloud_base_mass_flux_modified.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "condensate_to_fall_forced": state.output.condensate_to_fall_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "evaporate_in_downdraft_forced": state.output.evaporate_in_downdraft_forced.data[
+            "evaporate_in_downdraft_forced": state.output.evaporate_in_downdraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "precip_rebc": state.output.precip.data[:, :, plume_dependent_constants.PLUME_INDEX],
-            "t_rebc": state.output.t.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "dvapordt_rebc": state.output.dvapordt.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "dbuoyancydt_rebc": state.output.dbuoyancydt.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "prec_flux_rebc": locals.prec_flux.data[:],
-            "evap_flux_rebc": locals.evap_flux.data[:],
-            "local_evap_bcb_rebc": locals.evap_bcb.data[:],
+            "precip": state.output.precip.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_precipitation_flux": locals.precipitation_flux.field[:],
+            "local_evaporation_flux": locals.evaporation_flux.field[:],
+            "local_evaporation_below_cloud_base": locals.evaporation_below_cloud_base.field[:],
+            "dtdt": state.output.dtdt.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "dvapordt": state.output.dvapordt.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "dbuoyancydt": state.output.dbuoyancydt.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_RainEvapBelowCloudbase_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_RainEvaporationBelowCloudBase_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -217,7 +217,7 @@ class TranslateGF2020_CumulusParameterization_RainEvapBelowCloudbase_shallow(Tra
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_RainEvapBelowCloudbase_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_RainEvaporationBelowCloudBase_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -240,7 +240,7 @@ class TranslateGF2020_CumulusParameterization_RainEvapBelowCloudbase_mid(Transla
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_RainEvapBelowCloudbase_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_RainEvaporationBelowCloudBase_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
