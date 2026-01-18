@@ -37,7 +37,7 @@ class TestCore:
             "local_geopotential_height_cloud_levels_forced_air_density": {},
             "p_cloud_levels_forced_air_density": {},
             "error_code_air_density": {},
-            "local_air_density_air_density": {},
+            "local_hydrostatic_air_density_air_density": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -79,7 +79,7 @@ class TestCore:
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_air_density"
         ]
-        locals.hydrostatic_air_density.data[:] = inputs["local_air_density_air_density"]
+        locals.hydrostatic_air_density.data[:] = inputs["local_hydrostatic_air_density_air_density"]
 
         code = self.stencil_factory.from_dims_halo(
             func=hydrostatic_air_density,
@@ -105,7 +105,7 @@ class TestCore:
             "error_code_air_density": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_air_density_air_density": locals.hydrostatic_air_density.field[:],
+            "local_hydrostatic_air_density_air_density": locals.hydrostatic_air_density.field[:],
         }
 
         return outputs
