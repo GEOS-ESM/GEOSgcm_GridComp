@@ -306,12 +306,12 @@ from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulu
     TranslateGF2020_CumulusParameterization_CloudDissipation_mid,
     TranslateGF2020_CumulusParameterization_CloudDissipation_shallow,
 )
-from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_TotalEvaporationFlux import (
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_Cumulus_Parameterization_TotalEvaporationFlux import (
     TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_deep,
     TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_mid,
     TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_shallow,
 )
-from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_DeepPrecipitationOutput import (
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_Cumulus_Parameterization_DeepPrecipitationOutput import (
     TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_deep,
     TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_mid,
     TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_shallow,

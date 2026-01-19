@@ -35,9 +35,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.precip import (
     PrecipFactor,
     rain_evaporation_below_cloud_base,
     cloud_dissapation,
-    total_evaporation_flux,
     LightningFlassDensity,
-    deep_precipitation_output,
     UpdateWorkfunctionsAndCondensates,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
@@ -109,7 +107,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heati
     kinetic_energy_to_heating,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback import Feedback
-from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output.prepare_output import PrepareOutput
+from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
+    total_evaporation_flux,
+    deep_precipitation_output,
+    prepare_output,
+)
 
 
 class CumulusParameterization:

@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output.stencils import prepare_output
+from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import prepare_output
 
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM

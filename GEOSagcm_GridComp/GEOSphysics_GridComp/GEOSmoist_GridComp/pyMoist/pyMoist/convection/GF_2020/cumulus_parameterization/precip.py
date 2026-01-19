@@ -390,39 +390,6 @@ def cloud_dissapation(
             )
 
 
-def total_evaporation_flux(
-    error_code: IntFieldIJ_Plume,
-    cloud_top_level: IntFieldIJ_Plume,
-    p_cloud_levels_forced: FloatField_Plume,
-    evaporation_flux: FloatField,
-    evaporation_sublimation_tendency: FloatField,
-    plume: Int,
-):
-    with computation(PARALLEL), interval(...):
-        if error_code[0, 0][plume] == 0:
-            if K <= cloud_top_level[0, 0][plume]:
-                dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
-                evaporation_sublimation_tendency = (
-                    evaporation_sublimation_tendency + evaporation_flux * constants.MAPL_GRAV / dp
-                )
-
-
-def deep_precipitation_output(
-    error_code: IntFieldIJ_Plume,
-    cloud_top_level: IntFieldIJ_Plume,
-    precipitation_flux: FloatField,
-    convective_precip_flux: FloatField,
-    plume: Int,
-):
-    with computation(PARALLEL), interval(...):
-        if (
-            error_code[0, 0][plume] == 0
-            and plume == cumulus_parameterization_constants.DEEP
-            and K <= cloud_top_level[0, 0][plume] + 1
-        ):
-            convective_precip_flux = precipitation_flux
-
-
 class LightningFlassDensity:
     def __init__(self):
         pass

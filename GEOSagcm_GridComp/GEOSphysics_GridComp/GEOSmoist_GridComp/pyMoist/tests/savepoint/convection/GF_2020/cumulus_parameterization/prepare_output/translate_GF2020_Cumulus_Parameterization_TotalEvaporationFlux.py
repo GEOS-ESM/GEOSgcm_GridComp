@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.precip import deep_precipitation_output
+from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import total_evaporation_flux
 
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -37,8 +37,9 @@ class TestCore:
         in_vars["data_vars"] = {
             "error_code": {},
             "cloud_top_level": {},
-            "local_precipitation_flux": {},
-            "convective_precip_flux": {},
+            "p_cloud_levels_forced": {},
+            "local_evaporation_flux": {},
+            "evaporation_sublimation_tendency": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -75,11 +76,14 @@ class TestCore:
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_top_level"] - 1
         )
-        locals.precipitation_flux.data[:] = inputs["local_precipitation_flux"]
-        state.output.convective_precip_flux.data[:] = inputs["convective_precip_flux"]
+        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "p_cloud_levels_forced"
+        ]
+        locals.evaporation_flux.data[:] = inputs["local_evaporation_flux"]
+        state.output.evaporation_sublimation_tendency.data[:] = inputs["evaporation_sublimation_tendency"]
 
         code = self.stencil_factory.from_dims_halo(
-            func=deep_precipitation_output,
+            func=total_evaporation_flux,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -87,8 +91,9 @@ class TestCore:
             code(
                 error_code=state.output.error_code,
                 cloud_top_level=state.output.cloud_top_level,
-                precipitation_flux=locals.precipitation_flux,
-                convective_precip_flux=state.output.convective_precip_flux,
+                p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                evaporation_flux=locals.evaporation_flux,
+                evaporation_sublimation_tendency=state.output.evaporation_sublimation_tendency,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
 
@@ -96,14 +101,17 @@ class TestCore:
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
-            "local_precipitation_flux": locals.precipitation_flux.data[:],
-            "convective_precip_flux": state.output.convective_precip_flux.data[:],
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.data[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "local_evaporation_flux": locals.evaporation_flux.data[:],
+            "evaporation_sublimation_tendency": state.output.evaporation_sublimation_tendency.data[:],
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -126,7 +134,7 @@ class TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_shallow(Tr
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -149,7 +157,7 @@ class TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_mid(Transl
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
