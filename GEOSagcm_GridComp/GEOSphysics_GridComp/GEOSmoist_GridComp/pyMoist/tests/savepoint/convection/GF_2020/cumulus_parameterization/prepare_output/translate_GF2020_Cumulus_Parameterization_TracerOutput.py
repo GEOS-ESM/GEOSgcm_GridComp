@@ -86,10 +86,10 @@ class TestCore:
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
                 error_code=state.output.error_code,
-                plume=plume_dependent_constants.PLUME_INDEX,
-                t_updraft=state.output.t_updraft,
                 updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
                 t_cloud_levels=locals.t_cloud_levels,
+                t_updraft=state.output.t_updraft,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         outputs = {

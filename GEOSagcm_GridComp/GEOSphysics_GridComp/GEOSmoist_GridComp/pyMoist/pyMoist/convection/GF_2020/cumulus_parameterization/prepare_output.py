@@ -53,10 +53,10 @@ def deep_precipitation_output(
 
 def tracer_output(
     error_code: IntFieldIJ_Plume,
-    plume: Int,
-    t_updraft: FloatField_Plume,
     updraft_column_temperature_forced: FloatField,
     t_cloud_levels: FloatField,
+    t_updraft: FloatField_Plume,
+    plume: Int,
 ):
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
