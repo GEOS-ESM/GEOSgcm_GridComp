@@ -759,6 +759,18 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_PrecipitationFlux-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftWorkfunctions-In
          !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftWorkfunctions-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_RainEvaporationBelowCloudBase-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_RainEvaporationBelowCloudBase-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_CloudDissipation-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_CloudDissipation-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_TotalEvaporationFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_TotalEvaporationFlux-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DeepPrecipitationOutput-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DeepPrecipitationOutput-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_TracerOutput-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_TracerOutput-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_PrepareOutput-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_PrepareOutput-Out
     ELSE
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pa
