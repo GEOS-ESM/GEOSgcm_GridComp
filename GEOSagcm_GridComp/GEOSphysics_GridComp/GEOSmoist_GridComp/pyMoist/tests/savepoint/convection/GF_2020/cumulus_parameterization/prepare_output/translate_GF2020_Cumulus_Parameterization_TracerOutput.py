@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers.stencils import tracer_output
+from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import tracer_output
 
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -35,10 +35,10 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_to": {},
-            "local_t_cloud_levels_to": {},
-            "local_updraft_column_temperature_forced_to": {},
-            "t_updraft_to": {},
+            "error_code": {},
+            "local_t_cloud_levels": {},
+            "local_updraft_column_temperature_forced": {},
+            "t_updraft": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -71,20 +71,20 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code_to"]
-        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels_to"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels"]
         locals.updraft_column_temperature_forced.data[:] = inputs[
-            "local_updraft_column_temperature_forced_to"
+            "local_updraft_column_temperature_forced"
         ]
-        state.output.t_updraft.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["t_updraft_to"]
+        state.output.t_updraft.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["t_updraft"]
 
-        code_part_1 = self.stencil_factory.from_dims_halo(
+        code = self.stencil_factory.from_dims_halo(
             func=tracer_output,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            code_part_1(
+            code(
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
                 t_updraft=state.output.t_updraft,
@@ -93,10 +93,10 @@ class TestCore:
             )
 
         outputs = {
-            "error_code_to": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "local_t_cloud_levels_to": locals.t_cloud_levels.data[:],
-            "local_updraft_column_temperature_forced_to": locals.updraft_column_temperature_forced.data[:],
-            "t_updraft_to": state.output.t_updraft.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_t_cloud_levels": locals.t_cloud_levels.data[:],
+            "local_updraft_column_temperature_forced": locals.updraft_column_temperature_forced.data[:],
+            "t_updraft": state.output.t_updraft.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
         }
 
         return outputs

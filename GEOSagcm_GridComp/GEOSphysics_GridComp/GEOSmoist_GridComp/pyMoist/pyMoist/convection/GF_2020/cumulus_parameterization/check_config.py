@@ -230,3 +230,10 @@ def check_config(
             "setting requires an unimeplemented option in cloud_dissipation. Please implement, then"
             "disable this error manually to proceed."
         )
+
+    if cumulus_parameterization_config.LIGHTNING_DIAGNOSTICS != True:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with LIGHTNING_DIAGNOSTICS != True. This"
+            "setting requires unimeplemented functions. Please implement, then disable this error manually"
+            "to proceed."
+        )

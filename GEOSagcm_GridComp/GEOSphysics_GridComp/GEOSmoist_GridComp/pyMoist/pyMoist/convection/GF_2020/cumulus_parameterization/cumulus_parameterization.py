@@ -48,9 +48,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
     updraft_rates_pdf,
     cloud_top_checks,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers.convective_tracers import (
+from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers import (
     ColdPoolParameterization,
-    TracerOutput,
     AtmosphericComposition,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment import (
@@ -110,6 +109,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback impor
 from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
     total_evaporation_flux,
     deep_precipitation_output,
+    tracer_output,
     prepare_output,
 )
 
@@ -501,9 +501,15 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._tracer_output = TracerOutput()
+        self._tracer_output = stencil_factory.from_dims_halo(
+            func=tracer_output,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
-        self._prepare_output = PrepareOutput()
+        self._prepare_output = stencil_factory.from_dims_halo(
+            func=prepare_output,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
         self._update_workfunctions_and_condensates = UpdateWorkfunctionsAndCondensates()
 

@@ -316,8 +316,7 @@ from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF202
     TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_mid,
     TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_shallow,
 )
-
-from .convection.GF_2020.cumulus_parameterization.convective_tracers.translate_GF2020_Cumulus_Parameterization_TracerOutput import (
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_Cumulus_Parameterization_TracerOutput import (
     TranslateGF2020_CumulusParameterization_TracerOutput_deep,
     TranslateGF2020_CumulusParameterization_TracerOutput_mid,
     TranslateGF2020_CumulusParameterization_TracerOutput_shallow,

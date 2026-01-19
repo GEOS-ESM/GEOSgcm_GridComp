@@ -35,19 +35,19 @@ class TestCore:
         self.quantity_factory = grid.quantity_factory
 
         in_vars["data_vars"] = {
-            "error_code_po": {},
-            "cloud_base_mass_flux_modified_po": {},
-            "total_normalized_integrated_condensate_forced_po": {},
-            "total_normalized_integrated_evaporate_forced_po": {},
+            "error_code": {},
+            "cloud_base_mass_flux_modified": {},
+            "total_normalized_integrated_condensate_forced": {},
+            "total_normalized_integrated_evaporate_forced": {},
             "normalized_massflux_updraft_forced": {},
             "normalized_massflux_downdraft_forced": {},
-            "condensate_to_fall_forced_po": {},
-            "evaporate_in_downdraft_forced_po": {},
+            "condensate_to_fall_forced": {},
+            "evaporate_in_downdraft_forced": {},
             "mass_entrainment_updraft_forced": {},
             "mass_detrainment_updraft_forced": {},
-            "mass_entrainment_downdraft_forced_po": {},
-            "mass_detrainment_downdraft_forced_po": {},
-            "local_environment_massflux_po": {},
+            "mass_entrainment_downdraft_forced": {},
+            "mass_detrainment_downdraft_forced": {},
+            "local_environment_massflux": {},
             "local_vapor_tendency_from_environmental_subsidence": {},
             "local_moist_static_energy_tendency_from_environmental_subsidence": {},
             "local_t_tendency_from_environmental_subsidence": {},
@@ -83,16 +83,16 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code_po"]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         state.output.cloud_base_mass_flux_modified.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "cloud_base_mass_flux_modified_po"
+            "cloud_base_mass_flux_modified"
         ]
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["total_normalized_integrated_condensate_forced_po"]
+        ] = inputs["total_normalized_integrated_condensate_forced"]
         state.output.total_normalized_integrated_evaporate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["total_normalized_integrated_evaporate_forced_po"]
+        ] = inputs["total_normalized_integrated_evaporate_forced"]
         state.output.normalized_massflux_updraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["normalized_massflux_updraft_forced"]
@@ -100,10 +100,10 @@ class TestCore:
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["normalized_massflux_downdraft_forced"]
         state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "condensate_to_fall_forced_po"
+            "condensate_to_fall_forced"
         ]
         state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["evaporate_in_downdraft_forced_po"]
+            inputs["evaporate_in_downdraft_forced"]
         )
         state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["mass_entrainment_updraft_forced"]
@@ -111,13 +111,13 @@ class TestCore:
         state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["mass_detrainment_updraft_forced"]
         )
-        state.output.mass_detrainment_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_detrainment_downdraft_forced_po"]
         state.output.mass_entrainment_downdraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_entrainment_downdraft_forced_po"]
-        locals.environment_massflux.data[:] = inputs["local_environment_massflux_po"]
+        ] = inputs["mass_entrainment_downdraft_forced"]
+        state.output.mass_detrainment_downdraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["mass_detrainment_downdraft_forced"]
+        locals.environment_massflux.data[:] = inputs["local_environment_massflux"]
         locals.vapor_tendency_from_environmental_subsidence.data[:] = inputs[
             "local_vapor_tendency_from_environmental_subsidence"
         ]
@@ -128,15 +128,14 @@ class TestCore:
             "local_t_tendency_from_environmental_subsidence"
         ]
 
-        code_part_1 = self.stencil_factory.from_dims_halo(
+        code = self.stencil_factory.from_dims_halo(
             func=prepare_output,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            code_part_1(
+            code(
                 error_code=state.output.error_code,
-                plume=plume_dependent_constants.PLUME_INDEX,
                 cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
                 total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
                 total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
@@ -152,51 +151,52 @@ class TestCore:
                 vapor_tendency_from_environmental_subsidence=locals.vapor_tendency_from_environmental_subsidence,
                 moist_static_energy_tendency_from_environmental_subsidence=locals.moist_static_energy_tendency_from_environmental_subsidence,
                 t_tendency_from_environmental_subsidence=locals.t_tendency_from_environmental_subsidence,
+                plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         outputs = {
-            "error_code_po": state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_base_mass_flux_modified_po": state.output.cloud_base_mass_flux_modified.data[
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_base_mass_flux_modified": state.output.cloud_base_mass_flux_modified.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "total_normalized_integrated_condensate_forced_po": state.output.total_normalized_integrated_condensate_forced.data[
+            "total_normalized_integrated_condensate_forced": state.output.total_normalized_integrated_condensate_forced.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "total_normalized_integrated_evaporate_forced_po": state.output.total_normalized_integrated_evaporate_forced.data[
+            "total_normalized_integrated_evaporate_forced": state.output.total_normalized_integrated_evaporate_forced.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.data[
+            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "normalized_massflux_downdraft_forced": state.output.normalized_massflux_downdraft_forced.data[
+            "normalized_massflux_downdraft_forced": state.output.normalized_massflux_downdraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "condensate_to_fall_forced_po": state.output.condensate_to_fall_forced.data[
+            "condensate_to_fall_forced": state.output.condensate_to_fall_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "evaporate_in_downdraft_forced_po": state.output.evaporate_in_downdraft_forced.data[
+            "evaporate_in_downdraft_forced": state.output.evaporate_in_downdraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "mass_entrainment_updraft_forced": state.output.mass_entrainment_updraft_forced.data[
+            "mass_entrainment_updraft_forced": state.output.mass_entrainment_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "mass_detrainment_updraft_forced": state.output.mass_detrainment_updraft_forced.data[
+            "mass_detrainment_updraft_forced": state.output.mass_detrainment_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "mass_entrainment_downdraft_forced_po": state.output.mass_entrainment_downdraft_forced.data[
+            "mass_entrainment_downdraft_forced": state.output.mass_entrainment_downdraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "mass_detrainment_downdraft_forced_po": state.output.mass_detrainment_downdraft_forced.data[
+            "mass_detrainment_downdraft_forced": state.output.mass_detrainment_downdraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_environment_massflux_po": locals.environment_massflux.data[:],
-            "local_vapor_tendency_from_environmental_subsidence": locals.vapor_tendency_from_environmental_subsidence.data[
+            "local_environment_massflux": locals.environment_massflux.field[:],
+            "local_vapor_tendency_from_environmental_subsidence": locals.vapor_tendency_from_environmental_subsidence.field[
                 :
             ],
-            "local_moist_static_energy_tendency_from_environmental_subsidence": locals.moist_static_energy_tendency_from_environmental_subsidence.data[
+            "local_moist_static_energy_tendency_from_environmental_subsidence": locals.moist_static_energy_tendency_from_environmental_subsidence.field[
                 :
             ],
-            "local_t_tendency_from_environmental_subsidence": locals.t_tendency_from_environmental_subsidence.data[
+            "local_t_tendency_from_environmental_subsidence": locals.t_tendency_from_environmental_subsidence.field[
                 :
             ],
         }

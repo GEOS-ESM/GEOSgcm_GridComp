@@ -51,9 +51,23 @@ def deep_precipitation_output(
             convective_precip_flux = precipitation_flux
 
 
-def prepare_output(
+def tracer_output(
     error_code: IntFieldIJ_Plume,
     plume: Int,
+    t_updraft: FloatField_Plume,
+    updraft_column_temperature_forced: FloatField,
+    t_cloud_levels: FloatField,
+):
+    with computation(PARALLEL), interval(0, -1):
+        if error_code[0, 0][plume] == 0:
+            t_updraft[0, 0, 0][plume] = updraft_column_temperature_forced
+    with computation(PARALLEL), interval(-1, None):
+        if error_code[0, 0][plume] == 0:
+            t_updraft[0, 0, 0][plume] = t_cloud_levels
+
+
+def prepare_output(
+    error_code: IntFieldIJ_Plume,
     cloud_base_mass_flux_modified: FloatFieldIJ_Plume,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
     total_normalized_integrated_evaporate_forced: FloatFieldIJ_Plume,
@@ -69,6 +83,7 @@ def prepare_output(
     vapor_tendency_from_environmental_subsidence: FloatField,
     moist_static_energy_tendency_from_environmental_subsidence: FloatField,
     t_tendency_from_environmental_subsidence: FloatField,
+    plume: Int,
 ):
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
@@ -80,7 +95,7 @@ def prepare_output(
                 cloud_base_mass_flux_modified[0, 0][plume]
                 * total_normalized_integrated_evaporate_forced[0, 0][plume]
             )
-    with computation(FORWARD), interval(...):
+    with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             normalized_massflux_updraft_forced[0, 0, 0][plume] = (
                 cloud_base_mass_flux_modified[0, 0][plume]
@@ -110,7 +125,7 @@ def prepare_output(
             )
             environment_massflux = cloud_base_mass_flux_modified[0, 0][plume] * environment_massflux
 
-    with computation(FORWARD), interval(...):
+    with computation(PARALLEL), interval(...):
         vapor_tendency_from_environmental_subsidence = (
             cloud_base_mass_flux_modified[0, 0][plume] * vapor_tendency_from_environmental_subsidence
         )
