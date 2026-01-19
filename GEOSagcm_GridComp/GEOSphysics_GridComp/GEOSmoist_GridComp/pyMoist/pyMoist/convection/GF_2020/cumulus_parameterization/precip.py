@@ -390,69 +390,37 @@ def cloud_dissapation(
             )
 
 
-def output_evaporation_flux(
+def total_evaporation_flux(
     error_code: IntFieldIJ_Plume,
-    plume: Int,
     cloud_top_level: IntFieldIJ_Plume,
     p_cloud_levels_forced: FloatField_Plume,
-    evap_flux: FloatField,
-    evap_subl_tendency: FloatField,
+    evaporation_flux: FloatField,
+    evaporation_sublimation_tendency: FloatField,
+    plume: Int,
 ):
-    with computation(FORWARD), interval(...):
+    with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
-                dp: FloatFieldIJ = 100.0 * (
-                    p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]
+                dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
+                evaporation_sublimation_tendency = (
+                    evaporation_sublimation_tendency + evaporation_flux * constants.MAPL_GRAV / dp
                 )
-                evap_subl_tendency = evap_subl_tendency + evap_flux * constants.MAPL_GRAV / dp
 
 
-def output_deep_precipitation(
+def deep_precipitation_output(
     error_code: IntFieldIJ_Plume,
-    plume: Int,
     cloud_top_level: IntFieldIJ_Plume,
     precipitation_flux: FloatField,
     convective_precip_flux: FloatField,
+    plume: Int,
 ):
     with computation(PARALLEL), interval(...):
-        if plume == cumulus_parameterization_constants.DEEP:
-            if error_code[0, 0][plume] == 0:
-                if K <= cloud_top_level[0, 0][plume] + 1:
-                    convective_precip_flux = precipitation_flux
-
-
-class OutputEvaporationFlux:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._output_evaporation_flux = stencil_factory.from_dims_halo(
-            func=output_evaporation_flux,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-        self._output_evaporation_flux(
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            cloud_top_level=state.output.cloud_top_level,
-            p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-            evap_flux=locals.evap_flux,
-            evap_subl_tendency=state.output.evap_subl_tendency,
-        )
+        if (
+            error_code[0, 0][plume] == 0
+            and plume == cumulus_parameterization_constants.DEEP
+            and K <= cloud_top_level[0, 0][plume] + 1
+        ):
+            convective_precip_flux = precipitation_flux
 
 
 class LightningFlassDensity:
@@ -461,39 +429,6 @@ class LightningFlassDensity:
 
     def __call__(self, *args, **kwds):
         pass
-
-
-class OutputDeepPrecipitation:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-        config: GF2020Config,
-        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
-    ):
-        # make configuration visible at runtime
-        self.config = config
-        self.cumulus_parameterization_config = cumulus_parameterization_config
-
-        # construct stencils and functions
-        self._output_deep_precipitation = stencil_factory.from_dims_halo(
-            func=output_deep_precipitation,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-    def __call__(
-        self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-    ):
-        self._output_deep_precipitation(
-            error_code=state.output.error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            cloud_top_level=state.output.cloud_top_level,
-            precipitation_flux=locals.precipitation_flux,
-            convective_precip_flux=state.output.convective_precip_flux,
-        )
 
 
 class UpdateWorkfunctionsAndCondensates:

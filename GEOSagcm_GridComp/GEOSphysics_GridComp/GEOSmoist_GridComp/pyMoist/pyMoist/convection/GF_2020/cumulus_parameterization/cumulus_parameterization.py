@@ -35,9 +35,9 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.precip import (
     PrecipFactor,
     rain_evaporation_below_cloud_base,
     cloud_dissapation,
-    OutputEvaporationFlux,
+    total_evaporation_flux,
     LightningFlassDensity,
-    OutputDeepPrecipitation,
+    deep_precipitation_output,
     UpdateWorkfunctionsAndCondensates,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
@@ -487,11 +487,17 @@ class CumulusParameterization:
             },
         )
 
-        self._output_evaporation_flux = OutputEvaporationFlux()
+        self._total_evaporation_flux = stencil_factory.from_dims_halo(
+            func=total_evaporation_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
         self._lightning_flash_density = LightningFlassDensity()
 
-        self._output_deep_precipitation = OutputDeepPrecipitation()
+        self._deep_precipitation_output = stencil_factory.from_dims_halo(
+            func=deep_precipitation_output,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
 
         self._tracer_output = TracerOutput()
 
@@ -1789,32 +1795,34 @@ class CumulusParameterization:
                 )
 
                 # total (deep+mid) evaporation flux for output (units kg/kg/s)
-                # NOTE test GF2020_CumulusParameterization_OutputEvaporationFlux_{plume}:
+                # NOTE test GF2020_CumulusParameterization_TotalEvaporationFlux_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._output_evaporation_flux(
+                self._total_evaporation_flux(
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                     cloud_top_level=state.output.cloud_top_level,
                     p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-                    evap_flux=locals.evap_flux,
-                    evap_subl_tendency=state.output.evap_subl_tendency,
+                    evaporation_flux=locals.evaporation_flux,
+                    evaporation_sublimation_tendency=state.output.evaporation_sublimation_tendency,
                 )
 
                 # lightning flashes density (parameterization from Lopez 2016, MWR)
-                # Not needed right now
+                # NOTE this section does not run in the test case, and has not been implemented.
                 self._lightning_flash_density()
 
                 # output precipitation (only deep plume)
-                # NOTE test GF2020_CumulusParameterization_OutputDeepPrecipitation_{plume}:
+                # NOTE test GF2020_CumulusParameterization_DeepPrecipitationOutput_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._output_deep_precipitation(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                self._deep_precipitation_output(
+                    error_code=state.output.error_code,
+                    cloud_top_level=state.output.cloud_top_level,
+                    precipitation_flux=locals.precipitation_flux,
+                    convective_precip_flux=state.output.convective_precip_flux,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
                 # for tracer convective transport / outputs

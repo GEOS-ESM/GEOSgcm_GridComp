@@ -432,7 +432,7 @@ class GF2020CumulusParameterizationLocals(State):
     )
     evaporation_below_cloud_base: Quantity = dataclasses.field(
         metadata={
-            "name": "evap_bcb",
+            "name": "evaporation_below_cloud_base",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",

@@ -580,9 +580,9 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        evap_subl_tendency: Quantity = dataclasses.field(
+        evaporation_sublimation_tendency: Quantity = dataclasses.field(
             metadata={
-                "name": "evap_subl_tendency",
+                "name": "evaporation_sublimation_tendency",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",

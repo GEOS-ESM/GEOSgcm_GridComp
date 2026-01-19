@@ -306,17 +306,15 @@ from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulu
     TranslateGF2020_CumulusParameterization_CloudDissipation_mid,
     TranslateGF2020_CumulusParameterization_CloudDissipation_shallow,
 )
-
-from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_OutputEvaporationFlux import (
-    TranslateGF2020_CumulusParameterization_OutputEvaporationFlux_deep,
-    TranslateGF2020_CumulusParameterization_OutputEvaporationFlux_mid,
-    TranslateGF2020_CumulusParameterization_OutputEvaporationFlux_shallow,
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_TotalEvaporationFlux import (
+    TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_deep,
+    TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_mid,
+    TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_shallow,
 )
-
-from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_OutputDeepPrecipitation import (
-    TranslateGF2020_CumulusParameterization_OutputDeepPrecipitation_deep,
-    TranslateGF2020_CumulusParameterization_OutputDeepPrecipitation_mid,
-    TranslateGF2020_CumulusParameterization_OutputDeepPrecipitation_shallow,
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulus_Parameterization_DeepPrecipitationOutput import (
+    TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_deep,
+    TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_mid,
+    TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_shallow,
 )
 
 from .convection.GF_2020.cumulus_parameterization.convective_tracers.translate_GF2020_Cumulus_Parameterization_TracerOutput import (
