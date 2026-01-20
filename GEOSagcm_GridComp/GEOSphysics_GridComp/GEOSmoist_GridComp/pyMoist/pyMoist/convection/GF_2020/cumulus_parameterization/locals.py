@@ -349,6 +349,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    k_x: Quantity = dataclasses.field(
+        metadata={
+            "name": "k_x",
+            "dims": [X_DIM, Y_DIM, "ensemble_members"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     epsilon: Quantity = dataclasses.field(
         metadata={
             "name": "epsilon",
@@ -464,6 +473,51 @@ class GF2020CumulusParameterizationLocals(State):
             "units": "?",
             "intent": "?",
             "dtype": Float,
+        }
+    )
+    xf_ens: Quantity = dataclasses.field(
+        metadata={
+            "name": "xf_ens",
+            "dims": [X_DIM, Y_DIM, "ensemble_members"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    xff_ens3: Quantity = dataclasses.field(
+        metadata={
+            "name": "xff_ens3",
+            "dims": [X_DIM, Y_DIM, "ensemble_members"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    moisture_convergence: Quantity = dataclasses.field(
+        metadata={
+            "name": "moisture_convergence",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    xff_mid: Quantity = dataclasses.field(
+        metadata={
+            "name": "xff_mid",
+            "dims": [X_DIM, Y_DIM, "ensemble_members"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    ichoice: Quantity = dataclasses.field(
+        metadata={
+            "name": "ichoice",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Int,
         }
     )
     scale_dependence_factor_downdraft: Quantity = dataclasses.field(
@@ -1272,6 +1326,15 @@ class GF2020CumulusParameterizationLocals(State):
     psumh: Quantity = dataclasses.field(
         metadata={
             "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    tau_ecmwf: Quantity = dataclasses.field(
+        metadata={
+            "name": "tau_ecmwf",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",

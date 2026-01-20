@@ -328,6 +328,12 @@ from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF202
     TranslateGF2020_CumulusParameterization_PrepareOutput_shallow,
 )
 
+from .convection.GF_2020.cumulus_parameterization.cloud_base_mass_flux.translate_GF2020_Cumulus_Parameterization_CloudBaseMassFlux import (
+    TranslateGF2020_CumulusParameterization_CloudBaseMassFlux_deep,
+    TranslateGF2020_CumulusParameterization_CloudBaseMassFlux_mid,
+    TranslateGF2020_CumulusParameterization_CloudBaseMassFlux_shallow,
+)
+
 # NOTE need to organize everything below here
 # in progress tests
 from .convection.GF_2020.cumulus_parameterization.awaiting_permanant_home.translate_get_melting_profile import (

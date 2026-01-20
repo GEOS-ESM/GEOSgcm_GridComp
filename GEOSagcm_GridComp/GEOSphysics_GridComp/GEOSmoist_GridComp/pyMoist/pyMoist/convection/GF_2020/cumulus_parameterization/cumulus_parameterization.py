@@ -1708,6 +1708,10 @@ class CumulusParameterization:
 
                 # large scale forcing
                 # calculate cloud base mass flux
+                # NOTE test GF2020_CumulusParameterization_CloudBaseMassFlux_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._cloud_base_mass_flux()
 
                 # Include kinetic energy dissipation converted to heating
