@@ -372,7 +372,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
-    !$ser verbatim real :: SER_VAR_1
+    !$ser verbatim integer :: SER_VAR_1
 
     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -397,6 +397,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data CONVECTION_TRACER=CONVECTION_TRACER C1=C1 ADV_TRIGGER=ADV_TRIGGER AUTOCONV=AUTOCONV
     !$ser data USE_TRACER_TRANSP=USE_TRACER_TRANSP SCLM_DEEP=SCLM_DEEP FIX_CNV_CLOUD=FIX_CNV_CLOUD
     !$ser data APPLY_SUB_MP=APPLY_SUB_MP
+    !$ser verbatim SER_VAR_1=size(CNV_Tracers)
+    !$ser data NUMBER_OF_TRACERS=SER_VAR_1
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ); VERIFY_(STATUS)
 
@@ -771,6 +773,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_TracerOutput-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_PrepareOutput-In
          !$ser flush_savepoint GF2020_CumulusParameterization_PrepareOutput-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_AtmosphericComposition-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_AtmosphericComposition-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_LargeScaleForcing-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_LargeScaleForcing-Out
     ELSE
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pa
