@@ -16,6 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
 )
 from pyMoist.shared_incloud_processes import ice_fraction
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 
 
 def total_evaporation_flux(
@@ -136,3 +137,15 @@ def prepare_output(
         t_tendency_from_environmental_subsidence = (
             cloud_base_mass_flux_modified[0, 0][plume] * t_tendency_from_environmental_subsidence
         )
+
+
+class LightningFlashDensity:
+    def __init__(self, cumulus_parameterization_config: GF2020CumulusParameterizationConfig):
+        if cumulus_parameterization_config.LIGHTNING_DIAGNOSTICS:
+            raise NotImplementedError(
+                "GF2020 lightning output has not been implemented. You should have"
+                "been caught before this error - something is wrong with the config checker!"
+            )
+
+    def __call__(self, *args, **kwds):
+        pass

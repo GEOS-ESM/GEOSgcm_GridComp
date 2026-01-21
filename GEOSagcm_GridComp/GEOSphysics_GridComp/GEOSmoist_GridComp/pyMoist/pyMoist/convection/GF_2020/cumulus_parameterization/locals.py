@@ -1312,6 +1312,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    chemistry_tracers_cloud_levels: Quantity = dataclasses.field(
+        metadata={
+            "name": "chemistry_tracers_cloud_levels",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
 
     # NOTE these can potentially be removed with a better analysis of what they do/where they go
     psum: Quantity = dataclasses.field(

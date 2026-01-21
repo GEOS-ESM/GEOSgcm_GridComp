@@ -388,19 +388,3 @@ def cloud_dissapation(
                 cloud_liquid_after_rain_forced[0, 0, 0][plume]
                 - out_precip_dissipation * USE_CLOUD_DISSIPATION * fractional_area * DTIME,
             )
-
-
-class LightningFlassDensity:
-    def __init__(self):
-        pass
-
-    def __call__(self, *args, **kwds):
-        pass
-
-
-class UpdateWorkfunctionsAndCondensates:
-    def __init__(self):
-        pass
-
-    def __call__(self, *args, **kwds):
-        pass

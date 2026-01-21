@@ -91,3 +91,5 @@ class GF2020CumulusParameterizationConfig:
     USE_RAIN_EVAP_BELOW_CLOUD_BASE: Int
     USE_CLOUD_DISSIPATION: Float
     LIGHTNING_DIAGNOSTICS: Int
+    WRTGRADS: Bool
+    CONVECTION_TRACER: Int

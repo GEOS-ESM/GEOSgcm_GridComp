@@ -321,11 +321,15 @@ from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF202
     TranslateGF2020_CumulusParameterization_TracerOutput_mid,
     TranslateGF2020_CumulusParameterization_TracerOutput_shallow,
 )
-
 from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_Cumulus_Parameterization_PrepareOutput import (
     TranslateGF2020_CumulusParameterization_PrepareOutput_deep,
     TranslateGF2020_CumulusParameterization_PrepareOutput_mid,
     TranslateGF2020_CumulusParameterization_PrepareOutput_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.convection_tracers.translate_GF2020_Cumulus_Parameterization_AtmosphericComposition import (
+    TranslateGF2020_CumulusParameterization_AtmosphericComposition_deep,
+    TranslateGF2020_CumulusParameterization_AtmosphericComposition_mid,
+    TranslateGF2020_CumulusParameterization_AtmosphericComposition_shallow,
 )
 
 from .convection.GF_2020.cumulus_parameterization.cloud_base_mass_flux.translate_GF2020_Cumulus_Parameterization_CloudBaseMassFlux import (

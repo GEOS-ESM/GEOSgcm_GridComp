@@ -907,6 +907,24 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
+        chemistry_tracers: Quantity = dataclasses.field(
+            metadata={
+                "name": "chemistry_tracers",
+                "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        chemistry_tracers_output: Quantity = dataclasses.field(
+            metadata={
+                "name": "chemistry_tracers_output",
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes", "tracers"],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
 
     input: Input
     output: Output

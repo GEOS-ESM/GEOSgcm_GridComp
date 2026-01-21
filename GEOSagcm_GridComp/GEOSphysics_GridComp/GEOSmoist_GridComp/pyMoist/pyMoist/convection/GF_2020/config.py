@@ -22,3 +22,4 @@ class GF2020Config:
     SCLM_DEEP: Float
     FIX_CNV_CLOUD: bool
     APPLY_SUB_MP: Int
+    NUMBER_OF_TRACERS: Int

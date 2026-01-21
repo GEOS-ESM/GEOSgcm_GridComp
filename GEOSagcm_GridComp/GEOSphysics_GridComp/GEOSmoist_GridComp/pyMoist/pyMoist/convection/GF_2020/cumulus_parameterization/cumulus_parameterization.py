@@ -35,8 +35,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.precip import (
     PrecipFactor,
     rain_evaporation_below_cloud_base,
     cloud_dissapation,
-    LightningFlassDensity,
-    UpdateWorkfunctionsAndCondensates,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
     find_maximum_updraft_origin_level,
@@ -108,6 +106,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heati
 from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback import Feedback
 from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
     total_evaporation_flux,
+    LightningFlashDensity,
     deep_precipitation_output,
     tracer_output,
     prepare_output,
@@ -494,7 +493,9 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._lightning_flash_density = LightningFlassDensity()
+        self._lightning_flash_density = LightningFlashDensity(
+            cumulus_parameterization_config=cumulus_parameterization_config
+        )
 
         self._deep_precipitation_output = stencil_factory.from_dims_halo(
             func=deep_precipitation_output,
@@ -510,8 +511,6 @@ class CumulusParameterization:
             func=prepare_output,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-
-        self._update_workfunctions_and_condensates = UpdateWorkfunctionsAndCondensates()
 
         self._atmospheric_composition = AtmosphericComposition()
 
@@ -1484,8 +1483,8 @@ class CumulusParameterization:
 
                 # check mass conservation
                 # NOTE This code runs in the Fortran and only has one output: totmas (total mass).
-                # totmas has only one use: a conditional log write if total mass is above a 1e-6.
-                # This conditional also has a disabled fatal error call.
+                # totmas has only one use: a conditional log write if total mass is above a 1e-6
+                # with a disabled (commented) fatal error call.
                 # Since the only consequential outcome is disabled, and this port has thus far not
                 # implemented other log writes, this code not been implemented.
                 # If totmas is needed in the future, or this fatal call is reimplemented,
@@ -1876,12 +1875,13 @@ class CumulusParameterization:
                 )
 
                 # outputs a model sounding for the stand-alone code (part 2)
-                # Not needed right now
+                # NOTE this section does not run in the test case, and has not been implemented.
                 self._sounding()
 
                 # section for atmospheric composition
+                # NOTE this section does not run in the test case, and has not been implemented.
                 self._atmospheric_composition()
 
                 # begin: for GATE soundings
-                # NOTE not needed right now, probably will never be implemented
+                # NOTE this section does not run in the test case, and has not been implemented.
                 self._gate_sounding()
