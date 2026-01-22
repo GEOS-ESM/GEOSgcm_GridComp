@@ -180,9 +180,13 @@ def make_bcs_cube(config):
           print(f"ABORT: Missing MOM6 bathymetry: {mom6_src} "
                 f"(LBCSV={config['lbcsv']} MOM6={MOM6_BATHY_VERSION})")
           return
+
+  msg = f"[make_bcs_cube] LBCSV={config['lbcsv']}  TOPO={TOPO_VERSION}  GRID={GRIDNAME}"
   
-  print(f"[make_bcs_cube] LBCSV={config['lbcsv']}  TOPO={TOPO_VERSION}  "
-        f"MOM6={MOM6_BATHY_VERSION}  REQ={'{imo}x{jmo}'.format(**config)}  GRID={GRIDNAME}")
+  if config["TRIPOL_OCEAN"]:
+      msg = msg + f"  MOM6={MOM6_BATHY_VERSION}  REQ={config['imo']}x{config['jmo']}"
+  
+  print(msg)
   # -------------------------------------------------------------------
 
   script_template = get_script_head() + cube_template + get_script_mv(config['grid_type'])
