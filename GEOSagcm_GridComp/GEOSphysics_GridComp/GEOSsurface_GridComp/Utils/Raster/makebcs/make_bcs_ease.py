@@ -64,8 +64,11 @@ def make_bcs_ease(config):
     os.makedirs(log_dir)
 
   account = get_account()
+  TOPO_VERSION = topo_version_for_bcs(config['lbcsv'])
   ims = '%04d'%config['im']
   jms = '%04d'%config['jm']
+  NC  = ims
+  SGNAME = ""
   RS = str(config['im'])+'x'+ str(config['jm'])
 
   script_template = get_script_head() + ease_template + get_script_mv(config['grid_type'])
@@ -80,6 +83,8 @@ def make_bcs_ease(config):
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
            IM = ims, \
            JM = jms, \
+           NC = NC, \
+           SGNAME = SGNAME, \
            MASKFILE = config['MASKFILE'], \
            lbcsv    = config['lbcsv'], \
            TRIPOL_OCEAN = False, \
@@ -88,6 +93,7 @@ def make_bcs_ease(config):
            RS = '_'+RS,\
            RC = RS+'_DE',\
            SCRATCH_DIR = scratch_dir, \
+           TOPO_VERSION = TOPO_VERSION, \
            NCPUS = config['NCPUS'])
 
   ease_job = open(bcjob,'wt')
