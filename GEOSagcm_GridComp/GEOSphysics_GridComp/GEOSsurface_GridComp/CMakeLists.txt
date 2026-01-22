@@ -13,7 +13,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
     SRCS GEOS_SurfaceGridComp.F90
     SUBCOMPONENTS ${alldirs}
     SUBDIRS Shared
-    DEPENDENCIES GEOS_SurfaceShared MAPL GMAO_mpeu esmf)
+    DEPENDENCIES GEOS_SurfaceShared MAPL GMAO_mpeu ESMF::ESMF)
 
 else ()
 

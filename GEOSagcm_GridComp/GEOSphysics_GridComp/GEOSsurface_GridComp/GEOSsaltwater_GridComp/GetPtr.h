@@ -17,6 +17,8 @@
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    _RC)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    _RC)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,ICEF   , 'ICE'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    _RC)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    _RC)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    _RC)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    _RC)

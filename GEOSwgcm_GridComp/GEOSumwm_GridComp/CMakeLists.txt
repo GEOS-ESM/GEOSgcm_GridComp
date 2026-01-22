@@ -7,7 +7,7 @@ esma_add_subdirectories(
 
 esma_add_library (${this}
   SRCS GEOS_UMWMGridComp.F90
-  DEPENDENCIES MAPL umwm esmf
+  DEPENDENCIES MAPL umwm ESMF::ESMF
   )
 
 

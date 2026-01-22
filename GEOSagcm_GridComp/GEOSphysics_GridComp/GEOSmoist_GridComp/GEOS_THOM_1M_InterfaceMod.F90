@@ -1,7 +1,6 @@
 ! $Id$
 
 #include "MAPL_Generic.h"
-!#define PDFDIAG 1
 
 !=============================================================================
 !BOP
@@ -59,8 +58,6 @@ module GEOS_THOM_1M_InterfaceMod
   real    :: FAC_RI
   real    :: MIN_RI
   real    :: MAX_RI
-  logical :: LHYDROSTATIC
-  logical :: LPHYS_HYDROSTATIC
 
   public :: THOM_1M_Setup, THOM_1M_Initialize, THOM_1M_Run
 
@@ -251,10 +248,6 @@ subroutine THOM_1M_Initialize (MAPL, RC)
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
 
-    call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, DT_THOM, Label="DT_THOM:",  default=300.0, RC=STATUS)
     VERIFY_(STATUS) 
 
@@ -273,6 +266,8 @@ subroutine THOM_1M_Initialize (MAPL, RC)
     call thompson_init(.false., USE_AEROSOL_NN, MAPL_am_I_root() , 1, errmsg, STATUS)
     _ASSERT( STATUS==0, errmsg )
     call WRITE_PARALLEL ("INITIALIZED THOM_1M microphysics in non-generic GC INIT")
+
+    call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
@@ -293,7 +288,6 @@ subroutine THOM_1M_Initialize (MAPL, RC)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    0.5, RC=STATUS); VERIFY_(STATUS)
 
 end subroutine THOM_1M_Initialize
 
@@ -354,13 +348,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: DBZ3D
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
-#ifdef PDFDIAG
-    real, pointer, dimension(:,:,:) :: PDF_W1, PDF_W2, PDF_SIGW1, PDF_SIGW2,     &
-                                       PDF_QT1, PDF_QT2, PDF_SIGQT1, PDF_SIGQT2, &
-                                       PDF_TH1, PDF_TH2, PDF_SIGTH1, PDF_SIGTH2, &
-                                       PDF_RQTTH, PDF_RWTH, PDF_RWQT
-#endif
-
     ! Thompson Pointers for inputs
     real, dimension(:,:,:), allocatable, target  :: inputs
     real, dimension(:,:,:), pointer :: qv   => null()
@@ -687,24 +674,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     DQSDT_macro=QSNOW
     DQGDT_macro=QGRAUPEL
 
-#ifdef PDFDIAG
-   call MAPL_GetPointer(EXPORT,  PDF_W1,  'PDF_W1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_W2,  'PDF_W2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGW1,  'PDF_SIGW1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGW2,  'PDF_SIGW2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_QT1,  'PDF_QT1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_QT2,  'PDF_QT2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGQT1,  'PDF_SIGQT1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGQT2,  'PDF_SIGQT2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_TH1,  'PDF_TH1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_TH2,  'PDF_TH2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGTH1,  'PDF_SIGTH1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGTH2,  'PDF_SIGTH2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_RQTTH,  'PDF_RQTTH' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_RWTH,  'PDF_RWTH' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_RWQT,  'PDF_RWQT' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-#endif
-
       ! Include shallow precip condensates if present
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then
@@ -777,23 +746,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       SL3(I,J,L)     , &
                       PDF_A(I,J,L)   , &
                       PDFITERS(I,J,L), &
-#ifdef PDFDIAG
-                      PDF_SIGW1(I,J,L),  &
-                      PDF_SIGW2(I,J,L),  &
-                      PDF_W1(I,J,L),     &
-                      PDF_W2(I,J,L),     &
-                      PDF_SIGTH1(I,J,L), &
-                      PDF_SIGTH2(I,J,L), &
-                      PDF_TH1(I,J,L),    &
-                      PDF_TH2(I,J,L),    &
-                      PDF_SIGQT1(I,J,L), &
-                      PDF_SIGQT2(I,J,L), &
-                      PDF_QT1(I,J,L),    &
-                      PDF_QT2(I,J,L),    &
-                      PDF_RQTTH(I,J,L),  &
-                      PDF_RWTH(I,J,L),   &
-                      PDF_RWQT(I,J,L),   &
-#endif
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
                       .false.        , & 
@@ -914,11 +866,11 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! Air Density
          AIRDEN   = MAPL_EPSILON*100.*PLmb/(T*MAPL_RGAS*(Q+MAPL_EPSILON))
         ! Vertical velocity
-         if (LHYDROSTATIC) then 
-           VVEL = -OMEGA/(MAPL_GRAV*AIRDEN)
-         else 
-           VVEL = W                
-         endif                  
+         IF (all(W == 0.0)) THEN
+            VVEL = -OMEGA/(MAPL_GRAV*AIRDEN)
+         ELSE
+            VVEL = W
+         ENDIF
         ! RESHAPE
          qv = RESHAPE(RAD_QV,(/IM*JM,LM,1/))
          qc = RESHAPE(RAD_QL,(/IM*JM,LM,1/))
@@ -1043,13 +995,13 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             enddo
           enddo
          enddo
-         call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QI, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QR, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QS, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_QG, MASS, TMP2D)
-         call FILLQ2ZERO(RAD_CF, MASS, TMP2D)
+         call FILLQ2ZERO(RAD_QV, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QL, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QI, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QR, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QS, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_QG, MASS, RC=STATUS); VERIFY_(STATUS)
+         call FILLQ2ZERO(RAD_CF, MASS, RC=STATUS); VERIFY_(STATUS)
          where (RAD_QI .le. 0.0)
             CLDREFFI = MAPL_UNDEF
          end where
@@ -1090,7 +1042,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(DBZ3D) .OR. &
             associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
 
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,1)
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
             if (associated(DBZ3D)) DBZ3D = TMP3D
 
             if (associated(DBZ_MAX)) then
@@ -1131,6 +1083,15 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             endif        
 
         endif
+
+        call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = QRAIN
+
+        call MAPL_GetPointer(EXPORT, PTR3D, 'QSTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = QSNOW
+    
+        call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = QGRAUPEL
 
      call MAPL_TimerOff(MAPL,"--THOM_1M",RC=STATUS)
 

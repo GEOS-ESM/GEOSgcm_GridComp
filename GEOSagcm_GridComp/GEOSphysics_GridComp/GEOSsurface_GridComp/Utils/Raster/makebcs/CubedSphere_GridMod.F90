@@ -2,7 +2,7 @@
 module CubedSphere_GridMod
 use MAPL_ConstantsMod
 
-#define r8 kind=8
+#define r8 REAL64
 
   implicit none
 

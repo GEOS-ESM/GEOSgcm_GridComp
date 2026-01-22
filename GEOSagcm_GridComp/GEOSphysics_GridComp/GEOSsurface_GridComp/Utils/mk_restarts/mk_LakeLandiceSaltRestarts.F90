@@ -18,7 +18,7 @@ program mk_LakeLandiceSaltRestarts
   character*256 :: arg
 
   integer :: i, rc, jc, iostat, iargc, n, mask,j,k,otiles,nsubtiles,l,itiles,nwords
-  integer, pointer  :: Lono(:), Lato(:), Id(:), Pf(:)
+  integer, pointer  :: Lono(:), Lato(:), Id(:)
   integer, pointer  :: Loni(:), Lati(:)
   real, allocatable :: varIn(:),varOut(:)
   real*8, allocatable :: varIn8(:),varOut8(:)
@@ -67,17 +67,9 @@ program mk_LakeLandiceSaltRestarts
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile_IntLatLon(OutTileFile,Pf,Id,lono,lato,zoom,mask)
-  deallocate(Pf,Id)
+  call ReadTileFile_IntLatLon(OutTileFile, otiles, zoom, lon_int=lono, lat_int=lato, mask=mask)
+  call ReadTileFile_IntLatLon(InTileFile,  itiles, zoom, lon_int=loni, lat_int=lati, mask=mask)
 
-  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom,mask)
-  deallocate(Pf,Id)
-
-  nullify(Pf)
-  nullify(Id)
-
-  itiles = size(loni)  ! Input  Tile Size
-  otiles = size(lono)  ! Output Tile Size
   allocate(Id (otiles))
 
   call GetIds(loni,lati,lono,lato,zoom,Id)
@@ -88,6 +80,9 @@ program mk_LakeLandiceSaltRestarts
 
      call InFmt%open(InRestart,pFIO_READ,rc=rc)
      InCfg = InFmt%read(rc=rc)
+     i = Incfg%get_dimension('tile', _RC)
+     _ASSERT( i == itiles, "mk_LakeLandiceSaltRestarts: Number of tiles in restart file is inconsistent with that in tile file.")
+
      call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/otiles/),rc=rc)
 
      i = index(InRestart,'/',back=.true.)

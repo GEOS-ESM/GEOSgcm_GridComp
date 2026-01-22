@@ -217,7 +217,7 @@ contains
 
     call MAPL_AddExportSpec(GC                                ,&
        SHORT_NAME = 'GRN'                                     ,&
-       LONG_NAME  = 'greeness_fraction'			      ,&
+       LONG_NAME  = 'vegetation_greenness_fraction'           ,&
        UNITS      = '1'                                       ,&
        DIMS       = MAPL_DimsTileOnly                         ,&
        VLOCATION  = MAPL_VLocationNone                        ,&
