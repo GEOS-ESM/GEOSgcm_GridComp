@@ -23,7 +23,7 @@ _VERSION_MATRIX = {
     "v10": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
     "v11": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
     "v12": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
-    "v13": {"TOPO_VERSION": "v2", "MOM6_BATHY_VERSION": "v2"},
+    "v13": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v2"},
 }
 
 _DEFAULTS = {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"}
