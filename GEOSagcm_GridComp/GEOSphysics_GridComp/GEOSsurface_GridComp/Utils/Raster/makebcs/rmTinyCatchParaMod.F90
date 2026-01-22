@@ -226,13 +226,12 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
-    case ("v12","v13","v14")  
-       !   "v12", "v13", and "v14" are identical except for:
-       ! - ATM topography: v12/v13 use TOPO v1; v14 uses TOPO v2.
-       ! - catchment.def land-elevation bug fix: absent in v12; present in v13/v14.
-       ! - netCDF-4 (NC4) tile-file generation: absent in v12; present in v13/v14.
-       ! - Coupled-model BC land properties vs AGCM: inconsistency present in v12; fixed in v13/v14.
-       ! - Coupled atmosphere-ocean-sea ice: v14 uses MOM6/v2 (OM4) ocean bathymetry; v12/v13 use v1.       
+    case ("v12","v13")  
+       !   "v12" are "v13" are identical except for:
+       ! - catchment.def land-elevation bug fix: absent in v12; present in v13.
+       ! - netCDF-4 (NC4) tile-file generation: absent in v12; present in v13.
+       ! - Coupled-model BC land properties vs AGCM: inconsistency present in v12; fixed in v13.
+       ! - Coupled atmosphere-ocean-sea ice: v13 uses MOM6/v2 (OM4) ocean bathymetry; v12 v1.       
  
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD_b'
