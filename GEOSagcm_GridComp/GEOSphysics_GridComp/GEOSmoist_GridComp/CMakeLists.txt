@@ -17,8 +17,8 @@ set (srcs
   # ras00.F90 cloud.F90
   )
 
-if (TARGET fms_r4)
-  list (APPEND srcs GEOS_GFDL_1M_InterfaceMod.F90 gfdl_cloud_microphys.F90)
+if (TARGET FMS::fms_r4)
+  list (APPEND srcs GEOS_GFDL_1M_InterfaceMod.F90 gfdl_cloud_microphys.F90 gfdl_mp.F90)
 endif ()
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggressive)
