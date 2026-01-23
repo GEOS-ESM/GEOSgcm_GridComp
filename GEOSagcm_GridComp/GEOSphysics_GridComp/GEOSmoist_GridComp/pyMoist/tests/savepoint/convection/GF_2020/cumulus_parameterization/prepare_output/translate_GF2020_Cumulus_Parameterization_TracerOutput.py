@@ -57,6 +57,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -67,15 +68,14 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels"]
-        locals.updraft_column_temperature_forced.data[:] = inputs[
-            "local_updraft_column_temperature_forced"
-        ]
+        locals.updraft_column_temperature_forced.data[:] = inputs["local_updraft_column_temperature_forced"]
         state.output.t_updraft.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["t_updraft"]
 
         code = self.stencil_factory.from_dims_halo(

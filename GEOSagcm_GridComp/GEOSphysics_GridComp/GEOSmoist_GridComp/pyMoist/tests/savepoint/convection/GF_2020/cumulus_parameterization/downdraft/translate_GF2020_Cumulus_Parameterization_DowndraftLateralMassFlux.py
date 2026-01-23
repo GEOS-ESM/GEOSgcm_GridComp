@@ -74,6 +74,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -84,6 +85,7 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -91,7 +93,9 @@ class TestCore:
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "error_code_downlateralmassflux"
         ]
-        state.output.downdraft_origin_level.data[:,:,plume_dependent_constants.PLUME_INDEX] = inputs["downdraft_origin_level_downlateralmassflux"] - 1
+        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["downdraft_origin_level_downlateralmassflux"] - 1
+        )
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
             "local_geopotential_height_cloud_levels_forced_downlateralmassflux"
         ]
@@ -162,7 +166,10 @@ class TestCore:
             "error_code_downlateralmassflux": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "downdraft_origin_level_downlateralmassflux": state.output.downdraft_origin_level.field[:,:,plume_dependent_constants.PLUME_INDEX] + 1,
+            "downdraft_origin_level_downlateralmassflux": state.output.downdraft_origin_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ]
+            + 1,
             "local_geopotential_height_cloud_levels_forced_downlateralmassflux": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],

@@ -140,6 +140,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -150,6 +151,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -386,6 +388,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -396,6 +399,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -632,6 +636,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -642,6 +647,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 

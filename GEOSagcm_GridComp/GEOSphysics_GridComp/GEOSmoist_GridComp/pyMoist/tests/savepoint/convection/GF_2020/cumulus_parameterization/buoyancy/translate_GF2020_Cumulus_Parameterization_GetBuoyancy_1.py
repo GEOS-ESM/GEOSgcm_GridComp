@@ -69,6 +69,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -79,6 +80,7 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 

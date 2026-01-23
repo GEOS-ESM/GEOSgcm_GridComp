@@ -71,6 +71,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -81,6 +82,7 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -95,7 +97,9 @@ class TestCore:
             inputs["cloud_top_level"] - 1
         )
         locals.cloud_moist_static_energy_modified.data[:] = inputs["local_cloud_moist_static_energy_modified"]
-        locals.moist_static_energy_origin_level_modified.data[:] = inputs["local_moist_static_energy_origin_level_modified"]
+        locals.moist_static_energy_origin_level_modified.data[:] = inputs[
+            "local_moist_static_energy_origin_level_modified"
+        ]
         locals.environment_saturation_moist_static_energy_modified.data[:] = inputs[
             "local_env_saturation_moist_static_energy_modified"
         ]
@@ -168,7 +172,9 @@ class TestCore:
             "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
             "local_cloud_moist_static_energy_modified": locals.cloud_moist_static_energy_modified.data[:],
-            "local_moist_static_energy_origin_level_modified": locals.moist_static_energy_origin_level_modified.data[:],
+            "local_moist_static_energy_origin_level_modified": locals.moist_static_energy_origin_level_modified.data[
+                :
+            ],
             "local_env_saturation_moist_static_energy_modified": locals.environment_saturation_moist_static_energy_modified.data[
                 :
             ],
