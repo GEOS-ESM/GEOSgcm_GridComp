@@ -39,7 +39,6 @@ from .translate_compute_uwshcu import TranslateComputeUwshcuInv
 
 
 # GF_2020
-# finalized tests
 from .convection.GF_2020.cumulus_parameterization.translate_GF2020_CumulusParameterization import (
     TranslateGF2020_CumulusParameterization,
 )

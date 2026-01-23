@@ -130,10 +130,10 @@ class CumulusParameterization:
 
         # initalize all the subclasses
         self._setup = Setup(
-            stencil_factory,
-            quantity_factory,
-            config,
-            cumulus_parameterization_config,
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
         self._environment_conditions = stencil_factory.from_dims_halo(
@@ -538,16 +538,77 @@ class CumulusParameterization:
 
         for plume in plume_types:
             # setup constants for the current plume, reset necessary fields, prefill necessary fields
-            # NOTE test F2020_CumulusParameterization_Setup_{plume}:
+            # NOTE test GF2020_CumulusParameterization_Setup_{plume}:
             # NOTE      deep ✅
             # NOTE      mid ✅
-            # NOTE      shallow ❌ (python vs fortran initalization difference)
+            # NOTE      shallow ❌ (cannot serialize output data because the plume is disabled)
             self._setup(
-                state,
-                locals,
-                saturation_tables,
-                self.plume_dependent_constants,
-                plume,
+                error_code=state.output.error_code,
+                error_code_2=locals.error_code_2,
+                error_code_3=locals.error_code_3,
+                maximum_updraft_origin_level=locals.maximum_updraft_origin_level,
+                kstabm=locals.kstabm,
+                t_excess=state.input.t_excess,
+                t_excess_local=locals.t_excess,
+                vapor_excess=state.input.vapor_excess,
+                vapor_excess_local=locals.vapor_excess,
+                ocean_fraction=state.input.ocean_fraction,
+                ocean_fraction_local=locals.ocean_fraction,
+                t_old=state.input_output.t_old,
+                t_new=locals.t_new,
+                t_new_pbl=locals.t_new_pbl,
+                vapor_old=state.input_output.vapor_old,
+                vapor_forced=locals.vapor_forced,
+                vapor_forced_pbl=locals.vapor_forced_pbl,
+                downdraft_saturation_vapor_forced=locals.downdraft_saturation_vapor_forced,
+                grid_scale_forcing_t=state.input.grid_scale_forcing_t,
+                grid_scale_forcing_vapor=state.input.grid_scale_forcing_vapor,
+                subgrid_scale_forcing_t=state.input.subgrid_scale_forcing_t,
+                subgrid_scale_forcing_vapor=state.input.subgrid_scale_forcing_vapor,
+                dmoist_static_energydt=locals.dmoist_static_energydt,
+                cloud_moist_static_energy_downdraft_forced=locals.cloud_moist_static_energy_downdraft_forced,
+                cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
+                cap_max=locals.cap_max,
+                cap_max_increment=locals.cap_max_increment,
+                geopotential_height=state.input_output.geopotential_height_forced,
+                geopotential_height_local=locals.geopotential_height,
+                geopotential_height_modified_local=locals.geopotential_height_modified,
+                cloud_workfunction_0=locals.cloud_workfunction_0,
+                cloud_workfunction_1=locals.cloud_workfunction_1,
+                cloud_workfunction_2=locals.cloud_workfunction_2,
+                cloud_workfunction_3=locals.cloud_workfunction_3,
+                cloud_workfunction_0_pbl=locals.cloud_workfunction_0_pbl,
+                cloud_workfunction_1_pbl=locals.cloud_workfunction_1_pbl,
+                cloud_workfunction_1_fa=locals.cloud_workfunction_1_fa,
+                cin_1=locals.cin_1,
+                k_x_modified=locals.k_x_modified,
+                epsilon_forced=state.output.epsilon_forced,
+                epsilon_local=locals.epsilon,
+                epsilon_min=locals.epsilon_min,
+                epsilon_max=locals.epsilon_max,
+                pbl_time_scale=locals.pbl_time_scale,
+                t_wetbulb=locals.t_wetbulb,
+                vapor_wetbulb=locals.vapor_wetbulb,
+                cape_removal_time_scale=locals.cape_removal_time_scale,
+                f_dicycle_modified=locals.f_dicycle_modified,
+                add_buoyancy=locals.add_buoyancy,
+                scale_dependence_factor=state.output.scale_dependence_factor,
+                scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
+                c1d=locals.c1d,
+                evaporation_below_cloud_base=locals.evaporation_below_cloud_base,
+                mass_flux_ensemble=locals.mass_flux_ensemble,
+                precipitation_ensemble=locals.precipitation_ensemble,
+                precip=state.output.precip,
+                lightning_density=state.output.lightning_density,
+                seed_convection=state.input.seed_convection,
+                grid_length=state.input_output.grid_length,
+                random_number=locals.random_number,
+                lateral_entrainment_rate=state.input.lateral_entrainment_rate,
+                entrainment_rate=state.output.entrainment_rate,
+                detrainment_function_updraft=locals.detrainment_function_updraft,
+                arbitrary_numerical_parameter=locals.arbitrary_numerical_parameter,
+                plume_dependent_constants=self.plume_dependent_constants,
+                plume=plume,
             )
 
             if self.plume_dependent_constants.ENABLE_PLUME == 1:

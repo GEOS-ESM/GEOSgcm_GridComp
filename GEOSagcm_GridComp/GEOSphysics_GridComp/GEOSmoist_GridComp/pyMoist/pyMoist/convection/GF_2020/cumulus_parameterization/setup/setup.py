@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, ndsl_log
+from ndsl import StencilFactory, QuantityFactory, Quantity
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
@@ -6,21 +6,277 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020Cum
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.convection.GF_2020.cumulus_parameterization.setup.stencils import (
-    set_plume_dependent_fields,
-    prefil_internal_fields,
-    compute_scale_dependence_factor,
-    get_random_number,
-    initial_entrainment_detrainment,
-    epsilon_min_max,
-    calculate_arbitrary_numerical_parameter,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
+from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    IntFieldIJ_Plume,
+    FloatFieldIJ_Plume,
+    FloatField_Plume,
+    FloatFieldIJ_Ensemble,
+)
+from pyMoist.shared_generic_math import sigma
 
-from ndsl.dsl.typing import Int, Float
+
+def set_plume_dependent_fields(
+    t_excess: FloatFieldIJ,
+    t_excess_local: FloatFieldIJ,
+    vapor_excess: FloatFieldIJ,
+    vapor_excess_local: FloatFieldIJ,
+    ocean_fraction: FloatFieldIJ,
+    use_excess: Int,
+    t_old: FloatField,
+    vapor_old: FloatField,
+    grid_scale_forcing_t: FloatField,
+    grid_scale_forcing_vapor: FloatField,
+    subgrid_scale_forcing_t: FloatField,
+    subgrid_scale_forcing_vapor: FloatField,
+    t_new: FloatField,
+    vapor_forced: FloatField,
+    t_new_pbl: FloatField,
+    vapor_forced_pbl: FloatField,
+    dmoist_static_energydt: FloatField,
+):
+    """
+    fill or modify existing values of temperature and vapor excess before cumulus parameterization
+
+    Args:
+        t_excess_cu_param_input: temperature excess input to cumulus parameterization
+        t_excess_cu_param_internal: temperature excess internal for cumulus parameterization
+        vapor_excess_cu_param_input: water vapor mixing ratio excess input to cumulus parameterization
+        vapor_excess_cu_param_internal: excess internal for cumulus parameterization
+
+        use_excess: trigger to control behavior
+
+    Possible behaviors (use_excess options):
+        0: fill with zero
+        1: no change (retain existing values)
+        2: enforce min/max everywhere
+        other: enforce min/max only over ocean
+    """
+    from __externals__ import DT_MOIST
+
+    with computation(FORWARD), interval(0, 1):
+        if use_excess == 0:
+            t_excess_local = 0.0
+            vapor_excess_local = 0.0
+        elif use_excess == 2:
+            t_excess_local = min(0.5, max(0.2, t_excess))  # Kelvin
+            vapor_excess_local = min(5.0e-4, max(1.0e-4, vapor_excess))  # kg kg^-1
+        else:
+            if ocean_fraction > 0.98:  # ocean
+                t_excess_local = min(0.5, max(0.2, t_excess))  # Kelvin
+                vapor_excess_local = min(5.0e-4, max(1.0e-4, vapor_excess))  # kg kg^-1
+
+    with computation(PARALLEL), interval(0, -1):
+        t_new = t_old + (subgrid_scale_forcing_t + grid_scale_forcing_t) * DT_MOIST
+        vapor_forced = vapor_old + (subgrid_scale_forcing_vapor + grid_scale_forcing_vapor) * DT_MOIST
+        vapor_forced = max(cumulus_parameterization_constants.smaller_qv, vapor_forced)
+
+        # temp/water vapor modified only by bl processes
+        t_new_pbl = t_old + (subgrid_scale_forcing_t) * DT_MOIST
+        vapor_forced_pbl = vapor_old + (subgrid_scale_forcing_vapor) * DT_MOIST
+
+        # moist static energy
+        dmoist_static_energydt = cumulus_parameterization_constants.CP * (
+            subgrid_scale_forcing_t + grid_scale_forcing_t
+        ) + cumulus_parameterization_constants.XLV * (subgrid_scale_forcing_vapor + grid_scale_forcing_vapor)
+
+
+def prefil_internal_fields(
+    plume: Int,
+    maximum_updraft_origin_level: IntFieldIJ,
+    kstabm: IntFieldIJ,
+    ocean_fraction: FloatFieldIJ,
+    ocean_fraction_local: FloatFieldIJ,
+    cap_max: FloatFieldIJ,
+    error_code_2: IntFieldIJ,
+    error_code_3: IntFieldIJ,
+    CAP_MAX_INC: Float,
+    cap_max_increment: FloatFieldIJ,
+    geopotential_height: FloatField,
+    geopotential_height_local: FloatField,
+    geopotential_height_modified_local: FloatField,
+    cloud_workfunction_0: FloatFieldIJ,
+    cloud_workfunction_1: FloatFieldIJ,
+    cloud_workfunction_2: FloatFieldIJ,
+    cloud_workfunction_3: FloatFieldIJ,
+    cloud_workfunction_0_pbl: FloatFieldIJ,
+    cloud_workfunction_1_pbl: FloatFieldIJ,
+    cloud_workfunction_1_fa: FloatFieldIJ,
+    cin_1: FloatFieldIJ,
+    scale_dependence_factor: FloatFieldIJ_Plume,
+    scale_dependence_factor_downdraft: FloatFieldIJ,
+    epsilon_forced: FloatFieldIJ_Plume,
+    epsilon_local: FloatFieldIJ,
+    cloud_moist_static_energy_downdraft_forced: FloatField,
+    cloud_moist_static_energy_forced_transported: FloatField,
+    k_x_modified: FloatFieldIJ,
+    pbl_time_scale: FloatFieldIJ,
+    t_wetbulb: FloatFieldIJ,
+    vapor_wetbulb: FloatFieldIJ,
+    cape_removal_time_scale: FloatFieldIJ,
+    f_dicycle_modified: FloatFieldIJ,
+    add_buoyancy: FloatFieldIJ,
+    downdraft_saturation_vapor_forced: FloatField,
+    c1d: FloatField,
+    evaporation_below_cloud_base: FloatField,
+    mass_flux_ensemble: FloatFieldIJ_Ensemble,
+    precipitation_ensemble: FloatFieldIJ_Ensemble,
+    precip: FloatFieldIJ_Plume,
+    lightning_density: FloatFieldIJ,
+):
+    from __externals__ import k_end, CAP_MAXS, ENSEMBLE_MEMBERS
+
+    # reset to zero manually. cannot use locals.fill(0) because not all fields are reset to zero b/t plumes
+    # internal fields
+    with computation(FORWARD), interval(0, 1):
+        maximum_updraft_origin_level = 0
+        kstabm = k_end - 2
+        ocean_fraction_local = ocean_fraction
+        cap_max = CAP_MAXS
+        error_code_2 = 0
+        error_code_3 = 0
+        cap_max_increment = CAP_MAX_INC
+        cloud_workfunction_0 = 0.0
+        cloud_workfunction_1 = 0.0
+        cloud_workfunction_2 = 0.0
+        cloud_workfunction_3 = 0.0
+        cloud_workfunction_0_pbl = 0.0
+        cloud_workfunction_1_pbl = 0.0
+        cloud_workfunction_1_fa = 0.0
+        cin_1 = 0.0
+        k_x_modified = 0.0
+        epsilon_local = 0.0
+        pbl_time_scale = 0.0
+        t_wetbulb = 0.0
+        vapor_wetbulb = 0.0
+        cape_removal_time_scale = 0.0
+        f_dicycle_modified = 0.0
+        add_buoyancy = 0.0
+        scale_dependence_factor_downdraft = 0.0
+
+    # internal fields
+    with computation(PARALLEL), interval(...):
+        geopotential_height_local = geopotential_height
+        geopotential_height_modified_local = geopotential_height
+        cloud_moist_static_energy_downdraft_forced = 0.0
+        downdraft_saturation_vapor_forced = 0.0
+        cloud_moist_static_energy_forced_transported = 0.0
+        c1d = 0.0
+        evaporation_below_cloud_base = 0.0
+
+    # internal fields
+    # reset all ensemble members
+    with computation(FORWARD), interval(0, 1):
+        member = 0
+        while member < ENSEMBLE_MEMBERS:
+            mass_flux_ensemble[0, 0][member] = 0.0
+            precipitation_ensemble[0, 0][member] = 0.0
+            member = member + 1
+
+    # external fields (from outside cumulus parameterizaton)
+    with computation(FORWARD), interval(0, 1):
+        epsilon_forced[0, 0][plume] = 0.0
+        precip[0, 0][plume] = 0.0
+        scale_dependence_factor[0, 0][plume] = 0.0
+        lightning_density = 0.0
+
+
+def compute_scale_dependence_factor(
+    plume: Int,
+    scale_dependence_factor: FloatFieldIJ_Plume,
+    seed_convection: FloatFieldIJ,
+    error_code: IntFieldIJ_Plume,
+    grid_length: FloatFieldIJ,
+):
+    from __externals__ import USE_SCALE_DEP
+
+    # prepare mask to stop loop in next computation
+    with computation(FORWARD), interval(0, 1):
+        error_at_point = False
+
+    with computation(FORWARD), interval(0, 1):
+        if USE_SCALE_DEP == 0:
+            scale_dependence_factor[0, 0][plume] = 1.0
+        elif USE_SCALE_DEP == 1:
+            if plume == cumulus_parameterization_constants.SHALLOW:
+                scale_dependence_factor[0, 0][plume] = 1.0
+            else:
+                if seed_convection < 0.0:
+                    error_code[0, 0][plume] = 1
+                    error_at_point = True
+                if error_at_point == False:
+                    scale_dependence_factor[0, 0][plume] = sigma(grid_length)
+                if seed_convection != 1.0:
+                    scale_dependence_factor[0, 0][plume] = scale_dependence_factor[0, 0][plume] ** (
+                        seed_convection * max(1.0, scale_dependence_factor[0, 0][plume])
+                    )
+                scale_dependence_factor[0, 0][plume] = max(
+                    0.1, min(scale_dependence_factor[0, 0][plume], 1.0)
+                )
+                if scale_dependence_factor[0, 0][plume] <= 0.1:
+                    error_code[0, 0][plume] = 1
+                    error_at_point = True
+
+
+def get_random_number(
+    plume: Int,
+    random_number: FloatFieldIJ,
+):
+    from __externals__ import USE_RANDOM_NUMBER
+
+    with computation(FORWARD), interval(0, 1):
+        if plume == cumulus_parameterization_constants.DEEP and USE_RANDOM_NUMBER > 1.0e-6:
+            # need to figure out how to get system clock data
+            random_number = random_number  # keep input data from fortran for now
+        else:
+            random_number = 0.0
+
+
+def initial_entrainment_detrainment(
+    plume: Int,
+    lateral_entrainment_rate: FloatField,
+    current_plume_rate: Float,
+    entrainment_rate: FloatField_Plume,
+    detrainment_function_updraft: FloatField,
+):
+    with computation(PARALLEL), interval(0, -1):
+        entrainment_rate[0, 0, 0][plume] = lateral_entrainment_rate * current_plume_rate
+        detrainment_function_updraft = lateral_entrainment_rate * current_plume_rate
+
+
+def epsilon_min_max(
+    ocean_fraction: FloatFieldIJ,
+    epsilon_min: FloatFieldIJ,
+    epsilon_max: FloatFieldIJ,
+    MINIMUM_EVAP_FRACTION_OCEAN: Float,
+    MAXIMUM_EVAP_FRACTION_OCEAN: Float,
+    MINIMUM_EVAP_FRACTION_LAND: Float,
+    MAXIMUM_EVAP_FRACTION_LAND: Float,
+):
+    with computation(FORWARD), interval(0, 1):
+        if ocean_fraction > 0.99:  # water
+            epsilon_min = MINIMUM_EVAP_FRACTION_OCEAN
+            epsilon_max = MAXIMUM_EVAP_FRACTION_OCEAN
+        else:  # land
+            epsilon_min = MINIMUM_EVAP_FRACTION_LAND
+            epsilon_max = MAXIMUM_EVAP_FRACTION_LAND
+
+
+def calculate_arbitrary_numerical_parameter(
+    arbitrary_numerical_parameter: FloatFieldIJ,
+):
+    with computation(FORWARD), interval(0, 1):
+        arbitrary_numerical_parameter = 0.1
+        # approx xmb * timescale
+        # other options (from fortran):
+        # 0.1 * dtime*xmb_nm1(i)
+        # 100.*(p_cup(i,kbcon(i))-p_cup(i,kbcon(i)+1))/(g*dtime)
+        # 0.1*mbdt(i)
 
 
 class Setup:
@@ -80,9 +336,70 @@ class Setup:
 
     def __call__(
         self,
-        state: GF2020CumulusParameterizationState,
-        locals: GF2020CumulusParameterizationLocals,
-        saturation_tables: SaturationVaporPressureTable,
+        error_code: Quantity,
+        error_code_2: Quantity,
+        error_code_3: Quantity,
+        maximum_updraft_origin_level: Quantity,
+        kstabm: Quantity,
+        t_excess: Quantity,
+        t_excess_local: Quantity,
+        vapor_excess: Quantity,
+        vapor_excess_local: Quantity,
+        ocean_fraction: Quantity,
+        ocean_fraction_local: Quantity,
+        t_old: Quantity,
+        t_new: Quantity,
+        t_new_pbl: Quantity,
+        vapor_old: Quantity,
+        vapor_forced: Quantity,
+        vapor_forced_pbl: Quantity,
+        downdraft_saturation_vapor_forced: Quantity,
+        grid_scale_forcing_t: Quantity,
+        grid_scale_forcing_vapor: Quantity,
+        subgrid_scale_forcing_t: Quantity,
+        subgrid_scale_forcing_vapor: Quantity,
+        dmoist_static_energydt: Quantity,
+        cloud_moist_static_energy_downdraft_forced: Quantity,
+        cloud_moist_static_energy_forced_transported: Quantity,
+        cap_max: Quantity,
+        cap_max_increment: Quantity,
+        geopotential_height: Quantity,
+        geopotential_height_local: Quantity,
+        geopotential_height_modified_local: Quantity,
+        cloud_workfunction_0: Quantity,
+        cloud_workfunction_1: Quantity,
+        cloud_workfunction_2: Quantity,
+        cloud_workfunction_3: Quantity,
+        cloud_workfunction_0_pbl: Quantity,
+        cloud_workfunction_1_pbl: Quantity,
+        cloud_workfunction_1_fa: Quantity,
+        cin_1: Quantity,
+        k_x_modified: Quantity,
+        epsilon_forced: Quantity,
+        epsilon_local: Quantity,
+        epsilon_min: Quantity,
+        epsilon_max: Quantity,
+        pbl_time_scale: Quantity,
+        t_wetbulb: Quantity,
+        vapor_wetbulb: Quantity,
+        cape_removal_time_scale: Quantity,
+        f_dicycle_modified: Quantity,
+        add_buoyancy: Quantity,
+        scale_dependence_factor: Quantity,
+        scale_dependence_factor_downdraft: Quantity,
+        c1d: Quantity,
+        evaporation_below_cloud_base: Quantity,
+        mass_flux_ensemble: Quantity,
+        precipitation_ensemble: Quantity,
+        precip: Quantity,
+        lightning_density: Quantity,
+        seed_convection: Quantity,
+        grid_length: Quantity,
+        random_number: Quantity,
+        lateral_entrainment_rate: Quantity,
+        entrainment_rate: Quantity,
+        detrainment_function_updraft: Quantity,
+        arbitrary_numerical_parameter: Quantity,
         plume_dependent_constants: GF2020PlumeDependentConstants,
         plume: str,
     ):
@@ -91,100 +408,99 @@ class Setup:
         if plume_dependent_constants.ENABLE_PLUME == 1:
             # compute/prefil the last few fields needed for the rest of the scheme
             self._set_plume_dependent_fields(
-                t_excess=state.input.t_excess,
-                t_excess_local=locals.t_excess,
-                vapor_excess=state.input.vapor_excess,
-                vapor_excess_local=locals.vapor_excess,
-                ocean_fraction=state.input.ocean_fraction,
+                t_excess=t_excess,
+                t_excess_local=t_excess_local,
+                vapor_excess=vapor_excess,
+                vapor_excess_local=vapor_excess_local,
+                ocean_fraction=ocean_fraction,
                 use_excess=plume_dependent_constants.USE_EXCESS,
-                t_old=state.input_output.t_old,
-                vapor_old=state.input_output.vapor_old,
-                grid_scale_forcing_t=state.input.grid_scale_forcing_t,
-                grid_scale_forcing_vapor=state.input.grid_scale_forcing_vapor,
-                subgrid_scale_forcing_t=state.input.subgrid_scale_forcing_t,
-                subgrid_scale_forcing_vapor=state.input.subgrid_scale_forcing_vapor,
-                t_new=locals.t_new,
-                vapor_forced=locals.vapor_forced,
-                t_new_pbl=locals.t_new_pbl,
-                vapor_forced_pbl=locals.vapor_forced_pbl,
-                moist_static_energy=locals.dmoist_static_energydt,
+                t_old=t_old,
+                vapor_old=vapor_old,
+                grid_scale_forcing_t=grid_scale_forcing_t,
+                grid_scale_forcing_vapor=grid_scale_forcing_vapor,
+                subgrid_scale_forcing_t=subgrid_scale_forcing_t,
+                subgrid_scale_forcing_vapor=subgrid_scale_forcing_vapor,
+                t_new=t_new,
+                vapor_forced=vapor_forced,
+                t_new_pbl=t_new_pbl,
+                vapor_forced_pbl=vapor_forced_pbl,
+                dmoist_static_energydt=dmoist_static_energydt,
             )
 
             self._prefil_internal_fields(
                 plume=plume_dependent_constants.PLUME_INDEX,
-                maximum_updraft_origin_level=locals.maximum_updraft_origin_level,
-                kstabm=locals.kstabm,
-                ocean_fraction=state.input.ocean_fraction,
-                ocean_fraction_local=locals.ocean_fraction,
-                cap_max=locals.cap_max,
-                error_code_2=locals.error_code_2,
-                error_code_3=locals.error_code_3,
+                maximum_updraft_origin_level=maximum_updraft_origin_level,
+                kstabm=kstabm,
+                ocean_fraction=ocean_fraction,
+                ocean_fraction_local=ocean_fraction_local,
+                cap_max=cap_max,
+                error_code_2=error_code_2,
+                error_code_3=error_code_3,
                 CAP_MAX_INC=plume_dependent_constants.CAP_MAX_INC,
-                cap_max_increment=locals.cap_max_increment,
-                geopotential_height=state.input_output.geopotential_height_forced,
-                geopotential_height_local=locals.geopotential_height,
-                geopotential_height_modified_local=locals.geopotential_height_modified,
-                cloud_work_function_0=locals.cloud_workfunction_0,
-                cloud_work_function_1=locals.cloud_workfunction_1,
-                cloud_work_function_2=locals.cloud_workfunction_2,
-                cloud_work_function_3=locals.cloud_workfunction_3,
-                cloud_work_function_0_pbl=locals.cloud_workfunction_0_pbl,
-                cloud_work_function_1_pbl=locals.cloud_workfunction_1_pbl,
-                cloud_work_function_1_fa=locals.cloud_workfunction_1_fa,
-                cin1=locals.cin1,
-                k_x_modified=locals.k_x_modified,
-                epsilon_local=locals.epsilon,
-                pbl_time_scale=locals.pbl_time_scale,
-                t_wetbulb=locals.t_wetbulb,
-                vapor_wetbulb=locals.vapor_wetbulb,
-                tau_ecmwf=locals.cape_removal_time_scale,
-                f_dicycle_modified=locals.f_dicycle_modified,
-                add_buoyancy=locals.add_buoyancy,
-                scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
-                hcdo=locals.hcdo,
-                cupclw=locals.cupclw,
-                qrcdo=locals.qrcdo,
-                cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
-                c1d=locals.c1d,
-                evap_bcb=locals.evap_bcb,
-                mass_flux_ensemble=locals.mass_flux_ensemble,
-                precipitation_ensemble=locals.precipitation_ensemble,
-                epsilon=state.output.epsilon_forced,
-                precip=state.output.precip,
-                scale_dependence_factor=state.output.scale_dependence_factor,
-                lightning_density=state.output.lightning_density,
+                cap_max_increment=cap_max_increment,
+                geopotential_height=geopotential_height,
+                geopotential_height_local=geopotential_height_local,
+                geopotential_height_modified_local=geopotential_height_modified_local,
+                cloud_workfunction_0=cloud_workfunction_0,
+                cloud_workfunction_1=cloud_workfunction_1,
+                cloud_workfunction_2=cloud_workfunction_2,
+                cloud_workfunction_3=cloud_workfunction_3,
+                cloud_workfunction_0_pbl=cloud_workfunction_0_pbl,
+                cloud_workfunction_1_pbl=cloud_workfunction_1_pbl,
+                cloud_workfunction_1_fa=cloud_workfunction_1_fa,
+                cin_1=cin_1,
+                k_x_modified=k_x_modified,
+                epsilon_forced=epsilon_forced,
+                epsilon_local=epsilon_local,
+                pbl_time_scale=pbl_time_scale,
+                t_wetbulb=t_wetbulb,
+                vapor_wetbulb=vapor_wetbulb,
+                cape_removal_time_scale=cape_removal_time_scale,
+                f_dicycle_modified=f_dicycle_modified,
+                add_buoyancy=add_buoyancy,
+                scale_dependence_factor=scale_dependence_factor,
+                scale_dependence_factor_downdraft=scale_dependence_factor_downdraft,
+                cloud_moist_static_energy_downdraft_forced=cloud_moist_static_energy_downdraft_forced,
+                downdraft_saturation_vapor_forced=downdraft_saturation_vapor_forced,
+                cloud_moist_static_energy_forced_transported=cloud_moist_static_energy_forced_transported,
+                c1d=c1d,
+                evaporation_below_cloud_base=evaporation_below_cloud_base,
+                mass_flux_ensemble=mass_flux_ensemble,
+                precipitation_ensemble=precipitation_ensemble,
+                precip=precip,
+                lightning_density=lightning_density,
             )
 
             # scale dependence factor (sig), version new
             self._compute_scale_dependence_factor(
                 plume=plume_dependent_constants.PLUME_INDEX,
-                scale_dependence_factor=state.output.scale_dependence_factor,
-                seed_convection=state.input.seed_convection,
-                error_code=state.output.error_code,
-                grid_length=state.input_output.grid_length,
+                scale_dependence_factor=scale_dependence_factor,
+                seed_convection=seed_convection,
+                error_code=error_code,
+                grid_length=grid_length,
             )
 
             # create a real random number in the interval [-use_random_num, +use_random_num]
             self._get_random_number(
                 plume=plume_dependent_constants.PLUME_INDEX,
-                random_number=locals.random_number,
+                random_number=random_number,
             )
 
             # define entrainment/detrainment profiles for updrafts
             self._initial_entrainment_detrainment(
                 plume=plume_dependent_constants.PLUME_INDEX,
-                lateral_entrainment_rate=state.input.lateral_entrainment_rate,
+                lateral_entrainment_rate=lateral_entrainment_rate,
                 current_plume_rate=plume_dependent_constants.ENTRAINMENT_RATE,
-                entrainment_rate=state.output.entrainment_rate,
-                detrainment_function_updraft=locals.detrainment_function_updraft,
+                entrainment_rate=entrainment_rate,
+                detrainment_function_updraft=detrainment_function_updraft,
             )
 
             # max/min allowed value for epsilon (ratio downdraft base mass flux/updraft base mass flux
             # note : to make the evaporation stronger => increase "epsilon_min"
             self._epsilon_min_max(
-                ocean_fraction=state.input.ocean_fraction,
-                epsilon_min=locals.epsilon_min,
-                epsilon_max=locals.epsilon_max,
+                ocean_fraction=ocean_fraction,
+                epsilon_min=epsilon_min,
+                epsilon_max=epsilon_max,
                 MINIMUM_EVAP_FRACTION_OCEAN=plume_dependent_constants.MINIMUM_EVAP_FRACTION_OCEAN,
                 MAXIMUM_EVAP_FRACTION_OCEAN=plume_dependent_constants.MAXIMUM_EVAP_FRACTION_OCEAN,
                 MINIMUM_EVAP_FRACTION_LAND=plume_dependent_constants.MINIMUM_EVAP_FRACTION_LAND,
@@ -193,5 +509,5 @@ class Setup:
 
             # calculate arbitrary numerical parameter
             self._calculate_arbitrary_numerical_parameter(
-                arbitrary_numerical_parameter=locals.arbitrary_numerical_parameter,
+                arbitrary_numerical_parameter=arbitrary_numerical_parameter,
             )
