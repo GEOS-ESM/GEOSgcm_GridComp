@@ -56,15 +56,15 @@ The tasks completed by each F90 or Python program are briefly described as follo
     Processes lake data to be used in the river routing model.
 
 14. create_river_input.py
-    Combines all inputs created above to the one nc file river_input.nc
+    Combines all inputs created above to the one nc file route_parameters.nc
 
 The explanations for the input files of this package can be found in the input directory.
 
-The outputs from this package (cellarea.nc and river_input.nc located in the created output folder) will be used as input to the make_bcs. They are listed as follows:
+The outputs from this package (cellarea.nc and route_parameters.nc located in the created output folder) will be used as input to the make_bcs. They are listed as follows:
 
   cellarea.nc: cell area [m^2] of the 1-min grid.
 
-  river_input.nc: River parameters on the catchment space. More detail can be seen in the attributes of each variable in the netcdf file.
+  route_parameters.nc: River parameters on the catchment space. More detail can be seen in the attributes of each variable in the netcdf file.
 
 
 

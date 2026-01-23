@@ -167,7 +167,7 @@ active_res[active_condition] = 1
 #print("Processing complete.")
 
 # ---------- Create NetCDF ----------
-fout = Dataset("output/river_input.nc", "w", format="NETCDF4")
+fout = Dataset("output/route_parameters.nc", "w", format="NETCDF4")
 
 # define dimensions
 fout.createDimension("tile", nc_len)
@@ -201,4 +201,4 @@ create_var("WID_RES", np.float32(wid_res), ("tile",), "m", "length_scale_of_rese
 
 # Close file
 fout.close()
-print("river_input.nc created successfully!")
+print("route_parameters.nc created successfully!")
