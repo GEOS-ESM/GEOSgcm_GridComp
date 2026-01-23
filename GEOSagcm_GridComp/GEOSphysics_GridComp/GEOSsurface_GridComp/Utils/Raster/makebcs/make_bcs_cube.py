@@ -29,13 +29,12 @@ if ( {TRIPOL_OCEAN} == True ) then
   if ( -e data/MOM6/$req ) /bin/rm -f data/MOM6/$req
   ln -s $mom6root/$req data/MOM6/$req
 endif
-=======
+
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/72x36 data/MOM6/72x36
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/540x458 data/MOM6/540x458
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/1440x1080 data/MOM6/1440x1080
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/720x576 data/MOM6/720x576
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/2880x2240 data/MOM6/2880x2240
-=======
 
 
 if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout

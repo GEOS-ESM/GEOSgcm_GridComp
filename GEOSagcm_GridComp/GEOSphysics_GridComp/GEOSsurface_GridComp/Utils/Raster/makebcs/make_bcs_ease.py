@@ -15,6 +15,10 @@ setenv OMP_NUM_THREADS 1
 chmod 755 bin/create_README.csh
 bin/create_README.csh
 
+# Prevent shared CF TOPO linking for non-cube grids:
+if ( ! -d TOPO ) mkdir -p TOPO
+if ( ! -e TOPO/CF{NC}x6C{SGNAME} ) mkdir -p TOPO/CF{NC}x6C{SGNAME}
+
 """
 
 def make_bcs_ease(config):
@@ -67,7 +71,7 @@ def make_bcs_ease(config):
   TOPO_VERSION = topo_version_for_bcs(config['lbcsv'])
   ims = '%04d'%config['im']
   jms = '%04d'%config['jm']
-  NC  = ims
+  NC  = "0000"
   SGNAME = ""
   RS = str(config['im'])+'x'+ str(config['jm'])
 
@@ -88,6 +92,8 @@ def make_bcs_ease(config):
            MASKFILE = config['MASKFILE'], \
            lbcsv    = config['lbcsv'], \
            TRIPOL_OCEAN = False, \
+           LATLON_OCEAN = False, \
+           CUBED_SPHERE_OCEAN = False, \
            NX = config['NX'], \
            NY = config['NY'], \
            RS = '_'+RS,\

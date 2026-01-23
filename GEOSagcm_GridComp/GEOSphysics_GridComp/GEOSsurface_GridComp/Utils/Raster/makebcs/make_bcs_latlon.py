@@ -49,6 +49,10 @@ if( {TRIPOL_OCEAN} == True ) then
     bin/create_README.csh    
 endif
 
+# Prevent shared CF TOPO linking for non-cube grids:
+if ( ! -d TOPO ) mkdir -p TOPO
+if ( ! -e TOPO/CF{NC}x6C{SGNAME} ) mkdir -p TOPO/CF{NC}x6C{SGNAME}
+
 """
 
 def make_bcs_latlon(config):
@@ -65,6 +69,10 @@ def make_bcs_latlon(config):
   JMO = '%04d'%config['jmo']
   IM  = '%04d'%config['im']
   JM  = '%04d'%config['jm']
+  TOPO_VERSION = topo_version_for_bcs(config['lbcsv'])
+  NC = "0000"
+  SGNAME = ""
+  CUBED_SPHERE_OCEAN = False
 
   RC = str(config['im']) +'x' +str(config['jm'])+'_DC'
 
@@ -114,6 +122,10 @@ def make_bcs_latlon(config):
            JM = JM, \
            IMO = IMO, \
            JMO = JMO, \
+           TOPO_VERSION = TOPO_VERSION, \
+           NC = NC, \
+           SGNAME = SGNAME, \
+           CUBED_SPHERE_OCEAN = CUBED_SPHERE_OCEAN, \
            MASKFILE = config['MASKFILE'], \
            lbcsv    = config['lbcsv'], \
            NX = config['NX'], \
