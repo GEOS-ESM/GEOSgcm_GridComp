@@ -100,7 +100,7 @@ program mk_runofftbl
   end do
 
   if (trim(OUTLETV)=="v1" .or. trim(OUTLETV)=="v2") then
-     fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/'//trim(OUTLETV)//'/Outlet_latlon.'
+     fileLL=trim(MAKE_BCS_INPUT_DIR)//'/route/outlets/'//trim(OUTLETV)//'/Outlet_latlon.'
   else
      print *, "Routing files will not be produced with the selected land BCs version (too old)"
      stop
