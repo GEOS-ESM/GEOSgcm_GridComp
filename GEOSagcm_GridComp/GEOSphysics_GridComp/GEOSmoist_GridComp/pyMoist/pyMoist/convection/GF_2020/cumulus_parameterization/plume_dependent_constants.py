@@ -29,3 +29,4 @@ class GF2020PlumeDependentConstants:
     C0: Float = Float(0.0)
     T_STAR: Float = Float(0.0)
     TAU_CAPE_REMOVAL: Float = Float(0.0)
+    CLOSURE_CHOICE: Int = Int(0.0)

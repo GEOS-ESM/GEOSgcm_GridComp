@@ -202,7 +202,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
         locals.vapor_forced.field[:, :, -1] = np.nan
         locals.t_new_pbl.field[:, :, -1] = np.nan
         locals.vapor_forced_pbl.field[:, :, -1] = np.nan
-        locals.moist_static_energy.field[:, :, -1] = np.nan
+        locals.dmoist_static_energydt.field[:, :, -1] = np.nan
         locals.detrainment_function_updraft.field[:, :, -1] = np.nan
 
         outputs = {
@@ -222,7 +222,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
             "local_vapor_forced_cu_param_setup": locals.vapor_forced.field[:],
             "local_t_new_pbl_cu_param_setup": locals.t_new_pbl.field[:],
             "local_vapor_forced_pbl_cu_param_setup": locals.vapor_forced_pbl.field[:],
-            "local_moist_static_energy_cu_param_setup": locals.moist_static_energy.field[:],
+            "local_moist_static_energy_cu_param_setup": locals.dmoist_static_energydt.field[:],
             "local_maximum_updraft_origin_level_cu_param_setup": locals.maximum_updraft_origin_level.field[:],
             "local_kstabm_cu_param_setup": locals.kstabm.field[:] + 1,  # +1 b/c python counts from 0
             "local_ocean_fraction_cu_param_setup": locals.ocean_fraction.field[:],
@@ -234,11 +234,11 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
             "local_geopotential_height_modified_cu_param_setup": locals.geopotential_height_modified.field[:],
             "local_cloud_work_function_0_cu_param_setup": locals.cloud_work_function_0.field[:],
             "local_cloud_work_function_1_cu_param_setup": locals.cloud_work_function_1.field[:],
-            "local_cloud_work_function_2_cu_param_setup": locals.cloud_work_function_2.field[:],
-            "local_cloud_work_function_3_cu_param_setup": locals.cloud_work_function_3.field[:],
-            "local_cloud_work_function_0_pbl_cu_param_setup": locals.cloud_work_function_0_pbl.field[:],
-            "local_cloud_work_function_1_pbl_cu_param_setup": locals.cloud_work_function_1_pbl.field[:],
-            "local_cloud_work_function_1_fa_cu_param_setup": locals.cloud_work_function_1_fa.field[:],
+            "local_cloud_work_function_2_cu_param_setup": locals.cloud_workfunction_2.field[:],
+            "local_cloud_work_function_3_cu_param_setup": locals.cloud_workfunction_3.field[:],
+            "local_cloud_work_function_0_pbl_cu_param_setup": locals.cloud_workfunction_0_pbl.field[:],
+            "local_cloud_work_function_1_pbl_cu_param_setup": locals.cloud_workfunction_1_pbl.field[:],
+            "local_cloud_work_function_1_fa_cu_param_setup": locals.cloud_workfunction_1_fa.field[:],
             "local_cin1_cu_param_setup": locals.cin1.field[:],
             "local_k_x_modified_cu_param_setup": locals.k_x_modified.field[:],
             "local_epsilon_cu_param_setup": locals.epsilon.field[:],
@@ -448,7 +448,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
         locals.vapor_forced.field[:, :, -1] = np.nan
         locals.t_new_pbl.field[:, :, -1] = np.nan
         locals.vapor_forced_pbl.field[:, :, -1] = np.nan
-        locals.moist_static_energy.field[:, :, -1] = np.nan
+        locals.dmoist_static_energydt.field[:, :, -1] = np.nan
         locals.detrainment_function_updraft.field[:, :, -1] = np.nan
 
         outputs = {
@@ -468,7 +468,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
             "local_vapor_forced_cu_param_setup": locals.vapor_forced.field[:],
             "local_t_new_pbl_cu_param_setup": locals.t_new_pbl.field[:],
             "local_vapor_forced_pbl_cu_param_setup": locals.vapor_forced_pbl.field[:],
-            "local_moist_static_energy_cu_param_setup": locals.moist_static_energy.field[:],
+            "local_moist_static_energy_cu_param_setup": locals.dmoist_static_energydt.field[:],
             "local_maximum_updraft_origin_level_cu_param_setup": locals.maximum_updraft_origin_level.field[:],
             "local_kstabm_cu_param_setup": locals.kstabm.field[:] + 1,  # +1 b/c python counts from 0
             "local_ocean_fraction_cu_param_setup": locals.ocean_fraction.field[:],
@@ -480,11 +480,11 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
             "local_geopotential_height_modified_cu_param_setup": locals.geopotential_height_modified.field[:],
             "local_cloud_work_function_0_cu_param_setup": locals.cloud_work_function_0.field[:],
             "local_cloud_work_function_1_cu_param_setup": locals.cloud_work_function_1.field[:],
-            "local_cloud_work_function_2_cu_param_setup": locals.cloud_work_function_2.field[:],
-            "local_cloud_work_function_3_cu_param_setup": locals.cloud_work_function_3.field[:],
-            "local_cloud_work_function_0_pbl_cu_param_setup": locals.cloud_work_function_0_pbl.field[:],
-            "local_cloud_work_function_1_pbl_cu_param_setup": locals.cloud_work_function_1_pbl.field[:],
-            "local_cloud_work_function_1_fa_cu_param_setup": locals.cloud_work_function_1_fa.field[:],
+            "local_cloud_work_function_2_cu_param_setup": locals.cloud_workfunction_2.field[:],
+            "local_cloud_work_function_3_cu_param_setup": locals.cloud_workfunction_3.field[:],
+            "local_cloud_work_function_0_pbl_cu_param_setup": locals.cloud_workfunction_0_pbl.field[:],
+            "local_cloud_work_function_1_pbl_cu_param_setup": locals.cloud_workfunction_1_pbl.field[:],
+            "local_cloud_work_function_1_fa_cu_param_setup": locals.cloud_workfunction_1_fa.field[:],
             "local_cin1_cu_param_setup": locals.cin1.field[:],
             "local_k_x_modified_cu_param_setup": locals.k_x_modified.field[:],
             "local_epsilon_cu_param_setup": locals.epsilon.field[:],
@@ -694,7 +694,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
         locals.vapor_forced.field[:, :, -1] = np.nan
         locals.t_new_pbl.field[:, :, -1] = np.nan
         locals.vapor_forced_pbl.field[:, :, -1] = np.nan
-        locals.moist_static_energy.field[:, :, -1] = np.nan
+        locals.dmoist_static_energydt.field[:, :, -1] = np.nan
         locals.detrainment_function_updraft.field[:, :, -1] = np.nan
 
         outputs = {
@@ -714,7 +714,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             "local_vapor_forced_cu_param_setup": locals.vapor_forced.field[:],
             "local_t_new_pbl_cu_param_setup": locals.t_new_pbl.field[:],
             "local_vapor_forced_pbl_cu_param_setup": locals.vapor_forced_pbl.field[:],
-            "local_moist_static_energy_cu_param_setup": locals.moist_static_energy.field[:],
+            "local_moist_static_energy_cu_param_setup": locals.dmoist_static_energydt.field[:],
             "local_maximum_updraft_origin_level_cu_param_setup": locals.maximum_updraft_origin_level.field[:],
             "local_kstabm_cu_param_setup": locals.kstabm.field[:] + 1,  # +1 b/c python counts from 0
             "local_ocean_fraction_cu_param_setup": locals.ocean_fraction.field[:],
@@ -726,11 +726,11 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
             "local_geopotential_height_modified_cu_param_setup": locals.geopotential_height_modified.field[:],
             "local_cloud_work_function_0_cu_param_setup": locals.cloud_work_function_0.field[:],
             "local_cloud_work_function_1_cu_param_setup": locals.cloud_work_function_1.field[:],
-            "local_cloud_work_function_2_cu_param_setup": locals.cloud_work_function_2.field[:],
-            "local_cloud_work_function_3_cu_param_setup": locals.cloud_work_function_3.field[:],
-            "local_cloud_work_function_0_pbl_cu_param_setup": locals.cloud_work_function_0_pbl.field[:],
-            "local_cloud_work_function_1_pbl_cu_param_setup": locals.cloud_work_function_1_pbl.field[:],
-            "local_cloud_work_function_1_fa_cu_param_setup": locals.cloud_work_function_1_fa.field[:],
+            "local_cloud_work_function_2_cu_param_setup": locals.cloud_workfunction_2.field[:],
+            "local_cloud_work_function_3_cu_param_setup": locals.cloud_workfunction_3.field[:],
+            "local_cloud_work_function_0_pbl_cu_param_setup": locals.cloud_workfunction_0_pbl.field[:],
+            "local_cloud_work_function_1_pbl_cu_param_setup": locals.cloud_workfunction_1_pbl.field[:],
+            "local_cloud_work_function_1_fa_cu_param_setup": locals.cloud_workfunction_1_fa.field[:],
             "local_cin1_cu_param_setup": locals.cin1.field[:],
             "local_k_x_modified_cu_param_setup": locals.k_x_modified.field[:],
             "local_epsilon_cu_param_setup": locals.epsilon.field[:],

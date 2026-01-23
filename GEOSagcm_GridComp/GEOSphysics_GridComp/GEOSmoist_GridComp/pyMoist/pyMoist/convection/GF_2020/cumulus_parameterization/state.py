@@ -481,15 +481,6 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        effective_condensate_to_fall_forced: Quantity = dataclasses.field(
-            metadata={
-                "name": "effective_condensate_to_fall_forced",
-                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
         evaporate_in_downdraft_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "evaporate_in_downdraft_forced",

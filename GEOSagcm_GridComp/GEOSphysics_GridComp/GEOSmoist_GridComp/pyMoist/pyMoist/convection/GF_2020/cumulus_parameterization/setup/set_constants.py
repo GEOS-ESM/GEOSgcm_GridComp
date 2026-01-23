@@ -88,6 +88,9 @@ def set_constants(
             -999
         )  # not used - ideally should not exist for this plume
 
+        # closure choice
+        plume_dependent_constants.CLOSURE_CHOICE = cumulus_parameterization_config.CLOSURE_CHOICE_SHALLOW
+
     elif plume == "mid":
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(1)
@@ -164,6 +167,9 @@ def set_constants(
         # timescale of cape removal
         plume_dependent_constants.TAU_CAPE_REMOVAL = cumulus_parameterization_config.TAU_MID
 
+        # closure choice
+        plume_dependent_constants.CLOSURE_CHOICE = cumulus_parameterization_config.CLOSURE_CHOICE_MID
+
     elif plume == "deep":
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(2)
@@ -239,6 +245,9 @@ def set_constants(
 
         # timescale of cape removal
         plume_dependent_constants.TAU_CAPE_REMOVAL = cumulus_parameterization_config.TAU_DEEP
+
+        # closure choice
+        plume_dependent_constants.CLOSURE_CHOICE = cumulus_parameterization_config.CLOSURE_CHOICE_DEEP
 
     else:
         raise NotImplementedError("Unknown plume specified, corresponding constants are unavailable.")

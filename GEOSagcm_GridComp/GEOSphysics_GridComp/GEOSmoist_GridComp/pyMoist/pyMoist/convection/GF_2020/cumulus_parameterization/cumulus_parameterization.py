@@ -97,8 +97,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization
     VerticalDiscretization,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.smoothing import smooth_tendencies
-from pyMoist.convection.GF_2020.cumulus_parameterization.cloud_base_mass_flux.cloud_base_mass_flux import (
-    CloudBaseMassFlux,
+from pyMoist.convection.GF_2020.cumulus_parameterization.large_scale_forcing import (
+    LargeScaleForcing,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating import (
     kinetic_energy_to_heating,
@@ -459,7 +459,12 @@ class CumulusParameterization:
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._cloud_base_mass_flux = CloudBaseMassFlux()
+        self._large_scale_forcing = LargeScaleForcing(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
         self._kinetic_energy_to_heating = stencil_factory.from_dims_halo(
             func=kinetic_energy_to_heating,
@@ -1431,8 +1436,8 @@ class CumulusParameterization:
                     cape_removal_time_scale_from_state=state.output.cape_removal_time_scale,
                     pbl_time_scale=locals.pbl_time_scale,
                     pbl_time_scale_from_state=state.output.pbl_time_scale,
-                    cloud_work_function_1_pbl=locals.cloud_work_function_1_pbl,
-                    cloud_work_function_1_fa=locals.cloud_work_function_1_fa,
+                    cloud_work_function_1_pbl=locals.cloud_workfunction_1_pbl,
+                    cloud_work_function_1_fa=locals.cloud_workfunction_1_fa,
                     plume_dependent_constants=self.plume_dependent_constants,
                 )
 
@@ -1711,7 +1716,43 @@ class CumulusParameterization:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._cloud_base_mass_flux()
+                self._large_scale_forcing(
+                    error_code=state.output.error_code,
+                    error_code_2=locals.error_code_2,
+                    error_code_3=locals.error_code_3,
+                    updraft_origin_level=state.output.updraft_origin_level,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    cloud_top_level=state.output.cloud_top_level,
+                    pbl_level=state.input_output.pbl_level,
+                    ocean_fraction=locals.ocean_fraction,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    vapor_forced=locals.vapor_forced,
+                    condensate_to_fall_forced=state.output.condensate_to_fall_forced,
+                    effective_condensate_to_fall_forced=locals.effective_condensate_to_fall_forced,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    omega=state.input_output.omega,
+                    convective_scale_velocity=state.input_output.convective_scale_velocity,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    cloud_moist_static_energy=locals.cloud_moist_static_energy,
+                    cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+                    environment_moist_static_energy_cloud_levels=locals.environment_moist_static_energy_cloud_levels,
+                    environment_moist_static_energy_cloud_levels_forced=locals.environment_moist_static_energy_cloud_levels_forced,
+                    dmoist_static_energydt=locals.dmoist_static_energydt,
+                    cloud_workfunction_0=locals.cloud_workfunction_0,
+                    cloud_workfunction_0_modified=locals.cloud_workfunction_0_modified,
+                    cloud_workfunction_1=locals.cloud_workfunction_1,
+                    cloud_workfunction_1_pbl=locals.cloud_workfunction_1_pbl,
+                    arbitrary_numerical_parameter=locals.arbitrary_numerical_parameter,
+                    f_dicycle_modified=locals.f_dicycle_modified,
+                    cape_removal_time_scale=locals.cape_removal_time_scale,
+                    epsilon_forced=state.output.epsilon_forced,
+                    k_x_modified=locals.k_x_modified,
+                    mass_flux_ensemble=locals.mass_flux_ensemble,
+                    precipitation_ensemble=locals.precipitation_ensemble,
+                    xff_mid=locals.xff_mid,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # Include kinetic energy dissipation converted to heating
                 # NOTE test GF2020_CumulusParameterization_KeToHeating_{plume}:

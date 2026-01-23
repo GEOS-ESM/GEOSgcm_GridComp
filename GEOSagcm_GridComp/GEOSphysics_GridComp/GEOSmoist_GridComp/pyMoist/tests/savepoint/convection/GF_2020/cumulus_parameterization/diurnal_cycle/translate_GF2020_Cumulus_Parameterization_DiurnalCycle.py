@@ -127,8 +127,8 @@ class TestCore:
         state.output.cape_removal_time_scale.data[:] = inputs["cape_removal_time_scale_dicycle"]
         locals.pbl_time_scale.data[:] = inputs["local_pbl_time_scale_dicycle"]
         state.output.pbl_time_scale.data[:] = inputs["pbl_time_scale_dicycle"]
-        locals.cloud_work_function_1_pbl.data[:] = inputs["local_cloud_work_function_1_pbl_dicycle"]
-        locals.cloud_work_function_1_fa.data[:] = inputs["local_cloud_work_function_1_fa_dicycle"]
+        locals.cloud_workfunction_1_pbl.data[:] = inputs["local_cloud_work_function_1_pbl_dicycle"]
+        locals.cloud_workfunction_1_fa.data[:] = inputs["local_cloud_work_function_1_fa_dicycle"]
 
         # initalize test code
         code = DiurnalCycle(
@@ -161,8 +161,8 @@ class TestCore:
                 cape_removal_time_scale_from_state=state.output.cape_removal_time_scale,
                 pbl_time_scale=locals.pbl_time_scale,
                 pbl_time_scale_from_state=state.output.pbl_time_scale,
-                cloud_work_function_1_pbl=locals.cloud_work_function_1_pbl,
-                cloud_work_function_1_fa=locals.cloud_work_function_1_fa,
+                cloud_work_function_1_pbl=locals.cloud_workfunction_1_pbl,
+                cloud_work_function_1_fa=locals.cloud_workfunction_1_fa,
                 plume_dependent_constants=plume_dependent_constants,
             )
 
@@ -198,8 +198,8 @@ class TestCore:
             "cape_removal_time_scale_dicycle": state.output.cape_removal_time_scale.field[:],
             "local_pbl_time_scale_dicycle": locals.pbl_time_scale.field[:],
             "pbl_time_scale_dicycle": state.output.pbl_time_scale.field[:],
-            "local_cloud_work_function_1_pbl_dicycle": locals.cloud_work_function_1_pbl.field[:],
-            "local_cloud_work_function_1_fa_dicycle": locals.cloud_work_function_1_fa.field[:],
+            "local_cloud_work_function_1_pbl_dicycle": locals.cloud_workfunction_1_pbl.field[:],
+            "local_cloud_work_function_1_fa_dicycle": locals.cloud_workfunction_1_fa.field[:],
         }
 
         return outputs

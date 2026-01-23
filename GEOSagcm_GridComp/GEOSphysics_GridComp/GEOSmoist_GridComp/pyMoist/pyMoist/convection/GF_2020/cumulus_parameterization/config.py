@@ -50,6 +50,9 @@ class GF2020CumulusParameterizationConfig:
     C0_DEEP: Float
     TAU_MID: Float
     TAU_DEEP: Float
+    CLOSURE_CHOICE_SHALLOW: Int
+    CLOSURE_CHOICE_MID: Int
+    CLOSURE_CHOICE_DEEP: Int
     # plume independent
     PLUME_ORDER: Float
     DTIME: Float

@@ -224,6 +224,13 @@ def check_config(
             "disable this error manually to proceed."
         )
 
+    if cumulus_parameterization_config.DIURNAL_CYCLE not in (1, 6):
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with DIURNAL_CYCLE != 1 or 6. This"
+            "setting requires one or more unimeplemented options in LargeScaleForcing. Please"
+            "implement, then disable this error manually to proceed."
+        )
+
     if cumulus_parameterization_config.COUPLE_MICROPHYSICS != True:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initalized with COUPLE_MICROPHYSICS != True. This"
@@ -236,4 +243,11 @@ def check_config(
             "[NDSL] GF2020-->CumulusParameterization initalized with LIGHTNING_DIAGNOSTICS != True. This"
             "setting requires unimeplemented functions. Please implement, then disable this error manually"
             "to proceed."
+        )
+
+    if cumulus_parameterization_config.ENABLE_SHALLOW != True:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with shallow plume enabled. This"
+            "setting requires unimeplemented functions in LargeScaleForcing. Please implement, then disable"
+            "this error manually to proceed."
         )

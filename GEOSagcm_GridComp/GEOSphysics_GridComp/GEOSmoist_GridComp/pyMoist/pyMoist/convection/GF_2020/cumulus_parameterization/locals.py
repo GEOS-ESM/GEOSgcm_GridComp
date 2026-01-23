@@ -133,9 +133,9 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    moist_static_energy: Quantity = dataclasses.field(
+    dmoist_static_energydt: Quantity = dataclasses.field(
         metadata={
-            "name": "moist_static_energy",
+            "name": "dmoist_static_energydt",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -268,6 +268,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    cloud_workfunction_0_pbl: Quantity = dataclasses.field(
+        metadata={
+            "name": "cloud_workfunction_0_pbl",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     cloud_workfunction_1: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_work_function_1",
@@ -277,45 +286,36 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    cloud_work_function_2: Quantity = dataclasses.field(
+    cloud_workfunction_1_fa: Quantity = dataclasses.field(
         metadata={
-            "name": "cloud_work_function_2",
+            "name": "cloud_workfunction_1_fa",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    cloud_work_function_3: Quantity = dataclasses.field(
+    cloud_workfunction_1_pbl: Quantity = dataclasses.field(
         metadata={
-            "name": "cloud_work_function_3",
+            "name": "cloud_workfunction_1_pbl",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    cloud_work_function_0_pbl: Quantity = dataclasses.field(
+    cloud_workfunction_2: Quantity = dataclasses.field(
         metadata={
-            "name": "cloud_work_function_0_pbl",
+            "name": "cloud_workfunction_2",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    cloud_work_function_1_pbl: Quantity = dataclasses.field(
+    cloud_workfunction_3: Quantity = dataclasses.field(
         metadata={
-            "name": "cloud_work_function_1_pbl",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    cloud_work_function_1_fa: Quantity = dataclasses.field(
-        metadata={
-            "name": "cloud_work_function_1_fa",
+            "name": "cloud_workfunction_3",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
@@ -344,15 +344,6 @@ class GF2020CumulusParameterizationLocals(State):
         metadata={
             "name": "k_x_modified",
             "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    k_x: Quantity = dataclasses.field(
-        metadata={
-            "name": "k_x",
-            "dims": [X_DIM, Y_DIM, "ensemble_members"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -475,33 +466,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
-    xf_ens: Quantity = dataclasses.field(
-        metadata={
-            "name": "xf_ens",
-            "dims": [X_DIM, Y_DIM, "ensemble_members"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    xff_ens3: Quantity = dataclasses.field(
-        metadata={
-            "name": "xff_ens3",
-            "dims": [X_DIM, Y_DIM, "ensemble_members"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    moisture_convergence: Quantity = dataclasses.field(
-        metadata={
-            "name": "moisture_convergence",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     xff_mid: Quantity = dataclasses.field(
         metadata={
             "name": "xff_mid",
@@ -509,15 +473,6 @@ class GF2020CumulusParameterizationLocals(State):
             "units": "?",
             "intent": "?",
             "dtype": Float,
-        }
-    )
-    ichoice: Quantity = dataclasses.field(
-        metadata={
-            "name": "ichoice",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Int,
         }
     )
     scale_dependence_factor_downdraft: Quantity = dataclasses.field(
@@ -1321,6 +1276,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    effective_condensate_to_fall_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "effective_condensate_to_fall_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
 
     # NOTE these can potentially be removed with a better analysis of what they do/where they go
     psum: Quantity = dataclasses.field(
@@ -1335,15 +1299,6 @@ class GF2020CumulusParameterizationLocals(State):
     psumh: Quantity = dataclasses.field(
         metadata={
             "name": "NEED BETTER NAME. WHAT IS THIS FIELD",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    tau_ecmwf: Quantity = dataclasses.field(
-        metadata={
-            "name": "tau_ecmwf",
             "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",

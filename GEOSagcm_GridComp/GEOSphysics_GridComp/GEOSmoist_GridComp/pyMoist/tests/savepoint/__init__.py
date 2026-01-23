@@ -286,6 +286,11 @@ from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_Cumul
     TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_mid,
     TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_shallow,
 )
+from .convection.GF_2020.cumulus_parameterization.large_scale_forcing.translate_GF2020_Cumulus_Parameterization_LargeScaleForcing import (
+    TranslateGF2020_CumulusParameterization_LargeScaleForcing_deep,
+    TranslateGF2020_CumulusParameterization_LargeScaleForcing_mid,
+    TranslateGF2020_CumulusParameterization_LargeScaleForcing_shallow,
+)
 from .convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.translate_GF2020_Cumulus_Parameterization_KineticEnergyToHeating import (
     TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_deep,
     TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_mid,
@@ -330,12 +335,6 @@ from .convection.GF_2020.cumulus_parameterization.convection_tracers.translate_G
     TranslateGF2020_CumulusParameterization_AtmosphericComposition_deep,
     TranslateGF2020_CumulusParameterization_AtmosphericComposition_mid,
     TranslateGF2020_CumulusParameterization_AtmosphericComposition_shallow,
-)
-
-from .convection.GF_2020.cumulus_parameterization.cloud_base_mass_flux.translate_GF2020_Cumulus_Parameterization_CloudBaseMassFlux import (
-    TranslateGF2020_CumulusParameterization_CloudBaseMassFlux_deep,
-    TranslateGF2020_CumulusParameterization_CloudBaseMassFlux_mid,
-    TranslateGF2020_CumulusParameterization_CloudBaseMassFlux_shallow,
 )
 
 # NOTE need to organize everything below here
