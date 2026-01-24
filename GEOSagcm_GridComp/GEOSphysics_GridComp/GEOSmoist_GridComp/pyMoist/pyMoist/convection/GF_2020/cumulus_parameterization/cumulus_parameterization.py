@@ -1235,8 +1235,8 @@ class CumulusParameterization:
 
                     # vertical velocity
                     # NOTE test GF2020_CumulusParameterization_UpdraftVerticalVelocity_{plume}:
-                    # NOTE      deep ✅
-                    # NOTE      mid ✅
+                    # NOTE      deep ❌ BAD. NEEDS HELP
+                    # NOTE      mid ❌ BAD. NEEDS HELP
                     # NOTE      shallow ✅
                     self._updraft_vertical_velosity(
                         vertical_velocity_3d=locals.vertical_velocity_3d,
@@ -1258,9 +1258,9 @@ class CumulusParameterization:
 
                 # downdraft origin level
                 # NOTE test GF2020_CumulusParameterization_DowndraftOriginLevel_{plume}:
-                # NOTE      deep ❌ RUNS BUT DOES NOT VALIDATE. current version is brittle, likely need solver mechanics
-                # NOTE      mid ❌ RUNS BUT DOES NOT VALIDATE. current version is brittle, likely need solver mechanics
-                # NOTE      shallow ❌ RUNS BUT DOES NOT VALIDATE. current version is brittle, likely need solver mechanics
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._downdraft_origin_level(
                     error_code=state.output.error_code,
                     cloud_top_level=state.output.cloud_top_level,
@@ -1507,7 +1507,7 @@ class CumulusParameterization:
                 self._Xie_trigger_function(plume_dependent_constants=self.plume_dependent_constants)
 
                 # determine downdraft strength in terms of windshear
-                # NOTE test GF2020_CumulusParameterization_DowndraftWindshear_{plume}:
+                # NOTE test GF2020_CumulusParameterization_DowndraftWindShear_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ❌ one field, one point (0.17%), 4 ULP
                 # NOTE      shallow ✅
