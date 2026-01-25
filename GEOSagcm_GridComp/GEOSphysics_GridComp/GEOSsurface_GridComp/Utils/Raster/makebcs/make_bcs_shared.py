@@ -173,11 +173,11 @@ else
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
 
-if(-f land/shared/river_input.nc ) then
-    echo "river_input.nc already present in bcs dir."
+if(-f land/shared/route_parameters.nc ) then
+    echo "route_parameters.nc already present in bcs dir."
 else
-    /bin/cp -p {MAKE_BCS_INPUT_DIR}/../test/stuff/route_model/v2/river_input.nc land/shared/river_input.nc
-    echo "Successfully copied river_input.nc to bcs dir."
+    /bin/cp -p {MAKE_BCS_INPUT_DIR}/route/routing_model/v1/route_parameters.nc land/shared/route_parameters.nc
+    echo "Successfully copied route_parameters.nc to bcs dir."
 endif
 
 # adjust permissions

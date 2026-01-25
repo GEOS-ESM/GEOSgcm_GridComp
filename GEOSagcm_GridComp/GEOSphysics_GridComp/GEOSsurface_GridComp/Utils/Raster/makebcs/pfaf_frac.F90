@@ -52,7 +52,7 @@ contains
     character(len=256)   :: cellarea_file
 
     pfafData_file = trim(BCS_PATH)//"/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
-    cellarea_file = trim(BCS_PATH)//"../test/stuff/route_model/v2/cellarea.nc"
+    cellarea_file = trim(BCS_PATH)//"/route/routing_model/v1/cellarea.nc"
     call MAPL_ease_extent( trim(GridName), nc_ease, nr_ease)   
  
     ! Allocate arrays with the specified dimensions:
