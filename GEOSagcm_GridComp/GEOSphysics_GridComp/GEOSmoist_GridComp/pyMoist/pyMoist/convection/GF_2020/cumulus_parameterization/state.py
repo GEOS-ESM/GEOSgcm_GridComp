@@ -264,24 +264,6 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Int,
             }
         )
-        error_code2: Quantity = dataclasses.field(
-            metadata={
-                "name": "error_code2",
-                "dims": [X_DIM, Y_DIM, "plumes"],
-                "units": "?",
-                "intent": "?",
-                "dtype": Int,
-            }
-        )
-        error_code3: Quantity = dataclasses.field(
-            metadata={
-                "name": "error_code3",
-                "dims": [X_DIM, Y_DIM, "plumes"],
-                "units": "?",
-                "intent": "?",
-                "dtype": Int,
-            }
-        )
         downdraft_origin_level: Quantity = dataclasses.field(
             metadata={
                 "name": "downdraft_origin_level",
