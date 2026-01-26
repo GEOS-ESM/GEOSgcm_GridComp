@@ -693,7 +693,7 @@ contains
 
       if (index(GNAMES(1), 'EASEv') /=0) then
 
-         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'TILE_PFAF_FILE:',  default = '../input/tile_pfaf.nc4', RC=STATUS )         
+         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'TILE2PFAF_FILE:',  default = '../input/tile2pfaf.nc4', RC=STATUS ) 
          if (MAPL_AM_I_ROOT()) then
             call formatter%open(tile_pfaf_file, PFIO_READ, _RC)
             meta     = formatter%read(rc=status)
