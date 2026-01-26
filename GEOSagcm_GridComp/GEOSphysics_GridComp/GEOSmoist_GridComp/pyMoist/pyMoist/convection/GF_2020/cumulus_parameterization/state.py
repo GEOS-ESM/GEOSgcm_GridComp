@@ -27,7 +27,6 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-
         grid_scale_forcing_t: Quantity = dataclasses.field(
             metadata={
                 "name": "grid_scale_forcing_t",
