@@ -691,8 +691,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_StableDetrainment-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_CloudTop-In
          !$ser flush_savepoint GF2020_CumulusParameterization_CloudTop-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFluxProfile-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFluxProfile-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFlux-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-In
          !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_FirstGuessMoistStaticEnergy-In
