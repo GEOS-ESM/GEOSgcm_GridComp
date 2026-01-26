@@ -152,6 +152,13 @@ def partition_liquid_ice(
 
 
 class PrecipFactor:
+    """
+    get the pickup of ensemble ave prec, following Neelin et al 2009.
+
+    This runs in the fortran, but it does not modify inputs and its
+    output is never used, so it is not implemented in the Python version.
+    """
+
     def __init__(self):
         pass
 

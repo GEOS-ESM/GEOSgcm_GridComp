@@ -183,7 +183,9 @@ class CumulusParameterization:
 
         self._precip_factor = PrecipFactor()
 
-        self._cold_pool_parameterization = ColdPoolParameterization()
+        self._cold_pool_parameterization = ColdPoolParameterization(
+            cumulus_parameterization_config=cumulus_parameterization_config
+        )
 
         self._find_lcl = stencil_factory.from_dims_halo(
             func=find_lcl,
@@ -344,7 +346,9 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._downdraft_wet_bulb = DowndraftWetBlub()
+        self._downdraft_wet_bulb = DowndraftWetBlub(
+            cumulus_parameterization_config=cumulus_parameterization_config
+        )
 
         self._downdraft_moist_static_energy_and_buoyancy = stencil_factory.from_dims_halo(
             func=downdraft_moist_static_energy_and_buoyancy,

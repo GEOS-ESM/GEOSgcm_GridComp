@@ -149,6 +149,20 @@ def check_config(
 
     # generate errors after all warnings
     # TODO find a way to generate all then fail at once, printing all simultaneously
+    if cumulus_parameterization_config.OUTPUT_SOUNDING == 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with OUTPUT_SOUNDING = 1. This requires"
+            "an unimplemented output sounding capabilities (in the Sounding class). Please implement, then"
+            "disable this error manually to proceed."
+        )
+
+    if cumulus_parameterization_config.CONVECTION_TRACER == 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with CONVECTION_TRACER = 1. This requires"
+            "an unimplemented class ColdPoolParameterization. Please implement, then disable this error"
+            "manually to proceed."
+        )
+
     if (
         cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1
         and cumulus_parameterization_config.ENABLE_SHALLOW == 1
@@ -162,7 +176,7 @@ def check_config(
 
     if cumulus_parameterization_config.ZERO_DIFF == 1:
         raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization initalized with ZERO_DIFF == 1. This combination requires"
+            "[NDSL] GF2020-->CumulusParameterization initalized with ZERO_DIFF = 1. This combination requires"
             "an unimplemented porion of UpdraftMassFlux. Please implement, then disable this error"
             "manually to proceed."
         )
@@ -183,7 +197,7 @@ def check_config(
 
     if cumulus_parameterization_config.USE_WETBULB == 1:
         raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization initalized with USE_WETBULB == 1. This setting requires"
+            "[NDSL] GF2020-->CumulusParameterization initalized with USE_WETBULB = 1. This setting requires"
             "the unimplemented function get_wetbulb and an unimplemented option in"
             "downdraft_moist_static_energy_and_moisture_budget. Please implement, then disable this error"
             "manually to proceed."
@@ -198,7 +212,7 @@ def check_config(
 
     if config.ADV_TRIGGER == 3:
         raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization initalized with ADV_TRIGGER == 3. This setting requires"
+            "[NDSL] GF2020-->CumulusParameterization initalized with ADV_TRIGGER = 3. This setting requires"
             "the unimplemented XieTriggerFunction. Please implement, then disable this error"
             "manually to proceed."
         )
@@ -250,4 +264,11 @@ def check_config(
             "[NDSL] GF2020-->CumulusParameterization initalized with shallow plume enabled. This"
             "setting requires unimeplemented functions in LargeScaleForcing. Please implement, then disable"
             "this error manually to proceed."
+        )
+
+    if cumulus_parameterization_config.WRTGRADS != True:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initalized with WRTGRADS = True. This setting requires"
+            "the unimeplemented GATE sounding capabilities (in the GATESounding class). Please implement,"
+            "then disable this error manually to proceed."
         )

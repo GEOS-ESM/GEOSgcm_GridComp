@@ -1107,8 +1107,13 @@ class DowndraftOriginLevel(NDSLRuntime):
 
 
 class DowndraftWetBlub:
-    def __init__(self):
-        pass
+    def __init__(self, cumulus_parameterization_config: GF2020CumulusParameterizationConfig):
+        if cumulus_parameterization_config.USE_WETBULB == 1:
+            raise NotImplementedError(
+                "The DowndraftWetBulb section has not been implemented. You should have been caught"
+                "before getting here by the config checker. Beware, something likely failing in the config"
+                "checker as well - you may be unknowingly calling other untested/unimplemented sections."
+            )
 
     def __call__(self, *args, **kwds):
         pass
