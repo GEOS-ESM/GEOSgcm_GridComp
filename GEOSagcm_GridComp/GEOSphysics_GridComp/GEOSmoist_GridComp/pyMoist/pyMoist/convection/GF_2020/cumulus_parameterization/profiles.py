@@ -312,10 +312,11 @@ class C1DProfile:
             raise NotImplementedError(
                 """
                 [NDSL] C1DProfile initalized with major untested option.
-                This code has been implemented, was not execused in development experiment and has not
+                This code has been implemented, but was not executed in development experiment and has not
                 been tested. It is highly advised that you run translate tests
                 GF2020_CumulusParameterization_C1DProfile_shallow/mid/deep and compare NDSL results with
-                Fortran before proceeding. Disable this error manually to proceed.
+                Fortran before proceeding, as there may be differences which need to be resolved to attain
+                numerical equivalence. Disable this error manually to proceed.
                 """
             )
 
@@ -325,11 +326,13 @@ class C1DProfile:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        # need to wrap this into something that is neither a constant (it can be
-        # modified inside the gridcomp) nor a local
+        # this should be moved up to the CumulusParameterization runtime level, there is a change it
+        # will be needed again in VerticalDiscretization depending on other settings
         USE_C1D = False
+        if abs(self.config.C1) > 0:
+            USE_C1D = True
+
         if plume_dependent_constants.PLUME_INDEX == 2 and USE_C1D:
-            # NOTE this needs to go in a stencil once NDSL base functions are merged
             locals.c1d.field[:] = self.config.C1
 
         if self.cumulus_parameterization_config.FIRST_GUESS_W or self.config.AUTOCONV == 4:
