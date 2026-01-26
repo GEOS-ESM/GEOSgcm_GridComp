@@ -38,7 +38,7 @@ class TestCore:
             "error_code": {},
             "cloud_base_mass_flux_modified": {},
             "total_normalized_integrated_condensate_forced": {},
-            "total_normalized_integrated_evaporate_forced": {},
+            "local_total_normalized_integrated_evaporate_forced": {},
             "normalized_massflux_updraft_forced": {},
             "normalized_massflux_downdraft_forced": {},
             "condensate_to_fall_forced": {},
@@ -92,9 +92,9 @@ class TestCore:
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["total_normalized_integrated_condensate_forced"]
-        state.output.total_normalized_integrated_evaporate_forced.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["total_normalized_integrated_evaporate_forced"]
+        locals.total_normalized_integrated_evaporate_forced.data[:] = inputs[
+            "local_total_normalized_integrated_evaporate_forced"
+        ]
         state.output.normalized_massflux_updraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["normalized_massflux_updraft_forced"]
@@ -140,7 +140,7 @@ class TestCore:
                 error_code=state.output.error_code,
                 cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
                 total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
-                total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                total_normalized_integrated_evaporate_forced=locals.total_normalized_integrated_evaporate_forced,
                 normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
                 normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
                 condensate_to_fall_forced=state.output.condensate_to_fall_forced,
@@ -164,8 +164,8 @@ class TestCore:
             "total_normalized_integrated_condensate_forced": state.output.total_normalized_integrated_condensate_forced.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "total_normalized_integrated_evaporate_forced": state.output.total_normalized_integrated_evaporate_forced.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
+            "local_total_normalized_integrated_evaporate_forced": locals.total_normalized_integrated_evaporate_forced.field[
+                :,
             ],
             "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX

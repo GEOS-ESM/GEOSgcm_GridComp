@@ -157,7 +157,7 @@ class CumulusParameterization:
             },
         )
 
-        self._sounding = Sounding()
+        self._sounding = Sounding(cumulus_parameterization_config=cumulus_parameterization_config)
 
         self._environment_cloud_levels = stencil_factory.from_dims_halo(
             func=environment_cloud_levels,
@@ -220,7 +220,10 @@ class CumulusParameterization:
         self._entrainment_rates = stencil_factory.from_dims_halo(
             func=entrainment_rates,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
+            externals={
+                "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
+                "MIN_ENTRAINMENT_RATE": cumulus_parameterization_config.MIN_ENTRAINMENT_RATE,
+            },
         )
 
         self._set_start_level = stencil_factory.from_dims_halo(
@@ -368,7 +371,7 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "USE_WETBULB": cumulus_parameterization_config.USE_WETBULB,
-                "PGCON": cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT,
+                "PRESSURE_GRADIENT_CONSTANT": cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT,
             },
         )
 
@@ -535,9 +538,14 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._atmospheric_composition = AtmosphericComposition()
+        self._atmospheric_composition = AtmosphericComposition(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
 
-        self._gate_sounding = GATESounding()
+        self._gate_sounding = GATESounding(cumulus_parameterization_config=cumulus_parameterization_config)
 
     def __call__(
         self,
@@ -546,10 +554,8 @@ class CumulusParameterization:
     ):
         if self.cumulus_parameterization_config.PLUME_ORDER == 0:
             plume_types = ["shallow", "mid", "deep"]
-            # ndsl_log.log(msg="running cumulus parameterization with order shallow, mid, deep")
         elif self.cumulus_parameterization_config.PLUME_ORDER == 1:
             plume_types = ["shallow", "deep", "mid"]
-            # ndsl_log.log(msg="running cumulus parameterization with order shallow, deep, mid")
         else:
             raise NotImplementedError("plume order not impelemented")
 
@@ -1421,7 +1427,7 @@ class CumulusParameterization:
                     mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
                     gamma_cloud_levels_forced=self.locals.gamma_cloud_levels_forced,
                     total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
-                    total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                    total_normalized_integrated_evaporate_forced=self.locals.total_normalized_integrated_evaporate_forced,
                     buoyancy=self.locals.buoyancy,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
@@ -1551,7 +1557,7 @@ class CumulusParameterization:
                     psum=self.locals.psum,
                     psumh=self.locals.psumh,
                     total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
-                    total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                    total_normalized_integrated_evaporate_forced=self.locals.total_normalized_integrated_evaporate_forced,
                     scale_dependence_factor_downdraft=self.locals.scale_dependence_factor_downdraft,
                     epsilon=self.locals.epsilon,
                     epsilon_min=self.locals.epsilon_min,
@@ -1988,7 +1994,7 @@ class CumulusParameterization:
                     error_code=state.output.error_code,
                     cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
                     total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
-                    total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                    total_normalized_integrated_evaporate_forced=self.locals.total_normalized_integrated_evaporate_forced,
                     normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
                     normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
                     condensate_to_fall_forced=state.output.condensate_to_fall_forced,

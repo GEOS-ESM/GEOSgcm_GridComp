@@ -632,7 +632,7 @@ def downdraft_moisture(
     mass_detrainment_downdraft_forced: FloatField_Plume,
     gamma_cloud_levels_forced: FloatField,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
-    total_normalized_integrated_evaporate_forced: FloatFieldIJ_Plume,
+    total_normalized_integrated_evaporate_forced: FloatFieldIJ,
     buoyancy: FloatFieldIJ,
     plume: Int,
 ):
@@ -675,7 +675,7 @@ def downdraft_moisture(
     with computation(FORWARD), interval(0, 1):
         # prefill outputs with zero
         buoyancy = 0.0
-        total_normalized_integrated_evaporate_forced[0, 0][plume] = 0.0
+        total_normalized_integrated_evaporate_forced = 0.0
 
     with computation(PARALLEL), interval(...):
         # prefill outputs with zero
@@ -724,9 +724,8 @@ def downdraft_moisture(
                 0.0, cloud_total_water_after_entrainment_downdraft_forced - downdraft_saturation_vapor_forced
             )
             cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced
-            total_normalized_integrated_evaporate_forced[0, 0][plume] = (
-                total_normalized_integrated_evaporate_forced[0, 0][plume]
-                + evaporate_in_downdraft_forced[0, 0, 0][plume]
+            total_normalized_integrated_evaporate_forced = (
+                total_normalized_integrated_evaporate_forced + evaporate_in_downdraft_forced[0, 0, 0][plume]
             )
 
     with computation(FORWARD), interval(0, 1):
@@ -789,15 +788,14 @@ def downdraft_moisture(
             cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced  # => equiv to qcd = qcd - dq_eva !( -dq_eva >0 => source term for qcd)
 
             # total evaporated rain water
-            total_normalized_integrated_evaporate_forced[0, 0][plume] = (
-                total_normalized_integrated_evaporate_forced[0, 0][plume]
-                + evaporate_in_downdraft_forced[0, 0, 0][plume]
+            total_normalized_integrated_evaporate_forced = (
+                total_normalized_integrated_evaporate_forced + evaporate_in_downdraft_forced[0, 0, 0][plume]
             )
 
     with computation(FORWARD), interval(0, 1):
         # check for problems that stop the convective scheme
         if error_code[0, 0][plume] == 0 and plume != 0:
-            if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0 and internal_loop_constant == 1:
+            if total_normalized_integrated_evaporate_forced >= 0 and internal_loop_constant == 1:
                 error_code[0, 0][plume] = 70
 
             if buoyancy >= 0 and internal_loop_constant == 1:
@@ -813,7 +811,7 @@ def downdraft_moisture(
             if (
                 ZERO_DIFF == 0
                 and EVAP_FIX == 1
-                and abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
+                and abs(total_normalized_integrated_evaporate_forced)
                 > total_normalized_integrated_condensate_forced[0, 0][plume]
                 and error_code[0, 0][plume] == 0
             ):
@@ -822,9 +820,9 @@ def downdraft_moisture(
                 abs_check = True
 
                 fix_evap: FloatFieldIJ = total_normalized_integrated_condensate_forced[0, 0][plume] / (
-                    1.0e-16 + abs(total_normalized_integrated_evaporate_forced[0, 0][plume])
+                    1.0e-16 + abs(total_normalized_integrated_evaporate_forced)
                 )
-                total_normalized_integrated_evaporate_forced[0, 0][plume] = 0.0
+                total_normalized_integrated_evaporate_forced = 0.0
 
     with computation(BACKWARD), interval(...):
         if (
@@ -838,9 +836,8 @@ def downdraft_moisture(
             evaporate_in_downdraft_forced[0, 0, 0][plume] = (
                 evaporate_in_downdraft_forced[0, 0, 0][plume] * fix_evap
             )
-            total_normalized_integrated_evaporate_forced[0, 0][plume] = (
-                total_normalized_integrated_evaporate_forced[0, 0][plume]
-                + evaporate_in_downdraft_forced[0, 0, 0][plume]
+            total_normalized_integrated_evaporate_forced = (
+                total_normalized_integrated_evaporate_forced + evaporate_in_downdraft_forced[0, 0, 0][plume]
             )
             dq_eva = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
                 1.0e-16 + normalized_massflux_downdraft_forced[0, 0, 0][plume]
@@ -855,7 +852,7 @@ def downdraft_moisture(
             and EVAP_FIX == 1
             and abs_check == True
         ):
-            if total_normalized_integrated_evaporate_forced[0, 0][plume] >= 0.0:
+            if total_normalized_integrated_evaporate_forced >= 0.0:
                 error_code[0, 0][plume] = 70
 
 
@@ -893,7 +890,7 @@ def downdraft_windshear(
     psum: FloatFieldIJ,
     psumh: FloatFieldIJ,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
-    total_normalized_integrated_evaporate_forced: FloatFieldIJ_Plume,
+    total_normalized_integrated_evaporate_forced: FloatFieldIJ,
     epsilon: FloatFieldIJ,
     epsilon_min: FloatFieldIJ,
     epsilon_max: FloatFieldIJ,
@@ -996,7 +993,7 @@ def downdraft_windshear(
                 epsilon_computed[0, 0][count] = (
                     -epsilon_computed[0, 0][count]
                     * total_normalized_integrated_condensate_forced[0, 0][plume]
-                    / total_normalized_integrated_evaporate_forced[0, 0][plume]
+                    / total_normalized_integrated_evaporate_forced
                 )
                 if epsilon_computed[0, 0][count] > epsilon_max:
                     epsilon_computed[0, 0][count] = epsilon_max

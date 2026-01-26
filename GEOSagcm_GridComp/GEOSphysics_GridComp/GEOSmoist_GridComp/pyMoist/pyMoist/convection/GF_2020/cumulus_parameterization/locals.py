@@ -430,6 +430,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    total_normalized_integrated_evaporate_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "total_normalized_integrated_evaporate_forced",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     evaporation_below_cloud_base: Quantity = dataclasses.field(
         metadata={
             "name": "evaporation_below_cloud_base",

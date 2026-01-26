@@ -65,7 +65,7 @@ class TestCore:
             "mass_detrainment_downdraft_forced": {},
             "local_gamma_cloud_levels_forced": {},
             "total_normalized_integrated_condensate_forced": {},
-            "total_normalized_integrated_evaporate_forced": {},
+            "local_total_normalized_integrated_evaporate_forced": {},
             "local_buoyancy": {},
         }
 
@@ -146,9 +146,9 @@ class TestCore:
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["total_normalized_integrated_condensate_forced"]
-        state.output.total_normalized_integrated_evaporate_forced.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["total_normalized_integrated_evaporate_forced"]
+        locals.total_normalized_integrated_evaporate_forced.data[
+            :,
+        ] = inputs["local_total_normalized_integrated_evaporate_forced"]
         locals.buoyancy.data[:] = inputs["local_buoyancy"]
 
         # initalize test code
@@ -187,7 +187,7 @@ class TestCore:
                     mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
                     gamma_cloud_levels_forced=locals.gamma_cloud_levels_forced,
                     total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
-                    total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                    total_normalized_integrated_evaporate_forced=locals.total_normalized_integrated_evaporate_forced,
                     buoyancy=locals.buoyancy,
                     plume=plume_dependent_constants.PLUME_INDEX,
                 )
@@ -240,8 +240,8 @@ class TestCore:
             "total_normalized_integrated_condensate_forced": state.output.total_normalized_integrated_condensate_forced.data[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "total_normalized_integrated_evaporate_forced": state.output.total_normalized_integrated_evaporate_forced.data[
-                :, :, plume_dependent_constants.PLUME_INDEX
+            "local_total_normalized_integrated_evaporate_forced": locals.total_normalized_integrated_evaporate_forced.data[
+                :
             ],
             "local_buoyancy": locals.buoyancy.data[:],
         }

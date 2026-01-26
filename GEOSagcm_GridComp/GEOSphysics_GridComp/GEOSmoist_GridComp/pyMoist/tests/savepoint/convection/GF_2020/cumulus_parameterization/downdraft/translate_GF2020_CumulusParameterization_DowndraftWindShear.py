@@ -52,7 +52,7 @@ class TestCore:
             "v": {},
             "ccn": {},
             "total_normalized_integrated_condensate_forced": {},
-            "total_normalized_integrated_evaporate_forced": {},
+            "local_total_normalized_integrated_evaporate_forced": {},
             "local_psum": {},
             "local_psumh": {},
             "local_scale_dependence_factor_downdraft": {},
@@ -110,9 +110,9 @@ class TestCore:
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["total_normalized_integrated_condensate_forced"]
-        state.output.total_normalized_integrated_evaporate_forced.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["total_normalized_integrated_evaporate_forced"]
+        locals.total_normalized_integrated_evaporate_forced.data[
+            :,
+        ] = inputs["local_total_normalized_integrated_evaporate_forced"]
         locals.psum.data[:] = inputs["local_psum"]
         locals.psumh.data[:] = inputs["local_psumh"]
         locals.scale_dependence_factor_downdraft.data[:] = inputs["local_scale_dependence_factor_downdraft"]
@@ -152,7 +152,7 @@ class TestCore:
                 psum=locals.psum,
                 psumh=locals.psumh,
                 total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
-                total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                total_normalized_integrated_evaporate_forced=locals.total_normalized_integrated_evaporate_forced,
                 scale_dependence_factor_downdraft=locals.scale_dependence_factor_downdraft,
                 epsilon=locals.epsilon,
                 epsilon_min=locals.epsilon_min,
@@ -179,8 +179,8 @@ class TestCore:
             "total_normalized_integrated_condensate_forced": state.output.total_normalized_integrated_condensate_forced.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "total_normalized_integrated_evaporate_forced": state.output.total_normalized_integrated_evaporate_forced.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
+            "local_total_normalized_integrated_evaporate_forced": locals.total_normalized_integrated_evaporate_forced.field[
+                :,
             ],
             "local_psum": locals.psum.field[:],
             "local_psumh": locals.psumh.field[:],

@@ -71,7 +71,7 @@ def prepare_output(
     error_code: IntFieldIJ_Plume,
     cloud_base_mass_flux_modified: FloatFieldIJ_Plume,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
-    total_normalized_integrated_evaporate_forced: FloatFieldIJ_Plume,
+    total_normalized_integrated_evaporate_forced: FloatFieldIJ,
     normalized_massflux_updraft_forced: FloatField_Plume,
     normalized_massflux_downdraft_forced: FloatField_Plume,
     condensate_to_fall_forced: FloatField_Plume,
@@ -92,9 +92,9 @@ def prepare_output(
                 cloud_base_mass_flux_modified[0, 0][plume]
                 * total_normalized_integrated_condensate_forced[0, 0][plume]
             )
-            total_normalized_integrated_evaporate_forced[0, 0][plume] = (
+            total_normalized_integrated_evaporate_forced = (
                 cloud_base_mass_flux_modified[0, 0][plume]
-                * total_normalized_integrated_evaporate_forced[0, 0][plume]
+                * total_normalized_integrated_evaporate_forced
             )
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:

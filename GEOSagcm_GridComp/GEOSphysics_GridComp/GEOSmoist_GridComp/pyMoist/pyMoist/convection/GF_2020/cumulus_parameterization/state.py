@@ -363,15 +363,6 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        total_normalized_integrated_evaporate_forced: Quantity = dataclasses.field(
-            metadata={
-                "name": "total_normalized_integrated_evaporate_forced",
-                "dims": [X_DIM, Y_DIM, "plumes"],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
         scale_dependence_factor: Quantity = dataclasses.field(
             metadata={
                 "name": "scale_dependence_factor",
