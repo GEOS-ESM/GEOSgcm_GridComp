@@ -56,6 +56,7 @@ class TestCore:
             "local_vapor_forced": {},
             "lcl_level": {},
             "cloud_top_level": {},
+            "updraft_lfc_level": {},
         }
 
         out_vars.update(in_vars["data_vars"])
@@ -114,6 +115,9 @@ class TestCore:
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_top_level"] - 1
         )
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["updraft_lfc_level"] - 1
+        )
 
         # initalize test code
         code = self.stencil_factory.from_dims_halo(
@@ -167,6 +171,10 @@ class TestCore:
             "local_vapor_forced": locals.vapor_forced.field[:],
             "lcl_level": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
+            + 1,
+            "updraft_lcf_level": state.output.updraft_lfc_level.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ]
             + 1,
         }
 

@@ -320,9 +320,10 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._updraft_vertical_velosity = stencil_factory.from_dims_halo(
+        self._updraft_vertical_velocity = stencil_factory.from_dims_halo(
             func=updraft_vertical_velocity,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
         )
 
         self._downdraft_origin_level = DowndraftOriginLevel(
@@ -1235,10 +1236,10 @@ class CumulusParameterization:
 
                     # vertical velocity
                     # NOTE test GF2020_CumulusParameterization_UpdraftVerticalVelocity_{plume}:
-                    # NOTE      deep ❌ BAD. NEEDS HELP
-                    # NOTE      mid ❌ BAD. NEEDS HELP
+                    # NOTE      deep ✅
+                    # NOTE      mid ✅
                     # NOTE      shallow ✅
-                    self._updraft_vertical_velosity(
+                    self._updraft_vertical_velocity(
                         vertical_velocity_3d=locals.vertical_velocity_3d,
                         vertical_velocity_2d=locals.vertical_velocity_2d,
                         convective_scale_velocity=state.input_output.convective_scale_velocity,

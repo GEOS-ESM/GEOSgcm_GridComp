@@ -163,7 +163,7 @@ def updraft_vertical_velocity(
                         nvs: IntFieldIJ = 0
                         vs: FloatFieldIJ = 0.0
                         level_inner_loop = max(K - n_smooth, 0)
-                        while level_inner_loop < min(K + n_smooth, k_end - 1):
+                        while level_inner_loop <= min(K + n_smooth, k_end - 1):
                             nvs = nvs + 1
                             vs = vs + vertical_velocity_3d.at(K=level_inner_loop)
                             level_inner_loop += 1
@@ -173,7 +173,7 @@ def updraft_vertical_velocity(
                         vs: FloatFieldIJ = 0.0
                         dz1m: FloatFieldIJ = 0.0
                         level_inner_loop = max(K - n_smooth, 0)
-                        while level_inner_loop < min(K + n_smooth, k_end - 1):
+                        while level_inner_loop <= min(K + n_smooth, k_end - 1):
                             dz = geopotential_height_cloud_levels_forced.at(
                                 K=level_inner_loop + 1
                             ) - geopotential_height_cloud_levels_forced.at(K=level_inner_loop)
@@ -207,7 +207,7 @@ def updraft_vertical_velocity(
     # get the column average vertical velocity
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0 or error_code[0, 0][plume] == 54:
-            if K >= updraft_lfc_level[0, 0][plume] + 1 and K <= cloud_top_level[0, 0][plume]:
+            if K >= updraft_lfc_level[0, 0][plume] and K <= cloud_top_level[0, 0][plume]:
                 dz = (
                     geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
                 )
