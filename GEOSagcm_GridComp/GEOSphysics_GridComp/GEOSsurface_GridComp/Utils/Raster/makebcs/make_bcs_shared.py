@@ -216,14 +216,13 @@ else
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
 
+"""
+
+   if grid_type in ("Cubed-Sphere", "Stretched_CS"):
+        mv_template = mv_template + """
 
 # Link TOPO into this BCS directory based on bcs_version
-# You can override with: setenv TOPO_VERSION v1|v2  before launching the job
-if ( $?TOPO_VERSION ) then
-    set topo_version = $TOPO_VERSION
-else
-    set topo_version = {TOPO_VERSION}
-endif
+set topo_version = {TOPO_VERSION}
 
 if ( ! -d TOPO ) mkdir -p TOPO
 set topo_dir  = CF{NC}x6C{SGNAME}     # e.g., CF0024x6C or CF0540x6C-SG001
@@ -233,18 +232,21 @@ set topo_src  = $topo_root/$topo_version/$topo_dir
 if ( -e TOPO/$topo_dir ) then
     echo "TOPO/$topo_dir already exists; not relinking."
 else if ( -d $topo_src ) then
-     /bin/ln -s $topo_src TOPO/$topo_dir
+    /bin/ln -s $topo_src TOPO/$topo_dir
     echo "Linked TOPO/$topo_dir -> $topo_src"
 else
     echo "WARNING: TOPO source not found: $topo_src"
 endif
 
-# adjust permissions
+"""
 
+   # always include permissions block for all grids
+   mv_template = mv_template + """
+
+# adjust permissions
 chmod +rX -R geometry land logs
 
 """
-
    return mv_template
 
 def check_script(expdir, script):
