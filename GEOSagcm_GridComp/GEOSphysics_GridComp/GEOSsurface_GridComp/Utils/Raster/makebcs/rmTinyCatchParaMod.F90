@@ -258,7 +258,7 @@ contains
 
     case ("v15")  
        LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD_c'
+       SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
        OUTLETV = "v2"       
