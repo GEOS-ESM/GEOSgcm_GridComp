@@ -9,6 +9,9 @@ import re
 # --- BEGIN VERSION MATRIX ---
 
 # Independent version mapping per questionnaire 'lbcsv'
+#
+# TOPO_VERSION refers to topography inputs for atm model
+
 _VERSION_MATRIX = {
     "NL3": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
     "NL4": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
@@ -221,7 +224,7 @@ endif
    if grid_type in ("Cubed-Sphere", "Stretched_CS"):
         mv_template = mv_template + """
 
-# Link TOPO into this BCS directory based on bcs_version
+# Link (atm) TOPO into this BCS directory based on bcs_version (only needed if grid_type is [stretched] cube-sphere)
 set topo_version = {TOPO_VERSION}
 
 if ( ! -d TOPO ) mkdir -p TOPO
@@ -240,10 +243,9 @@ endif
 
 """
 
-   # always include permissions block for all grids
    mv_template = mv_template + """
 
-# adjust permissions
+# adjust permissions (for all grid types)
 chmod +rX -R geometry land logs
 
 """

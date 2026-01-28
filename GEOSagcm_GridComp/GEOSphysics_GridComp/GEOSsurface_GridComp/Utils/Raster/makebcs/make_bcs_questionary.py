@@ -65,7 +65,7 @@ def get_configs_from_answers(answers):
      
         maskfile = ''
      
-        if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6', 'T4MOM6', 'T5MOM6', 'T8MOM6']:
+        if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6','T4MOM6','T5MOM6','T8MOM6']:
            maskfile = 'GEOS5_10arcsec_mask_freshwater-lakes.nc'
            if lbcsv in ['F25', 'GM4', 'ICA']:
               maskfile = 'global.cat_id.catch.DL'
@@ -174,7 +174,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
    ocean resolution. ",
             "choices": ["No", "Yes"],
         },
-   
+
         {
             "type": "select",
             "name": "bcs_version",
@@ -198,7 +198,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
    "v10 : NL3 + PEATMAP + MODIS snow alb v2", \
    "v11 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2", \
    "v12 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix", \
-   "v13 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix + mean land elevation fix + MOM6 v2 (OM4) ocean-seaice bathymetry", \
+   "v13 : As in v13 + mean land elevation fix + MOM6 v2 (OM4) ocean-seaice bathymetry", \
    "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
    "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
    "F25 : Fortuna-2_5   (archived*: n/a)"], 
@@ -320,7 +320,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "T1MOM6 --  Tripolar (MOM6-Tripolar-Ocean:    $72x36$  )", \
                  "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $540x458$ )", \
                  "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
-                 "T5MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $720x576$)", \
+                 "T5MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $720x576$ )", \
                  "T8MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $2880x2240$)", \
                  "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
             "when": lambda x:  "Stretched_CS" == x['grid_type'] or "Cubed-Sphere" == x['grid_type'],

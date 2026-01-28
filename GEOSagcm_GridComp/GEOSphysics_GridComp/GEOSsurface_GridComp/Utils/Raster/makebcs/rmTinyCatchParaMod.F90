@@ -56,7 +56,7 @@ module rmTinyCatchParaMod
   public Get_MidTime, Time_Interp_Fac
   public ascat_r0, jpl_canoph, NC_VarID, init_bcs_config  
   
-  ! The following variables define the details of the BCS version (data sources).
+  ! The following variables define the details of the BCs versions (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
   
   logical,      public, save :: use_PEATMAP = .false.
@@ -227,11 +227,11 @@ contains
        jpl_height  = .true.
 
     case ("v12","v13")  
-       !   "v12" are "v13" are identical except for:
-       ! - catchment.def land-elevation bug fix: absent in v12; present in v13.
-       ! - netCDF-4 (NC4) tile-file generation: absent in v12; present in v13.
-       ! - Coupled-model BC land properties vs AGCM: inconsistency present in v12; fixed in v13.
-       ! - Coupled atmosphere-ocean-sea ice: v13 uses MOM6/v2 (OM4) ocean bathymetry; v12 v1.       
+       !   v12 are v13 BCs are identical except for the following updates and bug fixes in v13:
+       !   - Fix for land elevation in catchment.def file.
+       !   - Generation of netCDF-4 (NC4) tile file (supplemental to ASCII file).
+       !   - Fix for inconsistency in land tile properties of coupled-model BCs vs. AGCM BCs.
+       !   - Coupled-model BCs use MOM6/v2 (OM4) ocean bathymetry.
  
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD_b'
@@ -5514,10 +5514,10 @@ contains
     REAL*8 b(m),u(m,n),v(n,n),w(n),x(n) 
     PARAMETER (NMAX=500)  !Maximum anticipated value of n
     !------------------------------------------------------------------------------------------- 
-    ! Solves A "A^" . X = B for a vector X, where A is specified by the arrays u, w, v as returned by 
-    ! svdcmp. m and n are the dimensions of a, and will be equal for square matrices. b(1:m) is 
-    ! the input right-hand side. x(1:n) is the output solution vector. No input quantities are 
-    ! destroyed, so the routine may be called sequentially with different b's. 
+    ! Solves A . X = B for a vector X, where A is specified by the arrays u, w, v as returned by 
+    ! svdcmp.  m and n are the dimensions of a, and will be equal for square matrices. b(1:m) is 
+    ! the input right-hand side. x(1:n) is the output solution vector.  No input quantities are 
+    ! destroyed, so the routine may be called sequentially with different b values. 
     !-------------------------------------------------------------------------------------------
 
     INTEGER i,j,jj 
@@ -5552,7 +5552,7 @@ contains
     PARAMETER (NMAX=500)  !Maximum anticipated value of n. 
     !-------------------------------------------------------------------------------------- 
     ! Given a matrix A(1:m,1:n), this routine computes its singular value decomposition, 
-    ! A = U . W . Vt. The matrix U replaces A on output. The diagonal matrix of singular 
+    ! A = U . W . Vt. The matrix U replaces A on output.  The diagonal matrix of singular 
     ! values W is output as a vector W(1:n). The matrix V (not the transpose Vt) is output 
     ! as V(1:n,1:n). 
     !--------------------------------------------------------------------------------------
