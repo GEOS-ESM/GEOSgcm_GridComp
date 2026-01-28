@@ -1789,6 +1789,9 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                qa_dt (i, k) = rdt * &
                       ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
                         qa (i, k) )                                                                 ! Old Cloud
+            else
+               qa (i, k) = qaz (k)
+               qa_dt (i, k) = 0.0
             endif
 
             qv (i, k) = qvz (k)
@@ -1797,7 +1800,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qi (i, k) = qiz (k)
             qs (i, k) = qsz (k)
             qg (i, k) = qgz (k)
-            qa (i, k) = qaz (k)
 
             ! -----------------------------------------------------------------------
             ! calculate some more variables needed outside
