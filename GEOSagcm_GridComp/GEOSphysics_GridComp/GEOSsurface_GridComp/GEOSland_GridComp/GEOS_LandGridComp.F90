@@ -145,7 +145,6 @@ contains
     VERIFY_(STATUS)
 
 ! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN)
-! and Runoff Routing Model (0: OFF, 1: ON)
 ! -------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
