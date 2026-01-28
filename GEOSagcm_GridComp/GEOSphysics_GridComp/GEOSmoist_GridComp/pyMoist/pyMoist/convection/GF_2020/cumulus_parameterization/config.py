@@ -53,6 +53,9 @@ class GF2020CumulusParameterizationConfig:
     CLOSURE_CHOICE_SHALLOW: Int
     CLOSURE_CHOICE_MID: Int
     CLOSURE_CHOICE_DEEP: Int
+    USE_TRACER_SCAVEN: Int
+    USE_TRACER_EVAP: Int
+    USE_FLUX_FORM: Int
     # plume independent
     PLUME_ORDER: Float
     DTIME: Float

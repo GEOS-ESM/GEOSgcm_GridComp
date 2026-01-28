@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import IJ, IJK, Field
+from ndsl.dsl.gt4py import IJ, IJK, Field, K
 from ndsl.dsl.typing import Float, Int
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     NUMBER_OF_PLUMES,
@@ -18,4 +18,5 @@ FloatFieldIJ_ensemble_2 = Field[IJ, (Float, int(MAXENS2))]
 FloatFieldIJ_ensemble_3 = Field[IJ, (Float, int(MAXENS3))]
 FloatFieldIJ_Ensemble = Field[IJ, (Float, (int(MAXENS1 * MAXENS2 * MAXENS3)))]
 FloatField_Tracers = Field[IJK, (Float, int(NCNST))]
+FloatFieldIJ_Tracers = Field[IJ, (Float, int(NCNST))]
 FloatField_Tracers_Plume = Field[IJK, (Float, (int(NUMBER_OF_PLUMES), int(NCNST)))]

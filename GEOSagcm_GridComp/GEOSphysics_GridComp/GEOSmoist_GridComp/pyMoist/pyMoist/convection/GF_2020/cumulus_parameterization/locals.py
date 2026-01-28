@@ -1285,6 +1285,158 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    #######################################################################
+    # NOTE AtmosphericComposition variables **CAN BE MOVED AND/OR RENAMED**
+    #######################################################################
+    sc_up_chem: Quantity = dataclasses.field(
+        metadata={
+            "name": "sc_up_chem",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    pw_up_chem: Quantity = dataclasses.field(
+        metadata={
+            "name": "pw_up_chem",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    tot_pw_up_chem: Quantity = dataclasses.field(
+        metadata={
+            "name": "tot_pw_up_chem",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    CNV_Tracers_fscav: Quantity = dataclasses.field(
+        metadata={
+            "name": "CNV_Tracers_fscav",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    CNV_Tracers_Vect_hcts: Quantity = dataclasses.field(
+        metadata={
+            "name": "CNV_Tracers_Vect_hcts",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    sc_b: Quantity = dataclasses.field(
+        metadata={
+            "name": "sc_b",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    sc_dn: Quantity = dataclasses.field(
+        metadata={
+            "name": "sc_dn",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+    pw_dn: Quantity = dataclasses.field(
+        metadata={
+            "name": "pw_dn",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+    tot_pw_dn_chem: Quantity = dataclasses.field(
+        metadata={
+            "name": "tot_pw_dn_chem",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    ddtr: Quantity = dataclasses.field(
+        metadata={
+            "name": "ddtr",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    out_chem: Quantity = dataclasses.field(
+        metadata={
+            "name": "out_chem",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    trash_: Quantity = dataclasses.field(
+        metadata={
+            "name": "trash_",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    trash2_: Quantity = dataclasses.field(
+        metadata={
+            "name": "trash2_",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    evap_: Quantity = dataclasses.field(
+        metadata={
+            "name": "evap_",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    wetdep_: Quantity = dataclasses.field(
+        metadata={
+            "name": "wetdep_",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    residu_: Quantity = dataclasses.field(
+        metadata={
+            "name": "residu_",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+    # NOTE these can potentially be removed with a better analysis of what they do/where they go
+    psum: Quantity = dataclasses.field(
     effective_condensate_to_fall_forced: Quantity = dataclasses.field(
         metadata={
             "name": "effective_condensate_to_fall_forced",
