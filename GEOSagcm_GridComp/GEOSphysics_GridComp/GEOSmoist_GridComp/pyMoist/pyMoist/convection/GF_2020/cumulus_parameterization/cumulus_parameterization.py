@@ -196,9 +196,7 @@ class CumulusParameterization:
 
         self._precip_factor = PrecipFactor()
 
-        self._cold_pool_parameterization = ColdPoolParameterization(
-            cumulus_parameterization_config=cumulus_parameterization_config
-        )
+        self._cold_pool_parameterization = ColdPoolParameterization(config=config)
 
         self._find_lcl = stencil_factory.from_dims_halo(
             func=find_lcl,
@@ -1102,7 +1100,7 @@ class CumulusParameterization:
                     cloud_moist_static_energy=self.locals.cloud_moist_static_energy_forced,
                     environment_moist_static_energy=self.locals.environment_moist_static_energy_cloud_levels_forced,
                     environment_saturation_moist_static_energy=self.locals.environment_saturation_moist_static_energy_cloud_levels_forced,
-                    buoyancy=self.locals.buoyancy,
+                    d_buoyancy=self.locals.d_buoyancy_forced,
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
@@ -1230,7 +1228,7 @@ class CumulusParameterization:
                     cloud_moist_static_energy=self.locals.cloud_moist_static_energy,
                     environment_moist_static_energy=self.locals.environment_moist_static_energy_cloud_levels,
                     environment_saturation_moist_static_energy=self.locals.environment_saturation_moist_static_energy_cloud_levels,
-                    buoyancy=self.locals.buoyancy,
+                    d_buoyancy=self.locals.d_buoyancy,
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
@@ -1246,7 +1244,7 @@ class CumulusParameterization:
                     cloud_moist_static_energy=self.locals.cloud_moist_static_energy_forced,
                     environment_moist_static_energy=self.locals.environment_moist_static_energy_cloud_levels_forced,
                     environment_saturation_moist_static_energy=self.locals.environment_saturation_moist_static_energy_cloud_levels_forced,
-                    buoyancy=self.locals.buoyancy,
+                    d_buoyancy=self.locals.d_buoyancy_forced,
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
@@ -1500,9 +1498,13 @@ class CumulusParameterization:
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._downdraft_temperature(
-                    state=state,
-                    locals=locals,
-                    plume_dependent_constants=self.plume_dependent_constants,
+                    error_code=state.output.error_code,
+                    downdraft_column_temperature_forced=self.locals.downdraft_column_temperature_forced,
+                    cloud_moist_static_energy_downdraft_forced=self.locals.cloud_moist_static_energy_downdraft_forced,
+                    geopotential_height_cloud_levels_forced=self.locals.geopotential_height_cloud_levels_forced,
+                    cloud_total_water_after_entrainment_downdraft_forced=self.locals.cloud_total_water_after_entrainment_downdraft_forced,
+                    t_cloud_levels_forced=self.locals.t_cloud_levels_forced,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
                 # diurnal cycle section
@@ -2016,7 +2018,7 @@ class CumulusParameterization:
 
                 # section for atmospheric composition
                 # NOTE this section does not run in the test case, and has not been implemented.
-                self._atmospheric_composition()
+                # self._atmospheric_composition()
 
                 # begin: for GATE soundings
                 # NOTE this section does not run in the test case, and has not been implemented.

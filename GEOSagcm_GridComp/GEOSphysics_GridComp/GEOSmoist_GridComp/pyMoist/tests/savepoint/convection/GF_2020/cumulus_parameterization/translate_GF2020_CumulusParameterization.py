@@ -9,8 +9,18 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020Cum
 from pyMoist.convection.GF_2020.cumulus_parameterization.cumulus_parameterization import (
     CumulusParameterization,
 )
-from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
+    NUMBER_OF_PLUMES,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+import numpy as np
+
+import warnings
+
+warnings.filterwarnings("once")
 
 
 class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
@@ -24,39 +34,108 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
-        self.in_vars["data_vars"] = {
-            "t_excess_cu_param_input": {},
-            "vapor_excess_cu_param_input": {},
-            "ocean_fraction": {},
-            "t_cu_param_input": {},
-            "vapor_timestep_start_cu_param_input": {},
-            "grid_scale_forcing_t_cu_param_input_data_buffered": {},
-            "grid_scale_forcing_vapor_cu_param_input_data_buffered": {},
-            "subgrid_scale_forcing_t_cu_param_input_data_buffered": {},
-            "subgrid_scale_forcing_vapor_cu_param_input_data_buffered": {},
-        }
+        self.in_vars["data_vars"] = {}
 
         self.out_vars = self.in_vars["data_vars"].copy()
-        del (
-            self.out_vars["t_excess_cu_param_input"],
-            self.out_vars["vapor_excess_cu_param_input"],
-            self.out_vars["ocean_fraction"],
-            self.out_vars["t_cu_param_input"],
-            self.out_vars["vapor_timestep_start_cu_param_input"],
-            self.out_vars["grid_scale_forcing_t_cu_param_input_data_buffered"],
-            self.out_vars["grid_scale_forcing_vapor_cu_param_input_data_buffered"],
-            self.out_vars["subgrid_scale_forcing_t_cu_param_input_data_buffered"],
-            self.out_vars["subgrid_scale_forcing_vapor_cu_param_input_data_buffered"],
-        )
         self.out_vars.update(
             {
-                "t_excess_cu_param_internal": {},
-                "vapor_excess_cu_param_internal": {},
-                "t_cu_param_internal": {},
-                "vapor_cu_param_internal": {},
-                "moist_static_energy_cu_param_internal": {},
-                "t_pbl_cu_param_internal": {},
-                "vapor_pbl_cu_param_internal": {},
+                "t_excess": {},
+                "vapor_excess": {},
+                "grid_scale_forcing_t": {},
+                "grid_scale_forcing_vapor": {},
+                "subgrid_scale_forcing_t": {},
+                "subgrid_scale_forcing_vapor": {},
+                "seed_convection": {},
+                "saturation_water_vapor": {},
+                "ocean_fraction": {},
+                "convection_fraction": {},
+                "surface_type": {},
+                "lateral_entrainment_rate": {},
+                "last_error_code": {},
+                "dtdt": {},
+                "dvapordt": {},
+                "dcloudicedt": {},
+                "dudt": {},
+                "dvdt": {},
+                "dnliquiddt": {},
+                "dnicedt": {},
+                "dbuoyancydt": {},
+                "dconvectiveicedt": {},
+                "dlargescaleicedt": {},
+                "dconvectiveliquiddt": {},
+                "dlargescaleliquiddt": {},
+                "dconvectivecloudfractiondt": {},
+                "dlargescalecloudfractiondt": {},
+                "error_code": {},
+                "downdraft_origin_level": {},
+                "lcl_level": {},
+                "updraft_origin_level": {},
+                "updraft_lfc_level": {},
+                "cloud_top_level": {},
+                "kstabi": {},
+                "kstabm": {},
+                "precip": {},
+                "cloud_base_mass_flux_modified": {},
+                "epsilon_forced": {},
+                "total_normalized_integrated_condensate_forced": {},
+                "scale_dependence_factor": {},
+                "p_cloud_levels_forced": {},
+                "entrainment_rate": {},
+                "mass_entrainment_updraft_forced": {},
+                "mass_entrainment_downdraft_forced": {},
+                "mass_detrainment_updraft_forced": {},
+                "mass_detrainment_downdraft_forced": {},
+                "normalized_massflux_updraft_forced": {},
+                "normalized_massflux_downdraft_forced": {},
+                "condensate_to_fall_forced": {},
+                "evaporate_in_downdraft_forced": {},
+                "cloud_liquid_after_rain_forced": {},
+                "t_updraft": {},
+                "convective_cloud_fraction_output": {},
+                "cloud_workfunction_0": {},
+                "cloud_workfunction_1": {},
+                "cloud_workfunction_2": {},
+                "cloud_workfunction_3": {},
+                "cloud_workfunction_1_pbl": {},
+                "cloud_workfunction_1_cin": {},
+                "cape_removal_time_scale": {},
+                "pbl_time_scale": {},
+                "lightning_density": {},
+                "evaporation_sublimation_tendency": {},
+                "convective_precip_flux": {},
+                "t_perturbation": {},
+                "grid_length": {},
+                "pbl_level": {},
+                "ccn": {},
+                "air_density": {},
+                "omega": {},
+                "topography_height_no_negative": {},
+                "sensible_heat_flux": {},
+                "latent_heat_flux": {},
+                "longitude_degrees": {},
+                "latitude_degrees": {},
+                "t_old": {},
+                "vapor_old": {},
+                "t_modified_by_advection": {},
+                "vapor_modified_by_advection": {},
+                "geopotential_height_forced": {},
+                "p_forced": {},
+                "p_surface": {},
+                "t_surface": {},
+                "u": {},
+                "v": {},
+                "w": {},
+                "mass": {},
+                "convective_scale_velocity": {},
+                "buoyancy_excess": {},
+                "large_scale_ice": {},
+                "convective_ice": {},
+                "large_scale_liquid": {},
+                "convective_liquid": {},
+                "large_scale_cloud_fraction": {},
+                "convective_cloud_fraction": {},
+                # "chemistry_tracers": {},
+                # "chemistry_tracers_output": {},
             }
         )
 
@@ -64,73 +143,319 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         self.constants = data_loader.load("GF2020-constants")
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
-    def compute(self, inputs):
+        # workaround because translate test cannot read in 4d fields
+        self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-In")
+
+    def compute_func(self, **inputs):
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
 
-        state = GF2020State.zeros(self.quantity_factory)
+        # initalize pyMoist saturation tables
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        locals = GF2020Locals.zeros(
+        # initalize state
+        state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
-                "plumes": 3,
+                "plumes": NUMBER_OF_PLUMES,
+                "tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
-        import numpy as np
+        # fill state with input data
+        if cumulus_parameterization_config.PLUME_ORDER == 0:
+            # plume order is shallow --> mid --> deep, data can be transferred directly
+            # input fields
+            state.input.t_excess.field[:] = self.manual_inputs["t_excess"]
+            state.input.vapor_excess.field[:] = self.manual_inputs["vapor_excess"]
+            state.input.grid_scale_forcing_t.field[:] = self.manual_inputs["grid_scale_forcing_t"]
+            state.input.grid_scale_forcing_vapor.field[:] = self.manual_inputs["grid_scale_forcing_vapor"]
+            state.input.subgrid_scale_forcing_t.field[:] = self.manual_inputs["subgrid_scale_forcing_t"]
+            state.input.subgrid_scale_forcing_vapor.field[:] = self.manual_inputs[
+                "subgrid_scale_forcing_vapor"
+            ]
+            state.input.seed_convection.field[:] = self.manual_inputs["seed_convection"]
+            state.input.saturation_water_vapor.field[:] = self.manual_inputs["saturation_water_vapor"]
+            state.input.ocean_fraction.field[:] = self.manual_inputs["ocean_fraction"]
+            state.input.convection_fraction.field[:] = self.manual_inputs["convection_fraction"]
+            state.input.surface_type.field[:] = self.manual_inputs["surface_type"]
+            state.input.lateral_entrainment_rate.field[:] = self.manual_inputs["lateral_entrainment_rate"]
+            state.input.last_error_code.field[:] = self.manual_inputs["last_error_code"]
+            # output fields
+            state.output.dtdt.field[:] = self.manual_inputs["dtdt"]
+            state.output.dvapordt.field[:] = self.manual_inputs["dvapordt"]
+            state.output.dcloudicedt.field[:] = self.manual_inputs["dcloudicedt"]
+            state.output.dudt.field[:] = self.manual_inputs["dudt"]
+            state.output.dvdt.field[:] = self.manual_inputs["dvdt"]
+            state.output.dnliquiddt.field[:] = self.manual_inputs["dnliquiddt"]
+            state.output.dnicedt.field[:] = self.manual_inputs["dnicedt"]
+            state.output.dbuoyancydt.field[:] = self.manual_inputs["dbuoyancydt"]
+            state.output.dconvectiveicedt.field[:] = self.manual_inputs["dconvectiveicedt"]
+            state.output.dlargescaleicedt.field[:] = self.manual_inputs["dlargescaleicedt"]
+            state.output.dconvectiveliquiddt.field[:] = self.manual_inputs["dconvectiveliquiddt"]
+            state.output.dlargescaleliquiddt.field[:] = self.manual_inputs["dlargescaleliquiddt"]
+            state.output.dconvectivecloudfractiondt.field[:] = self.manual_inputs[
+                "dconvectivecloudfractiondt"
+            ]
+            state.output.dlargescalecloudfractiondt.field[:] = self.manual_inputs[
+                "dlargescalecloudfractiondt"
+            ]
+            state.output.error_code.field[:] = self.manual_inputs["error_code"]
+            state.output.downdraft_origin_level.field[:] = self.manual_inputs["downdraft_origin_level"]
+            state.output.lcl_level.field[:] = self.manual_inputs["lcl_level"]
+            state.output.updraft_origin_level.field[:] = self.manual_inputs["updraft_origin_level"]
+            state.output.updraft_lfc_level.field[:] = self.manual_inputs["updraft_lfc_level"]
+            state.output.cloud_top_level.field[:] = self.manual_inputs["cloud_top_level"]
+            state.output.kstabi.field[:] = self.manual_inputs["kstabi"]
+            state.output.kstabm.field[:] = self.manual_inputs["kstabm"]
+            state.output.precip.field[:] = self.manual_inputs["precip"]
+            state.output.cloud_base_mass_flux_modified.field[:] = self.manual_inputs[
+                "cloud_base_mass_flux_modified"
+            ]
+            state.output.epsilon_forced.field[:] = self.manual_inputs["epsilon_forced"]
+            state.output.total_normalized_integrated_condensate_forced.field[:] = self.manual_inputs[
+                "total_normalized_integrated_condensate_forced"
+            ]
+            state.output.scale_dependence_factor.field[:] = self.manual_inputs["scale_dependence_factor"]
+            state.output.p_cloud_levels_forced.field[:] = self.manual_inputs["p_cloud_levels_forced"]
+            state.output.entrainment_rate.field[:] = self.manual_inputs["entrainment_rate"]
+            state.output.mass_entrainment_updraft_forced.field[:] = self.manual_inputs[
+                "mass_entrainment_updraft_forced"
+            ]
+            state.output.mass_entrainment_downdraft_forced.field[:] = self.manual_inputs[
+                "mass_entrainment_downdraft_forced"
+            ]
+            state.output.mass_detrainment_updraft_forced.field[:] = self.manual_inputs[
+                "mass_detrainment_updraft_forced"
+            ]
+            state.output.mass_detrainment_downdraft_forced.field[:] = self.manual_inputs[
+                "mass_detrainment_downdraft_forced"
+            ]
+            state.output.normalized_massflux_updraft_forced.field[:] = self.manual_inputs[
+                "normalized_massflux_updraft_forced"
+            ]
+            state.output.normalized_massflux_downdraft_forced.field[:] = self.manual_inputs[
+                "normalized_massflux_downdraft_forced"
+            ]
+            state.output.condensate_to_fall_forced.field[:] = self.manual_inputs["condensate_to_fall_forced"]
+            state.output.evaporate_in_downdraft_forced.field[:] = self.manual_inputs[
+                "evaporate_in_downdraft_forced"
+            ]
+            state.output.cloud_liquid_after_rain_forced.field[:] = self.manual_inputs[
+                "cloud_liquid_after_rain_forced"
+            ]
+            state.output.t_updraft.field[:] = self.manual_inputs["t_updraft"]
+            state.output.convective_cloud_fraction.field[:] = self.manual_inputs[
+                "convective_cloud_fraction_output"
+            ]
+            state.output.cloud_workfunction_0.field[:] = self.manual_inputs["cloud_workfunction_0"]
+            state.output.cloud_workfunction_1.field[:] = self.manual_inputs["cloud_workfunction_1"]
+            state.output.cloud_workfunction_2.field[:] = self.manual_inputs["cloud_workfunction_2"]
+            state.output.cloud_workfunction_3.field[:] = self.manual_inputs["cloud_workfunction_3"]
+            state.output.cloud_workfunction_1_pbl.field[:] = self.manual_inputs["cloud_workfunction_1_pbl"]
+            state.output.cloud_workfunction_1_cin.field[:] = self.manual_inputs["cloud_workfunction_1_cin"]
+            state.output.cape_removal_time_scale.field[:] = self.manual_inputs["cape_removal_time_scale"]
+            state.output.pbl_time_scale.field[:] = self.manual_inputs["pbl_time_scale"]
+            state.output.lightning_density.field[:] = self.manual_inputs["lightning_density"]
+            state.output.evaporation_sublimation_tendency.field[:] = self.manual_inputs[
+                "evaporation_sublimation_tendency"
+            ]
+            state.output.convective_precip_flux.field[:] = self.manual_inputs["convective_precip_flux"]
+            state.output.t_perturbation.field[:] = self.manual_inputs["t_perturbation"]
+            # input/output fields
+            state.input_output.grid_length.field[:] = self.manual_inputs["grid_length"]
+            state.input_output.pbl_level.field[:] = self.manual_inputs["pbl_level"]
+            state.input_output.ccn.field[:] = self.manual_inputs["ccn"]
+            state.input_output.air_density.field[:] = self.manual_inputs["air_density"]
+            state.input_output.omega.field[:] = self.manual_inputs["omega"]
+            state.input_output.topography_height_no_negative.field[:] = self.manual_inputs[
+                "topography_height_no_negative"
+            ]
+            state.input_output.sensible_heat_flux.field[:] = self.manual_inputs["sensible_heat_flux"]
+            state.input_output.latent_heat_flux.field[:] = self.manual_inputs["latent_heat_flux"]
+            state.input_output.longitude_degrees.field[:] = self.manual_inputs["longitude_degrees"]
+            state.input_output.latitude_degrees.field[:] = self.manual_inputs["latitude_degrees"]
+            state.input_output.t_old.field[:] = self.manual_inputs["t_old"]
+            state.input_output.vapor_old.field[:] = self.manual_inputs["vapor_old"]
+            state.input_output.t_modified_by_advection.field[:] = self.manual_inputs[
+                "t_modified_by_advection"
+            ]
+            state.input_output.vapor_modified_by_advection.field[:] = self.manual_inputs[
+                "vapor_modified_by_advection"
+            ]
+            state.input_output.geopotential_height_forced.field[:] = self.manual_inputs[
+                "geopotential_height_forced"
+            ]
+            state.input_output.p_forced.field[:] = self.manual_inputs["p_forced"]
+            state.input_output.p_surface.field[:] = self.manual_inputs["p_surface"]
+            state.input_output.t_surface.field[:] = self.manual_inputs["t_surface"]
+            state.input_output.u.field[:] = self.manual_inputs["u"]
+            state.input_output.v.field[:] = self.manual_inputs["v"]
+            state.input_output.w.field[:] = self.manual_inputs["w"]
+            state.input_output.mass.field[:] = self.manual_inputs["mass"]
+            state.input_output.convective_scale_velocity.field[:] = self.manual_inputs[
+                "convective_scale_velocity"
+            ]
+            state.input_output.buoyancy_excess.field[:] = self.manual_inputs["buoyancy_excess"]
+            state.input_output.large_scale_ice.field[:] = self.manual_inputs["large_scale_ice"]
+            state.input_output.convective_ice.field[:] = self.manual_inputs["convective_ice"]
+            state.input_output.large_scale_liquid.field[:] = self.manual_inputs["large_scale_liquid"]
+            state.input_output.convective_liquid.field[:] = self.manual_inputs["convective_liquid"]
+            state.input_output.large_scale_cloud_fraction.field[:] = self.manual_inputs[
+                "large_scale_cloud_fraction"
+            ]
+            state.input_output.convective_cloud_fraction.field[:] = self.manual_inputs[
+                "convective_cloud_fraction"
+            ]
+            state.input_output.chemistry_tracers.field[:] = self.manual_inputs["chemistry_tracers"]
+            for plume in range(NUMBER_OF_PLUMES):
+                state.input_output.chemistry_tracers_output.field[
+                    :,
+                    :,
+                    :,
+                    plume,
+                    :,
+                ] = self.manual_inputs["chemistry_tracers_output"][
+                    :,
+                    :,
+                    :,
+                    plume * config.NUMBER_OF_TRACERS : plume * config.NUMBER_OF_TRACERS
+                    + config.NUMBER_OF_TRACERS,
+                ]
+        else:
+            raise NotImplementedError(
+                "plume order unsupported. Fortran plume data layout != python plume data layout."
+            )
 
-        locals.cumulus_parameterization_input.t_excess.field[:] = inputs.pop("t_excess_cu_param_input")
-        locals.cumulus_parameterization_input.vapor_excess.field[:] = inputs.pop(
-            "vapor_excess_cu_param_input"
+        # initalize the test subject
+        code = CumulusParameterization(
+            stencil_factory=self.stencil_factory,
+            quantity_factory=self.quantity_factory,
+            config=config,
+            cumulus_parameterization_config=cumulus_parameterization_config,
         )
-        locals.cumulus_parameterization_input.ocean_fraction.field[:] = inputs.pop("ocean_fraction")
-        locals.cumulus_parameterization_input.t.field[:] = inputs.pop("t_cu_param_input")
-        locals.cumulus_parameterization_input.vapor_timestep_start.field[:] = inputs.pop(
-            "vapor_timestep_start_cu_param_input"
-        )
-        locals.cumulus_parameterization_input.grid_scale_forcing_t.field[:] = inputs.pop(
-            "grid_scale_forcing_t_cu_param_input_data_buffered"
-        )
-        locals.cumulus_parameterization_input.grid_scale_forcing_vapor.field[:] = inputs.pop(
-            "grid_scale_forcing_vapor_cu_param_input_data_buffered"
-        )
-        locals.cumulus_parameterization_input.subgrid_scale_forcing_t.field[:] = inputs.pop(
-            "subgrid_scale_forcing_t_cu_param_input_data_buffered"
-        )
-        locals.cumulus_parameterization_input.subgrid_scale_forcing_vapor.field[:] = inputs.pop(
-            "subgrid_scale_forcing_vapor_cu_param_input_data_buffered"
-        )
+        print("COMPILED")
 
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        # call the test subject
+        code(state, saturation_tables)
 
-        cumulus_parameterization = CumulusParameterization(
-            self.stencil_factory, self.quantity_factory, config, cumulus_parameterization_config
-        )
+        # collapse plume dim for chemistry_tracers_output
+        # NOTE ideally this has no numpy dependency
+        chemistry_tracers_output_4d = np.full(self.manual_inputs["chemistry_tracers_output"].shape, np.nan)
+        for plume in range(NUMBER_OF_PLUMES):
+            chemistry_tracers_output_4d[
+                :,
+                :,
+                :,
+                plume * config.NUMBER_OF_TRACERS : plume * config.NUMBER_OF_TRACERS
+                + config.NUMBER_OF_TRACERS,
+            ] = state.input_output.chemistry_tracers_output.field[:, :, :, plume, :]
 
-        cumulus_parameterization(state, locals, saturation_tables)
+        outputs = {
+            # input fields
+            "t_excess": state.input.t_excess.field[:],
+            "vapor_excess": state.input.vapor_excess.field[:],
+            "grid_scale_forcing_t": state.input.grid_scale_forcing_t.field[:],
+            "grid_scale_forcing_vapor": state.input.grid_scale_forcing_vapor.field[:],
+            "subgrid_scale_forcing_t": state.input.subgrid_scale_forcing_t.field[:],
+            "subgrid_scale_forcing_vapor": state.input.subgrid_scale_forcing_vapor.field[:],
+            "seed_convection": state.input.seed_convection.field[:],
+            "saturation_water_vapor": state.input.saturation_water_vapor.field[:],
+            "ocean_fraction": state.input.ocean_fraction.field[:],
+            "convection_fraction": state.input.convection_fraction.field[:],
+            "surface_type": state.input.surface_type.field[:],
+            "lateral_entrainment_rate": state.input.lateral_entrainment_rate.field[:],
+            "last_error_code": state.input.last_error_code.field[:],
+            # output fields
+            "dtdt": state.output.dtdt.field[:],
+            "dvapordt": state.output.dvapordt.field[:],
+            "dcloudicedt": state.output.dcloudicedt.field[:],
+            "dudt": state.output.dudt.field[:],
+            "dvdt": state.output.dvdt.field[:],
+            "dnliquiddt": state.output.dnliquiddt.field[:],
+            "dnicedt": state.output.dnicedt.field[:],
+            "dbuoyancydt": state.output.dbuoyancydt.field[:],
+            "dconvectiveicedt": state.output.dconvectiveicedt.field[:],
+            "dlargescaleicedt": state.output.dlargescaleicedt.field[:],
+            "dconvectiveliquiddt": state.output.dconvectiveliquiddt.field[:],
+            "dlargescaleliquiddt": state.output.dlargescaleliquiddt.field[:],
+            "dconvectivecloudfractiondt": state.output.dconvectivecloudfractiondt.field[:],
+            "dlargescalecloudfractiondt": state.output.dlargescalecloudfractiondt.field[:],
+            "error_code": state.output.error_code.field[:],
+            "downdraft_origin_level": state.output.downdraft_origin_level.field[:],
+            "lcl_level": state.output.lcl_level.field[:],
+            "updraft_origin_level": state.output.updraft_origin_level.field[:],
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[:],
+            "cloud_top_level": state.output.cloud_top_level.field[:],
+            "kstabi": state.output.kstabi.field[:],
+            "kstabm": state.output.kstabm.field[:],
+            "precip": state.output.precip.field[:],
+            "cloud_base_mass_flux_modified": state.output.cloud_base_mass_flux_modified.field[:],
+            "epsilon_forced": state.output.epsilon_forced.field[:],
+            "total_normalized_integrated_condensate_forced": state.output.total_normalized_integrated_condensate_forced.field[
+                :
+            ],
+            "scale_dependence_factor": state.output.scale_dependence_factor.field[:],
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.field[:],
+            "entrainment_rate": state.output.entrainment_rate.field[:],
+            "mass_entrainment_updraft_forced": state.output.mass_entrainment_updraft_forced.field[:],
+            "mass_entrainment_downdraft_forced": state.output.mass_entrainment_downdraft_forced.field[:],
+            "mass_detrainment_updraft_forced": state.output.mass_detrainment_updraft_forced.field[:],
+            "mass_detrainment_downdraft_forced": state.output.mass_detrainment_downdraft_forced.field[:],
+            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[:],
+            "normalized_massflux_downdraft_forced": state.output.normalized_massflux_downdraft_forced.field[
+                :
+            ],
+            "condensate_to_fall_forced": state.output.condensate_to_fall_forced.field[:],
+            "evaporate_in_downdraft_forced": state.output.evaporate_in_downdraft_forced.field[:],
+            "cloud_liquid_after_rain_forced": state.output.cloud_liquid_after_rain_forced.field[:],
+            "t_updraft": state.output.t_updraft.field[:],
+            "convective_cloud_fraction_output": state.output.convective_cloud_fraction.field[:],
+            "cloud_workfunction_0": state.output.cloud_workfunction_0.field[:],
+            "cloud_workfunction_1": state.output.cloud_workfunction_1.field[:],
+            "cloud_workfunction_2": state.output.cloud_workfunction_2.field[:],
+            "cloud_workfunction_3": state.output.cloud_workfunction_3.field[:],
+            "cloud_workfunction_1_pbl": state.output.cloud_workfunction_1_pbl.field[:],
+            "cloud_workfunction_1_cin": state.output.cloud_workfunction_1_cin.field[:],
+            "cape_removal_time_scale": state.output.cape_removal_time_scale.field[:],
+            "pbl_time_scale": state.output.pbl_time_scale.field[:],
+            "lightning_density": state.output.lightning_density.field[:],
+            "evaporation_sublimation_tendency": state.output.evaporation_sublimation_tendency.field[:],
+            "convective_precip_flux": state.output.convective_precip_flux.field[:],
+            "t_perturbation": state.output.t_perturbation.field[:],
+            # input/output fields
+            "grid_length": state.input_output.grid_length.field[:],
+            "pbl_level": state.input_output.pbl_level.field[:],
+            "ccn": state.input_output.ccn.field[:],
+            "air_density": state.input_output.air_density.field[:],
+            "omega": state.input_output.omega.field[:],
+            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
+            "sensible_heat_flux": state.input_output.sensible_heat_flux.field[:],
+            "latent_heat_flux": state.input_output.latent_heat_flux.field[:],
+            "longitude_degrees": state.input_output.longitude_degrees.field[:],
+            "latitude_degrees": state.input_output.latitude_degrees.field[:],
+            "t_old": state.input_output.t_old.field[:],
+            "vapor_old": state.input_output.vapor_old.field[:],
+            "t_modified_by_advection": state.input_output.t_modified_by_advection.field[:],
+            "vapor_modified_by_advection": state.input_output.vapor_modified_by_advection.field[:],
+            "geopotential_height_forced": state.input_output.geopotential_height_forced.field[:],
+            "p_forced": state.input_output.p_forced.field[:],
+            "p_surface": state.input_output.p_surface.field[:],
+            "t_surface": state.input_output.t_surface.field[:],
+            "u": state.input_output.u.field[:],
+            "v": state.input_output.v.field[:],
+            "w": state.input_output.w.field[:],
+            "mass": state.input_output.mass.field[:],
+            "convective_scale_velocity": state.input_output.convective_scale_velocity.field[:],
+            "buoyancy_excess": state.input_output.buoyancy_excess.field[:],
+            "large_scale_ice": state.input_output.large_scale_ice.field[:],
+            "convective_ice": state.input_output.convective_ice.field[:],
+            "large_scale_liquid": state.input_output.large_scale_liquid.field[:],
+            "convective_liquid": state.input_output.convective_liquid.field[:],
+            "large_scale_cloud_fraction": state.input_output.large_scale_cloud_fraction.field[:],
+            "convective_cloud_fraction": state.input_output.convective_cloud_fraction.field[:],
+            "chemistry_tracers": state.input_output.chemistry_tracers.field[:],
+            "chemistry_tracers_output": chemistry_tracers_output_4d,
+        }
 
-        # top rows are not computed in Fortran, retains initalized value (nan)
-        # Python initalizes with zero, fill top row with nan for test passage
-        locals.cumulus_parameterization_internal.t.field[:, :, -1] = np.nan
-        locals.cumulus_parameterization_internal.vapor.field[:, :, -1] = np.nan
-        locals.cumulus_parameterization_internal.t_pbl.field[:, :, -1] = np.nan
-        locals.cumulus_parameterization_internal.vapor_pbl.field[:, :, -1] = np.nan
-        locals.cumulus_parameterization_internal.moist_static_energy.field[:, :, -1] = np.nan
-
-        inputs.update(
-            {
-                "t_excess_cu_param_internal": locals.cumulus_parameterization_internal.t_excess.field[:],
-                "vapor_excess_cu_param_internal": locals.cumulus_parameterization_internal.vapor_excess.field[
-                    :
-                ],
-                "t_cu_param_internal": locals.cumulus_parameterization_internal.t.field[:],
-                "vapor_cu_param_internal": locals.cumulus_parameterization_internal.vapor.field[:],
-                "t_pbl_cu_param_internal": locals.cumulus_parameterization_internal.t_pbl.field[:],
-                "vapor_pbl_cu_param_internal": locals.cumulus_parameterization_internal.vapor_pbl.field[:],
-                "moist_static_energy_cu_param_internal": locals.cumulus_parameterization_internal.moist_static_energy.field[
-                    :
-                ],
-            }
-        )
-
-        return inputs
+        return outputs
