@@ -43,8 +43,8 @@ module GEOS_RouteGridCompMod
      integer :: maxCatch
      integer :: route_dt
 
-     real,    allocatable :: areacat(:)  ! m2
-     real,    allocatable :: lengsc(:)   ! m
+     real,    allocatable :: areacat(:)      ! m2
+     real,    allocatable :: lengsc(:)       ! m
      integer, allocatable :: downid(:) 
 
      real,    allocatable :: runoff_acc(:)  
@@ -56,10 +56,11 @@ module GEOS_RouteGridCompMod
      real,    allocatable :: K(:)            
      real,    allocatable :: Kstr(:)         
 
-     integer, allocatable :: re_order(:), to_down(:)
+     integer, allocatable :: re_order(:),   to_down(:)
      integer, allocatable :: send_count(:), displ_send(:)
      integer, allocatable :: recv_count(:), displ_recv(:)
-     integer              :: total_send, total_recv
+
+     integer              :: total_send,    total_recv
   end type T_RROUTE_STATE
 
   ! Wrapper for extracting internal state
@@ -457,10 +458,11 @@ contains
 
     character(len=ESMF_MAXSTR)     :: RIVER_INPUT_FILE    
     
-    type(ESMF_Grid)     :: agrid 
-    type(ESMF_DELayout) :: layout
-    type(ESMF_DistGrid) :: dist_grid 
-    type (ESMF_State       )            :: INTERNAL
+    type(ESMF_Grid)             :: agrid 
+    type(ESMF_DELayout)         :: layout
+    type(ESMF_DistGrid)         :: dist_grid 
+    type(ESMF_State)            :: INTERNAL
+
     real, dimension(:), pointer :: KSTR_RS
     real, dimension(:), pointer :: K_RS
     real, dimension(:), pointer :: LENGSC_RS
@@ -601,15 +603,15 @@ contains
     call MAPL_GetPointer(INTERNAL, DOWNID_RS,     'DOWNID',     _RC ) 
     call MAPL_GetPointer(INTERNAL, AREA_CATCH_RS, 'AREA_CATCH', _RC )  
 
-    allocate(route%areacat(n_pfaf_local), source = AREA_CATCH_RS)
-    allocate(route%lengsc(n_pfaf_local), source = LENGSC_RS)
-    allocate(route%downid(n_pfaf_local), source = int(DOWNID_RS))
-    allocate(route%lstr(n_pfaf_local), source = LSTR_RS)
-    allocate(route%K(n_pfaf_local), source = K_RS)
-    allocate(route%Kstr(n_pfaf_local), source = KSTR_RS)
-    allocate(route%qri_clmt(n_pfaf_local), source = QRI_CLMT_RS)
-    allocate(route%qin_clmt(n_pfaf_local), source = QIN_CLMT_RS)
-    allocate(route%qstr_clmt(n_pfaf_local), source = QSTR_CLMT_RS)    
+    allocate(route%areacat(n_pfaf_local),   source =     AREA_CATCH_RS)
+    allocate(route%lengsc(n_pfaf_local),    source =     LENGSC_RS    )
+    allocate(route%downid(n_pfaf_local),    source = int(DOWNID_RS    ))
+    allocate(route%lstr(n_pfaf_local),      source =     LSTR_RS      )
+    allocate(route%K(n_pfaf_local),         source =     K_RS         )
+    allocate(route%Kstr(n_pfaf_local),      source =     KSTR_RS      )
+    allocate(route%qri_clmt(n_pfaf_local),  source =     QRI_CLMT_RS  )
+    allocate(route%qin_clmt(n_pfaf_local),  source =     QIN_CLMT_RS  )
+    allocate(route%qstr_clmt(n_pfaf_local), source =     QSTR_CLMT_RS )    
     !Initial reservoir module
     route%reservoir = Reservoir(GC, use_res, _RC)
     if(mapl_am_I_root()) print *,"reservoir init success"     
@@ -874,7 +876,6 @@ contains
 ! -----------------------------------------------------------
     type (ESMF_State       )            :: INTERNAL
     type (MAPL_MetaComp),     pointer   :: MAPL
-!    type(ESMF_Alarm)                    :: ALARM
     type (ESMF_Config )                 :: CF
 
 ! -----------------------------------------------------
@@ -915,33 +916,36 @@ contains
     type(ESMF_Grid)                    :: TILEGRID
     type (MAPL_LocStream)              :: LOCSTREAM
  
-    integer                            :: n_pfaf_local, N_CYC
+    integer                            :: n_pfaf_local
     integer                            :: ROUTE_DT
 
-    integer                                  :: I
-    REAL                                     :: HEARTBEAT 
-    REAL, ALLOCATABLE, DIMENSION(:)          :: RUNOFF_IN,AREACAT_ACT,& 
-         LENGSC_ACT, QSFLOW_OUT,QOUTFLOW_OUT,QRES_OUT,QOUT_CAT
-    type(ESMF_Field) :: runoff_src
+    integer                            :: I
+    REAL                               :: HEARTBEAT 
+    REAL, ALLOCATABLE, DIMENSION(:)    :: RUNOFF_IN, QSFLOW_OUT, QOUTFLOW_OUT, QRES_OUT, QOUT_CAT
 
-    integer                                :: ndes, mype
-    type (T_RROUTE_STATE), pointer         :: route 
-    type (RROUTE_wrap)                     :: wrap
+    type(ESMF_Field)                   :: runoff_src
 
-    integer :: nt_global,nt_local
-    integer,save :: nstep_per_day
+    integer                            :: ndes, mype
+    type (T_RROUTE_STATE), pointer     :: route 
+    type (RROUTE_wrap)                 :: wrap
 
-    type(ESMF_Time) :: CurrentTime, nextTime
-    integer :: YY,MM,DD,HH,MMM,SS,YY_next,MM_next,DD_next
-    character(len=4) :: yr_s
-    character(len=2) :: mon_s,day_s
+    integer                            :: nt_global, nt_local
 
-    real,             pointer     :: arrayPtr(:)
-    type (RES_STATE), pointer     :: res 
+    ! variable declarations for commented-out call to check_balance() 
+    !
+    !REAL, ALLOCATABLE, DIMENSION(:)          :: AREACAT_ACT, LENGSC_ACT
+    !
+    !type(ESMF_Time) :: CurrentTime
+    !integer :: YY,MM,DD,HH,MMM,SS
+    !character(len=4) :: yr_s
+    !character(len=2) :: mon_s,day_s
 
-    real,             allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:)
+    real,                  pointer     :: arrayPtr(:)
+    type (RES_STATE),      pointer     :: res 
+
+    real,                  allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:)
    
-    type(ESMF_Alarm) :: CollectWaterAlarm 
+    type(ESMF_Alarm)                   :: CollectWaterAlarm 
     
     ! ------------------
     ! begin    
@@ -1011,20 +1015,11 @@ contains
     call MAPL_TimerOn  ( MAPL, "-RRM" )
 
     ! For efficiency, the time step to call the river routing model is set at ROUTE_DT 
-    N_CYC = ROUTE_DT/HEARTBEAT    
+
     if (ESMF_AlarmIsRinging(CollectWaterAlarm)) then
 
-       !accumulates runoff
-       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real (N_CYC)
-
-       !Gets time used for output and restart 
-       call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
-       call ESMF_TimeGet(CurrentTime, yy=YY, mm=MM, dd=DD, h=HH, m=MMM, s=SS, rc=status)  
-       call ESMF_ClockGetNextTime(clock, nextTime=nextTime, rc=status)
-       call ESMF_TimeGet(nextTime, yy=YY_next, mm=MM_next, dd=DD_next, rc=status) 
-       write(yr_s, '(I4.4)')YY
-       write(mon_s,'(I2.2)')MM
-       write(day_s,'(I2.2)')DD
+       ! finalize runoff accumulation over ROUTE_DT
+       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT)     ! time-avg runoff over ROUTE_DT in land[ice] tile space  [kg/m2/s]
 
        ! redistribute runoff from tile space to catchment space
        call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr, rc=status)
@@ -1034,21 +1029,27 @@ contains
             routeHandle=route%routeHandle, rc=rc)
        call ESMF_FieldGet(route%field, farrayPtr=arrayPtr, rc=status)
        VERIFY_(STATUS)
-       RUNOFF_IN = arrayPtr * route%areacat/1000.
+       ! convert units [kg/m2/s] --> [m3/s]
+       RUNOFF_IN = arrayPtr * route%areacat/1000.                                       ! time-avg runoff over ROUTE_DT in Pfaf catch space [m3/s] 
 
-
-       ! Prepares to conduct routing model
-       allocate (AREACAT_ACT (n_pfaf_local))       
-       allocate (LENGSC_ACT  (n_pfaf_local))
-       allocate (QSFLOW_OUT  (n_pfaf_local))
-       allocate (QOUTFLOW_OUT(n_pfaf_local),QRES_OUT(n_pfaf_local),QOUT_CAT(n_pfaf_local))  
-
-       QRES_OUT=0.
-       LENGSC_ACT =route%lengsc/1.e3 !m->km
-       AREACAT_ACT=route%areacat/1.e6 !m2->km2
-
+       allocate(QSFLOW_OUT  (n_pfaf_local))
+       allocate(QOUTFLOW_OUT(n_pfaf_local))
+       allocate(QRES_OUT(    n_pfaf_local))
+       allocate(QOUT_CAT(    n_pfaf_local))  
        allocate(WTOT_BEFORE(n_pfaf_local))
-       WTOT_BEFORE=WSTREAM + WRIVER + WRES
+       
+       QRES_OUT    = 0.
+
+       WTOT_BEFORE = WSTREAM + WRIVER + WRES
+
+       ! for commented-out call to check_balance() 
+       !
+       !allocate (AREACAT_ACT (n_pfaf_local))       
+       !allocate (LENGSC_ACT  (n_pfaf_local))
+       !
+       !LENGSC_ACT =route%lengsc /1.e3 ! [m ] --> [km ]
+       !AREACAT_ACT=route%areacat/1.e6 ! [m2] --> [km2]
+
 
        ! Call river_routing_model
        ! ------------------------     
@@ -1068,19 +1069,35 @@ contains
        WRIVER = WRIVER + QINFLOW_LOCAL*real(route_dt)
 
        ! Check balance if needed
+       !
+       ! get time used for output and restart 
+       !call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
+       !call ESMF_TimeGet(CurrentTime, yy=YY, mm=MM, dd=DD, h=HH, m=MMM, s=SS, rc=status)  
+       !write(yr_s, '(I4.4)')YY
+       !write(mon_s,'(I2.2)')MM
+       !write(day_s,'(I2.2)')DD
+       !
        !call check_balance(route,n_pfaf_local,nt_local,runoff_acc,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
 
-       if (associated(QSFLOW))    QSFLOW  = QSFLOW_OUT
+       if (associated(QSFLOW))    QSFLOW   = QSFLOW_OUT
        if (associated(QOUTFLOW))  QOUTFLOW = QOUTFLOW_OUT
-       if (associated(QRES))      QRES = QRES_OUT
-       deallocate(RUNOFF_IN,AREACAT_ACT,LENGSC_ACT,QOUTFLOW_OUT,QINFLOW_LOCAL,QSFLOW_OUT,WTOT_BEFORE,QRES_OUT,QOUT_CAT)
+       if (associated(QRES))      QRES     = QRES_OUT
+       
+       deallocate(RUNOFF_IN,QOUTFLOW_OUT,QINFLOW_LOCAL,QSFLOW_OUT,WTOT_BEFORE,QRES_OUT,QOUT_CAT)
 
-       route%runoff_acc = 0.
+       ! for commented-out call to check_balance() 
+       !
+       !deallocate(AREACAT_ACT,LENGSC_ACT)
+
+       route%runoff_acc = 0.                                     ! re-initialize runoff accumulation
+       
     else
+       
+       ! CollectWaterAlarm is not ringing
+       
+       route%runoff_acc = route%runoff_acc + RUNOFF_SRC0         ! running sum of runoff over ROUTE_DT  [kg/m2/s]
 
-       route%runoff_acc = route%runoff_acc + RUNOFF_SRC0
-
-    endif ! alarm
+    endif ! CollectWaterAlarm
 
     ! All done
     ! --------
