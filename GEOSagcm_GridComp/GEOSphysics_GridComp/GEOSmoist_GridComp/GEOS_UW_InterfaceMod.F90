@@ -21,6 +21,7 @@ module GEOS_UW_InterfaceMod
   real    :: SCLM_SHALLOW
   logical :: JASON_UW, JASON_MFD_SC
   logical :: REPORT_UW_NEGATIVES
+  logical :: USE_EIS
 
   private
 
@@ -117,29 +118,31 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.1,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, LIMIT_RKFRE,                 'LIMIT_RKFRE:'     ,DEFAULT= .FALSE., RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.FALSE.,RC=STATUS) ; VERIFY_(STATUS)
     else
       call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=3000.0, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE_HR,      'MIXSCALE_HR:'     ,DEFAULT=2500.0, RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=0.9e-3, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE_HR,         'RKFRE_HR:'        ,DEFAULT= 0.2,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 10.0,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE_HR,         'RKFRE_HR:'        ,DEFAULT= 0.375, RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 11.0,  RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKM_HR,           'RKM_HR:'          ,DEFAULT= 14.0,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.1,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC_HR,      'RMAXFRAC_HR:'     ,DEFAULT= 0.8,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, LIMIT_RKFRE,                 'LIMIT_RKFRE:'     ,DEFAULT= .TRUE., RC=STATUS) ; VERIFY_(STATUS) 
-      SHLWPARAMS%NITER_XC = min(5,max(2, CEILING(UW_DT/225.0)))
-      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=SHLWPARAMS%NITER_XC, RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.FALSE.,RC=STATUS) ; VERIFY_(STATUS)
     endif
     call MAPL_GetResource(MAPL, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
@@ -149,7 +152,6 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CUMPENENT,    'USE_CUMPENENT:'   ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%SCVERBOSE,        'SCVERBOSE:'       ,DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RLE,              'RLE:'             ,DEFAULT=0.1,    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT=0.1,    RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%MUMIN1,           'MUMIN1:'          ,DEFAULT=0.906,  RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RBUOY,            'RBUOY:'           ,DEFAULT=1.0,    RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RDRAG,            'RDRAG:'           ,DEFAULT=1.0,    RC=STATUS) ; VERIFY_(STATUS)
@@ -179,7 +181,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: ZLE0, ZL0
     real,    allocatable, dimension(:,:,:) :: PL, PK, PKE, DP
     real,    allocatable, dimension(:,:,:) :: MASS
-    real,    allocatable, dimension(:,:)   :: RKM2D, RKFRE, MIX2D
+    real,    allocatable, dimension(:,:)   :: RKM2D, RKFRE, MIX2D, RMAXFRAC2D
     real,    allocatable, dimension(:,:,:) :: TMP3D
 
     ! Required Exports (connectivities to moist siblings)
@@ -194,7 +196,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: ENTR_SC, DETR_SC, QLDET_SC, &
                                        QIDET_SC, QLENT_SC, QIENT_SC, &
                                        QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
-    real, pointer, dimension(:,:)   :: TPERT_SC, QPERT_SC
+    real, pointer, dimension(:,:)   :: TPERT_SC, QPERT_SC, LTS, EIS
     real, pointer, dimension(:,:,:) :: QLTOT, QITOT
     real, pointer, dimension(:,:,:) ::   DQVDT_FILL
     real, pointer, dimension(:,:,:) :: DQLLSDT_FILL
@@ -217,6 +219,16 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     type( ESMF_VM )                 :: VMG
 
     ! Local variables
+
+    real :: fac_eis                    ! Estimated enversion strength 0:1 factor
+    real :: rkfre_base                 ! Base fractional entrainment rate before EIS modification
+    real :: rkm_base                   ! Base momentum entrainment rate before EIS modification  
+    real :: mix2d_base                 ! Base mixing length scale before EIS modification
+    real :: rmaxfrac_base              ! Base maximum updraft area fraction before EIS modification
+    real :: eis_rkfre_factor           ! EIS modification factor for RKFRE [0-1]
+    real :: eis_rkm_factor             ! EIS modification factor for RKM
+    real :: eis_mix2d_factor           ! EIS modification factor for MIX2D [0-1]
+    real :: eis_rmaxfrac_factor        ! EIS modification factor for RMAXFRAC [1.0-1.1]
 
     integer                         :: I, J, L
     integer                         :: IM,JM,LM
@@ -257,6 +269,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DQRDT_SC,   'DQRDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQSDT_SC,   'DQSDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQADT_SC,   'DQADT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! Lower tropospheric stability and estimated inversion strength from MoistGC
+    call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
     ! Get my internal MAPL_Generic state
     !-----------------------------------
@@ -295,6 +310,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( RKFRE  (IM,JM) )
     ALLOCATE ( RKM2D  (IM,JM) )
     ALLOCATE ( MIX2D  (IM,JM) )
+    ALLOCATE ( RMAXFRAC2D (IM,JM) )
 
     ! Derived States
     PKE      = (PLE/MAPL_P00)**(MAPL_KAPPA)
@@ -346,16 +362,41 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       RKFRE = SHLWPARAMS%RKFRE
       RKM2D = SHLWPARAMS%RKM
       MIX2D = SHLWPARAMS%MIXSCALE
+      RMAXFRAC2D = SHLWPARAMS%RMAXFRAC
     else
       ! resolution dependent throttle on UW via TKE and scaling of cloud-base mass flux
       call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
       do J=1,JM
         do I=1,IM
+                        fac_eis = 0.0
+           if (USE_EIS) fac_eis = get_fac_eis(EIS(i,j),srf_type(i,j))      ! Estimated inversion strength determine stable regime
            SIG   = SIGMA(SQRT(PTR2D(i,j)))                    ! Coarse     -> Fine
+
+           ! Base resolution-dependent parameters
            ! Support for varying UW parameters by resolution  ! Coarse*SIG -> Fine*(1.0-SIG)
-           RKFRE(i,j) = SHLWPARAMS%RKFRE   *SIG  + SHLWPARAMS%RKFRE_HR   *(1.0-SIG) 
-           RKM2D(i,j) = SHLWPARAMS%RKM     *SIG  + SHLWPARAMS%RKM_HR     *(1.0-SIG) 
-           MIX2D(i,j) = SHLWPARAMS%MIXSCALE*SIG  + SHLWPARAMS%MIXSCALE_HR*(1.0-SIG)
+           rkfre_base    = SHLWPARAMS%RKFRE   *SIG  + SHLWPARAMS%RKFRE_HR   *(1.0-SIG)
+           rkm_base      = SHLWPARAMS%RKM     *SIG  + SHLWPARAMS%RKM_HR     *(1.0-SIG) 
+           mix2d_base    = SHLWPARAMS%MIXSCALE*SIG  + SHLWPARAMS%MIXSCALE_HR*(1.0-SIG)
+           rmaxfrac_base = SHLWPARAMS%RMAXFRAC*SIG  + SHLWPARAMS%RMAXFRAC_HR*(1.0-SIG)
+           
+           ! EIS-based regime modifications for marine stratocumulus enhancement
+           ! Reduce shallow convection activity in high EIS (stable inversion) regions
+           eis_rkfre_factor = 1.0 - 0.8*fac_eis              ! Reduce RKFRE by up to 80% in stable regimes
+           eis_rkm_factor   = 1.0 + 0.4*fac_eis              ! Increase RKM by up to 40% in stable regimes
+           eis_mix2d_factor = 1.0 - 0.3*fac_eis              ! Reduce mixing scale by up to 30% in stable regimes
+           eis_rmaxfrac_factor = 1.0 + 0.1*fac_eis           ! INCREASE rmaxfrac in stable (high EIS) regimes
+           
+           ! Apply EIS modifications
+           RKFRE(i,j) = rkfre_base * eis_rkfre_factor
+           RKM2D(i,j) = rkm_base   * eis_rkm_factor
+           MIX2D(i,j) = mix2d_base * eis_mix2d_factor
+           RMAXFRAC2D(i,j) = rmaxfrac_base * eis_rmaxfrac_factor
+ 
+           ! Optional: Add minimum limits to prevent unrealistically low values
+           RKFRE(i,j) = max(RKFRE(i,j), 0.1)                 ! Minimum RKFRE threshold
+           RKM2D(i,j) = min(RKM2D(i,j), 14.0)                ! Maximum RKM threshold
+           MIX2D(i,j) = max(MIX2D(i,j), 1500.0)              ! Minimum mixing scale threshold
+           RMAXFRAC2D(i,j) = max(min(RMAXFRAC2D(i,j), 0.8), 0.05) ! Bounds: 5% to 80%
         enddo
       enddo 
     endif
@@ -371,7 +412,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
             U, V, Q, QLTOT, QITOT, T, TKE, RKFRE, KPBL_SC,&
-            SH, EVAP, CNPCPRATE, FRLAND, RKM2D, MIX2D,    &
+            SH, EVAP, CNPCPRATE, FRLAND, RKM2D, MIX2D, RMAXFRAC2D, &
             CUSH,                                         & ! INOUT
             UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
             DTDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,          &
