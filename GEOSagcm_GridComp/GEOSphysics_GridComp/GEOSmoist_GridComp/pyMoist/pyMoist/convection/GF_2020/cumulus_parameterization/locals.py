@@ -1436,7 +1436,7 @@ class GF2020CumulusParameterizationLocals(State):
     )
 
     # NOTE these can potentially be removed with a better analysis of what they do/where they go
-    psum: Quantity = dataclasses.field(
+
     effective_condensate_to_fall_forced: Quantity = dataclasses.field(
         metadata={
             "name": "effective_condensate_to_fall_forced",

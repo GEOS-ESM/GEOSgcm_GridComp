@@ -19,6 +19,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import 
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
 
+import numpy as np
+
 
 def get_incloud_sc_chem_up(
     error_code: IntFieldIJ_Plume,
@@ -145,7 +147,7 @@ def get_incloud_sc_chem_dd(
     chemistry_tracers: FloatField_Tracers,
     tot_pw_dn_chem: FloatFieldIJ_Tracers,
     tot_pw_up_chem: FloatFieldIJ_Tracers,
-    total_normalized_integrated_evaporate_forced: FloatFieldIJ_Plume,
+    total_normalized_integrated_evaporate_forced: FloatFieldIJ,
     total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
     downdraft_origin_level: IntFieldIJ_Plume,
     evaporate_in_downdraft_forced: FloatField_Plume,
@@ -168,14 +170,14 @@ def get_incloud_sc_chem_dd(
     with computation(FORWARD), interval(0, 1):
         if plume != cumulus_parameterization_constants.SHALLOW:
             if error_code[0, 0][plume] == 0:
-                frac_evap: FloatFieldIJ = -total_normalized_integrated_evaporate_forced[0, 0][plume] / (
+                frac_evap: FloatFieldIJ = -total_normalized_integrated_evaporate_forced / (
                     1.0e-16 + total_normalized_integrated_condensate_forced[0, 0][plume]
                 )
                 lev = downdraft_origin_level[0, 0][plume]
 
                 pwdper: FloatFieldIJ = (
                     evaporate_in_downdraft_forced.at(K=lev, ddim=[plume])
-                    / (1.0e-16 + total_normalized_integrated_evaporate_forced[0, 0][plume])
+                    / (1.0e-16 + total_normalized_integrated_evaporate_forced)
                     * frac_evap
                 )
 
@@ -227,7 +229,7 @@ def get_incloud_sc_chem_dd(
                         )
 
                         pwdper = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
-                            1.0e-16 + total_normalized_integrated_evaporate_forced[0, 0][plume]
+                            1.0e-16 + total_normalized_integrated_evaporate_forced
                         )
 
                         pwdper = pwdper * frac_evap
@@ -328,7 +330,7 @@ def determine_vertical_transport1(
                     fp = 0.5 * (environment_massflux + abs(environment_massflux))
                     fm = 0.5 * (environment_massflux - abs(environment_massflux))
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
             if USE_FLUX_FORM == 1 and ALP1 > 0.0:
                 if K <= cloud_top_level[0, 0][plume]:
@@ -401,26 +403,30 @@ def determine_vertical_transport1(
                         n += 1
 
 
-# def determine_vertical_transport2(
-#     error_code: IntFieldIJ_Plume,
-#     plume: Int,
-#     cloud_top_level: IntFieldIJ_Plume,
-# ):
-#     from __externals__ import (
-#         ALP1,
-#         USE_FLUX_FORM,
-#         DTIME,
-#         NUMBER_OF_TRACERS,
-#     )
+def determine_vertical_transport2(
+    error_code: IntFieldIJ_Plume,
+    plume: Int,
+    cloud_top_level: IntFieldIJ_Plume,
+    out_chem: FloatField_Tracers,
+    ddtr: FloatField_Tracers,
+    chemistry_tracers: FloatField_Tracers,
+):
+    from __externals__ import (
+        ALP1,
+        USE_FLUX_FORM,
+        DTIME,
+        NUMBER_OF_TRACERS,
+    )
 
-#     with computation(PARALLEL), interval(...):
-#         if error_code[0, 0][plume] == 0:
-#             if USE_FLUX_FORM == 1 and ALP1 > 0.0:
-#                 if K <= cloud_top_level[0, 0][plume]:
-#                     n = 0
-#                     while n < NUMBER_OF_TRACERS:
-#                         out_chem[0, 0, 0][n] = (ddtr[0, 0, 0][n] - chemistry_tracers[0, 0, 0][n]) / DTIME
-#                         n += 1
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            if USE_FLUX_FORM == 1 and ALP1 > 0.0:
+                if K <= cloud_top_level[0, 0][plume]:
+                    n = 0
+                    while n < NUMBER_OF_TRACERS:
+                        out_chem[0, 0, 0][n] = (ddtr[0, 0, 0][n] - chemistry_tracers[0, 0, 0][n]) / DTIME
+                        n += 1
+
 
 # with computation(FORWARD), interval(...):
 #     if error_code[0, 0][plume] == 0:
@@ -502,10 +508,13 @@ class AtmosphericComposition:
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
+        quantity_factory.add_data_dimensions({"tracer_dim": config.NUMBER_OF_TRACERS})
+
         self._aa: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._bb: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._cc: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._ddtr: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._ddtr: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "tracer_dim"], "n/a")
+        self._f_temp: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
         # construct stencils and functions
         self._environment_cloud_levels_chemistry = stencil_factory.from_dims_halo(
@@ -569,16 +578,16 @@ class AtmosphericComposition:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        # self._determine_vertical_transport2 = stencil_factory.from_dims_halo(
-        #     func=determine_vertical_transport2,
-        #     compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        #     externals={
-        #         "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
-        #         "DTIME": cumulus_parameterization_config.DTIME,
-        #         "ALP1": cumulus_parameterization_config.ALP1,
-        #         "USE_FLUX_FORM": cumulus_parameterization_config.USE_FLUX_FORM,
-        #     },
-        # )
+        self._determine_vertical_transport2 = stencil_factory.from_dims_halo(
+            func=determine_vertical_transport2,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
+                "DTIME": cumulus_parameterization_config.DTIME,
+                "ALP1": cumulus_parameterization_config.ALP1,
+                "USE_FLUX_FORM": cumulus_parameterization_config.USE_FLUX_FORM,
+            },
+        )
 
     def __call__(
         self,
@@ -614,7 +623,6 @@ class AtmosphericComposition:
         mass_detrainment_downdraft_forced: Quantity,
         mass_entrainment_downdraft_forced: Quantity,
         environment_massflux: Quantity,
-        ddtr: Quantity,
         epsilon_forced: Quantity,
         out_chem: Quantity,
         trash_: Quantity,
@@ -632,6 +640,7 @@ class AtmosphericComposition:
         )
 
         # NOTE Raise an error if CNV_Tracers_Vect_Hcts > 1.e-6
+        # THIS NEEDS TO BE RE-SERIALIZED
         # if CNV_Tracers_Vect_hcts.view[:].any() > float(1.0e-6):
         #     raise NotImplementedError(
         #         "[NDSL] GF2020-->CumulusParameterization-->AtmosphericComposition called with an unimplemented path."
@@ -701,14 +710,33 @@ class AtmosphericComposition:
             cc=self._cc,
         )
 
-        self._tridiag(
-            m=cloud_top_level,
-            a=self._aa,
-            b=self._bb,
-            c=self._cc,
-            f=self._ddtr,
+        if (
+            self.cumulus_parameterization_config.USE_FLUX_FORM == 1
+            and self.cumulus_parameterization_config.ALP1 > 0.0
+        ):
+            n = 0
+            while n < self.config.NUMBER_OF_TRACERS:
+                self._f_temp.field[:, :, :] = self._ddtr.field[:, :, :, n]
+
+                self._tridiag(
+                    m=cloud_top_level,
+                    a=self._aa,
+                    b=self._bb,
+                    c=self._cc,
+                    f=self._f_temp,
+                    error_code=error_code,
+                    plume=plume_dependent_constants.PLUME_INDEX,
+                )
+
+                self._ddtr.field[:, :, :, n] = self._f_temp.field[:, :, :]
+
+                n += 1
+
+        self._determine_vertical_transport2(
             error_code=error_code,
             plume=plume_dependent_constants.PLUME_INDEX,
+            cloud_top_level=cloud_top_level,
+            out_chem=out_chem,
+            ddtr=self._ddtr,
+            chemistry_tracers=chemistry_tracers,
         )
-
-        # self._determine_vertical_transport2()

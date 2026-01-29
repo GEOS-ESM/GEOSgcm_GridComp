@@ -151,9 +151,9 @@ class TestCore:
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["total_normalized_integrated_condensate_forced_atmoscomp"]
-        state.output.total_normalized_integrated_evaporate_forced.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["total_normalized_integrated_evaporate_forced_atmoscomp"]
+        locals.total_normalized_integrated_evaporate_forced.data[:] = inputs[
+            "total_normalized_integrated_evaporate_forced_atmoscomp"
+        ]
         state.output.mass_entrainment_downdraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["mass_entrainment_downdraft_forced_atmoscomp"]
@@ -199,7 +199,7 @@ class TestCore:
                 sc_dn=locals.sc_dn,
                 pw_dn=locals.pw_dn,
                 tot_pw_dn_chem=locals.tot_pw_dn_chem,
-                total_normalized_integrated_evaporate_forced=state.output.total_normalized_integrated_evaporate_forced,
+                total_normalized_integrated_evaporate_forced=locals.total_normalized_integrated_evaporate_forced,
                 total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
                 downdraft_origin_level=state.output.downdraft_origin_level,
                 evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
@@ -207,7 +207,6 @@ class TestCore:
                 mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
                 mass_entrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
                 environment_massflux=locals.environment_massflux,
-                ddtr=locals.ddtr,
                 epsilon_forced=state.output.epsilon_forced,
                 out_chem=locals.out_chem,
                 trash_=locals.trash_,
@@ -256,7 +255,7 @@ class TestCore:
             "locals_sc_dn": locals.sc_dn.field[:],
             "locals_pw_dn": locals.pw_dn.field[:],
             "locals_tot_pw_dn_chem": locals.tot_pw_dn_chem.field[:],
-            "total_normalized_integrated_evaporate_forced": state.output.total_normalized_integrated_evaporate_forced.data[
+            "total_normalized_integrated_evaporate_forced": locals.total_normalized_integrated_evaporate_forced.data[
                 :
             ],
             "total_normalized_integrated_condensate_forced": state.output.total_normalized_integrated_condensate_forced.data[
