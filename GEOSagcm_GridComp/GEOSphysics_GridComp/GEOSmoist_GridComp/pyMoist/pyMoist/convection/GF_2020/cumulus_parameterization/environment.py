@@ -757,9 +757,10 @@ class EnvironmentalSubsidence:
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
     def __call__(self, *args, **kwds):
-        if self.cumulus_parameterization_config.APPLY_SUB_MP != 0:
+        if self.config.APPLY_SUBSIDENCE_MICROPHYSICS != 0:
             raise NotImplementedError(
                 "[NDSL] GF2020-->CumulusParameterization-->EnvironmentalSubsidence this code"
-                "has not been impemented. You should have been caught before getting here, but here we are."
-                "Please choose another option for APPLY_SUB_MP or implement to continue."
+                "has not been impemented. You should have been caught before getting here by the config"
+                "checker. Beware, something likely failing in the config checker as well - you may be"
+                "unknowingly calling other untested/unimplemented sections."
             )

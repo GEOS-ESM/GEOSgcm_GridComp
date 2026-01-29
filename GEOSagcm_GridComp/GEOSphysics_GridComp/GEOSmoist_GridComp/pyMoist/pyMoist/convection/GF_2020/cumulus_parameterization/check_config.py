@@ -156,7 +156,7 @@ def check_config(
             "disable this error manually to proceed."
         )
 
-    if cumulus_parameterization_config.CONVECTION_TRACER == 1:
+    if config.CONVECTION_TRACER == 1:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initalized with CONVECTION_TRACER = 1. This requires"
             "an unimplemented class ColdPoolParameterization. Please implement, then disable this error"
@@ -231,7 +231,7 @@ def check_config(
             "then disable this error manually to proceed."
         )
 
-    if cumulus_parameterization_config.APPLY_SUBSIDENCE_MICROPHYSICS != 0:
+    if config.APPLY_SUBSIDENCE_MICROPHYSICS != 0:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initalized with APPLY_SUBSIDENCE_MICROPHYSICS != 0. This"
             "setting requires an unimeplemented option in EnvironmentalSubsidence. Please implement, then"

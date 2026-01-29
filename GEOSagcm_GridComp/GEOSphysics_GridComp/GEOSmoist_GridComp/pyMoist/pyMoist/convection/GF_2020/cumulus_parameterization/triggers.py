@@ -38,11 +38,10 @@ class XieTriggerFunction:
 
     def __call__(self, plume_dependent_constants: GF2020PlumeDependentConstants):
 
-        if self.config.ADV_TRIGGER == 3 and (
-            plume_dependent_constants.PLUME_INDEX in (1, 2)
-        ):
+        if self.config.ADV_TRIGGER == 3 and (plume_dependent_constants.PLUME_INDEX in (1, 2)):
             raise NotImplementedError(
                 "[NDSL] GF2020-->CumulusParameterization-->XieTriggerFunction this code"
-                "has not been impemented. You should have been caught before getting here, but here we are."
-                "Please choose another option for ADV_TRIGGER or implement to continue."
+                "has not been impemented. You should have been caught before getting here by the config"
+                "checker. Beware, something likely failing in the config checker as well - you may be"
+                "unknowingly calling other untested/unimplemented sections."
             )
