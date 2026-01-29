@@ -16,19 +16,12 @@ use GEOS_Mod
 
 implicit none
 
-real, parameter ::     &
-     r        = 2.
-
  type EDMFPARAMS_TYPE
     logical :: DOTRACERS
     integer :: DISCRETE
     integer :: IMPLICIT
     integer :: ENTRAIN
-    integer :: DOCLASP
     integer :: NUP
-    integer :: THERMAL_PLUME
-    integer :: TEST
-    integer :: DEBUG
     integer :: ET
     integer :: UPABUOYDEP
     real    :: L0
@@ -37,7 +30,6 @@ real, parameter ::     &
     real    :: ENTUFAC
     real    :: EDFAC
     real    :: ENT0
-    real    :: ENT0LTS
     real    :: ALPHATH
     real    :: ALPHAQT
     real    :: ALPHAW
@@ -45,11 +37,8 @@ real, parameter ::     &
     real    :: PWMIN
     real    :: WA
     real    :: WB
-    real    :: AU0
-    real    :: CTH1
-    real    :: CTH2
-    real    :: RH0_QB
-    real    :: C_KH_MF
+    real    :: WC
+    real    :: WCTHRESH
     real    :: MFLIMFAC
     real    :: ICE_RAMP
     real    :: PRCPCRIT
@@ -80,8 +69,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     wqt2,                          &
                     frland,                        &
                     pblh2,                         &
-                    ! CLASP inputs for surface heterogeneity
-     !              mfsrcthl, mfsrcqt, mfw, mfarea, &
                     ! outputs - variables needed for solver
                     ae3,                           &
                     aw3,                           &
@@ -124,6 +111,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     moist_qc3,                     &
                     entx,                          &
                     mfdepth,                       &
+                    invdelt,                       &
+                    wcfacout,                      &
                     edmf_plumes_w,                 &
                     edmf_plumes_thl,               &
                     edmf_plumes_qt )
@@ -151,9 +140,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                                                   FRLAND,  &
                                                   PHIS
 
-   ! CLASP inputs
-   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE) :: mfsrcqt,mfsrcthl,mfw,mfarea
-
    ! Required outputs
    REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS-1:KTE), INTENT(OUT) :: dry_a3,   &
                                                              moist_a3, &
@@ -175,13 +161,13 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
 
   ! Diagnostic outputs
-   REAL, DIMENSION(:,:), POINTER   :: mfdepth
+   REAL, DIMENSION(:,:), POINTER   :: mfdepth,invdelt
    REAL, DIMENSION(:,:,:), POINTER :: dry_w3,   moist_w3,   &
                                       dry_qt3,  moist_qt3,  &
                                       dry_thl3, moist_thl3, &
                                       dry_u3,   moist_u3,   &
                                       dry_v3,   moist_v3,   &
-                                      moist_qc3, entx
+                                      moist_qc3, entx, wcfacout
 
    REAL, DIMENSION(:,:,:,:), POINTER :: EDMF_PLUMES_W,   &
                                         EDMF_PLUMES_THL, &
@@ -197,7 +183,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    REAl,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENT,ENTf
    INTEGER,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENTi
 
-   INTEGER :: K,I,IH,JH,NUP2
+   INTEGER :: K,KTMP,I,IH,JH,NUP2
    REAL :: wthv,wstar,qstar,thstar, &
            sigmaW,sigmaQT,sigmaTH,  &
            wmin,wmax,wlv,wtv,wp,    &
@@ -219,7 +205,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_ahl3,s_aqt2,  &
                                 s_ahlqt,s_awqt,s_ahl2,s_awhl,qte
 ! exner function
-   REAL,DIMENSION(KTS:KTE)   :: exf,dp,pmid
+   REAL,DIMENSION(KTS:KTE)   :: exf,dp,pmid,wcfac
    REAL,DIMENSION(KTS-1:KTE) :: exfh
    REAL,DIMENSION(KTS-1:KTE) :: rhoe
 
@@ -326,18 +312,11 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
          k = k-1
       end do
       tmp = tmp/tmp2  ! avg TKE
-      
-      ! if CLASP enabled: mass flux is input
-      ! if CLASP disabled: mass-flux if positive surface buoyancy flux and
-      !                    mean TKE below 100m exceeds threshold (for stability)
-      IF ( (wthv > 0.0 .and. tmp>0.05 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.3e4)      &
-      .or. (any(mfsrcthl(IH,JH,1:MFPARAMS%NUP) >= -2.0) .and. MFPARAMS%doclasp/=0)) then
 
-      if (MFPARAMS%doclasp/=0) then
-       nup2 = count(mfsrcthl(IH,JH,1:MFPARAMS%NUP)>=-2.0)
-      else
-       nup2 = MFPARAMS%NUP
-      end if
+      ! mass-flux if positive surface buoyancy flux and mean TKE below 100m exceeds threshold (for stability)
+      IF (wthv > 0.0 .and. tmp>0.05 .and. phis(IH,JH).lt.3e4) then
+
+      nup2 = MFPARAMS%NUP
 
       UPW=0.
       UPTHL=0.
@@ -360,17 +339,17 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         if (associated(mfdepth)) mfdepth(IH,JH) = ztop
         
         ! Reduce L0 over ocean where LTS is large to encourage StCu formation
-        lts =  0.0
-        if (FRLAND(IH,JH)<0.5) then
-           do k = kte-1,kts+1,-1
-              if (zlo3(IH,JH,k)-zw3(IH,JH,kte).gt.3000.0) then
-                 lts = thv3(IH,JH,k+1)
-                 exit
-              end if
-           end do
-           lts = lts - thv3(IH,JH,kte)
-           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-18.5))) )
-        end if
+!        lts =  0.0
+!        if (FRLAND(IH,JH)<0.5) then
+!           do k = kte-1,kts+1,-1
+!              if (zlo3(IH,JH,k)-zw3(IH,JH,kte).gt.3000.0) then
+!                 lts = thv3(IH,JH,k+1)
+!                 exit
+!              end if
+!           end do
+!           lts = lts - thv3(IH,JH,kte)
+!           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-18.5))) )
+!        end if
       else ! if mfparams%ET not 2
         L0 = mfparams%L0
       end if
@@ -488,42 +467,50 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       sigmaQT=MFPARAMS%AlphaQT*qstar
       sigmaTH=MFPARAMS%AlphaTH*thstar
 
-      if (MFPARAMS%doclasp/= 0) then
-        wmin=2.*sigmaW
-        wmax=2.*sigmaW
-      else
-        wmin=sigmaW*MFPARAMS%pwmin
-        wmax=sigmaW*MFPARAMS%pwmax
-      end if
+      wmin=sigmaW*MFPARAMS%pwmin
+      wmax=sigmaW*MFPARAMS%pwmax
 
+      ! Identify inversions below 2km, calculate stability in overlying 1km to define
+      ! dynamic pressure deceleration factor in w equation below.
+      wcfac = 0.
+      tmp = 0.
+      k = kts+1
+      do while (zlo(k).lt.2e3)
+         if ( t3(IH,JH,kte-k).gt.t3(IH,JH,kte-k+1) ) then
+            tmp = thv(k)   ! THV at inversion
+            exit
+         end if
+         k = k+1
+      end do
+      if (tmp.ne.0.) then  ! find index at 3 km (ktmp)
+         ktmp = k
+         do while (zlo(ktmp).lt.zlo(k)+1e3)
+            ktmp = ktmp+1
+         end do
+         wcfac(1:k) = min(10.,max(0.,thv(ktmp)-thv(k)-MFPARAMS%WCTHRESH))*exp(-(zlo(k)-zlo(1:k))/100. )
+      end if
+      if (associated(invdelt)) invdelt(IH,JH) = maxval(wcfac)
+      if (associated(wcfacout)) wcfacout(IH,JH,:) = wcfac(kte:kts:-1)
+      !      print *,'wcfac=',wcfac
+      
       ! define surface conditions
       DO I=1,NUP2
 
         wlv=wmin+(wmax-wmin)/(real(NUP2))*(real(i)-1.)
         wtv=wmin+(wmax-wmin)/(real(NUP2))*real(i)
 
-        if (MFPARAMS%doclasp/=0) then
-          UPW(kts-1,I) = MFW(IH,JH,I)
-          UPA(kts-1,I)=MFAREA(IH,JH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now
+        UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)
+        if (MFPARAMS%UPABUOYDEP/=0) then
+           UPA(kts-1,I)=(0.5+0.5*TANH((wthv-0.02)/0.09))*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
         else
-          UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)
-          if (MFPARAMS%UPABUOYDEP/=0) then
-            UPA(kts-1,I)=(0.5+0.5*TANH((wthv-0.02)/0.09))*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
-          else
-            UPA(kts-1,I)=(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
-          end if
+           UPA(kts-1,I)=(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
         end if
 
         UPU(kts-1,I)=U(kts)
         UPV(kts-1,I)=V(kts)
 
-        if (MFPARAMS%doclasp/=0) then   ! if CLASP, use tile-based perturbations
-          UPQT(kts-1,I)=QT(kts)+MFSRCQT(IH,JH,I)
-          UPTHV(kts-1,I)=THV(kts)+MFSRCTHL(IH,JH,I)
-        else
-          UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
-          UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
-        end if
+        UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
+        UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
 
       ENDDO ! NUP
 
@@ -609,7 +596,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
             ! vertical velocity
             B=mapl_grav*(0.5*(THVn+UPTHV(k-1,I))/THV(k)-1.)
-            WP=MFPARAMS%WB*ENT(K,I)
+            ! represent deceleration from dynamic pressure under inversion
+!            tmp = max(0.,(THV(k+1)-THV(k))/(ZW(k+1)-ZW(k))-0.015)
+            WP=MFPARAMS%WB*ENT(K,I)+MFPARAMS%WC*wcfac(k)
             IF (WP==0.) THEN
               Wn2=UPW(K-1,I)**2+2.*MFPARAMS%WA*B*(ZW(k)-ZW(k-1))
             ELSE
@@ -879,7 +868,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       mfwhl(IH,JH,KTE) = s_awhl(KTS-1)
       mfwqt(IH,JH,KTE) = s_awqt(KTS-1)
 
-    
 
       ! buoyancy is defined on full levels
       DO k=kts,kte
@@ -931,7 +919,6 @@ END SUBROUTINE run_edmf
 subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
 
   integer, intent(in   )                     :: kts, kte
-!  real,    intent(in   )                     :: ent0
   real,    intent(in   ), dimension(kts:kte) :: t, z, q, p
   real,    intent(in   )                     :: wthv, wqt
   real,    intent(  out)                     :: ztop
@@ -943,11 +930,8 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
    qstar=max(0.,wqt)/wstar
    thstar=max(0.,wthv)/wstar
 
-!   sigmaW=MFPARAMS%AlphaW*wstar
    sigmaQT=2.0*qstar
    sigmaTH=2.0*thstar
-
-! print *,'sigQT=',sigmaQT,'  sigTH=',sigmaTH,'  wstar=',wstar
 
   tep  = t(kte)+max(0.1,sigmaTH) ! parcel values
   qp   = q(kte)+sigmaQT
@@ -963,12 +947,9 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
 
     tep   = tep - MAPL_GRAV*( z2-z1 )/MAPL_CP
 
-!    qp    = qp  + (0.25/300.)*(z2-z1)*(q(k)-qp)
-!    tep   = tep + (0.25/300.)*(z2-z1)*(t(k)-tep)
     qp    = qp  + (0.7/1000.)*(z2-z1)*(q(k)-qp)   ! assume fractional entrainment rate of 0.75/km
     tep   = tep + (0.7/1000.)*(z2-z1)*(t(k)-tep)
 
-!    print *,'mfdepth: tep=',tep,' pp=',pp
     dqsp  = GEOS_DQSAT(tep , pp , qsat=qsp,  pascals=.true. )
 
     dqp   = max( qp - qsp, 0. )/(1.+(MAPL_ALHL/MAPL_CP)*dqsp )
@@ -1028,7 +1009,6 @@ T=EXN*THL+get_alhl(T,ice_ramp)/mapl_cp*QC
 QS=geos_qsat(T,P,pascals=.true.,ramp=ice_ramp)
 QC=max(QT-QS,0.)
 THV=(THL+get_alhl(T,ice_ramp)/mapl_cp*QC/EXN)*(1.+MAPL_VIREPS*(QT-QC)-QC)
-!THV=(THL+get_alhl(T,ice_ramp)/mapl_cp*QC/EXN)*(1.+(mapl_epsilon)*(QT-QC)-QC)
 wf=water_f(T,ice_ramp)
 
 end subroutine condensation_edmf

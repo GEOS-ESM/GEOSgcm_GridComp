@@ -1035,6 +1035,24 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'edmf_inversion_temperature_jump',                       &
+       UNITS      = 'K',                                                     &
+       SHORT_NAME = 'INVDELT',                                            &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+        call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'edmf_inversion_decel_factor',                       &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'WCFAC',                                            &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'EDMF_mass_flux',                                        &
        UNITS      = 'kg m s-1',                                              &
        SHORT_NAME = 'EDMF_MF',                                               &
@@ -2929,7 +2947,7 @@ end if
                                             SHOCPRNUM,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx, &
                                             SL2, SL3, W2, W3, WSL, SLQT !, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
-     real, dimension(:,:), pointer       :: LMIX, edmf_depth
+     real, dimension(:,:), pointer       :: LMIX, edmf_depth, invdelt
 
 ! EDMF variables
      real, dimension(:,:,:), pointer     :: edmf_dry_a,edmf_moist_a,edmf_frc, edmf_dry_w,edmf_moist_w, &
@@ -2943,7 +2961,7 @@ end if
                                             edmf_wsl, edmf_qt3, edmf_sl3, &
                                             edmf_entx, edmf_tke,          &
                                             edmf_dqrdt, edmf_dqsdt,       &
-                                            ssrcmf,qvsrcmf,qlsrcmf,qisrcmf
+                                            ssrcmf,qvsrcmf,qlsrcmf,qisrcmf,wcfac
 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
    real, dimension(IM,JM,1:LM)          :: ssrc,qvsrc,qlsrc,qisrc
@@ -3000,7 +3018,7 @@ end if
      real, dimension(:,:),   pointer     :: SHOBS, LHOBS
 
      ! mass-flux constants/parameters
-     integer :: DOMF, NumUp, DOCLASP
+     integer :: DOMF, NumUp
      real    :: L0,L0fac
 
      real, dimension(IM,JM)    :: L02
@@ -3098,11 +3116,6 @@ end if
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
 
-     ! Imports for CLASP heterogeneity coupling in EDMF
-!     call MAPL_GetPointer(IMPORT, MFTHSRC, 'MFTHSRC',RC=STATUS); VERIFY_(STATUS)
-!     call MAPL_GetPointer(IMPORT, MFQTSRC, 'MFQTSRC',RC=STATUS); VERIFY_(STATUS)
-!     call MAPL_GetPointer(IMPORT, MFW,     'MFW'    ,RC=STATUS); VERIFY_(STATUS)
-!     call MAPL_GetPointer(IMPORT, MFAREA,  'MFAREA' ,RC=STATUS); VERIFY_(STATUS)
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
@@ -3182,18 +3195,18 @@ end if
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-1.0, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.3,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=8.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=8.,   RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=3.,   RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=2.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 5.0 , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0 , RC=STATUS); VERIFY_(STATUS)
      end if
@@ -3202,7 +3215,7 @@ end if
      call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 4.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 1600.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOCANUTO,   'DOCANUTO:',   DEFAULT = 0,      RC=STATUS); VERIFY_(STATUS)
      
@@ -3419,6 +3432,10 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_depth,     'EDMF_DEPTH', RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  wcfac,     'WCFAC', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  invdelt,     'INVDELT', RC=STATUS)
+     VERIFY_(STATUS)
 
 !========== SHOC ===========
      call MAPL_GetPointer(EXPORT, TKEDISSx, 'TKEDISS',  RC=STATUS)
@@ -3581,6 +3598,8 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=2.0,   RC=STATUS)  
       call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.01,  RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%WCTHRESH,  "EDMF_WCTHRESH:",      default=9.,    RC=STATUS)
       ! coefficients for surface forcing, appropriate for L137
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=1.0,   RC=STATUS)
@@ -3588,8 +3607,7 @@ end if
       ! Entrainment rate options
       call MAPL_GetResource (MAPL, MFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.4,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0LTS,   "EDMF_ENT0LTS:",       default=0.8,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.35,  RC=STATUS)
       ! L0 if ET==1
       call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
@@ -3597,7 +3615,6 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.0,   RC=STATUS)
      ! factor to multiply the eddy-diffusivity with
       call MAPL_GetResource (MAPL, MFPARAMS%EDfac,     "EDMF_EDFAC:",         default=1.,    RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%DOCLASP,   "EDMF_DOCLASP:",       default=0,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%ICE_RAMP,  "EDMF_ICE_RAMP:",      default=-40.0, RC=STATUS )
       call MAPL_GetResource (MAPL, MFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.5,   RC=STATUS)
@@ -3719,7 +3736,6 @@ end if
     qlsrc  = 0.0
     qisrc  = 0.0
 
-
     IF(DOMF /= 0) then
 
       call RUN_EDMF(1, IM, 1, JM, 1, LM, DT,  &
@@ -3742,7 +3758,6 @@ end if
                     EVAP,                     & 
                     FRLAND,                   &
                     ZPBL,                     &
-!                   MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP inputs
                     !== Outputs for trisolver ==
                     ae3,                      &
                     aw3,                      &
@@ -3784,11 +3799,13 @@ end if
                     edmf_moist_qc,            &
                     edmf_entx,                &
                     edmf_depth,               &
+                    invdelt,                  &
+                    wcfac,                    &
                     EDMF_PLUMES_W,            &
                     EDMF_PLUMES_THL,          &
                     EDMF_PLUMES_QT )
 
-      mfaw         = aw3  !edmf_mf/rhoe
+      mfaw         = aw3
       slflxmf      = (aws3-awql3*mapl_alhl-awqi3*mapl_alhs)/mapl_cp
       qtflxmf      = awqv3+awql3+awqi3
 
@@ -3812,13 +3829,13 @@ end if
       if (associated(EDMF_FRC))       EDMF_FRC     = 0.5*(edmfdrya(:,:,0:LM-1)+edmfdrya(:,:,1:LM) &
                                                      + edmfmoista(:,:,0:LM-1)+edmfmoista(:,:,1:LM)) 
       do i = 1,IM
-        do j = 1,JM
-          k = LM
-          do while (edmfdrya(i,j,k).gt.0.01 .and. edmfmoista(i,j,k).lt.1e-4 .and. k.gt.1)
-            k = k-1
-          end do
-          drycblh(i,j) = ZL0(i,j,k)
-        end do
+         do j = 1,JM
+            k = LM
+            do while (edmfdrya(i,j,k).gt.0.01 .and. edmfmoista(i,j,k).lt.1e-4 .and. k.gt.1)
+               k = k-1
+            end do
+            drycblh(i,j) = ZL0(i,j,k)
+         end do
       end do
 
     ELSE            ! if there is no mass-flux

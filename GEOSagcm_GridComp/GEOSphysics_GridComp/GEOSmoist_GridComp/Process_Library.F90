@@ -2215,8 +2215,8 @@ module GEOSmoist_Process_Library
     end if
 
     ! Set correlation coefficients
-    rwqt = 0.0
-    rwth = 0.0
+    rwqt = 0.
+    rwth = 0.
     rtqt = -0.2
 
   end subroutine precalc_dblgss
@@ -2378,11 +2378,8 @@ module GEOSmoist_Process_Library
       CFn = (CLLS       )*tmpARR
       QCn = (QLLS + QILS)*tmpARR
       QCi = (QILS)*tmpARR
-      if (pdfshape .eq. 6) then
-         TEn = TE - alhxbcp*QCn
-      else
-         TEn = TE
-      end if
+
+      TEn = TE
       
       DQS = GEOS_DQSAT( TEn, PL, QSAT=QSx )
       QVn = ( QV - QSx*CLCN )*tmpARR
@@ -2390,8 +2387,6 @@ module GEOSmoist_Process_Library
       QT = max(0.,QCn + QVn)  !Total LS water after microphysics
                               ! - this can be negative because QV does not account
                               ! for saturation inside convective cloud fraction
-      !      if (QT.lt.0.) print *,'QT<0 before pdf. qv=',qv,' qlls=',qlls,' qils=',qils
-
       
       if (pdfshape .eq. 6) then
          exner = (pl / 1e3)**MAPL_KAPPA
@@ -2597,8 +2592,6 @@ module GEOSmoist_Process_Library
       QLLS   = QLLS + dQLLS
       QV     = QV -         (dQILS+dQLLS)
       TE     = TE + alhlbcp*(dQILS+dQLLS) + alhfbcp*(dQILS)
-
-      if (QV.lt.0.) print *,'QV=',QV,' QCn=',QCn,' QT=',QT
       
    end subroutine hystpdf
 

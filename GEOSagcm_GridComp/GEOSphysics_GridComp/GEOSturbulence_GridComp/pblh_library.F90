@@ -391,7 +391,7 @@ contains
                if (p(i,j,k).lt.60000.) exit
                if (t(i,j,k-1).ge.t(i,j,k)) then ! if next level is warmer...
                   ktop = k                      ! k is index of minimum t so far
-                  do while (t(i,j,ktop).ge.t(i,j,k)) ! find depth of warm layer                                                                                                         
+                  do while (t(i,j,ktop).ge.t(i,j,k)) ! find depth of warm layer
                      ktop = ktop-1
                   end do
                   ktop = ktop+1   ! ktop is index of highest level inside warm layer

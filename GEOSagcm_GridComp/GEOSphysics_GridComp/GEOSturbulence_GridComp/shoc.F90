@@ -52,7 +52,7 @@ module shoc
                  omega_inv, tabs_inv, qwv_inv,                   &  ! in
                  qi_inv, qc_inv, qpi_inv,                        &  ! in
                  qpl_inv, cld_sgs_inv, wthv_sec_inv,             &  ! in
-                 wthv_mf_inv, tke_mf, zpbl,                      &  ! in
+                 wthv_mf_inv, tke_mf, dryzpbl,                   &  ! in
                  tke_inv, tkh_inv,                               &  ! inout
                  tkm_inv, isotropy_inv,                          &  ! out
                  tkesbdiss_inv, tkesbbuoy_inv,                   &  ! out
@@ -100,7 +100,7 @@ module shoc
   real, intent(in   ) :: qpi_inv    (nx,ny,nzm) ! snow mixing ratio, kg/kg
   real, intent(in   ) :: cld_sgs_inv(nx,ny,nzm) ! sgs cloud fraction
   real, intent(in   ) :: tke_mf     (nx,ny,nz)  ! MF vertical velocity on edges, m/s
-  real, intent(in   ) :: zpbl       (nx,ny)     ! PBLH diagnosed in TurbGridComp
+  real, intent(in   ) :: dryzpbl    (nx,ny)     ! Dry mass flux depth
   real, intent(inout) :: tke_inv    (nx,ny,nzm) ! turbulent kinetic energy. m**2/s**2
   real, intent(inout) :: tkh_inv    (nx,ny,nzm) ! eddy scalar diffusivity
   real, intent(  out) :: tkm_inv    (nx,ny,nzm) ! eddy momentum diffusivity
@@ -431,11 +431,12 @@ contains
         do i=1,nx
           ! Calculate "return-to-isotropy" eddy dissipation time scale, see Eq. 8 in BK13
           ! ignore stability dependence within the lower CBL, to prevent occasional 
-          if (brunt_edge(i,j,k) <= 1e-5 .or. zl(i,j,k).lt.0.7*zpbl(i,j)) then
-            isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))))
+          wrk = 2./(1./tscale1(i,j,k)+1./tscale1(i,j,k-1))
+          !wrk = 0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))
+          if (brunt_edge(i,j,k) <= 1e-5 .or. zl(i,j,k).lt.0.7*dryzpbl(i,j)) then
+             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk))
           else
-            wrk = 0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))
-            isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*brunt_edge(i,j,k)*wrk*wrk)))
+             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*brunt_edge(i,j,k)*wrk*wrk)))
           endif
           if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
 
@@ -682,7 +683,7 @@ contains
 ! Reduction of mixing length in the stable regions (where B.-V. freq. > 0) is required.
 ! Here we find regions of Brunt-Vaisalla freq. > 0 for later use.
 
-            if (brunt(i,j,k) < 1e-5 .or. zl(i,j,k).lt.0.7*zpbl(i,j)) then
+            if (brunt(i,j,k) < 1e-5 .or. zl(i,j,k).lt.0.7*dryzpbl(i,j)) then
               brunt2(i,j,k) = bruntmin
             else
               brunt2(i,j,k) = brunt(i,j,K)
@@ -757,8 +758,12 @@ contains
                  smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2
 
                  ! Stability length scale
-                 smixt3(i,j,k) = max(0.05,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
-
+                 if (dryzpbl(i,j).lt.10.) then
+                    smixt3(i,j,k) = max(0.05,tkes)*2.*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
+                 else
+                    smixt3(i,j,k) = max(0.05,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
+                 end if
+              
                  !=== Combine component length scales ===
                  if (shocparams%LENOPT .eq. 1) then  ! JPL blending approach (w/SHOC length scales)
                       wrk1 = SQRT(3./(1./smixt2(i,j,k)**2+1./smixt3(i,j,k)**2))
@@ -776,17 +781,17 @@ contains
               wrk2 = 1.0/(400.*tkes)
               wrk3 = sqrt(brunt2(i,j,k))/(0.7*tkes)
               wrk1 = 1.0/(wrk2+wrk3)
-              smixt(i,j,k) = 3.3*shocparams%LENFAC1*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*zpbl(i,j))))
+              smixt(i,j,k) = 3.3*shocparams%LENFAC1*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*dryzpbl(i,j))))
               smixt1(i,j,k) = 3.3*shocparams%LENFAC1/wrk2
               smixt2(i,j,k) = 3.3*shocparams%LENFAC1/wrk3
               smixt3(i,j,k) = 3.3*shocparams%LENFAC1*vonk*zl(i,j,k)
            end if
 
            ! Enforce minimum and maximum length scales
-           wrk = 40. !0.5*min(100.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
+           wrk = 20. !0.5*min(100.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
            if (zl(i,j,k) .lt. 2000.) then
               smixt(i,j,k) = max(wrk, smixt(i,j,k))
-           else if (zl(i,j,k).gt.zpbl(i,j)) then ! if above 2 km and dry CBL top, cap length scale
+           else if (zl(i,j,k).gt.dryzpbl(i,j)) then ! if above 2 km and dry CBL top, cap length scale
               smixt(i,j,k) = max(wrk, min(200.,smixt(i,j,k)))
            end if
         end do
@@ -894,7 +899,7 @@ contains
                               DOCANUTO
 
     real, parameter :: HL2MIN = 0.0005
-    real, parameter :: HL2MAX = 2.0
+    real, parameter :: HL2MAX = 0.25
 
     ! Local variables
     integer :: k, kd, ku
@@ -941,8 +946,8 @@ contains
 
         ! Second moment of liquid/ice water static energy. Eq 4 in BK13
         hl2_edge_nomf(:,:,k) = HL2TUNE * sm * wrk1 * wrk1
-        hl2_edge(:,:,k) = HL2TUNE * 0.5*ISOTROPY(:,:,k) * &
-                          (wrk3*wrk1-MFWHL(:,:,k)) * wrk1/(ZL(:,:,k)-ZL(:,:,k+1))
+        hl2_edge(:,:,k) = HL2TUNE * 0.5*ISOTROPY(:,:,k) * (wrk3*wrk1-MFWHL(:,:,k)) &
+                          * min(0.01,wrk1/(ZL(:,:,k)-ZL(:,:,k+1))) ! limit gradient to 10K/1km
 
         ! Total water gradient
         wrk2 = (QT(:,:,k) - QT(:,:,k+1))
@@ -981,7 +986,7 @@ contains
         wrk1 = 0.5*(qt2prod_edge(:,:,kd)+qt2prod_edge(:,:,ku))
         if (DOPROGQT2 /= 0) then
 !           wrk3 = QT2TUNE*1.5e-4 ! dissipation
-           qt2(:,:,k) = (qt2(:,:,k)+wrk1*DT) / (1. + DT/SKEW_TGEN)
+           qt2(:,:,k) = (qt2(:,:,k)+wrk1*DT) / (1. + DT/SKEW_TDIS)
 !           qt2diag(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*0.5*(qt2prod_edge_nomf(:,:,kd)+qt2prod_edge_nomf(:,:,ku))
         else
 !           qt2(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*wrk1
@@ -1007,6 +1012,11 @@ contains
 
     end do
 
+    ! Above PBL relax std dev to 5% of QT
+    where (kh(:,:,1:LM).lt.2. .and. mffrc.lt.1e-3)
+        qt2 = qt2 + ((0.05*qt)**2-qt2)/skew_tgen
+    end where
+       
     ! Update PDF_A and third moments
     if (DOPROGQT2 /= 0) then
        if (SKEW_TDIS.gt.0.) then
@@ -1025,8 +1035,8 @@ contains
     pdf_a = min(0.5,max(0.,pdf_a))
 
 !  if (DOCANUTO==0) then
-    qt3 = ( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS )
-    hl3 = MFHL3
+    qt3 = min(( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS ),10.*qt2**1.5)
+    hl3 = max(MFHL3,-10.*hl2**1.5)
     w3  = MFW3
 !  else
 
