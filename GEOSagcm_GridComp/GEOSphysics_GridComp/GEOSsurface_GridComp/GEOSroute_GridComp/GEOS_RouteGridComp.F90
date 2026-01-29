@@ -921,7 +921,7 @@ contains
 
     integer                            :: I
     REAL                               :: HEARTBEAT 
-    REAL, ALLOCATABLE, DIMENSION(:)    :: RUNOFF_IN, QSFLOW_OUT, QOUTFLOW_OUT, QRES_OUT, QOUT_CAT
+    REAL, ALLOCATABLE, DIMENSION(:)    :: QRUNOFF_IN, QSFLOW_OUT, QOUTFLOW_OUT, QRES_OUT, QOUT_CAT
 
     type(ESMF_Field)                   :: runoff_src
 
@@ -1019,7 +1019,7 @@ contains
     if (ESMF_AlarmIsRinging(CollectWaterAlarm)) then
 
        ! finalize runoff accumulation over ROUTE_DT
-       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT)     ! time-avg runoff over ROUTE_DT in land[ice] tile space  [kg/m2/s]
+       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT)   ! time-avg runoff over ROUTE_DT in land[ice] tile space  [kg/m2/s]
 
        ! redistribute runoff from tile space to catchment space
        call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr, rc=status)
@@ -1030,7 +1030,7 @@ contains
        call ESMF_FieldGet(route%field, farrayPtr=arrayPtr, rc=status)
        VERIFY_(STATUS)
        ! convert units [kg/m2/s] --> [m3/s]
-       RUNOFF_IN = arrayPtr * route%areacat/1000.                                       ! time-avg runoff over ROUTE_DT in Pfaf catch space [m3/s] 
+       QRUNOFF_IN = arrayPtr * route%areacat/1000.                                    ! time-avg runoff over ROUTE_DT in Pfaf catch space [m3/s] 
 
        allocate(QSFLOW_OUT  (n_pfaf_local))
        allocate(QOUTFLOW_OUT(n_pfaf_local))
@@ -1054,7 +1054,7 @@ contains
        ! Call river_routing_model
        ! ------------------------     
        CALL RIVER_ROUTING_HYD  (n_pfaf_local, ROUTE_DT,&
-            RUNOFF_IN, route%lengsc, route%lstr, &
+            QRUNOFF_IN, route%lengsc, route%lstr, &
             route%qstr_clmt, route%qri_clmt, route%qin_clmt, &
             route%K, route%Kstr, &
             WSTREAM,WRIVER, &
@@ -1083,7 +1083,7 @@ contains
        if (associated(QOUTFLOW))  QOUTFLOW = QOUTFLOW_OUT
        if (associated(QRES))      QRES     = QRES_OUT
        
-       deallocate(RUNOFF_IN,QOUTFLOW_OUT,QINFLOW_LOCAL,QSFLOW_OUT,WTOT_BEFORE,QRES_OUT,QOUT_CAT)
+       deallocate(QRUNOFF_IN,QOUTFLOW_OUT,QINFLOW_LOCAL,QSFLOW_OUT,WTOT_BEFORE,QRES_OUT,QOUT_CAT)
 
        ! for commented-out call to check_balance() 
        !
