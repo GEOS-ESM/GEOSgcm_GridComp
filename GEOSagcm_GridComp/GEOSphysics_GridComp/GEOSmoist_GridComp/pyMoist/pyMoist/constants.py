@@ -1,15 +1,18 @@
-"""File containing all constants used for pyMoist"""
+"""File containing constants used in multiple components of pyMoist"""
 
 import numpy as np
 
-from ndsl.dsl.typing import Float
+from ndsl.dsl.typing import Float, Int
 
 
 _f32 = np.float32
 _f64 = np.float64
 _i32 = np.int32
 
+NUMBER_OF_TRACERS = Int(23)
+
 # Define number of tracers in UW
+# NOTE depreciate this, change all references of NCNST to NUMBER_OF_TRACERS
 NCNST = _i32(23)
 
 # MAPL_UNDEF is set to 1E15 in the Fortran
