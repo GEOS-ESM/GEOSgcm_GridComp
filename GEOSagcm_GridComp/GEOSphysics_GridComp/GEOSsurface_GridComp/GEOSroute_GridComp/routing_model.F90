@@ -100,17 +100,15 @@ CONTAINS
     REAL,    INTENT(INOUT),DIMENSION (NCAT) :: Ws0,Wr0
     REAL,    INTENT(OUT),  DIMENSION (NCAT) :: Qs,Qout
 
+    real, parameter                         :: small    = 1.e-20 
+    real, parameter                         :: fac_kstr = 0.01      ! Factor for local stream scaling
 
-
-    real, parameter :: small    = 1.e-20 
-    real, parameter :: fac_kstr = 0.01      ! Factor for local stream scaling
-
-    real,dimension(NCAT) :: Qrunf,qstr_clmt,qri_clmt,qin_clmt,Ws,Wr,Kstr
-    real,dimension(NCAT) :: nume,deno,llc,alp_s,alp_r,Qs0,ks,Ws_last
+    real, dimension(NCAT)                   :: Qrunf,qstr_clmt,qri_clmt,qin_clmt,Ws,Wr,Kstr
+    real, dimension(NCAT)                   :: nume,deno,llc,alp_s,alp_r,Qs0,ks,Ws_last
     
-    real    :: dt, rho
+    real                                    :: dt
 
-    integer :: i,j 
+    integer                                 :: i,j 
 
     ! convert volume units to mass
     Qrunf     = Qrunf0     * rho          ! m3/s -> kg/s  
@@ -123,7 +121,7 @@ CONTAINS
     Wr        = Wr0        * rho          ! m3   -> kg
 
     Kstr = fac_kstr * Kstr0
-    dt   = ROUTE_DT
+    dt   = ROUTE_DT                       ! integer -> real
 
     ! Adjust llc (length of river channel)
     nume = qri_clmt**(2.-M) - qin_clmt**(2.-M)                                                                  ! Numerator for the llc calculation
