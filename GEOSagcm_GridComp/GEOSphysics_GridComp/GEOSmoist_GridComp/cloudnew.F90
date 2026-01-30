@@ -1996,6 +1996,7 @@ contains
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &
+                                 qsn,          &
                                  0.0,          & ! assume OMEGA=0
                                  ZL,           &
                                  PL*100.,      &

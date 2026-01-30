@@ -16,22 +16,12 @@ use GEOS_Mod
 
 implicit none
 
-real, parameter ::     &
-     WSTARmin = 1.e-3, &
-     zpblmin  = 100.,  &
-     onethird = 1./3., &
-     r        = 2.
-
  type EDMFPARAMS_TYPE
     logical :: DOTRACERS
     integer :: DISCRETE
     integer :: IMPLICIT
     integer :: ENTRAIN
-    integer :: DOCLASP
     integer :: NUP
-    integer :: THERMAL_PLUME
-    integer :: TEST
-    integer :: DEBUG
     integer :: ET
     integer :: UPABUOYDEP
     real    :: L0
@@ -40,7 +30,6 @@ real, parameter ::     &
     real    :: ENTUFAC
     real    :: EDFAC
     real    :: ENT0
-    real    :: ENT0LTS
     real    :: ALPHATH
     real    :: ALPHAQT
     real    :: ALPHAW
@@ -48,11 +37,8 @@ real, parameter ::     &
     real    :: PWMIN
     real    :: WA
     real    :: WB
-    real    :: AU0
-    real    :: CTH1
-    real    :: CTH2
-    real    :: RH0_QB
-    real    :: C_KH_MF
+    real    :: WC
+    real    :: WCTHRESH
     real    :: MFLIMFAC
     real    :: ICE_RAMP
     real    :: PRCPCRIT
@@ -83,8 +69,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     wqt2,                          &
                     frland,                        &
                     pblh2,                         &
-                    ! CLASP inputs for surface heterogeneity
-     !              mfsrcthl, mfsrcqt, mfw, mfarea, &
                     ! outputs - variables needed for solver
                     ae3,                           &
                     aw3,                           &
@@ -154,9 +138,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                                                   FRLAND,  &
                                                   PHIS
 
-   ! CLASP inputs
-   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE) :: mfsrcqt,mfsrcthl,mfw,mfarea
-
    ! Required outputs
    REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS-1:KTE), INTENT(OUT) :: dry_a3,   &
                                                              moist_a3, &
@@ -200,14 +181,16 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    REAl,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENT,ENTf
    INTEGER,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENTi
 
-   INTEGER :: K,I,IH,JH,NUP2
-   REAL :: wthv,wstar,qstar,thstar,sigmaW,sigmaQT,sigmaTH,z0, &
-           wmin,wmax,wlv,wtv,wp
-   REAL :: B,QTn,THLn,THVn,QCn,QP,Un,Vn,Wn2,EntEXP,EntEXPU,EntW,wf
+   INTEGER :: K,KTMP,I,IH,JH,NUP2
+   REAL :: wthv,wstar,qstar,thstar, &
+           sigmaW,sigmaQT,sigmaTH,  &
+           wmin,wmax,wlv,wtv,wp,    &
+           B,QTn,THLn,THVn,QCn,QP,  &
+           Un,Vn,Wn2,EntEXP,EntEXPU,EntW,wf
 
 ! internal flipped variables (GEOS5)
-   REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV,QV,QL,QI,ZLO,QR,QS
-   REAL,DIMENSION(KTS-1:KTE)  :: ZW,P,THLI,QTI
+   REAL,DIMENSION(KTS:KTE)   :: U,V,THL,QT,THV,QV,QL,QI,ZLO,QR,QS
+   REAL,DIMENSION(KTS-1:KTE) :: ZW,P,THLI,QTI
    REAL,DIMENSION(KTS-1:KTE) :: UI, VI, QVI, QLI, QII
 
 ! internal surface cont
@@ -220,12 +203,16 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_ahl3,s_aqt2,  &
                                 s_ahlqt,s_awqt,s_ahl2,s_awhl,qte
 ! exner function
-   REAL,DIMENSION(KTS:KTE)   :: exf,dp,pmid
-   REAL,DIMENSION(KTS-1:KTE) :: exfh,tmp1d
+   REAL,DIMENSION(KTS:KTE)   :: exf,dp,pmid,wcfac
+   REAL,DIMENSION(KTS-1:KTE) :: exfh
    REAL,DIMENSION(KTS-1:KTE) :: rhoe
 
-   REAL :: L0,ztop,tmp,tmp2,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
-   INTEGER, DIMENSION(2) :: seedmf,the_seed
+   ! temporary/dummy variables
+   REAL :: tmp, tmp2
+
+   
+   REAL :: L0,ztop,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
+   INTEGER, DIMENSION(2) :: the_seed
 
    LOGICAL :: calc_avg_diag
 
@@ -234,14 +221,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    REAL,PARAMETER :: &
        WSTARmin=1.e-3, &
        PBLHmin=100.
-
-   ! temporary, set
-   mfsrcthl = -999.
-   mfsrcqt  = -999.
-   mfw      = -999.
-   mfarea   = -999.
-
-   tmp1d(:) = 1e-3
 
    ! If any average diagnostics requested, perform required calculations,
    ! otherwise skip for efficiency
@@ -312,17 +291,21 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       pblh=max(pblh,pblhmin)
       wthv=wthl+mapl_epsilon*thv3(IH,JH,kte)*wqt
 
-      ! if CLASP enabled: mass flux is input
-      ! if CLASP disabled: mass-flux if positive surface buoyancy flux and
-      !                    TKE at 2nd model level above threshold
-      IF ( (wthv > 0.0 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.3e4)      &
-      .or. (any(mfsrcthl(IH,JH,1:MFPARAMS%NUP) >= -2.0) .and. MFPARAMS%doclasp/=0)) then
+      ! calc average TKE below 100 m
+      tmp = 0.
+      tmp2 = 0.
+      k = kte
+      do  while (zlo3(IH,JH,k)<100. .and. k>1)
+         tmp2 = tmp2 + (zw3(IH,JH,k-1)-zw3(IH,JH,k))
+         tmp = tmp+tke3(IH,JH,k)*(zw3(IH,JH,k-1)-zw3(IH,JH,k))
+         k = k-1
+      end do
+      tmp = tmp/tmp2  ! avg TKE
 
-      if (MFPARAMS%doclasp/=0) then
-       nup2 = count(mfsrcthl(IH,JH,1:MFPARAMS%NUP)>=-2.0)
-      else
-       nup2 = MFPARAMS%NUP
-      end if
+      ! mass-flux if positive surface buoyancy flux and mean TKE below 100m exceeds threshold (for stability)
+      IF (wthv > 0.0 .and. tmp>0.05 .and. phis(IH,JH).lt.3e4) then
+
+      nup2 = MFPARAMS%NUP
 
       UPW=0.
       UPTHL=0.
@@ -343,23 +326,25 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         call calc_mf_depth(kts,kte,t3(IH,JH,:),zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
         L0 = max(min(ztop,2500.),500.) / mfparams%L0fac
         if (associated(mfdepth)) mfdepth(IH,JH) = ztop
-
+        
         ! Reduce L0 over ocean where LTS is large to encourage StCu formation
-        lts =  0.0
-        if (FRLAND(IH,JH)<0.5) then
-           do k = kte-1,kts+1,-1
-              if (zlo3(IH,JH,k)-zw3(IH,JH,kte).gt.3000.0) then
-                 lts = thv3(IH,JH,k+1)
-                 exit
-              end if
-           end do
-           lts = lts - thv3(IH,JH,kte)
-           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-18.5))) )
-        end if
+!        lts =  0.0
+!        if (FRLAND(IH,JH)<0.5) then
+!           do k = kte-1,kts+1,-1
+!              if (zlo3(IH,JH,k)-zw3(IH,JH,kte).gt.3000.0) then
+!                 lts = thv3(IH,JH,k+1)
+!                 exit
+!              end if
+!           end do
+!           lts = lts - thv3(IH,JH,kte)
+!           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-18.5))) )
+!        end if
       else ! if mfparams%ET not 2
         L0 = mfparams%L0
       end if
 
+      if (ztop.gt.100.) then
+      
       !
       ! flipping variables
       !
@@ -471,42 +456,50 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       sigmaQT=MFPARAMS%AlphaQT*qstar
       sigmaTH=MFPARAMS%AlphaTH*thstar
 
-      if (MFPARAMS%doclasp/= 0) then
-        wmin=2.*sigmaW
-        wmax=2.*sigmaW
-      else
-        wmin=sigmaW*MFPARAMS%pwmin
-        wmax=sigmaW*MFPARAMS%pwmax
-      end if
+      wmin=sigmaW*MFPARAMS%pwmin
+      wmax=sigmaW*MFPARAMS%pwmax
 
+      ! Identify inversions below 2km, calculate stability in overlying 1km to define
+      ! dynamic pressure deceleration factor in w equation below.
+      wcfac = 0.
+      tmp = 0.
+      k = kts+1
+      do while (zlo(k).lt.2e3)
+         if ( t3(IH,JH,kte-k).gt.t3(IH,JH,kte-k+1) ) then
+            tmp = thv(k)   ! THV at inversion
+            exit
+         end if
+         k = k+1
+      end do
+      if (tmp.ne.0.) then  ! find index at 3 km (ktmp)
+         ktmp = k
+         do while (zlo(ktmp).lt.zlo(k)+1e3)
+            ktmp = ktmp+1
+         end do
+         wcfac(1:k) = min(10.,max(0.,thv(ktmp)-thv(k)-MFPARAMS%WCTHRESH))*exp(-(zlo(k)-zlo(1:k))/100. )
+      end if
+!      if (associated(invdelt)) invdelt(IH,JH) = maxval(wcfac)
+!      if (associated(wcfacout)) wcfacout(IH,JH,:) = wcfac(kte:kts:-1)
+      !      print *,'wcfac=',wcfac
+      
       ! define surface conditions
       DO I=1,NUP2
 
         wlv=wmin+(wmax-wmin)/(real(NUP2))*(real(i)-1.)
         wtv=wmin+(wmax-wmin)/(real(NUP2))*real(i)
 
-        if (MFPARAMS%doclasp/=0) then
-          UPW(kts-1,I) = MFW(IH,JH,I)
-          UPA(kts-1,I)=MFAREA(IH,JH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now
+        UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)
+        if (MFPARAMS%UPABUOYDEP/=0) then
+           UPA(kts-1,I)=(0.5+0.5*TANH((wthv-0.02)/0.09))*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
         else
-          UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)
-          if (MFPARAMS%UPABUOYDEP/=0) then
-            UPA(kts-1,I)=(0.5+0.5*TANH((wthv-0.02)/0.09))*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
-          else
-            UPA(kts-1,I)=(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
-          end if
+           UPA(kts-1,I)=(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
         end if
 
         UPU(kts-1,I)=U(kts)
         UPV(kts-1,I)=V(kts)
 
-        if (MFPARAMS%doclasp/=0) then   ! if CLASP, use tile-based perturbations
-          UPQT(kts-1,I)=QT(kts)+MFSRCQT(IH,JH,I)
-          UPTHV(kts-1,I)=THV(kts)+MFSRCTHL(IH,JH,I)
-        else
-          UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
-          UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
-        end if
+        UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
+        UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
 
       ENDDO ! NUP
 
@@ -592,7 +585,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
             ! vertical velocity
             B=mapl_grav*(0.5*(THVn+UPTHV(k-1,I))/THV(k)-1.)
-            WP=MFPARAMS%WB*ENT(K,I)
+            ! represent deceleration from dynamic pressure under inversion
+!            tmp = max(0.,(THV(k+1)-THV(k))/(ZW(k+1)-ZW(k))-0.015)
+            WP=MFPARAMS%WB*ENT(K,I)+MFPARAMS%WC*wcfac(k)
             IF (WP==0.) THEN
               Wn2=UPW(K-1,I)**2+2.*MFPARAMS%WA*B*(ZW(k)-ZW(k-1))
             ELSE
@@ -611,20 +606,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                UPU(K,I)=Un
                UPV(K,I)=Vn
                UPA(K,I)=UPA(K-1,I)
-
-               ! trisolver source terms due to condensation. assumes that condensation is responsible
-               ! for any increase in condesate flux with height. ignores lateral mixing.
-               tmp = max(0.,UPA(K,I)*(RHOE(K)*UPW(K,I)*UPQL(K,I)-RHOE(K-1)*UPW(K-1,I)*UPQL(K-1,I))) ! qlflx divergence
-               qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) + tmp
-               qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - tmp
-               ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp*MAPL_ALHL
-               tmp2 = max(0.,UPA(K,I)*(RHOE(K)*UPW(K,I)*UPQI(K,I)-RHOE(K-1)*UPW(K-1,I)*UPQI(K-1,I))) ! qiflx divergence
-               qisrc3(IH,JH,KTE+KTS-K) = qisrc3(IH,JH,KTE+KTS-K) + tmp2
-               tmp = max(0.,UPA(K,I)*(RHOE(K-1)*UPW(K-1,I)*UPQL(K-1,I)-RHOE(K)*UPW(K,I)*UPQL(K,I))) ! qlflx convergence
-               ! if ql convergence, assume ice came from ql, with remainder from qv
-               qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) - min(tmp,tmp2)
-               qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - (tmp2-min(tmp,tmp2))
-               ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp2*MAPL_ALHS
             ELSE
               UPW(K,I) = 0.
               UPA(K,I) = 0.
@@ -663,30 +644,24 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       UPA = factor*UPA
       QR  = factor*QR
       QS  = factor*QS
-      ssrc3 = factor*ssrc3
-      qvsrc3 = factor*qvsrc3
-      qlsrc3 = factor*qlsrc3
-      qisrc3 = factor*qisrc3
 
   ! Rescale UPA if MF TKE more than half of prognostic TKE near surface
   ! Prevents instability due to MF without KH
       K = KTS
       tmp = 0.
       tmp2 = 0.
-      DO WHILE (ZW(K).lt.100. .and. K.lt.KTE)
-         tmp = tmp + 0.5*SUM(UPA(K,:)*UPW(K,:)*UPW(K,:))
-         tmp2 = tmp2 + TKE3(IH,JH,KTE-K+KTS)
+      factor = 1.
+      DO WHILE (ZW(K).lt.200. .and. SUM(UPW(K-1,:)).gt.0.)
+         tmp = 0.25*SUM(UPA(K,:)*UPW(K,:)*UPW(K,:)+UPA(K-1,:)*UPW(K-1,:)*UPW(K-1,:))
+         tmp2 = TKE3(IH,JH,KTE-K+KTS)
+         factor = min(factor,0.5*tmp2/tmp)
          K = K+1
       END DO
-      if (tmp.gt.0.5*tmp2) then
-        factor = 0.5*tmp2/tmp
+      if (factor.lt.1.) then
+!        factor = 0.5*tmp2/tmp
         UPA    = factor*UPA
         QR     = factor*QR
         QS     = factor*QS
-        ssrc3  = factor*ssrc3
-        qvsrc3 = factor*qvsrc3
-        qlsrc3 = factor*qlsrc3
-        qisrc3 = factor*qisrc3
       end if
 
       DO k=KTS,KTE
@@ -882,7 +857,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       mfwhl(IH,JH,KTE) = s_awhl(KTS-1)
       mfwqt(IH,JH,KTE) = s_awqt(KTS-1)
 
-    
 
       ! buoyancy is defined on full levels
       DO k=kts,kte
@@ -897,7 +871,20 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
           mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
         end if
-      ENDDO
+        ! trisolver source terms due to condensation. assumes that condensation is responsible 
+        ! for any increase in condesate flux with height. ignores lateral mixing.
+        tmp = max(0.,RHOE(K)*s_awql(K)-RHOE(K-1)*s_awql(K-1)) ! qlflx divergence                                                                                                                       
+        qlsrc3(IH,JH,KTE+KTS-K) = tmp
+        qvsrc3(IH,JH,KTE+KTS-K) = -1.*tmp
+        ssrc3(IH,JH,KTE+KTS-K)  = tmp*MAPL_ALHL
+        tmp2 = max(0.,RHOE(K)*s_awqi(K)-RHOE(K-1)*s_awqi(K-1)) ! qiflx divergence                                                                                                                      
+        qisrc3(IH,JH,KTE+KTS-K) = tmp2
+        tmp = max(0.,RHOE(K-1)*s_awqi(K-1)-RHOE(K)*s_awqi(K)) ! qlflx convergence                                                                                                                     
+        ! if ql convergence, assume ice came from ql, with remainder from qv
+        qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) - min(tmp,tmp2)
+        qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - (tmp2-min(tmp,tmp2))
+        ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp2*MAPL_ALHS
+     ENDDO
 
 
       where (UPA.eq.0.)
@@ -909,7 +896,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       if (associated(EDMF_PLUMES_THL)) EDMF_PLUMES_THL(IH,JH,KTS-1:KTE,:) = upthl(KTE:KTS-1:-1,:)
       if (associated(EDMF_PLUMES_QT))  EDMF_PLUMES_QT(IH,JH,KTS-1:KTE,:)  = upqt(KTE:KTS-1:-1,:)
 
-
+     end if  !  IF ( mfdepth>100m)
     END IF   !  IF ( wthv > 0.0 )
 
   ENDDO ! JH loop over horizontal area
@@ -921,7 +908,6 @@ END SUBROUTINE run_edmf
 subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
 
   integer, intent(in   )                     :: kts, kte
-!  real,    intent(in   )                     :: ent0
   real,    intent(in   ), dimension(kts:kte) :: t, z, q, p
   real,    intent(in   )                     :: wthv, wqt
   real,    intent(  out)                     :: ztop
@@ -933,11 +919,8 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
    qstar=max(0.,wqt)/wstar
    thstar=max(0.,wthv)/wstar
 
-!   sigmaW=MFPARAMS%AlphaW*wstar
    sigmaQT=2.0*qstar
    sigmaTH=2.0*thstar
-
-! print *,'sigQT=',sigmaQT,'  sigTH=',sigmaTH,'  wstar=',wstar
 
   tep  = t(kte)+max(0.1,sigmaTH) ! parcel values
   qp   = q(kte)+sigmaQT
@@ -953,12 +936,9 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
 
     tep   = tep - MAPL_GRAV*( z2-z1 )/MAPL_CP
 
-!    qp    = qp  + (0.25/300.)*(z2-z1)*(q(k)-qp)
-!    tep   = tep + (0.25/300.)*(z2-z1)*(t(k)-tep)
     qp    = qp  + (0.7/1000.)*(z2-z1)*(q(k)-qp)   ! assume fractional entrainment rate of 0.75/km
     tep   = tep + (0.7/1000.)*(z2-z1)*(t(k)-tep)
 
-!    print *,'mfdepth: tep=',tep,' pp=',pp
     dqsp  = GEOS_DQSAT(tep , pp , qsat=qsp,  pascals=.true. )
 
     dqp   = max( qp - qsp, 0. )/(1.+(MAPL_ALHL/MAPL_CP)*dqsp )
@@ -1018,7 +998,6 @@ T=EXN*THL+get_alhl(T,ice_ramp)/mapl_cp*QC
 QS=geos_qsat(T,P,pascals=.true.,ramp=ice_ramp)
 QC=max(QT-QS,0.)
 THV=(THL+get_alhl(T,ice_ramp)/mapl_cp*QC/EXN)*(1.+MAPL_VIREPS*(QT-QC)-QC)
-!THV=(THL+get_alhl(T,ice_ramp)/mapl_cp*QC/EXN)*(1.+(mapl_epsilon)*(QT-QC)-QC)
 wf=water_f(T,ice_ramp)
 
 end subroutine condensation_edmf
