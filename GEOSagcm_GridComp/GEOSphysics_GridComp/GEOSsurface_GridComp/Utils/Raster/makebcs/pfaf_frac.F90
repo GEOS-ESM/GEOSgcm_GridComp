@@ -1,51 +1,58 @@
 #include "MAPL_ErrLog.h"
 
 module pfaf_fracMod
-!Main purpose: Assigns a catchment‐tile index from catchment definition files to each model grid cell for M36 grid.
-use MAPL
-use LogRectRasterizeMod, only: nc=>SRTM_maxcat
 
-implicit none
-private
+  ! Main purpose: Assigns a catchment‐tile index from Pfaf catchment definition files to each tile for global cylindrical EASE grid;
+  !               writes information into EASEv[x]_tile2pfaf.nc4
 
-public :: get_Pfaf_frac
+  use MAPL
+  use LogRectRasterizeMod, only: nc=>SRTM_maxcat
+
+  implicit none
+  private
+
+  public :: get_Pfaf_frac
 
 contains 
-
+  
   subroutine get_Pfaf_frac(file_out, BCS_PATH, GridName)
+    
     character(*), intent(in) :: file_out, BCS_PATH    
     character(*), intent(in) :: GridName
-    integer,parameter :: nlon=21600         ! Number of longitude grid points in the original grid
-    integer,parameter :: nlat=10800         ! Number of latitude grid points in the original grid
+    
+    integer, parameter :: nlon=21600         ! Number of longitude grid cells in raster grid
+    integer, parameter :: nlat=10800         ! Number of latitude  grid cells in raster grid
+
     ! Variable declarations:
-    integer              :: id, xi, yi, i,j, flag, subi,nmax,nmax2,ntot,it,ns_tot
-    integer,allocatable  :: nsub(:)                   ! Array to store the number of sub-areas for each catchment
+    integer              :: id, xi, yi, i,j, flag, nmax,nmax2,ntot,it,ns_tot
+    integer, allocatable :: nsub(:)                            ! Array to store the number of sub-areas for each catchment
     integer, allocatable :: xsub(:,:), ysub(:,:), isub(:,:)
     ! xsub and ysub: 2D arrays to store mapped x and y indices for sub-catchments (not using subi_global in this code)
-    real, allocatable    :: asub(:,:)        ! 2D array to store aggregated area for each sub-catchment
+    real,    allocatable :: asub(:,:)                          ! 2D array to store aggregated area for each sub-catchment
     
-    real*8, allocatable  :: lon(:), lat(:)  ! Arrays to hold longitude and latitude values from the NetCDF file
-    real*8, allocatable  :: lons(:), lats(:)  ! Arrays to hold longitude and latitude values from the NetCDF file
-    integer, allocatable :: loni(:), lati(:)
+    real*8,  allocatable :: lon(  :), lat(  :)                 ! Arrays to hold longitude and latitude values from the NetCDF file
+    real*8,  allocatable :: lons( :), lats( :)                 ! Arrays to hold longitude and latitude values from the NetCDF file
+    integer, allocatable :: loni( :), lati( :)
     integer, allocatable :: loni2(:), lati2(:)
     ! loni and lati: Arrays holding mapping indices from 1-minute resolution data files
-    integer, allocatable :: catchind(:,:) ! 2D array holding catchment indices for each grid cell
-    real, allocatable    :: cellarea(:,:)    ! 2D array containing the area of each grid cell
+    integer, allocatable :: catchind(:,:)                      ! 2D array holding catchment indices for each grid cell
+    real,    allocatable :: cellarea(:,:)                      ! 2D array containing the area of each grid cell
     
     ! Declare allocatable arrays for catchment ID, parent catchment ID, and boundary coordinates
-    integer, allocatable, dimension(:) :: tid, catid, lati_tile, loni_tile
-    real*8, allocatable, dimension(:)    :: lon_left, lon_right, lat_bottom, lat_top, latc,lonc
-    integer,allocatable,dimension(:,:) :: map_tile
+    integer, allocatable, dimension(:)   :: tid, catid, lati_tile, loni_tile
+    real*8,  allocatable, dimension(:)   :: lon_left, lon_right, lat_bottom, lat_top, latc,lonc
+    integer, allocatable, dimension(:,:) :: map_tile
     
-    real,allocatable,dimension(:) :: area_cat, pfaf_frac(:)
-    real,allocatable,dimension(:,:) :: frac,frac_tile
-    integer,allocatable,dimension(:) ::  nsub_tile
-    integer,allocatable ::csub(:,:),flag2(:,:), tile_id(:), pfaf_index(:)
+    real,    allocatable, dimension(:)   :: area_cat, pfaf_frac(:)
+    real,    allocatable, dimension(:,:) :: frac,frac_tile
+    integer, allocatable, dimension(:)   :: nsub_tile
+    integer, allocatable                 :: csub(:,:),flag2(:,:), tile_id(:), pfaf_index(:)
+
     type(NetCDF4_FileFormatter) :: formatter
-    type (FileMetadata) :: meta
-    type(Variable)      :: v
-    integer             :: nc_ease, nr_ease
-    real                :: tmp_lat, tmp_lon
+    type (FileMetadata)         :: meta
+    type(Variable)              :: v
+    integer                     :: nc_ease, nr_ease
+    real                        :: tmp_lat, tmp_lon
     
     ! Define file path for input routing data:
     character(len=256)   :: pfafData_file    
@@ -86,11 +93,11 @@ contains
     ! Initialize aggregation arrays to zero:
     allocate(xsub(9999, nc), ysub(9999, nc))
     nsub = 0
-    ! Loop over all grid cells to aggregate cell areas by catchment and sub-area:
+    ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
     do xi = 1, nlon
       do yi = 1, nlat
         if (catchind(xi, yi) >= 1) then
-          ! The grid cell belongs to a catchment
+          ! The raster grid cell belongs to a catchment
           id = catchind(xi, yi)  ! Get the catchment id for the current cell
           flag = 0              ! Reset flag to indicate whether a matching sub-area is found      
           ! If the catchment already has one or more sub-areas, check for a matching sub-area:
@@ -117,11 +124,11 @@ contains
     allocate(xsub(nmax, nc), ysub(nmax, nc), asub(nmax, nc))
     ! Initialize aggregation arrays to zero:
     nsub = 0;xsub = 0;ysub = 0;asub = 0.
-    ! Loop over all grid cells to aggregate cell areas by catchment and sub-area:
+    ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
     do xi = 1, nlon
       do yi = 1, nlat
         if (catchind(xi, yi) >= 1) then
-          ! The grid cell belongs to a catchment
+          ! The raster grid cell belongs to a catchment
           id = catchind(xi, yi)  ! Get the catchment id for the current cell
           flag = 0              ! Reset flag to indicate whether a matching sub-area is found      
           ! If the catchment already has one or more sub-areas, check for a matching sub-area:
@@ -146,7 +153,7 @@ contains
       end do
     end do
     
-    ! Open the catchment definition file for the M36 grid and read the total number of catchments (header)
+    ! Open the catchment definition file for the EASE grid and read the total number of tiles (header)
     open(77, file="clsm/catchment.def");read(77, *) ntot
     ! Allocate arrays with size nt
     allocate(tid(ntot), catid(ntot), lon_left(ntot), lon_right(ntot), lat_bottom(ntot), lat_top(ntot),latc(ntot),lonc(ntot))
