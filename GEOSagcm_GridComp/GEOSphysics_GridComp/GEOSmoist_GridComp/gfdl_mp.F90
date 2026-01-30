@@ -35,7 +35,7 @@
 
 module gfdl_mp_mod
 
-    use GEOSmoist_Process_Library, only: sigma, ice_fraction, LDRADIUS4
+    use GEOSmoist_Process_Library, only: get_fac_eis, sigma, ice_fraction, LDRADIUS4
     use MAPL, only: MAPL_AM_I_ROOT
 
     implicit none
@@ -194,7 +194,7 @@ module gfdl_mp_mod
     ! namelist parameters
     ! -----------------------------------------------------------------------
 
-    integer :: ntimes = 1 ! cloud microphysics sub cycles
+    integer :: ntimes = 2 ! cloud microphysics sub cycles
 
     integer :: nconds = 1 ! condensation sub cycles
 
@@ -352,7 +352,7 @@ module gfdl_mp_mod
 
     logical :: do_mp_diag = .false. ! enable microphysical quantities diagnostic
 
-    real :: mp_time = 75.0 ! maximum microphysics time step (s)
+    real :: mp_time = 150.0 ! maximum microphysics time step (s)
 
     real :: n0w_sig = 1.2 ! intercept parameter (significand) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
     real :: n0i_sig = 1.2 ! intercept parameter (significand) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
@@ -672,6 +672,7 @@ end subroutine gfdl_mp_init
 subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
         ua, va, delz, delp, dtm, rhcrit, hs, cnv_frc, eis, area, srft,   &
         water, rain, ice, snow, graupel, hydrostatic, is, ie, ks, ke, ktop, &
+        qa_dt, &
         revap, rsubl, &
         prefluxw, prefluxr, prefluxi, prefluxs, prefluxg)
 
@@ -691,10 +692,11 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
 
     real, intent (in), dimension (is:ie, ks:ke) :: rhcrit, qnl, qni
 
-    real, intent (in   ),  dimension (is:ie, ks:ke) :: delp, delz
+    real, intent (in),  dimension (is:ie, ks:ke) :: delp, delz
     real, intent (inout),  dimension (is:ie, ks:ke) :: pt, ua, va, wa
     real, intent (inout),  dimension (is:ie, ks:ke) :: qv, ql, qr, qi, qs, qg, qa
 
+    real, intent (out), dimension (is:ie, ks:ke) :: qa_dt
     real, intent (out), dimension (is:ie, ks:ke) :: revap, rsubl
     real, intent (out), dimension (is:ie, ks:ke) :: prefluxw, prefluxr, prefluxi, prefluxs, prefluxg
 
@@ -733,6 +735,8 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
     ice = 0.0
     snow = 0.0
     graupel = 0.0
+
+    qa_dt = 0.0
 
     revap = 0.0
     rsubl = 0.0
@@ -786,6 +790,7 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
         rhcrit, hs, cnv_frc, eis, area, srft, q_con, cappa, consv_te, adj_vmr, te, dte, &
         revap, rsubl, &
         prefluxw, prefluxr, prefluxi, prefluxs, prefluxg, &
+        qa_dt, &
         mppcw, mppew, mppe1, mpper, mppdi, mppd1, &
         mppds, mppdg, mppsi, mpps1, mppss, mppsg, mppfw, mppfr, mppmi, mppms, &
         mppmg, mppm1, mppm2, mppm3, mppar, mppas, mppag, mpprs, mpprg, mppxr, &
@@ -1298,6 +1303,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         rhcrit, hs, cnv_frc, eis, area, srft, q_con, cappa, consv_te, adj_vmr, te, dte, &
         revap, rsubl, &
         prefluxw, prefluxr, prefluxi, prefluxs, prefluxg, &
+        qa_dt, &
         mppcw, mppew, mppe1, mpper, mppdi, mppd1, &
         mppds, mppdg, mppsi, mpps1, mppss, mppsg, mppfw, mppfr, mppmi, mppms, &
         mppmg, mppm1, mppm2, mppm3, mppar, mppas, mppag, mpprs, mpprg, mppxr, &
@@ -1327,6 +1333,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     real, intent (inout), dimension (:, :) :: zet
     real, intent (inout), dimension (:, :) :: revap, rsubl
     real, intent (inout), dimension (:, :) :: prefluxw, prefluxr, prefluxi, prefluxs, prefluxg
+    real, intent (inout), dimension (:, :) :: qa_dt
 
     real, intent (inout), dimension (:, :) :: q_con, cappa
 
@@ -1349,7 +1356,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     integer :: i, k
 
     real :: ccn0, cin0, q1, q2
-    real :: convt, dts, q_cond, tmp, nl, ni
+    real :: convt, rdt, dts, q_cond, tmp, nl, ni
 
     real, dimension (ks:ke) :: h_var
     real, dimension (ks:ke) :: q_liq, q_sol, dp, dz, dp0
@@ -1363,7 +1370,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     real, dimension (ks:ke) :: pcs, eds, oes, rrs, tvs
     real, dimension (ks:ke) :: pcg, edg, oeg, rrg, tvg
 
-    real (kind = r8) :: rdt8, con_r8, c8, cp8
+    real (kind = r8) :: con_r8, c8, cp8
 
     real (kind = r8), dimension (is:ie, ks:ke) :: te_beg_d, te_end_d, tw_beg_d, tw_end_d
     real (kind = r8), dimension (is:ie, ks:ke) :: te_beg_m, te_end_m, tw_beg_m, tw_end_m
@@ -1378,7 +1385,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     ! -----------------------------------------------------------------------
 
     dts = dtm / real (ntimes)
-    rdt8 = 1.d0 / dtm
+    rdt = 1.0 / dtm
 
     ! -----------------------------------------------------------------------
     ! initialization of total energy difference
@@ -1413,11 +1420,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         ! Use estimated inversion strength to determine stable vs unstable areas
         ! -----------------------------------------------------------------------
-        if (srf_type < 2.0) then ! exclude snow/ice covered regions
-          fac_eis = min(1.0,eis(i)/10.0)**2 ! Estimated inversion strength determine stable regime
-        else
-          fac_eis = 0.0
-        endif
+        fac_eis = get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
 
         ! -----------------------------------------------------------------------
         ! adjust autoconversion rates and thresholds for stable vs unstable 
@@ -1781,13 +1784,22 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
             zet (i, k) = zez (k)
 
+! return QA tendencies for GEOS
+            if (.not. do_qa) then
+               qa_dt (i, k) = rdt * &
+                      ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
+                        qa (i, k) )                                                                 ! Old Cloud
+            else
+               qa (i, k) = qaz (k)
+               qa_dt (i, k) = 0.0
+            endif
+
             qv (i, k) = qvz (k)
             ql (i, k) = qlz (k)
             qr (i, k) = qrz (k)
             qi (i, k) = qiz (k)
             qs (i, k) = qsz (k)
             qg (i, k) = qgz (k)
-            qa (i, k) = qaz (k)
 
             ! -----------------------------------------------------------------------
             ! calculate some more variables needed outside
@@ -1827,8 +1839,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
               enddo
             endif
             do k = ks, ke
-                ua (i, k) = u (k)
-                va (i, k) = v (k)
+               ua (i, k) = u (k)
+               va (i, k) = v (k)
             enddo
         endif
 
@@ -1847,7 +1859,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
               enddo
             endif
             do k = ks, ke
-                wa (i, k) = w (k)
+               wa (i, k) = w (k)
             enddo
         endif
 
@@ -2551,10 +2563,14 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    qden = q (k) * den (k)
-                    vt (k) = (3. + log10 (qden)) * (tc (k) * (aa * tc (k) + bb) + cc) + &
-                        dd * tc (k) + ee
-                    vt (k) = 0.01 * v_fac * exp (vt (k) * log (10.))
+                    qden = q (k) * den (k) * 1.e3
+                    ! Large-scale settling SGP
+                    viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
+                    ! Convective settling TWP
+                    viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
+                    ! Combine
+                    vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+                    vt (k) = 0.01 * v_fac * vt (k)
                 endif
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)
@@ -3968,7 +3984,11 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
 
-    real :: di, qi, qadum
+    real :: di, qi, critical_qi_factor, qadum
+
+    ! qi0_crt (ice to snow conversion) has strong resolution dependence
+    !    account for this using onemsig to convert more ice to snow at coarser resolutions
+    critical_qi_factor = qi0_crt*(1.e-1*(1.0-onemsig) + onemsig)
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -3991,7 +4011,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             di  = max (di, qcmin)
             q_plus = qi + di
             ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * qi0_crt / qadum / den (k)
+            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * critical_qi_factor / qadum / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
@@ -4719,7 +4739,7 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
         ifrac = ice_fraction(real(tz(k)),cnv_fraction,srf_type)
         if (ifrac .eq. 1. .and. ql (k) .gt. qcmin) then
 
-            sink = fac_frez * min(ql (k), ql (k) * (tice - tz (k)) / icpk (k))
+            sink = min(ql (k), fac_frez * ql (k) )
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
@@ -4768,7 +4788,13 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
 
     real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp, fac_wbf
 
+    real :: critical_qi_factor
+
     if (.not. do_wbf) return
+
+    ! qi0_crt (ice to snow conversion) has strong resolution dependence
+    !    account for this using onemsig to convert more ice to snow at coarser resolutions
+    critical_qi_factor = qi0_crt*(1.e-1*(1.0-onemsig) + onemsig)
 
     fac_wbf = 1. - exp (- dts / tau_wbf)
 
@@ -4784,7 +4810,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
             qv (k) .gt. qsi .and. qv (k) .lt. qsw) then
 
             sink = min (fac_wbf * ql (k), tc / icpk (k))
-            qim = qi0_crt / den (k)
+            qim = critical_qi_factor / den (k)
             tmp = min (sink, dim (qim, qi (k)))
             mppfw = mppfw + sink * dp (k) * convt
 
