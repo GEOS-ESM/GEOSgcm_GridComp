@@ -1032,11 +1032,13 @@ contains
        ! convert units [kg/m2/s] --> [m3/s]
        QRUNOFF_IN = arrayPtr * route%areacat/1000.                                    ! time-avg runoff over ROUTE_DT in Pfaf catch space [m3/s] 
 
-       allocate(QSFLOW_OUT  (n_pfaf_local))
-       allocate(QOUTFLOW_OUT(n_pfaf_local))
-       allocate(QRES_OUT(    n_pfaf_local))
-       allocate(QOUT_CAT(    n_pfaf_local))  
-       allocate(WTOT_BEFORE(n_pfaf_local))
+       allocate(QSFLOW_OUT(   n_pfaf_local))
+       allocate(QOUTFLOW_OUT( n_pfaf_local))
+       allocate(QRES_OUT(     n_pfaf_local))
+       allocate(QOUT_CAT(     n_pfaf_local))  
+       allocate(WTOT_BEFORE(  n_pfaf_local))
+       allocate(QINFLOW_LOCAL(n_pfaf_local))
+
        
        QRES_OUT    = 0.
 
@@ -1052,7 +1054,9 @@ contains
 
 
        ! Call river_routing_model
-       ! ------------------------     
+       ! ------------------------
+
+       ! get river outflow
        CALL RIVER_ROUTING_HYD  (n_pfaf_local, ROUTE_DT,&
             QRUNOFF_IN, route%lengsc, route%lstr, &
             route%qstr_clmt, route%qri_clmt, route%qin_clmt, &
@@ -1060,12 +1064,15 @@ contains
             WSTREAM,WRIVER, &
             QSFLOW_OUT,QOUTFLOW_OUT)  
 
-       ! Call reservoir module        
+       ! call reservoir module        
        call res%calc( QOUTFLOW_OUT, QRES_OUT, WRES, real(route_dt), _RC)
        QOUT_CAT = QOUTFLOW_OUT              
        where(res%active_res==1) QOUT_CAT=QRES_OUT
-       allocate(QINFLOW_LOCAL(n_pfaf_local))
+
+       ! map upstream outflows to local inflow
        call exchange_water(QOUT_CAT, QINFLOW_LOCAL, _RC)
+
+       ! update river storage
        WRIVER = WRIVER + QINFLOW_LOCAL*real(route_dt)
 
        ! Check balance if needed
