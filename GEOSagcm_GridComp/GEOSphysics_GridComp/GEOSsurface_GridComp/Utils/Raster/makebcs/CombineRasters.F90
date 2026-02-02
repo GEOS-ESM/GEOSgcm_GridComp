@@ -286,8 +286,8 @@ program mkOverlaySimple
 
     LATITUDES: do j=1,ny
        lats = -90._8 + (j - 0.5_8)*dy
-       da   = (sin(d2r*(lats+0.5*dy)) - &
-               sin(d2r*(lats-0.5*dy))   )*(dx*d2r)
+       da   = (sin(d2r*(lats+0.5_8*dy)) - &
+               sin(d2r*(lats-0.5_8*dy))   )*(dx*d2r)
 
        vv(3)   = da*lats
        vv(4)   = da
