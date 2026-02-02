@@ -426,10 +426,10 @@ program mkOverlaySimple
 
     do k=1,ip
        rTable(1,k) = atan2(rTable(1,k),rTable(2,k))/d2r
-       if(rTable(4,k) < 1.e-15) then 
-          rTable(2,k) =       rTable(3,k)/(rTable(4,k) + 1.e-15)
+       if(rTable(4,k) < 1.0e-15_8) then 
+          rTable(2,k) = rTable(3,k)/(rTable(4,k) + 1.0e-15_8)
        else
-          rTable(2,k) =       rTable(3,k)/rTable(4,k)
+          rTable(2,k) = rTable(3,k)/rTable(4,k)
        endif
        rTable(3,k) = rTable(4,k)
        rTable(4,k) = rTable(5,k)
