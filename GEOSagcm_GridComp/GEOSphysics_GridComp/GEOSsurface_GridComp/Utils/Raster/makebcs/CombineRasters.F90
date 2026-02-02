@@ -37,7 +37,8 @@ program mkOverlaySimple
   integer                :: ip1, ip2, nf1, nf2
   integer                :: nx1, nx2, ny1, ny2, nx, ny
   integer                :: maxtiles, hash
-  integer                :: count0,count1,count_rate
+   integer                :: count0,count1,count_rate
+   integer                :: ios
 
   integer,   allocatable :: RST1(:,:)
   integer,   allocatable :: RST2(:  )
@@ -291,8 +292,16 @@ program mkOverlaySimple
        vv(3)   = da*lats
        vv(4)   = da
 
-       read(RSTUNIT1) Rst1(:,j)
-       read(RSTUNIT2) Rst2
+       read(RSTUNIT1, iostat=ios) Rst1(:,j)
+       if (ios /= 0) then
+          write (6, '(A,I0,A,I0)') 'Error reading RSTUNIT1, iostat=', ios, ' at j=', j
+          call exit(2)
+       end if
+       read(RSTUNIT2, iostat=ios) Rst2
+       if (ios /= 0) then
+          write (6, '(A,I0,A,I0)') 'Error reading RSTUNIT2, iostat=', ios, ' at j=', j
+          call exit(2)
+       end if
 
        LONGITUDES: do i=1,nx
           vv(1) = da*ss(i)
@@ -300,6 +309,12 @@ program mkOverlaySimple
 
           Pix1  = Rst1(i,j)
           Pix2  = Rst2(i)
+
+          if (Pix1 < 1 .or. Pix1 > ip1 .or. Pix2 < 1 .or. Pix2 > ip2) then
+             write (6, '(A,2(I0,A),2(I0,A))') 'Out-of-range raster index: Pix1=', Pix1, &
+                                              ' Pix2=', Pix2, ' i=', i, ' j=', j
+             call exit(2)
+          end if
 
 ! If it is an overlay or we are at the tile type of the first grid
 ! that is being overlayed during a merge, hash the tile indeces from
