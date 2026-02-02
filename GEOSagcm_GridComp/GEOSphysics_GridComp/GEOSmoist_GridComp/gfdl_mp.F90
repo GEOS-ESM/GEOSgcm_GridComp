@@ -472,7 +472,7 @@ module gfdl_mp_mod
     real :: vg_min = 3.   !< minimum fall speed or constant fall speed
     real :: vr_min = 4.   !< minimum fall speed or constant fall speed
     real :: vh_min = 9.   !< minimum fall speed or constant fall speed
-            
+
     real :: vw_max = 0.01 !< max fall speed for cloud water (m/s)
     real :: vi_max =  1.0 !< max fall speed for ice
     real :: vs_max =  2.0 !< max fall speed for snow
@@ -611,7 +611,7 @@ subroutine gfdl_mp_init (hydrostatic,dtm)
 
 #ifdef INTERNAL_FILE_NML
     read (fn_nml, nml = gfdl_mp_nml, iostat = ios)
-#else       
+#else
     inquire (file = trim (fn_nml), exist = exists)
     if (.not. exists) then
         write (6, *) 'gfdl_mp :: namelist file: ', trim (fn_nml), ' does not exist'
@@ -1423,7 +1423,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         fac_eis = get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
 
         ! -----------------------------------------------------------------------
-        ! adjust autoconversion rates and thresholds for stable vs unstable 
+        ! adjust autoconversion rates and thresholds for stable vs unstable
         ! -----------------------------------------------------------------------
         cpaut  = cpaut0 * (    0.75*fac_eis +          (1.0-fac_eis))
         fac_rc =     rc * (rthreshs*fac_eis + rthreshu*(1.0-fac_eis)) ** 3
@@ -1582,10 +1582,10 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         endif
 
         ! -----------------------------------------------------------------------
-        ! import horizontal subgrid variability with pressure dependence   
+        ! import horizontal subgrid variability with pressure dependence
         ! total water subgrid deviation in horizontal direction
-        ! default area dependent form: use dx ~ 100 km as the base 
-        ! ----------------------------------------------------------------------- 
+        ! default area dependent form: use dx ~ 100 km as the base
+        ! -----------------------------------------------------------------------
         do k = ks, ke
            h_var(k) = min(0.30,1.0 - rhcrit(i,k)) ! restricted to 70%
         enddo
@@ -1752,7 +1752,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
         if (fix_negative) &
             call neg_adj (ks, ke, tz, dp, qaz, qvz, qlz, qrz, qiz, qsz, qgz, mppcw (i), &
-                mppfr (i), convt) 
+                mppfr (i), convt)
 
         do k = ks, ke
 
@@ -1786,6 +1786,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
 ! return QA tendencies for GEOS
             if (.not. do_qa) then
+               qa (i, k) = qaz (k)
                qa_dt (i, k) = rdt * &
                       ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
                         qa (i, k) )                                                                 ! Old Cloud
@@ -2588,7 +2589,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                     pl = den (k) * rdgas * tz (k) ! dry air pressure
                     tmp = tz (k)
                     DIAM = 2.0*LDRADIUS4(pl/100.0,tmp,q(k),zero,zero,2)*1.e6 ! microns
-                    lnP = log(pl/100.0)                                    
+                    lnP = log(pl/100.0)
                     C0 = -1.04 + 0.298*lnP
                     C1 =  0.67 - 0.097*lnP
                     ! apply pressure scaling
@@ -3672,7 +3673,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
     integer :: k
 
-    real :: ql, qi, qadum, newice 
+    real :: ql, qi, qadum, newice
     real :: tmp, sink, qim, fac_frez
 
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -4315,7 +4316,7 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
     real :: tc, factor, sink, qden
     real :: pgacw, pgacr
     real :: oms_cgacw, oms_cgacr
-        
+
     oms_cgacw = onemsig*cgacw
     oms_cgacr = onemsig*cgacr
 
@@ -4422,7 +4423,7 @@ subroutine subgrid_z_proc (ks, ke, den, denfac, dts, h_var, tz, qa, qv, ql, qr, 
     endif
 
 #ifdef SKIP
-    ! WMP - something here causes large warm temperature spikes 
+    ! WMP - something here causes large warm temperature spikes
     ! WMP - partial evap is moved into pinst call above
     ! WMP - ignoring condensation for now
     ! -----------------------------------------------------------------------
@@ -4593,7 +4594,7 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                       factor = min (1., fac_l2v * (rh_fac_evap * dq / qsw))
                    else
                       factor = 1.
-                   endif  
+                   endif
                    evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dqdt))
                    if (use_rhc_cevap .and. rh_tem .ge. rhc_cevap) then
                       evap = 0.
@@ -4946,9 +4947,9 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
                         cin (k) = 5.38e7 * exp (0.75 * log (qi (k) * den (k)))
                     if (inflag .eq. 2) &
                         cin (k) = exp (- 2.80 + 0.262 * (tice - tz (k))) * 1000.0
-                    if (inflag .eq. 3) & 
+                    if (inflag .eq. 3) &
                         cin (k) = exp (- 0.639 + 12.96 * (qv (k) / qsi - 1.0)) * 1000.0
-                    if (inflag .eq. 4) & 
+                    if (inflag .eq. 4) &
                         cin (k) = 5.e-3 * exp (0.304 * (tice - tz (k))) * 1000.0
                     if (inflag .eq. 5) &
                         cin (k) = 1.e-5 * exp (0.5 * (tice - tz (k))) * 1000.0
@@ -7329,7 +7330,7 @@ subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
     qs = qs + dqs
     qg = qg + dqg
 
-    ! total new condensate / old condensate 
+    ! total new condensate / old condensate
      if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
 
     if (qv .ne. qv) stop 'qv is NAN in update_qq ' // trim(descr)
@@ -7379,7 +7380,7 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
     qs = qs + dqs
     qg = qg + dqg
 
-    ! total new condensate / old condensate 
+    ! total new condensate / old condensate
     if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
 
     if (qv .ne. qv) stop 'qv is NAN in update_qt ' // trim(descr)
@@ -8165,20 +8166,20 @@ function wet_bulb_moist (qv, ql, qi, qr, qs, qg, tk, den)
 end function wet_bulb_moist
 
 real function new_liq_condensate(tk, qlk, qik)
-            
+
      real, intent(in) :: tk, qlk, qik
-     real :: ptc, ifrac                      
+     real :: ptc, ifrac
 
      ifrac = ice_fraction(tk,cnv_fraction, srf_type)
      new_liq_condensate = min(max(0.0,(1.0-ifrac)*(qlk+qik) - qlk),qik)
-            
+
 end function new_liq_condensate
-            
+
 real function new_ice_condensate(tk, qlk, qik)
-            
+
      real, intent(in) :: tk, qlk, qik
      real :: ptc, ifrac
-        
+
      ifrac = ice_fraction(tk,cnv_fraction, srf_type)
      new_ice_condensate = min(max(0.0,ifrac*(qlk+qik) - qik),qlk)
 
