@@ -510,7 +510,7 @@ class VerticalDiscretization:
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
-        # initalize local fields
+        # initialize local fields
         self._fp: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._fm: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._aa: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")

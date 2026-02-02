@@ -39,7 +39,7 @@ def compute_extra_inputs_from_state(
     """
     Performs initial setup for the GF 2020 convection scheme:
      - Compute derived states
-     - Initalize stochastic variability for convection
+     - initialize stochastic variability for convection
      - Modify area (m^2) here so GF scale dependence has a convection_fraction dependence
 
     This stencil MUST be built using Z_INTERFACE_DIM to function properly.
@@ -80,7 +80,7 @@ def compute_extra_inputs_from_state(
         qsat, _ = saturation_specific_humidity(t, p, ese, esx)
         tpwi_star = tpwi_star + qsat * mass
 
-        # Initalize stochastic variability for convection
+        # initialize stochastic variability for convection
         if STOCHASTIC_CONVECTION == True:  # noqa
             # Create bit-processor-reproducible random white noise for convection [0:1]
             seedini = 1000000 * (100 * t.at(K=k_end) - floor(100 * t.at(K=k_end)))

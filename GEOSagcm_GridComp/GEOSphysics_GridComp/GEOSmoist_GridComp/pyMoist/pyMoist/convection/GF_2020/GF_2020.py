@@ -17,13 +17,13 @@ class GF2020:
         # Create extra quantity factories
         self.nmp_quantity_factory = self.make_nmp_quantity_factory(quantity_factory)
 
-        # Initalize saturation tables
+        # initialize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        # Initalize extra quantities
+        # initialize extra quantities
         self.temporaries = GF2020Locals.make(self.quantity_factory)
 
-        # Initalize submodules and build stencils
+        # initialize submodules and build stencils
         self.setup = GF2020Setup(stencil_factory, quantity_factory, GF_2020_config)
 
     @staticmethod

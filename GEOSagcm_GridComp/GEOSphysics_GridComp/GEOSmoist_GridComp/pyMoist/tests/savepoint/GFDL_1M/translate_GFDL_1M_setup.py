@@ -75,10 +75,10 @@ class TranslateGFDL_1M_setup(TranslateFortranData2Py):
             "DQGDT_macro": grid.compute_dict(),
         }
 
-        # Initalize saturation tables
+        # initialize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        # Initalize extra quantities
+        # initialize extra quantities
         self.internal_outputs = Outputs.zeros(self.quantity_factory)
         self.temporaries = Temporaries.make(self.quantity_factory)
         self.masks = Masks.make(self.quantity_factory)

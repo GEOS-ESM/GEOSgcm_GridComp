@@ -127,10 +127,10 @@ class CumulusParameterization:
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
-        # initalize the plume dependent constants, to be set for each plume within the loop (in Setup)
+        # initialize the plume dependent constants, to be set for each plume within the loop (in Setup)
         self.plume_dependent_constants = GF2020PlumeDependentConstants()
 
-        # initalize the local fields needed within this class
+        # initialize the local fields needed within this class
         self.locals = GF2020CumulusParameterizationLocals.zeros(
             quantity_factory,
             data_dimensions={
@@ -142,7 +142,7 @@ class CumulusParameterization:
             },
         )
 
-        # initalize all the subclasses
+        # initialize all the subclasses
         self._setup = Setup(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
@@ -675,7 +675,7 @@ class CumulusParameterization:
                 # outputs a model sounding for the stand-alone code (part 1)
                 if self.cumulus_parameterization_config.CLOUD_LEVEL_GRID != 1:
                     ndsl_log.warning(
-                        " GF2020 cumulus parameterization initalized with unimplemented OUTPUT_SOUNDING option. "
+                        " GF2020 cumulus parameterization initialized with unimplemented OUTPUT_SOUNDING option. "
                         "Output soundings are not currently available. Contact support if this tool is needed."
                     )
 

@@ -311,7 +311,7 @@ class C1DProfile:
         if self.cumulus_parameterization_config.FIRST_GUESS_W or self.config.AUTOCONV == 4:
             raise NotImplementedError(
                 """
-                [NDSL] C1DProfile initalized with major untested option.
+                [NDSL] C1DProfile initialized with major untested option.
                 This code has been implemented, but was not executed in development experiment and has not
                 been tested. It is highly advised that you run translate tests
                 GF2020_CumulusParameterization_C1DProfile_shallow/mid/deep and compare NDSL results with

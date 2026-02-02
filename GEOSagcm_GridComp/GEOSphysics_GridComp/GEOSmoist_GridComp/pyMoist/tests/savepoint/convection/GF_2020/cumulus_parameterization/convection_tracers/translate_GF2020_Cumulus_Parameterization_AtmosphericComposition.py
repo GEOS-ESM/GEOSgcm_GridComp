@@ -92,7 +92,7 @@ class TestCore:
         ddim_fields: dict,
         **inputs,
     ):
-        # initalize constants
+        # initialize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
@@ -100,7 +100,7 @@ class TestCore:
             cumulus_parameterization_config, plume_dependent_constants, plume
         )
 
-        # initalize convection tracers
+        # initialize convection tracers
         convection_tracers = ConvectionTracers.ones(
             self.quantity_factory,
             data_dimensions={
@@ -126,7 +126,7 @@ class TestCore:
         convection_tracers.use_gocart.field[:] = convection_tracers_input["use_gocart"]
         convection_tracers.is_wetdep.field[:] = convection_tracers_input["is_wetdep"]
 
-        # initalize dataclasses
+        # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={

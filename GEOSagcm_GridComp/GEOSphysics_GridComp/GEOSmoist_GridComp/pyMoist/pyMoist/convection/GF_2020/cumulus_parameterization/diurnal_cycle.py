@@ -163,7 +163,7 @@ class DiurnalCycle:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        # initalize internal fields
+        # initialize internal fields
         self._tau_ecmwf: Local = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         self._tau_bl: Local = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
 

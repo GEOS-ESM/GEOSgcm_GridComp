@@ -87,7 +87,7 @@ class TestCore:
         out_vars.update(in_vars["data_vars"])
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
-        # initalize constants
+        # initialize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
@@ -95,7 +95,7 @@ class TestCore:
             cumulus_parameterization_config, plume_dependent_constants, plume
         )
 
-        # initalize dataclasses
+        # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
@@ -196,7 +196,7 @@ class TestCore:
             "local_t_tendency_from_environmental_subsidence"
         ]
 
-        # initalize test code
+        # initialize test code
         code = VerticalDiscretization(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,

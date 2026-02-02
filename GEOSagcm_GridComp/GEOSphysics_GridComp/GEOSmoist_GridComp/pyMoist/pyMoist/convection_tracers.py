@@ -13,7 +13,7 @@ class ConvectionTracers(State):
     Dataclass of Convection Tracers, contains both the numerical data of the tracers
     (stored in the "tracer" field) and metadata, each stored in its off-grid field
 
-    Must be initalized with the following extra dimensions:
+    Must be initialized with the following extra dimensions:
         "convection_tracers": number of convective tracers, must be defined prior to initalization
         "size_three_dimension": fixed dimension of size three for metadata
         "size_four_dimension": fixed dimension of size four for metadata

@@ -145,11 +145,11 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-In")
 
     def compute_func(self, **inputs):
-        # initalize constants
+        # initialize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
 
-        # initalize convection tracers
+        # initialize convection tracers
         convection_tracers = ConvectionTracers.ones(
             self.quantity_factory,
             data_dimensions={
@@ -159,7 +159,9 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
             },
         )
 
-        convection_tracers.tracers.field[:] = np.moveaxis(self.convection_tracers_input["convection_tracers"], 0, 3)
+        convection_tracers.tracers.field[:] = np.moveaxis(
+            self.convection_tracers_input["convection_tracers"], 0, 3
+        )
         convection_tracers.vect_hcts.field[:] = self.convection_tracers_input["vect_hcts"]
         convection_tracers.kc_scal.field[:] = self.convection_tracers_input["kc_scal"]
         convection_tracers.fscav.field[:] = self.convection_tracers_input["fscav"]
@@ -173,10 +175,10 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         convection_tracers.use_gocart.field[:] = self.convection_tracers_input["use_gocart"]
         convection_tracers.is_wetdep.field[:] = self.convection_tracers_input["is_wetdep"]
 
-        # initalize pyMoist saturation tables
+        # initialize pyMoist saturation tables
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        # initalize state
+        # initialize state
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
@@ -351,7 +353,7 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
                 "More complicated data management system is required."
             )
 
-        # initalize the test subject
+        # initialize the test subject
         code = CumulusParameterization(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,

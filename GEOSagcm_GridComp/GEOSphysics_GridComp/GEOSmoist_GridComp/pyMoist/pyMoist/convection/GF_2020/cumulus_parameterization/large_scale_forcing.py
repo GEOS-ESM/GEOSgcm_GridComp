@@ -370,7 +370,7 @@ class LargeScaleForcing:
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
-        # initalize locals
+        # initialize locals
         quantity_factory.add_data_dimensions(
             {
                 "ensemble_members": cumulus_parameterization_constants.MAXENS1

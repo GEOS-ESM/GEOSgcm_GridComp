@@ -218,8 +218,8 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         import numpy as np
 
-        # top rows are not computed in Fortran, retains initalized value (nan)
-        # Python initalizes with zero, fill top row with nan for test passage
+        # top rows are not computed in Fortran, retains initialized value (nan)
+        # Python initializes with zero, fill top row with nan for test passage
         locals.cumulus_parameterization_input.p_mb.field[:, :, -1] = np.nan
         locals.cumulus_parameterization_input.t.field[:, :, -1] = np.nan
         locals.cumulus_parameterization_input.vapor_timestep_start.field[:, :, -1] = np.nan

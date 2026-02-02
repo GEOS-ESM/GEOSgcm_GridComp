@@ -185,7 +185,7 @@ class TranslateGFDL_1M_driver_setup(TranslateFortranData2Py):
 
         config_dependent_constants = ConfigConstants.make(self.GFDL_1M_config)
 
-        # Initalize object to be tested
+        # initialize object to be tested
         setup = Setup(self.stencil_factory, self.GFDL_1M_config, config_dependent_constants)
 
         setup(**inputs)

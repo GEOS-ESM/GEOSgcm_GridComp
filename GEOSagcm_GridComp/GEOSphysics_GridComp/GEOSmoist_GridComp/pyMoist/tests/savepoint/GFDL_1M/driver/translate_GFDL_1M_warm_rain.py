@@ -176,15 +176,15 @@ class TranslateGFDL_1M_warm_rain(TranslateFortranData2Py):
 
         self.config_dependent_constants = ConfigConstants.make(self.GFDL_1M_config)
 
-        # Initalize saturation tables
+        # initialize saturation tables
         self.sat_tables = get_tables(self.stencil_factory.backend)
 
-        # Initalize extra quantities
+        # initialize extra quantities
         temporaries = Temporaries.make(self.quantity_factory)
         outputs = Outputs.make(self.quantity_factory)
         masks = Masks.make(self.quantity_factory)
 
-        # Initalize object to be tested
+        # initialize object to be tested
         self.warm_rain = WarmRain(
             self.stencil_factory,
             self.quantity_factory,

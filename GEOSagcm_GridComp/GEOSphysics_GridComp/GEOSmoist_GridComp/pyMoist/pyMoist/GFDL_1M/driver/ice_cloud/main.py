@@ -22,7 +22,7 @@ class IceCloud:
         config_dependent_constants: ConfigConstants,
     ):
 
-        # Initalize stencils
+        # initialize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._icloud_core = stencil_factory.from_dims_halo(
             func=icloud_core,

@@ -80,7 +80,7 @@ class TranslateGFDL_1M_radiation_coupling(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # Initalize GFDL_1M configuration
+        # initialize GFDL_1M configuration
         GFDL_1M_config = GFDL1MConfig(
             PHYS_HYDROSTATIC=bool(self.constants["LPHYS_HYDROSTATIC"]),
             HYDROSTATIC=bool(self.constants["LHYDROSTATIC"]),
@@ -183,7 +183,7 @@ class TranslateGFDL_1M_radiation_coupling(TranslateFortranData2Py):
             CCI_EVAP_EFF=self.constants["CCI_EVAP_EFF"],
         )
 
-        # Initalize saturation tables
+        # initialize saturation tables
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         vapor = self.make_ijk_quantity(inputs.pop("Q"))

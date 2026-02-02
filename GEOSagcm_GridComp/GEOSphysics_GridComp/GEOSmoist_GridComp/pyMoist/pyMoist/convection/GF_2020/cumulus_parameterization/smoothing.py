@@ -18,7 +18,7 @@ def smooth_tendencies(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and USE_SMOOTH_TENDENCIES >= 1:
-            # initalize 2d temporaries
+            # initialize 2d temporaries
             internal_tendency_1_2d: FloatFieldIJ = 0.0
             internal_tendency_2_2d: FloatFieldIJ = 0.0
             internal_tendency_3_2d: FloatFieldIJ = 0.0

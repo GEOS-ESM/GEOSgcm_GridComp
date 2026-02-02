@@ -150,7 +150,7 @@ def saturation_specific_humidity(
     Compute saturation specific humidity and derivative saturation specific humidity
     with respect to temperature from saturation pressure tables.
 
-    Tables must be initalized before use.
+    Tables must be initialized before use.
 
     Arguments:
         t (in): temperature in Kelvin

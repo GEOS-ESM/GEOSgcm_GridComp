@@ -229,7 +229,7 @@ def find_lcl(
                 perturbation_field=dummy_field_no_read,
             )
 
-        # initalize 2d temporaries
+        # initialize 2d temporaries
         p_lcl: FloatFieldIJ = 0.0
         t_lcl: FloatFieldIJ = 0.0
         dz_lcl: FloatFieldIJ = 0.0
@@ -414,7 +414,7 @@ def get_convective_cloud_base_level(
         start_level_internal: IntFieldIJ = 0
         cap_max_internal = cap_max
 
-        # initalize some 2d temporaries
+        # initialize some 2d temporaries
         dzh: FloatFieldIJ = 0.0
         found_level: BoolFieldIJ = False
 

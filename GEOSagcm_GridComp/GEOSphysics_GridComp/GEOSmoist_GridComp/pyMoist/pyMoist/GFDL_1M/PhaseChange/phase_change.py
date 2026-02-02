@@ -65,7 +65,7 @@ class PhaseChange:
         self.temporaries = Temporaries.make(quantity_factory)
 
         # -----------------------------------------------------------------------
-        # Initalize QSat tables
+        # initialize QSat tables
         # -----------------------------------------------------------------------
         self.tables = get_saturation_vapor_pressure_table(
             self.stencil_factory.backend, formulation=formulation

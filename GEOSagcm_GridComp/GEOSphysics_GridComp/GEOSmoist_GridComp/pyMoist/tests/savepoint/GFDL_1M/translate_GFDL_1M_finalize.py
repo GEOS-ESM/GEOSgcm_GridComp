@@ -109,7 +109,7 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # Initalize GFDL_1M configuration
+        # initialize GFDL_1M configuration
         GFDL_1M_config = GFDL1MConfig(
             PHYS_HYDROSTATIC=bool(self.constants["LPHYS_HYDROSTATIC"]),
             HYDROSTATIC=bool(self.constants["LHYDROSTATIC"]),
@@ -212,10 +212,10 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
             CCI_EVAP_EFF=self.constants["CCI_EVAP_EFF"],
         )
 
-        # Initalize saturation tables
+        # initialize saturation tables
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        # Initalize extra quantities
+        # initialize extra quantities
         temporaries = Temporaries.make(self.quantity_factory)
         masks = Masks.make(self.quantity_factory)
 
@@ -259,7 +259,7 @@ class TranslateGFDL_1M_finalize(TranslateFortranData2Py):
         driver.outputs.revap = self.make_ijk_quantity(inputs.pop("REV_LS"))
         driver.outputs.isubl = self.make_ijk_quantity(inputs.pop("RSU_LS"))
 
-        # Initalize outputs to be overwritten with Fortran data
+        # initialize outputs to be overwritten with Fortran data
         outputs = Outputs.zeros(self.quantity_factory)
 
         # Bring in Fortran data from earlier in the component

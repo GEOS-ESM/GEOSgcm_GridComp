@@ -23,7 +23,7 @@ class FallSpeed:
     ):
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
-        # Initalize stencils
+        # initialize stencils
         self._fall_speed_core = stencil_factory.from_dims_halo(
             func=fall_speed,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],

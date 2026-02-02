@@ -21,7 +21,7 @@ def check_precip_get_zt(
     # reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
     # determine if any precip falls in the column
     # if it falls anywhere in the column, the entire column becomes true
-    # initalized to 0 (false), potentially changed to 1 (true)
+    # initialized to 0 (false), potentially changed to 1 (true)
     with computation(FORWARD), interval(...):
         if q > constants.QPMIN:
             precip_fall = 1
@@ -192,7 +192,7 @@ def setup(
 
     # determine frozen levels
     # later operations will only be executed if frozen/melted
-    # initalized to is_frozen = False, True = frozen, False = melted
+    # initialized to is_frozen = False, True = frozen, False = melted
     with computation(PARALLEL), interval(...):
         if t1 <= constants.TICE:
             is_frozen = True

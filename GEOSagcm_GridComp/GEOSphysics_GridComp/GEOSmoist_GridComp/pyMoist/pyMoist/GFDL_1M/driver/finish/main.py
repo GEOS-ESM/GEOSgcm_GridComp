@@ -16,7 +16,7 @@ class Finish:
         """
         Save driver outputs: tentencies & precipitation
         """
-        # Initalize stencils
+        # initialize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         self._update_tendencies = stencil_factory.from_dims_halo(

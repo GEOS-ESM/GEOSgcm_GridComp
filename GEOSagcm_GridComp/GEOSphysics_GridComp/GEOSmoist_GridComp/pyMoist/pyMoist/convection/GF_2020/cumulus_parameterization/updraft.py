@@ -36,7 +36,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import
 )
 from ndsl.stencils.column_operations import column_min, column_max_ddim
 
-# initalize constants and field type for UpdraftMassFlux stencil
+# initialize constants and field type for UpdraftMassFlux stencil
 _X_ALPHA = [
     3.699999,
     3.699999,
@@ -159,7 +159,7 @@ def updraft_mass_flux(
     )
 
     with computation(FORWARD), interval(0, 1):
-        # initalize constants
+        # initialize constants
         PX: FloatFieldIJ = 45 / 120  # px sets the pressure level of max zu
         BETA_DEEP: FloatFieldIJ = 1.25
         G_BETA_DEEP: FloatFieldIJ = 0.8974707
@@ -400,7 +400,7 @@ def updraft_moisture(
             get_delmix_implementation_here = True
 
     with computation(PARALLEL), interval(...):
-        # initalize mask to stop computation in the next block
+        # initialize mask to stop computation in the next block
         stop_current_index = False
 
     with computation(FORWARD), interval(1, None):
@@ -939,7 +939,7 @@ class UpdraftInitialWorkfunctions:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        # initalize local field
+        # initialize local field
         self._normalized_massflux_updraft_forced_3d: Local = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_DIM], "n/a"
         )
@@ -1025,7 +1025,7 @@ class UpdraftCIN:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        # initalize local field
+        # initialize local field
         self._normalized_massflux_updraft_forced_3d: Local = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_DIM], "n/a"
         )

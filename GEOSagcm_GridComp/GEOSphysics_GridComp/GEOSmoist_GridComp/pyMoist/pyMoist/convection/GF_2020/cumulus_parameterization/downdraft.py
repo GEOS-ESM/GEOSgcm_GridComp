@@ -803,7 +803,7 @@ def downdraft_moisture(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and plume != 0:
-            # initalize a 2d field to be filled in the next block
+            # initialize a 2d field to be filled in the next block
             abs_check: BoolFieldIJ = False
 
     with computation(FORWARD), interval(0, 1):
@@ -900,7 +900,7 @@ def downdraft_windshear(
     from __externals__ import AEROEVAP
 
     with computation(FORWARD), interval(0, 1):
-        # initalize internal constants
+        # initialize internal constants
         alpha3: FloatFieldIJ = 1.9
         beta3: FloatFieldIJ = -1.13
 
@@ -913,7 +913,7 @@ def downdraft_windshear(
             epsilon_computed[0, 0][count] = 0.0
             count += 1
 
-        # initalize internal 2d temporaries
+        # initialize internal 2d temporaries
         vshear: FloatFieldIJ = 0.0
         sdp: FloatFieldIJ = 0.0
         vws: FloatFieldIJ = 0.0
@@ -1036,7 +1036,7 @@ class DowndraftOriginLevel(NDSLRuntime):
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
-        # initalize locals
+        # initialize locals
         self._critical_level: Local = self.make_local(quantity_factory, [X_DIM, Y_DIM], Int)
 
         # construct stencils

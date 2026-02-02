@@ -59,7 +59,7 @@ def init_temporaries(
     isubl: FloatField,
 ):
     """
-    Initalize temporary copies of many quantities
+    initialize temporary copies of many quantities
 
     modification to quantities (t, p, q, etc.) made inside of the driver
     are not returned outside of the driver. these copies are necessary

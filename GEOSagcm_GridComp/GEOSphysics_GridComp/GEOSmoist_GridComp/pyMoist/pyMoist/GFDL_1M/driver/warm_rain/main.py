@@ -23,10 +23,10 @@ class WarmRain:
     ):
         self.GFDL_1M_config = GFDL_1M_config
 
-        # Initalize temporaries
+        # initialize temporaries
         self.temporaries = Temporaries.make(quantity_factory)
 
-        # Initalize stencils
+        # initialize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         self._warm_rain_step_1 = stencil_factory.from_dims_halo(

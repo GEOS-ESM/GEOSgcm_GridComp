@@ -106,7 +106,7 @@ class Translateqsat_functions(TranslateFortranData2Py):
         }
 
     def compute(self, inputs):
-        # Initalize tables
+        # initialize tables
         tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         # Get input data

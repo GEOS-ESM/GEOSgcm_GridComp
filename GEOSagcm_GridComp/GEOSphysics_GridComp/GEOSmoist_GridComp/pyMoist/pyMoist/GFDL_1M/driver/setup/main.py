@@ -18,7 +18,7 @@ class Setup:
         the changes back to the rest of the model. To replicate this behavior,
         temporary copies of these variables are used throughout the driver.
         """
-        # Initalize stencils
+        # initialize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         self._init_temporaries = stencil_factory.from_dims_halo(

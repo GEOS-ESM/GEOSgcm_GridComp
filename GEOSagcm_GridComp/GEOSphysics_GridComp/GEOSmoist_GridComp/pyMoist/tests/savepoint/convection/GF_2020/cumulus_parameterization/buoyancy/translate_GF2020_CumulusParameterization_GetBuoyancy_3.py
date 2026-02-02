@@ -56,7 +56,7 @@ class TestCore:
         out_vars.update(in_vars["data_vars"])
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
-        # initalize constants
+        # initialize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
@@ -64,7 +64,7 @@ class TestCore:
             cumulus_parameterization_config, plume_dependent_constants, plume
         )
 
-        # initalize dataclasses
+        # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
             self.quantity_factory,
             data_dimensions={
@@ -105,7 +105,7 @@ class TestCore:
             "local_geopotential_height_cloud_levels_forced"
         ]
 
-        # initalize test code
+        # initialize test code
         code = self.stencil_factory.from_dims_halo(
             func=get_buoyancy,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],

@@ -194,7 +194,7 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
             CCI_EVAP_EFF=self.constants["CCI_EVAP_EFF"],
         )
 
-        # Initalize object to be tested
+        # initialize object to be tested
         self.driver = MicrophysicsDriver(
             self.stencil_factory,
             self.quantity_factory,

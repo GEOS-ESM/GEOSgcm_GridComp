@@ -214,7 +214,7 @@ class GEOSPyMoistWrapper:
         self._GFDL_1M_state = pyGFDL_1M.MicrophysicState.zeros(self.quantity_factory)
         self._GFDL_1M_outputs = pyGFDL_1M.Outputs.zeros(self.quantity_factory)
 
-        # Initalize MAPL Memory Respositories
+        # initialize MAPL Memory Respositories
         self._mapl_import = MAPLMemoryRepository(
             mapl_states.import_,
             self.quantity_factory,
@@ -236,7 +236,7 @@ class GEOSPyMoistWrapper:
     def driver(self) -> Callable:
         if not self._GFDL_1M_driver:
             if self.GFDL_1M_config is None:
-                raise RuntimeError("GFDL_1M configuration not initalized")
+                raise RuntimeError("GFDL_1M configuration not initialized")
             with StencilBackendCompilerOverride(
                 MPI.COMM_WORLD,
                 self.stencil_config.dace_config,
@@ -330,7 +330,7 @@ class GEOSPyMoistWrapper:
             **upper_case_dict,
         )
 
-        # Initalize the module
+        # initialize the module
         with StencilBackendCompilerOverride(
             MPI.COMM_WORLD,
             self.stencil_config.dace_config,
@@ -546,25 +546,25 @@ class GEOSPyMoistWrapper:
                     "large_scale_nonanvil_ice_flux": mapl_export.PFI_LS[:, :, 1:],
                     "anvil_liquid_flux": mapl_export.PFL_AN[:, :, 1:],
                     "anvil_ice_flux": mapl_export.PFI_AN[:, :, 1:],
-                    "large_scale_rainwater_source": mapl_export.DQRL
-                    if mapl_export.associated("DQRL")
-                    else None,
-                    "moist_friction_temperature_tendency": mapl_export.DTDTFRIC
-                    if mapl_export.associated("DTDTFRIC")
-                    else None,
+                    "large_scale_rainwater_source": (
+                        mapl_export.DQRL if mapl_export.associated("DQRL") else None
+                    ),
+                    "moist_friction_temperature_tendency": (
+                        mapl_export.DTDTFRIC if mapl_export.associated("DTDTFRIC") else None
+                    ),
                     "simulated_reflectivity": mapl_export.DBZ if mapl_export.associated("DBZ") else None,
-                    "maximum_reflectivity": mapl_export.DBZ_MAX
-                    if mapl_export.associated("DBZ_MAX")
-                    else None,
-                    "one_km_agl_reflectivity": mapl_export.DBZ_1KM
-                    if mapl_export.associated("DBZ_1KM")
-                    else None,
-                    "echo_top_reflectivity": mapl_export.DBZ_TOP
-                    if mapl_export.associated("DBZ_TOP")
-                    else None,
-                    "minus_10c_reflectivity": mapl_export.DBZ_M10C
-                    if mapl_export.associated("DBZ_M10C")
-                    else None,
+                    "maximum_reflectivity": (
+                        mapl_export.DBZ_MAX if mapl_export.associated("DBZ_MAX") else None
+                    ),
+                    "one_km_agl_reflectivity": (
+                        mapl_export.DBZ_1KM if mapl_export.associated("DBZ_1KM") else None
+                    ),
+                    "echo_top_reflectivity": (
+                        mapl_export.DBZ_TOP if mapl_export.associated("DBZ_TOP") else None
+                    ),
+                    "minus_10c_reflectivity": (
+                        mapl_export.DBZ_M10C if mapl_export.associated("DBZ_M10C") else None
+                    ),
                     "deep_convective_precipitation": mapl_export.CN_PRCP,
                     "anvil_precipitation": mapl_export.AN_PRCP,
                     "shallow_convective_precipitation": mapl_export.SC_PRCP,

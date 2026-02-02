@@ -178,7 +178,7 @@ def smow_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function smlt
     """
     smow_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qsrho) + c_3 * qsrho ** 0.65625 * sqrt(rhofac)
+        c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
     ) + c_4 * tc * (psacw + psacr)
 
     return smow_melt
@@ -205,7 +205,7 @@ def graupel_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function gmlt
     """
     graupel_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qgrho) + c_3 * qgrho ** 0.6875 / rho ** 0.25
+        c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
     ) + c_4 * tc * (pgacw + pgacr)
 
     return graupel_melt
@@ -1036,7 +1036,7 @@ def subgrid_z_proc(
                     * dq
                     * 349138.78
                     * exp(0.875 * log(qi1 * den1))
-                    / (qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1 ** 2) + 4.42478e4)
+                    / (qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1**2) + 4.42478e4)
                 )
             else:
                 pidep = 0.0
@@ -1052,7 +1052,7 @@ def subgrid_z_proc(
                 # trigger checked in driver `check_flags` function
 
                 # dev NOTE: unsure how to handle pssub. In Fortran this variable is
-                # initalized to nan then used here (at least when do_subl is False,
+                # initialized to nan then used here (at least when do_subl is False,
                 # maybe do_subl has other unknown effects)
                 # # sublimation
                 # if do_subl == True: #noqa
@@ -1362,7 +1362,7 @@ def icloud_core(
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
     with computation(FORWARD), interval(0, 1):
-        # initalize vtr in place of the warm rain calculations
+        # initialize vtr in place of the warm rain calculations
         vtr = 0
 
     # -----------------------------------------------------------------------
@@ -1401,7 +1401,7 @@ def icloud_core(
         if z_slope_ice == True:  # noqa
             q_linear_prof = qi1
             h_var_linear_prof = rh_limited
-            dm_linear_prof = q_linear_prof  # initalized here to ensure it is created as a 3d field
+            dm_linear_prof = q_linear_prof  # initialized here to ensure it is created as a 3d field
 
     with computation(FORWARD), interval(1, None):
         if z_slope_ice == True:  # noqa
