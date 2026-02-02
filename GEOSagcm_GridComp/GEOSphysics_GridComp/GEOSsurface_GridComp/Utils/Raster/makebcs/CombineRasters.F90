@@ -36,9 +36,10 @@ program mkOverlaySimple
   integer                :: STATUS, i1, i2, nvars, rvars
   integer                :: ip1, ip2, nf1, nf2
   integer                :: nx1, nx2, ny1, ny2, nx, ny
-  integer                :: maxtiles, hash
-   integer                :: count0,count1,count_rate
-   integer                :: ios
+   integer                :: maxtiles, hash
+    integer                :: count0,count1,count_rate
+    integer                :: ios
+   integer                :: bad_count
 
   integer,   allocatable :: RST1(:,:)
   integer,   allocatable :: RST2(:  )
@@ -422,7 +423,8 @@ program mkOverlaySimple
 ! Compute proper longitude and latitude in degrees and compress
 ! the real table for WriteTiling.
 
-    if(Verb) print *, "Computing weighted lons and lats..."
+   if(Verb) print *, "Computing weighted lons and lats..."
+   bad_count = 0
 
     do k=1,ip
        rTable(1,k) = atan2(rTable(1,k),rTable(2,k))/d2r
@@ -433,6 +435,15 @@ program mkOverlaySimple
        endif
        rTable(3,k) = rTable(4,k)
        rTable(4,k) = rTable(5,k)
+
+       if (Verb) then
+          if ((abs(rTable(1,k)) > 180._8 .or. abs(rTable(2,k)) > 90._8) .and. bad_count < 5) then
+             bad_count = bad_count + 1
+             write (6,'(A,I0,A,2F12.5,A,2F12.5)') 'Bad lon/lat k=', k, &
+                  ' lon,lat=', rTable(1,k), rTable(2,k), &
+                  '  (/360)=', rTable(1,k)/360._8, rTable(2,k)/360._8
+          end if
+       end if
     end do
 
     if(rvars==6) then
