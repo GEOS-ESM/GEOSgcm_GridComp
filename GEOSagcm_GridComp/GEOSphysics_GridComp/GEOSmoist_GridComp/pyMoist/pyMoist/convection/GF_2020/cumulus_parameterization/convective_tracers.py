@@ -5,8 +5,14 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Tracers,
     FloatField_Plume,
     FloatFieldIJ_Plume,
+    FloatField_Tracers_Plume,
 )
-from ndsl.dsl.typing import Int, FloatField, FloatFieldIJ, Float
+from pyMoist.field_types import (
+    ConvectionTracerMetaDataTable_Float,
+    ConvectionTracerMetaDataTable_Bool,
+    ConvectionTracerMetaDataTable_x4,
+)
+from ndsl.dsl.typing import IntFieldIJ, Int, FloatField, FloatFieldIJ, Float
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl import StencilFactory, QuantityFactory, Quantity, Local
 from pyMoist.convection.GF_2020.config import GF2020Config
@@ -18,235 +24,7 @@ import pyMoist.constants as constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import tridiag
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
-
-import numpy as np
-
-
-def get_incloud_sc_chem_up(
-    error_code: IntFieldIJ_Plume,
-    plume: Int,
-    sc_up_chem: FloatField_Tracers,
-    chemistry_tracers_cloud_levels: FloatField_Tracers,
-    pw_up_chem: FloatField_Tracers,
-    tot_pw_up_chem: FloatFieldIJ_Tracers,
-    ocean_fraction: FloatFieldIJ,
-    AVERAGE_LAYER_DEPTH: Float,
-    updraft_origin_level: IntFieldIJ_Plume,
-    po: FloatField,
-    sc_b: FloatFieldIJ_Tracers,
-    cloud_top_level: IntFieldIJ_Plume,
-    normalized_massflux_updraft_forced: FloatField_Plume,
-    mass_detrainment_updraft_forced: FloatField_Plume,
-    mass_entrainment_updraft_forced: FloatField_Plume,
-    chemistry_tracers: FloatField_Tracers,
-    geopotential_height_cloud_levels: FloatField,
-    vertical_velocity_3d: FloatField,
-    CNV_Tracers_fscav: FloatFieldIJ_Tracers,
-    p_cloud_levels_forced: FloatField_Plume,
-):
-    from __externals__ import k_end, BOUNDARY_CONDITION_METHOD, USE_TRACER_SCAVEN, NUMBER_OF_TRACERS
-
-    with computation(FORWARD), interval(...):
-        n = 0
-        while n < NUMBER_OF_TRACERS:
-            sc_up_chem[0, 0, 0][n] = chemistry_tracers_cloud_levels[0, 0, 0][n]
-            pw_up_chem[0, 0, 0][n] = 0.0
-            tot_pw_up_chem[0, 0][n] = 0.0
-            n += 1
-
-    with computation(PARALLEL), interval(...):
-        # make garbage field so the get_cloud_boundary_conditions call does not break
-        # this is never touched so long as compute_perturbation=False
-        dummy_field_no_read = 0.0
-        chemistry_tracers_cloud_levels_temp = 0.0
-
-    # with computation(FORWARD), interval(...):
-    #     if error_code[0, 0][plume] == 0:
-    #         n = 0
-    #         while n < NUMBER_OF_TRACERS:
-    #             chemistry_tracers_cloud_levels_temp = chemistry_tracers_cloud_levels[0, 0, 0][n]
-
-    #             sc_b[0, 0][n] = get_cloud_boundary_conditions(
-    #                 field=chemistry_tracers_cloud_levels_temp,
-    #                 scalar_perturbation=0,
-    #                 p=po,
-    #                 updraft_origin_level=updraft_origin_level[0, 0][plume],
-    #                 ocean_fraction=ocean_fraction,
-    #                 BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
-    #                 AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
-    #                 k_end=k_end,
-    #                 compute_perturbation=False,
-    #                 perturbation_field=dummy_field_no_read,
-    #             )
-    #             n += 1
-
-    # with computation(FORWARD), interval(...):
-    #     if error_code[0, 0][plume] == 0:
-    #         n = 0
-    #         while n < NUMBER_OF_TRACERS:
-    #             if K <= updraft_origin_level[0, 0][plume]:
-    #                 sc_up_chem[0, 0, 0][n] = sc_b[0, 0][n]
-    #             n += 1
-
-    with computation(FORWARD), interval(...):
-        if error_code[0, 0][plume] == 0:
-            if K >= updraft_origin_level[0, 0][plume] + 1 and K <= cloud_top_level[0, 0][plume] + 1:
-                XZZ: FloatFieldIJ = normalized_massflux_updraft_forced.at(K=K - 1, ddim=[plume])
-                XZD: FloatFieldIJ = 0.5 * mass_detrainment_updraft_forced.at(K=K - 1, ddim=[plume])
-                XZE: FloatFieldIJ = mass_entrainment_updraft_forced.at(K=K - 1, ddim=[plume])
-                denom: FloatFieldIJ = XZZ - XZD + XZE
-
-                n = 0
-                while n < NUMBER_OF_TRACERS:
-                    if denom > 0.0:
-                        sc_up_chem[0, 0, 0][n] = (
-                            sc_up_chem.at(K=K - 1, ddim=[n]) * XZZ
-                            - sc_up_chem.at(K=K - 1, ddim=[n]) * XZD
-                            + chemistry_tracers.at(K=K - 1, ddim=[n]) * XZE
-                        ) / denom
-                    else:
-                        sc_up_chem[0, 0, 0][n] = sc_up_chem.at(K=K - 1, ddim=[n])
-                    n += 1
-
-                if USE_TRACER_SCAVEN != 0 or plume != cumulus_parameterization_constants.SHALLOW:
-                    dz = geopotential_height_cloud_levels - geopotential_height_cloud_levels.at(K=K - 1)
-
-                    w_upd: FloatFieldIJ = vertical_velocity_3d
-
-                    tracer = 0
-                    while tracer < NUMBER_OF_TRACERS:
-                        if CNV_Tracers_fscav[0, 0][tracer] > 1.0e-6:
-                            if USE_TRACER_SCAVEN == 1:
-                                pw_up_chem[0, 0, 0][tracer] = max(
-                                    0.0,
-                                    sc_up_chem[0, 0, 0][tracer]
-                                    * (1.0 - exp(-CNV_Tracers_fscav[0, 0][tracer] * (dz / 1000.0))),
-                                )
-
-                            sc_up_chem[0, 0, 0][tracer] = (
-                                sc_up_chem[0, 0, 0][tracer] - pw_up_chem[0, 0, 0][tracer]
-                            )
-
-                        tracer += 1
-
-                dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
-
-                n = 0
-                while n < NUMBER_OF_TRACERS:
-                    tot_pw_up_chem[0, 0][n] = (
-                        tot_pw_up_chem[0, 0][n] + pw_up_chem[0, 0, 0][n] * dp / constants.MAPL_GRAV
-                    )
-                    n += 1
-
-
-def get_incloud_sc_chem_dd(
-    error_code: IntFieldIJ_Plume,
-    plume: Int,
-    sc_dn: FloatField_Tracers,
-    pw_dn: FloatField_Tracers,
-    chemistry_tracers: FloatField_Tracers,
-    tot_pw_dn_chem: FloatFieldIJ_Tracers,
-    tot_pw_up_chem: FloatFieldIJ_Tracers,
-    total_normalized_integrated_evaporate_forced: FloatFieldIJ,
-    total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
-    downdraft_origin_level: IntFieldIJ_Plume,
-    evaporate_in_downdraft_forced: FloatField_Plume,
-    p_cloud_levels_forced: FloatField_Plume,
-    chemistry_tracers_cloud_levels: FloatField_Tracers,
-    normalized_massflux_downdraft_forced: FloatField_Plume,
-    mass_detrainment_downdraft_forced: FloatField_Plume,
-    mass_entrainment_downdraft_forced: FloatField_Plume,
-):
-    from __externals__ import NUMBER_OF_TRACERS, USE_TRACER_EVAP
-
-    with computation(FORWARD), interval(...):
-        n = 0
-        while n < NUMBER_OF_TRACERS:
-            sc_dn[0, 0, 0][n] = 0.0
-            pw_dn[0, 0, 0][n] = 0.0
-            tot_pw_dn_chem[0, 0][n] = 0.0
-            n += 1
-
-    with computation(FORWARD), interval(0, 1):
-        if plume != cumulus_parameterization_constants.SHALLOW:
-            if error_code[0, 0][plume] == 0:
-                frac_evap: FloatFieldIJ = -total_normalized_integrated_evaporate_forced / (
-                    1.0e-16 + total_normalized_integrated_condensate_forced[0, 0][plume]
-                )
-                lev = downdraft_origin_level[0, 0][plume]
-
-                pwdper: FloatFieldIJ = (
-                    evaporate_in_downdraft_forced.at(K=lev, ddim=[plume])
-                    / (1.0e-16 + total_normalized_integrated_evaporate_forced)
-                    * frac_evap
-                )
-
-                if USE_TRACER_EVAP == 0:
-                    pwdper = 0.0
-
-                dp: FloatFieldIJ = 100.0 * (
-                    p_cloud_levels_forced.at(K=lev, ddim=[plume])
-                    - p_cloud_levels_forced.at(K=lev + 1, ddim=[plume])
-                )
-
-                n = 0
-                while n < NUMBER_OF_TRACERS:
-                    sc_dn[0, 0, lev][n] = chemistry_tracers_cloud_levels[0, 0, lev][n]
-                    pw_dn[0, 0, lev][n] = -pwdper * tot_pw_up_chem[0, 0][n] * constants.MAPL_GRAV / dp
-                    sc_dn[0, 0, lev][n] = sc_dn[0, 0, lev][n] - pw_dn[0, 0, lev][n]
-                    tot_pw_dn_chem[0, 0][n] = (
-                        tot_pw_dn_chem[0, 0][n] + pw_dn[0, 0, lev][n] * dp / constants.MAPL_GRAV
-                    )
-                    n += 1
-
-    with computation(BACKWARD), interval(...):
-        if plume != cumulus_parameterization_constants.SHALLOW:
-            if error_code[0, 0][plume] == 0:
-                if K <= downdraft_origin_level[0, 0][plume] - 1:
-                    XZZ: FloatFieldIJ = normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                    XZD: FloatFieldIJ = 0.5 * mass_detrainment_downdraft_forced[0, 0, 0][plume]
-                    XZE: FloatFieldIJ = mass_entrainment_downdraft_forced[0, 0, 0][plume]
-
-                    denom: FloatFieldIJ = XZZ - XZD + XZE
-
-                    n = 0
-                    while n < NUMBER_OF_TRACERS:
-                        if denom > 0.0:
-                            sc_dn[0, 0, 0][n] = (
-                                sc_dn.at(K=K + 1, ddim=[n]) * XZZ
-                                - sc_dn.at(K=K + 1, ddim=[n]) * XZD
-                                + chemistry_tracers[0, 0, 0][n] * XZE
-                            ) / denom
-                        else:
-                            sc_dn[0, 0, 0][n] = sc_dn.at(K=K + 1, ddim=[n])
-                        n += 1
-
-                    if USE_TRACER_EVAP != 0:
-
-                        dp = 100.0 * (
-                            p_cloud_levels_forced[0, 0, 0][plume]
-                            - p_cloud_levels_forced.at(K=K + 1, ddim=[plume])
-                        )
-
-                        pwdper = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
-                            1.0e-16 + total_normalized_integrated_evaporate_forced
-                        )
-
-                        pwdper = pwdper * frac_evap
-
-                        pwdper = min(1.0, max(pwdper, 0.0))
-
-                        n = 0
-                        while n < NUMBER_OF_TRACERS:
-                            pw_dn[0, 0, 0][n] = -pwdper * tot_pw_up_chem[0, 0][n] * constants.MAPL_GRAV / dp
-
-                            sc_dn[0, 0, 0][n] = sc_dn[0, 0, 0][n] - pw_dn[0, 0, 0][n]
-
-                            tot_pw_dn_chem[0, 0][n] = (
-                                tot_pw_dn_chem[0, 0][n] + pw_dn[0, 0, 0][n] * dp / constants.MAPL_GRAV
-                            )
-
-                            n += 1
+from pyMoist.convection_tracers import ConvectionTracers
 
 
 def environment_cloud_levels_chemistry(
@@ -255,15 +33,12 @@ def environment_cloud_levels_chemistry(
     chemistry_tracers_cloud_levels: FloatField_Tracers,
     plume: Int,
 ):
-    from __externals__ import k_end, NUMBER_OF_TRACERS
+    from __externals__ import k_end, NUMBER_OF_TRACERS, CLOUD_LEVEL_OPTION
 
-    with computation(FORWARD), interval(0, 1):
-        # set up internal constants
-        # NOTE only cloud_level_option = 2 has been tested
-        cloud_level_option = 2
+    # NOTE only CLOUD_LEVEL_OPTION = 2 has been tested
 
     with computation(FORWARD), interval(1, -1):
-        if error_code[0, 0][plume] == 0 and cloud_level_option == 1:
+        if error_code[0, 0][plume] == 0 and CLOUD_LEVEL_OPTION == 1:
             tracer = 0
             while tracer < NUMBER_OF_TRACERS:
                 chemistry_tracers_cloud_levels[0, 0, 0][tracer] = (
@@ -272,222 +47,566 @@ def environment_cloud_levels_chemistry(
                 tracer += 1
 
     with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0 and cloud_level_option == 1:
+        if error_code[0, 0][plume] == 0 and CLOUD_LEVEL_OPTION == 1:
             tracer = 0
             while tracer < NUMBER_OF_TRACERS:
                 chemistry_tracers_cloud_levels[0, 0, 0][tracer] = chemistry_tracers[0, 0, 0][tracer]
                 tracer += 1
 
     with computation(FORWARD), interval(-1, None):
-        if error_code[0, 0][plume] == 0 and cloud_level_option == 1:
+        if error_code[0, 0][plume] == 0 and CLOUD_LEVEL_OPTION == 1:
             tracer = 0
             while tracer < NUMBER_OF_TRACERS:
                 chemistry_tracers_cloud_levels[0, 0, 0][tracer] = chemistry_tracers[0, 0, 0][tracer]
                 tracer += 1
 
     with computation(PARALLEL), interval(0, -1):
-        if error_code[0, 0][plume] == 0 and cloud_level_option != 1:
+        if error_code[0, 0][plume] == 0 and CLOUD_LEVEL_OPTION != 1:
             tracer = 0
             while tracer < NUMBER_OF_TRACERS:
                 chemistry_tracers_cloud_levels[0, 0, 0][tracer] = chemistry_tracers[0, 0, 0][tracer]
                 tracer += 1
 
 
-def determine_vertical_transport1(
+def updraft_chemistry(
     error_code: IntFieldIJ_Plume,
-    plume: Int,
+    updraft_origin_level: IntFieldIJ_Plume,
     cloud_top_level: IntFieldIJ_Plume,
-    environment_massflux: FloatField,
+    ocean_fraction: FloatFieldIJ,
+    p_forced: FloatField,
     p_cloud_levels_forced: FloatField_Plume,
-    ddtr: FloatField_Tracers,
+    geopotential_height_cloud_levels: FloatField,
+    vertical_velocity_3d: FloatField,
+    mass_entrainment_updraft_forced: FloatField_Plume,
+    mass_detrainment_updraft_forced: FloatField_Plume,
+    normalized_massflux_updraft_forced: FloatField_Plume,
     chemistry_tracers: FloatField_Tracers,
-    sc_up_chem: FloatField_Tracers,
+    chemistry_tracers_sc_updraft: FloatField_Tracers,
+    chemistry_tracers_cloud_levels: FloatField_Tracers,
+    chemistry_tracers_pw_updraft: FloatField_Tracers,
+    chemistry_tracers_total_pw_updraft: FloatFieldIJ_Tracers,
+    convection_tracers_vect_hcts: ConvectionTracerMetaDataTable_x4,
+    convection_tracers_fscav: ConvectionTracerMetaDataTable_Float,
+    convection_tracers_use_gcc_washout: ConvectionTracerMetaDataTable_Bool,
+    tracer_cloud_boundary: FloatFieldIJ_Tracers,
+    AVERAGE_LAYER_DEPTH: Float,
+    plume: Int,
+):
+    from __externals__ import k_end, BOUNDARY_CONDITION_METHOD, USE_TRACER_SCAVENGE, NUMBER_OF_TRACERS
+
+    with computation(FORWARD), interval(...):
+        tracer = 0
+        while tracer < NUMBER_OF_TRACERS:
+            # initialization
+            chemistry_tracers_sc_updraft[0, 0, 0][tracer] = chemistry_tracers_cloud_levels[0, 0, 0][tracer]
+            chemistry_tracers_pw_updraft[0, 0, 0][tracer] = 0.0
+            chemistry_tracers_total_pw_updraft[0, 0][tracer] = 0.0
+            tracer += 1
+
+    with computation(PARALLEL), interval(...):
+        # make garbage field so the get_cloud_boundary_conditions call does not break
+        # this is never touched so long as compute_perturbation=False
+        dummy_field_no_read = 0.0
+        chemistry_tracers_cloud_levels_3d = 0.0
+
+    with computation(FORWARD), interval(0, 1):
+        if error_code[0, 0][plume] == 0:
+            # NOTE this double loop is disgusting. need a better solution for it
+            tracer = 0
+            while tracer < NUMBER_OF_TRACERS:
+                level = 0
+                while level <= k_end:
+                    chemistry_tracers_cloud_levels_3d[0, 0, level] = chemistry_tracers_cloud_levels[
+                        0, 0, level
+                    ][tracer]
+                    level += 1
+                tracer_cloud_boundary[0, 0][tracer] = get_cloud_boundary_conditions(
+                    field=chemistry_tracers_cloud_levels_3d,
+                    scalar_perturbation=0,
+                    p=p_forced,
+                    updraft_origin_level=updraft_origin_level[0, 0][plume],
+                    ocean_fraction=ocean_fraction,
+                    BOUNDARY_CONDITION_METHOD=BOUNDARY_CONDITION_METHOD,
+                    AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
+                    k_end=k_end,
+                    compute_perturbation=False,
+                    perturbation_field=dummy_field_no_read,
+                )
+                tracer += 1
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0:
+            tracer = 0
+            while tracer < NUMBER_OF_TRACERS:
+                if K <= updraft_origin_level[0, 0][plume]:
+                    chemistry_tracers_sc_updraft[0, 0, 0][tracer] = tracer_cloud_boundary[0, 0][tracer]
+                tracer += 1
+
+    with computation(FORWARD), interval(1, None):
+        if (
+            error_code[0, 0][plume] == 0
+            and K >= updraft_origin_level[0, 0][plume] + 1
+            and K <= cloud_top_level[0, 0][plume] + 1
+        ):
+            # entrainment, detrainment, mass flux
+            massflux_internal = normalized_massflux_updraft_forced[0, 0, -1][plume]
+            entrainment_internal = mass_entrainment_updraft_forced[0, 0, -1][plume]
+            detrainment_internal = 0.5 * mass_detrainment_updraft_forced[0, 0, -1][plume]
+            denom = massflux_internal - detrainment_internal + entrainment_internal
+
+            # transport + mixing
+            tracer = 0
+            while tracer < NUMBER_OF_TRACERS:
+                if denom > 0.0:
+                    chemistry_tracers_sc_updraft[0, 0, 0][tracer] = (
+                        chemistry_tracers_sc_updraft[0, 0, -1][tracer] * massflux_internal
+                        - chemistry_tracers_sc_updraft[0, 0, -1][tracer] * detrainment_internal
+                        + chemistry_tracers[0, 0, -1][tracer] * entrainment_internal
+                    ) / denom
+                else:
+                    chemistry_tracers_sc_updraft[0, 0, 0][tracer] = chemistry_tracers_sc_updraft[0, 0, -1][
+                        tracer
+                    ]
+                tracer += 1
+
+            # scavenging section - skip if USE_TRACER_SCAVENGE = 0 or on shallow plume
+            if not (USE_TRACER_SCAVENGE == 0 or plume == cumulus_parameterization_constants.SHALLOW):
+                dz = geopotential_height_cloud_levels - geopotential_height_cloud_levels[0, 0, -1]
+
+                # in-cloud vert velocity for scavenging formulation 2
+                updraft_vertical_velosity_internal = vertical_velocity_3d
+
+                tracer = 0
+                while tracer < NUMBER_OF_TRACERS:
+                    is_gcc = convection_tracers_use_gcc_washout.A[tracer]
+                    # aerosol scavenging
+                    if convection_tracers_fscav.A[tracer] > 1.0e-6:
+                        # formulation 1 as in GOCART with RAS conv_par
+                        if USE_TRACER_SCAVENGE == 1:
+                            chemistry_tracers_pw_updraft[0, 0, 0][tracer] = max(
+                                0.0,
+                                chemistry_tracers_sc_updraft[0, 0, 0][tracer]
+                                * (1.0 - exp(-convection_tracers_fscav.A[tracer] * (dz / 1000.0))),
+                            )
+
+                        # formulation 2 as in GOCART
+                        elif USE_TRACER_SCAVENGE == 2:
+                            option_not_implemented = True
+
+                        # formulation 3 - orignal GF conv_par
+                        elif USE_TRACER_SCAVENGE == 3:
+                            option_not_implemented = True
+
+                        # (in cloud) total mixing ratio in gas and aqueous phases
+                        chemistry_tracers_sc_updraft[0, 0, 0][tracer] = (
+                            chemistry_tracers_sc_updraft[0, 0, 0][tracer]
+                            - chemistry_tracers_pw_updraft[0, 0, 0][tracer]
+                        )
+
+                    # tracer gas phase scavenging
+                    elif convection_tracers_vect_hcts.A[tracer, 1] > 1.0e-6:
+                        option_not_implemented = True
+                        if is_gcc == True:
+                            option_not_implemented = True
+                        if USE_TRACER_SCAVENGE == 3:
+                            option_not_implemented = True
+                        else:
+                            if is_gcc == True:
+                                option_not_implemented = True
+                            else:
+                                option_not_implemented = True
+
+                    tracer += 1
+
+                dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
+                tracer = 0
+                while tracer < NUMBER_OF_TRACERS:
+                    chemistry_tracers_total_pw_updraft[0, 0][tracer] = (
+                        chemistry_tracers_total_pw_updraft[0, 0][tracer]
+                        + chemistry_tracers_pw_updraft[0, 0, 0][tracer] * dp / constants.MAPL_GRAV
+                    )
+                    tracer += 1
+
+
+def downdraft_chemistry(
+    error_code: IntFieldIJ_Plume,
+    downdraft_origin_level: IntFieldIJ_Plume,
+    p_cloud_levels_forced: FloatField_Plume,
+    evaporate_in_downdraft_forced: FloatField_Plume,
+    total_normalized_integrated_evaporate_forced: FloatFieldIJ,
+    total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
+    normalized_massflux_downdraft_forced: FloatField_Plume,
+    mass_entrainment_downdraft_forced: FloatField_Plume,
+    mass_detrainment_downdraft_forced: FloatField_Plume,
+    chemistry_tracers: FloatField_Tracers,
+    chemistry_tracers_cloud_levels: FloatField_Tracers,
+    chemistry_tracers_sc_downdraft: FloatField_Tracers,
+    chemistry_tracers_pw_downdraft: FloatField_Tracers,
+    chemistry_tracers_total_pw_downdraft: FloatFieldIJ_Tracers,
+    chemistry_tracers_total_pw_updraft: FloatFieldIJ_Tracers,
+    plume: Int,
+):
+    from __externals__ import NUMBER_OF_TRACERS, USE_TRACER_EVAPORATION
+
+    with computation(FORWARD), interval(...):
+        tracer = 0
+        while tracer < NUMBER_OF_TRACERS:
+            chemistry_tracers_sc_downdraft[0, 0, 0][tracer] = 0.0
+            chemistry_tracers_pw_downdraft[0, 0, 0][tracer] = 0.0
+            chemistry_tracers_total_pw_downdraft[0, 0][tracer] = 0.0
+            tracer += 1
+
+    with computation(FORWARD), interval(0, 1):
+        if plume != cumulus_parameterization_constants.SHALLOW and error_code[0, 0][plume] == 0:
+            # fration of the total rain that was evaporated
+            evaporation_fraction: FloatFieldIJ = -total_normalized_integrated_evaporate_forced / (
+                1.0e-16 + total_normalized_integrated_condensate_forced[0, 0][plume]
+            )
+
+            # scalar concentration in-cloud - downdraft
+
+            # at downdraft_origin_level
+            level = downdraft_origin_level[0, 0][plume]
+            if USE_TRACER_EVAPORATION == 0:
+                internal_precip: FloatFieldIJ = 0.0
+            else:
+                internal_precip: FloatFieldIJ = (
+                    evaporate_in_downdraft_forced.at(K=level, ddim=[plume])
+                    / (1.0e-16 + total_normalized_integrated_evaporate_forced)
+                    * evaporation_fraction
+                )
+
+            dp = 100.0 * (
+                p_cloud_levels_forced.at(K=level, ddim=[plume])
+                - p_cloud_levels_forced.at(K=level + 1, ddim=[plume])
+            )
+
+            # downdrafts will be initiated with a mixture of 50% environmental and in-cloud concentrations
+            tracer = 0
+            while tracer < NUMBER_OF_TRACERS:
+                chemistry_tracers_sc_downdraft[0, 0, level][tracer] = chemistry_tracers_cloud_levels[
+                    0, 0, level
+                ][tracer]
+                chemistry_tracers_pw_downdraft[0, 0, level][tracer] = (
+                    -internal_precip
+                    * chemistry_tracers_total_pw_updraft[0, 0][tracer]
+                    * constants.MAPL_GRAV
+                    / dp
+                )
+                chemistry_tracers_sc_downdraft[0, 0, level][tracer] = (
+                    chemistry_tracers_sc_downdraft[0, 0, level][tracer]
+                    - chemistry_tracers_pw_downdraft[0, 0, level][tracer]
+                )
+                chemistry_tracers_total_pw_downdraft[0, 0][tracer] = (
+                    chemistry_tracers_total_pw_downdraft[0, 0][tracer]
+                    + chemistry_tracers_pw_downdraft[0, 0, level][tracer] * dp / constants.MAPL_GRAV
+                )
+                tracer += 1
+
+    # calculate downdraft mass terms
+    with computation(BACKWARD), interval(0, -1):
+        if (
+            plume != cumulus_parameterization_constants.SHALLOW
+            and error_code[0, 0][plume] == 0
+            and K <= downdraft_origin_level[0, 0][plume] - 1
+        ):
+            massflux_internal = normalized_massflux_downdraft_forced[0, 0, 1][plume]
+            entrainment_internal = mass_entrainment_downdraft_forced[0, 0, 0][plume]
+            detrainment_internal = 0.5 * mass_detrainment_downdraft_forced[0, 0, 0][plume]
+            denom = massflux_internal - detrainment_internal + entrainment_internal
+
+            # transport + mixing
+            tracer = 0
+            while tracer < NUMBER_OF_TRACERS:
+                if denom > 0.0:
+                    chemistry_tracers_sc_downdraft[0, 0, 0][tracer] = (
+                        chemistry_tracers_sc_downdraft[0, 0, 1][tracer] * massflux_internal
+                        - chemistry_tracers_sc_downdraft[0, 0, 1][tracer] * detrainment_internal
+                        + chemistry_tracers[0, 0, 0][tracer] * entrainment_internal
+                    ) / denom
+                else:
+                    chemistry_tracers_sc_downdraft[0, 0, 0][tracer] = chemistry_tracers_sc_downdraft.at(
+                        K=K + 1, ddim=[tracer]
+                    )
+                tracer += 1
+
+            # evaporation term
+            if USE_TRACER_EVAPORATION != 0:
+                dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
+
+                # fraction of evaporated precip per layer
+                internal_precip = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
+                    1.0e-16 + total_normalized_integrated_evaporate_forced
+                )
+
+                # fraction of the total precip that was actually evaporated at layer k
+                internal_precip = internal_precip * evaporation_fraction
+
+                # sanity check
+                internal_precip = min(1.0, max(internal_precip, 0.0))
+
+                tracer = 0
+                while tracer < NUMBER_OF_TRACERS:
+                    # amount evaporated by the downdraft from the precipitation
+                    chemistry_tracers_pw_downdraft[0, 0, 0][tracer] = (
+                        -internal_precip
+                        * chemistry_tracers_total_pw_updraft[0, 0][tracer]
+                        * constants.MAPL_GRAV
+                        / dp
+                    )
+
+                    # final tracer in the downdraft
+                    chemistry_tracers_sc_downdraft[0, 0, 0][tracer] = (
+                        chemistry_tracers_sc_downdraft[0, 0, 0][tracer]
+                        - chemistry_tracers_pw_downdraft[0, 0, 0][tracer]
+                    )
+
+                    # total evaporated tracer
+                    chemistry_tracers_total_pw_downdraft[0, 0][tracer] = (
+                        chemistry_tracers_total_pw_downdraft[0, 0][tracer]
+                        + chemistry_tracers_pw_downdraft[0, 0, 0][tracer] * dp / constants.MAPL_GRAV
+                    )
+
+                    tracer += 1
+
+
+def vertical_transport_part_1(
+    error_code: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    p_cloud_levels_forced: FloatField_Plume,
+    environment_massflux: FloatField,
     normalized_massflux_updraft_forced: FloatField_Plume,
     normalized_massflux_downdraft_forced: FloatField_Plume,
     epsilon_forced: FloatFieldIJ_Plume,
-    sc_dn: FloatField_Tracers,
-    out_chem: FloatField_Tracers,
-    pw_dn: FloatField_Tracers,
-    pw_up_chem: FloatField_Tracers,
+    chemistry_tracers: FloatField_Tracers,
+    chemistry_tracers_output: FloatField_Tracers_Plume,
+    chemistry_tracers_cloud_levels: FloatField_Tracers,
+    chemistry_tracers_sc_updraft: FloatField_Tracers,
+    chemistry_tracers_sc_downdraft: FloatField_Tracers,
+    chemistry_tracers_pw_updraft: FloatField_Tracers,
+    chemistry_tracers_pw_downdraft: FloatField_Tracers,
+    dd_tracers: FloatField_Tracers,
     aa: FloatField,
     bb: FloatField,
     cc: FloatField,
+    plume: Int,
 ):
     from __externals__ import (
         ALP1,
-        USE_FLUX_FORM,
         DTIME,
         NUMBER_OF_TRACERS,
-        USE_TRACER_EVAP,
-        USE_TRACER_SCAVEN,
+        USE_TRACER_EVAPORATION,
+        USE_TRACER_SCAVENGE,
+        USE_FLUX_FORM,
+        USE_FCT,
     )
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            if USE_FLUX_FORM == 1 and ALP1 > 0.0:
-                alp0 = 1.0 - ALP1
-                if K <= cloud_top_level[0, 0][plume] + 1:
-                    fp = 0.5 * (environment_massflux + abs(environment_massflux))
-                    fm = 0.5 * (environment_massflux - abs(environment_massflux))
+            alp0: FloatFieldIJ = 0.0
+
+    # flux form + source/sink terms + time explicit + FCT
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0 and USE_FLUX_FORM == 1 and ALP1 == 0:
+            option_not_implemented = True
+
+    # flux form + source/sink terms + time explicit/implicit + upstream
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0 and USE_FLUX_FORM == 1 and ALP1 > 0.0:
+            alp0 = 1.0 - ALP1
+            if K <= cloud_top_level[0, 0][plume] + 1:
+                fp = 0.5 * (environment_massflux + abs(environment_massflux))
+                fm = 0.5 * (environment_massflux - abs(environment_massflux))
 
     with computation(FORWARD), interval(...):
-        if error_code[0, 0][plume] == 0:
-            if USE_FLUX_FORM == 1 and ALP1 > 0.0:
-                if K <= cloud_top_level[0, 0][plume]:
-                    dp = 100.0 * (
-                        p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]
+        if (
+            error_code[0, 0][plume] == 0
+            and USE_FLUX_FORM == 1
+            and ALP1 > 0.0
+            and K <= cloud_top_level[0, 0][plume]
+        ):
+            dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
+            beta = DTIME * constants.MAPL_GRAV / dp
+            aa = ALP1 * beta * fm
+            bb = 1.0 + ALP1 * beta * (fp - fm[0, 0, 1])
+            cc = -ALP1 * beta * fp[0, 0, 1]
+
+            tracer = 0
+            while tracer < NUMBER_OF_TRACERS:
+                dd_tracers[0, 0, 0][tracer] = (
+                    chemistry_tracers[0, 0, 0][tracer]
+                    - (
+                        normalized_massflux_updraft_forced[0, 0, 1][plume]
+                        * chemistry_tracers_sc_updraft[0, 0, 1][tracer]
+                        - normalized_massflux_updraft_forced[0, 0, 0][plume]
+                        * chemistry_tracers_sc_updraft[0, 0, 0][tracer]
                     )
-                    beta1 = DTIME * constants.MAPL_GRAV / dp
-                    aa = ALP1 * beta1 * fm
-                    bb = 1.0 + ALP1 * beta1 * (fp - fm[0, 0, 1])
-                    cc = -ALP1 * beta1 * fp[0, 0, 1]
-
-                    n = 0
-                    while n < NUMBER_OF_TRACERS:
-                        ddtr[0, 0, 0][n] = (
-                            chemistry_tracers[0, 0, 0][n]
-                            - (
-                                normalized_massflux_updraft_forced[0, 0, 1][plume] * sc_up_chem[0, 0, 1][n]
-                                - normalized_massflux_updraft_forced[0, 0, 0][plume] * sc_up_chem[0, 0, 0][n]
-                            )
-                            * beta1
-                            + (
-                                normalized_massflux_downdraft_forced[0, 0, 1][plume] * sc_dn[0, 0, 1][n]
-                                - normalized_massflux_downdraft_forced[0, 0, 0][plume] * sc_dn[0, 0, 0][n]
-                            )
-                            * beta1
-                            * epsilon_forced[0, 0][plume]
+                    * beta
+                    + (
+                        (
+                            normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                            * chemistry_tracers_sc_downdraft[0, 0, 1][tracer]
+                            - normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                            * chemistry_tracers_sc_downdraft[0, 0, 0][tracer]
                         )
-                        n += 1
+                        * beta
+                        * epsilon_forced[0, 0][plume]
+                    )
+                )
+                tracer += 1
 
-                    if USE_TRACER_EVAP == 1 and plume != cumulus_parameterization_constants.SHALLOW:
-                        n = 0
-                        while n < NUMBER_OF_TRACERS:
-                            out_chem[0, 0, 0][n] = (
-                                out_chem[0, 0, 0][n]
-                                - 0.5
-                                * epsilon_forced[0, 0][plume]
-                                * (
-                                    normalized_massflux_downdraft_forced[0, 0, 0][plume] * pw_dn[0, 0, 0][n]
-                                    + normalized_massflux_downdraft_forced[0, 0, 1][plume] * pw_dn[0, 0, 1][n]
-                                )
-                                * beta1
-                            )
-                            n += 1
-
-                    if USE_TRACER_SCAVEN > 0 and plume != cumulus_parameterization_constants.SHALLOW:
-                        n = 0
-                        while n < NUMBER_OF_TRACERS:
-                            out_chem[0, 0, 0][n] = (
-                                out_chem[0, 0, 0][n]
-                                - 0.5
-                                * (
-                                    normalized_massflux_updraft_forced[0, 0, 0][plume]
-                                    * pw_up_chem[0, 0, 0][n]
-                                    + normalized_massflux_updraft_forced[0, 0, 1][plume]
-                                    * pw_up_chem[0, 0, 1][n]
-                                )
-                                * beta1
-                            )
-                            n += 1
-
-                    n = 0
-                    while n < NUMBER_OF_TRACERS:
-                        ddtr[0, 0, 0][n] = (
-                            ddtr[0, 0, 0][n]
-                            + out_chem[0, 0, 0][n]
-                            + alp0 * beta1 * (-fm * chemistry_tracers.at(K=max(0, K - 1), ddim=[n]))
-                            + (fm[0, 0, 1] - fp) * chemistry_tracers[0, 0, 0][n]
-                            + fp[0, 0, 1] * chemistry_tracers[0, 0, 1][n]
+            # include evaporation
+            if USE_TRACER_EVAPORATION == 1 and plume != cumulus_parameterization_constants.SHALLOW:
+                tracer = 0
+                while tracer < NUMBER_OF_TRACERS:
+                    # evaporated ( chemistry_tracer_pw_downdraft < 0 => E_dn > 0)
+                    chemistry_tracers_output[0, 0, 0][plume, tracer] = (
+                        chemistry_tracers_output[0, 0, 0][plume, tracer]
+                        - 0.5
+                        * epsilon_forced[0, 0][plume]
+                        * (
+                            normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                            * chemistry_tracers_pw_downdraft[0, 0, 0][tracer]
+                            + normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                            * chemistry_tracers_pw_downdraft[0, 0, 1][tracer]
                         )
-                        n += 1
+                        * beta
+                    )
+                    tracer += 1
+
+            # include scavenging
+            if USE_TRACER_SCAVENGE > 0 and plume != cumulus_parameterization_constants.SHALLOW:
+                tracer = 0
+                while tracer < NUMBER_OF_TRACERS:
+                    # incorporated in rainfall (<0)
+                    chemistry_tracers_output[0, 0, 0][plume, tracer] = (
+                        chemistry_tracers_output[0, 0, 0][plume, tracer]
+                        - 0.5
+                        * (
+                            normalized_massflux_updraft_forced[0, 0, 0][plume]
+                            * chemistry_tracers_pw_updraft[0, 0, 0][tracer]
+                            + normalized_massflux_updraft_forced[0, 0, 1][plume]
+                            * chemistry_tracers_pw_updraft[0, 0, 1][tracer]
+                        )
+                        * beta
+                    )
+                    tracer += 1
+
+            tracer = 0
+            while tracer < NUMBER_OF_TRACERS:
+                dd_tracers[0, 0, 0][tracer] = (
+                    dd_tracers[0, 0, 0][tracer]
+                    + chemistry_tracers_output[0, 0, 0][plume, tracer]
+                    + alp0
+                    * beta
+                    * (
+                        -fm * chemistry_tracers.at(K=max(0, K - 1), ddim=[tracer])
+                        + (fm[0, 0, 1] - fp) * chemistry_tracers[0, 0, 0][tracer]
+                        + fp[0, 0, 1] * chemistry_tracers[0, 0, 1][tracer]
+                    )
+                )
+                tracer += 1
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0 and (USE_FLUX_FORM == 2 or USE_FLUX_FORM == 3):
+            option_not_implemented = True
 
 
-def determine_vertical_transport2(
+def update_after_tridiag(
     error_code: IntFieldIJ_Plume,
-    plume: Int,
     cloud_top_level: IntFieldIJ_Plume,
-    out_chem: FloatField_Tracers,
-    ddtr: FloatField_Tracers,
+    dd: FloatField_Tracers,
     chemistry_tracers: FloatField_Tracers,
+    chemistry_tracers_output: FloatField_Tracers_Plume,
+    tracer: Int,
+    plume: Int,
 ):
-    from __externals__ import (
-        ALP1,
-        USE_FLUX_FORM,
-        DTIME,
-        NUMBER_OF_TRACERS,
-    )
+    from __externals__ import DTIME
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume]:
+            chemistry_tracers_output[0, 0, 0][plume, tracer] = (
+                dd[0, 0, 0][tracer] - chemistry_tracers[0, 0, 0][tracer]
+            ) / DTIME
+
+
+def vertical_transport_part_2(
+    error_code: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    p_cloud_levels_forced: FloatField_Plume,
+    normalized_massflux_updraft_forced: FloatField_Plume,
+    normalized_massflux_downdraft_forced: FloatField_Plume,
+    epsilon_forced: FloatFieldIJ_Plume,
+    chemistry_tracers: FloatField_Tracers,
+    chemistry_tracers_output: FloatField_Tracers_Plume,
+    chemistry_tracers_pw_updraft: FloatField_Tracers,
+    chemistry_tracers_pw_downdraft: FloatField_Tracers,
+    dd_tracers: FloatField_Tracers,
+    residual: FloatFieldIJ_Tracers,
+    plume: Int,
+):
+    from __externals__ import NUMBER_OF_TRACERS
+
+    with computation(FORWARD), interval(0, 1):
+        tracer = 0
+        while tracer < NUMBER_OF_TRACERS:
+            residual[0,0][tracer] = 0.0
+            tracer += 1
+
+    with computation(FORWARD), interval(0, -1):
+        if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume]:
+            tracer = 0
+            while tracer < NUMBER_OF_TRACERS:
+                dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
+                evap = (
+                    -0.5
+                    * (
+                        normalized_massflux_downdraft_forced[0, 0, 0][plume]
+                        * chemistry_tracers_pw_downdraft[0, 0, 0][tracer]
+                        + normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                        * chemistry_tracers_pw_downdraft[0, 0, 1][tracer]
+                    )
+                    * constants.MAPL_GRAV
+                    / dp
+                    * epsilon_forced[0, 0][plume]
+                )
+                wetdep = (
+                    0.5
+                    * (
+                        normalized_massflux_updraft_forced[0, 0, 0][plume]
+                        * chemistry_tracers_pw_updraft[0, 0, 0][tracer]
+                        + normalized_massflux_updraft_forced[0, 0, 1][plume]
+                        * chemistry_tracers_pw_updraft[0, 0, 1][tracer]
+                    )
+                    * constants.MAPL_GRAV
+                    / dp
+                )
+
+                residual[0, 0][tracer] = residual[0, 0][tracer] + (wetdep - evap) * dp / constants.MAPL_GRAV
+
+                tracer += 1
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
-            if USE_FLUX_FORM == 1 and ALP1 > 0.0:
-                if K <= cloud_top_level[0, 0][plume]:
-                    n = 0
-                    while n < NUMBER_OF_TRACERS:
-                        out_chem[0, 0, 0][n] = (ddtr[0, 0, 0][n] - chemistry_tracers[0, 0, 0][n]) / DTIME
-                        n += 1
-
-
-# with computation(FORWARD), interval(...):
-#     if error_code[0, 0][plume] == 0:
-#         n = 0
-#         while n < NUMBER_OF_TRACERS:
-#             trash_[0, 0][n] = 0.0
-#             trash2_[0, 0][n] = 0.0
-#             evap_[0, 0][n] = 0.0
-#             wetdep_[0, 0][n] = 0.0
-#             residu_[0, 0][n] = 0.0
-
-#             if K <= cloud_top_level[0, 0][plume]:
-#                 dp = 100.0 * (
-#                     p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]
-#                 )
-#                 evap = (
-#                     -0.5
-#                     * (
-#                         normalized_massflux_downdraft_forced[0, 0, 0][plume] * pw_dn[0, 0, 0][n]
-#                         + normalized_massflux_downdraft_forced[0, 0, 1][plume] * pw_dn[0, 0, 1][n]
-#                     )
-#                     * constants.MAPL_GRAV
-#                     / dp
-#                     * epsilon_forced[0, 0][plume]
-#                 )
-#                 wetdep = (
-#                     0.5
-#                     * (
-#                         normalized_massflux_updraft_forced[0, 0, 0][plume] * pw_up_chem[0, 0, 0][n]
-#                         + normalized_massflux_updraft_forced[0, 0, 1][plume] * pw_up_chem[0, 0, 1][n]
-#                     )
-#                     * constants.MAPL_GRAV
-#                     / dp
-#                 )
-
-#                 evap_[0, 0][n] = evap_[0, 0][n] + evap * dp / constants.MAPL_GRAV
-#                 wetdep_[0, 0][n] = wetdep_[0, 0][n] + wetdep * dp / constants.MAPL_GRAV
-#                 residu_[0, 0][n] = residu_[0, 0][n] + (wetdep - evap) * dp / constants.MAPL_GRAV
-
-#                 trash_[0, 0][n] = trash_[0, 0][n] + (out_chem[0, 0, 0][n]) * dp / constants.MAPL_GRAV
-
-#                 trash2_[0, 0][n] = (
-#                     trash2_[0, 0][n] + chemistry_tracers[0, 0, 0][n] * dp / constants.MAPL_GRAV
-#                 )
-
-#             if residu_[0, 0][n] < 0.0:
-#                 beta1 = constants.MAPL_GRAV / (
-#                     p_cloud_levels_forced.at(K=0, ddim=[plume])
-#                     - p_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume] + 1, ddim=[plume])
-#                 )
-#                 if K <= cloud_top_level[0, 0][plume]:
-#                     out_chem[0, 0, 0][n] = out_chem[0, 0, 0][n] + residu_[0, 0][n] * beta1
-
-#             n += 1
+            tracer = 0
+            while tracer < NUMBER_OF_TRACERS:
+                if residual[0, 0][tracer] < 0:
+                    beta = constants.MAPL_GRAV / (
+                        p_cloud_levels_forced.at(K=0, ddim=[plume])
+                        - p_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume] + 1, ddim=[plume])
+                    )
+                    chemistry_tracers_output[0, 0, 0][plume, tracer] = (
+                        chemistry_tracers_output[0, 0, 0][plume, tracer] + residual[0, 0][tracer] * beta
+                    )
+                tracer += 1
 
 
 class ColdPoolParameterization:
-    def __init__(self, cumulus_parameterization_config: GF2020CumulusParameterizationConfig):
-        if cumulus_parameterization_config.CONVECTION_TRACER == 1:
+    def __init__(self, config: GF2020Config):
+        if config.CONVECTION_TRACER == 1:
             raise NotImplementedError(
-                "The ColdPoolParameterization section has not been implemented. You should have been caught"
+                "[NDSL] GF2020-->CumulusParameterization-->ColdPoolParameterization: The"
+                "ColdPoolParameterization section has not been implemented. You should have been caught"
                 "before getting here by the config checker. Beware, something likely failing in the config"
                 "checker as well - you may be unknowingly calling other untested/unimplemented sections."
             )
@@ -508,68 +627,53 @@ class AtmosphericComposition:
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
-        quantity_factory.add_data_dimensions({"tracer_dim": config.NUMBER_OF_TRACERS})
-
+        quantity_factory.add_data_dimensions({"convection_tracers": config.NUMBER_OF_TRACERS})
         self._aa: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._bb: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._cc: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._ddtr: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "tracer_dim"], "n/a")
-        self._f_temp: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._dd_tracers: Local = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "convection_tracers"], "n/a")
+        self._tracer_cloud_boundary: Local = quantity_factory.zeros(
+            [X_DIM, Y_DIM, "convection_tracers"], "n/a"
+        )
+        self._residual: Local = quantity_factory.zeros([X_DIM, Y_DIM, "convection_tracers"], "n/a")
 
         # construct stencils and functions
         self._environment_cloud_levels_chemistry = stencil_factory.from_dims_halo(
             func=environment_cloud_levels_chemistry,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS},
+            externals={"NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS, "CLOUD_LEVEL_OPTION": 2},
         )
 
-        self._get_incloud_sc_chem_up = stencil_factory.from_dims_halo(
-            func=get_incloud_sc_chem_up,
+        self._updraft_chemistry = stencil_factory.from_dims_halo(
+            func=updraft_chemistry,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
-                "USE_TRACER_SCAVEN": cumulus_parameterization_config.USE_TRACER_SCAVEN,
+                "USE_TRACER_SCAVENGE": cumulus_parameterization_config.USE_TRACER_SCAVENGE,
             },
         )
 
-        if self.cumulus_parameterization_config.USE_TRACER_SCAVEN != 1:
-            raise NotImplementedError(
-                "[NDSL] GF2020-->CumulusParameterization-->AtmosphericComposition called with an unimplemented path."
-                "This should have been caught at initialization, but somehow you made it here."
-                "Choose another option for USE_TRACER_SCAVEN or implement to continue."
-            )
-
-        self._determine_vertical_transport1 = stencil_factory.from_dims_halo(
-            func=determine_vertical_transport1,
+        self._downdraft_chemistry = stencil_factory.from_dims_halo(
+            func=downdraft_chemistry,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
-                "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
-                "USE_TRACER_SCAVEN": cumulus_parameterization_config.USE_TRACER_SCAVEN,
+                "USE_TRACER_EVAPORATION": cumulus_parameterization_config.USE_TRACER_EVAPORATION,
+            },
+        )
+
+        self._vertical_transport_part_1 = stencil_factory.from_dims_halo(
+            func=vertical_transport_part_1,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
                 "ALP1": cumulus_parameterization_config.ALP1,
-                "USE_FLUX_FORM": cumulus_parameterization_config.USE_FLUX_FORM,
                 "DTIME": cumulus_parameterization_config.DTIME,
-                "USE_TRACER_EVAP": cumulus_parameterization_config.USE_TRACER_EVAP,
-            },
-        )
-
-        if (
-            self.cumulus_parameterization_config.USE_FLUX_FORM != 1
-            or self.cumulus_parameterization_config.ALP1 != 1
-        ):
-            raise NotImplementedError(
-                "[NDSL] GF2020-->CumulusParameterization-->AtmosphericComposition called with an unimplemented path."
-                "This should have been caught at initialization, but somehow you made it here."
-                "Choose another option for USE_FlUX_FORM and ALP1 or implement to continue."
-            )
-
-        self._get_incloud_sc_chem_dd = stencil_factory.from_dims_halo(
-            func=get_incloud_sc_chem_dd,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
                 "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
-                "USE_TRACER_EVAP": cumulus_parameterization_config.USE_TRACER_EVAP,
+                "USE_TRACER_EVAPORATION": cumulus_parameterization_config.USE_TRACER_EVAPORATION,
+                "USE_TRACER_SCAVENGE": cumulus_parameterization_config.USE_TRACER_SCAVENGE,
+                "USE_FLUX_FORM": cumulus_parameterization_config.USE_FLUX_FORM,
+                "USE_FCT": cumulus_parameterization_config.USE_FCT,
             },
         )
 
@@ -578,60 +682,54 @@ class AtmosphericComposition:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._determine_vertical_transport2 = stencil_factory.from_dims_halo(
-            func=determine_vertical_transport2,
+        self._update_after_tridiag = stencil_factory.from_dims_halo(
+            func=update_after_tridiag,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
-                "DTIME": cumulus_parameterization_config.DTIME,
-                "ALP1": cumulus_parameterization_config.ALP1,
-                "USE_FLUX_FORM": cumulus_parameterization_config.USE_FLUX_FORM,
-            },
+            externals={"DTIME": cumulus_parameterization_config.DTIME},
+        )
+
+        self._vertical_transport_part_2 = stencil_factory.from_dims_halo(
+            func=vertical_transport_part_2,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS},
         )
 
     def __call__(
         self,
         error_code: Quantity,
-        chemistry_tracers: Quantity,
-        chemistry_tracers_cloud_levels: Quantity,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-        sc_up_chem: Quantity,
-        pw_up_chem: Quantity,
-        tot_pw_up_chem: Quantity,
-        ocean_fraction: Quantity,
-        AVERAGE_LAYER_DEPTH: Quantity,
-        updraft_origin_level: Quantity,
-        po: Quantity,
-        sc_b: Quantity,
         cloud_top_level: Quantity,
-        normalized_massflux_updraft_forced: Quantity,
-        mass_detrainment_updraft_forced: Quantity,
-        mass_entrainment_updraft_forced: Quantity,
-        geopotential_height_cloud_levels: Quantity,
-        vertical_velocity_3d: Quantity,
-        CNV_Tracers_fscav: Quantity,
-        CNV_Tracers_Vect_hcts: Quantity,
-        p_cloud_levels_forced: Quantity,
-        sc_dn: Quantity,
-        pw_dn: Quantity,
-        tot_pw_dn_chem: Quantity,
-        total_normalized_integrated_evaporate_forced: Quantity,
-        total_normalized_integrated_condensate_forced: Quantity,
+        updraft_origin_level: Quantity,
         downdraft_origin_level: Quantity,
-        evaporate_in_downdraft_forced: Quantity,
-        normalized_massflux_downdraft_forced: Quantity,
-        mass_detrainment_downdraft_forced: Quantity,
-        mass_entrainment_downdraft_forced: Quantity,
+        ocean_fraction: Quantity,
+        p_forced: Quantity,
+        p_cloud_levels_forced: Quantity,
+        geopotential_height_cloud_levels: Quantity,
         environment_massflux: Quantity,
+        normalized_massflux_updraft_forced: Quantity,
+        normalized_massflux_downdraft_forced: Quantity,
+        mass_entrainment_updraft_forced: Quantity,
+        mass_detrainment_updraft_forced: Quantity,
+        mass_entrainment_downdraft_forced: Quantity,
+        mass_detrainment_downdraft_forced: Quantity,
+        vertical_velocity_3d: Quantity,
+        total_normalized_integrated_condensate_forced: Quantity,
+        total_normalized_integrated_evaporate_forced: Quantity,
+        evaporate_in_downdraft_forced: Quantity,
         epsilon_forced: Quantity,
-        out_chem: Quantity,
-        trash_: Quantity,
-        trash2_: Quantity,
-        evap_: Quantity,
-        wetdep_: Quantity,
-        residu_: Quantity,
+        chemistry_tracers: Quantity,
+        chemistry_tracers_output: Quantity,
+        chemistry_tracers_cloud_levels: Quantity,
+        chemistry_tracers_sc_updraft: Quantity,
+        chemistry_tracers_sc_downdraft: Quantity,
+        chemistry_tracers_pw_updraft: Quantity,
+        chemistry_tracers_pw_downdraft: Quantity,
+        chemistry_tracers_total_pw_updraft: Quantity,
+        chemistry_tracers_total_pw_downdraft: Quantity,
+        convection_tracers: ConvectionTracers,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
 
+        # 1) get mass mixing ratios at the cloud levels
         self._environment_cloud_levels_chemistry(
             error_code=error_code,
             chemistry_tracers=chemistry_tracers,
@@ -639,104 +737,122 @@ class AtmosphericComposition:
             plume=plume_dependent_constants.PLUME_INDEX,
         )
 
-        # NOTE Raise an error if CNV_Tracers_Vect_Hcts > 1.e-6
-        # THIS NEEDS TO BE RE-SERIALIZED
-        # if CNV_Tracers_Vect_hcts.view[:].any() > float(1.0e-6):
-        #     raise NotImplementedError(
-        #         "[NDSL] GF2020-->CumulusParameterization-->AtmosphericComposition called with an unimplemented path."
-        #         "This should have been caught at initialization, but somehow you made it here."
-        #     )
+        if (convection_tracers.vect_hcts.field[:, 0] > Float(1.0e-6)).any():
+            raise NotImplementedError(
+                "[NDSL] GF2020-->CumulusParameterization-->AtmosphericComposition called with "
+                "convection_tracers.vect_hcts > 1.0e-6. This condition requires an unimplemented option in "
+                "updraft_chemistry. Please implement, then remove this error to continue."
+            )
 
-        self._get_incloud_sc_chem_up(
+        # 2) determine in-cloud tracer mixing ratios
+        # a) updraft chemistry
+        self._updraft_chemistry(
             error_code=error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            sc_up_chem=sc_up_chem,
-            chemistry_tracers_cloud_levels=chemistry_tracers_cloud_levels,
-            pw_up_chem=pw_up_chem,
-            tot_pw_up_chem=tot_pw_up_chem,
-            ocean_fraction=ocean_fraction,
-            AVERAGE_LAYER_DEPTH=AVERAGE_LAYER_DEPTH,
             updraft_origin_level=updraft_origin_level,
-            po=po,
-            sc_b=sc_b,
             cloud_top_level=cloud_top_level,
-            normalized_massflux_updraft_forced=normalized_massflux_updraft_forced,
-            mass_detrainment_updraft_forced=mass_detrainment_updraft_forced,
-            mass_entrainment_updraft_forced=mass_entrainment_updraft_forced,
-            chemistry_tracers=chemistry_tracers,
+            ocean_fraction=ocean_fraction,
+            p_forced=p_forced,
+            p_cloud_levels_forced=p_cloud_levels_forced,
             geopotential_height_cloud_levels=geopotential_height_cloud_levels,
             vertical_velocity_3d=vertical_velocity_3d,
-            CNV_Tracers_fscav=CNV_Tracers_fscav,
-            p_cloud_levels_forced=p_cloud_levels_forced,
+            mass_entrainment_updraft_forced=mass_entrainment_updraft_forced,
+            mass_detrainment_updraft_forced=mass_detrainment_updraft_forced,
+            normalized_massflux_updraft_forced=normalized_massflux_updraft_forced,
+            chemistry_tracers=chemistry_tracers,
+            chemistry_tracers_sc_updraft=chemistry_tracers_sc_updraft,
+            chemistry_tracers_cloud_levels=chemistry_tracers_cloud_levels,
+            chemistry_tracers_pw_updraft=chemistry_tracers_pw_updraft,
+            chemistry_tracers_total_pw_updraft=chemistry_tracers_total_pw_updraft,
+            convection_tracers_vect_hcts=convection_tracers.vect_hcts,
+            convection_tracers_fscav=convection_tracers.fscav,
+            convection_tracers_use_gcc_washout=convection_tracers.use_gcc_washout,
+            tracer_cloud_boundary=self._tracer_cloud_boundary,
+            AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
+            plume=plume_dependent_constants.PLUME_INDEX,
         )
 
-        self._get_incloud_sc_chem_dd(
+        # b) downdraft chemistry
+        self._downdraft_chemistry(
             error_code=error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
-            sc_dn=sc_dn,
-            pw_dn=pw_dn,
-            chemistry_tracers=chemistry_tracers,
-            tot_pw_dn_chem=tot_pw_dn_chem,
-            tot_pw_up_chem=tot_pw_up_chem,
+            downdraft_origin_level=downdraft_origin_level,
+            p_cloud_levels_forced=p_cloud_levels_forced,
+            evaporate_in_downdraft_forced=evaporate_in_downdraft_forced,
             total_normalized_integrated_evaporate_forced=total_normalized_integrated_evaporate_forced,
             total_normalized_integrated_condensate_forced=total_normalized_integrated_condensate_forced,
-            downdraft_origin_level=downdraft_origin_level,
-            evaporate_in_downdraft_forced=evaporate_in_downdraft_forced,
-            p_cloud_levels_forced=p_cloud_levels_forced,
-            chemistry_tracers_cloud_levels=chemistry_tracers_cloud_levels,
             normalized_massflux_downdraft_forced=normalized_massflux_downdraft_forced,
-            mass_detrainment_downdraft_forced=mass_detrainment_downdraft_forced,
             mass_entrainment_downdraft_forced=mass_entrainment_downdraft_forced,
+            mass_detrainment_downdraft_forced=mass_detrainment_downdraft_forced,
+            chemistry_tracers=chemistry_tracers,
+            chemistry_tracers_cloud_levels=chemistry_tracers_cloud_levels,
+            chemistry_tracers_sc_downdraft=chemistry_tracers_sc_downdraft,
+            chemistry_tracers_pw_downdraft=chemistry_tracers_pw_downdraft,
+            chemistry_tracers_total_pw_downdraft=chemistry_tracers_total_pw_downdraft,
+            chemistry_tracers_total_pw_updraft=chemistry_tracers_total_pw_updraft,
+            plume=plume_dependent_constants.PLUME_INDEX,
         )
 
-        self._determine_vertical_transport1(
+        # 3) determine the vertical transport including mixing, scavenging and evaporation
+        self._vertical_transport_part_1(
             error_code=error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
             cloud_top_level=cloud_top_level,
-            environment_massflux=environment_massflux,
             p_cloud_levels_forced=p_cloud_levels_forced,
-            ddtr=self._ddtr,
-            chemistry_tracers=chemistry_tracers,
-            sc_up_chem=sc_up_chem,
+            environment_massflux=environment_massflux,
             normalized_massflux_updraft_forced=normalized_massflux_updraft_forced,
             normalized_massflux_downdraft_forced=normalized_massflux_downdraft_forced,
             epsilon_forced=epsilon_forced,
-            sc_dn=sc_dn,
-            out_chem=out_chem,
-            pw_dn=pw_dn,
-            pw_up_chem=pw_up_chem,
+            chemistry_tracers=chemistry_tracers,
+            chemistry_tracers_output=chemistry_tracers_output,
+            chemistry_tracers_cloud_levels=chemistry_tracers_cloud_levels,
+            chemistry_tracers_sc_updraft=chemistry_tracers_sc_updraft,
+            chemistry_tracers_sc_downdraft=chemistry_tracers_sc_downdraft,
+            chemistry_tracers_pw_updraft=chemistry_tracers_pw_updraft,
+            chemistry_tracers_pw_downdraft=chemistry_tracers_pw_downdraft,
+            dd_tracers=self._dd_tracers,
             aa=self._aa,
             bb=self._bb,
             cc=self._cc,
+            plume=plume_dependent_constants.PLUME_INDEX,
         )
 
         if (
             self.cumulus_parameterization_config.USE_FLUX_FORM == 1
             and self.cumulus_parameterization_config.ALP1 > 0.0
         ):
-            n = 0
-            while n < self.config.NUMBER_OF_TRACERS:
-                self._f_temp.field[:, :, :] = self._ddtr.field[:, :, :, n]
-
+            for tracer in range(self.config.NUMBER_OF_TRACERS):
+                # NOTE, this code is an extention of the vertical transport section for option
+                # which executes when (USE_FLUX_FORM == 1 and ALP1 > 0.0)
                 self._tridiag(
                     m=cloud_top_level,
                     a=self._aa,
                     b=self._bb,
                     c=self._cc,
-                    f=self._f_temp,
+                    f=self._dd_tracers.data[:, :, :, tracer],
                     error_code=error_code,
                     plume=plume_dependent_constants.PLUME_INDEX,
                 )
 
-                self._ddtr.field[:, :, :, n] = self._f_temp.field[:, :, :]
+                self._update_after_tridiag(
+                    error_code=error_code,
+                    cloud_top_level=cloud_top_level,
+                    dd=self._dd_tracers,
+                    chemistry_tracers=chemistry_tracers,
+                    chemistry_tracers_output=chemistry_tracers_output,
+                    tracer=Int(tracer),
+                    plume=plume_dependent_constants.PLUME_INDEX,
+                )
 
-                n += 1
-
-        self._determine_vertical_transport2(
+        self._vertical_transport_part_2(
             error_code=error_code,
-            plume=plume_dependent_constants.PLUME_INDEX,
             cloud_top_level=cloud_top_level,
-            out_chem=out_chem,
-            ddtr=self._ddtr,
+            p_cloud_levels_forced=p_cloud_levels_forced,
+            normalized_massflux_updraft_forced=normalized_massflux_updraft_forced,
+            normalized_massflux_downdraft_forced=normalized_massflux_downdraft_forced,
+            epsilon_forced=epsilon_forced,
             chemistry_tracers=chemistry_tracers,
+            chemistry_tracers_output=chemistry_tracers_output,
+            chemistry_tracers_pw_updraft=chemistry_tracers_pw_updraft,
+            chemistry_tracers_pw_downdraft=chemistry_tracers_pw_downdraft,
+            dd_tracers=self._dd_tracers,
+            residual=self._residual,
+            plume=plume_dependent_constants.PLUME_INDEX,
         )

@@ -439,6 +439,15 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    effective_condensate_to_fall_forced: Quantity = dataclasses.field(
+        metadata={
+            "name": "effective_condensate_to_fall_forced",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     evaporation_below_cloud_base: Quantity = dataclasses.field(
         metadata={
             "name": "evaporation_below_cloud_base",
@@ -1285,104 +1294,66 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    chemistry_tracers_sc_updraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "chemistry_tracers_sc_updraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    chemistry_tracers_sc_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "chemistry_tracers_sc_downdraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    chemistry_tracers_pw_updraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "chemistry_tracers_pw_updraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    chemistry_tracers_pw_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "chemistry_tracers_pw_downdraft",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    chemistry_tracers_total_pw_updraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "chemistry_tracers_pw_updraft",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    chemistry_tracers_total_pw_downdraft: Quantity = dataclasses.field(
+        metadata={
+            "name": "chemistry_tracers_pw_downdraft",
+            "dims": [X_DIM, Y_DIM, "tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     #######################################################################
     # NOTE AtmosphericComposition variables **CAN BE MOVED AND/OR RENAMED**
     #######################################################################
-    sc_up_chem: Quantity = dataclasses.field(
-        metadata={
-            "name": "sc_up_chem",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    pw_up_chem: Quantity = dataclasses.field(
-        metadata={
-            "name": "pw_up_chem",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    tot_pw_up_chem: Quantity = dataclasses.field(
-        metadata={
-            "name": "tot_pw_up_chem",
-            "dims": [X_DIM, Y_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    CNV_Tracers_fscav: Quantity = dataclasses.field(
-        metadata={
-            "name": "CNV_Tracers_fscav",
-            "dims": [X_DIM, Y_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    CNV_Tracers_Vect_hcts: Quantity = dataclasses.field(
-        metadata={
-            "name": "CNV_Tracers_Vect_hcts",
-            "dims": [X_DIM, Y_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    sc_b: Quantity = dataclasses.field(
-        metadata={
-            "name": "sc_b",
-            "dims": [X_DIM, Y_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    sc_dn: Quantity = dataclasses.field(
-        metadata={
-            "name": "sc_dn",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-
-    pw_dn: Quantity = dataclasses.field(
-        metadata={
-            "name": "pw_dn",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-
-    tot_pw_dn_chem: Quantity = dataclasses.field(
-        metadata={
-            "name": "tot_pw_dn_chem",
-            "dims": [X_DIM, Y_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     ddtr: Quantity = dataclasses.field(
         metadata={
             "name": "ddtr",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    out_chem: Quantity = dataclasses.field(
-        metadata={
-            "name": "out_chem",
             "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
             "units": "?",
             "intent": "?",
@@ -1436,16 +1407,6 @@ class GF2020CumulusParameterizationLocals(State):
     )
 
     # NOTE these can potentially be removed with a better analysis of what they do/where they go
-
-    effective_condensate_to_fall_forced: Quantity = dataclasses.field(
-        metadata={
-            "name": "effective_condensate_to_fall_forced",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
 
     # NOTE these can potentially be removed with a better analysis of what they do/where they go
     psum: Quantity = dataclasses.field(

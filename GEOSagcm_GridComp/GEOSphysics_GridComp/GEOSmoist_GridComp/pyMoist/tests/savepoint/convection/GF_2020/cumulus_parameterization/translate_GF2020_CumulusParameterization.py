@@ -16,11 +16,8 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
     GF2020CumulusParameterizationState,
 )
+from pyMoist.convection_tracers import ConvectionTracers
 import numpy as np
-
-import warnings
-
-warnings.filterwarnings("once")
 
 
 class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
@@ -142,13 +139,39 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
+        self.convection_tracers_input = data_loader.load("GF2020_ConvectionTracers")
 
         # workaround because translate test cannot read in 4d fields
         self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-In")
 
     def compute_func(self, **inputs):
+        # initalize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
+
+        # initalize convection tracers
+        convection_tracers = ConvectionTracers.ones(
+            self.quantity_factory,
+            data_dimensions={
+                "tracers": config.NUMBER_OF_TRACERS,
+                "size_three_dimension": 3,
+                "size_four_dimension": 4,
+            },
+        )
+
+        convection_tracers.tracers.field[:] = np.moveaxis(self.convection_tracers_input["tracers"], 0, 3)
+        convection_tracers.vect_hcts.field[:] = self.convection_tracers_input["vect_hcts"]
+        convection_tracers.kc_scal.field[:] = self.convection_tracers_input["kc_scal"]
+        convection_tracers.fscav.field[:] = self.convection_tracers_input["fscav"]
+        convection_tracers.convfaci2g.field[:] = self.convection_tracers_input["convfaci2g"]
+        convection_tracers.retfactor.field[:] = self.convection_tracers_input["retfactor"]
+        convection_tracers.liq_and_gas.field[:] = self.convection_tracers_input["liq_and_gas"]
+        convection_tracers.online_cldliq.field[:] = self.convection_tracers_input["online_cldliq"]
+        convection_tracers.online_vud.field[:] = self.convection_tracers_input["online_vud"]
+        convection_tracers.ftemp_threshold.field[:] = self.convection_tracers_input["ftemp_threshold"]
+        convection_tracers.use_gcc_washout.field[:] = self.convection_tracers_input["use_gcc_washout"]
+        convection_tracers.use_gocart.field[:] = self.convection_tracers_input["use_gocart"]
+        convection_tracers.is_wetdep.field[:] = self.convection_tracers_input["is_wetdep"]
 
         # initalize pyMoist saturation tables
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
@@ -337,7 +360,7 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         print("COMPILED")
 
         # call the test subject
-        code(state, saturation_tables)
+        code(state, saturation_tables, convection_tracers)
 
         # collapse plume dim for chemistry_tracers_output
         # NOTE ideally this has no numpy dependency

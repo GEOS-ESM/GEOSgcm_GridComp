@@ -159,7 +159,7 @@ class GF2020CumulusParameterizationState(State):
         dudt: Quantity = dataclasses.field(
             metadata={
                 "name": "dudt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -168,7 +168,7 @@ class GF2020CumulusParameterizationState(State):
         dvdt: Quantity = dataclasses.field(
             metadata={
                 "name": "dvdt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -177,7 +177,7 @@ class GF2020CumulusParameterizationState(State):
         dnliquiddt: Quantity = dataclasses.field(
             metadata={
                 "name": "dnliquiddt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -186,7 +186,7 @@ class GF2020CumulusParameterizationState(State):
         dnicedt: Quantity = dataclasses.field(
             metadata={
                 "name": "dnicedt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -204,7 +204,7 @@ class GF2020CumulusParameterizationState(State):
         dconvectiveicedt: Quantity = dataclasses.field(
             metadata={
                 "name": "dconvectiveicedt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -213,7 +213,7 @@ class GF2020CumulusParameterizationState(State):
         dlargescaleicedt: Quantity = dataclasses.field(
             metadata={
                 "name": "dlargescaleicedt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -222,7 +222,7 @@ class GF2020CumulusParameterizationState(State):
         dconvectiveliquiddt: Quantity = dataclasses.field(
             metadata={
                 "name": "dconvectiveliquiddt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -231,7 +231,7 @@ class GF2020CumulusParameterizationState(State):
         dlargescaleliquiddt: Quantity = dataclasses.field(
             metadata={
                 "name": "dlargescaleliquiddt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -240,7 +240,7 @@ class GF2020CumulusParameterizationState(State):
         dconvectivecloudfractiondt: Quantity = dataclasses.field(
             metadata={
                 "name": "dconvectivecloudfractiondt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -249,7 +249,7 @@ class GF2020CumulusParameterizationState(State):
         dlargescalecloudfractiondt: Quantity = dataclasses.field(
             metadata={
                 "name": "dlargescalecloudfractiondt",
-                "dims": [X_DIM, Y_DIM, "plumes"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -489,54 +489,54 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        cloud_work_function_0: Quantity = dataclasses.field(
+        cloud_workfunction_0: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud_work_function_0",
+                "name": "cloud_workfunction_0",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        cloud_work_function_1: Quantity = dataclasses.field(
+        cloud_workfunction_1: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud_work_function_1",
+                "name": "cloud_workfunction_1",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        cloud_work_function_2: Quantity = dataclasses.field(
+        cloud_workfunction_2: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud_work_function_2",
+                "name": "cloud_workfunction_2",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        cloud_work_function_3: Quantity = dataclasses.field(
+        cloud_workfunction_3: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud_work_function_3",
+                "name": "cloud_workfunction_3",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        cloud_work_function_1_pbl: Quantity = dataclasses.field(
+        cloud_workfunction_1_pbl: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud_work_function_1_pbl",
+                "name": "cloud_workfunction_1_pbl",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        cloud_work_function_1_cin: Quantity = dataclasses.field(
+        cloud_workfunction_1_cin: Quantity = dataclasses.field(
             metadata={
-                "name": "cloud_work_function_1_cin",
+                "name": "cloud_workfunction_1_cin",
                 "dims": [X_DIM, Y_DIM],
                 "units": "?",
                 "intent": "?",
@@ -816,54 +816,54 @@ class GF2020CumulusParameterizationState(State):
                 "dtype": Float,
             }
         )
-        large_scale_ice_input: Quantity = dataclasses.field(
+        large_scale_ice: Quantity = dataclasses.field(
             metadata={
-                "name": "large_scale_ice_input",
+                "name": "large_scale_ice",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        convective_ice_input: Quantity = dataclasses.field(
+        convective_ice: Quantity = dataclasses.field(
             metadata={
-                "name": "convective_ice_input",
+                "name": "convective_ice",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        large_scale_liquid_input: Quantity = dataclasses.field(
+        large_scale_liquid: Quantity = dataclasses.field(
             metadata={
-                "name": "large_scale_liquid_input",
+                "name": "large_scale_liquid",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        convective_liquid_input: Quantity = dataclasses.field(
+        convective_liquid: Quantity = dataclasses.field(
             metadata={
-                "name": "convective_liquid_input",
+                "name": "convective_liquid",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        large_scale_cloud_fraction_input: Quantity = dataclasses.field(
+        large_scale_cloud_fraction: Quantity = dataclasses.field(
             metadata={
-                "name": "large_scale_cloud_fraction_input",
+                "name": "large_scale_cloud_fraction",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
         )
-        convective_cloud_fraction_input: Quantity = dataclasses.field(
+        convective_cloud_fraction: Quantity = dataclasses.field(
             metadata={
-                "name": "convective_cloud_fraction_input",
+                "name": "convective_cloud_fraction",
                 "dims": [X_DIM, Y_DIM, Z_DIM],
                 "units": "?",
                 "intent": "?",

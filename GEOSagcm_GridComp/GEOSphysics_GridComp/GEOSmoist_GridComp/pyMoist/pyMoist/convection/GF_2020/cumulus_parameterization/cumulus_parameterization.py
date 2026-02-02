@@ -11,6 +11,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
     GF2020CumulusParameterizationLocals,
 )
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.convection_tracers import ConvectionTracers
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
@@ -549,6 +550,7 @@ class CumulusParameterization:
         self,
         state: GF2020CumulusParameterizationState,
         saturation_tables: SaturationVaporPressureTable,
+        convection_tracers: ConvectionTracers,
     ):
         if self.cumulus_parameterization_config.PLUME_ORDER == 0:
             plume_types = ["shallow", "mid", "deep"]
@@ -2018,7 +2020,39 @@ class CumulusParameterization:
 
                 # section for atmospheric composition
                 # NOTE this section does not run in the test case, and has not been implemented.
-                # self._atmospheric_composition()
+                self._atmospheric_composition(
+                    error_code=state.output.error_code,
+                    cloud_top_level=state.output.cloud_top_level,
+                    updraft_origin_level=state.output.updraft_origin_level,
+                    downdraft_origin_level=state.output.downdraft_origin_level,
+                    ocean_fraction=state.input.ocean_fraction,
+                    p_forced=state.input_output.p_forced,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    geopotential_height_cloud_levels=self.locals.geopotential_height_cloud_levels,
+                    environment_massflux=self.locals.environment_massflux,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                    mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
+                    mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
+                    mass_entrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
+                    mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
+                    vertical_velocity_3d=self.locals.vertical_velocity_3d,
+                    total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
+                    total_normalized_integrated_evaporate_forced=self.locals.total_normalized_integrated_evaporate_forced,
+                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                    epsilon_forced=state.output.epsilon_forced,
+                    chemistry_tracers=state.input_output.chemistry_tracers,
+                    chemistry_tracers_output=state.input_output.chemistry_tracers_output,
+                    chemistry_tracers_cloud_levels=self.locals.chemistry_tracers_cloud_levels,
+                    chemistry_tracers_sc_updraft=self.locals.chemistry_tracers_sc_updraft,
+                    chemistry_tracers_sc_downdraft=self.locals.chemistry_tracers_sc_downdraft,
+                    chemistry_tracers_pw_updraft=self.locals.chemistry_tracers_pw_updraft,
+                    chemistry_tracers_pw_downdraft=self.locals.chemistry_tracers_pw_downdraft,
+                    chemistry_tracers_total_pw_updraft=self.locals.chemistry_tracers_total_pw_updraft,
+                    chemistry_tracers_total_pw_downdraft=self.locals.chemistry_tracers_total_pw_downdraft,
+                    convection_tracers=convection_tracers,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # begin: for GATE soundings
                 # NOTE this section does not run in the test case, and has not been implemented.
