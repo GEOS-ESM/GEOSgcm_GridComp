@@ -1,11 +1,11 @@
 from ndsl.dsl.gt4py import computation, interval, PARALLEL, FORWARD, K, exp, BACKWARD
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     IntFieldIJ_Plume,
-    FloatField_Tracers,
-    FloatFieldIJ_Tracers,
+    FloatField_ConvectionTracers,
+    FloatFieldIJ_ConvectionTracers,
     FloatField_Plume,
     FloatFieldIJ_Plume,
-    FloatField_Tracers_Plume,
+    FloatField_ConvectionTracers_Plume,
 )
 from pyMoist.field_types import (
     ConvectionTracerMetaDataTable_Float,
@@ -29,8 +29,8 @@ from pyMoist.convection_tracers import ConvectionTracers
 
 def environment_cloud_levels_chemistry(
     error_code: IntFieldIJ_Plume,
-    chemistry_tracers: FloatField_Tracers,
-    chemistry_tracers_cloud_levels: FloatField_Tracers,
+    chemistry_tracers: FloatField_ConvectionTracers,
+    chemistry_tracers_cloud_levels: FloatField_ConvectionTracers,
     plume: Int,
 ):
     from __externals__ import k_end, NUMBER_OF_TRACERS, CLOUD_LEVEL_OPTION
@@ -80,15 +80,15 @@ def updraft_chemistry(
     mass_entrainment_updraft_forced: FloatField_Plume,
     mass_detrainment_updraft_forced: FloatField_Plume,
     normalized_massflux_updraft_forced: FloatField_Plume,
-    chemistry_tracers: FloatField_Tracers,
-    chemistry_tracers_sc_updraft: FloatField_Tracers,
-    chemistry_tracers_cloud_levels: FloatField_Tracers,
-    chemistry_tracers_pw_updraft: FloatField_Tracers,
-    chemistry_tracers_total_pw_updraft: FloatFieldIJ_Tracers,
+    chemistry_tracers: FloatField_ConvectionTracers,
+    chemistry_tracers_sc_updraft: FloatField_ConvectionTracers,
+    chemistry_tracers_cloud_levels: FloatField_ConvectionTracers,
+    chemistry_tracers_pw_updraft: FloatField_ConvectionTracers,
+    chemistry_tracers_total_pw_updraft: FloatFieldIJ_ConvectionTracers,
     convection_tracers_vect_hcts: ConvectionTracerMetaDataTable_x4,
     convection_tracers_fscav: ConvectionTracerMetaDataTable_Float,
     convection_tracers_use_gcc_washout: ConvectionTracerMetaDataTable_Bool,
-    tracer_cloud_boundary: FloatFieldIJ_Tracers,
+    tracer_cloud_boundary: FloatFieldIJ_ConvectionTracers,
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
 ):
@@ -238,12 +238,12 @@ def downdraft_chemistry(
     normalized_massflux_downdraft_forced: FloatField_Plume,
     mass_entrainment_downdraft_forced: FloatField_Plume,
     mass_detrainment_downdraft_forced: FloatField_Plume,
-    chemistry_tracers: FloatField_Tracers,
-    chemistry_tracers_cloud_levels: FloatField_Tracers,
-    chemistry_tracers_sc_downdraft: FloatField_Tracers,
-    chemistry_tracers_pw_downdraft: FloatField_Tracers,
-    chemistry_tracers_total_pw_downdraft: FloatFieldIJ_Tracers,
-    chemistry_tracers_total_pw_updraft: FloatFieldIJ_Tracers,
+    chemistry_tracers: FloatField_ConvectionTracers,
+    chemistry_tracers_cloud_levels: FloatField_ConvectionTracers,
+    chemistry_tracers_sc_downdraft: FloatField_ConvectionTracers,
+    chemistry_tracers_pw_downdraft: FloatField_ConvectionTracers,
+    chemistry_tracers_total_pw_downdraft: FloatFieldIJ_ConvectionTracers,
+    chemistry_tracers_total_pw_updraft: FloatFieldIJ_ConvectionTracers,
     plume: Int,
 ):
     from __externals__ import NUMBER_OF_TRACERS, USE_TRACER_EVAPORATION
@@ -378,14 +378,14 @@ def vertical_transport_part_1(
     normalized_massflux_updraft_forced: FloatField_Plume,
     normalized_massflux_downdraft_forced: FloatField_Plume,
     epsilon_forced: FloatFieldIJ_Plume,
-    chemistry_tracers: FloatField_Tracers,
-    chemistry_tracers_output: FloatField_Tracers_Plume,
-    chemistry_tracers_cloud_levels: FloatField_Tracers,
-    chemistry_tracers_sc_updraft: FloatField_Tracers,
-    chemistry_tracers_sc_downdraft: FloatField_Tracers,
-    chemistry_tracers_pw_updraft: FloatField_Tracers,
-    chemistry_tracers_pw_downdraft: FloatField_Tracers,
-    dd_tracers: FloatField_Tracers,
+    chemistry_tracers: FloatField_ConvectionTracers,
+    chemistry_tracers_output: FloatField_ConvectionTracers_Plume,
+    chemistry_tracers_cloud_levels: FloatField_ConvectionTracers,
+    chemistry_tracers_sc_updraft: FloatField_ConvectionTracers,
+    chemistry_tracers_sc_downdraft: FloatField_ConvectionTracers,
+    chemistry_tracers_pw_updraft: FloatField_ConvectionTracers,
+    chemistry_tracers_pw_downdraft: FloatField_ConvectionTracers,
+    dd_tracers: FloatField_ConvectionTracers,
     aa: FloatField,
     bb: FloatField,
     cc: FloatField,
@@ -515,9 +515,9 @@ def vertical_transport_part_1(
 def update_after_tridiag(
     error_code: IntFieldIJ_Plume,
     cloud_top_level: IntFieldIJ_Plume,
-    dd: FloatField_Tracers,
-    chemistry_tracers: FloatField_Tracers,
-    chemistry_tracers_output: FloatField_Tracers_Plume,
+    dd: FloatField_ConvectionTracers,
+    chemistry_tracers: FloatField_ConvectionTracers,
+    chemistry_tracers_output: FloatField_ConvectionTracers_Plume,
     tracer: Int,
     plume: Int,
 ):
@@ -537,12 +537,12 @@ def vertical_transport_part_2(
     normalized_massflux_updraft_forced: FloatField_Plume,
     normalized_massflux_downdraft_forced: FloatField_Plume,
     epsilon_forced: FloatFieldIJ_Plume,
-    chemistry_tracers: FloatField_Tracers,
-    chemistry_tracers_output: FloatField_Tracers_Plume,
-    chemistry_tracers_pw_updraft: FloatField_Tracers,
-    chemistry_tracers_pw_downdraft: FloatField_Tracers,
-    dd_tracers: FloatField_Tracers,
-    residual: FloatFieldIJ_Tracers,
+    chemistry_tracers: FloatField_ConvectionTracers,
+    chemistry_tracers_output: FloatField_ConvectionTracers_Plume,
+    chemistry_tracers_pw_updraft: FloatField_ConvectionTracers,
+    chemistry_tracers_pw_downdraft: FloatField_ConvectionTracers,
+    dd_tracers: FloatField_ConvectionTracers,
+    residual: FloatFieldIJ_ConvectionTracers,
     plume: Int,
 ):
     from __externals__ import NUMBER_OF_TRACERS
@@ -550,7 +550,7 @@ def vertical_transport_part_2(
     with computation(FORWARD), interval(0, 1):
         tracer = 0
         while tracer < NUMBER_OF_TRACERS:
-            residual[0,0][tracer] = 0.0
+            residual[0, 0][tracer] = 0.0
             tracer += 1
 
     with computation(FORWARD), interval(0, -1):
