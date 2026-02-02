@@ -104,13 +104,15 @@ class TestCore:
         convection_tracers = ConvectionTracers.ones(
             self.quantity_factory,
             data_dimensions={
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
                 "size_three_dimension": 3,
                 "size_four_dimension": 4,
             },
         )
 
-        convection_tracers.tracers.field[:] = np.moveaxis(convection_tracers_input["tracers"], 0, 3)
+        convection_tracers.tracers.field[:] = np.moveaxis(
+            convection_tracers_input["convection_tracers"], 0, 3
+        )
         convection_tracers.vect_hcts.field[:] = convection_tracers_input["vect_hcts"]
         convection_tracers.kc_scal.field[:] = convection_tracers_input["kc_scal"]
         convection_tracers.fscav.field[:] = convection_tracers_input["fscav"]
@@ -129,7 +131,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -140,7 +142,7 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 

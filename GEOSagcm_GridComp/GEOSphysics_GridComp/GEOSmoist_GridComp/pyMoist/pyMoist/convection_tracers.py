@@ -14,7 +14,7 @@ class ConvectionTracers(State):
     (stored in the "tracer" field) and metadata, each stored in its off-grid field
 
     Must be initalized with the following extra dimensions:
-        "tracers": number of convective tracers, must be defined prior to initalization
+        "convection_tracers": number of convective tracers, must be defined prior to initalization
         "size_three_dimension": fixed dimension of size three for metadata
         "size_four_dimension": fixed dimension of size four for metadata
     """
@@ -22,7 +22,7 @@ class ConvectionTracers(State):
     tracers: Quantity = dataclasses.field(
         metadata={
             "name": "tracers",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, Z_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -31,7 +31,7 @@ class ConvectionTracers(State):
     fscav: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -40,7 +40,7 @@ class ConvectionTracers(State):
     vect_hcts: Quantity = dataclasses.field(
         metadata={
             "name": "vect_hcts",
-            "dims": ["tracers", "size_four_dimension"],
+            "dims": ["convection_tracers", "size_four_dimension"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -49,7 +49,7 @@ class ConvectionTracers(State):
     kc_scal: Quantity = dataclasses.field(
         metadata={
             "name": "kc_scal",
-            "dims": ["tracers", "size_three_dimension"],
+            "dims": ["convection_tracers", "size_three_dimension"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -58,7 +58,7 @@ class ConvectionTracers(State):
     convfaci2g: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -67,7 +67,7 @@ class ConvectionTracers(State):
     retfactor: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -76,7 +76,7 @@ class ConvectionTracers(State):
     liq_and_gas: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -85,7 +85,7 @@ class ConvectionTracers(State):
     online_cldliq: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -94,7 +94,7 @@ class ConvectionTracers(State):
     online_vud: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -103,7 +103,7 @@ class ConvectionTracers(State):
     ftemp_threshold: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -112,7 +112,7 @@ class ConvectionTracers(State):
     use_gcc_washout: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Bool,
@@ -121,7 +121,7 @@ class ConvectionTracers(State):
     use_gocart: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Bool,
@@ -130,7 +130,7 @@ class ConvectionTracers(State):
     is_wetdep: Quantity = dataclasses.field(
         metadata={
             "name": "fscav",
-            "dims": ["tracers"],
+            "dims": ["convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Bool,

@@ -1288,7 +1288,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_cloud_levels: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_cloud_levels",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, Z_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1297,7 +1297,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_sc_updraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_sc_updraft",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, Z_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1306,7 +1306,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_sc_downdraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_sc_downdraft",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, Z_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1315,7 +1315,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_pw_updraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_pw_updraft",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, Z_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1324,7 +1324,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_pw_downdraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_pw_downdraft",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, Z_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1333,7 +1333,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_total_pw_updraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_pw_updraft",
-            "dims": [X_DIM, Y_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1342,7 +1342,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_total_pw_downdraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_pw_downdraft",
-            "dims": [X_DIM, Y_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1354,7 +1354,7 @@ class GF2020CumulusParameterizationLocals(State):
     ddtr: Quantity = dataclasses.field(
         metadata={
             "name": "ddtr",
-            "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, Z_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1363,7 +1363,7 @@ class GF2020CumulusParameterizationLocals(State):
     trash_: Quantity = dataclasses.field(
         metadata={
             "name": "trash_",
-            "dims": [X_DIM, Y_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1372,7 +1372,7 @@ class GF2020CumulusParameterizationLocals(State):
     trash2_: Quantity = dataclasses.field(
         metadata={
             "name": "trash2_",
-            "dims": [X_DIM, Y_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1381,7 +1381,7 @@ class GF2020CumulusParameterizationLocals(State):
     evap_: Quantity = dataclasses.field(
         metadata={
             "name": "evap_",
-            "dims": [X_DIM, Y_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1390,7 +1390,7 @@ class GF2020CumulusParameterizationLocals(State):
     wetdep_: Quantity = dataclasses.field(
         metadata={
             "name": "wetdep_",
-            "dims": [X_DIM, Y_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1399,7 +1399,7 @@ class GF2020CumulusParameterizationLocals(State):
     residu_: Quantity = dataclasses.field(
         metadata={
             "name": "residu_",
-            "dims": [X_DIM, Y_DIM, "tracers"],
+            "dims": [X_DIM, Y_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,

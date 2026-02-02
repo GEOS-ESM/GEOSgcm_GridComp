@@ -67,7 +67,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -78,18 +78,14 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         locals.t_new.data[:] = inputs["local_t_new"]
-        state.input_output.topography_height_no_negative.data[:] = inputs[
-            "topography_height_no_negative"
-        ]
+        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
             "local_geopotential_height_cloud_levels_forced"
         ]
@@ -100,9 +96,7 @@ class TestCore:
         locals.melting_layer.data[:] = inputs["local_melting_layer"]
         state.input.convection_fraction.data[:] = inputs["convection_fraction"]
         state.input.surface_type.data[:] = inputs["surface_type"]
-        locals.maximum_updraft_origin_level.data[:] = (
-            inputs["local_maximum_updraft_origin_level"] - 1
-        )
+        locals.maximum_updraft_origin_level.data[:] = inputs["local_maximum_updraft_origin_level"] - 1
         locals.detrainment_start_level.data[:] = inputs["local_detrainment_start_level"] - 1
 
         code_part_1 = self.stencil_factory.from_dims_halo(
@@ -157,13 +151,9 @@ class TestCore:
             )
 
         outputs = {
-            "error_code": state.output.error_code.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_t_new": locals.t_new.field[:],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[
-                :
-            ],
+            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
             "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],

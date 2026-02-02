@@ -67,7 +67,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -78,14 +78,12 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         locals.start_level.data[:] = inputs["local_start_level"] - 1
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_top_level"] - 1
@@ -97,15 +95,11 @@ class TestCore:
             inputs["mass_entrainment_updraft_forced"]
         )
         locals.normalized_massflux_updraft.data[:] = inputs["local_normalized_massflux_updraft"]
-        locals.cloud_moist_static_energy_forced.data[:] = inputs[
-            "local_cloud_moist_static_energy_forced"
-        ]
+        locals.cloud_moist_static_energy_forced.data[:] = inputs["local_cloud_moist_static_energy_forced"]
         state.output.normalized_massflux_updraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["normalized_massflux_updraft_forced"]
-        locals.environment_moist_static_energy_forced.data[:] = inputs[
-            "local_env_moist_static_energy_forced"
-        ]
+        locals.environment_moist_static_energy_forced.data[:] = inputs["local_env_moist_static_energy_forced"]
         locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
         locals.t_excess.data[:] = inputs["local_t_excess"]
         locals.add_buoyancy.data[:] = inputs["local_add_buoyancy"]
@@ -142,9 +136,7 @@ class TestCore:
         outputs = {
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_start_level": locals.start_level.field[:] + 1,
-            "cloud_top_level": state.output.cloud_top_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
             "mass_detrainment_updraft_forced": state.output.mass_detrainment_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
@@ -157,9 +149,7 @@ class TestCore:
             "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.field[
-                :
-            ],
+            "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.field[:],
             "local_vapor_excess": locals.vapor_excess.field[:],
             "local_t_excess": locals.t_excess.field[:],
             "local_add_buoyancy": locals.add_buoyancy.field[:],

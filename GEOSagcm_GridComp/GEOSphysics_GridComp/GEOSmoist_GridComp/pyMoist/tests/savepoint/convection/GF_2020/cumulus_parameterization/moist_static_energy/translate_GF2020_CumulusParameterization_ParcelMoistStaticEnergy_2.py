@@ -64,7 +64,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -75,14 +75,12 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
         locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
         locals.t_excess.data[:] = inputs["local_t_excess"]
@@ -94,9 +92,7 @@ class TestCore:
         locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_moist_static_energy_cloud_levels_forced"
         ]
-        locals.moist_static_energy_origin_level.data[:] = inputs[
-            "local_moist_static_energy_origin_level"
-        ]
+        locals.moist_static_energy_origin_level.data[:] = inputs["local_moist_static_energy_origin_level"]
         locals.moist_static_energy_origin_level_forced.data[:] = inputs[
             "local_moist_static_energy_origin_level_forced"
         ]
@@ -132,9 +128,7 @@ class TestCore:
             )
 
         outputs = {
-            "error_code": state.output.error_code.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "ocean_fraction": state.input.ocean_fraction.field[:],
             "local_vapor_excess": locals.vapor_excess.field[:],
             "local_t_excess": locals.t_excess.field[:],
@@ -146,9 +140,7 @@ class TestCore:
             "local_env_moist_static_energy_cloud_levels_forced": locals.environment_moist_static_energy_cloud_levels_forced.field[
                 :
             ],
-            "local_moist_static_energy_origin_level": locals.moist_static_energy_origin_level.field[
-                :
-            ],
+            "local_moist_static_energy_origin_level": locals.moist_static_energy_origin_level.field[:],
             "local_moist_static_energy_origin_level_forced": locals.moist_static_energy_origin_level_forced.field[
                 :
             ],

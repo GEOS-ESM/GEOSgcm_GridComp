@@ -77,7 +77,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -88,15 +88,13 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
         # fill relevant parts of dataclasses
         state.input_output.t_old.data[:] = inputs["t_old"]
-        locals.environment_saturation_mixing_ratio.data[:] = inputs[
-            "local_env_saturation_mixing_ratio"
-        ]
+        locals.environment_saturation_mixing_ratio.data[:] = inputs["local_env_saturation_mixing_ratio"]
         state.input_output.vapor_old.data[:] = inputs["vapor_old"]
         locals.environment_moist_static_energy.data[:] = inputs["local_env_moist_static_energy"]
         locals.environment_saturation_moist_static_energy.data[:] = inputs[
@@ -118,20 +116,14 @@ class TestCore:
         locals.environment_saturation_moist_static_energy_cloud_levels.data[:] = inputs[
             "local_env_saturation_moist_static_energy_cloud_levels"
         ]
-        locals.geopotential_height_cloud_levels.data[:] = inputs[
-            "local_geopotential_height_cloud_levels"
-        ]
+        locals.geopotential_height_cloud_levels.data[:] = inputs["local_geopotential_height_cloud_levels"]
         locals.p_cloud_levels.data[:] = inputs["local_p_cloud_levels"]
         locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels"]
         locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels"]
         state.input_output.p_surface.data[:] = inputs["p_surface"]
         state.input_output.t_surface.data[:] = inputs["t_surface"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
-        state.input_output.topography_height_no_negative.data[:] = inputs[
-            "topography_height_no_negative"
-        ]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
 
         code = self.stencil_factory.from_dims_halo(
             func=environment_cloud_levels,
@@ -191,18 +183,14 @@ class TestCore:
             "local_env_saturation_moist_static_energy_cloud_levels": locals.environment_saturation_moist_static_energy_cloud_levels.field[
                 :
             ],
-            "local_geopotential_height_cloud_levels": locals.geopotential_height_cloud_levels.field[
-                :
-            ],
+            "local_geopotential_height_cloud_levels": locals.geopotential_height_cloud_levels.field[:],
             "local_p_cloud_levels": locals.p_cloud_levels.field[:],
             "local_gamma_cloud_levels": locals.gamma_cloud_levels.field[:],
             "local_t_cloud_levels": locals.t_cloud_levels.field[:],
             "p_surface": state.input_output.p_surface.field[:],
             "t_surface": state.input_output.t_surface.field[:],
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[
-                :
-            ],
+            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
         }
 
         return outputs

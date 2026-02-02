@@ -77,7 +77,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -88,7 +88,7 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -98,9 +98,7 @@ class TestCore:
             "local_env_saturation_mixing_ratio_forced"
         ]
         locals.vapor_forced.data[:] = inputs["local_vapor_forced_env_cond"]
-        locals.environment_moist_static_energy_forced.data[:] = inputs[
-            "local_env_moist_static_energy_forced"
-        ]
+        locals.environment_moist_static_energy_forced.data[:] = inputs["local_env_moist_static_energy_forced"]
         locals.environment_saturation_moist_static_energy_forced.data[:] = inputs[
             "local_env_saturation_moist_static_energy_forced"
         ]
@@ -130,12 +128,8 @@ class TestCore:
         locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced"]
         state.input_output.p_surface.data[:] = inputs["p_surface"]
         state.input_output.t_surface.data[:] = inputs["t_surface"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
-        state.input_output.topography_height_no_negative.data[:] = inputs[
-            "topography_height_no_negative"
-        ]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
 
         code = self.stencil_factory.from_dims_halo(
             func=environment_cloud_levels,
@@ -179,9 +173,7 @@ class TestCore:
                 :
             ],
             "local_vapor_forced_env_cond": locals.vapor_forced.field[:],
-            "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.field[
-                :
-            ],
+            "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.field[:],
             "local_env_saturation_moist_static_energy_forced": locals.environment_saturation_moist_static_energy_forced.field[
                 :
             ],
@@ -212,9 +204,7 @@ class TestCore:
             "p_surface": state.input_output.p_surface.field[:],
             "t_surface": state.input_output.t_surface.field[:],
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[
-                :
-            ],
+            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
         }
 
         return outputs

@@ -69,7 +69,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -80,26 +80,20 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
-        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["lcl_level"] - 1
-        )
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
         state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["updraft_lfc_level"] - 1
         )
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["cloud_top_level"] - 1
         )
-        locals.cloud_moist_static_energy_forced.data[:] = inputs[
-            "local_cloud_moist_static_energy_forced"
-        ]
+        locals.cloud_moist_static_energy_forced.data[:] = inputs["local_cloud_moist_static_energy_forced"]
         locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_moist_static_energy_cloud_levels_forced"
         ]
@@ -133,22 +127,15 @@ class TestCore:
 
         # write output
         outputs = {
-            "error_code": state.output.error_code.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "lcl_level": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
-            + 1,
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "lcl_level": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "updraft_lfc_level": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "cloud_top_level": state.output.cloud_top_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
-            "local_cloud_moist_static_energy_forced": locals.cloud_moist_static_energy_forced.field[
-                :
-            ],
+            "local_cloud_moist_static_energy_forced": locals.cloud_moist_static_energy_forced.field[:],
             "local_env_moist_static_energy_cloud_levels_forced": locals.environment_moist_static_energy_cloud_levels_forced.field[
                 :
             ],

@@ -64,7 +64,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -75,15 +75,13 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
         # fill relevant parts of dataclasses
         locals.geopotential_height.data[:] = inputs["local_geopotential_height"]
-        locals.environment_saturation_mixing_ratio.data[:] = inputs[
-            "local_env_saturation_mixing_ratio"
-        ]
+        locals.environment_saturation_mixing_ratio.data[:] = inputs["local_env_saturation_mixing_ratio"]
         locals.environment_moist_static_energy.data[:] = inputs["local_env_moist_static_energy"]
         locals.environment_saturation_moist_static_energy.data[:] = inputs[
             "local_env_saturation_moist_static_energy"
@@ -91,13 +89,9 @@ class TestCore:
         state.input_output.t_old.data[:] = inputs["t_old"]
         state.input_output.vapor_old.data[:] = inputs["vapor_old"]
         state.input_output.p_forced.data[:] = inputs["p_forced"]
-        state.input_output.topography_height_no_negative.data[:] = inputs[
-            "topography_height_no_negative"
-        ]
+        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
         state.input_output.p_surface.data[:] = inputs["p_surface"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
+        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
 
         code = self.stencil_factory.from_dims_halo(
             func=environment_conditions,
@@ -133,9 +127,7 @@ class TestCore:
             "t_old": state.input_output.t_old.field[:],
             "vapor_old": state.input_output.vapor_old.field[:],
             "p_forced": state.input_output.p_forced.field[:],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[
-                :
-            ],
+            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
             "p_surface": state.input_output.p_surface.field[:],
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
         }

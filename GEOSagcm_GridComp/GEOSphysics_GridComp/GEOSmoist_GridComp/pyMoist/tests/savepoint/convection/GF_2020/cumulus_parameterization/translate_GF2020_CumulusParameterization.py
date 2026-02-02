@@ -153,13 +153,13 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         convection_tracers = ConvectionTracers.ones(
             self.quantity_factory,
             data_dimensions={
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
                 "size_three_dimension": 3,
                 "size_four_dimension": 4,
             },
         )
 
-        convection_tracers.tracers.field[:] = np.moveaxis(self.convection_tracers_input["tracers"], 0, 3)
+        convection_tracers.tracers.field[:] = np.moveaxis(self.convection_tracers_input["convection_tracers"], 0, 3)
         convection_tracers.vect_hcts.field[:] = self.convection_tracers_input["vect_hcts"]
         convection_tracers.kc_scal.field[:] = self.convection_tracers_input["kc_scal"]
         convection_tracers.fscav.field[:] = self.convection_tracers_input["fscav"]
@@ -181,7 +181,7 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 

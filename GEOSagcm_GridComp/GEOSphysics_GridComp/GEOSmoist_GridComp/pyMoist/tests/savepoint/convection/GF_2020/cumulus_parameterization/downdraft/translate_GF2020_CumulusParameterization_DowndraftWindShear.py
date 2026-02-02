@@ -79,7 +79,7 @@ class TestCore:
             self.quantity_factory,
             data_dimensions={
                 "plumes": NUMBER_OF_PLUMES,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -90,7 +90,7 @@ class TestCore:
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "tracers": config.NUMBER_OF_TRACERS,
+                "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -110,9 +110,9 @@ class TestCore:
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["total_normalized_integrated_condensate_forced"]
-        locals.total_normalized_integrated_evaporate_forced.data[
-            :,
-        ] = inputs["local_total_normalized_integrated_evaporate_forced"]
+        locals.total_normalized_integrated_evaporate_forced.data[:,] = inputs[
+            "local_total_normalized_integrated_evaporate_forced"
+        ]
         locals.psum.data[:] = inputs["local_psum"]
         locals.psumh.data[:] = inputs["local_psumh"]
         locals.scale_dependence_factor_downdraft.data[:] = inputs["local_scale_dependence_factor_downdraft"]
