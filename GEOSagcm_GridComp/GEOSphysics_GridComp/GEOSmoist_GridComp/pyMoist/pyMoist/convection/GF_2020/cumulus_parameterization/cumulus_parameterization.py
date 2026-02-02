@@ -2019,7 +2019,10 @@ class CumulusParameterization:
                 self._sounding()
 
                 # section for atmospheric composition
-                # NOTE this section does not run in the test case, and has not been implemented.
+                # NOTE test GF2020_CumulusParameterization_AtmosphericComposition_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._atmospheric_composition(
                     error_code=state.output.error_code,
                     cloud_top_level=state.output.cloud_top_level,
