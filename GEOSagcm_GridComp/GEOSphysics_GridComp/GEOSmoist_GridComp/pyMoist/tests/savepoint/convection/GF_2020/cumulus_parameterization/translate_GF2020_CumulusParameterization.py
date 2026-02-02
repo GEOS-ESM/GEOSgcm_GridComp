@@ -347,7 +347,8 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
                 ]
         else:
             raise NotImplementedError(
-                "plume order unsupported. Fortran plume data layout != python plume data layout."
+                "Plume order unsupported. Fortran plume data layout != python plume data layout."
+                "More complicated data management system is required."
             )
 
         # initalize the test subject
