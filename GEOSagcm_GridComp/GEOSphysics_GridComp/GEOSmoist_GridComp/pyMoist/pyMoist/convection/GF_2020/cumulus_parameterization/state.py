@@ -873,7 +873,7 @@ class GF2020CumulusParameterizationState(State):
         chemistry_tracers: Quantity = dataclasses.field(
             metadata={
                 "name": "chemistry_tracers",
-                "dims": [X_DIM, Y_DIM, Z_DIM, "convection_tracers"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "tracers"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -882,7 +882,7 @@ class GF2020CumulusParameterizationState(State):
         chemistry_tracers_output: Quantity = dataclasses.field(
             metadata={
                 "name": "chemistry_tracers_output",
-                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes", "convection_tracers"],
+                "dims": [X_DIM, Y_DIM, Z_DIM, "plumes", "tracers"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
