@@ -503,6 +503,7 @@ program mkOverlaySimple
 
     if(Verb) print *, "Computing weighted lons and lats..."
 
+    !$omp parallel do private(k)
     do k=1,ip
        rTable(1,k) = atan2(rTable(1,k),rTable(2,k))/d2r
        if(rTable(4,k) < 1.0e-15_REAL64) then 
@@ -513,6 +514,7 @@ program mkOverlaySimple
        rTable(3,k) = rTable(4,k)
        rTable(4,k) = rTable(5,k)
     end do
+    !$omp end parallel do
 
     if(rvars==6) then
        rTable(5,:ip) = rTable(6,:ip)
