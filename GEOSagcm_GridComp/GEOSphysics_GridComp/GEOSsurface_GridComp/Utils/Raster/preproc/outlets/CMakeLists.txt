@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set(srcs
-  routing_constant.f90
+  outlets_constant.f90
 )
 
 set (exe_srcs
@@ -16,7 +16,7 @@ set (exe_srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran GEOS_CatchCNShared
+  DEPENDENCIES MAPL GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran
 )
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".f90" ".x" exe ${src})
@@ -24,7 +24,7 @@ foreach (src ${exe_srcs})
     TARGET ${exe}
     SOURCES ${src}
     NOINSTALL
-    LIBS MAPL GFTL_SHARED::gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared GEOS_CatchCNShared
+    LIBS MAPL GFTL_SHARED::gftl-shared GEOSroute_GridComp GEOS_LandShared
     ${this}  
     LIBS    ${this} NetCDF::NetCDF_Fortran MPI::MPI_Fortran)
 endforeach ()

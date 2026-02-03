@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import os
 from netCDF4 import Dataset
+import routing_model_constants
 
 #Main purpose: Computes grid-cell index arrays and per-cell areas for 1-m high-res grid.
 
@@ -12,8 +13,8 @@ loni09_output_file = "temp/loni_1m_M09.txt"
 cellarea_output_file = "output/cellarea.nc"
 
 # Grid dimensions
-nlat1m, nlon1m = 10800, 21600
-nlat09, nlon09 = 1624, 3856
+nlat1m, nlon1m = routing_model_constants.nlat1m, routing_model_constants.nlon1m
+nlat09, nlon09 = routing_model_constants.nlat09, routing_model_constants.nlon09
 
 # Read data
 lat1m = np.loadtxt(lat1m_file, dtype=float, max_rows=nlat1m)

@@ -2,13 +2,14 @@ import sys
 import numpy as np
 from netCDF4 import Dataset
 import os
+import routing_model_constants
 #Main purpose: Assigns a catchment‐tile index from catchment definition files to each model grid cell for M09 grid.
 
 # Load data
-nt = 1684725
-nlat = 1624
-nlon = 3856
-nc = 291284
+nt = routing_model_constants.nt
+nlat = routing_model_constants.nlat09
+nlon = routing_model_constants.nlon09
+nc = routing_model_constants.nc
 
 # Read input data from text files
 lat_bot = np.loadtxt("temp/lat_bottom_M09.txt", dtype=float)

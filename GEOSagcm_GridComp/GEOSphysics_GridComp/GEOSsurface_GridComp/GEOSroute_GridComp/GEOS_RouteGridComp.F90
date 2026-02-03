@@ -486,8 +486,8 @@ contains
     type(ESMF_TimeInterval) :: CollectWater_DT, ModelTimeStep
     character(len=3) :: resname
     type(Netcdf4_Fileformatter)  :: formatter 
-    integer          :: j,nt_local, mpierr
-    logical          :: use_res 
+    integer          :: j,nt_local, mpierr 
+    logical          :: use_res
 
     real,dimension(:), pointer :: cap_res_glob(:),wid_res_glob(:)
     integer,dimension(:), pointer :: active_res_glob(:),type_res_glob(:),fld_res_glob(:) 
@@ -549,11 +549,6 @@ contains
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call MAPL_GetResource (SCF, route_flag, label='RUN_ROUTE:', DEFAULT=1, RC=STATUS )
-    if(route_flag==2)then
-        use_res=.True.
-    else
-        use_res=.False.
-    endif
     call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )    
     route%route_dt = ROUTE_DT
 
@@ -613,6 +608,11 @@ contains
     allocate(route%qin_clmt(n_pfaf_local),  source =     QIN_CLMT_RS  )
     allocate(route%qstr_clmt(n_pfaf_local), source =     QSTR_CLMT_RS )    
     !Initial reservoir module
+    if(route_flag==2)then
+        use_res=.True.
+    else
+        use_res=.False.
+    endif
     route%reservoir = Reservoir(GC, use_res, _RC)
     if(mapl_am_I_root()) print *,"reservoir init success"     
 
@@ -931,15 +931,6 @@ contains
 
     integer                            :: nt_global, nt_local
 
-    ! variable declarations for commented-out call to check_balance() 
-    !
-    !REAL, ALLOCATABLE, DIMENSION(:)          :: AREACAT_ACT, LENGSC_ACT
-    !
-    !type(ESMF_Time) :: CurrentTime
-    !integer :: YY,MM,DD,HH,MMM,SS
-    !character(len=4) :: yr_s
-    !character(len=2) :: mon_s,day_s
-
     real,                  pointer     :: arrayPtr(:)
     type (RES_STATE),      pointer     :: res 
 
@@ -1044,15 +1035,6 @@ contains
 
        WTOT_BEFORE = WSTREAM + WRIVER + WRES
 
-       ! for commented-out call to check_balance() 
-       !
-       !allocate (AREACAT_ACT (n_pfaf_local))       
-       !allocate (LENGSC_ACT  (n_pfaf_local))
-       !
-       !LENGSC_ACT =route%lengsc /1.e3 ! [m ] --> [km ]
-       !AREACAT_ACT=route%areacat/1.e6 ! [m2] --> [km2]
-
-
        ! Call river_routing_model
        ! ------------------------
 
@@ -1064,8 +1046,8 @@ contains
             WSTREAM,WRIVER, &
             QSFLOW_OUT,QOUTFLOW_OUT)  
 
-       ! call reservoir module        
-       call res%calc( QOUTFLOW_OUT, QRES_OUT, WRES, real(route_dt), _RC)
+       ! call reservoir module 
+       if(res%use_res .eqv. .True.) call res%calc( QOUTFLOW_OUT, QRES_OUT, WRES, real(route_dt), _RC)
        QOUT_CAT = QOUTFLOW_OUT              
        where(res%active_res==1) QOUT_CAT=QRES_OUT
 
@@ -1075,26 +1057,11 @@ contains
        ! update river storage
        WRIVER = WRIVER + QINFLOW_LOCAL*real(route_dt)
 
-       ! Check balance if needed
-       !
-       ! get time used for output and restart 
-       !call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
-       !call ESMF_TimeGet(CurrentTime, yy=YY, mm=MM, dd=DD, h=HH, m=MMM, s=SS, rc=status)  
-       !write(yr_s, '(I4.4)')YY
-       !write(mon_s,'(I2.2)')MM
-       !write(day_s,'(I2.2)')DD
-       !
-       !call check_balance(route,n_pfaf_local,nt_local,runoff_acc,WRIVER_ACT,WSTREAM_ACT,WTOT_BEFORE,RUNOFF_ACT,QINFLOW_LOCAL,QOUT_CAT,FirstTime,yr_s,mon_s)
-
        if (associated(QSFLOW))    QSFLOW   = QSFLOW_OUT
        if (associated(QOUTFLOW))  QOUTFLOW = QOUTFLOW_OUT
        if (associated(QRES))      QRES     = QRES_OUT
        
        deallocate(QRUNOFF_IN,QOUTFLOW_OUT,QINFLOW_LOCAL,QSFLOW_OUT,WTOT_BEFORE,QRES_OUT,QOUT_CAT)
-
-       ! for commented-out call to check_balance() 
-       !
-       !deallocate(AREACAT_ACT,LENGSC_ACT)
 
        route%runoff_acc = 0.                                     ! re-initialize runoff accumulation
        

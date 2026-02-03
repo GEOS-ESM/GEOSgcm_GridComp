@@ -10,9 +10,6 @@ module reservoirMod
 
   !----Reservoir module constants----------
 
-  integer, parameter :: nres         = 7250
-  integer, parameter :: nlake        = 3917
-
   real,    parameter :: fac_elec_a   = 0.30   ! Coefficient for hydropower calculation
   real,    parameter :: fac_elec_b   = 2.00   ! Exponent for hydropower calculation
   real,    parameter :: fac_irr_a    = 0.01   ! Coefficient for irrigation calculation (arid areas)
@@ -33,6 +30,7 @@ module reservoirMod
 
 
   type RES_STATE ! reservoir-related variables
+     logical              :: use_res
      integer, allocatable :: active_res(:)
      integer, allocatable :: active_up( :,:)
      integer, allocatable :: type_res(  :)
@@ -91,7 +89,12 @@ contains
     allocate(res%wid_res,    source=    WID_RES_RS   )
     allocate(res%fld_res,    source=int(FLD_RES_RS   ))
 
-    if(use_res.eqv..False.) res%active_res=0
+    if(use_res.eqv..True.)then
+      res%use_res   = .True.
+    else
+      res%use_res   = .False.
+      res%active_res=0
+    endif
 
     _RETURN(_SUCCESS)
 
@@ -104,7 +107,7 @@ contains
 
     class(RES_STATE),  intent(in)    :: this
     real,              intent(in)    :: Q_riv_out(:)    ! outflow from river (going into reservoir)   [m3/s]
-    real,              intent(inout) :: Q_res(:)        ! reservoir outflow                           [m3/s]
+    real,              intent(out)   :: Q_res(:)        ! reservoir outflow                           [m3/s]
     real,              intent(inout) :: Wr_res(:)       ! reservoir storage                           [m3  ]
     real,              intent(in)    :: dt              ! routing model time step                     [s   ]
     integer, optional, intent(out)   :: rc
@@ -155,7 +158,7 @@ contains
 
           case default
 
-             ! NEED TO ADD GRACEFUL EXIT WITH ERROR MESSAGE HERE: "ERROR: unknown reservoir type!"             
+             _ASSERT(.False., "ERROR: unknown reservoir type!")             
 
           end select
 

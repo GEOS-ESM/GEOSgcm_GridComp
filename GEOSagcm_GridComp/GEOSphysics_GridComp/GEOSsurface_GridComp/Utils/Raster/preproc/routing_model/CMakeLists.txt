@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set(srcs
-  constant.f90
+  routing_model_constants.f90
   river_read.f90
   k_module_cali.f90
 )
@@ -20,7 +20,7 @@ set (exe_srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran GEOS_CatchCNShared)  
+  DEPENDENCIES MAPL GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran)  
 
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".f90" ".x" exe ${src})
@@ -28,7 +28,7 @@ foreach (src ${exe_srcs})
     TARGET ${exe}
     SOURCES ${src}
     NOINSTALL
-    LIBS MAPL GFTL_SHARED::gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared GEOS_CatchCNShared
+    LIBS MAPL GFTL_SHARED::gftl-shared GEOSroute_GridComp GEOS_LandShared
     ${this}
     LIBS    ${this} NetCDF::NetCDF_Fortran MPI::MPI_Fortran)
 endforeach ()
@@ -40,6 +40,7 @@ set(SCRIPT_FILES
   process_lake_data.py
   get_dam_data.py
   get_lonlati_maptile.py
+  routing_model_constants.py
   run_routing_preproc.py
 )
 

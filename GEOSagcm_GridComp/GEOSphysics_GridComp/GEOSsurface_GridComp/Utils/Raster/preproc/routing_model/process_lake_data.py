@@ -1,13 +1,14 @@
 import sys 
 import numpy as np
 from netCDF4 import Dataset
+import routing_model_constants
 #Main purpose: Processes lake data to be used in the river routing model.
 
 file_lat1m, file_lon1m, file_catmap, file_lake_mantag, file_lakecat_manfix = sys.argv[1:6]
 
 # Define constants
-nlat = 10800
-nlon = 21600
+nlat = routing_model_constants.nlat1m
+nlon = routing_model_constants.nlon1m
 
 # Read data from files
 lats = np.loadtxt("temp/outlet_lat.txt", dtype=float)  # Latitude of outlets
@@ -31,7 +32,7 @@ lati = ind_nearest_coord(lats, lat1m)+1
 loni = ind_nearest_coord(lons, lon1m)+1
 
 #------------------------------------------------------------------------------------------------------
-ns = 3917
+ns = routing_model_constants.nlake
 
 # Allocate array
 catchind = np.zeros((nlat, nlon), dtype=int)
@@ -59,10 +60,9 @@ for i in range(ns):
         catid[i] = -1  # Assign a default value for out-of-bounds indices
 
 #------------------------------------------------------------------------------------------------------
-# Constants
-nall = 291284
-nv = 1782
-nv3 = 2097
+
+nv1 = 1782
+nv2 = 2097
 
 # Read input data
 aca_all = np.loadtxt("temp/Pfaf_acar.txt")
@@ -78,7 +78,7 @@ for i in range(ns):
 
 # Read observation data
 aca_obs = np.loadtxt("temp/outlet_lakeacaOBS.txt")
-outid_INCON = np.zeros(nv, dtype=int)
+outid_INCON = np.zeros(nv1, dtype=int)
 
 # Filter inconsistent data
 k = 0
@@ -94,7 +94,7 @@ for i in range(ns):
 tag_INCON = np.loadtxt(file_lake_mantag, dtype=int)
 
 # Update catid and aca_model based on tags
-for i in range(nv):
+for i in range(nv1):
     oid = outid_INCON[i]
     tag = tag_INCON[i]
     if tag >= 1:
@@ -115,9 +115,9 @@ lakeid_out = np.loadtxt("temp/outlet_lakeid.txt", dtype=int)
 acaABSDIF_out = np.abs(aca_model - aca_obs)
 
 # Initialize collections
-lakeid_collect = np.zeros(nv3, dtype=int)
-outletid_collect = np.zeros(nv3, dtype=int)
-acaABSDIF_collect = np.full(nv3, 1e10)
+lakeid_collect = np.zeros(nv2, dtype=int)
+outletid_collect = np.zeros(nv2, dtype=int)
+acaABSDIF_collect = np.full(nv2, 1e10)
 flag_2097_out = np.zeros(ns, dtype=int)
 k = 0
 
@@ -150,7 +150,7 @@ np.savetxt("temp/lake_outlet_flag_valid_2097.txt", flag_2097_out, fmt="%d")
 catid = np.where(flag_2097_out == 0, -9999, catid)
 
 # Collect valid outlet IDs
-outidV = np.zeros(nv3, dtype=int)
+outidV = np.zeros(nv2, dtype=int)
 k = 0
 for i in range(ns):
     if flag_2097_out[i] == 1:
@@ -163,7 +163,7 @@ outidV += 1
 catid_outfix_2097 = np.loadtxt(file_lakecat_manfix, dtype=int)
 catid_outfix_out = np.full(ns, -9999, dtype=int)
 
-for i in range(nv3):
+for i in range(nv2):
     oid = outidV[i]
     catid_outfix_out[oid - 1] = catid_outfix_2097[i]
 

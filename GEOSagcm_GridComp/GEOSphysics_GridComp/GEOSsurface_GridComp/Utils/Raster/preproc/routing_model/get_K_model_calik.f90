@@ -3,7 +3,7 @@ program main
 
   use k_module   ! Import custom module "k_module" which contains necessary subroutines and functions
   use constant, only: nl=>nl_USGS,nlat,nlon,nc
-  use routing_model, only: MU=>M, mm=>mm
+  use routing_model, only: MU=>RRM_M, mm=>RRM_mm
   implicit none
 
   ! Declare variables and allocatable arrays

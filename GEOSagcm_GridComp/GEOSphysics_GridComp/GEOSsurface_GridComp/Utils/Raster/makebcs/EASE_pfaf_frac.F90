@@ -1,6 +1,6 @@
 #include "MAPL_ErrLog.h"
 
-module pfaf_fracMod
+module EASE_pfaf_fracMod
 
   ! Main purpose: Assigns a catchment‐tile index from Pfaf catchment definition files to each tile for global cylindrical EASE grid;
   !               writes information into EASEv[x]_tile2pfaf.nc4
@@ -11,11 +11,11 @@ module pfaf_fracMod
   implicit none
   private
 
-  public :: get_Pfaf_frac
+  public :: EASE_get_Pfaf_frac
 
 contains 
   
-  subroutine get_Pfaf_frac(file_out, BCS_PATH, GridName)
+  subroutine EASE_get_Pfaf_frac(file_out, BCS_PATH, GridName)
     
     character(*), intent(in) :: file_out, BCS_PATH    
     character(*), intent(in) :: GridName
@@ -26,9 +26,10 @@ contains
     ! Variable declarations:
     integer              :: id, xi, yi, i,j, flag, nmax,nmax2,ntot,it,ns_tot
     integer, allocatable :: nsub(:)                            ! Array to store the number of sub-areas for each catchment
-    integer, allocatable :: xsub(:,:), ysub(:,:), isub(:,:)
+    integer, allocatable :: xsub( :,:), ysub( :,:), isub( :,:)
+    integer, allocatable :: xsub0(:,:), ysub0(:,:)
     ! xsub and ysub: 2D arrays to store mapped x and y indices for sub-catchments (not using subi_global in this code)
-    real,    allocatable :: asub(:,:)                          ! 2D array to store aggregated area for each sub-catchment
+    real,    allocatable :: asub( :,:), asub0(:,:)             ! 2D array to store aggregated area for each sub-catchment
     
     real*8,  allocatable :: lon(  :), lat(  :)                 ! Arrays to hold longitude and latitude values from the NetCDF file
     real*8,  allocatable :: lons( :), lats( :)                 ! Arrays to hold longitude and latitude values from the NetCDF file
@@ -91,8 +92,8 @@ contains
     call formatter%close()
     cellarea = cellarea / 1.e6  ! Convert cell area (e.g., from m^2 to km^2)
     ! Initialize aggregation arrays to zero:
-    allocate(xsub(9999, nc), ysub(9999, nc))
-    nsub = 0
+    allocate(xsub0(9999, nc), ysub0(9999, nc), asub0(9999, nc))
+    nsub = 0;xsub0 = 0;ysub0 = 0;asub0 = 0.
     ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
     do xi = 1, nlon
       do yi = 1, nlat
@@ -103,8 +104,10 @@ contains
           ! If the catchment already has one or more sub-areas, check for a matching sub-area:
           if (nsub(id) >= 1) then
             do i = 1, nsub(id)
-              if (loni(xi) == xsub(i, id) .and. lati(yi) == ysub(i, id)) then
+              if (loni(xi) == xsub0(i, id) .and. lati(yi) == ysub0(i, id)) then
                 flag = 1
+                ! If a match is found, accumulate the cell area into the existing sub-area:
+                asub0(i, id) = asub0(i, id) + cellarea(xi, yi)                
                 exit  ! Exit the inner loop since a matching sub-area has been found
               endif
             end do
@@ -112,47 +115,20 @@ contains
           ! If no matching sub-area was found, create a new sub-area:
           if (flag == 0) then
             nsub(id) = nsub(id) + 1
-            xsub(nsub(id), id) = loni(xi)
-            ysub(nsub(id), id) = lati(yi)        
+            xsub0(nsub(id), id) = loni(xi)
+            ysub0(nsub(id), id) = lati(yi)  
+            asub0(nsub(id), id) = cellarea(xi, yi)      
           endif
         endif
       end do
     end do
     nmax = maxval(nsub)
     !print *,nmax
-    deallocate(xsub,ysub)
     allocate(xsub(nmax, nc), ysub(nmax, nc), asub(nmax, nc))
-    ! Initialize aggregation arrays to zero:
-    nsub = 0;xsub = 0;ysub = 0;asub = 0.
-    ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
-    do xi = 1, nlon
-      do yi = 1, nlat
-        if (catchind(xi, yi) >= 1) then
-          ! The raster grid cell belongs to a catchment
-          id = catchind(xi, yi)  ! Get the catchment id for the current cell
-          flag = 0              ! Reset flag to indicate whether a matching sub-area is found      
-          ! If the catchment already has one or more sub-areas, check for a matching sub-area:
-          if (nsub(id) >= 1) then
-            do i = 1, nsub(id)
-              if (loni(xi) == xsub(i, id) .and. lati(yi) == ysub(i, id)) then
-                flag = 1
-                ! If a match is found, accumulate the cell area into the existing sub-area:
-                asub(i, id) = asub(i, id) + cellarea(xi, yi)
-                exit  ! Exit the inner loop since a matching sub-area has been found
-              endif
-            end do
-          endif      
-          ! If no matching sub-area was found, create a new sub-area:
-          if (flag == 0) then
-            nsub(id) = nsub(id) + 1
-            xsub(nsub(id), id) = loni(xi)
-            ysub(nsub(id), id) = lati(yi)
-            asub(nsub(id), id) = cellarea(xi, yi)
-          endif
-        endif
-      end do
-    end do
-    
+    xsub=xsub0(1:nmax,:)
+    ysub=ysub0(1:nmax,:)
+    asub=asub0(1:nmax,:)
+    deallocate(xsub0,ysub0,asub0)   
     ! Open the catchment definition file for the EASE grid and read the total number of tiles (header)
     open(77, file="clsm/catchment.def");read(77, *) ntot
     ! Allocate arrays with size nt
@@ -258,7 +234,7 @@ contains
     call formatter%put_var('pfaf_frac',  pfaf_frac)
     call formatter%close()
 
-  end subroutine get_Pfaf_frac
+  end subroutine EASE_get_Pfaf_frac
 
   subroutine nearest_index_vector(candidates, targets, idx)
     ! For each targets(k), find argmin_j |candidates(j) - targets(k)|
@@ -285,4 +261,4 @@ contains
     end do
   end subroutine nearest_index_vector
 
-end module pfaf_fracMod
+end module EASE_pfaf_fracMod

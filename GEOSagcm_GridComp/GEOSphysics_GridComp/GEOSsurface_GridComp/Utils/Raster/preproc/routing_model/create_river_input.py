@@ -1,10 +1,10 @@
 import numpy as np
 from netCDF4 import Dataset
+import routing_model_constants
 
-# Dimensions
-nc_len = 291284
-nres = 7250
-nlake = 3917
+nc_len = routing_model_constants.nc
+nres = routing_model_constants.nres
+nlake = routing_model_constants.nlake
 
 def read_ascii(filename, count, dtype=float):
     return np.loadtxt(filename, dtype=dtype, max_rows=count)

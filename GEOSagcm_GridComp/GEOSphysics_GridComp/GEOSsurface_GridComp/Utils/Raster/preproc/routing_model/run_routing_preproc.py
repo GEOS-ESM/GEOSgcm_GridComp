@@ -24,7 +24,7 @@ def main():
 
     file_pfafrout       = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
     file_pfafmap        = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
-    file_catdef         = file_path1 + "/fvInput/ExtData/esm/tiles/v14/land/EASEv2_M09/clsm/catchment.def"
+    file_catdef         = file_path1 + "/fvInput/ExtData/esm/tiles/v12/land/EASEv2_M09/clsm/catchment.def"
 
     file_lat1m          = file_path2 + "/lat_1m.txt"
     file_lon1m          = file_path2 + "/lon_1m.txt"
