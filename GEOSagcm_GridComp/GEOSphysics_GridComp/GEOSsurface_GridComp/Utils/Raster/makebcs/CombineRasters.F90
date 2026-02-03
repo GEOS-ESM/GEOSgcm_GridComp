@@ -61,8 +61,6 @@ program mkOverlaySimple
   logical                :: accumulate_this_lat
   logical                :: use_binary1, use_binary2
   integer                :: ios
-  logical                :: use_binary1, use_binary2
-  integer                :: ios
   character*256          :: BinFile1, BinFile2
                          
   character*4            :: tildir, rstdir
@@ -580,16 +578,18 @@ contains
     ! If IsText=.true., reads formatted ASCII
     ! If IsText=.false., reads unformatted binary
     
-    integer, intent(IN)        :: Unit
-    logical, intent(IN)        :: IsText
-    integer, intent(IN)        :: ip
-    real(REAL64), intent(OUT)  :: Table(6,ip)
-    character*(*), intent(OUT) :: GridName
-    integer, intent(OUT)       :: nx_out, ny_out
-    logical, intent(IN)        :: Verb
+    use MAPL_Constants
+    
+    integer, intent(IN)           :: Unit
+    logical, intent(IN)           :: IsText
+    integer, intent(IN)           :: ip
+    real(kind=kind(1.0d0)), intent(OUT)  :: Table(6,ip)
+    character*(*), intent(OUT)    :: GridName
+    integer, intent(OUT)          :: nx_out, ny_out
+    logical, intent(IN)           :: Verb
     
     integer :: k, num_grids
-    real(REAL64) :: dummy_lon, dummy_lat
+    real(kind=kind(1.0d0)) :: dummy_lon, dummy_lat
     
     if (IsText) then
        ! Text format (original)

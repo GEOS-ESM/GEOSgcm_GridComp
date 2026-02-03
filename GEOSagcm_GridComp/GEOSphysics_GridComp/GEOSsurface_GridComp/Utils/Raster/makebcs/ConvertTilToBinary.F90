@@ -18,14 +18,11 @@ program ConvertTilToBinary
   integer                :: command_argument_count
   integer                :: STATUS
   integer                :: i, j, k, ip, nf, nx, ny, num_grids
-  integer                :: argl
 
-  real(REAL64)           :: val_real
+  real(kind=kind(1.0d0)) :: val1, val2, val3, val4, val5, val6, val7, val8
   character*256          :: GridName
   character*256          :: InputFile, OutputFile
   character*256          :: arg
-
-  real(REAL64), allocatable :: Table(:,:)
 
 ! Get command line arguments
 
@@ -64,31 +61,26 @@ program ConvertTilToBinary
        ! Read grid name
        read(TILUNIT_IN,*) GridName
        write(TILUNIT_OUT) trim(GridName)
-
+       
        ! Read nx, ny for this grid
        read(TILUNIT_IN,*) nx
        read(TILUNIT_IN,*) ny
        write(TILUNIT_OUT) nx, ny
-
+       
        print *, "Grid ", j, ": ", trim(GridName), " nx=", nx, " ny=", ny
     end do
 
-! Allocate space for one row of tile data
-
-    allocate(Table(1:8, 1:1), stat=STATUS)
-    VERIFY_(STATUS)
-
-! Read and write tile data: ip rows of (2 reals, 2 skip, 6 reals)
+! Read and write tile data: ip rows of 8 values
 
     print *, "Reading ", ip, " tile records..."
-
+    
     do k=1,ip
-       ! Read: typ(real), tarea(real), lon(real), lat(real, skip), then 6 more reals
-       read(TILUNIT_IN,*) Table(1:2,1), val_real, val_real, Table(3:8,1)
-
+       ! Read: typ, tarea, lon, lat (skip), then 4 more values
+       read(TILUNIT_IN,*) val1, val2, val3, val4, val5, val6, val7, val8
+       
        ! Write all 8 values as unformatted binary
-       write(TILUNIT_OUT) Table(1:8,1)
-
+       write(TILUNIT_OUT) val1, val2, val3, val4, val5, val6, val7, val8
+       
        if (mod(k, max(1, ip/10)) == 0) then
           print *, "  Wrote ", k, " records..."
        end if
@@ -102,8 +94,6 @@ program ConvertTilToBinary
 
     close(TILUNIT_IN)
     close(TILUNIT_OUT)
-
-    deallocate(Table)
 
     call exit(0)
 
