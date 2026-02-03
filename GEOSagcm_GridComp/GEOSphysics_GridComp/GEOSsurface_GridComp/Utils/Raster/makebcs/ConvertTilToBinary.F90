@@ -13,6 +13,7 @@ program ConvertTilToBinary
 
   integer, parameter     :: TILUNIT_IN  = 20
   integer, parameter     :: TILUNIT_OUT = 21
+  character*256          :: Iam = "ConvertTilToBinary"
 
   integer                :: command_argument_count
   integer                :: STATUS

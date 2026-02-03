@@ -59,6 +59,11 @@ program mkOverlaySimple
   logical                :: s_flag=.false.
   logical                :: process_this_lat
   logical                :: accumulate_this_lat
+  logical                :: use_binary1, use_binary2
+  integer                :: ios
+  logical                :: use_binary1, use_binary2
+  integer                :: ios
+  character*256          :: BinFile1, BinFile2
                          
   character*4            :: tildir, rstdir
   character*14           :: sg
@@ -68,6 +73,7 @@ program mkOverlaySimple
   character*128          :: GridName1, GridName2
   character*128          :: Grid1, Grid2
   character*128          :: TilFile, RstFile
+  character*256          :: BinFile1, BinFile2
   character*128          :: &
       Usage = "CombineRasters -v -h -z -t MT -g GF -f TYPE -s SG -j J1:J2 -m MODE BOTTOMRASTER TOPRASTER"
 
@@ -286,10 +292,6 @@ program mkOverlaySimple
 ! Read input tables
 
     ! Try to open binary versions first, fall back to text
-    logical :: use_binary1, use_binary2
-    integer :: ios
-    character*256 :: BinFile1, BinFile2
-
     if (s_flag) then
        BinFile1 = trim(tildir)//trim(adjustl(Grid1))//"-"//trim(sg)//'.til.bin'
        BinFile2 = trim(tildir)//trim(adjustl(Grid2))//'.til.bin'
@@ -581,14 +583,13 @@ contains
     integer, intent(IN)        :: Unit
     logical, intent(IN)        :: IsText
     integer, intent(IN)        :: ip
-    real(REAL64), intent(OUT)  :: Table(:,:)
+    real(REAL64), intent(OUT)  :: Table(6,ip)
     character*(*), intent(OUT) :: GridName
     integer, intent(OUT)       :: nx_out, ny_out
     logical, intent(IN)        :: Verb
     
     integer :: k, num_grids
     real(REAL64) :: dummy_lon, dummy_lat
-    real(REAL64) :: row(1:8)
     
     if (IsText) then
        ! Text format (original)
@@ -603,7 +604,8 @@ contains
        end do
        
        do k=1,ip
-          read(Unit,*) Table(1:2,k), dummy_lon, dummy_lon, Table(3:6,k)
+          read(Unit,*) Table(1,k), Table(2,k), dummy_lon, dummy_lon, &
+                       Table(3,k), Table(4,k), Table(5,k), Table(6,k)
        end do
     else
        ! Binary format
@@ -612,9 +614,8 @@ contains
        read(Unit) nx_out, ny_out
        
        do k=1,ip
-          read(Unit) row(1:8)
-          Table(1:2,k) = row(1:2)
-          Table(3:6,k) = row(3:8)
+          read(Unit) Table(1,k), Table(2,k), dummy_lon, dummy_lat, &
+                     Table(3,k), Table(4,k), Table(5,k), Table(6,k)
        end do
     end if
     
