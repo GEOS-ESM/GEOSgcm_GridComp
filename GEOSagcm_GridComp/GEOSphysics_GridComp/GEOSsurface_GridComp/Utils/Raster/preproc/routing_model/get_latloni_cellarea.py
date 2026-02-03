@@ -42,7 +42,7 @@ np.savetxt(lati09_output_file, lati09 + 1, fmt='%d')
 np.savetxt(loni09_output_file, loni09 + 1, fmt='%d')
 
 # Compute global grid cell area
-def area_global_rectilinear_grid(lat, lon, rearth=6371.22):
+def area_global_rectilinear_grid(lat, lon, rearth=6371.):
     """
     Calculate the approximate area of each grid cell on a global rectilinear grid.
     
