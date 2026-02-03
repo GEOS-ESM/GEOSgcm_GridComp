@@ -61,7 +61,6 @@ program mkOverlaySimple
   logical                :: accumulate_this_lat
   logical                :: use_binary1, use_binary2
   integer                :: ios
-  character*256          :: BinFile1, BinFile2
                          
   character*4            :: tildir, rstdir
   character*14           :: sg
