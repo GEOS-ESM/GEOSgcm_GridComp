@@ -38,7 +38,7 @@ else ()
 endif ()
 
 
-ecbuild_add_executable (TARGET CombineRasters.x SOURCES CombineRasters.F90 LIBS MAPL ${this})
+ecbuild_add_executable (TARGET CombineRasters.x SOURCES CombineRasters.F90 LIBS MAPL ${this} OpenMP::OpenMP_Fortran)
 ecbuild_add_executable (TARGET ConvertTilToBinary.x SOURCES ConvertTilToBinary.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkCatchParam.x SOURCES mkCatchParam.F90 LIBS MAPL ${this} OpenMP::OpenMP_Fortran)
 ecbuild_add_executable (TARGET mkCubeFVRaster.x SOURCES mkCubeFVRaster.F90 LIBS MAPL ${this})
