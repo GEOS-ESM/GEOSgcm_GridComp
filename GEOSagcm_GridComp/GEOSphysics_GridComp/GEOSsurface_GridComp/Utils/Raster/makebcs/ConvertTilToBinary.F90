@@ -55,19 +55,24 @@ program ConvertTilToBinary
     write(TILUNIT_OUT) num_grids
     print *, "Number of grids: ", num_grids
 
-! Read and write grid metadata headers
+! Read and write grid metadata for first grid only (matching .til file structure)
 
-    do j=1,num_grids
-       ! Read grid name
-       read(TILUNIT_IN,*) GridName
-       write(TILUNIT_OUT) trim(GridName)
-       
-       ! Read nx, ny for this grid
-       read(TILUNIT_IN,*) nx
-       read(TILUNIT_IN,*) ny
-       write(TILUNIT_OUT) nx, ny
-       
-       print *, "Grid ", j, ": ", trim(GridName), " nx=", nx, " ny=", ny
+    ! Read first grid name
+    read(TILUNIT_IN,*) GridName
+    write(TILUNIT_OUT) trim(GridName)
+    
+    ! Read nx, ny for first grid
+    read(TILUNIT_IN,*) nx
+    read(TILUNIT_IN,*) ny
+    write(TILUNIT_OUT) nx, ny
+    
+    print *, "First grid: ", trim(GridName), " nx=", nx, " ny=", ny
+
+    ! Skip remaining grid headers (they're in the text file but we only need first)
+    do j=2,num_grids
+       read(TILUNIT_IN,*)
+       read(TILUNIT_IN,*)
+       read(TILUNIT_IN,*)
     end do
 
 ! Read and write tile data: ip rows of 8 values

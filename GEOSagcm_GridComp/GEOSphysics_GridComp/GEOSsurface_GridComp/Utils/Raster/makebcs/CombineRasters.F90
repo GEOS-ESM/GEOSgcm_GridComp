@@ -586,7 +586,7 @@ contains
     integer, intent(OUT)          :: nx_out, ny_out
     logical, intent(IN)           :: Verb
     
-    integer :: k, num_grids
+    integer :: k, num_grids, nf, nx, ny
     real(kind=kind(1.0d0)) :: dummy_lon, dummy_lat
     
     if (IsText) then
@@ -606,7 +606,8 @@ contains
                        Table(3,k), Table(4,k), Table(5,k), Table(6,k)
        end do
     else
-       ! Binary format
+       ! Binary format - read header first, then grid metadata, then tile data
+       read(Unit) k, nf, nx, ny  ! Read header that was written by ConvertTilToBinary
        read(Unit) num_grids
        read(Unit) GridName
        read(Unit) nx_out, ny_out
