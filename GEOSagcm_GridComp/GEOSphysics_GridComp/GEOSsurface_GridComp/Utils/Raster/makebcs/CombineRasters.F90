@@ -58,6 +58,7 @@ program mkOverlaySimple
   logical                :: Merge
   logical                :: s_flag=.false.
   logical                :: process_this_lat
+  logical                :: accumulate_this_lat
                          
   character*4            :: tildir, rstdir
   character*14           :: sg
@@ -254,6 +255,9 @@ program mkOverlaySimple
     allocate(rTable(1:rvars,maxtiles),stat=status)
     VERIFY_(STATUS)
 
+    iTable = 0
+    rTable = 0.0_REAL64
+
     allocate(rst1(nx,ny),             stat=status)
     VERIFY_(STATUS)
 
@@ -281,37 +285,67 @@ program mkOverlaySimple
 
 ! Read input tables
 
-    read(TILUNIT1,*) k
-    read(TILUNIT1,*) Grid1
-    read(TILUNIT1,*) nx1
-    read(TILUNIT1,*) ny1
-    do j=2,k
-       read(TILUNIT1,*)
-       read(TILUNIT1,*)
-       read(TILUNIT1,*)
-    end do
+    ! Try to open binary versions first, fall back to text
+    logical :: use_binary1, use_binary2
+    integer :: ios
+    character*256 :: BinFile1, BinFile2
 
-    if(Verb) print *, 'First  input grid: ',trim(Grid1), ip1, nx1, ny1
+    if (s_flag) then
+       BinFile1 = trim(tildir)//trim(adjustl(Grid1))//"-"//trim(sg)//'.til.bin'
+       BinFile2 = trim(tildir)//trim(adjustl(Grid2))//'.til.bin'
+    else
+       BinFile1 = trim(tildir)//trim(adjustl(Grid1))//'.til.bin'
+       BinFile2 = trim(tildir)//trim(adjustl(Grid2))//'.til.bin'
+    end if
 
-    read(TILUNIT2,*) k
-    read(TILUNIT2,*) Grid2
-    read(TILUNIT2,*) nx2
-    read(TILUNIT2,*) ny2
-    do j=2,k
-       read(TILUNIT2,*)
-       read(TILUNIT2,*)
-       read(TILUNIT2,*)
-    end do
+    ! Check if binary files exist
+    inquire(file=trim(BinFile1), exist=use_binary1)
+    inquire(file=trim(BinFile2), exist=use_binary2)
+    use_binary1 = use_binary1 .and. use_binary2  ! Both must exist
 
-    if(Verb) print *, 'Second input grid: ',trim(Grid2), ip2, nx2, ny2
+    if (use_binary1) then
+       if(Verb) print *, 'Reading binary .til files...'
+       open (TILUNIT1, file=trim(BinFile1), form='unformatted', &
+             convert='little_endian', status='old')
+       open (TILUNIT2, file=trim(BinFile2), form='unformatted', &
+             convert='little_endian', status='old')
+       call ReadTilTable(TILUNIT1, .false., ip1, Table1, Grid1, nx1, ny1, Verb)
+       call ReadTilTable(TILUNIT2, .false., ip2, Table2, Grid2, nx2, ny2, Verb)
+    else
+       if(Verb) print *, 'Reading text .til files...'
+       ! Files already open from earlier
+       read(TILUNIT1,*) k
+       read(TILUNIT1,*) Grid1
+       read(TILUNIT1,*) nx1
+       read(TILUNIT1,*) ny1
+       do j=2,k
+          read(TILUNIT1,*)
+          read(TILUNIT1,*)
+          read(TILUNIT1,*)
+       end do
 
-    do k=1,ip1
-       read(TILUNIT1,*) Table1(1:2,k),lons,lons,Table1(3:6,k)
-    enddo
+       if(Verb) print *, 'First  input grid: ',trim(Grid1), ip1, nx1, ny1
 
-    do k=1,ip2
-       read(TILUNIT2,*) Table2(1:2,k),lons,lons,Table2(3:6,k)
-    enddo
+       read(TILUNIT2,*) k
+       read(TILUNIT2,*) Grid2
+       read(TILUNIT2,*) nx2
+       read(TILUNIT2,*) ny2
+       do j=2,k
+          read(TILUNIT2,*)
+          read(TILUNIT2,*)
+          read(TILUNIT2,*)
+       end do
+
+       if(Verb) print *, 'Second input grid: ',trim(Grid2), ip2, nx2, ny2
+
+       do k=1,ip1
+          read(TILUNIT1,*) Table1(1:2,k),lons,lons,Table1(3:6,k)
+       enddo
+
+       do k=1,ip2
+          read(TILUNIT2,*) Table2(1:2,k),lons,lons,Table2(3:6,k)
+       enddo
+    end if
 
     if(Verb) then
        call system_clock(count1)
@@ -327,17 +361,14 @@ program mkOverlaySimple
     LATITUDES: do j=1,ny
        
        ! Determine if we process this latitude
+       ! Mode 1: skip file reads outside range
+       ! Mode 2: read all but accumulate only in range
+       ! Mode 0: process all
        if (subset_mode == 1) then
-          ! Mode 1: Fast testing - skip reading/processing outside range
-          process_this_lat = (j >= j_start .and. j <= j_end)
+          accumulate_this_lat = (j >= j_start .and. j <= j_end)
+          if (.not. accumulate_this_lat) cycle
        else
-          ! Mode 0 or 2: Process all latitudes
-          process_this_lat = .true.
-       end if
-
-       if (.not. process_this_lat) then
-          ! Skip reading this latitude entirely in Mode 1
-          cycle
+          accumulate_this_lat = (j >= j_start .and. j <= j_end)
        end if
 
        lats = -90.0_REAL64 + (j - 0.5_REAL64)*dy
@@ -371,14 +402,14 @@ program mkOverlaySimple
              k = MAPL_HashIncrement(Hash,   0,Pix2)
           end if
 
-          found     = k<=ip ! The grid indices were in hash
-          Rst1(i,j) = k
-
-! In Mode 2, accumulate only if in latitude range
-          if (subset_mode == 2 .and. (j < j_start .or. j > j_end)) then
-             ! Skip accumulation but maintain hash structure
-             cycle
+          if (k <= 0 .or. k > maxtiles) then
+             write (6, '(A,I0,A,2(I0,A),2(I0,A))') 'Bad hash index k=', k, &
+                  ' Pix1=', Pix1, ' Pix2=', Pix2, ' i=', i, ' j=', j
+             call exit(2)
           end if
+
+          found     = (k > 0 .and. k <= ip) ! The grid indices were in hash
+          Rst1(i,j) = k
 
 ! Table variables
 !
@@ -397,13 +428,15 @@ program mkOverlaySimple
 
 
           if(found) then    ! Bump the counter and the lon, lat, and area sums
-             iTable( 1,k) = iTable( 1,k) + 1
-             if(.not.Merge) then
-                rTable(:4,k) = rTable(:4,k) + vv(:4)
-             else
-                rTable(:3,k) = rTable(:3,k) + vv(:3)
+             if (accumulate_this_lat) then
+                iTable( 1,k) = iTable( 1,k) + 1
+                if(.not.Merge) then
+                   rTable(:4,k) = rTable(:4,k) + vv(:4)
+                else
+                   rTable(:3,k) = rTable(:3,k) + vv(:3)
+                end if
              end if
-          else              ! We have a new tile in the exchange grid
+          else if (accumulate_this_lat) then ! New tile: only create in range
              ip = ip + 1
              if(ip>maxtiles) then
                 print *, "Exceeded maxtiles = ", maxtiles," at j= ",  j, &
@@ -535,5 +568,56 @@ program mkOverlaySimple
 
 
   end program mkOverlaySimple
+
+!===================================================================
+
+contains
+
+  subroutine ReadTilTable(Unit, IsText, ip, Table, GridName, nx_out, ny_out, Verb)
+    ! Read a .til file (text or binary format)
+    ! If IsText=.true., reads formatted ASCII
+    ! If IsText=.false., reads unformatted binary
+    
+    integer, intent(IN)        :: Unit
+    logical, intent(IN)        :: IsText
+    integer, intent(IN)        :: ip
+    real(REAL64), intent(OUT)  :: Table(:,:)
+    character*(*), intent(OUT) :: GridName
+    integer, intent(OUT)       :: nx_out, ny_out
+    logical, intent(IN)        :: Verb
+    
+    integer :: k, num_grids
+    real(REAL64) :: dummy_lon, dummy_lat
+    real(REAL64) :: row(1:8)
+    
+    if (IsText) then
+       ! Text format (original)
+       read(Unit,*) k
+       read(Unit,*) GridName
+       read(Unit,*) nx_out
+       read(Unit,*) ny_out
+       do k=2,k
+          read(Unit,*)
+          read(Unit,*)
+          read(Unit,*)
+       end do
+       
+       do k=1,ip
+          read(Unit,*) Table(1:2,k), dummy_lon, dummy_lon, Table(3:6,k)
+       end do
+    else
+       ! Binary format
+       read(Unit) num_grids
+       read(Unit) GridName
+       read(Unit) nx_out, ny_out
+       
+       do k=1,ip
+          read(Unit) row(1:8)
+          Table(1:2,k) = row(1:2)
+          Table(3:6,k) = row(3:8)
+       end do
+    end if
+    
+  end subroutine ReadTilTable
 
 !===================================================================
