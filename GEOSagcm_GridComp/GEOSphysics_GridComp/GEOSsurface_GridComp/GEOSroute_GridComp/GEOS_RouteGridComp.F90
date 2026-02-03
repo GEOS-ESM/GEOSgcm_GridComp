@@ -1030,9 +1030,6 @@ contains
        allocate(WTOT_BEFORE(  n_pfaf_local))
        allocate(QINFLOW_LOCAL(n_pfaf_local))
 
-       
-       QRES_OUT    = 0.
-
        WTOT_BEFORE = WSTREAM + WRIVER + WRES
 
        ! Call river_routing_model

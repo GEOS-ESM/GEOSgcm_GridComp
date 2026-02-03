@@ -28,6 +28,10 @@ CONTAINS
 ! -------------------------------------------------------------------------------------------------------
   
   RECURSIVE SUBROUTINE SEARCH_DNST (K, NCAT_G, DNST, Pfaf_all, DNST_OUT)
+
+    ! objective:  [best guess by rreichle as of 3 Feb 2026]
+    ! find Pfafstetter index of downstream (DNST) catchment, where "downstream" is really "downriver" in the
+    !   jargon of the routing model with "main rivers" and "local streams"  
     
     implicit none
     
@@ -64,24 +68,24 @@ CONTAINS
   ! Routing Model Input Parameters
   ! ------------------------------
   !**** NCAT       = NUMBER OF CATCHMENTS IN THE STUDY DOMAIN
-  !**** Qrunf0     = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT        [m^3/s]
-  !**** llc_ori    = MAIN RIVER LENGTH SCALE                                       [m]
-  !**** lstr       = LOCAL STREAMS LENGTH SCALE                                    [m]
-  !**** qstr_clmt0 = CLIMATOLOGY RUNOFF                                            [m^3/s]  
-  !**** qri_clmt0  = CLIMATOLOGY DISCHAR                                           [m^3/s]
-  !**** qin_clmt0  = CLIMATOLOGY INFLOW                                            [m^3/s]               
-  !**** K          = K PARAMETER FOR MAIN RIVER
-  !**** Kstr0      = K PARAMETER FOR LOCAL STREAM                                  [m^3/s]
-  
-  ! Routing Model Prognostics
-  ! -------------------------
-  !**** Ws0        = AMOUNT OF WATER IN "LOCAL STREAM"                             [m^3]
-  !**** Wr0        = AMOUNT OF WATER IN RIVER                                      [m^3]
+  !**** Qrunf0     = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT            [m^3/s]
+  !**** llc_ori    = MAIN RIVER LENGTH SCALE                                           [m]
+  !**** lstr       = LOCAL STREAMS LENGTH SCALE                                        [m]
+  !**** qstr_clmt0 = CLIMATOLOGY RUNOFF                                                [m^3/s]  
+  !**** qri_clmt0  = CLIMATOLOGY DISCHAR                                               [m^3/s]
+  !**** qin_clmt0  = CLIMATOLOGY INFLOW                                                [m^3/s]               
+  !**** K          = K PARAMETER FOR MAIN RIVER                                        
+  !**** Kstr0      = K PARAMETER FOR LOCAL STREAM                                      [m^3/s]
+                                                                                       
+  ! Routing Model Prognostics                                                          
+  ! -------------------------                                                          
+  !**** Ws0        = AMOUNT OF WATER IN "LOCAL STREAM"                                 [m^3]
+  !**** Wr0        = AMOUNT OF WATER IN RIVER                                          [m^3]
   
   ! Routing Model Diagnostics
   ! -------------------------
-  !**** QS         = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE   [m^3/s]
-  !**** QOUT       = TRANSFER OF RIVER WATER TO THE DOWNSTREAM CATCHMENT           [m^3/s]  
+  !**** QS         = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE       [m^3/s]
+  !**** QOUT       = TRANSFER OF RIVER WATER TO THE DOWNSTREAM (DOWNRIVER) CATCHMENT   [m^3/s]  
   
   SUBROUTINE RIVER_ROUTING_HYD (          &
        NCAT,ROUTE_DT,                     &
@@ -137,13 +141,13 @@ CONTAINS
 
     ! Update state variables: ks, Ws, and Qs 
     where(Qrunf<=small)Qrunf=0.                                ! Set runoff to zero if it's too small
-    Qs0=max(0.,alp_s * Ws**(1./(1.-RRM_mm)))                       ! Initial flow from stream storage (kg/s)
+    Qs0=max(0.,alp_s * Ws**(1./(1.-RRM_mm)))                       ! Initial flow from local stream storage (kg/s)
     ks =max(0.,(alp_s/(1.-RRM_mm)) * Ws**(RRM_mm/(1.D0-RRM_mm)))           ! Flow coefficient (s^-1)
     Ws_last=Ws                                                 ! Store the current water storage 
     where(ks>small)  Ws=Ws + (Qrunf-Qs0)/ks*(1.-exp(-ks*dt))   ! Update storage (kg)
     where(ks<=small) Ws=Ws + (Qrunf-Qs0)*dt                    ! Simplified update if ks is small
     Ws=max(0.,Ws)                                              ! Ensure storage is non-negative
-    Qs=max(0.,Qrunf-(Ws-Ws_last)/dt)                           ! Calculate the stream flow (kg/s)
+    Qs=max(0.,Qrunf-(Ws-Ws_last)/dt)                           ! Calculate the local stream flow (kg/s)
 
     ! Calculate variables related to river routing: Qr0, kr
     Wr=Wr+Qs*dt

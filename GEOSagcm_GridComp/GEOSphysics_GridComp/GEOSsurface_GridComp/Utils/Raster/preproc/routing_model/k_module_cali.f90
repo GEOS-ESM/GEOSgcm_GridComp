@@ -378,10 +378,10 @@ contains
     ! Calculate modeled K values for all catchments
     KImodel_all = (Qclmt_all**(exp_clmt)) * (slp_all**(exp_slp))
 
-    ! Calculate stream K values using the scaling factor
+    ! Calculate local stream K values using the scaling factor
     Kstr_all = (Qstr_all**(exp_clmt)) * (slp_all**(exp_slp))
 
-    ! Write stream K values to an output file
+    ! Write local stream K values to an output file
     open(88, file="temp/Pfaf_Kstr_PR_fac1_0p35_0p45_0p2_n0p2.txt")
     do i = 1, nc
       write(88, *) Kstr_all(i)

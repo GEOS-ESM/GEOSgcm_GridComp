@@ -232,13 +232,13 @@ function spherical_distance(lon_dn, lat_dn, lon_up, lat_up) result(distance)
     !   distance       - Great-circle distance between the two points (kilometers)
     !------------------------------------------------------------
     real, intent(in) :: lon_dn, lat_dn   ! Coordinates of downstream point
-    real, intent(in) :: lon_up, lat_up     ! Coordinates of upstream point
+    real, intent(in) :: lon_up, lat_up   ! Coordinates of upstream   point
     real :: distance                     ! Computed distance (km)
     real :: R, dlon, dlat, a, c          ! Intermediate variables
 
-    R = 6371.0                         ! Earth's radius in kilometers
+    R = 6371.0                                       ! Earth's radius in kilometers
     dlon = (lon_up - lon_dn) * (acos(-1.0) / 180.0)  ! Delta longitude (radians)
-    dlat = (lat_up - lat_dn) * (acos(-1.0) / 180.0)  ! Delta latitude (radians)
+    dlat = (lat_up - lat_dn) * (acos(-1.0) / 180.0)  ! Delta latitude  (radians)
 
     a = sin(dlat / 2.0)**2 + cos(lat_dn * (acos(-1.0) / 180.0)) * &
         cos(lat_up * (acos(-1.0) / 180.0)) * sin(dlon / 2.0)**2

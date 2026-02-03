@@ -52,7 +52,7 @@ def area_global_rectilinear_grid(lat, lon, rearth=6371.):
     lon : numpy.ndarray
         Array of longitude values (degrees).
     rearth : float
-        Earth radius in kilometers. Default is 6371.22 km.
+        Earth radius in kilometers. Default is 6371. km (for consistency with MAPL_Radius as of 3 Feb 2026).
         
     Returns:
     area_grid : numpy.ndarray

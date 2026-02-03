@@ -6,7 +6,7 @@ module EASE_pfaf_fracMod
   !               writes information into EASEv[x]_tile2pfaf.nc4
 
   use MAPL
-  use LogRectRasterizeMod, only: nc=>SRTM_maxcat
+  use LogRectRasterizeMod, only: nPfaf=>SRTM_maxcat
 
   implicit none
   private
@@ -68,11 +68,11 @@ contains
     allocate(lon(nlon), lat(nlat))
     allocate(loni(nlon), lati(nlat),loni2(nlon), lati2(nlat))
     allocate(lons(nc_ease),lats(nr_ease))
-    allocate(nsub(nc))
+    allocate(nsub(nPfaf))
     
     call formatter%open(trim(pfafData_file), PFIO_READ)
-    call formatter%get_var("latitude", lat)
-    call formatter%get_var("longitude", lon)
+    call formatter%get_var("latitude",   lat)
+    call formatter%get_var("longitude",  lon)
     call formatter%get_var("CatchIndex", catchind)
     call formatter%close()
     
@@ -92,7 +92,7 @@ contains
     call formatter%close()
     cellarea = cellarea / 1.e6  ! Convert cell area (e.g., from m^2 to km^2)
     ! Initialize aggregation arrays to zero:
-    allocate(xsub0(9999, nc), ysub0(9999, nc), asub0(9999, nc))
+    allocate(xsub0(9999, nPfaf), ysub0(9999, nPfaf), asub0(9999, nPfaf))
     nsub = 0;xsub0 = 0;ysub0 = 0;asub0 = 0.
     ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
     do xi = 1, nlon
@@ -124,52 +124,55 @@ contains
     end do
     nmax = maxval(nsub)
     !print *,nmax
-    allocate(xsub(nmax, nc), ysub(nmax, nc), asub(nmax, nc))
+    allocate(xsub(nmax, nPfaf), ysub(nmax, nPfaf), asub(nmax, nPfaf))
     xsub=xsub0(1:nmax,:)
     ysub=ysub0(1:nmax,:)
     asub=asub0(1:nmax,:)
     deallocate(xsub0,ysub0,asub0)   
     ! Open the catchment definition file for the EASE grid and read the total number of tiles (header)
     open(77, file="clsm/catchment.def");read(77, *) ntot
-    ! Allocate arrays with size nt
+    ! Allocate arrays with size ntot
     allocate(tid(ntot), catid(ntot), lon_left(ntot), lon_right(ntot), lat_bottom(ntot), lat_top(ntot),latc(ntot),lonc(ntot))
-    allocate(lati_tile(ntot),loni_tile(ntot),map_tile(nc_ease,nr_ease))
-    ! Loop over each catchment and read: id, catchment id, left/right longitudes, bottom/top latitudes
+    allocate(lati_tile(ntot),loni_tile(ntot))
+    ! Loop through tiles and read: id, catchment id, left/right longitudes, bottom/top latitudes
     do i = 1, ntot
-      read(77, *) tid(i), catid(i), lon_left(i), lon_right(i), lat_bottom(i), lat_top(i)
+       read(77, *) tid(i), catid(i), lon_left(i), lon_right(i), lat_bottom(i), lat_top(i)
     end do
+    ! get center (not "center-of-mass") lat/lon of each tile based on tile min/max lat/lon
     latc = (lat_bottom + lat_top) / 2.
     lonc = (lon_left + lon_right) / 2.
     call nearest_index_vector(latc,lats,lati_tile)
     call nearest_index_vector(lonc,lons,loni_tile)
+    ! record into map_tile
+    allocate(map_tile(nc_ease,nr_ease))
     map_tile=-9999
     do i =1, ntot
       map_tile(loni_tile(i),lati_tile(i)) = i
     enddo
     
-    allocate(isub(nmax, nc))
+    allocate(isub(nmax, nPfaf))
     isub=0
     ! Loop over each catchment
-    do i = 1, nc
+    do i = 1, nPfaf
       ! Loop over each potential sub-area within the current catchment
       do j = 1, nmax
-        xi = xsub(j, i)  ! Retrieve the x-coordinate for the sub-area
-        yi = ysub(j, i)  ! Retrieve the y-coordinate for the sub-area
-        if (xi /= 0) then  ! Check if a valid sub-area exists (non-zero x-coordinate)
+        xi = xsub(j, i)                  ! Retrieve the x-coordinate for the sub-area
+        yi = ysub(j, i)                  ! Retrieve the y-coordinate for the sub-area
+        if (xi /= 0) then                ! Check if a valid sub-area exists (non-zero x-coordinate)
           isub(j, i) = map_tile(xi, yi)  ! Map the sub-area coordinates to a global tile index using map_tile
         endif
       enddo
     enddo
     
-    allocate(area_cat(nc),frac(nmax,nc),nsub_tile(ntot),flag2(nmax,nc))
+    allocate(area_cat(nPfaf),frac(nmax,nPfaf),nsub_tile(ntot),flag2(nmax,nPfaf))
     where(isub==-9999) asub=0.
     area_cat=0.
-    do i=1,nc
+    do i=1,nPfaf
       area_cat(i)=sum(asub(:,i))
     enddo
     nsub_tile=0
     frac=0.
-    do i=1,nc
+    do i=1,nPfaf
       do j=1,nmax
         if(isub(j,i)>0)then
           it=isub(j,i)
@@ -184,7 +187,7 @@ contains
     csub=0
     nsub_tile=0
     frac_tile=0.
-    do i=1,nc
+    do i=1,nPfaf
       do j=1,nmax
         if(isub(j,i)>0)then
           it=isub(j,i)
@@ -238,19 +241,20 @@ contains
 
   subroutine nearest_index_vector(candidates, targets, idx)
     ! For each targets(k), find argmin_j |candidates(j) - targets(k)|
-    real*8, intent(in)  :: targets(:)
-    real*8, intent(in)  :: candidates(:)
+    real*8,  intent(in)  :: targets(:)
+    real*8,  intent(in)  :: candidates(:)
     integer, intent(out) :: idx(size(candidates))   ! 1-based indices
-    integer :: k, j, nT, nC, best_j
-    real*8 :: best_d, d
 
-    nT = size(targets)
-    nC = size(candidates)
+    integer :: k, j, nTarg, nCand, best_j
+    real*8  :: best_d, d
 
-    do k = 1, nC
+    nTarg = size(targets)
+    nCand = size(candidates)
+
+    do k = 1, nCand
        best_d = huge(1.0d0)
        best_j = 1
-       do j = 1, nT
+       do j = 1, nTarg
           d = abs(candidates(k) - targets(j))
           if (d < best_d) then
              best_d = d
@@ -260,5 +264,5 @@ contains
        idx(k) = best_j    ! already 1-based
     end do
   end subroutine nearest_index_vector
-
+  
 end module EASE_pfaf_fracMod

@@ -117,6 +117,8 @@ contains
     real    :: Qin_res, alp_res, tmpfac   ! Variables for inflow, coefficients, and factors
     integer :: i, status
 
+    Q_res = 0.
+
     do i = 1, size(this%active_res)
 
        if (this%active_res(i) == 1) then                  ! reservoir is active
