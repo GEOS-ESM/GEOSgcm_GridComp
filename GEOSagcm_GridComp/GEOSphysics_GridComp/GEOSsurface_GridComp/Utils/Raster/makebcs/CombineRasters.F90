@@ -215,6 +215,9 @@ program mkOverlaySimple
     allocate(rTable(1:rvars,maxtiles),stat=status)
     VERIFY_(STATUS)
 
+   iTable = 0
+   rTable = 0.0_8
+
     allocate(rst1(nx,ny),             stat=status)
     VERIFY_(STATUS)
 
@@ -331,7 +334,13 @@ program mkOverlaySimple
              k = MAPL_HashIncrement(Hash,   0,Pix2)
           end if
 
-          found     = k<=ip ! The grid indices were in hask
+          if (k <= 0 .or. k > maxtiles) then
+             write (6, '(A,I0,A,2(I0,A),2(I0,A))') 'Bad hash index k=', k, &
+                  ' Pix1=', Pix1, ' Pix2=', Pix2, ' i=', i, ' j=', j
+             call exit(2)
+          end if
+
+          found     = (k > 0 .and. k <= ip) ! The grid indices were in hash
           Rst1(i,j) = k
 
 ! Table variables
