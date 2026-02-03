@@ -38,6 +38,8 @@ program mkOverlaySimple
   integer                :: nx1, nx2, ny1, ny2, nx, ny
   integer                :: maxtiles, hash
   integer                :: count0,count1,count_rate
+  integer                :: j_start, j_end   ! Latitude range for subset processing
+  integer                :: subset_mode      ! 0=full, 1=fast, 2=full_hash
 
   integer,   allocatable :: RST1(:,:)
   integer,   allocatable :: RST2(:  )
@@ -55,6 +57,7 @@ program mkOverlaySimple
   logical                :: found
   logical                :: Merge
   logical                :: s_flag=.false.
+  logical                :: process_this_lat
                          
   character*4            :: tildir, rstdir
   character*14           :: sg
@@ -65,7 +68,7 @@ program mkOverlaySimple
   character*128          :: Grid1, Grid2
   character*128          :: TilFile, RstFile
   character*128          :: &
-      Usage = "CombineRasters -v -h -z -t MT -g GF -f TYPE -s SG BOTTOMRASTER TOPRASTER"
+      Usage = "CombineRasters -v -h -z -t MT -g GF -f TYPE -s SG -j J1:J2 -m MODE BOTTOMRASTER TOPRASTER"
 
   character*128          :: Iam = "CombineRasters"
   integer :: Pix1, Pix2
@@ -78,11 +81,20 @@ program mkOverlaySimple
     tildir='til/'   ! Write in current dir
     rstdir='rst/'   ! Write in current dir
     maxtiles=4000000
+    j_start = -1    ! Process all latitudes
+    j_end = -1
+    subset_mode = 0 ! 0=full, 1=fast testing, 2=full hash
 
     I = command_argument_count()
 
-    if(I < 2 .or. I > 11) then
+    if(I < 2 .or. I > 17) then
        print *, trim(Usage)
+       print *, ""
+       print *, "Subset options:"
+       print *, "  -j J1:J2   Process only latitudes J1 to J2"
+       print *, "  -m MODE    Subset mode: 0=full(default), 1=fast, 2=full_hash"
+       print *, "             Mode 1: Fast testing - skip unselected lats (relaxed bitwise)"
+       print *, "             Mode 2: Full hash - read all, accumulate subset (strict bitwise)"
        call exit(1)
     end if
 
@@ -119,6 +131,22 @@ program mkOverlaySimple
        case ('s')
           sg = trim(arg)
           s_flag=.true.
+       case ('j')
+          ! Parse latitude range J1:J2
+          i = index(arg, ':')
+          if (i > 0) then
+             read(arg(1:i-1),*) j_start
+             read(arg(i+1:),*) j_end
+          else
+             print *, "Error: -j option requires format J1:J2"
+             call exit(1)
+          end if
+       case ('m')
+          read(arg,*) subset_mode
+          if (subset_mode < 0 .or. subset_mode > 2) then
+             print *, "Error: -m MODE must be 0, 1, or 2"
+             call exit(1)
+          end if
        case default
           print *, trim(Usage)
           call exit(1)
@@ -198,6 +226,19 @@ program mkOverlaySimple
     _ASSERT(NX1==NX,'needs informative message')
     _ASSERT(NY1==NY,'needs informative message')
 
+! Validate subset range
+    if (j_start > 0) then
+       _ASSERT(j_start >= 1 .and. j_start <= ny, 'j_start out of range')
+       _ASSERT(j_end >= j_start .and. j_end <= ny, 'j_end out of range')
+       if (Verb) then
+          print *, 'Subset mode: ', subset_mode
+          print *, 'Processing latitudes: ', j_start, ' to ', j_end, ' of ', ny
+       end if
+    else
+       j_start = 1
+       j_end = ny
+    end if
+
 ! allocate space
 
     if(Merge) then
@@ -226,14 +267,14 @@ program mkOverlaySimple
 
 ! The rasters cover the sphere in lat-lon 
 
-    dx  = 360._8/nx
-    dy  = 180._8/ny
-    d2r = PI/180._8
+    dx  = 360.0_REAL64/nx
+    dy  = 180.0_REAL64/ny
+    d2r = PI/180.0_REAL64
 
 ! sine and cosine of raster longitudes
 
     do i=1,nx
-       lons  = d2r*(-180._8 + (i-0.5_8)*dx)
+       lons  = d2r*(-180.0_REAL64 + (i-0.5_REAL64)*dx)
        cc(i) = cos(lons)
        ss(i) = sin(lons)
     enddo
@@ -284,9 +325,24 @@ program mkOverlaySimple
     if(Verb) write (6, '(A)', advance='NO') ' Started Overlay'
 
     LATITUDES: do j=1,ny
-       lats = -90._8 + (j - 0.5_8)*dy
-       da   = (sin(d2r*(lats+0.5*dy)) - &
-               sin(d2r*(lats-0.5*dy))   )*(dx*d2r)
+       
+       ! Determine if we process this latitude
+       if (subset_mode == 1) then
+          ! Mode 1: Fast testing - skip reading/processing outside range
+          process_this_lat = (j >= j_start .and. j <= j_end)
+       else
+          ! Mode 0 or 2: Process all latitudes
+          process_this_lat = .true.
+       end if
+
+       if (.not. process_this_lat) then
+          ! Skip reading this latitude entirely in Mode 1
+          cycle
+       end if
+
+       lats = -90.0_REAL64 + (j - 0.5_REAL64)*dy
+       da   = (sin(d2r*(lats+0.5_REAL64*dy)) - &
+               sin(d2r*(lats-0.5_REAL64*dy))   )*(dx*d2r)
 
        vv(3)   = da*lats
        vv(4)   = da
@@ -315,8 +371,14 @@ program mkOverlaySimple
              k = MAPL_HashIncrement(Hash,   0,Pix2)
           end if
 
-          found     = k<=ip ! The grid indices were in hask
+          found     = k<=ip ! The grid indices were in hash
           Rst1(i,j) = k
+
+! In Mode 2, accumulate only if in latitude range
+          if (subset_mode == 2 .and. (j < j_start .or. j > j_end)) then
+             ! Skip accumulation but maintain hash structure
+             cycle
+          end if
 
 ! Table variables
 !
@@ -411,8 +473,8 @@ program mkOverlaySimple
 
     do k=1,ip
        rTable(1,k) = atan2(rTable(1,k),rTable(2,k))/d2r
-       if(rTable(4,k) < 1.e-15) then 
-          rTable(2,k) =       rTable(3,k)/(rTable(4,k) + 1.e-15)
+       if(rTable(4,k) < 1.0e-15_REAL64) then 
+          rTable(2,k) =       rTable(3,k)/(rTable(4,k) + 1.0e-15_REAL64)
        else
           rTable(2,k) =       rTable(3,k)/rTable(4,k)
        endif
@@ -475,4 +537,3 @@ program mkOverlaySimple
   end program mkOverlaySimple
 
 !===================================================================
-
