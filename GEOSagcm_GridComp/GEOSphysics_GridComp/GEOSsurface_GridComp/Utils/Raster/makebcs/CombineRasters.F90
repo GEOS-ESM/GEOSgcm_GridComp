@@ -566,7 +566,6 @@ program mkOverlaySimple
     call exit(0)
 
 
-  end program mkOverlaySimple
 
 !===================================================================
 
@@ -621,3 +620,5 @@ contains
   end subroutine ReadTilTable
 
 !===================================================================
+
+  end program mkOverlaySimple
