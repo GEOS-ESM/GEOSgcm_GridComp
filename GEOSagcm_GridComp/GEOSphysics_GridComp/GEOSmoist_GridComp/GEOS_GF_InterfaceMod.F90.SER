@@ -373,6 +373,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: PTR2D
 
     !$ser verbatim integer :: SER_VAR_1
+    !$ser verbatim integer :: ser_tracer_index, ser_miscellaneous_index
 
     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -395,8 +396,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data STOCHASTIC_CNV=STOCHASTIC_CNV STOCH_TOP=STOCH_TOP STOCH_BOT=STOCH_BOT GF_MIN_AREA=GF_MIN_AREA
     !$ser data DT_MOIST=GF_DT GF_ENV_SETTING=SER_VAR_1 ENTRVERSION=ENTRVERSION LHYDROSTATIC=LHYDROSTATIC
     !$ser data CONVECTION_TRACER=CONVECTION_TRACER C1=C1 ADV_TRIGGER=ADV_TRIGGER AUTOCONV=AUTOCONV
-    !$ser data USE_TRACER_TRANSP=USE_TRACER_TRANSP SCLM_DEEP=SCLM_DEEP FIX_CNV_CLOUD=FIX_CNV_CLOUD
-    !$ser data APPLY_SUB_MP=APPLY_SUB_MP
+    !$ser data USE_TRACER_TRANSPORT=USE_TRACER_TRANSP SCLM_DEEP=SCLM_DEEP FIX_CNV_CLOUD=FIX_CNV_CLOUD
+    !$ser data APPLY_SUBSIDENCE_MICROPHYSICS=APPLY_SUB_MP
     !$ser verbatim SER_VAR_1=size(CNV_Tracers)
     !$ser data NUMBER_OF_TRACERS=SER_VAR_1
 
@@ -635,6 +636,48 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ENDIF
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pa
+         !$ser savepoint GF2020_ConvectionTracers
+         !$ser verbatim call ser_set_Dx(size(CNV_Tracers),IM,JM,LM)
+         !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+            !$ser verbatim do I=1,IM
+               !$ser verbatim do J=1,JM
+                     !$ser verbatim do L=1,LM
+                           !$ser verbatim call ser_set_indices(ser_tracer_index,I,J,L)
+                           !$ser data_buffered Dx=4 tracers=CNV_Tracers(ser_tracer_index)%Q(I,J,L)
+                     !$ser verbatim enddo
+               !$ser verbatim enddo
+            !$ser verbatim enddo
+         !$ser verbatim enddo
+         !$ser verbatim call ser_set_Dx(size(CNV_Tracers),4,1,1)
+         !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+            !$ser verbatim do ser_miscellaneous_index=1,4
+               !$ser verbatim call ser_set_indices(ser_tracer_index,ser_miscellaneous_index,1,1)
+               !$ser data_buffered Dx=2 vect_hcts=CNV_Tracers(ser_tracer_index)%vect_hcts(ser_miscellaneous_index)
+            !$ser verbatim enddo
+         !$ser verbatim enddo
+         !$ser verbatim call ser_set_Dx(size(CNV_Tracers),3,1,1)
+         !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+            !$ser verbatim do ser_miscellaneous_index=1,3
+               !$ser verbatim call ser_set_indices(ser_tracer_index,ser_miscellaneous_index,1,1)
+               !$ser data_buffered Dx=2 kc_scal=CNV_Tracers(ser_tracer_index)%kcscal(ser_miscellaneous_index)
+            !$ser verbatim enddo
+         !$ser verbatim enddo
+         !$ser verbatim call ser_set_Dx(size(CNV_Tracers),1,1,1)
+         !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+            !$ser verbatim call ser_set_D2(1)
+            !$ser verbatim call ser_set_indices(ser_tracer_index,1,1,1)
+            !$ser data_buffered Dx=1 fscav=CNV_Tracers(ser_tracer_index)%fscav
+            !$ser data_buffered Dx=1 convfaci2g=CNV_Tracers(ser_tracer_index)%convfaci2g
+            !$ser data_buffered Dx=1 retfactor=CNV_Tracers(ser_tracer_index)%retfactor
+            !$ser data_buffered Dx=1 liq_and_gas=CNV_Tracers(ser_tracer_index)%liq_and_gas
+            !$ser data_buffered Dx=1 online_cldliq=CNV_Tracers(ser_tracer_index)%online_cldliq
+            !$ser data_buffered Dx=1 online_vud=CNV_Tracers(ser_tracer_index)%online_vud
+            !$ser data_buffered Dx=1 ftemp_threshold=CNV_Tracers(ser_tracer_index)%ftemp_threshold
+            !$ser data_buffered Dx=1 use_gcc_washout=CNV_Tracers(ser_tracer_index)%use_gcc_washout
+            !$ser data_buffered Dx=1 use_gocart=CNV_Tracers(ser_tracer_index)%use_gocart
+            !$ser data_buffered Dx=1 is_wetdep=CNV_Tracers(ser_tracer_index)%is_wetdep
+         !$ser verbatim enddo
+         !$ser flush_savepoint GF2020_ConvectionTracers
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
                                  ,T, TH, Q, U, V, TMP3D, BYNCY, QLCN, QICN, QLLS, QILS, CNPCPRATE &
@@ -657,8 +700,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !!$ser flush_savepoint GF2020_Setup-Out-part-3
          
          ! CumulusParameterization savepoints
-         !$ser flush_savepoint GF2020_CumulusParameterization-In
-         !$ser flush_savepoint GF2020_CumulusParameterization-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_4D-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_4D-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_Setup-In
          !$ser flush_savepoint GF2020_CumulusParameterization_Setup-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentConditions_1-In
