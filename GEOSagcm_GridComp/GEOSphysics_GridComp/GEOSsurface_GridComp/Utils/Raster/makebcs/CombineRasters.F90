@@ -8,6 +8,7 @@ program mkOverlaySimple
   use MAPL_HashMod
   use MAPL_ExceptionHandling
   use MAPL_Constants
+  use omp_lib
 
 ! Overlay atmosphere, land, and ocean rasters, creating a .idx file.
 ! The ocean raster should be defined everywhere, or at least, everywhere
@@ -40,6 +41,7 @@ program mkOverlaySimple
   integer                :: count0,count1,count_rate
   integer                :: j_start, j_end   ! Latitude range for subset processing
   integer                :: subset_mode      ! 0=full, 1=fast, 2=full_hash
+  integer                :: num_threads
 
   integer,   allocatable :: RST1(:,:)
   integer,   allocatable :: RST2(:  )
@@ -502,6 +504,10 @@ program mkOverlaySimple
 ! the real table for WriteTiling.
 
     if(Verb) print *, "Computing weighted lons and lats..."
+
+    ! Query OpenMP thread info
+    num_threads = omp_get_max_threads()
+    if(Verb) print *, "OpenMP: Using ", num_threads, " thread(s)"
 
     !$omp parallel do private(k)
     do k=1,ip
