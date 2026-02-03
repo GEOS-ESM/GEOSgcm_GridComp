@@ -609,8 +609,7 @@ contains
        ! Binary format - read header first, then grid metadata, then tile data
        read(Unit) k, nf, nx, ny  ! Read header that was written by ConvertTilToBinary
        read(Unit) num_grids
-       read(Unit) GridName
-       read(Unit) nx_out, ny_out
+       read(Unit) nx_out, ny_out  ! Read only nx, ny (GridName is not in binary file)
        
        do k=1,ip
           read(Unit) Table(1,k), Table(2,k), dummy_lon, dummy_lat, &

@@ -55,11 +55,10 @@ program ConvertTilToBinary
     write(TILUNIT_OUT) num_grids
     print *, "Number of grids: ", num_grids
 
-! Read and write grid metadata for first grid only (matching .til file structure)
+! Read and write grid metadata for first grid only (skip grid name, write only dimensions)
 
-    ! Read first grid name
+    ! Read first grid name (skip it)
     read(TILUNIT_IN,*) GridName
-    write(TILUNIT_OUT) trim(GridName)
     
     ! Read nx, ny for first grid
     read(TILUNIT_IN,*) nx
@@ -68,7 +67,7 @@ program ConvertTilToBinary
     
     print *, "First grid: ", trim(GridName), " nx=", nx, " ny=", ny
 
-    ! Skip remaining grid headers (they're in the text file but we only need first)
+    ! Skip remaining grid headers
     do j=2,num_grids
        read(TILUNIT_IN,*)
        read(TILUNIT_IN,*)
