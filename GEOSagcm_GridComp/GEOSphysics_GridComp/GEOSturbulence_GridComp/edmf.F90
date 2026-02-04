@@ -28,7 +28,6 @@ implicit none
     real    :: L0fac
     real    :: STOCHFRAC
     real    :: ENTUFAC
-    real    :: EDFAC
     real    :: ENT0
     real    :: ALPHATH
     real    :: ALPHAQT
@@ -194,7 +193,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    REAL,DIMENSION(KTS-1:KTE) :: UI, VI, QVI, QLI, QII
 
 ! internal surface cont
-   REAL :: UST,WTHL,WQT,PBLH
+   REAL :: WTHL,WQT,PBLH
    REAL,DIMENSION(KTS-1:KTE) :: dry_a, moist_a,dry_w,moist_w,          &
                                 dry_qt,moist_qt,dry_thl,moist_thl,     &
                                 dry_u,moist_u,dry_v,moist_v, moist_qc
@@ -211,7 +210,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    REAL :: tmp, tmp2
 
    
-   REAL :: L0,ztop,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
+   REAL :: L0,ztop,ltm,QTsrfF,THVsrfF,mft,mfthvt,mf,factor!,lts
    INTEGER, DIMENSION(2) :: the_seed
 
    LOGICAL :: calc_avg_diag
@@ -278,7 +277,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    if (associated(entx)) entx = mapl_undef
 
    ! this is the environmental area - by default 1.
-   ae3=MFPARAMS%EDfac
+   ae3=1.
 
 
    DO IH=ITS,ITE ! loop over the horizontal dimensions
@@ -322,25 +321,12 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
       ! Estimate scale height for entrainment calculation
       if (mfparams%ET == 2 ) then
-        pmid = 0.5*(pw3(IH,JH,kts-1:kte-1)+pw3(IH,JH,kts:kte))
-        call calc_mf_depth(kts,kte,t3(IH,JH,:),zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
-        L0 = max(min(ztop,2500.),500.) / mfparams%L0fac
-        if (associated(mfdepth)) mfdepth(IH,JH) = ztop
-        
-        ! Reduce L0 over ocean where LTS is large to encourage StCu formation
-!        lts =  0.0
-!        if (FRLAND(IH,JH)<0.5) then
-!           do k = kte-1,kts+1,-1
-!              if (zlo3(IH,JH,k)-zw3(IH,JH,kte).gt.3000.0) then
-!                 lts = thv3(IH,JH,k+1)
-!                 exit
-!              end if
-!           end do
-!           lts = lts - thv3(IH,JH,kte)
-!           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-18.5))) )
-!        end if
+         pmid = 0.5*(pw3(IH,JH,kts-1:kte-1)+pw3(IH,JH,kts:kte))
+         call calc_mf_depth(kts,kte,t3(IH,JH,:),zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
+         L0 = max(min(ztop,2500.),500.) / mfparams%L0fac
+         if (associated(mfdepth)) mfdepth(IH,JH) = ztop
       else ! if mfparams%ET not 2
-        L0 = mfparams%L0
+         L0 = mfparams%L0
       end if
 
       if (ztop.gt.100.) then
@@ -478,9 +464,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
          end do
          wcfac(1:k) = min(10.,max(0.,thv(ktmp)-thv(k)-MFPARAMS%WCTHRESH))*exp(-(zlo(k)-zlo(1:k))/100. )
       end if
-!      if (associated(invdelt)) invdelt(IH,JH) = maxval(wcfac)
-!      if (associated(wcfacout)) wcfacout(IH,JH,:) = wcfac(kte:kts:-1)
-      !      print *,'wcfac=',wcfac
       
       ! define surface conditions
       DO I=1,NUP2
@@ -555,11 +538,11 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         DO I=1,NUP2  ! loop over updrafts
 
           if (UPW(K-1,I).gt.0.) then
-            if (MFPARAMS%ENTRAIN==3) then  ! dynamic entrainment rates
-              ENT(K,I) = MFPARAMS%ENT0*max(1e-4,B)/max(0.1,UPW(K,I)**2)
-            elseif (MFPARAMS%ENTRAIN==4) then
-               ENT(K,I) = ENT(K,I)*(1.+3.0*sqrt(TKE3(IH,JH,I))/max(0.1,UPW(K-1,I)))
-            end if
+!            if (MFPARAMS%ENTRAIN==3) then  ! dynamic entrainment rates
+!              ENT(K,I) = MFPARAMS%ENT0*max(1e-4,B)/max(0.1,UPW(K,I)**2)
+!            elseif (MFPARAMS%ENTRAIN==4) then
+!               ENT(K,I) = ENT(K,I)*(1.+3.0*sqrt(TKE3(IH,JH,I))/max(0.1,UPW(K-1,I)))
+!            end if
 
             EntExp  = exp(-ENT(K,I)*(ZW(k)-ZW(k-1)))
             EntExpU = exp(-ENT(K,I)*(ZW(k)-ZW(k-1))*MFPARAMS%EntUFac)
@@ -585,8 +568,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
             ! vertical velocity
             B=mapl_grav*(0.5*(THVn+UPTHV(k-1,I))/THV(k)-1.)
-            ! represent deceleration from dynamic pressure under inversion
-!            tmp = max(0.,(THV(k+1)-THV(k))/(ZW(k+1)-ZW(k))-0.015)
+            ! represent deceleration from dynamic pressure approaching inversion
             WP=MFPARAMS%WB*ENT(K,I)+MFPARAMS%WC*wcfac(k)
             IF (WP==0.) THEN
               Wn2=UPW(K-1,I)**2+2.*MFPARAMS%WA*B*(ZW(k)-ZW(k-1))
@@ -850,7 +832,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         awqi3(IH,JH,K) = s_awqi(KTE+KTS-K-1)
         awu3(IH,JH,K)  = s_awu(KTE+KTS-K-1)
         awv3(IH,JH,K)  = s_awv(KTE+KTS-K-1)
-        ae3(IH,JH,K)   = (1.-dry_a(KTE+KTS-K-1)-moist_a(KTE+KTS-K-1))*MFPARAMS%EDfac
+        ae3(IH,JH,K)   = (1.-dry_a(KTE+KTS-K-1)-moist_a(KTE+KTS-K-1))
         mfwhl(IH,JH,K) = s_awhl(KTE+KTS-K-1)
         mfwqt(IH,JH,K) = s_awqt(KTE+KTS-K-1)
       ENDDO
@@ -1101,7 +1083,7 @@ integer :: sed_len
 integer,dimension(2),  intent(in) :: seed
 
 integer :: seed_len
-integer :: IH,JH,idum,p
+integer :: IH,JH,p
 integer,allocatable :: theseed(:)
 
 call random_seed(SIZE=seed_len)
@@ -1117,7 +1099,6 @@ call random_seed(put=theseed)
 
 do ih=istart,iend
   do jh=jstart,jend
-!    poi(IH,JH)=poidev(mu(IH,JH),idum)
     poi(IH,JH)=poidev(mu(IH,JH))
   enddo
 enddo

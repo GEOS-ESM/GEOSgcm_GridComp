@@ -124,7 +124,7 @@ module shoc
 
 ! SHOC tunable parameters
   real :: lambda
-  real, parameter :: min_tke = 1e-4  ! Minumum TKE value, m**2/s**2
+  real, parameter :: min_tke = 1e-3  ! Minumum TKE value, m**2/s**2
   real, parameter :: max_tke = 10.    ! Maximum TKE value, m**2/s**2
 
 ! Maximum turbulent eddy length scale, m
@@ -431,8 +431,8 @@ contains
         do i=1,nx
           ! Calculate "return-to-isotropy" eddy dissipation time scale, see Eq. 8 in BK13
           ! ignore stability dependence within the lower CBL, to prevent occasional 
-          wrk = 2./(1./tscale1(i,j,k)+1./tscale1(i,j,k-1))
-          !wrk = 0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))
+          !wrk = 2./(1./tscale1(i,j,k)+1./tscale1(i,j,k-1))
+          wrk = 0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))
           if (brunt_edge(i,j,k) <= 1e-5 .or. zl(i,j,k).lt.0.7*dryzpbl(i,j)) then
              isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk))
           else
@@ -788,7 +788,7 @@ contains
            end if
 
            ! Enforce minimum and maximum length scales
-           wrk = 20. !0.5*min(100.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
+           wrk = 40. !0.5*min(100.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
            if (zl(i,j,k) .lt. 2000.) then
               smixt(i,j,k) = max(wrk, smixt(i,j,k))
            else if (zl(i,j,k).gt.dryzpbl(i,j)) then ! if above 2 km and dry CBL top, cap length scale
@@ -947,10 +947,11 @@ contains
         ! Second moment of liquid/ice water static energy. Eq 4 in BK13
         hl2_edge_nomf(:,:,k) = HL2TUNE * sm * wrk1 * wrk1
         hl2_edge(:,:,k) = HL2TUNE * 0.5*ISOTROPY(:,:,k) * (wrk3*wrk1-MFWHL(:,:,k)) &
-                          * min(0.01,wrk1/(ZL(:,:,k)-ZL(:,:,k+1))) ! limit gradient to 10K/1km
+                          * min(0.01,wrk1/(ZL(:,:,k)-ZL(:,:,k+1))) ! limit gradient to 1K/100m
 
         ! Total water gradient
         wrk2 = (QT(:,:,k) - QT(:,:,k+1))
+!        qtgrad(:,:,k)   = max(-0.002*qt(:,:,k+1),wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))) ! limit negative gradient to 20%/100m
         qtgrad(:,:,k)   = wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))
 
         ! Mean gradient production of total water variance, with and without MF contribution
