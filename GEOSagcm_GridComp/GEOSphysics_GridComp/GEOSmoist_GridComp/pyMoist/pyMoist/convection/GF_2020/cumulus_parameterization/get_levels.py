@@ -620,12 +620,12 @@ def get_convective_cloud_base_level(
 
 def updraft_rates_pdf(
     entrainment_rate: FloatField_Plume,
-    moist_static_energy: FloatField,
-    saturation_moist_static_energy: FloatField,
-    moist_static_energy_origin_level: FloatFieldIJ,
+    environment_moist_static_energy_forced: FloatField,
+    environment_saturation_mixing_ratio_cloud_levels_forced: FloatField,
+    moist_static_energy_origin_level_forced: FloatFieldIJ,
     updraft_lfc_level: IntFieldIJ_Plume,
-    geopotential_height: FloatField,
-    cloud_moist_static_energy: FloatField,
+    geopotential_height_cloud_levels_forced: FloatField,
+    cloud_moist_static_energy_forced_transported: FloatField,
     error_code: IntFieldIJ_Plume,
     cloud_top_level: IntFieldIJ_Plume,
     plume: Int,
@@ -634,7 +634,7 @@ def updraft_rates_pdf(
 
     with computation(PARALLEL), interval(...):
         # default value
-        cloud_moist_static_energy = 0.0
+        cloud_moist_static_energy_forced_transported = 0.0
 
     with computation(FORWARD), interval(0, 1):
         if plume != 0:
@@ -647,16 +647,16 @@ def updraft_rates_pdf(
     with computation(PARALLEL), interval(...):
         if plume != 0 and error_code[0, 0][plume] == 0:
             if K <= start_level:
-                cloud_moist_static_energy = moist_static_energy_origin_level
+                cloud_moist_static_energy_forced_transported = moist_static_energy_origin_level_forced
 
     with computation(FORWARD), interval(1, None):
         if plume != 0 and error_code[0, 0][plume] == 0:
             if K > start_level and K < k_end - 2:
-                dz = geopotential_height - geopotential_height[0, 0, -1]
+                dz = geopotential_height_cloud_levels_forced - geopotential_height_cloud_levels_forced[0, 0, -1]
 
-                cloud_moist_static_energy = (
-                    (1.0 - 0.5 * entrainment_rate[0, 0, -1][plume] * dz) * cloud_moist_static_energy[0, 0, -1]
-                    + entrainment_rate[0, 0, -1][plume] * dz * moist_static_energy[0, 0, -1]
+                cloud_moist_static_energy_forced_transported = (
+                    (1.0 - 0.5 * entrainment_rate[0, 0, -1][plume] * dz) * cloud_moist_static_energy_forced_transported[0, 0, -1]
+                    + entrainment_rate[0, 0, -1][plume] * dz * environment_moist_static_energy_forced[0, 0, -1]
                 ) / (1.0 + 0.5 * entrainment_rate[0, 0, -1][plume] * dz)
 
     with computation(FORWARD), interval(0, 1):
@@ -668,7 +668,7 @@ def updraft_rates_pdf(
         if plume != 0 and error_code[0, 0][plume] == 0:
             if K > start_level and K < k_end - 2 and stop_computation == False:
                 # find the height where the parcel is no longer saturated
-                if cloud_moist_static_energy < saturation_moist_static_energy:
+                if cloud_moist_static_energy_forced_transported < environment_saturation_mixing_ratio_cloud_levels_forced:
                     cloud_top_level[0, 0][plume] = K - 1
                     stop_computation = True
 
@@ -679,7 +679,7 @@ def updraft_rates_pdf(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and plume != 0 and OVERSHOOT > 0:
-            z_overshoot = (1.0 + OVERSHOOT) * geopotential_height.at(K=cloud_top_level[0, 0][plume])
+            z_overshoot = (1.0 + OVERSHOOT) * geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume])
 
     with computation(FORWARD), interval(0, 1):
         # set up mask for next computation
@@ -688,15 +688,15 @@ def updraft_rates_pdf(
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0 and plume != 0 and OVERSHOOT > 0:
             if K >= cloud_top_level[0, 0][plume] and K < k_end - 1 and stop_computation == False:
-                if z_overshoot < geopotential_height:
+                if z_overshoot < geopotential_height_cloud_levels_forced:
                     cloud_top_level[0, 0][plume] = min(K - 1, k_end - 3)
                     stop_computation = True
 
 
 def cloud_top_checks(
     cloud_top_level: IntFieldIJ_Plume,
-    p: FloatField_Plume,
-    geopotential_height: FloatField,
+    p_cloud_levels_forced: FloatField_Plume,
+    geopotential_height_cloud_levels: FloatField,
     error_code: IntFieldIJ_Plume,
     last_error_code: IntFieldIJ,
     updraft_lfc_level: IntFieldIJ_Plume,
@@ -706,33 +706,33 @@ def cloud_top_checks(
     # check if cloud_top_level is too low for deep convection
     with computation(FORWARD), interval(0, 1):
         if plume == cumulus_parameterization_constants.DEEP and error_code[0, 0][plume] == 0:
-            if p.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) > 400:
+            if p_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) > 400:
                 error_code[0, 0][plume] = 22
 
     # check if cloud_top_level is too high for mid convection
     with computation(FORWARD), interval(0, 1):
         if plume == cumulus_parameterization_constants.MID and error_code[0, 0][plume] == 0:
-            if p.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) < 400:
+            if p_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) < 400:
                 error_code[0, 0][plume] = 22
 
     # check if cloud_top_level is too high for shallow convection
     with computation(FORWARD), interval(0, 1):
         if plume == cumulus_parameterization_constants.SHALLOW and error_code[0, 0][plume] == 0:
-            if p.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) < 400:
+            if p_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) < 400:
                 error_code[0, 0][plume] = 23
 
     # avoid double-counting plumes
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and last_error_code == 0:
-            if p.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) < 700:
+            if p_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume], ddim=[plume]) < 700:
                 error_code[0, 0][plume] = 27
 
     # last checks for cloud_top_level
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             if (
-                geopotential_height.at(K=cloud_top_level[0, 0][plume])
-                - geopotential_height.at(K=updraft_lfc_level[0, 0][plume])
+                geopotential_height_cloud_levels.at(K=cloud_top_level[0, 0][plume])
+                - geopotential_height_cloud_levels.at(K=updraft_lfc_level[0, 0][plume])
                 < MINIMUM_DEPTH
             ):
                 error_code[0, 0][plume] = 5

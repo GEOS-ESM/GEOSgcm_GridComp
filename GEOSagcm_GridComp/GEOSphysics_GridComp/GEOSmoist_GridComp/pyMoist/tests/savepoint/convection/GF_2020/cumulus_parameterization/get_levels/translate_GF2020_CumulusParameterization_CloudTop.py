@@ -123,12 +123,12 @@ class TestCore:
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code_part_1(
                 entrainment_rate=state.output.entrainment_rate,
-                moist_static_energy=locals.environment_moist_static_energy_forced,
-                saturation_moist_static_energy=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
-                moist_static_energy_origin_level=locals.moist_static_energy_origin_level_forced,
+                environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+                environment_saturation_mixing_ratio_cloud_levels_forced=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+                moist_static_energy_origin_level_forced=locals.moist_static_energy_origin_level_forced,
                 updraft_lfc_level=state.output.updraft_lfc_level,
-                geopotential_height=locals.geopotential_height_cloud_levels_forced,
-                cloud_moist_static_energy=locals.cloud_moist_static_energy_forced_transported,
+                geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                cloud_moist_static_energy_forced_transported=locals.cloud_moist_static_energy_forced_transported,
                 error_code=state.output.error_code,
                 cloud_top_level=state.output.cloud_top_level,
                 plume=plume_dependent_constants.PLUME_INDEX,
@@ -136,8 +136,8 @@ class TestCore:
 
             code_part_2(
                 cloud_top_level=state.output.cloud_top_level,
-                p=state.output.p_cloud_levels_forced,
-                geopotential_height=locals.geopotential_height_cloud_levels,
+                p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels,
                 error_code=state.output.error_code,
                 last_error_code=state.input.last_error_code,
                 updraft_lfc_level=state.output.updraft_lfc_level,
