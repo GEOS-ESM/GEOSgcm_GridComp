@@ -96,8 +96,8 @@ class TestCore:
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
             code(
-                vapor=locals.vapor_cloud_levels_forced,
-                environment_saturation_mixing_ratio=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+                vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
+                environment_saturation_mixing_ratio_cloud_levels_forced=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
                 lcl_level=state.output.lcl_level,
                 error_code=state.output.error_code,
                 entrainment_rate=state.output.entrainment_rate,
