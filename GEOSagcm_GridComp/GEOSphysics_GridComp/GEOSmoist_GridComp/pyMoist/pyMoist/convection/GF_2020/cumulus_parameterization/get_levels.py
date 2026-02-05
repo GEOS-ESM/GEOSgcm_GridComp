@@ -621,7 +621,7 @@ def get_convective_cloud_base_level(
 def updraft_rates_pdf(
     entrainment_rate: FloatField_Plume,
     environment_moist_static_energy_forced: FloatField,
-    environment_saturation_mixing_ratio_cloud_levels_forced: FloatField,
+    environment_saturation_moist_static_energy_cloud_levels_forced: FloatField,
     moist_static_energy_origin_level_forced: FloatFieldIJ,
     updraft_lfc_level: IntFieldIJ_Plume,
     geopotential_height_cloud_levels_forced: FloatField,
@@ -668,7 +668,7 @@ def updraft_rates_pdf(
         if plume != 0 and error_code[0, 0][plume] == 0:
             if K > start_level and K < k_end - 2 and stop_computation == False:
                 # find the height where the parcel is no longer saturated
-                if cloud_moist_static_energy_forced_transported < environment_saturation_mixing_ratio_cloud_levels_forced:
+                if cloud_moist_static_energy_forced_transported < environment_saturation_moist_static_energy_cloud_levels_forced:
                     cloud_top_level[0, 0][plume] = K - 1
                     stop_computation = True
 
