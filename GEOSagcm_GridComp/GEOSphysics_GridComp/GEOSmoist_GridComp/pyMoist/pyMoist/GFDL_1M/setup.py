@@ -111,7 +111,7 @@ def find_lcl_level(
         vapor (in): water vapor mixing radio (kg/kg)
         ese (in): saturation vapor pressure table, details unknown
         esx (in): saturation vapor pressure table, details unknown
-        k_lcl (out): LCL level
+        lcl_level (out): LCL level
     """
     from __externals__ import k_end
 

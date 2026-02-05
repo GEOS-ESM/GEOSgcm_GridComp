@@ -39,6 +39,11 @@ jobs:
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
           pre-commit run --all-files
 
+      - name: Build Documentation
+        run: |
+          cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          mkdocs build
+
       - name: Download test_data
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist

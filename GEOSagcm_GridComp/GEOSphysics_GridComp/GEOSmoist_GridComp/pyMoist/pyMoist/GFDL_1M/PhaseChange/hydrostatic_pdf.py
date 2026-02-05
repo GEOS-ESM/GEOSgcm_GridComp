@@ -197,8 +197,8 @@ def hydrostatic_pdf(
         t (inout): temperature
         large_scale_cloud_fraction (inout): large scale cloud fraction
         convective_cloud_fraction (inout): convective cloud fraction
-        nacti (in): ice concentration
-        rhx (inout): relative humidity after pdf
+        ice_concentration (in): ice concentration
+        relative_humidity (inout): relative humidity after pdf
         ese: saturation tables
         esw: saturation tables
         esx: saturation tables
