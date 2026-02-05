@@ -150,44 +150,44 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
             outputs["driver_local_t_icecloud"][:, :, :, n] = driver_locals.t.field[:]
             outputs["driver_local_p_dry_icecloud"][:, :, :, n] = driver_locals.p_dry.field[:]
             outputs["driver_local_dp_icecloud"][:, :, :, n] = driver_locals.dp.field[:]
-            outputs["driver_local_dry_mixing_ratio_vapor_icecloud"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.vapor.field[:]
-            outputs["driver_local_dry_mixing_ratio_liquid_icecloud"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.liquid.field[:]
-            outputs["driver_local_dry_mixing_ratio_rain_icecloud"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.rain.field[:]
-            outputs["driver_local_dry_mixing_ratio_ice_icecloud"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.ice.field[:]
-            outputs["driver_local_dry_mixing_ratio_snow_icecloud"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.snow.field[:]
-            outputs["driver_local_dry_mixing_ratio_graupel_icecloud"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.graupel.field[:]
+            outputs["driver_local_dry_mixing_ratio_vapor_icecloud"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.vapor.field[:]
+            )
+            outputs["driver_local_dry_mixing_ratio_liquid_icecloud"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.liquid.field[:]
+            )
+            outputs["driver_local_dry_mixing_ratio_rain_icecloud"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.rain.field[:]
+            )
+            outputs["driver_local_dry_mixing_ratio_ice_icecloud"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.ice.field[:]
+            )
+            outputs["driver_local_dry_mixing_ratio_snow_icecloud"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.snow.field[:]
+            )
+            outputs["driver_local_dry_mixing_ratio_graupel_icecloud"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.graupel.field[:]
+            )
             outputs["driver_local_cloud_fraction_icecloud"][:, :, :, n] = driver_locals.cloud_fraction.field[
                 :
             ]
-            outputs["driver_local_terminal_speed_snow_icecloud"][
-                :, :, :, n
-            ] = driver_locals.terminal_speed.snow.field[:]
-            outputs["driver_local_terminal_speed_graupel_icecloud"][
-                :, :, :, n
-            ] = driver_locals.terminal_speed.graupel.field[:]
-            outputs["driver_local_terminal_speed_rain_icecloud"][
-                :, :, :, n
-            ] = driver_locals.terminal_speed.rain.field[:]
+            outputs["driver_local_terminal_speed_snow_icecloud"][:, :, :, n] = (
+                driver_locals.terminal_speed.snow.field[:]
+            )
+            outputs["driver_local_terminal_speed_graupel_icecloud"][:, :, :, n] = (
+                driver_locals.terminal_speed.graupel.field[:]
+            )
+            outputs["driver_local_terminal_speed_rain_icecloud"][:, :, :, n] = (
+                driver_locals.terminal_speed.rain.field[:]
+            )
             outputs["driver_local_density_icecloud"][:, :, :, n] = driver_locals.density.field[:]
             outputs["driver_local_density_factor_icecloud"][:, :, :, n] = driver_locals.density_factor.field[
                 :
             ]
             outputs["driver_local_rh_limited_icecloud"][:, :, :, n] = driver_locals.rh_limited.field[:]
-            outputs["non_anvil_large_scale_sublimation_icecloud"][
-                :, :, :, n
-            ] = state.non_anvil_large_scale.sublimation.field[:]
+            outputs["non_anvil_large_scale_sublimation_icecloud"][:, :, :, n] = (
+                state.non_anvil_large_scale.sublimation.field[:]
+            )
             outputs["driver_local_ccn_icecloud"][:, :, :, n] = driver_locals.ccn.field[:]
 
             for k in range(nz):
