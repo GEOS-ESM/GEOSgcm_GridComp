@@ -144,7 +144,7 @@ class GFDL1MLocals(LocalState):
     )
 
     @dataclasses.dataclass
-    class DriverTendencies:
+    class DriverTendencies(LocalState):
         dvapordt: Local = dataclasses.field(
             metadata={
                 "name": "dvapordt",

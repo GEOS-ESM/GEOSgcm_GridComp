@@ -44,6 +44,11 @@ jobs:
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
           mkdocs build
 
+      - name: Run unit tests
+        run: |
+          cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          pytest tests/numerical/
+
       - name: Download test_data
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
@@ -51,7 +56,7 @@ jobs:
           wget ${{ env.DATA_URL }}
           tar -xzvf TBC_C24L72.tar.gz
 
-      - name: Run all tests
+      - name: Run all translate tests
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
           ./run_all.sh ../../${{ env.DATA_PATH }} dace:cpu_kfirst

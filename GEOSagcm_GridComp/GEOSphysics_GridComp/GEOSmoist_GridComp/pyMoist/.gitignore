@@ -16,3 +16,4 @@ sandbox/
 **/build/
 .venv/
 site/
+test_data/
