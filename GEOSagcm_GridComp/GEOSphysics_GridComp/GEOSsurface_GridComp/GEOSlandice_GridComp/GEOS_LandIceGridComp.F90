@@ -174,15 +174,15 @@ module GEOS_LandiceGridCompMod
    !add initialize method for child (ISSM)
    call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
 
-   if (DO_ISSM == 1) then
-      call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS ) 
-      VERIFY_(STATUS)
-   end if 
+   
+   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS ) 
+   VERIFY_(STATUS)
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, RC=STATUS )
-    VERIFY_(STATUS)
+
+   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
+   VERIFY_(STATUS)
+   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, RC=STATUS )
+   VERIFY_(STATUS)
 
  ! Get resource parameters
  ! -----------------------
