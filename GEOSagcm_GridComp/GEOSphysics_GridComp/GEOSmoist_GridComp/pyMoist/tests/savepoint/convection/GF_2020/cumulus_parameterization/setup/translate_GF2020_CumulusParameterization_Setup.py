@@ -75,6 +75,7 @@ class TestCore:
         )
         out_vars.update(
             {
+                "kstabm": {},
                 "local_t_excess": {},
                 "local_vapor_excess": {},
                 "local_t_new": {},
@@ -83,7 +84,6 @@ class TestCore:
                 "local_vapor_forced_pbl": {},
                 "local_dmoist_static_energydt": {},
                 "local_maximum_updraft_origin_level": {},
-                "local_kstabm": {},
                 "local_ocean_fraction": {},
                 "local_error_code_2": {},
                 "local_error_code_3": {},
@@ -185,7 +185,6 @@ class TestCore:
         locals.vapor_forced_pbl.field[:] = np.nan
         locals.dmoist_static_energydt.field[:] = np.nan
         # locals.maximum_updraft_origin_level.field[:] = np.nan
-        # locals.kstabm.field[:] = np.nan
         locals.ocean_fraction.field[:] = np.nan
         # locals.error_code_2.field[:] = np.nan
         # locals.error_code_3.field[:] = np.nan
@@ -237,7 +236,7 @@ class TestCore:
             error_code_2=locals.error_code_2,
             error_code_3=locals.error_code_3,
             maximum_updraft_origin_level=locals.maximum_updraft_origin_level,
-            kstabm=locals.kstabm,
+            kstabm=state.output.kstabm,
             t_excess=state.input.t_excess,
             t_excess_local=locals.t_excess,
             vapor_excess=state.input.vapor_excess,
@@ -316,6 +315,7 @@ class TestCore:
             "entrainment_rate": state.output.entrainment_rate.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
+            "kstabm": state.output.kstabm.field[:,:,plume_dependent_constants.PLUME_INDEX] + 1,
             "local_t_excess": locals.t_excess.field[:],
             "local_vapor_excess": locals.vapor_excess.field[:],
             "local_t_new": locals.t_new.field[:],
@@ -324,7 +324,6 @@ class TestCore:
             "local_vapor_forced_pbl": locals.vapor_forced_pbl.field[:],
             "local_dmoist_static_energydt": locals.dmoist_static_energydt.field[:],
             "local_maximum_updraft_origin_level": locals.maximum_updraft_origin_level.field[:] + 1,
-            "local_kstabm": locals.kstabm.field[:] + 1,
             "local_ocean_fraction": locals.ocean_fraction.field[:],
             "local_error_code_2": locals.error_code_2.field[:],
             "local_error_code_3": locals.error_code_3.field[:],

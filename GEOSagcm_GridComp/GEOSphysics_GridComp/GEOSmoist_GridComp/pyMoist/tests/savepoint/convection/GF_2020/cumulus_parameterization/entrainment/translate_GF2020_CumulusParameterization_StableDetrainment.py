@@ -37,7 +37,7 @@ class TestCore:
             "error_code": {},
             "local_env_saturation_moist_static_energy_cloud_levels_forced": {},
             "updraft_lfc_level": {},
-            "local_kstabm": {},
+            "kstabm": {},
             "kstabi": {},
         }
 
@@ -80,7 +80,7 @@ class TestCore:
         state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["updraft_lfc_level"] - 1
         )
-        locals.kstabm.data[:] = inputs["local_kstabm"] - 1
+        state.output.kstabm.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["kstabm"] - 1
         state.output.kstabi.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["kstabi"] - 1
 
         code = self.stencil_factory.from_dims_halo(
@@ -92,7 +92,7 @@ class TestCore:
             code(
                 array=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                 start_index=state.output.updraft_lfc_level,
-                end_index=locals.kstabm,
+                end_index=state.output.kstabm.field[:,:,plume_dependent_constants.PLUME_INDEX],
                 out_index=state.output.kstabi,
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
@@ -107,7 +107,7 @@ class TestCore:
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "local_kstabm": locals.kstabm.field[:] + 1,
+            "kstabm": state.output.kstabm.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "kstabi": state.output.kstabi.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
         }
 

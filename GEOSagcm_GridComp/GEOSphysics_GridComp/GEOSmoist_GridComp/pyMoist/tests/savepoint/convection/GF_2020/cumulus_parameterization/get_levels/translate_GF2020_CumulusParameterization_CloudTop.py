@@ -91,7 +91,7 @@ class TestCore:
             "local_moist_static_energy_origin_level_forced"
         ]
         locals.environment_moist_static_energy_forced.data[:] = inputs["local_env_moist_static_energy_forced"]
-        locals.environment_saturation_mixing_ratio_cloud_levels_forced.data[:] = inputs[
+        locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs[
             "local_env_saturation_moist_static_energy_cloud_levels_forced"
         ]
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
@@ -124,7 +124,7 @@ class TestCore:
             code_part_1(
                 entrainment_rate=state.output.entrainment_rate,
                 environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
-                environment_saturation_mixing_ratio_cloud_levels_forced=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+                environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                 moist_static_energy_origin_level_forced=locals.moist_static_energy_origin_level_forced,
                 updraft_lfc_level=state.output.updraft_lfc_level,
                 geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
@@ -159,7 +159,7 @@ class TestCore:
                 :
             ],
             "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.field[:],
-            "local_env_saturation_moist_static_energy_cloud_levels_forced": locals.environment_saturation_mixing_ratio_cloud_levels_forced.field[
+            "local_env_saturation_moist_static_energy_cloud_levels_forced": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
                 :
             ],
             "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[
