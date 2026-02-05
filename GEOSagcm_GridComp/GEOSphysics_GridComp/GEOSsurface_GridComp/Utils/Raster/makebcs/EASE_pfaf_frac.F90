@@ -15,10 +15,11 @@ module EASE_pfaf_fracMod
 
 contains 
   
-  subroutine EASE_get_Pfaf_frac(file_out, BCS_PATH, GridName)
+  subroutine EASE_get_Pfaf_frac(file_out, BCS_PATH, GridName, gfile)
     
     character(*), intent(in) :: file_out, BCS_PATH    
     character(*), intent(in) :: GridName
+    character(*), intent(in) :: gfile
     
     integer, parameter :: nlon=21600         ! Number of longitude grid cells in raster grid
     integer, parameter :: nlat=10800         ! Number of latitude  grid cells in raster grid
@@ -40,8 +41,8 @@ contains
     real,    allocatable :: cellarea(:,:)                      ! 2D array containing the area of each grid cell
     
     ! Declare allocatable arrays for catchment ID, parent catchment ID, and boundary coordinates
-    integer, allocatable, dimension(:)   :: tid, catid, lati_tile, loni_tile
-    real*8,  allocatable, dimension(:)   :: lon_left, lon_right, lat_bottom, lat_top, latc,lonc
+    integer, allocatable, dimension(:)   :: lati_tile, loni_tile
+    real*8,  allocatable, dimension(:)   :: latc,lonc
     integer, allocatable, dimension(:,:) :: map_tile
     
     real,    allocatable, dimension(:)   :: area_cat, pfaf_frac(:)
@@ -54,6 +55,7 @@ contains
     type(Variable)              :: v
     integer                     :: nc_ease, nr_ease
     real                        :: tmp_lat, tmp_lon
+    integer                     :: ntile, npfaf0, nx, ny, type, tid
     
     ! Define file path for input routing data:
     character(len=256)   :: pfafData_file    
@@ -132,15 +134,16 @@ contains
     ! Open the catchment definition file for the EASE grid and read the total number of tiles (header)
     open(77, file="clsm/catchment.def");read(77, *) ntot
     ! Allocate arrays with size ntot
-    allocate(tid(ntot), catid(ntot), lon_left(ntot), lon_right(ntot), lat_bottom(ntot), lat_top(ntot),latc(ntot),lonc(ntot))
-    allocate(lati_tile(ntot),loni_tile(ntot))
-    ! Loop through tiles and read: id, catchment id, left/right longitudes, bottom/top latitudes
-    do i = 1, ntot
-       read(77, *) tid(i), catid(i), lon_left(i), lon_right(i), lat_bottom(i), lat_top(i)
-    end do
-    ! get center (not "center-of-mass") lat/lon of each tile based on tile min/max lat/lon
-    latc = (lat_bottom + lat_top) / 2.
-    lonc = (lon_left + lon_right) / 2.
+    allocate(latc(ntot),lonc(ntot),lati_tile(ntot),loni_tile(ntot))
+    open(10,file="til/"//trim(gfile)//".til", form="formatted", status="old", action='read')
+    read(10,*) ntile, npfaf0, nx, ny
+    do i=1,4
+      read(10,*) 
+    enddo
+    do i=1,ntot
+      read(10,*) type, tid, lonc(i),latc(i)
+    end do  
+    close(10)  
     call nearest_index_vector(latc,lats,lati_tile)
     call nearest_index_vector(lonc,lons,loni_tile)
     ! record into map_tile

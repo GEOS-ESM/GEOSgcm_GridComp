@@ -3,6 +3,7 @@ program main
 
 use river_read
 use constant, only : nc, nlon, nlat, nlonh, nlath, cur_avg, cur_min, cur_max
+use MAPL_ConstantsMod, only: MAPL_radius
 
 implicit none
 
@@ -236,7 +237,7 @@ function spherical_distance(lon_dn, lat_dn, lon_up, lat_up) result(distance)
     real :: distance                     ! Computed distance (km)
     real :: R, dlon, dlat, a, c          ! Intermediate variables
 
-    R = 6371.0                                       ! Earth's radius in kilometers
+    R = MAPL_radius/1.e3                             ! Earth's radius in kilometers
     dlon = (lon_up - lon_dn) * (acos(-1.0) / 180.0)  ! Delta longitude (radians)
     dlat = (lat_up - lat_dn) * (acos(-1.0) / 180.0)  ! Delta latitude  (radians)
 
