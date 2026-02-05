@@ -36,8 +36,8 @@ class TestCore:
 
         in_vars["data_vars"] = {
             "error_code": {},
-            "error_code_2": {},
-            "error_code_3": {},
+            "local_error_code_2": {},
+            "local_error_code_3": {},
             "updraft_origin_level": {},
             "updraft_lfc_level": {},
             "cloud_top_level": {},
@@ -104,8 +104,8 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        locals.error_code_2.data[:] = inputs["error_code_2"]
-        locals.error_code_3.data[:] = inputs["error_code_3"]
+        locals.error_code_2.data[:] = inputs["local_error_code_2"]
+        locals.error_code_3.data[:] = inputs["local_error_code_3"]
         state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
             inputs["updraft_origin_level"] - 1
         )
@@ -210,8 +210,8 @@ class TestCore:
 
         outputs = {
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "error_code_2": locals.error_code_2.field[:],
-            "error_code_3": locals.error_code_3.field[:],
+            "local_error_code_2": locals.error_code_2.field[:],
+            "local_error_code_3": locals.error_code_3.field[:],
             "updraft_origin_level": state.output.updraft_origin_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
