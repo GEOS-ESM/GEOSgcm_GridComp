@@ -19,7 +19,7 @@ contains
     
     character(*), intent(in) :: file_out, BCS_PATH    
     character(*), intent(in) :: GridName
-    character(*), intent(in) :: gfile
+    character(*), intent(in) :: gfile                 ! name of (EASE) til file (minus file name extension)
     
     integer, parameter :: nlon=21600         ! Number of longitude grid cells in raster grid
     integer, parameter :: nlat=10800         ! Number of latitude  grid cells in raster grid
@@ -55,7 +55,7 @@ contains
     type(Variable)              :: v
     integer                     :: nc_ease, nr_ease
     real                        :: tmp_lat, tmp_lon
-    integer                     :: ntile, npfaf0, nx, ny, type, tid
+    integer                     :: ntile, npfaf0, nx, ny, type, pfaf_ind
     
     ! Define file path for input routing data:
     character(len=256)   :: pfafData_file    
@@ -131,7 +131,7 @@ contains
     ysub=ysub0(1:nmax,:)
     asub=asub0(1:nmax,:)
     deallocate(xsub0,ysub0,asub0)   
-    ! Open the catchment definition file for the EASE grid and read the total number of tiles (header)
+    ! Open the catchment definition file for the EASE grid and header (ntot = total number of *land* tiles)
     open(77, file="clsm/catchment.def");read(77, *) ntot
     ! Allocate arrays with size ntot
     allocate(latc(ntot),lonc(ntot),lati_tile(ntot),loni_tile(ntot))
@@ -140,8 +140,8 @@ contains
     do i=1,4
       read(10,*) 
     enddo
-    do i=1,ntot
-      read(10,*) type, tid, lonc(i),latc(i)
+    do i=1,ntot                                      ! read *land* tile center coords --> assumes land is first in til file!
+      read(10,*) type, pfaf_ind, lonc(i), latc(i)    ! til file format here is specific to EASE grid!
     end do  
     close(10)  
     call nearest_index_vector(latc,lats,lati_tile)
