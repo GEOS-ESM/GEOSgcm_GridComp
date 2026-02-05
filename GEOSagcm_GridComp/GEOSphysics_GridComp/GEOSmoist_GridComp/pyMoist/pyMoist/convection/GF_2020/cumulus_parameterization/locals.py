@@ -151,15 +151,6 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Int,
         }
     )
-    kstabm: Quantity = dataclasses.field(
-        metadata={
-            "name": "kstabm",
-            "dims": [X_DIM, Y_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Int,
-        }
-    )
     ocean_fraction: Quantity = dataclasses.field(
         metadata={
             "name": "ocean_fraction",
