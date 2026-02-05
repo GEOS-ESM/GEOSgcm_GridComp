@@ -1191,22 +1191,3 @@ class DowndraftWindShear:
             epsilon_forced=epsilon_forced,
             plume=plume_dependent_constants.PLUME_INDEX,
         )
-
-
-######## NOTE TODO NOTE README NOTE TODO TODO NOTE EVERYTHING BELOW HERE NEEDS TO BE REWORKED
-
-
-class DowndraftLateralMassFlux:
-    def __init__(self):
-        pass
-
-    def __call__(self, *args, **kwds):
-        pass
-
-
-class DowndraftMoistureProperties:
-    def __init__(self):
-        pass
-
-    def __call__(self, *args, **kwds):
-        pass
