@@ -89,7 +89,7 @@ def set_plume_dependent_fields(
 def prefil_internal_fields(
     plume: Int,
     maximum_updraft_origin_level: IntFieldIJ,
-    kstabm: IntFieldIJ,
+    kstabm: IntFieldIJ_Plume,
     ocean_fraction: FloatFieldIJ,
     ocean_fraction_local: FloatFieldIJ,
     cap_max: FloatFieldIJ,
@@ -135,7 +135,7 @@ def prefil_internal_fields(
     # internal fields
     with computation(FORWARD), interval(0, 1):
         maximum_updraft_origin_level = 0
-        kstabm = k_end - 2
+        kstabm[0,0][plume] = k_end - 2
         ocean_fraction_local = ocean_fraction
         cap_max = CAP_MAXS
         error_code_2 = 0
