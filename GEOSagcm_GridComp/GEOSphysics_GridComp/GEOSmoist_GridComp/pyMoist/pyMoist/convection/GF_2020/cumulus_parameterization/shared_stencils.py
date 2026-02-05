@@ -33,7 +33,7 @@ def unknown_find_level(
         plume (in): specifies the current plume
     """
     with computation(FORWARD), interval(0, 1):
-        out_index = start_index[0, 0][plume]
+        out_index[0, 0][plume] = start_index[0, 0][plume]
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
