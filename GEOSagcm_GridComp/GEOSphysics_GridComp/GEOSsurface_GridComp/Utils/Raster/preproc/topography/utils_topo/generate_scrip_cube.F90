@@ -2,6 +2,37 @@
 #define _VERIFY(A) if(A/=0) call local_abort(A,__LINE__)
 
     program ESMF_GenerateCSGridDescription
+!------------------------------------------------------------------------------
+! Program: ESMF_GenerateCSGridDescription  (binary: generate_scrip_cube_topo.x)
+!
+! Purpose:
+!   Build a SCRIP descriptor and GEOS coordinate file for a cubed-sphere grid.
+!   Supports both uniform and Schmidt-stretched grids (target_lon/lat + factor).
+!   Writes per-cell centers/corners (deg), spherical area (sr), imask, and:
+!     - grid_fallback_mask : 1 if a tiny safe polygon was used for geometry
+!     - rrfac (stretched only) and rrfac_max (global attribute)
+!
+! Key features:
+!   • Robust corner ordering & periodicity handling (0/360 wraps).
+!   • Degeneracy repair & tiny-polygon fallback for bad cells.
+!   • Global min/max edge-length diagnostics and Gaussian rrfac for stretched.
+!   • MPI layout requires 6 PETs (one per cube face).
+!
+! Inputs:
+!   GenScrip.yaml with keys:
+!     CUBE_DIM, output_scrip, output_geos,
+!     [optional] DO_SCHMIDT, TARGET_LON, TARGET_LAT, STRETCH_FACTOR
+!
+! Outputs:
+!   - <output_scrip> : SCRIP NetCDF (unstructured 1D layout)
+!   - <output_geos>  : GEOS-style per-face centers/corners (deg)
+!
+! Notes:
+!   • Uniform grids do NOT carry rrfac (it is implicitly 1 everywhere).
+!   • For stretched grids, rrfac is radial (Gaussian) about the chosen midpoint.
+!   • Fallback cells are flagged; their areas are kept small but positive.
+!
+!-------------------------------------------------------------------------------
 
 ! ESMF Framework module
     use ESMF
