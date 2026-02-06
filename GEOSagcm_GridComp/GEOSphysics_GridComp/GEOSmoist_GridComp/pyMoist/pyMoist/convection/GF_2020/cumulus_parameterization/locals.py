@@ -1231,6 +1231,60 @@ class GF2020CumulusParameterizationLocals(State):
             "dtype": Float,
         }
     )
+    del_convective_ice_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_convective_ice_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_large_scale_ice_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_large_scale_ice_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_convective_liquid_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_convective_liquid_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_large_scale_liquid_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_large_scale_liquid_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_convective_cloud_fraction_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_convective_cloud_fraction_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    del_large_scale_cloud_fraction_cloud_ensemble: Quantity = dataclasses.field(
+        metadata={
+            "name": "del_large_scale_cloud_fraction_cloud_ensemble",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     t_tendency_from_environmental_subsidence: Quantity = dataclasses.field(
         metadata={
             "name": "t_tendency_from_environmental_subsidence",

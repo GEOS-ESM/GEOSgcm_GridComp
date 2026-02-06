@@ -295,6 +295,11 @@ from .convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.tran
     TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_mid,
     TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_shallow,
 )
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_EnsembleOutputAndFeedback import (
+    TranslateGF2020_CumulusParameterization_EnsembleOutputAndFeedback_deep,
+    TranslateGF2020_CumulusParameterization_EnsembleOutputAndFeedback_mid,
+    TranslateGF2020_CumulusParameterization_EnsembleOutputAndFeedback_shallow,
+)
 from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_CumulusParameterization_PrecipitationFlux import (
     TranslateGF2020_CumulusParameterization_PrecipitationFlux_deep,
     TranslateGF2020_CumulusParameterization_PrecipitationFlux_mid,

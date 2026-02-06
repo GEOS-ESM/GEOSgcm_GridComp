@@ -98,3 +98,4 @@ class GF2020CumulusParameterizationConfig:
     USE_TRACER_EVAPORATION: Int
     USE_FLUX_FORM: Int
     USE_FCT: Int
+    MAX_TEMP_VAPOR_TENDENCY: Float

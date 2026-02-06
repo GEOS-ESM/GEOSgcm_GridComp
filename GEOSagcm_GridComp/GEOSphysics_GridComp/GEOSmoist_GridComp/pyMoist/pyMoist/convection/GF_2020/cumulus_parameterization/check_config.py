@@ -251,6 +251,20 @@ def check_config(
             "implement, then disable this error manually to proceed."
         )
 
+    if cumulus_parameterization_config.ENABLE_SHALLOW == 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initialized with shallow plume enabled. This requires"
+            "an unimeplemented functions in LargeScaleForcing. Please implement, then disable"
+            "this error manually to proceed."
+        )
+
+    if cumulus_parameterization_config.ENABLE_SHALLOW == 1:
+        raise NotImplementedError(
+            "[NDSL] GF2020-->CumulusParameterization initialized with shallow plume enabled. This requires"
+            "an umplemented portion of ensemble_output_and_feedback. Please impelment, then disable this"
+            "error manually to proceed."
+        )
+
     if cumulus_parameterization_config.COUPLE_MICROPHYSICS != True:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initialized with COUPLE_MICROPHYSICS != True. This"
@@ -263,13 +277,6 @@ def check_config(
             "[NDSL] GF2020-->CumulusParameterization initialized with LIGHTNING_DIAGNOSTICS != True. This"
             "setting requires unimeplemented functions. Please implement, then disable this error manually"
             "to proceed."
-        )
-
-    if cumulus_parameterization_config.ENABLE_SHALLOW != True:
-        raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization initialized with shallow plume enabled. This"
-            "setting requires unimeplemented functions in LargeScaleForcing. Please implement, then disable"
-            "this error manually to proceed."
         )
 
     if cumulus_parameterization_config.USE_TRACER_SCAVENGE != True:
