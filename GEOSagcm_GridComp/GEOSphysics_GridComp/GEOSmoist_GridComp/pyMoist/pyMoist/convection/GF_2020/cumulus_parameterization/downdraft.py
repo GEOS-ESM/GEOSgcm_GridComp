@@ -516,14 +516,9 @@ def downdraft_moist_static_energy_and_buoyancy(
         buoyancy_downdraft_forced = 0.0
         buoyancy_downdraft = 0.0
 
-    with computation(FORWARD), interval(0, 1):
-        # set bounds for next block
-        lower_bound: IntFieldIJ = downdraft_origin_level[0, 0][plume]
-        upper_bound: IntFieldIJ = downdraft_origin_level[0, 0][plume] + 1
-
-    with computation(FORWARD), interval(lower_bound, upper_bound):
+    with computation(FORWARD), interval(...):
         buoyancy_downdraft: FloatFieldIJ = 0.0
-        if error_code[0, 0][plume] == 0 and plume != 0:
+        if error_code[0, 0][plume] == 0 and plume != 0 and K == downdraft_origin_level[0,0][plume]:
             wetbulb_adjustment: IntFieldIJ = 0
             # for future test)
             if USE_WETBULB == 1:
@@ -543,12 +538,8 @@ def downdraft_moist_static_energy_and_buoyancy(
                 geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
             )
 
-    with computation(FORWARD), interval(0, 1):
-        if error_code[0, 0][plume] == 0 and plume != 0:
-            upper_bound = downdraft_origin_level[0, 0][plume]
-
-    with computation(BACKWARD), interval(0, upper_bound):
-        if error_code[0, 0][plume] == 0 and plume != 0:
+    with computation(BACKWARD), interval(...):
+        if error_code[0, 0][plume] == 0 and plume != 0 and K <= downdraft_origin_level[0,0][plume] - wetbulb_adjustment:
             denom = (
                 normalized_massflux_downdraft_forced[0, 0, 1][plume]
                 - 0.5 * mass_detrainment_downdraft_forced[0, 0, 0][plume]

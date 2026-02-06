@@ -102,7 +102,7 @@ class TestCore:
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "downdraft_origin_level"
-        ]
+        ] - 1
         state.input_output.u.data[:] = inputs["u"]
         locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels"]
         locals.u_c_downdraft.data[:] = inputs["local_u_c_downdraft"]
@@ -178,7 +178,7 @@ class TestCore:
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "downdraft_origin_level": state.output.downdraft_origin_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            ] + 1,
             "u": state.input_output.u.field[:],
             "local_u_cloud_levels": locals.u_cloud_levels.field[:],
             "local_u_c_downdraft": locals.u_c_downdraft.field[:],
