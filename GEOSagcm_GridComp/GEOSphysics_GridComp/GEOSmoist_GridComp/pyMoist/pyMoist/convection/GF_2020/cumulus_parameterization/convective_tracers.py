@@ -115,7 +115,7 @@ def updraft_chemistry(
             tracer = 0
             while tracer < NUMBER_OF_TRACERS:
                 level = 0
-                while level <= k_end:
+                while level < k_end:
                     chemistry_tracers_cloud_levels_3d[0, 0, level] = chemistry_tracers_cloud_levels[
                         0, 0, level
                     ][tracer]

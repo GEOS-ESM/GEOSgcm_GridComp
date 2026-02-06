@@ -111,7 +111,7 @@ class TestCore:
         )
 
         convection_tracers.tracers.field[:] = np.moveaxis(
-            convection_tracers_input["convection_tracers"], 0, 3
+            convection_tracers_input["tracers"], 0, 3
         )
         convection_tracers.vect_hcts.field[:] = convection_tracers_input["vect_hcts"]
         convection_tracers.kc_scal.field[:] = convection_tracers_input["kc_scal"]
