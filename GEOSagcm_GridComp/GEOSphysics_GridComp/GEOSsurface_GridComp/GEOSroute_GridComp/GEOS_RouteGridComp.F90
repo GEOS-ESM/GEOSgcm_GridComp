@@ -54,7 +54,9 @@ module GEOS_RouteGridCompMod
      real,    allocatable :: qin_clmt(:)     ! m3/s
      real,    allocatable :: qstr_clmt(:)    ! m3/s
      real,    allocatable :: K(:)            
-     real,    allocatable :: Kstr(:)         
+     real,    allocatable :: Kstr(:)   
+     real,    allocatable :: alpha_riv(:)
+     real,    allocatable :: alpha_str(:)      
 
      integer, allocatable :: re_order(:),   to_down(:)
      integer, allocatable :: send_count(:), displ_send(:)
@@ -290,6 +292,32 @@ contains
          RESTART            = MAPL_RestartRequired       ,&
          _RC )
 
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'Alpha_parameter_for_main_rivers',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'RRM_ALPHA_RIV'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'Alpha_parameter_for_streams',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'RRM_ALPHA_STR'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )
+
+    call MAPL_AddInternalSpec(GC                     ,&
+         LONG_NAME          = 'Alpha_parameter_for_reservoirs',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'RRM_ALPHA_RES'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         RESTART            = MAPL_RestartRequired       ,&
+         _RC )    
 !!!!!!!!!!!!!!!!
 ! parameters in restart, for reservoirs
 !!!!!!!!!!!!!!
@@ -471,7 +499,9 @@ contains
     real, dimension(:), pointer :: QRI_CLMT_RS
     real, dimension(:), pointer :: QSTR_CLMT_RS
     real, dimension(:), pointer :: DOWNID_RS
-    real, dimension(:), pointer :: AREA_CATCH_RS      
+    real, dimension(:), pointer :: AREA_CATCH_RS
+    real, dimension(:), pointer :: RRM_ALPHA_RIV_RS
+    real, dimension(:), pointer :: RRM_ALPHA_STR_RS
 
     integer, pointer :: ims(:) => NULL()
 
@@ -488,9 +518,6 @@ contains
     type(Netcdf4_Fileformatter)  :: formatter 
     integer          :: j,nt_local, mpierr 
     logical          :: use_res
-
-    real,dimension(:), pointer :: cap_res_glob(:),wid_res_glob(:)
-    integer,dimension(:), pointer :: active_res_glob(:),type_res_glob(:),fld_res_glob(:) 
 
     ! ------------------
     ! begin
@@ -588,25 +615,16 @@ contains
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL,  _RC) 
-    call MAPL_GetPointer(INTERNAL, KSTR_RS,       'KSTR',       _RC ) 
-    call MAPL_GetPointer(INTERNAL, K_RS,          'K',          _RC ) 
-    call MAPL_GetPointer(INTERNAL, LENGSC_RS,     'LENGSC',     _RC ) 
-    call MAPL_GetPointer(INTERNAL, LSTR_RS,       'LSTR',       _RC ) 
-    call MAPL_GetPointer(INTERNAL, QIN_CLMT_RS,   'QIN_CLMT',   _RC ) 
-    call MAPL_GetPointer(INTERNAL, QRI_CLMT_RS,   'QRI_CLMT',   _RC ) 
-    call MAPL_GetPointer(INTERNAL, QSTR_CLMT_RS,  'QSTR_CLMT',  _RC ) 
-    call MAPL_GetPointer(INTERNAL, DOWNID_RS,     'DOWNID',     _RC ) 
-    call MAPL_GetPointer(INTERNAL, AREA_CATCH_RS, 'AREA_CATCH', _RC )  
+    call MAPL_GetPointer(INTERNAL, DOWNID_RS,        'DOWNID',        _RC ) 
+    call MAPL_GetPointer(INTERNAL, AREA_CATCH_RS,    'AREA_CATCH',    _RC )  
+    call MAPL_GetPointer(INTERNAL, RRM_ALPHA_RIV_RS, 'RRM_ALPHA_RIV', _RC ) 
+    call MAPL_GetPointer(INTERNAL, RRM_ALPHA_STR_RS, 'RRM_ALPHA_STR', _RC )     
 
-    allocate(route%areacat(n_pfaf_local),   source =     AREA_CATCH_RS)
-    allocate(route%lengsc(n_pfaf_local),    source =     LENGSC_RS    )
-    allocate(route%downid(n_pfaf_local),    source = int(DOWNID_RS    ))
-    allocate(route%lstr(n_pfaf_local),      source =     LSTR_RS      )
-    allocate(route%K(n_pfaf_local),         source =     K_RS         )
-    allocate(route%Kstr(n_pfaf_local),      source =     KSTR_RS      )
-    allocate(route%qri_clmt(n_pfaf_local),  source =     QRI_CLMT_RS  )
-    allocate(route%qin_clmt(n_pfaf_local),  source =     QIN_CLMT_RS  )
-    allocate(route%qstr_clmt(n_pfaf_local), source =     QSTR_CLMT_RS )    
+    allocate(route%downid(n_pfaf_local),              source =      int(DOWNID_RS))
+    allocate(route%areacat(n_pfaf_local),             source =       AREA_CATCH_RS)        
+    allocate(route%alpha_riv(n_pfaf_local),           source =    RRM_ALPHA_RIV_RS) 
+    allocate(route%alpha_str(n_pfaf_local),           source =    RRM_ALPHA_STR_RS)     
+
     !Initial reservoir module
     if(route_flag==2)then
         use_res=.True.
@@ -888,9 +906,6 @@ contains
 ! INTERNAL pointers
 ! ----------------------------------------------------- 
 
-    real, dimension(:), pointer :: AREACAT
-    real, dimension(:), pointer :: LENGSC
-    real, dimension(:), pointer :: DNSTR
     real, dimension(:), pointer :: WSTREAM
     real, dimension(:), pointer :: WRIVER
     real, dimension(:), pointer :: WRES
@@ -1037,9 +1052,7 @@ contains
 
        ! get river outflow
        CALL RIVER_ROUTING_HYD  (n_pfaf_local, ROUTE_DT,&
-            QRUNOFF_IN, route%lengsc, route%lstr, &
-            route%qstr_clmt, route%qri_clmt, route%qin_clmt, &
-            route%K, route%Kstr, &
+            QRUNOFF_IN, route%alpha_riv, route%alpha_str, &
             WSTREAM,WRIVER, &
             QSFLOW_OUT,QOUTFLOW_OUT)  
 

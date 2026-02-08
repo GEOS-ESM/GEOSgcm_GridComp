@@ -154,7 +154,7 @@ def main():
         "python3", "create_river_input.py",
     ])
 
-    subprocess.run(["rm", "-rf", "temp"], check=True)
+    #subprocess.run(["rm", "-rf", "temp"], check=True)
 
 if __name__ == "__main__":
     main()

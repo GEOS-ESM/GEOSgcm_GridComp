@@ -3,6 +3,7 @@ import numpy as np
 from netCDF4 import Dataset
 import os
 import glob
+import routing_model_constants
 
 #Main purpose: Processes reservoir (dam) data: reads dam locations and usage information from GRanD database.
 
@@ -21,10 +22,10 @@ if __name__ == '__main__':
 
     file_latdam, file_londam, file_lat1m, file_lon1m, file_catmap, file_acadam, file_damcat_manfix, file_dam_manflag, file_dam_use, file_flood = sys.argv[1:11]
     # Parameter settings
-    ns = 7250 #nr
-    nlat = 10800
-    nlon = 21600
-    nc = 291284
+    ns = routing_model_constants.nres #nr
+    nlat = routing_model_constants.nlat1m
+    nlon = routing_model_constants.nlon1m
+    nc = routing_model_constants.nc
     thres = 5000.0    
 
 #----get dam lat lon ind----

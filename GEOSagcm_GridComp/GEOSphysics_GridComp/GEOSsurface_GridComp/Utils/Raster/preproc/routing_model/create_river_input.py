@@ -5,6 +5,22 @@ import routing_model_constants
 nc_len = routing_model_constants.nc
 nres = routing_model_constants.nres
 nlake = routing_model_constants.nlake
+RRM_M = routing_model_constants.RRM_M
+RRM_mm = routing_model_constants.RRM_mm
+rho = routing_model_constants.RHO
+
+fac_elec_a   = routing_model_constants.fac_elec_a 
+fac_elec_b   = routing_model_constants.fac_elec_b  
+fac_irr_a    = routing_model_constants.fac_irr_a   
+fac_irr_b    = routing_model_constants.fac_irr_b   
+fac_sup_a    = routing_model_constants.fac_sup_a   
+fac_sup_b    = routing_model_constants.fac_sup_b   
+fac_other_a  = routing_model_constants.fac_other_a   
+fac_other_b  = routing_model_constants.fac_other_b  
+fac_a_slake  = routing_model_constants.fac_a_slake
+fac_b_slake  = routing_model_constants.fac_b_slake
+fac_a_llake  = routing_model_constants.fac_a_llake
+fac_b_llake  = routing_model_constants.fac_b_llake
 
 def read_ascii(filename, count, dtype=float):
     return np.loadtxt(filename, dtype=dtype, max_rows=count)
@@ -50,6 +66,56 @@ area_lake = read_ascii("temp/lake_outlet_lakearea.txt", nlake)
 cap_grand = cap_grand * 1.e6
 area_grand= area_grand * 1.e6
 area_lake = area_lake * 1.e6
+
+
+# -------------------------------------------------------------------------
+# Caculate Alpha for rivers and streams
+# -------------------------------------------------------------------------
+# Adjust llc (length of river channel)
+# Calculate numerator for the llc calculation
+small = 1.e-20
+fac_kstr = 0.01 
+
+RRM_K_STR = fac_kstr*Kstr_catchment
+RRM_K_RIV = Kv_catchment
+Qin_catchment0 = Qin_catchment*rho
+Qri_catchment0 = Qri_catchment*rho
+Qstr_catchment0 = Qstr_catchment*rho
+
+Qmean = (Qin_catchment0 + Qri_catchment0)/2.
+valid_mask = np.abs(Qmean) > small
+Qref = np.zeros_like(Qmean)
+Qref[valid_mask] = (Qri_catchment0[valid_mask] - Qin_catchment0[valid_mask]) / Qmean[valid_mask]
+
+nume = Qri_catchment0**(2.0 - RRM_M) - Qin_catchment0**(2.0 - RRM_M)
+
+# Calculate denominator for the llc calculation
+deno = (2.0 - RRM_M) * (Qri_catchment0 - Qin_catchment0) * (Qri_catchment0**(1.0 - RRM_M))
+
+# Initialize llc with a copy of llc_ori or a zero array of same shape
+llc = np.zeros_like(lriv_catchment)
+
+# Apply 'where' conditions using NumPy indexing
+# Compute llc where denominator is not too small
+mask_deno = Qref > 1.e-4 
+llc[mask_deno] = lriv_catchment[mask_deno] * (nume[mask_deno] / deno[mask_deno])
+
+# Set llc to half of original value if denominator is small
+llc[~mask_deno] = lriv_catchment[~mask_deno]
+
+# Calculate alp_s (stream coefficient) and alp_r (river coefficient)
+alp_s = np.zeros_like(Qstr_catchment0)
+alp_r = np.zeros_like(Qri_catchment0)
+
+# For non-zero streamflow: Calculate alp_s
+mask_str = Qstr_catchment0 > small
+term_s = (rho**(-RRM_M) * Qstr_catchment0**(RRM_M - RRM_mm) * RRM_K_STR * (0.5 * lstr_catchment)**(-1.0))
+alp_s[mask_str] = term_s[mask_str]**(1.0 / (1.0 - RRM_mm))
+
+# For non-zero river input: Calculate alp_r
+mask_ri = Qri_catchment0 > small
+term_r = (rho**(-RRM_M) * Qri_catchment0**(RRM_M - RRM_mm) * RRM_K_RIV * llc**(-1.0))
+alp_r[mask_ri] = term_r[mask_ri]**(1.0 / (1.0 - RRM_mm))
 
 # -------------------------------------------------------------------------
 # Initialize Reservoir Properties (Arrays of size nc_len)
@@ -166,6 +232,50 @@ active_res[active_condition] = 1
 
 #print("Processing complete.")
 
+# -------------------------------------------------------------------------
+# Determine alpha coefficient based on reservoir type [1/s]
+# -------------------------------------------------------------------------
+
+# Threshold lake width (in m)
+thr_wid_lake = 1.e5   
+
+# Use np.divide with 'where' clause to handle divide-by-zero safely.
+# For elements where wid_res == 0, tmpfac will be assigned 0.0.
+tmpfac = np.divide(1.0, (wid_res / 1e3), 
+                   out=np.zeros_like(wid_res), 
+                   where=wid_res != 0)
+
+# Define conditions for each reservoir/lake category.
+# Ensure wid_res > 0 to avoid processing non-water pixels.
+conditions = [
+    (type_res == 1) & (wid_res > 0),                               # Irrigation
+    (type_res == 2) & (wid_res > 0),                               # Hydropower
+    (type_res == 3) & (wid_res > 0),                               # Water supply
+    np.isin(type_res, [0, 4, 5, 6]) & (wid_res > 0),               # Other types
+    (type_res == -1) & (wid_res >= thr_wid_lake),                  # Large natural lake
+    (type_res == -1) & (wid_res < thr_wid_lake) & (wid_res > 0)    # Small natural lake
+]
+
+# Map calculations to the corresponding conditions defined above.
+choices = [
+    fac_irr_a   * (tmpfac**fac_irr_b)   / 3600.0,
+    fac_elec_a  * (tmpfac**fac_elec_b)  / 3600.0,
+    fac_sup_a   * (tmpfac**fac_sup_b)   / 3600.0,
+    fac_other_a * (tmpfac**fac_other_b) / 3600.0,
+    fac_a_llake * (tmpfac**fac_b_llake) / 3600.0,
+    fac_a_slake * (tmpfac**fac_b_slake) / 3600.0
+]
+
+# Apply vectorized selection. Default value for all other cases (including wid_res == 0) is 0.0.
+alp_res = np.select(conditions, choices, default=0.0)
+
+# Validation: Identify pixels with water (wid_res > 0) or invalid type_res.
+unknown_mask = ( (wid_res > 0) & (alp_res == 0) ) | (~np.isin(type_res, [1, 2, 3, 0, 4, 5, 6, -1]))
+
+if unknown_mask.any():
+    invalid_types = np.unique(type_res[unknown_mask])
+    raise ValueError(f"ERROR: alp_res = 0 or unknown reservoir type(s) found at water pixels: {invalid_types}")
+
 # ---------- Create NetCDF ----------
 fout = Dataset("output/route_parameters.nc", "w", format="NETCDF4")
 
@@ -190,6 +300,8 @@ create_var("QRI_CLMT", np.float32(Qri_catchment), ("tile",), "m+3 s-1", "climato
 create_var("QSTR_CLMT", np.float32(Qstr_catchment), ("tile",), "m+3 s-1", "climatology_of_catchment_stream_flow")
 create_var("DOWNID", np.float32(dnid_catchment), ("tile",), "1", "downstream_catchment_id")
 create_var("AREA_CATCH", np.float32(area_catchment), ("tile",), "m+2", "catchment_area")
+create_var("RRM_ALPHA_RIV", np.float32(alp_r), ("tile",), "1", "River alpha parameter")
+create_var("RRM_ALPHA_STR", np.float32(alp_s), ("tile",), "1", "Stream alpha parameter")
 
 # Reservoir variables
 create_var("ACTIVE_RES", np.float32(active_res), ("tile",), "1", "active_reservoirs")
@@ -197,6 +309,7 @@ create_var("CAP_RES", np.float32(cap_res), ("tile",), "m+3", "max_capacity_of_re
 create_var("FLD_RES", np.float32(fld_res), ("tile",), "1", "flood_control_flag_of_reservoirs")
 create_var("TYPE_RES", np.float32(type_res), ("tile",), "1", "type_of_reservoirs")
 create_var("WID_RES", np.float32(wid_res), ("tile",), "m", "length_scale_of_reservoirs")
+create_var("RRM_ALPHA_RES", np.float32(alp_res), ("tile",), "1", "Reservoir alpha parameter")
 
 
 # Close file

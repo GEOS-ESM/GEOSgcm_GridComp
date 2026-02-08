@@ -68,14 +68,10 @@ CONTAINS
   ! Routing Model Input Parameters
   ! ------------------------------
   !**** NCAT       = NUMBER OF CATCHMENTS IN THE STUDY DOMAIN
-  !**** Qrunf0     = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT            [m^3/s]
-  !**** llc_ori    = MAIN RIVER LENGTH SCALE                                           [m]
-  !**** lstr       = LOCAL STREAMS LENGTH SCALE                                        [m]
-  !**** qstr_clmt0 = CLIMATOLOGY RUNOFF                                                [m^3/s]  
-  !**** qri_clmt0  = CLIMATOLOGY DISCHAR                                               [m^3/s]
-  !**** qin_clmt0  = CLIMATOLOGY INFLOW                                                [m^3/s]               
-  !**** K          = K PARAMETER FOR MAIN RIVER                                        
-  !**** Kstr0      = K PARAMETER FOR LOCAL STREAM                                      [m^3/s]
+  !**** ROUTE_DT   = TIME STEP FOR ROUTING MODEL                                       [s]
+  !**** Qrunf0     = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT            [m^3/s]              
+  !**** RRM_ALPHA_RIV = ALPHA PARAMETER FOR MAIN RIVER                                        
+  !**** RRM_ALPHA_STR = ALPHA PARAMETER FOR LOCAL STREAM                               
                                                                                        
   ! Routing Model Prognostics                                                          
   ! -------------------------                                                          
@@ -87,62 +83,37 @@ CONTAINS
   !**** QS         = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE       [m^3/s]
   !**** QOUT       = TRANSFER OF RIVER WATER TO THE DOWNSTREAM (DOWNRIVER) CATCHMENT   [m^3/s]  
   
-  SUBROUTINE RIVER_ROUTING_HYD (          &
-       NCAT,ROUTE_DT,                     &
-       Qrunf0,llc_ori,lstr,               &
-       qstr_clmt0, qri_clmt0, qin_clmt0,  &
-       RRM_K_RIV, RRM_K_STR0,             &
-       Ws0,Wr0,                           &
+  SUBROUTINE RIVER_ROUTING_HYD (             &
+       NCAT,ROUTE_DT,                        &
+       Qrunf0, RRM_ALPHA_RIV, RRM_ALPHA_STR, &
+       Ws0,Wr0,                              &
        Qs,Qout)
 
     IMPLICIT NONE
     
     INTEGER, INTENT(IN)                     :: NCAT,ROUTE_DT
-    REAL,    INTENT(IN),   DIMENSION (NCAT) :: Qrunf0,llc_ori,lstr
-    REAL,    INTENT(IN),   DIMENSION (NCAT) :: qstr_clmt0,qri_clmt0,qin_clmt0
-    REAL,    INTENT(IN),   DIMENSION (NCAT) :: RRM_K_RIV, RRM_K_STR0!K, Kstr0
+    REAL,    INTENT(IN),   DIMENSION (NCAT) :: Qrunf0
+    REAL,    INTENT(IN),   DIMENSION (NCAT) :: RRM_ALPHA_RIV, RRM_ALPHA_STR
     REAL,    INTENT(INOUT),DIMENSION (NCAT) :: Ws0,Wr0
     REAL,    INTENT(OUT),  DIMENSION (NCAT) :: Qs,Qout
 
     real, parameter                         :: small    = 1.e-20 
-    real, parameter                         :: fac_kstr = 0.01      ! Factor for local stream scaling
 
-    real, dimension(NCAT)                   :: Qrunf,qstr_clmt,qri_clmt,qin_clmt,Ws,Wr,RRM_K_STR
-    real, dimension(NCAT)                   :: nume,deno,llc,alp_s,alp_r,Qs0,ks,Ws_last
+    real, dimension(NCAT)                   :: Qrunf,Ws,Wr
+    real, dimension(NCAT)                   :: Qs0,ks,Ws_last
     
     real                                    :: dt
 
-    integer                                 :: i,j 
-
     ! convert volume units to mass
     Qrunf     = Qrunf0     * rho          ! m3/s -> kg/s  
-    !llc_ori  = llc_ori0   * 1.e3         ! km   -> m
-    !lstr     = lstr0      * 1.e3         ! km   -> m
-    qstr_clmt = qstr_clmt0 * rho          ! m3/s -> kg/s
-    qri_clmt  = qri_clmt0  * rho          ! m3/s -> kg/s
-    qin_clmt  = qin_clmt0  * rho          ! m3/s -> kg/s
     Ws        = Ws0        * rho          ! m3   -> kg
     Wr        = Wr0        * rho          ! m3   -> kg
-
-    RRM_K_STR = fac_kstr * RRM_K_STR0
-    dt        = ROUTE_DT                       ! integer -> real
-
-    ! Adjust llc (length of river channel) 
-    nume = qri_clmt**(2.-RRM_M) - qin_clmt**(2.-RRM_M)                                                          ! Numerator for the llc calculation
-    deno = (2.-RRM_M) * (qri_clmt - qin_clmt) * (qri_clmt**(1.-RRM_M))                                          ! Denominator for the llc calculation
-    where(abs(deno) >  small) llc = llc_ori * (nume / deno)                                                     ! Compute llc where denominator is not too small
-    where(abs(deno) <= small) llc = llc_ori * 0.5                                                               ! Set llc to half of original value if denominator is small
-
-    ! Calculate alp_s (stream coefficient) and alp_r (river coefficient)
-    where(qstr_clmt >  small) alp_s = (rho**(-RRM_M) * qstr_clmt**(RRM_M-RRM_mm) * RRM_K_STR * (0.5*lstr)**(-1.))**(1./(1.-RRM_mm))  ! For non-zero streamflow
-    where(qstr_clmt <= small) alp_s = 0.                                                                        ! If streamflow is too small, set alp_s to 0
-    where(qri_clmt  >  small) alp_r = (rho**(-RRM_M) * qri_clmt**(RRM_M-RRM_mm)  * RRM_K_RIV * llc**(-1.)       )**(1./(1.-RRM_mm))  ! For non-zero river input
-    where(qri_clmt  <= small) alp_r = 0.                                                                        ! If river input is too small, set alp_r to 0
+    dt        = ROUTE_DT                  ! integer -> real                                                                      ! If river input is too small, set alp_r to 0
 
     ! Update state variables: ks, Ws, and Qs 
     where(Qrunf<=small)Qrunf=0.                                ! Set runoff to zero if it's too small
-    Qs0=max(0.,alp_s * Ws**(1./(1.-RRM_mm)))                       ! Initial flow from local stream storage (kg/s)
-    ks =max(0.,(alp_s/(1.-RRM_mm)) * Ws**(RRM_mm/(1.D0-RRM_mm)))           ! Flow coefficient (s^-1)
+    Qs0=max(0.,RRM_ALPHA_STR * Ws**(1./(1.-RRM_mm)))                       ! Initial flow from local stream storage (kg/s)
+    ks =max(0.,(RRM_ALPHA_STR/(1.-RRM_mm)) * Ws**(RRM_mm/(1.-RRM_mm)))           ! Flow coefficient (s^-1)
     Ws_last=Ws                                                 ! Store the current water storage 
     where(ks>small)  Ws=Ws + (Qrunf-Qs0)/ks*(1.-exp(-ks*dt))   ! Update storage (kg)
     where(ks<=small) Ws=Ws + (Qrunf-Qs0)*dt                    ! Simplified update if ks is small
@@ -151,7 +122,7 @@ CONTAINS
 
     ! Calculate variables related to river routing: Qr0, kr
     Wr=Wr+Qs*dt
-    Qout=max(0.,alp_r * Wr**(1./(1.-RRM_mm)))                      ! River flow based on water storage (kg/s)
+    Qout=max(0.,RRM_ALPHA_RIV * Wr**(1./(1.-RRM_mm)))                      ! River flow based on water storage (kg/s)
     Qout=min(Qout,Wr/dt)
     Wr=max(0.,Wr-Qout*dt) 
 

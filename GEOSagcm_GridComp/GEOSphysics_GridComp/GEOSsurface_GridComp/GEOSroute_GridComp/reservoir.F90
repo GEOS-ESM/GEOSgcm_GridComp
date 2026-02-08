@@ -40,6 +40,7 @@ module reservoirMod
      real,    allocatable :: Qfld_thres(:)    ! m3/s
      integer, allocatable :: cat2res(   :)
      real,    allocatable :: qres_acc(  :)
+     real,    allocatable :: alpha_res( :)
    contains
      procedure :: calc
   end type RES_STATE
@@ -72,22 +73,19 @@ contains
     real, dimension(:), pointer :: CAP_RES_RS
     real, dimension(:), pointer :: WID_RES_RS
     real, dimension(:), pointer :: FLD_RES_RS
+    real, dimension(:), pointer :: RRM_ALPHA_RES_RS 
 
     integer :: STATUS
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL,  RC=STATUS)
-    call MAPL_GetPointer(INTERNAL, ACTIVE_RES_RS,  'ACTIVE_RES',  RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, TYPE_RES_RS,    'TYPE_RES',    RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, CAP_RES_RS,     'CAP_RES',     RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, WID_RES_RS,     'WID_RES',     RC=STATUS ) 
-    call MAPL_GetPointer(INTERNAL, FLD_RES_RS,     'FLD_RES',     RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, ACTIVE_RES_RS,     'ACTIVE_RES',     RC=STATUS ) 
+    call MAPL_GetPointer(INTERNAL, CAP_RES_RS,        'CAP_RES',        RC=STATUS )
+    call MAPL_GetPointer(INTERNAL, RRM_ALPHA_RES_RS,  'RRM_ALPHA_RES',  RC=STATUS ) 
 
     allocate(res%active_res, source=int(ACTIVE_RES_RS))
-    allocate(res%type_res,   source=int(TYPE_RES_RS  ))
-    allocate(res%cap_res,    source=    CAP_RES_RS   )
-    allocate(res%wid_res,    source=    WID_RES_RS   )
-    allocate(res%fld_res,    source=int(FLD_RES_RS   ))
+    allocate(res%cap_res,    source=    CAP_RES_RS    )
+    allocate(res%alpha_res,  source=RRM_ALPHA_RES_RS  )
 
     if(use_res.eqv..True.)then
       res%use_res   = .True.
@@ -127,44 +125,7 @@ contains
 
           Qin_res = Q_riv_out(i)
 
-          ! Determine alpha coefficient based on reservoir type  [1/s]
-
-          tmpfac = 1.0 / (this%wid_res(i) / 1.e3) 
-          
-          select case (this%type_res(i))
-
-          case  (1)               ! Irrigation reservoir 
-
-             alp_res    = fac_irr_a   * ( tmpfac**fac_irr_b   ) / 3600.0
-                                                                                         
-          case  (2)               ! Hydropower reservoir                                 
-                                                                                         
-             alp_res    = fac_elec_a  * ( tmpfac**fac_elec_b  ) / 3600.0
-                                                                                         
-          case  (3)               ! Water supply reservoir                               
-                                                                                         
-             alp_res    = fac_sup_a   * ( tmpfac**fac_sup_b   ) / 3600.0
-                                                                                         
-          case  (0, 4, 5, 6)      ! Other reservoir types (generic alpha)                
-                                                                                         
-             alp_res    = fac_other_a * ( tmpfac**fac_other_b ) / 3600.0 
-                                                                                         
-          case  (-1)              ! Natural lake                                         
-                                                                                         
-             ! Determine lake type based on area and calculate alpha                     
-             if (this%wid_res(i) >= thr_wid_lake) then                                   
-                alp_res = fac_a_llake * ( tmpfac**fac_b_llake ) / 3600.0
-             else                                                                        
-                alp_res = fac_a_slake * ( tmpfac**fac_b_slake ) / 3600.0
-             endif
-
-          case default
-
-             _ASSERT(.False., "ERROR: unknown reservoir type!")             
-
-          end select
-
-          Q_res(i) = alp_res * Wr_res(i)
+          Q_res(i) = this%alpha_res(i) * Wr_res(i)
 
           ! Ensure outflow is within reasonable bounds
           Q_res(i) = max(0.0, Q_res(i))                      ! Ensure non-negative outflow
