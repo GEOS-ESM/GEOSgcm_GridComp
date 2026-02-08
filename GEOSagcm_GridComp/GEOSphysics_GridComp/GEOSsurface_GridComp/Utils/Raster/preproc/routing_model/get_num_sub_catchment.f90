@@ -4,6 +4,8 @@ program main
 use river_read
 use constant, only : nmax=>nmax09, nc, nlon, nlat
 
+use EASE_pfaf_fracMod, only : EASE_find_subs
+
 implicit none
 
 ! Variable declarations:
@@ -56,37 +58,7 @@ ysub = 0         ! Initialize y-coordinate array for sub-catchments to zero
 asub = 0.        ! Initialize aggregated area values to zero
 
 ! Loop over each 1m grid cell to accumulate cell areas into sub-catchments:
-do xi = 1, nlon
-  do yi = 1, nlat
-    if (catchind(xi, yi) >= 1) then
-      ! The cell belongs to a catchment:
-      id = catchind(xi, yi)   ! Retrieve the catchment id for the current cell
-      flag = 0                ! Reset flag; will be set to 1 if a matching sub-area is found
-      
-      ! Check if this catchment already has at least one sub-area:
-      if (nsub(id) >= 1) then
-        do i = 1, nsub(id)
-          ! If the mapped indices of the current cell match an existing sub-area:
-          if (loni(xi) == xsub(i, id) .and. lati(yi) == ysub(i, id)) then
-            flag = 1
-            ! Accumulate the cell area into the existing sub-area:
-            asub(i, id) = asub(i, id) + cellarea(xi, yi)
-            exit  ! Exit the loop once the match is found
-          endif
-        end do
-      endif
-      
-      ! If no matching sub-area was found, create a new sub-area for this catchment:
-      if (flag == 0) then
-        nsub(id) = nsub(id) + 1
-        xsub(nsub(id), id) = loni(xi)
-        ysub(nsub(id), id) = lati(yi)
-        asub(nsub(id), id) = cellarea(xi, yi)
-      endif
-
-    endif
-  end do
-end do
+call EASE_Find_subs(catchind, loni, lati, cellarea, nsub, xsub, ysub, asub)
 
 ! Open output files to write the aggregated sub-catchment information:
 open(50, file="temp/Pfaf_nsub_M09.txt")

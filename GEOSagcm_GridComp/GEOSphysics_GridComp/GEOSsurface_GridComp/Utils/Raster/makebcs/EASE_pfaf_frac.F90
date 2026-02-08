@@ -12,6 +12,7 @@ module EASE_pfaf_fracMod
   private
 
   public :: EASE_get_Pfaf_frac
+  public :: EASE_find_subs
 
 contains 
   
@@ -95,35 +96,8 @@ contains
     cellarea = cellarea / 1.e6  ! Convert cell area (e.g., from m^2 to km^2)
     ! Initialize aggregation arrays to zero:
     allocate(xsub0(9999, nPfaf), ysub0(9999, nPfaf), asub0(9999, nPfaf))
-    nsub = 0;xsub0 = 0;ysub0 = 0;asub0 = 0.
-    ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
-    do xi = 1, nlon
-      do yi = 1, nlat
-        if (catchind(xi, yi) >= 1) then
-          ! The raster grid cell belongs to a catchment
-          id = catchind(xi, yi)  ! Get the catchment id for the current cell
-          flag = 0              ! Reset flag to indicate whether a matching sub-area is found      
-          ! If the catchment already has one or more sub-areas, check for a matching sub-area:
-          if (nsub(id) >= 1) then
-            do i = 1, nsub(id)
-              if (loni(xi) == xsub0(i, id) .and. lati(yi) == ysub0(i, id)) then
-                flag = 1
-                ! If a match is found, accumulate the cell area into the existing sub-area:
-                asub0(i, id) = asub0(i, id) + cellarea(xi, yi)                
-                exit  ! Exit the inner loop since a matching sub-area has been found
-              endif
-            end do
-          endif      
-          ! If no matching sub-area was found, create a new sub-area:
-          if (flag == 0) then
-            nsub(id) = nsub(id) + 1
-            xsub0(nsub(id), id) = loni(xi)
-            ysub0(nsub(id), id) = lati(yi)  
-            asub0(nsub(id), id) = cellarea(xi, yi)      
-          endif
-        endif
-      end do
-    end do
+    call EASE_Find_subs(catchind, loni, lati, cellarea, nsub, xsub0, ysub0, asub0)
+
     nmax = maxval(nsub)
     !print *,nmax
     allocate(xsub(nmax, nPfaf), ysub(nmax, nPfaf), asub(nmax, nPfaf))
@@ -267,5 +241,52 @@ contains
        idx(k) = best_j    ! already 1-based
     end do
   end subroutine nearest_index_vector
+
+  subroutine EASE_Find_subs(catchind, loni, lati, cellarea, nsub, xsub0, ysub0, asub0)
+    integer, intent(in)  :: catchind(:,:)
+    integer, intent(in)  :: loni(:), lati(:)
+    real,    intent(in)  :: cellarea(:,:)
+    integer, intent(out) :: nsub(:)
+    integer, intent(out) :: xsub0(:,:), ysub0(:,:)
+    real,    intent(out) :: asub0(:,:)
+
+    integer :: xi, yi, flag, id, i, nlon, nlat
+
+    nlon  = size(loni)
+    nlat  = size(lati)
+    nsub  = 0 
+    xsub0 = 0
+    ysub0 = 0
+    asub0 = 0.
+
+    ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
+    do xi = 1, nlon
+      do yi = 1, nlat
+        if (catchind(xi, yi) >= 1) then
+          ! The raster grid cell belongs to a catchment
+          id = catchind(xi, yi)  ! Get the catchment id for the current cell
+          flag = 0              ! Reset flag to indicate whether a matching sub-area is found      
+          ! If the catchment already has one or more sub-areas, check for a matching sub-area:
+          if (nsub(id) >= 1) then
+            do i = 1, nsub(id)
+              if (loni(xi) == xsub0(i, id) .and. lati(yi) == ysub0(i, id)) then
+                flag = 1
+                ! If a match is found, accumulate the cell area into the existing sub-area:
+                asub0(i, id) = asub0(i, id) + cellarea(xi, yi)
+                exit  ! Exit the inner loop since a matching sub-area has been found
+              endif
+            end do
+          endif
+          ! If no matching sub-area was found, create a new sub-area:
+          if (flag == 0) then
+            nsub(id) = nsub(id) + 1
+            xsub0(nsub(id), id) = loni(xi)
+            ysub0(nsub(id), id) = lati(yi)
+            asub0(nsub(id), id) = cellarea(xi, yi)
+          endif
+        endif
+      end do
+    end do
+  end subroutine
   
 end module EASE_pfaf_fracMod

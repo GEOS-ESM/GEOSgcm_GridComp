@@ -28,7 +28,7 @@ foreach (src ${exe_srcs})
     TARGET ${exe}
     SOURCES ${src}
     NOINSTALL
-    LIBS    ${this}  GEOSroute_GridComp NetCDF::NetCDF_Fortran)
+    LIBS    ${this}  GEOSroute_GridComp makebcs NetCDF::NetCDF_Fortran)
 endforeach ()
 
 # copy to the build directory
