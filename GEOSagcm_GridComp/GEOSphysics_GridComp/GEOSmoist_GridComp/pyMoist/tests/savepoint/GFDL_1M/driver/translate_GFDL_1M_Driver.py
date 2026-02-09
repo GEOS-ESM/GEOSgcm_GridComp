@@ -200,7 +200,7 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
             "u": copy.copy(state.u.field[:]),
             "v": copy.copy(state.v.field[:]),
             "w": copy.copy(state.vertical_motion.velocity.field[:]),
-            "local_dz": copy.copy(locals_.dz.field[:]),
+            "local_dz": copy.copy(locals_.layer_thickness_negative.field[:]),
             "local_dp": copy.copy(locals_.dp.field[:]),
             "area": copy.copy(state.area.field[:]),
             "land_fraction": copy.copy(state.land_fraction.field[:]),
