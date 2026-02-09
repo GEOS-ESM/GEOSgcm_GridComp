@@ -1,11 +1,11 @@
 from f90nml import Namelist
-from ndsl import Quantity, QuantityFactory, StencilFactory
+
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatField, Int
+from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
-from pyMoist.UW.compute_uwshcu import setup_outputs, ComputeUwshcuInv
-from pyMoist.UW.config import UWConfiguration
+from pyMoist.UW.compute_uwshcu import setup_outputs
 
 
 class TranslateSetupOutputs(TranslateFortranData2Py):
@@ -42,13 +42,11 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
             "QLCN": {},
             "QLDET_SC": {},
             "QLLS": {},
-            "DQRDT_SC": {},
             "QLSUB_SC": {},
             "T": {},
             "U": {},
             "UMF_SC": {},
             "V": {},
-            "U": {},
         }
 
         self.in_vars["parameters"] = [
