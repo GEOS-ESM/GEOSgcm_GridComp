@@ -4,6 +4,7 @@ from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, s
 import pyMoist.constants as constants
 import pyMoist.pyMoist_constants as py_constants
 from ndsl.dsl.typing import Float, FloatField, Int
+from pyMoist.field_types import FloatField_NTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
 
 
@@ -37,6 +38,7 @@ def slope_bot(
 ):
     """
     Function that calculates slope at bottom layer of a field.
+    WARNING: This function is for 3D fields, if 4D field use slope_bot_tracers
 
     Inputs:
     field (FloatField): Field of interest [N/A]
@@ -56,6 +58,25 @@ def slope_bot(
 
 
 @gtscript.function
+def slope_bot_tracer(
+    field: FloatField_NTracers,
+    p0: FloatField,
+    n: Int,
+):
+    """
+    See description for slope_bot function.
+    """
+    if K == 0:
+        value = (field[0, 0, 1][n] - field[0, 0, 0][n]) / (p0[0, 0, 1] - p0)
+        if value > 0.0:
+            slope = max(0.0, value)
+        else:
+            slope = min(0.0, value)
+
+    return slope
+
+
+@gtscript.function
 def slope_mid(
     max_k: Int,
     field: FloatField,
@@ -63,6 +84,7 @@ def slope_mid(
 ):
     """
     Function that calculates slope at mid layers of a field.
+    WARNING: This function is for 3D fields, if 4D field use slope_mid_tracers
 
     Inputs:
     max_k [Int]: Max k level (e.g., 71)
@@ -75,6 +97,27 @@ def slope_mid(
     if K > 0 and K < max_k:
         above_value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
         below_value = (field - field[0, 0, -1]) / (p0 - p0[0, 0, -1])
+        if above_value > 0.0:
+            slope = max(0.0, min(above_value, below_value))
+        else:
+            slope = min(0.0, max(above_value, below_value))
+
+    return slope
+
+
+@gtscript.function
+def slope_mid_tracer(
+    max_k: Int,
+    field: FloatField_NTracers,
+    p0: FloatField,
+    n: Int,
+):
+    """
+    See description for slope_mid function.
+    """
+    if K > 0 and K < max_k:
+        above_value = (field[0, 0, 1][n] - field[0, 0, 0][n]) / (p0[0, 0, 1] - p0)
+        below_value = (field[0, 0, 0][n] - field[0, 0, -1][n]) / (p0 - p0[0, 0, -1])
         if above_value > 0.0:
             slope = max(0.0, min(above_value, below_value))
         else:

@@ -2,16 +2,16 @@ from f90nml import Namelist
 
 from ndsl import Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatField, Int
+from ndsl.dsl.typing import FloatField
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv
 from pyMoist.UW.config import UWConfiguration
 
 
-# Dev NOTE: The data for this translate test comes from combining ComputeUwschcu and ComputeUwschuInv in
-#           a single nc file using the following NCO tool:
-#           `ncks -A ComputeUwshcu-In.nc ComputeUwshcuInv-In.nc`
+# Dev NOTE: The data for this translate test comes from combining several ncfiles
+# Run ComputeUwshcuInv_postprocess_netcdfs.py before running translate test.
 
 
 class TranslateComputeUwshcuInv(TranslateFortranData2Py):
@@ -27,23 +27,19 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
-            "pifc0_inv": {},
-            "zifc0_inv": {},
-            "pmid0_inv": {},
-            "zmid0_inv": {},
+            "PLE": {},
+            "ZLE": {},
+            "QLLS": {},
+            "QILS": {},
+            "QLCN": {},
+            "QICN": {},
             "kpbl_inv": {},
-            "exnmid0_inv": {},
-            "exnifc0_inv": {},
-            "dp0_inv": {},
             "u0_inv": {},
             "v0_inv": {},
             "qv0_inv": {},
-            "ql0_inv": {},
-            "qi0_inv": {},
             "t0_inv": {},
             "frland": {},
             "tke_inv": {},
-            "rkfre": {},
             "cush": {},
             "shfx": {},
             "evap": {},
@@ -51,42 +47,22 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "CNV_Tracers": {},
         }
 
-        # Float/Int Inputs
-        self.in_vars["parameters"] = [
-            "dotransport",
-            "ncnst",
-            "k0",
-            "windsrcavg",
-            "qtsrchgt",
-            "qtsrc_fac",
-            "thlsrc_fac",
-            "frc_rasn",
-            "rbuoy",
-            "epsvarw",
-            "use_CINcin",
-            "mumin1",
-            "rmaxfrac",
-            "PGFc",
-            "dt",
-            "niter_xc",
-            "criqc",
-            "rle",
-            "cridist_opt",
-            "mixscale",
-            "rkm",
-            "detrhgt",
-            "rdrag",
-            "use_self_detrain",
-            "detrhgt",
-            "use_cumpenent",
-            "rpen",
-            "use_momenflx",
-            "rdrop",
-            "iter_cin",
-        ]
-
         # FloatField Outputs
         self.out_vars = {
+            "CNV_Tracers": self.grid.compute_dict(),
+            "CNPCRATE": self.grid.compute_dict(),
+            "RKFRE": self.grid.compute_dict(),
+            "DQADT_SC": self.grid.compute_dict(),
+            "MFD_SC": self.grid.compute_dict(),
+            "PTR3D": self.grid.compute_dict(),
+            "Q": self.grid.compute_dict(),
+            "QIDET_SC": self.grid.compute_dict(),
+            "QIENT_SC": self.grid.compute_dict(),
+            "QLDET_SC": self.grid.compute_dict(),
+            "QLENT_SC": self.grid.compute_dict(),
+            "T": self.grid.compute_dict(),
+            "U": self.grid.compute_dict(),
+            "V": self.grid.compute_dict(),
             "vten_inv": self.grid.compute_dict(),
             "cufrc_inv": self.grid.compute_dict(),
             "qlten_inv": self.grid.compute_dict(),
@@ -134,78 +110,39 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         qty.view[:, :] = qty.np.asarray(data[:, :])
         return qty
 
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("ComputeUwshcuInv-constants")
+
     def compute(self, inputs):
-        self.UW_config = UWConfiguration(Int(inputs["ncnst"]), Int(inputs["k0"]), Int(inputs["windsrcavg"]))
+        config = UWConfiguration(**self.constants)
 
         compute_uwshcu = ComputeUwshcuInv(
             self.stencil_factory,
             self.quantity_factory,
-            self.UW_config,
+            config,
         )
-
-        # Float/Int Inputs
-        dotransport = Int(inputs["dotransport"])
-        k0 = Int(inputs["k0"])
-        windsrcavg = Int(inputs["windsrcavg"])
-        qtsrchgt = Float(inputs["qtsrchgt"])
-        qtsrc_fac = Float(inputs["qtsrc_fac"])
-        thlsrc_fac = Float(inputs["thlsrc_fac"])
-        frc_rasn = Float(inputs["frc_rasn"])
-        rbuoy = Float(inputs["rbuoy"])
-        epsvarw = Float(inputs["epsvarw"])
-        use_CINcin = Int(inputs["use_CINcin"])
-        mumin1 = Float(inputs["mumin1"])
-        rmaxfrac = Float(inputs["rmaxfrac"])
-        PGFc = Float(inputs["PGFc"])
-        dt = Float(inputs["dt"])
-        niter_xc = Int(inputs["niter_xc"])
-        criqc = Float(inputs["criqc"])
-        rle = Float(inputs["rle"])
-        cridist_opt = Int(inputs["cridist_opt"])
-        mixscale = Float(inputs["mixscale"])
-        rdrag = Float(inputs["rdrag"])
-        rkm = Float(inputs["rkm"])
-        use_self_detrain = Int(inputs["use_self_detrain"])
-        detrhgt = Float(inputs["detrhgt"])
-        use_cumpenent = Int(inputs["use_cumpenent"])
-        rpen = Float(inputs["rpen"])
-        use_momenflx = Int(inputs["use_momenflx"])
-        rdrop = Float(inputs["rdrop"])
-        iter_cin = Int(inputs["iter_cin"])
 
         # Field inputs
-        pifc0_inv = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        safe_assign_array(pifc0_inv.view[:, :, :], inputs["pifc0_inv"])
-        zifc0_inv = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        safe_assign_array(zifc0_inv.view[:, :, :], inputs["zifc0_inv"])
-        pmid0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        safe_assign_array(pmid0_inv.view[:, :, :], inputs["pmid0_inv"])
-        zmid0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        safe_assign_array(zmid0_inv.view[:, :, :], inputs["zmid0_inv"])
+        PLE = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        safe_assign_array(PLE.view[:, :, :], inputs["PLE"])
+        ZLE = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        safe_assign_array(ZLE.view[:, :, :], inputs["ZLE"])
+        QLLS = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        safe_assign_array(QLLS.view[:, :, :], inputs["QLLS"])
+        QILS = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        safe_assign_array(QILS.view[:, :, :], inputs["QILS"])
+        QLCN = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        safe_assign_array(QLCN.view[:, :, :], inputs["QLCN"])
+        QICN = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        safe_assign_array(QICN.view[:, :, :], inputs["QICN"])
         kpbl_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
         safe_assign_array(kpbl_inv.view[:, :], inputs["kpbl_inv"])
-        exnmid0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        safe_assign_array(exnmid0_inv.view[:, :, :], inputs["exnmid0_inv"])
-        exnifc0_inv = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
-        )
-        safe_assign_array(exnifc0_inv.view[:, :, :], inputs["exnifc0_inv"])
-        dp0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        safe_assign_array(dp0_inv.view[:, :, :], inputs["dp0_inv"])
         u0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(u0_inv.view[:, :, :], inputs["u0_inv"])
         v0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(v0_inv.view[:, :, :], inputs["v0_inv"])
         qv0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(qv0_inv.view[:, :, :], inputs["qv0_inv"])
-        ql0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        safe_assign_array(ql0_inv.view[:, :, :], inputs["ql0_inv"])
-        qi0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        safe_assign_array(qi0_inv.view[:, :, :], inputs["qi0_inv"])
         t0_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(t0_inv.view[:, :, :], inputs["t0_inv"])
         frland = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
@@ -214,8 +151,6 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             self.quantity_factory, dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
         )
         safe_assign_array(tke_inv.view[:, :, :], inputs["tke_inv"])
-        rkfre = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
-        safe_assign_array(rkfre.view[:, :], inputs["rkfre"])
         cush = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
         safe_assign_array(cush.view[:, :], inputs["cush"])
         shfx = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
@@ -264,65 +199,44 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         qlsub_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qidet_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         qisub_inv = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DQADT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        MFD_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        PTR3D = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QLENT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QIENT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
         # FloatFieldIJs
+        RKFRE = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
         tpert_out = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
         qpert_out = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
 
         compute_uwshcu(
             # Field inputs
-            pifc0_inv=pifc0_inv,
-            zifc0_inv=zifc0_inv,
-            pmid0_inv=pmid0_inv,
-            zmid0_inv=zmid0_inv,
+            PLE=PLE,
+            ZLE=ZLE,
+            QLLS=QLLS,
+            QILS=QILS,
+            QLCN=QLCN,
+            QICN=QICN,
             kpbl_inv=kpbl_inv,
-            exnmid0_inv=exnmid0_inv,
-            exnifc0_inv=exnifc0_inv,
-            dp0_inv=dp0_inv,
             u0_inv=u0_inv,
             v0_inv=v0_inv,
             qv0_inv=qv0_inv,
-            ql0_inv=ql0_inv,
-            qi0_inv=qi0_inv,
             t0_inv=t0_inv,
             frland=frland,
             tke_inv=tke_inv,
-            rkfre=rkfre,
             cush=cush,
             shfx=shfx,
             evap=evap,
             cnvtr=cnvtr,
             CNV_Tracers=CNV_Tracers,
-            # Float/Int inputs
-            dotransport=dotransport,
-            k0=k0,
-            windsrcavg=windsrcavg,
-            qtsrchgt=qtsrchgt,
-            qtsrc_fac=qtsrc_fac,
-            thlsrc_fac=thlsrc_fac,
-            frc_rasn=frc_rasn,
-            rbuoy=rbuoy,
-            epsvarw=epsvarw,
-            use_CINcin=use_CINcin,
-            mumin1=mumin1,
-            rmaxfrac=rmaxfrac,
-            PGFc=PGFc,
-            dt=dt,
-            niter_xc=niter_xc,
-            criqc=criqc,
-            rle=rle,
-            cridist_opt=cridist_opt,
-            mixscale=mixscale,
-            rdrag=rdrag,
-            rkm=rkm,
-            use_self_detrain=use_self_detrain,
-            detrhgt=detrhgt,
-            use_cumpenent=use_cumpenent,
-            rpen=rpen,
-            use_momenflx=use_momenflx,
-            rdrop=rdrop,
-            iter_cin=iter_cin,
             # Outputs
+            RKFRE=RKFRE,
+            MFD_SC=MFD_SC,
+            DQADT_SC=DQADT_SC,
+            PTR3D=PTR3D,
+            QLENT_SC=QLENT_SC,
+            QIENT_SC=QIENT_SC,
             umf_inv=umf_inv,
             dcm_inv=dcm_inv,
             qtflx_inv=qtflx_inv,
@@ -351,6 +265,20 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         )
 
         return {
+            "CNV_Tracers": CNV_Tracers.view[:],
+            "CNPCRATE": cnvtr.view[:],
+            "RKFRE": RKFRE.view[:],
+            "Q": qv0_inv.view[:],
+            "T": t0_inv.view[:],
+            "U": u0_inv.view[:],
+            "V": v0_inv.view[:],
+            "QIDET_SC": qidet_inv.view[:],
+            "QLDET_SC": qldet_inv.view[:],
+            "MFD_SC": MFD_SC.view[:],
+            "DQADT_SC": DQADT_SC.view[:],
+            "PTR3D": PTR3D.view[:],
+            "QLENT_SC": QLENT_SC.view[:],
+            "QIENT_SC": QIENT_SC.view[:],
             "umf_inv": umf_inv.view[:],
             "dcm_inv": dcm_inv.view[:],
             "qtflx_inv": qtflx_inv.view[:],
@@ -376,6 +304,6 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "qisub_inv": qisub_inv.view[:],
             "tpert_out": tpert_out.view[:],
             "qpert_out": qpert_out.view[:],
-            "dotransport": dotransport,
+            "dotransport": config.dotransport,
             "cush": cush.view[:],
         }
