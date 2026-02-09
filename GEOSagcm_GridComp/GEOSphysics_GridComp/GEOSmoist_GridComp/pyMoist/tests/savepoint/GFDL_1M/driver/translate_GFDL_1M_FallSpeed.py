@@ -138,33 +138,33 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
             # fill the output arrays so that all calls are tested
             outputs["driver_local_p_dry_fallspeed"][:, :, :, n] = driver_locals.p_dry.field[:]
             outputs["driver_local_density_fallspeed"][:, :, :, n] = driver_locals.density.field[:]
-            outputs["driver_local_dry_mixing_ratio_snow_fallspeed"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.snow.field[:]
-            outputs["driver_local_dry_mixing_ratio_ice_fallspeed"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.ice.field[:]
-            outputs["driver_local_dry_mixing_ratio_graupel_fallspeed"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.graupel.field[:]
-            outputs["driver_local_dry_mixing_ratio_liquid_fallspeed"][
-                :, :, :, n
-            ] = driver_locals.dry_air_mixing_ratio.liquid.field[:]
-            outputs["driver_local_terminal_speed_ice_fallspeed"][
-                :, :, :, n
-            ] = driver_locals.terminal_speed.ice.field[:]
-            outputs["driver_local_terminal_speed_snow_fallspeed"][
-                :, :, :, n
-            ] = driver_locals.terminal_speed.snow.field[:]
-            outputs["driver_local_terminal_speed_graupel_fallspeed"][
-                :, :, :, n
-            ] = driver_locals.terminal_speed.graupel.field[:]
+            outputs["driver_local_dry_mixing_ratio_snow_fallspeed"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.snow.field[:]
+            )
+            outputs["driver_local_dry_mixing_ratio_ice_fallspeed"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.ice.field[:]
+            )
+            outputs["driver_local_dry_mixing_ratio_graupel_fallspeed"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.graupel.field[:]
+            )
+            outputs["driver_local_dry_mixing_ratio_liquid_fallspeed"][:, :, :, n] = (
+                driver_locals.dry_air_mixing_ratio.liquid.field[:]
+            )
+            outputs["driver_local_terminal_speed_ice_fallspeed"][:, :, :, n] = (
+                driver_locals.terminal_speed.ice.field[:]
+            )
+            outputs["driver_local_terminal_speed_snow_fallspeed"][:, :, :, n] = (
+                driver_locals.terminal_speed.snow.field[:]
+            )
+            outputs["driver_local_terminal_speed_graupel_fallspeed"][:, :, :, n] = (
+                driver_locals.terminal_speed.graupel.field[:]
+            )
             outputs["driver_local_t_fallspeed"][:, :, :, n] = driver_locals.t.field[:]
             outputs["driver_local_dz_unmodified_fallspeed"][:, :, :, n] = locals.dz.field[:]
             outputs["driver_local_dz_fallspeed"][:, :, :, n] = driver_locals.dz.field[:]
-            outputs["driver_local_density_unmodified_fallspeed"][
-                :, :, :, n
-            ] = driver_locals.density_unmodified.field[:]
+            outputs["driver_local_density_unmodified_fallspeed"][:, :, :, n] = (
+                driver_locals.density_unmodified.field[:]
+            )
             outputs["driver_local_density_factor_fallspeed"][:, :, :, n] = driver_locals.density_factor.field[
                 :
             ]

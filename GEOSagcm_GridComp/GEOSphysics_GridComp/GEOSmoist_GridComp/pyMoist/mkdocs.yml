@@ -1,48 +1,127 @@
 site_name: pyMoist Documentation
 theme:
   name: material
+  features:
+    - search.suggest
+    - search.highlight
+    - search.share
 
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
-          paths: [.]  # Adjust this path to where your Python modules are
+          paths: [./pyMoist]  # Adjust this path to where your Python modules are
           options:
+            # Filter out anything that starts with an underscore.
+            # Exceptions for `__init__(...)` and `__call__(...)` methods.
+            filters: ["!^_", "^__init__$", "^__call__$"]
+            group_by_category: true
+            members_order: source
+            show_if_no_docstring: true
             show_source: false
-            show_root_heading: false
+
+markdown_extensions:
+  # simple glossary file
+  - abbr
+  # support for colored notes / warnings / tips / examples
+  - admonition
+  # support for "definition lists" (<dl>)
+  - def_list
+  # support for footnotes
+  - footnotes
+  # support for emojis
+  - pymdownx.emoji
+  # support for syntax highlighting
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      auto_append:
+        # hover tooltips for abbreviations (simple glossary)
+        - docs/includes/glossary.md
+  - pymdownx.superfences:
+      custom_fences:
+      # support for mermaid graphs
+        - name: mermaid
+          class: mermaid
+          format: python/name:pymdownx.superfences.fence_code_format
 
 nav:
   - Home: index.md
   - Top Level:
-    - "aer_activation": top/aer_activation.md
-    - "constants": top/constants.md
-    - "field_types": top/field_types.md
-    - "numerical_recipes": top/numerical_recipes.md
-    - "pyMoist_constants": top/pyMoist_constants.md
-    - "radiation_coupling": top/radiation_coupling.md
-    - "redistribute_clouds": top/redistribute_clouds.md
-    - "shared_generic_math": top/shared_generic_math.md
-    - "shared_gt4py_workarounds": top/shared_gt4py_workarounds.md
-    - "shared_incloud_processes": top/shared_incloud_processes.md
+      - "aer_activation": top/aer_activation.md
+      - "constants": top/constants.md
+      - "field_types": top/field_types.md
+      - "interpolations": top/interpolations.md
+      - "numerical_recipes": top/numerical_recipes.md
+      - "pyMoist_constants": top/pyMoist_constants.md
+      - "radiation_coupling": top/radiation_coupling.md
+      - "redistribute_clouds": top/redistribute_clouds.md
+      - "shared_generic_math": top/shared_generic_math.md
+      - "shared_gt4py_workarounds": top/shared_gt4py_workarounds.md
+      - "shared_incloud_processes": top/shared_incloud_processes.md
   - GFDL_1M:
-    - "GFDL_1M": GFDL_1M/GFDL_1M.md
-    - "evap_subl_pdf_core": GFDL_1M/evap_subl_pdf_core.md
+      - "driver":
+          - "check_flags": GFDL_1M/driver/check_flags.md
+          - "config_constants": GFDL_1M/driver/config_constants.md
+          - "constants": GFDL_1M/driver/constants.md
+          - "driver": GFDL_1M/driver/driver.md
+          - "fall_speed": GFDL_1M/driver/fall_speed.md
+          - "finish": GFDL_1M/driver/finish.md
+          - "ice_cloud": GFDL_1M/driver/ice_cloud.md
+          - "locals": GFDL_1M/driver/locals.md
+          - "masks": GFDL_1M/driver/masks.md
+          - "sat_tables": GFDL_1M/driver/sat_tables.md
+          - "setup": GFDL_1M/driver/setup.md
+          - "stencils": GFDL_1M/driver/stencils.md
+          - "terminal_fall": GFDL_1M/driver/terminal_fall.md
+          - "warm_rain": GFDL_1M/driver/warm_rain.md
+      - "PhaseChange":
+          - "config": GFDL_1M/PhaseChange/config.md
+          - "constants": GFDL_1M/PhaseChange/constants.md
+          - "evaporate": GFDL_1M/PhaseChange/evaporate.md
+          - "hydrostatic_pdf": GFDL_1M/PhaseChange/hydrostatic_pdf.md
+          - "melt_freeze": GFDL_1M/PhaseChange/melt_freeze.md
+          - "phase_change": GFDL_1M/PhaseChange/phase_change.md
+          - "rh_calculations": GFDL_1M/PhaseChange/rh_calculations.md
+          - "sublimate": GFDL_1M/PhaseChange/sublimate.md
+      - "config": GFDL_1M/config.md
+      - "finalize": GFDL_1M/finalize.md
+      - "GFDL_1M": GFDL_1M/GFDL_1M.md
+      - "locals": GFDL_1M/locals.md
+      - "radiation_coupling": GFDL_1M/radiation_coupling.md
+      - "setup": GFDL_1M/setup.md
+      - "state": GFDL_1M/state.md
+      - "stencils": GFDL_1M/stencils.md
   - interface:
-    - "cuda_profiler": interface/cuda_profiler.md
-    - "f_py_conversion": interface/f_py_conversion.md
-    - "flags": interface/flags.md
-    - "python_bridge": interface/python_bridge.md
-    - "wrapper": interface/wrapper.md
-  - saturation:
-    - "constants": saturation/constants.md
-    - "formulation": saturation/formulation.md
-    - "qsat": saturation/qsat.md
-    - "qsat_ice": saturation/qsat_ice.md
-    - "qsat_liquid": saturation/qsat_liquid.md
-    - "table": saturation/table.md
+      - "cffi_lib":
+          - "interface": interface/cffi_lib/interface.md
+      - "mapl":
+          - "managed_state": interface/mapl/managed_state.md
+          - "memory_factory": interface/mapl/memory_factory.md
+      - "build_helper": interface/build_helper.md
+      - "cuda_profiler": interface/cuda_profiler.md
+      - "f_py_conversion": interface/f_py_conversion.md
+      - "flags": interface/flags.md
+      - "gfdl_1m": interface/gfdl_1m.md
+      - "memory_space": interface/memory_space.md
+      - "python_bridge": interface/python_bridge.md
+      - "wrapper": interface/wrapper.md
+  - saturation_tables:
+      - "tables":
+          - "constants": saturation_tables/tables/constants.md
+          - "ice_exact": saturation_tables/tables/ice_exact.md
+          - "liquid_exact": saturation_tables/tables/liquid_exact.md
+          - "main": saturation_tables/tables/main.md
+      - "constants": saturation_tables/constants.md
+      - "formulation": saturation_tables/formulation.md
+      - "qsat_functions": saturation_tables/qsat_functions.md
+      - "types": saturation_tables/types.md
   - UW:
-    - "compute_uwshcu": UW/compute_uwshcu.md
-    - "config": UW/config.md
-    - "temporaries": UW/temporaries.md
-    - "uwshcu_functions": UW/uwshcu_functions.md
+      - "compute_uwshcu": UW/compute_uwshcu.md
+      - "config": UW/config.md
+      - "temporaries": UW/temporaries.md
+      - "uwshcu_functions": UW/uwshcu_functions.md
