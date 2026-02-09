@@ -143,7 +143,7 @@ class GFDL1MDriverConfigDependentConstants:
         FAC_FRZ = Float(1.0) - np.exp(-DTS / GFDL_1M_config.TAU_FRZ, dtype=Float)
 
         # -----------------------------------------------------------------------
-        # constatns from setupm
+        # constants from setupm
         # -----------------------------------------------------------------------
 
         CGACS = constants.PISQ * constants.RNZG * constants.RNZS * constants.RHOS

@@ -1,5 +1,5 @@
 """This module is the wrapper for the GFDL_1M microphysics scheme (in progress).
-I/O and errorhandling is performed here.
+I/O and error handling is performed here.
 Calculations can be found in deeper functions."""
 
 from ndsl import Local, NDSLRuntime, QuantityFactory, StencilFactory
@@ -18,7 +18,7 @@ from pyMoist.shared_incloud_processes import fix_up_clouds
 
 class PhaseChange(NDSLRuntime):
     """This class is the wrapper for the GFDL_1M microphysics scheme. I/O and error handling
-    are perfromed at this level, all calculations are performed within deeper functions.
+    are performed at this level, all calculations are performed within deeper functions.
     """
 
     def __init__(
@@ -38,7 +38,7 @@ class PhaseChange(NDSLRuntime):
             )
 
         if config.PDFSHAPE >= 5:
-            raise NotImplementedError(f"PDF_SHAPE={config.PDFSHAPE} hasn't been portedfrom the Fortran")
+            raise NotImplementedError(f"PDF_SHAPE={config.PDFSHAPE} hasn't been ported from the Fortran")
 
         if config.PDFSHAPE > 1 and config.PDFSHAPE < 5:
             raise NotImplementedError(

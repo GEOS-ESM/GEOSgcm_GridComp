@@ -30,7 +30,7 @@ class DriverConstants:
     PI = Float(3.1415926535897931)
     "gfs: ratio of circle circumference to diameter"
     CP_VAP = Float(4.0) * RVGAS
-    "1846.0, heat capacity of water vapore at constnat pressure"
+    "1846.0, heat capacity of water vapor at constant pressure"
     CV_AIR = CP_AIR - RDGAS
     "717.55, heat capacity of dry air at constant volume"
     CV_VAP = Float(3.0) * RVGAS
@@ -57,7 +57,7 @@ class DriverConstants:
     DC_VAP = CP_VAP - C_LIQ
     "- 2339.5, isobaric heating / cooling"
     DC_ICE = C_LIQ - C_ICE
-    "2213.5, isobaric heating / colling"
+    "2213.5, isobaric heating / cooling"
 
     HLV0 = HLV
     "gfs: evaporation latent heat coefficient at 0 deg c"
@@ -101,7 +101,7 @@ class DriverConstants:
     DO_SETUP = True
     "setup constants and parameters"
     P_NONHYDRO = False
-    "perform hydrosatic adjustment on air density"
+    "perform hydrostatic adjustment on air density"
 
     DT_FR = Float(8.0)
     """epsilon on homogeneous freezing of cloud water at t_wfr + dt_fr.
@@ -249,7 +249,7 @@ class DriverConstants:
     "~6.1 mb"
     CES0 = EPS * ES0
 
-    # terinal_fall / warm_rain constants
+    # terminal_fall / warm_rain constants
 
     ZS = Float(0)
 

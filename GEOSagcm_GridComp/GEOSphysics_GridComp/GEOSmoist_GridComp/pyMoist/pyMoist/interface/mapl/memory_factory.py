@@ -18,7 +18,7 @@ if cp is None:
 
 
 class MAPLMemoryRepository:
-    """A factory capable of accessing memory handlded by MAPL and formatting it
+    """A factory capable of accessing memory handled by MAPL and formatting it
     for direct use in DSL application."""
 
     @dataclasses.dataclass
@@ -54,7 +54,7 @@ class MAPLMemoryRepository:
         dims: list[str],
         alloc: bool = False,
     ):
-        """Register the fortran memory with the factorty"""
+        """Register the fortran memory with the factory"""
         # MAPL Fortran call retrieve memory as a void* - we will cast
         if len(dims) == 3:
             void_fptr = self._bridge.MAPL_GetPointer_3D(self._state, name, alloc=alloc)
@@ -134,7 +134,7 @@ class MAPLManagedMemory:
     Usage:
         with MAPLManagedMemory(mapl_memory_repository) as mmm:
             mmm.Field[...] # access memory "Field" as a NDArray
-            mmm.associated('Field') # see if Fortran associatied the memory
+            mmm.associated('Field') # see if Fortran associated the memory
 
     """
 

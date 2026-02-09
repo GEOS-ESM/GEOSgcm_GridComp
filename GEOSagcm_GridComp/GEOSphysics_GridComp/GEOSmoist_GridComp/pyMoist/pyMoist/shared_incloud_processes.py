@@ -14,9 +14,7 @@ def ice_fraction_modis(
 ):
     # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
     tc = max(-46.0, min(temp - constants.MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
-    ptc = (
-        7.6725 + 1.0118 * tc + 0.1422 * tc ** 2 + 0.0106 * tc ** 3 + 0.000339 * tc ** 4 + 0.00000395 * tc ** 5
-    )
+    ptc = 7.6725 + 1.0118 * tc + 0.1422 * tc**2 + 0.0106 * tc**3 + 0.000339 * tc**4 + 0.00000395 * tc**5
     ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
     return ice_frct
 
@@ -154,16 +152,16 @@ def cloud_effective_radius_ice(
             bb = -2.0 + log10(wc / 50.0) * (1.0e-3 * (constants.MAPL_TICE - temperature) ** 1.5)
             # NOTE: there is an issue in this line which causes differences between Fortran and Python
             # the multiplication "-2.0 * log'd result" is performed differently (~60 ULP), despite the log
-            # being correct. Needs to be looked into at some point, but not critital for overall performance.
+            # being correct. Needs to be looked into at some point, but not critical for overall performance.
         bb = min(max(bb, -6.0), -2.0)
-        radius = 377.4 + 203.3 * bb + 37.91 * bb ** 2 + 2.3696 * bb ** 3
+        radius = 377.4 + 203.3 * bb + 37.91 * bb**2 + 2.3696 * bb**3
         radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
         tc = temperature - constants.MAPL_TICE
         zfsr = 1.2351 + 0.0105 * tc
-        aa = 45.8966 * (wc ** 0.2214)
-        bb = 0.79570 * (wc ** 0.2535)
+        aa = 45.8966 * (wc**0.2214)
+        bb = 0.79570 * (wc**0.2535)
         radius = zfsr * (aa + bb * (temperature - 83.15))
         radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius * 0.64952))
     return radius
@@ -223,22 +221,22 @@ def fix_up_clouds(
             large_scale_cloud_fraction = 0.0
             large_scale_liquid = 0.0
             large_scale_ice = 0.0
-        # if large scale liquid water conentration is too low
+        # if large scale liquid water concentration is too low
         if large_scale_liquid < 1.0e-8:
             vapor = vapor + large_scale_liquid
             t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * large_scale_liquid
             large_scale_liquid = 0.0
-        # if large scale frozen water conentration is too low
+        # if large scale frozen water concentration is too low
         if large_scale_ice < 1.0e-8:
             vapor = vapor + large_scale_ice
             t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * large_scale_ice
             large_scale_ice = 0.0
-        # if convective liquid water conentration is too low
+        # if convective liquid water concentration is too low
         if convective_liquid < 1.0e-8:
             vapor = vapor + convective_liquid
             t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * convective_liquid
             convective_liquid = 0.0
-        # if convective frozen water conentration is too low
+        # if convective frozen water concentration is too low
         if convective_ice < 1.0e-8:
             vapor = vapor + convective_ice
             t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * convective_ice

@@ -23,7 +23,7 @@ class GFDL1MDriver(NDSLRuntime):
     Computes precipitates and microphysics tendencies using the following functions:
     __init__:
         - checks validity of constants and trigger parameters for unimplemented options
-        - initalizes internal fields
+        - initializes internal fields
         - constructs stencils
         Arguments: StencilFactory, QuantityFactory, GFDL1MConfig
 
@@ -46,7 +46,7 @@ class GFDL1MDriver(NDSLRuntime):
     ):
         """
         Perform setup for the microphysics driver. Check flags for unimplemented options,
-        initalize internal fields, and compile stencils.
+        initialize internal fields, and compile stencils.
 
         Arguments:
             stencil_factory: StencilFactory with model domain information
@@ -285,7 +285,7 @@ class GFDL1MDriver(NDSLRuntime):
                 density_factor=self._locals.density_factor,
                 ice_terminal_velocity=self._locals.terminal_speed.ice,
                 snow_terminal_velocity=self._locals.terminal_speed.snow,
-                graupel_terminal_velosity=self._locals.terminal_speed.graupel,
+                graupel_terminal_velocity=self._locals.terminal_speed.graupel,
                 convection_fraction=convection_fraction,
             )
 

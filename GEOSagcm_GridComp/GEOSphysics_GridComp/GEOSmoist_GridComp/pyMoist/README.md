@@ -28,6 +28,10 @@ Note: bit to bit equivalence is not possible considering the targeted hardware a
 
 The `interface` sub-directory contain the three-way bridge to and from GEOS.
 
-## Develop
+## Contributing
 
-- Run `pre-commit run --all-files` before comitting for code guidelines coherency.
+Couple things to consider when contributing:
+
+- Your branch name must contain the word `dsl`, lower case. somewhere. Good rule of thumb is to call them `dsl/xxxxxx`.
+- Run `pre-commit run --all-files` before committing for code guidelines coherency.
+- The convention for PR names is `[NDSL] xxxx` to distinguish from other/general GEOS PRs.

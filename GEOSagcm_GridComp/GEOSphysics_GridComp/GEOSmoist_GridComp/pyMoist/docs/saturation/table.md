@@ -1,3 +1,0 @@
-# table
-
-::: pyMoist.saturation.table

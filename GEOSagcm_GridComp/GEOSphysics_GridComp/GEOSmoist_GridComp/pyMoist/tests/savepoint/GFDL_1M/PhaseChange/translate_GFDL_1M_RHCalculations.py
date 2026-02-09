@@ -33,17 +33,17 @@ class TranslateGFDL_1M_RHCalculations(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # initalize constants
+        # initialize constants
         config = GFDL1MConfig(**self.constants)
 
-        # initalize dataclasses
+        # initialize dataclasses
         state = GFDL1MState.zeros(self.quantity_factory)
         locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Internal from wrapper class needed for this test
         alpha = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
-        # fill relavent parts of dataclasses
+        # fill relevant parts of dataclasses
         state.estimated_inversion_strength.field[:] = inputs["estimated_inversion_strength"]
         locals_.lcl_level.field[:] = inputs["local_lcl_level"]
         state.area.field[:] = inputs["area"]

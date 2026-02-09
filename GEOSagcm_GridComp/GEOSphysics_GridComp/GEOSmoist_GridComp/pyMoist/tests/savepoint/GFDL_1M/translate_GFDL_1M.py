@@ -146,7 +146,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # Initalize GFDL_1M configuration
+        # Initialize GFDL_1M configuration
         GFDL_1M_config = GFDL1MConfig(
             LPHYS_HYDROSTATIC=bool(self.constants["LPHYS_HYDROSTATIC"]),
             LHYDROSTATIC=bool(self.constants["LHYDROSTATIC"]),
@@ -249,7 +249,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             CCI_EVAP_EFF=self.constants["CCI_EVAP_EFF"],
         )
 
-        # Initalize the module
+        # Initialize the module
         gfdl_1m = GFDL1M(self.stencil_factory, self.quantity_factory, GFDL_1M_config)
 
         # Being in fields from netcdf. This replicated the call to fortran memory.
@@ -379,7 +379,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         gfdl_1m.temporaries.all_zeros_3d = self.make_ijk_quantity(inputs.pop("AN_SNR"))
         gfdl_1m.temporaries.all_zeros_3d = self.make_ijk_quantity(inputs.pop("SC_SNR"))
 
-        # Initalize the module
+        # Initialize the module
 
         return {
             "Q": gfdl_1m.mixing_ratios.vapor.field,

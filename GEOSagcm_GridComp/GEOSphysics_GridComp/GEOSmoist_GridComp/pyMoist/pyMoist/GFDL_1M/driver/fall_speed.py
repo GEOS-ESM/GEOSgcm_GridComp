@@ -17,7 +17,7 @@ def fall_speed(
     density_factor: FloatField,
     ice_terminal_velocity: FloatField,
     snow_terminal_velocity: FloatField,
-    graupel_terminal_velosity: FloatField,
+    graupel_terminal_velocity: FloatField,
     convection_fraction: FloatFieldIJ,
 ):
     """
@@ -28,8 +28,8 @@ def fall_speed(
         ice (inout): in cloud ice mixing radio (kg/kg)
         snow (inout): in cloud snow mixing radio (kg/kg)
         graupel (inout): in cloud graupel mixing radio (kg/kg)
-        t_unmodified (in): atmopsheric temperature, unmodified throughout the driver (K)
-        t (in): atmospheric temperature, modified thorughout the driver (K)
+        t_unmodified (in): atmospheric temperature, unmodified throughout the driver (K)
+        t (in): atmospheric temperature, modified throughout the driver (K)
         dz_unmodified (in): layer thickness (m)
         dz (out): layer thickness
         density_unmodified (in): density
@@ -37,7 +37,7 @@ def fall_speed(
         density_factor (out): details unknown
         ice_terminal_velocity (out): terminal fall speed for ice
         snow_terminal_velocity (out): terminal fall speed for snow
-        graupel_terminal_velosity (out): terminal fall speed for graupel
+        graupel_terminal_velocity (out): terminal fall speed for graupel
         convection_fraction (in): convection fraction
 
     Externals:
@@ -135,12 +135,12 @@ def fall_speed(
         # -----------------------------------------------------------------------
 
         if const_vg == True:  # noqa
-            graupel_terminal_velosity = vg_fac  # 2.
+            graupel_terminal_velocity = vg_fac  # 2.
         else:
             if graupel < constants.THG:
-                graupel_terminal_velosity = constants.VF_MIN
+                graupel_terminal_velocity = constants.VF_MIN
             else:
-                graupel_terminal_velosity = (
+                graupel_terminal_velocity = (
                     vg_fac * constants.VCONG * rhof * sqrt(sqrt(sqrt(graupel * density / constants.NORMG)))
                 )
-                graupel_terminal_velosity = min(vg_max, max(constants.VF_MIN, graupel_terminal_velosity))
+                graupel_terminal_velocity = min(vg_max, max(constants.VF_MIN, graupel_terminal_velocity))
