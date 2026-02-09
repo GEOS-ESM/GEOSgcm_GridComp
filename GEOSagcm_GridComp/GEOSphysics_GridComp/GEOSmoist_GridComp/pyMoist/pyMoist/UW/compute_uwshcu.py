@@ -1,5 +1,9 @@
 import dace
-from gt4py.cartesian.gtscript import (
+
+import pyMoist.constants as constants
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.gtscript import (
     BACKWARD,
     FORWARD,
     PARALLEL,
@@ -16,10 +20,6 @@ from gt4py.cartesian.gtscript import (
     log,
     sqrt,
 )
-
-import pyMoist.constants as constants
-from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
 from pyMoist.saturation_tables import (
@@ -270,57 +270,6 @@ def compute_thermodynamic_variables(
     tpert_out: FloatFieldIJ,
     qpert_out: FloatFieldIJ,
 ):
-    """
-    Start of Main Calculation.
-
-    Stencil to compute basic thermodynamic variables directly from
-    input variables for each column.
-
-    Inputs:
-    pmid0_in [FloatField]: Environmental pressure at the layer mid-point [Pa]
-    zmid0_in [FloatField]: Environmental height at the layer mid-point [m]
-    exnmid0_in [FloatField]: Exner function at the layer mid-point
-    dp0_in [FloatField]: Environmental layer pressure thickness [Pa] > 0
-    u0_in [FloatField]: Environmental zonal wind [m/s]
-    v0_in [FloatField]: Environmental meridional wind [m/s]
-    qv0_in [FloatField]: Environmental water vapor specific humidity [kg/kg]
-    ql0_in [FloatField]: Environmental liquid water specific humidity [kg/kg]
-    qi0_in [FloatField]: Environmental ice specific humidity [kg/kg]
-    th0_in [FloatField]: Environmental potential temperature [K]
-    tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-    cush_inout [FloatFieldIJ]: Convective scale height [m]
-    dotransport [Int]: Transport tracers [1 true]
-
-    Outputs:
-    u0 [FloatField]: Environmental zonal wind [m/s]
-    v0 [FloatField]: Environmental meridional wind [m/s]
-    cush [FloatFieldIJ]: Convective scale height [m]
-    umf_out [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
-    shfx [FloatFieldIJ]: Surface sensible heat [J]
-    evap [FloatFieldIJ]: Surface evaporation [kg/m^2/s]
-    qtflx_out [FloatField]: Mixing ratio flux [?]
-    slflx_out [FloatField]: Sensible heat flux [?]
-    uflx_out [FloatField]: Zonal wind flux [?]
-    vflx_out [FloatField]: Meridional wind flux [?]
-    qt0 [FloatField]: Mixing ratio [?]
-    t0 [FloatField]: Environmental temperature [K]
-    qv0 [FloatField]: Environmental specific humidity
-    qi0 [FloatField]: Environmental ice specific humidity
-    pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
-    tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-    tr0_temp [FloatField]: Environmental tracers [#, kg/kg]
-    sstr0 [FloatField_NTracers]: Convective tracer [?]
-    ssthl0 [FloatField]: Temperature [?]
-    ssqt0 [FloatField]: [?]
-    thl0 [FloatField]: Temperature [?]
-    ssu0 [FloatField]: [?]
-    ssv0 [FloatField]: [?]
-    tscaleh [FloatFieldIJ]: [?]
-    fer_out [FloatField]: Fractional lateral entrainment rate [1/Pa]
-    fdr_out [FloatField]: Fractional lateral detrainment rate [1/Pa]
-    tpert_out [FloatFieldIJ]: Temperature perturbation
-    qpert_out [FloatFieldIJ]: Humidity perturbation
-    """
     """
     Start of Main Calculation.
 
@@ -7432,14 +7381,15 @@ class ComputeUwshcuInv(NDSLRuntime):
         config: UWConfiguration,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
-        # Initialize the ComputeUwshcu class
+        """Compute the University of Washington's Shallow Convection
 
-        # Parameters:
-        # stencil_factory (StencilFactory): Factory for creating stencil computations.
-        # quantity_factory (QuantityFactory): Factory for creating quantities.
-        # config (dataclass): Data class containing configuration dependent
-        # constants.
-        # formulation: Saturation Formulation used for QSat.
+        Args:
+            stencil_factory (StencilFactory): Factory for creating stencil computations.
+            quantity_factory (QuantityFactory): Factory for creating quantities.
+            UW_config (dataclass): Data class containing configuration dependent
+            constants.
+            formulation: Saturation Formulation used for QSat.
+        """
 
         super().__init__(stencil_factory.config.dace_config)
 
