@@ -99,3 +99,4 @@ class GF2020CumulusParameterizationConfig:
     USE_FLUX_FORM: Int
     USE_FCT: Int
     MAX_TEMP_VAPOR_TENDENCY: Float
+    LIQUID_ICE_NUMBER_CONCENTRATION: Int
