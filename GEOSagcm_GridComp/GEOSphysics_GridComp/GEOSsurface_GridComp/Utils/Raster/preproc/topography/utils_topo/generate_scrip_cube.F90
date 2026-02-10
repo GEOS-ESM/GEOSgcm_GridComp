@@ -56,8 +56,8 @@
     ! When using the program with GEOS, probably best to make sure values are consistent with those in MAPL.
     ! HOWEVER: Value of PI is hardcoded a total of five times in this file, with two distinct values!
     !
-    real(REAL64), parameter           :: PI           = 3.14159265358979323846                ( MAPL_PI=3.14159265358979323846d0  as of Feb 2026 )
-    real(REAL64), parameter           :: EARTH_RADIUS = 6371.d0                    ! [km]     ( MAPL_RADIUS=6731.0E3 [m]  real*4  as of Feb 2026 )
+    real(REAL64), parameter           :: PI           = 3.14159265358979323846  !       ( MAPL_PI=3.14159265358979323846d0  as of Feb 2026 )
+    real(REAL64), parameter           :: EARTH_RADIUS = 6371.d0                 ! [km]  ( MAPL_RADIUS=6731.0E3 [m]  real*4  as of Feb 2026 )
     
     integer                           :: npets, localPet
     integer                           :: i, j, k
