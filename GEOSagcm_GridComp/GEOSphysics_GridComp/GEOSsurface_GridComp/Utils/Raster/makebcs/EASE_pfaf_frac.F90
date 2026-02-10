@@ -79,7 +79,7 @@ contains
     call formatter%get_var("CatchIndex", catchind)
     call formatter%close()
     
-    do i = 1, nc_ease
+   do i = 1, nc_ease
        call MAPL_ease_inverse( trim(GridName), real(i-1), 0.0, tmp_lat, tmp_lon)
        lons(i) = tmp_lon
     enddo
@@ -94,6 +94,10 @@ contains
     call formatter%get_var("data", cellarea)
     call formatter%close()
     cellarea = cellarea / 1.e6  ! Convert cell area (e.g., from m^2 to km^2)
+
+    !call calculate_cellarea(lon, lat, cellarea)
+    !cellarea = cellarea * MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 ! unit km^2
+
     ! Initialize aggregation arrays to zero:
     allocate(xsub0(9999, nPfaf), ysub0(9999, nPfaf), asub0(9999, nPfaf))
     call EASE_Find_subs(catchind, loni, lati, cellarea, nsub, xsub0, ysub0, asub0)
@@ -309,7 +313,7 @@ contains
 
      half_lon = 180.d0/nlon
      half_lat = 90.d00/nlat
-
+     allocate(corner_lons(nlon,4), corner_lats(nlat,4))
      corner_lons(:,1) = center_lons(:) - half_lon
      corner_lons(:,2) = center_lons(:) + half_lon
      corner_lons(:,3) = center_lons(:) + half_lon
@@ -320,9 +324,12 @@ contains
      corner_lats(:,3) = center_lats(:) + half_lat
      corner_lats(:,4) = center_lats(:) + half_lat
 
+     where (corner_lons < -180.d0) corner_lons = -180.d0
+     where (corner_lons >  180.d0) corner_lons =  180.d0
+     where (corner_lats < -90.d0)  corner_lats = -90d0
+     where (corner_lats >  90.d0)  corner_lats =  90.d0
      corner_lats = corner_lats * MAPL_DEGREES_TO_RADIANS_R8 
      corner_lons = corner_lons * MAPL_DEGREES_TO_RADIANS_R8
-
      do j = 1, nlat
         do i = 1, nlon
            p1 = [corner_lons(i,1), corner_lats(j,1)]
