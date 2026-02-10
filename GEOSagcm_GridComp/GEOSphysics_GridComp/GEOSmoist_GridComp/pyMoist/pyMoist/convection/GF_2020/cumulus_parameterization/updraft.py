@@ -30,10 +30,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     IntFieldIJ_Plume,
     FloatFieldIJ_Ensemble,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    get_cloud_boundary_conditions,
-    liquid_fraction,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
 from ndsl.stencils.column_operations import column_min, column_max_ddim
 
 # initialize constants and field type for UpdraftMassFlux stencil

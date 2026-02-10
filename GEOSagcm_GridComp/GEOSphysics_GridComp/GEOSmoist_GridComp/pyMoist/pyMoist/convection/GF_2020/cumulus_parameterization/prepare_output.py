@@ -18,6 +18,20 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from ndsl.stencils.column_operations import column_max
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import liquid_fraction
+from pyMoist.shared_incloud_processes import (
+    make_droplet_number,
+    make_ice_number,
+    G_RATIO,
+    G_RATIO_Table_Type,
+    RADIATIVE_EFFECTIVE_RADIUS,
+    RADIATIVE_EFFECTIVE_RADIUS_Table_Type,
+)
+from ndsl import StencilFactory, QuantityFactory, Local, Quantity
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
 
 
 def ensemble_output_and_feedback(
@@ -176,10 +190,14 @@ def ensemble_output_and_feedback(
         if MAX_TEMP_VAPOR_TENDENCY > 0.0 and error_code[0, 0][plume] == 0:
             max_val_t, _ = column_max(abs_del_t_cloud_ensemble, 0, cloud_top_level[0, 0][plume])
             max_val_vapor, _ = column_max(abs_del_vapor_cloud_ensemble, 0, cloud_top_level[0, 0][plume])
-            fixouts = cloud_base_mass_flux_modified[0, 0][plume] * 86400.0 * max(
-                max_val_t,
-                (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
-                * max_val_vapor,
+            fixouts = (
+                cloud_base_mass_flux_modified[0, 0][plume]
+                * 86400.0
+                * max(
+                    max_val_t,
+                    (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
+                    * max_val_vapor,
+                )
             )
 
             if fixouts > MAX_TEMP_VAPOR_TENDENCY:  # K/day
@@ -387,12 +405,158 @@ def prepare_output(
         )
 
 
+def output_workfunctions_and_precip_concentrations(
+    error_code: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    convection_fraction: FloatFieldIJ,
+    surface_type: FloatFieldIJ,
+    cloud_workfunction_0_output: FloatFieldIJ,
+    cloud_workfunction_1_output: FloatFieldIJ,
+    cloud_workfunction_0: FloatFieldIJ,
+    cloud_workfunction_1: FloatFieldIJ,
+    air_density: FloatField,
+    updraft_column_temperature_forced: FloatField,
+    dcloudicedt: FloatField_Plume,
+    dnliquiddt: FloatField_Plume,
+    dnicedt: FloatField_Plume,
+    G_RATIO: G_RATIO_Table_Type,
+    RADIATIVE_EFFECTIVE_RADIUS: RADIATIVE_EFFECTIVE_RADIUS_Table_Type,
+    plume: Int,
+):
+    """
+    Push the internal copy of workfunctions 0 and 1 to the state fields for output, and get precipitate
+    concentrations using the functions make_droplet_number and make_ice_number
+
+    Args:
+        error_code (in)
+        cloud_top_level (in)
+        convection_fraction (in)
+        surface_type (in)
+        cloud_workfunction_0_output (out): state copy of workfunction 0
+        cloud_workfunction_1_output (out): state copy of workfunction 1
+        cloud_workfunction_0 (in): local copy of workfunction 0
+        cloud_workfunction_1 (in): local copy of workfunction 1
+        air_density (in)
+        updraft_column_temperature_forced (in)
+        dcloudicedt (in)
+        dnliquiddt (out)
+        dnicedt (out)
+        G_RATIO (in): table used for make_droplet_number
+        RADIATIVE_EFFECTIVE_RADIUS (in): table used for make_ice_number
+        plume (in): specifies the current plume
+    """
+    from __externals__ import FRAC_MODIS, DTIME
+
+    with computation(PARALLEL), interval(...):
+        n_water_friendly_aerosols = 99.0e7  # in the future set this as NCPL
+
+    with computation(FORWARD), interval(0, 1):
+        if plume == cumulus_parameterization_constants.DEEP:
+            cloud_workfunction_0_output = 0.0
+            cloud_workfunction_1_output = 0.0
+
+            if error_code[0, 0][plume] == 0:
+                cloud_workfunction_0_output = cloud_workfunction_0
+                cloud_workfunction_1_output = cloud_workfunction_1
+
+    with computation(PARALLEL), interval(...):
+        if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume] + 1:
+            fraction = liquid_fraction(
+                updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
+            )
+            cloud_liquid = DTIME * dcloudicedt[0, 0, 0][plume] * air_density * fraction
+            cloud_ice = DTIME * dcloudicedt[0, 0, 0][plume] * air_density * (1.0 - fraction)
+
+            dnicedt[0, 0, 0][plume] = max(
+                0.0,
+                make_ice_number(cloud_ice, updraft_column_temperature_forced, RADIATIVE_EFFECTIVE_RADIUS)
+                / air_density,
+            )
+            dnliquiddt[0, 0, 0][plume] = max(
+                0.0, make_droplet_number(cloud_liquid, n_water_friendly_aerosols, G_RATIO) / air_density
+            )
+
+            # convert to tendencies
+            dnicedt[0, 0, 0][plume] = dnicedt[0, 0, 0][plume] * (1 / DTIME)  # unit [1/s]
+            dnliquiddt[0, 0, 0][plume] = dnliquiddt[0, 0, 0][plume] * (1 / DTIME)  # unit [1/s]
+
+
+class OutputWorkfunctionsAndPrecipConcentrations:
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+    ):
+        # add dimension to quantityfactory and create classes for constants
+        quantity_factory.add_data_dimensions({"G_RATIO_Table": len(G_RATIO)})
+        quantity_factory.add_data_dimensions(
+            {"RADIATIVE_EFFECTIVE_RADIUS_Table": len(RADIATIVE_EFFECTIVE_RADIUS)}
+        )
+
+        self._G_RATIO: Local = quantity_factory.zeros(["G_RATIO_Table"], "n/a")
+        self._RADIATIVE_EFFECTIVE_RADIUS: Local = quantity_factory.zeros(
+            ["RADIATIVE_EFFECTIVE_RADIUS_Table"], "n/a"
+        )
+
+        self._G_RATIO.field[:] = G_RATIO
+        self._RADIATIVE_EFFECTIVE_RADIUS.field[:] = RADIATIVE_EFFECTIVE_RADIUS
+
+        # construct stencils
+        self._output_workfunctions_and_precip_concentrations = stencil_factory.from_dims_halo(
+            func=output_workfunctions_and_precip_concentrations,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "FRAC_MODIS": cumulus_parameterization_config.FRAC_MODIS,
+                "DTIME": cumulus_parameterization_config.DTIME,
+            },
+        )
+
+    def __call__(
+        self,
+        error_code: Quantity,
+        cloud_top_level: Quantity,
+        convection_fraction: Quantity,
+        surface_type: Quantity,
+        cloud_workfunction_0_output: Quantity,
+        cloud_workfunction_1_output: Quantity,
+        cloud_workfunction_0: Quantity,
+        cloud_workfunction_1: Quantity,
+        air_density: Quantity,
+        updraft_column_temperature_forced: Quantity,
+        dcloudicedt: Quantity,
+        dnliquiddt: Quantity,
+        dnicedt: Quantity,
+        plume_dependent_constants: GF2020PlumeDependentConstants,
+    ):
+        self._output_workfunctions_and_precip_concentrations(
+            error_code=error_code,
+            cloud_top_level=cloud_top_level,
+            convection_fraction=convection_fraction,
+            surface_type=surface_type,
+            cloud_workfunction_0_output=cloud_workfunction_0_output,
+            cloud_workfunction_1_output=cloud_workfunction_1_output,
+            cloud_workfunction_0=cloud_workfunction_0,
+            cloud_workfunction_1=cloud_workfunction_1,
+            air_density=air_density,
+            updraft_column_temperature_forced=updraft_column_temperature_forced,
+            dcloudicedt=dcloudicedt,
+            dnliquiddt=dnliquiddt,
+            dnicedt=dnicedt,
+            G_RATIO=self._G_RATIO,
+            RADIATIVE_EFFECTIVE_RADIUS=self._RADIATIVE_EFFECTIVE_RADIUS,
+            plume=plume_dependent_constants.PLUME_INDEX,
+        )
+
+
 class LightningFlashDensity:
     def __init__(self, cumulus_parameterization_config: GF2020CumulusParameterizationConfig):
         if cumulus_parameterization_config.LIGHTNING_DIAGNOSTICS:
             raise NotImplementedError(
-                "GF2020 lightning output has not been implemented. You should have"
-                "been caught before this error - something is wrong with the config checker!"
+                "[NDSL] GF2020-->CumulusParameterization-->LightningFlashDensity: lightning output has not"
+                "been implemented. You should have been caught before getting here by the config checker."
+                "Beware, something likely failing in the config checker as well - you may be unknowingly"
+                "calling other untested/unimplemented sections."
             )
 
     def __call__(self, *args, **kwds):

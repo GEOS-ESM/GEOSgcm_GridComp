@@ -138,7 +138,7 @@ def moist_static_energy_inside_cloud(
     start_level: IntFieldIJ,
     moist_static_energy_origin_level: FloatFieldIJ,
     cloud_moist_static_energy: FloatField,
-    environment_saturation_moist_static_energy_modified: FloatField,
+    environment_moist_static_energy_modified: FloatField,
     environment_saturation_moist_static_energy_cloud_levels_modified: FloatField,
     mass_detrainment_updraft_forced: FloatField_Plume,
     mass_entrainment_updraft_forced: FloatField_Plume,
@@ -174,7 +174,7 @@ def moist_static_energy_inside_cloud(
                         * mass_detrainment_updraft_forced.at(K=K - 1, ddim=[plume])
                         * cloud_moist_static_energy.at(K=K - 1)
                         + mass_entrainment_updraft_forced.at(K=K - 1, ddim=[plume])
-                        * environment_saturation_moist_static_energy_modified.at(K=K - 1)
+                        * environment_moist_static_energy_modified.at(K=K - 1)
                     ) / denom
                     if K == start_level + 1:
                         x_add: FloatFieldIJ = (
@@ -233,7 +233,7 @@ class StaticControl:
         cloud_top_level: Quantity,
         cloud_moist_static_energy_modified: Quantity,
         moist_static_energy_origin_level_modified: Quantity,
-        environment_saturation_moist_static_energy_modified: Quantity,
+        environment_moist_static_energy_modified: Quantity,
         environment_moist_static_energy_cloud_levels_modified: Quantity,
         environment_saturation_moist_static_energy_cloud_levels_modified: Quantity,
         mass_detrainment_updraft_forced: Quantity,
@@ -253,7 +253,7 @@ class StaticControl:
             start_level=start_level,
             moist_static_energy_origin_level=moist_static_energy_origin_level_modified,
             cloud_moist_static_energy=cloud_moist_static_energy_modified,
-            environment_saturation_moist_static_energy_modified=environment_saturation_moist_static_energy_modified,
+            environment_moist_static_energy_modified=environment_moist_static_energy_modified,
             environment_saturation_moist_static_energy_cloud_levels_modified=environment_saturation_moist_static_energy_cloud_levels_modified,
             mass_detrainment_updraft_forced=mass_detrainment_updraft_forced,
             mass_entrainment_updraft_forced=mass_entrainment_updraft_forced,

@@ -41,7 +41,7 @@ class TestCore:
             "cloud_top_level": {},
             "local_cloud_moist_static_energy_modified": {},
             "local_moist_static_energy_origin_level_modified": {},
-            "local_env_saturation_moist_static_energy_modified": {},
+            "local_env_moist_static_energy_modified": {},
             "local_env_moist_static_energy_cloud_levels_modified": {},
             "local_env_saturation_moist_static_energy_cloud_levels_modified": {},
             "mass_detrainment_updraft_forced": {},
@@ -100,8 +100,8 @@ class TestCore:
         locals.moist_static_energy_origin_level_modified.data[:] = inputs[
             "local_moist_static_energy_origin_level_modified"
         ]
-        locals.environment_saturation_moist_static_energy_modified.data[:] = inputs[
-            "local_env_saturation_moist_static_energy_modified"
+        locals.environment_moist_static_energy_modified.data[:] = inputs[
+            "local_env_moist_static_energy_modified"
         ]
         locals.environment_moist_static_energy_cloud_levels_modified.data[:] = inputs[
             "local_env_moist_static_energy_cloud_levels_modified"
@@ -145,7 +145,7 @@ class TestCore:
                 cloud_top_level=state.output.cloud_top_level,
                 cloud_moist_static_energy_modified=locals.cloud_moist_static_energy_modified,
                 moist_static_energy_origin_level_modified=locals.moist_static_energy_origin_level_modified,
-                environment_saturation_moist_static_energy_modified=locals.environment_saturation_moist_static_energy_modified,
+                environment_moist_static_energy_modified=locals.environment_moist_static_energy_modified,
                 environment_moist_static_energy_cloud_levels_modified=locals.environment_moist_static_energy_cloud_levels_modified,
                 environment_saturation_moist_static_energy_cloud_levels_modified=locals.environment_saturation_moist_static_energy_cloud_levels_modified,
                 mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
@@ -175,7 +175,7 @@ class TestCore:
             "local_moist_static_energy_origin_level_modified": locals.moist_static_energy_origin_level_modified.data[
                 :
             ],
-            "local_env_saturation_moist_static_energy_modified": locals.environment_saturation_moist_static_energy_modified.data[
+            "local_env_moist_static_energy_modified": locals.environment_moist_static_energy_modified.data[
                 :
             ],
             "local_env_moist_static_energy_cloud_levels_modified": locals.environment_moist_static_energy_cloud_levels_modified.data[

@@ -144,6 +144,10 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         # workaround because translate test cannot read in 4d fields
         self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-In")
 
+        # DEBUG STUFF
+        self.debug_input = data_loader.load("GF2020_CumulusParameterization_AtmosphericComposition-In")
+        self.debug_output = data_loader.load("GF2020_CumulusParameterization_AtmosphericComposition-Out")
+
     def compute_func(self, **inputs):
         # initialize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
@@ -352,22 +356,22 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
                 "convective_cloud_fraction"
             ]
             state.input_output.chemistry_tracers.field[:] = self.manual_inputs["chemistry_tracers"]
-            chemistry_tracers_input_5d = np.full(self.manual_inputs["chemistry_tracers_output"].shape, np.nan)
+            chemistry_tracers_input_5d = np.full(
+                state.input_output.chemistry_tracers_output.field[:].shape, np.nan
+            )
             for plume in range(NUMBER_OF_PLUMES):
-                chemistry_tracers_input_5d = self.manual_inputs["chemistry_tracers_output"][
+                chemistry_tracers_input_5d[:, :, :, plume, :] = self.manual_inputs[
+                    "chemistry_tracers_output"
+                ][
                     :,
                     :,
                     :,
                     plume * config.NUMBER_OF_TRACERS : plume * config.NUMBER_OF_TRACERS
                     + config.NUMBER_OF_TRACERS,
                 ]
-            state.input_output.chemistry_tracers_output.field[
-                :,
-                :,
-                :,
-                plume,
-                :,
-            ] = chemistry_tracers_input_5d[:, :, :, [1, 2, 0], :]
+            state.input_output.chemistry_tracers_output.field[:] = chemistry_tracers_input_5d[
+                :, :, :, [1, 2, 0], :
+            ]
 
             # initialize the test subject
             code = CumulusParameterization(
@@ -376,7 +380,6 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
                 config=config,
                 cumulus_parameterization_config=cumulus_parameterization_config,
             )
-            print("COMPILED")
 
             # call the test subject
             code(state, saturation_tables, convection_tracers)

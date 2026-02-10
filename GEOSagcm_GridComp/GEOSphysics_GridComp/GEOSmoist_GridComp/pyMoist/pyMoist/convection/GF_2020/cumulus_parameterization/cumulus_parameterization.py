@@ -105,13 +105,14 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.large_scale_forcing imp
 from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating import (
     kinetic_energy_to_heating,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.feedback.feedback import Feedback
 from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
+    ensemble_output_and_feedback,
     total_evaporation_flux,
     LightningFlashDensity,
     deep_precipitation_output,
     tracer_output,
     prepare_output,
+    OutputWorkfunctionsAndPrecipConcentrations,
 )
 
 
@@ -295,8 +296,6 @@ class CumulusParameterization:
         )
 
         self._c1d_profile = C1DProfile(
-            stencil_factory=stencil_factory,
-            quantity_factory=quantity_factory,
             config=config,
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
@@ -491,7 +490,16 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._feedback = Feedback()
+        self._ensemble_output_and_feedback = stencil_factory.from_dims_halo(
+            func=ensemble_output_and_feedback,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "DTIME": cumulus_parameterization_config.DTIME,
+                "MAX_TEMP_VAPOR_TENDENCY": cumulus_parameterization_config.MAX_TEMP_VAPOR_TENDENCY,
+                "APPLY_SUBSIDENCE_MICROPHYSICS": config.APPLY_SUBSIDENCE_MICROPHYSICS,
+                "USE_SMOOTH_TENDENCIES": cumulus_parameterization_config.USE_SMOOTH_TENDENCIES,
+            },
+        )
 
         self._precipitation_flux = stencil_factory.from_dims_halo(
             func=get_precip_fluxes,
@@ -537,6 +545,12 @@ class CumulusParameterization:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
+        self._output_workfunctions_and_precip_concentrations = OutputWorkfunctionsAndPrecipConcentrations(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            cumulus_parameterization_config=cumulus_parameterization_config,
+        )
+
         self._atmospheric_composition = AtmosphericComposition(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
@@ -570,7 +584,7 @@ class CumulusParameterization:
                 error_code_2=self.locals.error_code_2,
                 error_code_3=self.locals.error_code_3,
                 maximum_updraft_origin_level=self.locals.maximum_updraft_origin_level,
-                kstabm=self.locals.kstabm,
+                kstabm=state.output.kstabm,
                 t_excess=state.input.t_excess,
                 t_excess_local=self.locals.t_excess,
                 vapor_excess=state.input.vapor_excess,
@@ -872,8 +886,8 @@ class CumulusParameterization:
                 # NOTE      mid ❌ (worst fail 0.88% - max 2 ULP)
                 # NOTE      shallow ✅
                 self._entrainment_rates(
-                    vapor=self.locals.vapor_cloud_levels_forced,
-                    environment_saturation_mixing_ratio=self.locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+                    vapor_cloud_levels_forced=self.locals.vapor_cloud_levels_forced,
+                    environment_saturation_mixing_ratio_cloud_levels_forced=self.locals.environment_saturation_mixing_ratio_cloud_levels_forced,
                     lcl_level=state.output.lcl_level,
                     error_code=state.output.error_code,
                     entrainment_rate=state.output.entrainment_rate,
@@ -967,7 +981,7 @@ class CumulusParameterization:
                 self._unknown_find_level(
                     array=self.locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                     start_index=state.output.updraft_lfc_level,
-                    end_index=self.locals.kstabm,
+                    end_index=state.output.kstabm.field[:, :, self.plume_dependent_constants.PLUME_INDEX],
                     out_index=state.output.kstabi,
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
@@ -980,12 +994,12 @@ class CumulusParameterization:
                 # NOTE      shallow ✅
                 self._updraft_rates_pdf(
                     entrainment_rate=state.output.entrainment_rate,
-                    moist_static_energy=self.locals.environment_moist_static_energy_forced,
-                    saturation_moist_static_energy=self.locals.environment_saturation_mixing_ratio_cloud_levels_forced,
-                    moist_static_energy_origin_level=self.locals.moist_static_energy_origin_level_forced,
+                    environment_moist_static_energy_forced=self.locals.environment_moist_static_energy_forced,
+                    environment_saturation_moist_static_energy_cloud_levels_forced=self.locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                    moist_static_energy_origin_level_forced=self.locals.moist_static_energy_origin_level_forced,
                     updraft_lfc_level=state.output.updraft_lfc_level,
-                    geopotential_height=self.locals.geopotential_height_cloud_levels_forced,
-                    cloud_moist_static_energy=self.locals.cloud_moist_static_energy_forced_transported,
+                    geopotential_height_cloud_levels_forced=self.locals.geopotential_height_cloud_levels_forced,
+                    cloud_moist_static_energy_forced_transported=self.locals.cloud_moist_static_energy_forced_transported,
                     error_code=state.output.error_code,
                     cloud_top_level=state.output.cloud_top_level,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
@@ -993,8 +1007,8 @@ class CumulusParameterization:
 
                 self._cloud_top_checks(
                     cloud_top_level=state.output.cloud_top_level,
-                    p=state.output.p_cloud_levels_forced,
-                    geopotential_height=self.locals.geopotential_height_cloud_levels,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    geopotential_height_cloud_levels=self.locals.geopotential_height_cloud_levels,
                     error_code=state.output.error_code,
                     last_error_code=state.input.last_error_code,
                     updraft_lfc_level=state.output.updraft_lfc_level,
@@ -1251,7 +1265,7 @@ class CumulusParameterization:
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
-                if self.cumulus_parameterization_config.FIRST_GUESS_W:
+                if not self.cumulus_parameterization_config.FIRST_GUESS_W:
                     # calculate in-cloud/updraft air temperature for vertical velocity
                     # NOTE test GF2020_CumulusParameterization_UpdraftTemperature_{plume}:
                     # NOTE      deep ✅
@@ -1343,7 +1357,7 @@ class CumulusParameterization:
                     downdraft_origin_level=state.output.downdraft_origin_level,
                     geopotential_height_cloud_levels_forced=self.locals.geopotential_height_cloud_levels_forced,
                     normalized_massflux_downdraft=self.locals.normalized_massflux_downdraft,
-                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_updraft_forced,
+                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
                     normalized_massflux_downdraft_modified=self.locals.normalized_massflux_downdraft_modified,
                     detrainment_function_downdraft=self.locals.detrainment_function_downdraft,
                     entrainment_rate_downdraft=self.locals.entrainment_rate_downdraft,
@@ -1371,7 +1385,7 @@ class CumulusParameterization:
                     )
 
                 # downdraft moist static energy + moisture budget
-                # NOTE test GF2020_CumulusParameterization_DowndraftMSEAnBuoyancy{plume}:
+                # NOTE test GF2020_CumulusParameterization_DowndraftMSEAndBuoyancy_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
@@ -1725,13 +1739,12 @@ class CumulusParameterization:
                 # NOTE      deep ✅
                 # NOTE      mid ❌ one field, one point (0.0%), 32 ULP
                 # NOTE      shallow ❌ one field, one point (0.0%), 32 ULP
-                p_3d = state.output.p_cloud_levels_forced.field[
-                    :, :, :, self.plume_dependent_constants.PLUME_INDEX
-                ]
                 self._environment_cloud_levels(
                     p=state.input_output.p_forced,
                     p_surface=state.input_output.p_surface,
-                    p_cloud_levels=p_3d,
+                    p_cloud_levels=state.output.p_cloud_levels_forced.field[
+                        :, :, :, self.plume_dependent_constants.PLUME_INDEX
+                    ],
                     topography_height_no_negative=state.input_output.topography_height_no_negative,
                     geopotential_height=self.locals.geopotential_height_modified,
                     geopotential_height_cloud_levels=self.locals.geopotential_height_cloud_levels_modified,
@@ -1754,9 +1767,6 @@ class CumulusParameterization:
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
-                state.output.p_cloud_levels_forced.field[
-                    :, :, :, self.plume_dependent_constants.PLUME_INDEX
-                ] = p_3d
 
                 # static control
                 # NOTE test GF2020_CumulusParameterization_StaticControl_{plume}:
@@ -1771,7 +1781,7 @@ class CumulusParameterization:
                     cloud_top_level=state.output.cloud_top_level,
                     cloud_moist_static_energy_modified=self.locals.cloud_moist_static_energy_modified,
                     moist_static_energy_origin_level_modified=self.locals.moist_static_energy_origin_level_modified,
-                    environment_saturation_moist_static_energy_modified=self.locals.environment_saturation_moist_static_energy_modified,
+                    environment_moist_static_energy_modified=self.locals.environment_moist_static_energy_modified,
                     environment_moist_static_energy_cloud_levels_modified=self.locals.environment_moist_static_energy_cloud_levels_modified,
                     environment_saturation_moist_static_energy_cloud_levels_modified=self.locals.environment_saturation_moist_static_energy_cloud_levels_modified,
                     mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
@@ -1811,7 +1821,7 @@ class CumulusParameterization:
 
                 # large scale forcing
                 # calculate cloud base mass flux
-                # NOTE test GF2020_CumulusParameterization_CloudBaseMassFlux_{plume}:
+                # NOTE test GF2020_CumulusParameterization_LargeScaleForcing_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
@@ -1871,7 +1881,55 @@ class CumulusParameterization:
                 )
 
                 # feedback
-                self._feedback()
+                # NOTE test GF2020_CumulusParameterization_EnsembleOutputAndFeedback_{plume}:
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
+                self._ensemble_output_and_feedback(
+                    error_code=state.output.error_code,
+                    error_code_2=self.locals.error_code_2,
+                    error_code_3=self.locals.error_code_3,
+                    cloud_top_level=state.output.cloud_top_level,
+                    updraft_lfc_level=state.output.updraft_lfc_level,
+                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                    precip=state.output.precip,
+                    effective_condensate_to_fall_forced=self.locals.effective_condensate_to_fall_forced,
+                    cloud_base_mass_flux_modified=state.output.cloud_base_mass_flux_modified,
+                    scale_dependence_factor=state.output.scale_dependence_factor,
+                    ocean_fraction=self.locals.ocean_fraction,
+                    f_dicycle_modified=self.locals.f_dicycle_modified,
+                    del_u_cloud_ensemble=self.locals.del_u_cloud_ensemble,
+                    del_v_cloud_ensemble=self.locals.del_v_cloud_ensemble,
+                    del_t_cloud_ensemble=self.locals.del_t_cloud_ensemble,
+                    del_vapor_cloud_ensemble=self.locals.del_vapor_cloud_ensemble,
+                    del_cloud_liquid_cloud_ensemble=self.locals.del_cloud_liquid_cloud_ensemble,
+                    del_buoyancy_cloud_ensemble=self.locals.del_buoyancy_cloud_ensemble,
+                    del_convective_ice_cloud_ensemble=self.locals.del_convective_ice_cloud_ensemble,
+                    del_large_scale_ice_cloud_ensemble=self.locals.del_large_scale_ice_cloud_ensemble,
+                    del_convective_liquid_cloud_ensemble=self.locals.del_convective_liquid_cloud_ensemble,
+                    del_large_scale_liquid_cloud_ensemble=self.locals.del_large_scale_liquid_cloud_ensemble,
+                    del_convective_cloud_fraction_cloud_ensemble=self.locals.del_convective_cloud_fraction_cloud_ensemble,
+                    del_large_scale_cloud_fraction_cloud_ensemble=self.locals.del_large_scale_cloud_fraction_cloud_ensemble,
+                    dtdt=state.output.dtdt,
+                    dvapordt=state.output.dvapordt,
+                    dcloudicedt=state.output.dcloudicedt,
+                    dudt=state.output.dudt,
+                    dvdt=state.output.dvdt,
+                    dbuoyancydt=state.output.dbuoyancydt,
+                    dconvectiveicedt=state.output.dconvectiveicedt,
+                    dlargescaleicedt=state.output.dlargescaleicedt,
+                    dconvectiveliquiddt=state.output.dconvectiveliquiddt,
+                    dlargescaleliquiddt=state.output.dlargescaleliquiddt,
+                    dconvectivecloudfractiondt=state.output.dconvectivecloudfractiondt,
+                    dlargescalecloudfractiondt=state.output.dlargescalecloudfractiondt,
+                    mass_flux_ensemble=self.locals.mass_flux_ensemble,
+                    precipitation_ensemble=self.locals.precipitation_ensemble,
+                    xff_mid=self.locals.xff_mid,
+                    CLOSURE_CHOICE=self.plume_dependent_constants.CLOSURE_CHOICE,
+                    CLOUD_BASE_MASS_FLUX_FACTOR=self.plume_dependent_constants.CLOUD_BASE_MASS_FLUX_FACTOR,
+                    plume=self.plume_dependent_constants.PLUME_INDEX,
+                )
 
                 # net precipitation flux (after downdraft evaporation)
                 # NOTE test GF2020_CumulusParameterization_PrecipitationFlux_{plume}:
@@ -2017,6 +2075,27 @@ class CumulusParameterization:
                 # outputs a model sounding for the stand-alone code (part 2)
                 # NOTE this section does not run in the test case, and has not been implemented.
                 self._sounding()
+
+                # NOTE test GF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_{plume}:
+                # NOTE      deep ❌ Fails dnliquiddt and dnicedt. Fortran bug, not carried to python
+                # NOTE      mid ❌ Fails dnliquiddt and dnicedt. Fortran bug, not carried to python
+                # NOTE      shallow ✅
+                self._output_workfunctions_and_precip_concentrations(
+                    error_code=state.output.error_code,
+                    cloud_top_level=state.output.cloud_top_level,
+                    convection_fraction=state.input.convection_fraction,
+                    surface_type=state.input.surface_type,
+                    cloud_workfunction_0_output=state.output.cloud_workfunction_0,
+                    cloud_workfunction_1_output=state.output.cloud_workfunction_1,
+                    cloud_workfunction_0=self.locals.cloud_workfunction_0,
+                    cloud_workfunction_1=self.locals.cloud_workfunction_1,
+                    air_density=state.input_output.air_density,
+                    updraft_column_temperature_forced=self.locals.updraft_column_temperature_forced,
+                    dcloudicedt=state.output.dcloudicedt,
+                    dnliquiddt=state.output.dnliquiddt,
+                    dnicedt=state.output.dnicedt,
+                    plume_dependent_constants=self.plume_dependent_constants,
+                )
 
                 # section for atmospheric composition
                 # NOTE test GF2020_CumulusParameterization_AtmosphericComposition_{plume}:
