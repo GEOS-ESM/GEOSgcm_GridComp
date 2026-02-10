@@ -24,7 +24,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.environment import (
     modify_environment_profiles,
     EnvironmentalSubsidence,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.sounding.sounding import (
+from pyMoist.convection.GF_2020.cumulus_parameterization.sounding import (
     Sounding,
     GATESounding,
 )
