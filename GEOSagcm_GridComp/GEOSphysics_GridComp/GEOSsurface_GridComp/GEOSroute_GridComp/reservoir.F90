@@ -8,38 +8,10 @@ module reservoirMod
   private
   public :: res_state, Reservoir
 
-  !----Reservoir module constants----------
-
-  real,    parameter :: fac_elec_a   = 0.30   ! Coefficient for hydropower calculation
-  real,    parameter :: fac_elec_b   = 2.00   ! Exponent for hydropower calculation
-  real,    parameter :: fac_irr_a    = 0.01   ! Coefficient for irrigation calculation (arid areas)
-  real,    parameter :: fac_irr_b    = 3.00   ! Scaling factor for irrigation (arid areas)
-  real,    parameter :: fac_sup_a    = 0.03   ! Coefficient for water supply calculation
-  real,    parameter :: fac_sup_b    = 2.00   ! Exponent for water supply calculation
-  real,    parameter :: fac_other_a  = 0.20   ! Coefficient for other reservoir types
-  real,    parameter :: fac_other_b  = 2.00   ! Exponent for other reservoir types
-
-  integer, parameter :: fac_fld      = 1      ! Flood control parameter
-
-  real,    parameter :: fac_a_slake  = 0.003  ! Factor for small lakes
-  real,    parameter :: fac_b_slake  = 0.40   ! Exponent for small lakes
-  real,    parameter :: fac_a_llake  = 0.01   ! Factor for large lakes
-  real,    parameter :: fac_b_llake  = 0.60   ! Exponent for large lakes
-  
-  real,    parameter :: thr_wid_lake = 1.e5   ! Threshold lake width (in m)
-
-
   type RES_STATE ! reservoir-related variables
      logical              :: use_res
      integer, allocatable :: active_res(:)
-     integer, allocatable :: active_up( :,:)
-     integer, allocatable :: type_res(  :)
      real,    allocatable :: cap_res(   :)    ! m3
-     real,    allocatable :: wid_res(   :)    ! m
-     integer, allocatable :: fld_res(   :)
-     real,    allocatable :: Qfld_thres(:)    ! m3/s
-     integer, allocatable :: cat2res(   :)
-     real,    allocatable :: qres_acc(  :)
      real,    allocatable :: alpha_res( :)
    contains
      procedure :: calc
@@ -69,10 +41,7 @@ contains
 
     type (ESMF_State       )    :: INTERNAL
     real, dimension(:), pointer :: ACTIVE_RES_RS
-    real, dimension(:), pointer :: TYPE_RES_RS
     real, dimension(:), pointer :: CAP_RES_RS
-    real, dimension(:), pointer :: WID_RES_RS
-    real, dimension(:), pointer :: FLD_RES_RS
     real, dimension(:), pointer :: RRM_ALPHA_RES_RS 
 
     integer :: STATUS

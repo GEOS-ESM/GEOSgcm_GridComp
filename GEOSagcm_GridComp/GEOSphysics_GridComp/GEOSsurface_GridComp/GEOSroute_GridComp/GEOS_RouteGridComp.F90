@@ -44,17 +44,10 @@ module GEOS_RouteGridCompMod
      integer :: route_dt
 
      real,    allocatable :: areacat(:)      ! m2
-     real,    allocatable :: lengsc(:)       ! m
      integer, allocatable :: downid(:) 
 
      real,    allocatable :: runoff_acc(:)  
-
-     real,    allocatable :: lstr(:)         ! m
-     real,    allocatable :: qri_clmt(:)     ! m3/s
-     real,    allocatable :: qin_clmt(:)     ! m3/s
-     real,    allocatable :: qstr_clmt(:)    ! m3/s
-     real,    allocatable :: K(:)            
-     real,    allocatable :: Kstr(:)   
+  
      real,    allocatable :: alpha_riv(:)
      real,    allocatable :: alpha_str(:)      
 
@@ -212,69 +205,6 @@ contains
 !!!!!!!!!!!!!!
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'K_parameter_for_local_streams',&
-         UNITS              = '1'                      ,&
-         SHORT_NAME         = 'KSTR'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )
-
-    call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'K_parameter_for_main_rivers',&
-         UNITS              = '1'                      ,&
-         SHORT_NAME         = 'K'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )
-
-    call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'main_river_length_scale',&
-         UNITS              = 'm'                      ,&
-         SHORT_NAME         = 'LENGSC'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )
-
-    call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'local_streams_length_scale',&
-         UNITS              = 'm'                      ,&
-         SHORT_NAME         = 'LSTR'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )
-
-    call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'climatology_of_catchment_inflow',&
-         UNITS              = 'm+3 s-1'                      ,&
-         SHORT_NAME         = 'QIN_CLMT'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )
-
-    call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'climatology_of_catchment_outflow',&
-         UNITS              = 'm+3 s-1'                      ,&
-         SHORT_NAME         = 'QRI_CLMT'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )
-
-    call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'climatology_of_catchment_stream_flow',&
-         UNITS              = 'm+3 s-1'                      ,&
-         SHORT_NAME         = 'QSTR_CLMT'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )
-
-    call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'downstream_catchment_id',&
          UNITS              = '1'                      ,&
          SHORT_NAME         = 'DOWNID'                  ,&
@@ -310,14 +240,6 @@ contains
          RESTART            = MAPL_RestartRequired       ,&
          _RC )
 
-    call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'Alpha_parameter_for_reservoirs',&
-         UNITS              = '1'                      ,&
-         SHORT_NAME         = 'RRM_ALPHA_RES'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )    
 !!!!!!!!!!!!!!!!
 ! parameters in restart, for reservoirs
 !!!!!!!!!!!!!!
@@ -331,14 +253,6 @@ contains
          RESTART            = MAPL_RestartRequired       ,&
          _RC )
 
-    call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'type_of_reservoirs',&
-         UNITS              = '1'                      ,&
-         SHORT_NAME         = 'TYPE_RES' ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )
 
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'max_capacity_of_reservoirs',&
@@ -350,22 +264,13 @@ contains
          _RC )    
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'length_scale_of_reservoirs',&
-         UNITS              = 'm'                  ,&
-         SHORT_NAME         = 'WID_RES' ,&
+         LONG_NAME          = 'Alpha_parameter_for_reservoirs',&
+         UNITS              = '1'                      ,&
+         SHORT_NAME         = 'RRM_ALPHA_RES'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
-         _RC )   
-
-    call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'flood_control_flag_of_reservoirs',&
-         UNITS              = '1'                  ,&
-         SHORT_NAME         = 'FLD_RES' ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )  
+         _RC )    
 
 !!!!!!!!!!!!!!!!
 ! Export
@@ -491,13 +396,6 @@ contains
     type(ESMF_DistGrid)         :: dist_grid 
     type(ESMF_State)            :: INTERNAL
 
-    real, dimension(:), pointer :: KSTR_RS
-    real, dimension(:), pointer :: K_RS
-    real, dimension(:), pointer :: LENGSC_RS
-    real, dimension(:), pointer :: LSTR_RS
-    real, dimension(:), pointer :: QIN_CLMT_RS
-    real, dimension(:), pointer :: QRI_CLMT_RS
-    real, dimension(:), pointer :: QSTR_CLMT_RS
     real, dimension(:), pointer :: DOWNID_RS
     real, dimension(:), pointer :: AREA_CATCH_RS
     real, dimension(:), pointer :: RRM_ALPHA_RIV_RS

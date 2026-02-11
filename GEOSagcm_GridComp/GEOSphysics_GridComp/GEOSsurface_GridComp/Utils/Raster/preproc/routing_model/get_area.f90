@@ -50,7 +50,7 @@ call read_ncfile_double1d(trim(file_path), "latitude", lat, nlat)
 ! Read 2D catchment index data from the same file
 call read_ncfile_int2d(trim(file_path), "CatchIndex", catchind, nlon, nlat)
 ! Read cell area data 
-call read_ncfile_real2d("output/cellarea.nc", "data", cellarea, nlon, nlat)
+call read_ncfile_real2d("temp/cellarea.nc", "data", cellarea, nlon, nlat)
 ! Scale cell area values (from m^2 to km^2)
 cellarea = cellarea/1.e6
 

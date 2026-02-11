@@ -10,7 +10,7 @@ lat09_file, lon09_file, lat1m_file, lon1m_file = sys.argv[1:5]
 
 lati09_output_file = "temp/lati_1m_M09.txt"
 loni09_output_file = "temp/loni_1m_M09.txt"
-cellarea_output_file = "output/cellarea.nc"
+cellarea_output_file = "temp/cellarea.nc"
 
 # Grid dimensions
 nlat1m, nlon1m = routing_model_constants.nlat1m, routing_model_constants.nlon1m

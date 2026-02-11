@@ -56,14 +56,14 @@ contains
     type(Variable)              :: v
     integer                     :: nc_ease, nr_ease
     real                        :: tmp_lat, tmp_lon
-    integer                     :: ntile, npfaf0, nx, ny, type, pfaf_ind
+    integer                     :: ntile, npfaf0, nx, ny, type, pfaf_ind 
     
     ! Define file path for input routing data:
     character(len=256)   :: pfafData_file    
-    character(len=256)   :: cellarea_file
+    !character(len=256)   :: cellarea_file
 
     pfafData_file = trim(BCS_PATH)//"/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
-    cellarea_file = trim(BCS_PATH)//"/route/routing_model/v1/cellarea.nc"
+    !cellarea_file = trim(BCS_PATH)//"/route/routing_model/v1/cellarea.nc"
     call MAPL_ease_extent( trim(GridName), nc_ease, nr_ease)   
  
     ! Allocate arrays with the specified dimensions:
@@ -90,13 +90,13 @@ contains
     call nearest_index_vector(lat, lats, lati)
     call nearest_index_vector(lon, lons, loni)
     
-    call formatter%open(trim(cellarea_file), PFIO_READ)
-    call formatter%get_var("data", cellarea)
-    call formatter%close()
-    cellarea = cellarea / 1.e6  ! Convert cell area (e.g., from m^2 to km^2)
+    !call formatter%open(trim(cellarea_file), PFIO_READ)
+    !call formatter%get_var("data", cellarea)
+    !call formatter%close()
+    !cellarea = cellarea / 1.e6  ! Convert cell area (e.g., from m^2 to km^2)
 
-    !call calculate_cellarea(lon, lat, cellarea)
-    !cellarea = cellarea * MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 ! unit km^2
+    call calculate_cellarea(lon, lat, cellarea)
+    cellarea = cellarea * MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 ! unit km^2
 
     ! Initialize aggregation arrays to zero:
     allocate(xsub0(9999, nPfaf), ysub0(9999, nPfaf), asub0(9999, nPfaf))
@@ -110,20 +110,22 @@ contains
     asub=asub0(1:nmax,:)
     deallocate(xsub0,ysub0,asub0)   
     ! Open the catchment definition file for the EASE grid and header (ntot = total number of *land* tiles)
+    !This approach works only when the routed runoff is from land tiles. 
+    !When we add the routing of runoff from landice tiles, this will have to be revisited
     open(77, file="clsm/catchment.def");read(77, *) ntot
-    ! Allocate arrays with size ntot
     allocate(latc(ntot),lonc(ntot),lati_tile(ntot),loni_tile(ntot))
     open(10,file="til/"//trim(gfile)//".til", form="formatted", status="old", action='read')
     read(10,*) ntile, npfaf0, nx, ny
     do i=1,4
       read(10,*) 
     enddo
-    do i=1,ntot                                      ! read *land* tile center coords --> assumes land is first in til file!
-      read(10,*) type, pfaf_ind, lonc(i), latc(i)    ! til file format here is specific to EASE grid!
+    do i=1,ntot                                                                ! read *land* tile center coords --> assumes land is first in til file!
+      read(10,*) type, pfaf_ind, lonc(i), latc(i), loni_tile(i), lati_tile(i)  ! til file format here is specific to EASE grid!
     end do  
-    close(10)  
-    call nearest_index_vector(latc,lats,lati_tile)
-    call nearest_index_vector(lonc,lons,loni_tile)
+    close(10) 
+
+    lati_tile = lati_tile + 1
+    loni_tile = loni_tile + 1
     ! record into map_tile
     allocate(map_tile(nc_ease,nr_ease))
     map_tile=-9999

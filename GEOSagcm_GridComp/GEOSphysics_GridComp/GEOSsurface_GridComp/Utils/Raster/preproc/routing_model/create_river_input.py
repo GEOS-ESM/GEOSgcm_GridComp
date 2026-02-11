@@ -78,30 +78,29 @@ fac_kstr = 0.01
 
 RRM_K_STR = fac_kstr*Kstr_catchment
 RRM_K_RIV = Kv_catchment
-Qin_catchment0 = Qin_catchment*rho
-Qri_catchment0 = Qri_catchment*rho
-Qstr_catchment0 = Qstr_catchment*rho
-
-Qmean = (Qin_catchment0 + Qri_catchment0)/2.
-valid_mask = np.abs(Qmean) > small
-Qref = np.zeros_like(Qmean)
-Qref[valid_mask] = (Qri_catchment0[valid_mask] - Qin_catchment0[valid_mask]) / Qmean[valid_mask]
-
-nume = Qri_catchment0**(2.0 - RRM_M) - Qin_catchment0**(2.0 - RRM_M)
-
-# Calculate denominator for the llc calculation
-deno = (2.0 - RRM_M) * (Qri_catchment0 - Qin_catchment0) * (Qri_catchment0**(1.0 - RRM_M))
 
 # Initialize llc with a copy of llc_ori or a zero array of same shape
 llc = np.zeros_like(lriv_catchment)
 
+Qin_catchment0 = Qin_catchment*rho
+Qri_catchment0 = Qri_catchment*rho
+Qstr_catchment0 = Qstr_catchment*rho
+
+#Qmean = (Qin_catchment0 + Qri_catchment0)/2.
+#valid_mask = np.abs(Qmean) > small
+#Qref = np.zeros_like(Qmean)
+#Qref[valid_mask] = (Qri_catchment0[valid_mask] - Qin_catchment0[valid_mask]) / Qmean[valid_mask]
+#nume = Qri_catchment0**(2.0 - RRM_M) - Qin_catchment0**(2.0 - RRM_M)
+# Calculate denominator for the llc calculation
+#deno = (2.0 - RRM_M) * (Qri_catchment0 - Qin_catchment0) * (Qri_catchment0**(1.0 - RRM_M))
 # Apply 'where' conditions using NumPy indexing
 # Compute llc where denominator is not too small
-mask_deno = Qref > 1.e-4 
-llc[mask_deno] = lriv_catchment[mask_deno] * (nume[mask_deno] / deno[mask_deno])
-
+#mask_deno = Qref > 1.e-4 
+#llc[mask_deno] = lriv_catchment[mask_deno] * (nume[mask_deno] / deno[mask_deno])
 # Set llc to half of original value if denominator is small
-llc[~mask_deno] = lriv_catchment[~mask_deno]
+#llc[~mask_deno] = lriv_catchment[~mask_deno]
+
+llc = lriv_catchment
 
 # Calculate alp_s (stream coefficient) and alp_r (river coefficient)
 alp_s = np.zeros_like(Qstr_catchment0)
@@ -300,8 +299,8 @@ create_var("QRI_CLMT", np.float32(Qri_catchment), ("tile",), "m+3 s-1", "climato
 create_var("QSTR_CLMT", np.float32(Qstr_catchment), ("tile",), "m+3 s-1", "climatology_of_catchment_stream_flow")
 create_var("DOWNID", np.float32(dnid_catchment), ("tile",), "1", "downstream_catchment_id")
 create_var("AREA_CATCH", np.float32(area_catchment), ("tile",), "m+2", "catchment_area")
-create_var("RRM_ALPHA_RIV", np.float32(alp_r), ("tile",), "1", "River alpha parameter")
-create_var("RRM_ALPHA_STR", np.float32(alp_s), ("tile",), "1", "Stream alpha parameter")
+create_var("RRM_ALPHA_RIV", np.float32(alp_r), ("tile",), "1", "Alpha_parameter_for_main_rivers")
+create_var("RRM_ALPHA_STR", np.float32(alp_s), ("tile",), "1", "Alpha_parameter_for_streams")
 
 # Reservoir variables
 create_var("ACTIVE_RES", np.float32(active_res), ("tile",), "1", "active_reservoirs")
@@ -309,7 +308,7 @@ create_var("CAP_RES", np.float32(cap_res), ("tile",), "m+3", "max_capacity_of_re
 create_var("FLD_RES", np.float32(fld_res), ("tile",), "1", "flood_control_flag_of_reservoirs")
 create_var("TYPE_RES", np.float32(type_res), ("tile",), "1", "type_of_reservoirs")
 create_var("WID_RES", np.float32(wid_res), ("tile",), "m", "length_scale_of_reservoirs")
-create_var("RRM_ALPHA_RES", np.float32(alp_res), ("tile",), "1", "Reservoir alpha parameter")
+create_var("RRM_ALPHA_RES", np.float32(alp_res), ("tile",), "1", "Alpha_parameter_for_reservoirs")
 
 
 # Close file
