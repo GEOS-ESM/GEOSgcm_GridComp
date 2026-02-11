@@ -79,7 +79,7 @@ contains
     call formatter%get_var("CatchIndex", catchind)
     call formatter%close()
     
-   do i = 1, nc_ease
+    do i = 1, nc_ease
        call MAPL_ease_inverse( trim(GridName), real(i-1), 0.0, tmp_lat, tmp_lon)
        lons(i) = tmp_lon
     enddo
@@ -293,52 +293,24 @@ contains
     end do
   end subroutine
 
-  ! calcluate uniform latlon grid area  with center-lats and center-lons
-  ! get area of spherical rectangle given the four corners
-  ! p4 ------ p3
-  !    |    |
-  !    |    |
-  !    |    |
-  ! p1 ------ p2
+  ! get area of uniform lat-lat grid cell
   subroutine calculate_cellarea( center_lons, center_lats, cellarea)
      real(kind=REAL64), intent(in) :: center_lons(:), center_lats(:)
      real, intent(out):: cellarea(:,:)
 
-     integer :: nlon, nlat, i, j
-     real(kind=REAL64) :: half_lat, half_lon, p1(2), p2(2), p3(2), p4(2)
-     real(kind=REAL64), allocatable :: corner_lons(:,:),corner_lats(:,:)
-     
+     integer :: nlon, nlat, j
+     real(kind=REAL64) :: del_lat_lon
+     real(kind=real64), allocatable :: c_lats(:)
+ 
      nlon = size(center_lons)
      nlat = size(center_lats)
 
-     half_lon = 180.d0/nlon
-     half_lat = 90.d00/nlat
-     allocate(corner_lons(nlon,4), corner_lats(nlat,4))
-     corner_lons(:,1) = center_lons(:) - half_lon
-     corner_lons(:,2) = center_lons(:) + half_lon
-     corner_lons(:,3) = center_lons(:) + half_lon
-     corner_lons(:,4) = center_lons(:) - half_lon
-
-     corner_lats(:,1) = center_lats(:) - half_lat
-     corner_lats(:,2) = center_lats(:) - half_lat
-     corner_lats(:,3) = center_lats(:) + half_lat
-     corner_lats(:,4) = center_lats(:) + half_lat
-
-     where (corner_lons < -180.d0) corner_lons = -180.d0
-     where (corner_lons >  180.d0) corner_lons =  180.d0
-     where (corner_lats < -90.d0)  corner_lats = -90d0
-     where (corner_lats >  90.d0)  corner_lats =  90.d0
-     corner_lats = corner_lats * MAPL_DEGREES_TO_RADIANS_R8 
-     corner_lons = corner_lons * MAPL_DEGREES_TO_RADIANS_R8
+     del_lat_lon = 2*MAPL_PI_R8/nlon * MAPL_PI_R8/nlat
+     c_lats = center_lats * MAPL_DEGREES_TO_RADIANS_R8 
      do j = 1, nlat
-        do i = 1, nlon
-           p1 = [corner_lons(i,1), corner_lats(j,1)]
-           p2 = [corner_lons(i,2), corner_lats(j,2)]
-           p3 = [corner_lons(i,3), corner_lats(j,3)]
-           p4 = [corner_lons(i,4), corner_lats(j,4)]
-           cellarea(i,j) = get_area_spherical_polygon(p1,p4,p2,p3)
-        enddo
-     enddo     
+       cellarea(:,j) = cos(c_lats(j))*del_lat_lon
+     enddo
+
   end subroutine calculate_cellarea
   
 end module EASE_pfaf_fracMod
