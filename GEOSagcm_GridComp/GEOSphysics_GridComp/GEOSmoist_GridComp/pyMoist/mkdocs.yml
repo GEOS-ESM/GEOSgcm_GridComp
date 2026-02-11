@@ -123,5 +123,5 @@ nav:
   - UW:
       - "compute_uwshcu": UW/compute_uwshcu.md
       - "config": UW/config.md
-      - "temporaries": UW/temporaries.md
+      - "locals": UW/locals.md
       - "uwshcu_functions": UW/uwshcu_functions.md

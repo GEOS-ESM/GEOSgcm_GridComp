@@ -7384,10 +7384,10 @@ class ComputeUwshcuInv(NDSLRuntime):
         """Compute the University of Washington's Shallow Convection
 
         Args:
-            stencil_factory (StencilFactory): Factory for creating stencil computations.
-            quantity_factory (QuantityFactory): Factory for creating quantities.
-            UW_config (dataclass): Data class containing configuration dependent
-            constants.
+            stencil_factory: Factory for creating stencil computations.
+            quantity_factory: Factory for creating quantities.
+            config: Data class containing configuration dependent
+                constants.
             formulation: Saturation Formulation used for QSat.
         """
 
