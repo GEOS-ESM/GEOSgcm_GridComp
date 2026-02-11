@@ -1,9 +1,9 @@
 from f90nml import Namelist
-from gt4py.cartesian.gtscript import int32
 
 import pyMoist.constants as constants
 from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py

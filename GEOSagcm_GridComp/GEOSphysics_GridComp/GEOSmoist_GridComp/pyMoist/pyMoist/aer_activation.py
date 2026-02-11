@@ -1,8 +1,7 @@
-from gt4py.cartesian.gtscript import PARALLEL, computation, exp, float64, interval, log, sqrt
-
 import pyMoist.constants as constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, float64, interval, log, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.field_types import FloatField_NModes
 from pyMoist.numerical_recipes import Erf

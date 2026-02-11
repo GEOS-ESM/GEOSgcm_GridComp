@@ -1,8 +1,6 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, sqrt
-
 import pyMoist.constants as constants
 import pyMoist.pyMoist_constants as py_constants
+from ndsl.dsl.gt4py import K, erfc, exp, float32, float64, function, log, sin, sqrt
 from ndsl.dsl.typing import Float, FloatField, Int
 from pyMoist.field_types import FloatField_NTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
@@ -13,7 +11,7 @@ zvir = Float(0.609)  # r_H2O/r_air-1
 ROVCP = constants.MAPL_RGAS / constants.MAPL_CP  # Gas constant over specific heat
 
 
-@gtscript.function
+@function
 def exnerfn(
     p: Float,
 ) -> Float:
@@ -31,7 +29,7 @@ def exnerfn(
     return (p / 100000.0) ** (constants.MAPL_RGAS / constants.MAPL_CP)
 
 
-@gtscript.function
+@function
 def slope_bot(
     field: FloatField,
     p0: FloatField,
@@ -57,7 +55,7 @@ def slope_bot(
     return slope
 
 
-@gtscript.function
+@function
 def slope_bot_tracer(
     field: FloatField_NTracers,
     p0: FloatField,
@@ -76,7 +74,7 @@ def slope_bot_tracer(
     return slope
 
 
-@gtscript.function
+@function
 def slope_mid(
     max_k: Int,
     field: FloatField,
@@ -105,7 +103,7 @@ def slope_mid(
     return slope
 
 
-@gtscript.function
+@function
 def slope_mid_tracer(
     max_k: Int,
     field: FloatField_NTracers,
@@ -126,7 +124,7 @@ def slope_mid_tracer(
     return slope
 
 
-@gtscript.function
+@function
 def ice_fraction(
     temp: Float,
     cnv_frc: Float,
@@ -196,7 +194,7 @@ def ice_fraction(
     return ice_frac
 
 
-@gtscript.function
+@function
 def conden(
     p: Float,
     thl: Float,
@@ -265,7 +263,7 @@ def conden(
     return float32(th), float32(qv), float32(ql), float32(qi), float32(rvls), id_check
 
 
-@gtscript.function
+@function
 def compute_alpha(
     del_CIN: Float,
     ke: Float,
@@ -298,7 +296,7 @@ def compute_alpha(
     return compute_alpha
 
 
-@gtscript.function
+@function
 def compute_mumin2(
     mulcl: Float,
     rmaxfrax: Float,
@@ -341,7 +339,7 @@ def compute_mumin2(
     return compute_mumin2
 
 
-@gtscript.function
+@function
 def compute_ppen(
     wtwb: Float,
     drag: Float,
@@ -406,7 +404,7 @@ def compute_ppen(
     return compute_ppen
 
 
-@gtscript.function
+@function
 def getbuoy(
     pbot: Float,
     thv0bot: Float,
@@ -467,7 +465,7 @@ def getbuoy(
     return plfc, cin  # Note: plfc and cin are returned, but not always used
 
 
-@gtscript.function
+@function
 def qsinvert(
     qt: Float,
     thl: Float,
@@ -552,7 +550,7 @@ def qsinvert(
     return float32(qsinvert)
 
 
-@gtscript.function
+@function
 def sign(
     a: Float,
     b: Float,
@@ -576,7 +574,7 @@ def sign(
     return result
 
 
-@gtscript.function
+@function
 def roots(
     a: Float,
     b: Float,
@@ -624,7 +622,7 @@ def roots(
     return r1, r2, status
 
 
-@gtscript.function
+@function
 def single_cin(
     pbot: Float,
     thv0bot: Float,
