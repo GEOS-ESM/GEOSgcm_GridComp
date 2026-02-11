@@ -20,7 +20,6 @@ real, allocatable    :: asub(:,:)   ! Aggregated area for each sub-catchment
 real*8, allocatable  :: lon(:), lat(:)      ! Longitude and latitude arrays from NetCDF file
 integer, allocatable :: loni(:), lati(:)     ! Mapped integer indices from 1-minute resolution files
 integer, allocatable :: catchind(:,:)        ! 2D array of catchment indices for each grid cell
-real, allocatable    :: cellarea(:,:)           ! 2D array of cell areas
 
 
 ! Define file path for input routing data:
@@ -34,7 +33,7 @@ call get_command_argument(1, file_path)
 
 ! Allocate arrays based on the defined dimensions:
 allocate(xsub(nmax, nc), ysub(nmax, nc), asub(nmax, nc))
-allocate(catchind(nlon, nlat), cellarea(nlon, nlat))
+allocate(catchind(nlon, nlat))
 allocate(lon(nlon), lat(nlat))
 allocate(loni(nlon), lati(nlat))
 
@@ -42,8 +41,6 @@ allocate(loni(nlon), lati(nlat))
 call read_ncfile_double1d(trim(file_path), "longitude", lon, nlon)
 call read_ncfile_double1d(trim(file_path), "latitude", lat, nlat)
 call read_ncfile_int2d(trim(file_path), "CatchIndex", catchind, nlon, nlat)
-call read_ncfile_real2d("output/cellarea.nc", "data", cellarea, nlon, nlat)
-cellarea = cellarea / 1.e6   ! Convert cell area units (from m^2 to km^2)
 
 ! Read mapped grid indices for 1-minute resolution from text files:
 open(10, file="temp/lati_1m_M09.txt")
@@ -58,7 +55,7 @@ ysub = 0         ! Initialize y-coordinate array for sub-catchments to zero
 asub = 0.        ! Initialize aggregated area values to zero
 
 ! Loop over each 1m grid cell to accumulate cell areas into sub-catchments:
-call EASE_Find_subs(catchind, loni, lati, cellarea, nsub, xsub, ysub, asub)
+call EASE_Find_subs(catchind, loni, lati, lat, nsub, xsub, ysub, asub)
 
 ! Open output files to write the aggregated sub-catchment information:
 open(50, file="temp/Pfaf_nsub_M09.txt")

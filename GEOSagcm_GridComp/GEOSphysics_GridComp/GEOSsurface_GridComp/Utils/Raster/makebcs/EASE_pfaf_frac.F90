@@ -39,7 +39,6 @@ contains
     integer, allocatable :: loni2(:), lati2(:)
     ! loni and lati: Arrays holding mapping indices from 1-minute resolution data files
     integer, allocatable :: catchind(:,:)                      ! 2D array holding catchment indices for each grid cell
-    real,    allocatable :: cellarea(:,:)                      ! 2D array containing the area of each grid cell
     
     ! Declare allocatable arrays for catchment ID, parent catchment ID, and boundary coordinates
     integer, allocatable, dimension(:)   :: lati_tile, loni_tile
@@ -60,14 +59,12 @@ contains
     
     ! Define file path for input routing data:
     character(len=256)   :: pfafData_file    
-    !character(len=256)   :: cellarea_file
 
     pfafData_file = trim(BCS_PATH)//"/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
-    !cellarea_file = trim(BCS_PATH)//"/route/routing_model/v1/cellarea.nc"
     call MAPL_ease_extent( trim(GridName), nc_ease, nr_ease)   
  
     ! Allocate arrays with the specified dimensions:
-    allocate(catchind(nlon, nlat), cellarea(nlon, nlat))
+    allocate(catchind(nlon, nlat))
     allocate(lon(nlon), lat(nlat))
     allocate(loni(nlon), lati(nlat),loni2(nlon), lati2(nlat))
     allocate(lons(nc_ease),lats(nr_ease))
@@ -79,7 +76,7 @@ contains
     call formatter%get_var("CatchIndex", catchind)
     call formatter%close()
     
-   do i = 1, nc_ease
+    do i = 1, nc_ease
        call MAPL_ease_inverse( trim(GridName), real(i-1), 0.0, tmp_lat, tmp_lon)
        lons(i) = tmp_lon
     enddo
@@ -90,17 +87,9 @@ contains
     call nearest_index_vector(lat, lats, lati)
     call nearest_index_vector(lon, lons, loni)
     
-    !call formatter%open(trim(cellarea_file), PFIO_READ)
-    !call formatter%get_var("data", cellarea)
-    !call formatter%close()
-    !cellarea = cellarea / 1.e6  ! Convert cell area (e.g., from m^2 to km^2)
-
-    call calculate_cellarea(lon, lat, cellarea)
-    cellarea = cellarea * MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 ! unit km^2
-
-    ! Initialize aggregation arrays to zero:
+! Initialize aggregation arrays to zero:
     allocate(xsub0(9999, nPfaf), ysub0(9999, nPfaf), asub0(9999, nPfaf))
-    call EASE_Find_subs(catchind, loni, lati, cellarea, nsub, xsub0, ysub0, asub0)
+    call EASE_Find_subs(catchind, loni, lati, lat, nsub, xsub0, ysub0, asub0)
 
     nmax = maxval(nsub)
     !print *,nmax
@@ -248,15 +237,16 @@ contains
     end do
   end subroutine nearest_index_vector
 
-  subroutine EASE_Find_subs(catchind, loni, lati, cellarea, nsub, xsub0, ysub0, asub0)
-    integer, intent(in)  :: catchind(:,:)
-    integer, intent(in)  :: loni(:), lati(:)
-    real,    intent(in)  :: cellarea(:,:)
-    integer, intent(out) :: nsub(:)
-    integer, intent(out) :: xsub0(:,:), ysub0(:,:)
-    real,    intent(out) :: asub0(:,:)
+  subroutine EASE_Find_subs(catchind, loni, lati, lat, nsub, xsub0, ysub0, asub0)
+    integer,           intent(in)  :: catchind(:,:)
+    integer,           intent(in)  :: loni(:), lati(:)
+    real(kind=REAL64), intent(in)  :: lat(:)
+    integer,           intent(out) :: nsub(:)
+    integer,           intent(out) :: xsub0(:,:), ysub0(:,:)
+    real,              intent(out) :: asub0(:,:)
 
     integer :: xi, yi, flag, id, i, nlon, nlat
+    real(kind=REAL64)  :: cellarea, delta
 
     nlon  = size(loni)
     nlat  = size(lati)
@@ -265,9 +255,12 @@ contains
     ysub0 = 0
     asub0 = 0.
 
+    delta = 2*MAPL_PI_R8/nlon * MAPL_PI_R8/nlat
     ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
-    do xi = 1, nlon
-      do yi = 1, nlat
+    do yi = 1, nlat
+      cellarea = cos(lat(yi) * MAPL_DEGREES_TO_RADIANS_R8)*delta
+      cellarea = cellarea*MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 ! convert to km^2
+      do xi = 1, nlon
         if (catchind(xi, yi) >= 1) then
           ! The raster grid cell belongs to a catchment
           id = catchind(xi, yi)  ! Get the catchment id for the current cell
@@ -278,7 +271,7 @@ contains
               if (loni(xi) == xsub0(i, id) .and. lati(yi) == ysub0(i, id)) then
                 flag = 1
                 ! If a match is found, accumulate the cell area into the existing sub-area:
-                asub0(i, id) = asub0(i, id) + cellarea(xi, yi)
+                asub0(i, id) = asub0(i, id) + cellarea
                 exit  ! Exit the inner loop since a matching sub-area has been found
               endif
             end do
@@ -288,59 +281,11 @@ contains
             nsub(id) = nsub(id) + 1
             xsub0(nsub(id), id) = loni(xi)
             ysub0(nsub(id), id) = lati(yi)
-            asub0(nsub(id), id) = cellarea(xi, yi)
+            asub0(nsub(id), id) = cellarea
           endif
         endif
       end do
     end do
   end subroutine
 
-  ! calcluate uniform latlon grid area  with center-lats and center-lons
-  ! get area of spherical rectangle given the four corners
-  ! p4 ------ p3
-  !    |    |
-  !    |    |
-  !    |    |
-  ! p1 ------ p2
-  subroutine calculate_cellarea( center_lons, center_lats, cellarea)
-     real(kind=REAL64), intent(in) :: center_lons(:), center_lats(:)
-     real, intent(out):: cellarea(:,:)
-
-     integer :: nlon, nlat, i, j
-     real(kind=REAL64) :: half_lat, half_lon, p1(2), p2(2), p3(2), p4(2)
-     real(kind=REAL64), allocatable :: corner_lons(:,:),corner_lats(:,:)
-     
-     nlon = size(center_lons)
-     nlat = size(center_lats)
-
-     half_lon = 180.d0/nlon
-     half_lat = 90.d00/nlat
-     allocate(corner_lons(nlon,4), corner_lats(nlat,4))
-     corner_lons(:,1) = center_lons(:) - half_lon
-     corner_lons(:,2) = center_lons(:) + half_lon
-     corner_lons(:,3) = center_lons(:) + half_lon
-     corner_lons(:,4) = center_lons(:) - half_lon
-
-     corner_lats(:,1) = center_lats(:) - half_lat
-     corner_lats(:,2) = center_lats(:) - half_lat
-     corner_lats(:,3) = center_lats(:) + half_lat
-     corner_lats(:,4) = center_lats(:) + half_lat
-
-     where (corner_lons < -180.d0) corner_lons = -180.d0
-     where (corner_lons >  180.d0) corner_lons =  180.d0
-     where (corner_lats < -90.d0)  corner_lats = -90d0
-     where (corner_lats >  90.d0)  corner_lats =  90.d0
-     corner_lats = corner_lats * MAPL_DEGREES_TO_RADIANS_R8 
-     corner_lons = corner_lons * MAPL_DEGREES_TO_RADIANS_R8
-     do j = 1, nlat
-        do i = 1, nlon
-           p1 = [corner_lons(i,1), corner_lats(j,1)]
-           p2 = [corner_lons(i,2), corner_lats(j,2)]
-           p3 = [corner_lons(i,3), corner_lats(j,3)]
-           p4 = [corner_lons(i,4), corner_lats(j,4)]
-           cellarea(i,j) = get_area_spherical_polygon(p1,p4,p2,p3)
-        enddo
-     enddo     
-  end subroutine calculate_cellarea
-  
 end module EASE_pfaf_fracMod

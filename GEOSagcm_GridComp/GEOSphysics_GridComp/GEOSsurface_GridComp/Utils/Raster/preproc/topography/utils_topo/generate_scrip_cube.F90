@@ -52,7 +52,13 @@
 
 !EOC
 
-    real(REAL64), parameter           :: PI = 3.14159265358979323846
+    ! Define PI and Earth RADIUS here to avoid explicit dependency on MAPL (so program can be used outside GEOS).
+    ! When using the program with GEOS, probably best to make sure values are consistent with those in MAPL.
+    ! HOWEVER: Value of PI is hardcoded a total of five times in this file, with two distinct values!
+    !
+    real(REAL64), parameter           :: PI           = 3.14159265358979323846  !       ( MAPL_PI=3.14159265358979323846d0  as of Feb 2026 )
+    real(REAL64), parameter           :: EARTH_RADIUS = 6371.d0                 ! [km]  ( MAPL_RADIUS=6731.0E3 [m]  real*4  as of Feb 2026 )
+    
     integer                           :: npets, localPet
     integer                           :: i, j, k
     integer :: rc
@@ -747,10 +753,10 @@
              write(*,*) "CRITICAL DEBUG cell:", n, i, j
              write(*,*) "local_min_length very small or zero:", local_min_length_all(n)
              write(*,*) "Polygon lengths (km):", &
-                        great_circle_dist(p1,p2,6371.d0), &
-                        great_circle_dist(p2,p3,6371.d0), &
-                        great_circle_dist(p3,p4,6371.d0), &
-                        great_circle_dist(p4,p1,6371.d0)
+                        great_circle_dist(p1,p2,EARTH_RADIUS), &
+                        great_circle_dist(p2,p3,EARTH_RADIUS), &
+                        great_circle_dist(p3,p4,EARTH_RADIUS), &
+                        great_circle_dist(p4,p1,EARTH_RADIUS)
              write(*,*) "Polygon coords (deg):", &
                         "p1", p1*180/pi, "p2", p2*180/pi, &
                         "p3", p3*180/pi, "p4", p4*180/pi
