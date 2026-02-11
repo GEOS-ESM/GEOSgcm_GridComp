@@ -397,7 +397,8 @@ subroutine SetServices ( GC, RC )
         call ESMF_FieldWrite(meshField, trim(ISSM_EXPDIR)//"/icesmb.nc", variableName='ICESMB',timeslice=1,rc=STATUS)
         VERIFY_(STATUS)
         
-        ! save nodes to reconstructing mesh output after running
+        ! save nodes for reconstructing mesh output after running
+        ! looping over three nodes per triangle
         do i = 1, 3
             conn_slice = [( elementConn(j), j=i, size(elementConn), 3 )]
         
@@ -424,6 +425,16 @@ subroutine SetServices ( GC, RC )
             VERIFY_(STATUS)
         
         end do
+
+        ! ---- element IDs ----
+        varname = "elementIds"
+        field_saver = elementIds(:)
+        field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
+        VERIFY_(STATUS)
+        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/mesh.nc", variableName=varname, rc=STATUS)
+        VERIFY_(STATUS)
+        call ESMF_FieldDestroy(field, rc=STATUS)
+        VERIFY_(STATUS)
 
         deallocate(field_saver)
         deallocate(nodelons)
