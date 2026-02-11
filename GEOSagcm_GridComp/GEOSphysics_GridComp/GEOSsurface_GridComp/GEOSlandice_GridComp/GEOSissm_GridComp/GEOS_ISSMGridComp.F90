@@ -391,7 +391,7 @@ subroutine SetServices ( GC, RC )
         nodelons = nodeCoords(1::2)
         nodelats = nodeCoords(2::2)
     
-        ! initialize ICEEL and ICESMB to have time slices
+        ! initialize ICEEL and ICESMB mesh netcdf files to have time slices
         call ESMF_FieldWrite(meshField, trim(ISSM_EXPDIR)//"/iceel.nc", variableName='ICEEL',timeslice=1,rc=STATUS)
         VERIFY_(STATUS)
         call ESMF_FieldWrite(meshField, trim(ISSM_EXPDIR)//"/icesmb.nc", variableName='ICESMB',timeslice=1,rc=STATUS)
