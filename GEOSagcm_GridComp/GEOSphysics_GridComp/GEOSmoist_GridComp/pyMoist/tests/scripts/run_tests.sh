@@ -18,4 +18,4 @@ python -m pytest -s -v --disable-warnings --multimodal_metric \
     --grid=default \
     --no_report \
     --threshold_overrides_file=./overrides.yml \
-    ..
+    ../translate_tests
