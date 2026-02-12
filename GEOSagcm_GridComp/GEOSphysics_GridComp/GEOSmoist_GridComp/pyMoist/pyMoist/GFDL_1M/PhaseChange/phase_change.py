@@ -14,7 +14,7 @@ from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
 from pyMoist.GFDL_1M.PhaseChange.rh_calculations import fill_rh_crit_export, rh_calculations
 from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.saturation_tables import SaturationVaporPressureTable
-from pyMoist.shared.incloud_processes import fix_up_clouds
+from pyMoist.shared_incloud.processes import fix_up_clouds
 
 
 class PhaseChange(NDSLRuntime):

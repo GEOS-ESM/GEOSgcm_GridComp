@@ -18,12 +18,12 @@ from pyMoist.constants import (
 )
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.stencils import prepare_tendencies
-from pyMoist.shared.interpolations import vertical_interpolation
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
     SaturationVaporPressureTable,
     saturation_specific_humidity,
 )
+from pyMoist.shared.interpolations import vertical_interpolation
 
 
 def calculate_derived_states(
