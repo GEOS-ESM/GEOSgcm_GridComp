@@ -6,7 +6,7 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.constants import constants
-from pyMoist.shared_generic_math import sigma
+from pyMoist.shared.atmos_recipes import sigma
 
 
 def init_temporaries(

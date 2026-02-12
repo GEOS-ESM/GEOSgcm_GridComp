@@ -4,7 +4,7 @@ from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
 
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.radiation_coupling import radiation_coupling
+from pyMoist.shared.radiation_coupling import radiation_coupling
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
     SaturationVaporPressureTable,
