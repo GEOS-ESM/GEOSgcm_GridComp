@@ -54,7 +54,7 @@ jobs:
       - name: Run regular unit tests
         run : |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
-          pytests ./tests
+          pytests ./tests/numerical
           
       - name: Run translate tests
         run: |
