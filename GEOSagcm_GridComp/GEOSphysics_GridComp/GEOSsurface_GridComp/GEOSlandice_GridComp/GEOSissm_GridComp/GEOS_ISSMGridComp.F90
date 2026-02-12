@@ -272,6 +272,8 @@ subroutine SetServices ( GC, RC )
     character(len=16) :: varname
     character(len=1)  :: istr
 
+    type(ESMF_Grid)                        :: mesh_grid                    ! atmospheric grid
+    type(MAPL_LocStream)                   :: mesh_locstream   
 
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
@@ -445,6 +447,12 @@ subroutine SetServices ( GC, RC )
         deallocate(conn_slice)
     end if 
 
+    mesh_grid = create_mesh_grid(_RC)
+    call MAPL_LocstreamCreate(mesh_Locstream, mesh_Grid, local_id=elementIds,  _RC)
+    call MAPL%grid%set(mesh_grid, _RC)
+    call ESMF_GridCompSet(gc, grid=mesh_grid, _RC)
+    Call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
+
     ! deallocate pointers
     deallocate(argv)
     deallocate(argv_ptr)
@@ -461,8 +469,53 @@ subroutine SetServices ( GC, RC )
     ! generic initialize 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
-
     RETURN_(ESMF_SUCCESS)
+
+    contains
+
+       function create_mesh_grid(rc) result(mesh_grid)
+          type (ESMF_Grid) :: mesh_grid
+          integer, optional, intent(out) :: rc
+          integer :: status, nDEs, num(1)
+          real(kind=8), pointer :: centers(:,:)
+          integer, allocatable  :: IMs(:)
+          
+
+          !comm, VM, num_elements are from containing subroutine
+          call ESMF_VMGet(VM, petcount=nDEs,  _RC) 
+          allocate(IMS(nDEs))
+          num(1) = num_elements
+          call MAPL_CommsAllGather(VM, num, 1, IMs, 1, _RC) 
+
+          ! create a mesh-grid in 1D
+          mesh_grid = ESMF_GridCreate(        &
+               name='MESH_GRID',              &
+               countsPerDEDim1=IMs,           &
+               countsPerDEDim2=[1],           &
+               indexFlag=ESMF_INDEX_DELOCAL,  &
+               coordDep1 = (/1,2/),           &
+               coordDep2 = (/1,2/),           &
+               gridEdgeLWidth = (/0,0/),      &
+               gridEdgeUWidth = (/0,0/),      &
+               _RC)
+          ! coord and centers are required for a valid grid,
+          ! even if their values don't make sense;
+          ! later on, the coord will be set to catchment's lat lon.
+          call ESMF_GridAddCoord(mesh_grid, _RC)
+          _VERIFY(status)
+
+          call ESMF_GridGetCoord(mesh_grid, coordDim=1, localDE=0, &
+               staggerloc=ESMF_STAGGERLOC_CENTER, &
+               farrayPtr=centers, _RC)
+          centers = 0 ! can assign element coord
+          call ESMF_GridGetCoord(mesh_grid, coordDim=2, localDE=0, &
+               staggerloc=ESMF_STAGGERLOC_CENTER, &
+               farrayPtr=centers, _RC)
+          centers = 0 ! 
+
+          _RETURN(_SUCCESS)
+       end function create_mesh_grid      
+
   end subroutine Initialize
 
   !BOP
@@ -661,36 +714,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if (ISSM_SAVEMESH/=0) then
         call ESMF_FieldWrite(srcField, trim(ISSM_EXPDIR)//"/iceel.nc", variableName='ICEEL',rc=STATUS)
     end if 
-    
-    ! create destination field: ice elevation on grid
-    dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
-    VERIFY_(STATUS)
-
-    ! regrid ice elevation from mesh to grid
-    call ESMF_FieldRegrid(srcField, dstField, routehandle_m2g, RC=STATUS); VERIFY_(STATUS)
-
-    ! get pointer to ice elevation on grid
-    call ESMF_FieldGet(dstField,farrayPtr=ICEEL_GRID,RC=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     
     ! get pointer to export
-    call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' , alloc=.true. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' , RC=STATUS); VERIFY_(STATUS)
 
-    ! allocate tiles for ice elevation (MKTILE)
-    if(associated(ICEEL) .and. .not.associated(ICEEL_TILE)) then
-      allocate(ICEEL_TILE(NT), STAT=STATUS)
-      VERIFY_(STATUS)
-      ICEEL_TILE = MAPL_Undef
-    end if
+    if(associated(ICEEL) ) ICEEL = ICEEL_MESH
    
-    ! transform from grid to tiles  
-    call MAPL_LocStreamTransform( internal_state%LOCSTREAM, ICEEL_TILE,ICEEL_GRID, RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! assign to export pointer
-    if(associated(ICEEL)) ICEEL(:) = ICEEL_TILE(:)
-
-    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
-    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
   end if 
 
