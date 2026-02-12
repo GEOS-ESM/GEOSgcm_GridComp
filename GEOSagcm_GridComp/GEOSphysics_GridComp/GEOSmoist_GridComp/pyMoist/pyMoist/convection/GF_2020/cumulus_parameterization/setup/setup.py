@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity
+from ndsl import StencilFactory, QuantityFactory, Quantity, NDSLRuntime
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
@@ -159,7 +159,7 @@ def prefil_internal_fields(
         add_buoyancy = 0.0
         scale_dependence_factor_downdraft = 0.0
 
-    # internal fields
+    # ensure locals are zero, no lingering data from previous call
     with computation(PARALLEL), interval(...):
         geopotential_height_local = geopotential_height
         geopotential_height_modified_local = geopotential_height
@@ -169,7 +169,7 @@ def prefil_internal_fields(
         c1d = 0.0
         evaporation_below_cloud_base = 0.0
 
-    # internal fields
+    # ensure locals are zero, no lingering data from previous call
     # reset all ensemble members
     with computation(FORWARD), interval(0, 1):
         member = 0
@@ -178,7 +178,7 @@ def prefil_internal_fields(
             precipitation_ensemble[0, 0][member] = 0.0
             member = member + 1
 
-    # external fields (from outside cumulus parameterizaton)
+    # reset state fields to zero
     with computation(FORWARD), interval(0, 1):
         epsilon_forced[0, 0][plume] = 0.0
         precip[0, 0][plume] = 0.0
@@ -279,7 +279,7 @@ def calculate_arbitrary_numerical_parameter(
         # 0.1*mbdt(i)
 
 
-class Setup:
+class Setup(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -287,6 +287,9 @@ class Setup:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+        
         # make configuration visible at runtime
         self.config = config
         self.cu_param_config = cumulus_parameterization_config
