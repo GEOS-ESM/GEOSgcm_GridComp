@@ -1,4 +1,32 @@
 #!/usr/bin/env python3
+"""
+scrip_to_cube_topo.py
+
+Purpose
+-------
+Convert old-style cubed-sphere data stored on a flat 'ncol' dimension
+(ncol = 6 * IM * IM) into a GEOS-style cubed-sphere file with explicit
+faces and (Xdim,Ydim), using an example file to copy the grid geometry.
+
+Inputs
+------
+-i, --input    : source NetCDF with 'ncol' (and optional 'nrdg')
+-e, --example  : GEOS-style example NetCDF providing 'lons', 'lats',
+                 'corner_lons', 'corner_lats', and Xdim/Ydim sizes
+-o, --output   : destination NetCDF4
+-v, --vars ... : optional list of variable names to convert (defaults to all)
+
+What it does
+--------
+• Infers IM from the example file's Xdim; sets dims:
+    nf = 6, Xdim = IM, Ydim = IM, XCdim = IM+1, YCdim = IM+1
+• Reshapes variables:
+    (ncol)          -> (nf, Ydim, Xdim)
+    (nrdg, ncol)    -> (nrdg, nf, Ydim, Xdim)
+• Copies variable attributes (excluding _FillValue).
+• Writes grid-mapping metadata and coordinates ('lons','lats','corner_*')
+  by copying them from the example file.
+"""
 
 #-------------
 # Load modules

@@ -16,7 +16,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
-  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail
+  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail, ifflag
 
   implicit none
 
@@ -58,8 +58,11 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: MAX_RI
   logical :: LHYDROSTATIC
   logical :: LPHYS_HYDROSTATIC
-  logical :: LMELTFRZ
-  real    :: GFDL_MP_PLID
+  logical :: LMELTFRZ_CLDMACRO
+  logical :: LMELTFRZ_CLDMICRO
+  real    :: GFDL_MP_KLID
+
+  logical :: REPORT_GFDL_1M_NEGATIVES
 
   logical :: GFDL_MP3
 
@@ -228,7 +231,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     CHARACTER(len=ESMF_MAXSTR) :: errmsg
 
-    real                     :: cf_max
+    real                     :: cf_min, cf_max
     real                     :: DBZ_DT
     type(ESMF_Calendar)      :: calendar
     type(ESMF_Alarm)         :: DBZ_RunAlarm
@@ -251,8 +254,10 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     LHYDROSTATIC = LPHYS_HYDROSTATIC
-    call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.TRUE., RC=STATUS)
+    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMACRO, Label="MELTFRZ_CLDMACRO:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMICRO, Label="MELTFRZ_CLDMICRO:",  default=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)   
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
@@ -266,11 +271,13 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource(MAPL, REPORT_GFDL_1M_NEGATIVES, 'REPORT_GFDL_1M_NEGATIVES:', default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
+
     call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (DT_R8 <= 150.0) do_hail = .true. 
 
     if (GFDL_MP3) then
-      call gfdl_mp_init(LHYDROSTATIC)
+      call gfdl_mp_init(LHYDROSTATIC,DT_MOIST)
       call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_mp v3 in non-generic GC INIT")
     else  
       call gfdl_cloud_microphys_init()
@@ -313,15 +320,17 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
                                  CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
+                        cf_min =   500.0
+    if (DT_R8 <= 150.0) cf_min = -9999.0 ! force MoistGC to use EIS for cnv_frc
     ! variations on max CAPE for convective fraction as timestep changes with resolution
     cf_max = 100.0 * NINT( (1500.0+2500.0*(1-(DT_R8-30.0)/(900.0-30.0))**2) /100.0 )
     if (cf_max < 1500.0) cf_max = 1500.0
     if (cf_max > 4000.0) cf_max = 4000.0
     if (DT_R8 <= 150.0) cf_max = -9999.0 ! force MoistGC to use EIS for cnv_frc
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT= cf_min, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= cf_max, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, GFDL_MP_PLID    , 'GFDL_MP_PLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, GFDL_MP_KLID    , 'GFDL_MP_KLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
 
     call init_refl10cm()
 
@@ -525,8 +534,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     U0       = U
     V0       = V
     KLCL     = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
-    if (GFDL_MP_PLID > 0.0) then
-        KLID = FIND_KLID( GFDL_MP_PLID, PLE, RC=STATUS ); VERIFY_(STATUS)
+    if (GFDL_MP_KLID > 0.0) then
+        KLID = GFDL_MP_KLID
     else
         KLID = 1
     endif
@@ -655,12 +664,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         do L=1,LM
           do J=1,JM
            do I=1,IM
-           ! cleanup clouds
+           ! cleanup clouds before cldmacro
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
                                                      QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
                                                      REMOVE_CLOUDS=(L < KLID) )
            ! Send the condensates through the pdf after convection [0:1 , unstable:stable]
-             facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
+             facEIS = get_fac_eis(EIS(I,J),SRF_TYPE(I,J))
            ! determine combined minrhcrit in unstable/stable regimes
              minrhcrit = MIN_RH_UNSTABLE*(1.0-facEIS) + MIN_RH_STABLE*facEIS
            ! include grid cell area scaling and limit RHcrit to > 70%
@@ -725,7 +734,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       .false.        , &
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
-             if (LMELTFRZ) then
+             if (LMELTFRZ_CLDMACRO) then
            ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
                             CNV_FRC(I,J) , &
@@ -773,7 +782,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
              endif
              endif
-           ! cleanup clouds
+           ! cleanup clouds after cldmacro
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
                                                      QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), & 
                                                      REMOVE_CLOUDS=(L < KLID) )
@@ -794,14 +803,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_CLDMACRO', RC=STATUS); VERIFY_(STATUS)
 ! Cleanup negative water species
 ! ------------------------------
-    call FILLQ2ZERO( Q       , MASS, DT=DT_MOIST, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After GFDL Cloud Macrophysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QLLS    , MASS, DT=DT_MOIST, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After GFDL Cloud Macrophysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QLCN    , MASS, DT=DT_MOIST, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After GFDL Cloud Macrophysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QILS    , MASS, DT=DT_MOIST, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After GFDL Cloud Macrophysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QICN    , MASS, DT=DT_MOIST, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After GFDL Cloud Macrophysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QRAIN   , MASS, DT=DT_MOIST, DQDT=  DQRDT_FILL, WARNING_LABEL="QR   After GFDL Cloud Macrophysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)  
-    call FILLQ2ZERO( QSNOW   , MASS, DT=DT_MOIST, DQDT=  DQSDT_FILL, WARNING_LABEL="QS   After GFDL Cloud Macrophysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)  
-    call FILLQ2ZERO( QGRAUPEL, MASS, DT=DT_MOIST, DQDT=  DQGDT_FILL, WARNING_LABEL="QG   After GFDL Cloud Macrophysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)  
+    call FILLQ2ZERO( Q       , MASS, DT=DT_MOIST, DQDT=  DQVDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLLS    , MASS, DT=DT_MOIST, DQDT=DQLLSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLCN    , MASS, DT=DT_MOIST, DQDT=DQLCNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QILS    , MASS, DT=DT_MOIST, DQDT=DQILSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QICN    , MASS, DT=DT_MOIST, DQDT=DQICNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QRAIN   , MASS, DT=DT_MOIST, DQDT=  DQRDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)  
+    call FILLQ2ZERO( QSNOW   , MASS, DT=DT_MOIST, DQDT=  DQSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)  
+    call FILLQ2ZERO( QGRAUPEL, MASS, DT=DT_MOIST, DQDT=  DQGDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)  
 
     ! Update macrophysics tendencies
      DUDT_macro=( U         - DUDT_macro)/DT_MOIST
@@ -913,11 +922,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! constant grid/time information
                                LHYDROSTATIC, 1, IM*JM, 1,LM, KLID, &
                              ! Output tendencies
-                               DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
-                               DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, DUDTmic, DVDTmic, DWDTmic, &
+                               DQADTmic, &
+                             ! Output rain re-evaporation and sublimation
+                               REV_LS, RSU_LS, &
                              ! Output mass flux during sedimentation (Pa kg/kg)
                                PFL_LS(:,:,1:LM), PFR_LS(:,:,1:LM), PFI_LS(:,:,1:LM), PFS_LS(:,:,1:LM), PFG_LS(:,:,1:LM) )
-       ! Convert cloud/precipitation flux exports from (mm/day) to (kg m-2 s-1)
+       ! Convert evap/subl/cloud/precipitation flux exports from (mm/day) to (kg m-2 s-1)
+           REV_LS = REV_LS/(86400.0)
+           RSU_LS = RSU_LS/(86400.0)
            PFL_LS = PFL_LS/(86400.0)
            PFI_LS = PFI_LS/(86400.0)
            PFR_LS = PFR_LS/(86400.0)
@@ -952,21 +964,31 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFR_LS = 0.0
            PFS_LS = 0.0
            PFG_LS = 0.0
+           T = T + DTDTmic * DT_MOIST
+           U = U + DUDTmic * DT_MOIST
+           V = V + DVDTmic * DT_MOIST
+       ! Apply moist/cloud species tendencies
+           RAD_QV = RAD_QV + DQVDTmic * DT_MOIST
+           RAD_QL = RAD_QL + DQLDTmic * DT_MOIST
+           RAD_QR = RAD_QR + DQRDTmic * DT_MOIST
+           RAD_QI = RAD_QI + DQIDTmic * DT_MOIST
+           RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
+           RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          endif
-     ! Apply tendencies
-         call apply_microphysics_tendencies(IM, JM, LM, DT_MOIST, &
-                    RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, &
-                    T, U, V, &
-                    DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
-                    DQSDTmic, DQGDTmic, DQADTmic, &
-                    DTDTmic, DUDTmic, DVDTmic)
-     ! CleanUp Negative Water Vapor, cloud liquid/ice, and condensates
-         call FILLQ2ZERO(RAD_QV, MASS, WARNING_LABEL="QV   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QL, MASS, WARNING_LABEL="QL   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QI, MASS, WARNING_LABEL="QI   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QR, MASS, WARNING_LABEL="QR   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QS, MASS, WARNING_LABEL="QS   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QG, MASS, WARNING_LABEL="QG   After GFDL Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+     ! CleanUp Negative Water Species
+         if (REPORT_GFDL_1M_NEGATIVES) then
+           call neg_adj_external(IM, JM, LM, RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, &
+                                 WARNING_LABEL="After GFDL_1M Driver", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         else
+           call neg_adj_external(IM, JM, LM, RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, &
+                                 VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         endif
+     ! Update cloud fraction
+         where (RAD_QL+RAD_QI > 0.0)
+            RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
+         elsewhere
+            RAD_CF = 0.0
+         end where
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Fill vapor/rain/snow/graupel state
@@ -974,36 +996,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          QRAIN    = RAD_QR
          QSNOW    = RAD_QS
          QGRAUPEL = RAD_QG
-
-    if (DEBUG_TQ_ERRORS) then
-         do L = 1, LM
-           do J = 1, JM
-             do I = 1, IM
-             if ( (       T(I,J,L) > 333.0) .OR. (       T(I,J,L) /=        T(I,J,L)) .OR. &
-                   (       Q(I,J,L) < 0.0  ) .OR. (       Q(I,J,L) /=        Q(I,J,L)) .OR. &
-                   (    QLLS(I,J,L) < 0.0  ) .OR. (    QLLS(I,J,L) /=     QLLS(I,J,L)) .OR. &
-                   (    QLCN(I,J,L) < 0.0  ) .OR. (    QLCN(I,J,L) /=     QLCN(I,J,L)) .OR. &
-                   (    QILS(I,J,L) < 0.0  ) .OR. (    QILS(I,J,L) /=     QILS(I,J,L)) .OR. &
-                   (    QICN(I,J,L) < 0.0  ) .OR. (    QICN(I,J,L) /=     QICN(I,J,L)) .OR. &
-                   (   QRAIN(I,J,L) < 0.0  ) .OR. (   QRAIN(I,J,L) /=    QRAIN(I,J,L)) .OR. &
-                   (   QSNOW(I,J,L) < 0.0  ) .OR. (   QSNOW(I,J,L) /=    QSNOW(I,J,L)) .OR. &
-                   (QGRAUPEL(I,J,L) < 0.0  ) .OR. (QGRAUPEL(I,J,L) /= QGRAUPEL(I,J,L)) ) then
-                 print *, "T or Q  spike detected : ", T(I,J,L)
-                 print *, "    GFDL DTDTmic Temp Increment : ", DTDTmic(I,J,L) * DT_MOIST
-                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
-                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
-                 print *, "  Pressure (mb)  =", PLmb(I,J,L)
-                 print *, "                        CLLS=",   CLLS(I,J,L), "   CLCN=",    CLCN(I,J,L)
-                 print *, "                      RAD_QL=", RAD_QL(I,J,L), " RAD_QI=",  RAD_QI(I,J,L)
-                 print *, "    QV=",   Q(I,J,L), " QLLS=",   QLLS(I,J,L), "   QLCN=",    QLCN(I,J,L)
-                 print *, "                        QILS=",   QILS(I,J,L), "   QICN=",    QICN(I,J,L)
-                 print *, "    QR=", QRAIN(I,J,L), "   QS=",  QSNOW(I,J,L), "     QG=", QGRAUPEL(I,J,L)
-               endif
-             enddo
-           enddo
-         enddo
-    endif
-
      ! Get fill negative export pointers if requested
      ! ----------------------------------------------                      
          call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_CLDMICRO', RC=STATUS); VERIFY_(STATUS)
@@ -1016,14 +1008,25 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call MAPL_GetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_CLDMICRO', RC=STATUS); VERIFY_(STATUS)
      ! Cleanup negative water species
      ! ------------------------------
-         call FILLQ2ZERO( Q       , MASS, DT=DT_MOIST, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After GFDL Cloud Microphysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO( QLLS    , MASS, DT=DT_MOIST, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After GFDL Cloud Microphysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO( QLCN    , MASS, DT=DT_MOIST, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After GFDL Cloud Microphysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO( QILS    , MASS, DT=DT_MOIST, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After GFDL Cloud Microphysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO( QICN    , MASS, DT=DT_MOIST, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After GFDL Cloud Microphysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO( QRAIN   , MASS, DT=DT_MOIST, DQDT=  DQRDT_FILL, WARNING_LABEL="QR   After GFDL Cloud Microphysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO( QSNOW   , MASS, DT=DT_MOIST, DQDT=  DQSDT_FILL, WARNING_LABEL="QS   After GFDL Cloud Microphysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO( QGRAUPEL, MASS, DT=DT_MOIST, DQDT=  DQGDT_FILL, WARNING_LABEL="QG   After GFDL Cloud Microphysics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         if (REPORT_GFDL_1M_NEGATIVES) then
+           call FILLQ2ZERO( Q       , MASS, DT=DT_MOIST, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After GFDL_1M REDISTRIBUTE_CLOUDS", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QLLS    , MASS, DT=DT_MOIST, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After GFDL_1M REDISTRIBUTE_CLOUDS", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QLCN    , MASS, DT=DT_MOIST, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After GFDL_1M REDISTRIBUTE_CLOUDS", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QILS    , MASS, DT=DT_MOIST, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After GFDL_1M REDISTRIBUTE_CLOUDS", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QICN    , MASS, DT=DT_MOIST, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After GFDL_1M REDISTRIBUTE_CLOUDS", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QRAIN   , MASS, DT=DT_MOIST, DQDT=  DQRDT_FILL, WARNING_LABEL="QR   After GFDL_1M REDISTRIBUTE_CLOUDS", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QSNOW   , MASS, DT=DT_MOIST, DQDT=  DQSDT_FILL, WARNING_LABEL="QS   After GFDL_1M REDISTRIBUTE_CLOUDS", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QGRAUPEL, MASS, DT=DT_MOIST, DQDT=  DQGDT_FILL, WARNING_LABEL="QG   After GFDL_1M REDISTRIBUTE_CLOUDS", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         else
+           call FILLQ2ZERO( Q       , MASS, DT=DT_MOIST, DQDT=  DQVDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QLLS    , MASS, DT=DT_MOIST, DQDT=DQLLSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QLCN    , MASS, DT=DT_MOIST, DQDT=DQLCNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QILS    , MASS, DT=DT_MOIST, DQDT=DQILSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QICN    , MASS, DT=DT_MOIST, DQDT=DQICNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QRAIN   , MASS, DT=DT_MOIST, DQDT=  DQRDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QSNOW   , MASS, DT=DT_MOIST, DQDT=  DQSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QGRAUPEL, MASS, DT=DT_MOIST, DQDT=  DQGDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         endif
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_WATER   = MAX(PRCP_WATER   / 86400.0, 0.0)
          PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
@@ -1046,7 +1049,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          do L = 1, LM
            do J = 1, JM
              do I = 1, IM
-               if (LMELTFRZ) then
+               if (LMELTFRZ_CLDMICRO) then
                 ! meltfrz new condensates
                  call MELTFRZ ( DT_MOIST     , &
                                 CNV_FRC(I,J) , &
@@ -1061,11 +1064,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                 T(I,J,L)     , &
                                 QLLS(I,J,L)  , &
                                 QILS(I,J,L) )
+                ! cleanup clouds
+                 call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
+                                                         QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
+                                                         REMOVE_CLOUDS=(L < KLID) )
                endif
-              ! cleanup clouds
-               call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
-                                                       QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
-                                                       REMOVE_CLOUDS=(L < KLID) )
               ! get radiative properties
                call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
@@ -1086,6 +1089,28 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
          RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
          RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
+
+     ! Cleanup negative water species
+     ! ------------------------------
+         if (REPORT_GFDL_1M_NEGATIVES) then
+           call FILLQ2ZERO( Q       , MASS, WARNING_LABEL="QV   After GFDL_1M RADCOUPLE", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QLLS    , MASS, WARNING_LABEL="QLLS After GFDL_1M RADCOUPLE", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QLCN    , MASS, WARNING_LABEL="QLCN After GFDL_1M RADCOUPLE", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QILS    , MASS, WARNING_LABEL="QILS After GFDL_1M RADCOUPLE", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QICN    , MASS, WARNING_LABEL="QICN After GFDL_1M RADCOUPLE", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QRAIN   , MASS, WARNING_LABEL="QR   After GFDL_1M RADCOUPLE", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QSNOW   , MASS, WARNING_LABEL="QS   After GFDL_1M RADCOUPLE", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QGRAUPEL, MASS, WARNING_LABEL="QG   After GFDL_1M RADCOUPLE", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         else
+           call FILLQ2ZERO( Q       , MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QLLS    , MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QLCN    , MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QILS    , MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QICN    , MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QRAIN   , MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QSNOW   , MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+           call FILLQ2ZERO( QGRAUPEL, MASS, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+         endif
 
          ! Update microphysics tendencies
          DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
@@ -1122,7 +1147,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                  print *, "                      RAD_QL=", RAD_QL(I,J,L), " RAD_QI=",  RAD_QI(I,J,L)
                  print *, "    QV=",   Q(I,J,L), " QLLS=",   QLLS(I,J,L), "   QLCN=",    QLCN(I,J,L)
                  print *, "                        QILS=",   QILS(I,J,L), "   QICN=",    QICN(I,J,L)
-                 print *, "    QR=", QRAIN(I,J,L), "   QS=",  QSNOW(I,J,L), "     QG=", QGRAUPEL(I,J,L)
+                 print *, "    QR=",QRAIN(I,J,L),"   QS=",  QSNOW(I,J,L), "     QG=", QGRAUPEL(I,J,L)
                endif
              enddo
            enddo

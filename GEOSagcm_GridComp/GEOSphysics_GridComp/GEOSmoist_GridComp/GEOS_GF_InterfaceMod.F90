@@ -38,6 +38,7 @@ module GEOS_GF_InterfaceMod
   real    :: SCLM_DEEP
   real    :: GF_MIN_AREA
   logical :: FIX_CNV_CLOUD
+  logical :: REPORT_GF_NEGATIVES
 
   public :: GF_Setup, GF_Initialize, GF_Run
 
@@ -117,16 +118,18 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
     else
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     endif
+    call MAPL_GetResource(MAPL, REPORT_GF_NEGATIVES, 'REPORT_GF_NEGATIVES:', default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
     IF (USE_GF2020==1) THEN
-      call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)          , 'CONGESTUS:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP)      , 'CLOSURE_DEEP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)      , 'CLOSURE_SHALLOW:'       ,default= 7,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      if (INT(ZERO_DIFF) == 0) then
+      if (INT(ZERO_DIFF_ENTR) == 0) then
         call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.3e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
@@ -166,16 +169,16 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, BETA_SH                   , 'BETA_SH:'               ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF       , 'USE_LINEAR_SUBCL_MF:'   ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CAP_MAXS                  , 'CAP_MAXS:'              ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'CURRENT', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
-      if (INT(ZERO_DIFF) == 0) then
+      if (INT(ZERO_DIFF_ENTR) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-                                     SGS_W_TIMESCALE = 3 ! Hours
+                                     SGS_W_TIMESCALE = 4 ! Hours
          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default=  3600., RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 21600., RC=STATUS );VERIFY_(STATUS)
       else
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,   RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
@@ -206,7 +209,6 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      if (INT(ZERO_DIFF) == 0) then
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
@@ -231,32 +233,6 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
-      else
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'     ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'     ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(DEEP)    , 'MIN_EDT_LAND_DP:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(SHAL)    , 'MIN_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(MID)     , 'MIN_EDT_LAND_MD:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
-      endif
       call MAPL_GetResource(MAPL, SCLM_DEEP                 , 'SCLM_DEEP:'             ,default= 1.0,   RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD             , 'FIX_CNV_CLOUD:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ELSE
@@ -585,12 +561,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     endif
 
     IF (USE_GF2020==1) THEN
-         !- Determine which W is proper import
-         IF (all(W == 0.0)) THEN
-            TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
-         ELSE
-            TMP3D = W
-         ENDIF
+         ! Convert OMEGA (Pa/s) to W (m/s)
+         TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pa
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
@@ -677,11 +649,19 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_DC', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_DC', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_DC', RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    if (REPORT_GF_NEGATIVES) then
+      call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+      call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+      call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+      call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+      call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After GF DeepCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    else
+      call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+      call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+      call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+      call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+      call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    endif
 
     if (DEBUG_TQ_ERRORS) then
         do L=1,LM

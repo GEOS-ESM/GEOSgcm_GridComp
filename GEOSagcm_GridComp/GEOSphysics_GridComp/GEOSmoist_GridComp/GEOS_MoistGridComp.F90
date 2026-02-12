@@ -108,10 +108,6 @@ contains
     logical :: LSHALLOW
     logical :: LCLDMICR
 
-    integer :: pdfRestartSkip, gfEnvRestartSkip, PDFSHAPE
-
-    CHARACTER(len=10) :: GF_ENV_SETTING
-
     !=============================================================================
 
     ! Begin...
@@ -177,20 +173,6 @@ contains
                adjustl(CLDMICR_OPTION)=="THOM_1M" .or. &
                adjustl(CLDMICR_OPTION)=="MGB2_2M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
-
-    call MAPL_GetResource( CF, GF_ENV_SETTING, Label="GF_ENV_SETTING:",  default='DYNAMICS', RC=STATUS) ; VERIFY_(STATUS)
-    if (trim(GF_ENV_SETTING)=='DYNAMICS') then
-       pdfRestartSkip = MAPL_RestartOptional
-    else
-       pdfRestartSkip = MAPL_RestartSkip
-    endif
-
-    call MAPL_GetResource( CF, PDFSHAPE, Label="PDFSHAPE:",  default=1, RC=STATUS) ; VERIFY_(STATUS)
-    if (PDFSHAPE.eq.5) then
-       gfEnvRestartSkip = MAPL_RestartOptional
-    else
-       gfEnvRestartSkip = MAPL_RestartSkip
-    endif
 
     call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
@@ -5876,8 +5858,8 @@ contains
               CNV_FRC = 1.0
            END WHERE
        else
-         ! use -1*EIS range 0:1
-           CNV_FRC = MAX(0.0,MIN(1.0,-1*EIS))
+         ! use -1.0*EIS so CNV_FRC 0:1 for EIS 0:-1
+           CNV_FRC = MAX(0.0,MIN(1.0,-1.0*EIS))
        endif
 
        ! Extract convective tracers from the TR bundle
@@ -6382,33 +6364,11 @@ contains
 
        ! diagnosed stratiform precip (rain+snow)
        call MAPL_GetPointer(EXPORT, PREC_STRAT, 'PREC_STRAT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(PREC_STRAT)) then
-          if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-             PREC_STRAT = (1.0-CNV_FRC)*TPREC
-          else
-             PREC_STRAT = 0.0
-             call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-             if (associated(PTR2D)) PREC_STRAT = PREC_STRAT + PTR2D
-             call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-             if (associated(PTR2D)) PREC_STRAT = PREC_STRAT + PTR2D
-          endif
-          PREC_STRAT = MAX(PREC_STRAT, 0.0)
-       endif
+       if (associated(PREC_STRAT)) PREC_STRAT = MAX((1.0-CNV_FRC)*TPREC, 0.0)
 
        ! diagnosed convective precip (rain+snow)
        call MAPL_GetPointer(EXPORT, PREC_CONV, 'PREC_CONV', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(PREC_CONV)) then
-          if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-             PREC_CONV = CNV_FRC*TPREC
-          else
-             PREC_CONV = 0.0
-             call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-             if (associated(PTR2D)) PREC_CONV = PREC_CONV + PTR2D
-             call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
-             if (associated(PTR2D)) PREC_CONV = PREC_CONV + PTR2D
-          endif
-          PREC_CONV = MAX(PREC_CONV, 0.0)
-       endif
+       if (associated(PREC_CONV)) PREC_CONV = MAX(CNV_FRC*TPREC, 0.0)
 
      ! Diagnostic precip types:
        call MAPL_GetPointer(EXPORT, ICE,   'ICE',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
