@@ -60,7 +60,7 @@ nav:
   - Shared:
       - "interpolations": shared/interpolations.md
       - "numerical_recipes": shared/numerical_recipes.md
-      - "atmos_receipe": shared/atmos_receipe.md
+      - "atmos_recipes": shared/atmos_recipes.md
       - "gt4py_workarounds": shared/gt4py_workarounds.md
       - "incloud_processes": shared/incloud_processes.md
   - Saturation Tables:

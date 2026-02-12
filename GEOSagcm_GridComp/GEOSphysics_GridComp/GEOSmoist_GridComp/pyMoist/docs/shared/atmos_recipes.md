@@ -1,3 +1,3 @@
-# atmos_receipe
+# atmos_recipes
 
-::: pyMoist.shared.atmos_receipe
+::: pyMoist.shared.atmos_recipes
