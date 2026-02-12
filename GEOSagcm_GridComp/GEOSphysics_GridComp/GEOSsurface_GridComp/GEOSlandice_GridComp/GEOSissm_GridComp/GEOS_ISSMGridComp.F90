@@ -86,7 +86,8 @@ type T_ISSM_STATE
   private
   type(ESMF_RouteHandle) :: routehandle_m2g ! routehandle for regridding mesh to grid
   type(ESMF_RouteHandle) :: routehandle_g2m ! routehandle for regridding grid to mesh
-  type(ESMF_GRID)        :: Agrid           ! original grid
+  type(ESMF_GRID)        :: grid           ! original grid
+  type(MAPL_LocStream)   :: locstream   
 end type T_ISSM_STATE
 
 ! Wrapper for extracting internal state
@@ -375,6 +376,8 @@ subroutine SetServices ( GC, RC )
     internal_state%routehandle_m2g  = routehandle_m2g
     internal_state%routehandle_g2m  = routehandle_g2m 
     internal_state%grid             = grid
+    call MAPL_Get(MAPL, LocStream = internal_state%locstream, _RC)
+
     wrap%ptr => internal_state
     call ESMF_UserCompSetInternalState ( GC, 'ISSM_WRAP', wrap, status )
     VERIFY_(STATUS)
@@ -488,16 +491,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_RouteHandle)               :: routehandle_g2m         ! grid to mesh routehandle
   type(ESMF_Field)                     :: srcField                ! source field for regridding
   type(ESMF_Field)                     :: dstField                ! destination field for regridding
-  type(ESMF_Grid)                      :: grid                    ! atmospheric grid
   type(T_ISSM_STATE), pointer          :: internal_state=>null()  ! stores the routehandles
   type(ISSM_WRAP)                      :: wrap                    ! wrapper for routehandle container
   type(ESMF_Mesh)                      :: mesh                    ! ESMF version of ISSM mesh
   integer(c_int)                       :: num_elements            ! number of elements on each PET
-  integer                              :: IM, JM                  ! local grid size
+  integer                              :: IM, JM, local_dims(3)   ! local grid size
 
   ! tile information
-  type (MAPL_LocStream       )         :: locstream               ! tile locstream 
-  integer, pointer, dimension(:)       :: TILETYPES               ! types of tiles
   integer                              :: NT                      ! number of tiles
 
   ! ice elevation on mesh, grid, tile
@@ -571,24 +571,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! set smb and surface to zero (not sure this is needed...)
     ICEEL_MESH(:) = 0.0_dp
 
-    ! get LocStream for landice tiles for regridding
-    call MAPL_Get(MAPL, LocStream = locstream, TILETYPES = TILETYPES, RC=STATUS)
-    VERIFY_(STATUS)
-    NT = size(TILETYPES)
-
-    ! get the atmospheric grid 
-    call ESMF_GridCompGet( GC, GRID=grid, RC=status )
-    VERIFY_(STATUS)
-    
-    ! get grid dimensions local to PET
-    call MAPL_Get(MAPL, IM = IM, JM=JM, RC=STATUS )
-    VERIFY_(STATUS)
-    
     ! get routehandles for regridding
     call ESMF_UserCompGetInternalState(GC, 'ISSM_WRAP', wrap, status); VERIFY_(STATUS)
     internal_state => wrap%ptr
     routehandle_m2g = internal_state%routehandle_m2g  ! mesh to grid 
     routehandle_g2m = internal_state%routehandle_g2m  ! grid to mesh
+    call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
+    call MAPL_GridGet(internal_state%grid, localCellCountPerDim=local_dims, _RC)
+    IM = local_dims(1)
+    JM = local_dims(2)
 
     ! *************************************************************************** !
     ! IMPORT SMB (surface mass balance) & REGRID FROM TILES [to grid] to MESH 
@@ -613,11 +604,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! NOTE: we use the "transpose" option with MAPL_LocStreamTransformG2T 
     ! (rather than MAPL_LocStreamTransformT2G) because the "default" value is zero
     ! (rather than MAPL_UNDEF, which leads to errors when regridding onto mesh)
-    call MAPL_LocStreamTransform( LOCSTREAM, ICESMB_TILE, ICESMB_GRID, TRANSPOSE=.true., RC=STATUS)
+    call MAPL_LocStreamTransform( internal_state%LOCSTREAM, ICESMB_TILE, ICESMB_GRID, TRANSPOSE=.true., RC=STATUS)
     VERIFY_(STATUS)
 
     ! create source field: SMB on grid
-    srcField = ESMF_FieldCreate(grid=grid,farrayPtr=ICESMB_GRID, datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
+    srcField = ESMF_FieldCreate(grid=internal_state%grid,farrayPtr=ICESMB_GRID, datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
     VERIFY_(STATUS)
 
     ! create destination field: SMB on mesh elements
@@ -672,7 +663,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if 
     
     ! create destination field: ice elevation on grid
-    dstField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
+    dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
     VERIFY_(STATUS)
 
     ! regrid ice elevation from mesh to grid
@@ -692,7 +683,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
    
     ! transform from grid to tiles  
-    call MAPL_LocStreamTransform( LOCSTREAM, ICEEL_TILE,ICEEL_GRID, RC=STATUS)
+    call MAPL_LocStreamTransform( internal_state%LOCSTREAM, ICEEL_TILE,ICEEL_GRID, RC=STATUS)
     VERIFY_(STATUS)
 
     ! assign to export pointer
