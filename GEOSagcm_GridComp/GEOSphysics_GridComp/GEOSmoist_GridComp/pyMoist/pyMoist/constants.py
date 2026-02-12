@@ -1,7 +1,7 @@
 """File containing all constants used for pyMoist"""
 
 import numpy as np
-from ndsl.dsl.typing import Float
+from ndsl.dsl.typing import Float, Int
 
 
 _f32 = np.float32
@@ -67,7 +67,7 @@ MAPL_CPVAP = Float(4) * MAPL_RVAP  # J/(kg K)
 MAPL_CVVAP = MAPL_CPVAP - MAPL_RVAP  # J/(kg K)
 MAPL_RGAS = MAPL_RDRY  # MAPL_RDRY  # J/(kg K) (DEPRECATED)
 MAPL_CP = MAPL_RGAS / MAPL_KAPPA  # J/(kg K) (DEPRECATED)
-MAPL_P00 = 100000.0  # Pa
+MAPL_P00 = Float(100000.0)  # Pa
 
 EPSILON = MAPL_H2OMW / MAPL_AIRMW  # --
 MAPL_CELSIUS_TO_KELVIN = Float(273.15)  # K
@@ -115,8 +115,8 @@ ALHLBCP = MAPL_ALHL / MAPL_CP
 ALHSBCP = MAPL_ALHS / MAPL_CP
 
 # Constants for cloud_effective_radius_liquid and cloud_effective_radius_ice
-LIQ_RADII_PARAM = 2
-ICE_RADII_PARAM = 1
+LIQ_RADII_PARAM = Int(2)
+ICE_RADII_PARAM = Int(1)
 BX = Float(100.0) * (Float(3.0) / (Float(4.0) * MAPL_PI)) ** (Float(1.0) / Float(3.0))
 R13BBETA = Float(1.0) / Float(3.0) - Float(0.14)
 ABETA = Float(0.07)
