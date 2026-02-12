@@ -1,5 +1,7 @@
 # Saturation formulations
 
+⚠️ Saturation tables used in Microphysics live in GFDL_1M code! ⚠️
+
 ## In Fortran
 
 ### GEOS_QSatX
