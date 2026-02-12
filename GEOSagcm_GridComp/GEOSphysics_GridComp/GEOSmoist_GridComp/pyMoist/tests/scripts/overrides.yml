@@ -10,12 +10,7 @@ ComputeUwshcuInv:
       ulp_threshold: 1000
 
 
-GFDL_1M_sublimate:
-  - backend: dace:cpu_kfirst
-    multimodal:
-      ulp_threshold: 32
-
-GFDL_1M_hydrostatic_pdf:
-  - backend: dace:cpu_kfirst
+GFDL_1M_PhaseChange:
+  - backend: dace:cpu_KJI
     multimodal:
       ulp_threshold: 250

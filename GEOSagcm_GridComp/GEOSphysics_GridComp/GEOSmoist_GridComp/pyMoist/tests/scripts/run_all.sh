@@ -11,14 +11,11 @@ export NDSL_LOGLEVEL=Critical
 # UW specific
 export GT4PY_EXTRA_COMPILE_OPT_FLAGS='-fconstexpr-ops-limit=1000000000'
 
-# DEACTIVATED
-
-# python -m pytest -s --disable-warnings --multimodal_metric \
-#     -x \
-#     --which_modules=ComputeUwshcuInv \
-#     --data_path=$1 \
-#     --backend=$2\
-#     --grid=default \
-#     --no_report \
-#     --threshold_overrides_file=./overrides.yml \
-#     ..
+python -m pytest -s -v --disable-warnings --multimodal_metric \
+    --data_path=$1 \
+    --backend=$2 \
+    --grid=default \
+    --no_report \
+    --threshold_overrides_file=./overrides.yml \
+    --which_rank=0 \
+    ../translate_tests
