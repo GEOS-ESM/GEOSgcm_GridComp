@@ -6,7 +6,7 @@ from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log10
 from ndsl.dsl.typing import Float, FloatField
 
 import pyMoist.constants as constants
-from pyMoist.shared.generic_math import air_density
+from pyMoist.shared.atmos_recipes import air_density
 
 
 @function
