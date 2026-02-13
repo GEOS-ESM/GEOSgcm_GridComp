@@ -9,9 +9,6 @@ set(srcs
 set (exe_srcs
    get_Pfaf_file.f90
    get_num_sub_catchment.f90
-   get_lonlat_bond.f90
-   get_isub.f90
-   get_area.f90
    get_Qr_clmt.f90
    get_river_length.f90
    get_K_model_calik.f90
@@ -34,10 +31,9 @@ endforeach ()
 # copy to the build directory
 set(SCRIPT_FILES
   create_river_input.py
-  get_latloni_cellarea.py
+  get_latloni.py
   process_lake_data.py
   get_dam_data.py
-  get_lonlati_maptile.py
   routing_model_constants.py
   run_routing_preproc.py
 )

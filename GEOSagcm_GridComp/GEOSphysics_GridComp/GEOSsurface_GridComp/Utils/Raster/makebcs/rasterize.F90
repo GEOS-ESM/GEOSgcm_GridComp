@@ -6,6 +6,7 @@ module LogRectRasterizeMod
   use MAPL_ExceptionHandling  
   use MAPL_Constants,          only: PI=>MAPL_PI_R8
   use MAPL
+  use catch_constants,        ONLY: CATCH_N_PFAFS
   use, intrinsic :: iso_fortran_env, only: INT32, REAL64
   implicit none
   private
@@ -29,11 +30,10 @@ module LogRectRasterizeMod
   ! SRTM_maxcat = number of Pfafstetter catchments defined in raster file produced by Kristine Version in 2013
   !               (based on DEMs from 3.0-arcsec HydroSHEDS/SRTM south of 60N, 
   !                                   7.5-arcsec GMTED2010 north of 60N, and 
-  !                                   CGIAR/SRTM where HydroSHEDS/SRTM is undefined [typically islands])
-
-  INTEGER, PARAMETER, public:: SRTM_maxcat = 291284    
+  !                                   CGIAR/SRTM where HydroSHEDS/SRTM is undefined [typically islands])  
 
   ! -------------------------------------------------------------------------------------------------------------
+  INTEGER, PARAMETER, public:: SRTM_maxcat = CATCH_N_PFAFS
 
   integer,      parameter :: PUSHLEFT      = 10000
   real(REAL64), parameter :: Zero          = 0.0d0

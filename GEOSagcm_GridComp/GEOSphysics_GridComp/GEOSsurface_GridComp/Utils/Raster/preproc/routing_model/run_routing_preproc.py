@@ -24,12 +24,11 @@ def main():
 
     file_pfafrout       = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
     file_pfafmap        = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
-    file_catdef         = file_path1 + "/fvInput/ExtData/esm/tiles/v12/land/EASEv2_M09/clsm/catchment.def"
 
     file_lat1m          = file_path2 + "/lat_1m.txt"
     file_lon1m          = file_path2 + "/lon_1m.txt"
     file_lat            = file_path2 + "/lat_SMAPL4.txt"
-    file_lon            = file_path2 + "/lon_SMAPL4.txt"
+    file_lon            = file_path2 + "/lon_SMAPL4.txt"    
     file_clmtrunf       = file_path2 + "/SMAPL4_OL7000_runoff_mean_2016_2023.nc"
     file_ldn            = file_path2 + "/hyd_glo_ldn_15s.nc"
     file_hyelev         = file_path2 + "/hyd_glo_dem_15s.nc"
@@ -81,24 +80,13 @@ def main():
 
     # Generate latitude/longitude indices and cell areas
     run([
-        "python3", "get_latloni_cellarea.py",
+        "python3", "get_latloni.py",
         file_lat, file_lon,        
         file_lat1m, file_lon1m,
     ])
 
     # Compute number of sub-catchments
-    run([f"./get_num_sub_catchment.x", file_pfafmap])
-
-    # longitude-latitude boundary
-    run([f"./get_lonlat_bond.x", file_catdef])
-
-    # Map tile longitude/latitude 
-    run(["python3", f"get_lonlati_maptile.py", file_lat, file_lon])
-    # isub calculators
-    run([f"./get_isub.x"])
-
-    # Calculate area of each catchment
-    run([f"./get_area.x", file_pfafmap])    
+    run([f"./get_num_sub_catchment.x", file_pfafmap])  
 
     # Compute climatological runoff
     run(["./get_Qr_clmt.x", file_clmtrunf])
@@ -154,7 +142,7 @@ def main():
         "python3", "create_river_input.py",
     ])
 
-    #subprocess.run(["rm", "-rf", "temp"], check=True)
+    subprocess.run(["rm", "-rf", "temp"], check=True)
 
 if __name__ == "__main__":
     main()
