@@ -1,3 +1,5 @@
 """All translate tests must be imported here to be automatically discoverable by `pytest"""
 
-__all__ = []
+from .UW.translate_compute_uwshcu import TranslateComputeUwshcuInv
+
+__all__ = ["TranslateComputeUwshcuInv"]
