@@ -253,7 +253,7 @@ contains
       integer           :: kpbl(idim)
       integer           :: ncnst, IM, JM
 
-      !$ser verbatim real :: CNV_Tracers_temp(24,24,72,23)
+      !$ser verbatim real :: CNV_Tracers_Q(24,24,72,23)
 
       ncnst = size(CNV_Tracers)
       IM = size(CNV_Tracers(1)%Q,1)
@@ -275,7 +275,7 @@ contains
          th0(:idim,k)        = t0_inv(:idim,k_inv)/exnmid0_inv(:idim,k_inv)
          do m = 1, ncnst
             tr0(:idim,k,m)   = reshape(CNV_Tracers(m)%Q(:,:,k_inv), (/idim/))
-            !$ser verbatim CNV_Tracers_temp(:,:,k,m) = CNV_Tracers(m)%Q(:,:,k)
+            !$ser verbatim CNV_Tracers_Q(:,:,k,m) = CNV_Tracers(m)%Q(:,:,k)
          enddo
       enddo
 
@@ -302,11 +302,13 @@ contains
         if (frland(i)>0.5) cnvtrmax(i) = 0.
         if (isnan(cnvtrmax(i))) cnvtrmax(i) = 0.
       end do
-     
      ! This stays on always
-     !$ser savepoint ComputeUwshcu-In
-     !$ser data dotransport=dotransport ncnst=ncnst
-     !$ser data CNV_Tracers=CNV_Tracers_temp k0=k0 tr0=tr0
+     !$ser savepoint CNV_Tracers-In
+     !$ser data CNV_Tracers=CNV_Tracers_Q 
+
+     ! This stays on always
+     !$ser savepoint ComputeUwshcuInv-constants
+     !$ser data dotransport=dotransport NCNST=ncnst k0=k0
      !$ser data frc_rasn=shlwparams%frc_rasn windsrcavg=shlwparams%windsrcavg 
      !$ser data qtsrchgt=shlwparams%qtsrchgt thlsrc_fac=shlwparams%thlsrc_fac
      !$ser data qtsrc_fac=shlwparams%qtsrc_fac rbuoy=shlwparams%rbuoy epsvarw=shlwparams%epsvarw
@@ -394,18 +396,24 @@ contains
          qc_inv(:idim,k_inv)      = qc(:idim,k)
          xc_inv(:idim,k_inv)      = xc(:idim,k)
 #endif
+    
          if (dotransport.eq.1) then
          do m = 1, ncnst
             do i=1,idim
                tr0(i,k,m)   = MAX(mintracer,tr0(i,k,m))
             enddo
             CNV_Tracers(m)%Q(:,:,k_inv) = reshape(tr0(:,k,m), (/IM,JM/))
+            !$ser verbatim CNV_Tracers_Q(:,:,k_inv,m) = CNV_Tracers(m)%Q(:,:,k_inv)
+          
 #ifdef UWDIAG
             trten_inv(:idim,k_inv,m) = trten(:idim,k,m)            
 #endif
          enddo
          endif
       end do
+     
+     !$ser savepoint CNV_Tracers-Out
+     !$ser data CNV_Tracers=CNV_Tracers_Q(:,:,:,:)
 
       ! $ser data tr0_out=tr0 
       dcm_inv(:idim,k0) = 0.
@@ -1251,6 +1259,7 @@ contains
         ! $ser verbatim enddo
         ! $ser verbatim enddo
         ! $ser verbatim end if
+
       
 
          ! Compute thv0 and thvl0 at top/bottom interfaces in each layer
@@ -4425,6 +4434,7 @@ contains
          enddo
          endif
 
+
         ! CalcPblFluxes
         ! $ser verbatim if (debug_ser .eqv. .true.) then
         ! $ser verbatim if (iter .eq. iter_test) then
@@ -5381,6 +5391,7 @@ contains
         enddo
         endif
 
+
        
         ! $ser verbatim if (debug_ser .eqv. .true.) then
         ! $ser savepoint TracerTendencies-Out
@@ -5833,6 +5844,7 @@ contains
            enddo
            endif
 
+
           ! $ser verbatim if (debug_ser .eqv. .true.) then
           ! $ser savepoint RecalcEnvVariables-Out
           ! $ser verbatim if (iter .eq. iter_test) then
@@ -6216,6 +6228,7 @@ contains
      end do ! column i loop
 
      !$ser verbatim if (debug_ser .eqv. .true.) then
+     !$ser flush_savepoint testvars-In
      !$ser flush_savepoint PrepareInputs-Out
      !$ser flush_savepoint FindPbl-In
      !$ser flush_savepoint FindPbl-Out
