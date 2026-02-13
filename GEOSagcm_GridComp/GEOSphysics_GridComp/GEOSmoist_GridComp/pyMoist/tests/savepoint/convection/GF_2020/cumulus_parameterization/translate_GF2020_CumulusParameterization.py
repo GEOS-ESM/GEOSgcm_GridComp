@@ -144,10 +144,6 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         # workaround because translate test cannot read in 4d fields
         self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-In")
 
-        # DEBUG STUFF
-        self.debug_input = data_loader.load("GF2020_CumulusParameterization_AtmosphericComposition-In")
-        self.debug_output = data_loader.load("GF2020_CumulusParameterization_AtmosphericComposition-Out")
-
     def compute_func(self, **inputs):
         # initialize constants
         config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
