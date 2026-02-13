@@ -7382,7 +7382,6 @@ class ComputeUwshcuInv(NDSLRuntime):
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         config: UWConfiguration,
-        state: UWState,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
         """Compute the University of Washington's Shallow Convection
@@ -7392,7 +7391,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             quantity_factory (QuantityFactory): Factory for creating quantities.
             config (dataclass): Data class containing configuration dependent
             constants.
-            state (State): Data classes containing inputs, inouts, and outputs.
             formulation: Saturation Formulation used for QSat.
         """
 

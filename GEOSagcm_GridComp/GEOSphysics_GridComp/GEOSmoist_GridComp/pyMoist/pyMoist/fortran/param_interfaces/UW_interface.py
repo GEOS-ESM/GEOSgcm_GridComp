@@ -3,18 +3,20 @@ from ndsl.dsl.typing import Float, Int
 from pyGEOSBridge import GEOSInterfaceCode, get_MAPLPy
 
 from pyMoist.fortran import get_NDSL_physics
-from pyMoist.UW import ComputeUwshcuInv, UWConfiguration
+from pyMoist.UW import ComputeUwshcuInv, UWConfiguration, UWState
 
 
 class UWGEOSInterface(GEOSInterfaceCode):
     def __init__(self, name: str) -> None:
-        # Real initialize happening in `init`
-        pass
+        self._state = None
 
     def init(self, mapl_state, import_state, export_state) -> None:
         # Make sure we have our NDSL stack setup
         MAPLPy = get_MAPLPy()
         ndsl_stack = get_NDSL_physics(mapl_state)
+
+        # Init NDSL state
+        self._state = UWState.empty(ndsl_stack.quantity_factory)
 
         if ndsl_stack.quantity_factory.sizer.nz == 72:
             jason_uw = MAPLPy.get_resource("JASON_UW:", mapl_state, default=True)
@@ -59,11 +61,6 @@ class UWGEOSInterface(GEOSInterfaceCode):
             detrhgt=MAPLPy.get_resource("DETRHGT:", mapl_state, default=Float(1800.0)),
             qtsrc_fac=MAPLPy.get_resource("QTSRC_FAC:", mapl_state, default=Float(0.0)),
             qtsrchgt=MAPLPy.get_resource("QTSRCHGT:", mapl_state, default=Float(40.0)),
-            status_PTR2D_1=False,
-            status_PTR2D_2=False,
-            status_PTR2D_3=False,
-            status_PTR3D_1=False,
-            status_PTR3D_2=False,
         )
 
         # Build UW
@@ -88,7 +85,10 @@ class UWGEOSInterface(GEOSInterfaceCode):
         # Imports
         FRLAND = MAPLPy.get_pointer("FRLAND", import_state, dtype=np.float32, dims=MAPLPy.grid_dims[0:2])
         ZLE = MAPLPy.get_pointer("ZLE", import_state, dtype=np.float32)
+
         PLE = MAPLPy.get_pointer("PLE", import_state, dtype=np.float32)
+        self._state.PLE.data = PLE
+
         T = MAPLPy.get_pointer("T", import_state, dtype=np.float32)
         U = MAPLPy.get_pointer("U", import_state, dtype=np.float32)
         V = MAPLPy.get_pointer("V", import_state, dtype=np.float32)
@@ -134,7 +134,7 @@ class UWGEOSInterface(GEOSInterfaceCode):
             "RKFRE", export_state, dtype=np.float32, dims=MAPLPy.grid_dims[0:2], alloc=True
         )
 
-        # self._uw(...)
+        self._uw(self._state)
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         # No finalize call from UW

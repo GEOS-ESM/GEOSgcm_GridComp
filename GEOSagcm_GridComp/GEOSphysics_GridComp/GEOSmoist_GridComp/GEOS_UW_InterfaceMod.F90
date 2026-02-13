@@ -104,7 +104,7 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
     if (USE_PYMOIST_UW) then
       call MAPL_ConfigSetAttribute(CF, UW_DT, 'DSL__UW_DT:', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_pybridge_gcinit( "pyMoist.fortran.UW_interface", MAPL, IMPORT, EXPORT )
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.UW_interface", MAPL, IMPORT, EXPORT )
     else
 
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , RC=STATUS) ; VERIFY_(STATUS)
@@ -241,7 +241,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     VERIFY_(STATUS)
     
     if (USE_PYMOIST_UW) then
-      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
     else
 
     ! Internals
