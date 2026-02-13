@@ -20,6 +20,7 @@ module GEOS_UW_InterfaceMod
   integer USE_TRACER_TRANSP_UW      ! transport tracers in UW
   real    :: SCLM_SHALLOW
   logical :: JASON_UW
+  logical :: USE_PYMOIST_UW = .False.
 
   private
 
@@ -56,8 +57,11 @@ subroutine UW_Setup (GC, CF, RC)
 
 end subroutine UW_Setup
 
-subroutine UW_Initialize (MAPL, CLOCK, RC)
+subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
+    type (ESMF_State),    intent(inout) :: IMPORT
+    type (ESMF_State),    intent(inout) :: EXPORT
+    type (ESMF_Config),   intent(inout) :: CF
     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
     integer :: LM
@@ -95,6 +99,13 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
 
     call MAPL_Get ( MAPL, LM=LM, RC=STATUS )
     VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, USE_PYMOIST_UW, 'USE_PYMOIST_UW:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+
+    if (USE_PYMOIST_UW) then
+      call MAPL_ConfigSetAttribute(CF, UW_DT, 'DSL__UW_DT:', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.UW_interface", MAPL, IMPORT, EXPORT )
+    else
 
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , RC=STATUS) ; VERIFY_(STATUS)
     if (LM==72) then
@@ -144,6 +155,8 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%DETRHGT,          'DETRHGT:'         ,DEFAULT=1800.0, RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT=40.0,   RC=STATUS) ; VERIFY_(STATUS)
+
+    endif ! USE_PYMOIST_UW
 
 end subroutine UW_Initialize
 
@@ -226,6 +239,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          INTERNAL_ESMF_STATE=INTERNAL, &
          RC=STATUS )
     VERIFY_(STATUS)
+    
+    if (USE_PYMOIST_UW) then
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+    else
 
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -435,6 +452,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = CUSH
+    
+    endif ! USE_PYMOIST_UW
 
     call MAPL_TimerOff (MAPL,"--UW")
 
