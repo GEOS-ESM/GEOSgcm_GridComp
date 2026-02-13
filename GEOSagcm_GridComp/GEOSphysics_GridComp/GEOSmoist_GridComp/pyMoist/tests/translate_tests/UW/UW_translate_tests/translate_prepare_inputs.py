@@ -5,6 +5,7 @@ from ndsl import Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, FloatField, Int
 from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -16,10 +17,10 @@ from pyMoist.UW.compute_uwshcu import (
 )
 from pyMoist.UW.config import UWConfiguration
 
-
-# Dev NOTE: The data for this translate test comes from combining two files in
-#           a single nc file using the following NCO tool:
-#           `ncks -A ComputeUwshcu-In.nc PrepareInputs-In.nc`
+# Run the following at command line before running translate test
+# python UW_postprocess_netcdfs.py
+# ncks -A CNV_Tracers-In.nc PrepareInputs-In.nc
+# ncks -A ComputeUwshcuInv-constants2.nc ComputeUwshcuInv-constants.nc
 
 
 class TranslatePrepareInputs(TranslateFortranData2Py):
@@ -28,29 +29,10 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         grid: Grid,
         namelist: Namelist,
         stencil_factory: StencilFactory,
-        # UW_config: UWConfiguration,
     ):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
-        # self.UW_config = UW_config
-
-        self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
-            func=compute_uwshcu_invert_before,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ncnst": 23},
-        )
-        self._compute_thermodynamic_variables = self.stencil_factory.from_dims_halo(
-            func=compute_thermodynamic_variables,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ncnst": 23},
-        )
-
-        self._compute_thv0_thvl0 = self.stencil_factory.from_dims_halo(
-            func=compute_thv0_thvl0,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ncnst": 23},
-        )
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
@@ -68,7 +50,6 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             "ql0_inv": {},
             "qi0_inv": {},
             "t0_inv": {},
-            "tr0": {},
             "frland": {},
             "tke_inv": {},
             "rkfre": {},
@@ -78,40 +59,6 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             "cnvtr": {},
             "CNV_Tracers": {},
         }
-
-        # Float/Int Inputs
-        self.in_vars["parameters"] = [
-            "dotransport",
-            "ncnst",
-            "k0",
-            "windsrcavg",
-            "qtsrchgt",
-            "qtsrc_fac",
-            "thlsrc_fac",
-            "frc_rasn",
-            "rbuoy",
-            "epsvarw",
-            "use_CINcin",
-            "mumin1",
-            "rmaxfrac",
-            "PGFc",
-            "dt",
-            "niter_xc",
-            "criqc",
-            "rle",
-            "cridist_opt",
-            "mixscale",
-            "rkm",
-            "detrhgt",
-            "rdrag",
-            "use_self_detrain",
-            "detrhgt",
-            "use_cumpenent",
-            "rpen",
-            "use_momenflx",
-            "rdrop",
-            "iter_cin",
-        ]
 
         # FloatField Outputs
         self.out_vars = {
@@ -156,44 +103,39 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         qty.view[:, :] = qty.np.asarray(data[:, :])
         return qty
 
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("ComputeUwshcuInv-constants")
+
     def compute(self, inputs):
-        self.UW_config = UWConfiguration(Int(inputs["ncnst"]), Int(inputs["k0"]), Int(inputs["windsrcavg"]))
+        self.config = UWConfiguration(**self.constants)
+
+        self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
+            func=compute_uwshcu_invert_before,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": self.config.NCNST},
+        )
+
+        self._compute_thermodynamic_variables = self.stencil_factory.from_dims_halo(
+            func=compute_thermodynamic_variables,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={"ncnst": self.config.NCNST, "dotransport": self.config.dotransport},
+        )
+
+        self._compute_thv0_thvl0 = self.stencil_factory.from_dims_halo(
+            func=compute_thv0_thvl0,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "ncnst": self.config.NCNST,
+                "k0": self.config.k0,
+                "dotransport": self.config.dotransport,
+            },
+        )
 
         self.quantity_factory.add_data_dimensions(
             {
                 "ntracers": constants.NCNST,
             }
         )
-
-        # Float/Int Inputs
-        dotransport = Int(inputs["dotransport"])
-        k0 = Int(inputs["k0"])
-        windsrcavg = Int(inputs["windsrcavg"])
-        qtsrchgt = Float(inputs["qtsrchgt"])
-        qtsrc_fac = Float(inputs["qtsrc_fac"])
-        thlsrc_fac = Float(inputs["thlsrc_fac"])
-        frc_rasn = Float(inputs["frc_rasn"])
-        rbuoy = Float(inputs["rbuoy"])
-        epsvarw = Float(inputs["epsvarw"])
-        use_CINcin = Int(inputs["use_CINcin"])
-        mumin1 = Float(inputs["mumin1"])
-        rmaxfrac = Float(inputs["rmaxfrac"])
-        PGFc = Float(inputs["PGFc"])
-        dt = Float(inputs["dt"])
-        niter_xc = Int(inputs["niter_xc"])
-        criqc = Float(inputs["criqc"])
-        rle = Float(inputs["rle"])
-        cridist_opt = Int(inputs["cridist_opt"])
-        mixscale = Float(inputs["mixscale"])
-        rdrag = Float(inputs["rdrag"])
-        rkm = Float(inputs["rkm"])
-        use_self_detrain = Int(inputs["use_self_detrain"])
-        detrhgt = Float(inputs["detrhgt"])
-        use_cumpenent = Int(inputs["use_cumpenent"])
-        rpen = Float(inputs["rpen"])
-        use_momenflx = Int(inputs["use_momenflx"])
-        rdrop = Float(inputs["rdrop"])
-        iter_cin = Int(inputs["iter_cin"])
 
         # Field inputs
         pifc0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
@@ -286,7 +228,6 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         # # Call stencils
         self._compute_uwshcu_invert_before(
             # Inputs
-            k0=k0,
             pmid0_inv=pmid0_inv,
             u0_inv=u0_inv,
             v0_inv=v0_inv,
@@ -381,7 +322,6 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             ssu0=ssu0,
             ssv0=ssv0,
             tscaleh=tscaleh,
-            dotransport=dotransport,
             fer_out=fer_out,
             fdr_out=fdr_out,
             tpert_out=tpert_out,
@@ -476,9 +416,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             vflx_out=vflx_out,
             u0_in=u0_in,
             v0_in=v0_in,
-            k0=k0,
             condensation=self.condensation,
-            dotransport=dotransport,
             ssu0=ssu0,
             ssv0=ssv0,
             tr0=tr0,

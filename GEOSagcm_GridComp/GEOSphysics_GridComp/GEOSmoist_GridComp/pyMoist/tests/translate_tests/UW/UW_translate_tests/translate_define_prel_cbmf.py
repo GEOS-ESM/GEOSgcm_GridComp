@@ -6,16 +6,12 @@ from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.UW.compute_uwshcu import calc_cumulus_base_mass_flux, define_prel_krel
 from pyMoist.UW.config import UWConfiguration
-
-
-# Dev NOTE: The data for this translate test comes from combining two files in
-#           a single nc file using the following NCO tool:
-#           `ncks -A ComputeUwshcu-In.nc DefinePrelCbmf-In.nc`
 
 
 class TranslateDefinePrelCbmf(TranslateFortranData2Py):
@@ -24,24 +20,10 @@ class TranslateDefinePrelCbmf(TranslateFortranData2Py):
         grid: Grid,
         namelist: Namelist,
         stencil_factory: StencilFactory,
-        # UW_config: UWConfiguration,
     ):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
-        # self.UW_config = UW_config
-
-        self._define_prel_krel = self.stencil_factory.from_dims_halo(
-            func=define_prel_krel,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ncnst": 23},
-        )
-
-        self._calc_cbmf = self.stencil_factory.from_dims_halo(
-            func=calc_cumulus_base_mass_flux,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ncnst": 23},
-        )
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
@@ -61,41 +43,6 @@ class TranslateDefinePrelCbmf(TranslateFortranData2Py):
             "rkfre": {},
         }
 
-        # Float/Int Inputs
-        self.in_vars["parameters"] = [
-            "dotransport",
-            "ncnst",
-            "k0",
-            "tr0",
-            "windsrcavg",
-            "qtsrchgt",
-            "qtsrc_fac",
-            "thlsrc_fac",
-            "frc_rasn",
-            "rbuoy",
-            "epsvarw",
-            "use_CINcin",
-            "mumin1",
-            "rmaxfrac",
-            "PGFc",
-            "niter_xc",
-            "criqc",
-            "rle",
-            "cridist_opt",
-            "mixscale",
-            "rkm",
-            "dt",
-            "detrhgt",
-            "rdrag",
-            "use_self_detrain",
-            "detrhgt",
-            "use_cumpenent",
-            "rpen",
-            "use_momenflx",
-            "rdrop",
-            "iter_cin",
-        ]
-
         # FloatField Outputs
         self.out_vars = {
             "cbmf": self.grid.compute_dict(),
@@ -107,8 +54,11 @@ class TranslateDefinePrelCbmf(TranslateFortranData2Py):
             "winv": self.grid.compute_dict(),
         }
 
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("ComputeUwshcuInv-constants")
+
     def compute(self, inputs):
-        self.UW_config = UWConfiguration(Int(inputs["ncnst"]), Int(inputs["k0"]), Int(inputs["windsrcavg"]))
+        config = UWConfiguration(**self.constants)
 
         self.quantity_factory.add_data_dimensions(
             {
@@ -116,35 +66,23 @@ class TranslateDefinePrelCbmf(TranslateFortranData2Py):
             }
         )
 
-        # Float/Int Inputs
-        dotransport = Int(inputs["dotransport"])
-        k0 = Int(inputs["k0"])
-        windsrcavg = Int(inputs["windsrcavg"])
-        qtsrchgt = Float(inputs["qtsrchgt"])
-        qtsrc_fac = Float(inputs["qtsrc_fac"])
-        thlsrc_fac = Float(inputs["thlsrc_fac"])
-        frc_rasn = Float(inputs["frc_rasn"])
-        rbuoy = Float(inputs["rbuoy"])
-        epsvarw = Float(inputs["epsvarw"])
-        use_CINcin = Int(inputs["use_CINcin"])
-        mumin1 = Float(inputs["mumin1"])
-        rmaxfrac = Float(inputs["rmaxfrac"])
-        PGFc = Float(inputs["PGFc"])
-        dt = Float(inputs["dt"])
-        niter_xc = Int(inputs["niter_xc"])
-        criqc = Float(inputs["criqc"])
-        rle = Float(inputs["rle"])
-        cridist_opt = Int(inputs["cridist_opt"])
-        mixscale = Float(inputs["mixscale"])
-        rdrag = Float(inputs["rdrag"])
-        rkm = Float(inputs["rkm"])
-        use_self_detrain = Int(inputs["use_self_detrain"])
-        detrhgt = Float(inputs["detrhgt"])
-        use_cumpenent = Int(inputs["use_cumpenent"])
-        rpen = Float(inputs["rpen"])
-        use_momenflx = Int(inputs["use_momenflx"])
-        rdrop = Float(inputs["rdrop"])
-        iter_cin = Int(inputs["iter_cin"])
+        self._define_prel_krel = self.stencil_factory.from_dims_halo(
+            func=define_prel_krel,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._calc_cumulus_base_mass_flux = self.stencil_factory.from_dims_halo(
+            func=calc_cumulus_base_mass_flux,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "use_CINcin": config.use_CINcin,
+                "rbuoy": config.rbuoy,
+                "epsvarw": config.epsvarw,
+                "dt": config.dt,
+                "mumin1": config.mumin1,
+                "rmaxfrac": config.rmaxfrac,
+            },
+        )
 
         # Field inputs
         condensation = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a", dtype=bool)
@@ -223,16 +161,13 @@ class TranslateDefinePrelCbmf(TranslateFortranData2Py):
             thv0rel=thv0rel,
         )
 
-        self._calc_cbmf(
+        self._calc_cumulus_base_mass_flux(
             condensation=condensation,
             iteration=iter_test,
-            use_CINcin=use_CINcin,
             cin_IJ=cin,
-            rbuoy=rbuoy,
             cinlcl_IJ=cinlcl,
-            rkfre=rkfre,
+            RKFRE=rkfre,
             tkeavg=tkeavg,
-            epsvarw=epsvarw,
             umf_out=umf_out,
             qtflx_out=qtflx_out,
             slflx_out=slflx_out,
@@ -243,9 +178,6 @@ class TranslateDefinePrelCbmf(TranslateFortranData2Py):
             thv0top=thv0top,
             exnifc0=exnifc0,
             dp0=dp0,
-            dt=dt,
-            mumin1=mumin1,
-            rmaxfrac=rmaxfrac,
             winv=winv,
             cbmf=cbmf,
             rho0inv=rho0inv,

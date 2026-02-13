@@ -110,7 +110,6 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             self.stencil_factory,
             self.quantity_factory,
             config,
-            state,
         )
 
         # Inputs

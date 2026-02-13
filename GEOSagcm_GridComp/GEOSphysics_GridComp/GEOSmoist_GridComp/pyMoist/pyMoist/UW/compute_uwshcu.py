@@ -810,6 +810,7 @@ def compute_thv0_thvl0(
             vu[0, 0, 1] = constants.MAPL_UNDEF
             vu = constants.MAPL_UNDEF
             wu[0, 0, 1] = constants.MAPL_UNDEF
+            thvu = constants.MAPL_UNDEF
             thvu[0, 0, 1] = constants.MAPL_UNDEF
             thlu_emf[0, 0, 1] = constants.MAPL_UNDEF
             thlu_emf = constants.MAPL_UNDEF
@@ -883,8 +884,8 @@ def find_pbl_height(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            if iteration != int32(0):
-                tscaleh = cush
+            # if iteration != int32(0):
+            tscaleh = cush
 
     with computation(FORWARD), interval(...):
         if not condensation:
