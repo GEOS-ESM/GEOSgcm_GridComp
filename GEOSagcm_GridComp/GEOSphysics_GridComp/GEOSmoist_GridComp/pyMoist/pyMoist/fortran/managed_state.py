@@ -1,10 +1,10 @@
 from typing import Tuple
 
 import numpy.typing as npt
-
 from ndsl import State
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Float
 from ndsl.optional_imports import cupy as cp
+
 from pyMoist.fortran.build_helper import InterfaceTransferType
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 
