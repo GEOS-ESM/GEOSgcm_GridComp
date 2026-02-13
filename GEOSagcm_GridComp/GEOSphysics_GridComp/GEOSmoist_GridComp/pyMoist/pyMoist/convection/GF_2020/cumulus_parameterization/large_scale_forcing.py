@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity, Local
+from ndsl import StencilFactory, QuantityFactory, Quantity, Local, NDSLRuntime
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
@@ -359,7 +359,7 @@ def effective_precipitation(
             )
 
 
-class LargeScaleForcing:
+class LargeScaleForcing(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -367,6 +367,9 @@ class LargeScaleForcing:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+        
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 

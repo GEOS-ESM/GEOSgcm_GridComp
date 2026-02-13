@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity
+from ndsl import StencilFactory, QuantityFactory, Quantity, NDSLRuntime
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
@@ -201,7 +201,7 @@ def moist_static_energy_inside_cloud(
                 normalized_massflux_updraft_modified = 0.0
 
 
-class StaticControl:
+class StaticControl(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -209,6 +209,9 @@ class StaticControl:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+        
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config

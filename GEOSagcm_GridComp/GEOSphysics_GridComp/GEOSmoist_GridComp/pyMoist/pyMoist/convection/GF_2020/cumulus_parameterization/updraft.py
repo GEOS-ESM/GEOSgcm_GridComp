@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity, Local
+from ndsl import StencilFactory, QuantityFactory, Quantity, Local, NDSLRuntime
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
@@ -842,7 +842,7 @@ def compute_precipitation_ensemble(
                 member += 1
 
 
-class UpdraftMassFlux:
+class UpdraftMassFlux(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -850,6 +850,9 @@ class UpdraftMassFlux:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
@@ -913,7 +916,7 @@ class UpdraftMassFlux:
         )
 
 
-class UpdraftInitialWorkfunctions:
+class UpdraftInitialWorkfunctions(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -921,6 +924,9 @@ class UpdraftInitialWorkfunctions:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
@@ -1004,7 +1010,7 @@ class UpdraftInitialWorkfunctions:
         )
 
 
-class UpdraftCIN:
+class UpdraftCIN(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -1012,6 +1018,9 @@ class UpdraftCIN:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+        
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
@@ -1084,7 +1093,7 @@ class UpdraftCIN:
         )
 
 
-class UpdraftWorkfunctions:
+class UpdraftWorkfunctions(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -1092,6 +1101,9 @@ class UpdraftWorkfunctions:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+        
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config

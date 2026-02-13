@@ -1108,7 +1108,7 @@ class DowndraftWetBlub:
         pass
 
 
-class DowndraftWindShear:
+class DowndraftWindShear(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -1116,6 +1116,9 @@ class DowndraftWindShear:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+        
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config

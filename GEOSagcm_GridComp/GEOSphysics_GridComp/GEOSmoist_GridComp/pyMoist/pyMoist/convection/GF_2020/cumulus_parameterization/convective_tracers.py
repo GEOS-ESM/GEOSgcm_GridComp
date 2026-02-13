@@ -14,7 +14,7 @@ from pyMoist.field_types import (
 )
 from ndsl.dsl.typing import IntFieldIJ, Int, FloatField, FloatFieldIJ, Float
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl import StencilFactory, QuantityFactory, Quantity, Local
+from ndsl import StencilFactory, QuantityFactory, Quantity, Local, NDSLRuntime
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
@@ -615,7 +615,7 @@ class ColdPoolParameterization:
         pass
 
 
-class AtmosphericComposition:
+class AtmosphericComposition(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -623,6 +623,9 @@ class AtmosphericComposition:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config

@@ -27,7 +27,7 @@ from pyMoist.shared_incloud_processes import (
     RADIATIVE_EFFECTIVE_RADIUS,
     RADIATIVE_EFFECTIVE_RADIUS_Table_Type,
 )
-from ndsl import StencilFactory, QuantityFactory, Local, Quantity
+from ndsl import StencilFactory, QuantityFactory, Local, Quantity, NDSLRuntime
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
@@ -481,13 +481,16 @@ def output_workfunctions_and_precip_concentrations(
             dnliquiddt[0, 0, 0][plume] = dnliquiddt[0, 0, 0][plume] * (1 / DTIME)  # unit [1/s]
 
 
-class OutputWorkfunctionsAndPrecipConcentrations:
+class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+        
         # add dimension to quantityfactory and create classes for constants
         quantity_factory.add_data_dimensions({"G_RATIO_Table": len(G_RATIO)})
         quantity_factory.add_data_dimensions(

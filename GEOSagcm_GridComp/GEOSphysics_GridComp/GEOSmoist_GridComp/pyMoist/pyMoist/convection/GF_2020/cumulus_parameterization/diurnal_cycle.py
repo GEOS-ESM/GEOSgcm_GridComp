@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, Local, Quantity
+from ndsl import StencilFactory, QuantityFactory, Local, Quantity, NDSLRuntime
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
@@ -127,7 +127,7 @@ def scale_cloud_workfunction_1_pbl(
             cloud_work_function_1_pbl = cloud_work_function_1_pbl / T_STAR * pbl_time_scale
 
 
-class DiurnalCycle:
+class DiurnalCycle(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -135,6 +135,9 @@ class DiurnalCycle:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+        
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config

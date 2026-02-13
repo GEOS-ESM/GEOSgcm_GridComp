@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity, Local
+from ndsl import StencilFactory, QuantityFactory, Quantity, Local, NDSLRuntime
 from ndsl.dsl.gt4py import computation, FORWARD, interval, PARALLEL, K
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ, Int
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
@@ -498,7 +498,7 @@ def convective_transport_of_water_vapor_and_condensates(
             vapor_tendency_from_environmental_subsidence = subsidence_tendency
 
 
-class VerticalDiscretization:
+class VerticalDiscretization(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -506,6 +506,9 @@ class VerticalDiscretization:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+        
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
