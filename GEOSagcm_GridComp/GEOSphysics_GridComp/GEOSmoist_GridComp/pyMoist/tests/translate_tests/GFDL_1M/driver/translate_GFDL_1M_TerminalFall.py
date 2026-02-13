@@ -1,12 +1,12 @@
+import ndsl.xumpy as xp
 import numpy as np
 from f90nml import Namelist
-
-import ndsl.xumpy as xp
 from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
+
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals

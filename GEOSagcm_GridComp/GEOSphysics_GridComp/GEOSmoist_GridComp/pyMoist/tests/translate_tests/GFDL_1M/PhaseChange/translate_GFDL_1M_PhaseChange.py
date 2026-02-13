@@ -2,11 +2,11 @@ import copy
 import time
 
 from f90nml import Namelist
-
 from ndsl import StencilFactory, ndsl_log
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
+
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
