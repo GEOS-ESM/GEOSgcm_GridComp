@@ -277,6 +277,15 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
+    seed_convection: Quantity = dataclasses.field(
+        metadata={
+            "name": "seed_convection",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     land_fraction: Quantity = dataclasses.field(
         metadata={
             "name": "land_fraction",
@@ -772,7 +781,7 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    lighting_density: Quantity = dataclasses.field(
+    lightning_density: Quantity = dataclasses.field(
         metadata={
             "name": "lighting_density",
             "dims": [X_DIM, Y_DIM],

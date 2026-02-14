@@ -11,6 +11,17 @@ from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection.GF_2020.locals import GF2020Locals
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    IntFieldIJ_Plume,
+    FloatFieldIJ_Plume,
+    FloatField_Plume,
+    FloatField_ConvectionTracers,
+    FloatField_ConvectionTracers_Plume,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
+from pyMoist.convection_tracers import ConvectionTracers
 
 
 def compute_extra_inputs_from_state(
@@ -105,7 +116,7 @@ def compute_extra_inputs_from_state(
             modified_area = area
 
 
-def zero_state_fields(
+def zero_state(
     dvapordt_deep_convection: FloatField,
     dtdt_deep_convection: FloatField,
     dudt_deep_convection: FloatField,
@@ -138,8 +149,8 @@ def zero_state_fields(
     total_water_flux_deep_convection: FloatField,
     updraft_area_fraction: FloatField,
     updraft_vertical_velocity: FloatField,
-    lighting_density: FloatFieldIJ,
     entrainment_parameter: FloatField,
+    lightning_density: FloatFieldIJ,
     pbl_time_scale: FloatFieldIJ,
     cape_removal_time_scale: FloatFieldIJ,
 ):
@@ -202,18 +213,166 @@ def zero_state_fields(
         updraft_area_fraction = 0.0
         updraft_vertical_velocity = 0.0
 
-    with computation(FORWARD), interval(0, 1):
-        lighting_density = 0.0
-
     with computation(PARALLEL), interval(0, -1):
         entrainment_parameter = 0.0
 
     with computation(FORWARD), interval(0, 1):
+        lightning_density = 0.0
         pbl_time_scale = 0.0
         cape_removal_time_scale = 0.0
 
 
+def prefill_cumulus_parameterization_state(
+    error_code: IntFieldIJ_Plume,
+    downdraft_origin_level: IntFieldIJ_Plume,
+    lcl_level: IntFieldIJ_Plume,
+    updraft_origin_level: IntFieldIJ_Plume,
+    updraft_lfc_level: IntFieldIJ_Plume,
+    cloud_top_level: IntFieldIJ_Plume,
+    kstabi: IntFieldIJ_Plume,
+    kstabm: IntFieldIJ_Plume,
+    precip: FloatFieldIJ_Plume,
+    cloud_base_mass_flux_modified: FloatFieldIJ_Plume,
+    epsilon_forced: FloatFieldIJ_Plume,
+    total_normalized_integrated_condensate_forced: FloatFieldIJ_Plume,
+    scale_dependence_factor: FloatFieldIJ_Plume,
+    p_cloud_levels_forced: FloatField_Plume,
+    entrainment_rate: FloatField_Plume,
+    mass_entrainment_updraft_forced: FloatField_Plume,
+    mass_entrainment_downdraft_forced: FloatField_Plume,
+    mass_detrainment_updraft_forced: FloatField_Plume,
+    mass_detrainment_downdraft_forced: FloatField_Plume,
+    normalized_massflux_updraft_forced: FloatField_Plume,
+    normalized_massflux_downdraft_forced: FloatField_Plume,
+    condensate_to_fall_forced: FloatField_Plume,
+    evaporate_in_downdraft_forced: FloatField_Plume,
+    cloud_liquid_after_rain_forced: FloatField_Plume,
+    t_updraft: FloatField_Plume,
+    convective_cloud_fraction_output: FloatField_Plume,
+    dtdt: FloatField_Plume,
+    dudt: FloatField_Plume,
+    dvdt: FloatField_Plume,
+    dvapordt: FloatField_Plume,
+    dcloudicedt: FloatField_Plume,
+    dnicedt: FloatField_Plume,
+    dnliquiddt: FloatField_Plume,
+    dbuoyancydt: FloatField_Plume,
+    chemistry_tracers_output: FloatField_ConvectionTracers_Plume,
+    evaporation_sublimation_tendency: FloatField,
+    convective_precip_flux: FloatField,
+    t_perturbation: FloatField,
+    omega: FloatField,
+    large_scale_ice: FloatField,
+    convective_ice: FloatField,
+    large_scale_liquid: FloatField,
+    convective_liquid: FloatField,
+    large_scale_cloud_fraction: FloatField,
+    convective_cloud_fraction: FloatField,
+    lightning_density: FloatFieldIJ,
+    t_excess: FloatFieldIJ,
+    vapor_excess: FloatFieldIJ,
+    last_error_code: IntFieldIJ,
+):
+    from __externals__ import NUMBER_OF_PLUMES, APPLY_SUBSIDENCE_MICROPHYSICS
+
+    with computation(FORWARD), interval(0, 1):
+        plume = 0
+        while plume < NUMBER_OF_PLUMES:
+            error_code[0, 0][plume] = 0
+            downdraft_origin_level[0, 0][plume] = 0
+            lcl_level[0, 0][plume] = 0
+            updraft_origin_level[0, 0][plume] = 0
+            updraft_lfc_level[0, 0][plume] = 0
+            cloud_top_level[0, 0][plume] = 0
+            kstabi[0, 0][plume] = 0
+            kstabm[0, 0][plume] = 0
+            precip[0, 0][plume] = 0.0
+            cloud_base_mass_flux_modified[0, 0][plume] = 0.0
+            epsilon_forced[0, 0][plume] = 0.0
+            total_normalized_integrated_condensate_forced[0, 0][plume] = 0.0
+            scale_dependence_factor[0, 0][plume] = 0.0
+            plume += 1
+
+    with computation(PARALLEL), interval(...):
+        plume = 0
+        while plume < NUMBER_OF_PLUMES:
+            p_cloud_levels_forced[0, 0, 0][plume] = 0.0
+            entrainment_rate[0, 0, 0][plume] = 0.0
+            mass_entrainment_updraft_forced[0, 0, 0][plume] = 0.0
+            mass_entrainment_downdraft_forced[0, 0, 0][plume] = 0.0
+            mass_detrainment_updraft_forced[0, 0, 0][plume] = 0.0
+            mass_detrainment_downdraft_forced[0, 0, 0][plume] = 0.0
+            normalized_massflux_updraft_forced[0, 0, 0][plume] = 0.0
+            normalized_massflux_downdraft_forced[0, 0, 0][plume] = 0.0
+            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
+            evaporate_in_downdraft_forced[0, 0, 0][plume] = 0.0
+            cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0
+            t_updraft[0, 0, 0][plume] = 0.0
+            convective_cloud_fraction_output[0, 0, 0][plume] = 0.0
+
+            dtdt[0, 0, 0][plume] = 0.0
+            dudt[0, 0, 0][plume] = 0.0
+            dvdt[0, 0, 0][plume] = 0.0
+            dvapordt[0, 0, 0][plume] = 0.0
+            dcloudicedt[0, 0, 0][plume] = 0.0
+            dnicedt[0, 0, 0][plume] = 0.0
+            dnliquiddt[0, 0, 0][plume] = 0.0
+            dbuoyancydt[0, 0, 0][plume] = 0.0
+
+            tracer = 0
+            while tracer < constants.NUMBER_OF_TRACERS:
+                chemistry_tracers_output[0, 0, 0][plume, tracer] = 0.0
+                tracer += 1
+
+            plume += 1
+
+        evaporation_sublimation_tendency = 0.0
+        convective_precip_flux = 0.0
+        t_perturbation = 0.0
+        omega = 0.0
+
+        if APPLY_SUBSIDENCE_MICROPHYSICS == 1:
+            large_scale_ice = 0.0
+            convective_ice = 0.0
+            large_scale_liquid = 0.0
+            convective_liquid = 0.0
+            large_scale_cloud_fraction = 0.0
+            convective_cloud_fraction = 0.0
+
+    with computation(FORWARD), interval(0, 1):
+        lightning_density = 0.0
+        t_excess = 0.0
+        vapor_excess = 0.0
+        last_error_code = -999
+
+
+def prefill_locals(
+    fix_out_vapor: FloatFieldIJ,
+    rtgt: FloatFieldIJ,
+    t_tendency_from_vapor: FloatField,
+    total_dbuoyancydt: FloatField,
+    dtdt: FloatField,
+    dvapordt: FloatField,
+    dcloudicedt: FloatField,
+    dudt: FloatField,
+    dvdt: FloatField,
+):
+    with computation(FORWARD), interval(0, 1):
+        fix_out_vapor = 1.0
+        t_tendency_from_vapor = 0.0
+        rtgt = 1.0
+
+    with computation(PARALLEL), interval(...):
+        total_dbuoyancydt = 0.0
+        dtdt = 0.0
+        dvapordt = 0.0
+        dcloudicedt = 0.0
+        dudt = 0.0
+        dvdt = 0.0
+
+
 def set_2d_fields(
+    aot500: FloatFieldIJ,
     t: FloatField,
     t_2m_max: Float,
     t_2m: FloatFieldIJ,
@@ -221,6 +380,7 @@ def set_2d_fields(
     evaporation: FloatFieldIJ,
     evaporation_local: FloatFieldIJ,
     sensible_heat_flux: FloatFieldIJ,
+    sensible_heat_flux_local: FloatFieldIJ,
     p_interface: FloatField,
     vapor: FloatField,
     geopotential_height_surface: FloatFieldIJ,
@@ -230,96 +390,114 @@ def set_2d_fields(
     area: FloatFieldIJ,
     grid_length: FloatFieldIJ,
     pbl_level: FloatFieldIJ,
-    pbl_level_local: IntFieldIJ,
+    pbl_level_flipped: IntFieldIJ,
 ):
-    from __externals__ import k_end, SINGLE_COLUMN_MODE
+    from __externals__ import k_end, SIZE_I_DIM, SIZE_J_DIM
 
     with computation(FORWARD), interval(0, 1):
+        aot500 = 0.1
+
         if t_2m_max < 1.0e-6:
             # in case convection is called before surface data is computed
-            t_2m_local = t.at(K=k_end)
+            t_2m_local = t.at(K=k_end)  # kelvin
         else:
-            t_2m_local = t_2m
+            t_2m_local = t_2m  # kelvin
+
         # moisture flux from sfc
         evaporation_local = evaporation  # kg m-2 s-1
+
         # sensible–heat_flux comes in W m-2, below it is converted to K m s-1
         sensible_heat_flux_local = sensible_heat_flux / (
             1004.0 * p_interface.at(K=k_end) / (287.04 * t.at(K=k_end) * (1.0 + 0.608 * vapor.at(K=k_end)))
         )  # K m s-1
+
         # topography height  (m)
         topography_height = geopotential_height_surface / constants.MAPL_GRAV
+
         # land/ocean fraction: land if < 1 ,ocean if = 1
         ocean_fraction = 1.0 - land_fraction
+
         # grid length for the scale awareness (m)
         grid_length = sqrt(area)
         # special setting for SCM runs
-        if SINGLE_COLUMN_MODE == True:
-            dx2d = 100000.0
+        if SIZE_I_DIM == 1 and SIZE_J_DIM == 1:
+            grid_length = 100000.0
 
+        # flip pbl_level
         if pbl_level != 0.0:
             pbl_level = k_end - int(round(pbl_level))
         else:
             pbl_level = 0
 
 
-def set_local_state(
+def choose_environment_and_flip_k_axis(
+    dz: FloatField,
+    air_density: FloatField,
     geopotential_height_interface: FloatField,
     t: FloatField,
-    t_local: FloatField,
-    p: FloatField,
-    p_local: FloatField,
-    vapor: FloatField,
-    vapor_local: FloatField,
-    vapor_current_local: FloatField,
-    u: FloatField,
-    u_local: FloatField,
-    v: FloatField,
-    v_local: FloatField,
-    vertical_velocity: FloatField,
-    vertical_velocity_local: FloatField,
-    layer_height_above_surface: FloatField,
-    layer_height_above_surface_local: FloatField,
-    edge_height_above_surface: FloatField,
-    edge_height_above_surface_local: FloatField,
-    mass: FloatField,
-    mass_local: FloatField,
-    scalar_diffusivity: FloatField,
-    scalar_diffusivity_local: FloatField,
-    lateral_entrainment_rate: FloatField,
-    lateral_entrainment_rate_local: FloatField,
-    p_surface: FloatFieldIJ,
-    buoyancy: FloatField,
-    p_interface: FloatField,
-    convective_liquid: FloatField,
-    convective_ice: FloatField,
-    convective_cloud_fraction: FloatField,
-    large_scale_liquid: FloatField,
-    large_scale_ice: FloatField,
-    large_scale_cloud_fraction: FloatField,
-    p_interface_timestep_start: FloatField,
+    t_flipped: FloatField,
     t_timestep_start: FloatField,
-    u_timestep_start: FloatField,
-    v_timestep_start: FloatField,
+    p: FloatField,
+    p_interface: FloatField,
+    p_interface_timestep_start: FloatField,
+    p_flipped: FloatField,
+    p_surface_flipped: FloatFieldIJ,
+    vapor: FloatField,
     vapor_timestep_start: FloatField,
+    vapor_flipped: FloatField,
+    vapor_current_flipped: FloatField,
+    u: FloatField,
+    u_timestep_start: FloatField,
+    u_flipped: FloatField,
+    v: FloatField,
+    v_timestep_start: FloatField,
+    v_flipped: FloatField,
+    w: FloatField,
+    w_flipped: FloatField,
+    layer_height_above_surface: FloatField,
+    layer_height_above_surface_flipped: FloatField,
+    edge_height_above_surface: FloatField,
+    edge_height_above_surface_flipped: FloatField,
+    mass: FloatField,
+    mass_flipped: FloatField,
+    scalar_diffusivity: FloatField,
+    scalar_diffusivity_flipped: FloatField,
+    lateral_entrainment_rate: FloatField,
+    lateral_entrainment_rate_flipped: FloatField,
+    buoyancy: FloatField,
+    buoyancy_excess: FloatField,
     dtdt_shortwave: FloatField,
     dtdt_longwave: FloatField,
     dtdt_from_dynamics: FloatField,
-    dvapordt_from_dynamics: FloatField,
     dtdt_pbl: FloatField,
+    dvapordt_from_dynamics: FloatField,
     dspecific_humiditydt_pbl: FloatField,
     grid_scale_forcing_t: FloatField,
     grid_scale_forcing_vapor: FloatField,
     subgrid_scale_forcing_t: FloatField,
     subgrid_scale_forcing_vapor: FloatField,
     advective_forcing_t: FloatField,
-    convective_liquid_local: FloatField,
-    convective_ice_local: FloatField,
-    convective_cloud_fraction_local: FloatField,
-    large_scale_liquid_local: FloatField,
-    large_scale_ice_local: FloatField,
-    large_scale_cloud_fraction_local: FloatField,
+    convective_liquid: FloatField,
+    convective_liquid_flipped: FloatField,
+    convective_ice: FloatField,
+    convective_ice_flipped: FloatField,
+    convective_cloud_fraction: FloatField,
+    convective_cloud_fraction_flipped: FloatField,
+    large_scale_liquid: FloatField,
+    large_scale_liquid_flipped: FloatField,
+    large_scale_ice: FloatField,
+    large_scale_ice_flipped: FloatField,
+    large_scale_cloud_fraction: FloatField,
+    large_scale_cloud_fraction_flipped: FloatField,
     convection_tracer: FloatField,
-    buoyancy_excess: FloatField,
+    total_precipitable_water_initial: FloatFieldIJ,
+    saturation_total_precipitable_water_initial: FloatFieldIJ,
+    saturation_water_vapor: FloatFieldIJ,
+    DEBUG_VAR_1: FloatField,
+    DEBUG_VAR_2: FloatField,
+    DEBUG_VAR_3: FloatField,
+    DEBUG_VAR_4: FloatField,
+    DEBUG_VAR_5: FloatField,
 ):
     """
     Get the desired state for the convection scheme, controlled by external GF_ENV_SETTING.
@@ -331,21 +509,22 @@ def set_local_state(
     """
     from __externals__ import k_end, GF_ENV_SETTING, ENTRVERSION, CONVECTION_TRACER
 
+    # 1st setting: enviromental state is the one already modified by dyn + physics
     with computation(PARALLEL), interval(...):
         if GF_ENV_SETTING == 0:
             dz = -(geopotential_height_interface[0, 0, 1] - geopotential_height_interface)
             air_density = p / (287.04 * t * (1.0 + 0.608 * vapor))
-            t_local = t.at(K=k_end - K)
-            p_local = p.at(K=k_end - K)
-            vapor_local = vapor.at(K=k_end - K)
-            vapor_current_local = vapor.at(K=k_end - K)
+            t_flipped = t.at(K=k_end - K)
+            p_flipped = p.at(K=k_end - K)
+            vapor_flipped = vapor.at(K=k_end - K)
+            vapor_current_flipped = vapor.at(K=k_end - K)
             u_local = u.at(K=k_end - K)
             v_local = v.at(K=k_end - K)
-            vertical_velocity_local = vertical_velocity.at(K=k_end - K)
-            layer_height_above_surface_local = layer_height_above_surface.at(K=k_end - K)
-            edge_height_above_surface_local = edge_height_above_surface.at(K=k_end - K)
-            mass_local = mass.at(K=k_end - K)
-            scalar_diffusivity_local = scalar_diffusivity.at(K=k_end - K)
+            w_flipped = w.at(K=k_end - K)
+            layer_height_above_surface_flipped = layer_height_above_surface.at(K=k_end - K)
+            edge_height_above_surface_flipped = edge_height_above_surface.at(K=k_end - K)
+            mass_flipped = mass.at(K=k_end - K)
+            scalar_diffusivity_flipped = scalar_diffusivity.at(K=k_end - K)
 
             # Grid and sub-grid scale forcings for convection
             grid_scale_forcing_t = 0.0
@@ -356,8 +535,17 @@ def set_local_state(
 
     with computation(FORWARD), interval(0, 1):
         if GF_ENV_SETTING == 0:
-            p_surface = p_interface.at(K=k_end + 1)
+            p_surface_flipped = p_interface.at(K=k_end + 1)
 
+    # 2nd setting: environmental state is that one before any tendency
+    # is applied (i.e, at begin of each time step).
+    # Get back the model state, heights and others variables at time N
+    # (or at the beggining of current time step)
+    # In physics, the state vars (t,u,v,PLE) are untouched and represent the
+    # model state after dynamics phase 1. But, "Q" is modified by physics, so
+    # depending on what was called before this subroutine, "Q" may be already
+    # changed from what it was just after dynamics phase 1. To solve this issue,
+    # "Q" just after dynamics is saved in the var named "QV_DYN_IN" in "GEOS_AgcmGridComp.F90".
     with computation(PARALLEL), interval(...):
         if GF_ENV_SETTING == 1:
             mass_n = (p_interface_timestep_start[0, 0, 1] - p_interface_timestep_start) * (
@@ -399,6 +587,15 @@ def set_local_state(
                 * edge_height_above_surface_n
             )
 
+    with computation(FORWARD), interval(...):
+        DEBUG_VAR_1 = mass_n
+        if K == k_end:
+            DEBUG_VAR_2[0, 0, 1] = 0
+        DEBUG_VAR_2 = edge_height_above_surface_n
+        DEBUG_VAR_3 = layer_height_above_surface_n
+        DEBUG_VAR_4 = p_n
+        DEBUG_VAR_5 = p_kappa_n
+
     with computation(PARALLEL), interval(...):
         if GF_ENV_SETTING == 1:
             if K == k_end:
@@ -406,20 +603,20 @@ def set_local_state(
             else:
                 dz = -(edge_height_above_surface_n[0, 0, 1] - edge_height_above_surface_n)
             air_density = p_n / (287.04 * t_timestep_start * (1.0 + 0.608 * vapor_timestep_start))
-            t_local = t_timestep_start.at(K=k_end - K)
-            p_local = p_n.at(K=k_end - K)
-            vapor_local = vapor_timestep_start.at(K=k_end - K)
-            vapor_current_local = vapor.at(K=k_end - K)
-            u_local = u_timestep_start.at(K=k_end - K)
-            v_local = v_timestep_start.at(K=k_end - K)
-            vertical_velocity_local = vertical_velocity.at(K=k_end - K)
-            layer_height_above_surface_local = layer_height_above_surface_n.at(K=k_end - K)
+            t_flipped = t_timestep_start.at(K=k_end - K)
+            p_flipped = p_n.at(K=k_end - K)
+            vapor_flipped = vapor_timestep_start.at(K=k_end - K)
+            vapor_current_flipped = vapor.at(K=k_end - K)
+            u_flipped = u_timestep_start.at(K=k_end - K)
+            v_flipped = v_timestep_start.at(K=k_end - K)
+            w_flipped = w.at(K=k_end - K)
+            layer_height_above_surface_flipped = layer_height_above_surface_n.at(K=k_end - K)
             if K == 0:
-                edge_height_above_surface_local = 0
+                edge_height_above_surface_flipped = 0
             else:
-                edge_height_above_surface_local = edge_height_above_surface_n.at(K=k_end - K + 1)
-            mass_local = mass_n.at(K=k_end - K)
-            scalar_diffusivity_local = scalar_diffusivity.at(K=k_end - K)
+                edge_height_above_surface_flipped = edge_height_above_surface_n.at(K=k_end - K + 1)
+            mass_flipped = mass_n.at(K=k_end - K)
+            scalar_diffusivity_flipped = scalar_diffusivity.at(K=k_end - K)
 
             # Grid and sub-grid scale forcings for convection
             grid_scale_forcing_t = (
@@ -434,220 +631,256 @@ def set_local_state(
 
     with computation(FORWARD), interval(0, 1):
         if GF_ENV_SETTING == 1:
-            p_surface = p_interface_timestep_start.at(K=k_end + 1)
+            p_surface_flipped = p_interface_timestep_start.at(K=k_end + 1)
 
+    # remainder is the same for both settings
     with computation(PARALLEL), interval(...):
-        # remainder is the same for both settings
-        convective_liquid_local = convective_liquid.at(K=k_end - K)
-        convective_ice_local = convective_ice.at(K=k_end - K)
-        convective_cloud_fraction_local = convective_cloud_fraction.at(K=k_end - K)
-        large_scale_liquid_local = large_scale_liquid.at(K=k_end - K)
-        large_scale_ice_local = large_scale_ice.at(K=k_end - K)
-        large_scale_cloud_fraction_local = large_scale_cloud_fraction.at(K=k_end - K)
+        convective_liquid_flipped = convective_liquid.at(K=k_end - K)
+        convective_ice_flipped = convective_ice.at(K=k_end - K)
+        convective_cloud_fraction_flipped = convective_cloud_fraction.at(K=k_end - K)
+        large_scale_liquid_flipped = large_scale_liquid.at(K=k_end - K)
+        large_scale_ice_flipped = large_scale_ice.at(K=k_end - K)
+        large_scale_cloud_fraction_flipped = large_scale_cloud_fraction.at(K=k_end - K)
 
         if ENTRVERSION == 0:
             # eq 6 of https://doi.org/10.1029/2021JD034881
-            lateral_entrainment_rate_local = (
-                0.71
-                * max(0.5, vertical_velocity.at(K=k_end - K)) ** (-1.17)
-                * max(0.1, buoyancy.at(K=k_end - K)) ** (-0.36)
+            lateral_entrainment_rate_flipped = (
+                0.71 * max(0.5, w.at(K=k_end - K)) ** (-1.17) * max(0.1, buoyancy.at(K=k_end - K)) ** (-0.36)
             )
         else:
-            lateral_entrainment_rate_local = 1.0
+            lateral_entrainment_rate_flipped = 1.0
 
     with computation(PARALLEL), interval(...):
         # must be in separate computation to ensure lateral_entrainment_rate_local is written before read
-        lateral_entrainment_rate = lateral_entrainment_rate_local.at(K=k_end - K)
+        lateral_entrainment_rate = lateral_entrainment_rate_flipped.at(K=k_end - K)
+
         if CONVECTION_TRACER == 1:
             buoyancy_excess = convection_tracer.at(K=k_end - K)
         else:
             buoyancy_excess = 0.0
 
+    with computation(FORWARD), interval(0, 1):
+        # saturation column_water_vapor
+        if CONVECTION_TRACER == 1:
+            saturation_water_vapor = total_precipitable_water_initial / (
+                1.0e-6 + saturation_total_precipitable_water_initial
+            )
+            saturation_water_vapor = min(1.0, max(0.0, saturation_water_vapor))
 
-def prepare_cumulus_parameterization(
-    t_perturbation_horizontal: FloatField,
-    t_perturbation_vertical: FloatField,
-    t_perturbation: FloatField,
-    t_2m: FloatFieldIJ,
-    t_surface: FloatFieldIJ,
+
+def copy_into_cumulus_parameterization_state(
+    grid_length_local: FloatFieldIJ,
+    grid_length: FloatFieldIJ,
+    saturation_water_vapor_local: FloatFieldIJ,
+    saturation_water_vapor: FloatFieldIJ,
+    seed_convection_model_state: FloatFieldIJ,
+    seed_convection: FloatFieldIJ,
+    convection_fraction_model_state: FloatFieldIJ,
+    convection_fraction: FloatFieldIJ,
+    surface_type_model_state: FloatFieldIJ,
+    surface_type: FloatFieldIJ,
+    grid_scale_forcing_t_local: FloatField,
+    grid_scale_forcing_t: FloatField,
+    grid_scale_forcing_vapor_local: FloatField,
+    grid_scale_forcing_vapor: FloatField,
+    subgrid_scale_forcing_t_local: FloatField,
+    subgrid_scale_forcing_t: FloatField,
+    subgrid_scale_forcing_vapor_local: FloatField,
+    subgrid_scale_forcing_vapor: FloatField,
+    lateral_entrainment_rate_flipped: FloatField,
+    lateral_entrainment_rate: FloatField,
+):
+    with computation(FORWARD), interval(0, 1):
+        grid_length = grid_length_local
+        saturation_water_vapor = saturation_water_vapor_local
+        seed_convection = seed_convection_model_state
+        convection_fraction = convection_fraction_model_state
+        surface_type = surface_type_model_state
+
+    with computation(PARALLEL), interval(...):
+        grid_scale_forcing_t = grid_scale_forcing_t_local
+        grid_scale_forcing_vapor = grid_scale_forcing_vapor_local
+        subgrid_scale_forcing_t = subgrid_scale_forcing_t_local
+        subgrid_scale_forcing_vapor = subgrid_scale_forcing_vapor_local
+        lateral_entrainment_rate = lateral_entrainment_rate_flipped
+
+
+def prepare_cumulus_paramaterization_state(
+    aot500: FloatFieldIJ,
     ccn: FloatFieldIJ,
-    p_surface_local: FloatFieldIJ,
-    p_surface_cu_param_input: FloatFieldIJ,
-    ocean_fraction_lcoal: FloatFieldIJ,
-    ocean_fraction_cu_param_input: FloatFieldIJ,
+    ocean_fraction_local: FloatFieldIJ,
+    ocean_fraction: FloatFieldIJ,
+    p_surface_flipped: FloatFieldIJ,
+    p_surface: FloatFieldIJ,
+    t_2m_flipped: FloatFieldIJ,
+    t_surface: FloatFieldIJ,
     topography_height: FloatFieldIJ,
     topography_height_no_negative: FloatFieldIJ,
+    pbl_level_flipped: IntFieldIJ,
+    pbl_level: IntFieldIJ,
+    latitude_model_state: FloatFieldIJ,
     latitude: FloatFieldIJ,
+    longitude_model_state: FloatFieldIJ,
     longitude: FloatFieldIJ,
-    latitude_degrees: FloatFieldIJ,
-    longitude_degrees: FloatFieldIJ,
-    layer_height_above_surface: FloatField,
-    geopotential_height_cu_param_input: FloatField,
-    p: FloatField,
-    p_mb: FloatField,
-    t_local: FloatField,
-    t_cu_param_input: FloatField,
-    vapor_local: FloatField,
-    vapor_current_local: FloatField,
-    vapor_timestep_start_cu_param_input: FloatField,
-    vapor_current_cu_param_input: FloatField,
-    air_density_cu_param_input: FloatField,
-    u_local: FloatField,
-    v_local: FloatField,
-    w_local: FloatField,
-    u_cu_param_input: FloatField,
-    v_cu_param_input: FloatField,
-    w_cu_param_input: FloatField,
-    omega_cu_param_input: FloatField,
-    mass_local: FloatField,
-    mass_cu_param_input: FloatField,
+    rtgt: FloatFieldIJ,
+    geopotential_height_forced: FloatField,
+    layer_height_above_surface_flipped: FloatField,
+    edge_height_above_surface_flipped: FloatField,
+    p_flipped: FloatField,
+    p_forced: FloatField,
+    t_flipped: FloatField,
+    t_old: FloatField,
+    vapor_flipped: FloatField,
+    vapor_old: FloatField,
+    air_density: FloatField,
+    u_flipped: FloatField,
+    u: FloatField,
+    v_flipped: FloatField,
+    v: FloatField,
+    w_flipped: FloatField,
+    w: FloatField,
+    mass_flipped: FloatField,
+    mass: FloatField,
+    omega: FloatField,
+    buoyancy_excess_local: FloatField,
+    buoyancy_excess: FloatField,
     advective_forcing_t: FloatField,
     t_modified_by_advection: FloatField,
     grid_scale_forcing_vapor: FloatField,
     vapor_modified_by_advection: FloatField,
-    pbl_level_local: IntFieldIJ,
-    pbl_level_cu_param_input: IntFieldIJ,
-    pbl_height_cu_param_input: FloatFieldIJ,
+    convective_liquid_flipped: FloatField,
+    convective_liquid: FloatField,
+    convective_ice_flipped: FloatField,
+    convective_ice: FloatField,
+    convective_cloud_fraction_flipped: FloatField,
+    convective_cloud_fraction: FloatField,
+    large_scale_liquid_flipped: FloatField,
+    large_scale_liquid: FloatField,
+    large_scale_ice_flipped: FloatField,
+    large_scale_ice: FloatField,
+    large_scale_cloud_fraction_flipped: FloatField,
+    large_scale_cloud_fraction: FloatField,
+    convection_tracers: FloatField_ConvectionTracers,
+    chemistry_tracers: FloatField_ConvectionTracers,
     sensible_heat_flux_local: FloatFieldIJ,
-    sensible_heat_flux_cu_param_input: FloatFieldIJ,
+    sensible_heat_flux: FloatFieldIJ,
     evaporation_local: FloatFieldIJ,
-    latent_heat_flux_cu_param_input: FloatFieldIJ,
-    convective_scale_velosity_cu_param_input: FloatFieldIJ,
-    t_excess_cu_param_input: FloatFieldIJ,
-    vapor_excess_cu_param_input: FloatFieldIJ,
+    latent_heat_flux: FloatFieldIJ,
+    convective_scale_velocity: FloatFieldIJ,
+    t_excess: FloatFieldIJ,
+    vapor_excess: FloatFieldIJ,
 ):
-    from __externals__ import ADV_TRIGGER, USE_TRACER_TRANSP, AUTOCONV, DT_MOIST
-
-    with computation(PARALLEL), interval(...):
-        if ADV_TRIGGER == 2:
-            t_perturbation = t_perturbation_horizontal + t_perturbation_vertical
-
-        if USE_TRACER_TRANSP == 1:
-            tracer_stuff_not_implemented_yet = 0
+    from __externals__ import AUTOCONV, DT_MOIST, APPLY_SUBSIDENCE_MICROPHYSICS, USE_TRACER_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
         if AUTOCONV == 2:
-            ccn = max(100.0, (370.37 * (0.01 + max(0.0, 0.1))) ** 1.555)
+            ccn = max(100.0, (370.37 * (0.01 + max(0.0, aot500))) ** 1.555)
         else:
             ccn = 100.0
 
-        p_surface_cu_param_input = p_surface_local * 1.0e-2
-        t_surface = t_2m
-
-        ocean_fraction_cu_param_input = ocean_fraction_lcoal
-        topography_height_no_negative = max(0, topography_height)
-        latitude_degrees = latitude * 180.0 / 3.14159
-        longitude_degrees = longitude * 180.0 / 3.14159
+        ocean_fraction = ocean_fraction_local
+        p_surface = p_surface_flipped * 1.0e-2  # mbar
+        t_surface = t_2m_flipped
+        topography_height_no_negative = max(0.0, topography_height)
+        pbl_level = pbl_level_flipped
+        latitude = latitude_model_state * 180.0 / 3.14159
+        longitude = longitude_model_state * 180.0 / 3.14159
 
     with computation(PARALLEL), interval(0, -1):
-        # NOTE lots of redundancies/unnecessary calculations from here down which can be removed
-        # These were maintained during porting to retain as much consistency with the Fortran as possible.
+        # heights, current pressure, temperature and water vapor mixing ratio
+        geopotential_height_forced = layer_height_above_surface_flipped * rtgt + topography_height
+        p_forced = p_flipped * 1.0e-2  # mbar
+        t_old = t_flipped
+        vapor_old = vapor_flipped  # at beginning of the timestep
 
-        geopotential_height_cu_param_input = layer_height_above_surface + topography_height
-        p_mb = p * 1.0e-2
-        t_cu_param_input = t_local
-        vapor_timestep_start_cu_param_input = vapor_local
-        vapor_current_cu_param_input = vapor_current_local
-        air_density_cu_param_input = (
-            1.0e2 * p_mb / (287.04 * t_cu_param_input * (1.0 + 0.608 * vapor_timestep_start_cu_param_input))
-        )
+        # air density, TKE and cloud liquid water mixing ratio
+        air_density = 1.0e2 * p_forced / (287.04 * t_old * (1.0 + 0.608 * vapor_old))
 
-        u_cu_param_input = u_local
-        v_cu_param_input = v_local
-        w_cu_param_input = w_local
-        omega_cu_param_input = -1 * constants.MAPL_GRAV * air_density_cu_param_input * w_local
+        # wind velocities
+        u = u_flipped
+        v = v_flipped
+        w = w_flipped
+        mass = mass_flipped
+        omega = -constants.MAPL_GRAV * air_density * w
 
-        mass_cu_param_input = mass_local
+        # buoyancy excess
+        buoyancy_excess = buoyancy_excess_local
 
-        t_modified_by_advection = t_cu_param_input + advective_forcing_t * DT_MOIST
-        vapor_modified_by_advection = (
-            vapor_timestep_start_cu_param_input + grid_scale_forcing_vapor * DT_MOIST
-        )
+        # temperature/water vapor modified only by advection
+        t_modified_by_advection = t_old + advective_forcing_t * DT_MOIST
+        vapor_modified_by_advection = vapor_old + grid_scale_forcing_vapor * DT_MOIST
+
+        if APPLY_SUBSIDENCE_MICROPHYSICS == 1:
+            # microphysics ice and liquid mixing ratio, and cloud fraction of the host model
+            # (only subsidence is applied)
+            convective_liquid = convective_liquid_flipped
+            convective_ice = convective_ice_flipped
+            convective_cloud_fraction = convective_cloud_fraction_flipped
+            large_scale_liquid = large_scale_liquid_flipped
+            large_scale_ice = large_scale_ice_flipped
+            large_scale_cloud_fraction = large_scale_cloud_fraction_flipped
+
+    with computation(PARALLEL), interval(...):
+        if USE_TRACER_TRANSPORT == 1:
+            tracer = 0
+            while tracer < constants.NUMBER_OF_TRACERS:
+                chemistry_tracers[0, 0, 0][tracer] = max(
+                    convection_tracers.at(K=k_end-K, ddim=[tracer]), constants.FLOAT_TINY
+                )
+                tracer += 1
 
     with computation(FORWARD), interval(0, 1):
-        pbl_level_cu_param_input = pbl_level_local
-        pbl_height_cu_param_input = (
-            geopotential_height_cu_param_input.at(K=pbl_level_cu_param_input) - topography_height
-        )
+        pbl_internal: FloatFieldIJ = geopotential_height_forced.at(K=pbl_level) - topography_height
 
+    # NOTE variables in this section have unintelligible names
+    # could not desipher during Fortran --> Python port, so Fortran names remain
     with computation(FORWARD), interval(0, 1):
-        # get execess T and Q for source air parcels
-        density = (
-            100.0
-            * p_surface_cu_param_input
-            / (287.04 * (t_cu_param_input * (1.0 + 0.608 * vapor_current_cu_param_input)))
-        )
+        # get execess temperature and water vapor for source air parcels
+        pten = t_old.at(K=0)
+        pqen = vapor_old.at(K=0)
+        paph = 100.0 * p_surface
+        zrho = paph / (287.04 * (t_old.at(K=0) * (1.0 + 0.608 * vapor_old.at(K=0))))
+
         # sensible and latent sfc fluxes for the heat-engine closure
-        sensible_heat_flux_cu_param_input = (
-            density * cumulus_parameterization_constants.CP * sensible_heat_flux_local
-        )  # W/m^2
-        latent_heat_flux_cu_param_input = (
-            density * cumulus_parameterization_constants.XLV * evaporation_local
-        )  # W/m^2
+        sensible_heat_flux = zrho * cumulus_parameterization_constants.CP * sensible_heat_flux_local  # W/m^2
+        latent_heat_flux = zrho * cumulus_parameterization_constants.XLV * evaporation_local  # W/m^2
 
-        buoyancy_flux = (
-            -sensible_heat_flux_cu_param_input * density * 1004.64 / 1004.64
-            + 0.608 * t_cu_param_input * latent_heat_flux_cu_param_input
-        ) / density  # K m s-1
+        # local le and h fluxes for W*
+        pahfs = -sensible_heat_flux_local * zrho * 1004.64  # W/m^2
+        pqhfl = -evaporation_local  # kg/m^2/s
 
-        depth_of_first_model_layer = (
-            2.0 * (geopotential_height_cu_param_input.at(K=0) - topography_height) * constants.MAPL_GRAV
+        # buoyancy flux (h+le)
+        zkhvfl = (pahfs / 1004.64 + 0.608 * pten * pqhfl) / zrho  # K m s-1
+
+        # depth of 1st model layer
+        # geopotential_height_forced.at(K=0) - topography_height is ~ 1/2 of the depth
+        # of 1st model layer, so multiply by 2
+        pgeoh = (
+            2.0 * (geopotential_height_forced.at(K=0) - topography_height) * constants.MAPL_GRAV
         )  # m+2 s-2
 
-        convective_scale_velosity_cu_param_input = max(
-            0.0, 0.001 - 1.5 * 0.41 * buoyancy_flux * depth_of_first_model_layer / t_cu_param_input
-        )  # m+3 s-3
+        # convective-scale velocity w*
+        # in the future, change 0.001 by ustar^3
+        convective_scale_velocity = max(0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / pten)  # m+3 s-3
 
-        if convective_scale_velosity_cu_param_input > constants.FLOAT_TINY:
+        if convective_scale_velocity > constants.FLOAT_TINY:
             # convective-scale velocity w*
-            convective_scale_velosity_cu_param_input = 1.2 * convective_scale_velosity_cu_param_input**0.3333
+            convective_scale_velocity = 1.2 * convective_scale_velocity**0.3333
+
             # temperature excess
-            t_excess_cu_param_input = max(
-                0.0,
-                -1.5
-                * -sensible_heat_flux_cu_param_input
-                * density
-                * 1004.64
-                / (density * convective_scale_velosity_cu_param_input * 1004.64),
-            )  # K
-            # moisture  excess
-            vapor_excess_cu_param_input = max(
-                0.0,
-                -1.5 * latent_heat_flux_cu_param_input / (density * convective_scale_velosity_cu_param_input),
-            )  # kg kg-1
+            t_excess = max(0.0, -1.5 * pahfs / (zrho * convective_scale_velocity * 1004.64))  # K
 
-        # convective scale velosity for shallow convection closure (Grant 2001)
+            # moisture excess
+            vapor_excess = max(0.0, -1.5 * pqhfl / (zrho * convective_scale_velocity))  # kg kg-1
+
+        # convective_scale_velocity for shallow convection closure (Grant 2001)
+
         # depth of the pbl
-        # convective-scale velocity W* (m/s)
-        convective_scale_velosity_cu_param_input = max(
-            0.0,
-            0.001
-            - 1.5 * 0.41 * buoyancy_flux * pbl_height_cu_param_input * constants.MAPL_GRAV / t_cu_param_input,
-        )
-        convective_scale_velosity_cu_param_input = 1.2 * convective_scale_velosity_cu_param_input**0.3333
+        pgeoh = pbl_level * constants.MAPL_GRAV
 
-
-def prepare_cumulus_paramaterization_microphysics(
-    convective_liquid_local: FloatField,
-    convective_ice_local: FloatField,
-    convective_cloud_fraction_local: FloatField,
-    large_scale_liquid_local: FloatField,
-    large_scale_ice_local: FloatField,
-    large_scale_cloud_fraction_local: FloatField,
-    convective_liquid_cu_param_input: FloatField,
-    convective_ice_cu_param_input: FloatField,
-    convective_cloud_fraction_cu_param_input: FloatField,
-    large_scale_liquid_cu_param_input: FloatField,
-    large_scale_ice_cu_param_input: FloatField,
-    large_scale_cloud_fraction_cu_param_input: FloatField,
-):
-    with computation(PARALLEL), interval(0, -1):
-        convective_liquid_cu_param_input = convective_liquid_local
-        convective_ice_cu_param_input = convective_ice_local
-        convective_cloud_fraction_cu_param_input = convective_cloud_fraction_local
-        large_scale_liquid_cu_param_input = large_scale_liquid_local
-        large_scale_ice_cu_param_input = large_scale_ice_local
-        large_scale_cloud_fraction_cu_param_input = large_scale_cloud_fraction_local
+        # convective_scale_velocity W* (m/s)
+        convective_scale_velocity = max(0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / pten)
+        convective_scale_velocity = 1.2 * convective_scale_velocity**0.3333
 
 
 class GF2020Setup:
@@ -663,35 +896,51 @@ class GF2020Setup:
 
     This python implementation simplifies this structure by bringing all setup calculations to the same level,
     reducing some (but likely not all) redundent/duplicate field definitions in the process.
-
-    The call function for this class reads a takes a NDSL state ("state") filled with model state as input and
-    returns a NDSL state ("locals") filled with computed quantities prepared to be passed to the cumulus
-    parameterization core.
     """
 
     def __init__(
-        self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, GF_2020_config: GF2020Config
+        self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, config: GF2020Config
     ):
-        """
-        Build stencils
-        """
-        self.GF_2020_config = GF_2020_config
+        self.stencil_factory = stencil_factory
+        self.config = config
+
+        # check config for unimplemented paths
+        if config.ADV_TRIGGER == 2:
+            raise NotImplementedError(
+                "[NDSL] GF2020-->Setup initialized with shallow plume enabled. This requires"
+                "an umplemented portion of ensemble_output_and_feedback. Please impelment, then disable this"
+                "error manually to proceed."
+            )
 
         # Construct stencils
         self._compute_extra_inputs_from_state = stencil_factory.from_dims_halo(
             func=compute_extra_inputs_from_state,
             compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
             externals={
-                "STOCHASTIC_CONVECTION": GF_2020_config.STOCHASTIC_CNV,
-                "STOCH_TOP": GF_2020_config.STOCH_TOP,
-                "STOCH_BOT": GF_2020_config.STOCH_BOT,
-                "GF_MIN_AREA": GF_2020_config.GF_MIN_AREA,
-                "LHYDROSTATIC": GF_2020_config.LHYDROSTATIC,
+                "STOCHASTIC_CONVECTION": config.STOCHASTIC_CNV,
+                "STOCH_TOP": config.STOCH_TOP,
+                "STOCH_BOT": config.STOCH_BOT,
+                "GF_MIN_AREA": config.GF_MIN_AREA,
+                "LHYDROSTATIC": config.LHYDROSTATIC,
             },
         )
 
-        self._zero_state_fields = stencil_factory.from_dims_halo(
-            func=zero_state_fields,
+        self._zero_state = stencil_factory.from_dims_halo(
+            func=zero_state,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._prefill_cumulus_parameterization_state = stencil_factory.from_dims_halo(
+            func=prefill_cumulus_parameterization_state,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "NUMBER_OF_PLUMES": cumulus_parameterization_constants.NUMBER_OF_PLUMES,
+                "APPLY_SUBSIDENCE_MICROPHYSICS": config.APPLY_SUBSIDENCE_MICROPHYSICS,
+            },
+        )
+
+        self._prefill_locals = stencil_factory.from_dims_halo(
+            func=prefill_locals,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -699,41 +948,50 @@ class GF2020Setup:
             func=set_2d_fields,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "SINGLE_COLUMN_MODE": GF_2020_config.SINGLE_COLUMN_MODE,
+                "SIZE_I_DIM": self.stencil_factory.grid_indexing.get_shape([X_DIM])[0],
+                "SIZE_J_DIM": self.stencil_factory.grid_indexing.get_shape([Y_DIM])[0],
             },
         )
 
-        self._set_local_state = stencil_factory.from_dims_halo(
-            func=set_local_state,
+        self._choose_environment_and_flip_k_axis = stencil_factory.from_dims_halo(
+            func=choose_environment_and_flip_k_axis,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "GF_ENV_SETTING": GF_2020_config.GF_ENV_SETTING,
-                "ENTRVERSION": GF_2020_config.ENTRVERSION,
-                "CONVECTION_TRACER": GF_2020_config.CONVECTION_TRACER,
+                "GF_ENV_SETTING": config.GF_ENV_SETTING,
+                "ENTRVERSION": config.ENTRVERSION,
+                "CONVECTION_TRACER": config.CONVECTION_TRACER,
             },
         )
 
-        self._prepare_cumulus_parameterization = stencil_factory.from_dims_halo(
-            func=prepare_cumulus_parameterization,
+        self._copy_into_cumulus_parameterization_state = stencil_factory.from_dims_halo(
+            func=copy_into_cumulus_parameterization_state,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._prepare_cumulus_paramaterization_state = stencil_factory.from_dims_halo(
+            func=prepare_cumulus_paramaterization_state,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "ADV_TRIGGER": GF_2020_config.ADV_TRIGGER,
-                "USE_TRACER_TRANSP": GF_2020_config.USE_TRACER_TRANSP,
-                "AUTOCONV": GF_2020_config.AUTOCONV,
-                "DT_MOIST": GF_2020_config.DT_MOIST,
+                "AUTOCONV": config.AUTOCONV,
+                "DT_MOIST": config.DT_MOIST,
+                "APPLY_SUBSIDENCE_MICROPHYSICS": config.APPLY_SUBSIDENCE_MICROPHYSICS,
+                "USE_TRACER_TRANSPORT": config.USE_TRACER_TRANSPORT,
             },
-        )
-
-        self._prepare_cumulus_paramaterization_microphysics = stencil_factory.from_dims_halo(
-            func=prepare_cumulus_paramaterization_microphysics,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
     def __call__(
         self,
         state: GF2020State,
         locals: GF2020Locals,
+        cumulus_parameterization_state: GF2020CumulusParameterizationState,
         saturation_tables: SaturationVaporPressureTable,
+        convection_tracers: ConvectionTracers,
+        scm_stop: bool,
+        DEBUG_VAR_1,
+        DEBUG_VAR_2,
+        DEBUG_VAR_3,
+        DEBUG_VAR_4,
+        DEBUG_VAR_5,
     ):
         """
         Perform setup calculations
@@ -746,8 +1004,6 @@ class GF2020Setup:
         """
         # TODO reset all temporaries to zero
         # TODO reset last_ierr = -999, fix_out_vapor = 1
-        locals.miscelaneous_diagnostic.last_ierr.field[:] = -999
-        locals.miscelaneous_diagnostic.fix_out_vapor.field[:] = 1
 
         self._compute_extra_inputs_from_state(
             p_interface=state.p_interface,
@@ -773,7 +1029,7 @@ class GF2020Setup:
             esx=saturation_tables.esx,
         )
 
-        self._zero_state_fields(
+        self._zero_state(
             dvapordt_deep_convection=state.dvapordt_deep_convection,
             dtdt_deep_convection=state.dtdt_deep_convection,
             dudt_deep_convection=state.dudt_deep_convection,
@@ -806,170 +1062,264 @@ class GF2020Setup:
             total_water_flux_deep_convection=state.total_water_flux_deep_convection,
             updraft_area_fraction=state.updraft_area_fraction,
             updraft_vertical_velocity=state.updraft_vertical_velocity,
-            lighting_density=state.lighting_density,
             entrainment_parameter=state.entrainment_parameter,
+            lightning_density=state.lightning_density,
             pbl_time_scale=state.pbl_time_scale,
             cape_removal_time_scale=state.cape_removal_time_scale,
         )
 
-        # workaround because max of full field cannot be determined inside a stencil
-        t_2m_max = state.t_2m.max()
+        self._prefill_cumulus_parameterization_state(
+            error_code=cumulus_parameterization_state.output.error_code,
+            downdraft_origin_level=cumulus_parameterization_state.output.downdraft_origin_level,
+            lcl_level=cumulus_parameterization_state.output.lcl_level,
+            updraft_origin_level=cumulus_parameterization_state.output.updraft_origin_level,
+            updraft_lfc_level=cumulus_parameterization_state.output.updraft_lfc_level,
+            cloud_top_level=cumulus_parameterization_state.output.cloud_top_level,
+            kstabi=cumulus_parameterization_state.output.kstabi,
+            kstabm=cumulus_parameterization_state.output.kstabm,
+            precip=cumulus_parameterization_state.output.precip,
+            cloud_base_mass_flux_modified=cumulus_parameterization_state.output.cloud_base_mass_flux_modified,
+            epsilon_forced=cumulus_parameterization_state.output.epsilon_forced,
+            total_normalized_integrated_condensate_forced=cumulus_parameterization_state.output.total_normalized_integrated_condensate_forced,
+            scale_dependence_factor=cumulus_parameterization_state.output.scale_dependence_factor,
+            p_cloud_levels_forced=cumulus_parameterization_state.output.p_cloud_levels_forced,
+            entrainment_rate=cumulus_parameterization_state.output.entrainment_rate,
+            mass_entrainment_updraft_forced=cumulus_parameterization_state.output.mass_entrainment_updraft_forced,
+            mass_entrainment_downdraft_forced=cumulus_parameterization_state.output.mass_entrainment_downdraft_forced,
+            mass_detrainment_updraft_forced=cumulus_parameterization_state.output.mass_detrainment_updraft_forced,
+            mass_detrainment_downdraft_forced=cumulus_parameterization_state.output.mass_detrainment_downdraft_forced,
+            normalized_massflux_updraft_forced=cumulus_parameterization_state.output.normalized_massflux_updraft_forced,
+            normalized_massflux_downdraft_forced=cumulus_parameterization_state.output.normalized_massflux_downdraft_forced,
+            condensate_to_fall_forced=cumulus_parameterization_state.output.condensate_to_fall_forced,
+            evaporate_in_downdraft_forced=cumulus_parameterization_state.output.evaporate_in_downdraft_forced,
+            cloud_liquid_after_rain_forced=cumulus_parameterization_state.output.cloud_liquid_after_rain_forced,
+            t_updraft=cumulus_parameterization_state.output.t_updraft,
+            convective_cloud_fraction_output=cumulus_parameterization_state.output.convective_cloud_fraction,
+            dtdt=cumulus_parameterization_state.output.dtdt,
+            dudt=cumulus_parameterization_state.output.dudt,
+            dvdt=cumulus_parameterization_state.output.dvdt,
+            dvapordt=cumulus_parameterization_state.output.dvapordt,
+            dcloudicedt=cumulus_parameterization_state.output.dcloudicedt,
+            dnicedt=cumulus_parameterization_state.output.dnicedt,
+            dnliquiddt=cumulus_parameterization_state.output.dnliquiddt,
+            dbuoyancydt=cumulus_parameterization_state.output.dbuoyancydt,
+            chemistry_tracers_output=cumulus_parameterization_state.input_output.chemistry_tracers_output,
+            evaporation_sublimation_tendency=cumulus_parameterization_state.output.evaporation_sublimation_tendency,
+            convective_precip_flux=cumulus_parameterization_state.output.convective_precip_flux,
+            t_perturbation=cumulus_parameterization_state.output.t_perturbation,
+            omega=cumulus_parameterization_state.input_output.omega,
+            large_scale_ice=cumulus_parameterization_state.input_output.large_scale_ice,
+            convective_ice=cumulus_parameterization_state.input_output.convective_ice,
+            large_scale_liquid=cumulus_parameterization_state.input_output.large_scale_liquid,
+            convective_liquid=cumulus_parameterization_state.input_output.convective_liquid,
+            large_scale_cloud_fraction=cumulus_parameterization_state.input_output.large_scale_cloud_fraction,
+            convective_cloud_fraction=cumulus_parameterization_state.input_output.convective_cloud_fraction,
+            lightning_density=cumulus_parameterization_state.output.lightning_density,
+            t_excess=cumulus_parameterization_state.input.t_excess,
+            vapor_excess=cumulus_parameterization_state.input.vapor_excess,
+            last_error_code=cumulus_parameterization_state.input.last_error_code,
+        )
 
-        # if surface temperature is not yet set in single column mode, do not run
-        if self.GF_2020_config.SINGLE_COLUMN_MODE == True and t_2m_max < 1.0e-6:
+        self._prefill_locals(
+            fix_out_vapor=locals.fix_out_vapor,
+            rtgt=locals.rtgt,
+            t_tendency_from_vapor=locals.t_tendency_from_vapor,
+            total_dbuoyancydt=locals.total_dbuoyancydt,
+            dtdt=locals.dtdt,
+            dvapordt=locals.dvapordt,
+            dcloudicedt=locals.dcloudicedt,
+            dudt=locals.dudt,
+            dvdt=locals.dvdt,
+        )
+
+        # workaround because max of full field cannot be determined inside a stencil
+        t_2m_max = state.t_2m.field.max()
+
+        # # if surface temperature is not yet set in single column mode, stop the entire convection scheme
+        if self.stencil_factory.grid_indexing.get_shape([X_DIM, Y_DIM]) == (1, 1) and t_2m_max < 1.0e-6:
+            scm_stop = True
             return
 
         self._set_2d_fields(
+            aot500=locals.aot500,
             t=state.t,
             t_2m_max=t_2m_max,
             t_2m=state.t_2m,
-            t_2m_local=locals.local_copy.t_2m,
+            t_2m_local=locals.flipped_copy.t_2m,
             evaporation=state.evaporation,
-            evaporation_local=locals.local_copy.evaporation,
+            evaporation_local=locals.evaporation,
             sensible_heat_flux=state.sensible_heat_flux,
+            sensible_heat_flux_local=locals.sensible_heat_flux,
             p_interface=state.p_interface,
             vapor=state.vapor,
             geopotential_height_surface=state.geopotential_height_surface,
-            topography_height=locals.derived_state.topography_height,
+            topography_height=locals.topography_height,
             land_fraction=state.land_fraction,
-            ocean_fraction=locals.derived_state.ocean_fraction,
+            ocean_fraction=locals.ocean_fraction,
             area=state.area,
-            grid_length=locals.cumulus_parameterization_input.grid_length,
+            grid_length=locals.grid_length,
             pbl_level=state.pbl_level,
-            pbl_level_local=locals.local_copy.pbl_level,
+            pbl_level_flipped=locals.flipped_copy.pbl_level,
         )
 
-        self._set_local_state(
+        self._choose_environment_and_flip_k_axis(
+            dz=locals.derived_state.dz,
+            air_density=locals.derived_state.air_density,
             geopotential_height_interface=state.geopotential_height_interface,
             t=state.t,
-            t_local=locals.local_copy.t,
-            p=locals.derived_state.p,
-            p_local=locals.local_copy.p,
-            vapor=state.vapor,
-            vapor_local=locals.local_copy.vapor,
-            vapor_current_local=locals.local_copy.vapor_current,
-            u=state.u,
-            u_local=locals.local_copy.u,
-            v=state.v,
-            v_local=locals.local_copy.v,
-            vertical_velocity=locals.derived_state.vertical_velocity,
-            vertical_velocity_local=locals.local_copy.vertical_velocity,
-            layer_height_above_surface=locals.derived_state.layer_height_above_surface,
-            layer_height_above_surface_local=locals.local_copy.layer_height_above_surface,
-            edge_height_above_surface=locals.derived_state.edge_height_above_surface,
-            edge_height_above_surface_local=locals.local_copy.edge_height_above_surface,
-            mass=locals.derived_state.mass,
-            mass_local=locals.local_copy.mass,
-            scalar_diffusivity=state.scalar_diffusivity,
-            scalar_diffusivity_local=locals.local_copy.scalar_diffusivity,
-            lateral_entrainment_rate=state.lateral_entrainment_rate,
-            lateral_entrainment_rate_local=locals.local_copy.lateral_entrainment_rate,
-            p_surface=locals.local_copy.p_surface,
-            buoyancy=state.buoyancy,
-            p_interface=state.p_interface,
-            convective_liquid=state.convective_liquid,
-            convective_ice=state.convective_ice,
-            convective_cloud_fraction=state.convective_cloud_fraction,
-            large_scale_liquid=state.large_scale_liquid,
-            large_scale_ice=state.large_scale_ice,
-            large_scale_cloud_fraction=state.large_scale_cloud_fraction,
-            p_interface_timestep_start=state.p_interface_timestep_start,
+            t_flipped=locals.flipped_copy.t,
             t_timestep_start=state.t_timestep_start,
-            u_timestep_start=state.u_timestep_start,
-            v_timestep_start=state.v_timestep_start,
+            p=locals.derived_state.p,
+            p_interface=state.p_interface,
+            p_interface_timestep_start=state.p_interface_timestep_start,
+            p_flipped=locals.flipped_copy.p,
+            p_surface_flipped=locals.flipped_copy.p_surface,
+            vapor=state.vapor,
             vapor_timestep_start=state.vapor_timestep_start,
+            vapor_flipped=locals.flipped_copy.vapor,
+            vapor_current_flipped=locals.flipped_copy.vapor_current,
+            u=state.u,
+            u_timestep_start=state.u_timestep_start,
+            u_flipped=locals.flipped_copy.u,
+            v=state.v,
+            v_timestep_start=state.v_timestep_start,
+            v_flipped=locals.flipped_copy.v,
+            w=state.w,
+            w_flipped=locals.flipped_copy.w,
+            layer_height_above_surface=locals.derived_state.layer_height_above_surface,
+            layer_height_above_surface_flipped=locals.flipped_copy.layer_height_above_surface,
+            edge_height_above_surface=locals.derived_state.edge_height_above_surface,
+            edge_height_above_surface_flipped=locals.flipped_copy.edge_height_above_surface,
+            mass=locals.derived_state.mass,
+            mass_flipped=locals.flipped_copy.mass,
+            scalar_diffusivity=state.scalar_diffusivity,
+            scalar_diffusivity_flipped=locals.flipped_copy.scalar_diffusivity,
+            lateral_entrainment_rate=state.lateral_entrainment_rate,
+            lateral_entrainment_rate_flipped=locals.flipped_copy.lateral_entrainment_rate,
+            buoyancy=state.buoyancy,
+            buoyancy_excess=locals.buoyancy_excess,
             dtdt_shortwave=state.dtdt_shortwave,
             dtdt_longwave=state.dtdt_longwave,
             dtdt_from_dynamics=state.dtdt_from_dynamics,
-            dvapordt_from_dynamics=state.dvapordt_from_dynamics,
             dtdt_pbl=state.dtdt_pbl,
+            dvapordt_from_dynamics=state.dvapordt_from_dynamics,
             dspecific_humiditydt_pbl=state.dspecific_humiditydt_pbl,
-            grid_scale_forcing_t=locals.cumulus_parameterization_input.grid_scale_forcing_t,
-            grid_scale_forcing_vapor=locals.cumulus_parameterization_input.grid_scale_forcing_vapor,
-            subgrid_scale_forcing_t=locals.cumulus_parameterization_input.subgrid_scale_forcing_t,
-            subgrid_scale_forcing_vapor=locals.cumulus_parameterization_input.subgrid_scale_forcing_vapor,
-            advective_forcing_t=locals.cumulus_parameterization_input.advective_forcing_t,
-            convective_liquid_local=locals.local_copy.convective_liquid,
-            convective_ice_local=locals.local_copy.convective_ice,
-            convective_cloud_fraction_local=locals.local_copy.convective_cloud_fraction,
-            large_scale_liquid_local=locals.local_copy.large_scale_liquid,
-            large_scale_ice_local=locals.local_copy.large_scale_ice,
-            large_scale_cloud_fraction_local=locals.local_copy.large_scale_cloud_fraction,
+            grid_scale_forcing_t=locals.grid_scale_forcing_t,
+            grid_scale_forcing_vapor=locals.grid_scale_forcing_vapor,
+            subgrid_scale_forcing_t=locals.subgrid_scale_forcing_t,
+            subgrid_scale_forcing_vapor=locals.subgrid_scale_forcing_vapor,
+            advective_forcing_t=locals.advective_forcing_t,
+            convective_liquid=state.convective_liquid,
+            convective_liquid_flipped=locals.flipped_copy.convective_liquid,
+            convective_ice=state.convective_ice,
+            convective_ice_flipped=locals.flipped_copy.convective_ice,
+            convective_cloud_fraction=state.convective_cloud_fraction,
+            convective_cloud_fraction_flipped=locals.flipped_copy.convective_cloud_fraction,
+            large_scale_liquid=state.large_scale_liquid,
+            large_scale_liquid_flipped=locals.flipped_copy.large_scale_liquid,
+            large_scale_ice=state.large_scale_ice,
+            large_scale_ice_flipped=locals.flipped_copy.large_scale_ice,
+            large_scale_cloud_fraction=state.large_scale_cloud_fraction,
+            large_scale_cloud_fraction_flipped=locals.flipped_copy.large_scale_cloud_fraction,
             convection_tracer=state.convection_tracer,
-            buoyancy_excess=locals.cumulus_parameterization_input.buoyancy_excess,
+            total_precipitable_water_initial=state.total_precipitable_water_initial,
+            saturation_total_precipitable_water_initial=state.saturation_total_precipitable_water_initial,
+            saturation_water_vapor=locals.saturation_water_vapor,
+            DEBUG_VAR_1=DEBUG_VAR_1,
+            DEBUG_VAR_2=DEBUG_VAR_2,
+            DEBUG_VAR_3=DEBUG_VAR_3,
+            DEBUG_VAR_4=DEBUG_VAR_4,
+            DEBUG_VAR_5=DEBUG_VAR_5,
         )
 
-        if self.GF_2020_config.ADV_TRIGGER == 2:
-            raise NotImplementedError("ADV_TRIGGER == 2 not implemented yet")
+        if self.config.ADV_TRIGGER == 2:
+            raise NotImplementedError("option not implemented, should have been caught at initialization")
 
-        self._prepare_cumulus_parameterization(
-            t_perturbation_horizontal=locals.derived_state.t_perturbation_horizontal,
-            t_perturbation_vertical=locals.derived_state.t_perturbation_vertical,
-            t_perturbation=locals.cumulus_parameterization_input.t_perturbation,
-            t_2m=locals.local_copy.t_2m,
-            t_surface=locals.cumulus_parameterization_input.t_surface,
-            ccn=locals.cumulus_parameterization_input.ccn,
-            p_surface_local=locals.local_copy.p_surface,
-            p_surface_cu_param_input=locals.cumulus_parameterization_input.p_surface,
-            ocean_fraction_lcoal=locals.derived_state.ocean_fraction,
-            ocean_fraction_cu_param_input=locals.cumulus_parameterization_input.ocean_fraction,
-            topography_height=locals.derived_state.topography_height,
-            topography_height_no_negative=locals.cumulus_parameterization_input.topography_height,
-            latitude=state.latitude,
-            longitude=state.longitude,
-            latitude_degrees=locals.cumulus_parameterization_input.latitude_degrees,
-            longitude_degrees=locals.cumulus_parameterization_input.longitude_degrees,
-            layer_height_above_surface=locals.local_copy.layer_height_above_surface,
-            geopotential_height_cu_param_input=locals.cumulus_parameterization_input.geopotential_height,
-            p=locals.local_copy.p,
-            p_mb=locals.cumulus_parameterization_input.p_mb,
-            t_local=locals.local_copy.t,
-            t_cu_param_input=locals.cumulus_parameterization_input.t,
-            vapor_local=locals.local_copy.vapor,
-            vapor_current_local=locals.local_copy.vapor_current,
-            vapor_timestep_start_cu_param_input=locals.cumulus_parameterization_input.vapor_timestep_start,
-            vapor_current_cu_param_input=locals.cumulus_parameterization_input.vapor_current,
-            air_density_cu_param_input=locals.cumulus_parameterization_input.air_density,
-            u_local=locals.local_copy.u,
-            v_local=locals.local_copy.v,
-            w_local=locals.local_copy.vertical_velocity,
-            u_cu_param_input=locals.cumulus_parameterization_input.u,
-            v_cu_param_input=locals.cumulus_parameterization_input.v,
-            w_cu_param_input=locals.cumulus_parameterization_input.w,
-            omega_cu_param_input=locals.cumulus_parameterization_input.omega,
-            mass_local=locals.local_copy.mass,
-            mass_cu_param_input=locals.cumulus_parameterization_input.mass,
-            advective_forcing_t=locals.cumulus_parameterization_input.advective_forcing_t,
-            t_modified_by_advection=locals.cumulus_parameterization_input.t_modified_by_advection,
-            grid_scale_forcing_vapor=locals.cumulus_parameterization_input.grid_scale_forcing_vapor,
-            vapor_modified_by_advection=locals.cumulus_parameterization_input.vapor_modified_by_advection,
-            pbl_level_local=locals.local_copy.pbl_level,
-            pbl_level_cu_param_input=locals.cumulus_parameterization_input.pbl_level,
-            pbl_height_cu_param_input=locals.cumulus_parameterization_input.pbl_height,
-            sensible_heat_flux_local=locals.local_copy.sensible_heat_flux,
-            sensible_heat_flux_cu_param_input=locals.cumulus_parameterization_input.sensible_heat_flux,
-            evaporation_local=locals.local_copy.evaporation,
-            latent_heat_flux_cu_param_input=locals.cumulus_parameterization_input.latent_heat_flux,
-            convective_scale_velosity_cu_param_input=locals.cumulus_parameterization_input.convective_scale_velosity,
-            t_excess_cu_param_input=locals.cumulus_parameterization_input.t_excess,
-            vapor_excess_cu_param_input=locals.cumulus_parameterization_input.vapor_excess,
+        self._copy_into_cumulus_parameterization_state(
+            grid_length_local=locals.grid_length,
+            grid_length=cumulus_parameterization_state.input_output.grid_length,
+            saturation_water_vapor_local=locals.saturation_water_vapor,
+            saturation_water_vapor=cumulus_parameterization_state.input.saturation_water_vapor,
+            seed_convection_model_state=state.seed_convection,
+            seed_convection=cumulus_parameterization_state.input.seed_convection,
+            convection_fraction_model_state=state.convection_fraction,
+            convection_fraction=cumulus_parameterization_state.input.convection_fraction,
+            surface_type_model_state=state.surface_type,
+            surface_type=cumulus_parameterization_state.input.surface_type,
+            grid_scale_forcing_t_local=locals.grid_scale_forcing_t,
+            grid_scale_forcing_t=cumulus_parameterization_state.input.grid_scale_forcing_t,
+            grid_scale_forcing_vapor_local=locals.grid_scale_forcing_vapor,
+            grid_scale_forcing_vapor=cumulus_parameterization_state.input.grid_scale_forcing_vapor,
+            subgrid_scale_forcing_t_local=locals.subgrid_scale_forcing_t,
+            subgrid_scale_forcing_t=cumulus_parameterization_state.input.subgrid_scale_forcing_t,
+            subgrid_scale_forcing_vapor_local=locals.subgrid_scale_forcing_vapor,
+            subgrid_scale_forcing_vapor=cumulus_parameterization_state.input.subgrid_scale_forcing_vapor,
+            lateral_entrainment_rate_flipped=locals.flipped_copy.lateral_entrainment_rate,
+            lateral_entrainment_rate=cumulus_parameterization_state.input.lateral_entrainment_rate,
         )
 
-        if self.GF_2020_config.APPLY_SUB_MP == 1:
-            self._prepare_cumulus_paramaterization_microphysics(
-                convective_liquid_local=locals.local_copy.convective_liquid,
-                convective_ice_local=locals.local_copy.convective_ice,
-                convective_cloud_fraction_local=locals.local_copy.convective_cloud_fraction,
-                large_scale_liquid_local=locals.local_copy.large_scale_liquid,
-                large_scale_ice_local=locals.local_copy.large_scale_ice,
-                large_scale_cloud_fraction_local=locals.local_copy.large_scale_cloud_fraction,
-                convective_liquid_cu_param_input=locals.cumulus_parameterization_input.convective_liquid,
-                convective_ice_cu_param_input=locals.cumulus_parameterization_input.convective_ice,
-                convective_cloud_fraction_cu_param_input=locals.cumulus_parameterization_input.convective_cloud_fraction,
-                large_scale_liquid_cu_param_input=locals.cumulus_parameterization_input.large_scale_liquid,
-                large_scale_ice_cu_param_input=locals.cumulus_parameterization_input.large_scale_ice,
-                large_scale_cloud_fraction_cu_param_input=locals.cumulus_parameterization_input.large_scale_cloud_fraction,
-            )
-
-        if self.GF_2020_config.USE_TRACER_TRANSP == 1:
-            ndsl_log.warning("tracer stuff not yet implemented")
+        self._prepare_cumulus_paramaterization_state(
+            aot500=locals.aot500,
+            ccn=cumulus_parameterization_state.input_output.ccn,
+            ocean_fraction_local=locals.ocean_fraction,
+            ocean_fraction=cumulus_parameterization_state.input.ocean_fraction,
+            p_surface_flipped=locals.flipped_copy.p_surface,
+            p_surface=cumulus_parameterization_state.input_output.p_surface,
+            t_2m_flipped=locals.flipped_copy.t_2m,
+            t_surface=cumulus_parameterization_state.input_output.t_surface,
+            topography_height=locals.topography_height,
+            topography_height_no_negative=cumulus_parameterization_state.input_output.topography_height_no_negative,
+            pbl_level_flipped=locals.flipped_copy.pbl_level,
+            pbl_level=cumulus_parameterization_state.input_output.pbl_level,
+            latitude_model_state=state.latitude,
+            latitude=cumulus_parameterization_state.input_output.latitude_degrees,
+            longitude_model_state=state.longitude,
+            longitude=cumulus_parameterization_state.input_output.longitude_degrees,
+            rtgt=locals.rtgt,
+            geopotential_height_forced=cumulus_parameterization_state.input_output.geopotential_height_forced,
+            layer_height_above_surface_flipped=locals.flipped_copy.layer_height_above_surface,
+            edge_height_above_surface_flipped=locals.flipped_copy.edge_height_above_surface,
+            p_flipped=locals.flipped_copy.p,
+            p_forced=cumulus_parameterization_state.input_output.p_forced,
+            t_flipped=locals.flipped_copy.t,
+            t_old=cumulus_parameterization_state.input_output.t_old,
+            vapor_flipped=locals.flipped_copy.vapor,
+            vapor_old=cumulus_parameterization_state.input_output.vapor_old,
+            air_density=cumulus_parameterization_state.input_output.air_density,
+            u_flipped=locals.flipped_copy.u,
+            u=cumulus_parameterization_state.input_output.u,
+            v_flipped=locals.flipped_copy.v,
+            v=cumulus_parameterization_state.input_output.v,
+            w_flipped=locals.flipped_copy.w,
+            w=cumulus_parameterization_state.input_output.w,
+            mass_flipped=locals.flipped_copy.mass,
+            mass=cumulus_parameterization_state.input_output.mass,
+            omega=cumulus_parameterization_state.input_output.omega,
+            buoyancy_excess_local=locals.buoyancy_excess,
+            buoyancy_excess=cumulus_parameterization_state.input_output.buoyancy_excess,
+            advective_forcing_t=locals.advective_forcing_t,
+            t_modified_by_advection=cumulus_parameterization_state.input_output.t_modified_by_advection,
+            grid_scale_forcing_vapor=cumulus_parameterization_state.input.grid_scale_forcing_vapor,
+            vapor_modified_by_advection=cumulus_parameterization_state.input_output.vapor_modified_by_advection,
+            convective_liquid_flipped=locals.flipped_copy.convective_liquid,
+            convective_liquid=cumulus_parameterization_state.input_output.convective_liquid,
+            convective_ice_flipped=locals.flipped_copy.convective_ice,
+            convective_ice=cumulus_parameterization_state.input_output.convective_ice,
+            convective_cloud_fraction_flipped=locals.flipped_copy.convective_cloud_fraction,
+            convective_cloud_fraction=cumulus_parameterization_state.input_output.convective_cloud_fraction,
+            large_scale_liquid_flipped=locals.flipped_copy.large_scale_liquid,
+            large_scale_liquid=cumulus_parameterization_state.input_output.large_scale_liquid,
+            large_scale_ice_flipped=locals.flipped_copy.large_scale_ice,
+            large_scale_ice=cumulus_parameterization_state.input_output.large_scale_ice,
+            large_scale_cloud_fraction_flipped=locals.flipped_copy.large_scale_cloud_fraction,
+            large_scale_cloud_fraction=cumulus_parameterization_state.input_output.large_scale_cloud_fraction,
+            convection_tracers=convection_tracers.tracers,
+            chemistry_tracers=cumulus_parameterization_state.input_output.chemistry_tracers,
+            sensible_heat_flux_local=locals.sensible_heat_flux,
+            sensible_heat_flux=cumulus_parameterization_state.input_output.sensible_heat_flux,
+            evaporation_local=locals.evaporation,
+            latent_heat_flux=cumulus_parameterization_state.input_output.latent_heat_flux,
+            convective_scale_velocity=cumulus_parameterization_state.input_output.convective_scale_velocity,
+            t_excess=cumulus_parameterization_state.input.t_excess,
+            vapor_excess=cumulus_parameterization_state.input.vapor_excess,
+        )

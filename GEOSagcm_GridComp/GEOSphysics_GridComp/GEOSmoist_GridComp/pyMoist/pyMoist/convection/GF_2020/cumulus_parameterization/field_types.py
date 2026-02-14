@@ -6,7 +6,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS2,
     MAXENS3,
 )
-from pyMoist.constants import NCNST
+from pyMoist.constants import NUMBER_OF_TRACERS
 
 # NOTE must cast to int because numpy types are not acceptable for data dimensions
 # plume field types
@@ -22,6 +22,6 @@ FloatFieldIJ_Ensemble = Field[IJ, (Float, (int(MAXENS1 * MAXENS2 * MAXENS3)))]
 
 # NOTE THESE SHOULD BE MIGRATED TO PYMOIST GLOBAL FIELD TYPES
 # convection tracer field types
-FloatFieldIJ_ConvectionTracers = Field[IJ, (Float, int(NCNST))]
-FloatField_ConvectionTracers = Field[IJK, (Float, int(NCNST))]
-FloatField_ConvectionTracers_Plume = Field[IJK, (Float, (int(NUMBER_OF_PLUMES), int(NCNST)))]
+FloatFieldIJ_ConvectionTracers = Field[IJ, (Float, int(NUMBER_OF_TRACERS))]
+FloatField_ConvectionTracers = Field[IJK, (Float, int(NUMBER_OF_TRACERS))]
+FloatField_ConvectionTracers_Plume = Field[IJK, (Float, (int(NUMBER_OF_PLUMES), int(NUMBER_OF_TRACERS)))]

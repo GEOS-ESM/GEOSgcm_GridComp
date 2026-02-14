@@ -1,4 +1,4 @@
-from ndsl import StencilFactory, QuantityFactory, ndsl_log
+from ndsl import StencilFactory, QuantityFactory, ndsl_log, NDSLRuntime
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
@@ -116,7 +116,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
 )
 
 
-class GF2020_CumulusParameterization:
+class GF2020_CumulusParameterization(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -124,6 +124,8 @@ class GF2020_CumulusParameterization:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
+        super().__init__(stencil_factory)
+
         # get config from the rest of the model
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config

@@ -39,10 +39,12 @@ from .translate_compute_uwshcu import TranslateComputeUwshcuInv
 
 
 # GF_2020
+from .convection.GF_2020.translate_GF2020_Setup import (
+    TranslateGF2020_Setup,
+)
 from .convection.GF_2020.cumulus_parameterization.translate_GF2020_CumulusParameterization import (
     TranslateGF2020_CumulusParameterization,
 )
-
 from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup import (
     TranslateGF2020_CumulusParameterization_Setup_shallow,
     TranslateGF2020_CumulusParameterization_Setup_mid,
