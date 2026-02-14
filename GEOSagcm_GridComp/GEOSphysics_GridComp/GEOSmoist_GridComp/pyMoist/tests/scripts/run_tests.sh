@@ -14,8 +14,12 @@ python -m pytest -s -v --disable-warnings --multimodal_metric \
     --data_path=$1 \
     --backend=$2\
     --which_modules=$3 \
+    --which_rank=0 \
     --grid=default \
     --no_report \
     --threshold_overrides_file=./overrides.yml \
     --which_rank=0 \
     ../translate_tests
+
+
+

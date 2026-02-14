@@ -18,6 +18,7 @@ from .GFDL_1M.translate_GFDL_1M_Finalize import TranslateGFDL_1M_Finalize
 from .GFDL_1M.translate_GFDL_1M_RadiationCoupling import TranslateGFDL_1M_RadiationCoupling
 from .GFDL_1M.translate_GFDL_1M_RedistributeClouds import TranslateGFDL_1M_RedistributeClouds
 from .GFDL_1M.translate_GFDL_1M_Setup import TranslateGFDL_1M_Setup
+from .UW.translate_compute_uwshcu import TranslateComputeUwshcuInv
 
 
 __all__ = [
@@ -39,4 +40,5 @@ __all__ = [
     "TranslateGFDL_1M_RadiationCoupling",
     "TranslateGFDL_1M_RedistributeClouds",
     "TranslateGFDL_1M_Setup",
+    "TranslateComputeUwshcuInv",
 ]

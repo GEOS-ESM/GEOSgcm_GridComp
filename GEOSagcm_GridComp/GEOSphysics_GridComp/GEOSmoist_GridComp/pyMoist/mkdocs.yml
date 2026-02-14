@@ -57,6 +57,8 @@ nav:
   - Fortran interface:
       - "build_helper": fortran/build_helper.md
       - "geos_pymoist": fortran/geos_pymoist.md
+      - "Parametrization interfaces":
+        - "UW_interface": fortran/param_interfaces/UW_interface.md
   - Shared:
       - "Interpolations": shared/interpolations.md
       - "Numerical Recipes": shared/numerical_recipes.md
