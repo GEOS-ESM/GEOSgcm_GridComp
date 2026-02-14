@@ -40,14 +40,14 @@ class NDSLPhysicsConfiguration:
     layout_x: int = 1
     layout_y: int = 1
     single_column: bool = False
-    backend: str = "dace:cpu_kfirst"
+    backend: str = "dace:cpu_KJI"
 
 
 class NDSLPhysicsStack:
     def __init__(
         self,
         flags: NDSLPhysicsConfiguration,
-        backend="numpy",
+        backend="dace:cpu_KJI",
         fortran_mem_space: MemorySpace = MemorySpace.CPU,
     ) -> None:
         # Look for an override to run on a single node
