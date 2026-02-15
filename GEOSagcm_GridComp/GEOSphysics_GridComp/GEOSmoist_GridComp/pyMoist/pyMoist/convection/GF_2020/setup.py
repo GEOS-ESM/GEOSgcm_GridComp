@@ -1310,9 +1310,6 @@ class GF2020Setup:
             scm_stop (bool): flag which can stop the execution of GF2020
 
         """
-        # TODO reset all temporaries to zero
-        # TODO reset last_ierr = -999, fix_out_vapor = 1
-
         self._compute_extra_inputs_from_state(
             p_interface=state.p_interface,
             p=locals.derived_state.p,
