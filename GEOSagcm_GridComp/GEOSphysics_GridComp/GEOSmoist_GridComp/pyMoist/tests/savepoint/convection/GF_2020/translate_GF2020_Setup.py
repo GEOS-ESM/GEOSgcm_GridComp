@@ -236,12 +236,6 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             # "convective_cloud_fraction": {},
             "chemistry_tracers": {},
             "chemistry_tracers_output": {},
-            # DEBUG
-            "local_mass_n": {},
-            "local_edge_height_above_surface_n": {},
-            "local_layer_height_above_surface_n": {},
-            "local_p_n": {},
-            "local_p_kappa_n": {},
         }
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -389,14 +383,6 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        # DEBUG
-        from ndsl.constants import Z_INTERFACE_DIM
-
-        DEBUG_VAR_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        DEBUG_VAR_2 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
-        DEBUG_VAR_3 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        DEBUG_VAR_4 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        DEBUG_VAR_5 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         setup = GF2020Setup(
             stencil_factory=self.stencil_factory, quantity_factory=self.quantity_factory, config=config
         )
@@ -408,11 +394,6 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             saturation_tables=saturation_tables,
             convection_tracers=convection_tracers,
             scm_stop=False,
-            DEBUG_VAR_1=DEBUG_VAR_1,
-            DEBUG_VAR_2=DEBUG_VAR_2,
-            DEBUG_VAR_3=DEBUG_VAR_3,
-            DEBUG_VAR_4=DEBUG_VAR_4,
-            DEBUG_VAR_5=DEBUG_VAR_5,
         )
 
         # fill output dictionary for testing
@@ -638,12 +619,6 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             ],
             "chemistry_tracers": cumulus_parameterization_state.input_output.chemistry_tracers.field[:],
             "chemistry_tracers_output": chemistry_tracers_output_4d,
-            # DEBUG
-            "local_mass_n": DEBUG_VAR_1.field[:],
-            "local_edge_height_above_surface_n": DEBUG_VAR_2.field[:],
-            "local_layer_height_above_surface_n": DEBUG_VAR_3.field[:],
-            "local_p_n": DEBUG_VAR_4.field[:],
-            "local_p_kappa_n": DEBUG_VAR_5.field[:],
         }
 
         return outputs

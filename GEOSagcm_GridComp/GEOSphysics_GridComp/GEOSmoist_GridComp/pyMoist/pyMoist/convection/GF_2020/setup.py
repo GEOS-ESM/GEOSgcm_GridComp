@@ -54,6 +54,29 @@ def compute_extra_inputs_from_state(
      - Modify area (m^2) here so GF scale dependence has a convection_fraction dependence
 
     This stencil MUST be built using Z_INTERFACE_DIM to function properly.
+
+    Args:
+        p_interface (FloatField)
+        p (FloatField)
+        p_kappa (FloatField)
+        edge_height_above_surface (FloatField)
+        layer_height_above_surface (FloatField)
+        geopotential_height_interface (FloatField)
+        t (FloatField)
+        th (FloatField)
+        vapor (FloatField)
+        mass (FloatField)
+        w (FloatField)
+        omega (FloatField)
+        vertical_motion (FloatField)
+        tpwi (FloatFieldIJ)
+        tpwi_star (FloatFieldIJ)
+        seed_convection (FloatFieldIJ)
+        area (FloatFieldIJ)
+        modified_area (FloatFieldIJ)
+        convection_fraction (FloatFieldIJ)
+        ese (GlobalTable_saturation_tables)
+        esx (GlobalTable_saturation_tables)
     """
     from __externals__ import k_end, STOCHASTIC_CONVECTION, STOCH_TOP, STOCH_BOT, GF_MIN_AREA, LHYDROSTATIC
 
@@ -155,7 +178,50 @@ def zero_state(
     cape_removal_time_scale: FloatFieldIJ,
 ):
     """
+    Zero fields from the GEOS model state.
+
+    All of these fields are outputs of GF2020 which may be set in the CumulusParameterization core routine,
+    so we are really just clearing any data from the previous timestep to ensure nothing leaks through.
+
     Must be built with Z_INTERFACE_DIM.
+
+    Args:
+        dvapordt_deep_convection (FloatField)
+        dtdt_deep_convection (FloatField)
+        dudt_deep_convection (FloatField)
+        dvdt_deep_convection (FloatField)
+        sigma_deep (FloatFieldIJ)
+        sigma_mid (FloatFieldIJ)
+        mass_flux_shalow (FloatField)
+        mass_flux_mid (FloatField)
+        mass_flux_deep_updraft (FloatField)
+        mass_flux_deep_updraft_interface (FloatField)
+        mass_flux_deep_updraft_detrained (FloatField)
+        mass_flux_deep_downdraft (FloatField)
+        mass_flux_cloud_base (FloatField)
+        mass_flux_cloud_base_shallow (FloatFieldIJ)
+        mass_flux_cloud_base_mid (FloatFieldIJ)
+        mass_flux_cloud_base_deep (FloatFieldIJ)
+        convection_code_shallow (FloatFieldIJ)
+        convection_code_mid (FloatFieldIJ)
+        convection_code_deep (FloatFieldIJ)
+        cloud_work_function_0 (FloatFieldIJ)
+        cloud_work_function_1 (FloatFieldIJ)
+        cloud_work_function_2 (FloatFieldIJ)
+        cloud_work_function_3 (FloatFieldIJ)
+        cloud_work_function_1_pbl (FloatFieldIJ)
+        cloud_work_function_1_cin (FloatFieldIJ)
+        convective_precipitation_RAS (FloatField)
+        convective_precipitation_GF (FloatFieldIJ)
+        convective_condensate_source (FloatField)
+        convective_condensate_grid_mean (FloatField)
+        total_water_flux_deep_convection (FloatField)
+        updraft_area_fraction (FloatField)
+        updraft_vertical_velocity (FloatField)
+        entrainment_parameter (FloatField)
+        lightning_density (FloatFieldIJ)
+        pbl_time_scale (FloatFieldIJ)
+        cape_removal_time_scale (FloatFieldIJ)
     """
     with computation(PARALLEL), interval(0, -1):
         dvapordt_deep_convection = 0.0
@@ -273,6 +339,64 @@ def prefill_cumulus_parameterization_state(
     vapor_excess: FloatFieldIJ,
     last_error_code: IntFieldIJ,
 ):
+    """
+    Zero fields from the CumulusParameterization state.
+
+    All of these fields may be set in the CumulusParameterization core routine,
+    so they need to be reset to ensure no lingering data from the previous
+    timestep makes it through.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        downdraft_origin_level (IntFieldIJ_Plume)
+        lcl_level (IntFieldIJ_Plume)
+        updraft_origin_level (IntFieldIJ_Plume)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        kstabi (IntFieldIJ_Plume)
+        kstabm (IntFieldIJ_Plume)
+        precip (FloatFieldIJ_Plume)
+        cloud_base_mass_flux_modified (FloatFieldIJ_Plume)
+        epsilon_forced (FloatFieldIJ_Plume)
+        total_normalized_integrated_condensate_forced (FloatFieldIJ_Plume)
+        scale_dependence_factor (FloatFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        entrainment_rate (FloatField_Plume)
+        mass_entrainment_updraft_forced (FloatField_Plume)
+        mass_entrainment_downdraft_forced (FloatField_Plume)
+        mass_detrainment_updraft_forced (FloatField_Plume)
+        mass_detrainment_downdraft_forced (FloatField_Plume)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        normalized_massflux_downdraft_forced (FloatField_Plume)
+        condensate_to_fall_forced (FloatField_Plume)
+        evaporate_in_downdraft_forced (FloatField_Plume)
+        cloud_liquid_after_rain_forced (FloatField_Plume)
+        t_updraft (FloatField_Plume)
+        convective_cloud_fraction_output (FloatField_Plume)
+        dtdt (FloatField_Plume)
+        dudt (FloatField_Plume)
+        dvdt (FloatField_Plume)
+        dvapordt (FloatField_Plume)
+        dcloudicedt (FloatField_Plume)
+        dnicedt (FloatField_Plume)
+        dnliquiddt (FloatField_Plume)
+        dbuoyancydt (FloatField_Plume)
+        chemistry_tracers_output (FloatField_ConvectionTracers_Plume)
+        evaporation_sublimation_tendency (FloatField)
+        convective_precip_flux (FloatField)
+        t_perturbation (FloatField)
+        omega (FloatField)
+        large_scale_ice (FloatField)
+        convective_ice (FloatField)
+        large_scale_liquid (FloatField)
+        convective_liquid (FloatField)
+        large_scale_cloud_fraction (FloatField)
+        convective_cloud_fraction (FloatField)
+        lightning_density (FloatFieldIJ)
+        t_excess (FloatFieldIJ)
+        vapor_excess (FloatFieldIJ)
+        last_error_code (IntFieldIJ)
+    """
     from __externals__ import NUMBER_OF_PLUMES, APPLY_SUBSIDENCE_MICROPHYSICS
 
     with computation(FORWARD), interval(0, 1):
@@ -357,6 +481,20 @@ def prefill_locals(
     dudt: FloatField,
     dvdt: FloatField,
 ):
+    """
+    Zero local fields which are conditionally written to ensure no data remains from the previous timestep.
+
+    Args:
+        fix_out_vapor (FloatFieldIJ)
+        rtgt (FloatFieldIJ)
+        t_tendency_from_vapor (FloatField)
+        total_dbuoyancydt (FloatField)
+        dtdt (FloatField)
+        dvapordt (FloatField)
+        dcloudicedt (FloatField)
+        dudt (FloatField)
+        dvdt (FloatField)
+    """
     with computation(FORWARD), interval(0, 1):
         fix_out_vapor = 1.0
         t_tendency_from_vapor = 0.0
@@ -392,6 +530,30 @@ def set_2d_fields(
     pbl_level: FloatFieldIJ,
     pbl_level_flipped: IntFieldIJ,
 ):
+    """
+    Compute 2-dimensional inputs for the CumulusParameterization core routine.
+
+    Args:
+        aot500 (FloatFieldIJ)
+        t (FloatField)
+        t_2m_max (Float)
+        t_2m (FloatFieldIJ)
+        t_2m_local (FloatFieldIJ)
+        evaporation (FloatFieldIJ)
+        evaporation_local (FloatFieldIJ)
+        sensible_heat_flux (FloatFieldIJ)
+        sensible_heat_flux_local (FloatFieldIJ)
+        p_interface (FloatField)
+        vapor (FloatField)
+        geopotential_height_surface (FloatFieldIJ)
+        topography_height (FloatFieldIJ)
+        land_fraction (FloatFieldIJ)
+        ocean_fraction (FloatFieldIJ)
+        area (FloatFieldIJ)
+        grid_length (FloatFieldIJ)
+        pbl_level (FloatFieldIJ)
+        pbl_level_flipped (IntFieldIJ)
+    """
     from __externals__ import k_end, SIZE_I_DIM, SIZE_J_DIM
 
     with computation(FORWARD), interval(0, 1):
@@ -493,11 +655,6 @@ def choose_environment_and_flip_k_axis(
     total_precipitable_water_initial: FloatFieldIJ,
     saturation_total_precipitable_water_initial: FloatFieldIJ,
     saturation_water_vapor: FloatFieldIJ,
-    DEBUG_VAR_1: FloatField,
-    DEBUG_VAR_2: FloatField,
-    DEBUG_VAR_3: FloatField,
-    DEBUG_VAR_4: FloatField,
-    DEBUG_VAR_5: FloatField,
 ):
     """
     Get the desired state for the convection scheme, controlled by external GF_ENV_SETTING.
@@ -506,6 +663,70 @@ def choose_environment_and_flip_k_axis(
         use state updated by during current timestep (dynamics and physics)
     GF_ENV_SETTING = 1:
         use state from start of timestep (pre-dynamics)
+
+    Args:
+        dz (FloatField)
+        air_density (FloatField)
+        geopotential_height_interface (FloatField)
+        t (FloatField)
+        t_flipped (FloatField)
+        t_timestep_start (FloatField)
+        p (FloatField)
+        p_interface (FloatField)
+        p_interface_timestep_start (FloatField)
+        p_flipped (FloatField)
+        p_surface_flipped (FloatFieldIJ)
+        vapor (FloatField)
+        vapor_timestep_start (FloatField)
+        vapor_flipped (FloatField)
+        vapor_current_flipped (FloatField)
+        u (FloatField)
+        u_timestep_start (FloatField)
+        u_flipped (FloatField)
+        v (FloatField)
+        v_timestep_start (FloatField)
+        v_flipped (FloatField)
+        w (FloatField)
+        w_flipped (FloatField)
+        layer_height_above_surface (FloatField)
+        layer_height_above_surface_flipped (FloatField)
+        edge_height_above_surface (FloatField)
+        edge_height_above_surface_flipped (FloatField)
+        mass (FloatField)
+        mass_flipped (FloatField)
+        scalar_diffusivity (FloatField)
+        scalar_diffusivity_flipped (FloatField)
+        lateral_entrainment_rate (FloatField)
+        lateral_entrainment_rate_flipped (FloatField)
+        buoyancy (FloatField)
+        buoyancy_excess (FloatField)
+        dtdt_shortwave (FloatField)
+        dtdt_longwave (FloatField)
+        dtdt_from_dynamics (FloatField)
+        dtdt_pbl (FloatField)
+        dvapordt_from_dynamics (FloatField)
+        dspecific_humiditydt_pbl (FloatField)
+        grid_scale_forcing_t (FloatField)
+        grid_scale_forcing_vapor (FloatField)
+        subgrid_scale_forcing_t (FloatField)
+        subgrid_scale_forcing_vapor (FloatField)
+        advective_forcing_t (FloatField)
+        convective_liquid (FloatField)
+        convective_liquid_flipped (FloatField)
+        convective_ice (FloatField)
+        convective_ice_flipped (FloatField)
+        convective_cloud_fraction (FloatField)
+        convective_cloud_fraction_flipped (FloatField)
+        large_scale_liquid (FloatField)
+        large_scale_liquid_flipped (FloatField)
+        large_scale_ice (FloatField)
+        large_scale_ice_flipped (FloatField)
+        large_scale_cloud_fraction (FloatField)
+        large_scale_cloud_fraction_flipped (FloatField)
+        convection_tracer (FloatField)
+        total_precipitable_water_initial (FloatFieldIJ)
+        saturation_total_precipitable_water_initial (FloatFieldIJ)
+        saturation_water_vapor (FloatFieldIJ)
     """
     from __externals__ import k_end, GF_ENV_SETTING, ENTRVERSION, CONVECTION_TRACER
 
@@ -586,15 +807,6 @@ def choose_environment_and_flip_k_axis(
                 * (p_kappa_n - p_kappa_interface_n)
                 * edge_height_above_surface_n
             )
-
-    with computation(FORWARD), interval(...):
-        DEBUG_VAR_1 = mass_n
-        if K == k_end:
-            DEBUG_VAR_2[0, 0, 1] = 0
-        DEBUG_VAR_2 = edge_height_above_surface_n
-        DEBUG_VAR_3 = layer_height_above_surface_n
-        DEBUG_VAR_4 = p_n
-        DEBUG_VAR_5 = p_kappa_n
 
     with computation(PARALLEL), interval(...):
         if GF_ENV_SETTING == 1:
@@ -690,6 +902,35 @@ def copy_into_cumulus_parameterization_state(
     lateral_entrainment_rate_flipped: FloatField,
     lateral_entrainment_rate: FloatField,
 ):
+    """
+    One-to-one copy fields into the CumulusParameterization state.
+
+    This division has been inforced for readibility. Some of the earlier functions could
+    write directly to the CumulusParameterization state, but local copies have been
+    introduced for consistency, so that the data is being written to only one state at a time.
+
+    Args:
+        grid_length_local (FloatFieldIJ)
+        grid_length (FloatFieldIJ)
+        saturation_water_vapor_local (FloatFieldIJ)
+        saturation_water_vapor (FloatFieldIJ)
+        seed_convection_model_state (FloatFieldIJ)
+        seed_convection (FloatFieldIJ)
+        convection_fraction_model_state (FloatFieldIJ)
+        convection_fraction (FloatFieldIJ)
+        surface_type_model_state (FloatFieldIJ)
+        surface_type (FloatFieldIJ)
+        grid_scale_forcing_t_local (FloatField)
+        grid_scale_forcing_t (FloatField)
+        grid_scale_forcing_vapor_local (FloatField)
+        grid_scale_forcing_vapor (FloatField)
+        subgrid_scale_forcing_t_local (FloatField)
+        subgrid_scale_forcing_t (FloatField)
+        subgrid_scale_forcing_vapor_local (FloatField)
+        subgrid_scale_forcing_vapor (FloatField)
+        lateral_entrainment_rate_flipped (FloatField)
+        lateral_entrainment_rate (FloatField)
+    """
     with computation(FORWARD), interval(0, 1):
         grid_length = grid_length_local
         saturation_water_vapor = saturation_water_vapor_local
@@ -770,6 +1011,74 @@ def prepare_cumulus_paramaterization_state(
     t_excess: FloatFieldIJ,
     vapor_excess: FloatFieldIJ,
 ):
+    """
+    Compute inputs for the cumulus parameterization and fill the rest of the state with non-one-to-one-copies.
+
+    Args:
+        aot500 (FloatFieldIJ)
+        ccn (FloatFieldIJ)
+        ocean_fraction_local (FloatFieldIJ)
+        ocean_fraction (FloatFieldIJ)
+        p_surface_flipped (FloatFieldIJ)
+        p_surface (FloatFieldIJ)
+        t_2m_flipped (FloatFieldIJ)
+        t_surface (FloatFieldIJ)
+        topography_height (FloatFieldIJ)
+        topography_height_no_negative (FloatFieldIJ)
+        pbl_level_flipped (IntFieldIJ)
+        pbl_level (IntFieldIJ)
+        latitude_model_state (FloatFieldIJ)
+        latitude (FloatFieldIJ)
+        longitude_model_state (FloatFieldIJ)
+        longitude (FloatFieldIJ)
+        rtgt (FloatFieldIJ)
+        geopotential_height_forced (FloatField)
+        layer_height_above_surface_flipped (FloatField)
+        edge_height_above_surface_flipped (FloatField)
+        p_flipped (FloatField)
+        p_forced (FloatField)
+        t_flipped (FloatField)
+        t_old (FloatField)
+        vapor_flipped (FloatField)
+        vapor_old (FloatField)
+        air_density (FloatField)
+        u_flipped (FloatField)
+        u (FloatField)
+        v_flipped (FloatField)
+        v (FloatField)
+        w_flipped (FloatField)
+        w (FloatField)
+        mass_flipped (FloatField)
+        mass (FloatField)
+        omega (FloatField)
+        buoyancy_excess_local (FloatField)
+        buoyancy_excess (FloatField)
+        advective_forcing_t (FloatField)
+        t_modified_by_advection (FloatField)
+        grid_scale_forcing_vapor (FloatField)
+        vapor_modified_by_advection (FloatField)
+        convective_liquid_flipped (FloatField)
+        convective_liquid (FloatField)
+        convective_ice_flipped (FloatField)
+        convective_ice (FloatField)
+        convective_cloud_fraction_flipped (FloatField)
+        convective_cloud_fraction (FloatField)
+        large_scale_liquid_flipped (FloatField)
+        large_scale_liquid (FloatField)
+        large_scale_ice_flipped (FloatField)
+        large_scale_ice (FloatField)
+        large_scale_cloud_fraction_flipped (FloatField)
+        large_scale_cloud_fraction (FloatField)
+        convection_tracers (FloatField_ConvectionTracers)
+        chemistry_tracers (FloatField_ConvectionTracers)
+        sensible_heat_flux_local (FloatFieldIJ)
+        sensible_heat_flux (FloatFieldIJ)
+        evaporation_local (FloatFieldIJ)
+        latent_heat_flux (FloatFieldIJ)
+        convective_scale_velocity (FloatFieldIJ)
+        t_excess (FloatFieldIJ)
+        vapor_excess (FloatFieldIJ)
+    """
     from __externals__ import AUTOCONV, DT_MOIST, APPLY_SUBSIDENCE_MICROPHYSICS, USE_TRACER_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
@@ -825,7 +1134,7 @@ def prepare_cumulus_paramaterization_state(
             tracer = 0
             while tracer < constants.NUMBER_OF_TRACERS:
                 chemistry_tracers[0, 0, 0][tracer] = max(
-                    convection_tracers.at(K=k_end-K, ddim=[tracer]), constants.FLOAT_TINY
+                    convection_tracers.at(K=k_end - K, ddim=[tracer]), constants.FLOAT_TINY
                 )
                 tracer += 1
 
@@ -885,17 +1194,17 @@ def prepare_cumulus_paramaterization_state(
 
 class GF2020Setup:
     """
-    This class performs the entire setup sequence for the GF2020 convection parameterization scheme, based
-    on the Fortran code available in GEOS v11.4.2.
+    This class performs the entire setup sequence for the GF2020 convection parameterization scheme
 
-    In GEOS v11.4.2, this code is split across three subroutines nested as follows:
+    In the source Fortran codee, this code is split across three subroutines nested as follows:
 
     - GF_Run
         - GF2020_INTERFACE
             - GF2020_DRV up to "------ CALL CUMULUS PARAMETERIZATION"
 
-    This python implementation simplifies this structure by bringing all setup calculations to the same level,
-    reducing some (but likely not all) redundent/duplicate field definitions in the process.
+    This python implementation simplifies this structure by bringing all setup calculations to the same level.
+    An effort has been made to reduce duplicate/unnecessary locals where possible, but some have been retained
+    for the sake of readibility.
     """
 
     def __init__(
@@ -987,19 +1296,18 @@ class GF2020Setup:
         saturation_tables: SaturationVaporPressureTable,
         convection_tracers: ConvectionTracers,
         scm_stop: bool,
-        DEBUG_VAR_1,
-        DEBUG_VAR_2,
-        DEBUG_VAR_3,
-        DEBUG_VAR_4,
-        DEBUG_VAR_5,
     ):
         """
         Perform setup calculations
 
         Args:
-            state: NDSL data class containing all fields from overarching model used at some point in GF2020
-            saturation_tables: saturation vapor pressure tables, for liquid, ice, and dynamic surfaces
-            locals: all internal GF2020 fields
+            state (GF2020State): NDSL State containing all model fields required for GF2020.
+            locals (GF2020Locals): NDSL LocalState containing all locals for GF2020.
+            cumulus_parameterization_state (GF2020CumulusParameterizationState): NDSL State containing all
+                fields required for the CumulusParameterization.
+            saturation_tables (SaturationVaporPressureTable): moist physics saturation tables
+            convection_tracers (ConvectionTracers): convection tracers - fields and metadata
+            scm_stop (bool): flag which can stop the execution of GF2020
 
         """
         # TODO reset all temporaries to zero
@@ -1225,11 +1533,6 @@ class GF2020Setup:
             total_precipitable_water_initial=state.total_precipitable_water_initial,
             saturation_total_precipitable_water_initial=state.saturation_total_precipitable_water_initial,
             saturation_water_vapor=locals.saturation_water_vapor,
-            DEBUG_VAR_1=DEBUG_VAR_1,
-            DEBUG_VAR_2=DEBUG_VAR_2,
-            DEBUG_VAR_3=DEBUG_VAR_3,
-            DEBUG_VAR_4=DEBUG_VAR_4,
-            DEBUG_VAR_5=DEBUG_VAR_5,
         )
 
         if self.config.ADV_TRIGGER == 2:
