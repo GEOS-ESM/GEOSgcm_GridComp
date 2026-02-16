@@ -32,94 +32,94 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         self.quantity_factory = grid.quantity_factory
 
         self.in_vars["data_vars"] = {
-            "latitude": {},
-            "longitude": {},
-            "p_interface": {},
-            "t": {},
-            "u": {},
-            "v": {},
-            "w": {},
-            "omega": {},
-            "t_2m": {},
-            "specific_humidity_2m": {},
-            "t_surface": {},
-            "specific_humidity_surface": {},
-            "vapor": {},
-            "convective_liquid": {},
-            "convective_ice": {},
-            "large_scale_liquid": {},
-            "large_scale_ice": {},
-            "convective_cloud_fraction": {},
-            "large_scale_cloud_fraction": {},
-            "p_interface_timestep_start": {},
-            "t_timestep_start": {},
-            "u_timestep_start": {},
-            "v_timestep_start": {},
-            "vapor_timestep_start": {},
-            "geopotential_height_interface": {},
-            "geopotential_height_surface": {},
-            "area": {},
-            "pbl_level": {},
-            "convection_fraction": {},
-            "surface_type": {},
-            "seed_convection": {},
-            "land_fraction": {},
-            "scalar_diffusivity": {},
-            "buoyancy": {},
-            "convective_precipitation_GF": {},
-            "convective_precipitation_RAS": {},
-            "sensible_heat_flux": {},
-            "total_water_flux_deep_convection": {},
-            "evaporation": {},
-            "convective_condensate_source": {},
-            "convective_condensate_grid_mean": {},
-            "entrainment_parameter": {},
-            "lateral_entrainment_rate": {},
-            "lateral_entrainment_rate_shallow": {},
-            "lateral_entrainment_rate_mid": {},
-            "lateral_entrainment_rate_deep": {},
-            "updraft_area_fraction": {},
-            "updraft_vertical_velocity": {},
-            "dtdt_shortwave": {},
-            "dtdt_longwave": {},
-            "dspecific_humiditydt_pbl": {},
-            "dtdt_pbl": {},
-            "dtdt_from_dynamics": {},
-            "dvapordt_from_dynamics": {},
-            "sigma_mid": {},
-            "sigma_deep": {},
-            "total_precipitable_water_initial": {},
-            "saturation_total_precipitable_water_initial": {},
-            "dvapordt_deep_convection": {},
-            "dtdt_deep_convection": {},
-            "dudt_deep_convection": {},
-            "dvdt_deep_convection": {},
-            "pressure_shallow_convective_cloud_top": {},
-            "pressure_mid_convective_cloud_top": {},
-            "pressure_deep_convective_cloud_top": {},
-            "mass_flux_shalow": {},
-            "mass_flux_mid": {},
-            "mass_flux_deep_updraft": {},
-            "mass_flux_deep_updraft_interface": {},
-            "mass_flux_deep_updraft_detrained": {},
-            "mass_flux_deep_downdraft": {},
-            "mass_flux_cloud_base": {},
-            "mass_flux_cloud_base_shallow": {},
-            "mass_flux_cloud_base_mid": {},
-            "mass_flux_cloud_base_deep": {},
-            "convection_code_shallow": {},
-            "convection_code_mid": {},
-            "convection_code_deep": {},
-            "cloud_work_function_0": {},
-            "cloud_work_function_1": {},
-            "cloud_work_function_2": {},
-            "cloud_work_function_3": {},
-            "cloud_work_function_1_pbl": {},
-            "cloud_work_function_1_cin": {},
-            "pbl_time_scale": {},
-            "cape_removal_time_scale": {},
-            "lighting_density": {},
-            "convection_tracer": {},
+            "latitude_bugworkaroundname": {},
+            "longitude_bugworkaroundname": {},
+            "p_interface_bugworkaroundname": {},
+            "t_bugworkaroundname": {},
+            "u_bugworkaroundname": {},
+            "v_bugworkaroundname": {},
+            "w_bugworkaroundname": {},
+            "omega_bugworkaroundname": {},
+            "t_2m_bugworkaroundname": {},
+            "specific_humidity_2m_bugworkaroundname": {},
+            "t_surface_bugworkaroundname": {},
+            "specific_humidity_surface_bugworkaroundname": {},
+            "vapor_bugworkaroundname": {},
+            "convective_liquid_bugworkaroundname": {},
+            "convective_ice_bugworkaroundname": {},
+            "large_scale_liquid_bugworkaroundname": {},
+            "large_scale_ice_bugworkaroundname": {},
+            "convective_cloud_fraction_bugworkaroundname": {},
+            "large_scale_cloud_fraction_bugworkaroundname": {},
+            "p_interface_timestep_start_bugworkaroundname": {},
+            "t_timestep_start_bugworkaroundname": {},
+            "u_timestep_start_bugworkaroundname": {},
+            "v_timestep_start_bugworkaroundname": {},
+            "vapor_timestep_start_bugworkaroundname": {},
+            "geopotential_height_interface_bugworkaroundname": {},
+            "geopotential_height_surface_bugworkaroundname": {},
+            "area_bugworkaroundname": {},
+            "pbl_level_bugworkaroundname": {},
+            "convection_fraction_bugworkaroundname": {},
+            "surface_type_bugworkaroundname": {},
+            "seed_convection_bugworkaroundname": {},
+            "land_fraction_bugworkaroundname": {},
+            "scalar_diffusivity_bugworkaroundname": {},
+            "buoyancy_bugworkaroundname": {},
+            "convective_precipitation_GF_bugworkaroundname": {},
+            "convective_precipitation_RAS_bugworkaroundname": {},
+            "sensible_heat_flux_bugworkaroundname": {},
+            "total_water_flux_deep_convection_bugworkaroundname": {},
+            "evaporation_bugworkaroundname": {},
+            "convective_condensate_source_bugworkaroundname": {},
+            "convective_condensate_grid_mean_bugworkaroundname": {},
+            "entrainment_parameter_bugworkaroundname": {},
+            "lateral_entrainment_rate_bugworkaroundname": {},
+            "lateral_entrainment_rate_shallow_bugworkaroundname": {},
+            "lateral_entrainment_rate_mid_bugworkaroundname": {},
+            "lateral_entrainment_rate_deep_bugworkaroundname": {},
+            "updraft_area_fraction_bugworkaroundname": {},
+            "updraft_vertical_velocity_bugworkaroundname": {},
+            "dtdt_shortwave_bugworkaroundname": {},
+            "dtdt_longwave_bugworkaroundname": {},
+            "dspecific_humiditydt_pbl_bugworkaroundname": {},
+            "dtdt_pbl_bugworkaroundname": {},
+            "dtdt_from_dynamics_bugworkaroundname": {},
+            "dvapordt_from_dynamics_bugworkaroundname": {},
+            "sigma_mid_bugworkaroundname": {},
+            "sigma_deep_bugworkaroundname": {},
+            "total_precipitable_water_initial_bugworkaroundname": {},
+            "saturation_total_precipitable_water_initial_bugworkaroundname": {},
+            "dvapordt_deep_convection_bugworkaroundname": {},
+            "dtdt_deep_convection_bugworkaroundname": {},
+            "dudt_deep_convection_bugworkaroundname": {},
+            "dvdt_deep_convection_bugworkaroundname": {},
+            "pressure_shallow_convective_cloud_top_bugworkaroundname": {},
+            "pressure_mid_convective_cloud_top_bugworkaroundname": {},
+            "pressure_deep_convective_cloud_top_bugworkaroundname": {},
+            "mass_flux_shalow_bugworkaroundname": {},
+            "mass_flux_mid_bugworkaroundname": {},
+            "mass_flux_deep_updraft_bugworkaroundname": {},
+            "mass_flux_deep_updraft_interface_bugworkaroundname": {},
+            "mass_flux_deep_updraft_detrained_bugworkaroundname": {},
+            "mass_flux_deep_downdraft_bugworkaroundname": {},
+            "mass_flux_cloud_base_bugworkaroundname": {},
+            "mass_flux_cloud_base_shallow_bugworkaroundname": {},
+            "mass_flux_cloud_base_mid_bugworkaroundname": {},
+            "mass_flux_cloud_base_deep_bugworkaroundname": {},
+            "convection_code_shallow_bugworkaroundname": {},
+            "convection_code_mid_bugworkaroundname": {},
+            "convection_code_deep_bugworkaroundname": {},
+            "cloud_work_function_0_bugworkaroundname": {},
+            "cloud_work_function_1_bugworkaroundname": {},
+            "cloud_work_function_2_bugworkaroundname": {},
+            "cloud_work_function_3_bugworkaroundname": {},
+            "cloud_work_function_1_pbl_bugworkaroundname": {},
+            "cloud_work_function_1_cin_bugworkaroundname": {},
+            "pbl_time_scale_bugworkaroundname": {},
+            "cape_removal_time_scale_bugworkaroundname": {},
+            "lighting_density_bugworkaroundname": {},
+            "convection_tracer_bugworkaroundname": {},
         }
 
         # NOTE disabled fields are nan in fortran - zero in python, disabled so the test passes
@@ -258,96 +258,96 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         )
 
         # fill GF2020 state with input data
-        state.latitude.field[:] = inputs["latitude"]
-        state.longitude.field[:] = inputs["longitude"]
-        state.p_interface.field[:] = inputs["p_interface"]
-        state.t.field[:] = inputs["t"]
-        state.u.field[:] = inputs["u"]
-        state.v.field[:] = inputs["v"]
-        state.w.field[:] = inputs["w"]
-        state.omega.field[:] = inputs["omega"]
-        state.t_2m.field[:] = inputs["t_2m"]
-        state.specific_humidity_2m.field[:] = inputs["specific_humidity_2m"]
-        state.t_surface.field[:] = inputs["t_surface"]
-        state.specific_humidity_surface.field[:] = inputs["specific_humidity_surface"]
-        state.vapor.field[:] = inputs["vapor"]
-        state.convective_liquid.field[:] = inputs["convective_liquid"]
-        state.convective_ice.field[:] = inputs["convective_ice"]
-        state.large_scale_liquid.field[:] = inputs["large_scale_liquid"]
-        state.large_scale_ice.field[:] = inputs["large_scale_ice"]
-        state.convective_cloud_fraction.field[:] = inputs["convective_cloud_fraction"]
-        state.large_scale_cloud_fraction.field[:] = inputs["large_scale_cloud_fraction"]
-        state.p_interface_timestep_start.field[:] = inputs["p_interface_timestep_start"]
-        state.t_timestep_start.field[:] = inputs["t_timestep_start"]
-        state.u_timestep_start.field[:] = inputs["u_timestep_start"]
-        state.v_timestep_start.field[:] = inputs["v_timestep_start"]
-        state.vapor_timestep_start.field[:] = inputs["vapor_timestep_start"]
-        state.geopotential_height_interface.field[:] = inputs["geopotential_height_interface"]
-        state.geopotential_height_surface.field[:] = inputs["geopotential_height_surface"]
-        state.area.field[:] = inputs["area"]
-        state.pbl_level.field[:] = inputs["pbl_level"]
-        state.convection_fraction.field[:] = inputs["convection_fraction"]
-        state.surface_type.field[:] = inputs["surface_type"]
-        state.seed_convection.field[:] = inputs["seed_convection"]
-        state.land_fraction.field[:] = inputs["land_fraction"]
-        state.scalar_diffusivity.field[:] = inputs["scalar_diffusivity"]
-        state.buoyancy.field[:] = inputs["buoyancy"]
-        state.convective_precipitation_GF.field[:] = inputs["convective_precipitation_GF"]
-        state.convective_precipitation_RAS.field[:] = inputs["convective_precipitation_RAS"]
-        state.sensible_heat_flux.field[:] = inputs["sensible_heat_flux"]
-        state.total_water_flux_deep_convection.field[:] = inputs["total_water_flux_deep_convection"]
-        state.evaporation.field[:] = inputs["evaporation"]
-        state.convective_condensate_source.field[:] = inputs["convective_condensate_source"]
-        state.convective_condensate_grid_mean.field[:] = inputs["convective_condensate_grid_mean"]
-        state.entrainment_parameter.field[:] = inputs["entrainment_parameter"]
-        state.lateral_entrainment_rate.field[:] = inputs["lateral_entrainment_rate"]
-        state.lateral_entrainment_rate_shallow.field[:] = inputs["lateral_entrainment_rate_shallow"]
-        state.lateral_entrainment_rate_mid.field[:] = inputs["lateral_entrainment_rate_mid"]
-        state.lateral_entrainment_rate_deep.field[:] = inputs["lateral_entrainment_rate_deep"]
-        state.updraft_area_fraction.field[:] = inputs["updraft_area_fraction"]
-        state.updraft_vertical_velocity.field[:] = inputs["updraft_vertical_velocity"]
-        state.dtdt_shortwave.field[:] = inputs["dtdt_shortwave"]
-        state.dtdt_longwave.field[:] = inputs["dtdt_longwave"]
-        state.dspecific_humiditydt_pbl.field[:] = inputs["dspecific_humiditydt_pbl"]
-        state.dtdt_pbl.field[:] = inputs["dtdt_pbl"]
-        state.dtdt_from_dynamics.field[:] = inputs["dtdt_from_dynamics"]
-        state.dvapordt_from_dynamics.field[:] = inputs["dvapordt_from_dynamics"]
-        state.sigma_mid.field[:] = inputs["sigma_mid"]
-        state.sigma_deep.field[:] = inputs["sigma_deep"]
-        state.total_precipitable_water_initial.field[:] = inputs["total_precipitable_water_initial"]
+        state.latitude.field[:] = inputs["latitude_bugworkaroundname"]
+        state.longitude.field[:] = inputs["longitude_bugworkaroundname"]
+        state.p_interface.field[:] = inputs["p_interface_bugworkaroundname"]
+        state.t.field[:] = inputs["t_bugworkaroundname"]
+        state.u.field[:] = inputs["u_bugworkaroundname"]
+        state.v.field[:] = inputs["v_bugworkaroundname"]
+        state.w.field[:] = inputs["w_bugworkaroundname"]
+        state.omega.field[:] = inputs["omega_bugworkaroundname"]
+        state.t_2m.field[:] = inputs["t_2m_bugworkaroundname"]
+        state.specific_humidity_2m.field[:] = inputs["specific_humidity_2m_bugworkaroundname"]
+        state.t_surface.field[:] = inputs["t_surface_bugworkaroundname"]
+        state.specific_humidity_surface.field[:] = inputs["specific_humidity_surface_bugworkaroundname"]
+        state.vapor.field[:] = inputs["vapor_bugworkaroundname"]
+        state.convective_liquid.field[:] = inputs["convective_liquid_bugworkaroundname"]
+        state.convective_ice.field[:] = inputs["convective_ice_bugworkaroundname"]
+        state.large_scale_liquid.field[:] = inputs["large_scale_liquid_bugworkaroundname"]
+        state.large_scale_ice.field[:] = inputs["large_scale_ice_bugworkaroundname"]
+        state.convective_cloud_fraction.field[:] = inputs["convective_cloud_fraction_bugworkaroundname"]
+        state.large_scale_cloud_fraction.field[:] = inputs["large_scale_cloud_fraction_bugworkaroundname"]
+        state.p_interface_timestep_start.field[:] = inputs["p_interface_timestep_start_bugworkaroundname"]
+        state.t_timestep_start.field[:] = inputs["t_timestep_start_bugworkaroundname"]
+        state.u_timestep_start.field[:] = inputs["u_timestep_start_bugworkaroundname"]
+        state.v_timestep_start.field[:] = inputs["v_timestep_start_bugworkaroundname"]
+        state.vapor_timestep_start.field[:] = inputs["vapor_timestep_start_bugworkaroundname"]
+        state.geopotential_height_interface.field[:] = inputs["geopotential_height_interface_bugworkaroundname"]
+        state.geopotential_height_surface.field[:] = inputs["geopotential_height_surface_bugworkaroundname"]
+        state.area.field[:] = inputs["area_bugworkaroundname"]
+        state.pbl_level.field[:] = inputs["pbl_level_bugworkaroundname"]
+        state.convection_fraction.field[:] = inputs["convection_fraction_bugworkaroundname"]
+        state.surface_type.field[:] = inputs["surface_type_bugworkaroundname"]
+        state.seed_convection.field[:] = inputs["seed_convection_bugworkaroundname"]
+        state.land_fraction.field[:] = inputs["land_fraction_bugworkaroundname"]
+        state.scalar_diffusivity.field[:] = inputs["scalar_diffusivity_bugworkaroundname"]
+        state.buoyancy.field[:] = inputs["buoyancy_bugworkaroundname"]
+        state.convective_precipitation_GF.field[:] = inputs["convective_precipitation_GF_bugworkaroundname"]
+        state.convective_precipitation_RAS.field[:] = inputs["convective_precipitation_RAS_bugworkaroundname"]
+        state.sensible_heat_flux.field[:] = inputs["sensible_heat_flux_bugworkaroundname"]
+        state.total_water_flux_deep_convection.field[:] = inputs["total_water_flux_deep_convection_bugworkaroundname"]
+        state.evaporation.field[:] = inputs["evaporation_bugworkaroundname"]
+        state.convective_condensate_source.field[:] = inputs["convective_condensate_source_bugworkaroundname"]
+        state.convective_condensate_grid_mean.field[:] = inputs["convective_condensate_grid_mean_bugworkaroundname"]
+        state.entrainment_parameter.field[:] = inputs["entrainment_parameter_bugworkaroundname"]
+        state.lateral_entrainment_rate.field[:] = inputs["lateral_entrainment_rate_bugworkaroundname"]
+        state.lateral_entrainment_rate_shallow.field[:] = inputs["lateral_entrainment_rate_shallow_bugworkaroundname"]
+        state.lateral_entrainment_rate_mid.field[:] = inputs["lateral_entrainment_rate_mid_bugworkaroundname"]
+        state.lateral_entrainment_rate_deep.field[:] = inputs["lateral_entrainment_rate_deep_bugworkaroundname"]
+        state.updraft_area_fraction.field[:] = inputs["updraft_area_fraction_bugworkaroundname"]
+        state.updraft_vertical_velocity.field[:] = inputs["updraft_vertical_velocity_bugworkaroundname"]
+        state.dtdt_shortwave.field[:] = inputs["dtdt_shortwave_bugworkaroundname"]
+        state.dtdt_longwave.field[:] = inputs["dtdt_longwave_bugworkaroundname"]
+        state.dspecific_humiditydt_pbl.field[:] = inputs["dspecific_humiditydt_pbl_bugworkaroundname"]
+        state.dtdt_pbl.field[:] = inputs["dtdt_pbl_bugworkaroundname"]
+        state.dtdt_from_dynamics.field[:] = inputs["dtdt_from_dynamics_bugworkaroundname"]
+        state.dvapordt_from_dynamics.field[:] = inputs["dvapordt_from_dynamics_bugworkaroundname"]
+        state.sigma_mid.field[:] = inputs["sigma_mid_bugworkaroundname"]
+        state.sigma_deep.field[:] = inputs["sigma_deep_bugworkaroundname"]
+        state.total_precipitable_water_initial.field[:] = inputs["total_precipitable_water_initial_bugworkaroundname"]
         state.saturation_total_precipitable_water_initial.field[:] = inputs[
-            "saturation_total_precipitable_water_initial"
+            "saturation_total_precipitable_water_initial_bugworkaroundname"
         ]
-        state.dvapordt_deep_convection.field[:] = inputs["dvapordt_deep_convection"]
-        state.dtdt_deep_convection.field[:] = inputs["dtdt_deep_convection"]
-        state.dudt_deep_convection.field[:] = inputs["dudt_deep_convection"]
-        state.dvdt_deep_convection.field[:] = inputs["dvdt_deep_convection"]
-        state.pressure_shallow_convective_cloud_top.field[:] = inputs["pressure_shallow_convective_cloud_top"]
-        state.pressure_mid_convective_cloud_top.field[:] = inputs["pressure_mid_convective_cloud_top"]
-        state.pressure_deep_convective_cloud_top.field[:] = inputs["pressure_deep_convective_cloud_top"]
-        state.mass_flux_shalow.field[:] = inputs["mass_flux_shalow"]
-        state.mass_flux_mid.field[:] = inputs["mass_flux_mid"]
-        state.mass_flux_deep_updraft.field[:] = inputs["mass_flux_deep_updraft"]
-        state.mass_flux_deep_updraft_interface.field[:] = inputs["mass_flux_deep_updraft_interface"]
-        state.mass_flux_deep_updraft_detrained.field[:] = inputs["mass_flux_deep_updraft_detrained"]
-        state.mass_flux_deep_downdraft.field[:] = inputs["mass_flux_deep_downdraft"]
-        state.mass_flux_cloud_base.field[:] = inputs["mass_flux_cloud_base"]
-        state.mass_flux_cloud_base_shallow.field[:] = inputs["mass_flux_cloud_base_shallow"]
-        state.mass_flux_cloud_base_mid.field[:] = inputs["mass_flux_cloud_base_mid"]
-        state.mass_flux_cloud_base_deep.field[:] = inputs["mass_flux_cloud_base_deep"]
-        state.convection_code_shallow.field[:] = inputs["convection_code_shallow"]
-        state.convection_code_mid.field[:] = inputs["convection_code_mid"]
-        state.convection_code_deep.field[:] = inputs["convection_code_deep"]
-        state.cloud_work_function_0.field[:] = inputs["cloud_work_function_0"]
-        state.cloud_work_function_1.field[:] = inputs["cloud_work_function_1"]
-        state.cloud_work_function_2.field[:] = inputs["cloud_work_function_2"]
-        state.cloud_work_function_3.field[:] = inputs["cloud_work_function_3"]
-        state.cloud_work_function_1_pbl.field[:] = inputs["cloud_work_function_1_pbl"]
-        state.cloud_work_function_1_cin.field[:] = inputs["cloud_work_function_1_cin"]
-        state.pbl_time_scale.field[:] = inputs["pbl_time_scale"]
-        state.cape_removal_time_scale.field[:] = inputs["cape_removal_time_scale"]
-        state.lightning_density.field[:] = inputs["lighting_density"]
-        state.convection_tracer.field[:] = inputs["convection_tracer"]
+        state.dvapordt_deep_convection.field[:] = inputs["dvapordt_deep_convection_bugworkaroundname"]
+        state.dtdt_deep_convection.field[:] = inputs["dtdt_deep_convection_bugworkaroundname"]
+        state.dudt_deep_convection.field[:] = inputs["dudt_deep_convection_bugworkaroundname"]
+        state.dvdt_deep_convection.field[:] = inputs["dvdt_deep_convection_bugworkaroundname"]
+        state.pressure_shallow_convective_cloud_top.field[:] = inputs["pressure_shallow_convective_cloud_top_bugworkaroundname"]
+        state.pressure_mid_convective_cloud_top.field[:] = inputs["pressure_mid_convective_cloud_top_bugworkaroundname"]
+        state.pressure_deep_convective_cloud_top.field[:] = inputs["pressure_deep_convective_cloud_top_bugworkaroundname"]
+        state.mass_flux_shalow.field[:] = inputs["mass_flux_shalow_bugworkaroundname"]
+        state.mass_flux_mid.field[:] = inputs["mass_flux_mid_bugworkaroundname"]
+        state.mass_flux_deep_updraft.field[:] = inputs["mass_flux_deep_updraft_bugworkaroundname"]
+        state.mass_flux_deep_updraft_interface.field[:] = inputs["mass_flux_deep_updraft_interface_bugworkaroundname"]
+        state.mass_flux_deep_updraft_detrained.field[:] = inputs["mass_flux_deep_updraft_detrained_bugworkaroundname"]
+        state.mass_flux_deep_downdraft.field[:] = inputs["mass_flux_deep_downdraft_bugworkaroundname"]
+        state.mass_flux_cloud_base.field[:] = inputs["mass_flux_cloud_base_bugworkaroundname"]
+        state.mass_flux_cloud_base_shallow.field[:] = inputs["mass_flux_cloud_base_shallow_bugworkaroundname"]
+        state.mass_flux_cloud_base_mid.field[:] = inputs["mass_flux_cloud_base_mid_bugworkaroundname"]
+        state.mass_flux_cloud_base_deep.field[:] = inputs["mass_flux_cloud_base_deep_bugworkaroundname"]
+        state.convection_code_shallow.field[:] = inputs["convection_code_shallow_bugworkaroundname"]
+        state.convection_code_mid.field[:] = inputs["convection_code_mid_bugworkaroundname"]
+        state.convection_code_deep.field[:] = inputs["convection_code_deep_bugworkaroundname"]
+        state.cloud_work_function_0.field[:] = inputs["cloud_work_function_0_bugworkaroundname"]
+        state.cloud_work_function_1.field[:] = inputs["cloud_work_function_1_bugworkaroundname"]
+        state.cloud_work_function_2.field[:] = inputs["cloud_work_function_2_bugworkaroundname"]
+        state.cloud_work_function_3.field[:] = inputs["cloud_work_function_3_bugworkaroundname"]
+        state.cloud_work_function_1_pbl.field[:] = inputs["cloud_work_function_1_pbl_bugworkaroundname"]
+        state.cloud_work_function_1_cin.field[:] = inputs["cloud_work_function_1_cin_bugworkaroundname"]
+        state.pbl_time_scale.field[:] = inputs["pbl_time_scale_bugworkaroundname"]
+        state.cape_removal_time_scale.field[:] = inputs["cape_removal_time_scale_bugworkaroundname"]
+        state.lightning_density.field[:] = inputs["lighting_density_bugworkaroundname"]
+        state.convection_tracer.field[:] = inputs["convection_tracer_bugworkaroundname"]
 
         # initialize GF2020 locals
         locals = GF2020Locals.zeros(
