@@ -571,6 +571,60 @@ class GF2020Locals(State):
             "dtype": Float,
         }
     )
+    dlarge_scale_icedt: Quantity = dataclasses.field(
+        metadata={
+            "name": "dlarge_scale_icedt",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    dconvective_icedt: Quantity = dataclasses.field(
+        metadata={
+            "name": "dconvective_icedt",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    dlarge_scale_liquiddt: Quantity = dataclasses.field(
+        metadata={
+            "name": "dlarge_scale_liquiddt",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    dconvective_liquiddt: Quantity = dataclasses.field(
+        metadata={
+            "name": "dconvective_liquiddt",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    dlarge_scale_cloud_fractiondt: Quantity = dataclasses.field(
+        metadata={
+            "name": "dlarge_scale_cloud_fractiondt",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    dconvective_cloud_fractiondt: Quantity = dataclasses.field(
+        metadata={
+            "name": "dconvective_cloud_fractiondt",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     evaporation_sublimation_tendency: Quantity = dataclasses.field(
         metadata={
             "name": "evaporation_sublimation_tendency",

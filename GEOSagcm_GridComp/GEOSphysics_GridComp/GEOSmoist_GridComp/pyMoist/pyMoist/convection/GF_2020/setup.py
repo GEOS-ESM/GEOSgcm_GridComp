@@ -482,6 +482,12 @@ def prefill_locals(
     dvdt: FloatField,
     evaporation_sublimation_tendency: FloatField,
     convective_precip_flux: FloatField,
+    dlarge_scale_icedt: FloatField,
+    dconvective_icedt: FloatField,
+    dlarge_scale_liquiddt: FloatField,
+    dconvective_liquiddt: FloatField,
+    dlarge_scale_cloud_fractiondt: FloatField,
+    dconvective_cloud_fractiondt: FloatField,
 ):
     """
     Zero local fields which are conditionally written to ensure no data remains from the previous timestep.
@@ -498,6 +504,12 @@ def prefill_locals(
         dvdt (FloatField)
         evaporation_sublimation_tendency (FloatField)
         convective_precip_flux (FloatField)
+        dlarge_scale_icedt (FloatField)
+        dconvective_icedt (FloatField)
+        dlarge_scale_liquiddt (FloatField)
+        dconvective_liquiddt (FloatField)
+        dlarge_scale_cloud_fractiondt (FloatField)
+        dconvective_cloud_fractiondt (FloatField)
     """
     with computation(FORWARD), interval(0, 1):
         fix_out_vapor = 1.0
@@ -513,6 +525,12 @@ def prefill_locals(
         dvdt = 0.0
         evaporation_sublimation_tendency = 0.0
         convective_precip_flux = 0.0
+        dlarge_scale_icedt = 0.0
+        dconvective_icedt = 0.0
+        dlarge_scale_liquiddt = 0.0
+        dconvective_liquiddt = 0.0
+        dlarge_scale_cloud_fractiondt = 0.0
+        dconvective_cloud_fractiondt = 0.0
 
 
 def set_2d_fields(
@@ -1441,6 +1459,12 @@ class GF2020Setup:
             dcloudicedt=locals.dcloudicedt,
             dudt=locals.dudt,
             dvdt=locals.dvdt,
+            dlarge_scale_icedt=locals.dlarge_scale_icedt,
+            dconvective_icedt=locals.dconvective_icedt,
+            dlarge_scale_liquiddt=locals.dlarge_scale_liquiddt,
+            dconvective_liquiddt=locals.dconvective_liquiddt,
+            dlarge_scale_cloud_fractiondt=locals.dlarge_scale_cloud_fractiondt,
+            dconvective_cloud_fractiondt=locals.dconvective_cloud_fractiondt,
             evaporation_sublimation_tendency=locals.evaporation_sublimation_tendency,
             convective_precip_flux=locals.convective_precip_flux,
         )
