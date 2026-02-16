@@ -732,11 +732,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(EXPORT  , ICETHICK_EX , 'ICETHICK' , RC=STATUS); VERIFY_(STATUS)
     if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK
 
+    ! destroy regridding fields 
+    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
+
   end if 
 
-  ! destroy regridding fields 
-  call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
-  call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
+
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
