@@ -647,7 +647,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ICEVEL(:) = 0.0_dp
     ISSM_OUTPUTS(:) = 0.0_dp
 
-
     ! get routehandles for regridding
     call ESMF_UserCompGetInternalState(GC, 'ISSM_WRAP', wrap, status); VERIFY_(STATUS)
     internal_state => wrap%ptr
@@ -741,8 +740,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
   end if 
-
-
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
