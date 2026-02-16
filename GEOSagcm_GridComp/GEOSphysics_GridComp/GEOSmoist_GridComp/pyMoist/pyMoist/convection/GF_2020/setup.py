@@ -1,8 +1,8 @@
 import copy
 from ndsl import StencilFactory, QuantityFactory, ndsl_log
-from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, sqrt, max, min, abs, floor, BACKWARD
+from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, sqrt, max, min, abs, floor, BACKWARD, K
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, K, IntFieldIJ
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
