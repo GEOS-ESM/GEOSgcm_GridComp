@@ -1441,6 +1441,8 @@ class GF2020Setup:
             dcloudicedt=locals.dcloudicedt,
             dudt=locals.dudt,
             dvdt=locals.dvdt,
+            evaporation_sublimation_tendency=locals.evaporation_sublimation_tendency,
+            convective_precip_flux=locals.convective_precip_flux,
         )
 
         # workaround because max of full field cannot be determined inside a stencil
