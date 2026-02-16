@@ -355,6 +355,15 @@ class GF2020Locals(State):
             }
         )
 
+    do_this_column: Quantity = dataclasses.field(
+        metadata={
+            "name": "do_this_column",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Int,
+        }
+    )
     total_dbuoyancydt: Quantity = dataclasses.field(
         metadata={
             "name": "total_dbuoyancydt",
@@ -556,6 +565,24 @@ class GF2020Locals(State):
     dvdt: Quantity = dataclasses.field(
         metadata={
             "name": "dvdt",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    evaporation_sublimation_tendency: Quantity = dataclasses.field(
+        metadata={
+            "name": "evaporation_sublimation_tendency",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    convective_precip_flux: Quantity = dataclasses.field(
+        metadata={
+            "name": "convective_precip_flux",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",

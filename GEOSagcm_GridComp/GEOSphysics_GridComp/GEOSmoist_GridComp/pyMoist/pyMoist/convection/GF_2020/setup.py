@@ -480,6 +480,8 @@ def prefill_locals(
     dcloudicedt: FloatField,
     dudt: FloatField,
     dvdt: FloatField,
+    evaporation_sublimation_tendency: FloatField,
+    convective_precip_flux: FloatField,
 ):
     """
     Zero local fields which are conditionally written to ensure no data remains from the previous timestep.
@@ -494,6 +496,8 @@ def prefill_locals(
         dcloudicedt (FloatField)
         dudt (FloatField)
         dvdt (FloatField)
+        evaporation_sublimation_tendency (FloatField)
+        convective_precip_flux (FloatField)
     """
     with computation(FORWARD), interval(0, 1):
         fix_out_vapor = 1.0
@@ -507,6 +511,8 @@ def prefill_locals(
         dcloudicedt = 0.0
         dudt = 0.0
         dvdt = 0.0
+        evaporation_sublimation_tendency = 0.0
+        convective_precip_flux = 0.0
 
 
 def set_2d_fields(
