@@ -11,18 +11,16 @@ module GEOS_IssmGridCompMod
 ! !DESCRIPTION:
 !
 !   {\tt GEOS\_ISSM} is a wrapper that calls ISSM (C++) IRF methods
-!   Imports: ICESMB
-!   Exports: ICEEL
+!   Imports: ICESMB (defined on landice tiles)
+!   Exports: ICESURF, ICETHICK, ICEVEL, ICESMB (defined on mesh)
 ! *** NOTES: 
 !            (*) currently we run over the Greenland Ice Sheet with all given PETs
 !            (*) ISSM mesh is *internal* to ISSM (C++ source)--we create an ESMF_MESH version for regridding     
-!            (*) the attached grid is inherited from parent. we regrid mesh to grid, then transform to tiles  
+!            (*) we transform imports from landice tiles to attached grid, then regrid to the mesh 
 !            (*) for future development, note that ISSM expects double precision inputs    
 !
 ! next steps:  
-!            (*) determine "good" ISSM boundary conditions and initial conditions
-!            (*) run basic experiments
-!            (*) work on basic coupling w.r.t. dynamic ice-surface elevation   
+!            (*) implement basic coupling w.r.t. dynamic ice-surface elevation   
 !            (*) expand to other fields (e.g., ice discharge), Antarctica, possibly other glaciers
 
 ! !USES:
@@ -45,11 +43,11 @@ subroutine InitializeISSM(argc, argv, num_elements, num_nodes, comm) bind(C, NAM
     integer(c_int)               :: comm
 end subroutine InitializeISSM
     
-subroutine RunISSM(dt, gcmf, issmouts) bind(C,NAME="RunISSM")
+subroutine RunISSM(dt, gcm_forcings, issm_outputs) bind(C,NAME="RunISSM")
    import :: c_ptr, c_double
    real(c_double),   value       :: dt
-   type(c_ptr),      value       :: gcmf
-   type(c_ptr),      value       :: issmouts
+   type(c_ptr),      value       :: gcm_forcings
+   type(c_ptr),      value       :: issm_outputs
 end subroutine RunISSM
 
 subroutine GetNodesISSM(nodeIds, nodeCoords) bind(C,NAME="GetNodesISSM")
@@ -86,8 +84,8 @@ type T_ISSM_STATE
   private
   type(ESMF_RouteHandle) :: routehandle_m2g ! routehandle for regridding mesh to grid
   type(ESMF_RouteHandle) :: routehandle_g2m ! routehandle for regridding grid to mesh
-  type(ESMF_GRID)        :: grid           ! original grid
-  type(MAPL_LocStream)   :: locstream   
+  type(ESMF_GRID)        :: grid            ! original grid
+  type(MAPL_LocStream)   :: locstream       ! original locstream 
 end type T_ISSM_STATE
 
 ! Wrapper for extracting internal state
@@ -169,7 +167,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     ! get timestep for ISSM
-    call ESMF_ConfigGetAttribute(CF, dt, Label=trim(COMP_NAME)//"_DT:", DEFAULT=604800.0, RC=STATUS)
+    call ESMF_ConfigGetAttribute(CF, dt, Label=trim(COMP_NAME)//"_DT:", DEFAULT=302400.0, RC=STATUS)
     VERIFY_(STATUS)
 
 
@@ -190,9 +188,36 @@ subroutine SetServices ( GC, RC )
 
 !   Export states:
     call MAPL_AddExportSpec(GC,                    &
-         SHORT_NAME = 'ICEEL',                     &
+         SHORT_NAME = 'ICESURF',                     &
          LONG_NAME  = 'ice_sheet_elevation',       &
          UNITS      = 'm',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ICEVEL',                    &
+         LONG_NAME  = 'ice_flow_speed',            &
+         UNITS      = 'm s-1',                     &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ICETHICK',                  &
+         LONG_NAME  = 'ice_thickness',             &
+         UNITS      = 'm',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ICESMB',                    &
+         LONG_NAME  = 'ice_surface_mass_balance',  &
+         UNITS      = 'kg m-2 s-1',                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RC=STATUS  )
@@ -263,7 +288,6 @@ subroutine SetServices ( GC, RC )
     character(len=ESMF_MAXSTR)             :: ISSM_EXPNAME            ! name of ISSM input file
 
     ! variables for saving mesh output
-    integer                                :: ISSM_SAVEMESH           ! mesh save flag
     type(ESMF_Field)                       :: field                   ! for fieldwrites
     real(dp),    pointer, dimension(:)     :: field_saver => null()
     real(dp),    pointer, dimension(:)     :: nodelons    => null()
@@ -272,7 +296,7 @@ subroutine SetServices ( GC, RC )
     character(len=16) :: varname
     character(len=1)  :: istr
 
-    type(ESMF_Grid)                        :: mesh_grid                    ! atmospheric grid
+    type(ESMF_Grid)                        :: mesh_grid               
     type(MAPL_LocStream)                   :: mesh_locstream   
 
     ! Get the target components name and set-up traceback handle.
@@ -373,6 +397,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     
     ! create pointer to routehandle for component's private internal state
+    ! also store attached/atmospheric grid and landice tile locstream in internal state
     allocate(internal_state, stat=status)
     VERIFY_(STATUS)
     internal_state%routehandle_m2g  = routehandle_m2g
@@ -384,69 +409,58 @@ subroutine SetServices ( GC, RC )
     call ESMF_UserCompSetInternalState ( GC, 'ISSM_WRAP', wrap, status )
     VERIFY_(STATUS)
 
-    ! save mesh output if desired
-    call MAPL_GetResource(MAPL, ISSM_SAVEMESH, Label=trim(COMP_NAME)//"_SAVEMESH:",default=0,RC=STATUS)
-    VERIFY_(STATUS)
-    if (ISSM_SAVEMESH/=0) then
-        allocate(field_saver(num_elements))
-        allocate(nodelons(num_nodes))
-        allocate(nodelats(num_nodes))
-        allocate(conn_slice(num_elements))
+  ! ------------------------------ BEGIN SAVE MESH ---------------------------
+    allocate(field_saver(num_elements))
+    allocate(nodelons(num_nodes))
+    allocate(nodelats(num_nodes))
+    allocate(conn_slice(num_elements))
 
-        nodelons = nodeCoords(1::2)
-        nodelats = nodeCoords(2::2)
+    nodelons = nodeCoords(1::2)
+    nodelats = nodeCoords(2::2)
     
-        ! initialize ICEEL and ICESMB mesh netcdf files to have time slices
-        call ESMF_FieldWrite(meshField, trim(ISSM_EXPDIR)//"/iceel.nc", variableName='ICEEL',timeslice=1,rc=STATUS)
+    ! save nodes for reconstructing mesh output after running
+    ! looping over three nodes per triangle
+    do i = 1, 3
+        conn_slice = [( elementConn(j), j=i, size(elementConn), 3 )]
+    
+        write(istr, '(I1)') i
+    
+        ! ---- longitude ----
+        varname = "node" // istr // "lon"
+        field_saver = nodelons(conn_slice)
+        field = ESMF_FieldCreate(mesh=mesh,farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
         VERIFY_(STATUS)
-        call ESMF_FieldWrite(meshField, trim(ISSM_EXPDIR)//"/icesmb.nc", variableName='ICESMB',timeslice=1,rc=STATUS)
-        VERIFY_(STATUS)
-        
-        ! save nodes for reconstructing mesh output after running
-        ! looping over three nodes per triangle
-        do i = 1, 3
-            conn_slice = [( elementConn(j), j=i, size(elementConn), 3 )]
-        
-            write(istr, '(I1)') i
-        
-            ! ---- longitude ----
-            varname = "node" // istr // "lon"
-            field_saver = nodelons(conn_slice)
-            field = ESMF_FieldCreate(mesh=mesh,farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
-            VERIFY_(STATUS)
-            call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/mesh.nc", variableName=varname, rc=STATUS)
-            VERIFY_(STATUS)
-            call ESMF_FieldDestroy(field, rc=STATUS)
-            VERIFY_(STATUS)
-        
-            ! ---- latitude ----
-            varname = "node" // istr // "lat"
-            field_saver = nodelats(conn_slice)
-            field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
-            VERIFY_(STATUS)
-            call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/mesh.nc", variableName=varname, rc=STATUS)
-            VERIFY_(STATUS)
-            call ESMF_FieldDestroy(field, rc=STATUS)
-            VERIFY_(STATUS)
-        
-        end do
-
-        ! ---- element IDs ----
-        varname = "elementIds"
-        field_saver = elementIds(:)
-        field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
-        VERIFY_(STATUS)
-        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/mesh.nc", variableName=varname, rc=STATUS)
+        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/issm_mesh.nc", variableName=varname, rc=STATUS)
         VERIFY_(STATUS)
         call ESMF_FieldDestroy(field, rc=STATUS)
         VERIFY_(STATUS)
+    
+        ! ---- latitude ----
+        varname = "node" // istr // "lat"
+        field_saver = nodelats(conn_slice)
+        field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
+        VERIFY_(STATUS)
+        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/issm_mesh.nc", variableName=varname, rc=STATUS)
+        VERIFY_(STATUS)
+        call ESMF_FieldDestroy(field, rc=STATUS)
+        VERIFY_(STATUS)
+    end do
 
-        deallocate(field_saver)
-        deallocate(nodelons)
-        deallocate(nodelats)
-        deallocate(conn_slice)
-    end if 
+    ! ---- save element IDs ----
+    varname = "elementIds"
+    field_saver = elementIds(:)
+    field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/issm_mesh.nc", variableName=varname, rc=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_FieldDestroy(field, rc=STATUS)
+    VERIFY_(STATUS)
+  ! ------------------------------ END SAVE MESH ---------------------------
 
+    ! Create losctream that match mesh element id, then set it to this GC and MAPL
+    !
+    ! note: original attached/atmospheric grid and landice tile locsstream have
+    ! been stored in the internal state
     mesh_grid = create_mesh_grid(_RC)
     call MAPL_LocstreamCreate(mesh_Locstream, mesh_Grid, local_id=elementIds,  _RC)
     call MAPL%grid%set(mesh_grid, _RC)
@@ -454,6 +468,10 @@ subroutine SetServices ( GC, RC )
     Call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
 
     ! deallocate pointers
+    deallocate(field_saver)
+    deallocate(nodelons)
+    deallocate(nodelats)
+    deallocate(conn_slice)
     deallocate(argv)
     deallocate(argv_ptr)
     deallocate(nodeCoords)
@@ -462,9 +480,6 @@ subroutine SetServices ( GC, RC )
     deallocate(elementIds)
     deallocate(elementConn)
     deallocate(elementCoords)
-
-    ! Create losctream that match mesh element id, then set it to this GC and MAPL
-    
 
     ! generic initialize 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
@@ -507,11 +522,11 @@ subroutine SetServices ( GC, RC )
           call ESMF_GridGetCoord(mesh_grid, coordDim=1, localDE=0, &
                staggerloc=ESMF_STAGGERLOC_CENTER, &
                farrayPtr=centers, _RC)
-          centers = 0 ! can assign element coord
+          centers = 0 ! can assign element coord: elementCoords(1::2)?
           call ESMF_GridGetCoord(mesh_grid, coordDim=2, localDE=0, &
                staggerloc=ESMF_STAGGERLOC_CENTER, &
                farrayPtr=centers, _RC)
-          centers = 0 ! 
+          centers = 0 ! elementCoords(2::2)?
 
           _RETURN(_SUCCESS)
        end function create_mesh_grid      
@@ -551,26 +566,32 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                              :: IM, JM, local_dims(3)   ! local grid size
 
   ! tile information
-  integer                              :: NT                      ! number of tiles
+  integer                              :: NT                      ! number of landice tiles
 
-  ! ice elevation on mesh, grid, tile
-  real(dp),    pointer, dimension(:)   :: ICEEL_MESH    => null() ! ice-sheet elevation on mesh elements
-  real, pointer, dimension(:,:)        :: ICEEL_GRID    => null() ! ice-sheet elevation on grid 
-  real, pointer, dimension(:)          :: ICEEL_TILE    => null() ! ice-sheet elevation on landice tiles
-  real, pointer, dimension(:)          :: ICEEL         => null() ! pointer to ice-sheet elevation export state
 
   ! surface mass balance on mesh, grid, tile
-  real(dp),    pointer, dimension(:)   :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
-  real,    pointer, dimension(:,:)     :: ICESMB_GRID   => null() ! surface mass balance on grid
-  real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on tiles
-  real, pointer, dimension(:)          :: ICESMB        => null() ! pointer to SMB import state
+  real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
+  real, pointer, dimension(:,:)        :: ICESMB_GRID   => null() ! surface mass balance on grid
+  real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on landice tiles
+  real, pointer, dimension(:)          :: ICESMB_IM     => null() ! pointer to SMB import state (landice tiles)
+  real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to SMB export state (mesh)
 
+  ! ISSM Outputs (all defined on mesh elements)
+  integer :: num_outputs = 3                                      ! number of outputs 
+  real(dp),    pointer, dimension(:)   :: ISSM_OUTPUTS  => null() ! pointer containing all outputs:
+  real(dp),    pointer, dimension(:)   :: ICETHICK      => null() ! ice thickness on mesh
+  real(dp),    pointer, dimension(:)   :: ICEVEL        => null() ! ice flow speed on mesh
+  real(dp),    pointer, dimension(:)   :: ICESURF       => null() ! ice elevation on mesh
+
+  ! need separate pointers for export states because ISSM expects double precision
+  real, pointer, dimension(:)          :: ICESURF_EX    => null() ! pointer to ice-sheet elevation export state
+  real, pointer, dimension(:)          :: ICEVEL_EX     => null() ! pointer to ice flow speed export state
+  real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state
 
   ! physical parameters
-  real(dp), parameter                  :: rho_ice   = 917.0       ! pure ice density [kg m^-3]
+  real(dp), parameter                  :: rho_ice   = 917.0       ! pure ice density [kg m-3]
   real(dp)                             :: dt                      ! time step [s] (ISSM_DT set in AGCM.rc)
 
-  integer                              :: ISSM_SAVEMESH           ! mesh save flag
   character(len=ESMF_MAXSTR)           :: ISSM_EXPDIR             ! directory containing ISSM input file
 
 ! Get the target components name, mesh and vm
@@ -594,10 +615,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call MAPL_Get(MAPL, RUNALARM = ALARM, RC=STATUS )
   VERIFY_(STATUS)
 
-  ! save mesh output if desired
-  call MAPL_GetResource(MAPL, ISSM_SAVEMESH, Label=trim(COMP_NAME)//"_SAVEMESH:",default=0,RC=STATUS)
-  VERIFY_(STATUS)
-
   call MAPL_GetResource(MAPL, ISSM_EXPDIR, Label=trim(COMP_NAME)//"_EXPDIR:", RC=STATUS)
   VERIFY_(STATUS)
 
@@ -609,20 +626,26 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
 
     ! get timestep for ISSM
-    call MAPL_GetResource (MAPL, dt, Label=trim(COMP_NAME)//"_DT:",DEFAULT=604800.0, RC=STATUS)
+    call MAPL_GetResource (MAPL, dt, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, RC=STATUS)
     VERIFY_(STATUS)
 
     ! get number of mesh elements
     call ESMF_MeshGet(mesh,elementCount=num_elements)
 
-    ! allocate SMB forcing (input to ISSM) and ice-elevation output (export from ISSM)
-    allocate(ICEEL_MESH(num_elements))    
+    ! allocate ice-elevation output (export from ISSM)
+    allocate(ISSM_OUTPUTS(num_outputs*num_elements))  
+    allocate(ICESURF(num_elements))
+    allocate(ICETHICK(num_elements))
+    allocate(ICEVEL(num_elements))  
 
     call ESMF_VMBarrier(vm, rc=status)
     VERIFY_(STATUS)
 
-    ! set smb and surface to zero (not sure this is needed...)
-    ICEEL_MESH(:) = 0.0_dp
+    ! initialize ISSM outputs to zero 
+    ICESURF(:) = 0.0_dp
+    ICETHICK(:) = 0.0_dp
+    ICEVEL(:) = 0.0_dp
+    ISSM_OUTPUTS(:) = 0.0_dp
 
     ! get routehandles for regridding
     call ESMF_UserCompGetInternalState(GC, 'ISSM_WRAP', wrap, status); VERIFY_(STATUS)
@@ -638,17 +661,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! IMPORT SMB (surface mass balance) & REGRID FROM TILES [to grid] to MESH 
     ! *************************************************************************** !
     
-    call MAPL_GetPointer(IMPORT,ICESMB, 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,ICESMB_IM, 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
 
     ! allocate tiles for SMB (MKTILE)
-    if(associated(ICESMB) .and. .not.associated(ICESMB_TILE)) then
+    if(associated(ICESMB_IM) .and. .not.associated(ICESMB_TILE)) then
       allocate(ICESMB_TILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
       ICESMB_TILE = MAPL_Undef
     end if
     
-    ! copy import values into tile array (necessary?)
-    ICESMB_TILE(:) = ICESMB(:)
+    ! copy import values into tile array 
+    ICESMB_TILE(:) = ICESMB_IM(:)
 
     ! allocate SMB on grid
     allocate( ICESMB_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
@@ -675,62 +698,58 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldGet(dstField,farrayPtr=ICESMB_MESH,RC=STATUS); VERIFY_(STATUS)
 
     ! save ICESMB on mesh elements 
-    if (ISSM_SAVEMESH/=0) then
-        call ESMF_FieldWrite(dstField, trim(ISSM_EXPDIR)//"/icesmb.nc", variableName='ICESMB',rc=STATUS)
-    end if 
-    
-    ! convert SMB to units of [m/s] (ice-equivalent) for ISSM
-    ICESMB_MESH = ICESMB_MESH/rho_ice
+    call MAPL_GetPointer(EXPORT  , ICESMB_EX , 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
+    if(associated(ICESMB_EX)) ICESMB_EX = ICESMB_MESH
 
     ! *************************************************************************** !
     !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
     ! *************************************************************************** !
 
+    ! convert SMB to units of [m/s] (ice-equivalent) before passing to ISSM
+    ICESMB_MESH = ICESMB_MESH/rho_ice
+
     ! NOTE: do we need the barriers before/after ISSM run?
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
     ! call run method from ISSM library 
-    call RunISSM(dt, c_loc(ICESMB_MESH), c_loc(ICEEL_MESH))
+    call RunISSM(dt, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
 
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
     ! *************************************************************************** !
-    ! REGRID ICEEL (ice elevation) FROM MESH [to grid] to TILES 
+    ! UNPACK AND EXPORT ISSM OUTPUTS
     ! *************************************************************************** !
-     
-    ! destroy regridding fields so they can be reused
+
+    ! unpack ISSM output pointer
+    ICESURF(:) = ISSM_OUTPUTS(1:num_elements)
+    ICETHICK(:) = ISSM_OUTPUTS(num_elements+1:2*num_elements)
+    ICEVEL(:) = ISSM_OUTPUTS(2*num_elements+1:3*num_elements)
+
+    ! get pointers to exports
+    call MAPL_GetPointer(EXPORT  , ICESURF_EX , 'ICESURF' , RC=STATUS); VERIFY_(STATUS)
+    if(associated(ICESURF_EX)) ICESURF_EX = ICESURF
+
+    call MAPL_GetPointer(EXPORT  , ICEVEL_EX , 'ICEVEL' , RC=STATUS); VERIFY_(STATUS)
+    if(associated(ICEVEL_EX)) ICEVEL_EX = ICEVEL
+
+    call MAPL_GetPointer(EXPORT  , ICETHICK_EX , 'ICETHICK' , RC=STATUS); VERIFY_(STATUS)
+    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK
+
+    ! destroy regridding fields 
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
-
-    ! WY note: after getting ICESMB_Mesh, assign it ICEEL_tile directly for the output
-
-
-    ! create source field: ice elevation on mesh elements
-    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICEEL_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
-    datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
-    VERIFY_(STATUS)
-
-    ! save ICEEL on mesh elements 
-    if (ISSM_SAVEMESH/=0) then
-        call ESMF_FieldWrite(srcField, trim(ISSM_EXPDIR)//"/iceel.nc", variableName='ICEEL',rc=STATUS)
-    end if 
-    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
-    
-    ! get pointer to export
-    call MAPL_GetPointer(EXPORT  , ICEEL , 'ICEEL' , RC=STATUS); VERIFY_(STATUS)
-
-    if(associated(ICEEL) ) ICEEL = ICEEL_MESH
-   
 
   end if 
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  if(associated(ICEEL_MESH))  deallocate(ICEEL_MESH)
-  if(associated(ICEEL_TILE))  deallocate(ICEEL_TILE)
-  if(associated(ICESMB_TILE)) deallocate(ICESMB_TILE)
-  if(associated(ICESMB_GRID)) deallocate(ICESMB_GRID)
+  if(associated(ICESURF))      deallocate(ICESURF)
+  if(associated(ISSM_OUTPUTS)) deallocate(ISSM_OUTPUTS)
+  if(associated(ICETHICK))     deallocate(ICETHICK)
+  if(associated(ICEVEL))       deallocate(ICEVEL) 
+  if(associated(ICESMB_TILE))  deallocate(ICESMB_TILE)
+  if(associated(ICESMB_GRID))  deallocate(ICESMB_GRID)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
@@ -759,7 +778,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)	       :: IAm
-    integer			                   :: STATUS
+    integer			                       :: STATUS
     character(len=ESMF_MAXSTR)         :: COMP_NAME
 
     ! Get the target components name and set-up traceback handle.
