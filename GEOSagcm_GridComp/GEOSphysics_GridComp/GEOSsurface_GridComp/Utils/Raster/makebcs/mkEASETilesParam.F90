@@ -39,7 +39,7 @@ PROGRAM mkEASETilesParam
   use MAPL_ConstantsMod,     only : MAPL_PI_r8, MAPL_RADIUS
   use MAPL_ExceptionHandling
   use MAPL,                  only : MAPL_ease_extent, MAPL_ease_convert, MAPL_ease_inverse, MAPL_WriteTilingNC4
-  use EASE_pfaf_fracMod,     only : EASE_get_pfaf_frac
+  use EASE_pfaf_subareaMod,  only : EASE_get_pfaf_subarea
   use netcdf
   
   implicit none
@@ -981,7 +981,7 @@ PROGRAM mkEASETilesParam
   deallocate( tileid_index, catid_index,veg )
   deallocate( tile_area, ease_grid_area, tile_elev, my_land, all_id )
 
-  call EASE_get_pfaf_frac('til/'//trim(EASELabel)//'_tile2pfaf.nc4', MAKE_BCS_INPUT_DIR, EASELabel, gfile)
+  call EASE_get_pfaf_subarea('til/'//trim(EASELabel)//'_tile2pfaf.nc4', MAKE_BCS_INPUT_DIR, EASELabel, gfile)
       
   ! Commented out "empty" if-block. -rreichle, 15 Jun 2023
   !

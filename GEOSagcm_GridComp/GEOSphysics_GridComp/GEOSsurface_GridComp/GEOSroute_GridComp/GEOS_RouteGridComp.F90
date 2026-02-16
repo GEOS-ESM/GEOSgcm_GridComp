@@ -214,15 +214,6 @@ contains
          _RC )
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'catchment_area',&
-         UNITS              = 'm+2'                      ,&
-         SHORT_NAME         = 'AREA_CATCH'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         RESTART            = MAPL_RestartRequired       ,&
-         _RC )
-
-    call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'Alpha_parameter_for_main_rivers',&
          UNITS              = '1'                      ,&
          SHORT_NAME         = 'RRM_ALPHA_RIV'                  ,&
@@ -397,7 +388,6 @@ contains
     type(ESMF_State)            :: INTERNAL
 
     real, dimension(:), pointer :: DOWNID_RS
-    real, dimension(:), pointer :: AREA_CATCH_RS
     real, dimension(:), pointer :: RRM_ALPHA_RIV_RS
     real, dimension(:), pointer :: RRM_ALPHA_STR_RS
 
@@ -513,13 +503,11 @@ contains
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL,  _RC) 
-    call MAPL_GetPointer(INTERNAL, DOWNID_RS,        'DOWNID',        _RC ) 
-    call MAPL_GetPointer(INTERNAL, AREA_CATCH_RS,    'AREA_CATCH',    _RC )  
+    call MAPL_GetPointer(INTERNAL, DOWNID_RS,        'DOWNID',        _RC )  
     call MAPL_GetPointer(INTERNAL, RRM_ALPHA_RIV_RS, 'RRM_ALPHA_RIV', _RC ) 
     call MAPL_GetPointer(INTERNAL, RRM_ALPHA_STR_RS, 'RRM_ALPHA_STR', _RC )     
 
-    allocate(route%downid(n_pfaf_local),              source =      int(DOWNID_RS))
-    allocate(route%areacat(n_pfaf_local),             source =       AREA_CATCH_RS)        
+    allocate(route%downid(n_pfaf_local),              source =      int(DOWNID_RS))       
     allocate(route%alpha_riv(n_pfaf_local),           source =    RRM_ALPHA_RIV_RS) 
     allocate(route%alpha_str(n_pfaf_local),           source =    RRM_ALPHA_STR_RS)     
 
@@ -618,38 +606,39 @@ contains
             nWeights = meta%get_dimension('tile')
          endif
          call MAPL_CommsBcast(layout, nWeights, 1, MAPL_Root, status)
-         allocate(global_src(nWeights), global_dst(nWeights), global_frac(nWeights))
+         allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          if (MAPL_AM_I_ROOT()) then
             call formatter%get_var('tile_id',    global_src,  _RC)
             call formatter%get_var('pfaf_index', global_dst,  _RC)
-            call formatter%get_var('pfaf_frac',  global_frac, _RC)
+            call formatter%get_var('subtile_area',  global_area, _RC)
          endif
          call MAPL_CommsBcast(layout, global_src, nWeights, MAPL_Root, status)
          call MAPL_CommsBcast(layout, global_dst, nWeights, MAPL_Root, status)
-         call MAPL_CommsBcast(layout, global_frac,nWeights, MAPL_Root, status)
+         call MAPL_CommsBcast(layout, global_area,nWeights, MAPL_Root, status)
       else
-         allocate(global_src(nWeights), global_dst(nWeights), global_frac(nWeights))
-         allocate(global_area(nWeights))
+         allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          global_src = global_id
          call ESMFL_Fcollect(tilegrid, global_dst, pfaf_index, _RC)
          call ESMFL_Fcollect(tilegrid, global_area, tilearea, _RC)
          global_area = global_area*MAPL_RADIUS**2
-         allocate(areacat_glob(N_pfaf_g),source=0.)
-         do ii=1,nWeights
-           dst=global_dst(ii)
-           areacat_glob(dst)=areacat_glob(dst)+global_area(ii)
-         enddo
-         where(areacat_glob==0.) areacat_glob=1.
-         global_frac = global_area/areacat_glob(global_dst)
-         deallocate(areacat_glob)
       endif
 
+      allocate(areacat_glob(N_pfaf_g),source=0.)
+      do ii=1,nWeights
+         dst=global_dst(ii)
+         areacat_glob(dst)=areacat_glob(dst)+global_area(ii)
+      enddo
+      allocate(route%areacat(route%n_pfaf_local),  source=areacat_glob(route%minCatch:route%maxCatch)) 
+      where(areacat_glob==0.) areacat_glob=1.
+      global_frac = global_area/areacat_glob(global_dst)
+      deallocate(areacat_glob)
+
       allocate(mask(nWeights))
-      mask = minCatch <= global_dst(:) .and. global_dst(:) <=maxCatch
+      mask = route%minCatch <= global_dst(:) .and. global_dst(:) <= route%maxCatch
       local_src = pack(global_src(:),  mask)
       local_dst = pack(global_dst(:),  mask)
       weights   = pack(global_frac(:), mask)
-      deallocate(global_src, global_dst, global_frac)
+      deallocate(global_src, global_dst, global_area, global_frac)
 
       nLocal_weights = count(mask)
       allocate(factorIndexList(2, nLocal_weights))

@@ -4,7 +4,7 @@ program main
 use river_read
 use constant, only : nmax=>nmax09, nc, nlon, nlat
 
-use EASE_pfaf_fracMod, only : EASE_find_subs
+use EASE_pfaf_subareaMod, only : EASE_find_subs
 
 implicit none
 

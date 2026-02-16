@@ -1,6 +1,6 @@
 #include "MAPL_ErrLog.h"
 
-module EASE_pfaf_fracMod
+module EASE_pfaf_subareaMod
 
   ! Main purpose: Assigns a catchment‐tile index from Pfaf catchment definition files to each tile for global cylindrical EASE grid;
   !               writes information into EASEv[x]_tile2pfaf.nc4
@@ -11,12 +11,12 @@ module EASE_pfaf_fracMod
   implicit none
   private
 
-  public :: EASE_get_Pfaf_frac
+  public :: EASE_get_Pfaf_subarea
   public :: EASE_find_subs
 
 contains 
   
-  subroutine EASE_get_Pfaf_frac(file_out, BCS_PATH, GridName, gfile)
+  subroutine EASE_get_Pfaf_subarea(file_out, BCS_PATH, GridName, gfile)
     
     character(*), intent(in) :: file_out, BCS_PATH    
     character(*), intent(in) :: GridName
@@ -33,8 +33,7 @@ contains
     ! xsub and ysub: 2D arrays to store mapped x and y indices for sub-catchments (not using subi_global in this code)
     real,    allocatable :: asub( :,:), asub0(:,:)             ! 2D array to store aggregated area for each sub-catchment
     
-    real*8,  allocatable :: lon(  :), lat(  :)                 ! Arrays to hold longitude and latitude values from the NetCDF file
-    real*8,  allocatable :: lons( :), lats( :)                 ! Arrays to hold longitude and latitude values from the NetCDF file
+    real*8,  allocatable :: lon(  :), lat(  :)                 ! Arrays to hold longitude and latitude values
     integer, allocatable :: loni( :), lati( :)
     integer, allocatable :: loni2(:), lati2(:)
     ! loni and lati: Arrays holding mapping indices from 1-minute resolution data files
@@ -45,7 +44,7 @@ contains
     real*8,  allocatable, dimension(:)   :: latc,lonc
     integer, allocatable, dimension(:,:) :: map_tile
     
-    real,    allocatable, dimension(:)   :: area_cat, pfaf_frac(:)
+    real,    allocatable, dimension(:)   :: area_cat, subtile_area(:)
     real,    allocatable, dimension(:,:) :: frac,frac_tile
     integer, allocatable, dimension(:)   :: nsub_tile
     integer, allocatable                 :: csub(:,:),flag2(:,:), tile_id(:), pfaf_index(:)
@@ -54,7 +53,7 @@ contains
     type (FileMetadata)         :: meta
     type(Variable)              :: v
     integer                     :: nc_ease, nr_ease
-    real                        :: tmp_lat, tmp_lon
+    real                        :: tmp_lati, tmp_loni
     integer                     :: ntile, npfaf0, nx, ny, type, pfaf_ind 
     
     ! Define file path for input routing data:
@@ -67,7 +66,6 @@ contains
     allocate(catchind(nlon, nlat))
     allocate(lon(nlon), lat(nlat))
     allocate(loni(nlon), lati(nlat),loni2(nlon), lati2(nlat))
-    allocate(lons(nc_ease),lats(nr_ease))
     allocate(nsub(nPfaf))
     
     call formatter%open(trim(pfafData_file), PFIO_READ)
@@ -76,16 +74,15 @@ contains
     call formatter%get_var("CatchIndex", catchind)
     call formatter%close()
     
-    do i = 1, nc_ease
-       call MAPL_ease_inverse( trim(GridName), real(i-1), 0.0, tmp_lat, tmp_lon)
-       lons(i) = tmp_lon
+    do i = 1, nlon
+       call MAPL_ease_convert( trim(GridName), 0.0, real(lon(i)), tmp_loni, tmp_lati)
+       loni(i) = nint(tmp_loni) + 1
     enddo
-    do j = 1, nr_ease
-       call MAPL_ease_inverse( trim(GridName), 0.0, real(j-1), tmp_lat, tmp_lon)
-       lats(j) = tmp_lat
+
+    do i = 1, nlat
+       call MAPL_ease_convert( trim(GridName), real(lat(i)), 0.0, tmp_loni, tmp_lati)
+       lati(i) = nint(tmp_lati) + 1
     enddo
-    call nearest_index_vector(lat, lats, lati)
-    call nearest_index_vector(lon, lons, loni)
     
 ! Initialize aggregation arrays to zero:
     allocate(xsub0(9999, nPfaf), ysub0(9999, nPfaf), asub0(9999, nPfaf))
@@ -135,7 +132,7 @@ contains
         endif
       enddo
     enddo
-    
+
     allocate(area_cat(nPfaf),frac(nmax,nPfaf),nsub_tile(ntot),flag2(nmax,nPfaf))
     where(isub==-9999) asub=0.
     area_cat=0.
@@ -151,9 +148,11 @@ contains
           nsub_tile(it)=nsub_tile(it)+1
           frac(j,i)=asub(j,i)/area_cat(i)
         endif
+        if(isub(j,i)==-9999) nsub(i) = nsub(i) - 1
         if(isub(j,i)==0)exit
       enddo
     enddo
+
     nmax2=maxval(nsub_tile)
     allocate(csub(nmax2,ntot),frac_tile(nmax2,ntot))
     csub=0
@@ -169,9 +168,9 @@ contains
         endif
         if(isub(j,i)==0)exit
       enddo
-    enddo
+    enddo 
     ns_tot=sum(nsub_tile)
-    allocate(tile_id(ns_tot), pfaf_index(ns_tot), pfaf_frac(ns_tot))
+    allocate(tile_id(ns_tot), pfaf_index(ns_tot), subtile_area(ns_tot))
     it = 0
     do i=1,ntot
       do j=1,nmax2
@@ -179,11 +178,11 @@ contains
           it = it+1
           tile_id(it) = i
           pfaf_index(it) = csub(j,i)
-          pfaf_frac(it)  = frac_tile(j,i)
+          subtile_area(it)  = frac_tile(j,i)*area_cat(pfaf_index(it))*1.e6
         endif
         if(csub(j,i)==0)exit
       enddo
-    enddo
+    enddo 
 
     call meta%add_dimension('tile', ns_tot)
 
@@ -198,44 +197,18 @@ contains
     call meta%add_variable('pfaf_index', v)
 
     v = Variable(type=pFio_REAL32, dimensions='tile')
-    call v%add_attribute('units', '1')
-    call v%add_attribute('long_name', 'area_fraction_of_catchment')
-    call meta%add_variable('pfaf_frac', v)
+    call v%add_attribute('units', 'm+2')
+    call v%add_attribute('long_name', 'area_of_subtile')
+    call meta%add_variable('subtile_area', v)
 
     call formatter%create(file_out, mode=PFIO_CLOBBER)
     call formatter%write(meta)
     call formatter%put_var('tile_id', tile_id)
     call formatter%put_var('pfaf_index', pfaf_index)
-    call formatter%put_var('pfaf_frac',  pfaf_frac)
+    call formatter%put_var('subtile_area',  subtile_area)
     call formatter%close()
 
-  end subroutine EASE_get_Pfaf_frac
-
-  subroutine nearest_index_vector(candidates, targets, idx)
-    ! For each targets(k), find argmin_j |candidates(j) - targets(k)|
-    real*8,  intent(in)  :: targets(:)
-    real*8,  intent(in)  :: candidates(:)
-    integer, intent(out) :: idx(size(candidates))   ! 1-based indices
-
-    integer :: k, j, nTarg, nCand, best_j
-    real*8  :: best_d, d
-
-    nTarg = size(targets)
-    nCand = size(candidates)
-
-    do k = 1, nCand
-       best_d = huge(1.0d0)
-       best_j = 1
-       do j = 1, nTarg
-          d = abs(candidates(k) - targets(j))
-          if (d < best_d) then
-             best_d = d
-             best_j = j
-          end if
-       end do
-       idx(k) = best_j    ! already 1-based
-    end do
-  end subroutine nearest_index_vector
+  end subroutine EASE_get_Pfaf_subarea
 
   subroutine EASE_Find_subs(catchind, loni, lati, lat, nsub, xsub0, ysub0, asub0)
     integer,           intent(in)  :: catchind(:,:)
@@ -288,4 +261,4 @@ contains
     end do
   end subroutine
 
-end module EASE_pfaf_fracMod
+end module EASE_pfaf_subareaMod
