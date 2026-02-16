@@ -7,7 +7,7 @@ from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.cumulus_parameterization import (
-    GF2020_CumulusParameterization,
+    GF2020CumulusParameterization,
 )
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
@@ -370,7 +370,7 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
             ]
 
             # initialize the test subject
-            code = GF2020_CumulusParameterization(
+            code = GF2020CumulusParameterization(
                 stencil_factory=self.stencil_factory,
                 quantity_factory=self.quantity_factory,
                 config=config,

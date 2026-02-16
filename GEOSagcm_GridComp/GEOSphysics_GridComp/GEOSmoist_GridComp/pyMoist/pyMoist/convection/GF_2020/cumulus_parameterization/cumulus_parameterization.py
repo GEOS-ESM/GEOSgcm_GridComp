@@ -116,7 +116,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
 )
 
 
-class GF2020_CumulusParameterization(NDSLRuntime):
+class GF2020CumulusParameterization(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
