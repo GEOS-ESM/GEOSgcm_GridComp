@@ -641,8 +641,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_VMBarrier(vm, rc=status)
     VERIFY_(STATUS)
 
-    ! initialize surface elevation to zero (not sure this is needed...)
+    ! initialize ISSM outputs to zero 
     ICESURF(:) = 0.0_dp
+    ICETHICK(:) = 0.0_dp
+    ICEVEL(:) = 0.0_dp
+    ISSM_OUTPUTS(:) = 0.0_dp
+
 
     ! get routehandles for regridding
     call ESMF_UserCompGetInternalState(GC, 'ISSM_WRAP', wrap, status); VERIFY_(STATUS)
