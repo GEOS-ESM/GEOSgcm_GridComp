@@ -581,10 +581,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real(dp),    pointer, dimension(:)   :: ISSM_OUTPUTS  => null() ! pointer containing all outputs:
   real(dp),    pointer, dimension(:)   :: ICETHICK      => null() ! ice thickness on mesh
   real(dp),    pointer, dimension(:)   :: ICEVEL        => null() ! ice flow speed on mesh
-  real(dp),    pointer, dimension(:)   :: ICESURF         => null() ! ice elevation on mesh
+  real(dp),    pointer, dimension(:)   :: ICESURF       => null() ! ice elevation on mesh
 
   ! need separate pointers for export states because ISSM expects double precision
-  real, pointer, dimension(:)          :: ICESURF_EX      => null() ! pointer to ice-sheet elevation export state
+  real, pointer, dimension(:)          :: ICESURF_EX    => null() ! pointer to ice-sheet elevation export state
   real, pointer, dimension(:)          :: ICEVEL_EX     => null() ! pointer to ice flow speed export state
   real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state
 
