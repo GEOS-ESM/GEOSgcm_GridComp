@@ -1,7 +1,7 @@
-import numpy as np
 from ndsl.dsl.typing import Float, Int
-from ndsl.constants import I_DIM, J_DIM
+from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
 from pyGEOSBridge import GEOSInterfaceCode, get_MAPLPy
+from pyGEOSBridge.types import CVoidPointer
 
 from mpi4py import MPI
 
@@ -10,23 +10,17 @@ from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.UW import ComputeUwshcuInv, UWConfiguration, UWState
+from pyMoist.fortran.profiler import TimedCUDAProfiler
 
 
 class UWGEOSInterface(GEOSInterfaceCode):
     def __init__(self, name: str) -> None:
-        self._state: UWState | None = None
+        pass
 
     def init(self, mapl_state, import_state, export_state) -> None:
         # Make sure we have our NDSL stack setup
         MAPLPy = get_MAPLPy()
         ndsl_stack = get_NDSL_physics(mapl_state)
-
-        # Init NDSL state
-        self._state = UWState.empty(ndsl_stack.quantity_factory)
-        self._managed_state = MAPLManagedState(
-            UWState.empty(ndsl_stack.quantity_factory),
-            InterfaceTransferType.CPU_MAP,
-        )
 
         if ndsl_stack.quantity_factory.sizer.nz == 72:
             jason_uw = MAPLPy.get_resource("JASON_UW:", mapl_state, default=True)
@@ -80,49 +74,64 @@ class UWGEOSInterface(GEOSInterfaceCode):
         ):
             self._uw = ComputeUwshcuInv(ndsl_stack.stencil_factory, ndsl_stack.quantity_factory, config)
 
+        # Init NDSL state
+        self._managed_state = MAPLManagedState(
+            UWState.empty(
+                ndsl_stack.quantity_factory,
+                data_dimensions=ndsl_stack.quantity_factory.sizer.data_dimensions,
+            ),
+            InterfaceTransferType.CPU_MAP,
+        )
+
     def run(self, mapl_state, import_state, export_state) -> None:
         raise RuntimeError("UW requires pyMoist integration requires `run_with_internal`")
 
-    def __run_with_internal(self, mapl_state, import_state, export_state, internal_state) -> None:
-        assert self._state is not None
-
+    def run_with_internal(
+        self,
+        mapl_state: CVoidPointer,
+        import_state: CVoidPointer,
+        export_state: CVoidPointer,
+        internal_state: CVoidPointer,
+    ) -> None:
         ndsl_stack = get_NDSL_physics(mapl_state)
         import_repository = MAPLMemoryRepository(import_state, ndsl_stack.quantity_factory)
-        internal_repository = MAPLMemoryRepository(internal_state, ndsl_stack.quantity_factory)
         export_repository = MAPLMemoryRepository(export_state, ndsl_stack.quantity_factory)
+        internal_repository = MAPLMemoryRepository(internal_state, ndsl_stack.quantity_factory)
 
-        self._managed_state.register("input.PLE", "PLE", import_repository)
-        self._managed_state.register("input.ZLE", "ZLE", import_repository)
+        self._managed_state.register_K_interface("input.PLE", "PLE", import_repository)
+        self._managed_state.register_K_interface("input.ZLE", "ZLE", import_repository)
         self._managed_state.register("input.QLLS", "QLLS", internal_repository)
         self._managed_state.register("input.QILS", "QILS", internal_repository)
         self._managed_state.register("input.QLCN", "QLCN", internal_repository)
         self._managed_state.register("input.QICN", "QICN", internal_repository)
-        self._managed_state.register("input.kpbl_inv", "KPBL_SC", import_repository, dims=[I_DIM, J_DIM])
-        self._managed_state.register("input.frland", "FRLAND", import_repository, dims=[I_DIM, J_DIM])
-        self._managed_state.register("input.tke_inv", "TKE", import_repository)
-        self._managed_state.register("input.shfx", "SH", import_repository, dims=[I_DIM, J_DIM])
-        self._managed_state.register("input.evap", "EVAP", import_repository, dims=[I_DIM, J_DIM])
+        self._managed_state.register_2D("input.kpbl_inv", "KPBL_SC", import_repository)
+        self._managed_state.register_2D("input.frland", "FRLAND", import_repository)
+        self._managed_state.register_K_interface("input.tke_inv", "TKE", import_repository)
+        self._managed_state.register_2D("input.shfx", "SH", import_repository)
+        self._managed_state.register_2D("input.evap", "EVAP", import_repository)
 
         self._managed_state.register("input_output.u0_inv", "U", import_repository)
         self._managed_state.register("input_output.v0_inv", "V", import_repository)
         self._managed_state.register("input_output.qv0_inv", "Q", internal_repository)
         self._managed_state.register("input_output.t0_inv", "T", import_repository)
-        self._managed_state.register("input_output.cush", "CUSH", internal_repository)
+        self._managed_state.register_2D("input_output.cush", "CUSH", internal_repository)
         # self._managed_state.register("input_output.CNV_Tracers", ) # ❔❔❔
-        self._managed_state.register("input_output.cnvtr", "CNPCPRATE", export_repository)
+        self._managed_state.register_2D("input_output.cnvtr", "CNPCPRATE", export_repository)
 
-        self._managed_state.register(
-            "output.RKFRE", "RKFRE", export_repository, alloc=True, dims=[I_DIM, J_DIM]
-        )
+        self._managed_state.register_2D("output.RKFRE", "RKFRE", export_repository, alloc=True)
         self._managed_state.register("output.MFD_SC", "MFD_SC", export_repository, alloc=True)
         self._managed_state.register("output.QLENT_SC", "QLENT_SC", export_repository, alloc=True)
         self._managed_state.register("output.QIENT_SC", "QIENT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.umf_inv", "UMF_SC", export_repository, alloc=True)
+        self._managed_state.register_K_interface("output.umf_inv", "UMF_SC", export_repository, alloc=True)
         self._managed_state.register("output.dcm_inv", "DCM_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qtflx_inv", "QTFLX_SC", export_repository, alloc=True)
-        self._managed_state.register("output.slflx_inv", "SLFLX_SC", export_repository, alloc=True)
-        self._managed_state.register("output.uflx_inv", "UFLX_SC", export_repository, alloc=True)
-        self._managed_state.register("output.vflx_inv", "VFLX_SC", export_repository, alloc=True)
+        self._managed_state.register_K_interface(
+            "output.qtflx_inv", "QTFLX_SC", export_repository, alloc=True
+        )
+        self._managed_state.register_K_interface(
+            "output.slflx_inv", "SLFLX_SC", export_repository, alloc=True
+        )
+        self._managed_state.register_K_interface("output.uflx_inv", "UFLX_SC", export_repository, alloc=True)
+        self._managed_state.register_K_interface("output.vflx_inv", "VFLX_SC", export_repository, alloc=True)
         self._managed_state.register("output.DQADT_SC", "DQADT_SC", export_repository, alloc=True)
         self._managed_state.register("output.qvten_inv", "DQVDT_SC", export_repository, alloc=True)
         self._managed_state.register("output.qlten_inv", "DQLDT_SC", export_repository, alloc=True)
@@ -139,19 +148,17 @@ class UWGEOSInterface(GEOSInterfaceCode):
         self._managed_state.register("output.nice_inv", "SC_NICE", export_repository, alloc=True)
         self._managed_state.register("output.qlsub_inv", "QLSUB_SC", export_repository, alloc=True)
         self._managed_state.register("output.qisub_inv", "QISUB_SC", export_repository, alloc=True)
-        self._managed_state.register("output.tpert_out", "TPERT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qpert_out", "QPERT_SC", export_repository, alloc=True)
-
-        # Un-bound in DSL ?!
-        # self._managed_state.register("output.qidet_inv", "", export_repository, alloc=True)
-        # self._managed_state.register("output.qldet_inv", "", export_repository, alloc=True)
-        # self._managed_state.register("output.CNV_MFC", "", export_repository, alloc=True)
-        # self._managed_state.register("output.CNV_MFD", "", export_repository, alloc=True)
-        # self._managed_state.register("output.SHLW_PRC3", "", export_repository, alloc=True)
-        # self._managed_state.register("output.SHLW_SNO3", "", export_repository, alloc=True)
-        # self._managed_state.register("output.SC_QT", "", export_repository, alloc=True)
-        # self._managed_state.register("output.SC_MSE", "", export_repository, alloc=True)
-        # self._managed_state.register("output.CUSH_SC", "", export_repository, alloc=True)
+        self._managed_state.register_2D("output.tpert_out", "TPERT_SC", export_repository, alloc=True)
+        self._managed_state.register_2D("output.qpert_out", "QPERT_SC", export_repository, alloc=True)
+        self._managed_state.register("output.qidet_inv", "QIDET_SC", export_repository, alloc=True)
+        self._managed_state.register("output.qldet_inv", "QLDET_SC", export_repository, alloc=True)
+        self._managed_state.register_K_interface("output.CNV_MFC", "CNV_MFC", export_repository, alloc=True)
+        self._managed_state.register("output.CNV_MFD", "CNV_MFD", export_repository, alloc=True)
+        self._managed_state.register("output.SHLW_PRC3", "SHLW_PRC3", export_repository, alloc=True)
+        self._managed_state.register("output.SHLW_SNO3", "SHLW_SNO3", export_repository, alloc=True)
+        self._managed_state.register_2D("output.SC_QT", "SC_QT", export_repository, alloc=True)
+        self._managed_state.register_2D("output.SC_MSE", "SC_MSE", export_repository, alloc=True)
+        self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository, alloc=True)
 
         # Unused from GEOS ?!
         # CLCN = MAPLPy.get_pointer("CLCN", internal_state, dtype=np.float32)
@@ -159,7 +166,15 @@ class UWGEOSInterface(GEOSInterfaceCode):
         # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
         # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
 
-        self._uw(self._state)
+        with TimedCUDAProfiler("UW", {}):
+            with TimedCUDAProfiler("UW - State copy", {}):
+                self._managed_state.fortran_to_ndsl()
+
+            with TimedCUDAProfiler("UW Numerics", {}):
+                self._uw(self._managed_state.ndsl_state)
+
+            with TimedCUDAProfiler("UW - State copy-back", {}):
+                self._managed_state.ndsl_to_fortran()
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         # No finalize call from UW

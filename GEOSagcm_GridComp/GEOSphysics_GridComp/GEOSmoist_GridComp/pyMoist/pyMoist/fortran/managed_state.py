@@ -2,7 +2,7 @@ from typing import Tuple
 
 import numpy.typing as npt
 from ndsl import State
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Float
+from ndsl.constants import I_DIM, J_DIM, K_DIM, Float, K_INTERFACE_DIM
 from ndsl.optional_imports import cupy as cp
 
 from pyMoist.fortran.build_helper import InterfaceTransferType
@@ -27,10 +27,21 @@ class MAPLManagedState:
         mapl_field_name: str,
         mapl_state: MAPLMemoryRepository,
         dtype: npt.DTypeLike = Float,
-        dims: list[str] = [X_DIM, Y_DIM, Z_DIM],
+        dims: list[str] = [I_DIM, J_DIM, K_DIM],
         alloc: bool = False,
     ):
         mapl_state.register(mapl_field_name, dtype=dtype, dims=dims, alloc=alloc)
+        self._state_to_mapl_mapping[ndsl_field_name] = (mapl_state, mapl_field_name)
+
+    def register_K_interface(
+        self,
+        ndsl_field_name: str,
+        mapl_field_name: str,
+        mapl_state: MAPLMemoryRepository,
+        dtype: npt.DTypeLike = Float,
+        alloc: bool = False,
+    ):
+        mapl_state.register(mapl_field_name, dtype=dtype, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=alloc)
         self._state_to_mapl_mapping[ndsl_field_name] = (mapl_state, mapl_field_name)
 
     def register_2D(
@@ -41,7 +52,7 @@ class MAPLManagedState:
         dtype: npt.DTypeLike = Float,
         alloc: bool = False,
     ):
-        mapl_state.register(mapl_field_name, dtype=dtype, dims=[X_DIM, Y_DIM], alloc=alloc)
+        mapl_state.register(mapl_field_name, dtype=dtype, dims=[I_DIM, J_DIM], alloc=alloc)
         self._state_to_mapl_mapping[ndsl_field_name] = (mapl_state, mapl_field_name)
 
     @property
