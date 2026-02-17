@@ -625,6 +625,15 @@ class GF2020Locals(State):
             "dtype": Float,
         }
     )
+    dconvection_tracersdt: Quantity = dataclasses.field(
+        metadata={
+            "name": "dconvection_tracersdt",
+            "dims": [X_DIM, Y_DIM, Z_DIM, "convection_tracers"],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     evaporation_sublimation_tendency: Quantity = dataclasses.field(
         metadata={
             "name": "evaporation_sublimation_tendency",

@@ -709,7 +709,7 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    cloud_work_function_0: Quantity = dataclasses.field(
+    cloud_workfunction_0: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_work_function_0",
             "dims": [X_DIM, Y_DIM],
@@ -718,7 +718,7 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    cloud_work_function_1: Quantity = dataclasses.field(
+    cloud_workfunction_1: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_work_function_1",
             "dims": [X_DIM, Y_DIM],
@@ -727,7 +727,7 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    cloud_work_function_2: Quantity = dataclasses.field(
+    cloud_workfunction_2: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_work_function_2",
             "dims": [X_DIM, Y_DIM],
@@ -736,7 +736,7 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    cloud_work_function_3: Quantity = dataclasses.field(
+    cloud_workfunction_3: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_work_function_3",
             "dims": [X_DIM, Y_DIM],
@@ -745,7 +745,7 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    cloud_work_function_1_pbl: Quantity = dataclasses.field(
+    cloud_workfunction_1_pbl: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_work_function_1_pbl",
             "dims": [X_DIM, Y_DIM],
@@ -754,7 +754,7 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    cloud_work_function_1_cin: Quantity = dataclasses.field(
+    cloud_workfunction_1_cin: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_work_function_1_cin",
             "dims": [X_DIM, Y_DIM],

@@ -159,12 +159,12 @@ def zero_state(
     convection_code_shallow: FloatFieldIJ,
     convection_code_mid: FloatFieldIJ,
     convection_code_deep: FloatFieldIJ,
-    cloud_work_function_0: FloatFieldIJ,
-    cloud_work_function_1: FloatFieldIJ,
-    cloud_work_function_2: FloatFieldIJ,
-    cloud_work_function_3: FloatFieldIJ,
-    cloud_work_function_1_pbl: FloatFieldIJ,
-    cloud_work_function_1_cin: FloatFieldIJ,
+    cloud_workfunction_0: FloatFieldIJ,
+    cloud_workfunction_1: FloatFieldIJ,
+    cloud_workfunction_2: FloatFieldIJ,
+    cloud_workfunction_3: FloatFieldIJ,
+    cloud_workfunction_1_pbl: FloatFieldIJ,
+    cloud_workfunction_1_cin: FloatFieldIJ,
     convective_precipitation_RAS: FloatField,
     convective_precipitation_GF: FloatFieldIJ,
     convective_condensate_source: FloatField,
@@ -255,12 +255,12 @@ def zero_state(
         convection_code_mid = 0.0
         convection_code_deep = 0.0
 
-        cloud_work_function_0 = 0.0
-        cloud_work_function_1 = 0.0
-        cloud_work_function_2 = 0.0
-        cloud_work_function_3 = 0.0
-        cloud_work_function_1_pbl = 0.0
-        cloud_work_function_1_cin = 0.0
+        cloud_workfunction_0 = 0.0
+        cloud_workfunction_1 = 0.0
+        cloud_workfunction_2 = 0.0
+        cloud_workfunction_3 = 0.0
+        cloud_workfunction_1_pbl = 0.0
+        cloud_workfunction_1_cin = 0.0
 
     with computation(PARALLEL), interval(0, -1):
         convective_precipitation_RAS = 0.0
@@ -1378,12 +1378,12 @@ class GF2020Setup:
             convection_code_shallow=state.convection_code_shallow,
             convection_code_mid=state.convection_code_mid,
             convection_code_deep=state.convection_code_deep,
-            cloud_work_function_0=state.cloud_work_function_0,
-            cloud_work_function_1=state.cloud_work_function_1,
-            cloud_work_function_2=state.cloud_work_function_2,
-            cloud_work_function_3=state.cloud_work_function_3,
-            cloud_work_function_1_pbl=state.cloud_work_function_1_pbl,
-            cloud_work_function_1_cin=state.cloud_work_function_1_cin,
+            cloud_workfunction_0=state.cloud_workfunction_0,
+            cloud_workfunction_1=state.cloud_workfunction_1,
+            cloud_workfunction_2=state.cloud_workfunction_2,
+            cloud_workfunction_3=state.cloud_workfunction_3,
+            cloud_workfunction_1_pbl=state.cloud_workfunction_1_pbl,
+            cloud_workfunction_1_cin=state.cloud_workfunction_1_cin,
             convective_precipitation_RAS=state.convective_precipitation_RAS,
             convective_precipitation_GF=state.convective_precipitation_GF,
             convective_condensate_source=state.convective_condensate_source,
