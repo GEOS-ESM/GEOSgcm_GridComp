@@ -60,11 +60,13 @@ nav:
       - "Parametrization interfaces":
         - "UW_interface": fortran/param_interfaces/UW_interface.md
   - Shared:
-      - "interpolations": shared/interpolations.md
-      - "numerical_recipes": shared/numerical_recipes.md
-      - "atmos_recipes": shared/atmos_recipes.md
-      - "gt4py_workarounds": shared/gt4py_workarounds.md
-      - "incloud_processes": shared/incloud_processes.md
+      - "Interpolations": shared/interpolations.md
+      - "Numerical Recipes": shared/numerical_recipes.md
+      - "Common Atmospheric Recipes": shared/atmos_recipes.md
+      - "GT4Py Workarounds": shared/gt4py_workarounds.md
+      - "In cloud processes": shared/incloud_processes.md
+      - "Radiation Coupling": shared/radiation_coupling.md
+      - "Redistribute Clouds (microphysics)": shared/redistribute_clouds.md
   - Saturation Tables:
       - "tables":
           - "constants": saturation_tables/tables/constants.md
@@ -75,3 +77,36 @@ nav:
       - "formulation": saturation_tables/formulation.md
       - "qsat_functions": saturation_tables/qsat_functions.md
       - "types": saturation_tables/types.md
+  - GFDL One Moment Microphysics (GFDL_1M):
+      - "driver":
+          - "check_flags": GFDL_1M/driver/check_flags.md
+          - "config_constants": GFDL_1M/driver/config_constants.md
+          - "constants": GFDL_1M/driver/constants.md
+          - "driver": GFDL_1M/driver/driver.md
+          - "fall_speed": GFDL_1M/driver/fall_speed.md
+          - "finish": GFDL_1M/driver/finish.md
+          - "ice_cloud": GFDL_1M/driver/ice_cloud.md
+          - "locals": GFDL_1M/driver/locals.md
+          - "masks": GFDL_1M/driver/masks.md
+          - "sat_tables": GFDL_1M/driver/sat_tables.md
+          - "setup": GFDL_1M/driver/setup.md
+          - "stencils": GFDL_1M/driver/stencils.md
+          - "terminal_fall": GFDL_1M/driver/terminal_fall.md
+          - "warm_rain": GFDL_1M/driver/warm_rain.md
+      - "PhaseChange":
+          - "config": GFDL_1M/PhaseChange/config.md
+          - "constants": GFDL_1M/PhaseChange/constants.md
+          - "evaporate": GFDL_1M/PhaseChange/evaporate.md
+          - "hydrostatic_pdf": GFDL_1M/PhaseChange/hydrostatic_pdf.md
+          - "melt_freeze": GFDL_1M/PhaseChange/melt_freeze.md
+          - "phase_change": GFDL_1M/PhaseChange/phase_change.md
+          - "rh_calculations": GFDL_1M/PhaseChange/rh_calculations.md
+          - "sublimate": GFDL_1M/PhaseChange/sublimate.md
+      - "config": GFDL_1M/config.md
+      - "finalize": GFDL_1M/finalize.md
+      - "GFDL_1M": GFDL_1M/GFDL_1M.md
+      - "locals": GFDL_1M/locals.md
+      - "radiation_coupling": GFDL_1M/radiation_coupling.md
+      - "setup": GFDL_1M/setup.md
+      - "state": GFDL_1M/state.md
+      - "stencils": GFDL_1M/stencils.md
