@@ -2935,6 +2935,12 @@ def buoyancy_sorting(
     stop_buoyancy_sort: BoolFieldIJ,
     iteration: int32,
     cush_inout: FloatFieldIJ,
+    testvar3D_1: FloatField,
+    testvar3D_2: FloatField,
+    testvar3D_3: FloatField,
+    testvar3D_4: FloatField,
+    testvar3D_5: FloatField,
+    testvar3D_6: FloatField,
 ):
     """
     Buoyancy-Sorting Mixing
@@ -3076,14 +3082,14 @@ def buoyancy_sorting(
                 # (e.g., Fortran go to 45)
 
     with computation(FORWARD), interval(1, -1):
-        if K >= krel and K < k0 - 1 and not stop_buoyancy_sort and not condensation:
+        if K >= krel and K < krel + 1 and not stop_buoyancy_sort and not condensation:
             thlue = thlu
             qtue = qtu
             wue = wu
             wtwb = wtw
 
             iter_xc = 1
-            while iter_xc <= niter_xc and not condensation:
+            while iter_xc <= 1 and not condensation:
                 wtw = wu * wu
 
                 # Calculate environmental and cumulus saturation 'excess' at 'pe'.
@@ -3220,7 +3226,6 @@ def buoyancy_sorting(
 
                             if cridist_opt == 0:
                                 cridis = rle * scaleh  # Original code
-
                             else:
                                 cridis = rle * (zifc0[0, 0, 1] - zifc0)
                                 # New code
@@ -3298,9 +3303,9 @@ def buoyancy_sorting(
                                             thv_x1 = (1.0 - 1.0 / xsat) * thvj + (1.0 / xsat) * thvxsat
                                         else:
                                             thv_x1 = thv0j
-                                            thv_x0 = (xsat / (xsat - 1.0)) * thv0j + (
-                                                1.0 / (1.0 - xsat)
-                                            ) * thvxsat
+                                            thv_x0 = ((xsat / (xsat - 1.0)) * thv0j) + (
+                                                (1.0 / (1.0 - xsat)) * thvxsat
+                                            )
 
                                         aquad = wue**2
                                         bquad = (
@@ -3321,10 +3326,18 @@ def buoyancy_sorting(
                                             / thv0j
                                             + wue**2
                                         )
+                                        if kk == 1:
+                                            testvar3D_1 = aquad
+                                            testvar3D_2 = bquad
+                                            testvar3D_3 = cquad
+                                            testvar3D_4 = thv_x0
+                                            testvar3D_5 = thv_x1
+                                            testvar3D_6 = thv0j
 
                                         if kk == 1:
                                             if (bquad**2 - 4.0 * aquad * cquad) >= 0.0:
                                                 xs1, xs2, status = roots(aquad, bquad, cquad)
+
                                                 x_cu = min(
                                                     1.0,
                                                     max(

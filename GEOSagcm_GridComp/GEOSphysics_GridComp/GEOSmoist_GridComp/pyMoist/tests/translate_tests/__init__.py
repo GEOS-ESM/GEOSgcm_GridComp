@@ -9,5 +9,6 @@ from .UW.UW_translate_tests.translate_compute_cin_cinlcl import TranslateCompute
 from .UW.UW_translate_tests.translate_define_prel_cbmf import TranslateDefinePrelCbmf
 from .UW.UW_translate_tests.translate_define_updraft_properties import TranslateDefineUpdraftProperties
 from .UW.UW_translate_tests.translate_define_env_properties import TranslateDefineEnvProperties
+from .UW.UW_translate_tests.translate_buoyancy_sorting import TranslateBuoyancySorting
 
 __all__ = ["TranslateComputeUwshcuInv"]
