@@ -13,52 +13,48 @@ MODULE routing_model
 
 CONTAINS
 
-! -------------------------------------------------------------------------------------------------------
-
-  REAL FUNCTION RESCONST (LS, P1, P2)
-
-    IMPLICIT NONE
-
-    REAL, INTENT (IN)    :: LS, P1, P2
-
-    RESCONST  = P1 * ((1./LS)**P2) 
-
-  END FUNCTION RESCONST
-
-! -------------------------------------------------------------------------------------------------------
-  
-  RECURSIVE SUBROUTINE SEARCH_DNST (K, NCAT_G, DNST, Pfaf_all, DNST_OUT)
-
-    ! objective:  [best guess by rreichle as of 3 Feb 2026]
-    ! find Pfafstetter index of downstream (DNST) catchment, where "downstream" is really "downriver" in the
-    !   jargon of the routing model with "main rivers" and "local streams"  
-    
-    implicit none
-    
-    integer, intent (in)                     :: NCAT_G, K
-    integer, intent (in), dimension (NCAT_G) :: Pfaf_all, DNST 
-    integer, intent (inout)                  :: DNST_OUT
-    
-    if (DNST(K) == -1) then 
-       DNST_OUT = -1
-    else
-       
-       if(Pfaf_all(DNST(K)) >= 1) then
-          DNST_OUT = Pfaf_all(DNST(K)) 
-       else
-          if(DNST(DNST(K)) == -1) then
-             DNST_OUT = -1
-          else  
-             call SEARCH_DNST (DNST(DNST(K)), NCAT_G, DNST, Pfaf_all, DNST_OUT)
-          endif
-       endif
-    endif
-    
-    RETURN
-    
-  END SUBROUTINE SEARCH_DNST
-
-! -------------------------------------------------------------------------------------------------------
+!!  REAL FUNCTION RESCONST (LS, P1, P2)
+!!
+!!    IMPLICIT NONE
+!!
+!!    REAL, INTENT (IN)    :: LS, P1, P2
+!!
+!!    RESCONST  = P1 * ((1./LS)**P2) 
+!!
+!!  END FUNCTION RESCONST
+!!
+!!! -------------------------------------------------------------------------------------------------------
+!!  
+!!  RECURSIVE SUBROUTINE SEARCH_DNST (K, NCAT_G, DNST, Pfaf_all, DNST_OUT)
+!!
+!!    ! objective:  [best guess by rreichle as of 3 Feb 2026]
+!!    ! find Pfafstetter index of downstream (DNST) catchment, where "downstream" is really "downriver" in the
+!!    !   jargon of the routing model with "main rivers" and "local streams"  
+!!    
+!!    implicit none
+!!    
+!!    integer, intent (in)                     :: NCAT_G, K
+!!    integer, intent (in), dimension (NCAT_G) :: Pfaf_all, DNST 
+!!    integer, intent (inout)                  :: DNST_OUT
+!!    
+!!    if (DNST(K) == -1) then 
+!!       DNST_OUT = -1
+!!    else
+!!       
+!!       if(Pfaf_all(DNST(K)) >= 1) then
+!!          DNST_OUT = Pfaf_all(DNST(K)) 
+!!       else
+!!          if(DNST(DNST(K)) == -1) then
+!!             DNST_OUT = -1
+!!          else  
+!!             call SEARCH_DNST (DNST(DNST(K)), NCAT_G, DNST, Pfaf_all, DNST_OUT)
+!!          endif
+!!       endif
+!!    endif
+!!    
+!!    RETURN
+!!    
+!!  END SUBROUTINE SEARCH_DNST
 
   ! ======================================================================================
   !
