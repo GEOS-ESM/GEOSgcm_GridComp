@@ -91,21 +91,20 @@ contains
        if (this%active_res(i) == 1) then                  ! reservoir is active
 
           ! Inflow to reservoir is outflow from river
-
           Qin_res = Q_riv_out(i)
 
+          ! Get outflow from reservoir
           Q_res(i) = this%alpha_res(i) * Wr_res(i)
-
-          ! Ensure outflow is within reasonable bounds
           Q_res(i) = max(0.0, Q_res(i))                      ! Ensure non-negative outflow
           Q_res(i) = min(Q_res(i), Wr_res(i) / dt + Qin_res) ! Limit outflow to prevent exceeding inflow and storage
-
+          
           !if (fld_res == 1) Q_res = min(Q_res, Qfld_thres)  ! Limit outflow for flood control
 
-          Wr_res(i) = Wr_res(i) + dt * (Qin_res - Q_res(i))  ! Update water storage in the reservoir
+          ! Update reservoir storage based on inflow and outflow
+          Wr_res(i) = Wr_res(i) + dt * (Qin_res - Q_res(i))  
           Wr_res(i) = max(0.0, Wr_res(i))                    ! Ensure non-negative storage
           
-          ! If the storage exceeds capacity, adjust outflow and storage
+          ! If updated storage exceeds capacity, adjust outflow and storage
           if (this%cap_res(i) > 0. .and. Wr_res(i) > this%cap_res(i)) then
              Q_res(i)  = Q_res(i) + (Wr_res(i) - this%cap_res(i)) / dt      ! Adjust outflow for overflow
              Wr_res(i) = this%cap_res(i)                                    ! Limit storage to reservoir capacity
