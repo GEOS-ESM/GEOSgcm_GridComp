@@ -1,5 +1,4 @@
 from ndsl.dsl.typing import Float, Int
-from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
 from pyGEOSBridge import GEOSInterfaceCode, get_MAPLPy
 from pyGEOSBridge.types import CVoidPointer
 

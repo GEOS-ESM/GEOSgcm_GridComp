@@ -47,7 +47,6 @@ class NDSLPhysicsStack:
     def __init__(
         self,
         flags: NDSLPhysicsConfiguration,
-        backend="dace:cpu_KJI",
         fortran_mem_space: MemorySpace = MemorySpace.CPU,
     ) -> None:
         # Look for an override to run on a single node
@@ -56,7 +55,7 @@ class NDSLPhysicsStack:
         if single_rank_override >= 0:
             comm = LocalComm(rank=single_rank_override, total_ranks=6, buffer_dict={})
 
-        self.backend = backend
+        self.backend = flags.backend
         self.flags = flags
         layout = (self.flags.layout_x, self.flags.layout_y)
 
@@ -87,10 +86,10 @@ class NDSLPhysicsStack:
             tile_rank=self.communicator.tile.rank,
             backend=flags.backend,
         )
-        self.quantity_factory = QuantityFactory(sizer=sizer, backend=backend)
+        self.quantity_factory = QuantityFactory(sizer=sizer, backend=self.backend)
 
         self.stencil_config = StencilConfig(
-            compilation_config=CompilationConfig(backend=backend, rebuild=False, validate_args=True),
+            compilation_config=CompilationConfig(backend=self.backend, rebuild=False, validate_args=True),
         )
 
         # Build a DaCeConfig for orchestration.
@@ -113,10 +112,10 @@ class NDSLPhysicsStack:
         default_3D_memory_desc = (tmp_quantity.data.shape, tmp_quantity.data.strides)
         if fortran_mem_space != MemorySpace.CPU:
             raise NotImplementedError("Interface cannot stream Fortran memory resident on GPU")
-        if is_gpu_backend(backend):
+        if is_gpu_backend(self.backend):
             self._interface_type = InterfaceTransferType.CPU_TO_GPU_TO_CPU
         else:
-            if backend_is_fortran_aligned(backend):
+            if backend_is_fortran_aligned(self.backend):
                 # This is Fortran layout - we can Map the memory
                 self._interface_type = InterfaceTransferType.CPU_MAP
             else:
@@ -128,18 +127,20 @@ class NDSLPhysicsStack:
         device_ordinal_info = "N/A"
         if cp is not None:
             device_ordinal_info = (
-                f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}" if is_gpu_backend(backend) else "N/A"
+                f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}"
+                if is_gpu_backend(self.backend)
+                else "N/A"
             )
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = (
             MPS_pipe_directory is not None
-            and is_gpu_backend(backend)
+            and is_gpu_backend(self.backend)
             and os.path.exists(f"{MPS_pipe_directory}/log")
         )
         ndsl_log_on_rank_0.info(
             "pyMoist <> GEOS wrapper initialized (Rank 0):\n"
             f"         Bridge : {self._interface_type.name}\n"
-            f"        Backend : {backend}\n"
+            f"        Backend : {self.backend}\n"
             f"      Precision : {get_precision()} bit\n"
             f"  Orchestration : {self._is_orchestrated}\n"
             f"          Sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
