@@ -175,7 +175,7 @@ contains
 ! For Internals, "TileOnly" refers to the *Pfafstetter* catchment space of GEOS_RouteGridComp
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'volume_of_water_in_local_stream',&
+         LONG_NAME          = 'volume_of_water_in_local_streams',&
          UNITS              = 'm+3'                      ,&
          SHORT_NAME         = 'WSTREAM'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -184,7 +184,7 @@ contains
          _RC )
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'volume_of_water_in_river' ,&
+         LONG_NAME          = 'volume_of_water_in_main_river' ,&
          UNITS              = 'm+3'                      ,&
          SHORT_NAME         = 'WRIVER'                   ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -194,7 +194,7 @@ contains
 
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'reservoir_storage' ,&
+         LONG_NAME          = 'volume_of_water_in_reservoirs' ,&
          UNITS              = 'm+3'                      ,&
          SHORT_NAME         = 'WRES'                   ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -214,7 +214,7 @@ contains
          _RC )
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'Alpha_parameter_for_main_rivers',&
+         LONG_NAME          = 'Alpha_parameter_for_main_river',&
          UNITS              = '1'                      ,&
          SHORT_NAME         = 'RRM_ALPHA_RIV'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -223,7 +223,7 @@ contains
          _RC )
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'Alpha_parameter_for_streams',&
+         LONG_NAME          = 'Alpha_parameter_for_local_streams',&
          UNITS              = '1'                      ,&
          SHORT_NAME         = 'RRM_ALPHA_STR'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -234,7 +234,7 @@ contains
     ! parameters in restart, for reservoirs
 
     call MAPL_AddInternalSpec(GC                     ,&
-         LONG_NAME          = 'active_reservoirs',&
+         LONG_NAME          = 'active_reservoir_flag',&
          UNITS              = '1'                      ,&
          SHORT_NAME         = 'ACTIVE_RES' ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -268,7 +268,7 @@ contains
 ! For Exports, "TileOnly" refers to the *Pfafstetter* catchment space of GEOS_RouteGridComp
 
     call MAPL_AddExportSpec(GC,                        &
-         LONG_NAME          = 'transfer_of_moisture_from_stream_variable_to_river_variable' ,&
+         LONG_NAME          = 'discharge_from_local_streams_to_main_river' ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QSFLOW'                   ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -276,7 +276,7 @@ contains
          _RC )
 
     call MAPL_AddExportSpec(GC,                    &
-         LONG_NAME          = 'transfer_of_river_water_from_upstream_catchments' ,&
+         LONG_NAME          = 'discharge_from_upstream_catchments_to_main_river' ,&
          UNITS              = 'm+3 s-1'                   ,&
          SHORT_NAME         = 'QINFLOW'                   ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -284,7 +284,7 @@ contains
          _RC )
 
     call MAPL_AddExportSpec(GC,                    &
-         LONG_NAME          = 'transfer_of_river_water_to_downstream_catchments' ,&
+         LONG_NAME          = 'discharge_from_main_river_to_downstream_catchments' ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QOUTFLOW'                 ,&
          DIMS               = MAPL_DimsTileOnly           ,&
@@ -292,7 +292,7 @@ contains
          _RC )
 
     call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'reservoir_discharge'      ,&
+         LONG_NAME          = 'discharge_from_reservoirs'      ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QRES'                     ,&
          DIMS               = MAPL_DimsTileOnly          ,&
