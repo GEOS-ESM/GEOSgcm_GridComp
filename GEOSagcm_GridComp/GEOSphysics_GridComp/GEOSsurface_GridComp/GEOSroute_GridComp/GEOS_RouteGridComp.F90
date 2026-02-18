@@ -867,7 +867,7 @@ contains
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL,  _RC)
     call MAPL_GetPointer(INTERNAL, WRIVER, 'WRIVER',   _RC )
     call MAPL_GetPointer(INTERNAL, WSTREAM,'WSTREAM',  _RC)
-    call MAPL_GetPointer(INTERNAL, WRES,    'WRES',    _RC)
+    call MAPL_GetPointer(INTERNAL, WRES,   'WRES',     _RC)
 
 ! export
     call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW',   _RC)
@@ -913,7 +913,7 @@ contains
        ! finalize runoff accumulation over ROUTE_DT
        route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT)   ! time-avg runoff over ROUTE_DT in land[ice] tile space  [kg/m2/s]
 
-       ! redistribute runoff from tile space to catchment space
+       ! redistribute runoff from tile space of GEOS_LandGridComp to Pfafstetter catchment space of GEOS_RouteGridComp
        call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr, rc=status)
        VERIFY_(STATUS)
        ArrayPtr = route%runoff_acc(:)
@@ -933,29 +933,42 @@ contains
 
        WTOT_BEFORE = WSTREAM + WRIVER + WRES
 
-       ! Call river_routing_model
-       ! ------------------------
 
-       ! get river outflow
-       CALL RIVER_ROUTING_HYD  (n_pfaf_local, ROUTE_DT,&
-            QRUNOFF_IN, route%alpha_riv, route%alpha_str, &
-            WSTREAM,WRIVER, &
-            QSFLOW_OUT,QOUTFLOW_OUT)  
+       ! Compute outflow from main river and (optionally) reservoirs
+       !
+       ! Call river_routing_model (get outflows from main river and local streams, also updates storage of main river and local streams)
+       !
+       CALL RIVER_ROUTING_HYD( n_pfaf_local, ROUTE_DT,    &      ! intent(in)
+            QRUNOFF_IN, route%alpha_riv, route%alpha_str, &      ! intent(in)
+            WSTREAM, WRIVER,                              &      ! intent(inout)
+            QSFLOW_OUT, QOUTFLOW_OUT)                            ! intent(out)
 
-       ! call reservoir module 
-       if(res%use_res .eqv. .True.) call res%calc( QOUTFLOW_OUT, QRES_OUT, WRES, real(route_dt), _RC)
-       QOUT_CAT = QOUTFLOW_OUT              
-       where(res%active_res==1) QOUT_CAT=QRES_OUT
+       QOUT_CAT = QOUTFLOW_OUT                         ! for now, outflow from Pfaf catchment is outflow from main river          
+       
+       ! Call reservoir module if requested (get reservoir outflow, also updates reservoir storage)
+       !
+       if (res%use_res .eqv. .True.) then
 
+          call res%calc(                                  &
+               QOUTFLOW_OUT,                              &      ! intent(in)
+               QRES_OUT,                                  &      ! intent(out)
+               WRES,                                      &      ! intent(inout)
+               real(route_dt),                            &      ! intent(in)
+               _RC)
+
+          where(res%active_res==1) QOUT_CAT=QRES_OUT   ! for active reservoirs, overwrite outflow from Pfaf catchment with reservoir outflow
+
+       end if
+          
        ! map upstream outflows to local inflow
        call exchange_water(QOUT_CAT, QINFLOW_LOCAL, _RC)
 
-       ! update river storage
+       ! update river storage with local inflow
        WRIVER = WRIVER + QINFLOW_LOCAL*real(route_dt)
 
-       if (associated(QSFLOW))    QSFLOW   = QSFLOW_OUT
-       if (associated(QOUTFLOW))  QOUTFLOW = QOUTFLOW_OUT
-       if (associated(QRES))      QRES     = QRES_OUT
+       if (associated(QSFLOW))    QSFLOW   = QSFLOW_OUT          ! outflow from local streams
+       if (associated(QOUTFLOW))  QOUTFLOW = QOUTFLOW_OUT        ! outflow from main river
+       if (associated(QRES))      QRES     = QRES_OUT            ! outflow from reservoirs
        
        deallocate(QRUNOFF_IN,QOUTFLOW_OUT,QINFLOW_LOCAL,QSFLOW_OUT,WTOT_BEFORE,QRES_OUT,QOUT_CAT)
 
