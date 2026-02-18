@@ -157,7 +157,8 @@ contains
 ! -----------------------------------------------------------
 !   Import States
 ! -----------------------------------------------------------
-! WY note: Here TileOnly is on tile space
+!
+! For Imports, "TileOnly" refers to the tile space of the GEOS_LandGridComp
 
     call MAPL_AddImportSpec(GC,                            &
          LONG_NAME          = 'runoff_total_flux'         ,&
@@ -167,10 +168,11 @@ contains
          VLOCATION          = MAPL_VLocationNone          ,&
          _RC ) 
 
-!!!!!!!!!!!!!!!!
-! Internal
-!!!!!!!!!!!!!!
-! WY note: Here TileOnly is on *Pfafstetter* catchment space
+! -----------------------------------------------------------
+! Internal States
+! -----------------------------------------------------------
+!
+! For Internals, "TileOnly" refers to the *Pfafstetter* catchment space of GEOS_RouteGridComp
 
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'volume_of_water_in_local_stream',&
@@ -200,9 +202,7 @@ contains
          RESTART            = MAPL_RestartRequired       ,&
          _RC  )
 
-!!!!!!!!!!!!!!!!
-! parameters in restart, for rivers
-!!!!!!!!!!!!!!
+    ! parameters in restart, for rivers
 
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'downstream_catchment_id',&
@@ -231,9 +231,7 @@ contains
          RESTART            = MAPL_RestartRequired       ,&
          _RC )
 
-!!!!!!!!!!!!!!!!
-! parameters in restart, for reservoirs
-!!!!!!!!!!!!!!
+    ! parameters in restart, for reservoirs
 
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'active_reservoirs',&
@@ -263,10 +261,11 @@ contains
          RESTART            = MAPL_RestartRequired       ,&
          _RC )    
 
-!!!!!!!!!!!!!!!!
-! Export
-!!!!!!!!!!!!!!!
-! WY note: Here TileOnly is on *Pfafstetter* catchment space
+! -----------------------------------------------------------
+! Export States
+! -----------------------------------------------------------
+!
+! For Exports, "TileOnly" refers to the *Pfafstetter* catchment space of GEOS_RouteGridComp
 
     call MAPL_AddExportSpec(GC,                        &
          LONG_NAME          = 'transfer_of_moisture_from_stream_variable_to_river_variable' ,&
