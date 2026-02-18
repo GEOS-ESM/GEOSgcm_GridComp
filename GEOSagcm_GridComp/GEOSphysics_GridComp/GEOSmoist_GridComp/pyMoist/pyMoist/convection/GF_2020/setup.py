@@ -471,66 +471,66 @@ def prefill_cumulus_parameterization_state(
 
 
 def prefill_locals(
-    fix_out_vapor: FloatFieldIJ,
     rtgt: FloatFieldIJ,
+    precip: FloatFieldIJ,
     t_tendency_from_vapor: FloatField,
-    total_dbuoyancydt: FloatField,
     dtdt: FloatField,
     dvapordt: FloatField,
     dcloudicedt: FloatField,
     dudt: FloatField,
     dvdt: FloatField,
-    evaporation_sublimation_tendency: FloatField,
-    convective_precip_flux: FloatField,
     dlarge_scale_icedt: FloatField,
     dconvective_icedt: FloatField,
     dlarge_scale_liquiddt: FloatField,
     dconvective_liquiddt: FloatField,
     dlarge_scale_cloud_fractiondt: FloatField,
     dconvective_cloud_fractiondt: FloatField,
+    dbuoyancydt: FloatField,
+    evaporation_sublimation_tendency: FloatField,
+    convective_precip_flux: FloatField,
 ):
     """
     Zero local fields which are conditionally written to ensure no data remains from the previous timestep.
 
     Args:
-        fix_out_vapor (FloatFieldIJ)
         rtgt (FloatFieldIJ)
+        precip (FloatFieldIJ)
         t_tendency_from_vapor (FloatField)
-        total_dbuoyancydt (FloatField)
         dtdt (FloatField)
         dvapordt (FloatField)
         dcloudicedt (FloatField)
         dudt (FloatField)
         dvdt (FloatField)
-        evaporation_sublimation_tendency (FloatField)
-        convective_precip_flux (FloatField)
         dlarge_scale_icedt (FloatField)
         dconvective_icedt (FloatField)
         dlarge_scale_liquiddt (FloatField)
         dconvective_liquiddt (FloatField)
         dlarge_scale_cloud_fractiondt (FloatField)
         dconvective_cloud_fractiondt (FloatField)
+        dbuoyancydt (FloatField)
+        evaporation_sublimation_tendency (FloatField)
+        convective_precip_flux (FloatField)
     """
     with computation(FORWARD), interval(0, 1):
-        fix_out_vapor = 1.0
-        t_tendency_from_vapor = 0.0
         rtgt = 1.0
+        precip = 0.0
 
     with computation(PARALLEL), interval(...):
-        total_dbuoyancydt = 0.0
+        t_tendency_from_vapor = 0.0
         dtdt = 0.0
         dvapordt = 0.0
         dcloudicedt = 0.0
         dudt = 0.0
         dvdt = 0.0
-        evaporation_sublimation_tendency = 0.0
-        convective_precip_flux = 0.0
         dlarge_scale_icedt = 0.0
         dconvective_icedt = 0.0
         dlarge_scale_liquiddt = 0.0
         dconvective_liquiddt = 0.0
         dlarge_scale_cloud_fractiondt = 0.0
         dconvective_cloud_fractiondt = 0.0
+        dbuoyancydt = 0.0
+        evaporation_sublimation_tendency = 0.0
+        convective_precip_flux = 0.0
 
 
 def set_2d_fields(
@@ -1365,7 +1365,7 @@ class GF2020Setup:
             dvdt_deep_convection=state.dvdt_deep_convection,
             sigma_deep=state.sigma_deep,
             sigma_mid=state.sigma_mid,
-            mass_flux_shalow=state.mass_flux_shalow,
+            mass_flux_shalow=state.mass_flux_shallow,
             mass_flux_mid=state.mass_flux_mid,
             mass_flux_deep_updraft=state.mass_flux_deep_updraft,
             mass_flux_deep_updraft_interface=state.mass_flux_deep_updraft_interface,
@@ -1389,7 +1389,7 @@ class GF2020Setup:
             convective_condensate_source=state.convective_condensate_source,
             convective_condensate_grid_mean=state.convective_condensate_grid_mean,
             total_water_flux_deep_convection=state.total_water_flux_deep_convection,
-            updraft_area_fraction=state.updraft_area_fraction,
+            updraft_area_fraction=state.updraft_areal_fraction,
             updraft_vertical_velocity=state.updraft_vertical_velocity,
             entrainment_parameter=state.entrainment_parameter,
             lightning_density=state.lightning_density,
@@ -1450,10 +1450,9 @@ class GF2020Setup:
         )
 
         self._prefill_locals(
-            fix_out_vapor=locals.fix_out_vapor,
             rtgt=locals.rtgt,
+            precip=locals.precip,
             t_tendency_from_vapor=locals.t_tendency_from_vapor,
-            total_dbuoyancydt=locals.total_dbuoyancydt,
             dtdt=locals.dtdt,
             dvapordt=locals.dvapordt,
             dcloudicedt=locals.dcloudicedt,
@@ -1465,6 +1464,7 @@ class GF2020Setup:
             dconvective_liquiddt=locals.dconvective_liquiddt,
             dlarge_scale_cloud_fractiondt=locals.dlarge_scale_cloud_fractiondt,
             dconvective_cloud_fractiondt=locals.dconvective_cloud_fractiondt,
+            dbuoyancydt=locals.dbuoyancydt,
             evaporation_sublimation_tendency=locals.evaporation_sublimation_tendency,
             convective_precip_flux=locals.convective_precip_flux,
         )

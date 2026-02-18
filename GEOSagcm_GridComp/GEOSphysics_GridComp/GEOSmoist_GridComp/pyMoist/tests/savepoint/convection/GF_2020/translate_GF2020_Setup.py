@@ -78,7 +78,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "lateral_entrainment_rate_shallow_bugworkaroundname": {},
             "lateral_entrainment_rate_mid_bugworkaroundname": {},
             "lateral_entrainment_rate_deep_bugworkaroundname": {},
-            "updraft_area_fraction_bugworkaroundname": {},
+            "updraft_areal_fraction_bugworkaroundname": {},
             "updraft_vertical_velocity_bugworkaroundname": {},
             "dtdt_shortwave_bugworkaroundname": {},
             "dtdt_longwave_bugworkaroundname": {},
@@ -97,7 +97,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "pressure_shallow_convective_cloud_top_bugworkaroundname": {},
             "pressure_mid_convective_cloud_top_bugworkaroundname": {},
             "pressure_deep_convective_cloud_top_bugworkaroundname": {},
-            "mass_flux_shalow_bugworkaroundname": {},
+            "mass_flux_shallow_bugworkaroundname": {},
             "mass_flux_mid_bugworkaroundname": {},
             "mass_flux_deep_updraft_bugworkaroundname": {},
             "mass_flux_deep_updraft_interface_bugworkaroundname": {},
@@ -110,12 +110,12 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "convection_code_shallow_bugworkaroundname": {},
             "convection_code_mid_bugworkaroundname": {},
             "convection_code_deep_bugworkaroundname": {},
-            "cloud_work_function_0_bugworkaroundname": {},
-            "cloud_work_function_1_bugworkaroundname": {},
-            "cloud_work_function_2_bugworkaroundname": {},
-            "cloud_work_function_3_bugworkaroundname": {},
-            "cloud_work_function_1_pbl_bugworkaroundname": {},
-            "cloud_work_function_1_cin_bugworkaroundname": {},
+            "cloud_workfunction_0_bugworkaroundname": {},
+            "cloud_workfunction_1_bugworkaroundname": {},
+            "cloud_workfunction_2_bugworkaroundname": {},
+            "cloud_workfunction_3_bugworkaroundname": {},
+            "cloud_workfunction_1_pbl_bugworkaroundname": {},
+            "cloud_workfunction_1_cin_bugworkaroundname": {},
             "pbl_time_scale_bugworkaroundname": {},
             "cape_removal_time_scale_bugworkaroundname": {},
             "lighting_density_bugworkaroundname": {},
@@ -124,7 +124,8 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         # NOTE disabled fields are nan in fortran - zero in python, disabled so the test passes
         self.out_vars = {
-            # internal locals
+            # fields saved midway through GF2020 fortran
+            "lateral_entrainment_rate_bugworkaroundname": {},
             "local_edge_height_above_surface": {},
             "local_layer_height_above_surface": {},
             "local_p": {},
@@ -136,6 +137,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "local_dz": {},
             "local_air_density": {},
             "local_scalar_diffusivity": {},
+            "local_vapor_current": {},
             # CumulusParameterization state - input
             "t_excess": {},
             "vapor_excess": {},
@@ -314,7 +316,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         state.lateral_entrainment_rate_deep.field[:] = inputs[
             "lateral_entrainment_rate_deep_bugworkaroundname"
         ]
-        state.updraft_area_fraction.field[:] = inputs["updraft_area_fraction_bugworkaroundname"]
+        state.updraft_areal_fraction.field[:] = inputs["updraft_areal_fraction_bugworkaroundname"]
         state.updraft_vertical_velocity.field[:] = inputs["updraft_vertical_velocity_bugworkaroundname"]
         state.dtdt_shortwave.field[:] = inputs["dtdt_shortwave_bugworkaroundname"]
         state.dtdt_longwave.field[:] = inputs["dtdt_longwave_bugworkaroundname"]
@@ -343,7 +345,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         state.pressure_deep_convective_cloud_top.field[:] = inputs[
             "pressure_deep_convective_cloud_top_bugworkaroundname"
         ]
-        state.mass_flux_shalow.field[:] = inputs["mass_flux_shalow_bugworkaroundname"]
+        state.mass_flux_shallow.field[:] = inputs["mass_flux_shallow_bugworkaroundname"]
         state.mass_flux_mid.field[:] = inputs["mass_flux_mid_bugworkaroundname"]
         state.mass_flux_deep_updraft.field[:] = inputs["mass_flux_deep_updraft_bugworkaroundname"]
         state.mass_flux_deep_updraft_interface.field[:] = inputs[
@@ -360,12 +362,12 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         state.convection_code_shallow.field[:] = inputs["convection_code_shallow_bugworkaroundname"]
         state.convection_code_mid.field[:] = inputs["convection_code_mid_bugworkaroundname"]
         state.convection_code_deep.field[:] = inputs["convection_code_deep_bugworkaroundname"]
-        state.cloud_workfunction_0.field[:] = inputs["cloud_work_function_0_bugworkaroundname"]
-        state.cloud_workfunction_1.field[:] = inputs["cloud_work_function_1_bugworkaroundname"]
-        state.cloud_workfunction_2.field[:] = inputs["cloud_work_function_2_bugworkaroundname"]
-        state.cloud_workfunction_3.field[:] = inputs["cloud_work_function_3_bugworkaroundname"]
-        state.cloud_workfunction_1_pbl.field[:] = inputs["cloud_work_function_1_pbl_bugworkaroundname"]
-        state.cloud_workfunction_1_cin.field[:] = inputs["cloud_work_function_1_cin_bugworkaroundname"]
+        state.cloud_workfunction_0.field[:] = inputs["cloud_workfunction_0_bugworkaroundname"]
+        state.cloud_workfunction_1.field[:] = inputs["cloud_workfunction_1_bugworkaroundname"]
+        state.cloud_workfunction_2.field[:] = inputs["cloud_workfunction_2_bugworkaroundname"]
+        state.cloud_workfunction_3.field[:] = inputs["cloud_workfunction_3_bugworkaroundname"]
+        state.cloud_workfunction_1_pbl.field[:] = inputs["cloud_workfunction_1_pbl_bugworkaroundname"]
+        state.cloud_workfunction_1_cin.field[:] = inputs["cloud_workfunction_1_cin_bugworkaroundname"]
         state.pbl_time_scale.field[:] = inputs["pbl_time_scale_bugworkaroundname"]
         state.cape_removal_time_scale.field[:] = inputs["cape_removal_time_scale_bugworkaroundname"]
         state.lightning_density.field[:] = inputs["lighting_density_bugworkaroundname"]
@@ -406,11 +408,11 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        setup = GF2020Setup(
+        code = GF2020Setup(
             stencil_factory=self.stencil_factory, quantity_factory=self.quantity_factory, config=config
         )
 
-        setup(
+        code(
             state=state,
             locals=locals,
             cumulus_parameterization_state=cumulus_parameterization_state,
@@ -456,6 +458,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         outputs = {
             # GF2020 locals
+            "lateral_entrainment_rate_bugworkaroundname": state.lateral_entrainment_rate.field[:],
             "local_edge_height_above_surface": locals.derived_state.edge_height_above_surface.field[:],
             "local_layer_height_above_surface": locals.derived_state.layer_height_above_surface.field[:],
             "local_p": locals.derived_state.p.field[:],
@@ -467,6 +470,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "local_dz": locals.derived_state.dz.field[:],
             "local_air_density": locals.derived_state.air_density.field[:],
             "local_scalar_diffusivity": np.moveaxis(locals.derived_state.scalar_diffusivity.field[:], 2, 0),
+            "local_vapor_current": np.moveaxis(locals.flipped_copy.vapor_current.field[:], 2, 0),
             # GF2020 CumulusParameterization fields
             # input fields
             "t_excess": cumulus_parameterization_state.input.t_excess.field[:],
