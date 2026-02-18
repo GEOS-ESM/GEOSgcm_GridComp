@@ -9,7 +9,7 @@ MODULE routing_model
   real, parameter :: RRM_M        = 0.45      ! Parameter in hydraulic geometry formula
   real, parameter :: RRM_mm       = 0.35      ! Parameter in hydraulic geometry formula 
 
-  public :: river_routing_hyd, SEARCH_DNST, RRM_M, RRM_mm
+  public :: river_routing_hyd, RRM_M, RRM_mm
 
 CONTAINS
 
