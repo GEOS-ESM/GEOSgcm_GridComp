@@ -56,6 +56,7 @@ CONTAINS
 !!    
 !!  END SUBROUTINE SEARCH_DNST
 
+  
   ! ======================================================================================
   !
   ! HYDRAULIC GEOMETRY ROUTING MODEL
@@ -63,21 +64,21 @@ CONTAINS
   ! --------------------------------------------------------------------------------------
   ! Routing Model Input Parameters
   ! ------------------------------
-  !**** NCAT       = NUMBER OF CATCHMENTS IN THE STUDY DOMAIN
-  !**** ROUTE_DT   = TIME STEP FOR ROUTING MODEL                                       [s]
-  !**** Qrunf0     = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT            [m^3/s]              
+  !**** NCAT          = NUMBER OF CATCHMENTS IN THE STUDY DOMAIN
+  !**** ROUTE_DT      = TIME STEP FOR ROUTING MODEL                                       [s]
+  !**** Qrunf0        = RUNOFF PRODUCED BY LAND SURFACE MODEL IN THE CATCHMENT            [m^3/s]              
   !**** RRM_ALPHA_RIV = ALPHA PARAMETER FOR MAIN RIVER                                        
   !**** RRM_ALPHA_STR = ALPHA PARAMETER FOR LOCAL STREAM                               
                                                                                        
   ! Routing Model Prognostics                                                          
   ! -------------------------                                                          
-  !**** Ws0        = AMOUNT OF WATER IN "LOCAL STREAM"                                 [m^3]
-  !**** Wr0        = AMOUNT OF WATER IN RIVER                                          [m^3]
+  !**** Ws0           = AMOUNT OF WATER IN "LOCAL STREAM"                                 [m^3]
+  !**** Wr0           = AMOUNT OF WATER IN RIVER                                          [m^3]
   
   ! Routing Model Diagnostics
   ! -------------------------
-  !**** QS         = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE       [m^3/s]
-  !**** QOUT       = TRANSFER OF RIVER WATER TO THE DOWNSTREAM (DOWNRIVER) CATCHMENT   [m^3/s]  
+  !**** QS            = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE       [m^3/s]
+  !**** QOUT          = TRANSFER OF RIVER WATER TO THE DOWNSTREAM (DOWNRIVER) CATCHMENT   [m^3/s]  
   
   SUBROUTINE RIVER_ROUTING_HYD (             &
        NCAT,ROUTE_DT,                        &
@@ -104,17 +105,18 @@ CONTAINS
     Qrunf     = Qrunf0     * rho          ! m3/s -> kg/s  
     Ws        = Ws0        * rho          ! m3   -> kg
     Wr        = Wr0        * rho          ! m3   -> kg
+
     dt        = ROUTE_DT                  ! integer -> real                                                                      ! If river input is too small, set alp_r to 0
 
     ! Update state variables: ks, Ws, and Qs 
-    where(Qrunf<=small)Qrunf=0.                                ! Set runoff to zero if it's too small
+    where(Qrunf<=small)Qrunf=0.                                            ! Set runoff to zero if it's too small
     Qs0=max(0.,RRM_ALPHA_STR * Ws**(1./(1.-RRM_mm)))                       ! Initial flow from local stream storage (kg/s)
-    ks =max(0.,(RRM_ALPHA_STR/(1.-RRM_mm)) * Ws**(RRM_mm/(1.-RRM_mm)))           ! Flow coefficient (s^-1)
-    Ws_last=Ws                                                 ! Store the current water storage 
-    where(ks>small)  Ws=Ws + (Qrunf-Qs0)/ks*(1.-exp(-ks*dt))   ! Update storage (kg)
-    where(ks<=small) Ws=Ws + (Qrunf-Qs0)*dt                    ! Simplified update if ks is small
-    Ws=max(0.,Ws)                                              ! Ensure storage is non-negative
-    Qs=max(0.,Qrunf-(Ws-Ws_last)/dt)                           ! Calculate the local stream flow (kg/s)
+    ks =max(0.,(RRM_ALPHA_STR/(1.-RRM_mm)) * Ws**(RRM_mm/(1.-RRM_mm)))     ! Flow coefficient (s^-1)
+    Ws_last=Ws                                                             ! Store the current water storage 
+    where(ks>small)  Ws=Ws + (Qrunf-Qs0)/ks*(1.-exp(-ks*dt))               ! Update storage (kg)
+    where(ks<=small) Ws=Ws + (Qrunf-Qs0)*dt                                ! Simplified update if ks is small
+    Ws=max(0.,Ws)                                                          ! Ensure storage is non-negative
+    Qs=max(0.,Qrunf-(Ws-Ws_last)/dt)                                       ! Calculate the local stream flow (kg/s)
 
     ! Calculate variables related to river routing: Qr0, kr
     Wr=Wr+Qs*dt
