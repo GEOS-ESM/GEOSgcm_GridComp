@@ -169,7 +169,7 @@ def zero_state(
     convective_precipitation_GF: FloatFieldIJ,
     convective_condensate_source: FloatField,
     convective_condensate_grid_mean: FloatField,
-    total_water_flux_deep_convection: FloatField,
+    total_water_flux_deep_convection_interface: FloatField,
     updraft_area_fraction: FloatField,
     updraft_vertical_velocity: FloatField,
     entrainment_parameter: FloatField,
@@ -215,7 +215,7 @@ def zero_state(
         convective_precipitation_GF (FloatFieldIJ)
         convective_condensate_source (FloatField)
         convective_condensate_grid_mean (FloatField)
-        total_water_flux_deep_convection (FloatField)
+        total_water_flux_deep_convection_interface (FloatField)
         updraft_area_fraction (FloatField)
         updraft_vertical_velocity (FloatField)
         entrainment_parameter (FloatField)
@@ -270,16 +270,14 @@ def zero_state(
 
     with computation(PARALLEL), interval(0, -1):
         convective_condensate_source = 0.0
+        convective_condensate_grid_mean = 0.0
 
     with computation(PARALLEL), interval(...):
-        convective_condensate_grid_mean = 0.0
-        total_water_flux_deep_convection = 0.0
+        total_water_flux_deep_convection_interface = 0.0
 
     with computation(PARALLEL), interval(0, -1):
         updraft_area_fraction = 0.0
         updraft_vertical_velocity = 0.0
-
-    with computation(PARALLEL), interval(0, -1):
         entrainment_parameter = 0.0
 
     with computation(FORWARD), interval(0, 1):
@@ -1388,7 +1386,7 @@ class GF2020Setup:
             convective_precipitation_GF=state.convective_precipitation_GF,
             convective_condensate_source=state.convective_condensate_source,
             convective_condensate_grid_mean=state.convective_condensate_grid_mean,
-            total_water_flux_deep_convection=state.total_water_flux_deep_convection,
+            total_water_flux_deep_convection_interface=state.total_water_flux_deep_convection_interface,
             updraft_area_fraction=state.updraft_areal_fraction,
             updraft_vertical_velocity=state.updraft_vertical_velocity,
             entrainment_parameter=state.entrainment_parameter,
