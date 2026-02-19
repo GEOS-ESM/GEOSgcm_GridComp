@@ -480,46 +480,6 @@ contains
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-!     call MAPL_AddImportSpec(GC,                                  &
-!        SHORT_NAME = 'MFTHSRC',                                   &
-!        LONG_NAME  = 'mass_flux_source_temperature_perturbation', &
-!        UNITS      = 'K',                                         &
-!        DIMS       = MAPL_DimsHorzVert,                           &
-!        VLOCATION  = MAPL_VLocationCenter,                        &
-!        RESTART    = MAPL_RestartSkip,                            &
-!                                                       RC=STATUS  )
-!     VERIFY_(STATUS)
-
-!     call MAPL_AddImportSpec(GC,                                  &
-!        SHORT_NAME = 'MFQTSRC',                                   &
-!        LONG_NAME  = 'mass_flux_source_humidity_perturbation',    &
-!        UNITS      = 'kg kg-1',                                   &
-!        DIMS       = MAPL_DimsHorzVert,                           &
-!        VLOCATION  = MAPL_VLocationCenter,                        &
-!        RESTART    = MAPL_RestartSkip,                            &
-!                                                       RC=STATUS  )
-!     VERIFY_(STATUS)
-
-!     call MAPL_AddImportSpec(GC,                                  &
-!        SHORT_NAME = 'MFW',                                   &
-!        LONG_NAME  = 'mass_flux_initial_vertical_velocity',       &
-!        UNITS      = 'm s-1',                                     &
-!        DIMS       = MAPL_DimsHorzVert,                           &
-!        VLOCATION  = MAPL_VLocationCenter,                        &
-!        RESTART    = MAPL_RestartSkip,                            &
-!                                                       RC=STATUS  )
-!     VERIFY_(STATUS)
-
-!     call MAPL_AddImportSpec(GC,                                  &
-!        SHORT_NAME = 'MFAREA',                                    &
-!        LONG_NAME  = 'mass_flux_area_fraction',                   &
-!        UNITS      = '1',                                         &
-!        DIMS       = MAPL_DimsHorzVert,                           &
-!        VLOCATION  = MAPL_VLocationCenter,                        &
-!        RESTART    = MAPL_RestartSkip,                            &
-!                                                       RC=STATUS  )
-!     VERIFY_(STATUS)
-
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'Z0',                                &
         LONG_NAME          = 'surface_roughness',                 &
@@ -1954,14 +1914,6 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                  &
-       SHORT_NAME = 'LMIX',                                      &
-       LONG_NAME  = 'mixed_layer_depth_from_SHOC',               &
-       UNITS      = 'm',                                         &
-       DIMS       = MAPL_DimsHorzOnly,                           &
-       VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                  &
        SHORT_NAME = 'LSHOC1',                                    &
        LONG_NAME  = 'dissipation_length_term1_from_SHOC',        &
        UNITS      = 'm',                                         &
@@ -3008,7 +2960,7 @@ end if
                                             SHOCPRNUM,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx, &
                                             SL2, SL3, W2, W3, WSL, SLQT !, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
-     real, dimension(:,:), pointer       :: LMIX, edmf_depth
+     real, dimension(:,:), pointer       :: edmf_depth
 
 ! EDMF variables
      real, dimension(:,:,:), pointer     :: edmf_dry_a,edmf_moist_a,edmf_frc, edmf_dry_w,edmf_moist_w, &
@@ -3115,9 +3067,9 @@ end if
 
 ! variables associated with SHOC
      real, dimension( IM, JM, LM )       :: QPL,QPI
-     integer                             :: DO_SHOC, DOPROGQT2, DOCANUTO
+     integer                             :: DO_SHOC, DOPROGQT2
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
-                                            SKEW_TGEN, SKEW_TDIS
+                                            SKEW_TGEN, SKEW_TDIS, FREE_ATM_QT2
      real    :: PDFSHAPE
 
      real    :: lambdadiss
@@ -3285,15 +3237,15 @@ end if
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
        call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.2,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.5,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=8.,   RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=3.,   RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=2.,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.,   RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
      else
@@ -3306,7 +3258,7 @@ end if
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, DOCANUTO,   'DOCANUTO:',   DEFAULT = 0,      RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, FREE_ATM_QT2, 'FREE_ATM_QT2:', DEFAULT = 0.05,  RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -3537,8 +3489,6 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC1,  'LSHOC1',   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LMIX,    'LMIX',   RC=STATUS)
-     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC2,  'LSHOC2',   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC3,  'LSHOC3',   RC=STATUS)
@@ -3684,8 +3634,8 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=2.0,   RC=STATUS)  
       call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.015, RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%WCTHRESH,  "EDMF_WCTHRESH:",      default=12.,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.016, RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%WCTHRESH,  "EDMF_WCTHRESH:",      default=11.,   RC=STATUS)
       ! coefficients for surface forcing, appropriate for L137
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=1.0,   RC=STATUS)
@@ -3806,7 +3756,9 @@ end if
     qvsrc  = 0.0
     qlsrc  = 0.0
     qisrc  = 0.0
-
+    awqv3  = 0.0
+    awql3  = 0.0
+    awqi3  = 0.0
 
     IF(DOMF /= 0) then
 
@@ -3955,6 +3907,9 @@ end if
       drycblh = 0.     
    ENDIF
 
+
+
+   
    call MAPL_TimerOff(MAPL,"---MASSFLUX")
 
 
@@ -4000,7 +3955,6 @@ end if
                        TKEBUOY,               &
                        TKESHEAR,              &
                        LSHOC,                 &
-                       LMIX,                  &
                        LSHOC1,                &
                        LSHOC2,                &
                        LSHOC3,                &
@@ -4513,6 +4467,8 @@ end if
       call update_moments(IM, JM, LM, DT, &
                           SH,             &  ! in
                           EVAP,           &
+                          AREA,           &
+                          ZPBL,           &
                           Z,              &
                           ZLE,            &
                           KH,             &
@@ -4544,7 +4500,7 @@ end if
                           slqt2tune,      &
                           skew_tgen,      &
                           skew_tdis,      &
-                          docanuto )
+                          free_atm_qt2 )
 
        end if
 
@@ -5033,10 +4989,9 @@ end if
    YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQV3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQV3(:,:,0:LM-2) + QVSRC(:,:,1:LM-1) )
    YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQL3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQL3(:,:,0:LM-2) + QLSRC(:,:,1:LM-1) )
    YQI(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQI3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQI3(:,:,0:LM-2) + QISRC(:,:,1:LM-1) )
-
    YU(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWU3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWU3(:,:,0:LM-2) )
    YV(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWV3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWV3(:,:,0:LM-2) )
-
+   
    ! Add prescribed surface fluxes
    if ( SCM_SL /= 0 .and. (SCM_SL_FLUX == 1 .or. SCM_SL_FLUX == 2) ) then
       YS(:,:,LM)  = YS(:,:,LM)  + DMI(:,:,LM)*SH(:,:)!/RHOE(:,:,LM)
@@ -5415,6 +5370,8 @@ end if
           end if
        end if
 
+
+       
 ! Pick the right exchange coefficients
 !-------------------------------------
 
@@ -5762,8 +5719,8 @@ end subroutine RUN1
       real, dimension(:,:  ), pointer     :: KETRB, KESRF, KETOP, KEINT
       real, dimension(:,:,:), pointer     :: DKS, DKV, DKQ, DKX, EKV, FKV
       real, dimension(:,:,:), pointer     :: DPDTTRB
-      real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, WSL, WQT, MFWSL, &
-                                             MFWQT, TKH, UFLXTRB, VFLXTRB, QTX, SLX, &
+      real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, WSL, WQT, &
+                                             TKH, UFLXTRB, VFLXTRB, QTX, SLX, &
                                              SLFLXMF, QTFLXMF, MFAW, TKEDISS
 
       integer                             :: KM, K, L, I, J

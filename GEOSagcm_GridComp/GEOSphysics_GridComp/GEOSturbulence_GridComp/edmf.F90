@@ -8,7 +8,8 @@ module edmf_mod
 
 use MAPL_ConstantsMod, only: mapl_epsilon, mapl_grav, mapl_cp,  &
                              mapl_alhl, mapl_p00, mapl_vireps,  &
-                             mapl_alhs, mapl_kappa, mapl_rgas
+                             mapl_alhs, mapl_kappa, mapl_rgas,  &
+                             mapl_pi
 
 use MAPL_Mod,          only: mapl_undef
 
@@ -445,19 +446,19 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       wmin=sigmaW*MFPARAMS%pwmin
       wmax=sigmaW*MFPARAMS%pwmax
 
-      ! Identify inversions below 2km, calculate stability in overlying 1km to define
+      ! Identify inversions below 1.5km, calculate stability in overlying 1km to define
       ! dynamic pressure deceleration factor in w equation below.
       wcfac = 0.
       tmp = 0.
       k = kts+1
-      do while (zlo(k).lt.2e3)
+      do while (zlo(k).lt.1500.)
          if ( t3(IH,JH,kte-k).gt.t3(IH,JH,kte-k+1) ) then
             tmp = thv(k)   ! THV at inversion
             exit
          end if
          k = k+1
       end do
-      if (tmp.ne.0.) then  ! find index at 3 km (ktmp)
+      if (tmp.ne.0.) then
          ktmp = k
          do while (zlo(ktmp).lt.zlo(k)+1e3)
             ktmp = ktmp+1
@@ -822,7 +823,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       if (associated(moist_qc3))  moist_qc3(IH,JH,KTS-1:KTE)  = moist_qc(KTE:KTS-1:-1)
 
 
-      ! Note values were initialized to zero above
+      ! Note values were initialized to zero above.
+      ! Ending loop at interface above lowest layer.
       DO K=KTS-1,KTE-1
         ! outputs - variables needed for solver
         aw3(IH,JH,K)   = s_aw(KTE+KTS-K-1)
@@ -836,9 +838,13 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         mfwhl(IH,JH,K) = s_awhl(KTE+KTS-K-1)
         mfwqt(IH,JH,K) = s_awqt(KTE+KTS-K-1)
       ENDDO
-      mfwhl(IH,JH,KTE) = s_awhl(KTS-1)
-      mfwqt(IH,JH,KTE) = s_awqt(KTS-1)
+!      mfwhl(IH,JH,KTE) = s_awhl(KTS-1)
+!      mfwqt(IH,JH,KTE) = s_awqt(KTS-1)
 
+      s_awqv(KTS-1) = 0.
+      s_awql(KTS-1) = 0.
+      s_awqi(KTS-1) = 0.
+      
 
       ! buoyancy is defined on full levels
       DO k=kts,kte
@@ -853,15 +859,19 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
           mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
         end if
+
         ! trisolver source terms due to condensation. assumes that condensation is responsible 
         ! for any increase in condesate flux with height. ignores lateral mixing.
-        tmp = max(0.,RHOE(K)*s_awql(K)-RHOE(K-1)*s_awql(K-1)) ! qlflx divergence                                                                                                                       
+        tmp = max(0.,RHOE(K)*s_awql(K)-RHOE(K-1)*s_awql(K-1)) ! qlflx divergence
         qlsrc3(IH,JH,KTE+KTS-K) = tmp
         qvsrc3(IH,JH,KTE+KTS-K) = -1.*tmp
         ssrc3(IH,JH,KTE+KTS-K)  = tmp*MAPL_ALHL
-        tmp2 = max(0.,RHOE(K)*s_awqi(K)-RHOE(K-1)*s_awqi(K-1)) ! qiflx divergence                                                                                                                      
+
+        tmp2 = max(0.,RHOE(K)*s_awqi(K)-RHOE(K-1)*s_awqi(K-1)) ! qiflx divergence
+
         qisrc3(IH,JH,KTE+KTS-K) = tmp2
-        tmp = max(0.,RHOE(K-1)*s_awqi(K-1)-RHOE(K)*s_awqi(K)) ! qlflx convergence                                                                                                                     
+        tmp = max(0.,RHOE(K-1)*s_awql(K-1)-RHOE(K)*s_awql(K)) ! qlflx convergence
+
         ! if ql convergence, assume ice came from ql, with remainder from qv
         qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) - min(tmp,tmp2)
         qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - (tmp2-min(tmp,tmp2))
@@ -881,7 +891,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
      end if  !  IF ( mfdepth>100m)
     END IF   !  IF ( wthv > 0.0 )
 
-  ENDDO ! JH loop over horizontal area
+    ENDDO ! JH loop over horizontal area
   ENDDO ! IH
 
 END SUBROUTINE run_edmf
@@ -897,7 +907,7 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
   real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,wstar,qstar,thstar,sigmaQT,sigmaTH
   integer  :: k
 
-   wstar=max(0.1,(mapl_grav/300.*wthv*1e3)**(1./3.))  ! convective velocity scale
+   wstar=max(0.1,(mapl_grav*wthv*1e3/t(kte))**(1./3.))  ! convective velocity scale
    qstar=max(0.,wqt)/wstar
    thstar=max(0.,wthv)/wstar
 
@@ -1110,8 +1120,8 @@ end subroutine Poisson
 !      FUNCTION poidev(xm,idum)
       FUNCTION poidev(xm)
       INTEGER idum
-      REAL poidev,xm,PI
-      PARAMETER (PI=3.141592654)
+      REAL poidev,xm!,PI
+!      PARAMETER (PI=3.141592654)
 !CU    USES gammln,ran1
       REAL alxm,em,g,oldm,sq,t,y
       SAVE alxm,g,oldm,sq
@@ -1135,7 +1145,7 @@ end subroutine Poisson
           g=xm*alxm-gammln(xm+1.)
         endif
 !1       y=tan(PI*ran1(idum))
-1       y=tan(PI*ran1())
+1       y=tan(MAPL_PI*ran1())
         em=sq*y+xm
         if (em.lt.0.) goto 1
         em=int(em)
