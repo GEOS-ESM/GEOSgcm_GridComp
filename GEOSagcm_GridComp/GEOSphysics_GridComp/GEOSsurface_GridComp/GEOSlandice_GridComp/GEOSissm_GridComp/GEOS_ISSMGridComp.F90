@@ -79,6 +79,18 @@ public SetServices
 !   {\tt GEOS\_ISSM} gridcomp runs NASA's Ice-sheet and Sea-level System Model (ISSM)
 !             
 
+public :: T_ISSM_EXPORT_STATE
+public :: ISSM_EXPORT_WRAP
+! define ISSM export as internal variables, will be used by landics grid come
+
+type T_ISSM_EXPORT_STATE
+    real, pointer :: issm_whatever(:)
+end type T_ISSM_EXPORT_STATE
+
+type ISSM_EXPORT_WRAP
+   type(T_ISSM_EXPORT_STATE), pointer :: ptr=>null()
+end type ISSM_EXPORT_WRAP
+
 ! private internal state for regridding 
 type T_ISSM_STATE
   private
@@ -568,6 +580,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! tile information
   integer                              :: NT                      ! number of landice tiles
 
+  type(T_ISSM_EXPORT_STATE), pointer   :: issm_exports_state
+  type(ISSM_EXPORT_WRAP)               :: issm_exports_wrap
 
   ! surface mass balance on mesh, grid, tile
   real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
@@ -657,6 +671,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     IM = local_dims(1)
     JM = local_dims(2)
 
+    call ESMF_UserCompGetInternalState(GC, 'ISSM_EXPORTS', issm_exports_wrap, status); VERIFY_(STATUS)
+    issm_exports_state => issm_exports_wrap%ptr
+    !issm_exports_state%issm_whatever = whatever
     ! *************************************************************************** !
     ! IMPORT SMB (surface mass balance) & REGRID FROM TILES [to grid] to MESH 
     ! *************************************************************************** !
