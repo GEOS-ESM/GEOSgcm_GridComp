@@ -2,8 +2,19 @@
 
 module EASE_pfaf_subareaMod
 
-  ! Main purpose: Assigns a catchment‐tile index from Pfaf catchment definition files to each tile for global cylindrical EASE grid;
-  !               writes information into EASEv[x]_tile2pfaf.nc4
+  ! Main purpose: Calculates info needed to map from EASE tile space to Pfafstetter catchment space;
+  !               writes information into EASEv[x]_tile2pfaf.nc4.
+  !
+  ! Background:   The standard EASE tile space is created such that there is at most one tile per EASE grid cell.
+  !               Each EASE tile is nominally assigned to the Pfafstetter catchment that covers the largest portion
+  !               of the tile. Information about other Pfafstetter catchments that intersect with the EASE grid cell
+  !               is lost in the process.
+  !               For routing, we need to know about all of the Pfafstetter catchments that intersect with the tile,
+  !               including the area (or fraction) of the intersect.
+  !               Given an EASE grid resolution, this program calculates the full mapping information from the 1-arcmin
+  !               raster file on which the Pfafstetter catchments are defined.
+  !               Note that this is essentially equivalent to creating an EASE tile space *without* the restriction of 
+  !               at most one tile per EASE grid cell. 
 
   use MAPL
   use LogRectRasterizeMod, only: nPfaf=>SRTM_maxcat
@@ -28,7 +39,7 @@ contains
     integer, parameter :: nsub_max_init=9999
     
     ! Variable declarations:
-    integer              :: id, xi, yi, i,j, flag, nmax,nmax2,ntot,it,ns_tot
+    integer              :: id, xi, yi, i,j, flag, nmax,nmax2,ntotland,it,ns_tot
     integer, allocatable :: nsub(:)                            ! Array to store the number of sub-areas for each catchment
     integer, allocatable :: xsub( :,:), ysub( :,:), isub( :,:)
     integer, allocatable :: xsub0(:,:), ysub0(:,:)
@@ -103,19 +114,19 @@ contains
     asub=asub0(1:nmax,:)
     deallocate(xsub0,ysub0,asub0)
     
-    ! Open the catchment definition file for the EASE grid and header (ntot = total number of *land* tiles)
+    ! Open the catchment definition file for the EASE grid and header (ntotland = total number of *land* tiles)
     ! NOTE: This approach works only when the routed runoff is from land tiles. 
     !       When we add the routing of runoff from landice tiles, this will have to be revisited.
-    open(77, file="clsm/catchment.def");read(77, *) ntot
+    open(77, file="clsm/catchment.def");read(77, *) ntotland
 
     ! get center lat/lon of EASE tiles from *.til file
-    allocate(latc(ntot),lonc(ntot),lati_tile(ntot),loni_tile(ntot))
+    allocate(latc(ntotland),lonc(ntotland),lati_tile(ntotland),loni_tile(ntotland))
     open(10,file="til/"//trim(gfile)//".til", form="formatted", status="old", action='read')
     read(10,*) ntile, npfaf0, nx, ny
     do i=1,4
       read(10,*) 
     enddo
-    do i=1,ntot                                                                ! read *land* tile center coords --> assumes land is first in til file!
+    do i=1,ntotland                                                                ! read *land* tile center coords --> assumes land is first in til file!
       read(10,*) type, pfaf_ind, lonc(i), latc(i), loni_tile(i), lati_tile(i)  ! til file format here is specific to EASE grid!
     end do  
     close(10) 
@@ -125,7 +136,7 @@ contains
     ! record into map_tile
     allocate(map_tile(nc_ease,nr_ease))
     map_tile=-9999
-    do i =1, ntot
+    do i =1, ntotland
       map_tile(loni_tile(i),lati_tile(i)) = i
     enddo
     
@@ -143,7 +154,7 @@ contains
       enddo
     enddo
 
-    allocate(area_cat(nPfaf),frac(nmax,nPfaf),nsub_tile(ntot),flag2(nmax,nPfaf))
+    allocate(area_cat(nPfaf),frac(nmax,nPfaf),nsub_tile(ntotland),flag2(nmax,nPfaf))
     where(isub==-9999) asub=0.
     area_cat=0.
     do i=1,nPfaf
@@ -164,7 +175,7 @@ contains
     enddo
 
     nmax2=maxval(nsub_tile)
-    allocate(csub(nmax2,ntot),frac_tile(nmax2,ntot))
+    allocate(csub(nmax2,ntotland),frac_tile(nmax2,ntotland))
     csub=0
     nsub_tile=0
     frac_tile=0.
@@ -182,7 +193,7 @@ contains
     ns_tot=sum(nsub_tile)
     allocate(tile_id(ns_tot), pfaf_index(ns_tot), subtile_area(ns_tot))
     it = 0
-    do i=1,ntot
+    do i=1,ntotland
       do j=1,nmax2
         if(csub(j,i)>0)then
           it = it+1
@@ -194,6 +205,10 @@ contains
       enddo
     enddo 
 
+    ! The length of the vectors in EASEv[x]_tile2pfaf.nc4 is ns_tot, which is the
+    ! total number of EASE land tiles that we would have if the EASE tile space was
+    ! generated without the restriction of at most one tile per EASE grid cell.
+    
     call meta%add_dimension('tile', ns_tot)
 
     v = Variable(type=PFIO_INT32, dimensions='tile')
