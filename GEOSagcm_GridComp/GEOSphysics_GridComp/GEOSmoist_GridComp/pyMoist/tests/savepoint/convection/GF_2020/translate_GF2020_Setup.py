@@ -299,7 +299,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         state.convective_precipitation_GF.field[:] = inputs["convective_precipitation_GF_bugworkaroundname"]
         state.convective_precipitation_RAS.field[:] = inputs["convective_precipitation_RAS_bugworkaroundname"]
         state.sensible_heat_flux.field[:] = inputs["sensible_heat_flux_bugworkaroundname"]
-        state.total_water_flux_deep_convection.field[:] = inputs[
+        state.total_water_flux_deep_convection_interface.field[:] = inputs[
             "total_water_flux_deep_convection_bugworkaroundname"
         ]
         state.evaporation.field[:] = inputs["evaporation_bugworkaroundname"]
