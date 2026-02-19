@@ -125,7 +125,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         # NOTE disabled fields are nan in fortran - zero in python, disabled so the test passes
         self.out_vars = {
             # fields saved midway through GF2020 fortran
-            "lateral_entrainment_rate_bugworkaroundname": {},
+            "internal_lateral_entrainment_rate": {},
             "local_edge_height_above_surface": {},
             "local_layer_height_above_surface": {},
             "local_p": {},
@@ -458,7 +458,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         outputs = {
             # GF2020 locals
-            "lateral_entrainment_rate_bugworkaroundname": state.lateral_entrainment_rate.field[:],
+            "internal_lateral_entrainment_rate": state.lateral_entrainment_rate.field[:],
             "local_edge_height_above_surface": locals.derived_state.edge_height_above_surface.field[:],
             "local_layer_height_above_surface": locals.derived_state.layer_height_above_surface.field[:],
             "local_p": locals.derived_state.p.field[:],
