@@ -69,7 +69,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "convective_precipitation_GF_bugworkaroundname": {},
             "convective_precipitation_RAS_bugworkaroundname": {},
             "sensible_heat_flux_bugworkaroundname": {},
-            "total_water_flux_deep_convection_bugworkaroundname": {},
+            "total_water_flux_deep_convection_interface_bugworkaroundname": {},
             "evaporation_bugworkaroundname": {},
             "convective_condensate_source_bugworkaroundname": {},
             "convective_condensate_grid_mean_bugworkaroundname": {},
@@ -300,7 +300,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         state.convective_precipitation_RAS.field[:] = inputs["convective_precipitation_RAS_bugworkaroundname"]
         state.sensible_heat_flux.field[:] = inputs["sensible_heat_flux_bugworkaroundname"]
         state.total_water_flux_deep_convection_interface.field[:] = inputs[
-            "total_water_flux_deep_convection_bugworkaroundname"
+            "total_water_flux_deep_convection_interface_bugworkaroundname"
         ]
         state.evaporation.field[:] = inputs["evaporation_bugworkaroundname"]
         state.convective_condensate_source.field[:] = inputs["convective_condensate_source_bugworkaroundname"]
@@ -409,14 +409,13 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         code = GF2020Setup(
-            stencil_factory=self.stencil_factory, quantity_factory=self.quantity_factory, config=config
+            stencil_factory=self.stencil_factory, quantity_factory=self.quantity_factory, config=config, saturation_tables=saturation_tables
         )
 
         code(
             state=state,
             locals=locals,
             cumulus_parameterization_state=cumulus_parameterization_state,
-            saturation_tables=saturation_tables,
             convection_tracers=convection_tracers,
             scm_stop=False,
         )

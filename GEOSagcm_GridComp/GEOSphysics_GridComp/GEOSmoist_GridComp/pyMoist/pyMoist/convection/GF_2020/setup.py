@@ -1230,10 +1230,12 @@ class GF2020Setup:
     """
 
     def __init__(
-        self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, config: GF2020Config
+        self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, config: GF2020Config, saturation_tables: SaturationVaporPressureTable
     ):
+        # make inputs visible at runtime
         self.stencil_factory = stencil_factory
         self.config = config
+        self.saturation_tables = saturation_tables
 
         # check config for unimplemented paths
         if config.ADV_TRIGGER == 2:
@@ -1279,8 +1281,8 @@ class GF2020Setup:
             func=set_2d_fields,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "SIZE_I_DIM": self.stencil_factory.grid_indexing.get_shape([X_DIM])[0],
-                "SIZE_J_DIM": self.stencil_factory.grid_indexing.get_shape([Y_DIM])[0],
+                "SIZE_I_DIM": stencil_factory.grid_indexing.get_shape([X_DIM])[0],
+                "SIZE_J_DIM": stencil_factory.grid_indexing.get_shape([Y_DIM])[0],
             },
         )
 
@@ -1315,7 +1317,6 @@ class GF2020Setup:
         state: GF2020State,
         locals: GF2020Locals,
         cumulus_parameterization_state: GF2020CumulusParameterizationState,
-        saturation_tables: SaturationVaporPressureTable,
         convection_tracers: ConvectionTracers,
         scm_stop: bool,
     ):
@@ -1327,7 +1328,6 @@ class GF2020Setup:
             locals (GF2020Locals): NDSL LocalState containing all locals for GF2020.
             cumulus_parameterization_state (GF2020CumulusParameterizationState): NDSL State containing all
                 fields required for the CumulusParameterization.
-            saturation_tables (SaturationVaporPressureTable): moist physics saturation tables
             convection_tracers (ConvectionTracers): convection tracers - fields and metadata
             scm_stop (bool): flag which can stop the execution of GF2020
 
@@ -1352,8 +1352,8 @@ class GF2020Setup:
             area=state.area,
             modified_area=locals.derived_state.modified_area,
             convection_fraction=state.convection_fraction,
-            ese=saturation_tables.ese,
-            esx=saturation_tables.esx,
+            ese=self.saturation_tables.ese,
+            esx=self.saturation_tables.esx,
         )
 
         self._zero_state(
