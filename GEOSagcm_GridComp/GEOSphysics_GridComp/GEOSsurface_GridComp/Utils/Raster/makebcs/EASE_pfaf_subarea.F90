@@ -2,8 +2,19 @@
 
 module EASE_pfaf_subareaMod
 
-  ! Main purpose: Assigns a catchment‐tile index from Pfaf catchment definition files to each tile for global cylindrical EASE grid;
-  !               writes information into EASEv[x]_tile2pfaf.nc4
+  ! Main purpose: Calculates info needed to map from EASE tile space to Pfafstetter catchment space;
+  !               writes information into EASEv[x]_tile2pfaf.nc4.
+  !
+  ! Background:   The standard EASE tile space is created such that there is at most one tile per EASE grid cell.
+  !               Each EASE tile is nominally assigned to the Pfafstetter catchment that covers the largest portion
+  !               of the tile. Information about other Pfafstetter catchments that intersect with the EASE grid cell
+  !               is lost in the process.
+  !               For routing, we need to know about all of the Pfafstetter catchments that intersect with the tile,
+  !               including the area (or fraction) of the intersect.
+  !               Given an EASE grid resolution, this program calculates the full mapping information from the 1-arcmin
+  !               raster file on which the Pfafstetter catchments are defined.
+  !               Note that this is essentially equivalent to creating an EASE tile space *without* the restriction of 
+  !               at most one tile per EASE grid cell. 
 
   use MAPL
   use LogRectRasterizeMod, only: nPfaf=>SRTM_maxcat
@@ -25,8 +36,10 @@ contains
     integer, parameter :: nlon=21600         ! Number of longitude grid cells in raster grid
     integer, parameter :: nlat=10800         ! Number of latitude  grid cells in raster grid
 
+    integer, parameter :: nsub_max_init=9999
+    
     ! Variable declarations:
-    integer              :: id, xi, yi, i,j, flag, nmax,nmax2,ntot,it,ns_tot
+    integer              :: id, xi, yi, i,j, flag, nmax,nmax2,ntotland,it,ns_tot
     integer, allocatable :: nsub(:)                            ! Array to store the number of sub-areas for each catchment
     integer, allocatable :: xsub( :,:), ysub( :,:), isub( :,:)
     integer, allocatable :: xsub0(:,:), ysub0(:,:)
@@ -35,7 +48,6 @@ contains
     
     real*8,  allocatable :: lon(  :), lat(  :)                 ! Arrays to hold longitude and latitude values
     integer, allocatable :: loni( :), lati( :)
-    integer, allocatable :: loni2(:), lati2(:)
     ! loni and lati: Arrays holding mapping indices from 1-minute resolution data files
     integer, allocatable :: catchind(:,:)                      ! 2D array holding catchment indices for each grid cell
     
@@ -65,7 +77,7 @@ contains
     ! Allocate arrays with the specified dimensions:
     allocate(catchind(nlon, nlat))
     allocate(lon(nlon), lat(nlat))
-    allocate(loni(nlon), lati(nlat),loni2(nlon), lati2(nlat))
+    allocate(loni(nlon), lati(nlat))
     allocate(nsub(nPfaf))
     
     call formatter%open(trim(pfafData_file), PFIO_READ)
@@ -73,24 +85,32 @@ contains
     call formatter%get_var("longitude",  lon)
     call formatter%get_var("CatchIndex", catchind)
     call formatter%close()
-    
+
+    ! for each raster grid cell longitude, get longitude index of overlying EASE grid cell
     do i = 1, nlon
        call MAPL_ease_convert( trim(GridName), 0.0, real(lon(i)), tmp_loni, tmp_lati)
        loni(i) = nint(tmp_loni) + 1
     enddo
 
+    ! for each raster grid cell latitude,  get latitude  index of overlying EASE grid cell
     do i = 1, nlat
        call MAPL_ease_convert( trim(GridName), real(lat(i)), 0.0, tmp_loni, tmp_lati)
        lati(i) = nint(tmp_lati) + 1
     enddo
     
-! Initialize aggregation arrays to zero:
-    allocate(xsub0(9999, nPfaf), ysub0(9999, nPfaf), asub0(9999, nPfaf))
-    open(77, file="clsm/catchment.def");read(77, *) ntot
+    ! allocate aggregation arrays
+    allocate(xsub0(nsub_max_init, nPfaf), ysub0(nsub_max_init, nPfaf), asub0(nsub_max_init, nPfaf))
+    ! Open the catchment definition file for the EASE grid and header (ntotland = total number of *land* tiles)
+    ! NOTE: This approach works only when the routed runoff is from land tiles. 
+    !       When we add the routing of runoff from landice tiles, this will have to be revisited.
+    open(77, file="clsm/catchment.def");read(77, *) ntotland
     nlon30s = 2*nlon; nlat30s = 2*nlat
-    call EASE_Find_subs(catchind, loni, lati, lat, ntot, nlon30s, nlat30s, "rst/"//trim(gfile)//".rst", &
+    ! collect aggregation info
+    call EASE_Find_subs(catchind, loni, lati, lat, ntotland, nlon30s, nlat30s, "rst/"//trim(gfile)//".rst", &
                         nsub, xsub0, ysub0, asub0)
 
+    ! reduce array sizes as much as possible
+    
     nmax = maxval(nsub)
     !print *,nmax
     allocate(xsub(nmax, nPfaf), ysub(nmax, nPfaf), asub(nmax, nPfaf))
@@ -98,16 +118,15 @@ contains
     ysub=ysub0(1:nmax,:)
     asub=asub0(1:nmax,:)
     deallocate(xsub0,ysub0,asub0)   
-    ! Open the catchment definition file for the EASE grid and header (ntot = total number of *land* tiles)
-    !This approach works only when the routed runoff is from land tiles. 
-    !When we add the routing of runoff from landice tiles, this will have to be revisited
-    allocate(latc(ntot),lonc(ntot),lati_tile(ntot),loni_tile(ntot))
+    ! get center lat/lon of EASE tiles from *.til file
+    allocate(latc(ntotland),lonc(ntotland),lati_tile(ntotland),loni_tile(ntotland))
+
     open(10,file="til/"//trim(gfile)//".til", form="formatted", status="old", action='read')
     read(10,*) ntile, npfaf0, nx, ny
     do i=1,4
       read(10,*) 
     enddo
-    do i=1,ntot                                                                ! read *land* tile center coords --> assumes land is first in til file!
+    do i=1,ntotland                                                                ! read *land* tile center coords --> assumes land is first in til file!
       read(10,*) type, pfaf_ind, lonc(i), latc(i), loni_tile(i), lati_tile(i)  ! til file format here is specific to EASE grid!
     end do  
     close(10) 
@@ -117,7 +136,7 @@ contains
     ! record into map_tile
     allocate(map_tile(nc_ease,nr_ease))
     map_tile=-9999
-    do i =1, ntot
+    do i =1, ntotland
       map_tile(loni_tile(i),lati_tile(i)) = i
     enddo
     
@@ -135,7 +154,7 @@ contains
       enddo
     enddo
 
-    allocate(area_cat(nPfaf),frac(nmax,nPfaf),nsub_tile(ntot),flag2(nmax,nPfaf))
+    allocate(area_cat(nPfaf),frac(nmax,nPfaf),nsub_tile(ntotland),flag2(nmax,nPfaf))
     where(isub==-9999) asub=0.
     area_cat=0.
     do i=1,nPfaf
@@ -156,7 +175,7 @@ contains
     enddo
 
     nmax2=maxval(nsub_tile)
-    allocate(csub(nmax2,ntot),frac_tile(nmax2,ntot))
+    allocate(csub(nmax2,ntotland),frac_tile(nmax2,ntotland))
     csub=0
     nsub_tile=0
     frac_tile=0.
@@ -174,7 +193,7 @@ contains
     ns_tot=sum(nsub_tile)
     allocate(tile_id(ns_tot), pfaf_index(ns_tot), subtile_area(ns_tot))
     it = 0
-    do i=1,ntot
+    do i=1,ntotland
       do j=1,nmax2
         if(csub(j,i)>0)then
           it = it+1
@@ -186,6 +205,10 @@ contains
       enddo
     enddo 
 
+    ! The length of the vectors in EASEv[x]_tile2pfaf.nc4 is ns_tot, which is the
+    ! total number of EASE land tiles that we would have if the EASE tile space was
+    ! generated without the restriction of at most one tile per EASE grid cell.
+    
     call meta%add_dimension('tile', ns_tot)
 
     v = Variable(type=PFIO_INT32, dimensions='tile')
@@ -212,17 +235,24 @@ contains
 
   end subroutine EASE_get_Pfaf_subarea
 
+  ! ----------------------------------------------------------------------------------
+  
   subroutine EASE_Find_subs(catchind, loni, lati, lat, nland, nlon30s, nlat30s, rstfile, nsub, xsub0, ysub0, asub0)
+    
     integer,           intent(in)  :: catchind(:,:)
-    integer,           intent(in)  :: loni(:), lati(:)
-    real(kind=REAL64), intent(in)  :: lat(:)
-    integer,           intent(in)  :: nland, nlon30s, nlat30s
-    character(*),      intent(in)  :: rstfile  
-    integer,           intent(out) :: nsub(:)
-    integer,           intent(out) :: xsub0(:,:), ysub0(:,:)
-    real,              intent(out) :: asub0(:,:)
+    integer,           intent(in)  :: loni(:)          ! lon index of overlying EASE grid cell;                 size = nlon
+    integer,           intent(in)  :: lati(:)          ! lat index of overlying EASE grid cell;                 size = nlat
+    real(kind=REAL64), intent(in)  :: lat(:)           ! lat of raster grid cell;                               size = nlat
+    integer,           intent(in)  :: nland            ! number of land tiles
+    integer,           intent(in)  :: nlon30s          ! number of lon coordinate in 30-s grid
+    integer,           intent(in)  :: nlat30s          ! number of lat coordinate in 30-s grid
+    character(*),      intent(in)  :: rstfile          ! path of *.rst file
+    integer,           intent(out) :: nsub(:)          ! # raster grid cells that contribute to Pfaf catchment; size = nPfaf
+    integer,           intent(out) :: xsub0(:,:)       ! lon index of overlying EASE grid cell;                 size = nsub_max_init x nPfaf
+    integer,           intent(out) :: ysub0(:,:)       ! lat index of overlying EASE grid cell;                 size = nsub_max_init x nPfaf
+    real,              intent(out) :: asub0(:,:)       ! area of raster grid cell;                              size = nsub_max_init x nPfaf
 
-    integer :: xi, yi, flag, id, i, j, nlon, nlat, yy, xx
+    integer :: xi, yi, flag, id, i, j, nlon, nlat
     real(kind=REAL64)             :: cellarea, delta, area30s(2,2)
     real(kind=REAL64),allocatable :: lat30s(:), cellarea30s(:)
     integer,allocatable           :: rst(:,:)
@@ -253,11 +283,11 @@ contains
     enddo
     where (rst<1.or.rst>nland) rst=0
 
-    delta = 2*MAPL_PI_R8/nlon * MAPL_PI_R8/nlat
-    ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
+    delta = 2*MAPL_PI_R8/nlon * MAPL_PI_R8/nlat                    ! pre-compute term for raster grid cell area
+    ! Loop through all raster grid cells to aggregate cell areas by catchment and sub-area:
     do yi = 1, nlat
-      cellarea = cos(lat(yi) * MAPL_DEGREES_TO_RADIANS_R8)*delta
-      cellarea = cellarea*MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 ! convert to km^2
+      cellarea = cos(lat(yi) * MAPL_DEGREES_TO_RADIANS_R8)*delta   ! area of raster grid cell for latitude yi [radians^2]
+      cellarea = cellarea*MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3        ! convert to km^2
       do xi = 1, nlon
         if (catchind(xi, yi) >= 1) then
           area30s(:,1)=cellarea30s(2*yi-1)
@@ -265,7 +295,7 @@ contains
           where(rst(2*xi-1:2*xi,2*yi-1:2*yi)/=0) area30s=0.d0
           ! The raster grid cell belongs to a catchment
           id = catchind(xi, yi)  ! Get the catchment id for the current cell
-          flag = 0              ! Reset flag to indicate whether a matching sub-area is found      
+          flag = 0               ! Reset flag to indicate whether a matching sub-area is found      
           ! If the catchment already has one or more sub-areas, check for a matching sub-area:
           if (nsub(id) >= 1) then
             do i = 1, nsub(id)
@@ -279,7 +309,7 @@ contains
           endif
           ! If no matching sub-area was found, create a new sub-area:
           if (flag == 0) then
-            nsub(id) = nsub(id) + 1
+            nsub(           id) = nsub(id) + 1
             xsub0(nsub(id), id) = loni(xi)
             ysub0(nsub(id), id) = lati(yi)
             asub0(nsub(id), id) = max(0.,cellarea - sum(area30s))
@@ -293,3 +323,4 @@ contains
   end subroutine EASE_Find_subs
 
 end module EASE_pfaf_subareaMod
+

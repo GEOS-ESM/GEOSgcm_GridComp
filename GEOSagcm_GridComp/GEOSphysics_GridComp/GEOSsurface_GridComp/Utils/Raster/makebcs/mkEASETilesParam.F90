@@ -981,6 +981,8 @@ PROGRAM mkEASETilesParam
   deallocate( tileid_index, catid_index,veg )
   deallocate( tile_area, ease_grid_area, tile_elev, my_land, all_id )
 
+  ! write file with info about mapping from EASE tile space to Pfafstetter catchment space ("EASEv[x]_tile2pfaf.nc4")
+  
   call EASE_get_pfaf_subarea('til/'//trim(EASELabel)//'_tile2pfaf.nc4', MAKE_BCS_INPUT_DIR, EASELabel, gfile)
       
   ! Commented out "empty" if-block. -rreichle, 15 Jun 2023

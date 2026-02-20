@@ -15,7 +15,7 @@ The tasks completed by each F90 or Python program are briefly described as follo
    Reads the Pfafstetter code dataset and generates  
    files for the connectivity of catchments in the routing network.
 
-2. get_latloni_cellarea.py  
+2. get_latloni.py  
    Computes grid-cell index arrays for 1-m high-res grid.
 
 3. get_num_sub_catchment.f90
