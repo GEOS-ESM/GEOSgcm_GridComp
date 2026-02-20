@@ -142,10 +142,10 @@ program main
   end do
 
   ! Write catchment areas to an output file:
-  open(88, file="temp/Pfaf_area.txt")
-  do i = 1, nc
-     write(88, *) pfaf_area(i)
-  end do
+  !open(88, file="temp/Pfaf_area.txt")
+  !do i = 1, nc
+  !   write(88, *) pfaf_area(i)
+  !end do
 
   !---------------------------------------------------------------------------
   ! Build an upstream connectivity matrix:

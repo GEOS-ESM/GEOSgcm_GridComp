@@ -59,11 +59,11 @@ if __name__ == '__main__':
 #----get dam drainage area--
     # Read full dataset for acar(drainage area) and catchment area from ASCII files
     acar_all = np.loadtxt("temp/Pfaf_acar.txt", dtype=float, max_rows=nc)
-    area_all = np.loadtxt("temp/Pfaf_area.txt", dtype=float, max_rows=nc)
+    #area_all = np.loadtxt("temp/Pfaf_area.txt", dtype=float, max_rows=nc)
 
     # Initialize arrays to store the selected values for each catchment
     acar = np.empty(ns, dtype=float)
-    area = np.empty(ns, dtype=float)
+    #area = np.empty(ns, dtype=float)
 
     # Loop over each catchment index and assign values based on catid
     for i in range(ns):
@@ -71,10 +71,10 @@ if __name__ == '__main__':
         if cid != -9999:
             # Subtract 1 from cid to convert 1-based index to 0-based index for Python
             acar[i] = acar_all[cid - 1]
-            area[i] = area_all[cid - 1]
+            #area[i] = area_all[cid - 1]
         else:
             acar[i] = -9999.0
-            area[i] = -9999.0
+            #area[i] = -9999.0
 
 #----look for station: model drainage area is too small------
     # Read drainage area from GRAND database
@@ -107,7 +107,7 @@ if __name__ == '__main__':
 #----get dam drainage area with corrected catid--------------------
     # Initialize arrays to store the selected acar and area values for each catchment
     acar = np.empty(ns, dtype=float)
-    area = np.empty(ns, dtype=float)
+    #area = np.empty(ns, dtype=float)
 
     # Loop over each catchment index
     for i in range(ns):
@@ -115,10 +115,10 @@ if __name__ == '__main__':
         if cid != -9999:
             # Adjust for 1-based indexing: subtract 1 when accessing the full dataset arrays
             acar[i] = acar_all[cid - 1]
-            area[i] = area_all[cid - 1]
+            #area[i] = area_all[cid - 1]
         else:
             acar[i] = -9999.0
-            area[i] = -9999.0
+            #area[i] = -9999.0
 
 #----look for station: model drainage area is too large------
     model = acar

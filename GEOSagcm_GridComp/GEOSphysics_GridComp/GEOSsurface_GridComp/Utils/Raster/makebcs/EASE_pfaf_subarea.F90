@@ -54,7 +54,7 @@ contains
     type(Variable)              :: v
     integer                     :: nc_ease, nr_ease
     real                        :: tmp_lati, tmp_loni
-    integer                     :: ntile, npfaf0, nx, ny, type, pfaf_ind 
+    integer                     :: ntile, npfaf0, nx, ny, type, pfaf_ind, nlon30s, nlat30s 
     
     ! Define file path for input routing data:
     character(len=256)   :: pfafData_file    
@@ -86,7 +86,10 @@ contains
     
 ! Initialize aggregation arrays to zero:
     allocate(xsub0(9999, nPfaf), ysub0(9999, nPfaf), asub0(9999, nPfaf))
-    call EASE_Find_subs(catchind, loni, lati, lat, nsub, xsub0, ysub0, asub0)
+    open(77, file="clsm/catchment.def");read(77, *) ntot
+    nlon30s = 2*nlon; nlat30s = 2*nlat
+    call EASE_Find_subs(catchind, loni, lati, lat, ntot, nlon30s, nlat30s, "rst/"//trim(gfile)//".rst", &
+                        nsub, xsub0, ysub0, asub0)
 
     nmax = maxval(nsub)
     !print *,nmax
@@ -98,7 +101,6 @@ contains
     ! Open the catchment definition file for the EASE grid and header (ntot = total number of *land* tiles)
     !This approach works only when the routed runoff is from land tiles. 
     !When we add the routing of runoff from landice tiles, this will have to be revisited
-    open(77, file="clsm/catchment.def");read(77, *) ntot
     allocate(latc(ntot),lonc(ntot),lati_tile(ntot),loni_tile(ntot))
     open(10,file="til/"//trim(gfile)//".til", form="formatted", status="old", action='read')
     read(10,*) ntile, npfaf0, nx, ny
@@ -210,16 +212,20 @@ contains
 
   end subroutine EASE_get_Pfaf_subarea
 
-  subroutine EASE_Find_subs(catchind, loni, lati, lat, nsub, xsub0, ysub0, asub0)
+  subroutine EASE_Find_subs(catchind, loni, lati, lat, nland, nlon30s, nlat30s, rstfile, nsub, xsub0, ysub0, asub0)
     integer,           intent(in)  :: catchind(:,:)
     integer,           intent(in)  :: loni(:), lati(:)
     real(kind=REAL64), intent(in)  :: lat(:)
+    integer,           intent(in)  :: nland, nlon30s, nlat30s
+    character(*),      intent(in)  :: rstfile  
     integer,           intent(out) :: nsub(:)
     integer,           intent(out) :: xsub0(:,:), ysub0(:,:)
     real,              intent(out) :: asub0(:,:)
 
-    integer :: xi, yi, flag, id, i, nlon, nlat
-    real(kind=REAL64)  :: cellarea, delta
+    integer :: xi, yi, flag, id, i, j, nlon, nlat, yy, xx
+    real(kind=REAL64)             :: cellarea, delta, area30s(2,2)
+    real(kind=REAL64),allocatable :: lat30s(:), cellarea30s(:)
+    integer,allocatable           :: rst(:,:)
 
     nlon  = size(loni)
     nlat  = size(lati)
@@ -228,6 +234,25 @@ contains
     ysub0 = 0
     asub0 = 0.
 
+    allocate(rst(nlon30s,nlat30s),lat30s(nlat30s),cellarea30s(nlat30s)) 
+    delta=180./nlat30s
+    do j=1,nlat  
+      if(lat(1)<0.d0)then
+        lat30s(2*j-1)=lat(j)-delta/2.d0
+        lat30s(2*j)=lat(j)+delta/2.d0
+      else
+        lat30s(2*j-1)=lat(j)+delta/2.d0
+        lat30s(2*j)=lat(j)-delta/2.d0
+      endif      
+    enddo
+    delta = 2*MAPL_PI_R8/nlon30s * MAPL_PI_R8/nlat30s
+    open(20,file=trim(rstfile),form="unformatted",status="old")
+    do j=1,nlat30s
+      read(20) rst(:,j)
+      cellarea30s(j) = cos(lat30s(j) * MAPL_DEGREES_TO_RADIANS_R8)*delta * MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 !km^2
+    enddo
+    where (rst<1.or.rst>nland) rst=0
+
     delta = 2*MAPL_PI_R8/nlon * MAPL_PI_R8/nlat
     ! Loop over all raster grid cells to aggregate cell areas by catchment and sub-area:
     do yi = 1, nlat
@@ -235,6 +260,9 @@ contains
       cellarea = cellarea*MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 ! convert to km^2
       do xi = 1, nlon
         if (catchind(xi, yi) >= 1) then
+          area30s(:,1)=cellarea30s(2*yi-1)
+          area30s(:,2)=cellarea30s(2*yi)
+          where(rst(2*xi-1:2*xi,2*yi-1:2*yi)/=0) area30s=0.d0
           ! The raster grid cell belongs to a catchment
           id = catchind(xi, yi)  ! Get the catchment id for the current cell
           flag = 0              ! Reset flag to indicate whether a matching sub-area is found      
@@ -244,7 +272,7 @@ contains
               if (loni(xi) == xsub0(i, id) .and. lati(yi) == ysub0(i, id)) then
                 flag = 1
                 ! If a match is found, accumulate the cell area into the existing sub-area:
-                asub0(i, id) = asub0(i, id) + cellarea
+                asub0(i, id) = asub0(i, id) + max(0.,cellarea - sum(area30s))
                 exit  ! Exit the inner loop since a matching sub-area has been found
               endif
             end do
@@ -254,11 +282,14 @@ contains
             nsub(id) = nsub(id) + 1
             xsub0(nsub(id), id) = loni(xi)
             ysub0(nsub(id), id) = lati(yi)
-            asub0(nsub(id), id) = cellarea
+            asub0(nsub(id), id) = max(0.,cellarea - sum(area30s))
           endif
         endif
       end do
     end do
-  end subroutine
+
+    deallocate(rst,lat30s,cellarea30s)
+
+  end subroutine EASE_Find_subs
 
 end module EASE_pfaf_subareaMod
