@@ -9,7 +9,7 @@ module edmf_mod
 use MAPL_ConstantsMod, only: mapl_epsilon, mapl_grav, mapl_cp,  &
                              mapl_alhl, mapl_p00, mapl_vireps,  &
                              mapl_alhs, mapl_kappa, mapl_rgas,  &
-                             mapl_pi
+                             mapl_pi, mapl_celsius_to_kelvin
 
 use MAPL_Mod,          only: mapl_undef
 
@@ -49,71 +49,71 @@ implicit none
 public run_edmf, mfparams
 
 contains
-
-SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
-                    phis,                          &
-                    zlo3,                          &
-                    zw3,                           &
-                    pw3,                           &
-                    rhoe3,                         &
-                    tke3,                          &
-                    u3,                            &
-                    v3,                            &
-                    t3,                            &
-                    thl3,                          &
-                    thv3,                          &
-                    qv3,                           &
-                    ql3,                           &
-                    qi3,                           &
-                    wthl2,                         &
-                    wqt2,                          &
-                    frland,                        &
-                    pblh2,                         &
-                    ! outputs - variables needed for solver
-                    ae3,                           &
-                    aw3,                           &
-                    aws3,                          &
-                    awqv3,                         &
-                    awql3,                         &
-                    awqi3,                         &
-                    awu3,                          &
-                    awv3,                          &
-                    ssrc3,                         &
-                    qvsrc3,                        &
-                    qlsrc3,                        &
-                    qisrc3,                        &
-                    ! Outputs required for SHOC and ADG PDF
-                    mfw2,                          &
-                    mfw3,                          &
-                    mfqt3,                         &
-                    mfhl3,                         &
-                    mfwqt,                         &
-                    mfhlqt,                        &
-                    mfwhl,                         &
-                    mftke,                         &
-                    buoyf,                         &
-                    edmfmf,                        &
-                    dry_a3,                        &
-                    moist_a3,                      &
-                    dqrdt,                         &
-                    dqsdt,                         &
-                    ! Diagnostic outputs - updraft properties
-                    dry_w3,                        &
-                    moist_w3,                      &
-                    dry_qt3,                       &
-                    moist_qt3,                     &
-                    dry_thl3,                      &
-                    moist_thl3,                    &
-                    dry_u3,                        &
-                    moist_u3,                      &
-                    dry_v3,                        &
-                    moist_v3,                      &
-                    moist_qc3,                     &
-                    entx,                          &
-                    mfdepth,                       &
-                    edmf_plumes_w,                 &
-                    edmf_plumes_thl,               &
-                    edmf_plumes_qt )
+                                                     !==== Inputs ===================================================
+SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep (s)
+                    phis,                          & ! Surface geopotential (m2 s-2)
+                    zlo3,                          & ! Surface-relative heights (m)
+                    zw3,                           & ! Surface-relative edge heights (m)
+                    pw3,                           & ! Edge pressures (Pa)
+                    rhoe3,                         & ! Edge densities (kg m-3)
+                    tke3,                          & ! Turbulent kinetic energy (m2 s-2)
+                    u3,                            & ! U wind component (m s-1)
+                    v3,                            & ! V wind component (m s-1)
+                    t3,                            & ! Temperature (K)
+                    thl3,                          & ! Liquid water potential temperature (K)
+                    thv3,                          & ! Virtual potential temperature (K)
+                    qv3,                           & ! Specific humidity (kg kg-1)
+                    ql3,                           & ! Specific large-scale cloud liquid (kg kg-1)
+                    qi3,                           & ! Specific large-scale cloud ice (kg kg-1)
+                    wthl2,                         & ! Surface sensible heat flux (W m-2)
+                    wqt2,                          & ! Surface evaporation (kg m-2 s-1)
+                    frland,                        & ! Land fraction
+                    pblh2,                         & ! PBL height (m)
+                                                     !==== Outputs - variables needed for solver ====================
+                    ae3,                           & ! Environmental area fraction
+                    aw3,                           & ! Area-weighted updraft vertical velocity (m s-1)
+                    aws3,                          & ! Dry static energy flux (J m s-1 kg-1)
+                    awqv3,                         & ! Specific humidity flux (kg kg-1 m s-1)
+                    awql3,                         & ! Specific liquid flux (kg kg-1 m s-1)
+                    awqi3,                         & ! Specific ice flux (kg kg-1 m s-1)
+                    awu3,                          & ! Kinematic U momentum flux (m2 s-2)
+                    awv3,                          & ! Kinematic V momentum flux (m2 s-2)
+                    ssrc3,                         & ! Dry static energy source from condensation (W kg-1)
+                    qvsrc3,                        & ! Specific humidity sink from condensation (kg kg-1 s-1)
+                    qlsrc3,                        & ! Liquid water source from condensation (kg kg-1 s-1)
+                    qisrc3,                        & ! Ice water source from condensation/freezing (kg kg-1 s-1)
+                                                     !==== Outputs required for SHOC and ADG PDF ====================
+                    mfw2,                          & ! Area-weighted vertical velocity squared (m2 s-2)
+                    mfw3,                          & ! Area-weighted vertical velocity cubed (m3 s-3)
+                    mfqt3,                         & ! Area-weighted updraft total water anomaly cubed (kg3 kg-3)
+                    mfhl3,                         & ! Area-weighted updraft liquid static energy anomaly cubed (K3)
+                    mfwqt,                         & ! Kinematic total water flux on midlevels (kg kg-1 m s-1)
+                    mfhlqt,                        & ! Updraft total water-temperature anomaly covariance (kg kg-1 K)
+                    mfwhl,                         & ! Kinematic static energy flux on midlevels (J kg-1 m s-1)
+                    mftke,                         & ! Updraft kinetic energy (m2 s-2)
+                    buoyf,                         & ! Updraft buoyancy flux (K m s-1)
+                    edmfmf,                        & ! Updraft mass flux (kg m s-1)
+                    dry_a3,                        & ! Dry updraft area fraction
+                    moist_a3,                      & ! Cloudy updraft area fraction
+                    dqrdt,                         & ! Liquid precipitation tendency
+                    dqsdt,                         & ! Frozen precipitation tendency
+                                                     !==== Diagnostic outputs - updraft properties ==================
+                    dry_w3,                        & ! Dry updraft mean vertical velocity (m s-1)
+                    moist_w3,                      & ! Cloudy updraft mean vertical velocity (m s-1)
+                    dry_qt3,                       & ! Dry updraft mean total water (kg kg-1)
+                    moist_qt3,                     & ! Cloudy updraft mean total water (kg kg-1)
+                    dry_thl3,                      & ! Dry updraft liquid water potential temperature (K)
+                    moist_thl3,                    & ! Cloudy updraft liquid water potential temperature (K)
+                    dry_u3,                        & ! Dry updraft mean u wind (m s-1)
+                    moist_u3,                      & ! Cloudy updraft mean u wind (m s-1)
+                    dry_v3,                        & ! Dry updraft mean v wind (m s-1)
+                    moist_v3,                      & ! Cloudy updraft mean v wind (m s-1)
+                    moist_qc3,                     & ! Cloudy updraft mean total condensate (kg kg-1)
+                    entx,                          & ! Mean fractional lateral mixing rate
+                    mfdepth,                       & ! Diagnostic updraft depth used in lateral mixing (m-1)
+                    edmf_plumes_w,                 & ! Individual updraft vertical velocities (m s-1)
+                    edmf_plumes_thl,               & ! Individual updraft liquid water potential temperatures (K)
+                    edmf_plumes_qt )                 ! Individual updraft total waters (kg kg-1)
 
 
    INTEGER, INTENT(IN) :: ITS,ITE,JTS,JTE,KTS,KTE
@@ -154,18 +154,21 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                                                              mfwqt,    &
                                                              mftke
 
-   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,&
-                                                        mfhlqt,dqrdt,dqsdt,ssrc3,qvsrc3,qlsrc3,qisrc3
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf, mfw2, mfw3,    &
+                                                           mfqt3, mfhl3, mfhlqt, &
+                                                           dqrdt, dqsdt, ssrc3,  &
+                                                           qvsrc3, qlsrc3, qisrc3
 
 
   ! Diagnostic outputs
-   REAL, DIMENSION(:,:), POINTER   :: mfdepth
-   REAL, DIMENSION(:,:,:), POINTER :: dry_w3,   moist_w3,   &
-                                      dry_qt3,  moist_qt3,  &
-                                      dry_thl3, moist_thl3, &
-                                      dry_u3,   moist_u3,   &
-                                      dry_v3,   moist_v3,   &
-                                      moist_qc3, entx
+   REAL, DIMENSION(:,:),     POINTER :: mfdepth
+   
+   REAL, DIMENSION(:,:,:),   POINTER :: dry_w3,   moist_w3,   &
+                                        dry_qt3,  moist_qt3,  &
+                                        dry_thl3, moist_thl3, &
+                                        dry_u3,   moist_u3,   &
+                                        dry_v3,   moist_v3,   &
+                                        moist_qc3, entx
 
    REAL, DIMENSION(:,:,:,:), POINTER :: EDMF_PLUMES_W,   &
                                         EDMF_PLUMES_THL, &
@@ -175,10 +178,11 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 !============= Local variables =============
 
    ! updraft properties
-   REAL,DIMENSION(KTS-1:KTE,1:MFPARAMS%NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI, &
-                                               UPA,UPU,UPV,UPTHV
+   REAL,DIMENSION(KTS-1:KTE,1:MFPARAMS%NUP) :: UPW, UPTHL, UPQT, &
+                                               UPQL, UPQI, UPA,  &
+                                               UPU, UPV, UPTHV
    ! entrainment variables
-   REAl,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENT,ENTf
+   REAl,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENT, ENTf
    INTEGER,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENTi
 
    INTEGER :: K,KTMP,I,IH,JH,NUP2
@@ -186,41 +190,39 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
            sigmaW,sigmaQT,sigmaTH,  &
            wmin,wmax,wlv,wtv,wp,    &
            B,QTn,THLn,THVn,QCn,QP,  &
-           Un,Vn,Wn2,EntEXP,EntEXPU,EntW,wf
-
-! internal flipped variables (GEOS5)
+           Un,Vn,Wn2,EntEXP,EntEXPU,&
+           EntW,wf, WTHL, WQT, PBLH
+   
+   ! internal flipped variables (GEOS)
    REAL,DIMENSION(KTS:KTE)   :: U,V,THL,QT,THV,QV,QL,QI,ZLO,QR,QS
    REAL,DIMENSION(KTS-1:KTE) :: ZW,P,THLI,QTI
    REAL,DIMENSION(KTS-1:KTE) :: UI, VI, QVI, QLI, QII
 
-! internal surface cont
-   REAL :: WTHL,WQT,PBLH
+   ! Updraft diagnostics
    REAL,DIMENSION(KTS-1:KTE) :: dry_a, moist_a,dry_w,moist_w,          &
                                 dry_qt,moist_qt,dry_thl,moist_thl,     &
                                 dry_u,moist_u,dry_v,moist_v, moist_qc
+
    REAL,DIMENSION(KTS-1:KTE) :: s_aw,s_aws,s_awqv,s_awql,s_awqi,s_awu,s_awv
    REAL,DIMENSION(KTS:KTE)   :: s_buoyf
    REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_ahl3,s_aqt2,  &
                                 s_ahlqt,s_awqt,s_ahl2,s_awhl,qte
-! exner function
    REAL,DIMENSION(KTS:KTE)   :: exf,dp,pmid,wcfac
-   REAL,DIMENSION(KTS-1:KTE) :: exfh
-   REAL,DIMENSION(KTS-1:KTE) :: rhoe
+   REAL,DIMENSION(KTS-1:KTE) :: exfh,rhoe
 
    ! temporary/dummy variables
    REAL :: tmp, tmp2
-
    
-   REAL :: L0,ztop,ltm,QTsrfF,THVsrfF,mft,mfthvt,mf,factor!,lts
+   REAL :: L0,ztop,ltm,QTsrfF,THVsrfF,mft,mfthvt,mf,factor
    INTEGER, DIMENSION(2) :: the_seed
 
    LOGICAL :: calc_avg_diag
 
 
 ! min values to avoid singularities
-   REAL,PARAMETER :: &
-       WSTARmin=1.e-3, &
-       PBLHmin=100.
+   REAL, PARAMETER ::    &
+       WSTARmin = 1.e-3, &
+       PBLHmin = 100.
 
    ! If any average diagnostics requested, perform required calculations,
    ! otherwise skip for efficiency
@@ -272,12 +274,10 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    edmfmf=0.
    dqrdt =0.
    dqsdt =0.
-   !      mfqt2 =0.
-   !      mfhl2 =0.
 
    if (associated(entx)) entx = mapl_undef
 
-   ! this is the environmental area - by default 1.
+   ! Initialize the environmental area. Updraft area will be subtracted below.
    ae3=1.
 
 
@@ -302,7 +302,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       end do
       tmp = tmp/tmp2  ! avg TKE
 
-      ! mass-flux if positive surface buoyancy flux and mean TKE below 100m exceeds threshold (for stability)
+      ! Activate mass-flux only if positive surface buoyancy flux
+      ! and mean TKE below 100m exceeds threshold (for stability)
       IF (wthv > 0.0 .and. tmp>0.05 .and. phis(IH,JH).lt.3e4) then
 
       nup2 = MFPARAMS%NUP
@@ -447,7 +448,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       wmax=sigmaW*MFPARAMS%pwmax
 
       ! Identify inversions below 1.5km, calculate stability in overlying 1km to define
-      ! dynamic pressure deceleration factor in w equation below.
+      ! a dynamic pressure deceleration factor in the updraft w equation below.
       wcfac = 0.
       tmp = 0.
       k = kts+1
@@ -860,9 +861,12 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
         end if
 
-        ! trisolver source terms due to condensation. assumes that condensation is responsible 
-        ! for any increase in condesate flux with height. ignores lateral mixing.
+        ! Trisolver source terms due to condensation. Assumes that condensation is responsible 
+        ! for any increase in condesate flux with height. Note this ignores lateral mixing,
+        ! which would imply a larger source term.
+        ! Tiny is added to prevent tiny negative condensate after the trisolver.
         tmp = max(0.,RHOE(K)*s_awql(K)-RHOE(K-1)*s_awql(K-1)) ! qlflx divergence
+        if (tmp.gt.0.) tmp = tmp+tiny(1.)
         qlsrc3(IH,JH,KTE+KTS-K) = tmp
         qvsrc3(IH,JH,KTE+KTS-K) = -1.*tmp
         ssrc3(IH,JH,KTE+KTS-K)  = tmp*MAPL_ALHL
@@ -1070,7 +1074,7 @@ real :: Tmax,Tmin
 
   Tmax=0.
   Tmin=Tmax-abs(iceramp)
-  Tw=T-273.16
+  Tw=T-mapl_celsius_to_kelvin
 
 ! water fraction
   IF (Tw>Tmax) THEN

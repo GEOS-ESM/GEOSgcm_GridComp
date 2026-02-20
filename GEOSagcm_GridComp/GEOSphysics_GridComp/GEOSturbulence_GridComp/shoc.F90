@@ -681,7 +681,7 @@ contains
 ! Reduction of mixing length in the stable regions (where B.-V. freq. > 0) is required.
 ! Here we find regions of Brunt-Vaisalla freq. > 0 for later use.
 
-            if (brunt(i,j,k) < 1e-5 .or. zl(i,j,k).lt.0.7*dryzpbl(i,j)) then
+            if (brunt(i,j,k) < 1e-5 .or. zl(i,j,k).lt.0.75*dryzpbl(i,j)) then
               brunt2(i,j,k) = bruntmin
             else
               brunt2(i,j,k) = brunt(i,j,K)
@@ -697,50 +697,48 @@ contains
       brunt2(:,:,nzm) = brunt2(:,:,nzm-1)
 
 
-!=========== Length scale calculations ===========
+      !=========== Length scale calculations ===========
+      ! Based on Eq. 10 in BK13 (Eq. 4.12 in Pete's dissertation)
       do k=1,nzm-1
         do j=1,ny
           do i=1,nx
 
              tkes = sqrt(tke(i,j,k))
 
-! Calculate turbulent length scale in the boundary layer.
-! See Eq. 10 in BK13 (Eq. 4.12 in Pete's dissertation)
+             !----------------------------------
+             ! calculate parcel mixing length
+             !----------------------------------
+             kk = k
+             wrk = thv(i,j,k)+0.2  ! upward T perturbation
+             do while (kk.lt.nzm .and. wrk .gt. thv(i,j,kk) )
+               kk = kk+1
+             end do
+             kk = kk-1
 
-          !----------------------------------
-          ! calculate parcel mixing length
-          !----------------------------------
-              kk = k
-              wrk = thv(i,j,k)+0.2  ! upward T perturbation
-              do while (kk.lt.nzm .and. wrk .gt. thv(i,j,kk) )
-                kk = kk+1
-              end do
-              kk = kk-1
-
-              if (abs(thv(i,j,kk+1)-thv(i,j,kk)).gt.0.01) then
-                 l_par(i,j,k) = zl(i,j,kk) + max(0.,(wrk-thv(i,j,kk))* &
-                                (zl(i,j,kk+1)-zl(i,j,kk)) / (thv(i,j,kk+1)-thv(i,j,kk)))
-              else
-                 l_par(i,j,k) = zl(i,j,kk)
-              end if
+             if (abs(thv(i,j,kk+1)-thv(i,j,kk)).gt.0.01) then
+                l_par(i,j,k) = zl(i,j,kk) + max(0.,(wrk-thv(i,j,kk))* &
+                               (zl(i,j,kk+1)-zl(i,j,kk)) / (thv(i,j,kk+1)-thv(i,j,kk)))
+             else
+                l_par(i,j,k) = zl(i,j,kk)
+             end if
               
-              kk = k
-              wrk = thv(i,j,k)-0.2  ! downward T perturbation
-              do while (kk .gt. 1 .and. wrk .lt. thv(i,j,kk))
-                kk = kk-1
-              end do
-              if ( kk.eq.1 .and. wrk.lt.thv(i,j,1) ) kk = kk-1
-              kk = kk+1
-              if (abs(thv(i,j,kk+1)-thv(i,j,kk)).gt.0.01) then
-                 l_par(i,j,k) = l_par(i,j,k) - zl(i,j,kk) + max(0.,(thv(i,j,kk)-wrk)* &
-                                (zl(i,j,kk+1)-zl(i,j,kk))/(thv(i,j,kk+1)-thv(i,j,kk)))
-              else
-                 l_par(i,j,k) = l_par(i,j,k) - zl(i,j,kk)
-              end if
-              l_par(i,j,k) = max(min(l_par(i,j,k),1500.),25.)  
+             kk = k
+             wrk = thv(i,j,k)-0.2  ! downward T perturbation
+             do while (kk .gt. 1 .and. wrk .lt. thv(i,j,kk))
+               kk = kk-1
+             end do
+             if ( kk.eq.1 .and. wrk.lt.thv(i,j,1) ) kk = kk-1
+             kk = kk+1
+             if (abs(thv(i,j,kk+1)-thv(i,j,kk)).gt.0.01) then
+                l_par(i,j,k) = l_par(i,j,k) - zl(i,j,kk) + max(0.,(thv(i,j,kk)-wrk)* &
+                               (zl(i,j,kk+1)-zl(i,j,kk))/(thv(i,j,kk+1)-thv(i,j,kk)))
+             else
+                l_par(i,j,k) = l_par(i,j,k) - zl(i,j,kk)
+             end if
+             l_par(i,j,k) = max(min(l_par(i,j,k),1500.),25.)  
 
 
-            if ( shocparams%LENOPT .lt. 4 ) then  ! SHOC-MF length scale
+             if ( shocparams%LENOPT .lt. 4 ) then
 
                  ! Surface length scale
                  smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
@@ -749,7 +747,11 @@ contains
                  ! Turbulent length scale
                  smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2
 
-                 ! Stability length scale, within dry CBL or SBL, or in free atmosphere
+                 ! Stability length scale
+                 ! Reduce sensitivity to stability within dry CBL or SBL,
+                 ! but retain full sensitivity in free atmosphere. This is
+                 ! a 'kludge' to increase TKE in stable BLs while suppressing
+                 ! it in cumulus layers.
                  if ( zl(i,j,k).lt.0.75*dryzpbl(i,j) .or. zl(i,j,k).lt.500. ) then
                     smixt3(i,j,k) = max(0.05,tkes)*4.*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
                  else
@@ -779,7 +781,8 @@ contains
               smixt3(i,j,k) = 3.3*shocparams%LENFAC1*vonk*zl(i,j,k)
            end if
 
-           ! Enforce minimum and maximum length scales
+           ! Enforce minimum and maximum length scales, and reduce final
+           ! length scale exponentially with height above the dry CBL.
            smixt(i,j,k) = min(max_eddy_length_scale,max(min_eddy_length_scale,smixt(i,j,k)))
            if (zl(i,j,k).gt.dryzpbl(i,j)) smixt(i,j,k) = smixt(i,j,k)*(0.025+0.975*exp(-(zl(i,j,k)-dryzpbl(i,j))/3000.))
         end do
@@ -789,10 +792,8 @@ contains
     smixt1(:,:,nzm) = smixt1(:,:,nzm-1)
     smixt2(:,:,nzm) = smixt2(:,:,nzm-1)
     smixt3(:,:,nzm) = smixt3(:,:,nzm-1)
-    
 
   end subroutine eddy_length
-
 
  end subroutine run_shoc
 
@@ -886,28 +887,9 @@ contains
     real, dimension(IM,JM) :: wrk1, wrk2, wrk3
     real, dimension(IM,JM) :: sm, onemmf
     real, dimension(IM,JM,0:LM) :: qt2prod_edge, &
-                                   qt2prod_edge_nomf, &
                                    hl2_edge, &
-                                   hl2_edge_nomf, &
-                                   wqt_edge, &
-                                   whl_edge, &
                                    hlqt_edge,&
                                    qtgrad
-    real, dimension(IM,JM,LM) :: adzl, bet, whl_can
-!======= Canuto variables
-!    integer i, j, kb, kc, km1
-!    real bet2,   f0,     f1,  f2,    f3,   f4,  f5,  iso, isosqr,             &
-!         omega0,  omega1, omega2, X0,  Y0,    X1,   Y1,  AA0, AA1, buoy_sgs2, &
-!         thedz,   thedz2, cond,   wrk, avew, wrk1b, wrk2b, wrk3b, dum
-! See Eq. 7 in C01 (B.7 in Pete's dissertation)
-!    real, parameter :: c=7.0, a0=0.52/(c*c*(c-2.)), a1=0.87/(c*c),      &
-!                       a2=0.5/c, a3=0.6/(c*(c-2.)), a4=2.4/(3.*c+5.),   &
-!                       a5=0.6/(c*(3.*c+5))
-!========
-
-!    bet = ggr/300.
-
-    whl_edge(:,:,LM)  = SH(:,:)/cp ! used only for Canuto below
 
 
     ! Initial calculations on edges
@@ -919,21 +901,19 @@ contains
 
         ! SGS vertical flux liquid/ice water static energy. Eq 1 in BK13
         wrk1            = HL(:,:,k) - HL(:,:,k+1)
-        whl_edge(:,:,k) = - wrk3 * wrk1
 
         ! Second moment of liquid/ice water static energy. Eq 4 in BK13
-        hl2_edge_nomf(:,:,k) = HL2TUNE * sm * wrk1 * wrk1
         hl2_edge(:,:,k) = HL2TUNE * 0.5*ISOTROPY(:,:,k) * (wrk3*wrk1-MFWHL(:,:,k)) &
                           * min(0.01,wrk1/(ZL(:,:,k)-ZL(:,:,k+1))) ! limit gradient to 1K/100m
 
         ! Total water gradient
+        ! Here we limit very large negative gradients to 20%/100m
+        ! to avoid excessive QT2 production in stratocumulus layers.
         wrk2 = (QT(:,:,k) - QT(:,:,k+1))
-        qtgrad(:,:,k)   = max(-0.002*qt(:,:,k+1),wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))) ! limit negative gradient to 20%/100m
-!        qtgrad(:,:,k)   = wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))
+        qtgrad(:,:,k)   = max(-0.002*qt(:,:,k+1),wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))) 
 
         ! Mean gradient production of total water variance, with and without MF contribution
         qt2prod_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-0.*WQT_DC(:,:,k))*qtgrad(:,:,k)
-        qt2prod_edge_nomf(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k))*qtgrad(:,:,k)
 
         ! Covariance of total water mixing ratio and liquid/ice water static energy.  Eq 5 in BK13
         hlqt_edge(:,:,k) = HLQT2TUNE * sm * wrk1 * wrk2
@@ -941,9 +921,7 @@ contains
 
     ! set lower boundary conditions
     hl2_edge(:,:,LM)  = hl2_edge(:,:,LM-1)
-    hl2_edge_nomf(:,:,LM)  = hl2_edge_nomf(:,:,LM-1)
     qt2prod_edge(:,:,LM)  = qt2prod_edge(:,:,LM-1)
-    qt2prod_edge_nomf(:,:,LM)  = qt2prod_edge_nomf(:,:,LM-1)
     hlqt_edge(:,:,LM) = hlqt_edge(:,:,LM-1)
 
 
@@ -964,7 +942,8 @@ contains
 
         wrk1 = 0.5*(qt2prod_edge(:,:,kd)+qt2prod_edge(:,:,ku))
         if (DOPROGQT2 /= 0) then
-!           where (kh(:,:,k).lt.1. .and. mffrc(:,:,k).lt.1e-4)
+           ! Above the PBL, relax prognostic QT std dev to a specified fraction
+           ! of the mean total water.
            where (zl(:,:,k).gt.zpbl+500. .and. mffrc(:,:,k).lt.1e-4)
               wrk2 = (wrk3*qt(:,:,k))**2
            elsewhere
@@ -977,11 +956,9 @@ contains
 
         hlqt(:,:,k) = onemmf*0.5*( hlqt_edge(:,:,kd) + hlqt_edge(:,:,ku) ) + MFHLQT(:,:,k)
 
-        whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku)) + 0.5*( mfwhl(:,:,kd) + mfwhl(:,:,ku) )
-
         ! Restrict QT variance, 2-25% of total water.
         qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
-
+        ! Restrict HL variance
         hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
 
         ! Ensure realizibility

@@ -282,7 +282,7 @@ contains
 
 ! !IMPORT STATE:
      call MAPL_AddImportSpec(GC,                             &
-        LONG_NAME          = 'surface geopotential height',       &
+        LONG_NAME          = 'surface geopotential',       &
         UNITS              = 'm+2 s-2',                           &
         SHORT_NAME         = 'PHIS',                              &
         DIMS               = MAPL_DimsHorzOnly,                   &
@@ -3741,7 +3741,7 @@ end if
 !===============================================================
     call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
-! Initialize EDMF output variables needed for update_moments
+! Initialize EDMF output variables
     mfsl2  = 0.0
     mfslqt = 0.0
     mfqt2  = 0.0
