@@ -178,6 +178,15 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
+    ice_fraction_in_convective_tower: Quantity = dataclasses.field(
+        metadata={
+            "name": "ice_fraction_in_convective_tower",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     p_interface_timestep_start: Quantity = dataclasses.field(
         metadata={
             "name": "p_interface_timestep_start",
@@ -331,6 +340,15 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
+    convective_rainwater_source: Quantity = dataclasses.field(
+        metadata={
+            "name": "convective_rainwater_source",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     sensible_heat_flux: Quantity = dataclasses.field(
         metadata={
             "name": "sensible_heat_flux",
@@ -340,9 +358,45 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    total_water_flux_deep_convection: Quantity = dataclasses.field(
+    total_water_flux_deep_convection_interface: Quantity = dataclasses.field(
         metadata={
-            "name": "total_water_flux_deep_convection",
+            "name": "total_water_flux_deep_convection_interface",
+            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    sublimation_of_convective_precipitation: Quantity = dataclasses.field(
+        metadata={
+            "name": "sublimation_of_convective_precipitation",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    evaporation_of_convective_precipitation: Quantity = dataclasses.field(
+        metadata={
+            "name": "evaporation_of_convective_precipitation",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    ice_precip_flux_interface: Quantity = dataclasses.field(
+        metadata={
+            "name": "ice_precip_flux_interface",
+            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    liquid_precip_flux_interface: Quantity = dataclasses.field(
+        metadata={
+            "name": "liquid_precip_flux_interface",
             "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
             "units": "?",
             "intent": "?",
@@ -421,9 +475,9 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    updraft_area_fraction: Quantity = dataclasses.field(
+    updraft_areal_fraction: Quantity = dataclasses.field(
         metadata={
-            "name": "updraft_area_fraction",
+            "name": "updraft_areal_fraction",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -565,6 +619,33 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
+    dliquiddt_deep_convection: Quantity = dataclasses.field(
+        metadata={
+            "name": "dliquiddt_deep_convection",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    dicedt_deep_convection: Quantity = dataclasses.field(
+        metadata={
+            "name": "dicedt_deep_convection",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    dcloudfractiondt_deep_convection: Quantity = dataclasses.field(
+        metadata={
+            "name": "dcloudfractiondt_deep_convection",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     pressure_shallow_convective_cloud_top: Quantity = dataclasses.field(
         metadata={
             "name": "pressure_shallow_convective_cloud_top",
@@ -592,9 +673,9 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
-    mass_flux_shalow: Quantity = dataclasses.field(
+    mass_flux_shallow: Quantity = dataclasses.field(
         metadata={
-            "name": "mass_flux_shalow",
+            "name": "mass_flux_shallow",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -677,6 +758,24 @@ class GF2020State(State):
         metadata={
             "name": "mass_flux_cloud_base_deep",
             "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    total_cumulative_mass_flux_interface: Quantity = dataclasses.field(
+        metadata={
+            "name": "total_cumulative_mass_flux_interface",
+            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    total_detraining_mass_flux: Quantity = dataclasses.field(
+        metadata={
+            "name": "total_detraining_mass_flux",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

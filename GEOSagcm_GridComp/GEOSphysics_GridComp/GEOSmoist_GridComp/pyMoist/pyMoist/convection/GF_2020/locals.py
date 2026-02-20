@@ -364,15 +364,6 @@ class GF2020Locals(State):
             "dtype": Int,
         }
     )
-    total_dbuoyancydt: Quantity = dataclasses.field(
-        metadata={
-            "name": "total_dbuoyancydt",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
     fix_out_vapor: Quantity = dataclasses.field(
         metadata={
             "name": "fix_out_vapor",
@@ -457,15 +448,6 @@ class GF2020Locals(State):
     buoyancy_excess: Quantity = dataclasses.field(
         metadata={
             "name": "buoyancy_excess",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    vapor_current: Quantity = dataclasses.field(
-        metadata={
-            "name": "vapor_current",
             "dims": [X_DIM, Y_DIM, Z_DIM],
             "units": "?",
             "intent": "?",
@@ -625,6 +607,15 @@ class GF2020Locals(State):
             "dtype": Float,
         }
     )
+    dbuoyancydt: Quantity = dataclasses.field(
+        metadata={
+            "name": "dbuoyancydt",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
     dconvection_tracersdt: Quantity = dataclasses.field(
         metadata={
             "name": "dconvection_tracersdt",
@@ -647,6 +638,15 @@ class GF2020Locals(State):
         metadata={
             "name": "convective_precip_flux",
             "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    precip: Quantity = dataclasses.field(
+        metadata={
+            "name": "precip",
+            "dims": [X_DIM, Y_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

@@ -39,6 +39,7 @@ from .translate_compute_uwshcu import TranslateComputeUwshcuInv
 
 
 # GF_2020
+from .convection.GF_2020.translate_GF2020 import TranslateGF2020
 from .convection.GF_2020.translate_GF2020_Setup import (
     TranslateGF2020_Setup,
 )
@@ -346,4 +347,7 @@ from .convection.GF_2020.cumulus_parameterization.convection_tracers.translate_G
     TranslateGF2020_CumulusParameterization_AtmosphericComposition_deep,
     TranslateGF2020_CumulusParameterization_AtmosphericComposition_mid,
     TranslateGF2020_CumulusParameterization_AtmosphericComposition_shallow,
+)
+from .convection.GF_2020.translate_GF2020_Finalize import (
+    TranslateGF2020_Finalize,
 )
