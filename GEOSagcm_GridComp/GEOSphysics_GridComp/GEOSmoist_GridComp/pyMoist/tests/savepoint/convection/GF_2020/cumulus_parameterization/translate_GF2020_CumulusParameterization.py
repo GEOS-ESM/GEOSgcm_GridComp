@@ -375,10 +375,11 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
                 quantity_factory=self.quantity_factory,
                 config=config,
                 cumulus_parameterization_config=cumulus_parameterization_config,
+                saturation_tables=saturation_tables,
             )
 
             # call the test subject
-            code(state, saturation_tables, convection_tracers)
+            code(state, convection_tracers)
 
             # collapse plume dim for chemistry_tracers_output
             # NOTE ideally this has no numpy dependency

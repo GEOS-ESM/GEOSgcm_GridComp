@@ -123,8 +123,12 @@ class GF2020CumulusParameterization(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
+        saturation_tables: SaturationVaporPressureTable,
     ):
         super().__init__(stencil_factory)
+
+        # make saturation tables visible at runtime
+        self.saturation_tables = saturation_tables
 
         # get config from the rest of the model
         self.config = config
@@ -565,7 +569,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
     def __call__(
         self,
         state: GF2020CumulusParameterizationState,
-        saturation_tables: SaturationVaporPressureTable,
         convection_tracers: ConvectionTracers,
     ):
         if self.cumulus_parameterization_config.PLUME_ORDER == 0:
