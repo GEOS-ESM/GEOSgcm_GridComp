@@ -608,10 +608,10 @@ def set_2d_fields(
             grid_length = 100000.0
 
         # flip pbl_level
-        if pbl_level != 0.0:
-            pbl_level = k_end - int(round(pbl_level))
+        if pbl_level != -1.0:
+            pbl_level_flipped = k_end - int(round(pbl_level))
         else:
-            pbl_level = 0
+            pbl_level_flipped = 0
 
 
 def choose_environment_and_flip_k_axis(
@@ -1230,7 +1230,11 @@ class GF2020Setup:
     """
 
     def __init__(
-        self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, config: GF2020Config, saturation_tables: SaturationVaporPressureTable
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        config: GF2020Config,
+        saturation_tables: SaturationVaporPressureTable,
     ):
         # make inputs visible at runtime
         self.stencil_factory = stencil_factory

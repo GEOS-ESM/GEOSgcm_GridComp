@@ -190,7 +190,7 @@ class TranslateGF2020(TranslateFortranData2Py):
         ]
         state.geopotential_height_surface.field[:] = inputs["geopotential_height_surface_bugworkaroundname"]
         state.area.field[:] = inputs["area_bugworkaroundname"]
-        state.pbl_level.field[:] = inputs["pbl_level_bugworkaroundname"] + 1
+        state.pbl_level.field[:] = inputs["pbl_level_bugworkaroundname"] - 1
         state.convection_fraction.field[:] = inputs["convection_fraction_bugworkaroundname"]
         state.surface_type.field[:] = inputs["surface_type_bugworkaroundname"]
         state.seed_convection.field[:] = inputs["seed_convection_bugworkaroundname"]
@@ -389,12 +389,12 @@ class TranslateGF2020(TranslateFortranData2Py):
             "convection_code_shallow_bugworkaroundname": state.convection_code_shallow.field[:],
             "convection_code_mid_bugworkaroundname": state.convection_code_mid.field[:],
             "convection_code_deep_bugworkaroundname": state.convection_code_deep.field[:],
-            "cloud_workfunction0_bugworkaroundname": state.cloud_workfunction_0.field[:],
-            "cloud_workfunction1_bugworkaroundname": state.cloud_workfunction_1.field[:],
-            "cloud_workfunction2_bugworkaroundname": state.cloud_workfunction_2.field[:],
-            "cloud_workfunction3_bugworkaroundname": state.cloud_workfunction_3.field[:],
-            "cloud_workfunction1_pbl_bugworkaroundname": state.cloud_workfunction_1_pbl.field[:],
-            "cloud_workfunction1_cin_bugworkaroundname": state.cloud_workfunction_1_cin.field[:],
+            "cloud_workfunction_0_bugworkaroundname": state.cloud_workfunction_0.field[:],
+            "cloud_workfunction_1_bugworkaroundname": state.cloud_workfunction_1.field[:],
+            "cloud_workfunction_2_bugworkaroundname": state.cloud_workfunction_2.field[:],
+            "cloud_workfunction_3_bugworkaroundname": state.cloud_workfunction_3.field[:],
+            "cloud_workfunction_1_pbl_bugworkaroundname": state.cloud_workfunction_1_pbl.field[:],
+            "cloud_workfunction_1_cin_bugworkaroundname": state.cloud_workfunction_1_cin.field[:],
             "pbl_time_scale_bugworkaroundname": state.pbl_time_scale.field[:],
             "cape_removal_time_scale_bugworkaroundname": state.cape_removal_time_scale.field[:],
             "lighting_density_bugworkaroundname": state.lightning_density.field[:],
