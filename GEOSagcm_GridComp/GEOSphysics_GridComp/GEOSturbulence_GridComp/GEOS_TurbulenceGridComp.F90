@@ -1827,9 +1827,18 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'boundary_layer_height_from_refractivity_gradient',      &
+       LONG_NAME  = 'lower_boundary_layer_height_from_refractivity_gradient',&
        SHORT_NAME = 'ZPBLRFRCT',                                             &
        UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'refractivity_pbl_height_quality_parameter',             &
+       SHORT_NAME = 'ZPBLRFRCTQP',                                           &
+       UNITS      = '1',                                                     &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
@@ -3043,6 +3052,7 @@ end if
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
      real, dimension(:,:  ), pointer     :: ZPBLQV => null()
      real, dimension(:,:  ), pointer     :: ZPBLRFRCT => null()
+     real, dimension(:,:  ), pointer     :: ZPBLRFRCTQP => null()
      real, dimension(:,:  ), pointer     :: ZPBLATBTHRESH => null()
      real, dimension(:,:  ), pointer     :: ZPBLATBGRAD => null()
      real, dimension(:,:  ), pointer     :: ZPBLATBSFC => null()
@@ -3103,7 +3113,7 @@ end if
      real                                :: PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
      real                                :: SMTH_HGT
-     integer                             :: I,J,L,LOCK_ON,ITER
+     integer                             :: I,J,L,LOCK_ON,LBOT,KMIN,KMIN2,ITER
      integer                             :: KPBLMIN,PBLHT_OPTION
 
      ! SCM idealized surface-layer parameters
@@ -3374,7 +3384,9 @@ end if
      VERIFY_(STATUS)     
      call MAPL_GetPointer(EXPORT,    ZPBLQV,  'ZPBLQV',             RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLRFRCT, 'ZPBLRFRCT',        RC=STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLRFRCT, 'ZPBLRFRCT', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLRFRCTQP, 'ZPBLRFRCTQP', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLATBTHRESH, 'ZPBLATBTHRESH', RC=STATUS)
      VERIFY_(STATUS)
@@ -4822,16 +4834,54 @@ end if
       dum3d(:,:,LM) = (WVP(:,:,LM-1)-WVP(:,:,LM)) / (Z(:,:,LM-1)-Z(:,:,LM))
       tmp3d = tmp3d + (a2/T**2)*dum3d
 
-      ! ZPBL is height of minimum in refractivity (tmp3d)                                                       
+      ! ZPBL is height of minimum in refractivity (tmp3d)
+      DZ = ZLE(:,:,0:LM-1)-ZLE(:,:,1:LM)
+
       do I = 1,IM
         do J = 1,JM
-          K = MINLOC(tmp3d(I,J,:),DIM=1,BACK=.TRUE.)   ! return last index, if multiple                         
-          ZPBLRFRCT(I,J) = Z(I,J,K)
+          LTOP = LM
+          do while (Z(I,J,LTOP).lt.6000.) ! exclude levels above 6 km
+             LTOP = LTOP-1
+          end do
+          LBOT = LM
+          !do while (Z(I,J,LBOT).lt.300.)  ! exclude levels below 300 m
+          !   LBOT = LBOT-1
+          !end do
+          KMIN = LTOP-1+MINLOC(tmp3d(I,J,LTOP:LBOT),DIM=1,BACK=.TRUE.)   ! return last index, if multiple
+          ZPBLRFRCT(I,J) = Z(I,J,KMIN)
+
+          ! Sharpness parameter: PBL top gradient divided by RMS gradients below 6 km
+          tmp1 = SQRT(SUM(tmp3d(I,J,LTOP:LBOT)**2)/FLOAT(LBOT-LTOP+1))
+          ZPBLRFRCTQP(I,J) = -1.*tmp3d(I,J,KMIN)/tmp1
+
+          K = LBOT
+          KMIN2 = 2   ! index for secondary minimum
+
+          tmp1 = SUM(DZ(I,J,LTOP:LBOT)*tmp3d(I,J,LTOP:LBOT))/SUM(DZ(I,J,LTOP:LBOT))  ! avg gradient below 6 km
+
+          do while (K.gt.LTOP)
+            if (tmp3d(I,J,K).lt.tmp3d(I,J,K+1) .and. tmp3d(I,J,K).lt.tmp3d(I,J,K-1) .and. & ! if local minimum...
+                tmp3d(I,J,K).lt.(0.25*tmp3d(I,J,KMIN)+0.75*tmp1) .and. &                    ! exceeds threshold...
+                K.ne.KMIN .and. &                                                           ! is not the overall minimum...
+                tmp3d(I,J,K).lt.tmp3d(I,J,KMIN2) ) then                                     ! and exceeds any previous local minimum
+               KMIN2 = K                                                                    ! then set as new secondary minimum
+            end if
+            K = K-1
+          end do
+          if (KMIN2.eq.2) then   ! no 2nd minimum was found
+            ZPBLRFRCT(I,J) = Z(I,J,KMIN)
+          else
+            if (KMIN2.gt.KMIN) then              ! if 2nd minimum below primary, set as LOW
+              ZPBLRFRCT(I,J) = Z(I,J,KMIN2)
+            else                                 ! if above primary, set as HGH
+              ZPBLRFRCT(I,J) = Z(I,J,KMIN)
+            end if
+          end if
+
         end do
       end do
 
-    end if  ! ZPBLRFRCT 
-
+    end if  ! ZPBLRFRCT
 
       ! ATB-based PBLH using threshold algorithm
       if (associated(ZPBLATBTHRESH)) then
