@@ -396,8 +396,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data STOCHASTIC_CNV=STOCHASTIC_CNV STOCH_TOP=STOCH_TOP STOCH_BOT=STOCH_BOT GF_MIN_AREA=GF_MIN_AREA
     !$ser data DT_MOIST=GF_DT GF_ENV_SETTING=SER_VAR_1 ENTRVERSION=ENTRVERSION LHYDROSTATIC=LHYDROSTATIC
     !$ser data CONVECTION_TRACER=CONVECTION_TRACER C1=C1 ADV_TRIGGER=ADV_TRIGGER AUTOCONV=AUTOCONV
-    !$ser data USE_TRACER_TRANSPORT=USE_TRACER_TRANSP SCLM_DEEP=SCLM_DEEP FIX_CNV_CLOUD=FIX_CNV_CLOUD
-    !$ser data APPLY_SUBSIDENCE_MICROPHYSICS=APPLY_SUB_MP
+    !$ser data USE_TRACER_TRANSPORT=USE_TRACER_TRANSP SCLM_DEEP=SCLM_DEEP FIX_CONVECTIVE_CLOUD=FIX_CNV_CLOUD
+    !$ser data APPLY_SUBSIDENCE_MICROPHYSICS=APPLY_SUB_MP USE_MOMENTUM_TRANSPORT=USE_MOMENTUM_TRANSP
     !$ser verbatim SER_VAR_1=size(CNV_Tracers)
     !$ser data NUMBER_OF_TRACERS=SER_VAR_1
 
@@ -594,38 +594,103 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        TMP2D = AREA
     endif
 
-   !  !$ser savepoint GF2020_Setup-In
-   !  !$ser data latitude=LATS longitude=LONS
-   !  !$ser data p_interface=PLE t=T u=U v=V w=W omega=OMEGA t_2m=T2M specific_humidity_2m=Q2M t_surface=TA
-   !  !$ser data specific_humidity_surface=QA vapor=Q convective_liquid=QLCN convective_ice=QICN
-   !  !$ser data convective_cloud_fraction=CLCN large_scale_liquid=QLLS large_scale_ice=QILS
-   !  !$ser data large_scale_cloud_fraction=CLLS p_interface_timestep_start=PLE_DYN_IN
-   !  !$ser data t_timestep_start=T_DYN_IN u_timestep_start=U_DYN_IN v_timestep_start=V_DYN_IN
-   !  !$ser data vapor_timestep_start=QV_DYN_IN geopotential_height_interface=ZLE
-   !  !$ser data geopotential_height_surface=PHIS area=AREA pbl_level=KPBL convection_fraction=CNV_FRC
-   !  !$ser data surface_type=SRF_TYPE land_fraction=FRLAND scalar_diffusivity=KH buoyancy=BYNCY
-   !  !$ser data convective_precipitation_GF=CNPCPRATE convective_precipitation_RAS=CNV_PRC3
-   !  !$ser data sensible_heat_flux=SH total_water_flux_deep_convection=WQT_DC evaporation=EVAP
-   !  !$ser data convective_condensate_source=CNV_DQCDT convective_condensate_grid_mean=CNV_QC
-   !  !$ser data entrainment_parameter=ENTLAM lateral_entrainment_rate=ENTR
-   !  !$ser data lateral_entrainment_rate_shallow=ENTR_SH lateral_entrainment_rate_mid=ENTR_MD
-   !  !$ser data lateral_entrainment_rate_deep=ENTR_DP updraft_area_fraction=CNV_UPDF
-   !  !$ser data updraft_vertical_velocity=CNV_CVW dtdt_shortwave=RADSW dtdt_longwave=RADLW
-   !  !$ser data dspecific_humiditydt_pbl=DQDT_BL dtdt_pbl=DTDT_BL dtdt_from_dynamics=DTDTDYN
-   !  !$ser data dvapordt_from_dynamics=DQVDTDYN sigma_mid=SIGMA_MID sigma_deep=SIGMA_DEEP
-   !  !$ser data total_precipitable_water_initial=TPWI saturation_total_precipitable_water_initial=TPWI_star
-   !  !$ser data dvapordt_deep_convection=DQVDT_DC dtdt_deep_convection=DTDT_DC dudt_deep_convection=DUDT_DC
-   !  !$ser data dvdt_deep_convection=DVDT_DC pressure_shallow_convective_cloud_top=CNV_TOPP_SH
-   !  !$ser data pressure_mid_convective_cloud_top=CNV_TOPP_MD pressure_deep_convective_cloud_top=CNV_TOPP_DP
-   !  !$ser data mass_flux_shalow=MUPSH mass_flux_mid=MUPMD mass_flux_deep_updraft=MUPDP
-   !  !$ser data mass_flux_deep_updraft_interface=UMF_DC mass_flux_deep_updraft_detrained=MFD_DC
-   !  !$ser data mass_flux_deep_downdraft=MDNDP mass_flux_cloud_base=CNV_MF0 mass_flux_cloud_base_shallow=MFSH
-   !  !$ser data mass_flux_cloud_base_mid=MFMD mass_flux_cloud_base_deep=MFDP
-   !  !$ser data convection_code_shallow=ERRSH convection_code_mid=ERRMD convection_code_deep=ERRDP
-   !  !$ser data cloud_work_function_0=AA0 cloud_work_function_1=AA1 cloud_work_function_2=AA2
-   !  !$ser data cloud_work_function_3=AA3 cloud_work_function_1_pbl=AA1_BL
-   !  !$ser data cloud_work_function_1_cin=AA1_CIN pbl_time_scale=TAU_BL
-   !  !$ser data cape_removal_time_scale=TAU_EC lighting_density=LFR_GF convection_tracer=CNV_TR
+    ! NOTE this savepoint is also used as GF2020_Setup-In
+    !$ser savepoint GF2020-In
+    !$ser data latitude_bugworkaroundname=LATS
+    !$ser data longitude_bugworkaroundname=LONS
+    !$ser data p_interface_bugworkaroundname=PLE
+    !$ser data t_bugworkaroundname=T
+    !$ser data u_bugworkaroundname=U
+    !$ser data v_bugworkaroundname=V
+    !$ser data w_bugworkaroundname=W
+    !$ser data omega_bugworkaroundname=OMEGA
+    !$ser data t_2m_bugworkaroundname=T2M
+    !$ser data specific_humidity_2m_bugworkaroundname=Q2M
+    !$ser data t_surface_bugworkaroundname=TA
+    !$ser data specific_humidity_surface_bugworkaroundname=QA
+    !$ser data vapor_bugworkaroundname=Q
+    !$ser data convective_liquid_bugworkaroundname=QLCN
+    !$ser data convective_ice_bugworkaroundname=QICN
+    !$ser data convective_cloud_fraction_bugworkaroundname=CLCN
+    !$ser data large_scale_liquid_bugworkaroundname=QLLS
+    !$ser data large_scale_ice_bugworkaroundname=QILS
+    !$ser data large_scale_cloud_fraction_bugworkaroundname=CLLS
+    !$ser data p_interface_timestep_start_bugworkaroundname=PLE_DYN_IN
+    !$ser data t_timestep_start_bugworkaroundname=T_DYN_IN
+    !$ser data u_timestep_start_bugworkaroundname=U_DYN_IN
+    !$ser data v_timestep_start_bugworkaroundname=V_DYN_IN
+    !$ser data vapor_timestep_start_bugworkaroundname=QV_DYN_IN
+    !$ser data geopotential_height_interface_bugworkaroundname=ZLE
+    !$ser data geopotential_height_surface_bugworkaroundname=PHIS
+    !$ser data area_bugworkaroundname=AREA
+    !$ser data pbl_level_bugworkaroundname=KPBL
+    !$ser data convection_fraction_bugworkaroundname=CNV_FRC
+    !$ser data surface_type_bugworkaroundname=SRF_TYPE
+    !$ser data seed_convection_bugworkaroundname=SEEDCNV
+    !$ser data land_fraction_bugworkaroundname=FRLAND
+    !$ser data scalar_diffusivity_bugworkaroundname=KH
+    !$ser data buoyancy_bugworkaroundname=BYNCY
+    !$ser data convective_precipitation_GF_bugworkaroundname=CNPCPRATE
+    !$ser data convective_precipitation_RAS_bugworkaroundname=CNV_PRC3
+    !$ser data sensible_heat_flux_bugworkaroundname=SH
+    !$ser data total_water_flux_deep_convection_interface_bugworkaroundname=WQT_DC
+    !$ser data evaporation_bugworkaroundname=EVAP
+    !$ser data sublimation_of_convective_precipitation_bugworkaroundname=RSU_CN
+    !$ser data evaporation_of_convective_precipitation_bugworkaroundname=REV_CN
+    !$ser data ice_precip_flux_interface_bugworkaroundname=PFI_CN
+    !$ser data liquid_precip_flux_interface_bugworkaroundname=PFL_CN
+    !$ser data convective_condensate_source_bugworkaroundname=CNV_DQCDT
+    !$ser data convective_condensate_grid_mean_bugworkaroundname=CNV_QC
+    !$ser data entrainment_parameter_bugworkaroundname=ENTLAM
+    !$ser data lateral_entrainment_rate_bugworkaroundname=ENTR
+    !$ser data lateral_entrainment_rate_shallow_bugworkaroundname=ENTR_SH
+    !$ser data lateral_entrainment_rate_mid_bugworkaroundname=ENTR_MD
+    !$ser data lateral_entrainment_rate_deep_bugworkaroundname=ENTR_DP
+    !$ser data updraft_areal_fraction_bugworkaroundname=CNV_UPDF
+    !$ser data updraft_vertical_velocity_bugworkaroundname=CNV_CVW
+    !$ser data dtdt_shortwave_bugworkaroundname=RADSW
+    !$ser data dtdt_longwave_bugworkaroundname=RADLW
+    !$ser data dspecific_humiditydt_pbl_bugworkaroundname=DQDT_BL
+    !$ser data dtdt_pbl_bugworkaroundname=DTDT_BL
+    !$ser data dtdt_from_dynamics_bugworkaroundname=DTDTDYN
+    !$ser data dvapordt_from_dynamics_bugworkaroundname=DQVDTDYN
+    !$ser data sigma_mid_bugworkaroundname=SIGMA_MID
+    !$ser data sigma_deep_bugworkaroundname=SIGMA_DEEP
+    !$ser data total_precipitable_water_initial_bugworkaroundname=TPWI
+    !$ser data saturation_total_precipitable_water_initial_bugworkaroundname=TPWI_star
+    !$ser data dvapordt_deep_convection_bugworkaroundname=DQVDT_DC
+    !$ser data dtdt_deep_convection_bugworkaroundname=DTDT_DC
+    !$ser data dudt_deep_convection_bugworkaroundname=DUDT_DC
+    !$ser data dvdt_deep_convection_bugworkaroundname=DVDT_DC
+    !$ser data dliquiddt_deep_convection_bugworkaroundname=DQLDT_DC
+    !$ser data dicedt_deep_convection_bugworkaroundname=DQIDT_DC
+    !$ser data dcloudfractiondt_deep_convection_bugworkaroundname=DQADT_DC
+    !$ser data pressure_shallow_convective_cloud_top_bugworkaroundname=CNV_TOPP_SH
+    !$ser data pressure_mid_convective_cloud_top_bugworkaroundname=CNV_TOPP_MD
+    !$ser data pressure_deep_convective_cloud_top_bugworkaroundname=CNV_TOPP_DP
+    !$ser data mass_flux_shallow_bugworkaroundname=MUPSH
+    !$ser data mass_flux_mid_bugworkaroundname=MUPMD
+    !$ser data mass_flux_deep_updraft_bugworkaroundname=MUPDP
+    !$ser data mass_flux_deep_updraft_interface_bugworkaroundname=UMF_DC
+    !$ser data mass_flux_deep_updraft_detrained_bugworkaroundname=MFD_DC
+    !$ser data mass_flux_deep_downdraft_bugworkaroundname=MDNDP
+    !$ser data mass_flux_cloud_base_bugworkaroundname=CNV_MF0
+    !$ser data mass_flux_cloud_base_shallow_bugworkaroundname=MFSH
+    !$ser data mass_flux_cloud_base_mid_bugworkaroundname=MFMD
+    !$ser data mass_flux_cloud_base_deep_bugworkaroundname=MFDP
+    !$ser data convection_code_shallow_bugworkaroundname=ERRSH
+    !$ser data convection_code_mid_bugworkaroundname=ERRMD
+    !$ser data convection_code_deep_bugworkaroundname=ERRDP
+    !$ser data cloud_workfunction_0_bugworkaroundname=AA0
+    !$ser data cloud_workfunction_1_bugworkaroundname=AA1
+    !$ser data cloud_workfunction_2_bugworkaroundname=AA2
+    !$ser data cloud_workfunction_3_bugworkaroundname=AA3
+    !$ser data cloud_workfunction_1_pbl_bugworkaroundname=AA1_BL
+    !$ser data cloud_workfunction_1_cin_bugworkaroundname=AA1_CIN
+    !$ser data pbl_time_scale_bugworkaroundname=TAU_BL
+    !$ser data cape_removal_time_scale_bugworkaroundname=TAU_EC
+    !$ser data lighting_density_bugworkaroundname=LFR_GF
+    !$ser data convection_tracer_bugworkaroundname=CNV_TR
    
     IF (USE_GF2020==1) THEN
          !- Determine which W is proper import
@@ -697,7 +762,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,REVSU, ENTR, ENTR_DP, ENTR_MD, ENTR_SH,  PRFIL    &
                                  ,TPWI, TPWI_star, LFR_GF, CNV_TR)
-         !!$ser flush_savepoint GF2020_Setup-Out-part-3
          
          ! CumulusParameterization savepoints
          !$ser flush_savepoint GF2020_CumulusParameterization_4D-In
@@ -804,8 +868,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_EnsembleOutputAndFeedback-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_PrecipitationFlux-In
          !$ser flush_savepoint GF2020_CumulusParameterization_PrecipitationFlux-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftWorkfunctions-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftWorkfunctions-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_RainEvaporationBelowCloudBase-In
          !$ser flush_savepoint GF2020_CumulusParameterization_RainEvaporationBelowCloudBase-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_CloudDissipation-In
@@ -814,8 +878,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          !$ser flush_savepoint GF2020_CumulusParameterization_TotalEvaporationFlux-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_DeepPrecipitationOutput-In
          !$ser flush_savepoint GF2020_CumulusParameterization_DeepPrecipitationOutput-Out
-         !$ser flush_savepoint GF2020_CumulusParameterization_TracerOutput-In
-         !$ser flush_savepoint GF2020_CumulusParameterization_TracerOutput-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_OutputUpdraftTemperature-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_OutputUpdraftTemperature-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_PrepareOutput-In
          !$ser flush_savepoint GF2020_CumulusParameterization_PrepareOutput-Out
          !$ser flush_savepoint GF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations-In
@@ -846,12 +910,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,REVSU, PRFIL)
     ENDIF
 
-   !  !$ser savepoint GF_2020_finalize-In
-   !  !$ser data DUDT_DC=DUDT_DC DVDT_DC=DVDT_DC DQVDT_DC=DQVDT_DC DTDT_DC=DTDT_DC PK=PK U=U V=V Q=Q T=T
-   !  !$ser data CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE MASS=MASS CNV_DQCDT=CNV_DQCDT MFD_DC=MFD_DC
-   !  !$ser data DQLDT_DC=DQLDT_DC DQIDT_DC=DQIDT_DC DQADT_DC=DQADT_DC REVSU=REVSU RSU_CN=RSU_CN REV_CN=REV_CN
-   !  !$ser data PFI_CN=PFI_CN PRFIL=PRFIL PFL_CN=PFL_CN QLCN=QLCN QICN=QICN CLCN=CLCN PL=PL
-
+    ! NOTE this savepoint is also used as GF2020_Finalize-Out
+    !$ser savepoint GF2020-Out
     ! add tendencies to the moist import state
       U  = U  +  DUDT_DC*GF_DT
       V  = V  +  DVDT_DC*GF_DT
@@ -880,6 +940,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Export
       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR3D)) PTR3D = fQi
+      !$ser verbatim if (associated(PTR3D)) then
+         !$ser data ice_fraction_in_convective_tower_bugworkaroundname=PTR3D
+      !$ser verbatim endif
     ! fix 'convective' cloud fraction
       if (FIX_CNV_CLOUD) then
       ! fix convective cloud
@@ -913,17 +976,119 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !--------------------------------------------------------------
        call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        PTR3D = PTR3D + UMF_DC
+       !$ser verbatim if (associated(PTR3D)) then
+         !$ser data total_cumulative_mass_flux_interface_bugworkaroundname=PTR3D
+       !$ser verbatim endif
        call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        PTR3D = PTR3D + MFD_DC
+       !$ser verbatim if (associated(PTR3D)) then
+         !$ser data total_detraining_mass_flux_bugworkaroundname=PTR3D
+       !$ser verbatim endif
 
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
+       !$ser verbatim if (associated(PTR3D)) then
+         !$ser data convective_rainwater_source_bugworkaroundname=PTR3D
+       !$ser verbatim endif
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
 
-   !  !$ser savepoint GF_2020_finalize-Out
-   !  !$ser data U=U V=V Q=Q T=T TH=TH
-   !  !$ser data DQLDT_DC=DQLDT_DC DQIDT_DC=DQIDT_DC DQADT_DC=DQADT_DC RSU_CN=RSU_CN REV_CN=REV_CN
-   !  !$ser data PFI_CN=PFI_CN PFL_CN=PFL_CN QLCN=QLCN QICN=QICN CLCN=CLCN
-
+    ! NOTE this savepoint is also used as GF2020_Finalize-Out
+    ! savepoint is defined above this block (after calls to cumulus parameterization schemes)
+    ! so that the temporary export field PTR3D can be serialized numerous times
+    !$ser data latitude_bugworkaroundname=LATS
+    !$ser data longitude_bugworkaroundname=LONS
+    !$ser data p_interface_bugworkaroundname=PLE
+    !$ser data t_bugworkaroundname=T
+    !$ser data u_bugworkaroundname=U
+    !$ser data v_bugworkaroundname=V
+    !$ser data w_bugworkaroundname=W
+    !$ser data omega_bugworkaroundname=OMEGA
+    !$ser data t_2m_bugworkaroundname=T2M
+    !$ser data specific_humidity_2m_bugworkaroundname=Q2M
+    !$ser data t_surface_bugworkaroundname=TA
+    !$ser data specific_humidity_surface_bugworkaroundname=QA
+    !$ser data vapor_bugworkaroundname=Q
+    !$ser data convective_liquid_bugworkaroundname=QLCN
+    !$ser data convective_ice_bugworkaroundname=QICN
+    !$ser data convective_cloud_fraction_bugworkaroundname=CLCN
+    !$ser data large_scale_liquid_bugworkaroundname=QLLS
+    !$ser data large_scale_ice_bugworkaroundname=QILS
+    !$ser data large_scale_cloud_fraction_bugworkaroundname=CLLS
+    !$ser data p_interface_timestep_start_bugworkaroundname=PLE_DYN_IN
+    !$ser data t_timestep_start_bugworkaroundname=T_DYN_IN
+    !$ser data u_timestep_start_bugworkaroundname=U_DYN_IN
+    !$ser data v_timestep_start_bugworkaroundname=V_DYN_IN
+    !$ser data vapor_timestep_start_bugworkaroundname=QV_DYN_IN
+    !$ser data geopotential_height_interface_bugworkaroundname=ZLE
+    !$ser data geopotential_height_surface_bugworkaroundname=PHIS
+    !$ser data area_bugworkaroundname=AREA
+    !$ser data pbl_level_bugworkaroundname=KPBL
+    !$ser data convection_fraction_bugworkaroundname=CNV_FRC
+    !$ser data surface_type_bugworkaroundname=SRF_TYPE
+    !$ser data seed_convection_bugworkaroundname=SEEDCNV
+    !$ser data land_fraction_bugworkaroundname=FRLAND
+    !$ser data scalar_diffusivity_bugworkaroundname=KH
+    !$ser data buoyancy_bugworkaroundname=BYNCY
+    !$ser data convective_precipitation_GF_bugworkaroundname=CNPCPRATE
+    !$ser data convective_precipitation_RAS_bugworkaroundname=CNV_PRC3
+    !$ser data sensible_heat_flux_bugworkaroundname=SH
+    !$ser data total_water_flux_deep_convection_interface_bugworkaroundname=WQT_DC
+    !$ser data evaporation_bugworkaroundname=EVAP
+    !$ser data sublimation_of_convective_precipitation_bugworkaroundname=RSU_CN
+    !$ser data evaporation_of_convective_precipitation_bugworkaroundname=REV_CN
+    !$ser data ice_precip_flux_interface_bugworkaroundname=PFI_CN
+    !$ser data liquid_precip_flux_interface_bugworkaroundname=PFL_CN
+    !$ser data convective_condensate_source_bugworkaroundname=CNV_DQCDT
+    !$ser data convective_condensate_grid_mean_bugworkaroundname=CNV_QC
+    !$ser data entrainment_parameter_bugworkaroundname=ENTLAM
+    !$ser data lateral_entrainment_rate_bugworkaroundname=ENTR
+    !$ser data lateral_entrainment_rate_shallow_bugworkaroundname=ENTR_SH
+    !$ser data lateral_entrainment_rate_mid_bugworkaroundname=ENTR_MD
+    !$ser data lateral_entrainment_rate_deep_bugworkaroundname=ENTR_DP
+    !$ser data updraft_areal_fraction_bugworkaroundname=CNV_UPDF
+    !$ser data updraft_vertical_velocity_bugworkaroundname=CNV_CVW
+    !$ser data dtdt_shortwave_bugworkaroundname=RADSW
+    !$ser data dtdt_longwave_bugworkaroundname=RADLW
+    !$ser data dspecific_humiditydt_pbl_bugworkaroundname=DQDT_BL
+    !$ser data dtdt_pbl_bugworkaroundname=DTDT_BL
+    !$ser data dtdt_from_dynamics_bugworkaroundname=DTDTDYN
+    !$ser data dvapordt_from_dynamics_bugworkaroundname=DQVDTDYN
+    !$ser data sigma_mid_bugworkaroundname=SIGMA_MID
+    !$ser data sigma_deep_bugworkaroundname=SIGMA_DEEP
+    !$ser data total_precipitable_water_initial_bugworkaroundname=TPWI
+    !$ser data saturation_total_precipitable_water_initial_bugworkaroundname=TPWI_star
+    !$ser data dvapordt_deep_convection_bugworkaroundname=DQVDT_DC
+    !$ser data dtdt_deep_convection_bugworkaroundname=DTDT_DC
+    !$ser data dudt_deep_convection_bugworkaroundname=DUDT_DC
+    !$ser data dvdt_deep_convection_bugworkaroundname=DVDT_DC
+    !$ser data dliquiddt_deep_convection_bugworkaroundname=DQLDT_DC
+    !$ser data dicedt_deep_convection_bugworkaroundname=DQIDT_DC
+    !$ser data dcloudfractiondt_deep_convection_bugworkaroundname=DQADT_DC
+    !$ser data pressure_shallow_convective_cloud_top_bugworkaroundname=CNV_TOPP_SH
+    !$ser data pressure_mid_convective_cloud_top_bugworkaroundname=CNV_TOPP_MD
+    !$ser data pressure_deep_convective_cloud_top_bugworkaroundname=CNV_TOPP_DP
+    !$ser data mass_flux_shallow_bugworkaroundname=MUPSH
+    !$ser data mass_flux_mid_bugworkaroundname=MUPMD
+    !$ser data mass_flux_deep_updraft_bugworkaroundname=MUPDP
+    !$ser data mass_flux_deep_updraft_interface_bugworkaroundname=UMF_DC
+    !$ser data mass_flux_deep_updraft_detrained_bugworkaroundname=MFD_DC
+    !$ser data mass_flux_deep_downdraft_bugworkaroundname=MDNDP
+    !$ser data mass_flux_cloud_base_bugworkaroundname=CNV_MF0
+    !$ser data mass_flux_cloud_base_shallow_bugworkaroundname=MFSH
+    !$ser data mass_flux_cloud_base_mid_bugworkaroundname=MFMD
+    !$ser data mass_flux_cloud_base_deep_bugworkaroundname=MFDP
+    !$ser data convection_code_shallow_bugworkaroundname=ERRSH
+    !$ser data convection_code_mid_bugworkaroundname=ERRMD
+    !$ser data convection_code_deep_bugworkaroundname=ERRDP
+    !$ser data cloud_workfunction_0_bugworkaroundname=AA0
+    !$ser data cloud_workfunction_1_bugworkaroundname=AA1
+    !$ser data cloud_workfunction_2_bugworkaroundname=AA2
+    !$ser data cloud_workfunction_3_bugworkaroundname=AA3
+    !$ser data cloud_workfunction_1_pbl_bugworkaroundname=AA1_BL
+    !$ser data cloud_workfunction_1_cin_bugworkaroundname=AA1_CIN
+    !$ser data pbl_time_scale_bugworkaroundname=TAU_BL
+    !$ser data cape_removal_time_scale_bugworkaroundname=TAU_EC
+    !$ser data lighting_density_bugworkaroundname=LFR_GF
+    !$ser data convection_tracer_bugworkaroundname=CNV_TR
     call MAPL_TimerOff (MAPL,"--GF")
 
     endif
