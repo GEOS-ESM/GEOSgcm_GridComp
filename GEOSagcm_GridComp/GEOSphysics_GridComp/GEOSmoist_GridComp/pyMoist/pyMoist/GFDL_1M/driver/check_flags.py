@@ -8,13 +8,13 @@ def check_flags(
 ):
     """
     Checks for any flags that are no meeting the expected value.
-    Failing flags are likely not implemetned,
+    Failing flags are likely not implemented,
     or at the very least not fully implemented
     """
     failed_keywords = []
-    if not GFDL_1M_config.PHYS_HYDROSTATIC:
+    if not GFDL_1M_config.LPHYS_HYDROSTATIC:
         failed_keywords.append("phys_hydrostatic")
-    if GFDL_1M_config.HYDROSTATIC:
+    if GFDL_1M_config.LHYDROSTATIC:
         failed_keywords.append("hydrostatic")
     if GFDL_1M_config.CONST_VI:
         failed_keywords.append("const_vi")

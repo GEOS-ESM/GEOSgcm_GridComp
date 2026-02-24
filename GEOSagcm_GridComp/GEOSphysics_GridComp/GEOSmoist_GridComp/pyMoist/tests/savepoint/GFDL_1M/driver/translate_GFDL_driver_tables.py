@@ -28,7 +28,6 @@ class TranslateGFDL_driver_tables(TranslateFortranData2Py):
         }
 
     def compute(self, inputs):
-
         self.sat_tables = get_tables(self.stencil_factory.backend)
 
         return {

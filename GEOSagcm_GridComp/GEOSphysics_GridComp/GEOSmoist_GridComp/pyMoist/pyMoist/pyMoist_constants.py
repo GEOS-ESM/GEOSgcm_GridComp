@@ -125,7 +125,7 @@ Lbe = Float(1.0 / 3.0 - 0.14)
 Lbx = Float(Ldiss * 1.0e3 * (3.0 / (4.0 * PI * Lk * RHO_W * 1.0e-3)) ** (1.0 / 3.0))
 # cloud radius eqs are in cgs units
 
-# GEOS_Utilities Constatns
+# GEOS_Utilities Constants
 TIMX = Float(-20.0)
 
 ESFAC = Float(h2omw / airmw)

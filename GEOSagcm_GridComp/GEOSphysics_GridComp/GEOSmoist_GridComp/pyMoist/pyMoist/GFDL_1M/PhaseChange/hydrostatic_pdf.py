@@ -83,7 +83,7 @@ def bergeron_partition(
     frz: Float,
     lqu: Float,
 ):
-    qi = large_scale_ice + convective_ice  # neccesary because NI is for convective and large scale
+    qi = large_scale_ice + convective_ice  # necessary because NI is for convective and large scale
     ql = large_scale_liquid + convective_liquid
     qtot = qi + ql
     if qtot > 0.0:
@@ -95,7 +95,7 @@ def bergeron_partition(
     dq_all = dq_all / DT_MOIST
     t_c = t - constants.MAPL_TICE
 
-    # Completelely glaciated cloud:
+    # Completely glaciated cloud:
     if t >= constants.iT_ICE_MAX:  # liquid cloud
         f_qi = 0.0
     elif t <= constants.iT_ICE_ALL:  # ice cloud
@@ -126,7 +126,7 @@ def bergeron_partition(
                 dc = max(
                     (large_scale_ice / (ni_x * den_ice * constants.MAPL_PI)) ** 0.333,
                     20.0e-6,
-                )  # Assumme monodisperse size dsitribution
+                )  # Assume monodisperse size distribution
             else:
                 dc = 20.0e-6
 
@@ -150,7 +150,7 @@ def bergeron_partition(
                     dql = dq_all  # could happen because the PDF allows
                     # condensation in subsaturated conditions
                     dqi = 0.0
-            if dq_all < 0.0:  # net evaporation. Water evaporates first regaardless of DEP
+            if dq_all < 0.0:  # net evaporation. Water evaporates first regardless of DEP
                 dql = max(dq_all, -large_scale_liquid / DT_MOIST)
                 dqi = max(dq_all - dql, -large_scale_ice / DT_MOIST)
             if dq_all != 0.0:
@@ -172,8 +172,9 @@ def hydrostatic_pdf(
     t: FloatField,
     large_scale_cloud_fraction: FloatField,
     convective_cloud_fraction: FloatField,
-    nacti: FloatField,
-    rhx: FloatField,
+    ice_concentration: FloatField,
+    relative_humidity: FloatField,
+    pdf_iters: FloatField,
     ese: GlobalTable_saturation_tables,
     esw: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
@@ -245,7 +246,7 @@ def hydrostatic_pdf(
             if USE_BERGERON:
                 dq_all = qc_n - qc_p
                 Nfac = 100.0 * p_mb * constants.R_AIR / t_n  # density times conversion factor
-                NIv = nacti / Nfac
+                NIv = ice_concentration / Nfac
                 f_qi, dq_all = bergeron_partition(
                     DT_MOIST,
                     p_mb,
@@ -387,4 +388,4 @@ def hydrostatic_pdf(
             convective_cloud_fraction = 0.0
 
         denom, _ = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
-        rhx = vapor / denom
+        relative_humidity = vapor / denom

@@ -7,7 +7,7 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
-from pyMoist.GFDL_1M.state import (
+from pyMoist.GFDL_1M.state_old import (
     CloudFractions,
     LiquidWaterStaticEnergy,
     MixingRatios,
@@ -146,10 +146,10 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         self.constants = data_loader.load("GFDL_1M-constants")
 
     def compute(self, inputs):
-        # initialize GFDL_1M configuration
+        # Initialize GFDL_1M configuration
         GFDL_1M_config = GFDL1MConfig(
-            PHYS_HYDROSTATIC=bool(self.constants["LPHYS_HYDROSTATIC"]),
-            HYDROSTATIC=bool(self.constants["LHYDROSTATIC"]),
+            LPHYS_HYDROSTATIC=bool(self.constants["LPHYS_HYDROSTATIC"]),
+            LHYDROSTATIC=bool(self.constants["LHYDROSTATIC"]),
             DT_MOIST=self.constants["DT_MOIST"],
             MP_TIME=self.constants["MP_TIME"],
             T_MIN=self.constants["T_MIN"],
@@ -231,10 +231,10 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             ICLOUD_F=self.constants["ICLOUD_F"],
             IRAIN_F=self.constants["IRAIN_F"],
             MP_PRINT=bool(self.constants["MP_PRINT"]),
-            MELTFRZ=bool(self.constants["LMELTFRZ"]),
+            LMELTFRZ=bool(self.constants["LMELTFRZ"]),
             USE_BERGERON=bool(self.constants["USE_BERGERON"]),
             TURNRHCRIT_PARAM=self.constants["TURNRHCRIT_PARAM"],
-            PDF_SHAPE=self.constants["PDFSHAPE"],
+            PDFSHAPE=self.constants["PDFSHAPE"],
             ANV_ICEFALL=self.constants["ANV_ICEFALL"],
             LS_ICEFALL=self.constants["LS_ICEFALL"],
             LIQ_RADII_PARAM=self.constants["LIQ_RADII_PARAM"],
@@ -249,7 +249,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             CCI_EVAP_EFF=self.constants["CCI_EVAP_EFF"],
         )
 
-        # initialize the module
+        # Initialize the module
         gfdl_1m = GFDL1M(self.stencil_factory, self.quantity_factory, GFDL_1M_config)
 
         # Being in fields from netcdf. This replicated the call to fortran memory.
@@ -379,7 +379,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         gfdl_1m.temporaries.all_zeros_3d = self.make_ijk_quantity(inputs.pop("AN_SNR"))
         gfdl_1m.temporaries.all_zeros_3d = self.make_ijk_quantity(inputs.pop("SC_SNR"))
 
-        # initialize the module
+        # Initialize the module
 
         return {
             "Q": gfdl_1m.mixing_ratios.vapor.field,

@@ -11,22 +11,25 @@ def sublimate(
     convective_liquid: FloatField,
     convective_ice: FloatField,
     convective_cloud_fraction: FloatField,
-    nactl: FloatField,
-    nacti: FloatField,
-    qsat: FloatField,
-    sublc: FloatField,
+    liquid_concentration: FloatField,
+    ice_concentration: FloatField,
+    saturation_specific_humidity: FloatField,
+    sublimation: FloatField,
 ):
     from __externals__ import CCI_EVAP_EFF, DT_MOIST
 
     with computation(PARALLEL), interval(...):
-        sublc = vapor
+        sublimation = vapor
         rh_crit = 1
         # Sublimation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         es = (
-            100.0 * p_mb * qsat / (constants.EPSILON + (1.0 - constants.EPSILON) * qsat)
+            100.0
+            * p_mb
+            * saturation_specific_humidity
+            / (constants.EPSILON + (1.0 - constants.EPSILON) * saturation_specific_humidity)
         )  # (100s <-^ convert from mbar to Pa)
-        rhx = min(vapor / qsat, 1.00)
+        rhx = min(vapor / saturation_specific_humidity, 1.00)
         k1 = (
             (constants.MAPL_LATENT_HEAT_VAPORIZATION ** 2)
             * constants.RHO_I
@@ -51,4 +54,4 @@ def sublimate(
         vapor = vapor + subl
         convective_ice = convective_ice - subl
         t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CPDRY) * subl
-        sublc = (vapor - sublc) / DT_MOIST
+        sublimation = (vapor - sublimation) / DT_MOIST

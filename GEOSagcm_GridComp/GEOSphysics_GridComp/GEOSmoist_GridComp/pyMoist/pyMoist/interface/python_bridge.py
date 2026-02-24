@@ -13,7 +13,7 @@ from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
 from pyMoist.interface.flags import gfdl_1m_flags_f_to_python, moist_flags_f_to_python
-from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MAPLStates, MemorySpace
+from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MAPLStates
 
 
 class PYMOIST_WRAPPER:
@@ -29,14 +29,11 @@ class PYMOIST_WRAPPER:
         self.rank = MPI.COMM_WORLD.Get_rank()
         self.backend = backend
         self.flags = moist_flags_f_to_python(pyMoist_flags)
-        print(f"Moist Flags:\n{self.flags}")
         # For Fortran<->NumPy conversion
         if is_gpu_backend(self.backend):
             numpy_module = cp
-            self.fortran_mem_space = MemorySpace.DEVICE
         else:
             numpy_module = np
-            self.fortran_mem_space = MemorySpace.HOST
         self.f_py = FortranPythonConversion(
             self.flags.npx,
             self.flags.npy,
@@ -44,17 +41,21 @@ class PYMOIST_WRAPPER:
             numpy_module,
         )
 
-        # initialize pyMoist
+        # Initialize pyMoist
         self.pymoist = GEOSPyMoistWrapper(mapl_states, self.flags, backend)
 
         self._timings: Dict[str, List[float]] = {}
         self.ready = True
 
     def finalize(self):
+        # Wrapper
         import json
 
-        with open("pymoist_timings.json", "w") as f:
+        with open("pymoist_wrapper_timings.json", "w") as f:
             json.dump(self._timings, f, indent=4)
+
+        # Component level
+        self.pymoist.finalize()
 
     def aer_activation(
         self,
@@ -587,12 +588,11 @@ def gfdl_1m_init(
 ) -> None:
     if not WRAPPER.ready:
         raise RuntimeError("[GFDL_1M WRAPPER] pyMoist_init needs to be called first")
-    if not WRAPPER.pymoist._GFDL_1M_ready:
-        WRAPPER.pymoist.init_gfdl_1m_configuration(
-            flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
-            internal_state=internal_state,
-        )
-        WRAPPER.pymoist._GFDL_1M_ready = True
+
+    WRAPPER.pymoist.init_gfdl_1m_configuration(
+        flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
+        internal_state=internal_state,
+    )
 
 
 def compute_uwshcu_init(

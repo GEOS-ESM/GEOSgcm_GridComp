@@ -2,6 +2,7 @@ from mpi4py import MPI
 
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.dace.dace_config import DaceConfig
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, GlobalTable, K, computation, exp, interval, log, log10
 from ndsl.dsl.typing import Float, FloatField, Int
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -167,7 +168,7 @@ def des_tables(
     table3: FloatField,
     table4: FloatField,
 ):
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         des1 = max(0.0, table1[0, 0, 1] - table1)
         des2 = max(0.0, table2[0, 0, 1] - table2)
         des3 = max(0.0, table3[0, 0, 1] - table3)
@@ -189,7 +190,7 @@ class GFDL_driver_tables:
     Reference Fortran: gfdl_cloud_microphys.F90: qsmith_init.py
     """
 
-    def __init__(self, backend):
+    def __init__(self, backend, dace_config: DaceConfig):
         table_compute_domain = (1, 1, constants.LENGTH)
 
         stencil_factory, quantity_factory = get_factories_single_tile(
@@ -213,7 +214,7 @@ class GFDL_driver_tables:
         # Cancel multi-node compile for tables
         # TODO: this should come for free with the rewrite of the gt:X stencils
         #       compilation mode
-        if MPI.COMM_WORLD.Get_rank() != 0:
+        if not dace_config.do_compile:
             MPI.COMM_WORLD.Barrier()
 
         compute_qs_table_1 = stencil_factory.from_origin_domain(
@@ -258,7 +259,7 @@ class GFDL_driver_tables:
             self._table4,
         )
 
-        if MPI.COMM_WORLD.Get_rank() == 0:
+        if dace_config.do_compile:
             MPI.COMM_WORLD.Barrier()
 
         self.table1 = self._table1.view[0, 0, :]
@@ -277,8 +278,8 @@ _cached_table = {
 }
 
 
-def get_tables(backend):
+def get_tables(backend, dace_config):
     if _cached_table["driver_qsat"] is None:
-        _cached_table["driver_qsat"] = GFDL_driver_tables(backend)
+        _cached_table["driver_qsat"] = GFDL_driver_tables(backend, dace_config)
 
     return _cached_table["driver_qsat"]

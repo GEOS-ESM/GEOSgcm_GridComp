@@ -1,6 +1,6 @@
-from typing import Optional
+import dataclasses
 
-from ndsl import StencilFactory, orchestrate
+from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
@@ -16,9 +16,7 @@ from pyMoist.constants import (
     MAPL_RVAP,
 )
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.masks import Masks
-from pyMoist.GFDL_1M.state import MicrophysicState, Outputs
-from pyMoist.GFDL_1M.temporaries import Temporaries
+from pyMoist.GFDL_1M.stencils import prepare_tendencies
 from pyMoist.interpolations import vertical_interpolation
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
@@ -35,14 +33,15 @@ def calculate_derived_states(
     edge_height_above_surface: FloatField,
     layer_height_above_surface: FloatField,
     layer_thickness: FloatField,
-    layer_thinkness_negative: FloatField,
+    layer_thickness_negative: FloatField,
     dp: FloatField,
     mass: FloatField,
+    mass_inverse: FloatField,
     t: FloatField,
     ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
-    qsat: FloatField,
-    dqsat: FloatField,
+    sat: FloatField,
+    dsat: FloatField,
     u: FloatField,
     u_unmodified: FloatField,
     v: FloatField,
@@ -52,8 +51,6 @@ def calculate_derived_states(
     """
     Computes derived state fields required for the rest of the GFDL single moment
     microphysics module.
-
-    This stencil MUST be built using Z_INTERFACE_DIM to function properly.
     """
     from __externals__ import k_end
 
@@ -64,18 +61,19 @@ def calculate_derived_states(
         p_mb = 0.5 * (p_interface_mb + p_interface_mb[0, 0, 1])
         layer_height_above_surface = 0.5 * (edge_height_above_surface + edge_height_above_surface[0, 0, 1])
         layer_thickness = edge_height_above_surface - edge_height_above_surface[0, 0, 1]
-        layer_thinkness_negative = -1.0 * layer_thickness
+        layer_thickness_negative = -1.0 * layer_thickness
         dp = p_interface[0, 0, 1] - p_interface
         mass = dp / MAPL_GRAV
-        qsat, dqsat = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
+        mass_inverse = 1 / mass
+        sat, dsat = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
         u_unmodified = u
         v_unmodified = v
-        temporary_3d = (100.0 * p_mb / MAPL_P00) ** (MAPL_KAPPA)
-        th = t / temporary_3d
+        th = (100.0 * p_mb / MAPL_P00) ** (MAPL_KAPPA)
+        th = t / th
 
 
 @function
-def find_tlcl(
+def find_t_lcl(
     t: Float,
     rh: Float,
 ):
@@ -96,14 +94,13 @@ def find_tlcl(
     return tlcl
 
 
-def find_k_lcl(
+def find_lcl_level(
     t: FloatField,
     p_mb: FloatField,
     vapor: FloatField,
     ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
-    found_level: BoolFieldIJ,
-    k_lcl: IntFieldIJ,
+    lcl_level: IntFieldIJ,
 ):
     """
     Find the level of the lifted condensation level (LCL).
@@ -114,16 +111,19 @@ def find_k_lcl(
         vapor (in): water vapor mixing radio (kg/kg)
         ese (in): saturation vapor pressure table, details unknown
         esx (in): saturation vapor pressure table, details unknown
-        found_level (in): boolean mask used to stop calculation after LCL is identified
         k_lcl (out): LCL level
     """
     from __externals__ import k_end
 
+    # set up mask to stop computation
+    with computation(FORWARD), interval(0, 1):
+        found_level: BoolFieldIJ = False
+
     # get LCL pressure
-    with computation(FORWARD), interval(-1, None):
+    with computation(PARALLEL), interval(-1, None):
         qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
         rhsfc = 100 * vapor / qsat
-        tlcl = find_tlcl(t=t, rh=rhsfc)
+        tlcl = find_t_lcl(t=t, rh=rhsfc)
         rm = (1 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
         cpm = (1.0 - vapor) * MAPL_CPDRY + vapor * MAPL_CPVAP
         plcl = p_mb * ((tlcl / t) ** (cpm / rm))
@@ -131,32 +131,28 @@ def find_k_lcl(
     # find nearest level <= LCL pressure
     with computation(BACKWARD), interval(...):
         if found_level == False:  # noqa
-            k_lcl = K
+            lcl_level = K
         if p_mb <= plcl.at(K=k_end):
             found_level = True
 
-    # Reset mask for future use
-    with computation(FORWARD), interval(0, 1):
-        found_level = False
 
-
-def update_z_lcl(
+def update_lcl_height(
     layer_height_above_surface: FloatField,
-    k_lcl: IntFieldIJ,
-    z_lcl: FloatFieldIJ,
+    lcl_level: IntFieldIJ,
+    lcl_height: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(0, 1):
-        z_lcl = layer_height_above_surface.at(K=k_lcl)
+        lcl_height = layer_height_above_surface.at(K=lcl_level)
 
 
-def find_eis(
+def compute_estimated_inversion_strength(
     t: FloatField,
     th: FloatField,
     layer_height_above_surface: FloatField,
     t700: FloatFieldIJ,
     th700: FloatFieldIJ,
     z700: FloatFieldIJ,
-    k_lcl: IntFieldIJ,
+    lcl_level: IntFieldIJ,
     ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
     lower_tropospheric_stability: FloatFieldIJ,
@@ -169,7 +165,7 @@ def find_eis(
     """
     with computation(FORWARD), interval(-1, None):
         lower_tropospheric_stability = th700 - th
-        zlcl = layer_height_above_surface.at(K=k_lcl - 1)
+        lcl_height = layer_height_above_surface.at(K=lcl_level - 1)
 
         # Simplified single adiabat eq4 of https://doi.org/10.1175/JCLI3988.1
         t850 = 0.5 * (t + t700)
@@ -178,10 +174,10 @@ def find_eis(
             1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850))
         )
         gamma850 = MAPL_GRAV / MAPL_CP * (1.0 - gamma850)
-        estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (z700 - zlcl)
+        estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (z700 - lcl_height)
 
 
-def update_precipitaiton(
+def update_precipitation(
     mixing_ratio: FloatField,
     shallow_convection_values: FloatField,
 ):
@@ -191,7 +187,47 @@ def update_precipitaiton(
         mixing_ratio = mixing_ratio + shallow_convection_values * DT_MOIST
 
 
-class Setup:
+@dataclasses.dataclass
+class GFDL1MSetupLocals(LocalState):
+    th: Local = dataclasses.field(
+        metadata={
+            "name": "th",
+            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    t700: Local = dataclasses.field(
+        metadata={
+            "name": "t700",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    th700: Local = dataclasses.field(
+        metadata={
+            "name": "th700",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    z700: Local = dataclasses.field(
+        metadata={
+            "name": "z700",
+            "dims": [X_DIM, Y_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
+
+class GFDL1MSetup(NDSLRuntime):
     """
     Perform the following functions to setup GFDL Single Moment microphysics:
 
@@ -207,56 +243,56 @@ class Setup:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        GFDL_1M_config: GFDL1MConfig,
+        quantity_factory: QuantityFactory,
+        config: GFDL1MConfig,
         saturation_tables: SaturationVaporPressureTable,
-        prepare_tendencies,
     ):
-        orchestrate(
-            obj=self,
-            config=stencil_factory.config.dace_config,
-            dace_compiletime_args=[
-                "mixing_ratios",
-                "cloud_fractions",
-                "masks",
-                "outputs",
-                "temporaries",
-            ],
-        )
-        self.GFDL_1M_config = GFDL_1M_config
+        # init NDSLRuntime
+        super().__init__(stencil_factory)
+
+        # make configuration and saturation tables visible at runtime
+        self.config = config
         self.saturation_tables = saturation_tables
-        self.prepare_tendencies = prepare_tendencies
+
+        # initialize locals
+        self._locals = GFDL1MSetupLocals.make_locals(quantity_factory)
 
         # construct stencils
-        self.calculate_derived_states = stencil_factory.from_dims_halo(
+        self._prepare_tendencies = stencil_factory.from_dims_halo(
+            func=prepare_tendencies,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+        self._calculate_derived_states = stencil_factory.from_dims_halo(
             func=calculate_derived_states,
             compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
         )
 
-        self.find_k_lcl = stencil_factory.from_dims_halo(
-            func=find_k_lcl,
+        self._find_lcl_level = stencil_factory.from_dims_halo(
+            func=find_lcl_level,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self.update_z_lcl = stencil_factory.from_dims_halo(
-            func=update_z_lcl,
+        self._update_lcl_height = stencil_factory.from_dims_halo(
+            func=update_lcl_height,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self.vertical_interpolation = stencil_factory.from_dims_halo(
+        self._vertical_interpolation = stencil_factory.from_dims_halo(
             func=vertical_interpolation,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self.find_eis = stencil_factory.from_dims_halo(
-            func=find_eis,
+        self._compute_estimated_inversion_strength = stencil_factory.from_dims_halo(
+            func=compute_estimated_inversion_strength,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self.update_precipitaiton = stencil_factory.from_dims_halo(
-            func=update_precipitaiton,
+        self._update_precipitation = stencil_factory.from_dims_halo(
+            func=update_precipitation,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "DT_MOIST": GFDL_1M_config.DT_MOIST,
+                "DT_MOIST": config.DT_MOIST,
             },
         )
 
@@ -268,132 +304,157 @@ class Setup:
 
     def __call__(
         self,
-        geopotential_height_interface: FloatField,
-        p_interface: FloatField,
-        t: FloatField,
-        u: FloatField,
-        v: FloatField,
-        shallow_convective_rain: Optional[FloatField],
-        shallow_convective_snow: Optional[FloatField],
-        mixing_ratios: MicrophysicState.MixingRatios,
-        cloud_fractions: MicrophysicState.CloudFractions,
-        masks: Masks,
-        outputs: Outputs,
-        temporaries: Temporaries,
+        p_interface,
+        z_interface,
+        u,
+        v,
+        t,
+        lcl_height,
+        lower_tropospheric_stability,
+        estimated_inversion_strength,
+        mixing_ratio_vapor,
+        mixing_ratio_rain,
+        mixing_ratio_snow,
+        mixing_ratio_graupel,
+        mixing_ratio_convective_liquid,
+        mixing_ratio_convective_ice,
+        mixing_ratio_large_scale_liquid,
+        mixing_ratio_large_scale_ice,
+        cloud_fraction_convective,
+        cloud_fraction_large_scale,
+        shallow_convection_rain,
+        shallow_convection_snow,
+        dudt_macro,
+        dvdt_macro,
+        dtdt_macro,
+        dvapordt_macro,
+        dliquiddt_macro,
+        dicedt_macro,
+        dcloud_fractiondt_macro,
+        draindt_macro,
+        dsnowdt_macro,
+        dgraupeldt_macro,
+        local_p_mb,
+        local_p_interface_mb,
+        local_edge_height_above_surface,
+        local_layer_height_above_surface,
+        local_layer_thickness,
+        local_layer_thickness_negative,
+        local_dp,
+        local_mass,
+        local_mass_inverse,
+        local_saturation_specific_humidity,
+        local_dsaturation_specific_humidity,
+        local_u_unmodified,
+        local_v_unmodified,
+        local_lcl_level,
     ):
         # prepare macrophysics tendencies
-        self.prepare_tendencies(
+        self._prepare_tendencies(
             u=u,
             v=v,
             t=t,
-            vapor=mixing_ratios.vapor,
-            rain=mixing_ratios.rain,
-            snow=mixing_ratios.snow,
-            graupel=mixing_ratios.graupel,
-            convective_liquid=mixing_ratios.convective_liquid,
-            convective_ice=mixing_ratios.convective_ice,
-            large_scale_liquid=mixing_ratios.large_scale_liquid,
-            large_scale_ice=mixing_ratios.large_scale_ice,
-            convective_cloud_fraction=cloud_fractions.convective,
-            large_scale_cloud_fraction=cloud_fractions.large_scale,
-            du_dt=outputs.du_dt_macro,
-            dv_dt=outputs.dv_dt_macro,
-            dt_dt=outputs.dt_dt_macro,
-            dvapor_dt=outputs.dvapor_dt_macro,
-            dliquid_dt=outputs.dliquid_dt_macro,
-            dice_dt=outputs.dice_dt_macro,
-            dcloud_fraction_dt=outputs.dcloud_fraction_dt_macro,
-            drain_dt=outputs.drain_dt_macro,
-            dsnow_dt=outputs.dsnow_dt_macro,
-            dgraupel_dt=outputs.dgraupel_dt_macro,
+            vapor=mixing_ratio_vapor,
+            rain=mixing_ratio_rain,
+            snow=mixing_ratio_snow,
+            graupel=mixing_ratio_graupel,
+            convective_liquid=mixing_ratio_convective_liquid,
+            convective_ice=mixing_ratio_convective_ice,
+            large_scale_liquid=mixing_ratio_large_scale_liquid,
+            large_scale_ice=mixing_ratio_large_scale_ice,
+            convective_cloud_fraction=cloud_fraction_convective,
+            large_scale_cloud_fraction=cloud_fraction_large_scale,
+            du_dt=dudt_macro,
+            dv_dt=dvdt_macro,
+            dt_dt=dtdt_macro,
+            dvapor_dt=dvapordt_macro,
+            dliquid_dt=dliquiddt_macro,
+            dice_dt=dicedt_macro,
+            dcloud_fraction_dt=dcloud_fractiondt_macro,
+            drain_dt=draindt_macro,
+            dsnow_dt=dsnowdt_macro,
+            dgraupel_dt=dgraupeldt_macro,
         )
-
-        self.calculate_derived_states(
+        self._calculate_derived_states(
             p_interface=p_interface,
-            p_interface_mb=temporaries.p_interface_mb,
-            p_mb=temporaries.p_mb,
-            geopotential_height_interface=geopotential_height_interface,
-            edge_height_above_surface=temporaries.edge_height_above_surface,
-            layer_height_above_surface=temporaries.layer_height_above_surface,
-            layer_thickness=temporaries.layer_thickness,
-            layer_thinkness_negative=temporaries.layer_thickness_negative,
-            dp=temporaries.dp,
-            mass=temporaries.mass,
+            p_interface_mb=local_p_interface_mb,
+            p_mb=local_p_mb,
+            geopotential_height_interface=z_interface,
+            edge_height_above_surface=local_edge_height_above_surface,
+            layer_height_above_surface=local_layer_height_above_surface,
+            layer_thickness=local_layer_thickness,
+            layer_thickness_negative=local_layer_thickness_negative,
+            dp=local_dp,
+            mass=local_mass,
+            mass_inverse=local_mass_inverse,
             t=t,
             ese=self._ese,
             esx=self.saturation_tables.esx,
-            qsat=temporaries.qsat,
-            dqsat=temporaries.dqsat,
+            sat=local_saturation_specific_humidity,
+            dsat=local_dsaturation_specific_humidity,
             u=u,
-            u_unmodified=temporaries.u_unmodified,
+            u_unmodified=local_u_unmodified,
             v=v,
-            v_unmodified=temporaries.v_unmodified,
-            th=temporaries.th,
+            v_unmodified=local_v_unmodified,
+            th=self._locals.th,
         )
 
-        self.find_k_lcl(
+        self._find_lcl_level(
             t=t,
-            p_mb=temporaries.p_mb,
-            vapor=mixing_ratios.vapor,
+            p_mb=local_p_mb,
+            vapor=mixing_ratio_vapor,
             ese=self._ese,
             esx=self._esx,
-            found_level=masks.boolean_2d_mask,
-            k_lcl=temporaries.k_lcl,
+            lcl_level=local_lcl_level,
         )
 
-        if outputs.z_lcl is not None:
-            self.update_z_lcl(
-                temporaries.layer_height_above_surface,
-                temporaries.k_lcl,
-                outputs.z_lcl,
+        # NOTE need a new way to resolve this now that it is a state field. it will never be none
+        if lcl_height is not None:
+            self._update_lcl_height(
+                layer_height_above_surface=local_layer_height_above_surface,
+                lcl_level=local_lcl_level,
+                lcl_height=lcl_height,
             )
 
-        self.vertical_interpolation(
-            field=temporaries.th,
-            interpolated_field=temporaries.th700,
-            p_interface_mb=temporaries.p_interface_mb,
+        self._vertical_interpolation(
+            field=self._locals.th,
+            interpolated_field=self._locals.th700,
+            p_interface_mb=local_p_interface_mb,
             target_pressure=Float(70000.0),
-            pb=temporaries.temporary_2d_1,
-            pt=temporaries.temporary_2d_2,
-            boolean_2d_mask=masks.boolean_2d_mask,
         )
 
-        self.vertical_interpolation(
+        self._vertical_interpolation(
             field=t,
-            interpolated_field=temporaries.t700,
-            p_interface_mb=temporaries.p_interface_mb,
+            interpolated_field=self._locals.t700,
+            p_interface_mb=local_p_interface_mb,
             target_pressure=Float(70000.0),
-            pb=temporaries.temporary_2d_1,
-            pt=temporaries.temporary_2d_2,
-            boolean_2d_mask=masks.boolean_2d_mask,
         )
 
-        self.vertical_interpolation(
-            field=temporaries.layer_height_above_surface,
-            interpolated_field=temporaries.z700,
-            p_interface_mb=temporaries.p_interface_mb,
+        self._vertical_interpolation(
+            field=local_layer_height_above_surface,
+            interpolated_field=self._locals.z700,
+            p_interface_mb=local_p_interface_mb,
             target_pressure=Float(70000.0),
-            pb=temporaries.temporary_2d_1,
-            pt=temporaries.temporary_2d_2,
-            boolean_2d_mask=masks.boolean_2d_mask,
         )
 
-        self.find_eis(
+        self._compute_estimated_inversion_strength(
             t=t,
-            th=temporaries.th,
-            layer_height_above_surface=temporaries.layer_height_above_surface,
-            t700=temporaries.t700,
-            th700=temporaries.th700,
-            z700=temporaries.z700,
-            k_lcl=temporaries.k_lcl,
+            th=self._locals.th,
+            layer_height_above_surface=local_layer_height_above_surface,
+            t700=self._locals.t700,
+            th700=self._locals.th700,
+            z700=self._locals.z700,
+            lcl_level=local_lcl_level,
             ese=self._ese,
             esx=self._esx,
-            lower_tropospheric_stability=outputs.lower_tropospheric_stability,
-            estimated_inversion_strength=outputs.estimated_inversion_strength,
+            lower_tropospheric_stability=lower_tropospheric_stability,
+            estimated_inversion_strength=estimated_inversion_strength,
         )
 
-        if shallow_convective_rain is not None:
-            self.update_precipitaiton(mixing_ratios.rain, shallow_convective_rain)
+        # NOTE need a new way to resolve this now that it is a state field. it will never be none
+        if shallow_convection_rain is not None:
+            self._update_precipitation(mixing_ratio_rain, shallow_convection_rain)
 
-        if shallow_convective_snow is not None:
-            self.update_precipitaiton(mixing_ratios.snow, shallow_convective_snow)
+        # NOTE need a new way to resolve this now that it is a state field. it will never be none
+        if shallow_convection_snow is not None:
+            self._update_precipitation(mixing_ratio_snow, shallow_convection_snow)
