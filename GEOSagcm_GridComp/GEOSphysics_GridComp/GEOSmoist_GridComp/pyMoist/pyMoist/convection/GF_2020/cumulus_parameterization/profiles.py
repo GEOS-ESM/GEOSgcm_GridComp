@@ -1,16 +1,11 @@
-from ndsl import StencilFactory, QuantityFactory
-from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int
-from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 import pyMoist.constants as constants
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    IntFieldIJ_Plume,
-    FloatField_Plume,
-)
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import QuantityFactory, StencilFactory
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int
+from pyMoist.convection.GF_2020.config import GF2020Config
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
 
 
 def melting_profile(
@@ -33,7 +28,7 @@ def melting_profile(
         condensate_to_fall_forced (FloatField_Plume)
         melting (FloatField)
     """
-    from __externals__ import k_end, MELT_GLAC
+    from __externals__ import MELT_GLAC, k_end
 
     with computation(FORWARD), interval(...):
         if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:

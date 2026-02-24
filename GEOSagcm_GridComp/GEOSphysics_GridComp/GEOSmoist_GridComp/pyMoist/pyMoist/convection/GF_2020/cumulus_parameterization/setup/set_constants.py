@@ -1,8 +1,8 @@
+from ndsl.dsl.typing import Float, Int
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from ndsl.dsl.typing import Float, Int
 
 
 def set_constants(

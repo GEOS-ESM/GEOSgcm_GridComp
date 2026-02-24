@@ -1,26 +1,24 @@
-from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
-from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, sqrt, max, min, abs, floor, BACKWARD, K
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, floor, interval, max, min, sqrt
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.state import GF2020State
-from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    IntFieldIJ_Plume,
-    FloatFieldIJ_Plume,
-    FloatField_Plume,
     FloatField_ConvectionTracers,
     FloatField_ConvectionTracers_Plume,
+    FloatField_Plume,
+    FloatFieldIJ_Plume,
+    IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+from pyMoist.convection.GF_2020.locals import GF2020Locals
+from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
 
 
 def compute_extra_inputs_from_state(
@@ -77,7 +75,7 @@ def compute_extra_inputs_from_state(
         ese (GlobalTable_saturation_tables)
         esx (GlobalTable_saturation_tables)
     """
-    from __externals__ import k_end, STOCHASTIC_CONVECTION, STOCH_TOP, STOCH_BOT, GF_MIN_AREA, LHYDROSTATIC
+    from __externals__ import GF_MIN_AREA, LHYDROSTATIC, STOCH_BOT, STOCH_TOP, STOCHASTIC_CONVECTION, k_end
 
     # compute derived states
     with computation(PARALLEL), interval(...):
@@ -394,7 +392,7 @@ def prefill_cumulus_parameterization_state(
         vapor_excess (FloatFieldIJ)
         last_error_code (IntFieldIJ)
     """
-    from __externals__ import NUMBER_OF_PLUMES, APPLY_SUBSIDENCE_MICROPHYSICS
+    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, NUMBER_OF_PLUMES
 
     with computation(FORWARD), interval(0, 1):
         plume = 0
@@ -575,7 +573,7 @@ def set_2d_fields(
         pbl_level (FloatFieldIJ)
         pbl_level_flipped (IntFieldIJ)
     """
-    from __externals__ import k_end, SIZE_I_DIM, SIZE_J_DIM
+    from __externals__ import SIZE_I_DIM, SIZE_J_DIM, k_end
 
     with computation(FORWARD), interval(0, 1):
         aot500 = 0.1
@@ -749,7 +747,7 @@ def choose_environment_and_flip_k_axis(
         saturation_total_precipitable_water_initial (FloatFieldIJ)
         saturation_water_vapor (FloatFieldIJ)
     """
-    from __externals__ import k_end, GF_ENV_SETTING, ENTRVERSION, CONVECTION_TRACER
+    from __externals__ import CONVECTION_TRACER, ENTRVERSION, GF_ENV_SETTING, k_end
 
     # 1st setting: enviromental state is the one already modified by dyn + physics
     with computation(PARALLEL), interval(...):
@@ -1100,7 +1098,7 @@ def prepare_cumulus_paramaterization_state(
         t_excess (FloatFieldIJ)
         vapor_excess (FloatFieldIJ)
     """
-    from __externals__ import AUTOCONV, DT_MOIST, APPLY_SUBSIDENCE_MICROPHYSICS, USE_TRACER_TRANSPORT, k_end
+    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, AUTOCONV, DT_MOIST, USE_TRACER_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
         if AUTOCONV == 2:
@@ -1195,7 +1193,7 @@ def prepare_cumulus_paramaterization_state(
 
         if convective_scale_velocity > constants.FLOAT_TINY:
             # convective-scale velocity w*
-            convective_scale_velocity = 1.2 * convective_scale_velocity**0.3333
+            convective_scale_velocity = 1.2 * convective_scale_velocity ** 0.3333
 
             # temperature excess
             t_excess = max(0.0, -1.5 * pahfs / (zrho * convective_scale_velocity * 1004.64))  # K
@@ -1210,7 +1208,7 @@ def prepare_cumulus_paramaterization_state(
 
         # convective_scale_velocity W* (m/s)
         convective_scale_velocity = max(0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / pten)
-        convective_scale_velocity = 1.2 * convective_scale_velocity**0.3333
+        convective_scale_velocity = 1.2 * convective_scale_velocity ** 0.3333
 
 
 class GF2020Setup(NDSLRuntime):

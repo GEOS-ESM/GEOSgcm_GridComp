@@ -1,24 +1,25 @@
 from f90nml import Namelist
+
 from ndsl import StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS1,
     MAXENS2,
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy import StaticControl
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 class TestCore:
@@ -109,12 +110,12 @@ class TestCore:
         locals.environment_saturation_moist_static_energy_cloud_levels_modified.data[:] = inputs[
             "local_env_saturation_moist_static_energy_cloud_levels_modified"
         ]
-        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["mass_detrainment_updraft_forced"]
-        )
-        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["mass_entrainment_updraft_forced"]
-        )
+        state.output.mass_detrainment_updraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["mass_detrainment_updraft_forced"]
+        state.output.mass_entrainment_updraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["mass_entrainment_updraft_forced"]
         locals.normalized_massflux_updraft_modified.data[:] = inputs[
             "local_normalized_massflux_updraft_modified"
         ]
@@ -122,9 +123,9 @@ class TestCore:
         locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
         locals.t_excess.data[:] = inputs["local_t_excess"]
         locals.add_buoyancy.data[:] = inputs["local_add_buoyancy"]
-        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_liquid_after_rain_forced"]
-        )
+        state.output.cloud_liquid_after_rain_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["cloud_liquid_after_rain_forced"]
         locals.d_buoyancy_modified.data[:] = inputs["local_d_buoyancy_modified"]
 
         # initialize test code
@@ -175,9 +176,7 @@ class TestCore:
             "local_moist_static_energy_origin_level_modified": locals.moist_static_energy_origin_level_modified.data[
                 :
             ],
-            "local_env_moist_static_energy_modified": locals.environment_moist_static_energy_modified.data[
-                :
-            ],
+            "local_env_moist_static_energy_modified": locals.environment_moist_static_energy_modified.data[:],
             "local_env_moist_static_energy_cloud_levels_modified": locals.environment_moist_static_energy_cloud_levels_modified.data[
                 :
             ],

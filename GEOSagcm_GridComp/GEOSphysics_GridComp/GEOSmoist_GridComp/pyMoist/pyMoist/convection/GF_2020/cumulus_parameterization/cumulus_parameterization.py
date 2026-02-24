@@ -1,119 +1,101 @@
-from ndsl import StencilFactory, QuantityFactory, ndsl_log, NDSLRuntime
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.convection_tracers import ConvectionTracers
-from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
-from pyMoist.convection.GF_2020.cumulus_parameterization.environment import (
-    environment_conditions,
-    environment_cloud_levels,
-    environment_mass_flux,
-    modify_environment_profiles,
-    EnvironmentalSubsidence,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.sounding import (
-    Sounding,
-    GATESounding,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.air_density import (
-    hydrostatic_air_density,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.precip import (
-    partition_liquid_ice,
-    get_precip_fluxes,
-    PrecipFactor,
-    rain_evaporation_below_cloud_base,
-    cloud_dissapation,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
-    find_maximum_updraft_origin_level,
-    find_detrainmet_start_level,
-    find_highest_moist_static_energy_level,
-    find_lcl,
-    set_start_level,
-    get_convective_cloud_base_level,
-    get_cloud_top,
-    cloud_top_checks,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers import (
-    ColdPoolParameterization,
-    AtmosphericComposition,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment import (
-    entrainment_rates,
-    downdraft_entrainment_profiles,
-    generic_find_level,
-    compute_lateral_massflux,
-    compute_uc_vc,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy import (
-    parcel_moist_static_energy,
-    first_guess_moist_static_energy,
-    StaticControl,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import updraft_vertical_velocity
+from pyMoist.convection.GF_2020.cumulus_parameterization.air_density import hydrostatic_air_density
 from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
-from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import (
-    C1DProfile,
-    melting_profile,
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
+from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers import (
+    AtmosphericComposition,
+    ColdPoolParameterization,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
-    UpdraftMassFlux,
-    updraft_moisture,
-    updraft_moist_static_energy_and_momentum_budget,
-    updraft_temperature,
-    UpdraftInitialWorkfunctions,
-    UpdraftCIN,
-    UpdateWorkfunctionAndPrecipitationEnsemble,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
-    convection_trigger,
-    XieTriggerFunction,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import DiurnalCycle
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     DowndraftOriginLevel,
-    downdraft_mass_flux,
-    downdraft_lateral_massflux,
     DowndraftWetBlub,
+    DowndraftWindShear,
+    downdraft_lateral_massflux,
+    downdraft_mass_flux,
     downdraft_moist_static_energy_and_buoyancy,
     downdraft_moisture,
     downdraft_temperature,
-    DowndraftWindShear,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import DiurnalCycle
-from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation import MassConservation
-from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization import (
-    VerticalDiscretization,
+from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment import (
+    compute_lateral_massflux,
+    compute_uc_vc,
+    downdraft_entrainment_profiles,
+    entrainment_rates,
+    generic_find_level,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.smoothing import smooth_tendencies
-from pyMoist.convection.GF_2020.cumulus_parameterization.large_scale_forcing import (
-    LargeScaleForcing,
+from pyMoist.convection.GF_2020.cumulus_parameterization.environment import (
+    EnvironmentalSubsidence,
+    environment_cloud_levels,
+    environment_conditions,
+    environment_mass_flux,
+    modify_environment_profiles,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
+    cloud_top_checks,
+    find_detrainmet_start_level,
+    find_highest_moist_static_energy_level,
+    find_lcl,
+    find_maximum_updraft_origin_level,
+    get_cloud_top,
+    get_convective_cloud_base_level,
+    set_start_level,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating import (
     kinetic_energy_to_heating,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.large_scale_forcing import LargeScaleForcing
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.mass_conservation import MassConservation
+from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy import (
+    StaticControl,
+    first_guess_moist_static_energy,
+    parcel_moist_static_energy,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.precip import (
+    PrecipFactor,
+    cloud_dissapation,
+    get_precip_fluxes,
+    partition_liquid_ice,
+    rain_evaporation_below_cloud_base,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
-    ensemble_output_and_feedback,
-    total_evaporation_flux,
     LightningFlashDensity,
+    OutputWorkfunctionsAndPrecipConcentrations,
     deep_precipitation_output,
+    ensemble_output_and_feedback,
     output_updraft_temperature,
     prepare_output,
-    OutputWorkfunctionsAndPrecipConcentrations,
+    total_evaporation_flux,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import C1DProfile, melting_profile
+from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import updraft_vertical_velocity
+from pyMoist.convection.GF_2020.cumulus_parameterization.smoothing import smooth_tendencies
+from pyMoist.convection.GF_2020.cumulus_parameterization.sounding import GATESounding, Sounding
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
+    XieTriggerFunction,
+    convection_trigger,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
+    UpdateWorkfunctionAndPrecipitationEnsemble,
+    UpdraftCIN,
+    UpdraftInitialWorkfunctions,
+    UpdraftMassFlux,
+    updraft_moist_static_energy_and_momentum_budget,
+    updraft_moisture,
+    updraft_temperature,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization import VerticalDiscretization
+from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 class GF2020CumulusParameterization(NDSLRuntime):

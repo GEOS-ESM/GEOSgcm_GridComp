@@ -1,6 +1,6 @@
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
-from ndsl.dsl.gt4py import computation, FORWARD, interval, PARALLEL, K
 
 
 def smooth_tendencies(

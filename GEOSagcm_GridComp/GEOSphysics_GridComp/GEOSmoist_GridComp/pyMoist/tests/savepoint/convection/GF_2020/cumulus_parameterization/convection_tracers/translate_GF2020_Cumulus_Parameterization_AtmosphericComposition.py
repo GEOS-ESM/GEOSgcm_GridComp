@@ -1,15 +1,12 @@
+import numpy as np
 from f90nml import Namelist
+
 from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS1,
     MAXENS2,
@@ -17,10 +14,13 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     NUMBER_OF_PLUMES,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers import AtmosphericComposition
-
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection_tracers import ConvectionTracers
-import numpy as np
 
 
 class TestCore:
@@ -110,9 +110,7 @@ class TestCore:
             },
         )
 
-        convection_tracers.tracers.field[:] = np.moveaxis(
-            convection_tracers_input["tracers"], 0, 3
-        )
+        convection_tracers.tracers.field[:] = np.moveaxis(convection_tracers_input["tracers"], 0, 3)
         convection_tracers.vect_hcts.field[:] = convection_tracers_input["vect_hcts"]
         convection_tracers.kc_scal.field[:] = convection_tracers_input["kc_scal"]
         convection_tracers.fscav.field[:] = convection_tracers_input["fscav"]
@@ -170,12 +168,12 @@ class TestCore:
         state.output.normalized_massflux_downdraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["normalized_massflux_downdraft_forced"]
-        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["mass_entrainment_updraft_forced"]
-        )
-        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["mass_detrainment_updraft_forced"]
-        )
+        state.output.mass_entrainment_updraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["mass_entrainment_updraft_forced"]
+        state.output.mass_detrainment_updraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["mass_detrainment_updraft_forced"]
         state.output.mass_entrainment_downdraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["mass_entrainment_downdraft_forced"]
@@ -189,9 +187,9 @@ class TestCore:
         locals.total_normalized_integrated_evaporate_forced.data[:] = inputs[
             "local_total_normalized_integrated_evaporate_forced"
         ]
-        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["evaporate_in_downdraft_forced"]
-        )
+        state.output.evaporate_in_downdraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["evaporate_in_downdraft_forced"]
         state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "epsilon_forced"
         ]

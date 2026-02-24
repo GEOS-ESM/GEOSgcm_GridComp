@@ -1,5 +1,6 @@
 from ndsl.dsl.typing import Float, Int
 
+
 # used to define data_dimension size for quantity factories
 NUMBER_OF_PLUMES = Int(3)
 

@@ -1,23 +1,23 @@
-from ndsl import StencilFactory, QuantityFactory
+import pyMoist.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, function, interval
+from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
+from ndsl.logging import ndsl_log
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from ndsl.logging import ndsl_log
-from ndsl.dsl.gt4py import computation, interval, FORWARD, K, function, PARALLEL, exp
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int, BoolFieldIJ
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    get_cloud_boundary_conditions,
-    compute_dewpoint,
     column_max,
+    compute_dewpoint,
+    get_cloud_boundary_conditions,
 )
-import pyMoist.constants as constants
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 def find_maximum_updraft_origin_level(
@@ -198,7 +198,7 @@ def find_lcl(
         AVERAGE_LAYER_DEPTH (Float)
         plume (Int)
     """
-    from __externals__ import k_end, BOUNDARY_CONDITION_METHOD, ADV_TRIGGER
+    from __externals__ import ADV_TRIGGER, BOUNDARY_CONDITION_METHOD, k_end
 
     with computation(PARALLEL), interval(...):
         # make garbage field so the get_cloud_boundary_conditions call does not break
@@ -422,12 +422,12 @@ def get_convective_cloud_base_level(
         plume (Int): _description_
     """
     from __externals__ import (
+        BOUNDARY_CONDITION_METHOD,
+        MOIST_TRIGGER,
         OVERSHOOT,
+        USE_MEMORY,
         ZERO_DIFF,
         k_end,
-        MOIST_TRIGGER,
-        USE_MEMORY,
-        BOUNDARY_CONDITION_METHOD,
     )
 
     with computation(PARALLEL), interval(...):
@@ -580,9 +580,9 @@ def get_convective_cloud_base_level(
                     )
 
                     start_level_internal = start_level_internal + 1
-                    cloud_moist_static_energy_forced_transported[0, 0, start_level_internal] = (
-                        moist_static_energy_origin_level_forced
-                    )
+                    cloud_moist_static_energy_forced_transported[
+                        0, 0, start_level_internal
+                    ] = moist_static_energy_origin_level_forced
 
             if skip_last_check == True:
                 # last check for updraft_lfc_level
@@ -679,7 +679,7 @@ def get_cloud_top(
         cloud_top_level (IntFieldIJ_Plume)
         plume (Int)
     """
-    from __externals__ import k_end, OVERSHOOT
+    from __externals__ import OVERSHOOT, k_end
 
     with computation(PARALLEL), interval(...):
         # default value

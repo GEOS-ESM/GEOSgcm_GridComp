@@ -1,25 +1,25 @@
 from f90nml import Namelist
+
 from ndsl import StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS1,
     MAXENS2,
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.precip import cloud_dissapation
-
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 class TestCore:
@@ -103,9 +103,9 @@ class TestCore:
             "cloud_base_mass_flux_modified"
         ]
         locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced"]
-        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_liquid_after_rain_forced"]
-        )
+        state.output.cloud_liquid_after_rain_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["cloud_liquid_after_rain_forced"]
         locals.environment_saturation_mixing_ratio_cloud_levels_forced.data[:] = inputs[
             "local_env_saturation_mixing_ratio_cloud_levels_forced"
         ]

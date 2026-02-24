@@ -1,37 +1,25 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity, Local, NDSLRuntime
+import pyMoist.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, GlobalTable, K, computation, exp, interval, sqrt
+from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
+from ndsl.stencils.column_operations import column_max_ddim, column_min
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    FloatField_Plume,
+    FloatFieldIJ_Ensemble,
+    FloatFieldIJ_Plume,
+    IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from ndsl.dsl.typing import (
-    FloatField,
-    FloatFieldIJ,
-    Float,
-    IntFieldIJ,
-    Int,
-    BoolFieldIJ,
-)
-from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K, sqrt, exp, GlobalTable, BACKWARD
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-import pyMoist.constants as constants
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-    FloatFieldIJ_Ensemble,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
-from ndsl.stencils.column_operations import column_min, column_max_ddim
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+
 
 # initialize constants and field type for UpdraftMassFlux stencil
 _X_ALPHA = [
@@ -147,12 +135,7 @@ def updraft_mass_flux(
         X_ALPHA (_CONSTANTS_TABLES_TYPE): _description_
         G_ALPHA (_CONSTANTS_TABLES_TYPE): _description_
     """
-    from __externals__ import (
-        ZERO_DIFF,
-        k_end,
-        BETA_SHALLOW,
-        USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
-    )
+    from __externals__ import BETA_SHALLOW, USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES, ZERO_DIFF, k_end
 
     with computation(FORWARD), interval(0, 1):
         # initialize constants
@@ -362,14 +345,14 @@ def updraft_moisture(
         plume (Int)
     """
     from __externals__ import (
-        k_end,
-        BOUNDARY_CONDITION_METHOD,
-        USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
         AUTOCONV,
-        CRITICAL_MIXING_RATIO_OVER_OCEAN,
+        BOUNDARY_CONDITION_METHOD,
         CRITICAL_MIXING_RATIO_OVER_LAND,
+        CRITICAL_MIXING_RATIO_OVER_OCEAN,
         FRAC_MODIS,
+        USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
         ZERO_DIFF,
+        k_end,
     )
 
     with computation(PARALLEL), interval(...):
@@ -652,7 +635,7 @@ def updraft_moist_static_energy_and_momentum_budget(
         add_buoyancy (FloatFieldIJ)
         plume (Int)
     """
-    from __externals__ import USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES, PRESSURE_GRADIENT_CONSTANT
+    from __externals__ import PRESSURE_GRADIENT_CONSTANT, USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES
 
     with computation(PARALLEL), interval(...):
         if (
@@ -894,7 +877,7 @@ def compute_precipitation_ensemble(
     precipitation_ensemble: FloatFieldIJ_Ensemble,
     plume: Int,
 ):
-    from __externals__ import ENSEMBLE_MEMBERS, C0_MID
+    from __externals__ import C0_MID, ENSEMBLE_MEMBERS
 
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume]:

@@ -1,21 +1,21 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity, Local, NDSLRuntime
-from ndsl.dsl.gt4py import computation, FORWARD, interval, PARALLEL, K
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ, Int
+import pyMoist.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntFieldIJ
+from ndsl.stencils.column_operations import column_max
+from pyMoist.convection.GF_2020.config import GF2020Config
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_Plume,
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
-import pyMoist.constants as constants
-from ndsl.stencils.column_operations import column_max
-from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import tridiag
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 
 
 def zero_tendencies(
@@ -114,7 +114,7 @@ def convective_transport_of_momentum(
         ddv (FloatField)
         plume (Int)
     """
-    from __externals__ import VERTICAL_DISCRETIZATION_OPTION, ALP1, DTIME
+    from __externals__ import ALP1, DTIME, VERTICAL_DISCRETIZATION_OPTION
 
     with computation(FORWARD), interval(0, 1):
         # prepare bounds for subsequent computation

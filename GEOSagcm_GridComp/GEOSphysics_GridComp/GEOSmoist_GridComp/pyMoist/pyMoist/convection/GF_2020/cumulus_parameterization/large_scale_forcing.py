@@ -1,20 +1,20 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity, Local, NDSLRuntime
+import pyMoist.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    FloatField_Plume,
+    FloatFieldIJ_Ensemble,
+    FloatFieldIJ_Plume,
+    IntFieldIJ_Plume,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from ndsl.dsl.gt4py import computation, interval, FORWARD, PARALLEL, K
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ, Int
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    IntFieldIJ_Plume,
-    FloatFieldIJ_Ensemble,
-    FloatFieldIJ_Plume,
-)
-import pyMoist.constants as constants
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 
 
 def ddim_copy(
@@ -79,7 +79,7 @@ def ensemble_forcing(
         CLOSURE_CHOICE (Int)
         plume (Int)
     """
-    from __externals__ import ENSEMBLE_MEMBERS, DTIME, ZERO_DIFF, DIURNAL_CYCLE
+    from __externals__ import DIURNAL_CYCLE, DTIME, ENSEMBLE_MEMBERS, ZERO_DIFF
 
     with computation(FORWARD), interval(0, 1):
         ensemble_adjustment: FloatFieldIJ = 1.0

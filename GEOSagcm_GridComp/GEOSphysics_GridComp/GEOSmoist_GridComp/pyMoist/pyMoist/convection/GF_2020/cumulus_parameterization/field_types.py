@@ -1,12 +1,13 @@
 from ndsl.dsl.gt4py import IJ, IJK, Field, K
 from ndsl.dsl.typing import Float, Int
+from pyMoist.constants import NUMBER_OF_TRACERS
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    NUMBER_OF_PLUMES,
     MAXENS1,
     MAXENS2,
     MAXENS3,
+    NUMBER_OF_PLUMES,
 )
-from pyMoist.constants import NUMBER_OF_TRACERS
+
 
 # NOTE must cast to int because numpy types are not acceptable for data dimensions
 # plume field types

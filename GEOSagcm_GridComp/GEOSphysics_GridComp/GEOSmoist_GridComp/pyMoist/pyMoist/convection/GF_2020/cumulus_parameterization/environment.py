@@ -1,40 +1,28 @@
-from ndsl import StencilFactory, QuantityFactory, ndsl_log
-from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval
+
 import pyMoist.constants as constants
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    FORWARD,
-    BACKWARD,
-    computation,
-    interval,
-    exp,
-)
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import QuantityFactory, StencilFactory, ndsl_log
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import function
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    saturation_vapor_pressure,
-    get_cloud_boundary_conditions,
-)
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
+from pyMoist.convection.GF_2020.config import GF2020Config
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_Plume,
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
+    get_cloud_boundary_conditions,
+    saturation_vapor_pressure,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 @function
@@ -426,9 +414,9 @@ def environment_cloud_levels(
                     environment_moist_static_energy_cloud_levels[0, 0, 1]
                     > environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]
                 ):
-                    environment_moist_static_energy_cloud_levels[0, 0, 1] = (
-                        environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]
-                    )
+                    environment_moist_static_energy_cloud_levels[
+                        0, 0, 1
+                    ] = environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]
 
                 gamma_cloud_levels[0, 0, 1] = (
                     (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
@@ -698,7 +686,7 @@ def modify_environment_profiles(
         AVERAGE_LAYER_DEPTH (Float)
         plume (Int)
     """
-    from __externals__ import COUPLE_MICROPHYSICS, BOUNDARY_CONDITION_METHOD, k_end
+    from __externals__ import BOUNDARY_CONDITION_METHOD, COUPLE_MICROPHYSICS, k_end
 
     with computation(PARALLEL), interval(...):
         # make garbage field so the get_cloud_boundary_conditions call does not break

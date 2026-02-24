@@ -1,21 +1,12 @@
 from f90nml import Namelist
+
 from ndsl import StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS1,
     MAXENS2,
@@ -25,10 +16,12 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
     downdraft_moist_static_energy_and_buoyancy,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
-    set_constants,
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
 )
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 class TestCore:
@@ -100,9 +93,9 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "downdraft_origin_level"
-        ] - 1
+        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["downdraft_origin_level"] - 1
+        )
         state.input_output.u.data[:] = inputs["u"]
         locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels"]
         locals.u_c_downdraft.data[:] = inputs["local_u_c_downdraft"]
@@ -178,7 +171,8 @@ class TestCore:
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "downdraft_origin_level": state.output.downdraft_origin_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
-            ] + 1,
+            ]
+            + 1,
             "u": state.input_output.u.field[:],
             "local_u_cloud_levels": locals.u_cloud_levels.field[:],
             "local_u_c_downdraft": locals.u_c_downdraft.field[:],

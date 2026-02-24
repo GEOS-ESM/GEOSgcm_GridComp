@@ -1,5 +1,6 @@
 from f90nml import Namelist
-from ndsl import StencilFactory, Quantity
+
+from ndsl import Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader

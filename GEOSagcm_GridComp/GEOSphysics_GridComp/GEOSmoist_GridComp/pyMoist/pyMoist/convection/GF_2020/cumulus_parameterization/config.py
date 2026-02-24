@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from ndsl.dsl.typing import Float, Int, Bool
+from ndsl.dsl.typing import Bool, Float, Int
 
 
 @dataclass

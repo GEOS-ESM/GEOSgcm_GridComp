@@ -1,7 +1,7 @@
+import pyMoist.constants as constants
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField, Int
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
-import pyMoist.constants as constants
 
 
 def hydrostatic_air_density(

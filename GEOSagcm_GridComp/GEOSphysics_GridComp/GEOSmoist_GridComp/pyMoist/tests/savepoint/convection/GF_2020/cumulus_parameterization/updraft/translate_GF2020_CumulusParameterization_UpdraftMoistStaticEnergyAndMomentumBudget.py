@@ -1,34 +1,27 @@
 from f90nml import Namelist
+
 from ndsl import StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS1,
     MAXENS2,
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     updraft_moist_static_energy_and_momentum_budget,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
-    set_constants,
-)
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class TestCore:
@@ -139,12 +132,12 @@ class TestCore:
         locals.mass_detrainment_updraft.data[:] = inputs["local_mass_detrainment_updraft"]
         locals.mass_entrainment_u_updraft.data[:] = inputs["local_mass_entrainment_u_updraft"]
         locals.mass_detrainment_u_updraft.data[:] = inputs["local_mass_detrainment_u_updraft"]
-        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["mass_detrainment_updraft_forced"]
-        )
-        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["mass_entrainment_updraft_forced"]
-        )
+        state.output.mass_detrainment_updraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["mass_detrainment_updraft_forced"]
+        state.output.mass_entrainment_updraft_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["mass_entrainment_updraft_forced"]
         state.input_output.u.data[:] = inputs["u"]
         state.input_output.v.data[:] = inputs["v"]
         locals.u_c.data[:] = inputs["local_u_c"]
@@ -152,9 +145,9 @@ class TestCore:
         locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels"]
         locals.v_cloud_levels.data[:] = inputs["local_v_cloud_levels"]
         locals.partition_liquid_ice.data[:] = inputs["local_partition_liquid_ice"]
-        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_liquid_after_rain_forced"]
-        )
+        state.output.cloud_liquid_after_rain_forced.data[
+            :, :, :, plume_dependent_constants.PLUME_INDEX
+        ] = inputs["cloud_liquid_after_rain_forced"]
         locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
         locals.t_excess.data[:] = inputs["local_t_excess"]
         locals.add_buoyancy.data[:] = inputs["local_add_buoyancy"]

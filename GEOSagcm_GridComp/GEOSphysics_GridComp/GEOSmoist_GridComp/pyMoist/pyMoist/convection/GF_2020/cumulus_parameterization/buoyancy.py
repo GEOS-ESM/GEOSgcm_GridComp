@@ -1,9 +1,6 @@
-from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    IntFieldIJ_Plume,
-)
-from ndsl.dsl.gt4py import K
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume
 
 
 def get_buoyancy(

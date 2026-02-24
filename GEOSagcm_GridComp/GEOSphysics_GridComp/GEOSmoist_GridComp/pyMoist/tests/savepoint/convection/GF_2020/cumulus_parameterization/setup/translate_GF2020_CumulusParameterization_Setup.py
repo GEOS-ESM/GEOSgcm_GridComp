@@ -1,29 +1,24 @@
+import numpy as np
 from f90nml import Namelist
+
 from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS1,
     MAXENS2,
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
-import numpy as np
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 class TestCore:
@@ -315,7 +310,7 @@ class TestCore:
             "entrainment_rate": state.output.entrainment_rate.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "kstabm": state.output.kstabm.field[:,:,plume_dependent_constants.PLUME_INDEX] + 1,
+            "kstabm": state.output.kstabm.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "local_t_excess": locals.t_excess.field[:],
             "local_vapor_excess": locals.vapor_excess.field[:],
             "local_t_new": locals.t_new.field[:],

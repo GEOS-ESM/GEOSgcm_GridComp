@@ -1,36 +1,28 @@
-from ndsl.dsl.gt4py import (
-    PARALLEL,
-    computation,
-    interval,
-    FORWARD,
-    function,
-    BACKWARD,
-    K,
-)
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, Int, IntFieldIJ
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
+from ndsl.stencils.column_operations import column_max
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_Plume,
-    IntFieldIJ_Plume,
-    FloatFieldIJ_Plume,
     FloatFieldIJ_Ensemble,
+    FloatFieldIJ_Plume,
+    IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from ndsl.stencils.column_operations import column_max
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import liquid_fraction
-from pyMoist.shared_incloud_processes import (
-    make_droplet_number,
-    make_ice_number,
-    G_RATIO,
-    G_RATIO_Table_Type,
-    RADIATIVE_EFFECTIVE_RADIUS,
-    RADIATIVE_EFFECTIVE_RADIUS_Table_Type,
-)
-from ndsl import StencilFactory, QuantityFactory, Local, Quantity, NDSLRuntime
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import liquid_fraction
+from pyMoist.shared_incloud_processes import (
+    G_RATIO,
+    RADIATIVE_EFFECTIVE_RADIUS,
+    G_RATIO_Table_Type,
+    RADIATIVE_EFFECTIVE_RADIUS_Table_Type,
+    make_droplet_number,
+    make_ice_number,
 )
 
 
@@ -130,9 +122,9 @@ def ensemble_output_and_feedback(
         plume (Int)
     """
     from __externals__ import (
+        APPLY_SUBSIDENCE_MICROPHYSICS,
         DTIME,
         MAX_TEMP_VAPOR_TENDENCY,
-        APPLY_SUBSIDENCE_MICROPHYSICS,
         USE_SMOOTH_TENDENCIES,
         k_end,
     )
@@ -544,7 +536,7 @@ def output_workfunctions_and_precip_concentrations(
         RADIATIVE_EFFECTIVE_RADIUS (RADIATIVE_EFFECTIVE_RADIUS_Table_Type)
         plume (Int)
     """
-    from __externals__ import FRAC_MODIS, DTIME
+    from __externals__ import DTIME, FRAC_MODIS
 
     with computation(PARALLEL), interval(...):
         n_water_friendly_aerosols = 99.0e7  # in the future set this as NCPL

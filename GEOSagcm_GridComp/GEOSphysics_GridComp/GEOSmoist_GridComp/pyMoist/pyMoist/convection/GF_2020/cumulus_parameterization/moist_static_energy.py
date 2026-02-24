@@ -1,30 +1,19 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity, NDSLRuntime
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
+from ndsl.logging import ndsl_log
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from ndsl.logging import ndsl_log
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
-from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    IntFieldIJ_Plume,
-    FloatField_Plume,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    get_cloud_boundary_conditions,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 def parcel_moist_static_energy(
@@ -61,7 +50,7 @@ def parcel_moist_static_energy(
         AVERAGE_LAYER_DEPTH (Float)
         plume (Int)
     """
-    from __externals__ import k_end, BOUNDARY_CONDITION_METHOD
+    from __externals__ import BOUNDARY_CONDITION_METHOD, k_end
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:

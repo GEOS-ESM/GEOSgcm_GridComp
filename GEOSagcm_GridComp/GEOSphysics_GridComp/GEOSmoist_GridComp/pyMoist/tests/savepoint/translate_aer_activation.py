@@ -1,5 +1,6 @@
 from f90nml import Namelist
-from ndsl import StencilFactory, Quantity
+
+from ndsl import Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py

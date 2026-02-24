@@ -1,31 +1,29 @@
-from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
-from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, max, min, abs, K, function, BACKWARD
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, function, interval, max, min
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
+from ndsl.stencils.column_operations import column_min
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.state import GF2020State
-from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    IntFieldIJ_Plume,
-    FloatFieldIJ_Plume,
-    FloatField_Plume,
     FloatField_ConvectionTracers,
     FloatField_ConvectionTracers_Plume,
+    FloatField_Plume,
+    FloatFieldIJ_Plume,
+    IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+from pyMoist.convection.GF_2020.locals import GF2020Locals
+from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
-from ndsl.stencils.column_operations import column_min
 from pyMoist.saturation_tables import (
-    saturation_specific_humidity_liquid_surface,
-    saturation_specific_humidity,
     GlobalTable_saturation_tables,
+    saturation_specific_humidity,
+    saturation_specific_humidity_liquid_surface,
 )
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared_incloud_processes import ice_fraction
 
 
@@ -70,7 +68,7 @@ def flag_computed_plumes_and_columns(
         error_code (IntFieldIJ_Plume): contains error codes from cumulus parameterization core
         do_this_column (IntFieldIJ): mask which shows "successful" columns
     """
-    from __externals__ import ENABLE_SHALLOW, ENABLE_MID, ENABLE_DEEP
+    from __externals__ import ENABLE_DEEP, ENABLE_MID, ENABLE_SHALLOW
 
     with computation(FORWARD), interval(0, 1):
         if ENABLE_SHALLOW == 0:
@@ -207,12 +205,7 @@ def feedback(
         dbuoyancydt (FloatField)
         do_this_column (IntFieldIJ)
     """
-    from __externals__ import (
-        USE_MOMENTUM_TRANSPORT,
-        APPLY_SUBSIDENCE_MICROPHYSICS,
-        k_end,
-        CONVECTION_TRACER,
-    )
+    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, CONVECTION_TRACER, USE_MOMENTUM_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
         if do_this_column != 0:
@@ -357,7 +350,7 @@ def feedback_tracers(
         chemistry_tracers_from_cumulus_parameterization (FloatField_ConvectionTracers)
         do_this_column (IntFieldIJ)
     """
-    from __externals__ import USE_TRACER_TRANSPORT, DT_MOIST, k_end
+    from __externals__ import DT_MOIST, USE_TRACER_TRANSPORT, k_end
 
     with computation(PARALLEL), interval(...):
         if do_this_column != 0 and USE_TRACER_TRANSPORT == 1:
@@ -462,13 +455,7 @@ def feed_3d_model(
         dconvection_tracersdt (FloatField_ConvectionTracers)
         convection_tracers (FloatField_ConvectionTracers)
     """
-    from __externals__ import (
-        FEED_3D_MODEL,
-        ITEST,
-        k_end,
-        USE_TRACER_TRANSPORT,
-        DT_MOIST,
-    )
+    from __externals__ import DT_MOIST, FEED_3D_MODEL, ITEST, USE_TRACER_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
         if FEED_3D_MODEL == True and do_this_column != 0:
@@ -573,7 +560,7 @@ def feed_3d_model_from_plumes(
         esw (GlobalTable_saturation_tables)
         estlqu (Float)
     """
-    from __externals__ import FEED_3D_MODEL, k_end, DT_MOIST
+    from __externals__ import DT_MOIST, FEED_3D_MODEL, k_end
 
     with computation(FORWARD), interval(...):
         if (
@@ -784,7 +771,7 @@ def update_outputs(
         sigma_mid (FloatFieldIJ)
         sigma_deep (FloatFieldIJ)
     """
-    from __externals__ import ENABLE_SHALLOW, ENABLE_MID, ENABLE_DEEP, k_end
+    from __externals__ import ENABLE_DEEP, ENABLE_MID, ENABLE_SHALLOW, k_end
 
     with computation(FORWARD), interval(0, 1):
         pressure_shallow_convective_cloud_top = constants.MAPL_UNDEF
@@ -970,7 +957,7 @@ def update_state_with_tendencies(
     stencils) with the output from the cumulus parameterization core.
 
     Containts a call to saturation_specific_humidity, which is techincally a port of the GEOS_QSAT function.
-    In fortran 
+    In fortran
 
     Args:
         convection_fraction (FloatFieldIJ)
@@ -1009,7 +996,7 @@ def update_state_with_tendencies(
         ese (GlobalTable_saturation_tables)
         esx (GlobalTable_saturation_tables)
     """
-    from __externals__ import SCLM_DEEP, DT_MOIST, FIX_CONVECTIVE_CLOUD
+    from __externals__ import DT_MOIST, FIX_CONVECTIVE_CLOUD, SCLM_DEEP
 
     with computation(PARALLEL), interval(...):
         u = u + dudt_deep_convection * DT_MOIST
@@ -1231,7 +1218,6 @@ class GF2020Finalize(NDSLRuntime):
                 "FIX_CONVECTIVE_CLOUD": config.FIX_CONVECTIVE_CLOUD,
             },
         )
-
 
     def __call__(
         self,

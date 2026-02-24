@@ -1,10 +1,9 @@
 import dataclasses
+from typing import Dict
+
 from ndsl import Quantity, State
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, Bool
-
-import dataclasses
-from typing import Dict
+from ndsl.dsl.typing import Bool, Float
 
 
 @dataclasses.dataclass

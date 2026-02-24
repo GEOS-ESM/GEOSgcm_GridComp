@@ -1,16 +1,9 @@
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ, Int, BoolFieldIJ
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
-from gt4py.cartesian.gtscript import (
-    FORWARD,
-    PARALLEL,
-    BACKWARD,
-    computation,
-    interval,
-    K,
-    sqrt,
-)
+from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, K, computation, interval, sqrt
+
 import pyMoist.constants as constants
+from ndsl.dsl.typing import BoolFieldIJ, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
 
 
 def generic_find_level(
@@ -117,7 +110,7 @@ def updraft_vertical_velocity(
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= updraft_lfc_level[0, 0][plume]:
-                vertical_velocity_3d = max(1.0, convective_scale_velocity**2)
+                vertical_velocity_3d = max(1.0, convective_scale_velocity ** 2)
 
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:

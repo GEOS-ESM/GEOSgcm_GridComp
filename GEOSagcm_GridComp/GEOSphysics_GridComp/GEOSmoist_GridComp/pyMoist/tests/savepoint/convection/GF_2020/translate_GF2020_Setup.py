@@ -1,23 +1,20 @@
+import numpy as np
 from f90nml import Namelist
+
 from ndsl import StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020.state import GF2020State
-from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.setup import GF2020Setup
-from pyMoist.convection.GF_2020.locals import GF2020Locals
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    NUMBER_OF_PLUMES,
-)
 from pyMoist.constants import NUMBER_OF_TRACERS
-import numpy as np
+from pyMoist.convection.GF_2020.config import GF2020Config
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+from pyMoist.convection.GF_2020.locals import GF2020Locals
+from pyMoist.convection.GF_2020.setup import GF2020Setup
+from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 class TranslateGF2020_Setup(TranslateFortranData2Py):
@@ -123,7 +120,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         }
 
         # NOTE disabled fields are nan in fortran - zero in python, disabled so the test passes
-        self.out_vars = {
+        self.out_vars: dict = {
             # fields saved midway through GF2020 fortran
             "internal_lateral_entrainment_rate": {},
             "local_edge_height_above_surface": {},
@@ -409,7 +406,10 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
         code = GF2020Setup(
-            stencil_factory=self.stencil_factory, quantity_factory=self.quantity_factory, config=config, saturation_tables=saturation_tables
+            stencil_factory=self.stencil_factory,
+            quantity_factory=self.quantity_factory,
+            config=config,
+            saturation_tables=saturation_tables,
         )
 
         code(

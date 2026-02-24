@@ -1,9 +1,9 @@
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume
+from ndsl import QuantityFactory, StencilFactory
+from ndsl.dsl.gt4py import FORWARD, computation, interval
 from ndsl.dsl.typing import FloatFieldIJ, Int
-from ndsl.dsl.gt4py import computation, FORWARD, interval
-from ndsl import StencilFactory, QuantityFactory
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
@@ -29,7 +29,7 @@ def convection_trigger(
         if DICYCLE > 1:
             if error_code[0, 0][plume] == 0:
                 # think about including the grid scale vertical velocity at KE calculation
-                if cin_0 + 0.5 * convective_scale_velosity**2 < 0.0:
+                if cin_0 + 0.5 * convective_scale_velosity ** 2 < 0.0:
                     error_code[0, 0][plume] = 19
 
 

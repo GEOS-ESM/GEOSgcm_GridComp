@@ -1,43 +1,36 @@
-from ndsl import StencilFactory, QuantityFactory, Local, NDSLRuntime, Quantity
+import pyMoist.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    K,
+    computation,
+    exp,
+    float32,
+    function,
+    int32,
+    interval,
+)
+from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
+from ndsl.stencils.column_operations import column_max, column_max_ddim, column_min
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    FloatField_Plume,
+    FloatFieldIJ_ensemble_2,
+    FloatFieldIJ_Plume,
+    IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as constants
-
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, IntFieldIJ, Int, BoolFieldIJ
-from ndsl.dsl.gt4py import (
-    computation,
-    PARALLEL,
-    interval,
-    FORWARD,
-    K,
-    BACKWARD,
-    exp,
-    function,
-    int32,
-    float32,
-)
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-import pyMoist.constants as constants
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    IntFieldIJ_Plume,
-    FloatFieldIJ_Plume,
-    FloatField_Plume,
-    FloatFieldIJ_ensemble_2,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import generic_find_level
-from ndsl.stencils.column_operations import column_max, column_min, column_max_ddim
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 def get_critical_level(
@@ -323,9 +316,9 @@ def downdraft_mass_flux(
                 error_code[0, 0][plume] = 51
             else:
                 if K <= min(k_end, downdraft_origin_level[0, 0][plume] + 1):
-                    normalized_massflux_downdraft_forced[0, 0, 0][plume] = (
-                        normalized_massflux_downdraft_forced[0, 0, 0][plume] / (1.0e-9 + max_val)
-                    )
+                    normalized_massflux_downdraft_forced[0, 0, 0][
+                        plume
+                    ] = normalized_massflux_downdraft_forced[0, 0, 0][plume] / (1.0e-9 + max_val)
 
 
 def downdraft_lateral_massflux(
@@ -515,7 +508,7 @@ def downdraft_moist_static_energy_and_buoyancy(
         mass_detrainment_u_downdraft (FloatField)
         plume (Int)
     """
-    from __externals__ import USE_WETBULB, PRESSURE_GRADIENT_CONSTANT
+    from __externals__ import PRESSURE_GRADIENT_CONSTANT, USE_WETBULB
 
     with computation(PARALLEL), interval(...):
         cloud_moist_static_energy_downdraft_forced = (
@@ -671,7 +664,7 @@ def downdraft_moisture(
         buoyancy (FloatFieldIJ)
         plume (Int)
     """
-    from __externals__ import USE_WETBULB, ZERO_DIFF, EVAP_FIX
+    from __externals__ import EVAP_FIX, USE_WETBULB, ZERO_DIFF
 
     with computation(FORWARD), interval(0, 1):
         internal_loop_constant: IntFieldIJ = 1
@@ -978,7 +971,7 @@ def downdraft_windshear(
 
     with computation(FORWARD), interval(0, 1):
         if plume != 0 and error_code[0, 0][plume] == 0:
-            precip_efficiency = 1.591 - 0.639 * vshear + 0.0953 * (vshear**2) - 0.00496 * (vshear**3)
+            precip_efficiency = 1.591 - 0.639 * vshear + 0.0953 * (vshear ** 2) - 0.00496 * (vshear ** 3)
             precip_efficiency = min(precip_efficiency, 0.9)
             precip_efficiency = max(precip_efficiency, 0.1)
 
@@ -1000,11 +993,11 @@ def downdraft_windshear(
             epsilon = 1.0 - 0.5 * (precip_efficiency_b + precip_efficiency)
 
             if AEROEVAP > 1:
-                aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * (
+                aeroadd = (cumulus_parameterization_constants.CCNCLEAN ** beta3) * (
                     (psumh) ** (alpha3 - 1)
                 )  # *1.e6
                 prop_c = 0.5 * (precip_efficiency_b + precip_efficiency) / aeroadd
-                aeroadd = (ccn**beta3) * ((psum) ** (alpha3 - 1))  # *1.e6
+                aeroadd = (ccn ** beta3) * ((psum) ** (alpha3 - 1))  # *1.e6
                 aeroadd = prop_c * aeroadd
                 precip_efficiency_c = aeroadd
                 if precip_efficiency_c > 0.9:

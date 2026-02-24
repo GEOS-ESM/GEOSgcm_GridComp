@@ -1,22 +1,19 @@
+import numpy as np
 from f90nml import Namelist
+
 from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection.GF_2020.config import GF2020Config
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.finalize import GF2020Finalize
 from pyMoist.convection.GF_2020.locals import GF2020Locals
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    NUMBER_OF_PLUMES,
-)
-import numpy as np
+from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
 class TranslateGF2020_Finalize(TranslateFortranData2Py):
@@ -151,7 +148,7 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
         }
 
         # NOTE disabled fields are nan in fortran - zero in python, disabled so the test passes
-        self.out_vars = {
+        self.out_vars: dict = {
             "latitude_bugworkaroundname": {},
             "longitude_bugworkaroundname": {},
             "p_interface_bugworkaroundname": {},
@@ -518,9 +515,9 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
         cumulus_parameterization_state.output.epsilon_forced.field[:] = self.manual_inputs["epsilon_forced"][
             :, :, [1, 2, 0]
         ]
-        cumulus_parameterization_state.output.total_normalized_integrated_condensate_forced.field[:] = (
-            self.manual_inputs["total_normalized_integrated_condensate_forced"][:, :, [1, 2, 0]]
-        )
+        cumulus_parameterization_state.output.total_normalized_integrated_condensate_forced.field[
+            :
+        ] = self.manual_inputs["total_normalized_integrated_condensate_forced"][:, :, [1, 2, 0]]
         cumulus_parameterization_state.output.scale_dependence_factor.field[:] = self.manual_inputs[
             "scale_dependence_factor"
         ][:, :, [1, 2, 0]]
@@ -542,12 +539,12 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
         cumulus_parameterization_state.output.mass_detrainment_downdraft_forced.field[:] = self.manual_inputs[
             "mass_detrainment_downdraft_forced"
         ][:, :, :, [1, 2, 0]]
-        cumulus_parameterization_state.output.normalized_massflux_updraft_forced.field[:] = (
-            self.manual_inputs["normalized_massflux_updraft_forced"][:, :, :, [1, 2, 0]]
-        )
-        cumulus_parameterization_state.output.normalized_massflux_downdraft_forced.field[:] = (
-            self.manual_inputs["normalized_massflux_downdraft_forced"][:, :, :, [1, 2, 0]]
-        )
+        cumulus_parameterization_state.output.normalized_massflux_updraft_forced.field[
+            :
+        ] = self.manual_inputs["normalized_massflux_updraft_forced"][:, :, :, [1, 2, 0]]
+        cumulus_parameterization_state.output.normalized_massflux_downdraft_forced.field[
+            :
+        ] = self.manual_inputs["normalized_massflux_downdraft_forced"][:, :, :, [1, 2, 0]]
         cumulus_parameterization_state.output.condensate_to_fall_forced.field[:] = self.manual_inputs[
             "condensate_to_fall_forced"
         ][:, :, :, [1, 2, 0]]
@@ -601,9 +598,9 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
         cumulus_parameterization_state.input_output.ccn.field[:] = self.manual_inputs["ccn"]
         cumulus_parameterization_state.input_output.air_density.field[:] = self.manual_inputs["air_density"]
         cumulus_parameterization_state.input_output.omega.field[:] = self.manual_inputs["omega"]
-        cumulus_parameterization_state.input_output.topography_height_no_negative.field[:] = (
-            self.manual_inputs["topography_height_no_negative"]
-        )
+        cumulus_parameterization_state.input_output.topography_height_no_negative.field[
+            :
+        ] = self.manual_inputs["topography_height_no_negative"]
         cumulus_parameterization_state.input_output.sensible_heat_flux.field[:] = self.manual_inputs[
             "sensible_heat_flux"
         ]
@@ -672,9 +669,9 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
                 plume * config.NUMBER_OF_TRACERS : plume * config.NUMBER_OF_TRACERS
                 + config.NUMBER_OF_TRACERS,
             ]
-        cumulus_parameterization_state.input_output.chemistry_tracers_output.field[:] = (
-            chemistry_tracers_input_5d[:, :, :, [1, 2, 0], :]
-        )
+        cumulus_parameterization_state.input_output.chemistry_tracers_output.field[
+            :
+        ] = chemistry_tracers_input_5d[:, :, :, [1, 2, 0], :]
 
         # initialize convection tracers
         convection_tracers = ConvectionTracers.ones(

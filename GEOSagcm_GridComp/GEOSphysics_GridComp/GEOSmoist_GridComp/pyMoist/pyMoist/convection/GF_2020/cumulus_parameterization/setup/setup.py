@@ -1,23 +1,23 @@
-from ndsl import StencilFactory, QuantityFactory, Quantity, NDSLRuntime
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
+from ndsl import NDSLRuntime, Quantity, QuantityFactory, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
+    FloatField_Plume,
+    FloatFieldIJ_Ensemble,
+    FloatFieldIJ_Plume,
+    IntFieldIJ_Plume,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
-from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    IntFieldIJ_Plume,
-    FloatFieldIJ_Plume,
-    FloatField_Plume,
-    FloatFieldIJ_Ensemble,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.shared_generic_math import sigma
 
 
@@ -183,13 +183,13 @@ def prefil_internal_fields(
         precip (FloatFieldIJ_Plume): _description_
         lightning_density (FloatFieldIJ): _description_
     """
-    from __externals__ import k_end, CAP_MAXS, ENSEMBLE_MEMBERS
+    from __externals__ import CAP_MAXS, ENSEMBLE_MEMBERS, k_end
 
     # reset to zero manually. cannot use locals.fill(0) because not all fields are reset to zero b/t plumes
     # internal fields
     with computation(FORWARD), interval(0, 1):
         maximum_updraft_origin_level = 0
-        kstabm[0,0][plume] = k_end - 2
+        kstabm[0, 0][plume] = k_end - 2
         ocean_fraction_local = ocean_fraction
         cap_max = CAP_MAXS
         error_code_2 = 0
@@ -378,9 +378,10 @@ def calculate_arbitrary_numerical_parameter(
 
 class Setup(NDSLRuntime):
     """Setup the GF2020 cumulus parameterization core. Prefill locals with appropriate values based on
-    configuration, set plume dependent constants for the correct plume, and 
+    configuration, set plume dependent constants for the correct plume, and
 
     """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -390,7 +391,7 @@ class Setup(NDSLRuntime):
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
-        
+
         # make configuration visible at runtime
         self.config = config
         self.cu_param_config = cumulus_parameterization_config

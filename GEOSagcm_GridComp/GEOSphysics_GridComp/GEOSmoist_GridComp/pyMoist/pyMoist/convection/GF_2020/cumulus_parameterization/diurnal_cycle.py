@@ -1,23 +1,17 @@
-from ndsl import StencilFactory, QuantityFactory, Local, Quantity, NDSLRuntime
+import pyMoist.constants as constants
+from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume, FloatField_Plume
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
-from ndsl.dsl.gt4py import computation, FORWARD, PARALLEL, interval, sqrt
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.shared_generic_math import sigma
-import pyMoist.constants as constants
 
 
 def set_time_scales(
@@ -58,7 +52,7 @@ def set_time_scales(
         TAU_CAPE_REMOVAL (Float)
         plume (Int)
     """
-    from __externals__ import SGS_W_TIMESCALE, DTIME
+    from __externals__ import DTIME, SGS_W_TIMESCALE
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
@@ -83,8 +77,8 @@ def set_time_scales(
                 umean = 2.0 + sqrt(
                     0.5
                     * (
-                        u**2
-                        + v**2
+                        u ** 2
+                        + v ** 2
                         + u.at(K=updraft_lfc_level[0, 0][plume]) ** 2
                         + v.at(K=updraft_lfc_level[0, 0][plume]) ** 2
                     )
