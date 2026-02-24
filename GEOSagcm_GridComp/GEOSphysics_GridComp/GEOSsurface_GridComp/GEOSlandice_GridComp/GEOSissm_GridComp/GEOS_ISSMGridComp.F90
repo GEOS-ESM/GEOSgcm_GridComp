@@ -54,11 +54,12 @@ subroutine GetNodesISSM(nodeIds, nodeCoords) bind(C,NAME="GetNodesISSM")
    type(c_ptr),      value       :: nodeCoords !
 end subroutine GetNodesISSM
 
-subroutine GetElementsISSM(elementIds, elementConn, elementCoords) bind(C,NAME="GetElementsISSM")
+subroutine GetElementsISSM(elementIds, elementConn, elementCoords, glacIds) bind(C,NAME="GetElementsISSM")
   import :: c_ptr
   type(c_ptr),      value       :: elementIds
   type(c_ptr),      value       :: elementConn
   type(c_ptr),      value       :: elementCoords
+  type(c_ptr),      value       :: glacIds
 end subroutine GetElementsISSM
 
 subroutine FinalizeISSM() bind(C,NAME="FinalizeISSM")
