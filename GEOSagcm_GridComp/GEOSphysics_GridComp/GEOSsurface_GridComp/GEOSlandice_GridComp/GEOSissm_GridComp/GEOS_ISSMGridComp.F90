@@ -14,18 +14,17 @@ module GEOS_IssmGridCompMod
 !   Imports: ICESMB (defined on landice tiles)
 !   Exports: ICESURF, ICETHICK, ICEVEL, ICESMB (defined on mesh)
 ! *** NOTES: 
-!            (*) currently we run over the Greenland Ice Sheet with all given PETs
-!            (*) ISSM mesh is *internal* to ISSM (C++ source)--we create an ESMF_MESH version for regridding     
+!            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR 
+!                (e.g., Greenland + Antarctica + any other glaciers that have been configured)
+!            (*) ISSM meshes are internal to ISSM (C++ source)--we create an ESMF_MESH version for regridding     
+!                imports/exports that is the global combination of all ISSM meshes
 !            (*) we transform imports from landice tiles to attached grid, then regrid to the mesh 
-!            (*) for future development, note that ISSM expects double precision inputs    
+!            (*) ISSM outputs are saved with HISTORY via a 'mesh tile space' developed by Weiyuan Jiang (GMAO SI Team)  
 !
-! next steps:  
-!            (*) implement basic coupling w.r.t. dynamic ice-surface elevation   
-!            (*) expand to other fields (e.g., ice discharge), Antarctica, possibly other glaciers
 
 ! !USES:
 use iso_fortran_env, only: dp=>real64
-use iso_c_binding, only: c_ptr, c_double, c_f_pointer,c_null_char, c_loc, c_int
+use iso_c_binding, only: c_ptr, c_double, c_f_pointer, c_null_char, c_char, c_loc, c_int
 use ESMF
 use MAPL
 use GEOS_UtilsMod
@@ -34,13 +33,12 @@ implicit none
 
 ! declare interface to the ISSM C++ library (arguments described in Initialize & Run below)
 interface
-subroutine InitializeISSM(argc, argv, num_elements, num_nodes, comm) bind(C, NAME="InitializeISSM")
-    import :: c_ptr, c_int
-    integer(c_int), value        :: argc
-    type(c_ptr), dimension(argc) :: argv 
-    integer(c_int)               :: num_elements
-    integer(c_int)               :: num_nodes
-    integer(c_int)               :: comm
+subroutine InitializeISSM(expdir, num_elements, num_nodes, comm) bind(c, name="InitializeISSM")
+  import :: c_char, c_int
+  character(c_char), dimension(*) :: expdir
+  integer(c_int)                  :: num_elements
+  integer(c_int)                  :: num_nodes
+  integer(c_int)                  :: comm
 end subroutine InitializeISSM
     
 subroutine RunISSM(dt, gcm_forcings, issm_outputs) bind(C,NAME="RunISSM")
@@ -56,11 +54,12 @@ subroutine GetNodesISSM(nodeIds, nodeCoords) bind(C,NAME="GetNodesISSM")
    type(c_ptr),      value       :: nodeCoords !
 end subroutine GetNodesISSM
 
-subroutine GetElementsISSM(elementIds, elementConn, elementCoords) bind(C,NAME="GetElementsISSM")
+subroutine GetElementsISSM(elementIds, elementConn, elementCoords, glacIds) bind(C,NAME="GetElementsISSM")
   import :: c_ptr
   type(c_ptr),      value       :: elementIds
   type(c_ptr),      value       :: elementConn
   type(c_ptr),      value       :: elementCoords
+  type(c_ptr),      value       :: glacIds
 end subroutine GetElementsISSM
 
 subroutine FinalizeISSM() bind(C,NAME="FinalizeISSM")
@@ -188,7 +187,7 @@ subroutine SetServices ( GC, RC )
 
 !   Export states:
     call MAPL_AddExportSpec(GC,                    &
-         SHORT_NAME = 'ICESURF',                     &
+         SHORT_NAME = 'ICESURF',                   &
          LONG_NAME  = 'ice_sheet_elevation',       &
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
@@ -269,6 +268,7 @@ subroutine SetServices ( GC, RC )
     real(dp),pointer, dimension(:)         :: elementCoords => null() ! element centroids
     real(dp),pointer,dimension(:)          :: nodeCoords    => null() ! node coordinates (longitude,latitude)
     integer, pointer, dimension(:)         :: nodeIds       => null() ! list of nodes local to PET
+    integer, pointer, dimension(:)         :: glacIds       => null() ! glacier ID for each element
 
     ! regridding 
     type(ESMF_Grid)                        :: grid                    ! atmospheric grid
@@ -280,12 +280,9 @@ subroutine SetServices ( GC, RC )
     type(ISSM_WRAP)                        :: wrap                    ! wrapper for routehandle container
 
     ! command-line arguments to initialize ISSM 
-    character(len=ESMF_MAXSTR), dimension(:), allocatable, target :: argv 
-    integer(c_int)                         :: argc                    ! command line count for ISSM init   
-    type(c_ptr), dimension(:), allocatable :: argv_ptr                ! pointer for passing command line args
     integer                                :: i,j                     ! loop indices
     character(len=ESMF_MAXSTR)             :: ISSM_EXPDIR             ! directory containing ISSM input file
-    character(len=ESMF_MAXSTR)             :: ISSM_EXPNAME            ! name of ISSM input file
+    character(len=ESMF_MAXSTR)             :: EXPDIR                  ! C++ compatible ISSM_EXPDIR string
 
     ! variables for saving mesh output
     type(ESMF_Field)                       :: field                   ! for fieldwrites
@@ -296,6 +293,7 @@ subroutine SetServices ( GC, RC )
     character(len=16) :: varname
     character(len=1)  :: istr
 
+    ! variables for mesh tile space
     type(ESMF_Grid)                        :: mesh_grid               
     type(MAPL_LocStream)                   :: mesh_locstream   
 
@@ -324,44 +322,28 @@ subroutine SetServices ( GC, RC )
     ! ****************************************************
     ! call ISSM initialize C++ code so we can set up mesh
 
-    ! Manually set command line argc and argv to initialize ISSM 
     call MAPL_GetResource(MAPL, ISSM_EXPDIR, Label=trim(COMP_NAME)//"_EXPDIR:", RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource(MAPL, ISSM_EXPNAME, Label=trim(COMP_NAME)//"_EXPNAME:", RC=STATUS)
-    VERIFY_(STATUS)
-
-    argc = 4  
-    allocate(argv(argc))
-    argv(1) = "unused"//c_null_char ! executable path: this argument is not used for library calls
-    argv(2) = "TransientSolution"//c_null_char
-    argv(3) = trim(ISSM_EXPDIR)//c_null_char
-    argv(4) = trim(ISSM_EXPNAME)//c_null_char
-
-    ! Convert Fortran strings to C pointers (in argv_ptr)
-    allocate(argv_ptr(argc))
-    do i = 1, argc
-        argv_ptr(i) = c_loc(argv(i))
-    end do
-
-    call ESMF_VMBarrier(vm, rc=status)
+    EXPDIR = trim(ISSM_EXPDIR)//c_null_char ! create string for C++
     
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
-    call InitializeISSM(argc, argv_ptr,num_elements,num_nodes,comm)
+    call InitializeISSM(EXPDIR, num_elements, num_nodes, comm)
 
     !allocate mesh-related pointers
     allocate(nodeCoords(2*num_nodes))
     allocate(nodeIds(num_nodes))
     allocate(elementTypes(num_elements))
     allocate(elementIds(num_elements))
+    allocate(glacIds(num_elements))
     allocate(elementConn(3*num_elements))
     allocate(elementCoords(2*num_elements))
 
     ! get information about nodes and elements
     ! node coords and element coords (centroids) are in (lon,lat)
     call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords)) 
-    call GetElementsISSM(c_loc(elementIds), c_loc(elementConn), c_loc(elementCoords))
+    call GetElementsISSM(c_loc(elementIds), c_loc(elementConn), c_loc(elementCoords),c_loc(glacIds))
 
     elementTypes(:) = ESMF_MESHELEMTYPE_TRI ! triangular elements
 
@@ -430,7 +412,7 @@ subroutine SetServices ( GC, RC )
         field_saver = nodelons(conn_slice)
         field = ESMF_FieldCreate(mesh=mesh,farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
         VERIFY_(STATUS)
-        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//trim(ISSM_EXPNAME)//"_mesh.nc", variableName=varname, rc=STATUS)
+        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//"issm_mesh.nc", variableName=varname, rc=STATUS)
         VERIFY_(STATUS)
         call ESMF_FieldDestroy(field, rc=STATUS)
         VERIFY_(STATUS)
@@ -440,7 +422,7 @@ subroutine SetServices ( GC, RC )
         field_saver = nodelats(conn_slice)
         field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
         VERIFY_(STATUS)
-        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//trim(ISSM_EXPNAME)//"_mesh.nc", variableName=varname, rc=STATUS)
+        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//"issm_mesh.nc", variableName=varname, rc=STATUS)
         VERIFY_(STATUS)
         call ESMF_FieldDestroy(field, rc=STATUS)
         VERIFY_(STATUS)
@@ -451,7 +433,18 @@ subroutine SetServices ( GC, RC )
     field_saver = elementIds(:)
     field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
     VERIFY_(STATUS)
-    call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//trim(ISSM_EXPNAME)//"_mesh.nc", variableName=varname, rc=STATUS)
+    call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//"issm_mesh.nc", variableName=varname, rc=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_FieldDestroy(field, rc=STATUS)
+    VERIFY_(STATUS)
+
+
+    ! ---- save glacier IDs ----
+    varname = "glacIds"
+    field_saver = glacIds(:)
+    field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//"issm_mesh.nc", variableName=varname, rc=STATUS)
     VERIFY_(STATUS)
     call ESMF_FieldDestroy(field, rc=STATUS)
     VERIFY_(STATUS)
@@ -462,7 +455,7 @@ subroutine SetServices ( GC, RC )
     ! note: original attached/atmospheric grid and landice tile locsstream have
     ! been stored in the internal state
     mesh_grid = create_mesh_grid(_RC)
-    call MAPL_LocstreamCreate(mesh_Locstream, mesh_Grid, local_id=elementIds,  _RC)
+    call MAPL_LocstreamCreate(mesh_locstream, mesh_grid, local_id=elementIds,  _RC)
     call MAPL%grid%set(mesh_grid, _RC)
     call ESMF_GridCompSet(gc, grid=mesh_grid, _RC)
     Call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
@@ -472,14 +465,13 @@ subroutine SetServices ( GC, RC )
     deallocate(nodelons)
     deallocate(nodelats)
     deallocate(conn_slice)
-    deallocate(argv)
-    deallocate(argv_ptr)
     deallocate(nodeCoords)
     deallocate(nodeIds)
     deallocate(elementTypes)
     deallocate(elementIds)
     deallocate(elementConn)
     deallocate(elementCoords)
+    deallocate(glacIds)
 
     ! generic initialize 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
@@ -497,10 +489,10 @@ subroutine SetServices ( GC, RC )
           
 
           !comm, VM, num_elements are from containing subroutine
-          call ESMF_VMGet(VM, petcount=nDEs,  _RC) 
+          call ESMF_VMGet(vm, petcount=nDEs,  _RC) 
           allocate(IMS(nDEs))
           num(1) = num_elements
-          call MAPL_CommsAllGather(VM, num, 1, IMs, 1, _RC) 
+          call MAPL_CommsAllGather(vm, num, 1, IMs, 1, _RC) 
 
           ! create a mesh-grid in 1D
           mesh_grid = ESMF_GridCreate(        &
@@ -515,7 +507,7 @@ subroutine SetServices ( GC, RC )
                _RC)
           ! coord and centers are required for a valid grid,
           ! even if their values don't make sense;
-          ! later on, the coord will be set to catchment's lat lon.
+          ! later on, the coord will be set to element's lat lon.
           call ESMF_GridAddCoord(mesh_grid, _RC)
           _VERIFY(status)
 
@@ -568,7 +560,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! tile information
   integer                              :: NT                      ! number of landice tiles
 
-
   ! surface mass balance on mesh, grid, tile
   real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
   real, pointer, dimension(:,:)        :: ICESMB_GRID   => null() ! surface mass balance on grid
@@ -603,7 +594,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! Get my internal MAPL_Generic state
 !----------------------------------
-
   call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
   VERIFY_(STATUS)
 
