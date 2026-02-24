@@ -121,9 +121,9 @@ class TestCore:
         locals.cloud_moist_static_energy_downdraft_forced.data[:] = inputs[
             "local_cloud_moist_static_energy_downdraft_forced"
         ]
-        state.output.evaporate_in_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["evaporate_in_downdraft_forced"]
+        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["evaporate_in_downdraft_forced"]
+        )
         locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
             "local_geopotential_height_cloud_levels_forced"
         ]
@@ -137,9 +137,9 @@ class TestCore:
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["total_normalized_integrated_condensate_forced"]
-        locals.total_normalized_integrated_evaporate_forced.data[
-            :,
-        ] = inputs["local_total_normalized_integrated_evaporate_forced"]
+        locals.total_normalized_integrated_evaporate_forced.data[:,] = inputs[
+            "local_total_normalized_integrated_evaporate_forced"
+        ]
         locals.buoyancy.data[:] = inputs["local_buoyancy"]
 
         # initialize test code

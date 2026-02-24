@@ -579,9 +579,9 @@ def get_convective_cloud_base_level(
                     )
 
                     start_level_internal = start_level_internal + 1
-                    cloud_moist_static_energy_forced_transported[
-                        0, 0, start_level_internal
-                    ] = moist_static_energy_origin_level_forced
+                    cloud_moist_static_energy_forced_transported[0, 0, start_level_internal] = (
+                        moist_static_energy_origin_level_forced
+                    )
 
             if skip_last_check == True:
                 # last check for updraft_lfc_level

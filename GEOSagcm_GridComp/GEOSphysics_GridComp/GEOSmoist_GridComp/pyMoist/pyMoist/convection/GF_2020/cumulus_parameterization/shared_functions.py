@@ -23,14 +23,14 @@ def saturation_vapor_pressure(t):
             + 0.876793 * (1 - toto)
             + (log(6.1071) / log(10.0))
         )
-        saturation_vapor_pressure = 10 ** eilog
+        saturation_vapor_pressure = 10**eilog
     else:
         tsot = 373.16 / t
         ewlog = -7.90298 * (tsot - 1) + 5.02808 * (log(tsot) / log(10.0))
         ewlog2 = ewlog - 1.3816e-07 * (10 ** (11.344 * (1 - (1 / tsot))) - 1)
         ewlog3 = ewlog2 + 0.0081328 * (10 ** (-3.49149 * (tsot - 1)) - 1)
         ewlog4 = ewlog3 + (log(1013.246) / log(10.0))
-        saturation_vapor_pressure = 10 ** ewlog4
+        saturation_vapor_pressure = 10**ewlog4
 
     return saturation_vapor_pressure
 

@@ -126,9 +126,9 @@ class TestCore:
         locals.effective_condensate_to_fall_forced.data[:, :, :] = inputs[
             "local_effective_condensate_to_fall_forced"
         ]
-        state.output.evaporate_in_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["evaporate_in_downdraft_forced"]
+        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["evaporate_in_downdraft_forced"]
+        )
         state.input_output.omega.data[:] = inputs["omega"]
         state.input_output.convective_scale_velocity.data[:] = inputs["convective_scale_velocity"]
         state.output.normalized_massflux_updraft_forced.data[

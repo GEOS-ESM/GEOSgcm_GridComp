@@ -116,12 +116,12 @@ class TestCore:
         state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "p_cloud_levels_forced"
         ]
-        state.output.mass_entrainment_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_entrainment_updraft_forced"]
-        state.output.mass_detrainment_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_detrainment_updraft_forced"]
+        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_entrainment_updraft_forced"]
+        )
+        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_detrainment_updraft_forced"]
+        )
         locals.mass_entrainment_updraft.data[:] = inputs["local_mass_entrainment_updraft"]
         locals.mass_detrainment_updraft.data[:] = inputs["local_mass_detrainment_updraft"]
         state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[

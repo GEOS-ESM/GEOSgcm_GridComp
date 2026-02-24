@@ -168,12 +168,12 @@ class TestCore:
         state.output.normalized_massflux_downdraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["normalized_massflux_downdraft_forced"]
-        state.output.mass_entrainment_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_entrainment_updraft_forced"]
-        state.output.mass_detrainment_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_detrainment_updraft_forced"]
+        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_entrainment_updraft_forced"]
+        )
+        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_detrainment_updraft_forced"]
+        )
         state.output.mass_entrainment_downdraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["mass_entrainment_downdraft_forced"]
@@ -187,9 +187,9 @@ class TestCore:
         locals.total_normalized_integrated_evaporate_forced.data[:] = inputs[
             "local_total_normalized_integrated_evaporate_forced"
         ]
-        state.output.evaporate_in_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["evaporate_in_downdraft_forced"]
+        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["evaporate_in_downdraft_forced"]
+        )
         state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "epsilon_forced"
         ]

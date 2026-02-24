@@ -126,9 +126,9 @@ class TestCore:
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["normalized_massflux_downdraft_forced"]
         locals.environment_massflux.data[:] = inputs["local_environment_massflux"]
-        state.output.mass_detrainment_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_detrainment_updraft_forced"]
+        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_detrainment_updraft_forced"]
+        )
         state.output.mass_detrainment_downdraft_forced.data[
             :, :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["mass_detrainment_downdraft_forced"]
@@ -155,15 +155,15 @@ class TestCore:
         locals.cloud_total_water_after_entrainment_downdraft_forced.data[:] = inputs[
             "local_cloud_total_water_after_entrainment_downdraft_forced"
         ]
-        state.output.cloud_liquid_after_rain_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["cloud_liquid_after_rain_forced"]
+        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_liquid_after_rain_forced"]
+        )
         state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "condensate_to_fall_forced"
         ]
-        state.output.evaporate_in_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["evaporate_in_downdraft_forced"]
+        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["evaporate_in_downdraft_forced"]
+        )
         locals.melting.data[:] = inputs["local_melting"]
         locals.partition_liquid_ice.data[:] = inputs["local_partition_liquid_ice"]
         state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[

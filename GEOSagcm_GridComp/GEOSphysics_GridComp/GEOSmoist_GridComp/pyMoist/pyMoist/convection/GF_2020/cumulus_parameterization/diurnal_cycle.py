@@ -75,8 +75,8 @@ def set_time_scales(
                 umean = 2.0 + sqrt(
                     0.5
                     * (
-                        u ** 2
-                        + v ** 2
+                        u**2
+                        + v**2
                         + u.at(K=updraft_lfc_level[0, 0][plume]) ** 2
                         + v.at(K=updraft_lfc_level[0, 0][plume]) ** 2
                     )

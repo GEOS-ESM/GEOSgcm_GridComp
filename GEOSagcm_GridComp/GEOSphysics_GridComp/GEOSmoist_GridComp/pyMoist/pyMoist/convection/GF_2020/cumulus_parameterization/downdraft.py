@@ -302,9 +302,9 @@ def downdraft_mass_flux(
                 error_code[0, 0][plume] = 51
             else:
                 if K <= min(k_end, downdraft_origin_level[0, 0][plume] + 1):
-                    normalized_massflux_downdraft_forced[0, 0, 0][
-                        plume
-                    ] = normalized_massflux_downdraft_forced[0, 0, 0][plume] / (1.0e-9 + max_val)
+                    normalized_massflux_downdraft_forced[0, 0, 0][plume] = (
+                        normalized_massflux_downdraft_forced[0, 0, 0][plume] / (1.0e-9 + max_val)
+                    )
 
 
 def downdraft_lateral_massflux(
@@ -959,7 +959,7 @@ def downdraft_windshear(
 
     with computation(FORWARD), interval(0, 1):
         if plume != 0 and error_code[0, 0][plume] == 0:
-            precip_efficiency = 1.591 - 0.639 * vshear + 0.0953 * (vshear ** 2) - 0.00496 * (vshear ** 3)
+            precip_efficiency = 1.591 - 0.639 * vshear + 0.0953 * (vshear**2) - 0.00496 * (vshear**3)
             precip_efficiency = min(precip_efficiency, 0.9)
             precip_efficiency = max(precip_efficiency, 0.1)
 
@@ -981,11 +981,11 @@ def downdraft_windshear(
             epsilon = 1.0 - 0.5 * (precip_efficiency_b + precip_efficiency)
 
             if AEROEVAP > 1:
-                aeroadd = (cumulus_parameterization_constants.CCNCLEAN ** beta3) * (
+                aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * (
                     (psumh) ** (alpha3 - 1)
                 )  # *1.e6
                 prop_c = 0.5 * (precip_efficiency_b + precip_efficiency) / aeroadd
-                aeroadd = (ccn ** beta3) * ((psum) ** (alpha3 - 1))  # *1.e6
+                aeroadd = (ccn**beta3) * ((psum) ** (alpha3 - 1))  # *1.e6
                 aeroadd = prop_c * aeroadd
                 precip_efficiency_c = aeroadd
                 if precip_efficiency_c > 0.9:

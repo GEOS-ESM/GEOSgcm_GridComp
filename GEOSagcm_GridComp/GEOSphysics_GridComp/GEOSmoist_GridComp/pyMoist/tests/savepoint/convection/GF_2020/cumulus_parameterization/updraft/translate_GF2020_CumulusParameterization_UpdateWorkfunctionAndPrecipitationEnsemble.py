@@ -107,9 +107,9 @@ class TestCore:
         state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "condensate_to_fall_forced"
         ]
-        state.output.evaporate_in_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["evaporate_in_downdraft_forced"]
+        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["evaporate_in_downdraft_forced"]
+        )
         state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "epsilon_forced"
         ]

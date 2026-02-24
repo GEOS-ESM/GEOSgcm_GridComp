@@ -132,12 +132,12 @@ class TestCore:
         locals.mass_detrainment_updraft.data[:] = inputs["local_mass_detrainment_updraft"]
         locals.mass_entrainment_u_updraft.data[:] = inputs["local_mass_entrainment_u_updraft"]
         locals.mass_detrainment_u_updraft.data[:] = inputs["local_mass_detrainment_u_updraft"]
-        state.output.mass_detrainment_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_detrainment_updraft_forced"]
-        state.output.mass_entrainment_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_entrainment_updraft_forced"]
+        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_detrainment_updraft_forced"]
+        )
+        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_entrainment_updraft_forced"]
+        )
         state.input_output.u.data[:] = inputs["u"]
         state.input_output.v.data[:] = inputs["v"]
         locals.u_c.data[:] = inputs["local_u_c"]
@@ -145,9 +145,9 @@ class TestCore:
         locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels"]
         locals.v_cloud_levels.data[:] = inputs["local_v_cloud_levels"]
         locals.partition_liquid_ice.data[:] = inputs["local_partition_liquid_ice"]
-        state.output.cloud_liquid_after_rain_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["cloud_liquid_after_rain_forced"]
+        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_liquid_after_rain_forced"]
+        )
         locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
         locals.t_excess.data[:] = inputs["local_t_excess"]
         locals.add_buoyancy.data[:] = inputs["local_add_buoyancy"]

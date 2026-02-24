@@ -109,12 +109,12 @@ class TestCore:
         locals.environment_saturation_moist_static_energy_cloud_levels_modified.data[:] = inputs[
             "local_env_saturation_moist_static_energy_cloud_levels_modified"
         ]
-        state.output.mass_detrainment_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_detrainment_updraft_forced"]
-        state.output.mass_entrainment_updraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_entrainment_updraft_forced"]
+        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_detrainment_updraft_forced"]
+        )
+        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["mass_entrainment_updraft_forced"]
+        )
         locals.normalized_massflux_updraft_modified.data[:] = inputs[
             "local_normalized_massflux_updraft_modified"
         ]
@@ -122,9 +122,9 @@ class TestCore:
         locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
         locals.t_excess.data[:] = inputs["local_t_excess"]
         locals.add_buoyancy.data[:] = inputs["local_add_buoyancy"]
-        state.output.cloud_liquid_after_rain_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["cloud_liquid_after_rain_forced"]
+        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_liquid_after_rain_forced"]
+        )
         locals.d_buoyancy_modified.data[:] = inputs["local_d_buoyancy_modified"]
 
         # initialize test code

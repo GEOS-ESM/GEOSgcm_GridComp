@@ -1193,7 +1193,7 @@ def prepare_cumulus_paramaterization_state(
 
         if convective_scale_velocity > constants.FLOAT_TINY:
             # convective-scale velocity w*
-            convective_scale_velocity = 1.2 * convective_scale_velocity ** 0.3333
+            convective_scale_velocity = 1.2 * convective_scale_velocity**0.3333
 
             # temperature excess
             t_excess = max(0.0, -1.5 * pahfs / (zrho * convective_scale_velocity * 1004.64))  # K
@@ -1208,7 +1208,7 @@ def prepare_cumulus_paramaterization_state(
 
         # convective_scale_velocity W* (m/s)
         convective_scale_velocity = max(0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / pten)
-        convective_scale_velocity = 1.2 * convective_scale_velocity ** 0.3333
+        convective_scale_velocity = 1.2 * convective_scale_velocity**0.3333
 
 
 class GF2020Setup(NDSLRuntime):

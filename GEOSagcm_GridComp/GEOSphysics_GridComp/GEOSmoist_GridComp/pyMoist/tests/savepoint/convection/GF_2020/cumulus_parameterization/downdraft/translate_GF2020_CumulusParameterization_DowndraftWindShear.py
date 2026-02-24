@@ -101,9 +101,9 @@ class TestCore:
         state.output.total_normalized_integrated_condensate_forced.data[
             :, :, plume_dependent_constants.PLUME_INDEX
         ] = inputs["total_normalized_integrated_condensate_forced"]
-        locals.total_normalized_integrated_evaporate_forced.data[
-            :,
-        ] = inputs["local_total_normalized_integrated_evaporate_forced"]
+        locals.total_normalized_integrated_evaporate_forced.data[:,] = inputs[
+            "local_total_normalized_integrated_evaporate_forced"
+        ]
         locals.psum.data[:] = inputs["local_psum"]
         locals.psumh.data[:] = inputs["local_psumh"]
         locals.scale_dependence_factor_downdraft.data[:] = inputs["local_scale_dependence_factor_downdraft"]

@@ -100,9 +100,9 @@ class TestCore:
         locals.cloud_total_water_after_entrainment_forced.data[:] = inputs[
             "local_cloud_total_water_after_entrainment_forced"
         ]
-        state.output.cloud_liquid_after_rain_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["cloud_liquid_after_rain_forced"]
+        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_liquid_after_rain_forced"]
+        )
         locals.vapor_forced.data[:] = inputs["local_vapor_forced"]
         state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
         state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (

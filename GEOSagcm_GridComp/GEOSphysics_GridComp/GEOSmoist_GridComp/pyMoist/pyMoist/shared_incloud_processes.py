@@ -438,7 +438,7 @@ def make_ice_number(
         else:
             lambdai = 24.8 * exp(-0.049 * t_celcius)
 
-        mui = (0.13 * (lambdai ** 0.64)) - 2.0
+        mui = (0.13 * (lambdai**0.64)) - 2.0
 
         k = (mui + 3) * (mui * 3) / (mui + 2) / (mui + 1)
 

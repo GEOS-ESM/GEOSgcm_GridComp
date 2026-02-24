@@ -103,9 +103,9 @@ class TestCore:
             "cloud_base_mass_flux_modified"
         ]
         locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced"]
-        state.output.cloud_liquid_after_rain_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["cloud_liquid_after_rain_forced"]
+        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_liquid_after_rain_forced"]
+        )
         locals.environment_saturation_mixing_ratio_cloud_levels_forced.data[:] = inputs[
             "local_env_saturation_mixing_ratio_cloud_levels_forced"
         ]

@@ -406,9 +406,9 @@ def environment_cloud_levels(
                     environment_moist_static_energy_cloud_levels[0, 0, 1]
                     > environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]
                 ):
-                    environment_moist_static_energy_cloud_levels[
-                        0, 0, 1
-                    ] = environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]
+                    environment_moist_static_energy_cloud_levels[0, 0, 1] = (
+                        environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]
+                    )
 
                 gamma_cloud_levels[0, 0, 1] = (
                     (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)

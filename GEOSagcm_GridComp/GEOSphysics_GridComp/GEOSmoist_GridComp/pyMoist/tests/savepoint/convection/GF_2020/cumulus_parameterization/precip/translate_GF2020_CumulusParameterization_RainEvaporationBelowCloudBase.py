@@ -115,9 +115,9 @@ class TestCore:
         state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
             "condensate_to_fall_forced"
         ]
-        state.output.evaporate_in_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["evaporate_in_downdraft_forced"]
+        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["evaporate_in_downdraft_forced"]
+        )
         state.output.precip.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["precip"]
         locals.precipitation_flux.data[:] = inputs["local_precipitation_flux"]
         locals.evaporation_flux.data[:] = inputs["local_evaporation_flux"]

@@ -110,7 +110,7 @@ def updraft_vertical_velocity(
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= updraft_lfc_level[0, 0][plume]:
-                vertical_velocity_3d = max(1.0, convective_scale_velocity ** 2)
+                vertical_velocity_3d = max(1.0, convective_scale_velocity**2)
 
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:

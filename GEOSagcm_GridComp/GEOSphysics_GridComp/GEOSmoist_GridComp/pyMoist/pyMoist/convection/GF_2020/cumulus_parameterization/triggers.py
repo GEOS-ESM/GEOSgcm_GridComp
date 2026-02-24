@@ -28,7 +28,7 @@ def convection_trigger(
         if DICYCLE > 1:
             if error_code[0, 0][plume] == 0:
                 # think about including the grid scale vertical velocity at KE calculation
-                if cin_0 + 0.5 * convective_scale_velosity ** 2 < 0.0:
+                if cin_0 + 0.5 * convective_scale_velosity**2 < 0.0:
                     error_code[0, 0][plume] = 19
 
 
