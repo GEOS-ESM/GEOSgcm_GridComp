@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment import unknown_find_level
+from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment import generic_find_level
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
@@ -84,7 +84,7 @@ class TestCore:
         state.output.kstabi.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["kstabi"] - 1
 
         code = self.stencil_factory.from_dims_halo(
-            func=unknown_find_level,
+            func=generic_find_level,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -92,7 +92,7 @@ class TestCore:
             code(
                 array=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                 start_index=state.output.updraft_lfc_level,
-                end_index=state.output.kstabm.field[:,:,plume_dependent_constants.PLUME_INDEX],
+                end_index=state.output.kstabm.field[:, :, plume_dependent_constants.PLUME_INDEX],
                 out_index=state.output.kstabi,
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,

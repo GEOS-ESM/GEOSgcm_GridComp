@@ -79,6 +79,56 @@ def ensemble_output_and_feedback(
     CLOUD_BASE_MASS_FLUX_FACTOR: Float,
     plume: Int,
 ):
+    """Compute output tendencies for microphysical properties (ice/liquid/vapor concentrations), wind (u/v),
+    buoyancy, and temperature.
+
+    Behavior of this stencil is heavily dependent on the value of the CLOSURE_CHOICE external.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        error_code_2 (IntFieldIJ)
+        error_code_3 (IntFieldIJ)
+        cloud_top_level (IntFieldIJ_Plume)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        precip (FloatFieldIJ_Plume)
+        effective_condensate_to_fall_forced (FloatField)
+        cloud_base_mass_flux_modified (FloatFieldIJ_Plume)
+        scale_dependence_factor (FloatFieldIJ_Plume)
+        ocean_fraction (FloatFieldIJ)
+        f_dicycle_modified (FloatFieldIJ)
+        del_u_cloud_ensemble (FloatField)
+        del_v_cloud_ensemble (FloatField)
+        del_t_cloud_ensemble (FloatField)
+        del_vapor_cloud_ensemble (FloatField)
+        del_cloud_liquid_cloud_ensemble (FloatField)
+        del_buoyancy_cloud_ensemble (FloatField)
+        del_convective_ice_cloud_ensemble (FloatField)
+        del_large_scale_ice_cloud_ensemble (FloatField)
+        del_convective_liquid_cloud_ensemble (FloatField)
+        del_large_scale_liquid_cloud_ensemble (FloatField)
+        del_convective_cloud_fraction_cloud_ensemble (FloatField)
+        del_large_scale_cloud_fraction_cloud_ensemble (FloatField)
+        dtdt (FloatField_Plume)
+        dvapordt (FloatField_Plume)
+        dcloudicedt (FloatField_Plume)
+        dudt (FloatField_Plume)
+        dvdt (FloatField_Plume)
+        dbuoyancydt (FloatField_Plume)
+        dconvectiveicedt (FloatField_Plume)
+        dlargescaleicedt (FloatField_Plume)
+        dconvectiveliquiddt (FloatField_Plume)
+        dlargescaleliquiddt (FloatField_Plume)
+        dconvectivecloudfractiondt (FloatField_Plume)
+        dlargescalecloudfractiondt (FloatField_Plume)
+        mass_flux_ensemble (FloatFieldIJ_Ensemble)
+        precipitation_ensemble (FloatFieldIJ_Ensemble)
+        xff_mid (FloatFieldIJ_Ensemble)
+        CLOSURE_CHOICE (Int)
+        CLOUD_BASE_MASS_FLUX_FACTOR (Float)
+        plume (Int)
+    """
     from __externals__ import (
         DTIME,
         MAX_TEMP_VAPOR_TENDENCY,
@@ -294,6 +344,16 @@ def total_evaporation_flux(
     evaporation_sublimation_tendency: FloatField,
     plume: Int,
 ):
+    """Compute evaporation of rain below cloud_top_level.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        evaporation_flux (FloatField)
+        evaporation_sublimation_tendency (FloatField)
+        plume (Int)
+    """
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
@@ -310,6 +370,15 @@ def deep_precipitation_output(
     convective_precip_flux: FloatField,
     plume: Int,
 ):
+    """Compute precipitation specifically from deep convection.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        precipitation_flux (FloatField)
+        convective_precip_flux (FloatField)
+        plume (Int)
+    """
     with computation(PARALLEL), interval(...):
         if (
             error_code[0, 0][plume] == 0
@@ -319,13 +388,23 @@ def deep_precipitation_output(
             convective_precip_flux = precipitation_flux
 
 
-def tracer_output(
+def output_updraft_temperature(
     error_code: IntFieldIJ_Plume,
     updraft_column_temperature_forced: FloatField,
     t_cloud_levels: FloatField,
     t_updraft: FloatField_Plume,
     plume: Int,
 ):
+    """Copy the internal updraft temperature to an output array so that it can be
+    fed back to the rest of the model.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        updraft_column_temperature_forced (FloatField)
+        t_cloud_levels (FloatField)
+        t_updraft (FloatField_Plume)
+        plume (Int)
+    """
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             t_updraft[0, 0, 0][plume] = updraft_column_temperature_forced
@@ -353,6 +432,27 @@ def prepare_output(
     t_tendency_from_environmental_subsidence: FloatField,
     plume: Int,
 ):
+    """Scale output mass fluxes based on the cloud base mass flux before output.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_base_mass_flux_modified (FloatFieldIJ_Plume)
+        total_normalized_integrated_condensate_forced (FloatFieldIJ_Plume)
+        total_normalized_integrated_evaporate_forced (FloatFieldIJ)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        normalized_massflux_downdraft_forced (FloatField_Plume)
+        condensate_to_fall_forced (FloatField_Plume)
+        evaporate_in_downdraft_forced (FloatField_Plume)
+        mass_entrainment_updraft_forced (FloatField_Plume)
+        mass_detrainment_updraft_forced (FloatField_Plume)
+        mass_entrainment_downdraft_forced (FloatField_Plume)
+        mass_detrainment_downdraft_forced (FloatField_Plume)
+        environment_massflux (FloatField)
+        vapor_tendency_from_environmental_subsidence (FloatField)
+        moist_static_energy_tendency_from_environmental_subsidence (FloatField)
+        t_tendency_from_environmental_subsidence (FloatField)
+        plume (Int)
+    """
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             total_normalized_integrated_condensate_forced[0, 0][plume] = (
@@ -423,27 +523,26 @@ def output_workfunctions_and_precip_concentrations(
     RADIATIVE_EFFECTIVE_RADIUS: RADIATIVE_EFFECTIVE_RADIUS_Table_Type,
     plume: Int,
 ):
-    """
-    Push the internal copy of workfunctions 0 and 1 to the state fields for output, and get precipitate
+    """Push the internal copy of workfunctions 0 and 1 to the state fields for output, and get precipitate
     concentrations using the functions make_droplet_number and make_ice_number
 
     Args:
-        error_code (in)
-        cloud_top_level (in)
-        convection_fraction (in)
-        surface_type (in)
-        cloud_workfunction_0_output (out): state copy of workfunction 0
-        cloud_workfunction_1_output (out): state copy of workfunction 1
-        cloud_workfunction_0 (in): local copy of workfunction 0
-        cloud_workfunction_1 (in): local copy of workfunction 1
-        air_density (in)
-        updraft_column_temperature_forced (in)
-        dcloudicedt (in)
-        dnliquiddt (out)
-        dnicedt (out)
-        G_RATIO (in): table used for make_droplet_number
-        RADIATIVE_EFFECTIVE_RADIUS (in): table used for make_ice_number
-        plume (in): specifies the current plume
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        convection_fraction (FloatFieldIJ)
+        surface_type (FloatFieldIJ)
+        cloud_workfunction_0_output (FloatFieldIJ)
+        cloud_workfunction_1_output (FloatFieldIJ)
+        cloud_workfunction_0 (FloatFieldIJ)
+        cloud_workfunction_1 (FloatFieldIJ)
+        air_density (FloatField)
+        updraft_column_temperature_forced (FloatField)
+        dcloudicedt (FloatField_Plume)
+        dnliquiddt (FloatField_Plume)
+        dnicedt (FloatField_Plume)
+        G_RATIO (G_RATIO_Table_Type)
+        RADIATIVE_EFFECTIVE_RADIUS (RADIATIVE_EFFECTIVE_RADIUS_Table_Type)
+        plume (Int)
     """
     from __externals__ import FRAC_MODIS, DTIME
 
@@ -482,6 +581,10 @@ def output_workfunctions_and_precip_concentrations(
 
 
 class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
+    """Push the internal copy of workfunctions 0 and 1 to the state fields for output, and get precipitate
+    concentrations using the functions make_droplet_number and make_ice_number
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -490,7 +593,7 @@ class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
-        
+
         # add dimension to quantityfactory and create classes for constants
         quantity_factory.add_data_dimensions({"G_RATIO_Table": len(G_RATIO)})
         quantity_factory.add_data_dimensions(

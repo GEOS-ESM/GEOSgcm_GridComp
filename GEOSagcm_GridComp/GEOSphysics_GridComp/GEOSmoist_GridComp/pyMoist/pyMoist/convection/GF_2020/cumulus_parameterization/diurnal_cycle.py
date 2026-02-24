@@ -38,6 +38,26 @@ def set_time_scales(
     TAU_CAPE_REMOVAL: Float,
     plume: Int,
 ):
+    """Set the timescale for cape removal and pbl resonance.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        grid_length (FloatFieldIJ)
+        ocean_fraction (FloatFieldIJ)
+        topography_height_no_negative (FloatFieldIJ)
+        geopotential_height_cloud_levels_forced (FloatField)
+        u (FloatField)
+        v (FloatField)
+        vertical_velocity_2d (FloatFieldIJ)
+        cape_removal_time_scale (FloatFieldIJ)
+        cape_removal_time_scale_from_state (FloatFieldIJ)
+        pbl_time_scale (FloatFieldIJ)
+        pbl_time_scale_from_state (FloatFieldIJ)
+        TAU_CAPE_REMOVAL (Float)
+        plume (Int)
+    """
     from __externals__ import SGS_W_TIMESCALE, DTIME
 
     with computation(FORWARD), interval(0, 1):
@@ -97,6 +117,21 @@ def cloud_workfunction_1_pbl(
     cloud_work_function_1_fa: FloatFieldIJ,
     plume: Int,
 ):
+    """Compute the initial estimates for cloud_workfunction_1_pbl and cloud_workfunction_1_fa.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        pbl_level (IntFieldIJ)
+        geopotential_height_cloud_levels_forced (FloatField)
+        t_old (FloatField)
+        t_new (FloatField)
+        t_cloud_levels_forced (FloatField)
+        vapor_old (FloatField)
+        vapor_forced (FloatField)
+        cloud_work_function_1_pbl (FloatFieldIJ)
+        cloud_work_function_1_fa (FloatFieldIJ)
+        plume (Int)
+    """
     from __externals__ import DTIME
 
     with computation(FORWARD), interval(0, 1):
@@ -122,12 +157,23 @@ def scale_cloud_workfunction_1_pbl(
     T_STAR: Float,
     plume: Int,
 ):
+    """Scale cloud_workfunction_1_pbl based on the pbl_time_scale.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        pbl_time_scale (FloatFieldIJ)
+        cloud_work_function_1_pbl (FloatFieldIJ)
+        T_STAR (Float)
+        plume (Int)
+    """
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             cloud_work_function_1_pbl = cloud_work_function_1_pbl / T_STAR * pbl_time_scale
 
 
 class DiurnalCycle(NDSLRuntime):
+    """Determine the effects of the diurnal cycle on PBL processes."""
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -137,7 +183,7 @@ class DiurnalCycle(NDSLRuntime):
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
-        
+
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config

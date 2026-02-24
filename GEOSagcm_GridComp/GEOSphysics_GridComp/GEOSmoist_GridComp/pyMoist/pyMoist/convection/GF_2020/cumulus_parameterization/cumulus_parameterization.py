@@ -45,7 +45,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
     find_lcl,
     set_start_level,
     get_convective_cloud_base_level,
-    updraft_rates_pdf,
+    get_cloud_top,
     cloud_top_checks,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers import (
@@ -55,7 +55,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers impo
 from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment import (
     entrainment_rates,
     downdraft_entrainment_profiles,
-    unknown_find_level,
+    generic_find_level,
     compute_lateral_massflux,
     compute_uc_vc,
 )
@@ -68,7 +68,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import 
 from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
 from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import (
     C1DProfile,
-    get_melting_profile,
+    melting_profile,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     UpdraftMassFlux,
@@ -77,7 +77,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     updraft_temperature,
     UpdraftInitialWorkfunctions,
     UpdraftCIN,
-    UpdraftWorkfunctions,
+    UpdateWorkfunctionAndPrecipitationEnsemble,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.triggers import (
     convection_trigger,
@@ -110,13 +110,30 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
     total_evaporation_flux,
     LightningFlashDensity,
     deep_precipitation_output,
-    tracer_output,
+    output_updraft_temperature,
     prepare_output,
     OutputWorkfunctionsAndPrecipConcentrations,
 )
 
 
 class GF2020CumulusParameterization(NDSLRuntime):
+    """GF220 cumulus parameterization core. This component of GF2020 contains all of the science code related
+    to deep conveection, including (but not limited to):
+        - updraft dynamics
+        - downdraft dynamics
+        - entrainment/detrainment
+        - multi-phase precipitation accumulation
+        - tracer support
+        - near-storm environmental effects (optional, not implemented)
+        - sounding profiles (optional, not implemented)
+
+        Most pieces are called directly, but more complicated parts are buried into their own subclass.
+
+        Not all parts/options are fully implemented, some have been implemetned without full testing.
+        ALL of these untested/unimplemented paths are locked behind an NotImplementedError, with an
+        appropriate message pointing to the configuration option that is causing the error.
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -125,6 +142,15 @@ class GF2020CumulusParameterization(NDSLRuntime):
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
         saturation_tables: SaturationVaporPressureTable,
     ):
+        """Initialize the GF2020 cumulus parameterization core. Allocate locals and construct stencils
+
+        Args:
+            stencil_factory (StencilFactory)
+            quantity_factory (QuantityFactory)
+            config (GF2020Config)
+            cumulus_parameterization_config (GF2020CumulusParameterizationConfig)
+            saturation_tables (SaturationVaporPressureTable)
+        """
         super().__init__(stencil_factory)
 
         # make saturation tables visible at runtime
@@ -255,13 +281,13 @@ class GF2020CumulusParameterization(NDSLRuntime):
             externals={"DOWNDRAFT": cumulus_parameterization_config.DOWNDRAFT},
         )
 
-        self._unknown_find_level = stencil_factory.from_dims_halo(
-            func=unknown_find_level,
+        self._generic_find_level = stencil_factory.from_dims_halo(
+            func=generic_find_level,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._updraft_rates_pdf = stencil_factory.from_dims_halo(
-            func=updraft_rates_pdf,
+        self._get_cloud_top = stencil_factory.from_dims_halo(
+            func=get_cloud_top,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={"OVERSHOOT": cumulus_parameterization_config.OVERSHOOT},
         )
@@ -321,7 +347,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
         )
 
         self._melting_profile = stencil_factory.from_dims_halo(
-            func=get_melting_profile,
+            func=melting_profile,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
@@ -422,8 +448,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
         )
 
         self._Xie_trigger_function = XieTriggerFunction(
-            stencil_factory=stencil_factory,
-            quantity_factory=quantity_factory,
             config=config,
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
@@ -450,8 +474,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
         )
 
         self._environmental_subsidence = EnvironmentalSubsidence(
-            stencil_factory=stencil_factory,
-            quantity_factory=quantity_factory,
             config=config,
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
@@ -477,7 +499,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
-        self._updraft_workfunctions = UpdraftWorkfunctions(
+        self._update_workfunction_and_precipitaiton_ensemble = UpdateWorkfunctionAndPrecipitationEnsemble(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
             config=config,
@@ -541,8 +563,8 @@ class GF2020CumulusParameterization(NDSLRuntime):
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._tracer_output = stencil_factory.from_dims_halo(
-            func=tracer_output,
+        self._output_updraft_temperature = stencil_factory.from_dims_halo(
+            func=output_updraft_temperature,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -571,6 +593,16 @@ class GF2020CumulusParameterization(NDSLRuntime):
         state: GF2020CumulusParameterizationState,
         convection_tracers: ConvectionTracers,
     ):
+        """Run the GF2020 cumulus parameterization core.
+
+        Args:
+            state (GF2020CumulusParameterizationState): Special state for the cumulus parameterization core.
+                This state is initialized in the GF2020Setup class. The overarching model state cannot be
+                passed to the GF2020CumulusParameterizationState because of incompatible K-axis orientation.
+            convection_tracers (ConvectionTracers): Collection of tracers from the rest of the model which
+                will be updated within convection. These may come from a variaty of sources, and need to be
+                collected into the expected ConvectionTracers data type before being passed down.
+        """
         if self.cumulus_parameterization_config.PLUME_ORDER == 0:
             plume_types = ["shallow", "mid", "deep"]
         elif self.cumulus_parameterization_config.PLUME_ORDER == 1:
@@ -983,7 +1015,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._unknown_find_level(
+                self._generic_find_level(
                     array=self.locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                     start_index=state.output.updraft_lfc_level,
                     end_index=state.output.kstabm.field[:, :, self.plume_dependent_constants.PLUME_INDEX],
@@ -997,7 +1029,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._updraft_rates_pdf(
+                self._get_cloud_top(
                     entrainment_rate=state.output.entrainment_rate,
                     environment_moist_static_energy_forced=self.locals.environment_moist_static_energy_forced,
                     environment_saturation_moist_static_energy_cloud_levels_forced=self.locals.environment_saturation_moist_static_energy_cloud_levels_forced,
@@ -1806,7 +1838,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._updraft_workfunctions(
+                self._update_workfunction_and_precipitaiton_ensemble(
                     error_code=state.output.error_code,
                     updraft_origin_level=state.output.updraft_origin_level,
                     updraft_lfc_level=state.output.updraft_lfc_level,
@@ -2044,7 +2076,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                self._tracer_output(
+                self._output_updraft_temperature(
                     error_code=state.output.error_code,
                     updraft_column_temperature_forced=self.locals.updraft_column_temperature_forced,
                     t_cloud_levels=self.locals.t_cloud_levels,

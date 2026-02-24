@@ -79,11 +79,19 @@ def partition_liquid_ice(
     part_liquid_ice: FloatField,
     plume: Int,
 ):
-    """
-    Partition total condensate into liquid and ice phases
+    """Partition total condensate into liquid and ice phases.
 
     Args:
-
+        t (FloatField)
+        p (FloatField_Plume)
+        geopotential_height (FloatField)
+        topography_height_no_negative (FloatFieldIJ)
+        surface_type (FloatFieldIJ)
+        convection_fraction (FloatFieldIJ)
+        error_code (IntFieldIJ_Plume)
+        melting_layer (FloatField)
+        part_liquid_ice (FloatField)
+        plume (Int)
     """
     from __externals__ import MELT_GLAC, FRAC_MODIS, k_end
 
@@ -153,10 +161,10 @@ def partition_liquid_ice(
 
 class PrecipFactor:
     """
-    get the pickup of ensemble ave prec, following Neelin et al 2009.
+    Get the pickup of ensemble average precipitation, following Neelin et al 2009.
 
-    This runs in the fortran, but it does not modify inputs and its
-    output is never used, so it is not implemented in the Python version.
+    Fortran --> Python translation note: this runs in the fortran, but it does not modify inputs
+    and the output is never used. For this reason, it is not implemented in the Python version.
     """
 
     def __init__(self):
@@ -177,6 +185,19 @@ def get_precip_fluxes(
     evaporation_flux: FloatField,
     plume: Int,
 ):
+    """Compute the evaporation and precipitation flux throughout the entire column.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        cloud_base_mass_flux_modified (FloatFieldIJ_Plume)
+        epsilon_forced (FloatFieldIJ_Plume)
+        condensate_to_fall_forced (FloatField_Plume)
+        evaporate_in_downdraft_forced (FloatField_Plume)
+        precipitation_flux (FloatField)
+        evaporation_flux (FloatField)
+        plume (Int)
+    """
     with computation(PARALLEL), interval(...):
         precipitation_flux = 0.0
         evaporation_flux = 0.0
@@ -224,6 +245,31 @@ def rain_evaporation_below_cloud_base(
     dbuoyancydt: FloatField_Plume,
     plume: Int,
 ):
+    """Allow rain the evaporate below the cloud base.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        ocean_fraction (FloatFieldIJ)
+        p_cloud_levels_forced (FloatField_Plume)
+        p_surface (FloatFieldIJ)
+        t_cloud_levels (FloatField)
+        vapor_cloud_levels_forced (FloatField)
+        environment_saturation_mixing_ratio_cloud_levels (FloatField)
+        epsilon_forced (FloatFieldIJ_Plume)
+        cloud_base_mass_flux_modified (FloatFieldIJ_Plume)
+        condensate_to_fall_forced (FloatField_Plume)
+        evaporate_in_downdraft_forced (FloatField_Plume)
+        precip (FloatFieldIJ_Plume)
+        precipitation_flux (FloatField)
+        evaporation_flux (FloatField)
+        evaporation_below_cloud_base (FloatField)
+        dtdt (FloatField_Plume)
+        dvapordt (FloatField_Plume)
+        dbuoyancydt (FloatField_Plume)
+        plume (Int)
+    """
     with computation(FORWARD), interval(0, 1):
         # setup internal constants
         alpha1: FloatFieldIJ = 5.44e-4
@@ -351,6 +397,28 @@ def cloud_dissapation(
     dcloudicedt: FloatField_Plume,
     plume: Int,
 ):
+    """After excess water has precipitated, dissipate clouds which are no longer saturated.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        hydrostatic_air_density (FloatField)
+        geopotential_height_forced (FloatField)
+        t_cloud_levels_forced (FloatField)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        cloud_base_mass_flux_modified (FloatFieldIJ_Plume)
+        vapor_cloud_levels_forced (FloatField)
+        cloud_liquid_after_rain_forced (FloatField_Plume)
+        environment_saturation_mixing_ratio_cloud_levels_forced (FloatField)
+        environment_saturation_moist_static_energy_cloud_levels_forced (FloatField)
+        vertical_velocity_3d (FloatField)
+        scale_dependence_factor (FloatFieldIJ_Plume)
+        dtdt (FloatField_Plume)
+        dvapordt (FloatField_Plume)
+        dcloudicedt (FloatField_Plume)
+        plume (Int)
+    """
     from __externals__ import USE_CLOUD_DISSIPATION, DTIME, COUPLE_MICROPHYSICS
 
     with computation(FORWARD), interval(0, 1):

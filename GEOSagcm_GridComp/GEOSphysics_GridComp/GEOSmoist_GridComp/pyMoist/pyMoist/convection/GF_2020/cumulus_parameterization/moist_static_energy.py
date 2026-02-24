@@ -43,6 +43,24 @@ def parcel_moist_static_energy(
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
 ):
+    """Determine the moist static energy of the forced and unforced parcel.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        t_excess (FloatFieldIJ)
+        vapor_excess (FloatFieldIJ)
+        add_buoyancy (FloatFieldIJ)
+        ocean_fraction (FloatFieldIJ)
+        updraft_origin_level (IntFieldIJ_Plume)
+        p (FloatField)
+        environmenet_moist_static_energy (FloatField)
+        environmenet_moist_static_energy_forced (FloatField)
+        t_perturbation (FloatField)
+        moist_static_energy_origin_level (FloatFieldIJ)
+        moist_static_energy_origin_level_forced (FloatFieldIJ)
+        AVERAGE_LAYER_DEPTH (Float)
+        plume (Int)
+    """
     from __externals__ import k_end, BOUNDARY_CONDITION_METHOD
 
     with computation(FORWARD), interval(0, 1):
@@ -94,6 +112,25 @@ def first_guess_moist_static_energy(
     add_buoyancy: FloatFieldIJ,
     plume: Int,
 ):
+    """Compute moist static energy within the cloud (between LCL/start_level
+    and equilibrium level/cloud_top_level)
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        start_level (IntFieldIJ)
+        cloud_top_level (IntFieldIJ_Plume)
+        mass_detrainment_updraft_forced (FloatField_Plume)
+        mass_entrainment_updraft_forced (FloatField_Plume)
+        normalized_massflux_updraft (FloatField)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        environment_moist_static_energy_forced (FloatField)
+        environment_saturation_moist_static_energy_cloud_levels_forced (FloatField)
+        cloud_moist_static_energy_forced (FloatField)
+        vapor_excess (FloatFieldIJ)
+        t_excess (FloatFieldIJ)
+        add_buoyancy (FloatFieldIJ)
+        plume (Int)
+    """
     with computation(FORWARD), interval(1, None):
         if error_code[0, 0][plume] == 0:
             if K >= start_level + 1 and K <= cloud_top_level[0, 0][plume] + 1:  # mass cons option
@@ -150,6 +187,26 @@ def moist_static_energy_inside_cloud(
     cloud_liquid_after_rain_forced: FloatField_Plume,
     plume: Int,
 ):
+    """Compute moist static energy within the cloud.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        start_level (IntFieldIJ)
+        moist_static_energy_origin_level (FloatFieldIJ)
+        cloud_moist_static_energy (FloatField)
+        environment_moist_static_energy_modified (FloatField)
+        environment_saturation_moist_static_energy_cloud_levels_modified (FloatField)
+        mass_detrainment_updraft_forced (FloatField_Plume)
+        mass_entrainment_updraft_forced (FloatField_Plume)
+        normalized_massflux_updraft_modified (FloatField)
+        partition_liquid_ice (FloatField)
+        vapor_excess (FloatFieldIJ)
+        t_excess (FloatFieldIJ)
+        add_buoyancy (FloatFieldIJ)
+        cloud_liquid_after_rain_forced (FloatField_Plume)
+        plume (Int)
+    """
     with computation(PARALLEL), interval(...):
         cloud_moist_static_energy = 0.0
         if error_code[0, 0][plume] == 0:
@@ -202,6 +259,8 @@ def moist_static_energy_inside_cloud(
 
 
 class StaticControl(NDSLRuntime):
+    """Update cloud moist static energy and compute buoyancy remaining after convection."""
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -211,7 +270,7 @@ class StaticControl(NDSLRuntime):
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
-        
+
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config

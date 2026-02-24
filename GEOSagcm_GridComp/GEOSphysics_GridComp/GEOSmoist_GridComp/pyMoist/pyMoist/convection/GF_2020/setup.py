@@ -1,5 +1,4 @@
-import copy
-from ndsl import StencilFactory, QuantityFactory, ndsl_log
+from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
 from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, sqrt, max, min, abs, floor, BACKWARD, K
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ
@@ -1214,7 +1213,7 @@ def prepare_cumulus_paramaterization_state(
         convective_scale_velocity = 1.2 * convective_scale_velocity**0.3333
 
 
-class GF2020Setup:
+class GF2020Setup(NDSLRuntime):
     """
     This class performs the entire setup sequence for the GF2020 convection parameterization scheme
 
@@ -1236,6 +1235,8 @@ class GF2020Setup:
         config: GF2020Config,
         saturation_tables: SaturationVaporPressureTable,
     ):
+        super().__init__(stencil_factory)
+
         # make inputs visible at runtime
         self.stencil_factory = stencil_factory
         self.config = config
@@ -1332,7 +1333,9 @@ class GF2020Setup:
             locals (GF2020Locals): NDSL LocalState containing all locals for GF2020.
             cumulus_parameterization_state (GF2020CumulusParameterizationState): NDSL State containing all
                 fields required for the CumulusParameterization.
-            convection_tracers (ConvectionTracers): convection tracers - fields and metadata
+            convection_tracers (ConvectionTracers): Collection of tracers from the rest of the model which
+                will be updated within convection. These may come from a variaty of sources, and need to be
+                collected into the expected ConvectionTracers data type before being passed down.
             scm_stop (bool): flag which can stop the execution of GF2020
 
         """

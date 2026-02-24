@@ -1,5 +1,5 @@
 import copy
-from ndsl import StencilFactory, QuantityFactory
+from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.cumulus_parameterization import GF2020Config
@@ -17,7 +17,17 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.cumulus_parameterizatio
 from pyMoist.convection.GF_2020.finalize import GF2020Finalize
 
 
-class GF2020:
+class GF2020(NDSLRuntime):
+    """Grell-Fritas convection parameterization scheme, 2020 version (GF2020).
+
+    This class has three subcomponents, and each are called at every execution:
+        Setup - initializes/resets fields, flips K-axis of state variables, and computes derived fields
+        CumulusParameterization - the core of the scheme, this class contains the all of the science code
+            related to deep convection. It requires a flipped (level 0 is surface) data structure,
+            necessitating the flip/unflip routines in Setup and Finalize, respectively.
+        Finalize - unflips outputs of core and updates the model state
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -26,6 +36,19 @@ class GF2020:
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
         saturation_tables: SaturationVaporPressureTable | None,
     ):
+        """Initialize the GF2020 convection parameterization scheme.
+
+        Initializes subclasses, builds stencils, and allocates dataclasses
+
+        Args:
+            stencil_factory (StencilFactory)
+            quantity_factory (QuantityFactory)
+            config (GF2020Config)
+            cumulus_parameterization_config (GF2020CumulusParameterizationConfig)
+            saturation_tables (SaturationVaporPressureTable | None)
+        """
+        super().__init__(stencil_factory)
+        
         # make saturation tables visible at runtime
         if saturation_tables is None:
             saturation_tables = SaturationVaporPressureTable(stencil_factory.backend)
@@ -75,6 +98,14 @@ class GF2020:
         )
 
     def __call__(self, state: GF2020State, convection_tracers: ConvectionTracers):
+        """Run the GF2020 convection parameterization scheme.
+
+        Args:
+            state (GF2020State): State of the overarching model - not all fields from the model are required
+            convection_tracers (ConvectionTracers): Collection of tracers from the rest of the model which
+                will be updated within convection. These may come from a variaty of sources, and need to be
+                collected into the expected ConvectionTracers data type before being passed down.
+        """
         # flag to stop convection scheme for single column models
         # this can be set in setup if surface temperature is very near zero Kelvin
         scm_stop = False

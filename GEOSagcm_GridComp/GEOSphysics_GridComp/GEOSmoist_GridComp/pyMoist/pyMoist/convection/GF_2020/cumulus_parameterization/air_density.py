@@ -11,14 +11,14 @@ def hydrostatic_air_density(
     air_density: FloatField,
     plume: Int,
 ):
-    """
-    Compute air density, assuming hydrostatic balance
+    """Compute air density, assuming hydrostatic balance.
 
     Args:
-        p (in): pressure
-        geopotential_height (in): geopotential height
-        hydrostatic_air_density (out): air density
-        plume (in): specifies the current plume
+        p (FloatField_Plume)
+        geopotential_height (FloatField)
+        error_code (IntFieldIJ_Plume)
+        air_density (FloatField)
+        plume (Int)
     """
     with computation(PARALLEL), interval(...):
         # prefil with 0

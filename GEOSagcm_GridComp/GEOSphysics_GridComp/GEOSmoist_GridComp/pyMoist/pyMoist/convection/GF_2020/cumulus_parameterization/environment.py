@@ -96,23 +96,21 @@ def environment_conditions(
     error_code: IntFieldIJ_Plume,
     plume: Int,
 ):
-    """
-    Compute moist static energy, geopotential height and saturation
-    mixing ratio for a set of environmental fields.
+    """Compute moist static energy, geopotential height and saturation
+        mixing ratio for a set of environmental fields.
 
     Args:
-        p (in): pressure
-        p_surface (in): surface pressure
-        t (in): temperature
-        vapor (in): water vapor mixing ratio
-        topography_height_no_negative (in): topography height, without features extending below sea level
-        moist_static_energy (out)
-        saturation_moist_static_energy (out)
-        saturation_mixing_ratio (out)
-        geopotential_height (in)
-        error_code (out)
-        plume (in): specifies the current plume
-
+        p (FloatField)
+        p_surface (FloatFieldIJ)
+        t (FloatField)
+        vapor (FloatField)
+        topography_height_no_negative (FloatFieldIJ)
+        moist_static_energy (FloatField)
+        saturation_moist_static_energy (FloatField)
+        saturation_mixing_ratio (FloatField)
+        geopotential_height (FloatField)
+        error_code (IntFieldIJ_Plume)
+        plume (Int)
     """
     from __externals__ import SATURATION_CALCULATION_CHOICE
 
@@ -169,6 +167,17 @@ def get_interp(
     t,
     vapor,
 ):
+    """interpolate temperature and water vapor between a set of pressures.
+
+    Args:
+        p
+        t
+        vapor
+
+    Returns:
+        t_new (Float)
+        vapor_forced (Float)
+    """
     # bunch of interal constants, not to be used outside of this function
     rd = 287.06
     rv = 461.52
@@ -266,34 +275,33 @@ def environment_cloud_levels(
     error_code: IntFieldIJ_Plume,
     plume: Int,
 ):
-    """
-    Compute environmental fields at cloud levels.
+    """Compute environmental fields at cloud levels.
 
     Args:
-        p (in): pressure
-        p_surface (in): surface pressure
-        p_cloud_levels (out): pressure at cloud levels
-        topography_height_no_negative (in): topography height, without features extending below sea level
-        geopotential_height (in)
-        geopotential_height_cloud_levels (out): geopotential height at cloud levels
-        t (in): temperature
-        t_surface (in): surface temperature
-        t_cloud_levels: temperature at cloud levels
-        vapor (in): water vapor mixing ratio
-        vapor_cloud_levels (out): water vapor mixing ratio at cloud levels
-        u (in): zonal wind
-        v (in): meridional wind
-        u_cloud_levels (out): zonal wind at cloud levels
-        v_cloud_levels (out): meridional wind at cloud levels
-        environment_saturation_mixing_ratio (in)
-        environment_saturation_mixing_ratio_cloud_levels (out)
-        environment_moist_static_energy (in)
-        environment_moist_static_energy_cloud_levels (out)
-        environment_saturation_moist_static_energy (in)
-        environment_saturation_moist_static_energy_cloud_levels (out)
-        gamma_cloud_levels (out)
-        error_code (in)
-        plume (in): specifies the current plume
+        p (FloatField)
+        p_surface (FloatFieldIJ)
+        p_cloud_levels (FloatField)
+        topography_height_no_negative (FloatFieldIJ)
+        geopotential_height (FloatField)
+        geopotential_height_cloud_levels (FloatField)
+        t (FloatField)
+        t_surface (FloatFieldIJ)
+        t_cloud_levels (FloatField)
+        vapor (FloatField)
+        vapor_cloud_levels (FloatField)
+        u (FloatField)
+        v (FloatField)
+        u_cloud_levels (FloatField)
+        v_cloud_levels (FloatField)
+        environment_saturation_mixing_ratio (FloatField)
+        environment_saturation_mixing_ratio_cloud_levels (FloatField)
+        environment_moist_static_energy (FloatField)
+        environment_moist_static_energy_cloud_levels (FloatField)
+        environment_saturation_moist_static_energy (FloatField)
+        environment_saturation_moist_static_energy_cloud_levels (FloatField)
+        gamma_cloud_levels (FloatField)
+        error_code (IntFieldIJ_Plume)
+        plume (Int)
     """
     from __externals__ import CLOUD_LEVEL_GRID
 
@@ -610,6 +618,16 @@ def environment_mass_flux(
     environment_massflux: FloatField,
     plume: Int,
 ):
+    """Compute environment mass flux.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        epsilon_forced (FloatFieldIJ_Plume)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        normalized_massflux_downdraft_forced (FloatField_Plume)
+        environment_massflux (FloatField)
+        plume (Int)
+    """
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             environment_massflux = (
@@ -648,6 +666,38 @@ def modify_environment_profiles(
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
 ):
+    """Update the environment profiles based on the computed tendencies. These updated profiles are only
+    used within the cumulus parameterization core, and changes to them have no effect on the overarching
+    model state. The output tendencies are used to update the model state at a later time.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        updraft_origin_level (IntFieldIJ_Plume)
+        ocean_fraction (FloatFieldIJ)
+        p_forced (FloatField)
+        t_new (FloatField)
+        t_modified (FloatField)
+        vapor_forced (FloatField)
+        vapor_modified (FloatField)
+        environment_moist_static_energy_forced (FloatField)
+        environment_moist_static_energy_modified (FloatField)
+        moist_static_energy_origin_level_forced (FloatFieldIJ)
+        moist_static_energy_origin_level_modified (FloatFieldIJ)
+        partition_liquid_ice (FloatField)
+        del_moist_static_energy_cloud_ensemble (FloatField)
+        del_t_cloud_ensemble (FloatField)
+        del_vapor_cloud_ensemble (FloatField)
+        del_cloud_liquid_cloud_ensemble (FloatField)
+        del_u_cloud_ensemble (FloatField)
+        del_v_cloud_ensemble (FloatField)
+        t_tendency_from_environmental_subsidence (FloatField)
+        moist_static_energy_tendency_from_environmental_subsidence (FloatField)
+        vapor_tendency_from_environmental_subsidence (FloatField)
+        arbitrary_numerical_parameter (FloatFieldIJ)
+        AVERAGE_LAYER_DEPTH (Float)
+        plume (Int)
+    """
     from __externals__ import COUPLE_MICROPHYSICS, BOUNDARY_CONDITION_METHOD, k_end
 
     with computation(PARALLEL), interval(...):
@@ -748,8 +798,6 @@ def modify_environment_profiles(
 class EnvironmentalSubsidence:
     def __init__(
         self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):

@@ -14,7 +14,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import (
-    unknown_find_level,
+    generic_find_level,
 )
 from ndsl.logging import ndsl_log
 
@@ -45,6 +45,18 @@ def entrainment_rates(
     detrainment_function_updraft: FloatField,
     plume: Int,
 ):
+    """Determine the entrainment/detrainment rates, updating the initial estimate
+    using data computed inside the core.
+
+    Args:
+        vapor_cloud_levels_forced (FloatField)
+        environment_saturation_mixing_ratio_cloud_levels_forced (FloatField)
+        lcl_level (IntFieldIJ_Plume)
+        error_code (IntFieldIJ_Plume)
+        entrainment_rate (FloatField_Plume)
+        detrainment_function_updraft (FloatField)
+        plume (Int)
+    """
     from __externals__ import ZERO_DIFF, MIN_ENTRAINMENT_RATE
 
     with computation(PARALLEL), interval(...):
@@ -88,15 +100,14 @@ def downdraft_entrainment_profiles(
     scale_dependence_factor_downdraft: FloatFieldIJ,
     plume_entrainment_rate: Float,
 ):
-    """
-    Get the entrainment and detrainment profiles for the downdraft
+    """Get the entrainment and detrainment profiles for the downdraft
 
     Args:
-        lateral_entrainment_rate (in)
-        entrainment_rate_downdraft (out)
-        detrainment_function_downdraft (out)
-        scale_dependence_factor_downdraft (out)
-        plume_entrainment_rate (in)
+        lateral_entrainment_rate (FloatField)
+        entrainment_rate_downdraft (FloatField)
+        detrainment_function_downdraft (FloatField)
+        scale_dependence_factor_downdraft (FloatFieldIJ)
+        plume_entrainment_rate (Float)
     """
     from __externals__ import DOWNDRAFT
 
@@ -131,6 +142,28 @@ def compute_lateral_massflux(
     LAMBDA_DEEP: Float,
     plume: Int,
 ):
+    """Compute massfluxes associated with entrainment and detrainment.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        geopotential_height (FloatField)
+        normalized_massflux_updraft (FloatField_Plume)
+        detrainment_function_updraft (FloatField)
+        entrainment_rate (FloatField_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        mass_entrainment_updraft_forced (FloatField_Plume)
+        mass_detrainment_updraft_forced (FloatField_Plume)
+        mass_entrainment_updraft (FloatField)
+        mass_detrainment_updraft (FloatField)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        updraft_origin_level (IntFieldIJ_Plume)
+        pbl_level (IntFieldIJ)
+        mass_entrainment_u_updraft (FloatField)
+        mass_detrainment_u_updraft (FloatField)
+        LAMBDA_DEEP (Float)
+        plume (Int)
+    """
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
@@ -249,6 +282,26 @@ def compute_uc_vc(
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
 ):
+    """Compute u and v for the c-grid, update cloud moist static energy
+    below start_level (nominally LCL level).
+
+    Args:
+        u_c (FloatField)
+        v_c (FloatField)
+        cloud_moist_static_energy (FloatField)
+        cloud_moist_static_energy_forced (FloatField)
+        error_code (IntFieldIJ_Plume)
+        start_level (IntFieldIJ)
+        moist_static_energy_origin_level (FloatFieldIJ)
+        moist_static_energy_origin_level_forced (FloatFieldIJ)
+        u_cloud_levels (FloatField)
+        v_cloud_levels (FloatField)
+        p (FloatField)
+        updraft_origin_level (IntFieldIJ_Plume)
+        ocean_fraction (FloatFieldIJ)
+        AVERAGE_LAYER_DEPTH (Float)
+        plume (Int)
+    """
     from __externals__ import k_end, BOUNDARY_CONDITION_METHOD
 
     with computation(PARALLEL), interval(...):

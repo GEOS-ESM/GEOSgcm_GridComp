@@ -122,31 +122,30 @@ def updraft_mass_flux(
     X_ALPHA: _CONSTANTS_TABLES_TYPE,
     G_ALPHA: _CONSTANTS_TABLES_TYPE,
 ):
-    """
-    Handle mass fluxes in the updraft. This code has a number of potential paths depending on configuration
+    """Handle mass fluxes in the updraft. This code has a number of potential paths depending on configuration
     settings - some of these paths are not yet implemented.
 
     This code may execute for all plumes - shallow plume execution is currently not implemented.
 
     Args:
-        error_code
-        updraft_origin_level
-        cloud_top_level
-        pbl_level
-        updraft_lfc_level
-        lcl_level
-        p_cloud_levels_forced
-        p_surface
-        ocean_fraction
-        normalized_massflux_updraft
-        normalized_massflux_updraft_forced
-        normalized_massflux_updraft_modified
-        random_number
-        UPDRAFT_MAX_HEIGHT_LAND
-        UPDRAFT_MAX_HEIGHT_OCEAN
-        plume
-        X_ALPHA
-        G_ALPHA
+        error_code (IntFieldIJ_Plume): _description_
+        updraft_origin_level (IntFieldIJ_Plume): _description_
+        cloud_top_level (IntFieldIJ_Plume): _description_
+        pbl_level (IntFieldIJ): _description_
+        updraft_lfc_level (IntFieldIJ_Plume): _description_
+        lcl_level (IntFieldIJ_Plume): _description_
+        p_cloud_levels_forced (FloatField_Plume): _description_
+        p_surface (FloatFieldIJ): _description_
+        ocean_fraction (FloatFieldIJ): _description_
+        normalized_massflux_updraft (FloatField): _description_
+        normalized_massflux_updraft_forced (FloatField_Plume): _description_
+        normalized_massflux_updraft_modified (FloatField): _description_
+        random_number (FloatFieldIJ): _description_
+        UPDRAFT_MAX_HEIGHT_LAND (Float): _description_
+        UPDRAFT_MAX_HEIGHT_OCEAN (Float): _description_
+        plume (Int): _description_
+        X_ALPHA (_CONSTANTS_TABLES_TYPE): _description_
+        G_ALPHA (_CONSTANTS_TABLES_TYPE): _description_
     """
     from __externals__ import (
         ZERO_DIFF,
@@ -323,6 +322,45 @@ def updraft_moisture(
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
 ):
+    """Compute moisture properties of the updraft and quantify and segregate precipitable water.
+
+    Args:
+        start_level (IntFieldIJ)
+        error_code (IntFieldIJ_Plume)
+        geopotential_height_cloud_levels_forced (FloatField)
+        cloud_total_water_after_entrainment_forced (FloatField)
+        cloud_liquid_after_rain_forced (FloatField_Plume)
+        condensate_to_fall_forced (FloatField_Plume)
+        total_normalized_integrated_condensate_forced (FloatFieldIJ_Plume)
+        cloud_moist_static_energy_forced (FloatField)
+        updraft_column_temperature_forced (FloatField)
+        ocean_fraction (FloatFieldIJ)
+        convection_fraction (FloatFieldIJ)
+        surface_type (FloatFieldIJ)
+        p_forced (FloatField)
+        cloud_top_level (IntFieldIJ_Plume)
+        d_buoyancy_forced (FloatField)
+        cloud_liquid_before_rain_forced (FloatField)
+        t_cloud_levels (FloatField)
+        vapor_forced (FloatField)
+        gamma_cloud_levels_forced (FloatField)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        environment_saturation_mixing_ratio_cloud_levels_forced (FloatField)
+        updraft_origin_level (IntFieldIJ_Plume)
+        vapor_cloud_levels_forced (FloatField)
+        vapor_excess (FloatFieldIJ)
+        ccn (FloatFieldIJ)
+        mass_entrainment_updraft (FloatField)
+        mass_detrainment_updraft (FloatField)
+        psum (FloatFieldIJ)
+        psumh (FloatFieldIJ)
+        c1d (FloatField)
+        add_buoyancy (FloatFieldIJ)
+        vertical_velocity_3d (FloatField)
+        C0 (Float)
+        AVERAGE_LAYER_DEPTH (Float)
+        plume (Int)
+    """
     from __externals__ import (
         k_end,
         BOUNDARY_CONDITION_METHOD,
@@ -415,8 +453,7 @@ def updraft_moisture(
                     * d_buoyancy_forced
                 )
 
-                #    1. steady state plume equation, for what could
-                #       be in cloud without condensation
+                # steady state plume equation, for what could be in cloud without condensation
                 denom = (
                     normalized_massflux_updraft_forced[0, 0, -1][plume]
                     - 0.5 * mass_detrainment_updraft[0, 0, -1]
@@ -432,15 +469,6 @@ def updraft_moisture(
                         * cloud_total_water_after_entrainment_forced[0, 0, -1]
                         + mass_entrainment_updraft[0, 0, -1] * vapor_forced[0, 0, -1]
                     ) / denom
-
-                    # qc (i,k) = (
-                    #     qc(i,k-1)
-                    #     * zu(i,k-1)
-                    #     - .5
-                    #     * up_massdetr(i,k-1)
-                    #     * qc(i,k-1)
-                    #     + up_massentr(i,k-1) * q(i,k-1)
-                    # ) / denom
 
                     if K == start_level + 1:
                         cloud_total_water_after_entrainment_forced = (
@@ -587,6 +615,43 @@ def updraft_moist_static_energy_and_momentum_budget(
     add_buoyancy: FloatFieldIJ,
     plume: Int,
 ):
+    """Compute the impate of precipitation on the moist static energy, horizontal winds,
+    and massflux within the updraft.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        start_level (IntFieldIJ)
+        cloud_top_level (IntFieldIJ_Plume)
+        p_forced (FloatField)
+        environment_moist_static_energy (FloatField)
+        environment_moist_static_energy_forced (FloatField)
+        environment_moist_static_energy_cloud_levels (FloatField)
+        environment_moist_static_energy_cloud_levels_forced (FloatField)
+        environment_saturation_moist_static_energy_cloud_levels (FloatField)
+        environment_saturation_moist_static_energy_cloud_levels_forced (FloatField)
+        cloud_moist_static_energy (FloatField)
+        cloud_moist_static_energy_forced (FloatField)
+        normalized_massflux_updraft (FloatField)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        mass_entrainment_updraft (FloatField)
+        mass_detrainment_updraft (FloatField)
+        mass_entrainment_u_updraft (FloatField)
+        mass_detrainment_u_updraft (FloatField)
+        mass_detrainment_updraft_forced (FloatField_Plume)
+        mass_entrainment_updraft_forced (FloatField_Plume)
+        u (FloatField)
+        v (FloatField)
+        u_c (FloatField)
+        v_c (FloatField)
+        u_cloud_levels (FloatField)
+        v_cloud_levels (FloatField)
+        partition_liquid_ice (FloatField)
+        cloud_liquid_after_rain_forced (FloatField_Plume)
+        vapor_excess (FloatFieldIJ)
+        t_excess (FloatFieldIJ)
+        add_buoyancy (FloatFieldIJ)
+        plume (Int)
+    """
     from __externals__ import USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES, PRESSURE_GRADIENT_CONSTANT
 
     with computation(PARALLEL), interval(...):
@@ -701,6 +766,17 @@ def updraft_temperature(
     t_cloud_levels_forced: FloatField,
     plume: Int,
 ):
+    """Compute the temperature within the updraft.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        updraft_column_temperature_forced (FloatField)
+        cloud_moist_static_energy_forced (FloatField)
+        geopotential_height_cloud_levels_forced (FloatField)
+        cloud_total_water_after_entrainment_forced (FloatField)
+        t_cloud_levels_forced (FloatField)
+        plume (Int)
+    """
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             updraft_column_temperature_forced = (1.0 / cumulus_parameterization_constants.CP) * (
@@ -732,8 +808,7 @@ def cloud_workfunction_aa0(
     mode: Int,
     plume: Int,
 ):
-    """
-    Compute cloud workfunction aa0
+    """Compute cloud workfunction aa0
 
     Stencil calculation is controlled my "mode" argument:
         mode = 0: default. uses dynamic bounds (updraft_lfc_level --> cloud_top_level)
@@ -742,20 +817,19 @@ def cloud_workfunction_aa0(
             (updraft_origin_level --> updraft_lfc_level - 1)
 
     Args:
-        error_code
-        updraft_origin_level
-        updraft_lfc_level
-        cloud_top_level
-        geopotential_height
-        normalized_massflux_updraft
-        d_buoyancy
-        gamma_cloud_levels
-        t_cloud_levels
-        workfunction
-        mode
-        plume
+        error_code (IntFieldIJ_Plume)
+        updraft_origin_level (IntFieldIJ_Plume)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        geopotential_height (FloatField)
+        normalized_massflux_updraft (FloatField)
+        d_buoyancy (FloatField)
+        gamma_cloud_levels (FloatField)
+        t_cloud_levels (FloatField)
+        workfunction (FloatFieldIJ)
+        mode (Int)
+        plume (Int)
     """
-
     with computation(FORWARD), interval(0, 1):
         # initialize workfunction to zero
         workfunction = 0.0
@@ -798,6 +872,13 @@ def check_cloud_workfunction_1(
     cloud_workfunction_1: FloatFieldIJ,
     plume: Int,
 ):
+    """Check the validity of cloud_workfunction_1.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_workfunction_1 (FloatFieldIJ)
+        plume (Int)
+    """
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             if cloud_workfunction_1 == 0.0:
@@ -843,6 +924,12 @@ def compute_precipitation_ensemble(
 
 
 class UpdraftMassFlux(NDSLRuntime):
+    """Handle mass fluxes in the updraft. This code has a number of potential paths depending on configuration
+    settings - some of these paths are not yet implemented.
+
+    This code may execute for all plumes - shallow plume execution is currently not implemented.
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -917,6 +1004,8 @@ class UpdraftMassFlux(NDSLRuntime):
 
 
 class UpdraftInitialWorkfunctions(NDSLRuntime):
+    """Compute initial estimates for cloud_workfunction_0 and cloud_workfunction_1."""
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -940,11 +1029,6 @@ class UpdraftInitialWorkfunctions(NDSLRuntime):
         self._check_cloud_workfunction_1 = stencil_factory.from_dims_halo(
             func=check_cloud_workfunction_1,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-        # initialize local field
-        self._normalized_massflux_updraft_forced_3d: Local = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
         )
 
     def __call__(
@@ -982,25 +1066,21 @@ class UpdraftInitialWorkfunctions(NDSLRuntime):
             plume=plume_dependent_constants.PLUME_INDEX,
         )
 
-        self._normalized_massflux_updraft_forced_3d.field[:] = normalized_massflux_updraft_forced.field[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ]
         self._cloud_workfunction_aa0(
             error_code=error_code,
             updraft_origin_level=updraft_origin_level,
             updraft_lfc_level=updraft_lfc_level,
             cloud_top_level=cloud_top_level,
             geopotential_height=geopotential_height_cloud_levels_forced,
-            normalized_massflux_updraft=self._normalized_massflux_updraft_forced_3d,
+            normalized_massflux_updraft=normalized_massflux_updraft_forced.field[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             d_buoyancy=d_buoyancy_forced,
             gamma_cloud_levels=gamma_cloud_levels_forced,
             t_cloud_levels=t_cloud_levels_forced,
             workfunction=cloud_workfunction_1,
             mode=Int(0),
             plume=plume_dependent_constants.PLUME_INDEX,
-        )
-        normalized_massflux_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            self._normalized_massflux_updraft_forced_3d.field[:]
         )
 
         self._check_cloud_workfunction_1(
@@ -1011,6 +1091,8 @@ class UpdraftInitialWorkfunctions(NDSLRuntime):
 
 
 class UpdraftCIN(NDSLRuntime):
+    """Compute initial estimate of updraft CIN"""
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -1020,7 +1102,7 @@ class UpdraftCIN(NDSLRuntime):
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
-        
+
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
@@ -1029,11 +1111,6 @@ class UpdraftCIN(NDSLRuntime):
         self._cloud_workfunction_aa0 = stencil_factory.from_dims_halo(
             func=cloud_workfunction_aa0,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-        # initialize local field
-        self._normalized_massflux_updraft_forced_3d: Local = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
         )
 
     def __call__(
@@ -1071,16 +1148,15 @@ class UpdraftCIN(NDSLRuntime):
             plume=plume_dependent_constants.PLUME_INDEX,
         )
 
-        self._normalized_massflux_updraft_forced_3d.field[:] = normalized_massflux_updraft_forced.field[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ]
         self._cloud_workfunction_aa0(
             error_code=error_code,
             updraft_origin_level=updraft_origin_level,
             updraft_lfc_level=updraft_lfc_level,
             cloud_top_level=cloud_top_level,
             geopotential_height=geopotential_height_cloud_levels_forced,
-            normalized_massflux_updraft=self._normalized_massflux_updraft_forced_3d,
+            normalized_massflux_updraft=normalized_massflux_updraft_forced.field[
+                :, :, :, plume_dependent_constants.PLUME_INDEX
+            ],
             d_buoyancy=d_buoyancy_forced,
             gamma_cloud_levels=gamma_cloud_levels_forced,
             t_cloud_levels=t_cloud_levels_forced,
@@ -1088,12 +1164,11 @@ class UpdraftCIN(NDSLRuntime):
             mode=Int(2),
             plume=plume_dependent_constants.PLUME_INDEX,
         )
-        normalized_massflux_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            self._normalized_massflux_updraft_forced_3d.field[:]
-        )
 
 
-class UpdraftWorkfunctions(NDSLRuntime):
+class UpdateWorkfunctionAndPrecipitationEnsemble(NDSLRuntime):
+    """Update cloud workfunctions and precipitation ensemble with the result of convection."""
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -1103,7 +1178,7 @@ class UpdraftWorkfunctions(NDSLRuntime):
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
-        
+
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config

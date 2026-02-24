@@ -14,6 +14,21 @@ def smooth_tendencies(
     del_v_cloud_ensemble: FloatField,
     plume: Int,
 ):
+    """Smooth computed tendencies before output and model state update. The number of levels considered
+    by the smoother (in both directions) is controlled by USE_SMOOTH_TENDENCIES. Smoothing is disabled
+    if this value is less than one.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        del_moist_static_energy_cloud_ensemble (FloatField)
+        del_vapor_cloud_ensemble (FloatField)
+        del_cloud_liquid_cloud_ensemble (FloatField)
+        del_u_cloud_ensemble (FloatField)
+        del_v_cloud_ensemble (FloatField)
+        plume (Int)
+    """
     from __externals__ import USE_SMOOTH_TENDENCIES
 
     with computation(FORWARD), interval(0, 1):

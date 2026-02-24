@@ -13,7 +13,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 )
 
 
-def get_melting_profile(
+def melting_profile(
     error_code: IntFieldIJ_Plume,
     plume: Int,
     melting_layer: FloatField,
@@ -22,6 +22,17 @@ def get_melting_profile(
     condensate_to_fall_forced: FloatField_Plume,
     melting: FloatField,
 ):
+    """Generate the melting profile, given the excess water in the updraft.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        plume (Int)
+        melting_layer (FloatField)
+        partition_liquid_ice (FloatField)
+        p_cloud_levels_forced (FloatField_Plume)
+        condensate_to_fall_forced (FloatField_Plume)
+        melting (FloatField)
+    """
     from __externals__ import k_end, MELT_GLAC
 
     with computation(FORWARD), interval(...):
@@ -76,7 +87,7 @@ def get_melting_profile(
 
 class C1DProfile:
     """
-    UNFINISHED implementation of the C1D Profile generator. This code is manually diables with a
+    C1D Profile generator. This code is manually diables with a
     "do not enable" note in fortran, so it is not going to be completed until specifically requested.
     """
 

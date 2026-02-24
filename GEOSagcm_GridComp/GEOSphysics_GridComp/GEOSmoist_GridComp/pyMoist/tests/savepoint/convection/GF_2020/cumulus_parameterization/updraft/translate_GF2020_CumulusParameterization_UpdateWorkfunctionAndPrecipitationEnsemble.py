@@ -23,7 +23,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     NUMBER_OF_PLUMES,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
-    UpdraftWorkfunctions,
+    UpdateWorkfunctionAndPrecipitationEnsemble,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
@@ -130,7 +130,7 @@ class TestCore:
         locals.precipitation_ensemble.data[:] = inputs["local_precipitation_ensemble"][:, :, 0:16]
 
         # initialize test code
-        code = UpdraftWorkfunctions(
+        code = UpdateWorkfunctionAndPrecipitationEnsemble(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
@@ -193,7 +193,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -216,7 +216,7 @@ class TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_shallow(Trans
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -239,7 +239,7 @@ class TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_mid(Translate
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

@@ -21,6 +21,20 @@ def kinetic_energy_to_heating(
     del_t_cloud_ensemble: FloatField,
     plume: Int,
 ):
+    """Modify the output temperature tendency (which will modify the overarching model state)
+    based on kinetic energy in the updraft.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        u (FloatField)
+        v (FloatField)
+        del_u_cloud_ensemble (FloatField)
+        del_v_cloud_ensemble (FloatField)
+        del_t_cloud_ensemble (FloatField)
+        plume (Int)
+    """
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             dts: FloatFieldIJ = 0.0

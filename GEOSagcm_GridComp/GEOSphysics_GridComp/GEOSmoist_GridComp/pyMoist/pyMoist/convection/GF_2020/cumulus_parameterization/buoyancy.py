@@ -17,20 +17,19 @@ def get_buoyancy(
     error_code: IntFieldIJ_Plume,
     plume: Int,
 ):
-    """
-    Determine the "d_buoyancy" of a parcel, defined as the difference between the
+    """Determine the "d_buoyancy" of a parcel, defined as the difference between the
     moist static energy of the parcel and the environment
 
     Args:
-        lcl_level (in): lcl level of environment
-        updraft_lfc_level (in): lfc level of parcel
-        cloud_top_level (in): equilibrium level of cloud
-        cloud_moist_static_energy (in)
-        environment_moist_static_energy (in)
-        environment_saturation_moist_static_energy (in)
-        d_buoyancy (out)
-        error_code (in): field for stopping flow through the scheme and tracking errors
-        plume (in): specifies the current plume
+        lcl_level (IntFieldIJ_Plume)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        cloud_moist_static_energy (FloatField)
+        environment_moist_static_energy (FloatField)
+        environment_saturation_moist_static_energy (FloatField)
+        d_buoyancy (FloatField)
+        error_code (IntFieldIJ_Plume)
+        plume (Int)
     """
 
     with computation(PARALLEL), interval(...):

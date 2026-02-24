@@ -15,6 +15,14 @@ def convection_trigger(
     cin_0: FloatFieldIJ,
     plume: Int,
 ):
+    """Check if sufficient velocity exists to overcome present convective inhibition.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        convective_scale_velosity (FloatFieldIJ)
+        cin_0 (FloatFieldIJ)
+        plume (Int)
+    """
     from __externals__ import DICYCLE
 
     with computation(FORWARD), interval(...):
@@ -28,8 +36,6 @@ def convection_trigger(
 class XieTriggerFunction:
     def __init__(
         self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):

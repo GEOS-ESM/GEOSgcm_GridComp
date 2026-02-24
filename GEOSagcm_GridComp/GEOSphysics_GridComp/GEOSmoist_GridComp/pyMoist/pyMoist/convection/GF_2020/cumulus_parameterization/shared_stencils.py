@@ -13,7 +13,7 @@ import pyMoist.constants as constants
 from ndsl.stencils.column_operations import column_max
 
 
-def unknown_find_level(
+def generic_find_level(
     array: FloatField,
     start_index: IntFieldIJ_Plume,
     end_index: IntFieldIJ,
@@ -21,16 +21,16 @@ def unknown_find_level(
     error_code: IntFieldIJ_Plume,
     plume: Int,
 ):
-    """
-    Details/purpose unknown
+    """Find the first level (searching from bottom to top of the atmosphere) where a field exceeds
+    a threshold. The potential search area is restricted by the start_index and end_index arguments.
 
     Args:
-        array (in): array to be analyzed
-        start_index (in): start index for analysis
-        end_index (in): end index for analysis
-        out_index (out): output of analysis
-        error_code (in): field for stopping flow through the scheme and tracking errors
-        plume (in): specifies the current plume
+        array (FloatField): field to be searched
+        start_index (IntFieldIJ_Plume): starting index for the search
+        end_index (IntFieldIJ): ending index for the search
+        out_index (IntFieldIJ_Plume): level of interest identified by the stencil
+        error_code (IntFieldIJ_Plume)
+        plume (Int)
     """
     with computation(FORWARD), interval(0, 1):
         out_index[0, 0][plume] = start_index[0, 0][plume]
@@ -65,6 +65,26 @@ def updraft_vertical_velocity(
     error_code: IntFieldIJ_Plume,
     plume: Int,
 ):
+    """Compute the vertical velocity within the updraft. Return this as a 3D field
+    and accumulate (considering layer thickness) into a 2D field.
+
+    Args:
+        vertical_velocity_3d (FloatField)
+        vertical_velocity_2d (FloatFieldIJ)
+        convective_scale_velocity (FloatFieldIJ)
+        entrainment_rate (FloatField_Plume)
+        detrainment_function_updraft (FloatField)
+        geopotential_height_cloud_levels_forced (FloatField)
+        t_cloud_levels_forced (FloatField)
+        updraft_column_temperature_forced (FloatField)
+        cloud_total_water_after_entrainment_forced (FloatField)
+        cloud_liquid_after_rain_forced (FloatField_Plume)
+        vapor_forced (FloatField)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        error_code (IntFieldIJ_Plume)
+        plume (Int)
+    """
     from __externals__ import ZERO_DIFF, k_end
 
     # internal constants
@@ -232,16 +252,17 @@ def tridiag(
     error_code: IntFieldIJ_Plume,
     plume: Int,
 ):
-    """
-    this routine solves the problem: aa*f(k-1,t+1) + bb*f(k,t+1) + cc*f(k+1,t+1) = dd
+    """This routine solves the problem: aa*f(k-1,t+1) + bb*f(k,t+1) + cc*f(k+1,t+1) = dd
     an updated "f" at time t+1 is the output
 
     Args:
-        m
-        a
-        b
-        c
-        f
+        m (IntFieldIJ_Plume)
+        a (FloatField)
+        b (FloatField)
+        c (FloatField)
+        f (FloatField)
+        error_code (IntFieldIJ_Plume)
+        plume (Int)
     """
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0 and K == m[0, 0][plume]:

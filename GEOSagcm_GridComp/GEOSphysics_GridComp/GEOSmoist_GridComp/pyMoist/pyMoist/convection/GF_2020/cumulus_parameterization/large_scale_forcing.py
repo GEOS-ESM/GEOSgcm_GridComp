@@ -22,6 +22,13 @@ def ddim_copy(
     field_out: IntFieldIJ,
     plume: Int,
 ):
+    """Copy a field with a data dimension. The index to be read form the data_dim field must be specified.
+
+    Args:
+        field_in (IntFieldIJ_Plume): _description_
+        field_out (IntFieldIJ): _description_
+        plume (Int): _description_
+    """
     with computation(FORWARD), interval(0, 1):
         field_out = field_in[0, 0][plume]
 
@@ -47,6 +54,31 @@ def ensemble_forcing(
     CLOSURE_CHOICE: Int,
     plume: Int,
 ):
+    """Fill the mass flux ensemble based on the cloud workfunctions computed at the start of convection
+    (cloud_workfunction_1) and the end (cloud_workfunction_0). These values may then be updated based on
+    member number and level (below, within, or above cloud level).
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        error_code_2 (IntFieldIJ)
+        error_code_3 (IntFieldIJ)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        vapor_forced (FloatField)
+        ocean_fraction (FloatFieldIJ)
+        omega (FloatField)
+        cape_removal_time_scale (FloatFieldIJ)
+        arbitrary_numerical_parameter (FloatFieldIJ)
+        f_dicycle_modified (FloatFieldIJ)
+        cloud_workfunction_0 (FloatFieldIJ)
+        cloud_workfunction_0_modified (FloatFieldIJ)
+        cloud_workfunction_1 (FloatFieldIJ)
+        cloud_workfunction_1_pbl (FloatFieldIJ)
+        mass_flux_ensemble (FloatFieldIJ_Ensemble)
+        internal_mass_flux_ensemble (FloatFieldIJ_Ensemble)
+        precipitation_ensemble (FloatFieldIJ_Ensemble)
+        CLOSURE_CHOICE (Int)
+        plume (Int)
+    """
     from __externals__ import ENSEMBLE_MEMBERS, DTIME, ZERO_DIFF, DIURNAL_CYCLE
 
     with computation(FORWARD), interval(0, 1):
@@ -257,6 +289,30 @@ def ensemble_forcing_mid_plume(
     CLOSURE_CHOICE: Int,
     plume: Int,
 ):
+    """Compute a special mass flux ensemble for the mid plume. Similar to the generic ensemble computed
+    in ensemble_forcing, with extra considerations of the PBL and diurnal cycle.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        updraft_origin_level (IntFieldIJ_Plume)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        pbl_level (IntFieldIJ)
+        p_cloud_levels_forced (FloatField_Plume)
+        cloud_moist_static_energy_forced (FloatField)
+        environment_moist_static_energy_cloud_levels_forced (FloatField)
+        dmoist_static_energydt (FloatField)
+        convective_scale_velocity (FloatFieldIJ)
+        cape_removal_time_scale (FloatFieldIJ)
+        arbitrary_numerical_parameter (FloatFieldIJ)
+        f_dicycle_modified (FloatFieldIJ)
+        cloud_workfunction_0 (FloatFieldIJ)
+        cloud_workfunction_0_modified (FloatFieldIJ)
+        cloud_workfunction_1 (FloatFieldIJ)
+        cloud_workfunction_1_pbl (FloatFieldIJ)
+        xff_mid (FloatFieldIJ_Ensemble)
+        CLOSURE_CHOICE (Int)
+        plume (Int)
+    """
     from __externals__ import DIURNAL_CYCLE, DTIME
 
     with computation(FORWARD), interval(0, 1):
@@ -351,6 +407,17 @@ def effective_precipitation(
     effective_condensate_to_fall_forced: FloatField,
     plume: Int,
 ):
+    """Compute the effective precipitation based on evaporation in the downdraft and precipitation effeciency
+    (which is dependent on wind shear).
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        epsilon_forced (FloatFieldIJ_Plume)
+        condensate_to_fall_forced (FloatField_Plume)
+        evaporate_in_downdraft_forced (FloatField_Plume)
+        effective_condensate_to_fall_forced (FloatField)
+        plume (Int)
+    """
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             effective_condensate_to_fall_forced = (
@@ -360,6 +427,11 @@ def effective_precipitation(
 
 
 class LargeScaleForcing(NDSLRuntime):
+    """Fill the mass flux ensemble based on cloud workfunction data, compute an additional mass flux ensemble
+    for the mid plume, and compute effective precipitation.
+
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -369,7 +441,7 @@ class LargeScaleForcing(NDSLRuntime):
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
-        
+
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 

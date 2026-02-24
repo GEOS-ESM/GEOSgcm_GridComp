@@ -28,16 +28,15 @@ def find_maximum_updraft_origin_level(
     MAX_UPDRAFT_ORIGIN_HEIGHT: Float,
     plume: Int,
 ):
-    """
-    Set the highest level from which an updraft may originate.
+    """Determine the highest level from which an updraft may originate.
 
     Args:
-        geopotential_height (in)
-        topography_height_no_negative (in): topography height, without features extending below sea level
-        error_code (in)
-        maximum_updraft_origin_level (out)
-        MAX_UPDRAFT_ORIGIN_HEIGHT (in): max height(m) above ground where updraft air can originate
-        plume (in): specifies the current plume
+        geopotential_height (FloatField)
+        topography_height_no_negative (FloatFieldIJ)
+        error_code (IntFieldIJ_Plume)
+        maximum_updraft_origin_level (IntFieldIJ)
+        MAX_UPDRAFT_ORIGIN_HEIGHT (Float)
+        plume (Int)
     """
     with computation(FORWARD), interval(0, 1):
         stop_computation: BoolFieldIJ = False
@@ -57,16 +56,15 @@ def find_detrainmet_start_level(
     DETRAINMENT_CRITICAL_DEPTH: Float,
     plume: Int,
 ):
-    """
-    Set the highest level from which an updraft may originate.
+    """Determine the lowest level at which detrainment may occur.
 
     Args:
-        geopotential_height (in)
-        topography_height_no_negative (in): topography height, without features extending below sea level
-        error_code (in)
-        maximum_updraft_origin_level (out)
-        DETRAINMENT_CRITICAL_DEPTH (in): depth(m) over which downdraft detrains all its mass
-        plume (in): specifies the current plume
+        geopotential_height (FloatField)
+        topography_height_no_negative (FloatFieldIJ)
+        error_code (IntFieldIJ_Plume)
+        detrainment_start_level (IntFieldIJ)
+        DETRAINMENT_CRITICAL_DEPTH (Float)
+        plume (Int)
     """
     with computation(FORWARD), interval(0, 1):
         stop_computation: BoolFieldIJ = False
@@ -85,16 +83,15 @@ def find_highest_moist_static_energy_level(
     updraft_origin_level: IntFieldIJ_Plume,
     plume: Int,
 ):
-    """
-    Find the level with the highest moist static energy - which will
-    be used as the starting point for any subsequent updrafts
+    """Detemine the level with the highest moist static energy. This level will
+        be used as the starting point for any subsequent updrafts
 
     Args:
-        moist_static_energy (in)
-        error_code (in)
-        maximum_updraft_origin_level (in)
-        updraft_origin_level (out)
-        plume (in): specifies the current plume
+        moist_static_energy (FloatField)
+        error_code (IntFieldIJ_Plume)
+        maximum_updraft_origin_level (IntFieldIJ)
+        updraft_origin_level (IntFieldIJ_Plume)
+        plume (Int)
     """
     with computation(FORWARD), interval(0, 1):
         # prefil output
@@ -179,6 +176,28 @@ def find_lcl(
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
 ):
+    """Determine the LCL level. For shallow plumes, if LCL is buoyant, calculate a temperature perturbation.
+
+    Args:
+        p (FloatField)
+        p_cloud_levels (FloatField)
+        t_excess (FloatFieldIJ)
+        t_cloud_levels_forced (FloatField)
+        t_perturbation (FloatField)
+        vapor_excess (FloatFieldIJ)
+        vapor_cloud_levels_forced (FloatField)
+        omega (FloatField)
+        air_density (FloatField)
+        geopotential_height_cloud_levels (FloatField)
+        topography_height_no_negative (FloatFieldIJ)
+        ocean_fraction (FloatFieldIJ)
+        updraft_origin_level (IntFieldIJ_Plume)
+        grid_length (FloatFieldIJ)
+        lcl_level (IntFieldIJ_Plume)
+        error_code (IntFieldIJ_Plume)
+        AVERAGE_LAYER_DEPTH (Float)
+        plume (Int)
+    """
     from __externals__ import k_end, BOUNDARY_CONDITION_METHOD, ADV_TRIGGER
 
     with computation(PARALLEL), interval(...):
@@ -314,6 +333,14 @@ def find_lcl(
 
 
 def set_start_level(lcl_level: IntFieldIJ_Plume, start_level: IntFieldIJ, plume: Int):
+    """Copy LCL level data into another field called "start_level", which will modified later when searching
+    for an equilibrium level.
+
+    Args:
+        lcl_level (IntFieldIJ_Plume)
+        start_level (IntFieldIJ)
+        plume (Int)
+    """
     with computation(FORWARD), interval(...):
         start_level = lcl_level[0, 0][plume]
 
@@ -349,43 +376,50 @@ def get_convective_cloud_base_level(
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
 ):
-    """
-    Determine level of free convection (LFC) for the source parcel.
-    This stencil contains an open-ended vertical solver with multiple nested K-intervals.
-    To implement this properly, the entire stencil has been constructed on an interval(0, 1),
-    and all K read/writes have been done with absolute indexes or relative offsets.
+    """Determine level of free convection (LFC) for the source parcel.
 
     May also modify cloud_top_level, depending on LFC location.
 
+    This stencil contains an open-ended vertical solver with multiple nested K-intervals.
+    To implement this properly, the entire stencil has been constructed on an interval(0, 1),
+    and all K read/writes have been done with absolute indexes or relative offsets. The alternative is
+    to break this into a series of stencils (at least seven, based on current understanding of the structure
+    of this code) and pass data between them using a much larger number of locals.
+
+    The current method (single stencil) is horrible for optimization and speed, but was chosen nonetheless
+    because it allows for more readable code and should allow for a more seamless implementation of a proper
+    solution once the necessary tool/feature has been developed.
+
     Args:
-        error_code
-        cloud_moist_static_energy_forced_transported
-        cap_max
-        updraft_origin_level
-        start_level
-        moist_static_energy_origin_level_forced
-        updraft_lfc_level
-        maximum_updraft_origin_level
-        negative_buoyancy_depth
-        frh_lfc
-        geopotential_height_cloud_levels_forced
-        entrainment_rate
-        environment_moist_static_energy_forced
-        environment_moist_static_energy_cloud_levels_forced
-        environment_saturation_moist_static_energy_cloud_levels_forced
-        t_excess
-        vapor_excess
-        add_buoyancy
-        p_cloud_levels_forced
-        vapor_forced
-        environment_saturation_mixing_ratio_forced
-        ocean_fraction
-        cap_max_increment
-        t_perturbation
-        p_forced
-        cloud_top_level
-        AVERAGE_LAYER_DEPTH
-        plume
+        error_code (IntFieldIJ_Plume): _description_
+        lcl_level (IntFieldIJ_Plume): _description_
+        cloud_moist_static_energy_forced_transported (FloatField): _description_
+        cap_max (FloatFieldIJ): _description_
+        updraft_origin_level (IntFieldIJ_Plume): _description_
+        start_level (IntFieldIJ): _description_
+        moist_static_energy_origin_level_forced (FloatFieldIJ): _description_
+        updraft_lfc_level (IntFieldIJ_Plume): _description_
+        maximum_updraft_origin_level (IntFieldIJ): _description_
+        negative_buoyancy_depth (FloatFieldIJ): _description_
+        frh_lfc (FloatFieldIJ): _description_
+        geopotential_height_cloud_levels_forced (FloatField): _description_
+        entrainment_rate (FloatField_Plume): _description_
+        environment_moist_static_energy_forced (FloatField): _description_
+        environment_moist_static_energy_cloud_levels_forced (FloatField): _description_
+        environment_saturation_moist_static_energy_cloud_levels_forced (FloatField): _description_
+        t_excess (FloatFieldIJ): _description_
+        vapor_excess (FloatFieldIJ): _description_
+        add_buoyancy (FloatFieldIJ): _description_
+        p_cloud_levels_forced (FloatField_Plume): _description_
+        vapor_forced (FloatField): _description_
+        environment_saturation_mixing_ratio_forced (FloatField): _description_
+        ocean_fraction (FloatFieldIJ): _description_
+        cap_max_increment (FloatFieldIJ): _description_
+        t_perturbation (FloatField): _description_
+        p_forced (FloatField): _description_
+        cloud_top_level (IntFieldIJ_Plume): _description_
+        AVERAGE_LAYER_DEPTH (Float): _description_
+        plume (Int): _description_
     """
     from __externals__ import (
         OVERSHOOT,
@@ -618,7 +652,7 @@ def get_convective_cloud_base_level(
                 found_level = True
 
 
-def updraft_rates_pdf(
+def get_cloud_top(
     entrainment_rate: FloatField_Plume,
     environment_moist_static_energy_forced: FloatField,
     environment_saturation_moist_static_energy_cloud_levels_forced: FloatField,
@@ -630,6 +664,21 @@ def updraft_rates_pdf(
     cloud_top_level: IntFieldIJ_Plume,
     plume: Int,
 ):
+    """Determine the initial estimate for the cloud top level. This can include an overshooting top above the
+    equilibrium level, if the configuration option OVERSHOOT == True.
+
+    Args:
+        entrainment_rate (FloatField_Plume)
+        environment_moist_static_energy_forced (FloatField)
+        environment_saturation_moist_static_energy_cloud_levels_forced (FloatField)
+        moist_static_energy_origin_level_forced (FloatFieldIJ)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        geopotential_height_cloud_levels_forced (FloatField)
+        cloud_moist_static_energy_forced_transported (FloatField)
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        plume (Int)
+    """
     from __externals__ import k_end, OVERSHOOT
 
     with computation(PARALLEL), interval(...):
@@ -652,11 +701,17 @@ def updraft_rates_pdf(
     with computation(FORWARD), interval(1, None):
         if plume != 0 and error_code[0, 0][plume] == 0:
             if K > start_level and K < k_end - 2:
-                dz = geopotential_height_cloud_levels_forced - geopotential_height_cloud_levels_forced[0, 0, -1]
+                dz = (
+                    geopotential_height_cloud_levels_forced
+                    - geopotential_height_cloud_levels_forced[0, 0, -1]
+                )
 
                 cloud_moist_static_energy_forced_transported = (
-                    (1.0 - 0.5 * entrainment_rate[0, 0, -1][plume] * dz) * cloud_moist_static_energy_forced_transported[0, 0, -1]
-                    + entrainment_rate[0, 0, -1][plume] * dz * environment_moist_static_energy_forced[0, 0, -1]
+                    (1.0 - 0.5 * entrainment_rate[0, 0, -1][plume] * dz)
+                    * cloud_moist_static_energy_forced_transported[0, 0, -1]
+                    + entrainment_rate[0, 0, -1][plume]
+                    * dz
+                    * environment_moist_static_energy_forced[0, 0, -1]
                 ) / (1.0 + 0.5 * entrainment_rate[0, 0, -1][plume] * dz)
 
     with computation(FORWARD), interval(0, 1):
@@ -668,7 +723,10 @@ def updraft_rates_pdf(
         if plume != 0 and error_code[0, 0][plume] == 0:
             if K > start_level and K < k_end - 2 and stop_computation == False:
                 # find the height where the parcel is no longer saturated
-                if cloud_moist_static_energy_forced_transported < environment_saturation_moist_static_energy_cloud_levels_forced:
+                if (
+                    cloud_moist_static_energy_forced_transported
+                    < environment_saturation_moist_static_energy_cloud_levels_forced
+                ):
                     cloud_top_level[0, 0][plume] = K - 1
                     stop_computation = True
 
@@ -679,7 +737,9 @@ def updraft_rates_pdf(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and plume != 0 and OVERSHOOT > 0:
-            z_overshoot = (1.0 + OVERSHOOT) * geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume])
+            z_overshoot = (1.0 + OVERSHOOT) * geopotential_height_cloud_levels_forced.at(
+                K=cloud_top_level[0, 0][plume]
+            )
 
     with computation(FORWARD), interval(0, 1):
         # set up mask for next computation
@@ -703,6 +763,18 @@ def cloud_top_checks(
     MINIMUM_DEPTH: Float,
     plume: Int,
 ):
+    """Perform a series of checks on the initial estimate of cloud top level.
+
+    Args:
+        cloud_top_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        geopotential_height_cloud_levels (FloatField)
+        error_code (IntFieldIJ_Plume)
+        last_error_code (IntFieldIJ)
+        updraft_lfc_level (IntFieldIJ_Plume)
+        MINIMUM_DEPTH (Float)
+        plume (Int)
+    """
     # check if cloud_top_level is too low for deep convection
     with computation(FORWARD), interval(0, 1):
         if plume == cumulus_parameterization_constants.DEEP and error_code[0, 0][plume] == 0:
@@ -855,7 +927,7 @@ class CloudTop:
 
         # construct stencils and functions
         self._updraft_rates_pdf = stencil_factory.from_dims_halo(
-            func=updraft_rates_pdf,
+            func=get_cloud_top,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={"OVERSHOOT": cumulus_parameterization_config.OVERSHOOT},
         )

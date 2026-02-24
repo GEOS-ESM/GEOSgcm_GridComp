@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import updraft_rates_pdf, cloud_top_checks
+from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import get_cloud_top, cloud_top_checks
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
@@ -110,7 +110,7 @@ class TestCore:
         state.input.last_error_code.data[:] = inputs["last_error_code"]
 
         code_part_1 = self.stencil_factory.from_dims_halo(
-            func=updraft_rates_pdf,
+            func=get_cloud_top,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={"OVERSHOOT": cumulus_parameterization_config.OVERSHOOT},
         )

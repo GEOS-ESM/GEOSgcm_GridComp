@@ -40,22 +40,30 @@ def set_plume_dependent_fields(
     vapor_forced_pbl: FloatField,
     dmoist_static_energydt: FloatField,
 ):
-    """
-    fill or modify existing values of temperature and vapor excess before cumulus parameterization
+    """Fill or modify existing values of temperature/vapor excess before cumulus parameterization
 
     Args:
-        t_excess_cu_param_input: temperature excess input to cumulus parameterization
-        t_excess_cu_param_internal: temperature excess internal for cumulus parameterization
-        vapor_excess_cu_param_input: water vapor mixing ratio excess input to cumulus parameterization
-        vapor_excess_cu_param_internal: excess internal for cumulus parameterization
-
-        use_excess: trigger to control behavior
-
-    Possible behaviors (use_excess options):
-        0: fill with zero
-        1: no change (retain existing values)
-        2: enforce min/max everywhere
-        other: enforce min/max only over ocean
+        t_excess (FloatFieldIJ)
+        t_excess_local (FloatFieldIJ)
+        vapor_excess (FloatFieldIJ)
+        vapor_excess_local (FloatFieldIJ)
+        ocean_fraction (FloatFieldIJ)
+        use_excess (Int): trigger to control behavior
+            0: fill with zero
+            1: no change (retain existing values)
+            2: enforce min/max everywhere
+            other: enforce min/max only over ocean
+        t_old (FloatField)
+        vapor_old (FloatField)
+        grid_scale_forcing_t (FloatField)
+        grid_scale_forcing_vapor (FloatField)
+        subgrid_scale_forcing_t (FloatField)
+        subgrid_scale_forcing_vapor (FloatField)
+        t_new (FloatField)
+        vapor_forced (FloatField)
+        t_new_pbl (FloatField)
+        vapor_forced_pbl (FloatField)
+        dmoist_static_energydt (FloatField)
     """
     from __externals__ import DT_MOIST
 
@@ -129,6 +137,52 @@ def prefil_internal_fields(
     precip: FloatFieldIJ_Plume,
     lightning_density: FloatFieldIJ,
 ):
+    """Fill internal fields (from the cumulus parameterization state) to ensure no data is left over from
+    the previous call. Most fields are filled with zero, but not all.
+
+    Args:
+        plume (Int): _description_
+        maximum_updraft_origin_level (IntFieldIJ): _description_
+        kstabm (IntFieldIJ_Plume): _description_
+        ocean_fraction (FloatFieldIJ): _description_
+        ocean_fraction_local (FloatFieldIJ): _description_
+        cap_max (FloatFieldIJ): _description_
+        error_code_2 (IntFieldIJ): _description_
+        error_code_3 (IntFieldIJ): _description_
+        CAP_MAX_INC (Float): _description_
+        cap_max_increment (FloatFieldIJ): _description_
+        geopotential_height (FloatField): _description_
+        geopotential_height_local (FloatField): _description_
+        geopotential_height_modified_local (FloatField): _description_
+        cloud_workfunction_0 (FloatFieldIJ): _description_
+        cloud_workfunction_1 (FloatFieldIJ): _description_
+        cloud_workfunction_2 (FloatFieldIJ): _description_
+        cloud_workfunction_3 (FloatFieldIJ): _description_
+        cloud_workfunction_0_pbl (FloatFieldIJ): _description_
+        cloud_workfunction_1_pbl (FloatFieldIJ): _description_
+        cloud_workfunction_1_fa (FloatFieldIJ): _description_
+        cin_1 (FloatFieldIJ): _description_
+        scale_dependence_factor (FloatFieldIJ_Plume): _description_
+        scale_dependence_factor_downdraft (FloatFieldIJ): _description_
+        epsilon_forced (FloatFieldIJ_Plume): _description_
+        epsilon_local (FloatFieldIJ): _description_
+        cloud_moist_static_energy_downdraft_forced (FloatField): _description_
+        cloud_moist_static_energy_forced_transported (FloatField): _description_
+        k_x_modified (FloatFieldIJ): _description_
+        pbl_time_scale (FloatFieldIJ): _description_
+        t_wetbulb (FloatFieldIJ): _description_
+        vapor_wetbulb (FloatFieldIJ): _description_
+        cape_removal_time_scale (FloatFieldIJ): _description_
+        f_dicycle_modified (FloatFieldIJ): _description_
+        add_buoyancy (FloatFieldIJ): _description_
+        downdraft_saturation_vapor_forced (FloatField): _description_
+        c1d (FloatField): _description_
+        evaporation_below_cloud_base (FloatField): _description_
+        mass_flux_ensemble (FloatFieldIJ_Ensemble): _description_
+        precipitation_ensemble (FloatFieldIJ_Ensemble): _description_
+        precip (FloatFieldIJ_Plume): _description_
+        lightning_density (FloatFieldIJ): _description_
+    """
     from __externals__ import k_end, CAP_MAXS, ENSEMBLE_MEMBERS
 
     # reset to zero manually. cannot use locals.fill(0) because not all fields are reset to zero b/t plumes
@@ -193,6 +247,15 @@ def compute_scale_dependence_factor(
     error_code: IntFieldIJ_Plume,
     grid_length: FloatFieldIJ,
 ):
+    """Compute scale dependence factor for use later.
+
+    Args:
+        plume (Int)
+        scale_dependence_factor (FloatFieldIJ_Plume)
+        seed_convection (FloatFieldIJ)
+        error_code (IntFieldIJ_Plume)
+        grid_length (FloatFieldIJ)
+    """
     from __externals__ import USE_SCALE_DEP
 
     # prepare mask to stop loop in next computation
@@ -227,6 +290,15 @@ def get_random_number(
     plume: Int,
     random_number: FloatFieldIJ,
 ):
+    """Generate a random number for each column.
+
+    THIS IS UNFINISHED, RIGHT NOW IT USES SERIALIZED FORTRAN DATA.
+    THIS WILL NOT WORK WITH A PROPER INTEGRATION, NEED A BETTER SOLUTION.
+
+    Args:
+        plume (Int)
+        random_number (FloatFieldIJ)
+    """
     from __externals__ import USE_RANDOM_NUMBER
 
     with computation(FORWARD), interval(0, 1):
@@ -244,6 +316,15 @@ def initial_entrainment_detrainment(
     entrainment_rate: FloatField_Plume,
     detrainment_function_updraft: FloatField,
 ):
+    """Get initial entrainment/detrainment estimates based on data from the overarching model.
+
+    Args:
+        plume (Int)
+        lateral_entrainment_rate (FloatField)
+        current_plume_rate (Float)
+        entrainment_rate (FloatField_Plume)
+        detrainment_function_updraft (FloatField)
+    """
     with computation(PARALLEL), interval(0, -1):
         entrainment_rate[0, 0, 0][plume] = lateral_entrainment_rate * current_plume_rate
         detrainment_function_updraft = lateral_entrainment_rate * current_plume_rate
@@ -258,6 +339,17 @@ def epsilon_min_max(
     MINIMUM_EVAP_FRACTION_LAND: Float,
     MAXIMUM_EVAP_FRACTION_LAND: Float,
 ):
+    """Set min/max epsilon for the current plume.
+
+    Args:
+        ocean_fraction (FloatFieldIJ)
+        epsilon_min (FloatFieldIJ)
+        epsilon_max (FloatFieldIJ)
+        MINIMUM_EVAP_FRACTION_OCEAN (Float)
+        MAXIMUM_EVAP_FRACTION_OCEAN (Float)
+        MINIMUM_EVAP_FRACTION_LAND (Float)
+        MAXIMUM_EVAP_FRACTION_LAND (Float)
+    """
     with computation(FORWARD), interval(0, 1):
         if ocean_fraction > 0.99:  # water
             epsilon_min = MINIMUM_EVAP_FRACTION_OCEAN
@@ -270,6 +362,11 @@ def epsilon_min_max(
 def calculate_arbitrary_numerical_parameter(
     arbitrary_numerical_parameter: FloatFieldIJ,
 ):
+    """Set a scaling factor, used primarially (but not exclusively) for mass flux calculations.
+
+    Args:
+        arbitrary_numerical_parameter (FloatFieldIJ)
+    """
     with computation(FORWARD), interval(0, 1):
         arbitrary_numerical_parameter = 0.1
         # approx xmb * timescale
@@ -280,6 +377,10 @@ def calculate_arbitrary_numerical_parameter(
 
 
 class Setup(NDSLRuntime):
+    """Setup the GF2020 cumulus parameterization core. Prefill locals with appropriate values based on
+    configuration, set plume dependent constants for the correct plume, and 
+
+    """
     def __init__(
         self,
         stencil_factory: StencilFactory,

@@ -33,9 +33,16 @@ def environment_cloud_levels_chemistry(
     chemistry_tracers_cloud_levels: FloatField_ConvectionTracers,
     plume: Int,
 ):
-    from __externals__ import k_end, NUMBER_OF_TRACERS, CLOUD_LEVEL_OPTION
+    """Set chemistry tracers at cloud levels. Behavior is determined by CLOUD_LEVEL_OPTION external.
+    Only options 1 and 2 have been implemented, only option 2 has been tested.
 
-    # NOTE only CLOUD_LEVEL_OPTION = 2 has been tested
+    Args:
+        error_code (IntFieldIJ_Plume)
+        chemistry_tracers (FloatField_ConvectionTracers)
+        chemistry_tracers_cloud_levels (FloatField_ConvectionTracers)
+        plume (Int)
+    """
+    from __externals__ import k_end, NUMBER_OF_TRACERS, CLOUD_LEVEL_OPTION
 
     with computation(FORWARD), interval(1, -1):
         if error_code[0, 0][plume] == 0 and CLOUD_LEVEL_OPTION == 1:
@@ -92,6 +99,32 @@ def updraft_chemistry(
     AVERAGE_LAYER_DEPTH: Float,
     plume: Int,
 ):
+    """Compute chemistry effects in the updraft.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        updraft_origin_level (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        ocean_fraction (FloatFieldIJ)
+        p_forced (FloatField)
+        p_cloud_levels_forced (FloatField_Plume)
+        geopotential_height_cloud_levels (FloatField)
+        vertical_velocity_3d (FloatField)
+        mass_entrainment_updraft_forced (FloatField_Plume)
+        mass_detrainment_updraft_forced (FloatField_Plume)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        chemistry_tracers (FloatField_ConvectionTracers)
+        chemistry_tracers_sc_updraft (FloatField_ConvectionTracers)
+        chemistry_tracers_cloud_levels (FloatField_ConvectionTracers)
+        chemistry_tracers_pw_updraft (FloatField_ConvectionTracers)
+        chemistry_tracers_total_pw_updraft (FloatFieldIJ_ConvectionTracers)
+        convection_tracers_vect_hcts (ConvectionTracerMetaDataTable_x4)
+        convection_tracers_fscav (ConvectionTracerMetaDataTable_Float)
+        convection_tracers_use_gcc_washout (ConvectionTracerMetaDataTable_Bool)
+        tracer_cloud_boundary (FloatFieldIJ_ConvectionTracers)
+        AVERAGE_LAYER_DEPTH (Float)
+        plume (Int)
+    """
     from __externals__ import k_end, BOUNDARY_CONDITION_METHOD, USE_TRACER_SCAVENGE, NUMBER_OF_TRACERS
 
     with computation(FORWARD), interval(...):
@@ -246,6 +279,26 @@ def downdraft_chemistry(
     chemistry_tracers_total_pw_updraft: FloatFieldIJ_ConvectionTracers,
     plume: Int,
 ):
+    """Compute chemistry effects in the downdraft.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        downdraft_origin_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        evaporate_in_downdraft_forced (FloatField_Plume)
+        total_normalized_integrated_evaporate_forced (FloatFieldIJ)
+        total_normalized_integrated_condensate_forced (FloatFieldIJ_Plume)
+        normalized_massflux_downdraft_forced (FloatField_Plume)
+        mass_entrainment_downdraft_forced (FloatField_Plume)
+        mass_detrainment_downdraft_forced (FloatField_Plume)
+        chemistry_tracers (FloatField_ConvectionTracers)
+        chemistry_tracers_cloud_levels (FloatField_ConvectionTracers)
+        chemistry_tracers_sc_downdraft (FloatField_ConvectionTracers)
+        chemistry_tracers_pw_downdraft (FloatField_ConvectionTracers)
+        chemistry_tracers_total_pw_downdraft (FloatFieldIJ_ConvectionTracers)
+        chemistry_tracers_total_pw_updraft (FloatFieldIJ_ConvectionTracers)
+        plume (Int)
+    """
     from __externals__ import NUMBER_OF_TRACERS, USE_TRACER_EVAPORATION
 
     with computation(FORWARD), interval(...):
@@ -391,6 +444,29 @@ def vertical_transport_part_1(
     cc: FloatField,
     plume: Int,
 ):
+    """Advect tracers up/down the column - part 1/2 (before tridiag).
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        environment_massflux (FloatField)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        normalized_massflux_downdraft_forced (FloatField_Plume)
+        epsilon_forced (FloatFieldIJ_Plume)
+        chemistry_tracers (FloatField_ConvectionTracers)
+        chemistry_tracers_output (FloatField_ConvectionTracers_Plume)
+        chemistry_tracers_cloud_levels (FloatField_ConvectionTracers)
+        chemistry_tracers_sc_updraft (FloatField_ConvectionTracers)
+        chemistry_tracers_sc_downdraft (FloatField_ConvectionTracers)
+        chemistry_tracers_pw_updraft (FloatField_ConvectionTracers)
+        chemistry_tracers_pw_downdraft (FloatField_ConvectionTracers)
+        dd_tracers (FloatField_ConvectionTracers)
+        aa (FloatField)
+        bb (FloatField)
+        cc (FloatField)
+        plume (Int)
+    """
     from __externals__ import (
         ALP1,
         DTIME,
@@ -545,6 +621,23 @@ def vertical_transport_part_2(
     residual: FloatFieldIJ_ConvectionTracers,
     plume: Int,
 ):
+    """Advect tracers up/down the column - part 2/2 (after tridiag).
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        normalized_massflux_downdraft_forced (FloatField_Plume)
+        epsilon_forced (FloatFieldIJ_Plume)
+        chemistry_tracers (FloatField_ConvectionTracers)
+        chemistry_tracers_output (FloatField_ConvectionTracers_Plume)
+        chemistry_tracers_pw_updraft (FloatField_ConvectionTracers)
+        chemistry_tracers_pw_downdraft (FloatField_ConvectionTracers)
+        dd_tracers (FloatField_ConvectionTracers)
+        residual (FloatFieldIJ_ConvectionTracers)
+        plume (Int)
+    """
     from __externals__ import NUMBER_OF_TRACERS
 
     with computation(FORWARD), interval(0, 1):
@@ -616,6 +709,8 @@ class ColdPoolParameterization:
 
 
 class AtmosphericComposition(NDSLRuntime):
+    """Consider the effects of and on chemistry/tracers by convection."""
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -731,6 +826,46 @@ class AtmosphericComposition(NDSLRuntime):
         convection_tracers: ConvectionTracers,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
+        """Apply the effects of convection to the convection/chemistry tracers.
+
+        Args:
+            error_code (Quantity)
+            cloud_top_level (Quantity)
+            updraft_origin_level (Quantity)
+            downdraft_origin_level (Quantity)
+            ocean_fraction (Quantity)
+            p_forced (Quantity)
+            p_cloud_levels_forced (Quantity)
+            geopotential_height_cloud_levels (Quantity)
+            environment_massflux (Quantity)
+            normalized_massflux_updraft_forced (Quantity)
+            normalized_massflux_downdraft_forced (Quantity)
+            mass_entrainment_updraft_forced (Quantity)
+            mass_detrainment_updraft_forced (Quantity)
+            mass_entrainment_downdraft_forced (Quantity)
+            mass_detrainment_downdraft_forced (Quantity)
+            vertical_velocity_3d (Quantity)
+            total_normalized_integrated_condensate_forced (Quantity)
+            total_normalized_integrated_evaporate_forced (Quantity)
+            evaporate_in_downdraft_forced (Quantity)
+            epsilon_forced (Quantity)
+            chemistry_tracers (Quantity)
+            chemistry_tracers_output (Quantity)
+            chemistry_tracers_cloud_levels (Quantity)
+            chemistry_tracers_sc_updraft (Quantity)
+            chemistry_tracers_sc_downdraft (Quantity)
+            chemistry_tracers_pw_updraft (Quantity)
+            chemistry_tracers_pw_downdraft (Quantity)
+            chemistry_tracers_total_pw_updraft (Quantity)
+            chemistry_tracers_total_pw_downdraft (Quantity)
+            convection_tracers (ConvectionTracers): Collection of tracers from the rest of the model which
+                will be updated within convection. These may come from a variaty of sources, and need to be
+                collected into the expected ConvectionTracers data type before being passed down.
+            plume_dependent_constants (GF2020PlumeDependentConstants)
+
+        Raises:
+            NotImplementedError: _description_
+        """
 
         # 1) get mass mixing ratios at the cloud levels
         self._environment_cloud_levels_chemistry(

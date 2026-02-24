@@ -1,5 +1,4 @@
-import copy
-from ndsl import StencilFactory, QuantityFactory
+from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
 from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, max, min, abs, K, function, BACKWARD
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ, Int
@@ -40,6 +39,18 @@ def copy_from_cumulus_parameterization_state(
     cloud_workfunction_1: FloatFieldIJ,
     cloud_workfunction_1_from_cumulus_parameterization: FloatFieldIJ,
 ):
+    """Copy fields from the cumulus parameterization state to the overarching model state.
+
+    Args:
+        pbl_time_scale_from_cumulus_parameterization (FloatFieldIJ)
+        pbl_time_scale (FloatFieldIJ)
+        cape_removal_time_scale_from_cumulus_parameterization (FloatFieldIJ)
+        cape_removal_time_scale (FloatFieldIJ)
+        cloud_workfunction_0_from_cumulus_parameterization (FloatFieldIJ)
+        cloud_workfunction_0 (FloatFieldIJ)
+        cloud_workfunction_1 (FloatFieldIJ)
+        cloud_workfunction_1_from_cumulus_parameterization (FloatFieldIJ)
+    """
     with computation(FORWARD), interval(0, 1):
         pbl_time_scale = pbl_time_scale_from_cumulus_parameterization
         cape_removal_time_scale = cape_removal_time_scale_from_cumulus_parameterization
@@ -404,6 +415,7 @@ def cloud_workfunction_output(
     cloud_workfunction_3: FloatFieldIJ,
 ):
     """Fill cloud workfunction 2 and 3 with data from the cumulus parameterization core
+
     Args:
         precip (FloatFieldIJ_Plume)
         fix_out_vapor (FloatFieldIJ)
@@ -876,6 +888,18 @@ def update_tendencies(
     dudt_deep_convection: FloatField,
     dvdt_deep_convection: FloatField,
 ):
+    """Push tendency values computed in previous stencils (in the finalize class) back to the model state.
+
+    Args:
+        dtdt (FloatField)
+        dvapordt (FloatField)
+        dudt (FloatField)
+        dvdt (FloatField)
+        dtdt_deep_convection (FloatField)
+        dvapordt_deep_convection (FloatField)
+        dudt_deep_convection (FloatField)
+        dvdt_deep_convection (FloatField)
+    """
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
@@ -941,8 +965,50 @@ def update_state_with_tendencies(
     convective_precipitation_RAS: FloatField,
     ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
-    DEBUG_FIELD: FloatField,
 ):
+    """Update the model state (excluding the few fields which have already been updated in earlier
+    stencils) with the output from the cumulus parameterization core.
+
+    Containts a call to saturation_specific_humidity, which is techincally a port of the GEOS_QSAT function.
+    In fortran 
+
+    Args:
+        convection_fraction (FloatFieldIJ)
+        surface_type (FloatFieldIJ)
+        u (FloatField)
+        v (FloatField)
+        vapor (FloatField)
+        t (FloatField)
+        p (FloatField)
+        p_kappa (FloatField)
+        mass (FloatField)
+        mass_flux_deep_updraft_detrained (FloatField)
+        mass_flux_deep_updraft_interface (FloatField)
+        total_cumulative_mass_flux_interface (FloatField)
+        total_detraining_mass_flux (FloatField)
+        dudt_deep_convection (FloatField)
+        dvdt_deep_convection (FloatField)
+        dvapordt_deep_convection (FloatField)
+        dtdt_deep_convection (FloatField)
+        dliquiddt_deep_convection (FloatField)
+        dicedt_deep_convection (FloatField)
+        dcloudfractiondt_deep_convection (FloatField)
+        convective_condensate_source (FloatField)
+        evaporation_sublimation_tendency (FloatField)
+        convective_precip_flux (FloatField)
+        sublimation_of_convective_precipitation (FloatField)
+        evaporation_of_convective_precipitation (FloatField)
+        ice_fraction_in_convective_tower (FloatField)
+        ice_precip_flux_interface (FloatField)
+        liquid_precip_flux_interface (FloatField)
+        convective_liquid (FloatField)
+        convective_ice (FloatField)
+        convective_cloud_fraction (FloatField)
+        convective_rainwater_source (FloatField)
+        convective_precipitation_RAS (FloatField)
+        ese (GlobalTable_saturation_tables)
+        esx (GlobalTable_saturation_tables)
+    """
     from __externals__ import SCLM_DEEP, DT_MOIST, FIX_CONVECTIVE_CLOUD
 
     with computation(PARALLEL), interval(...):
@@ -953,7 +1019,6 @@ def update_state_with_tendencies(
 
         # update deep cumulus liquid/ice/cloud fraction tendencies
         fraction_ice = ice_fraction(t, convection_fraction, surface_type)
-        DEBUG_FIELD = fraction_ice
         condensate_per_mass = convective_condensate_source / mass
         dliquiddt_deep_convection = (1.0 - fraction_ice) * condensate_per_mass
         dicedt_deep_convection = fraction_ice * condensate_per_mass
@@ -1017,7 +1082,7 @@ def update_state_with_tendencies(
         convective_rainwater_source = convective_precipitation_RAS / DT_MOIST
 
 
-class GF2020Finalize:
+class GF2020Finalize(NDSLRuntime):
     """This class performs the entire finalization sequence for the GF2020 convection parameterization scheme
 
     In the source Fortran codee, this code is split across three subroutines nested as follows:
@@ -1039,6 +1104,8 @@ class GF2020Finalize:
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
         saturation_tables: SaturationVaporPressureTable,
     ):
+        super().__init__(stencil_factory)
+
         # make status of plumes visible at runtime
         self._plume_status = [
             cumulus_parameterization_config.ENABLE_SHALLOW,
@@ -1165,8 +1232,6 @@ class GF2020Finalize:
             },
         )
 
-        # DEBUG
-        self._DEBUG_FIELD = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
     def __call__(
         self,
@@ -1182,7 +1247,9 @@ class GF2020Finalize:
             locals (GF2020Locals): NDSL LocalState containing all locals for GF2020.
             cumulus_parameterization_state (GF2020CumulusParameterizationState): NDSL State containing all
                 fields required for the CumulusParameterization.
-            convection_tracers (ConvectionTracers): convection tracers - fields and metadata
+            convection_tracers (ConvectionTracers): Collection of tracers from the rest of the model which
+                will be updated within convection. These may come from a variaty of sources, and need to be
+                collected into the expected ConvectionTracers data type before being passed down.
         """
 
         self._copy_from_cumulus_parameterization_state(
@@ -1409,5 +1476,4 @@ class GF2020Finalize:
             convective_precipitation_RAS=state.convective_precipitation_RAS,
             ese=self._ese,
             esx=self._esx,
-            DEBUG_FIELD=self._DEBUG_FIELD,
         )

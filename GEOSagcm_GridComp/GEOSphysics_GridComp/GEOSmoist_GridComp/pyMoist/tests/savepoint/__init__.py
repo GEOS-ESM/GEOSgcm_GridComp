@@ -283,10 +283,10 @@ from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_
     TranslateGF2020_CumulusParameterization_StaticControl_mid,
     TranslateGF2020_CumulusParameterization_StaticControl_shallow,
 )
-from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdraftWorkfunctions import (
-    TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_deep,
-    TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_mid,
-    TranslateGF2020_CumulusParameterization_UpdraftWorkfunctions_shallow,
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble import (
+    TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_deep,
+    TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_mid,
+    TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_shallow,
 )
 from .convection.GF_2020.cumulus_parameterization.large_scale_forcing.translate_GF2020_CumulusParameterization_LargeScaleForcing import (
     TranslateGF2020_CumulusParameterization_LargeScaleForcing_deep,
@@ -328,10 +328,10 @@ from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF202
     TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_mid,
     TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_shallow,
 )
-from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_TracerOutput import (
-    TranslateGF2020_CumulusParameterization_TracerOutput_deep,
-    TranslateGF2020_CumulusParameterization_TracerOutput_mid,
-    TranslateGF2020_CumulusParameterization_TracerOutput_shallow,
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_OutputUpdraftTemperature import (
+    TranslateGF2020_CumulusParameterization_OutputUpdraftTemperature_deep,
+    TranslateGF2020_CumulusParameterization_OutputUpdraftTemperature_mid,
+    TranslateGF2020_CumulusParameterization_OutputUpdraftTemperature_shallow,
 )
 from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_PrepareOutput import (
     TranslateGF2020_CumulusParameterization_PrepareOutput_deep,

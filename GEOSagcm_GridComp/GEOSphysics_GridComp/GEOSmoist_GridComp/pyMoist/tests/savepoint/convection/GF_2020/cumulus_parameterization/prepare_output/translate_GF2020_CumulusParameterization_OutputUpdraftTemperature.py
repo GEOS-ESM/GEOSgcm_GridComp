@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS3,
     NUMBER_OF_PLUMES,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import tracer_output
+from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import output_updraft_temperature
 
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -79,7 +79,7 @@ class TestCore:
         state.output.t_updraft.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["t_updraft"]
 
         code = self.stencil_factory.from_dims_halo(
-            func=tracer_output,
+            func=output_updraft_temperature,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -102,7 +102,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TracerOutput_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_OutputUpdraftTemperature_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -125,7 +125,7 @@ class TranslateGF2020_CumulusParameterization_TracerOutput_shallow(TranslateFort
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TracerOutput_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_OutputUpdraftTemperature_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -148,7 +148,7 @@ class TranslateGF2020_CumulusParameterization_TracerOutput_mid(TranslateFortranD
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_TracerOutput_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_OutputUpdraftTemperature_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

@@ -30,6 +30,20 @@ def zero_tendencies(
     vapor_tendency_from_environmental_subsidence: FloatField,
     t_tendency_from_environmental_subsidence: FloatField,
 ):
+    """Ensure that all tendencies are zero, and there is no lingering data from the previous call.
+
+    Args:
+        del_u_cloud_ensemble (FloatField)
+        del_v_cloud_ensemble (FloatField)
+        del_moist_static_energy_cloud_ensemble (FloatField)
+        del_t_cloud_ensemble (FloatField)
+        del_vapor_cloud_ensemble (FloatField)
+        del_cloud_liquid_cloud_ensemble (FloatField)
+        del_buoyancy_cloud_ensemble (FloatField)
+        moist_static_energy_tendency_from_environmental_subsidence (FloatField)
+        vapor_tendency_from_environmental_subsidence (FloatField)
+        t_tendency_from_environmental_subsidence (FloatField)
+    """
     with computation(PARALLEL), interval(...):
         del_u_cloud_ensemble = 0.0
         del_v_cloud_ensemble = 0.0
@@ -70,6 +84,36 @@ def convective_transport_of_momentum(
     ddv: FloatField,
     plume: Int,
 ):
+    """Compute u & v tendnecies - the effect of convection on the state wind field. These tencencies are not
+    directly used to update the overarching model state, but are the first step in that process.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        normalized_massflux_downdraft_forced (FloatField_Plume)
+        environment_massflux (FloatField)
+        u (FloatField)
+        v (FloatField)
+        u_cloud_levels (FloatField)
+        v_cloud_levels (FloatField)
+        u_c (FloatField)
+        v_c (FloatField)
+        u_c_downdraft (FloatField)
+        v_c_downdraft (FloatField)
+        del_u_cloud_ensemble (FloatField)
+        del_v_cloud_ensemble (FloatField)
+        epsilon_forced (FloatFieldIJ_Plume)
+        fp (FloatField)
+        fm (FloatField)
+        aa (FloatField)
+        bb (FloatField)
+        cc (FloatField)
+        ddu (FloatField)
+        ddv (FloatField)
+        plume (Int)
+    """
     from __externals__ import VERTICAL_DISCRETIZATION_OPTION, ALP1, DTIME
 
     with computation(FORWARD), interval(0, 1):
@@ -185,6 +229,16 @@ def update_after_tridiag(
     wind: FloatField,
     plume: Int,
 ):
+    """Update a field with the output of the tridiagonal solver.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        in_field (FloatField)
+        out_field (FloatField)
+        wind (FloatField)
+        plume (Int)
+    """
     from __externals__ import DTIME
 
     with computation(PARALLEL), interval(...):
@@ -192,7 +246,7 @@ def update_after_tridiag(
             out_field = (in_field - wind) / DTIME
 
 
-def convective_transport_of_mse_and_liquid_water(
+def convective_transport_of_mse(
     error_code: IntFieldIJ_Plume,
     cloud_top_level: IntFieldIJ_Plume,
     p_cloud_levels_forced: FloatField_Plume,
@@ -209,6 +263,27 @@ def convective_transport_of_mse_and_liquid_water(
     moist_static_energy_tendency_from_environmental_subsidence: FloatField,
     plume: Int,
 ):
+    """Compute moist static energy tendency - the effect of convection and environmental
+    subsidence on environmental moist static energy independently. This tencency is not
+    directly used to update the overarching model state, but is the first step in that process.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        normalized_massflux_downdraft_forced (FloatField_Plume)
+        cloud_moist_static_energy_forced (FloatField)
+        cloud_moist_static_energy_downdraft_forced (FloatField)
+        environment_moist_static_energy_cloud_levels_forced (FloatField)
+        cloud_liquid_after_rain_forced (FloatField_Plume)
+        melting (FloatField)
+        partition_liquid_ice (FloatField)
+        epsilon_forced (FloatFieldIJ_Plume)
+        del_moist_static_energy_cloud_ensemble (FloatField)
+        moist_static_energy_tendency_from_environmental_subsidence (FloatField)
+        plume (Int)
+    """
     from __externals__ import USE_FCT
 
     with computation(FORWARD), interval(0, -1):
@@ -313,6 +388,33 @@ def convective_transport_of_water_vapor_and_condensates(
     vapor_tendency_from_environmental_subsidence: FloatField,
     plume: Int,
 ):
+    """Compute cloud liquid and vapor tendencies - the effect of convection on environmental water,
+    and the contribution from environmental subsidence. These tencencies are not
+    directly used to update the overarching model state, but are the first step in that process.
+
+    Args:
+        error_code (IntFieldIJ_Plume)
+        cloud_top_level (IntFieldIJ_Plume)
+        p_cloud_levels_forced (FloatField_Plume)
+        geopotential_height_cloud_levels_forced (FloatField)
+        normalized_massflux_updraft_forced (FloatField_Plume)
+        normalized_massflux_downdraft_forced (FloatField_Plume)
+        mass_detrainment_updraft_forced (FloatField_Plume)
+        mass_detrainment_downdraft_forced (FloatField_Plume)
+        c1d (FloatField)
+        vapor_cloud_levels_forced (FloatField)
+        cloud_total_water_after_entrainment_forced (FloatField)
+        cloud_total_water_after_entrainment_downdraft_forced (FloatField)
+        cloud_liquid_after_rain_forced (FloatField_Plume)
+        condensate_to_fall_forced (FloatField_Plume)
+        evaporate_in_downdraft_forced (FloatField_Plume)
+        epsilon_forced (FloatFieldIJ_Plume)
+        d_buoyancy_downdraft_forced (FloatField)
+        del_cloud_liquid_cloud_ensemble (FloatField)
+        del_vapor_cloud_ensemble (FloatField)
+        vapor_tendency_from_environmental_subsidence (FloatField)
+        plume (Int)
+    """
     from __externals__ import C1, USE_FCT
 
     with computation(FORWARD), interval(0, -1):
@@ -499,6 +601,11 @@ def convective_transport_of_water_vapor_and_condensates(
 
 
 class VerticalDiscretization(NDSLRuntime):
+    """Connect the effect of convection on the environment state. Tendencies computed within this module
+    ARE NOT used outside of the cumulus parameterization core, but are the "first guess" for a value
+    which will eventually get fed back into the rest of the model.
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -508,7 +615,7 @@ class VerticalDiscretization(NDSLRuntime):
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
-        
+
         # make configuration visible at runtime
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
@@ -549,7 +656,7 @@ class VerticalDiscretization(NDSLRuntime):
         )
 
         self._convective_transport_of_mse_and_liquid_water = stencil_factory.from_dims_halo(
-            func=convective_transport_of_mse_and_liquid_water,
+            func=convective_transport_of_mse,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={"USE_FCT": cumulus_parameterization_config.USE_FCT},
         )

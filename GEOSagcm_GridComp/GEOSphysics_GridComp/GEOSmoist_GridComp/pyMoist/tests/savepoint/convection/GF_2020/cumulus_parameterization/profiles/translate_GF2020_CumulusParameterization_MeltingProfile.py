@@ -24,7 +24,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     NUMBER_OF_PLUMES,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import (
-    get_melting_profile,
+    melting_profile,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
     set_constants,
@@ -102,7 +102,7 @@ class TestCore:
 
         # initialize test code
         code = self.stencil_factory.from_dims_halo(
-            func=get_melting_profile,
+            func=melting_profile,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
