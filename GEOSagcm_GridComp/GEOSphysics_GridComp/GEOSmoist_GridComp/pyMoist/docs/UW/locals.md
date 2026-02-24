@@ -1,0 +1,3 @@
+# locals
+
+::: pyMoist.UW.locals

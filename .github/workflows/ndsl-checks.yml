@@ -17,42 +17,46 @@ jobs:
       DATA_URL: "https://portal.nccs.nasa.gov/datashare/astg/smt/geos-fp/translate/11.5.2/x86_GNU/Moist/TBC_C24L72.tar.gz"
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout NDSL
-        uses: actions/checkout@master
+      - name: Step Python 3.11
+        uses: actions/setup-python@v6
         with:
-          repository: NOAA-GFDL/NDSL
-          submodules: 'recursive'
-          path: '${{ github.workspace }}/ndsl'
+          python-version: '3.11'
+
+      - name: Install MPI
+        run: pip install mpich
+
       - name: Checkout repository
-        uses: actions/checkout@master
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
-          path: '${{ github.workspace }}/GCMGridComp'
-      - name: Step Python 3.11.9
-        uses: actions/setup-python@v4.6.0
-        with:
-          python-version: '3.11.9'
-      - name: Install OpenMPI for gt4py
-        run: |
-          sudo apt-get install libopenmpi-dev
+
       - name: Install Python packages
         run: |
-          python -m pip install --upgrade pip setuptools wheel pre-commit
-          cd ${{ github.workspace }}/ndsl
-          pip install -e .[develop]
-          cd ${{ github.workspace }}/GCMGridComp
-          pip install -e ./GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          pip install ./GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist[develop]
+
       - name: Run lint via pre-commit
         run: |
-          cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
           pre-commit run --all-files
-      - name: Download test_data (if not cached)
+
+      - name: Build Documentation
         run: |
-          cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          mkdocs build
+
+      - name: Run unit tests
+        run: |
+          cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          pytest tests/numerical/
+
+      - name: Download test_data
+        run: |
+          cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
           mkdir -p ${{ env.DATA_PATH }} && cd ${{ env.DATA_PATH }}
           wget ${{ env.DATA_URL }}
           tar -xzvf TBC_C24L72.tar.gz
-      - name: Run all tests
+
+      - name: Run all translate tests
         run: |
-          cd ${{ github.workspace }}/GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
+          cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
           ./run_all.sh ../../${{ env.DATA_PATH }} dace:cpu_kfirst

@@ -4,6 +4,7 @@ from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, s
 import pyMoist.constants as constants
 import pyMoist.pyMoist_constants as py_constants
 from ndsl.dsl.typing import Float, FloatField, Int
+from pyMoist.field_types import FloatField_NTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
 
 
@@ -37,6 +38,7 @@ def slope_bot(
 ):
     """
     Function that calculates slope at bottom layer of a field.
+    WARNING: This function is for 3D fields, if 4D field use slope_bot_tracers
 
     Inputs:
     field (FloatField): Field of interest [N/A]
@@ -56,6 +58,25 @@ def slope_bot(
 
 
 @gtscript.function
+def slope_bot_tracer(
+    field: FloatField_NTracers,
+    p0: FloatField,
+    n: Int,
+):
+    """
+    See description for slope_bot function.
+    """
+    if K == 0:
+        value = (field[0, 0, 1][n] - field[0, 0, 0][n]) / (p0[0, 0, 1] - p0)
+        if value > 0.0:
+            slope = max(0.0, value)
+        else:
+            slope = min(0.0, value)
+
+    return slope
+
+
+@gtscript.function
 def slope_mid(
     max_k: Int,
     field: FloatField,
@@ -63,6 +84,7 @@ def slope_mid(
 ):
     """
     Function that calculates slope at mid layers of a field.
+    WARNING: This function is for 3D fields, if 4D field use slope_mid_tracers
 
     Inputs:
     max_k [Int]: Max k level (e.g., 71)
@@ -72,7 +94,6 @@ def slope_mid(
     Returns:
     slope [Float]: Slope of the field of interest [n/a]
     """
-
     if K > 0 and K < max_k:
         above_value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
         below_value = (field - field[0, 0, -1]) / (p0 - p0[0, 0, -1])
@@ -84,33 +105,25 @@ def slope_mid(
     return slope
 
 
-# @gtscript.function
-# def slope_top(
-#     max_k: Int,
-#     field: FloatField,
-#     p0: FloatField,
-# ):
-#     """
-#     Function that calculates slope at mid layers of a field.
+@gtscript.function
+def slope_mid_tracer(
+    max_k: Int,
+    field: FloatField_NTracers,
+    p0: FloatField,
+    n: Int,
+):
+    """
+    See description for slope_mid function.
+    """
+    if K > 0 and K < max_k:
+        above_value = (field[0, 0, 1][n] - field[0, 0, 0][n]) / (p0[0, 0, 1] - p0)
+        below_value = (field[0, 0, 0][n] - field[0, 0, -1][n]) / (p0 - p0[0, 0, -1])
+        if above_value > 0.0:
+            slope = max(0.0, min(above_value, below_value))
+        else:
+            slope = min(0.0, max(above_value, below_value))
 
-#     Inputs:
-#     max_k [Int]: Max k level (e.g., 71)
-#     field [FloatField]: Field of interest [n/a]
-#     p0 [FloatField]: Pressure [Pa]
-
-#     Returns:
-#     slope [Float]: Slope of the field of interest [n/a]
-#     """
-
-#     if K == max_k:
-#         above_value = (field[0, 0, -1] - field) / (p0[0, 0, -1] - p0)
-#         below_value = (field - field[0, 0, -2]) / (p0 - p0[0, 0, -2])
-#         if above_value > 0.0:
-#             slope = max(0.0, min(above_value, below_value))
-#         else:
-#             slope = min(0.0, max(above_value, below_value))
-
-#     return slope
+    return slope
 
 
 @gtscript.function
@@ -308,17 +321,17 @@ def compute_mumin2(
     x0: float64 = mulow
     iteration = 0
     while iteration < 10:
-        ex: float64 = exp(-(x0 ** 2))
+        ex: float64 = exp(-(x0**2))
         ef: float64 = erfc(x0)  # Complimentary error fraction function
         exf: float64 = ex / ef
         f: float64 = (
-            float64(0.5) * exf ** 2
+            float64(0.5) * exf**2
             - float64(0.5) * (ex / float64(2.0) / rmaxfrax) ** 2
             - (mulcl * float64(2.5066) / float64(2.0)) ** 2
         )
-        fs: float64 = (float64(2.0) * exf ** 2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
-            float64(0.5) * x0 * ex ** 2
-        ) / (rmaxfrax ** 2)
+        fs: float64 = (float64(2.0) * exf**2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
+            float64(0.5) * x0 * ex**2
+        ) / (rmaxfrax**2)
         x1: float64 = x0 - f / fs
         x0 = x1
         iteration += 1
@@ -601,10 +614,10 @@ def roots(
                 r1 = sqrt(-c / a)
             r2 = -r1
         else:  # Form a*x**2 + b*x + c = 0
-            if (b ** 2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
+            if (b**2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
                 status = 3
             else:
-                q = -0.5 * (b + sign(1.0, b) * sqrt(b ** 2 - 4.0 * a * c))
+                q = -0.5 * (b + sign(1.0, b) * sqrt(b**2 - 4.0 * a * c))
                 r1 = q / a
                 r2 = c / q
 

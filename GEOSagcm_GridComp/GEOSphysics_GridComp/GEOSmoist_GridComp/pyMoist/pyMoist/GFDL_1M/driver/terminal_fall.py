@@ -527,7 +527,7 @@ class GFDL1MTerminalFall(NDSLRuntime):
         Args:
             t (inout): temperature (K)
             w (inout): vertical motion (m/s)
-            mixing_ratio_vapo (inout): water vapor mixing ratio (kg/kg)
+            mixing_ratio_vapor (inout): water vapor mixing ratio (kg/kg)
             mixing_ratio_liquid (inout): liquid water mixing ratio (kg/kg)
             mixing_ratio_rain (inout): rain mixing ratio (kg/kg)
             mixing_ratio_graupel (inout): graupel mixing ratio (kg/kg)

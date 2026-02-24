@@ -10,13 +10,15 @@ with open("README.md", encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
 test_requirements = ["pytest", "pytest-subtests", "serialbox", "coverage"]
-ndsl_requirements = ["ndsl @ git+https://github.com/NOAA-GFDL/NDSL.git@develop"]
-develop_requirements = test_requirements + ndsl_requirements + ["pre-commit"]
+ndsl_requirements = ["ndsl @ git+https://github.com/NOAA-GFDL/NDSL.git@2026.01.00"]
+docs_requirements = ["mkdocs-material", "mkdocstrings[python]", "mkdocs-exclude"]
+develop_requirements = test_requirements + ndsl_requirements + docs_requirements + ["pre-commit"]
 
 extras_requires = {
-    "test": test_requirements,
-    "ndsl": ndsl_requirements,
     "develop": develop_requirements,
+    "docs": docs_requirements,
+    "ndsl": ndsl_requirements,
+    "test": test_requirements,
 }
 
 setup(

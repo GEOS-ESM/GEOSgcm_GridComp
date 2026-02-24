@@ -14,3 +14,6 @@ sandbox/
 .gt_cache_*/
 .translate*/
 **/build/
+.venv/
+site/
+test_data/

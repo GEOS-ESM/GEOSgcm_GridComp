@@ -1,3 +1,0 @@
-# qsat
-
-::: pyMoist.saturation.qsat
