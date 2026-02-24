@@ -1,157 +1,120 @@
-LakeTopoCat Lake Mask Preprocessing for GEOS BCS
+## LakeTopoCat Lake Mask Preprocessing for GEOS BCS
 
-February 2026
+**February 2026**
 
-Overview
 
-This repository contains preprocessing scripts that convert HydroLAKES-TopoCat v1.1 (2023) global lake polygons into 30-arcsecond raster tiles compatible with GEOS make_bcs.
+## Overview
+
+This repository contains preprocessing scripts that convert  **HydroLAKES-TopoCat v1.1 (2023)** global lake polygons into  **30-arcsecond raster tiles** compatible with `make_bcs`.
 
 The workflow produces:
 
-A native global 30″ raster (43200 × 21600)
+- A native global **30″ raster** (43200 × 21600)
+- 36 × 18 GEOS **10°×10° tiles** (1200 × 1200 each)
+- Tile-level lake fraction and classification written directly into the tile .nc4 file during tile generation.
 
-36 × 18 GEOS 10°×10° tiles (1200 × 1200 each)
+The output format is consistent with other GEOS static datasets  (soil properties, snow albedo, etc.).
 
-Tile-level lake fraction and classification inside mkCatchParam
+## Workflow Summary
 
-The output format is consistent with other GEOS static datasets (soil properties, snow albedo, etc.).
+## Step 1 — Rasterization & Aggregation
 
-Workflow Summary
-Step 1 — Rasterization & Aggregation
+**Script:** `preproc_lake_to_30arcsec.py`
 
-Script: preproc_lake_to_30arcsec.py
+### Method
 
-Method
-
-Rasterize HydroLAKES-TopoCat polygons at 10 arc-second resolution
-
-Aggregate 3×3 blocks → 30 arc-second grid
-
-Process in 5° latitude bands (memory efficient)
-
-Combine bands into global file:
+- Rasterize HydroLAKES-TopoCat polygons at **10 arc-second resolution**
+- Aggregate 3×3 blocks → **30 arc-second grid**
+- Process in **5° latitude bands**
+- Combine bands into global file:
 LakeTopoCat_Global_30arcsec.nc4
-Why 10″ → 30″?
 
-Oversampling at 10″ improves shoreline representation and allows estimation of fractional lake coverage within each 30″ pixel.
+### Why 10″ → 30″?
+
+Oversampling at 10″ improves shoreline representation and allows estimation  of **fractional lake coverage** within each 30″ pixel.
+
 Direct 30″ rasterization would produce only a binary mask.
 
-Global Output File
+## Global Output File
 
-Dimensions:
+**Dimensions**
 
-43200 (lon) × 21600 (lat)
+- 43200 (lon) × 21600 (lat)  
+- Resolution: 30 arc-seconds  
 
-CRS: EPSG:4326
+### Variables
 
-Resolution: 30 arc-seconds
+| Variable | Type | Description |
+|-----------|------|------------|
+| `lake_presence_frac` | float32 | Fractional lake coverage in each 30″ cell [0–1] |
+| `lake_presence_any`  | uint8   | Binary lake presence (0/1) |
 
-Variables
+### Data Completeness
 
-Variable	Type	Description
-lake_presence_frac	float32	Fractional lake coverage in each 30″ cell [0–1]
-lake_presence_any	uint8	Binary lake presence (0/1)
+- Data are complete everywhere (no NaNs).
+- `_FillValue` attributes exist but should not appear in valid data.
 
-Data completeness
 
-Data are written as complete fields (no NaNs).
+## Step 2 — Split into GEOS 10°×10° Tiles
 
-FillValue attributes are defined but should not occur in valid data.
-
-Ocean cells are 0.
-
-Step 2 — Split into GEOS 10°×10° Tiles
-
-Script: split_lake_30arcsec_to_HV.py
+**Script:** `split_lake_30arcsec_to_HV.py`
 
 Produces:
-
 LakeTopoCat_30arcsec_H##V##.nc4
-Per-Tile Properties
 
-1200 × 1200 pixels
+### Per-Tile Properties
 
-30 arc-second resolution
+- 1200 × 1200 pixels
+- 30 arc-second resolution
+- 1D coordinates:
+  - `latitude(N_lat)`
+  - `longitude(N_lon)`
 
-Soil-style NetCDF layout
+### Global Attributes Included
 
-1D coordinates: latitude(N_lat), longitude(N_lon)
+- `N_lon_global = 43200`
+- `N_lat_global = 21600`
+- `i_ind_offset_LL`
+- `j_ind_offset_LL`
+- `CellSize_arc_Secs = 30`
 
-Global Attributes Included
+## Source Dataset
 
-N_lon_global = 43200
+**HydroLAKES-TopoCat v1.1 (2023)**
 
-N_lat_global = 21600
+- Derived from HydroLAKES v1.0
+- Hydrography source: **MERIT Hydro v1.0.1 (3 arc-sec resolution)**
+- Input: `Lakes_pfaf_*.shp`
+- CRS: EPSG:4326
 
-i_ind_offset_LL
+Only polygon geometry is used.  No filtering by lake size, permanence, or type is applied.
 
-j_ind_offset_LL
 
-CellSize_arc_Secs = 30
+## GEOS Usage (mkCatchParam Step 01)
 
-Tile files:
+LakeTopoCat data are mapped directly from the native 30″ raster to GEOS tiles using the raster `tile_id` grid.
 
-Contain no FillValue (complete everywhere)
+## Mapping Characteristics
 
-Contain no missing values
+- Each 30″ pixel contributes equal weight (uniform pixel-area assumption).
+- Because LakeTopoCat inputs and GEOS `tile_id` raster are on the same native 30″ grid,
+   **no interpolation or spatial remapping is performed**.
+- Tile means are simple averages of `lake_presence_frac` over all 30″ pixels belonging to each tile.
+- Processing runs **only if raster resolution = 43200 × 21600**.
+- Lake variables are skipped automatically for workflows using coarser raster masks (e.g., 8640×4320).
 
-Ocean cells are 0
+## Tile-Level Variables Created
 
-All 36 × 18 tiles must exist.
+| Variable | Description |
+|-----------|------------|
+| `tile_lake_frac` | Mean lake fraction per tile [0–1] |
+| `tile_is_lake_50pct` | 1 if `tile_lake_frac ≥ 0.5`, else 0 |
 
-Source Dataset
 
-HydroLAKES-TopoCat v1.1 (2023)
+### Key Properties
 
-Derived from HydroLAKES v1.0
-
-Hydrography source: MERIT Hydro v1.0.1 (3 arc-sec resolution)
-
-Input: Lakes_pfaf_*.shp
-
-CRS: EPSG:4326
-
-Only polygon geometry is used.
-No filtering by lake size, permanence, or type is applied.
-
-GEOS Usage (mkCatchParam Step 01)
-
-LakeTopoCat data are mapped directly from the native 30″ raster to GEOS tiles using the raster tile_id grid.
-
-Mapping Characteristics
-
-Each 30″ pixel contributes equal weight (uniform pixel-area assumption).
-
-Because LakeTopoCat inputs and GEOS tile_id raster are on the same
-native 30″ grid, no interpolation or spatial remapping is performed.
-
-Tile means are simple averages of lake_presence_frac over all
-30″ pixels belonging to each tile.
-
-Processing runs only if raster resolution = 43200 × 21600
-
-Tile-Level Variables Created
-Variable	Description
-tile_lake_frac	Mean lake fraction per tile [0–1]
-tile_is_lake_50pct	1 if tile_lake_frac ≥ 0.5, else 0
-
-Classification rule:
-
-tile_is_lake_50pct = 1  if tile_lake_frac ≥ 0.5
-                   = 0  otherwise
-Key Properties
-
-Native resolution: 30 arc-seconds
-
-Fractional representation of lakes
-
-Binary lake classification derived from fraction
-
-Fully aligned with GEOS 30″ raster geometry
-
-No implicit remapping anywhere in the workflow
-
-Lake variables are skipped automatically for workflows using
-coarser raster masks (e.g., 8640×4320) to avoid implicit remapping
-or unintended spatial shifts.
-
+- Native resolution: 30 arc-seconds
+- Fractional representation of lakes
+- Binary lake classification derived from fraction
+- Fully aligned with GEOS 30″ raster geometry
+- No implicit remapping anywhere in the workflow
