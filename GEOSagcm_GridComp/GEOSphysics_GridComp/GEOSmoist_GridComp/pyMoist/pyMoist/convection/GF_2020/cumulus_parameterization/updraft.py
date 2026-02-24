@@ -2,7 +2,7 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, GlobalTable, K, computation, exp, interval, sqrt
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, Field, GlobalTable, K, computation, interval
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max_ddim, column_min
 from pyMoist.convection.GF_2020.config import GF2020Config
@@ -13,12 +13,10 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 # initialize constants and field type for UpdraftMassFlux stencil
@@ -87,7 +85,7 @@ _G_ALPHA = [
     0.9619183,
     0.9619183,
 ]
-_CONSTANTS_TABLES_TYPE = GlobalTable[(Float, len(_X_ALPHA))]
+_CONSTANTS_TABLES_TYPE: Field = GlobalTable[(Float, len(_X_ALPHA))]
 
 
 def updraft_mass_flux(
@@ -135,7 +133,7 @@ def updraft_mass_flux(
         X_ALPHA (_CONSTANTS_TABLES_TYPE): _description_
         G_ALPHA (_CONSTANTS_TABLES_TYPE): _description_
     """
-    from __externals__ import BETA_SHALLOW, USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES, ZERO_DIFF, k_end
+    from __externals__ import ZERO_DIFF, k_end
 
     with computation(FORWARD), interval(0, 1):
         # initialize constants
@@ -172,7 +170,7 @@ def updraft_mass_flux(
         normalized_massflux_updraft_h = 0.0
         normalized_massflux_updraft_l = 0.0
 
-    ##### EXECUTION CHOICE 20 #####
+    # EXECUTION CHOICE 20
     with computation(FORWARD), interval(0, 1):
         # land/ocean
         if error_code[0, 0][plume] == 0:
@@ -191,7 +189,8 @@ def updraft_mass_flux(
                     K=cloud_top_level[0, 0][plume], ddim=[plume]
                 ) * 0.5 * height_updraft
 
-                # beta parameter: must be larger than 1, higher makes the profile sharper around the maximum zu
+                # beta parameter: must be larger than 1
+                # higher makes the profile sharper around the maximum zu
                 beta: FloatFieldIJ = max(1.1, 2.1 - 0.5 * height_updraft)
 
     with computation(PARALLEL), interval(...):
@@ -209,7 +208,8 @@ def updraft_mass_flux(
                 )
                 updraft_origin_level_adj = min(updraft_origin_level_adj, cloud_top_level[0, 0][plume] + 1)
 
-                # this alpha constrains the location of the maximun normalized_massflux_updraft_forced to be at "updraft_origin_level_adj" vertical level
+                # this alpha constrains the location of the maximun normalized_massflux_updraft_forced
+                # to be at "updraft_origin_level_adj" vertical level
                 alpha: FloatFieldIJ = 1.0 + (
                     (beta - 1.0)
                     * ((updraft_origin_level_adj / (cloud_top_level[0, 0][plume] + 2)))
@@ -349,7 +349,6 @@ def updraft_moisture(
         BOUNDARY_CONDITION_METHOD,
         CRITICAL_MIXING_RATIO_OVER_LAND,
         CRITICAL_MIXING_RATIO_OVER_OCEAN,
-        FRAC_MODIS,
         USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
         ZERO_DIFF,
         k_end,
@@ -530,7 +529,8 @@ def updraft_moisture(
                         condensate_to_fall_forced[0, 0, 0][plume] = cx0 * max(
                             0.0, cloud_liquid_after_rain_forced[0, 0, 0][plume] - min_liq
                         )  # units kg[rain]/kg[air]
-                        # convert precipitable_water_updraft_forced to normalized precipitable_water_updraft_forced
+                        # convert precipitable_water_updraft_forced to
+                        # normalized precipitable_water_updraft_forced
                         condensate_to_fall_forced[0, 0, 0][plume] = (
                             condensate_to_fall_forced[0, 0, 0][plume]
                             * normalized_massflux_updraft_forced[0, 0, 0][plume]

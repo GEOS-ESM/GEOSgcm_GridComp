@@ -3,7 +3,7 @@ import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntFieldIJ
+from ndsl.dsl.typing import FloatField, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig

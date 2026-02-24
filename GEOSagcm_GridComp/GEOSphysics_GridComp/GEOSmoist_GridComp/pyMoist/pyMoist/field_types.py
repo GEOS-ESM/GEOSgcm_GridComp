@@ -1,5 +1,5 @@
 from ndsl.dsl.gt4py import IJ, IJK, Field, GlobalTable
-from ndsl.dsl.typing import Bool, Float, Int
+from ndsl.dsl.typing import Bool, Float
 from pyMoist.constants import N_MODES, NCNST
 
 

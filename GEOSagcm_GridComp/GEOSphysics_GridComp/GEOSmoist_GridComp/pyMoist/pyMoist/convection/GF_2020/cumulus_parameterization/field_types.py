@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import IJ, IJK, Field, K
+from ndsl.dsl.gt4py import IJ, IJK, Field
 from ndsl.dsl.typing import Float, Int
 from pyMoist.constants import NUMBER_OF_TRACERS
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (

@@ -1,21 +1,10 @@
 from gt4py.cartesian.gtscript import FORWARD, PARALLEL, K, computation, interval
 
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from ndsl import QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
-from ndsl.logging import ndsl_log
 from ndsl.stencils.column_operations import column_max_ddim
-from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import generic_find_level
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 def entrainment_rates(

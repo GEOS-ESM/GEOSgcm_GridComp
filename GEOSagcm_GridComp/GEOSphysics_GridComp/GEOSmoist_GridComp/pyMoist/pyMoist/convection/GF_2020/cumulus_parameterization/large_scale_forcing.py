@@ -2,7 +2,7 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
+from ndsl.dsl.gt4py import FORWARD, K, computation, interval
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
@@ -313,7 +313,7 @@ def ensemble_forcing_mid_plume(
         CLOSURE_CHOICE (Int)
         plume (Int)
     """
-    from __externals__ import DIURNAL_CYCLE, DTIME
+    from __externals__ import DIURNAL_CYCLE
 
     with computation(FORWARD), interval(0, 1):
         # initialization

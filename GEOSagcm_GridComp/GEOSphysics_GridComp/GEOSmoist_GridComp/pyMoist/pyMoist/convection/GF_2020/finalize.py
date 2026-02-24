@@ -2,7 +2,7 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, function, interval, max, min
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, interval, max, min
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_min
 from pyMoist.convection.GF_2020.config import GF2020Config
@@ -205,7 +205,7 @@ def feedback(
         dbuoyancydt (FloatField)
         do_this_column (IntFieldIJ)
     """
-    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, CONVECTION_TRACER, USE_MOMENTUM_TRANSPORT, k_end
+    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, CONVECTION_TRACER, USE_MOMENTUM_TRANSPORT
 
     with computation(FORWARD), interval(0, 1):
         if do_this_column != 0:

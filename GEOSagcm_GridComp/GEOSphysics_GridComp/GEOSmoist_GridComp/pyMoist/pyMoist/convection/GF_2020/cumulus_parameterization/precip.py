@@ -1,23 +1,12 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from ndsl import QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, sqrt
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
-from ndsl.logging import ndsl_log
-from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    Float,
     FloatField_Plume,
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.shared_incloud_processes import ice_fraction
 
 

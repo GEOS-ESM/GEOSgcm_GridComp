@@ -12,7 +12,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.cumulus_parameterizatio
     GF2020CumulusParameterization,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
-from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 

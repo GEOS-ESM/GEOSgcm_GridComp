@@ -1,21 +1,9 @@
 import pyMoist.constants as constants
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    K,
-    computation,
-    exp,
-    float32,
-    function,
-    int32,
-    interval,
-)
-from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, interval
+from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max, column_max_ddim, column_min
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
@@ -25,12 +13,10 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import generic_find_level
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 def get_critical_level(
@@ -394,7 +380,8 @@ def downdraft_lateral_massflux(
             and K <= downdraft_origin_level[0, 0][plume]
         ):
 
-            # from downdraft_origin_level to maximum value of normalized_massflux_downdraft, change entrainment
+            # from downdraft_origin_level to maximum value of
+            # normalized_massflux_downdraft, change entrainment
             dzo = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
             mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
                 detrainment_function_downdraft * dzo * normalized_massflux_downdraft_forced[0, 0, 1][plume]
@@ -782,7 +769,8 @@ def downdraft_moisture(
             )  # kg[water vapor]/kg[air]
 
             # source term for in-downdraft water vapor mixing ratio
-            cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced  # => equiv to qcd = qcd - dq_eva !( -dq_eva >0 => source term for qcd)
+            # => equiv to qcd = qcd - dq_eva !( -dq_eva >0 => source term for qcd)
+            cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced
 
             # total evaporated rain water
             total_normalized_integrated_evaporate_forced = (

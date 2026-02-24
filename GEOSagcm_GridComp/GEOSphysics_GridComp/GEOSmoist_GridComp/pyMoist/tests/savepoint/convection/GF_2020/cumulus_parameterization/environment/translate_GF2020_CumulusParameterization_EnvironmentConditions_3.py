@@ -91,7 +91,6 @@ class TestCore:
         ]
         locals.t_modified.data[:] = inputs["local_t_modified"]
         locals.vapor_modified.data[:] = inputs["local_vapor_modified"]
-        locals.vapor_forced.data[:] = inputs["local_vapor_modified"]
         state.input_output.p_forced.data[:] = inputs["p_forced"]
         state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
         state.input_output.p_surface.data[:] = inputs["p_surface"]
@@ -133,7 +132,6 @@ class TestCore:
             ],
             "local_t_modified": locals.t_modified.field[:],
             "local_vapor_modified": locals.vapor_modified.field[:],
-            "local_vapor_modified": locals.vapor_forced.field[:],
             "p_forced": state.input_output.p_forced.field[:],
             "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
             "p_surface": state.input_output.p_surface.field[:],

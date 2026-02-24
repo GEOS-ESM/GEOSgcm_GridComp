@@ -1,11 +1,8 @@
-import copy
-
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.cumulus_parameterization import (
-    GF2020Config,
     GF2020CumulusParameterization,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
@@ -119,7 +116,7 @@ class GF2020(NDSLRuntime):
             scm_stop=scm_stop,
         )
 
-        if scm_stop == False:
+        if not scm_stop:
             self._cumulus_parameterization_core(
                 state=self.cumulus_parameterization_state,
                 convection_tracers=convection_tracers,

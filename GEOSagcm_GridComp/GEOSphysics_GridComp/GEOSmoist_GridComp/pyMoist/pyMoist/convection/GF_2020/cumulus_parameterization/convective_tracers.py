@@ -3,7 +3,7 @@ import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, exp, interval
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
@@ -42,7 +42,7 @@ def environment_cloud_levels_chemistry(
         chemistry_tracers_cloud_levels (FloatField_ConvectionTracers)
         plume (Int)
     """
-    from __externals__ import CLOUD_LEVEL_OPTION, NUMBER_OF_TRACERS, k_end
+    from __externals__ import CLOUD_LEVEL_OPTION, NUMBER_OF_TRACERS
 
     with computation(FORWARD), interval(1, -1):
         if error_code[0, 0][plume] == 0 and CLOUD_LEVEL_OPTION == 1:
@@ -471,7 +471,6 @@ def vertical_transport_part_1(
         ALP1,
         DTIME,
         NUMBER_OF_TRACERS,
-        USE_FCT,
         USE_FLUX_FORM,
         USE_TRACER_EVAPORATION,
         USE_TRACER_SCAVENGE,

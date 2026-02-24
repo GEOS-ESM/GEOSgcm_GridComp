@@ -13,7 +13,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    column_max,
     compute_dewpoint,
     get_cloud_boundary_conditions,
 )
@@ -139,7 +138,7 @@ def get_lcl(p_source, t_source, vapor_source):
     p00i = 1.0 / p00
     cpor = cp / rgas
     cpi = 1.0 / cp
-    p00k = 26.870941  #  = p00 ** rocp
+    p00k = 26.870941
     p00ki = 1.0 / p00k
 
     # convert to pascals

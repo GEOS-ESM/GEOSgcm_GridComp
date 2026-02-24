@@ -1,4 +1,3 @@
-from ndsl import QuantityFactory, StencilFactory
 from ndsl.dsl.gt4py import FORWARD, computation, interval
 from ndsl.dsl.typing import FloatFieldIJ, Int
 from pyMoist.convection.GF_2020.config import GF2020Config

@@ -1,13 +1,8 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval, sqrt
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Ensemble,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
 
 
 def kinetic_energy_to_heating(

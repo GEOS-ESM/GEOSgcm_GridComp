@@ -1,16 +1,14 @@
 import pyMoist.constants as constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt
+from ndsl.dsl.gt4py import FORWARD, computation, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.shared_generic_math import sigma
 
 
@@ -280,8 +278,8 @@ class DiurnalCycle(NDSLRuntime):
 
             if self.cumulus_parameterization_config.DIURNAL_CYCLE == 6:
                 raise NotImplementedError(
-                    "[NDSL] GF2020-->CumulusParameterization-->DiurnalCycle called with an unimplemented path."
-                    "This should have been caught at initialization, but somehow you made it here."
+                    "[NDSL] GF2020-->CumulusParameterization-->DiurnalCycle called with an unimplemented"
+                    "path. This should have been caught at initialization, but somehow you made it here."
                     "Choose another option for DIURNAL_CYCLE or implement to continue."
                 )
 

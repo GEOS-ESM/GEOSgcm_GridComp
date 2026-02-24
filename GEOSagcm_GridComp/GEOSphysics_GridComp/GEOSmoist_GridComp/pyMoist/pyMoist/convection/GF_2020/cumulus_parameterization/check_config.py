@@ -1,4 +1,4 @@
-from ndsl import QuantityFactory, StencilFactory, ndsl_log
+from ndsl import ndsl_log
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 
@@ -31,7 +31,7 @@ def check_config(
             "untested FRAC_MODIS option. Running untested code... proceed with caution"
         )
 
-    if cumulus_parameterization_config.MELT_GLAC != True:
+    if not cumulus_parameterization_config.MELT_GLAC:
         ndsl_log.warning(
             " GF2020-->CumulusParameterization-->partition_liquid_ice constructed with "
             "untested MELT_GLAC option. Running untested code... proceed with caution"
@@ -180,8 +180,8 @@ def check_config(
 
     if cumulus_parameterization_config.ZERO_DIFF == 1:
         raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization initialized with ZERO_DIFF = 1. This combination requires"
-            "an unimplemented porion of UpdraftMassFlux. Please implement, then disable this error"
+            "[NDSL] GF2020-->CumulusParameterization initialized with ZERO_DIFF = 1. This combination"
+            "requires an unimplemented porion of UpdraftMassFlux. Please implement, then disable this error"
             "manually to proceed."
         )
 
@@ -209,8 +209,8 @@ def check_config(
 
     if cumulus_parameterization_config.DIURNAL_CYCLE != 1:
         raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization initialized with DIURNAL_CYCLE != 1. This setting requires"
-            "an unimplemented option for multiple stencils in DiurnalCycle. Please implement, then"
+            "[NDSL] GF2020-->CumulusParameterization initialized with DIURNAL_CYCLE != 1. This setting"
+            "requires an unimplemented option for multiple stencils in DiurnalCycle. Please implement, then"
             "disable this error manually to proceed."
         )
 
@@ -237,9 +237,9 @@ def check_config(
 
     if config.APPLY_SUBSIDENCE_MICROPHYSICS != 0:
         raise NotImplementedError(
-            "[NDSL] GF2020-->CumulusParameterization initialized with APPLY_SUBSIDENCE_MICROPHYSICS != 0. This"
-            "setting requires an unimeplemented option in EnvironmentalSubsidence. Please implement, then"
-            "disable this error manually to proceed."
+            "[NDSL] GF2020-->CumulusParameterization initialized with APPLY_SUBSIDENCE_MICROPHYSICS != 0."
+            "This setting requires an unimeplemented option in EnvironmentalSubsidence. Please implement,"
+            "then disable this error manually to proceed."
         )
 
     if cumulus_parameterization_config.DIURNAL_CYCLE not in (1, 6):
@@ -263,21 +263,21 @@ def check_config(
             "error manually to proceed."
         )
 
-    if cumulus_parameterization_config.COUPLE_MICROPHYSICS != True:
+    if not cumulus_parameterization_config.COUPLE_MICROPHYSICS:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initialized with COUPLE_MICROPHYSICS != True. This"
             "setting requires an unimeplemented option in cloud_dissipation. Please implement, then"
             "disable this error manually to proceed."
         )
 
-    if cumulus_parameterization_config.LIGHTNING_DIAGNOSTICS != True:
+    if not cumulus_parameterization_config.LIGHTNING_DIAGNOSTICS:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initialized with LIGHTNING_DIAGNOSTICS != True. This"
             "setting requires unimeplemented functions. Please implement, then disable this error manually"
             "to proceed."
         )
 
-    if cumulus_parameterization_config.USE_TRACER_SCAVENGE != True:
+    if not cumulus_parameterization_config.USE_TRACER_SCAVENGE:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization-->AtmosphericComposition initialized with"
             "USE_TRACER_SCAVENGE != 1. This setting requires unimeplemented options in updraft_chemistry."
@@ -298,7 +298,7 @@ def check_config(
             "Please implement, then disable this error manually to proceed."
         )
 
-    if cumulus_parameterization_config.WRTGRADS != True:
+    if not cumulus_parameterization_config.WRTGRADS:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initialized with WRTGRADS = True. This setting requires"
             "the unimeplemented GATE sounding capabilities (in the GATESounding class). Please implement,"

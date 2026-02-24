@@ -25,7 +25,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment import (
     compute_uc_vc,
     downdraft_entrainment_profiles,
     entrainment_rates,
-    generic_find_level,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment import (
     EnvironmentalSubsidence,
@@ -76,7 +75,10 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.profiles import C1DProfile, melting_profile
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import updraft_vertical_velocity
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import (
+    generic_find_level,
+    updraft_vertical_velocity,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.smoothing import smooth_tendencies
 from pyMoist.convection.GF_2020.cumulus_parameterization.sounding import GATESounding, Sounding
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
