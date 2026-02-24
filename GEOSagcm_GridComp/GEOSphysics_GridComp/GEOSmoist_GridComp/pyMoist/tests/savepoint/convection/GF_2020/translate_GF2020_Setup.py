@@ -286,7 +286,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         ]
         state.geopotential_height_surface.field[:] = inputs["geopotential_height_surface_bugworkaroundname"]
         state.area.field[:] = inputs["area_bugworkaroundname"]
-        state.pbl_level.field[:] = inputs["pbl_level_bugworkaroundname"]
+        state.pbl_level.field[:] = inputs["pbl_level_bugworkaroundname"] - 1
         state.convection_fraction.field[:] = inputs["convection_fraction_bugworkaroundname"]
         state.surface_type.field[:] = inputs["surface_type_bugworkaroundname"]
         state.seed_convection.field[:] = inputs["seed_convection_bugworkaroundname"]
