@@ -2,7 +2,7 @@ program main
 !Main purpose: Reads SMAP L4 runoff data (2016–2023) from a NetCDF file and computes the climatological mean discharge for each catchment.
 
   use omp_lib
-  use river_read
+  use river_ncfile_helper
   use constant, only : nlat=>nlat09, nlon=>nlon09, nc, nupmax
 
   implicit none
@@ -26,14 +26,14 @@ program main
   ! Read the "mean_runoff_flux" variable from the NetCDF file:
   call read_ncfile_real2d(trim(file_path), "mean_runoff_flux", runoff, nlon, nlat)
   ! Replace missing values (-9999) with 0:
-  where(runoff == -9999.) runoff = 0.
+  !where(runoff == -9999.) runoff = 0.
   
   ! Flip the grid vertically (reverse the latitude order) and assign back to runoff:
   temp = runoff(:, nlat:1:-1)
   runoff = temp
   
   ! Convert runoff from [mm/s] to [mm/d]
-  runoff = runoff * 86400.
+  where(runoff /= -9999.) runoff = runoff * 86400.
   
   ! Map runoff from the M09 grid to catchments using the function M09_to_cat.
   ! The result is in kg/s; then convert to m^3/s by dividing by 1.e3.
@@ -144,7 +144,11 @@ contains
 
     ! Compute the fraction for each sub-area:
     do i = 1, nc
-      frac(:, i) = subarea(:, i) / tot(i)
+      if(tot(i) > 0.)then
+        frac(:, i) = subarea(:, i) / tot(i)
+      else
+        frac(:, i) = 0.
+      endif
     end do
 
     ! Allocate arrays to accumulate runoff and fraction sums per catchment:
@@ -160,7 +164,7 @@ contains
         sy = suby(j, i)  ! Get y-coordinate of the sub-area
         sx = subx(j, i)  ! Get x-coordinate of the sub-area
         ! Only consider valid sub-areas (non-zero fraction and valid runoff values)
-        if (frac(j, i) > 0. .and. runoff(sx, sy) < 1.e14 .and. runoff(sx, sy) >= 0.) then
+        if (frac(j, i) > 0. .and. runoff(sx, sy) >= 0.) then
           runfC(i) = runfC(i) + frac(j, i) * runoff(sx, sy)
           fracA(i) = fracA(i) + frac(j, i)
         endif

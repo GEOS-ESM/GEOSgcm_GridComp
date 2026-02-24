@@ -8,7 +8,6 @@ module constant
   public
 
   ! Define constant parameters 
-  integer,parameter :: nmax09      =     458    ! Maximum number of sub-catchments per catchment for M09
   integer,parameter :: nlon        =   21600    ! Number of longitude grid points in the original grid
   integer,parameter :: nlat        =   10800    ! Number of latitude grid points in the original grid
   integer,parameter :: nlon09      =    3856    ! Lon dimension for the M09 grid
@@ -20,7 +19,6 @@ module constant
   integer,parameter :: nlath       =   33600  
 
   integer,parameter :: nl_USGS     = 3352492    ! Total number of USGS data records
-  integer,parameter :: nt09        = 1684725    ! Total number of catchment gridcell in M09
   integer,parameter :: nupmax      =      34    ! Maximum number of upstream catchments to record
 
   !river curve parameters

@@ -267,37 +267,53 @@ contains
 !
 ! For Exports, "TileOnly" refers to the *Pfafstetter* catchment space of GEOS_RouteGridComp
 
-    call MAPL_AddExportSpec(GC,                        &
-         LONG_NAME          = 'discharge_from_local_streams_to_main_river' ,&
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'runoff_amount_from_the_catchment'                                 ,&
+         UNITS              = 'm+3 s-1'                  ,&
+         SHORT_NAME         = 'QRUNOFF_CAT'              ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC )
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'discharge_from_local_streams_to_main_river'                       ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QSFLOW'                   ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )
 
-    call MAPL_AddExportSpec(GC,                    &
-         LONG_NAME          = 'discharge_from_upstream_catchments_to_main_river' ,&
-         UNITS              = 'm+3 s-1'                   ,&
-         SHORT_NAME         = 'QINFLOW'                   ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone          ,&
-         _RC )
-
-    call MAPL_AddExportSpec(GC,                    &
-         LONG_NAME          = 'discharge_from_main_river_to_downstream_catchments' ,&
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'discharge_from_upstream_catchments_to_main_river'                 ,&
          UNITS              = 'm+3 s-1'                  ,&
-         SHORT_NAME         = 'QOUTFLOW'                 ,&
-         DIMS               = MAPL_DimsTileOnly           ,&
+         SHORT_NAME         = 'QINFLOW'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )
 
     call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'discharge_from_reservoirs'      ,&
+         LONG_NAME          = 'discharge_from_main_river_to_reservoirs_or_downstream_catchments' ,&
+         UNITS              = 'm+3 s-1'                  ,&
+         SHORT_NAME         = 'QOUTFLOW'                 ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC )
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'discharge_from_reservoirs_to_downstream_catchments'               ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QRES'                     ,&
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'discharge_from_the_catchments_to_downstream_catchments'           ,&
+         UNITS              = 'm+3 s-1'                  ,&
+         SHORT_NAME         = 'QCAT'                     ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC )    
 !EOS
 
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
@@ -404,7 +420,6 @@ contains
     character(len=3) :: resname
     type(Netcdf4_Fileformatter)  :: formatter 
     integer          :: j,nt_local, mpierr 
-    logical          :: use_res
 
     ! ------------------
     ! begin
@@ -512,11 +527,11 @@ contains
 
     !Initial reservoir module
     if(route_flag==2)then
-        use_res=.True.
+        route%reservoir = Reservoir(GC, _RC)
+        route%reservoir%use_res=.True.        
     else
-        use_res=.False.
+        route%reservoir%use_res=.False.
     endif
-    route%reservoir = Reservoir(GC, use_res, _RC)
     if(mapl_am_I_root()) print *,"reservoir init success"     
 
     call create_mapping_handler(tilegrid, pfaf_tilegrid, _RC)
@@ -803,10 +818,12 @@ contains
 ! EXPORT pointers 
 ! -----------------------------------------------------
 
+    real, dimension(:), pointer :: QRUNOFF
     real, dimension(:), pointer :: QSFLOW
     real, dimension(:), pointer :: QINFLOW
     real, dimension(:), pointer :: QOUTFLOW
     real, dimension(:), pointer :: QRES
+    real, dimension(:), pointer :: QCAT
   
 ! Time attributes and placeholders
 
@@ -822,7 +839,6 @@ contains
 
     integer                            :: I
     REAL                               :: HEARTBEAT 
-    REAL, ALLOCATABLE, DIMENSION(:)    :: QRUNOFF_IN, QSFLOW_OUT, QOUTFLOW_OUT, QRES_OUT, QOUT_CAT
 
     type(ESMF_Field)                   :: runoff_src
 
@@ -835,7 +851,7 @@ contains
     real,                  pointer     :: arrayPtr(:)
     type (RES_STATE),      pointer     :: res 
 
-    real,                  allocatable :: WTOT_BEFORE(:),QINFLOW_LOCAL(:)
+    !real,                  allocatable :: WTOT_BEFORE(:)
    
     type(ESMF_Alarm)                   :: CollectWaterAlarm 
     
@@ -870,10 +886,12 @@ contains
     call MAPL_GetPointer(INTERNAL, WRES,   'WRES',     _RC)
 
 ! export
-    call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW',   _RC)
-    call MAPL_GetPointer(EXPORT, QINFLOW,  'QINFLOW' , _RC)
-    call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW', _RC)
-    call MAPL_GetPointer(EXPORT, QRES,     'QRES',     _RC)
+    call MAPL_GetPointer(EXPORT, QRUNOFF,  'QRUNOFF_CAT', ALLOC=.true., _RC)
+    call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW',      ALLOC=.true., _RC)
+    call MAPL_GetPointer(EXPORT, QINFLOW,  'QINFLOW' ,    ALLOC=.true., _RC)
+    call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(EXPORT, QRES,     'QRES',        ALLOC=.true., _RC)
+    call MAPL_GetPointer(EXPORT, QCAT,     'QCAT',        ALLOC=.true., _RC)
 
 ! Start timers
 ! ------------
@@ -922,16 +940,8 @@ contains
        call ESMF_FieldGet(route%field, farrayPtr=arrayPtr, rc=status)
        VERIFY_(STATUS)
        ! convert units [kg/m2/s] --> [m3/s]
-       QRUNOFF_IN = arrayPtr * route%areacat/1000.                                    ! time-avg runoff over ROUTE_DT in Pfaf catch space [m3/s] 
-
-       allocate(QSFLOW_OUT(   n_pfaf_local))
-       allocate(QOUTFLOW_OUT( n_pfaf_local))
-       allocate(QRES_OUT(     n_pfaf_local))
-       allocate(QOUT_CAT(     n_pfaf_local))  
-       allocate(WTOT_BEFORE(  n_pfaf_local))
-       allocate(QINFLOW_LOCAL(n_pfaf_local))
-
-       WTOT_BEFORE = WSTREAM + WRIVER + WRES
+       QRUNOFF     = arrayPtr*route%areacat/1000.                                   ! time-avg runoff over ROUTE_DT in Pfaf catch space [m3/s] 
+       !WTOT_BEFORE = WSTREAM + WRIVER + WRES
 
 
        ! Compute outflow from main river and (optionally) reservoirs
@@ -939,38 +949,33 @@ contains
        ! Call river_routing_model (get outflows from main river and local streams, also updates storage of main river and local streams)
        !
        CALL RIVER_ROUTING_HYD( n_pfaf_local, ROUTE_DT,    &      ! intent(in)
-            QRUNOFF_IN, route%alpha_riv, route%alpha_str, &      ! intent(in)
+            QRUNOFF, route%alpha_riv, route%alpha_str,    &      ! intent(in)
             WSTREAM, WRIVER,                              &      ! intent(inout)
-            QSFLOW_OUT, QOUTFLOW_OUT)                            ! intent(out)
+            QSFLOW, QOUTFLOW)                                    ! intent(out)
 
-       QOUT_CAT = QOUTFLOW_OUT                         ! for now, outflow from Pfaf catchment is outflow from main river          
+       QCAT = QOUTFLOW                                           ! for now, outflow from Pfaf catchment is outflow from main river          
        
        ! Call reservoir module if requested (get reservoir outflow, also updates reservoir storage)
        !
        if (res%use_res .eqv. .True.) then
 
           call res%calc(                                  &
-               QOUTFLOW_OUT,                              &      ! intent(in)
-               QRES_OUT,                                  &      ! intent(out)
+               QOUTFLOW,                                  &      ! intent(in)
+               QRES,                                      &      ! intent(out)
                WRES,                                      &      ! intent(inout)
                real(route_dt),                            &      ! intent(in)
                _RC)
 
-          where(res%active_res==1) QOUT_CAT=QRES_OUT   ! for active reservoirs, overwrite outflow from Pfaf catchment with reservoir outflow
+          where(res%active_res==1) QCAT=QRES   ! for active reservoirs, overwrite outflow from Pfaf catchment with reservoir outflow
 
        end if
           
        ! map upstream outflows to local inflow
-       call exchange_water(QOUT_CAT, QINFLOW_LOCAL, _RC)
+       call exchange_water(QCAT, QINFLOW, _RC)
 
        ! update river storage with local inflow
-       WRIVER = WRIVER + QINFLOW_LOCAL*real(route_dt)
+       WRIVER = WRIVER + QINFLOW*real(route_dt)
 
-       if (associated(QSFLOW))    QSFLOW   = QSFLOW_OUT          ! outflow from local streams
-       if (associated(QOUTFLOW))  QOUTFLOW = QOUTFLOW_OUT        ! outflow from main river
-       if (associated(QRES))      QRES     = QRES_OUT            ! outflow from reservoirs
-       
-       deallocate(QRUNOFF_IN,QOUTFLOW_OUT,QINFLOW_LOCAL,QSFLOW_OUT,WTOT_BEFORE,QRES_OUT,QOUT_CAT)
 
        route%runoff_acc = 0.                                     ! re-initialize runoff accumulation
        

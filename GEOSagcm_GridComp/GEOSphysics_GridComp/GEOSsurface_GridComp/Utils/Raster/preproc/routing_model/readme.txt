@@ -16,7 +16,7 @@ The tasks completed by each F90 or Python program are briefly described as follo
    files for the connectivity of catchments in the routing network.
 
 2. get_latloni.py  
-   Computes grid-cell index arrays for 1-m high-res grid.
+   Computes grid-cell index arrays for 1-m high-res grid. 
 
 3. get_num_sub_catchment.f90
    Parses high-res map of catchment index to get the area and 
@@ -24,7 +24,7 @@ The tasks completed by each F90 or Python program are briefly described as follo
 
 4. get_Qr_clmt.f90  
    Reads SMAP L4 runoff data (2016–2023) from a NetCDF file and computes the climatological  
-   mean discharge for each catchment.
+   mean discharge for each catchment. 
 
 5. get_river_length.f90  
    Determines main river channel lengths for each catchment by using HydroSHEDS
@@ -32,6 +32,7 @@ The tasks completed by each F90 or Python program are briefly described as follo
 
 6. get_K_model_calik.f90  
     Calculates the K parameter used in the river routing model.
+    k_module_cali.f90: subroutines only used by get_K_model_calik.f90.  
 
 7. get_dam_data.py  
     Processes reservoir (dam) data: reads dam locations and usage information from GRanD database.
@@ -44,6 +45,11 @@ The tasks completed by each F90 or Python program are briefly described as follo
 
 10. create_river_input.py
     Combines all inputs created above to the one nc file route_parameters.nc
+
+Please note the scripts get_latloni.py and get_num_sub_catchment.f90 are 
+specific to the M09 EASE grid because they are only needed by "get_Qr_clmt.f90", 
+and the M09 dependency stems from the fact that "get_Qr_clmt.f90" creates 
+a runoff climatology from SMAP L4 simulations.
 
 The explanations for the input files of this package can be found in the input directory.
 

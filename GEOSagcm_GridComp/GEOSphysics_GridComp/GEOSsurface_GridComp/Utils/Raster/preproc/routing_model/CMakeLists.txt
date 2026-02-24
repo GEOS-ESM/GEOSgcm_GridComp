@@ -2,7 +2,7 @@ esma_set_this ()
 
 set(srcs
   routing_model_constants.f90
-  river_read.f90
+  read_ncfile_helper.F90
   k_module_cali.f90
 )
 

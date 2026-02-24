@@ -1,4 +1,4 @@
-module river_read
+module river_ncfile_helper
 !module for reading river routing-related netcdf data
 
   implicit none
@@ -189,5 +189,5 @@ module river_read
   end subroutine endrun  
 !-----------------------------------------------------------------------
 
-end module river_read
+end module river_ncfile_helper
 	

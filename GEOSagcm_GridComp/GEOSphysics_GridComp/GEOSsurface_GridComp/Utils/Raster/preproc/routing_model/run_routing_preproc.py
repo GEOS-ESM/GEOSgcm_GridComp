@@ -25,6 +25,7 @@ def main():
     file_pfafrout       = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
     file_pfafmap        = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
     file_rst            = file_path1 + "/fvInput/ExtData/esm/tiles/v12/geometry/EASEv2_M09/rst/EASEv2_M09_3856x1624.rst"
+    file_catchdef       = file_path1 + "/fvInput/ExtData/esm/tiles/v12/land/EASEv2_M09/clsm/catchment.def"
 
     file_lat1m          = file_path2 + "/lat_1m.txt"
     file_lon1m          = file_path2 + "/lon_1m.txt"
@@ -87,7 +88,7 @@ def main():
     ])
 
     # Compute number of sub-catchments
-    run([f"./get_num_sub_catchment.x", file_pfafmap, file_rst])  
+    run([f"./get_num_sub_catchment.x", file_pfafmap, file_rst, file_catchdef])  
 
     # Compute climatological runoff
     run(["./get_Qr_clmt.x", file_clmtrunf])

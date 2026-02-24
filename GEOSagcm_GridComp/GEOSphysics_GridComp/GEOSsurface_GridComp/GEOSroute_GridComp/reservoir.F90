@@ -28,11 +28,10 @@ contains
   !---------------------------------------------------------------------------------
   ! Initialization subroutine for reservoirs
   
-  function new_Reservoir(GC, use_res, rc) result (res)
+  function new_Reservoir(GC, rc) result (res)
 
     type(RES_STATE)                      :: res
     type(ESMF_GridComp),  intent(inout)  :: GC 
-    logical,              intent(in)     :: use_res
 
     integer, optional,    intent(out)    :: rc
 
@@ -55,13 +54,6 @@ contains
     allocate(res%active_res, source=int(ACTIVE_RES_RS))
     allocate(res%cap_res,    source=    CAP_RES_RS    )
     allocate(res%alpha_res,  source=RRM_ALPHA_RES_RS  )
-
-    if(use_res.eqv..True.)then
-      res%use_res   = .True.
-    else
-      res%use_res   = .False.
-      res%active_res=0
-    endif
 
     _RETURN(_SUCCESS)
 
