@@ -157,17 +157,19 @@ contains
     allocate(area_cat(nPfaf),frac(nmax,nPfaf),nsub_tile(ntotland),flag2(nmax,nPfaf))
     where(isub==-9999) asub=0.
     area_cat=0.
+    ! Calculate the area for each catchment
     do i=1,nPfaf
       area_cat(i)=sum(asub(:,i))
     enddo
+    ! Calculate the fraction of each sub-area to the entire catchment
     nsub_tile=0
     frac=0.
     do i=1,nPfaf
       do j=1,nmax
         if(isub(j,i)>0)then
           it=isub(j,i)
-          nsub_tile(it)=nsub_tile(it)+1
-          frac(j,i)=asub(j,i)/area_cat(i)
+          nsub_tile(it)=nsub_tile(it)+1   ! count on the number of sub-area within a tile
+          frac(j,i)=asub(j,i)/area_cat(i) ! fraction of each sub-area to the entire catchment, stored in (sub-area, catchment) array
         endif
         if(isub(j,i)==-9999) nsub(i) = nsub(i) - 1
         if(isub(j,i)==0)exit
@@ -176,30 +178,30 @@ contains
 
     nmax2=maxval(nsub_tile)
     allocate(csub(nmax2,ntotland),frac_tile(nmax2,ntotland))
-    csub=0
-    nsub_tile=0
-    frac_tile=0.
+    csub=0      
+    nsub_tile=0  
+    frac_tile=0. 
     do i=1,nPfaf
       do j=1,nmax
         if(isub(j,i)>0)then
           it=isub(j,i)
-          nsub_tile(it)=nsub_tile(it)+1
-          csub(nsub_tile(it),it)=i
-          frac_tile(nsub_tile(it),it)=frac(j,i)
+          nsub_tile(it)=nsub_tile(it)+1          ! count on the number of sub-area within a tile
+          csub(nsub_tile(it),it)=i               ! to store the catchment ids (Pfaf ids) in a tile
+          frac_tile(nsub_tile(it),it)=frac(j,i)  ! frac_tile is the fraction of each sub-area to the entire catchment, stored in (sub-area, tile) array
         endif
         if(isub(j,i)==0)exit
       enddo
     enddo 
-    ns_tot=sum(nsub_tile)
+    ns_tot=sum(nsub_tile)                        ! the number of sub-area
     allocate(tile_id(ns_tot), pfaf_index(ns_tot), subtile_area(ns_tot))
     it = 0
     do i=1,ntotland
       do j=1,nmax2
         if(csub(j,i)>0)then
           it = it+1
-          tile_id(it) = i
-          pfaf_index(it) = csub(j,i)
-          subtile_area(it)  = frac_tile(j,i)*area_cat(pfaf_index(it))*1.e6
+          tile_id(it) = i                                                  ! tile_id of each sub-area  
+          pfaf_index(it) = csub(j,i)                                       ! pfaf_id of each sub-area  
+          subtile_area(it)  = frac_tile(j,i)*area_cat(pfaf_index(it))*1.e6 ! the area of each sub-area  
         endif
         if(csub(j,i)==0)exit
       enddo
@@ -266,6 +268,7 @@ contains
 
     allocate(rst(nlon30s,nlat30s),lat30s(nlat30s),cellarea30s(nlat30s)) 
     delta=180./nlat30s
+    ! Calculate the lat of 30-s grid.
     do j=1,nlat  
       if(lat(1)<0.d0)then
         lat30s(2*j-1)=lat(j)-delta/2.d0
@@ -277,11 +280,12 @@ contains
     enddo
     delta = 2*MAPL_PI_R8/nlon30s * MAPL_PI_R8/nlat30s
     open(20,file=trim(rstfile),form="unformatted",status="old")
+    ! Read rst file and calculate the area of 30-s gridcell.
     do j=1,nlat30s
       read(20) rst(:,j)
       cellarea30s(j) = cos(lat30s(j) * MAPL_DEGREES_TO_RADIANS_R8)*delta * MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 !km^2
     enddo
-    where (rst<1.or.rst>nland) rst=0
+    where (rst<1.or.rst>nland) rst=0 !For no-land tiles in the rst file, set rst to 0.
 
     delta = 2*MAPL_PI_R8/nlon * MAPL_PI_R8/nlat                    ! pre-compute term for raster grid cell area
     ! Loop through all raster grid cells to aggregate cell areas by catchment and sub-area:
@@ -290,9 +294,10 @@ contains
       cellarea = cellarea*MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3        ! convert to km^2
       do xi = 1, nlon
         if (catchind(xi, yi) >= 1) then
-          area30s(:,1)=cellarea30s(2*yi-1)
+          area30s(:,1)=cellarea30s(2*yi-1) !area30s(2,2) is the area of 30s cells corresponding to the (xi,yi) of 1-min cell.
           area30s(:,2)=cellarea30s(2*yi)
-          where(rst(2*xi-1:2*xi,2*yi-1:2*yi)/=0) area30s=0.d0
+          !set land area to 0 in the area30s(2,2), so the sum(area30s(2,2)) is the no-land area in the (xi,yi) of 1-min cell.
+          where(rst(2*xi-1:2*xi,2*yi-1:2*yi)/=0) area30s=0.d0          
           ! The raster grid cell belongs to a catchment
           id = catchind(xi, yi)  ! Get the catchment id for the current cell
           flag = 0               ! Reset flag to indicate whether a matching sub-area is found      
@@ -302,7 +307,8 @@ contains
               if (loni(xi) == xsub0(i, id) .and. lati(yi) == ysub0(i, id)) then
                 flag = 1
                 ! If a match is found, accumulate the cell area into the existing sub-area:
-                asub0(i, id) = asub0(i, id) + max(0.,cellarea - sum(area30s))
+                ! subtract the no-land area sum(area30s) here, so only land area is summed to sub-area
+                asub0(i, id) = asub0(i, id) + max(0.,cellarea - sum(area30s)) 
                 exit  ! Exit the inner loop since a matching sub-area has been found
               endif
             end do
@@ -312,6 +318,7 @@ contains
             nsub(           id) = nsub(id) + 1
             xsub0(nsub(id), id) = loni(xi)
             ysub0(nsub(id), id) = lati(yi)
+            ! subtract the no-land area sum(area30s) here, so only land area is summed to sub-area
             asub0(nsub(id), id) = max(0.,cellarea - sum(area30s))
           endif
         endif
