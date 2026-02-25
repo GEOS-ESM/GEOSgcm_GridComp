@@ -51,7 +51,7 @@ module GEOS_CatchGridCompMod
        SNWALB_VISMAX  => CATCH_SNOW_VISMAX,    &
        SNWALB_NIRMAX  => CATCH_SNOW_NIRMAX,    &
        SLOPE          => CATCH_SNOW_SLOPE,     &
-       PEATCLSM_POROS_THRESHOLD,               &
+       PEATCLSM_POROS_THRESHOLD               
        !Z0_UR          => CATCH_Z0_URBAN,       &
        !D0_UR          => CATCH_D0_URBAN               
        !CH_UR          => CATCH_CH_URBAN    
