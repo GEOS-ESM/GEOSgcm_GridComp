@@ -297,7 +297,6 @@ from .convection.GF_2020.cumulus_parameterization.vertical_discretization.transl
     TranslateGF2020_CumulusParameterization_VerticalDiscretization_shallow,
 )
 
-# GF_2020
 from .convection.GF_2020.translate_GF2020 import TranslateGF2020
 from .convection.GF_2020.translate_GF2020_Finalize import TranslateGF2020_Finalize
 from .convection.GF_2020.translate_GF2020_Setup import TranslateGF2020_Setup
