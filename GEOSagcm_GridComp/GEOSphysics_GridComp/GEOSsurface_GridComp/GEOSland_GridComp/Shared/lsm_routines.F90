@@ -1400,8 +1400,8 @@ CONTAINS
          endif
 
       xwi=min(xwi,1.)
-      tkdry=tkdry_UR ! Urban thermal conductivity
-      xklh(1)=tkBASE_UR + tkBLD_UR*H_UR !(tksat-tkdry)*xwi + tkdry
+      tkdry=tkBASE_UR + tkBLD_UR*H_UR ! Urban thermal conductivity
+      xklh(1)=tkdry !(tksat-tkdry)*xwi + tkdry
       xklhw=tksat
 
       denom=-(DZTSURF*0.5)-zc(1)
