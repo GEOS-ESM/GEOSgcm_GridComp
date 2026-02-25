@@ -42,7 +42,9 @@ MODULE lsm_routines
        PEATCLSM_POROS_THRESHOLD,                 &
        PEATCLSM_ZBARMAX_4_SYSOIL,&
        fac_im_UR         => factor_impervious_URBAN, &
-       tkdry_UR          => CATCH_tkdry_URBAN
+       tkBASE_UR         => CATCH_tkBASE_URBAN, &
+       tkBLD_UR          => CATCH_tkBLD_URBAN
+       !tkdry_UR          => CATCH_tkdry_URBAN
 
 
  
@@ -1268,7 +1270,7 @@ CONTAINS
 !**** -----------------------------------------------------------------
 
 
-      subroutine GNDTP0_UR(t1,phi,zbar,thetaf,ht,fh21w,fh21i,fh21d,                   &
+      subroutine GNDTP0_UR(H_UR, t1,phi,zbar,thetaf,ht,fh21w,fh21i,fh21d,                   &
                       dfh21w,dfh21i,dfh21d,tp)
 
 ! using a diffusion equation this code generates ground temperatures
@@ -1294,7 +1296,7 @@ CONTAINS
 !        df21    derivative of f21 with respect to temperature
 !             ***********************************
 
-      REAL, INTENT(IN) :: phi, ZBAR, THETAF
+      REAL, INTENT(IN) :: H_UR, phi, ZBAR, THETAF
       REAL, INTENT(IN), DIMENSION(*) :: HT
       REAL, INTENT(IN), DIMENSION(N_SM) :: T1
 
@@ -1399,7 +1401,7 @@ CONTAINS
 
       xwi=min(xwi,1.)
       tkdry=tkdry_UR ! Urban thermal conductivity
-      xklh(1)=tkdry!(tksat-tkdry)*xwi + tkdry
+      xklh(1)=tkBASE_UR + tkBLD_UR*H_UR !(tksat-tkdry)*xwi + tkdry
       xklhw=tksat
 
       denom=-(DZTSURF*0.5)-zc(1)

@@ -53,7 +53,7 @@ module GEOS_CatchGridCompMod
        SLOPE          => CATCH_SNOW_SLOPE,     &
        PEATCLSM_POROS_THRESHOLD,               &
        !Z0_UR          => CATCH_Z0_URBAN,       &
-       D0_UR          => CATCH_D0_URBAN               
+       !D0_UR          => CATCH_D0_URBAN               
        !CH_UR          => CATCH_CH_URBAN    
 
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel
@@ -124,6 +124,7 @@ type T_URBAN_STATE !urban related variables
      integer :: nDes
      integer :: myPe
      real,    pointer :: frac(:)      => NULL()  
+     real,    pointer :: height(:)    => NULL()
 end type T_URBAN_STATE
 
 type URBAN_WRAP
@@ -175,7 +176,7 @@ subroutine SetServices ( GC, RC )
     integer :: RESTART
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
-    type (T_URBAN_STATE), pointer             :: urban_internal_state => null()
+    type (T_URBAN_STATE), pointer           :: urban_internal_state => null()
     type (URBAN_WRAP)                       :: wrap_urb    
     
 ! Begin...
@@ -3027,7 +3028,7 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                                 :: myPE,mpierr   
     integer,                        pointer :: scounts(:)=>NULL()
     integer,                        pointer :: scounts_global(:)=>NULL(),rdispls_global(:)=>NULL()
-    real,                           pointer :: frac_global(:)=>NULL()
+    real,                           pointer :: real_global(:)=>NULL()
 !=============================================================================
 
 ! Begin... 
@@ -3083,11 +3084,18 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     do i=2,nDes
        rdispls_global(i)=rdispls_global(i-1)+scounts_global(i-1)
     enddo
-    allocate(urban%frac(nt_local),frac_global(nt_global))
-    open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_frac_urban.txt",status="old",action="read");read(77,*)frac_global;close(77)
-    urban%frac=frac_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local) !km2->m2
-    deallocate(frac_global,scounts,scounts_global,rdispls_global)
 
+    allocate(urban%frac(nt_local),real_global(nt_global))
+    open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_frac_urban.txt",status="old",action="read");read(77,*)real_global;close(77)
+    urban%frac=real_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local) 
+    deallocate(real_global)
+
+    allocate(urban%height(nt_local),real_global(nt_global))
+    open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_GloUCP_h_aw.txt",status="old",action="read");read(77,*)real_global;close(77)
+    urban%height=real_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local)
+    where(urban%height<1.e-4) urban%height=1.e-4 
+    deallocate(real_global)
+    deallocate(scounts,scounts_global,rdispls_global)
 
 !#for_ldas_coupling 
 !
@@ -3344,7 +3352,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real,   allocatable :: Z0T_UR(:,:)  
     real,   allocatable :: D0T_UR(:)
     real,   allocatable :: DZE_UR(:) 
-    real,   allocatable :: WW_UR(:,:),CM0_UR(:,:),CH0_UR(:,:),CQ0_UR(:,:)        
+    real,   allocatable :: WW_UR(:,:),CM0_UR(:,:),CH0_UR(:,:),CQ0_UR(:,:),D0_UR(:),Z0_UR(:)        
     real,   allocatable :: TC0_UR(:,:) 
     real,   allocatable :: QC0_UR(:,:) 
     real,   allocatable :: CN_UR(:),RIB_UR(:),ZT_UR(:),ZQ_UR(:),UUU_UR(:),UCN_UR(:),RE_UR(:)  
@@ -3381,10 +3389,13 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                :: SCALE4ZVG
     real                :: SCALE4Z0_u
     real                :: MIN_VEG_HEIGHT 
-    real                :: Z0_UR
+    !real                :: Z0_UR
     
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
+
+    type (T_URBAN_STATE), pointer         :: urban => null()
+    type (URBAN_wrap)                     :: wrap_urb
 
     type (MAPL_LocStream       )            :: LOCSTREAM 
     integer :: nt_local , i 
@@ -3417,6 +3428,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_UserCompGetInternalState(gc, 'CatchInternal', wrap, status)
     VERIFY_(status)
     CATCH_INTERNAL_STATE=>wrap%ptr
+    call ESMF_UserCompGetInternalState ( GC, 'Urban_state',wrap_urb,status )
+    VERIFY_(STATUS)
+    urban => wrap_urb%ptr
 
     ! For the OFFLINE case, first update some diagnostic vars
     if (CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
@@ -3574,7 +3588,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS) 
     allocate(DZE_UR(NT),STAT=STATUS)
     VERIFY_(STATUS)  
-    allocate(WW_UR(NT,NUM_SUBTILES),CM0_UR(NT,NUM_SUBTILES),CH0_UR(NT,NUM_SUBTILES),CQ0_UR(NT,NUM_SUBTILES),STAT=STATUS)
+    allocate(WW_UR(NT,NUM_SUBTILES),CM0_UR(NT,NUM_SUBTILES),CH0_UR(NT,NUM_SUBTILES),CQ0_UR(NT,NUM_SUBTILES),D0_UR(NT),Z0_UR(NT),STAT=STATUS)
     VERIFY_(STATUS)                
     allocate(TC0_UR(NT,NUM_SUBTILES),STAT=STATUS)
     VERIFY_(STATUS) 
@@ -3814,10 +3828,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     end do SUBTILES
 
 !  For Urban
+    D0_UR = 0.7*urban%height
     Z0_UR = 0.15*D0_UR
     Z0T_UR(:,1) = Z0_UR
     D0T_UR = D0_UR
-    DZE_UR = max(DZ - D0T_UR, 30.)
+    DZE_UR = max(DZ - D0T_UR, 10*Z0_UR)
     if(CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.0) then
         WW_UR(:,1) = 0.
         CM0_UR(:,1) = 0.
@@ -3881,7 +3896,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(Z0T_UR) 
     deallocate(D0T_UR)
     deallocate(DZE_UR)
-    deallocate(WW_UR,CM0_UR,CH0_UR,CQ0_UR)       
+    deallocate(WW_UR,CM0_UR,CH0_UR,CQ0_UR,D0_UR,Z0_UR)       
     deallocate(TC0_UR)
     deallocate(QC0_UR)
     deallocate(CN_UR,RIB_UR,ZT_UR,ZQ_UR,UUU_UR,UCN_UR,RE_UR)
@@ -5999,7 +6014,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
-             FRAC_UR=urban%frac, SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
+             FRAC_UR=urban%frac, H_UR=urban%height, SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
              TC_UR=TC_UR, TC_NA=TC_NA, QA_UR=QC_UR, QA_NA=QC_NA, CH_UR=CH_UR)
              FRACOUT_UR=urban%frac
 

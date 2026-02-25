@@ -94,8 +94,9 @@
            PEATCLSM_POROS_THRESHOLD,                 &
            PEATCLSM_ZBARMAX_4_SYSOIL,                &
            EMIS_UR           => CATCH_EMIS_URBAN,    &
-           D0_UR             => CATCH_D0_URBAN,      &
-           CBASE_UR          => CATCH_C_URBAN
+           !D0_UR             => CATCH_D0_URBAN,      &
+           CBASE_UR          => CATCH_CBASE_URBAN,   &
+           CBLD_UR           => CATCH_CBLD_URBAN
 
       USE SURFPARAMS,       ONLY:                    &
 	   LAND_FIX, ASTRFR, STEXP, RSWILT,          &
@@ -166,7 +167,7 @@
                      lonbeg,lonend,latbeg,latend,                              &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
                      RCONSTIT, RMELT, TOTDEPOS, &
-                     FRAC_UR, SWNET_UR, RA_UR, QSAT_UR, DQS_UR,  &
+                     FRAC_UR, H_UR, SWNET_UR, RA_UR, QSAT_UR, DQS_UR,  &
                      TC_UR, TC_NA, QA_UR, QA_NA, CH_UR )                                  ! OPTIONAL
 
       IMPLICIT NONE
@@ -200,7 +201,7 @@
 
       REAL,    INTENT(IN), DIMENSION(NCH, N_Constit), OPTIONAL :: TOTDEPOS
 
-      REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: FRAC_UR
+      REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: FRAC_UR, H_UR
 
       REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: SWNET_UR, RA_UR, QSAT_UR, DQS_UR
 
@@ -273,7 +274,7 @@
             qa1_orig,qa2_orig,qa4_orig,tc1_orig,tc2_orig,tc4_orig,tcur_orig,   &
             tcs_orig,                                                          &
             ALW_UR, BLW_UR,TCSF_UR,HFTDS_UR,DHFT_UR,HSTURB_UR,DHSDTCX_UR,ETURB_UR,DEDQAX_UR,DEDTCX_U,DHSDQAX_UR,DEDTCX_UR,&
-            EVAP_UR,SHFLUX_UR, HLWUP_UR, RX1_UR, RX2_UR, GHFLUX_UR, HSNACC_UR, AR_UR
+            EVAP_UR,SHFLUX_UR, HLWUP_UR, RX1_UR, RX2_UR, GHFLUX_UR, HSNACC_UR, AR_UR, CSOIL_UR
 
 
       REAL, DIMENSION(N_GT) :: HT, TP, soilice,soilice_UR
@@ -303,9 +304,6 @@
               sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
               mltwtr, wesnbot, dtss,&
               RTBS_UR,EPFRC_UR
-
-
-      REAL :: CSOIL_UR
 
       LOGICAL :: ldum
 
@@ -528,7 +526,7 @@
         AR_UR=FRAC_UR      
       endif
 
-      CSOIL_UR = CBASE_UR + 20000.*D0_UR
+      CSOIL_UR = CBASE_UR + CBLD_UR*H_UR
 
 !**** ---------------------------------------------------
 !**** PRE-PROCESS DATA AS NECESSARY:
@@ -683,7 +681,7 @@
          TSOIL_NA=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
 
          ENTOT_ORIG(N) =                                                       &
-              sum(HTSNNN(1:N_snow,N)) + TSOIL_NA*CSOIL(N)*(1.-AR_UR(N)) + TC_UR(N)*CSOIL_UR*AR_UR(N) + sum(GHTCNT(1:N_gt,N))
+              sum(HTSNNN(1:N_snow,N)) + TSOIL_NA*CSOIL(N)*(1.-AR_UR(N)) + TC_UR(N)*CSOIL_UR(N)*AR_UR(N) + sum(GHTCNT(1:N_gt,N))
 
       ENDDO
 
@@ -758,7 +756,7 @@
           HT(LAYER)=GHTCNT(LAYER,N)
         ENDDO           
         CALL GNDTP0_UR(                                               &
-                      T1_UR,phi,-1.*ZBAR,THETAF,                        &   ! note minus sign for zbar
+                      H_UR(N),T1_UR,phi,-1.*ZBAR,THETAF,                        &   ! note minus sign for zbar
                       HT,                                            &
                       fh21w,fH21i,fh21d,dfh21w,dfh21i,dfh21D,tp      &
                       ) 
@@ -884,8 +882,8 @@
         RTBS4=RX14(N)*RX24(N)/(RX14(N)+RX24(N)+1.E-20)
         EPFRC4=POTFRC(N) * ( RA4(N) + RTBS4 ) / ( RA4(N) + POTFRC(N)*RTBS4 )
 
-        RTBS_UR=RX1_UR(N)*RX2_UR(N)/(RX1_UR(N)+RX2_UR(N)+1.E-20)
-        EPFRC_UR=POTFRC(N) * ( RA_UR(N) + RTBS_UR ) / ( RA_UR(N) + POTFRC(N)*RTBS_UR )        
+        !RTBS_UR=RX1_UR(N)*RX2_UR(N)/(RX1_UR(N)+RX2_UR(N)+1.E-20)
+        !EPFRC_UR=POTFRC(N) * ( RA_UR(N) + RTBS_UR ) / ( RA_UR(N) + POTFRC(N)*RTBS_UR )        
          
         SUMEP=EPFRC1*EVAP1(N)*AR1(N)+EPFRC2*EVAP2(N)*AR2(N)+                   &
               EPFRC4*EVAP4(N)*AR4(N)
@@ -1201,7 +1199,7 @@
 
         TSOIL_NA=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
         TC_NA(N) = TSOIL_NA
-        TSOIL=( TSOIL_NA*(1.-AR_UR(N))*CSOIL(N) + TC_UR(N)*AR_UR(N)*CSOIL_UR )/( (1.-AR_UR(N))*CSOIL(N) + AR_UR(N)*CSOIL_UR )
+        TSOIL=( TSOIL_NA*(1.-AR_UR(N))*CSOIL(N) + TC_UR(N)*AR_UR(N)*CSOIL_UR(N) )/( (1.-AR_UR(N))*CSOIL(N) + AR_UR(N)*CSOIL_UR(N) )
         TSURF(N)=(1.-ASNOW0(N))*TSOIL+ASNOW0(N)*TPSN1(N)
 
         if(asnow0(n) .eq. 0) then
@@ -1216,7 +1214,7 @@
              WTOT(N) )
 
         ENTOT(N) =                                                             &
-             sum(HTSNNN(1:N_snow,N)) + TSOIL_NA*CSOIL(N)*(1.-AR_UR(N)) + TC_UR(N)*AR_UR(N)*CSOIL_UR + sum(GHTCNT(1:N_gt,N))
+             sum(HTSNNN(1:N_snow,N)) + TSOIL_NA*CSOIL(N)*(1.-AR_UR(N)) + TC_UR(N)*AR_UR(N)*CSOIL_UR(N) + sum(GHTCNT(1:N_gt,N))
                 
         WCHANGE(N) = (WTOT(N)-WTOT_ORIG(N))/DTSTEP
         ECHANGE(N) = (ENTOT(N)-ENTOT_ORIG(N))/DTSTEP
@@ -2489,8 +2487,7 @@
       REAL, INTENT(IN), DIMENSION(NCH) :: UM, RCIN, ETURB, HSTURB, QM, RA,     &
                 SWNET, HLWDWN, PSUR, RDC, HFTDS, DHFTDS, QSATTC, DQSDTC,       &
                 ALWRAD, BLWRAD, EMAXRT, SWSRF, POTFRC, WPWET, DEDQA,    &
-                DEDTC, DHSDQA, DHSDTC, POROS
-      REAL, INTENT(IN) :: CSOIL 
+                DEDTC, DHSDQA, DHSDTC, POROS, CSOIL
       LOGICAL, INTENT(IN) ::  BUG
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: TC, QA
