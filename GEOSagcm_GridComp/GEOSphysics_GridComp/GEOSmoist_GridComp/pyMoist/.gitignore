@@ -17,3 +17,4 @@ sandbox/
 .venv/
 site/
 test_data/
+_dacecache/
