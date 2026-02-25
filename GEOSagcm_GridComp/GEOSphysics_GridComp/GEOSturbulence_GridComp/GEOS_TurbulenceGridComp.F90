@@ -2973,11 +2973,9 @@ end if
                                             edmf_w3, edmf_wqt, edmf_slqt, & 
                                             edmf_wsl, edmf_qt3, edmf_sl3, &
                                             edmf_entx, edmf_tke,          &
-                                            edmf_dqrdt, edmf_dqsdt,       &
-                                            ssrcmf,qvsrcmf,qlsrcmf,qisrcmf
+                                            edmf_dqrdt, edmf_dqsdt
 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
-   real, dimension(IM,JM,1:LM)          :: ssrc,qvsrc,qlsrc,qisrc
 
    real, dimension(IM,JM) :: zpbl_test
 
@@ -3435,14 +3433,6 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_mfx,    'EDMF_MF', ALLOC=PDFALLOC, RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  ssrcmf,      'SSRCMF', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  qvsrcmf,    'QVSRCMF', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  qlsrcmf,    'QLSRCMF', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  qisrcmf,    'QISRCMF', RC=STATUS)
-     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_dry_a,  'EDMF_DRY_A',       RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_moist_a, 'EDMF_MOIST_A',   RC=STATUS)
@@ -3643,7 +3633,7 @@ end if
       ! Entrainment rate options
       call MAPL_GetResource (MAPL, MFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.4,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.35,  RC=STATUS)
       ! L0 if ET==1
       call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
@@ -3752,10 +3742,12 @@ end if
     mfwqt  = 0.0
     mfwsl  = 0.0
     mftke  = 0.0
-    ssrc   = 0.0
-    qvsrc  = 0.0
-    qlsrc  = 0.0
-    qisrc  = 0.0
+    YS     = 0.0
+    YQV    = 0.0
+    YQL    = 0.0
+    YQI    = 0.0
+    YU     = 0.0
+    YV     = 0.0
     awqv3  = 0.0
     awql3  = 0.0
     awqi3  = 0.0
@@ -3791,10 +3783,12 @@ end if
                     awqi3,                    &
                     awu3,                     &
                     awv3,                     &
-                    ssrc,                     &
-                    qvsrc,                    &
-                    qlsrc,                    &
-                    qisrc,                    &
+                    YS,                       &
+                    YQV,                      &
+                    YQL,                      &
+                    YQI,                      &
+                    YU,                       &
+                    YV,                       &
                     !== Outputs for ADG PDF ==
                     mfw2,                     &
                     mfw3,                     &
@@ -3836,10 +3830,6 @@ end if
       if (associated(edmf_moist_a))   edmf_moist_a = edmfmoista 
       if (associated(edmf_buoyf))     edmf_buoyf   = buoyf 
       if (associated(edmf_mfx))       edmf_mfx     = edmf_mf
-      if (associated(ssrcmf))         ssrcmf       = ssrc
-      if (associated(qvsrcmf))        qvsrcmf      = qvsrc
-      if (associated(qlsrcmf))        qlsrcmf      = qlsrc
-      if (associated(qisrcmf))        qisrcmf      = qisrc
       if (associated(edmf_w2))        edmf_w2      = mfw2
       if (associated(edmf_w3))        edmf_w3      = mfw3
       if (associated(edmf_qt3))       edmf_qt3     = mfqt3
@@ -3890,10 +3880,6 @@ end if
       if (associated(edmf_buoyf))     edmf_buoyf    = 0.0
       if (associated(edmf_entx))      edmf_entx     = MAPL_UNDEF
       if (associated(edmf_mfx))       edmf_mfx      = 0.0 
-      if (associated(ssrcmf))         ssrcmf        = 0.0
-      if (associated(qlsrcmf))        qlsrcmf       = 0.0
-      if (associated(qisrcmf))        qisrcmf       = 0.0
-      if (associated(qvsrcmf))        qvsrcmf       = 0.0
       if (associated(edmf_w2))        edmf_w2       = mfw2
       if (associated(edmf_w3))        edmf_w3       = mfw3
       if (associated(edmf_qt3))       edmf_qt3      = mfqt3
@@ -3927,6 +3913,7 @@ end if
 
         call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                        !== Inputs ==
+                       SH(:,:),               &
                        PLO(:,:,1:LM),         &
                        ZL0(:,:,0:LM),         &
                        Z(:,:,1:LM),           &
@@ -4973,24 +4960,6 @@ end if
 
 ! Y-s ... these are rhs - mean value - surface flux 
 ! (these are added in the diffuse and vrtisolve)
-
-
-!
-! 2:LM -> 1:LM-1, 1:LM-1 -> 0:LM-2
-!
-   YS(:,:,LM)  = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWS3(:,:,LM-1) + SSRC(:,:,LM) )
-   YQV(:,:,LM) = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWQV3(:,:,LM-1) + QVSRC(:,:,LM) )
-   YQL(:,:,LM) = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWQL3(:,:,LM-1) + QLSRC(:,:,LM) )
-   YQI(:,:,LM) = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWQI3(:,:,LM-1) + QISRC(:,:,LM) )
-   YU(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWU3(:,:,LM-1)
-   YV(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWV3(:,:,LM-1)
-
-   YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWS3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWS3(:,:,0:LM-2) + SSRC(:,:,1:LM-1) )
-   YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQV3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQV3(:,:,0:LM-2) + QVSRC(:,:,1:LM-1) )
-   YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQL3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQL3(:,:,0:LM-2) + QLSRC(:,:,1:LM-1) )
-   YQI(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQI3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQI3(:,:,0:LM-2) + QISRC(:,:,1:LM-1) )
-   YU(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWU3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWU3(:,:,0:LM-2) )
-   YV(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWV3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWV3(:,:,0:LM-2) )
    
    ! Add prescribed surface fluxes
    if ( SCM_SL /= 0 .and. (SCM_SL_FLUX == 1 .or. SCM_SL_FLUX == 2) ) then

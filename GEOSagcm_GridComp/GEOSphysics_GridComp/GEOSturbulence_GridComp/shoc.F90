@@ -47,7 +47,7 @@ module shoc
  contains
 
  subroutine run_shoc( nx, ny, nzm, nz, dtn,                      &  ! in
-                 prsl_inv, phii_inv, phil_inv,                   &  ! in
+                 shf, prsl_inv, phii_inv, phil_inv,              &  ! in
                  u_inv, v_inv,                                   &  ! in
                  omega_inv, tabs_inv, qwv_inv,                   &  ! in
                  qi_inv, qc_inv, qpi_inv,                        &  ! in
@@ -83,6 +83,7 @@ module shoc
   integer, intent(in) :: nz    ! Number of layer interfaces  (= nzm + 1)
   type(shocparams_type), intent(in) :: shocparams
   real, intent(in   ) :: dtn          ! Physics time step, s
+  real, intent(in   ) :: shf(nx,ny)           ! Surface sensible heat flux, W/m2
   real, intent(in   ) :: prsl_inv (nx,ny,nzm) ! mean layer presure
   real, intent(in   ) :: phii_inv (nx,ny,nz ) ! interface geopotential height
   real, intent(in   ) :: phil_inv (nx,ny,nzm) ! layer geopotential height
@@ -393,7 +394,7 @@ contains
           wrk  = (dtn*Cee)/smixt(i,j,k)
           wrk1 = wtke + dtn*(a_prod_sh+a_prod_bu)
 
-          wrk2 = min_tke+0.5*(tke_mf(i,j,nz-k+1)+tke_mf(i,j,nz-k))
+          wrk2 = min_tke*(1.+9.*exp(-zl(i,j,k)/100.))+0.5*(tke_mf(i,j,nz-k+1)+tke_mf(i,j,nz-k))
           do itr=1,nitr                        ! iterate for implicit solution
             wtke   = min(max(wrk2, wtke), max_tke)
             a_diss = wrk*sqrt(wtke)            ! Coefficient in the TKE dissipation term

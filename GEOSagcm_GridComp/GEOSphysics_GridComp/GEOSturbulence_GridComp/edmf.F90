@@ -8,7 +8,7 @@ module edmf_mod
 
 use MAPL_ConstantsMod, only: mapl_epsilon, mapl_grav, mapl_cp,  &
                              mapl_alhl, mapl_p00, mapl_vireps,  &
-                             mapl_alhs, mapl_kappa, mapl_rgas,  &
+                             mapl_alhs, mapl_alhf, mapl_kappa,  &
                              mapl_pi, mapl_celsius_to_kelvin
 
 use MAPL_Mod,          only: mapl_undef
@@ -17,7 +17,7 @@ use GEOS_Mod
 
 implicit none
 
- type EDMFPARAMS_TYPE
+type EDMFPARAMS_TYPE
     logical :: DOTRACERS
     integer :: DISCRETE
     integer :: IMPLICIT
@@ -43,8 +43,8 @@ implicit none
     real    :: ICE_RAMP
     real    :: PRCPCRIT
     real    :: TREFF
- endtype EDMFPARAMS_TYPE
- type (EDMFPARAMS_TYPE) :: MFPARAMS
+endtype EDMFPARAMS_TYPE
+type (EDMFPARAMS_TYPE) :: MFPARAMS
 
 public run_edmf, mfparams
 
@@ -78,10 +78,12 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
                     awqi3,                         & ! Specific ice flux (kg kg-1 m s-1)
                     awu3,                          & ! Kinematic U momentum flux (m2 s-2)
                     awv3,                          & ! Kinematic V momentum flux (m2 s-2)
-                    ssrc3,                         & ! Dry static energy source from condensation (W kg-1)
-                    qvsrc3,                        & ! Specific humidity sink from condensation (kg kg-1 s-1)
-                    qlsrc3,                        & ! Liquid water source from condensation (kg kg-1 s-1)
-                    qisrc3,                        & ! Ice water source from condensation/freezing (kg kg-1 s-1)
+                    YS,                            & ! Dry static energy increment for trisolver (J kg-1)
+                    YQV,                           & ! Specific humidity increment for trisolver (kg kg-1)
+                    YQL,                           & ! Liquid water increment for trisolver (kg kg-1)
+                    YQI,                           & ! Ice water increment (kg kg-1)
+                    YU,                            & ! U wind increment (m s-1)
+                    YV,                            & ! V wind increment (m s-1)
                                                      !==== Outputs required for SHOC and ADG PDF ====================
                     mfw2,                          & ! Area-weighted vertical velocity squared (m2 s-2)
                     mfw3,                          & ! Area-weighted vertical velocity cubed (m3 s-3)
@@ -156,13 +158,14 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
 
    REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf, mfw2, mfw3,    &
                                                            mfqt3, mfhl3, mfhlqt, &
-                                                           dqrdt, dqsdt, ssrc3,  &
-                                                           qvsrc3, qlsrc3, qisrc3
+                                                           dqrdt, dqsdt
 
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(INOUT) :: YS, YQV, YQL, &
+                                                             YQI, YU, YV
 
   ! Diagnostic outputs
    REAL, DIMENSION(:,:),     POINTER :: mfdepth
-   
+
    REAL, DIMENSION(:,:,:),   POINTER :: dry_w3,   moist_w3,   &
                                         dry_qt3,  moist_qt3,  &
                                         dry_thl3, moist_thl3, &
@@ -185,6 +188,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
    REAl,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENT, ENTf
    INTEGER,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENTi
 
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE) :: tmp3d, dmi
+   
    INTEGER :: K,KTMP,I,IH,JH,NUP2
    REAL :: wthv,wstar,qstar,thstar, &
            sigmaW,sigmaQT,sigmaTH,  &
@@ -192,7 +197,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
            B,QTn,THLn,THVn,QCn,QP,  &
            Un,Vn,Wn2,EntEXP,EntEXPU,&
            EntW,wf, WTHL, WQT, PBLH
-   
+
    ! internal flipped variables (GEOS)
    REAL,DIMENSION(KTS:KTE)   :: U,V,THL,QT,THV,QV,QL,QI,ZLO,QR,QS
    REAL,DIMENSION(KTS-1:KTE) :: ZW,P,THLI,QTI
@@ -212,7 +217,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
 
    ! temporary/dummy variables
    REAL :: tmp, tmp2
-   
+
    REAL :: L0,ztop,ltm,QTsrfF,THVsrfF,mft,mfthvt,mf,factor
    INTEGER, DIMENSION(2) :: the_seed
 
@@ -258,10 +263,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
    awqi3 =0.
    awu3  =0.
    awv3  =0.
-   ssrc3 =0.
-   qvsrc3=0.
-   qlsrc3=0.
-   qisrc3=0.
    buoyf =0.
    mfw2  =0.
    mfw3  =0.
@@ -332,7 +333,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       end if
 
       if (ztop.gt.100.) then
-      
+
       !
       ! flipping variables
       !
@@ -466,7 +467,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
          end do
          wcfac(1:k) = min(10.,max(0.,thv(ktmp)-thv(k)-MFPARAMS%WCTHRESH))*exp(-(zlo(k)-zlo(1:k))/100. )
       end if
-      
+
       ! define surface conditions
       DO I=1,NUP2
 
@@ -845,7 +846,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       s_awqv(KTS-1) = 0.
       s_awql(KTS-1) = 0.
       s_awqi(KTS-1) = 0.
-      
+
 
       ! buoyancy is defined on full levels
       DO k=kts,kte
@@ -860,28 +861,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
           mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
           mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
         end if
-
-        ! Trisolver source terms due to condensation. Assumes that condensation is responsible 
-        ! for any increase in condesate flux with height. Note this ignores lateral mixing,
-        ! which would imply a larger source term.
-        ! Tiny is added to prevent tiny negative condensate after the trisolver.
-        tmp = max(0.,RHOE(K)*s_awql(K)-RHOE(K-1)*s_awql(K-1)) ! qlflx divergence
-        if (tmp.gt.0.) tmp = tmp+tiny(1.)
-        qlsrc3(IH,JH,KTE+KTS-K) = tmp
-        qvsrc3(IH,JH,KTE+KTS-K) = -1.*tmp
-        ssrc3(IH,JH,KTE+KTS-K)  = tmp*MAPL_ALHL
-
-        tmp2 = max(0.,RHOE(K)*s_awqi(K)-RHOE(K-1)*s_awqi(K-1)) ! qiflx divergence
-
-        qisrc3(IH,JH,KTE+KTS-K) = tmp2
-        tmp = max(0.,RHOE(K-1)*s_awql(K-1)-RHOE(K)*s_awql(K)) ! qlflx convergence
-
-        ! if ql convergence, assume ice came from ql, with remainder from qv
-        qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) - min(tmp,tmp2)
-        qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - (tmp2-min(tmp,tmp2))
-        ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp2*MAPL_ALHS
      ENDDO
-
 
       where (UPA.eq.0.)
         UPW   = MAPL_UNDEF
@@ -898,6 +878,55 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
     ENDDO ! JH loop over horizontal area
   ENDDO ! IH
 
+  ! Calculate explicit part of state update for trisolver
+  ! Note vertical index is flipped, as in TurbGridComp.
+  dmi = mapl_grav * dt / ( pw3(:,:,kts:kte)-pw3(:,:,kts-1:kte-1) )
+  YS(:,:,kte)  = -rhoe3(:,:,kte-1) * aws3(:,:,kte-1)
+  YQV(:,:,kte) = -rhoe3(:,:,kte-1) * awqv3(:,:,kte-1)
+  YQL(:,:,kte) = -rhoe3(:,:,kte-1) * awql3(:,:,kte-1)
+  YQI(:,:,kte) = -rhoe3(:,:,kte-1) * awqi3(:,:,kte-1)
+  YU(:,:,kte)  = -rhoe3(:,:,kte-1) * awu3(:,:,kte-1)
+  YV(:,:,kte)  = -rhoe3(:,:,kte-1) * awv3(:,:,kte-1)
+
+  YS(:,:,kts:kte-1)  = ( rhoe3(:,:,kts:kte-1)  *aws3(:,:,kts:kte-1)  &
+                        -rhoe3(:,:,kts-1:kte-2)*aws3(:,:,kts-1:kte-2) )
+  YQV(:,:,kts:kte-1) = ( rhoe3(:,:,kts:kte-1)  *awqv3(:,:,kts:kte-1)  &
+                        -rhoe3(:,:,kts-1:kte-2)*awqv3(:,:,kts-1:kte-2) )
+  YQL(:,:,kts:kte-1) = ( rhoe3(:,:,kts:kte-1)  *awql3(:,:,kts:kte-1)  &
+                        -rhoe3(:,:,kts-1:kte-2)*awql3(:,:,kts-1:kte-2) )
+  YQI(:,:,kts:kte-1) = ( rhoe3(:,:,kts:kte-1)  *awqi3(:,:,kts:kte-1)  &
+                        -rhoe3(:,:,kts-1:kte-2)*awqi3(:,:,kts-1:kte-2) )
+  YU(:,:,kts:kte-1)  = ( rhoe3(:,:,kts:kte-1)  *awu3(:,:,kts:kte-1)  &
+                        -rhoe3(:,:,kts-1:kte-2)*awu3(:,:,kts-1:kte-2) )
+  YV(:,:,kts:kte-1)  = ( rhoe3(:,:,kts:kte-1)  *awv3(:,:,kts:kte-1)  &
+                        -rhoe3(:,:,kts-1:kte-2)*awv3(:,:,kts-1:kte-2) )
+
+  ! Deal with implied condensation.
+  ! Where QI flux diverges and QL flux converges, assume that QI came from QL
+  where (YQI.lt.0. .and. YQL.gt.0.)
+     tmp3d = min(YQL,-YQI)
+     YQL = YQL - tmp3d
+     YQI = YQI + tmp3d
+     YS = YS + tmp3d*MAPL_ALHF
+  end where
+  where (YQI.lt.0.)       ! where WQI diverges and no WQL
+     YQV = YQV - YQI
+     YS = YS - YQI*MAPL_ALHS
+     YQI = 0.
+  end where
+  where (YQL.lt.0.)       ! where WQL diverges, assume condensation occurred
+     YQV = YQV + YQL   
+     YS  = YS - YQL*MAPL_ALHL
+     YQL = 0. 
+  end where
+
+  YS  = dmi * YS
+  YQV = dmi * YQV
+  YQL = dmi * YQL
+  YQI = dmi * YQI
+  YU  = dmi * YU
+  YV  = dmi * YV
+  
 END SUBROUTINE run_edmf
 
 
