@@ -1,18 +1,17 @@
-from ndsl.dsl.typing import Float, Int
-from pyGEOSBridge import GEOSInterfaceCode, get_MAPLPy
-from pyGEOSBridge.types import CVoidPointer
-
+from MAPL_PythonBridge import UserCode, get_MAPLPy
+from MAPL_PythonBridge.types import CVoidPointer
 from mpi4py import MPI
+from ndsl.dsl.typing import Float, Int
 
-from pyMoist.fortran.build_helper import InterfaceTransferType, StencilBackendCompilerOverride
 from pyMoist.fortran import get_NDSL_physics
+from pyMoist.fortran.build_helper import InterfaceTransferType, StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
-from pyMoist.UW import ComputeUwshcuInv, UWConfiguration, UWState
 from pyMoist.fortran.profiler import TimedCUDAProfiler
+from pyMoist.UW import ComputeUwshcuInv, UWConfiguration, UWState
 
 
-class UWGEOSInterface(GEOSInterfaceCode):
+class UWGEOSInterface(UserCode):
     def __init__(self, name: str) -> None:
         pass
 

@@ -2,7 +2,7 @@ from typing import Tuple
 
 import numpy.typing as npt
 from ndsl import State
-from ndsl.constants import I_DIM, J_DIM, K_DIM, Float, K_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM, Float
 from ndsl.optional_imports import cupy as cp
 
 from pyMoist.fortran.build_helper import InterfaceTransferType

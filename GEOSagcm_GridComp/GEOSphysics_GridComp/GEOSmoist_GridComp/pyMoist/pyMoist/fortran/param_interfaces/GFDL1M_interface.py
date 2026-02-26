@@ -1,26 +1,26 @@
 import os
-from pyGEOSBridge.types import CVoidPointer
 from typing import Any
 
-from mpi4py import MPI
 import f90nml
-
-from ndsl.dsl.typing import Int, Float
+from MAPL_PythonBridge import UserCode, get_MAPLPy
+from MAPL_PythonBridge.types import CVoidPointer
+from mpi4py import MPI
 from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
-from pyMoist.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
+from ndsl.dsl.typing import Float, Int
+
+from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import InterfaceTransferType, StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.profiler import TimedCUDAProfiler
-from pyGEOSBridge import GEOSInterfaceCode, get_MAPLPy
-from pyMoist.fortran import get_NDSL_physics
+from pyMoist.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
 
 
 def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict[str, Any]) -> Any:
     return default if name_in_namelist not in namelist else namelist[name_in_namelist]
 
 
-class GFDL1MInterface(GEOSInterfaceCode):
+class GFDL1MInterface(UserCode):
     def __init__(self) -> None:
         pass
 

@@ -4,12 +4,12 @@ import dataclasses
 
 import numpy as np
 import numpy.typing as npt
+from MAPL_PythonBridge import get_MAPLPy
+from MAPL_PythonBridge.memory.fortran_python_converter import FortranPythonConverter
+from MAPL_PythonBridge.types import CVoidPointer
 from ndsl import QuantityFactory
 from ndsl.dsl.gt4py_utils import is_gpu_backend
 from ndsl.optional_imports import cupy as cp
-from pyGEOSBridge import get_MAPLPy
-from pyGEOSBridge.memory.fortran_python_converter import FortranPythonConverter
-from pyGEOSBridge.types import CVoidPointer
 
 
 if cp is None:

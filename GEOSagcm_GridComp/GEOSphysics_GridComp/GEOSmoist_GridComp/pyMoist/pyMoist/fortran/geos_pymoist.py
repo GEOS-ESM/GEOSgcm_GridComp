@@ -5,6 +5,7 @@ Wraps pyMoist for GEOS interface use.
 import dataclasses
 import os
 
+from MAPL_PythonBridge import get_MAPLPy
 from ndsl import (
     CompilationConfig,
     CubedSphereCommunicator,
@@ -26,7 +27,6 @@ from ndsl.dsl.gt4py_utils import backend_is_fortran_aligned, is_gpu_backend
 from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
-from pyGEOSBridge import get_MAPLPy
 
 from pyMoist.fortran.build_helper import InterfaceTransferType, MemorySpace
 
