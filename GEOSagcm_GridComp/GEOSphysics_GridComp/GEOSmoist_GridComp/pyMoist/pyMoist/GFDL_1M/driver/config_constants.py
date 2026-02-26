@@ -180,9 +180,9 @@ class GFDL1MDriverConfigDependentConstants:
         CRACW = CRACI  # cracw = 3.27206196043822
         CRACW = GFDL_1M_config.C_CRACW * CRACW
 
-        CSSUB = np.zeros(5)
-        CGSUB = np.zeros(5)
-        CREVP = np.zeros(5)
+        CSSUB = np.zeros(5, dtype=Float)
+        CGSUB = np.zeros(5, dtype=Float)
+        CREVP = np.zeros(5, dtype=Float)
 
         CSSUB[0] = (
             Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZS
@@ -253,7 +253,7 @@ class GFDL1MDriverConfigDependentConstants:
 
         # smlt: five constants (lin et al. 1983)
 
-        CSMLT = np.zeros(5)
+        CSMLT = np.zeros(5, dtype=Float)
         CSMLT[0] = Float(2.0) * constants.PIE * constants.TCOND * constants.RNZS / constants.HLTF
         CSMLT[1] = (
             Float(2.0) * constants.PIE * constants.VDIFU * constants.RNZS * constants.HLTC / constants.HLTF
@@ -270,7 +270,7 @@ class GFDL1MDriverConfigDependentConstants:
 
         # gmlt: five constants
 
-        CGMLT = np.zeros(5)
+        CGMLT = np.zeros(5, dtype=Float)
         CGMLT[0] = Float(2.0) * constants.PIE * constants.TCOND * constants.RNZG / constants.HLTF
         CGMLT[1] = (
             Float(2.0) * constants.PIE * constants.VDIFU * constants.RNZG * constants.HLTC / constants.HLTF
