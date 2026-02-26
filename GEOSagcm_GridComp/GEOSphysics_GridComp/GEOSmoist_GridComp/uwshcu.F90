@@ -2350,7 +2350,7 @@ contains
 
          pe      = 0.5 * ( prel + pifc0(krel) )
          qsat_pe = 0.5 * ( prel + pifc0(krel) )
-         dpe     = max(prel - pifc0(krel), 1.0) ! Global protection: minimum 0.01 hPa
+         dpe     = max(prel - pifc0(krel), 100.0) ! Global protection: minimum 1.0 hPa
                                                 ! as prel approaches pifc0
          exne    = exnerfn(pe)
          thvebot = thv0rel
@@ -2478,7 +2478,7 @@ contains
 
          wtw     = wlcl * wlcl
          pe      = 0.5 * ( prel + pifc0(krel) )
-         dpe     = max(prel - pifc0(krel), 1.0) ! Global protection: minimum 0.01 hPa
+         dpe     = max(prel - pifc0(krel), 100.0) ! Global protection: minimum 0.01 hPa
                                                 ! as prel approaches pifc0
          exne    = exnerfn(pe)
          thvebot = thv0rel
