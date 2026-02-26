@@ -90,9 +90,8 @@ def get_script_mv(grid_type):
 
 mkdir -p geometry/{GRIDNAME}
 /bin/mv {GRIDNAME}.j geometry/{GRIDNAME}/.
-/bin/cp til/{GRIDNAME}{RS}.til geometry/{GRIDNAME}/.
-/bin/cp til/{GRIDNAME}{RS}.nc4 geometry/{GRIDNAME}/.
-/bin/cp til/{GRIDNAME}_tile2pfaf.nc4 geometry/{GRIDNAME}/.
+/bin/cp til/{GRIDNAME}*.til geometry/{GRIDNAME}/.
+/bin/cp til/{GRIDNAME}*.nc4 geometry/{GRIDNAME}/.
 if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN geometry/{GRIDNAME}/.
 
 /bin/mv rst til geometry/{GRIDNAME}/.

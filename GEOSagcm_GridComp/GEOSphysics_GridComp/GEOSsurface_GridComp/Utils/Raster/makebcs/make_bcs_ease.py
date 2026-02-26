@@ -9,6 +9,8 @@ from make_bcs_shared  import *
 ease_template = """
 
 bin/mkEASETilesParam.x -ease_label {GRIDNAME} 
+bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
+bin/CombineRasters.x -t {NT} {GRIDNAME} Pfafstetter >/dev/null
 setenv OMP_NUM_THREADS {NCPUS}
 bin/mkCatchParam.x -g {GRIDNAME} -v {lbcsv} -x {NX} -y {NY}
 setenv OMP_NUM_THREADS 1
@@ -85,6 +87,7 @@ def make_bcs_ease(config):
            TRIPOL_OCEAN = False, \
            NX = config['NX'], \
            NY = config['NY'], \
+           NT = config['NT'], \
            RS = '_'+RS,\
            RC = RS+'_DE',\
            SCRATCH_DIR = scratch_dir, \

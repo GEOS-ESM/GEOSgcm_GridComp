@@ -277,7 +277,8 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 ! Write tile info, one line per tile.
 
 #define LINE_FORMAT     '(I10,3E20.12,9(2I10,E20.12,I10))'
-#define LINE_VARIABLES  iTable(0,k),area,xc,yc, (ii(l),jj(l),fr(l),kk(l),l=1,ng)   ! for *land* tiles, ii(2) = index of Pfafstetter catchment
+#define LINE_VARIABLES  iTable(0,k),area,xc,yc, (ii(l),jj(l),fr(l),kk(l),l=1,ng)       ! for *land* tiles, ii(2) = index of Pfafstetter catchment
+#define EASE_VARIABLES  iTable(0,k),area,xc,yc, (ii(l)-1,jj(l)-1,fr(l),kk(l),l=1,ng)   ! for *land* tiles, ii(2) = index of Pfafstetter catchment
  
   garea = 0.0
   ctg   = 0.0
@@ -310,7 +311,11 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
         write(Line   ,LINE_FORMAT) LINE_VARIABLES
         call ZipBuff(trim(File)//char(0),trim(Line)//char(0),1,1,1)
      else
-        write(UNIT,LINE_FORMAT) LINE_VARIABLES
+        if (ng==2 .and. index(GRIDNAME(1), 'EASE') /=0) then
+          write(UNIT,LINE_FORMAT) EASE_VARIABLES
+        else
+          write(UNIT,LINE_FORMAT) LINE_VARIABLES
+        endif
      end if
   end do
 

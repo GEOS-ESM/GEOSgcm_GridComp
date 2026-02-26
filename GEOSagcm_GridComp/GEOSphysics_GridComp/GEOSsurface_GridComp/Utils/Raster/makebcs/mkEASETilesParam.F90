@@ -982,9 +982,12 @@ PROGRAM mkEASETilesParam
   deallocate( tile_area, ease_grid_area, tile_elev, my_land, all_id )
 
   ! write file with info about mapping from EASE tile space to Pfafstetter catchment space ("EASEv[x]_tile2pfaf.nc4")
-  
+ 
   call EASE_get_pfaf_subarea('til/'//trim(EASELabel)//'_tile2pfaf.nc4', MAKE_BCS_INPUT_DIR, EASELabel, gfile)
-      
+ 
+  ! rasterize ease grid. Later on combining land raster
+  call mkEASEv2Raster(EASELabel, nc, nr)
+ 
   ! Commented out "empty" if-block. -rreichle, 15 Jun 2023
   !
   !      if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
@@ -1017,36 +1020,36 @@ PROGRAM mkEASETilesParam
   
 
 !!! commented out. It may be used in the future for irrigation tiles
-!!!    contains
-!!!
-!!!      ! -------------------------------------------------------------------------------
-!!!
-!!!      SUBROUTINE mkEASEv2Raster
-!!!
-!!!        implicit none
-!!!
-!!!        integer       :: i, j, i_ease, j_ease
-!!!        real*8,   allocatable :: xs(:,:), ys(:,:)
-!!!        real          :: x,y, xout, yout
-!!!        
-!!!        allocate (xs ( nc_ease+1, nr_ease+1))
-!!!        allocate (ys ( nc_ease+1, nr_ease+1))
-!!!        
-!!!        do  j = 1, nr_ease+1
-!!!           do i = 1, nc_ease+1
-!!!              x = real(i-1)        -0.5
-!!!              y = real(nr_ease - j)+0.5
-!!!              call MAPL_ease_inverse(MGRID, x, y, yout, xout)
-!!!              ys (i,j) = dble(yout)
-!!!              xs (i,j) = dble(xout)
-!!!           end do
-!!!        end do
-!!!
-!!!        call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr,xmn = xs(1,1), xmx= xs(nc_ease+1, nr_ease+1), &
-!!!                       ymn=ys(1,1), ymx = ys(nc_ease+1, nr_ease+1), Here=.false., Verb=.false.)       
-!!!
-!!!        stop
-!!!      end SUBROUTINE mkEASEv2Raster
+    contains
+
+      ! -------------------------------------------------------------------------------
+
+      SUBROUTINE mkEASEv2Raster(EASELabel, nc, nr)
+        use LogRectRasterizeMod,      ONLY: LRRasterize
+        character(*), intent(inout) :: EASELabel
+        integer,      intent(in) :: nc, nr 
+        integer       :: i, j, i_ease, j_ease
+        real*8,   allocatable :: xs(:,:), ys(:,:)
+        real          :: x,y, xout, yout
+        
+        allocate (xs ( nc_ease+1, nr_ease+1))
+        allocate (ys ( nc_ease+1, nr_ease+1))
+        
+        do  j = 1, nr_ease+1
+           do i = 1, nc_ease+1
+              x = real(i-1)        -0.5
+              y = real(nr_ease - j)+0.5
+              call MAPL_ease_inverse(EASELabel, x, y, yout, xout)
+              ys (i,j) = dble(yout)
+              xs (i,j) = dble(xout)
+           end do
+        end do
+
+        !call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr, xmn = xs(1,1), xmx= xs(nc_ease+1, nr_ease+1), &
+        !               ymn=ys(1,1), ymx = ys(nc_ease+1, nr_ease+1), Here=.false., Verb=.false.)       
+        call  LRRasterize(EASElabel,xs,ys,nc=nc,nr=nr, Here=.false., Verb=.false.) 
+
+      end SUBROUTINE mkEASEv2Raster
 !!!
 !!!      ! ------------------------------------------------------------
 !!!      
