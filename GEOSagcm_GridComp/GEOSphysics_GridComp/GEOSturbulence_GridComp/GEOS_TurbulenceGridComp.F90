@@ -3659,6 +3659,9 @@ end if
       if (DO_SHOC == 0) then
       !===> Running 1-2-1 smooth of bottom levels of THV, U and V
       if (SMTH_HGT > 0) then
+        TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
+        USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
+        VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
         do J=1,JM
          do I=1,IM
            do L=LM-1,SMTH_LEV(I,J),-1
@@ -3670,10 +3673,14 @@ end if
         end do
       else
         TSM(:,:,LM) = TSM(:,:,LM-1)*0.25 + TSM(:,:,LM  )*0.75
+        USM(:,:,LM) = USM(:,:,LM-1)*0.25 + USM(:,:,LM  )*0.75
+        VSM(:,:,LM) = VSM(:,:,LM-1)*0.25 + VSM(:,:,LM  )*0.75
         do J=1,JM
          do I=1,IM
            do L=LM-1,SMTH_LEV(I,J),-1
               TSM(I,J,L) = TSM(I,J,L-1)*0.25 + TSM(I,J,L)*0.50 + TSM(I,J,L+1)*0.25
+              USM(I,J,L) = USM(I,J,L-1)*0.25 + USM(I,J,L)*0.50 + USM(I,J,L+1)*0.25
+              VSM(I,J,L) = VSM(I,J,L-1)*0.25 + VSM(I,J,L)*0.50 + VSM(I,J,L+1)*0.25
            end do
          end do
         end do
