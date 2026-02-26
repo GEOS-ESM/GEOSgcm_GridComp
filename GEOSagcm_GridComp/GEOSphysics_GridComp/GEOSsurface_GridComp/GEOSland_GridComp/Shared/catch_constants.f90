@@ -78,6 +78,7 @@ module catch_constants
   REAL,    PARAMETER, PUBLIC :: CATCH_CBASE_URBAN   = 70000.  ! J/K - heat capacity associated w/ urban  
   REAL,    PARAMETER, PUBLIC :: CATCH_tkBASE_URBAN  = 0.226   ! w m-2 k-1 
 
+  REAL,    PARAMETER, PUBLIC :: CATCH_ALB_URBAN     = 0.15 
   REAL,    PARAMETER, PUBLIC :: CATCH_EMIS_URBAN    = 0.90
   REAL,    PARAMETER, PUBLIC :: factor_impervious_URBAN = 1.0   
   !REAL,    PARAMETER, PUBLIC :: CATCH_tkdry_URBAN   = 1.8

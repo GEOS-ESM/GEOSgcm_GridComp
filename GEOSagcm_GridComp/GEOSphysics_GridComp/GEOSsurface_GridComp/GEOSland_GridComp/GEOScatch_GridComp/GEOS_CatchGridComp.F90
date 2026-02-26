@@ -51,7 +51,8 @@ module GEOS_CatchGridCompMod
        SNWALB_VISMAX  => CATCH_SNOW_VISMAX,    &
        SNWALB_NIRMAX  => CATCH_SNOW_NIRMAX,    &
        SLOPE          => CATCH_SNOW_SLOPE,     &
-       PEATCLSM_POROS_THRESHOLD               
+       PEATCLSM_POROS_THRESHOLD,               &
+       CATCH_ALB_URBAN              
        !Z0_UR          => CATCH_Z0_URBAN,       &
        !D0_UR          => CATCH_D0_URBAN               
        !CH_UR          => CATCH_CH_URBAN    
@@ -125,6 +126,7 @@ type T_URBAN_STATE !urban related variables
      integer :: myPe
      real,    pointer :: frac(:)      => NULL()  
      real,    pointer :: height(:)    => NULL()
+     real,    pointer :: mask(:)      => NULL()
 end type T_URBAN_STATE
 
 type URBAN_WRAP
@@ -3118,7 +3120,15 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     urban%height=real_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local)
     where(urban%height<1.e-4) urban%height=1.e-4 
     deallocate(real_global)
+
+    allocate(urban%mask(nt_local),real_global(nt_global))
+    open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_SAT_2020_Avg.txt",status="old",action="read");read(77,*)real_global;close(77)
+    urban%mask=real_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local)
+    deallocate(real_global)
+
     deallocate(scounts,scounts_global,rdispls_global)
+
+
 
 !#for_ldas_coupling 
 !
@@ -4582,7 +4592,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: ldas_ens_id, ldas_first_ens_id
         integer                       :: NUM_LDAS_ENSEMBLE
 
-        real                          :: ALBVR_UR=0.15, ALBVF_UR=0.15, ALBNR_UR=0.15, ALBNF_UR=0.15
+        real                          :: ALBVR_UR=CATCH_ALB_URBAN
+        real                          :: ALBVF_UR=CATCH_ALB_URBAN
+        real                          :: ALBNR_UR=CATCH_ALB_URBAN
+        real                          :: ALBNF_UR=CATCH_ALB_URBAN
 
 
 !#---
@@ -6041,7 +6054,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
-             FRAC_UR=urban%frac, H_UR=urban%height, SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
+             FRAC_UR=urban%frac, H_UR=urban%height, MSK_UR=urban%mask, SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
              TC_UR=TC_UR, TC_NA=TC_NA, UHI=UHI, QA_UR=QC_UR, QA_NA=QC_NA, CH_UR=CH_UR)
              FRACOUT_UR=urban%frac
              HEIGHT_UR=urban%height

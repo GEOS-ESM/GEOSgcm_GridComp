@@ -167,7 +167,7 @@
                      lonbeg,lonend,latbeg,latend,                              &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
                      RCONSTIT, RMELT, TOTDEPOS, &
-                     FRAC_UR, H_UR, SWNET_UR, RA_UR, QSAT_UR, DQS_UR,  &
+                     FRAC_UR, H_UR, MSK_UR, SWNET_UR, RA_UR, QSAT_UR, DQS_UR,  &
                      TC_UR, TC_NA, UHI, QA_UR, QA_NA, CH_UR )                                  ! OPTIONAL
 
       IMPLICIT NONE
@@ -201,7 +201,7 @@
 
       REAL,    INTENT(IN), DIMENSION(NCH, N_Constit), OPTIONAL :: TOTDEPOS
 
-      REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: FRAC_UR, H_UR
+      REAL,    INTENT(IN), DIMENSION(NCH), OPTIONAL :: FRAC_UR, H_UR, MSK_UR
 
       REAL,    INTENT(INOUT), DIMENSION(NCH), OPTIONAL :: SWNET_UR, RA_UR, QSAT_UR, DQS_UR
 
@@ -1201,6 +1201,7 @@
         TSOIL_NA=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
         TC_NA(N) = TSOIL_NA
         UHI(N) = TC_UR(N)-TC_NA(N)
+        if(MSK_UR(N)==0.) UHI(N)=0.
         TSOIL=( TSOIL_NA*(1.-AR_UR(N))*CSOIL(N) + TC_UR(N)*AR_UR(N)*CSOIL_UR(N) )/( (1.-AR_UR(N))*CSOIL(N) + AR_UR(N)*CSOIL_UR(N) )
         TSURF(N)=(1.-ASNOW0(N))*TSOIL+ASNOW0(N)*TPSN1(N)
 
