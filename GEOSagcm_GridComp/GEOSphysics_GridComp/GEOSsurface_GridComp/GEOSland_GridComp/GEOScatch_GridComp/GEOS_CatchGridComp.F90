@@ -1147,6 +1147,17 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'urban_height'        ,&
+    UNITS              = 'm'                         ,&
+    SHORT_NAME         = 'HEIGHT_UR'                        ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip                     ,&     
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)  
+
+  call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'canopy_temperature_urban'        ,&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TC_UR'                        ,&
@@ -1167,6 +1178,18 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartSkip       ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)  
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'urban_heat_intensity'        ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'UHI'                        ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartRequired       ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)  
+
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'canopy_specific_humidity_urban'  ,&
@@ -4181,8 +4204,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: btau
         real, dimension(:),   pointer :: old_ity
         real, dimension(:),   pointer :: FRACOUT_UR
+        real, dimension(:),   pointer :: HEIGHT_UR
         real, dimension(:),   pointer :: TC_UR  
         real, dimension(:),   pointer :: TC_NA 
+        real, dimension(:),   pointer :: UHI 
         real, dimension(:),   pointer :: QC_UR  
         real, dimension(:),   pointer :: QC_NA          
         real, dimension(:),   pointer :: capac
@@ -4755,8 +4780,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,TC         ,'TC'         ,RC=STATUS); VERIFY_(STATUS)                   
         call MAPL_GetPointer(INTERNAL,QC         ,'QC'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,FRACOUT_UR         ,'FRACOUT_UR'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,HEIGHT_UR         ,'HEIGHT_UR'         ,RC=STATUS); VERIFY_(STATUS)        
         call MAPL_GetPointer(INTERNAL,TC_UR         ,'TC_UR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TC_NA         ,'TC_NA'         ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,UHI         ,'UNI'         ,RC=STATUS); VERIFY_(STATUS)        
         call MAPL_GetPointer(INTERNAL,QC_UR         ,'QC_UR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,QC_NA         ,'QC_NA'         ,RC=STATUS); VERIFY_(STATUS)                 
         call MAPL_GetPointer(INTERNAL,CAPAC      ,'CAPAC'      ,RC=STATUS); VERIFY_(STATUS)
@@ -6015,8 +6042,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
              FRAC_UR=urban%frac, H_UR=urban%height, SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
-             TC_UR=TC_UR, TC_NA=TC_NA, QA_UR=QC_UR, QA_NA=QC_NA, CH_UR=CH_UR)
+             TC_UR=TC_UR, TC_NA=TC_NA, UHI=UHI, QA_UR=QC_UR, QA_NA=QC_NA, CH_UR=CH_UR)
              FRACOUT_UR=urban%frac
+             HEIGHT_UR=urban%height
 
         end if
         
