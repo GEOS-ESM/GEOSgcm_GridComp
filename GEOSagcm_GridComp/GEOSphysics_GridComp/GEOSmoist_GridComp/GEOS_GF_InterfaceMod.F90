@@ -191,23 +191,23 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 3,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, MOIST_TRIGGER             , 'MOIST_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'          ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'          ,default= 65.,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'          ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'          ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)      , 'USE_EXCESS_DP:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)      , 'USE_EXCESS_SH:'         ,default= 3,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)       , 'USE_EXCESS_MD:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 8.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 4.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 4.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
@@ -299,6 +299,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
+    real, pointer, dimension(:,:,:) :: NACTL
     real, pointer, dimension(:,:,:) :: CNV_TR ! tracer memory
 
     ! Imports
@@ -377,6 +378,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)  
     call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)  
     call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_GetPointer(INTERNAL, NACTL,  'NACTL'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
     ! Imports
     call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
@@ -567,7 +569,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ! PLE and PL are passed in Pa
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
-                                 ,T, TH, Q, U, V, TMP3D, BYNCY, (QLCN+QLLS), (QICN+QILS), CNPCPRATE &
+                                 ,T, TH, Q, U, V, TMP3D, BYNCY, (QLCN+QLLS), (QICN+QILS) &
+                                 ,NACTL, CNPCPRATE &
                                  ,CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM      &
                                  ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, (CLCN+CLLS)    &
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &

@@ -184,7 +184,7 @@ CONTAINS
   SUBROUTINE GF2020_INTERFACE(  mxp,myp,mzp,LONS,LATS,DT_MOIST                    &
                                ,PLE, PLO, ZLE, ZLO, PK, MASS, KH                  &
                                ,T1, TH1, Q1, U1,V1,W1,BYNCY,QLIQ,QICE             &
-                               ,CNPCPRATE                                         &
+                               ,NACTL,CNPCPRATE                                   &
                                ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQCDT ,ENTLAM     &
                                ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, QCLD          &
                                ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
@@ -214,7 +214,7 @@ CONTAINS
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: ZLO, PLO, PK, MASS, KH,       &
                                                       T1,TH1,Q1,U1,V1,W1,BYNCY,QLIQ,QICE, &
-                                                      QCLD
+                                                      QCLD,NACTL
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE_DYN_IN
 
@@ -275,7 +275,8 @@ CONTAINS
                                         ,ec3d     &
                                         ,curr_rvap&
                                         ,buoy_exc &
-                                        ,khloc
+                                        ,khloc    &
+                                        ,ccn_in
 
 
 
@@ -515,6 +516,16 @@ CONTAINS
     !- any var with index "1" (and w and pk) are already updated with dynamics
     !  tendencies and everything else (from physics) that was called before moist
     !
+    DO j=1,myp
+     DO i=1,mxp
+      DO k=1,mzp
+        ! Use liquid-phase CCN for all temperatures
+        ! The GF scheme will reduce its importance in cold clouds via cbf
+        ccn_in(k,i,j) = NACTL(i,j,flip(k))*1.e-6 ! #/m^3 to #/cm^3
+        ccn_in(k,i,j) = MAX(100., MIN(5000., ccn_in(k,i,j))) ! limit
+      ENDDO
+     ENDDO
+    ENDDO
     IF(trim(GF_ENV_SETTING)=='CURRENT') then
      !- 1st setting: enviromental state is the one already modified by dyn + physics
      DZ      = -( ZLE(:,:,1:mzp) - ZLE(:,:,0:mzp-1) )
@@ -681,6 +692,7 @@ CONTAINS
                      ,mp_ice      &
                      ,mp_liq      &
                      ,mp_cf       &
+                     ,ccn_in      &
                      ,curr_rvap   &
                      !---- forcings---
                      ,buoy_exc    &
@@ -1013,6 +1025,7 @@ CONTAINS
               ,mp_ice                &
               ,mp_liq                &
               ,mp_cf                 &
+              ,ccn_in                &
               ,curr_rvap             &
 
               !---- forcings---
@@ -1092,7 +1105,8 @@ CONTAINS
                                                           press,     &
                                                           dm,        &
                                                           curr_rvap, &
-                                                          buoy_exc
+                                                          buoy_exc,  &
+                                                          ccn_in
 
    INTEGER, DIMENSION(its:ite,jts:jte), INTENT(IN) :: kpbl
    REAL,    DIMENSION(its:ite,jts:jte), INTENT(IN) :: cnvfrc, srftype
@@ -1201,7 +1215,7 @@ CONTAINS
     REAL,   DIMENSION (nmp,its:ite,kts:kte)         :: mpqi,mpql,mpcf
     REAL,   DIMENSION (nmp,its:ite,kts:kte,maxiens) :: outmpqi,outmpql,outmpcf
 
-    REAL,   DIMENSION (its:ite)   :: ter11, xlandi,pbl,zws,ccn,psur &
+    REAL,   DIMENSION (its:ite)   :: ter11, xlandi,pbl,zws,psur &
                                     ,ztexec,zqexec,h_sfc_flux,le_sfc_flux,tsur&
                                     ,xlons,xlats,fixout_qv,cum_ztexec,cum_zqexec
 
@@ -1294,15 +1308,15 @@ CONTAINS
          out_chem = 0.0
      ENDIF
      !
-     IF(autoconv == 2) THEN
-      DO I= its,itf
-             ccn(i) = max( 100., ( 370.37*(0.01+MAX(0.,aot500(i,j))))**1.555 )
-      ENDDO
-     ELSE
-      DO I= its,itf
-             ccn(i) = 100.
-      ENDDO
-     ENDIF
+     !IF(autoconv == 2) THEN
+     ! DO I= its,itf
+     !        ccn(i) = max( 100., ( 370.37*(0.01+MAX(0.,aot500(i,j))))**1.555 )
+     ! ENDDO
+     !ELSE
+     ! DO I= its,itf
+     !        ccn(i) = 100.
+     ! ENDDO
+     !ENDIF
 
      DO i=its,itf
 
@@ -1506,7 +1520,7 @@ CONTAINS
                   ,kpbli                            &
                   ,cum_ztexec                       &
                   ,cum_zqexec                       &
-                  ,ccn                              &
+                  ,ccn_in(:,:,j)                    &
                   ,rhoi                             &
                   ,omeg                             &
                   ,temp_old                         &
@@ -1759,7 +1773,7 @@ loop1:  do n=1,maxiens
                      ,kpbl              &
                      ,ztexec            &
                      ,zqexec            &
-                     ,ccn               &
+                     ,ccn_in            &
                      ,rho               &
                      ,omeg              &
                      ,t                 &
@@ -1872,6 +1886,8 @@ loop1:  do n=1,maxiens
   ! convection for this call only and at that particular gridpoint
   !
      REAL,    DIMENSION (kts:kte,its:ite)       ,INTENT (IN      )    ::   &
+        ccn_in
+     REAL,    DIMENSION (kts:kte,its:ite)       ,INTENT (IN      )    ::   &
         entr_c
      REAL,    DIMENSION (its:ite,kts:kte)       ,INTENT (INOUT   )    ::   &
         dhdt,rho,t,po,us,vs,ws,tn,dm2d,buoy_exc,tn_bl,tn_adv
@@ -1880,7 +1896,7 @@ loop1:  do n=1,maxiens
      REAL,    DIMENSION (its:ite,kts:kte)       ,INTENT (INOUT)    ::   &
          q,qo,Tpert,qo_bl,qo_adv
      REAL,    DIMENSION (its:ite)               ,INTENT (INOUT   )    ::   &
-        ccn,Z1,PSUR,xland,xlons,xlats, h_sfc_flux,le_sfc_flux,tsur,dx
+        Z1,PSUR,xland,xlons,xlats, h_sfc_flux,le_sfc_flux,tsur,dx
 
      REAL,    DIMENSION (its:ite)               ,INTENT (IN   )    ::   &
         col_sat,&
@@ -2790,8 +2806,8 @@ loop0:       do k=kts,ktf
 !
 !--- calculate moisture properties of updraft
      call cup_up_moisture(cumulus,start_level,klcl,ierr,ierrc,zo_cup,qco,qrco,pwo,pwavo,hco,tempco,xland   &
-                         ,cnvfrc,srftype,po,p_cup,kbcon,ktop,cd,dbyo,clw_all,t_cup,qo,GAMMAo_cup,zuo,qeso_cup &
-                         ,k22,qo_cup,ZQEXEC,use_excess,ccn,rho,up_massentr,up_massdetr,psum    &
+                         ,ccn_in,cnvfrc,srftype,po,p_cup,kbcon,ktop,cd,dbyo,clw_all,t_cup,qo,GAMMAo_cup,zuo,qeso_cup &
+                         ,k22,qo_cup,ZQEXEC,use_excess,rho,up_massentr,up_massdetr,psum    &
                          ,psumh,c1d,x_add_buoy,vvel2d,vvel1d,zws,entr_rate                  &
                          ,1,itf,ktf,ipr,jpr,its,ite, kts,kte                                   )
 
@@ -3383,7 +3399,7 @@ ENDIF
 !--- DETERMINE DOWNDRAFT STRENGTH IN TERMS OF WINDSHEAR
 !
       call cup_dd_edt(cumulus,ierr,us,vs,zo,ktop,kbcon,edt,po,pwavo, &
-                      pwo,ccn,pwevo,edtmax,edtmin,maxens2,edtc,psum,psumh, &
+                      pwo,ccn_in,pwevo,edtmax,edtmin,maxens2,edtc,psum,psumh, &
                       rho,aeroevap,itf,ktf,ipr,jpr,its,ite, kts,kte)
 
      do iedt=1,maxens2
@@ -4756,12 +4772,15 @@ ENDIF !- end of section for atmospheric composition
   !
   ! ierr error value, maybe modified in this routine
   !
-     real,    dimension (its:ite,kts:kte)                              &
+   real,    dimension (kts:kte,its:ite)                                &
+        ,intent (in   )                   ::                           &
+        ccn  
+   real,    dimension (its:ite,kts:kte)                                &
         ,intent (in   )                   ::                           &
         rho,us,vs,z,p,pw
      real,    dimension (its:ite)                                      &
         ,intent (in   )                   ::                           &
-        pwav,pwev,ccn,psum2,psumh,edtmax,edtmin
+        pwav,pwev,psum2,psumh,edtmax,edtmin
      integer, dimension (its:ite)                                      &
         ,intent (in   )                   ::                           &
         ktop,kbcon
@@ -4833,8 +4852,8 @@ ENDIF !- end of section for atmospheric composition
               !if(i.eq.ipr)write(0,*)'edt',ccnclean,psumh(i),aeroadd
               !prop_c=.9/aeroadd
                prop_c=.5*(pefb+pef)/aeroadd
-               aeroadd=(ccn(i)**beta3)*((psum2(i))**(alpha3-1)) !*1.e6
-              !if(i.eq.ipr)write(0,*)'edt',ccn(i),psum2(i),aeroadd,prop_c
+               aeroadd=(ccn(kbcon(i),i)**beta3)*((psum2(i))**(alpha3-1)) !*1.e6
+              !if(i.eq.ipr)write(0,*)'edt',ccn(kbcon(i),i),psum2(i),aeroadd,prop_c
                aeroadd=prop_c*aeroadd
                pefc=aeroadd
                if(pefc.gt.0.9)pefc=0.9
@@ -5624,9 +5643,9 @@ ENDIF !- end of section for atmospheric composition
 !------------------------------------------------------------------------------------
 
    SUBROUTINE cup_up_moisture(name,start_level,klcl,ierr,ierrc,z_cup,qc,qrc,pw,pwav,hc,tempc,xland,&
-                                  cnvfrc,srftype,po,p_cup,kbcon,ktop,cd,dby,clw_all,                  &
+                                  ccn,cnvfrc,srftype,po,p_cup,kbcon,ktop,cd,dby,clw_all,                  &
                                   t_cup,q,gamma_cup,zu,qes_cup,k22,qe_cup,            &
-                                  zqexec,use_excess,ccn,rho,                          &
+                                  zqexec,use_excess,rho,                          &
                                   up_massentr,up_massdetr,psum,psumh,c1d,x_add_buoy,  &
                                   vvel2d,vvel1d,zws,entr_rate,                          &
                                   itest,itf,ktf,ipr,jpr,its,ite, kts,kte                  )
@@ -5656,9 +5675,10 @@ ENDIF !- end of section for atmospheric composition
                                                        ,qe_cup,hc,po,up_massentr,up_massdetr &
                                                        ,dby,qes_cup,z_cup,cd,c1d
 
+     real,  dimension (kts:kte,its:ite),intent (in) ::  ccn
      real,  dimension (its:ite)        ,intent (in) ::  cnvfrc,srftype
      real,  dimension (its:ite)        ,intent (in) ::  zqexec,xland,x_add_buoy
-     real,  dimension (its:ite)        ,intent (in) ::  zws,ccn
+     real,  dimension (its:ite)        ,intent (in) ::  zws
      real,  dimension (its:ite,kts:kte),intent (in) ::  entr_rate
      real,  dimension (its:ite,kts:kte),intent (in) ::  vvel2d
      real,  dimension (its:ite        ),intent (in) ::  vvel1d
@@ -5685,7 +5705,11 @@ ENDIF !- end of section for atmospheric composition
      real                                 ::                           &
         dp,rhoc,dh,qrch,c0,dz,radius,berryc0,q1,berryc
      real :: qaver,denom,aux,cx0,qrci,step,cbf,qrc_crit_BF,min_liq,qavail
+     real :: ccn_ref,ccn_rate_factor,min_liq_base,ccn_eff,ccn_thresh_factor
+     real :: beta_ccn,alpha_ccn
      real delt,tem1,cup
+     ! BUG FIX: Add variables for option 4
+     real :: activation, cx0_base, vvel_eff, qrc_new
 
         !--- no precip for small clouds
         if(name.eq.'shallow')  c0 = c0_shal
@@ -5784,44 +5808,103 @@ ENDIF !- end of section for atmospheric composition
               ! this is similar to AUTOCONV == 1 with temperature dependence
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 cx0     = (c1d(i,k)+c0)*DZ*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i))
-                qrc(i,k)= clw_all(i,k)/(1.+cx0) 
+                qrc(i,k)= clw_all(i,k)/(1.+cx0)
                 pw (i,k)= cx0*max(0.,qrc(i,k) - min_liq)! units kg[rain]/kg[air]
                 !--- convert PW to normalized PW
                 pw (i,k)=pw(i,k)*zu(i,k)
 
             ELSEIF (AUTOCONV == 3 ) then
-                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
-                if(clw_all(i,k) <= min_liq) then
-                   qrc(i,k)= clw_all(i,k)
-                   pw(i,k) = 0.
-                else
-                   cx0     = c0*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i))
-                   cx0     = max(cx0,0.50*c0)
-                   qrc(i,k)= qrc(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
-                   qrc(i,k)= min(clw_all(i,k), qrc(i,k))
-                   pw (i,k)= clw_all(i,k) - qrc(i,k)
-                  !--- convert pw to normalized pw
-                   pw (i,k)= pw(i,k)*zu(i,k)
-                endif
+                ! this is similar to AUTOCONV == 2 with CCN dependence
+                !------------------------------------------------------------
+                ! 1. Base land/ocean autoconversion threshold
+                !------------------------------------------------------------
+                min_liq_base = xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd
+                !------------------------------------------------------------
+                ! 2. CCN dependence (tuned for tropical maritime)
+                !------------------------------------------------------------
+                ccn_ref   = 100.0            ! maritime reference concentration
+                ccn_eff   = max(50.0, ccn(k,i))
+                alpha_ccn = 0.4              ! mild threshold sensitivity
+                beta_ccn  = 0.8              ! strong efficiency suppression
+                ccn_thresh_factor = (ccn_eff/ccn_ref)**alpha_ccn
+                ccn_thresh_factor = max(0.5, min(5.0, ccn_thresh_factor))
+                min_liq = min_liq_base * ccn_thresh_factor
+                !------------------------------------------------------------
+                ! 3. Reduce warm-rain conversion efficiency
+                !------------------------------------------------------------
+                cx0 = (c1d(i,k)+c0)*DZ*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i))
+                ! Suppress precipitation efficiency at high CCN
+                cx0 = cx0 / (1.0 + beta_ccn*(ccn_eff/ccn_ref))
+                !------------------------------------------------------------
+                ! 4. Compute rain production
+                !------------------------------------------------------------
+                qrc(i,k) = clw_all(i,k)/(1.0 + cx0)
+                pw(i,k)  = cx0*max(0.0, qrc(i,k) - min_liq)
+                ! Normalize
+                pw(i,k)  = pw(i,k)*zu(i,k)
 
             ELSEIF (AUTOCONV == 4 ) then
-                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
-                if(clw_all(i,k) <= min_liq) then
-                   qrc(i,k)= clw_all(i,k)
-                   pw(i,k) = 0.
+                !-----------------------------------------------------------------------
+                ! this is similar to AUTOCONV == 3 with VVEL dependence & analytic solution
+                !-----------------------------------------------------------------------
+                ! Base land/ocean threshold
+                min_liq_base = xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd
+                ! Reference CCN
+                ccn_ref = 100.
+                ccn_eff = max(50., ccn(k,i))
+                !-----------------------------------------------------------------------
+                ! 1) CCN-dependent threshold increase
+                !-----------------------------------------------------------------------
+                ccn_thresh_factor = (ccn_eff/ccn_ref)**(0.33)
+                ccn_thresh_factor = max(0.5, min(2.0, ccn_thresh_factor))
+                qrc_crit_BF = min_liq_base * ccn_thresh_factor
+                qrc_crit_BF = max(qrc_crit_BF, 1.e-5)
+                qrc_crit_BF = min(qrc_crit_BF, 5.e-3)
+                !-----------------------------------------------------------------------
+                ! Threshold check (mass conservation safe)
+                !-----------------------------------------------------------------------
+                if (clw_all(i,k) <= qrc_crit_BF) then
+                   qrc(i,k) = clw_all(i,k)
+                   pw(i,k)  = 0.
                 else
-                  tem1 = fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i))
-                  cbf  = 1.
-                  if(tempc(i,k) < T_BF) cbf=1.+0.5*sqrt(min(max(T_BF-tempc(i,k),0.),T_BF-T_ice_BF))
-                  qrc_crit_BF = ccn(i)/cbf
-                  cx0 = c0*cbf*(tem1*1.3+(1.-tem1))/(0.75*min(15.,max(vvel2d(i,k),1.)))
-                  !---analytical solution
-                  cx0     = cx0* (1.- exp(- (qrc(i,k)/qrc_crit_BF)**2))
-                  qrc(i,k)= qrc(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
-                  !---
-                  pw (i,k)= max(clw_all(i,k) - qrc(i,k),0.)
-                  !--- convert PW to normalized PW
-                  pw (i,k)= pw(i,k)*zu(i,k)
+                   !--------------------------------------------------------------------
+                   ! Phase partition factor
+                   !--------------------------------------------------------------------
+                   tem1 = fract_liq_f(tempc(i,k), cnvfrc(i), srftype(i))
+                   cbf  = 1.
+                   if (tempc(i,k) < T_BF) then
+                      cbf = 1. + 0.5 * sqrt(min(max(T_BF-tempc(i,k),0.), &
+                                               T_BF-T_ice_BF))
+                   endif
+                   !--------------------------------------------------------------------
+                   ! VVEL dependence (bounded)
+                   ! Strong updraft -> slower rain formation
+                   !--------------------------------------------------------------------
+                   vvel_eff = max(vvel2d(i,k), 1.)
+                   vvel_eff = min(vvel_eff, 15.)
+                   cx0_base = c0 * cbf * (tem1*1.3 + (1.-tem1)) / &
+                              (0.75 * vvel_eff)
+                   !--------------------------------------------------------------------
+                   ! 2) CCN-dependent rate suppression
+                   !--------------------------------------------------------------------
+                   ccn_rate_factor = (ccn_eff/ccn_ref)**(-0.5)
+                   ccn_rate_factor = max(0.3, min(2.5, ccn_rate_factor))
+                   cx0_base = cx0_base * ccn_rate_factor
+                   !--------------------------------------------------------------------
+                   ! Smooth activation based on CCN-modified threshold
+                   !--------------------------------------------------------------------
+                   activation = 1. - exp(-(clw_all(i,k)/qrc_crit_BF)**2)
+                   cx0 = max(cx0_base * activation, 1.e-6)
+                   !--------------------------------------------------------------------
+                   ! Analytical solution
+                   !--------------------------------------------------------------------
+                   qrc_new = clw_all(i,k)*exp(-cx0*dz) + &
+                             (cup/cx0)*(1.-exp(-cx0*dz))
+                   qrc(i,k) = min(clw_all(i,k), qrc_new)
+                   ! Mass-conserving precipitation
+                   pw(i,k)  = clw_all(i,k) - qrc(i,k)
+                   ! Convert pw to normalized precipitation
+                   pw(i,k)  = pw(i,k) * zu(i,k)
                 endif
 
             ELSEIF (AUTOCONV == 5 ) then
@@ -5831,7 +5914,10 @@ ENDIF !- end of section for atmospheric composition
                    pw(i,k) = 0.
                 else
                    cx0     = (c1d(i,k)+c0)*(1.+ 0.33*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i)))
-                   qrc(i,k)= qrc(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
+                   ! BUG FIX: Protect against divide-by-zero
+                   cx0 = max(cx0, 1.e-6)
+                   ! BUG FIX: Use clw_all instead of self-referential qrc
+                   qrc(i,k)= clw_all(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
                    pw (i,k)= max(0.,clw_all(i,k)-qrc(i,k)) ! units kg[rain]/kg[air]
                    qrc(i,k)= clw_all(i,k)-pw(i,k)
                   !--- convert pw to normalized pw
@@ -5858,7 +5944,10 @@ ENDIF !- end of section for atmospheric composition
                    pw(i,k) = 0.
                 else
                    cx0     = c1d(i,k)+c0
-                   qrc(i,k)= qrc(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
+                   ! BUG FIX: Protect against divide-by-zero
+                   cx0 = max(cx0, 1.e-6)
+                   ! BUG FIX: Use clw_all instead of self-referential qrc
+                   qrc(i,k)= clw_all(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
                    pw (i,k)= max(clw_all(i,k) - qrc(i,k),0.)
                    qrc(i,k)= clw_all(i,k) - pw (i,k)
                   !--- convert pw to normalized pw
