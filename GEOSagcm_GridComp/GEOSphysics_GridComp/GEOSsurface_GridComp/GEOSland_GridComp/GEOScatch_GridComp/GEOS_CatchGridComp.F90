@@ -1186,7 +1186,7 @@ subroutine SetServices ( GC, RC )
     FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired       ,&
+    RESTART            = MAPL_RestartSkip       ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)  
 
