@@ -2403,7 +2403,7 @@ contains
 
     allocate( TDPOLD(IM,JM,LM),stat=STATUS )
     VERIFY_(STATUS)
-    TDPOLD = T(:,:,1:LM) * DPI
+    TDPOLD = T(:,:,1:LM) / DPI  ! Bug Fix, needs to T * DP
 
    ! Create Old Dry Mass Variables
    ! -----------------------------
@@ -3228,7 +3228,7 @@ contains
     do L=1,LM
        TDPNEW(:,:,L) = ( T(:,:,L) + DT*DTDT(:,:,L)*DPI(:,:,L) ) * ( PLE(:,:,L)-PLE(:,:,L-1) + DT*(DPDT(:,:,L)-DPDT(:,:,L-1)) )
     enddo
-!!!!!  DTDT = ( TDPNEW - TDPOLD )/DT
+    DTDT = ( TDPNEW - TDPOLD )/DT
     deallocate( TDPNEW )
     deallocate( TDPOLD )
 
