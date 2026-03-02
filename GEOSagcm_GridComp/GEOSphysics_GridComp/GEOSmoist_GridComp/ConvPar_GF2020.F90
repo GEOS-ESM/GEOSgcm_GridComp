@@ -3120,14 +3120,12 @@ loop0:       do k=kts,ktf
           ! cloud depth (H)
             dz = max(z_cup(i,ktop(i))-z_cup(i,kbcon(i)),1.e-16)
           ! time-scale cape removal from Bechtold et al. 2008
-            tau_0 = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)
-          ! prefered time-scale for increasing resolution
-            tau_1 = tau_deep*(1.0-sig(i))
-          ! Combine
-            tau_ecmwf(i)= tau_0 + tau_1*(1.0-cnvfrc(i))
-          ! Limit
-            if(trim(cumulus)=='deep') tau_ecmwf(i)= max(tau_mid,min(tau_ecmwf(i),tau_deep))
-            if(trim(cumulus)=='mid' ) tau_ecmwf(i)= max(dtime  ,min(tau_ecmwf(i),tau_mid))
+            tau_ecmwf(i) = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)
+          ! Upper limit
+            if(trim(cumulus)=='deep') tau_ecmwf(i)= min(tau_ecmwf(i),tau_deep)
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i)= min(tau_ecmwf(i),tau_mid)
+          ! Lower limit
+            tau_ecmwf(i) = max(tau_ecmwf(i), 900., dtime)
          ENDDO
       ENDIF
       DO i=its,itf
@@ -5827,7 +5825,7 @@ ENDIF !- end of section for atmospheric composition
                 alpha_ccn = 0.4              ! mild threshold sensitivity
                 beta_ccn  = 0.8              ! strong efficiency suppression
                 ccn_thresh_factor = (ccn_eff/ccn_ref)**alpha_ccn
-                ccn_thresh_factor = max(0.5, min(5.0, ccn_thresh_factor))
+                ccn_thresh_factor = max(0.5, min(4.0, ccn_thresh_factor))
                 min_liq = min_liq_base * ccn_thresh_factor
                 !------------------------------------------------------------
                 ! 3. Reduce warm-rain conversion efficiency
@@ -8629,6 +8627,8 @@ loop0:  do k= kbcon(i),ktop(i)
           enddo
           !- 'ensemble' average mass flux
           xmb_ave(i)=xmb_ave(i)/float(k)
+          !- use cnvfrc as a mass flux adjusment
+          xmb_ave(i)=xmb_ave(i)*cnvfrc(i)
          endif
         ENDDO
 
@@ -8638,10 +8638,12 @@ loop0:  do k= kbcon(i),ktop(i)
              do i=its,itf
               if(ierr(i) /= 0) cycle
               if(ichoice == 0) then
-                 xmb_ave(i)=0.3333*(xff_mid(i,1)+xff_mid(i,2)+xff_mid(i,3))
+                 xmb_ave(i)=(xff_mid(i,1)+xff_mid(i,2)+xff_mid(i,3))/3.0
               else
                  xmb_ave(i)= xff_mid(i,ichoice)
               endif
+              !- use cnvfrc as a mass flux adjusment
+              xmb_ave(i)=xmb_ave(i)*cnvfrc(i)
              enddo
          else
              stop 'For mid ichoice must be 0,..,5'
