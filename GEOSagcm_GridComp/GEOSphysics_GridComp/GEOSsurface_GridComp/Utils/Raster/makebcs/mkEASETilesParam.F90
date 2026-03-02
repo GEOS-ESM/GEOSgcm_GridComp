@@ -986,7 +986,7 @@ PROGRAM mkEASETilesParam
   call EASE_get_pfaf_subarea('til/'//trim(EASELabel)//'_tile2pfaf.nc4', MAKE_BCS_INPUT_DIR, EASELabel, gfile)
  
   ! rasterize ease grid. Later on combining land raster
-  call mkEASEv2Raster(EASELabel, nc, nr)
+  !call mkEASEv2Raster(EASELabel, nc, nr)
  
   ! Commented out "empty" if-block. -rreichle, 15 Jun 2023
   !

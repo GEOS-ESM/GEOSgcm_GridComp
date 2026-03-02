@@ -8,9 +8,10 @@ from make_bcs_shared  import *
 
 ease_template = """
 
-bin/mkEASETilesParam.x -ease_label {GRIDNAME} 
+bin/mkEASERaster.x -x {NX} -y {NY} -g {GRIDNAME} >/dev/null
 bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
 bin/CombineRasters.x -t {NT} {GRIDNAME} Pfafstetter >/dev/null
+bin/mkEASETilesParam.x -ease_label {GRIDNAME} 
 setenv OMP_NUM_THREADS {NCPUS}
 bin/mkCatchParam.x -g {GRIDNAME} -v {lbcsv} -x {NX} -y {NY}
 setenv OMP_NUM_THREADS 1

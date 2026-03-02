@@ -278,7 +278,7 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 
 #define LINE_FORMAT     '(I10,3E20.12,9(2I10,E20.12,I10))'
 #define LINE_VARIABLES  iTable(0,k),area,xc,yc, (ii(l),jj(l),fr(l),kk(l),l=1,ng)       ! for *land* tiles, ii(2) = index of Pfafstetter catchment
-#define EASE_VARIABLES  iTable(0,k),area,xc,yc, (ii(l)-1,jj(l)-1,fr(l),kk(l),l=1,ng)   ! for *land* tiles, ii(2) = index of Pfafstetter catchment
+#define EASE_VARIABLES  iTable(0,k),area,xc,yc, ii(1)-1,jj(1)-1,fr(1),kk(1),ii(2),jj(2),fr(2),kk(2) ! 0-based for the first EASE grid
  
   garea = 0.0
   ctg   = 0.0
