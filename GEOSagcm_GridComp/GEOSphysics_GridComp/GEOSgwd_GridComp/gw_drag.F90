@@ -153,6 +153,10 @@ contains
     real    :: cw (-pgwv:pgwv)      ! wave phase speeds
     real    :: cw4(-pgwv:pgwv)      ! wave phase speeds
 
+    integer :: MLT_lev(8:pver)     ! Modify the gravity wave parameterization to cut off at ~90km for GEOS-MLT
+!  integer :: plev_index           ! variable to determine number of levels for GEOS-MLT
+
+    
 !-----------------------------------------------------------------------------
 
 ! Assign wave phase speeds
