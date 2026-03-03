@@ -1458,7 +1458,6 @@ CONTAINS
        max_edt_ocean  =  cum_max_edt_ocean  (plume)
        fadj_massflx   =  cum_fadj_massflx   (plume)
        use_excess     =  cum_use_excess     (plume)
-       ave_layer      =  cum_ave_layer      (plume)
        !print*,"plume=",plume,shal,mid,deep
 
        IF(icumulus_gf(plume) /= ON ) cycle
@@ -8627,8 +8626,6 @@ loop0:  do k= kbcon(i),ktop(i)
           enddo
           !- 'ensemble' average mass flux
           xmb_ave(i)=xmb_ave(i)/float(k)
-          !- use cnvfrc as a mass flux adjusment
-          xmb_ave(i)=xmb_ave(i)*cnvfrc(i)
          endif
         ENDDO
 
@@ -8642,8 +8639,6 @@ loop0:  do k= kbcon(i),ktop(i)
               else
                  xmb_ave(i)= xff_mid(i,ichoice)
               endif
-              !- use cnvfrc as a mass flux adjusment
-              xmb_ave(i)=xmb_ave(i)*cnvfrc(i)
              enddo
          else
              stop 'For mid ichoice must be 0,..,5'
@@ -8679,8 +8674,24 @@ loop0:  do k= kbcon(i),ktop(i)
           !- mass flux of updradt at cloud base
           xmb(i) = xmb_ave(i)
 
-          !- apply the adjust factor for tunning
-          xmb(i) = FADJ_MASSFLX * xmb(i)
+          !=====================================================================
+          ! Combined tuning factor and CAPE-based scaling
+          !
+          ! FADJ_MASSFLX: Model tuning parameter (typically 0.8-1.2)
+          ! cnvfrc:       CAPE-based scaling (0=low CAPE, 1=high CAPE)
+          !
+          ! Blend formula: scale = FADJ_MASSFLX + (1-FADJ_MASSFLX)*cnvfrc
+          !
+          ! Effect:
+          !   - At low CAPE (cnvfrc=0):  scale = FADJ_MASSFLX (e.g., 0.8)
+          !   - At high CAPE (cnvfrc=1): scale = 1.0 (no tuning applied)
+          !   - At mid CAPE (cnvfrc=0.5): scale = (FADJ_MASSFLX + 1.0)/2
+          !
+          ! This allows FADJ_MASSFLX to control the minimum mass flux while
+          ! letting high-CAPE convection reach full strength.
+          !=====================================================================
+          xmb(i) = xmb(i) * (FADJ_MASSFLX + (1.0 - FADJ_MASSFLX) * cnvfrc(i))
+          !=====================================================================
 
           !- add uplift by cold pools
           !if(name == 'deep')  xmb(i) = xmb(i) + xmbdn(i)
