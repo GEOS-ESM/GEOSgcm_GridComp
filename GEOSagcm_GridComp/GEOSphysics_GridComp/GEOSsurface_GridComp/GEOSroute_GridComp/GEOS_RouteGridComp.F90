@@ -583,20 +583,23 @@ contains
       type(ESMF_Grid),   intent(in)  :: pfaf_tilegrid
       integer, optional, intent(out) :: rc
 
-      integer :: status, nWeights, nLocal_weights
+      integer :: status, nWeights, nLocal_weights,type,dumi,nx,ny,xi,yi,catid_temp
+      real    :: dumr,area_temp
+      integer :: fillvalue=-9999
       integer, allocatable :: global_id(:)
       logical, allocatable :: mask(:)
-      integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:)
+      integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:),map_tile(:,:)
       real,    allocatable :: weights(:), global_frac(:), global_area(:)
       integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:)
       real,    allocatable :: areacat_glob(:)
-      integer :: unit,ii,dst
+      integer :: unit,ii,dst,np,kk,nn
       integer, pointer :: pfaf_index(:), local_id(:)
-      real   , pointer :: tilearea(:),frac_tot(:),fscale(:)
+      real   , pointer :: tilearea(:),frac_tot(:),fscale(:),area_patch(:)
+      integer, pointer :: catid_patch(:),tid_patch(:)
       type(Netcdf4_Fileformatter) :: formatter
       type(Filemetadata)          :: meta
       character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
-      character(len=ESMF_MAXSTR)     :: tile_pfaf_file
+      character(len=ESMF_MAXSTR)     :: tile_pfaf_file, tile_file
 
       ! create source for orignal tile space
       route%field_src = ESMF_FieldCreate(grid=tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
@@ -609,27 +612,61 @@ contains
       allocate(global_id(route%nt_global))
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
-      nWeights = route%nt_global
-
       if (index(GNAMES(1), 'EASEv') /=0) then
-
-         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'TILE2PFAF_FILE:',  default = '../input/tile2pfaf.nc4', RC=STATUS ) 
+         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'TILE2PFAF_FILE:',  default = '../input/route_tile.data', RC=STATUS ) 
+         call MAPL_GetResource (MAPL, tile_file,      label = 'TILING_FILE:',     default = '../input/tile.data',       RC=STATUS )          
          if (MAPL_AM_I_ROOT()) then
-            call formatter%open(tile_pfaf_file, PFIO_READ, _RC)
-            meta     = formatter%read(rc=status)
-            nWeights = meta%get_dimension('tile')
+            open (15,file = trim(tile_file) ,form ='formatted', action ='read', status ='old')
+            read(15,*)np
+            do ii=1,2
+               read(15,*)
+            enddo
+            read(15,*)nx
+            read(15,*)ny
+            allocate(map_tile(nx,ny),source=fillvalue)
+            nn=0
+            do ii=1,np
+               read(15,*)type,dumi,dumr,dumr,xi,yi
+               if(type==100)then
+                 nn=nn+1
+                 map_tile(xi+1,yi+1)=nn
+               endif
+            enddo
+            close(15)
+            open (15,file = trim(tile_pfaf_file) ,form ='formatted', action ='read', status ='old')
+            read(15,*) np
+            allocate(area_patch(np),catid_patch(np),tid_patch(np))
+            do ii=1,7
+               read(15,*)
+            enddo
+            kk=0
+            do ii=1,np
+               read(15,*)type,area_temp,dumr,dumr,xi,yi,dumr,dumi,catid_temp
+               if(type==100)then
+                  if(1<=map_tile(xi+1,ny-yi).and.map_tile(xi+1,ny-yi)<=nn)then
+                    kk=kk+1
+                    tid_patch(kk)=map_tile(xi+1,ny-yi)
+                    area_patch(kk)=area_temp
+                    catid_patch(kk)=catid_temp
+                  endif
+               endif
+            enddo 
+            nWeights=kk
+            close(15)
          endif
          call MAPL_CommsBcast(layout, nWeights, 1, MAPL_Root, status)
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          if (MAPL_AM_I_ROOT()) then
-            call formatter%get_var('tile_id',    global_src,  _RC)
-            call formatter%get_var('pfaf_index', global_dst,  _RC)
-            call formatter%get_var('subtile_area',  global_area, _RC)
+            global_src=tid_patch(1:nWeights)
+            global_dst=catid_patch(1:nWeights)
+            global_area=area_patch(1:nWeights)*MAPL_RADIUS**2
+            deallocate(map_tile,area_patch,catid_patch,tid_patch)
          endif
          call MAPL_CommsBcast(layout, global_src, nWeights, MAPL_Root, status)
          call MAPL_CommsBcast(layout, global_dst, nWeights, MAPL_Root, status)
          call MAPL_CommsBcast(layout, global_area,nWeights, MAPL_Root, status)
       else
+         nWeights = route%nt_global
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          global_src = global_id
          call ESMFL_Fcollect(tilegrid, global_dst, pfaf_index, _RC)
