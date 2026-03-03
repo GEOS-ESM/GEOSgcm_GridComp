@@ -575,7 +575,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     endif
     CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR2D)) PTR2D = SEEDCNV
-    if(associated(PTR2D)) PRINT *, "PTR2D associated"
 
     ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
     if (GF_MIN_AREA > 0) then
