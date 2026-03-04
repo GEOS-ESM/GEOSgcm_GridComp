@@ -5266,6 +5266,7 @@ contains
     real, allocatable, dimension(:,:,:,:) :: aero_f_dust_, aero_f_soot_, aero_f_organic_
     real, allocatable, dimension(:,:,:,:) :: aero_hygroscopicity_
     integer                               :: n_modes = 0
+    !$ser verbatim integer :: ser_tracer_index, ser_miscellaneous_index
 
 #ifdef PYMOIST_INTEGRATION
     integer                               :: NX, NY
@@ -5525,6 +5526,48 @@ contains
        ! Extract convective tracers from the TR bundle
        call MAPL_TimerOn (MAPL,"---CONV_TRACERS")
        call CNV_Tracers_Init(TR, RC)
+       !$ser savepoint ConvectionTracers
+       !$ser verbatim call ser_set_Dx(size(CNV_Tracers),IM,JM,LM)
+       !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+          !$ser verbatim do I=1,IM
+               !$ser verbatim do J=1,JM
+                    !$ser verbatim do L=1,LM
+                         !$ser verbatim call ser_set_indices(ser_tracer_index,I,J,L)
+                         !$ser data_buffered Dx=4 tracers=CNV_Tracers(ser_tracer_index)%Q(I,J,L)
+                    !$ser verbatim enddo
+               !$ser verbatim enddo
+          !$ser verbatim enddo
+       !$ser verbatim enddo
+       !$ser verbatim call ser_set_Dx(size(CNV_Tracers),4,1,1)
+       !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+          !$ser verbatim do ser_miscellaneous_index=1,4
+               !$ser verbatim call ser_set_indices(ser_tracer_index,ser_miscellaneous_index,1,1)
+               !$ser data_buffered Dx=2 vect_hcts=CNV_Tracers(ser_tracer_index)%vect_hcts(ser_miscellaneous_index)
+          !$ser verbatim enddo
+       !$ser verbatim enddo
+       !$ser verbatim call ser_set_Dx(size(CNV_Tracers),3,1,1)
+       !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+          !$ser verbatim do ser_miscellaneous_index=1,3
+               !$ser verbatim call ser_set_indices(ser_tracer_index,ser_miscellaneous_index,1,1)
+               !$ser data_buffered Dx=2 kc_scal=CNV_Tracers(ser_tracer_index)%kcscal(ser_miscellaneous_index)
+          !$ser verbatim enddo
+       !$ser verbatim enddo
+       !$ser verbatim call ser_set_Dx(size(CNV_Tracers),1,1,1)
+       !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+          !$ser verbatim call ser_set_D2(1)
+          !$ser verbatim call ser_set_indices(ser_tracer_index,1,1,1)
+          !$ser data_buffered Dx=1 fscav=CNV_Tracers(ser_tracer_index)%fscav
+          !$ser data_buffered Dx=1 convfaci2g=CNV_Tracers(ser_tracer_index)%convfaci2g
+          !$ser data_buffered Dx=1 retfactor=CNV_Tracers(ser_tracer_index)%retfactor
+          !$ser data_buffered Dx=1 liq_and_gas=CNV_Tracers(ser_tracer_index)%liq_and_gas
+          !$ser data_buffered Dx=1 online_cldliq=CNV_Tracers(ser_tracer_index)%online_cldliq
+          !$ser data_buffered Dx=1 online_vud=CNV_Tracers(ser_tracer_index)%online_vud
+          !$ser data_buffered Dx=1 ftemp_threshold=CNV_Tracers(ser_tracer_index)%ftemp_threshold
+          !$ser data_buffered Dx=1 use_gcc_washout=CNV_Tracers(ser_tracer_index)%use_gcc_washout
+          !$ser data_buffered Dx=1 use_gocart=CNV_Tracers(ser_tracer_index)%use_gocart
+          !$ser data_buffered Dx=1 is_wetdep=CNV_Tracers(ser_tracer_index)%is_wetdep
+       !$ser verbatim enddo
+       !$ser flush_savepoint ConvectionTracers
        call MAPL_TimerOff(MAPL,"---CONV_TRACERS")
 
        ! Get aerosol activation properties
@@ -5629,30 +5672,13 @@ contains
        call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
        !$ser off
        if (SH_MD_DP) then
-         !$ser verbatim if (timestep .eq. 2) then
-         !$ser on
-         !$ser verbatim endif
          if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-         !$ser verbatim if (timestep .eq. 2) then
-         !$ser off
-         !$ser verbatim endif
          if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-         !$ser on
          if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-         !$ser off
        else
          if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-        !$ser on
         if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-        !$ser off
-        
-        !$ser verbatim if (timestep .eq. 2) then
-        !$ser on
-        !$ser verbatim endif
         if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-        !$ser verbatim if (timestep .eq. 2) then
-        !$ser off
-        !$ser verbatim endif
        endif
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
