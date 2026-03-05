@@ -14,6 +14,7 @@ module GEOS_UW_InterfaceMod
   use MAPL
   use UWSHCU   ! using module that contains uwshcu code
   use GEOSmoist_Process_Library
+  use moist_dsl_workarounds
 
   implicit none
 
@@ -241,7 +242,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     VERIFY_(STATUS)
     
     if (USE_PYMOIST_UW) then
+      call CNV_Tracers_To_SOA()
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      call CNV_Tracers_To_AOS()
     else
 
     ! Internals

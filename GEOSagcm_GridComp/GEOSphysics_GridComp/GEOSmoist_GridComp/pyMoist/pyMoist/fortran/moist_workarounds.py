@@ -7,7 +7,6 @@ from MAPL_PythonBridge.types import FFI
 import platform
 import dataclasses
 import numpy.typing as npt
-import numpy as np
 from MAPL_PythonBridge import get_MAPLPy
 
 

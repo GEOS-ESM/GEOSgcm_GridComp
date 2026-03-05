@@ -8,7 +8,9 @@ from pyMoist.fortran.build_helper import InterfaceTransferType, StencilBackendCo
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.profiler import TimedCUDAProfiler
+from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
 from pyMoist.UW import ComputeUwshcuInv, UWConfiguration, UWState
+from pyMoist.constants import NCNST
 
 
 class UWGEOSInterface(UserCode):
@@ -27,7 +29,7 @@ class UWGEOSInterface(UserCode):
 
         # Compile the configuration for UW
         config = UWConfiguration(
-            NCNST=23,
+            NCNST=NCNST,
             k0=ndsl_stack.quantity_factory.sizer.nz,
             dotransport=MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True),
             dt=MAPLPy.get_resource("DSL__UW_DT:", mapl_state, default=Float(0)),
@@ -167,11 +169,17 @@ class UWGEOSInterface(UserCode):
         with TimedCUDAProfiler("UW", {}):
             with TimedCUDAProfiler("UW - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
+                self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:] = (
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q[:]
+                )
 
             with TimedCUDAProfiler("UW Numerics", {}):
                 self._uw(self._managed_state.ndsl_state)
 
             with TimedCUDAProfiler("UW - State copy-back", {}):
+                MOIST_WORKAROUNDS.CNV_Tracers().Q[:] = (
+                    self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:]
+                )
                 self._managed_state.ndsl_to_fortran()
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
