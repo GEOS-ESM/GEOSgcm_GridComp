@@ -52,7 +52,7 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF TYPE SHARED)
+  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL fms_r4 Chem_Shared Chem_Base ESMF::ESMF TYPE SHARED)
 
 # We need to add_dependencies for fms_r4 because CMake doesn't know we
 # need it for include purposes. In R4R8, we only ever link against
