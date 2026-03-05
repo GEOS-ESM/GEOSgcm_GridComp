@@ -484,6 +484,41 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data MAX_RI=MAX_RI FAC_RL=FAC_RL MIN_RL=MIN_RL MAX_RL=MAX_RL
     !$ser data CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
     
+    ! the GFDL_1M-In savepoint is broken into multiple parts to ensure that all fields are serialized
+    ! immediately after they are imported from the model, before they are filled with new data
+    !$ser savepoint GFDL_1M-In_part_1
+    !$ser data mixing_ratio_vapor=Q
+    !$ser data mixing_ratio_rain=QRAIN
+    !$ser data mixing_ratio_snow=QSNOW
+    !$ser data mixing_ratio_graupel=QGRAUPEL
+    !$ser data mixing_ratio_large_scale_liquid=QLLS
+    !$ser data mixing_ratio_large_scale_ice=QILS
+    !$ser data mixing_ratio_convective_liquid=QLCN
+    !$ser data mixing_ratio_convective_ice=QICN
+    !$ser data cloud_fraction_large_scale=CLLS
+    !$ser data cloud_fraction_convective=CLCN
+    !$ser data concentration_liquid=NACTL
+    !$ser data concentration_ice=NACTI
+    !$ser data area=AREA
+    !$ser data p_interface=PLE
+    !$ser data z_interface=ZLE
+    !$ser data t=T
+    !$ser data u=U
+    !$ser data v=V
+    !$ser data land_fraction=FRLAND
+    !$ser data covariance_liquid_water_static_energy_and_total_water_specific_humidity=SLQT
+    !$ser data omega=OMEGA
+    !$ser data pdf_first_plume_fractional_area=PDF_A
+    !$ser data vertical_motion_velocity=W
+    !$ser data vertical_motion_variance=W2
+    !$ser data vertical_motion_third_moment=W3
+    !$ser data liquid_water_static_energy_flux=WSL
+    !$ser data liquid_water_static_energy_variance=SL2
+    !$ser data liquid_water_static_energy_third_moment=SL3
+    !$ser data total_water_flux=WQT
+    !$ser data total_water_variance=QT2
+    !$ser data total_water_third_moment=QT3
+
     !$ser savepoint GFDL_1M_Setup-In
     !$ser data p_interface=PLE z_interface=ZLE t=T u=U v=V mixing_ratio_vapor=Q mixing_ratio_rain=QRAIN
     !$ser data mixing_ratio_snow=QSNOW mixing_ratio_graupel=QGRAUPEL mixing_ratio_large_scale_liquid=QLLS
@@ -542,23 +577,59 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, WQL,      'WQL'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PDFITERS, 'PDFITERS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Unused Exports (forced to 0.0)
-    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
+    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    !$ser savepoint GFDL_1M-In_part_2
+    !$ser data precipitation_at_surface_deep_convective_precipitation=PTR2D
+    PTR2D=0.0
+    !$ser savepoint GFDL_1M-Out_part_1
+    !$ser data precipitation_at_surface_deep_convective_precipitation=PTR2D
+    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    !$ser savepoint GFDL_1M-In_part_3
+    !$ser data precipitation_at_surface_anvil_precipitation=PTR2D
+    PTR2D=0.0
+    !$ser savepoint GFDL_1M-Out_part_2
+    !$ser data precipitation_at_surface_anvil_precipitation=PTR2D
+    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    !$ser savepoint GFDL_1M-In_part_4
+    !$ser data precipitation_at_surface_shallow_convective_precipitation=PTR2D
+    PTR2D=0.0
+    !$ser savepoint GFDL_1M-Out_part_3
+    !$ser data precipitation_at_surface_shallow_convective_precipitation=PTR2D
+    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    !$ser savepoint GFDL_1M-In_part_5
+    !$ser data precipitation_at_surface_deep_convective_snow=PTR2D
+    PTR2D=0.0
+    !$ser savepoint GFDL_1M-Out_part_4
+    !$ser data precipitation_at_surface_deep_convective_snow=PTR2D
+    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    !$ser savepoint GFDL_1M-In_part_6
+    !$ser data precipitation_at_surface_anvil_snow=PTR2D
+    PTR2D=0.0
+    !$ser savepoint GFDL_1M-Out_part_5
+    !$ser data precipitation_at_surface_anvil_snow=PTR2D
+    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    !$ser savepoint GFDL_1M-In_part_7
+    !$ser data precipitation_at_surface_shallow_convective_snow=PTR2D
+    PTR2D=0.0
+    !$ser savepoint GFDL_1M-Out_part_6
+    !$ser data precipitation_at_surface_shallow_convective_snow=PTR2D
     ! Lowe tropospheric stability and estimated inversion strength
     call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     KLCL = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
     call MAPL_GetPointer(EXPORT, PTR2D, 'ZLCL', RC=STATUS); VERIFY_(STATUS)
+    !$ser savepoint GFDL_1M-In_part_8
+    !$ser data lower_tropospheric_stability=LTS
+    !$ser data estimated_inversion_strength=EIS
     if (associated(PTR2D)) then
+      !$ser data lcl_height=PTR2D
       do J=1,JM
          do I=1,IM
            PTR2D(I,J) = ZL0(I,J,KLCL(I,J))
          end do
       end do
+      !$ser savepoint GFDL_1M-Out_part_7
+      !$ser data lcl_height=PTR2D
     endif
     TMP3D = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
     call FIND_EIS(T/TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
@@ -574,6 +645,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_macro,  'DUDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_macro,  'DVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_macro,  'DTDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    !$ser savepoint GFDL_1M-In_part_9
+    !$ser data tendencies_dcloud_fractiondt_macro=DQADT_macro
+    !$ser data tendencies_dvapordt_macro=DQVDT_macro
+    !$ser data tendencies_dicedt_macro=DQIDT_macro
+    !$ser data tendencies_dliquiddt_macro=DQLDT_macro
+    !$ser data tendencies_draindt_macro=DQRDT_macro
+    !$ser data tendencies_dgraupeldt_macro=DQGDT_macro
+    !$ser data tendencies_dsnowdt_macro=DQSDT_macro
+    !$ser data tendencies_dudt_macro=DUDT_macro
+    !$ser data tendencies_dvdt_macro=DVDT_macro
+    !$ser data tendencies_dtdt_macro=DTDT_macro
     DUDT_macro=U
     DVDT_macro=V
     DTDT_macro=T
@@ -603,16 +685,57 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
    call MAPL_GetPointer(EXPORT,  PDF_RWQT,  'PDF_RWQT' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 #endif  
 
+    !$ser savepoint GFDL_1M-In_part_10
+    !$ser data convection_fraction=CNV_FRC
+    !$ser data surface_type=SRF_TYPE
+    !$ser data cloud_liquid_evaporation=EVAPC
+    !$ser data cloud_ice_sublimation=SUBLC
+    !$ser data icefall=ICE
+    !$ser data freezing_rainfall=FRZR
+    !$ser data relative_humidity_after_pdf=RHX
+    !$ser data buoyancy_flux=WTHV2
+    !$ser data liquid_water_flux=WQL
+    !$ser data hydrostatic_pdf_iterations=PDFITERS
+    !$ser data radiation_field_cloud_fraction=RAD_CF
+    !$ser data radiation_field_vapor=RAD_QV
+    !$ser data radiation_field_liquid=RAD_QL
+    !$ser data radiation_field_ice=RAD_QI
+    !$ser data radiation_field_rain=RAD_QR
+    !$ser data radiation_field_snow=RAD_QS
+    !$ser data radiation_field_graupel=RAD_QG
+    !$ser data cloud_particle_effective_radius_liquid=CLDREFFL
+    !$ser data cloud_particle_effective_radius_ice=CLDREFFI
+    !$ser data precipitation_at_surface_rain=PRCP_RAIN
+    !$ser data precipitation_at_surface_snow=PRCP_SNOW
+    !$ser data precipitation_at_surface_ice=PRCP_ICE
+    !$ser data precipitation_at_surface_graupel=PRCP_GRAUPEL
+    !$ser data non_anvil_large_scale_precip=LS_PRCP
+    !$ser data non_anvil_large_scale_snow=LS_SNR
+    !$ser data non_anvil_large_scale_evaporation=REV_LS
+    !$ser data non_anvil_large_scale_sublimation=RSU_LS
+    !$ser data non_anvil_large_scale_liquid_precip_flux=PFL_LS
+    !$ser data non_anvil_large_scale_ice_precip_flux=PFI_LS
+    !$ser data anvil_liquid_precip_flux=PFL_AN
+    !$ser data anvil_ice_precip_flux=PFI_AN
+
       ! Include shallow precip condensates if present
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then
+          !$ser savepoint GFDL_1M-In_part_11
+          !$ser data shallow_convection_rain=PTR3D
           !$ser data SHLW_PRC3=PTR3D
           QRAIN = QRAIN + PTR3D*DT_MOIST
+          !$ser savepoint GFDL_1M-Out_part_8
+          !$ser data shallow_convection_rain=PTR3D
         endif
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then 
+          !$ser savepoint GFDL_1M-In_part_12
+          !$ser data shallow_convection_snow=PTR3D
           !$ser data SHLW_SNO3=PTR3D
           QSNOW = QSNOW + PTR3D*DT_MOIST
+          !$ser savepoint GFDL_1M-Out_part_9
+          !$ser data shallow_convection_snow=PTR3D
         endif
 
     !$ser savepoint GFDL_1M_Setup-Out
@@ -631,6 +754,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        !$ser savepoint GFDL_1M-In_part_13
+        !$ser data critical_relative_humidity_for_pdf=RHCRIT3D
+
         !$ser savepoint GFDL_1M_PhaseChange-In
         !$ser data estimated_inversion_strength=EIS convection_fraction=CNV_FRC surface_type=SRF_TYPE t=T
         !$ser data mixing_ratio_vapor=Q concentration_liquid=NACTL concentration_ice=NACTI
@@ -933,6 +1059,17 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    !$ser savepoint GFDL_1M-In_part_14
+    !$ser data tendencies_dcloud_fractiondt_micro=DQADT_micro
+    !$ser data tendencies_dvapordt_micro=DQVDT_micro
+    !$ser data tendencies_dicedt_micro=DQIDT_micro
+    !$ser data tendencies_dliquiddt_micro=DQLDT_micro
+    !$ser data tendencies_draindt_micro=DQRDT_micro
+    !$ser data tendencies_dgraupeldt_micro=DQGDT_micro
+    !$ser data tendencies_dsnowdt_micro=DQSDT_micro
+    !$ser data tendencies_dudt_micro=DUDT_micro
+    !$ser data tendencies_dvdt_micro=DVDT_micro
+    !$ser data tendencies_dtdt_micro=DTDT_micro
     DQVDT_micro = Q
     DQLDT_micro = QLLS + QLCN
     DQIDT_micro = QILS + QICN
@@ -1199,22 +1336,35 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
         call MAPL_TimerOff(MAPL,"---CLDMICRO")
 
-        !$ser savepoint GFDL_1M_Finalize-Out
-
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
-        if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
+        if(associated(PTR3D)) then
+          !$ser savepoint GFDL_1M-In_part_15
+          !$ser data large_scale_rainwater_source=PTR3D
+           PTR3D = DQRDT_macro + DQRDT_micro
+          !$ser savepoint GFDL_1M-Out_part_10
+          !$ser data large_scale_rainwater_source=PTR3D
+        endif
 
         ! dissipative heating tendency from KE across the macro/micro physics
         call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) then
+          !$ser savepoint GFDL_1M-In_part_16
+          !$ser data tendencies_dtdt_friction_pressure_weighted=PTR3D
           call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
                                       DUDT_macro+DUDT_micro,&
                                       DVDT_macro+DVDT_micro,PTR3D)
+          !$ser savepoint GFDL_1M_Finalize-Out_part_1
           !$ser data dtdt_friction_pressure_weighted=PTR3D
+          !$ser savepoint GFDL_1M-Out_part_11
+          !$ser data tendencies_dtdt_friction_pressure_weighted=PTR3D
         endif
 
         ! Compute DBZ radar reflectivity
         call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
+        !$ser verbatim if (associated(PTR3D)) then
+          !$ser savepoint GFDL_1M-In_part_17
+          !$ser data radar_simulated_reflectivity=PTR3D
+        !$ser verbatim endif
         call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
@@ -1265,6 +1415,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         endif
 
+        !$ser savepoint GFDL_1M_Finalize-Out_part_2
+        ! also pulls one or more association dependent fields from above
         !$ser data t=T u=U v=V local_p_mb=PLmb radiation_cloud_fraction=RAD_CF radiation_ice=RAD_QI
         !$ser data radiation_liquid=RAD_QL local_u_unmodified=U0 local_v_unmodified=V0 radiation_vapor=RAD_QV
         !$ser data radiation_rain=RAD_QR radiation_snow=RAD_QS radiation_graupel=RAD_QG local_mass=MASS
@@ -1284,6 +1436,98 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         !$ser data dicedt_micro=DQIDT_micro dcloud_fractiondt_micro=DQADT_micro draindt_micro=DQRDT_micro
         !$ser data dsnowdt_micro=DQSDT_micro dgraupeldt_micro=DQGDT_micro dudt_micro=DUDT_micro
         !$ser data dvdt_micro=DVDT_micro dtdt_micro=DTDT_micro
+
+    ! This savepoint is broken into multiple pieces, some fields are put into the same temporary (PTR3D &
+    ! PTR2D). These are serialized when they are written (above) so that the correct data is captured.
+    !$ser savepoint GFDL_1M-Out_part_12
+    !$ser data mixing_ratio_vapor=Q
+    !$ser data mixing_ratio_rain=QRAIN
+    !$ser data mixing_ratio_snow=QSNOW
+    !$ser data mixing_ratio_graupel=QGRAUPEL
+    !$ser data mixing_ratio_large_scale_liquid=QLLS
+    !$ser data mixing_ratio_large_scale_ice=QILS
+    !$ser data mixing_ratio_convective_liquid=QLCN
+    !$ser data mixing_ratio_convective_ice=QICN
+    !$ser data cloud_fraction_large_scale=CLLS
+    !$ser data cloud_fraction_convective=CLCN
+    !$ser data concentration_liquid=NACTL
+    !$ser data concentration_ice=NACTI
+    !$ser data area=AREA
+    !$ser data p_interface=PLE
+    !$ser data z_interface=ZLE
+    !$ser data t=T
+    !$ser data u=U
+    !$ser data v=V
+    !$ser data land_fraction=FRLAND
+    !$ser data covariance_liquid_water_static_energy_and_total_water_specific_humidity=SLQT
+    !$ser data omega=OMEGA
+    !$ser data pdf_first_plume_fractional_area=PDF_A
+    !$ser data vertical_motion_velocity=W
+    !$ser data vertical_motion_variance=W2
+    !$ser data vertical_motion_third_moment=W3
+    !$ser data liquid_water_static_energy_flux=WSL
+    !$ser data liquid_water_static_energy_variance=SL2
+    !$ser data liquid_water_static_energy_third_moment=SL3
+    !$ser data total_water_flux=WQT
+    !$ser data total_water_variance=QT2
+    !$ser data total_water_third_moment=QT3
+    !$ser data lower_tropospheric_stability=LTS
+    !$ser data estimated_inversion_strength=EIS
+    !$ser data tendencies_dcloud_fractiondt_macro=DQADT_macro
+    !$ser data tendencies_dvapordt_macro=DQVDT_macro
+    !$ser data tendencies_dicedt_macro=DQIDT_macro
+    !$ser data tendencies_dliquiddt_macro=DQLDT_macro
+    !$ser data tendencies_draindt_macro=DQRDT_macro
+    !$ser data tendencies_dgraupeldt_macro=DQGDT_macro
+    !$ser data tendencies_dsnowdt_macro=DQSDT_macro
+    !$ser data tendencies_dudt_macro=DUDT_macro
+    !$ser data tendencies_dvdt_macro=DVDT_macro
+    !$ser data tendencies_dtdt_macro=DTDT_macro
+    !$ser data convection_fraction=CNV_FRC
+    !$ser data surface_type=SRF_TYPE
+    !$ser data cloud_liquid_evaporation=EVAPC
+    !$ser data cloud_ice_sublimation=SUBLC
+    !$ser data icefall=ICE
+    !$ser data freezing_rainfall=FRZR
+    !$ser data relative_humidity_after_pdf=RHX
+    !$ser data buoyancy_flux=WTHV2
+    !$ser data liquid_water_flux=WQL
+    !$ser data hydrostatic_pdf_iterations=PDFITERS
+    !$ser data radiation_field_cloud_fraction=RAD_CF
+    !$ser data radiation_field_vapor=RAD_QV
+    !$ser data radiation_field_liquid=RAD_QL
+    !$ser data radiation_field_ice=RAD_QI
+    !$ser data radiation_field_rain=RAD_QR
+    !$ser data radiation_field_snow=RAD_QS
+    !$ser data radiation_field_graupel=RAD_QG
+    !$ser data cloud_particle_effective_radius_liquid=CLDREFFL
+    !$ser data cloud_particle_effective_radius_ice=CLDREFFI
+    !$ser data precipitation_at_surface_rain=PRCP_RAIN
+    !$ser data precipitation_at_surface_snow=PRCP_SNOW
+    !$ser data precipitation_at_surface_ice=PRCP_ICE
+    !$ser data precipitation_at_surface_graupel=PRCP_GRAUPEL
+    !$ser data non_anvil_large_scale_precip=LS_PRCP
+    !$ser data non_anvil_large_scale_snow=LS_SNR
+    !$ser data non_anvil_large_scale_evaporation=REV_LS
+    !$ser data non_anvil_large_scale_sublimation=RSU_LS
+    !$ser data non_anvil_large_scale_liquid_precip_flux=PFL_LS
+    !$ser data non_anvil_large_scale_ice_precip_flux=PFI_LS
+    !$ser data anvil_liquid_precip_flux=PFL_AN
+    !$ser data anvil_ice_precip_flux=PFI_AN
+    !$ser data critical_relative_humidity_for_pdf=RHCRIT3D
+    !$ser data tendencies_dcloud_fractiondt_micro=DQADT_micro
+    !$ser data tendencies_dvapordt_micro=DQVDT_micro
+    !$ser data tendencies_dicedt_micro=DQIDT_micro
+    !$ser data tendencies_dliquiddt_micro=DQLDT_micro
+    !$ser data tendencies_draindt_micro=DQRDT_micro
+    !$ser data tendencies_dgraupeldt_micro=DQGDT_micro
+    !$ser data tendencies_dsnowdt_micro=DQSDT_micro
+    !$ser data tendencies_dudt_micro=DUDT_micro
+    !$ser data tendencies_dvdt_micro=DVDT_micro
+    !$ser data tendencies_dtdt_micro=DTDT_micro
+    !$ser verbatim if (associated(PTR3D)) then
+      !$ser data radar_simulated_reflectivity=PTR3D
+    !$ser verbatim endif
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
