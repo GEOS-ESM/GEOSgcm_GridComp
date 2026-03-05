@@ -60,7 +60,7 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: LMELTFRZ
   logical :: USE_PYMOIST_GFDL1M
 
-  public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
+  public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run, GFDL_1M_Finalize
 
 contains
 
@@ -992,5 +992,26 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
 end subroutine GFDL_1M_Run
+
+subroutine GFDL_1M_Finalize(gc, import, export, rc)
+
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+  integer, optional,   intent(  out) :: RC     ! Error code
+  
+  type (MAPL_MetaComp), pointer   :: MAPL
+  
+  ! Get my internal MAPL_Generic state
+  !-----------------------------------
+  call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+  VERIFY_(STATUS)
+
+
+  if (USE_PYMOIST_GFDL1M) then
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.GFDL1M_interface", MAPL, IMPORT, EXPORT )
+  endif
+
+end subroutine GFDL_1M_Finalize
 
 end module GEOS_GFDL_1M_InterfaceMod

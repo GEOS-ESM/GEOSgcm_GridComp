@@ -1,3 +1,4 @@
+import xarray as xr
 from typing import Tuple
 
 import numpy.typing as npt
@@ -20,6 +21,7 @@ class MAPLManagedState:
         self._ndsl_state = py_state
         self._state_to_mapl_mapping: dict[str, Tuple[MAPLMemoryRepository, str]] = {}
         self._transfer_type = transfer_type
+        self._recorded_state = {}
 
     def register(
         self,
@@ -56,7 +58,7 @@ class MAPLManagedState:
         self._state_to_mapl_mapping[ndsl_field_name] = (mapl_state, mapl_field_name)
 
     @property
-    def ndsl_state(self):
+    def ndsl_state(self) -> State:
         return self._ndsl_state
 
     def fortran_to_ndsl(self) -> None:
@@ -134,3 +136,15 @@ class MAPLManagedState:
             _push_back_to_fortran(mapl_field, mapl_state, ndsl_field, self._ndsl_state)
         if self._transfer_type == InterfaceTransferType.CPU_TO_GPU_TO_CPU:
             cp.cuda.runtime.deviceSynchronize()
+
+    def record(self, key: str) -> None:
+        if key not in self._recorded_state:
+            self._recorded_state[key] = self._ndsl_state.to_xarray()
+        else:
+            self._recorded_state[key] = xr.concat(
+                [self._recorded_state[key], self._ndsl_state.to_xarray()], dim="timestep"
+            )
+
+    def save_recorded(self) -> None:
+        for key, recorded_state in self._recorded_state.items():
+            recorded_state.to_netcdf(f"{key}.nc4")
