@@ -226,13 +226,14 @@ def conden(
     tc: float64 = float32(thl) * exnerfn(p)
 
     nu: float64 = ice_fraction(float32(tc), 0.0, 0.0)
-    leff: float64 = (float64(1.0) - nu) * constants.MAPL_LATENT_HEAT_VAPORIZATION + (
-        nu * constants.MAPL_LATENT_HEAT_SUBLIMATION
-    )
+    one_minus_nu = float64(1.0) - nu
+    term1 = one_minus_nu * constants.MAPL_LATENT_HEAT_VAPORIZATION
+    term2 = nu * constants.MAPL_LATENT_HEAT_SUBLIMATION
+    leff = term1 + term2
     temps: float32 = tc
     ps: float32 = p
     qs, _ = saturation_specific_humidity(temps, ps, ese, esx)
-    rvls: float32 = float64(qs)
+    rvls = qs
 
     if qs >= qt:  # no condensation
         id_check = 0
@@ -613,10 +614,10 @@ def roots(
                 r1 = sqrt(-c / a)
             r2 = -r1
         else:  # Form a*x**2 + b*x + c = 0
-            if (b**2 - 4.0 * a * c) < 0.0:  # Failure, no real roots
+            if ((b * b) - 4.0 * a * c) < 0.0:  # Failure, no real roots
                 status = 3
             else:
-                q = -0.5 * (b + sign(1.0, b) * sqrt(b**2 - 4.0 * a * c))
+                q = -0.5 * (b + sign(1.0, b) * sqrt((b * b) - 4.0 * a * c))
                 r1 = q / a
                 r2 = c / q
 

@@ -181,6 +181,15 @@ class UWState(State):
                 "dtype": Float,
             }
         )
+        CLCN: Quantity = dataclasses.field(
+            metadata={
+                "name": "CLCN",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
 
     @dataclasses.dataclass
     class Output:

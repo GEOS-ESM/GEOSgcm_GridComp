@@ -21,7 +21,7 @@ module GEOS_UW_InterfaceMod
   integer USE_TRACER_TRANSP_UW      ! transport tracers in UW
   real    :: SCLM_SHALLOW
   logical :: JASON_UW
-  logical :: USE_PYMOIST_UW = .False.
+  logical :: USE_PYMOIST_UW = .false.
 
   private
 

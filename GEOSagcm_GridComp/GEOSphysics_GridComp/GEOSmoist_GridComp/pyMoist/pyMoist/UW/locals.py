@@ -299,7 +299,6 @@ class UWLocals:
     v0: Local
     cinlcl: Local
     MASS: Local
-    CLCN: Local
     QLCN: Local
     QICN: Local
     QLLS: Local
@@ -310,7 +309,6 @@ class UWLocals:
     def make(cls, runtime: NDSLRuntime, quantity_factory: QuantityFactory):
         # FloatFields
         PTR2D = runtime.make_local(quantity_factory, [X_DIM, Y_DIM])
-        CLCN = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         QLCN = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         QICN = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         QLLS = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
@@ -906,7 +904,6 @@ class UWLocals:
             v0=v0,
             cinlcl=cinlcl,
             MASS=MASS,
-            CLCN=CLCN,
             QLCN=QLCN,
             QICN=QICN,
             QLLS=QLLS,

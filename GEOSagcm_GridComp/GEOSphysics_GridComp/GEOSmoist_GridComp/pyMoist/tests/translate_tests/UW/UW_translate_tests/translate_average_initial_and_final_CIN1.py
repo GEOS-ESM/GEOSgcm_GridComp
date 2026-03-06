@@ -6,6 +6,7 @@ from ndsl import StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.grid import Grid
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 from pyMoist.UW.compute_uwshcu import avg_initial_and_final_cin1
@@ -18,18 +19,10 @@ class TranslateAverageInitialFinalCIN1(TranslateFortranData2Py):
         grid: Grid,
         namelist: Namelist,
         stencil_factory: StencilFactory,
-        # UW_config: UWConfiguration,
     ):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
-        # self.UW_config = UW_config
-
-        self._avg_cin1 = self.stencil_factory.from_dims_halo(
-            func=avg_initial_and_final_cin1,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={"ncnst": 23},
-        )
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
@@ -42,49 +35,17 @@ class TranslateAverageInitialFinalCIN1(TranslateFortranData2Py):
             "ke": {},
         }
 
-        # Float/Int Inputs
-        self.in_vars["parameters"] = [
-            "dotransport",
-            "ncnst",
-            "k0",
-            "tr0",
-            "windsrcavg",
-            "qtsrchgt",
-            "qtsrc_fac",
-            "thlsrc_fac",
-            "frc_rasn",
-            "rbuoy",
-            "epsvarw",
-            "use_CINcin",
-            "mumin1",
-            "rmaxfrac",
-            "PGFc",
-            "niter_xc",
-            "criqc",
-            "rle",
-            "cridist_opt",
-            "mixscale",
-            "rkm",
-            "dt",
-            "detrhgt",
-            "rdrag",
-            "use_self_detrain",
-            "detrhgt",
-            "use_cumpenent",
-            "rpen",
-            "use_momenflx",
-            "rdrop",
-            "iter_cin",
-        ]
-
         # FloatField Outputs
         self.out_vars = {
             "cin": self.grid.compute_dict(),
             "cinlcl": self.grid.compute_dict(),
         }
 
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("ComputeUwshcuInv-constants")
+
     def compute(self, inputs):
-        self.UW_config = UWConfiguration(Int(inputs["ncnst"]), Int(inputs["k0"]), Int(inputs["windsrcavg"]))
+        config = UWConfiguration(**self.constants)
 
         self.quantity_factory.add_data_dimensions(
             {
@@ -92,35 +53,15 @@ class TranslateAverageInitialFinalCIN1(TranslateFortranData2Py):
             }
         )
 
-        # Float/Int Inputs
-        dotransport = Int(inputs["dotransport"])
-        k0 = Int(inputs["k0"])
-        windsrcavg = Int(inputs["windsrcavg"])
-        qtsrchgt = Float(inputs["qtsrchgt"])
-        qtsrc_fac = Float(inputs["qtsrc_fac"])
-        thlsrc_fac = Float(inputs["thlsrc_fac"])
-        frc_rasn = Float(inputs["frc_rasn"])
-        rbuoy = Float(inputs["rbuoy"])
-        epsvarw = Float(inputs["epsvarw"])
-        use_CINcin = Int(inputs["use_CINcin"])
-        mumin1 = Float(inputs["mumin1"])
-        rmaxfrac = Float(inputs["rmaxfrac"])
-        PGFc = Float(inputs["PGFc"])
-        dt = Float(inputs["dt"])
-        niter_xc = Int(inputs["niter_xc"])
-        criqc = Float(inputs["criqc"])
-        rle = Float(inputs["rle"])
-        cridist_opt = Int(inputs["cridist_opt"])
-        mixscale = Float(inputs["mixscale"])
-        rdrag = Float(inputs["rdrag"])
-        rkm = Float(inputs["rkm"])
-        use_self_detrain = Int(inputs["use_self_detrain"])
-        detrhgt = Float(inputs["detrhgt"])
-        use_cumpenent = Int(inputs["use_cumpenent"])
-        rpen = Float(inputs["rpen"])
-        use_momenflx = Int(inputs["use_momenflx"])
-        rdrop = Float(inputs["rdrop"])
-        iter_cin = Int(inputs["iter_cin"])
+        self._avg_initial_and_final_cin1 = self.stencil_factory.from_dims_halo(
+            func=avg_initial_and_final_cin1,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "ncnst": config.NCNST,
+                "dotransport": config.dotransport,
+                "use_CINcin": config.use_CINcin,
+            },
+        )
 
         # Inputs
         condensation = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a", dtype=bool)
@@ -217,12 +158,11 @@ class TranslateAverageInitialFinalCIN1(TranslateFortranData2Py):
         iter_test = int32(1)
 
         # # Call stencils
-        self._avg_cin1(
+        self._avg_initial_and_final_cin1(
             condensation=condensation,
             del_CIN=del_CIN,
             ke=ke,
             cin_i=cin_i,
-            use_CINcin=use_CINcin,
             cin_IJ=cin,
             cinlcl_IJ=cinlcl,
             cinlcl_i=cinlcl_i,
@@ -252,7 +192,6 @@ class TranslateAverageInitialFinalCIN1(TranslateFortranData2Py):
             vsrc_o=vsrc_o,
             thv0lcl=thv0lcl,
             thv0lcl_o=thv0lcl_o,
-            dotransport=dotransport,
             trsrc=trsrc,
             trsrc_o=trsrc_o,
             tr0=tr0,
