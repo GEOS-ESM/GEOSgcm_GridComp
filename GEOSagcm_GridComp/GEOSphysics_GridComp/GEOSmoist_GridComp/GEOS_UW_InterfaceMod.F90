@@ -28,7 +28,7 @@ module GEOS_UW_InterfaceMod
   character(len=ESMF_MAXSTR)              :: IAm
   integer                                 :: STATUS
 
-  public :: UW_Setup, UW_Initialize, UW_Run
+  public :: UW_Setup, UW_Initialize, UW_Run, UW_Finalize
    
 contains
 
@@ -463,5 +463,26 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   endif
 
 end subroutine UW_Run
+
+subroutine UW_Finalize(gc, import, export, rc)
+
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+  integer, optional,   intent(  out) :: RC     ! Error code
+  
+  type (MAPL_MetaComp), pointer   :: MAPL
+  
+  ! Get my internal MAPL_Generic state
+  !-----------------------------------
+  call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+  VERIFY_(STATUS)
+
+
+  if (USE_PYMOIST_UW) then
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.UW_interface", MAPL, IMPORT, EXPORT )
+  endif
+
+end subroutine UW_Finalize
 
 end module GEOS_UW_InterfaceMod

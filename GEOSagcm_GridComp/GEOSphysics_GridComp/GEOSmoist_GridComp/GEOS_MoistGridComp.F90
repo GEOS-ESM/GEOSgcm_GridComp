@@ -6093,6 +6093,7 @@ contains
 
 
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_FINALIZE(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call UW_Finalize(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
 
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
