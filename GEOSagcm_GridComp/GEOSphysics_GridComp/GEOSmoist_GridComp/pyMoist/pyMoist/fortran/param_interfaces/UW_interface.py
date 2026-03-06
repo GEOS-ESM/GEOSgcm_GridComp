@@ -181,10 +181,14 @@ class UWGEOSInterface(UserCode):
                     self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:]
                 )
                 self._managed_state.ndsl_to_fortran()
+                self._managed_state.record("UW-Out")
+                print("recording state vars")
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         # No finalize call from UW
-        pass
+        #pass
+        self._managed_state.save_recorded()
+        print("saving netcdf")
 
 
 CODE = UWGEOSInterface("UW")
