@@ -4,7 +4,7 @@ MODULE Aer_Actv_Single_Moment
 
    USE ESMF
    USE MAPL
-   USE aer_cloud, only: AerPropsNew
+   USE GEOSmoist_Process_Library, only: AerPropsNew, AeroPropsNew 
    !-------------------------------------------------------------------------------------------------------------------------
    IMPLICIT NONE
    PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR

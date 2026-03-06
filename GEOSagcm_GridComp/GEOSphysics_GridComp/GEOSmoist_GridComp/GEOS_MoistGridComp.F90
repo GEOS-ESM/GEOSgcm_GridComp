@@ -48,6 +48,7 @@ module GEOS_MoistGridCompMod
   real    :: CCN_OCN
   real    :: CCN_LND
   logical :: MOVE_CN_TO_LS 
+  logical :: USE_NCLOUD_CLIM
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -107,6 +108,8 @@ contains
     logical :: LCONVPAR
     logical :: LSHALLOW
     logical :: LCLDMICR
+
+    integer ::PDFSHAPE, WSUB_OPTION
 
     !=============================================================================
 
@@ -174,9 +177,19 @@ contains
                adjustl(CLDMICR_OPTION)=="MGB2_2M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
 
-    call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
-    call MAPL_GetResource( CF, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource( CF, PDFSHAPE, Label="PDFSHAPE:",  default=1, RC=STATUS) ; VERIFY_(STATUS)
+ 
+    call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
+    
+    
+    !***********Aerosol-Cloud related 
+    
+    call ESMF_ConfigGetAttribute( CF, USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:',   default=.FALSE.,        RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 1,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET`
+    VERIFY_(STATUS)
+    
 
     ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
     !       the first MAPL_AddInternalSpec call must be from the microphysics
@@ -508,23 +521,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                             &
-         SHORT_NAME = 'TAUOROX',                                   &
-         LONG_NAME  = 'surface_eastward_orographic_gravity_wave_stress',      &
-         UNITS      = 'N m-2',                                     &
-         RESTART    = MAPL_RestartSkip,                            &
-         DIMS       = MAPL_DimsHorzOnly,                           &
-         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                             &
-         SHORT_NAME = 'TAUOROY',                                   &
-         LONG_NAME  = 'surface_northward_orographic_gravity_wave_stress',     &
-         UNITS      = 'N m-2',                                     &
-         RESTART    = MAPL_RestartSkip,                            &
-         DIMS       = MAPL_DimsHorzOnly,                           &
-         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+  
 
 
     call MAPL_AddImportSpec ( gc,                                  &
@@ -536,15 +533,11 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                                              &
-         LONG_NAME  = 'Blackadar_length_scale_for_scalars',                    &
-         UNITS      = 'm',                                                     &
-         SHORT_NAME = 'ALH',                                                   &
-         DIMS       = MAPL_DimsHorzVert,                                       &
-         VLOCATION  = MAPL_VLocationEdge,                                      &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+  
 
+   
+
+    
     call MAPL_AddImportSpec ( GC,                                   &
         SHORT_NAME         = 'AREA',                              &
         LONG_NAME          = 'agrid_cell_area',                   &
@@ -555,14 +548,96 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec ( GC,                                   &
-         SHORT_NAME = 'WSUB_CLIM',                                 &
-         LONG_NAME  = 'stdev in vertical velocity',     &
-         UNITS      = 'm s-1',                                    &
-         RESTART    = MAPL_RestartSkip,                           & ! Read WSUB from a climatology
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
+    
+    if ((adjustl(CLDMICR_OPTION)=="MGB2_2M")) then ! subgrid scale vertical velocity options
+      
+      if (WSUB_OPTION .eq. 0) then
+      
+            call MAPL_AddImportSpec(GC,                                              &
+             LONG_NAME  = 'Blackadar_length_scale_for_scalars',                    &
+             UNITS      = 'm',                                                     &
+             SHORT_NAME = 'ALH',                                                   &
+             DIMS       = MAPL_DimsHorzVert,                                       &
+             VLOCATION  = MAPL_VLocationEdge,                                      &
+             RC=STATUS  )
+            VERIFY_(STATUS)
+
+           call MAPL_AddImportSpec(GC,                             &
+             SHORT_NAME = 'TAUOROX',                                   &
+             LONG_NAME  = 'surface_eastward_orographic_gravity_wave_stress',      &
+             UNITS      = 'N m-2',                                     &
+             RESTART    = MAPL_RestartSkip,                            &
+             DIMS       = MAPL_DimsHorzOnly,                           &
+             VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+            VERIFY_(STATUS)
+
+            call MAPL_AddImportSpec(GC,                             &
+             SHORT_NAME = 'TAUOROY',                                   &
+             LONG_NAME  = 'surface_northward_orographic_gravity_wave_stress',     &
+             UNITS      = 'N m-2',                                     &
+             RESTART    = MAPL_RestartSkip,                            &
+             DIMS       = MAPL_DimsHorzOnly,                           &
+             VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+          VERIFY_(STATUS)
+    
+      
+       
+      elseif (WSUB_OPTION .eq. 1) then  
+           
+            call MAPL_AddImportSpec ( GC,                                   &
+             SHORT_NAME = 'WSUB_CLIM',                                 &
+             LONG_NAME  = 'stdev in vertical velocity',     &
+             UNITS      = 'm s-1',                                    &
+             RESTART    = MAPL_RestartSkip,                           & ! Read WSUB from a climatology
+             DIMS       = MAPL_DimsHorzVert,                           &
+             VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+         VERIFY_(STATUS)
+      
+      else 
+      
+        call MAPL_AddImportSpec ( GC,                                   &
+            LONG_NAME  = 'total_momentum_diffusivity',                            &
+            UNITS      = 'm+2 s-1',                                               &
+            SHORT_NAME = 'KM',                                                    &
+            DIMS       = MAPL_DimsHorzVert,                                       &
+            RESTART    = MAPL_RestartSkip,                                &
+            VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                              RC=STATUS  )
+	        VERIFY_(STATUS)
+
+        call MAPL_AddImportSpec ( GC,                                   &
+            LONG_NAME  = 'Richardson_number_from_Louis',                          &
+            UNITS      = '1',                                                     &
+            SHORT_NAME = 'RI',                                                    &
+            DIMS       = MAPL_DimsHorzVert,                                       &
+            RESTART            = MAPL_RestartSkip,                                &
+            VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                              RC=STATUS  )
+            VERIFY_(STATUS)
+       
+      end if   
+    end if     
+    
+     IF (USE_NCLOUD_CLIM) then
+        call MAPL_AddImportSpec ( GC,                                 & 
+            SHORT_NAME = 'NCPL_CLIM',                                 &
+            LONG_NAME  = 'In-Cloud NCPL climatology',     &
+            UNITS      = 'm-3',                                    &
+            RESTART    = MAPL_RestartSkip,                            &
+            DIMS       = MAPL_DimsHorzVert,                           &
+            VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+        VERIFY_(STATUS)
+
+        call MAPL_AddImportSpec ( GC,                                          & 
+            SHORT_NAME = 'NCPI_CLIM',                                 &
+            LONG_NAME  = 'In-Cloud NCPI climatology',     &
+            UNITS      = 'm-3',                                    &
+            RESTART    = MAPL_RestartSkip,                            &
+            DIMS       = MAPL_DimsHorzVert,                           &
+            VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+        VERIFY_(STATUS)
+     end if 
+    
 
     call MAPL_AddImportSpec ( gc,                                    &
          SHORT_NAME = 'DTDTDYN',                                     &
@@ -4004,8 +4079,8 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME='CCN04',                                             &
-         LONG_NAME ='CCN conc at 0.4 % supersaturation (grid_avg)',                 &
+         SHORT_NAME='CCN02',                                             &
+         LONG_NAME ='CCN conc at 0.2 % supersaturation (grid_avg)',                 &
          UNITS     ='m-3',                                             &
          DIMS      = MAPL_DimsHorzVert,                                  &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -5507,10 +5582,7 @@ contains
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE.        , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
-    if (USE_AEROSOL_NN) then
-      call aer_cloud_init()
-      call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
-    endif
+
     ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
     !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
     !           in so they have to be defined
@@ -5592,6 +5664,7 @@ contains
     real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
     real, pointer, dimension(:,:)   :: SH, TS, EVAP, KPBL
     real, pointer, dimension(:,:,:) :: KH, TKE, OMEGA
+    real, pointer, dimension(:,:,:) :: NCPL_CLIM, NCPI_CLIM
     integer                         :: n_modes
     type(ESMF_State)                :: AERO
     type(ESMF_FieldBundle)          :: TR
@@ -5686,6 +5759,11 @@ contains
        call MAPL_GetPointer(IMPORT, FRACI,     'FRACI'     , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, SNOMAS,    'SNOMAS'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SRF_TYPE,  'SRF_TYPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       
+       if (USE_NCLOUD_CLIM) then 
+       		call MAPL_GetPointer(IMPORT, NCPL_CLIM,     'NCPL_CLIM'     , RC=STATUS); VERIFY_(STATUS)
+			call MAPL_GetPointer(IMPORT, NCPI_CLIM,     'NCPI_CLIM'     , RC=STATUS); VERIFY_(STATUS) 
+        end if     
 
        where ( (FRLANDICE > 0.5) .OR. (FRACI > 0.5) )
           SRF_TYPE = 3.0 ! Ice
@@ -5869,7 +5947,9 @@ contains
 
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
-       if (USE_AEROSOL_NN) then
+       
+       
+       if ((USE_AEROSOL_NN) .and. not (USE_NCLOUD_CLIM)) then
          ! get veritical velocity
          if (all(W == 0.0)) then
            TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
@@ -5885,35 +5965,25 @@ contains
 !        call MAPL_MaxMin('MST: NACTL    ', NACTL*1.e-6)
 !        call MAPL_MaxMin('MST: NACTI    ', NACTI*1.e-6)
 ! Temporary
-         if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
-            call MAPL_TimerOn (MAPL,"----AERO_ACTIVATE_MGB2_2M")
-            call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, RC=STATUS); VERIFY_(STATUS)
-            allocate ( AeroProps(IM,JM,LM) )
-            do L=1,LM
-              do J=1,JM
-                do I=1,IM
-                  AeroProps(I,J,L)%nmods    = n_modes
-                  do n=1,n_modes
-                  AeroProps(I,J,L)%num(n)   = AeroPropsNew(n)%num(I,J,L)
-                  AeroProps(I,J,L)%dpg(n)   = AeroPropsNew(n)%dpg(I,J,L)
-                  AeroProps(I,J,L)%sig(n)   = AeroPropsNew(n)%sig(I,J,L)
-                  AeroProps(I,J,L)%den(n)   = AeroPropsNew(n)%den(I,J,L)
-                  AeroProps(I,J,L)%kap(n)   = AeroPropsNew(n)%kap(I,J,L)
-                  AeroProps(I,J,L)%fdust(n) = AeroPropsNew(n)%fdust(I,J,L)
-                  AeroProps(I,J,L)%fsoot(n) = AeroPropsNew(n)%fsoot(I,J,L)
-                  AeroProps(I,J,L)%forg(n)  = AeroPropsNew(n)%forg(I,J,L)
-                  enddo
-                enddo
-              enddo
-            enddo
-            call MAPL_TimerOff (MAPL,"----AERO_ACTIVATE_MGB2_2M")
-         endif
+         
        else
-         do L=1,LM
-           NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
-           NACTI(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
-         end do
+         
+         
+         if (USE_NCLOUD_CLIM) then  !Setup ND/NI climatology from GiOcean   
+         	 
+              NACTL = NCPL_CLIM
+              NACTI =  NCPI_CLIM          
+         else 
+            do L=1,LM
+              NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
+              NACTI(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
+             end do
+             
+         end if        
        endif
+       
+       
+       
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_LIQ', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = NACTL*1.e-6
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_ICE', RC=STATUS); VERIFY_(STATUS)
@@ -6078,10 +6148,6 @@ contains
         
          DTDT_ER = (T -  DTDT_ER)/DT_MOIST
          DQVDT_ER = (Q - DQVDT_ER)/DT_MOIST
-
-       if (USE_AEROSOL_NN .and. adjustl(CLDMICR_OPTION)=="MGB2_2M") then
-         deallocate ( AeroProps )
-       endif
 
        ! Export Total Moist Tendencies
 
