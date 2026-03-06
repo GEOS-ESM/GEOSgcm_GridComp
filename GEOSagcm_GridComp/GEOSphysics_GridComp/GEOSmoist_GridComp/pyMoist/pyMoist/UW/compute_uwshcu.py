@@ -527,6 +527,7 @@ def compute_thv0_thvl0(
     ssu0_o: FloatField,
     ssv0_o: FloatField,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
 ):
     """
     Stencil to compute internal environmental variables
@@ -678,6 +679,7 @@ def compute_thv0_thvl0(
             qsten_out = 0.0
             cufrc_out = 0.0
             cush_inout = -1.0
+            cush = -1.0
             qldet_out = 0.0
             qidet_out = 0.0
             qtflx_out[0, 0, 1] = 0.0
@@ -703,6 +705,8 @@ def compute_thv0_thvl0(
         if not condensation:
             if id_check == 1:
                 condensation = True
+                cush = -1.0
+                cush_inout = -1.0
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -890,6 +894,7 @@ def find_pbl_height(
             tscaleh = cush
 
     with computation(FORWARD), interval(...):
+        cush = -1.0
         if not condensation:
             # Cumulus scale height
             # In contrast to the premitive code, cumulus scale height is iteratively
@@ -926,6 +931,7 @@ def find_pbl_height(
         if not condensation:
             if kinv <= int64(1):
                 condensation = True
+                cush = -1.0
                 # umf_out[0, 0, 1] = 0.0
                 # dcm_out = 0.0
                 # qvten_out = 0.0
@@ -937,7 +943,7 @@ def find_pbl_height(
                 # qrten_out = 0.0
                 # qsten_out = 0.0
                 # cufrc_out = 0.0
-                # cush_inout = -1.0
+                cush_inout = -1.0
                 # qldet_out = 0.0
                 # qidet_out = 0.0
                 # qtflx_out[0, 0, 1] = 0.0
@@ -950,6 +956,8 @@ def find_pbl_height(
             if not condensation:
                 if kinv >= int64(k0 / 4):
                     condensation = True
+                    cush = -1.0
+                    cush_inout = -1.0
                     # umf_out[0, 0, 1] = 0.0
                     # dcm_out = 0.0
                     # qvten_out = 0.0
@@ -1226,6 +1234,7 @@ def find_klcl(
     qt0lcl: FloatField,
     thv0lcl: FloatField,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
     iteration: int32,
 ):
     """
@@ -1278,6 +1287,7 @@ def find_klcl(
         if not condensation:
             if pifc0.at(K=0) < 70000 or pifc0.at(K=0) > 115000.0:
                 condensation = True
+                cush = -1.0
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -1302,6 +1312,7 @@ def find_klcl(
             if not condensation:
                 if qtsrc > 0.1 or qtsrc < 1e-8:
                     condensation = True
+                    cush = -1.0
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1326,6 +1337,7 @@ def find_klcl(
                 if not condensation:
                     if thlsrc > 400.0 or thlsrc < 100.0:
                         condensation = True
+                        cush = -1.0
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -1369,6 +1381,7 @@ def find_klcl(
         if not condensation:
             if plcl < 60000.0:
                 condensation = True
+                cush = -1.0
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -1401,6 +1414,7 @@ def find_klcl(
 
                 if id_check == 1:
                     condensation = True
+                    cush = -1.0
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1482,6 +1496,7 @@ def compute_cin_cinlcl(
     thv0lcl_o: FloatField,
     cinlcl: FloatField,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
 ):
     """
     Compute Convective Inhibition, 'cin' & 'cinlcl' [J/kg]=[m2/s2] TKE unit.
@@ -1571,6 +1586,7 @@ def compute_cin_cinlcl(
 
                 if id_check == 1:
                     condensation = True
+                    cush=-1.0
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1630,6 +1646,7 @@ def compute_cin_cinlcl(
 
                     if id_check == 1:
                         condensation = True
+                        cush=-1.0
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -1688,6 +1705,7 @@ def compute_cin_cinlcl(
 
                 if id_check == 1 and not stop_cin:
                     condensation = True
+                    cush=-1.0
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1728,6 +1746,7 @@ def compute_cin_cinlcl(
 
                 if id_check == 1 and not stop_cin:
                     condensation = True
+                    cush=-1.0
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -1782,6 +1801,7 @@ def compute_cin_cinlcl(
             if klfc_IJ >= k0 - 1:
                 klfc_IJ = k0 - 1
                 condensation = True
+                cush=-1.0
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -2178,6 +2198,7 @@ def avg_initial_and_final_cin3(
     qisub_out: FloatField,
     qisub_s: FloatField,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
     cush_s: FloatField,
     cufrc_out: FloatField,
     cufrc_s: FloatField,
@@ -2231,6 +2252,7 @@ def avg_initial_and_final_cin3(
         if not condensation:
             if del_CIN <= 0.0:
                 condensation = True  # Done computing at this column
+                cush=-1.0
 
 
 def define_prel_krel(
@@ -2320,6 +2342,7 @@ def calc_cumulus_base_mass_flux(
     ufrcinv: FloatField,
     wcrit: FloatFieldIJ,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
 ):
     """
     Calculate cumulus base mass flux ('cbmf'), fractional area ('ufrcinv'),
@@ -2450,6 +2473,7 @@ def calc_cumulus_base_mass_flux(
 
             if mu >= 3.0:
                 condensation = True
+                cush = -1.0
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -2543,6 +2567,7 @@ def define_updraft_properties(
     wlcl: FloatField,
     ufrclcl: FloatField,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
 ):
     """
     Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top,
@@ -2597,6 +2622,7 @@ def define_updraft_properties(
 
             if wtw <= 0.0:
                 condensation = True
+                cush = -1.0
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -2939,6 +2965,7 @@ def buoyancy_sorting(
     stop_buoyancy_sort: BoolFieldIJ,
     iteration: int32,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
     # testvar3D_1: FloatField,
     # testvar3D_2: FloatField,
     # testvar3D_3: FloatField,
@@ -3109,6 +3136,7 @@ def buoyancy_sorting(
 
                 if id_check == 1:
                     condensation = True
+                    cush=-1.0
                     umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -3141,6 +3169,7 @@ def buoyancy_sorting(
 
                     if id_check == 1:
                         condensation = True
+                        cush=-1.0
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -3189,6 +3218,7 @@ def buoyancy_sorting(
 
                         if id_check == 1:
                             condensation = True
+                            cush=-1.0
                             umf_out[0, 0, 1] = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
@@ -3278,6 +3308,7 @@ def buoyancy_sorting(
 
                                 if id_check == 1:
                                     condensation = True
+                                    cush=-1.0
                                     umf_out[0, 0, 1] = 0.0
                                     dcm_out = 0.0
                                     qvten_out = 0.0
@@ -3532,6 +3563,7 @@ def buoyancy_sorting(
 
                                 if id_check == 1:
                                     condensation = True
+                                    cush=-1.0
                                     umf_out[0, 0, 1] = 0.0
                                     dcm_out = 0.0
                                     qvten_out = 0.0
@@ -3615,6 +3647,7 @@ def buoyancy_sorting(
 
                                     if id_check == 1:
                                         condensation = True
+                                        cush=-1.0
                                         umf_out[0, 0, 1] = 0.0
                                         dcm_out = 0.0
                                         qvten_out = 0.0
@@ -3740,6 +3773,7 @@ def buoyancy_sorting(
 
                     if wu[0, 0, 1] > 100.0:
                         condensation = True
+                        cush=-1.0
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -4048,6 +4082,7 @@ def recalc_condensate(
         if not condensation:
             if id_check == 1:
                 condensation = True
+                cush=-1.0
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -4142,6 +4177,7 @@ def recalc_condensate(
 
             if forcedCu:
                 condensation = True
+                cush=-1.0
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -5058,6 +5094,7 @@ def penetrative_entrainment_fluxes(
     qlten_sink: FloatField,
     qiten_sink: FloatField,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
     iteration: int32,
 ):
     """
@@ -5251,6 +5288,7 @@ def penetrative_entrainment_fluxes(
 
                 if id_check == 1:
                     condensation = True
+                    cush=-1.0
                     # umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
@@ -5384,6 +5422,7 @@ def calc_thermodynamic_tendencies(
     qiten_det: FloatField,
     slten: FloatField,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
     iteration: int32,
 ):
     """
@@ -5574,6 +5613,7 @@ def calc_thermodynamic_tendencies(
 
                     if id_check == 1:
                         condensation = True
+                        cush=-1.0
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -5603,6 +5643,7 @@ def calc_thermodynamic_tendencies(
 
                         if id_check == 1:
                             condensation = True
+                            cush=-1.0
                             umf_out[0, 0, 1] = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
@@ -5640,6 +5681,7 @@ def calc_thermodynamic_tendencies(
 
                         if id_check == 1:
                             condensation = True
+                            cush=-1.0
                             umf_out[0, 0, 1] = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
@@ -5675,6 +5717,7 @@ def calc_thermodynamic_tendencies(
 
                         if id_check == 1:
                             condensation = True
+                            cush=-1.0
                             umf_out[0, 0, 1] = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
@@ -5754,6 +5797,7 @@ def calc_thermodynamic_tendencies(
 
                     if id_check == 1:
                         condensation = True
+                        cush=-1.0
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -6066,6 +6110,7 @@ def compute_diagnostic_outputs(
     rlwp: FloatFieldIJ,
     riwp: FloatFieldIJ,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
 ):
     """
     Stencil to compute default diagnostic outputs.
@@ -6139,6 +6184,7 @@ def compute_diagnostic_outputs(
 
             if id_check == 1:
                 condensation = True
+                cush=-1.0
                 umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
@@ -6200,6 +6246,7 @@ def calc_cumulus_condensate_at_interface(
     riwp: FloatFieldIJ,
     cufrc: FloatField,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
     iteration: int32,
 ):
     """
@@ -6260,6 +6307,7 @@ def calc_cumulus_condensate_at_interface(
 
                     if id_check == 1:
                         condensation = True
+                        cush=-1.0
                         umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
@@ -6591,6 +6639,7 @@ def recalc_environmental_variables(
     t0: FloatField,
     tr0_temp: FloatField,
     cush_inout: FloatFieldIJ,
+    cush: FloatFieldIJ,
     iteration: int32,
 ):
     """
@@ -6751,6 +6800,7 @@ def recalc_environmental_variables(
 
                 if id_check == 1:
                     condensation = True
+                    cush= -1.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -6918,6 +6968,7 @@ def update_output_variables1(
         if condensation:
             dcm = 0.0
 
+    with computation(FORWARD), interval(...):
         if del_CIN <= 0.0:
             umf_outvar = umf_out
             cufrc_outvar = cufrc_out
@@ -7071,6 +7122,7 @@ def compute_uwshcu_invert_after(
     qisub_inv: FloatField,
     CNV_Tracers: FloatField_NTracers,
     cush: FloatFieldIJ,
+    condensation: BoolFieldIJ,
 ):
     """
     Stencil to revert k levels for all ComputeUwshcu outputs
@@ -8031,8 +8083,6 @@ class ComputeUwshcuInv(NDSLRuntime):
         self.locals.qv0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
         self.locals.ql0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
         self.locals.qi0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ql0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qi0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
         self.locals.th0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
         self.locals.cinlcl = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
         # FloatFieldIJs
@@ -8191,8 +8241,8 @@ class ComputeUwshcuInv(NDSLRuntime):
             DP=self.locals.dp0_inv,
             MASS=self.locals.MASS,
             RKFRE=state.output.RKFRE,
-            QLTOT=self.locals.ql0_inv,
-            QITOT=self.locals.qi0_inv,
+            QLTOT=state.output.ql0_inv,
+            QITOT=state.output.qi0_inv,
         )
 
         self._compute_uwshcu_invert_before(
@@ -8203,8 +8253,8 @@ class ComputeUwshcuInv(NDSLRuntime):
             exnmid0_inv=self.locals.exnmid0_inv,
             dp0_inv=self.locals.dp0_inv,
             qv0_inv=state.input_output.qv0_inv,
-            ql0_inv=self.locals.ql0_inv,
-            qi0_inv=self.locals.qi0_inv,
+            ql0_inv=state.output.ql0_inv,
+            qi0_inv=state.output.qi0_inv,
             t0_inv=state.input_output.t0_inv,
             tke_inv=state.input.tke_inv,
             pifc0_inv=state.input.PLE,
@@ -8369,6 +8419,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             ssu0_o=self.locals.ssu0_o,
             ssv0_o=self.locals.ssv0_o,
             cush_inout=self.locals.cush_inout,
+            cush=state.input_output.cush,
         )
 
         # This 'iteration' loop is for implicit CIN closure
@@ -8469,6 +8520,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 qt0lcl=self.locals.qt0lcl,
                 thv0lcl=self.locals.thv0lcl,
                 cush_inout=self.locals.cush_inout,
+                cush=state.input_output.cush,
                 iteration=iteration,
             )
 
@@ -8527,6 +8579,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 thv0lcl_o=self.locals.thv0lcl_o,
                 cinlcl=self.locals.cinlcl,
                 cush_inout=self.locals.cush_inout,
+                cush=state.input_output.cush,
             )
 
             if iteration != 0:
@@ -8714,6 +8767,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                     fer_s=self.locals.fer_s,
                     fdr_out=self.locals.fdr_out,
                     fdr_s=self.locals.fdr_s,
+                    cush=state.input_output.cush,
                 )
 
             self._define_prel_krel(
@@ -8753,6 +8807,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 ufrcinv=self.locals.ufrcinv,
                 wcrit=self.locals.wcrit,
                 cush_inout=self.locals.cush_inout,
+                cush=state.input_output.cush,
             )
 
             self._define_updraft_properties(
@@ -8785,6 +8840,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 wlcl=self.locals.wlcl,
                 ufrclcl=self.locals.ufrclcl,
                 cush_inout=self.locals.cush_inout,
+                cush=state.input_output.cush,
             )
 
             self._define_env_properties(
@@ -8901,6 +8957,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 cush_inout=self.locals.cush_inout,
                 stop_buoyancy_sort=self.stop_buoyancy_sort,
                 iteration=iteration,
+                cush=state.input_output.cush,
             )
 
             self._calc_ppen(
@@ -9141,6 +9198,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 qlten_sink=self.locals.qlten_sink,
                 qiten_sink=self.locals.qiten_sink,
                 cush_inout=self.locals.cush_inout,
+                cush=state.input_output.cush,
                 iteration=iteration,
             )
 
@@ -9215,6 +9273,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 qlten_det=self.locals.qlten_det,
                 qiten_det=self.locals.qiten_det,
                 cush_inout=self.locals.cush_inout,
+                cush=state.input_output.cush,
                 iteration=iteration,
             )
 
@@ -9265,6 +9324,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 rlwp=self.locals.rlwp,
                 riwp=self.locals.riwp,
                 cush_inout=self.locals.cush_inout,
+                cush=state.input_output.cush,
             )
 
             self._calc_cumulus_condensate_at_interfaces(
@@ -9298,6 +9358,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 riwp=self.locals.riwp,
                 cufrc=self.locals.cufrc,
                 cush_inout=self.locals.cush_inout,
+                cush=state.input_output.cush,
                 iteration=iteration,
             )
 
@@ -9421,6 +9482,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                     t0=self.locals.t0,
                     tr0_temp=self.locals.tr0_temp,
                     cush_inout=self.locals.cush_inout,
+                    cush=state.input_output.cush,
                     iteration=iteration,
                 )
 
@@ -9558,6 +9620,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             qidet_inv=state.output.qidet_inv,
             qisub_inv=state.output.qisub_inv,
             cush=state.input_output.cush,
+            condensation=self.condensation,
         )
 
         self._setup_outputs(
