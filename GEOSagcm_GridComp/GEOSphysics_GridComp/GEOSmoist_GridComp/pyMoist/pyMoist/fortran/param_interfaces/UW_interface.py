@@ -116,7 +116,7 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register("input_output.qv0_inv", "Q", internal_repository)
         self._managed_state.register("input_output.t0_inv", "T", import_repository)
         self._managed_state.register_2D("input_output.cush", "CUSH", internal_repository)
-        self._managed_state.register_2D("input_output.cnvtr", "CNPCPRATE", export_repository)
+        self._managed_state.register_2D("input_output.cnvtr", "CNPCPRATE", export_repository, alloc=True)
 
         self._managed_state.register_2D("output.RKFRE", "RKFRE", export_repository, alloc=True)
         self._managed_state.register("output.MFD_SC", "MFD_SC", export_repository, alloc=True)
@@ -148,6 +148,8 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register("output.nice_inv", "SC_NICE", export_repository, alloc=True)
         self._managed_state.register("output.qlsub_inv", "QLSUB_SC", export_repository, alloc=True)
         self._managed_state.register("output.qisub_inv", "QISUB_SC", export_repository, alloc=True)
+        self._managed_state.register("output.ql0_inv", "QLTOT", export_repository, alloc=True)
+        self._managed_state.register("output.qi0_inv", "QITOT", export_repository, alloc=True)
         self._managed_state.register_2D("output.tpert_out", "TPERT_SC", export_repository, alloc=True)
         self._managed_state.register_2D("output.qpert_out", "QPERT_SC", export_repository, alloc=True)
         self._managed_state.register("output.qidet_inv", "QIDET_SC", export_repository, alloc=True)
@@ -159,6 +161,7 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register_2D("output.SC_QT", "SC_QT", export_repository, alloc=True)
         self._managed_state.register_2D("output.SC_MSE", "SC_MSE", export_repository, alloc=True)
         self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository, alloc=True)
+
 
         # Unused from GEOS ?!
         self._managed_state.register("input_output.CLCN", "CLCN", internal_repository)
@@ -182,13 +185,11 @@ class UWGEOSInterface(UserCode):
                 )
                 self._managed_state.ndsl_to_fortran()
                 self._managed_state.record("UW-Out")
-                print("recording state vars")
+                
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
-        # No finalize call from UW
-        #pass
+     
         self._managed_state.save_recorded()
-        print("saving netcdf")
 
 
 CODE = UWGEOSInterface("UW")
