@@ -530,6 +530,24 @@ class UWState(State):
                 "dtype": Float,
             }
         )
+        ql0_inv: Quantity = dataclasses.field(
+            metadata={
+                "name": "ql0_inv",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        qi0_inv: Quantity = dataclasses.field(
+            metadata={
+                "name": "qi0_inv",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
 
     input: Input
     input_output: Input_Output

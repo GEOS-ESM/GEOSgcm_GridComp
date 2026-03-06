@@ -194,8 +194,6 @@ class UWLocals:
     qv0_in: Local
     ql0_in: Local
     qi0_in: Local
-    ql0_inv: Local
-    qi0_inv: Local
     th0_in: Local
     cush_inout: Local
     dpi: Local
@@ -505,8 +503,6 @@ class UWLocals:
         qv0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         ql0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         qi0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
-        ql0_inv = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
-        qi0_inv = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         th0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         cinlcl = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         # FloatFieldIJs
@@ -799,8 +795,6 @@ class UWLocals:
             dp0_inv=dp0_inv,
             qv0_in=qv0_in,
             ql0_in=ql0_in,
-            ql0_inv=ql0_inv,
-            qi0_inv=qi0_inv,
             qi0_in=qi0_in,
             th0_in=th0_in,
             cush_inout=cush_inout,
