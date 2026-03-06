@@ -1205,8 +1205,8 @@ contains
           iTable(:,4) = iTable(:,4) -1
           iTable(:,5) = iTable(:,5) -1
        endwhere
-       j = index(Grid2, "-Pfafstetter")
-       Grid2 = Grid2(1:j-1)
+       j = index(gName(2), "-Pfafstetter")
+       gName(2) = gName(2)(1:j-1)
     endif
 
     ! --------------------------------------------------------------------------
