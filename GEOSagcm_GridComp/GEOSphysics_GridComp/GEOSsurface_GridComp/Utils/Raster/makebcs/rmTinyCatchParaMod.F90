@@ -929,7 +929,7 @@ contains
 
     REAL (REAL64), PARAMETER           :: RADIUS=MAPL_RADIUS, pi= MAPL_PI 
 
-    character*512                      :: fname
+    character*512                      :: fname, catch_file
     character*512                      :: gtopo30
     CHARACTER*512                      :: version
 
@@ -948,6 +948,10 @@ contains
     integer,           allocatable         :: iTable(:,:)
     character(len=128)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
+    ! This is used to adjust EASE grid from 1-based to 0-based indexes
+    ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
+    ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
+    logical                                :: two_EASE 
 
     ! -----------------------------------------------------
     !
@@ -1011,7 +1015,8 @@ contains
        IM(n)    = nc_gcm
        JM(n)    = nr_gcm
     end do
-    
+    two_EASE = index(gName(1), 'EASE') /=0 .and. index(gName(2), 'EASE') /=0    
+
 !    dx_gcm = 360./float(nc_gcm)
     
     allocate(iTable(ip,0:7))
@@ -1178,9 +1183,9 @@ contains
     ! --------------------------------------------------------------------------
     !
     ! write (ASCII) catchment.def file (land tiles only!)
-    
-    open (10,file='clsm//catchment.def',  &
-         form='formatted',status='unknown')
+    catch_file = 'clsm//catchment.def'
+    if (two_EASE) catch_file = 'clsm//catchment-route.def' 
+    open (10,file=catch_file, form='formatted',status='unknown')
     write (10,*) n_land
     
     do j=1,n_land
@@ -1193,6 +1198,17 @@ contains
     end do
     close(10,status='keep')
     
+    if (two_EASE) then
+       iTable(:,2) = iTable(:,2) - 1
+       iTable(:,3) = iTable(:,3) - 1
+       where (iTable(:,0) == 0)
+          iTable(:,4) = iTable(:,4) -1
+          iTable(:,5) = iTable(:,5) -1
+       endwhere
+       j = index(Grid2, "-Pfafstetter")
+       Grid2 = Grid2(1:j-1)
+    endif
+
     ! --------------------------------------------------------------------------
     !
     ! write nc4-formatted tile file (all tile types)
