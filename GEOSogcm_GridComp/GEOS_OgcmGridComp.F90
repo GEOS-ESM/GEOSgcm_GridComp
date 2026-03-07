@@ -90,6 +90,7 @@ module GEOS_OgcmGridCompMod
   type T_OGCM_STATE
      private
      logical :: useInterp = .false.
+     type(ESMF_Clock)  :: clock
   end type T_OGCM_STATE
 
 ! Wrapper for extracting internal state
@@ -1127,7 +1128,11 @@ contains
     type(ESMF_State)                    :: SURFST
 
     type (ESMF_StateItem_Flag) :: itemType
-
+    type (MAPL_MetaComp    ), pointer   :: CMAPL => null()
+    real :: DT
+    type (ESMF_TimeInterval) :: timestep
+    type (ESMF_Time) :: currTime
+    
 !=============================================================================
 
 ! Begin... 
@@ -1162,12 +1167,24 @@ contains
     call MAPL_Get(MAPL, GCS = GCS, RC=STATUS )
     VERIFY_(STATUS)
 
+! Initialize the PrivateState/clock. First the time...
+!-----------------------------------------------
+    call MAPL_GetObjectFromGC ( GCS(OCEAN), CMAPL, _RC)
+    call MAPL_GetResource(CMAPL, DT, Label="RUN_DT:", _RC)             ! Get AGCM Heartbeat
+    call MAPL_GetResource(CMAPL, DT, Label="OCEAN_DT:", DEFAULT=DT, _RC) ! set Default OCEAN_DT to AGCM Heartbeat
+
+    CALL ESMF_TimeIntervalSet(timeStep, S=NINT(DT), _RC)
+    call ESMF_ClockGet(CLOCK, currTIME=currTime, _RC)
+
+    ogcm_internal_state%clock = &
+         ESMF_ClockCreate(NAME = TRIM(OCEAN_NAME)//"Clock", &
+         timeStep=timeStep, startTime=currTime, _RC)
 ! Call Initialize for every Child
 !--------------------------------
 
     call MAPL_TimerOff(MAPL,"TOTAL"     )
     call MAPL_TimerOn(MAPL,"InitChild") 
-    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
+    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, Ogcm_Internal_State%CLOCK,  RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerOff(MAPL,"InitChild")
     call MAPL_TimerOn (MAPL,"TOTAL"     )
@@ -1510,6 +1527,9 @@ contains
     integer :: PHASE
     integer :: PHASE_
     integer, allocatable :: CHLD(:)
+    integer :: NUM
+    type (ESMF_TimeInterval) :: timestep
+    type (ESMF_Time) :: currTime, myTime, endTime
 
 !=============================================================================
 
@@ -1529,6 +1549,11 @@ contains
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
+
+! Check the clocks to set set-up the "run-to" time
+!-------------------------------------------------
+
+    call ESMF_ClockGet( CLOCK, currTime=endTime, _RC)
 
 ! Start Total timer
 !------------------
@@ -2035,51 +2060,6 @@ contains
 
     call MAPL_TimerOff(MAPL,"TOTAL"     )
 
-    if (.not. DUAL_OCEAN) then
-       call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       if (PHASE == 1) then
-          ! corrector
-          ! run explicitly phase 1 of all the children
-          allocate(CHLD(4), stat=status)
-          VERIFY_(STATUS)
-          CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
-          DO N=1, size(CHLD)
-             ID = CHLD(N)
-             if (ID <= 0) cycle
-             call ESMF_GridCompRun( GCS(ID), importState=GIM(ID), &
-                  exportState=GEX(ID), clock=CLOCK, phase=1, userRC=STATUS )
-             VERIFY_(STATUS)
-             call MAPL_GenericRunCouplers( MAPL, CHILD=ID, CLOCK=CLOCK, RC=STATUS )
-             VERIFY_(STATUS)
-          END DO
-          deallocate(CHLD)
-
-       else
-       ! run explicitly the children excluding "real" seaice (ocean has the data part inside ocean)
-          allocate(CHLD(4), stat=status)
-          VERIFY_(STATUS)
-          CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
-          DO N=1, size(CHLD)
-             ID = CHLD(N)
-             if (ID <= 0) cycle
-             if (ID /= OCEAN .and. ID /= SEAICE) then
-                phase_ = 1
-             else
-                phase_ = phase
-             end if
-             call ESMF_GridCompRun( GCS(ID), importState=GIM(ID), &
-                  exportState=GEX(ID), clock=CLOCK, phase=phase_, userRC=STATUS )
-             VERIFY_(STATUS)
-             call MAPL_GenericRunCouplers( MAPL, CHILD=ID, CLOCK=CLOCK, RC=STATUS )
-             VERIFY_(STATUS)
-          END DO
-          deallocate(CHLD)
-
-       end if
-    end if
-
     call MAPL_TimerOn (MAPL,"TOTAL"     )
 
     call ESMF_UserCompGetInternalState(gc, 'OGCM_state', wrap, status)
@@ -2088,30 +2068,100 @@ contains
 
     useInterp = ogcm_internal_state%useInterp
 
-    if (.not. seaIceT_extData) then
-      call MAPL_LocStreamTransform( ExchGrid, SI     ,  SIO   , _RC)
-      if (DO_CICE_THERMO <= 1) then  
-         call MAPL_LocStreamTransform( ExchGrid, HI     ,  HIO   , _RC)
-      endif
-    endif
+    call ESMF_ClockGet( Ogcm_Internal_State%CLOCK, currTime=myTime, _RC)
 
-    ! call Run2 of SEAICE to do ice nudging 
-    if (dual_ocean) then
-        if(PHASE==1) then
+    if (myTime > EndTime) then
+       call ESMF_ClockSet(Ogcm_Internal_State%Clock,direction=ESMF_DIRECTION_REVERSE, _RC)
+       do
+         call ESMF_ClockAdvance(Ogcm_Internal_State%Clock, _RC)
+         call ESMF_ClockGet(Ogcm_Internal_State%Clock,currTime=currTime, _RC)
+         if (currTime==endTime) exit
+       enddo
+       call ESMF_ClockSet(Ogcm_Internal_State%Clock, direction=ESMF_DIRECTION_FORWARD, _RC)
+       call ESMF_ClockGet(Ogcm_Internal_State%CLOCK, currTime=myTime, _RC)
+    end if
+
+    NUM = 0
+    do while ( MyTime <= endTime ) ! Time to run
+    !============================BEGIN-of-local-time-loop
+       if (.not. DUAL_OCEAN) then
+          call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, Ogcm_Internal_State%CLOCK, RC=STATUS)
+          VERIFY_(STATUS)
+       else
+          if (PHASE == 1) then
+             ! corrector
+             ! run explicitly phase 1 of all the children
+             allocate(CHLD(4), stat=status)
+             VERIFY_(STATUS)
+             CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
+             DO N=1, size(CHLD)
+                ID = CHLD(N)
+                if (ID <= 0) cycle
+                call ESMF_GridCompRun( GCS(ID), importState=GIM(ID), &
+                     exportState=GEX(ID), clock=Ogcm_Internal_State%CLOCK, phase=1, userRC=STATUS )
+                VERIFY_(STATUS)
+                call MAPL_GenericRunCouplers( MAPL, CHILD=ID, CLOCK=Ogcm_Internal_State%CLOCK, RC=STATUS )
+                VERIFY_(STATUS)
+             END DO
+             deallocate(CHLD)
+
+          else
+             ! run explicitly the children excluding "real" seaice (ocean has the data part inside ocean)
+             allocate(CHLD(4), stat=status)
+             VERIFY_(STATUS)
+             CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
+             DO N=1, size(CHLD)
+                ID = CHLD(N)
+                if (ID <= 0) cycle
+                if (ID /= OCEAN .and. ID /= SEAICE) then
+                   phase_ = 1
+                else
+                   phase_ = phase
+                end if
+                call ESMF_GridCompRun( GCS(ID), importState=GIM(ID), &
+                     exportState=GEX(ID), clock=Ogcm_Internal_State%CLOCK, phase=phase_, userRC=STATUS )
+                VERIFY_(STATUS)
+                call MAPL_GenericRunCouplers( MAPL, CHILD=ID, CLOCK=Ogcm_Internal_State%CLOCK, RC=STATUS )
+                VERIFY_(STATUS)
+             END DO
+             deallocate(CHLD)
+
+          end if
+       end if
+
+       ! call Run2 of SEAICE to do ice nudging 
+       if (dual_ocean) then
+          if(PHASE==1) then
              ! phase 3 is corrector stage same as phase 1
              call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
-                  exportState=GEX(SEAICE), clock=CLOCK, phase=3, userRC=STATUS )
+                  exportState=GEX(SEAICE), clock=Ogcm_Internal_State%CLOCK, phase=3, userRC=STATUS )
              VERIFY_(STATUS)
-             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=CLOCK, RC=STATUS )
+             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=Ogcm_Internal_State%CLOCK, RC=STATUS )
              VERIFY_(STATUS)
-        else
+          else
              ! phase 4 predictor stage same as phase 2
              call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
-                  exportState=GEX(SEAICE), clock=CLOCK, phase=4, userRC=STATUS )
+                  exportState=GEX(SEAICE), clock=Ogcm_Internal_State%CLOCK, phase=4, userRC=STATUS )
              VERIFY_(STATUS)
-             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=CLOCK, RC=STATUS )
+             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=Ogcm_Internal_State%CLOCK, RC=STATUS )
              VERIFY_(STATUS)
-        endif
+          endif
+       endif
+       ! Bump the time in the internal state
+       !------------------------------------
+
+       call ESMF_ClockAdvance( Ogcm_Internal_State%clock, _RC)
+       call ESMF_ClockGet    ( Ogcm_Internal_State%clock, currTime= myTime , _RC)
+
+       NUM = NUM + 1
+    !============================END-of-local-time-loop
+    end do  ! time to run
+
+    if (.not. seaIceT_extData) then
+       call MAPL_LocStreamTransform( ExchGrid, SI     ,  SIO   , _RC)
+       if (DO_CICE_THERMO <= 1) then  
+          call MAPL_LocStreamTransform( ExchGrid, HI     ,  HIO   , _RC)
+       endif
     endif
 
     if (DO_CICE_THERMO == 0) then  
