@@ -151,6 +151,10 @@ class NDSLPhysicsStack:
             f"     Nvidia MPS : {MPS_is_on}\n"
         )
 
+    @property
+    def interface_type(self) -> InterfaceTransferType:
+        return self._interface_type
+
 
 NDSL_PHYSICS: NDSLPhysicsStack | None = None
 

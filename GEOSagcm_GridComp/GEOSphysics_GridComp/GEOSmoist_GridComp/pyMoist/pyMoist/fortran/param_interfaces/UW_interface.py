@@ -2,9 +2,10 @@ from MAPL_PythonBridge import UserCode, get_MAPLPy
 from MAPL_PythonBridge.types import CVoidPointer
 from mpi4py import MPI
 from ndsl.dsl.typing import Float, Int
+from ndsl.utils import safe_assign_array
 
 from pyMoist.fortran import get_NDSL_physics
-from pyMoist.fortran.build_helper import InterfaceTransferType, StencilBackendCompilerOverride
+from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.profiler import TimedCUDAProfiler
@@ -80,9 +81,8 @@ class UWGEOSInterface(UserCode):
                 ndsl_stack.quantity_factory,
                 data_dimensions=ndsl_stack.quantity_factory.sizer.data_dimensions,
             ),
-            InterfaceTransferType.CPU_MAP,
+            ndsl_stack.interface_type,
         )
-        
 
     def run(self, mapl_state, import_state, export_state) -> None:
         raise RuntimeError("UW requires pyMoist integration requires `run_with_internal`")
@@ -171,23 +171,22 @@ class UWGEOSInterface(UserCode):
         with TimedCUDAProfiler("UW", {}):
             with TimedCUDAProfiler("UW - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
-                self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:] = (
-                    MOIST_WORKAROUNDS.CNV_Tracers().Q[:]
+                safe_assign_array(
+                    self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
                 )
 
             with TimedCUDAProfiler("UW Numerics", {}):
                 self._uw(self._managed_state.ndsl_state)
 
             with TimedCUDAProfiler("UW - State copy-back", {}):
-                MOIST_WORKAROUNDS.CNV_Tracers().Q[:] = (
-                    self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:]
+                safe_assign_array(
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                    self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
                 )
                 self._managed_state.ndsl_to_fortran()
-                self._managed_state.record("UW-Out")
-                
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
-     
         self._managed_state.save_recorded()
 
 
