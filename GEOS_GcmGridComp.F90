@@ -13,23 +13,24 @@ module GEOS_GcmGridCompMod
 
 ! !USES:
 
-   use ESMF
-   use MAPL
+  use ESMF
+  use MAPL
 
-   use GEOS_dataatmGridCompMod,  only:  DATAATM_SetServices => SetServices
-   use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
-   use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
-   use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
+  use GEOS_dataatmGridCompMod,  only:  DATAATM_SetServices => SetServices
+  use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
+  use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
+  use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
 #ifdef HAS_GIGATRAJ
-   use GEOS_GigatrajGridCompMod, only:  GigaTraj_SetServices => SetServices
+  use GEOS_GigatrajGridCompMod, only:  GigaTraj_SetServices => SetServices
 #endif
 
-   use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
-   use GEOS_WgcmGridCompMod,     only:  WGCM_SetServices => SetServices
-   use MAPL_HistoryGridCompMod,  only:  Hist_SetServices => SetServices
-   use MAPL_HistoryGridCompMod,  only:  HISTORY_ExchangeListWrap
-   use iso_fortran_env
-
+  use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
+  use GEOS_WgcmGridCompMod,     only:  WGCM_SetServices => SetServices
+  use MAPL_HistoryGridCompMod,  only:  Hist_SetServices => SetServices
+  use MAPL_HistoryGridCompMod,  only:  HISTORY_ExchangeListWrap
+  use iso_fortran_env
+  use gc2gc
+  
   implicit none
   private
 
@@ -72,6 +73,8 @@ type T_GCM_STATE
    private
    type (MAPL_LocStreamXFORM) :: XFORM_A2O
    type (MAPL_LocStreamXFORM) :: XFORM_O2A
+   type (T_GC2GC_STATE)       :: a2o_state
+   type (T_GC2GC_STATE)       :: o2a_state
    type(ESMF_State)           :: impSKIN ! Ocean thin layer
    type(ESMF_State)           :: expSKIN
    type(ESMF_Alarm)           :: alarmOcn
@@ -169,6 +172,7 @@ contains
     integer                             :: REPLAY_FILE_REFERENCE_TIME
     integer                             :: iDUAL_OCEAN
 
+    type (T_GC2GC_STATE)                :: a2o_state, o2a_state
 !=============================================================================
 
 ! Begin...
@@ -691,6 +695,121 @@ contains
     call ESMF_UserCompSetInternalState ( GC, 'GCM_state',wrap,status )
     VERIFY_(STATUS)
 
+!<<<<< BEGIN OF CONNECT section    
+    ! new part: describe the connections
+    ! the name MAPL is somewhat misleading
+
+    if (.not. seaIceT_extData) then
+       if (DO_CICE_THERMO <= 1) then
+          call a2o_state%set('HI','HSKINI', _RC)
+       endif
+       call a2o_state%set('SI','SSKINI', _RC)
+    endif
+    if (DO_CICE_THERMO == 0) then
+       if (.not. seaIceT_extData) then
+          call a2o_state%set('TI','TSKINI', _RC)
+       endif
+    endif
+
+    if (DO_CICE_THERMO == 1) then
+       call a2o_state%set('TI','TSKINI', _RC)
+       call a2o_state%set('FRACICE','FR', _RC)
+       call a2o_state%set('VOLICE','VOLICE', _RC)
+       call a2o_state%set('VOLSNO','VOLSNO', _RC)
+       call a2o_state%set('ERGICE','ERGICE', _RC)
+       call a2o_state%set('ERGSNO','ERGSNO', _RC)
+       call a2o_state%set('TAUAGE','TAUAGE', _RC)
+       call a2o_state%set('MPOND','VOLPOND', _RC)
+    endif
+
+    if (DO_CICE_THERMO /= 0) then
+       call a2o_state%set('TAUXW','TAUXW', _RC)
+       call a2o_state%set('TAUYW','TAUYW', _RC)
+    else
+       call a2o_state%set('TAUXW','TAUXO', _RC)
+       call a2o_state%set('TAUYW','TAUYO', _RC)
+    endif
+
+    call a2o_state%set('TAUXI','TAUXI', _RC)
+    call a2o_state%set('TAUYI','TAUYI', _RC)
+    call a2o_state%set('PENPAR','PENPAR', _RC)
+    call a2o_state%set('PENPAF','PENPAF', _RC)
+    call a2o_state%set('PENUVR','PENUVR', _RC)
+    call a2o_state%set('PENUVF','PENUVF', _RC)
+    call a2o_state%set('OUSTAR3','OUSTAR3', _RC)
+    call a2o_state%set('PS','PS', _RC)
+    call a2o_state%set('DISCHRG','DISCHARGE', _RC)
+
+    call a2o_state%set('LWFLX','AO_LWFLX', _RC)
+    call a2o_state%set('SHFLX','AO_SHFLX', _RC)
+    call a2o_state%set('QFLUX','AO_QFLUX', _RC)
+    call a2o_state%set('SNOW','AO_SNOW', _RC)
+    call a2o_state%set('RAIN','AO_RAIN', _RC)
+    call a2o_state%set('DRNIR','AO_DRNIR', _RC)
+    call a2o_state%set('DFNIR','AO_DFNIR', _RC)
+    if (DO_CICE_THERMO <= 1) then
+       call a2o_state%set('FRESH','FRESH', _RC)
+       call a2o_state%set('FSALT','FSALT', _RC)
+       call a2o_state%set('FHOCN','FHOCN', _RC)
+    endif
+    call a2o_state%set('PEN_OCN','PEN_OCN', _RC)
+
+    if(DO_OBIO/=0) then
+       call OBIO_A2O(a2o_state, DO_DATA_ATM4OCN, RC)
+    endif
+
+    ! o2a
+    if (DO_CICE_THERMO == 0) then
+       if (.not. seaIceT_extData) then
+          call o2a_state%set('TSKINI', 'TI', _RC)
+       endif
+    else
+       call o2a_state%set('TSKINI', 'TI', _RC)
+    endif
+
+       if (.not. seaIceT_extData) then
+         if (DO_CICE_THERMO <= 1) then
+            call o2a_state%set('HSKINI', 'HI', _RC)
+         endif
+         call o2a_state%set('SSKINI', 'SI', _RC)
+       endif
+
+       if (DO_CICE_THERMO == 1) then
+          call o2a_state%set('FR', 'FRACICE', _RC)
+          call o2a_state%set('VOLICE', 'VOLICE', _RC)
+          call o2a_state%set('VOLSNO', 'VOLSNO', _RC)
+          call o2a_state%set('ERGICE', 'ERGICE', _RC)
+          call o2a_state%set('ERGSNO', 'ERGSNO', _RC)
+          call o2a_state%set('TAUAGE', 'TAUAGE', _RC)
+          call o2a_state%set('VOLPOND', 'MPOND', _RC)
+       endif
+
+       call o2a_state%set('UW', 'UW', _RC)
+       call o2a_state%set('VW', 'VW', _RC)
+       call o2a_state%set('KPAR', 'KPAR', _RC)
+
+       if (DO_CICE_THERMO == 0) then
+          call o2a_state%set('FRACICE', 'FRACICE', _RC)
+          if (seaIceT_extData) then
+            call o2a_state%set('SEAICETHICKNESS', 'SEAICETHICKNESS', _RC)
+          endif
+       elseif (DO_CICE_THERMO == 1) then
+          call o2a_state%set('TAUXBOT', 'TAUXIBOT', _RC)
+          call o2a_state%set('TAUYBOT', 'TAUYIBOT', _RC)
+       else
+          call o2a_state%set('FRACICE', 'FRACICE', _RC)
+       end if
+
+       call o2a_state%set('UI', 'UI', _RC)
+       call o2a_state%set('VI', 'VI', _RC)
+
+! OGCM export of TS_FOUND and SS_FOUND to SKIN
+!---------------------------------------------
+        call o2a_state%set('TS_FOUND', 'TS_FOUND' , _RC)
+        call o2a_state%set('SS_FOUND', 'SS_FOUND' , _RC)
+        call o2a_state%set('FRZMLT', 'FRZMLT', _RC)
+
+!>>>>> END OF CONNECT section    
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS )
     VERIFY_(STATUS)
@@ -718,6 +837,8 @@ contains
     call MAPL_TimerAdd(GC, name="--W2O"         ,RC=STATUS)
     VERIFY_(STATUS)
 
+    gcm_internal_state%a2o_state = a2o_state
+    gcm_internal_state%o2a_state = o2a_state
 
     RETURN_(ESMF_SUCCESS)
 
@@ -795,6 +916,34 @@ contains
       end subroutine OBIO_TerminateImports
 
   end subroutine SetServices
+
+  subroutine OBIO_A2O(a2o_state, DO_DATA_ATM4OCN, RC)
+
+    type (T_GC2GC_STATE),       intent(inout) :: a2o_state
+    logical,                    intent(IN   ) :: DO_DATA_ATM4OCN
+    integer, optional,          intent(  OUT) :: RC
+    
+    integer                                   :: STATUS
+     
+    call a2o_state%set('UU','UU', _RC)
+    call a2o_state%set('CO2SC','CO2SC', _RC)
+    call a2o_state%set('DUDP','DUDP', _RC)
+    call a2o_state%set('DUWT','DUWT', _RC)
+    call a2o_state%set('DUSD','DUSD', _RC)
+    
+    call a2o_state%set('DRBAND','DRBAND', _RC)
+    call a2o_state%set('DFBAND','DFBAND', _RC)
+
+    if(.not. DO_DATA_ATM4OCN) then
+       call a2o_state%set('BCDP','BCDP', _RC)
+       call a2o_state%set('BCWT','BCWT', _RC)
+       call a2o_state%set('OCDP','OCDP', _RC)
+       call a2o_state%set('OCWT','OCWT', _RC)
+    endif
+
+    _RETURN(ESMF_SUCCESS)
+  end subroutine OBIO_A2O
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1469,6 +1618,41 @@ contains
    !===================================
    end if
 
+   call ESMF_ClockGetAlarm(clock, alarmname=trim(GCNAMES(OGCM)) // '_Alarm', &
+                           alarm=GCM_INTERNAL_STATE%alarmOcn, _RC)
+
+
+   !NEW CODE
+
+   block
+     integer :: DT, COUPLE_DT
+     type(ESMF_TimeInterval) :: ringDuration, timeStep
+     call ESMF_ClockGet(clock, timestep=timestep, _RC)
+     call ESMF_AlarmGet(GCM_INTERNAL_STATE%alarmOcn, ringDuration=ringDuration, _RC)
+     call ESMF_TimeIntervalGet(timeStep, s=DT, _RC)
+     call ESMF_TimeIntervalGet(ringDuration, s=COUPLE_DT, _RC)
+
+     call gcm_internal_state%a2o_state%set(DT=DT, COUPLE_DT=COUPLE_DT, _RC)
+
+     call gcm_internal_state%o2a_state%set(DT=COUPLE_DT, COUPLE_DT=COUPLE_DT, _RC)
+   end block
+
+   call gcm_internal_state%a2o_state%set( &
+        stateIn=GCM_INTERNAL_STATE%SURF_EXP, stateOut=GIM(OGCM), &
+        name="A2O", _RC)
+
+   call gcm_internal_state%a2o_state%set( &
+        xform=GCM_INTERNAL_STATE%xform_a2o, _RC)
+
+      call gcm_internal_state%a2o_state%set( &
+        stateIn=GEX(OGCM), stateOut=GCM_INTERNAL_STATE%impSKIN, &
+        name="A2O", _RC)
+
+   call gcm_internal_state%a2o_state%set( &
+        xform=GCM_INTERNAL_STATE%xform_o2a, _RC)
+   
+   !loop over cpld vars (say A2O)
+
 ! This part has some explicit hierarchy built in...
 !--------------------------------------------------------------
 
@@ -1529,9 +1713,8 @@ contains
       call AllocateExports_UGD(GEX(OGCM), (/'FRACICE '/), _RC)
    end if
 
-   call ESMF_ClockGetAlarm(clock, alarmname=trim(GCNAMES(OGCM)) // '_Alarm', &
-                           alarm=GCM_INTERNAL_STATE%alarmOcn, rc=status)
-   VERIFY_(STATUS)
+   call gcm_internal_state%a2o_state%g2ginitialize(clock, _RC)
+   call gcm_internal_state%o2a_state%g2ginitialize(clock, _RC)
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": IMPORT State" )
@@ -1732,7 +1915,6 @@ contains
     character(len=ESMF_MAXSTR)    :: record_fname
     character(len=14)             :: DATESTAMP !YYYYMMDD_HHMMz
 
-    integer, dimension(NUM_ICE_CATEGORIES) :: SUBINDEXO, SUBINDEXA
     integer                                :: N
 
     TYPE(ESMF_Alarm)              :: PredictorIsActive
@@ -1774,12 +1956,6 @@ contains
     XFORM_O2A = GCM_INTERNAL_STATE%XFORM_O2A
     impSKIN   = GCM_INTERNAL_STATE%impSKIN
     expSKIN   = GCM_INTERNAL_STATE%expSKIN
-
-    do N=1,NUM_ICE_CATEGORIES
-       SUBINDEXO(N) = N
-      !SUBINDEXA(N) = N+1
-       SUBINDEXA(N) = N
-    enddo
 
 ! Get children and their im/ex states from my generic state.
 !----------------------------------------------------------
@@ -1904,10 +2080,14 @@ contains
                 ! ------------------------------
                 !    Ensure IAU tendencies are zero when running Predictor
                 !    if( MAPL_AM_I_Root() ) print *, 'Zeroing   IAU forcing ...'
-                     call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=2, userRC=status )
-                     VERIFY_(STATUS)
-                     call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
-                     VERIFY_(STATUS)
+                call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=2, userRC=status )
+                VERIFY_(STATUS)
+                call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
+                VERIFY_(STATUS)
+
+                call MAPL_TimerOn(MAPL,"--A2O_accmulate"  )
+                call gcm_internal_state%a2o_state%accumulate(clock,_RC)
+                call MAPL_TimerOff(MAPL,"--A2O_accmulate"  )
 
                 if (.not. DUAL_OCEAN) then
                    if(DO_DATASEA /= 0) then
@@ -2166,15 +2346,11 @@ contains
 
     if ( ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%alarmOcn, RC=STATUS) ) then
        VERIFY_(STATUS)
-
+       
 !       time to couple and run ocean
 
 ! Synchronize for Next TimeStep
 ! -----------------------------
-
-       call ESMF_VMBarrier(VM, rc=status)
-       VERIFY_(STATUS)
-
 
        call MAPL_TimerOn(MAPL,"--A2O"  )
 
@@ -2182,114 +2358,15 @@ contains
 ! SURFACE exports to OGCM imports
 ! Example how to do TI, we need to do all of the OCGMimports
 
-! Copy attributes to deal with friendliness
-!------------------------------------------
-       if (.not. seaIceT_extData) then
-         call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI' ,_RC)
-         call MAPL_CopyFriendliness(GIM(OGCM),'SI',expSKIN,'SSKINI', _RC)
-         if (DO_CICE_THERMO <= 1) then
-            call MAPL_CopyFriendliness(GIM(OGCM),'HI',expSKIN,'HSKINI', _RC)
-         endif
-       endif
-       if (DO_CICE_THERMO == 1) then
-          call MAPL_CopyFriendliness(GIM(OGCM),'FRACICE',expSKIN,'FR',    _RC)
-          call MAPL_CopyFriendliness(GIM(OGCM),'VOLICE',expSKIN,'VOLICE', _RC)
-          call MAPL_CopyFriendliness(GIM(OGCM),'VOLSNO',expSKIN,'VOLSNO', _RC)
-          call MAPL_CopyFriendliness(GIM(OGCM),'ERGICE',expSKIN,'ERGICE', _RC)
-          call MAPL_CopyFriendliness(GIM(OGCM),'ERGSNO',expSKIN,'ERGSNO', _RC)
-          call MAPL_CopyFriendliness(GIM(OGCM),'TAUAGE',expSKIN,'TAUAGE', _RC)
-          call MAPL_CopyFriendliness(GIM(OGCM),'MPOND',expSKIN,'VOLPOND', _RC)
-       endif
 
 ! Do the routing between the atm and ocean's decompositions of the exchage grid
 !------------------------------------------------------------------------------
-       if (.not. seaIceT_extData) then
-         if (DO_CICE_THERMO <= 1) then
-            call DO_A2O(GIM(OGCM),'HI'  ,expSKIN,'HSKINI' , _RC)
-         endif
-         call DO_A2O(GIM(OGCM),'SI'     ,expSKIN,'SSKINI' , _RC)
-       endif
-       if (DO_CICE_THERMO == 0) then
-         if (.not. seaIceT_extData) then
-            call DO_A2O(GIM(OGCM),'TI'  ,expSKIN,'TSKINI' , _RC)
-         endif
-       endif
+       call ESMF_VMBarrier(VM, _RC)
+       call gcm_internal_state%a2o_state%regrid(_RC)
+       call ESMF_VMBarrier(VM, _RC)
 
-       if (DO_CICE_THERMO == 1) then
-          call DO_A2O_SUBTILES_R4R4(GIM(OGCM),'TI'     , SUBINDEXO, &
-               expSKIN  ,'TSKINI' , SUBINDEXO, _RC)
-          call DO_A2O_SUBTILES_R4R8(GIM(OGCM),'FRACICE', SUBINDEXO, &
-               expSKIN  ,'FR'     , SUBINDEXA, _RC)
-          call DO_A2O_SUBTILES_R4R8(GIM(OGCM),'VOLICE' , SUBINDEXO, &
-               expSKIN  ,'VOLICE' , SUBINDEXO, _RC)
-          call DO_A2O_SUBTILES_R4R8(GIM(OGCM),'VOLSNO' , SUBINDEXO, &
-               expSKIN  ,'VOLSNO' , SUBINDEXO, _RC)
-          call DO_A2O_SUBTILES2D_R4R8(GIM(OGCM),'ERGICE' , SUBINDEXO, &
-               expSKIN  ,'ERGICE' , SUBINDEXO, &
-               NUM_ICE_LAYERS,                 _RC)
-          call DO_A2O_SUBTILES2D_R4R8(GIM(OGCM),'ERGSNO' , SUBINDEXO, &
-               expSKIN  ,'ERGSNO' , SUBINDEXO, &
-               NUM_SNOW_LAYERS,                _RC)
-          call DO_A2O_SUBTILES_R4R4(GIM(OGCM),'TAUAGE' , SUBINDEXO, &
-               expSKIN  ,'TAUAGE' , SUBINDEXO, _RC)
-          call DO_A2O_SUBTILES_R4R8(GIM(OGCM),'MPOND'   , SUBINDEXO, &
-               expSKIN  ,'VOLPOND' , SUBINDEXO, _RC)
-       endif
-
-       if (DO_CICE_THERMO /= 0) then
-          call DO_A2O(GIM(OGCM),'TAUXW'  ,expSKIN,'TAUXW'  , RC=STATUS); VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM),'TAUYW'  ,expSKIN,'TAUYW'  , RC=STATUS); VERIFY_(STATUS)
-       else
-          call DO_A2O(GIM(OGCM),'TAUXW'  ,expSKIN,'TAUXO'  , RC=STATUS); VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM),'TAUYW'  ,expSKIN,'TAUYO'  , RC=STATUS); VERIFY_(STATUS)
-       endif
-
-       call DO_A2O(GIM(OGCM),'TAUXI'  ,expSKIN,'TAUXI'  , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'TAUYI'  ,expSKIN,'TAUYI'  , RC=STATUS)
-       VERIFY_(STATUS)
-
-       call DO_A2O(GIM(OGCM),'PENPAR' ,expSKIN,'PENPAR' , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'PENPAF' ,expSKIN,'PENPAF' , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'PENUVR' ,expSKIN,'PENUVR' , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'PENUVF' ,expSKIN,'PENUVF' , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'OUSTAR3',expSKIN,'OUSTAR3', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'PS'     ,expSKIN,'PS'     , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'DISCHRG',expSKIN,'DISCHARGE', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'LWFLX',expSKIN,'AO_LWFLX', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'SHFLX',expSKIN,'AO_SHFLX', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'QFLUX',expSKIN,'AO_QFLUX', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'SNOW',expSKIN,'AO_SNOW', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'RAIN',expSKIN,'AO_RAIN', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'DRNIR',expSKIN,'AO_DRNIR', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'DFNIR',expSKIN,'AO_DFNIR', RC=STATUS)
-       VERIFY_(STATUS)
-       if (DO_CICE_THERMO <= 1) then
-           call DO_A2O(GIM(OGCM),'FRESH'  ,expSKIN,'FRESH'  , _RC)
-           call DO_A2O(GIM(OGCM),'FSALT'  ,expSKIN,'FSALT'  , _RC)
-           call DO_A2O(GIM(OGCM),'FHOCN'  ,expSKIN,'FHOCN'  , _RC)
-       endif
-       call DO_A2O(GIM(OGCM),'PEN_OCN',expSKIN,'PEN_OCN', RC=STATUS)
-       VERIFY_(STATUS)
-
-       if(DO_OBIO/=0) then
-          call OBIO_A2O(DO_DATA_ATM4OCN, RC)
-       endif
        call MAPL_TimerOff(MAPL,"--A2O"  )
-
+       
 !--
 ! OGCM exports to SURFACE imports
 
@@ -2307,75 +2384,10 @@ contains
 
        call MAPL_TimerOn (MAPL,"--O2A"  )
 
-       if (DO_CICE_THERMO == 0) then
-         if (.not. seaIceT_extData) then
-           call DO_O2A(expSKIN, 'TSKINI'   , GIM(OGCM), 'TI'    , _RC)
-         endif
-       else
-         call DO_O2A_SUBTILES_R4R4(expSKIN  , 'TSKINI'     , SUBINDEXO,  &
-                                   GIM(OGCM), 'TI'         , SUBINDEXO, _RC)
-       endif
-
-       if (.not. seaIceT_extData) then
-         if (DO_CICE_THERMO <= 1) then
-            call DO_O2A(expSKIN, 'HSKINI'   , GIM(OGCM), 'HI'    , _RC)
-         endif
-         call DO_O2A(expSKIN, 'SSKINI'   , GIM(OGCM), 'SI'    , _RC)
-       endif
-
-       if (DO_CICE_THERMO == 1) then
-          call DO_O2A_SUBTILES_R8R4(expSKIN  , 'FR'         , SUBINDEXA,  &
-               GIM(OGCM), 'FRACICE'    , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_O2A_SUBTILES_R8R4(expSKIN  , 'VOLICE'     , SUBINDEXO,  &
-               GIM(OGCM), 'VOLICE'     , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_O2A_SUBTILES_R8R4(expSKIN  , 'VOLSNO'     , SUBINDEXO,  &
-               GIM(OGCM), 'VOLSNO'     , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_O2A_SUBTILES2D_R8R4(expSKIN  , 'ERGICE'     , SUBINDEXO,  &
-               GIM(OGCM), 'ERGICE'     , SUBINDEXO,  &
-               NUM_ICE_LAYERS, RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_O2A_SUBTILES2D_R8R4(expSKIN  , 'ERGSNO'     , SUBINDEXO,  &
-               GIM(OGCM), 'ERGSNO'     , SUBINDEXO,  &
-               NUM_SNOW_LAYERS, RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_O2A_SUBTILES_R4R4(expSKIN  , 'TAUAGE'      , SUBINDEXO,  &
-               GIM(OGCM), 'TAUAGE'      , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_O2A_SUBTILES_R8R4(expSKIN  , 'VOLPOND'     , SUBINDEXO,  &
-               GIM(OGCM), 'MPOND'       , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
-       endif
-
-       call DO_O2A(impSKIN, 'UW'       , GEX(OGCM), 'UW'    , _RC)
-       call DO_O2A(impSKIN, 'VW'       , GEX(OGCM), 'VW'    , _RC)
-       call DO_O2A(impSKIN, 'KPAR'     , GEX(OGCM), 'KPAR'  , _RC)
-
-       if (DO_CICE_THERMO == 0) then
-          call DO_O2A(impSKIN, 'FRACICE'  , GEX(OGCM), 'FRACICE', _RC)
-          if (seaIceT_extData) then
-            call DO_O2A(impSKIN, 'SEAICETHICKNESS'  , GEX(OGCM), 'SEAICETHICKNESS', _RC)
-          endif
-       elseif (DO_CICE_THERMO == 1) then
-          call DO_O2A(impSKIN, 'TAUXBOT'  , GEX(OGCM), 'TAUXIBOT', _RC)
-          call DO_O2A(impSKIN, 'TAUYBOT'  , GEX(OGCM), 'TAUYIBOT', _RC)
-       else
-          call DO_O2A_SUBTILES_R4R4(impSKIN,   'FRACICE'  ,   SUBINDEXO,    &
-                                    GEX(OGCM), 'FRACICE'  ,   SUBINDEXO,  _RC)
-       end if
-
-       call DO_O2A(impSKIN, 'UI'       , GEX(OGCM), 'UI'    , _RC)
-       call DO_O2A(impSKIN, 'VI'       , GEX(OGCM), 'VI'    , _RC)
-
-! OGCM export of TS_FOUND and SS_FOUND to SKIN
-!---------------------------------------------
-        call DO_O2A(impSKIN, 'TS_FOUND' , GEX(OGCM), 'TS_FOUND' , _RC)
-        call DO_O2A(impSKIN, 'SS_FOUND' , GEX(OGCM), 'SS_FOUND' , _RC)
-        call DO_O2A(impSKIN, 'FRZMLT'   , GEX(OGCM), 'FRZMLT'   , _RC)
-
-        call ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%alarmOcn, _RC)
+       call ESMF_VMBarrier(VM, _RC)
+       call gcm_internal_state%o2a_state%regrid(_RC)
+       call ESMF_VMBarrier(VM, _RC)
+       call ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%alarmOcn, _RC)
 
        call MAPL_TimerOff(MAPL,"--O2A"  )
 
@@ -2486,380 +2498,6 @@ contains
      RETURN_(ESMF_SUCCESS)
 
    end subroutine RUN_WAVES
-
-   subroutine OBIO_A2O(DO_DATA_ATM4OCN, RC)
-
-     logical,                    intent(IN   ) ::  DO_DATA_ATM4OCN
-     integer, optional,          intent(  OUT) ::  RC
-
-     integer                                   :: STATUS
-     integer          :: k
-
-     call DO_A2O(GIM(OGCM),'UU'     ,expSKIN,'UU'     , RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
-     VERIFY_(STATUS)
-
-     call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
-     VERIFY_(STATUS)
-
-     call DO_A2O_UGD(GIM(OGCM), 'DRBAND', expSKIN, 'DRBAND', RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2O_UGD(GIM(OGCM), 'DFBAND', expSKIN, 'DFBAND', RC=STATUS)
-     VERIFY_(STATUS)
-
-     if(.not. DO_DATA_ATM4OCN) then
-       call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O_UGD(GIM(OGCM), 'BCWT', expSKIN, 'BCWT', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O_UGD(GIM(OGCM), 'OCDP', expSKIN, 'OCDP', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O_UGD(GIM(OGCM), 'OCWT', expSKIN, 'OCWT', RC=STATUS)
-       VERIFY_(STATUS)
-
-     endif
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine OBIO_A2O
-
-   subroutine DO_A2O(STATEO,NAMEO,STATEA,NAMEA,RC)
-     type(ESMF_State)          , intent(INOUT) ::  STATEO
-     type(ESMF_State)          , intent(INOUT) ::  STATEA
-     character(len=*)          , intent(IN   ) ::  NAMEO
-     character(len=*)          , intent(IN   ) ::  NAMEA
-     integer, optional,          intent(  OUT) ::  RC
-
-     character(len=ESMF_MAXSTR), parameter :: IAm="DO_A2O"
-     integer                               :: STATUS
-
-     real,    pointer :: ptrA(:) => null()
-     real,    pointer :: ptrO(:) => null()
-
-     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-     if (associated(ptrO) .and. associated(ptrA)) then
-        call MAPL_LocStreamTransform( ptrO, XFORM_A2O, ptrA, RC=STATUS )
-        VERIFY_(STATUS)
-     end if
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine DO_A2O
-
-   subroutine DO_A2O_UGD(STATEO,NAMEO,STATEA,NAMEA,RC)
-     type(ESMF_State)          , intent(INOUT) ::  STATEO
-     type(ESMF_State)          , intent(INOUT) ::  STATEA
-     character(len=*)          , intent(IN   ) ::  NAMEO
-     character(len=*)          , intent(IN   ) ::  NAMEA
-     integer, optional,          intent(  OUT) ::  RC
-
-     character(len=ESMF_MAXSTR), parameter :: IAm="DO_A2O_UGD"
-     integer                               :: STATUS
-     integer                               :: N
-
-     real,    pointer :: ptrA(:,:) => null()
-     real,    pointer :: ptrO(:,:) => null()
-
-     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-     if (associated(ptrO) .and. associated(ptrA)) then
-        do N = 1, size(ptrA,2)
-           call MAPL_LocStreamTransform( ptrO(:,N), XFORM_A2O, ptrA(:,N), RC=STATUS )
-           VERIFY_(STATUS)
-        end do
-     end if
-
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine DO_A2O_UGD
-
-   subroutine DO_O2A(STATEA,NAMEA,STATEO,NAMEO,RC)
-     type(ESMF_State)          , intent(INOUT) ::  STATEA
-     type(ESMF_State)          , intent(INOUT) ::  STATEO
-     character(len=*)          , intent(IN   ) ::  NAMEA
-     character(len=*)          , intent(IN   ) ::  NAMEO
-     integer, optional,          intent(  OUT) ::  RC
-
-     character(len=ESMF_MAXSTR), parameter :: IAm="DO_O2A"
-     integer                               :: STATUS
-
-     real,    pointer :: ptrA(:) => null()
-     real,    pointer :: ptrO(:) => null()
-
-     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-     if (associated(ptrO) .and. associated(ptrA)) then
-        call MAPL_LocStreamTransform( ptrA, XFORM_O2A, ptrO, RC=STATUS )
-        VERIFY_(STATUS)
-     end if
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine DO_O2A
-
-   subroutine DO_A2O_SUBTILES_R4R4(STATEO,NAMEO,SUBINDEXO,STATEA,NAMEA,SUBINDEXA,RC)
-     type(ESMF_State)          , intent(INOUT) ::  STATEO
-     type(ESMF_State)          , intent(INOUT) ::  STATEA
-     character(len=*)          , intent(IN   ) ::  NAMEO
-     character(len=*)          , intent(IN   ) ::  NAMEA
-     integer                   , intent(IN   ) ::  SUBINDEXO(:)
-     integer                   , intent(IN   ) ::  SUBINDEXA(:)
-     integer, optional,          intent(  OUT) ::  RC
-
-     character(len=ESMF_MAXSTR), parameter :: IAm="DO_A2O_SUBTILES_R4R4"
-     integer                               :: STATUS
-
-     real,                       pointer :: ptrA(:,:) => null()
-     real,                       pointer :: ptrO(:,:) => null()
-     integer                             :: N, DIMSO, DIMSA
-
-     DIMSO = size(SUBINDEXO)
-     DIMSA = size(SUBINDEXA)
-     _ASSERT(DIMSO == DIMSA,'needs informative message')
-
-     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-     if (associated(ptrO) .and. associated(ptrA)) then
-        do N=1,DIMSO
-         call MAPL_LocStreamTransform( ptrO(:,SUBINDEXO(N)), XFORM_A2O, &
-                                       ptrA(:,SUBINDEXA(N)), RC=STATUS )
-         VERIFY_(STATUS)
-        enddo
-     end if
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine DO_A2O_SUBTILES_R4R4
-
-   subroutine DO_A2O_SUBTILES_R4R8(STATEO,NAMEO,SUBINDEXO,STATEA,NAMEA,SUBINDEXA,RC)
-     type(ESMF_State)          , intent(INOUT) ::  STATEO
-     type(ESMF_State)          , intent(INOUT) ::  STATEA
-     character(len=*)          , intent(IN   ) ::  NAMEO
-     character(len=*)          , intent(IN   ) ::  NAMEA
-     integer                   , intent(IN   ) ::  SUBINDEXO(:)
-     integer                   , intent(IN   ) ::  SUBINDEXA(:)
-     integer, optional,          intent(  OUT) ::  RC
-
-     character(len=ESMF_MAXSTR), parameter :: IAm="DO_A2O_SUBTILES_R4R8"
-     integer                               :: STATUS
-
-     real(kind=ESMF_KIND_R8),    pointer :: ptrA(:,:) => null()
-     real,                       pointer :: ptrO(:,:) => null()
-     integer                             :: N, DIMSO, DIMSA
-
-     DIMSO = size(SUBINDEXO)
-     DIMSA = size(SUBINDEXA)
-     _ASSERT(DIMSO == DIMSA,'needs informative message')
-
-     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-     if (associated(ptrO) .and. associated(ptrA)) then
-        do N=1,DIMSO
-         call MAPL_LocStreamTransform( ptrO(:,SUBINDEXO(N)), XFORM_A2O, &
-                                       ptrA(:,SUBINDEXA(N)), RC=STATUS )
-         VERIFY_(STATUS)
-        enddo
-     end if
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine DO_A2O_SUBTILES_R4R8
-
-   subroutine DO_A2O_SUBTILES2D_R4R8(STATEO,NAMEO,SUBINDEXO,STATEA,NAMEA,SUBINDEXA, &
-                                     DIMS, RC)
-     type(ESMF_State)          , intent(INOUT) ::  STATEO
-     type(ESMF_State)          , intent(INOUT) ::  STATEA
-     character(len=*)          , intent(IN   ) ::  NAMEO
-     character(len=*)          , intent(IN   ) ::  NAMEA
-     integer                   , intent(IN   ) ::  SUBINDEXO(:)
-     integer                   , intent(IN   ) ::  SUBINDEXA(:)
-     integer                   , intent(IN   ) ::  DIMS
-     integer, optional,          intent(  OUT) ::  RC
-
-     character(len=ESMF_MAXSTR), parameter :: IAm="DO_A2O_SUBTILES2D_R4R8"
-     integer                               :: STATUS
-
-     real(kind=ESMF_KIND_R8),    pointer :: ptrA(:,:,:) => null()
-     real,                       pointer :: ptrO(:,:,:) => null()
-     integer                             :: N, K, DIMSO, DIMSA
-
-
-     DIMSO = size(SUBINDEXO)
-     DIMSA = size(SUBINDEXA)
-     _ASSERT(DIMSO == DIMSA,'needs informative message')
-
-     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-     if (associated(ptrO) .and. associated(ptrA)) then
-        do N=1,DIMSO
-           do K=1,DIMS
-             call MAPL_LocStreamTransform( ptrO(:,K,SUBINDEXO(N)), XFORM_A2O, &
-                                           ptrA(:,K,SUBINDEXA(N)), RC=STATUS )
-             VERIFY_(STATUS)
-           enddo
-        enddo
-     end if
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine DO_A2O_SUBTILES2D_R4R8
-
-   subroutine DO_O2A_SUBTILES_R4R4(STATEA,NAMEA,SUBINDEXA,STATEO,NAMEO,SUBINDEXO,RC)
-     type(ESMF_State)          , intent(INOUT) ::  STATEA
-     type(ESMF_State)          , intent(INOUT) ::  STATEO
-     character(len=*)          , intent(IN   ) ::  NAMEA
-     character(len=*)          , intent(IN   ) ::  NAMEO
-     integer                   , intent(IN   ) ::  SUBINDEXO(:)
-     integer                   , intent(IN   ) ::  SUBINDEXA(:)
-     integer, optional,          intent(  OUT) ::  RC
-
-     character(len=ESMF_MAXSTR), parameter :: IAm="DO_O2A_SUBTILES_R4R4"
-     integer                               :: STATUS
-
-     real,                       pointer :: ptrA(:,:) => null()
-     real,                       pointer :: ptrO(:,:) => null()
-     integer                             :: N, DIMSO, DIMSA
-
-     DIMSO = size(SUBINDEXO)
-     DIMSA = size(SUBINDEXA)
-     _ASSERT(DIMSO == DIMSA,'needs informative message')
-
-     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-     if (associated(ptrO) .and. associated(ptrA)) then
-        do N=1,DIMSO
-           call MAPL_LocStreamTransform( ptrA(:, SUBINDEXA(N)), XFORM_O2A, &
-                                         ptrO(:, SUBINDEXO(N)), RC=STATUS )
-           VERIFY_(STATUS)
-        enddo
-     end if
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine DO_O2A_SUBTILES_R4R4
-
-   subroutine DO_O2A_SUBTILES_R8R4(STATEA,NAMEA,SUBINDEXA,STATEO,NAMEO,SUBINDEXO,RC)
-     type(ESMF_State)          , intent(INOUT) ::  STATEA
-     type(ESMF_State)          , intent(INOUT) ::  STATEO
-     character(len=*)          , intent(IN   ) ::  NAMEA
-     character(len=*)          , intent(IN   ) ::  NAMEO
-     integer                   , intent(IN   ) ::  SUBINDEXO(:)
-     integer                   , intent(IN   ) ::  SUBINDEXA(:)
-     integer, optional,          intent(  OUT) ::  RC
-
-     character(len=ESMF_MAXSTR), parameter :: IAm="DO_O2A_SUBTILES_R8R4"
-     integer                               :: STATUS
-
-     real(kind=ESMF_KIND_R8),    pointer :: ptrA(:,:) => null()
-     real,                       pointer :: ptrO(:,:) => null()
-     integer                             :: N, DIMSO, DIMSA
-
-     DIMSO = size(SUBINDEXO)
-     DIMSA = size(SUBINDEXA)
-     _ASSERT(DIMSO == DIMSA,'needs informative message')
-
-     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-     if (associated(ptrO) .and. associated(ptrA)) then
-        do N=1,DIMSO
-           call MAPL_LocStreamTransform( ptrA(:, SUBINDEXA(N)), XFORM_O2A, &
-                                         ptrO(:, SUBINDEXO(N)), RC=STATUS )
-           VERIFY_(STATUS)
-        enddo
-     end if
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine DO_O2A_SUBTILES_R8R4
-
-   subroutine DO_O2A_SUBTILES2D_R8R4(STATEA,NAMEA,SUBINDEXA,STATEO,NAMEO,SUBINDEXO, &
-                                     DIMS, RC)
-     type(ESMF_State)          , intent(INOUT) ::  STATEA
-     type(ESMF_State)          , intent(INOUT) ::  STATEO
-     character(len=*)          , intent(IN   ) ::  NAMEA
-     character(len=*)          , intent(IN   ) ::  NAMEO
-     integer                   , intent(IN   ) ::  SUBINDEXO(:)
-     integer                   , intent(IN   ) ::  SUBINDEXA(:)
-     integer                   , intent(IN   ) ::  DIMS
-     integer, optional,          intent(  OUT) ::  RC
-
-     character(len=ESMF_MAXSTR), parameter :: IAm="DO_O2A_SUBTILES2D_R8R4"
-     integer                               :: STATUS
-
-     real(kind=ESMF_KIND_R8),    pointer :: ptrA(:,:,:) => null()
-     real,                       pointer :: ptrO(:,:,:) => null()
-     integer                             :: N, K, DIMSO, DIMSA
-
-     DIMSO = size(SUBINDEXO)
-     DIMSA = size(SUBINDEXA)
-     _ASSERT(DIMSO == DIMSA,'needs informative message')
-
-     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-     if (associated(ptrO) .and. associated(ptrA)) then
-        do N=1,DIMSO
-          do K=1,DIMS
-            call MAPL_LocStreamTransform( ptrA(:,K,SUBINDEXA(N)), XFORM_O2A, &
-                                          ptrO(:,K,SUBINDEXO(N)), RC=STATUS )
-            VERIFY_(STATUS)
-          enddo
-        enddo
-     end if
-     call ESMF_VMBarrier(VM, rc=status)
-     VERIFY_(STATUS)
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine DO_O2A_SUBTILES2D_R8R4
 
    subroutine DO_A2W(SRC,DST,NAME,RC)
      implicit none
@@ -3042,5 +2680,18 @@ contains
 !ALT we could have a finalize method to release memory
 ! for example call ESMF_FieldRegridRelease(routeHandle, rc=status)
 
+#ifdef FIXME    
+ !<<<<<<<<<<<<< TO DO:
+ move the subcycling loop (i.e. private clock) in Ogcm
+ make ogcm DT coupling DT
+ DEAL with friendliness
+!!!  call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI' ,_RC)
+
+  
+ !>>>>>>>>>>>>>
+#endif
+ !<<<<<<<<<<<<<
+
 end module GEOS_GcmGridCompMod
+
 
