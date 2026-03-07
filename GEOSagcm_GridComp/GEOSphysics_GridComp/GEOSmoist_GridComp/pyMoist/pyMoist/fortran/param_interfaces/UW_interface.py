@@ -161,10 +161,9 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register_2D("output.SC_QT", "SC_QT", export_repository, alloc=True)
         self._managed_state.register_2D("output.SC_MSE", "SC_MSE", export_repository, alloc=True)
         self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository, alloc=True)
-
+        self._managed_state.register("input_output.CLCN", "CLCN", internal_repository)
 
         # Unused from GEOS ?!
-        self._managed_state.register("input_output.CLCN", "CLCN", internal_repository)
         # CLLS = MAPLPy.get_pointer("CLLS", internal_state, dtype=np.float32)
         # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
         # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
