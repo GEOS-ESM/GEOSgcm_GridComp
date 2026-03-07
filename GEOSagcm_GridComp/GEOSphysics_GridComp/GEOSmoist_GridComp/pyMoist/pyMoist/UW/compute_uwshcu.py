@@ -219,7 +219,6 @@ def compute_uwshcu_invert_before(
         pifc0_in[0, 0, 1] = 0.0
         zifc0_in[0, 0, 1] = 0.0
         exnifc0_in[0, 0, 1] = 0.0
-
     with computation(FORWARD), interval(...):
         # Flip interface variables
         k_inv = k_end + 1 - K
@@ -346,7 +345,7 @@ def compute_thermodynamic_variables(
 
     with computation(FORWARD), interval(...):
         # Initialize output variables defined for all grid points
-        # umf_out[0, 0, 1] = 0.0
+        umf_out = 0.0
         dcm_out = 0.0
         cufrc_out = 0.0
         fer_out = constants.MAPL_UNDEF
@@ -667,7 +666,7 @@ def compute_thv0_thvl0(
     with computation(FORWARD), interval(...):
         if id_check == 1:
             condensation = True  # Indicates if condensation has occurred (e.g., Fortran go to 333)
-            umf_out[0, 0, 1] = 0.0
+            umf_out = 0.0
             dcm_out = 0.0
             qvten_out = 0.0
             qlten_out = 0.0
@@ -707,7 +706,7 @@ def compute_thv0_thvl0(
                 condensation = True
                 cush = -1.0
                 cush_inout = -1.0
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -932,7 +931,7 @@ def find_pbl_height(
             if kinv <= int64(1):
                 condensation = True
                 cush = -1.0
-                # umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 # dcm_out = 0.0
                 # qvten_out = 0.0
                 # qlten_out = 0.0
@@ -958,7 +957,7 @@ def find_pbl_height(
                     condensation = True
                     cush = -1.0
                     cush_inout = -1.0
-                    # umf_out[0, 0, 1] = 0.0
+                    umf_out = 0.0
                     # dcm_out = 0.0
                     # qvten_out = 0.0
                     # qlten_out = 0.0
@@ -1288,7 +1287,7 @@ def find_klcl(
             if pifc0.at(K=0) < 70000 or pifc0.at(K=0) > 115000.0:
                 condensation = True
                 cush = -1.0
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -1313,7 +1312,7 @@ def find_klcl(
                 if qtsrc > 0.1 or qtsrc < 1e-8:
                     condensation = True
                     cush = -1.0
-                    umf_out[0, 0, 1] = 0.0
+                    umf_out = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1338,7 +1337,7 @@ def find_klcl(
                     if thlsrc > 400.0 or thlsrc < 100.0:
                         condensation = True
                         cush = -1.0
-                        umf_out[0, 0, 1] = 0.0
+                        umf_out = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -1382,7 +1381,7 @@ def find_klcl(
             if plcl < 60000.0:
                 condensation = True
                 cush = -1.0
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -1415,7 +1414,7 @@ def find_klcl(
                 if id_check == 1:
                     condensation = True
                     cush = -1.0
-                    umf_out[0, 0, 1] = 0.0
+                    umf_out = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1587,7 +1586,7 @@ def compute_cin_cinlcl(
                 if id_check == 1:
                     condensation = True
                     cush=-1.0
-                    umf_out[0, 0, 1] = 0.0
+                    umf_out = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1647,7 +1646,7 @@ def compute_cin_cinlcl(
                     if id_check == 1:
                         condensation = True
                         cush=-1.0
-                        umf_out[0, 0, 1] = 0.0
+                        umf_out = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -1706,7 +1705,7 @@ def compute_cin_cinlcl(
                 if id_check == 1 and not stop_cin:
                     condensation = True
                     cush=-1.0
-                    umf_out[0, 0, 1] = 0.0
+                    umf_out = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1747,7 +1746,7 @@ def compute_cin_cinlcl(
                 if id_check == 1 and not stop_cin:
                     condensation = True
                     cush=-1.0
-                    umf_out[0, 0, 1] = 0.0
+                    umf_out = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1802,7 +1801,7 @@ def compute_cin_cinlcl(
                 klfc_IJ = k0 - 1
                 condensation = True
                 cush=-1.0
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -2253,6 +2252,7 @@ def avg_initial_and_final_cin3(
             if del_CIN <= 0.0:
                 condensation = True  # Done computing at this column
                 cush=-1.0
+                umf_out=0.0
 
 
 def define_prel_krel(
@@ -2474,7 +2474,7 @@ def calc_cumulus_base_mass_flux(
             if mu >= 3.0:
                 condensation = True
                 cush = -1.0
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -2623,7 +2623,7 @@ def define_updraft_properties(
             if wtw <= 0.0:
                 condensation = True
                 cush = -1.0
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -2661,7 +2661,7 @@ def define_updraft_properties(
         if not condensation:
             if ufrclcl <= 0.0001:
                 condensation = True
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -2720,7 +2720,7 @@ def define_updraft_properties(
 
             if id_check == 1:
                 condensation = True
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -3137,7 +3137,7 @@ def buoyancy_sorting(
                 if id_check == 1:
                     condensation = True
                     cush=-1.0
-                    umf_out[0, 0, 1] = 0.0
+                    umf_out = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -3170,7 +3170,7 @@ def buoyancy_sorting(
                     if id_check == 1:
                         condensation = True
                         cush=-1.0
-                        umf_out[0, 0, 1] = 0.0
+                        umf_out = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -3219,7 +3219,7 @@ def buoyancy_sorting(
                         if id_check == 1:
                             condensation = True
                             cush=-1.0
-                            umf_out[0, 0, 1] = 0.0
+                            umf_out = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
                             qlten_out = 0.0
@@ -3309,7 +3309,7 @@ def buoyancy_sorting(
                                 if id_check == 1:
                                     condensation = True
                                     cush=-1.0
-                                    umf_out[0, 0, 1] = 0.0
+                                    umf_out = 0.0
                                     dcm_out = 0.0
                                     qvten_out = 0.0
                                     qlten_out = 0.0
@@ -3564,7 +3564,7 @@ def buoyancy_sorting(
                                 if id_check == 1:
                                     condensation = True
                                     cush=-1.0
-                                    umf_out[0, 0, 1] = 0.0
+                                    umf_out = 0.0
                                     dcm_out = 0.0
                                     qvten_out = 0.0
                                     qlten_out = 0.0
@@ -3648,7 +3648,7 @@ def buoyancy_sorting(
                                     if id_check == 1:
                                         condensation = True
                                         cush=-1.0
-                                        umf_out[0, 0, 1] = 0.0
+                                        umf_out = 0.0
                                         dcm_out = 0.0
                                         qvten_out = 0.0
                                         qlten_out = 0.0
@@ -3774,7 +3774,7 @@ def buoyancy_sorting(
                     if wu[0, 0, 1] > 100.0:
                         condensation = True
                         cush=-1.0
-                        umf_out[0, 0, 1] = 0.0
+                        umf_out = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -4083,7 +4083,7 @@ def recalc_condensate(
             if id_check == 1:
                 condensation = True
                 cush=-1.0
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -4178,7 +4178,7 @@ def recalc_condensate(
             if forcedCu:
                 condensation = True
                 cush=-1.0
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -5289,7 +5289,7 @@ def penetrative_entrainment_fluxes(
                 if id_check == 1:
                     condensation = True
                     cush=-1.0
-                    # umf_out[0, 0, 1] = 0.0
+                    umf_out = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -5614,7 +5614,7 @@ def calc_thermodynamic_tendencies(
                     if id_check == 1:
                         condensation = True
                         cush=-1.0
-                        umf_out[0, 0, 1] = 0.0
+                        umf_out = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -5644,7 +5644,7 @@ def calc_thermodynamic_tendencies(
                         if id_check == 1:
                             condensation = True
                             cush=-1.0
-                            umf_out[0, 0, 1] = 0.0
+                            umf_out = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
                             qlten_out = 0.0
@@ -5682,7 +5682,7 @@ def calc_thermodynamic_tendencies(
                         if id_check == 1:
                             condensation = True
                             cush=-1.0
-                            umf_out[0, 0, 1] = 0.0
+                            umf_out = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
                             qlten_out = 0.0
@@ -5718,7 +5718,7 @@ def calc_thermodynamic_tendencies(
                         if id_check == 1:
                             condensation = True
                             cush=-1.0
-                            umf_out[0, 0, 1] = 0.0
+                            umf_out = 0.0
                             dcm_out = 0.0
                             qvten_out = 0.0
                             qlten_out = 0.0
@@ -5798,7 +5798,7 @@ def calc_thermodynamic_tendencies(
                     if id_check == 1:
                         condensation = True
                         cush=-1.0
-                        umf_out[0, 0, 1] = 0.0
+                        umf_out = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -6185,7 +6185,7 @@ def compute_diagnostic_outputs(
             if id_check == 1:
                 condensation = True
                 cush=-1.0
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -6308,7 +6308,7 @@ def calc_cumulus_condensate_at_interface(
                     if id_check == 1:
                         condensation = True
                         cush=-1.0
-                        umf_out[0, 0, 1] = 0.0
+                        umf_out = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -6769,7 +6769,7 @@ def recalc_environmental_variables(
             thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, ese, esx)
             if id_check == 1:
                 condensation = True
-                umf_out[0, 0, 1] = 0.0
+                umf_out = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -6801,6 +6801,7 @@ def recalc_environmental_variables(
                 if id_check == 1:
                     condensation = True
                     cush= -1.0
+                    umf_out = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -6967,6 +6968,7 @@ def update_output_variables1(
     with computation(FORWARD), interval(...):
         if condensation:
             dcm = 0.0
+            umf_zint = 0.0
 
     with computation(FORWARD), interval(...):
         if del_CIN <= 0.0:
@@ -7885,10 +7887,6 @@ class ComputeUwshcuInv(NDSLRuntime):
         self.esx = saturation_vapor_pressure_table.esx
 
         self.locals.PTR2D = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.QLCN = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.QICN = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.QLLS = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.QILS = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
         self.locals.MASS = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
         self.locals.ssthl0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
         self.locals.ssqt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
@@ -9643,10 +9641,10 @@ class ComputeUwshcuInv(NDSLRuntime):
             QIENT_SC=state.output.QIENT_SC,
             QLDET_SC=state.output.qldet_inv,
             QIDET_SC=state.output.qidet_inv,
-            QLCN=self.locals.QLCN,
-            QICN=self.locals.QICN,
-            QLLS=self.locals.QLLS,
-            QILS=self.locals.QILS,
+            QLCN=state.input.QLCN,
+            QICN=state.input.QICN,
+            QLLS=state.input.QLLS,
+            QILS=state.input.QILS,
             QLSUB_SC=state.output.qlsub_inv,
             QISUB_SC=state.output.qisub_inv,
             DQRDT_SC=state.output.qrten_inv,
