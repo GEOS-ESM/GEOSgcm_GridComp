@@ -49,11 +49,11 @@ def pdfcondensate(
     condensate: float64 = 0.0
     if pdfshape == 1:
         if (qtmean_64 + sigmaqt1_64) < qstar_64:
-            condensate = 0.0
+            condensate = float64(0.0)
         elif qstar_64 > (qtmean_64 - sigmaqt1_64):
             if sigmaqt1_64 > 0.0:
-                condensate = (min(qtmean_64 + sigmaqt1_64 - qstar_64, 2.0 * sigmaqt1_64) ** 2) / (
-                    4.0 * sigmaqt1_64
+                condensate = (min(qtmean_64 + sigmaqt1_64 - qstar_64, float64(2.0) * sigmaqt1_64) ** 2) / (
+                    float64(4.0) * sigmaqt1_64
                 )
             else:
                 condensate = qtmean_64 - qstar_64
@@ -286,15 +286,13 @@ def hydrostatic_pdf(
             t_n = (
                 t_p
                 + (1.0 - f_qi)
-                * constants.MAPL_LATENT_HEAT_VAPORIZATION
-                / constants.MAPL_CP
+                * constants.ALHLBCP
                 * (
                     (qc_n - qc_p) * (1.0 - convective_cloud_fraction)
                     + (qa_o - qa_x) * convective_cloud_fraction
                 )
                 + f_qi
-                * constants.MAPL_LATENT_HEAT_SUBLIMATION
-                / constants.MAPL_CP
+                * constants.ALHSBCP
                 * (
                     (qc_n - qc_p) * (1.0 - convective_cloud_fraction)
                     + (qa_o - qa_x) * convective_cloud_fraction
@@ -388,5 +386,5 @@ def hydrostatic_pdf(
             convective_liquid = 0.0
             convective_cloud_fraction = 0.0
 
-        denom, _ = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
+        denom, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, ese=ese, esx=esx)
         relative_humidity = vapor / denom
