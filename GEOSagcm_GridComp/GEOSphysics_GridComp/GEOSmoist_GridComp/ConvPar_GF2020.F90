@@ -20,29 +20,29 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
  PRIVATE
  PUBLIC  gf2020_interface &
         ,use_memory,convection_tracer &
-        ,downdraft                    &
-        ,use_rebcb, vert_discr, satur_calc, clev_grid, apply_sub_mp        &
-        ,sgs_w_timescale, lightning_diag, tau_ocea_cp,  tau_land_cp        &
-        ,autoconv, bc_meth,overshoot,use_wetbulb                           &
-        ,c1,c0_deep,qrc_crit_lnd,qrc_crit_ocn                              &
-        ,lambau_deep,lambau_shdn,c0_mid                                    &
-        ,cum_min_edt_land  ,cum_min_edt_ocean                              &
-        ,cum_max_edt_land  ,cum_max_edt_ocean, cum_hei_down_land           &
-        ,cum_hei_down_ocean,cum_hei_updf_land, cum_hei_updf_ocean          &
-        ,use_momentum_transp,cum_entr_rate,min_entr_rate                   &
-        ,zero_diff_land,zero_diff_entr,zero_diff_vvel                      & 
-        ,nmp,lsmp,cnmp,moist_trigger,frac_modis,max_tq_tend                &
-        ,cum_fadj_massflx, cum_use_excess, cum_ave_layer, adv_trigger      &
-        ,evap_fix,output_sound,use_cloud_dissipation                       &
-        ,use_smooth_tend,GF_convpar_init,beta_sh,c0_shal                   &
-        ,use_linear_subcl_mf,cap_maxs,entrversion
+        ,downdraft &
+        ,use_rebcb, vert_discr, satur_calc, clev_grid, apply_sub_mp &
+        ,sgs_w_timescale, lightning_diag, tau_ocea_cp,  tau_land_cp &
+        ,autoconv, overshoot, use_wetbulb &
+        ,lambau_deep,lambau_shdn &
+        ,cum_min_edt_land  ,cum_min_edt_ocean &
+        ,cum_max_edt_land  ,cum_max_edt_ocean, cum_hei_down_land &
+        ,cum_hei_down_ocean,cum_hei_updf_land, cum_hei_updf_ocean &
+        ,cum_cap_maxs &
+        ,use_momentum_transp,min_entr_rate &
+        ,zero_diff_land,zero_diff_entr,zero_diff_vvel & 
+        ,nmp,lsmp,moist_trigger,frac_modis,max_tq_tend &
+        ,cum_fadj_massflx, cum_use_excess, adv_trigger &
+        ,evap_fix,output_sound,use_cloud_dissipation &
+        ,use_smooth_tend,beta_sh &
+        ,use_linear_subcl_mf
 
  LOGICAL :: wrtgrads = .false.
  INTEGER :: nrec = 0, ntimes = 0
  REAL    :: int_time = 0.
  !-
  !- number of microphysics schemes in the host model
- INTEGER ,PARAMETER  :: nmp = 1, lsmp = 1, cnmp = 2
+ INTEGER ,PARAMETER  :: nmp = 1, lsmp = 1
 
  LOGICAL :: FIX_NEGATIVES     = .false.
 
@@ -103,11 +103,14 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
  REAL,   DIMENSION(maxiens) :: CUM_MAX_EDT_LAND  =(/0.90,  0.00,  0.90/)!= maximum evap fraction allowed over the land  ,default= 0.9
  REAL,   DIMENSION(maxiens) :: CUM_MAX_EDT_OCEAN =(/0.90,  0.00,  0.90/)!= maximum evap fraction allowed over the ocean ,default= 0.9
 
+ REAL,   DIMENSION(maxiens) :: CUM_CAP_MAXS      =(/150.,  50.0,  150./)!= maximum depth (mb) of capping inversion (larger cap = no convection)
+
  REAL,   DIMENSION(maxiens) :: CUM_FADJ_MASSFLX  =(/1.00,  1.00,  1.00/)!= multiplicative factor for tunning the mass flux at cloud base
                                                                         != default = 1.0
  INTEGER,DIMENSION(maxiens) :: CUM_USE_EXCESS    =(/1,     1,     1   /)!= use T,Q excess sub-grid scale variability
 
  INTEGER :: MOIST_TRIGGER  = 0 != relative humidity effects on the cap_max trigger function
+
  INTEGER :: FRAC_MODIS     = 0 != use fraction liq/ice content derived from MODIS/CALIPO sensors
  INTEGER :: ADV_TRIGGER    = 0 !=  1=> Kain (2004),  2=> moisture adv trigger (Ma & Tan, 2009, Atmos Res)
  INTEGER :: EVAP_FIX       = 1 != fix total evap > column rainfall
@@ -123,7 +126,6 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
  REAL    :: dcape_threshold       = 0.
  REAL    :: beta_sh               = 2.2
  INTEGER :: use_linear_subcl_mf   = 1
- REAL    :: cap_maxs              = 50.
 
  !------------------- internal variables  -------------------
 
@@ -142,8 +144,6 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
  INTEGER ::  USE_EXCESS        != default= 1   - use T,Q excess sub-grid scale variability
 
  !-- General internal controls for the diverse options in GF
- INTEGER            :: ENTRVERSION    = 1       != entr formulations
-
  LOGICAL, PARAMETER :: COUPL_MPHYSICS = .TRUE.  != coupling with cloud microphysics (do not change  to false)
 
  LOGICAL, PARAMETER :: MELT_GLAC      = .TRUE.  != turn ON/OFF ice phase/melting
@@ -154,7 +154,7 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
 
  LOGICAL            :: FIRST_GUESS_W  = .FALSE. != use it to calculate a 1st guess of the updraft vert velocity
 
- INTEGER, PARAMETER :: LIQ_ICE_NUMBER_CONC = 1 !
+ INTEGER, PARAMETER :: LIQ_ICE_NUMBER_CONC = 0 !
 
  !-rainfall evaporation(1) orig (2) mix orig+new (3) new
  INTEGER, PARAMETER :: aeroevap = 1
@@ -183,7 +183,7 @@ CONTAINS
 !---------------------------------------------------------------------------------------------------
   SUBROUTINE GF2020_INTERFACE(  mxp,myp,mzp,LONS,LATS,DT_MOIST                    &
                                ,PLE, PLO, ZLE, ZLO, PK, MASS, KH                  &
-                               ,T1, TH1, Q1, U1,V1,W1,BYNCY,QLIQ,QICE             &
+                               ,T1, TH1, Q1, U1,V1,W1,OM1,BYNCY,QLIQ,QICE         &
                                ,NACTL,CNPCPRATE                                   &
                                ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQCDT ,ENTLAM     &
                                ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, QCLD          &
@@ -197,9 +197,9 @@ CONTAINS
                                ,CNV_TOPP_DP,CNV_TOPP_MD,CNV_TOPP_SH               &
                                ,MUPDP,MUPSH,MUPMD,MDNDP                           &
                                ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD,WQT_DC           &
-                               ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
+                               ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD &
                                ,DTDTDYN,DQVDTDYN                                  &
-                               ,REVSU, entr3d, entr_dp, entr_md, entr_sh, PRFIL   &
+                               ,REVSU, entr_dp, entr_md, entr_sh, PRFIL   &
                                ,SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH             &
                                ,TPWI,TPWI_star,LIGHTN_DENS                        &
                                ,CNV_TR)
@@ -213,7 +213,7 @@ CONTAINS
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE,ZLE
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: ZLO, PLO, PK, MASS, KH,       &
-                                                      T1,TH1,Q1,U1,V1,W1,BYNCY,QLIQ,QICE, &
+                                                      T1,TH1,Q1,U1,V1,W1,OM1,BYNCY,QLIQ,QICE, &
                                                       QCLD,NACTL
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE_DYN_IN
@@ -243,7 +243,7 @@ CONTAINS
 
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: CNPCPRATE, LIGHTN_DENS
 
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: REVSU, entr3d, entr_dp, entr_md, entr_sh
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: REVSU, entr_dp, entr_md, entr_sh
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH
 
@@ -257,7 +257,7 @@ CONTAINS
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: CNV_TOPP_DP,CNV_TOPP_MD,CNV_TOPP_SH
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: MUPDP,MDNDP,MUPSH,MUPMD
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
-    REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD
 
     INTEGER      :: ims,ime, jms,jme, kms,kme,    &
                     its,ite, jts,jte, kts,kte,    &
@@ -272,7 +272,6 @@ CONTAINS
                                         ,zm3d     &
                                         ,zt3d     &
                                         ,dm3d     &
-                                        ,ec3d     &
                                         ,curr_rvap&
                                         ,buoy_exc &
                                         ,khloc    &
@@ -404,7 +403,8 @@ CONTAINS
    AA1_BL = 0.0
    AA1_CIN = 0.0
    TAU_BL = 0.0
-   TAU_EC = 0.0
+   TAU_DP = 0.0
+   TAU_MD = 0.0
 
     !-- some initialization
     do_this_column =0
@@ -538,20 +538,12 @@ CONTAINS
         rvap  (k,i,j) = Q1    (i,j,flip(k))!
         up    (k,i,j) = U1    (i,j,flip(k))! already @ A-grid (m/s)
         vp    (k,i,j) = V1    (i,j,flip(k))! already @ A-grid (m/s)
-        wp    (k,i,j) = W1    (i,j,flip(k))! m/s
+        wp    (k,i,j) = OM1   (i,j,flip(k))! Pa/s
         zt3d  (k,i,j) = ZLO   (i,j,flip(k))! mid -layer level
         zm3d  (k,i,j) = ZLE   (i,j,flip(k))! edge-layer level
         dm3d  (k,i,j) = MASS  (i,j,flip(k))
         khloc (k,i,j) = KH    (i,j,flip(k))
         curr_rvap(k,i,j) = Q1 (i,j,flip(k))!current rvap
-
-        if (ENTRVERSION==0) then
-          ! eq 6 of https://doi.org/10.1029/2021JD034881
-          ec3d(k,i,j) = 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.1,BYNCY(i,j,flip(k)))**(-0.36)
-        else
-          ec3d(k,i,j) = 1.0
-        endif
-        entr3d(i,j,flip(k)) = ec3d(k,i,j) 
 
         mp_ice(lsmp,k,i,j) = QICE  (i,j,flip(k))
         mp_liq(lsmp,k,i,j) = QLIQ  (i,j,flip(k))
@@ -596,20 +588,12 @@ CONTAINS
         rvap       (k,i,j) = QV_DYN_IN  (i,j,flip(k))! water vapor mix ratio
         up         (k,i,j) = U_DYN_IN   (i,j,flip(k))! already @ A-grid (m/s)
         vp         (k,i,j) = V_DYN_IN   (i,j,flip(k))! already @ A-grid (m/s)
-        wp         (k,i,j) = W1         (i,j,flip(k))! (m/s)
+        wp         (k,i,j) = OM1        (i,j,flip(k))! (Pa/s)
         zt3d       (k,i,j) = ZLO_N      (i,j,flip(k))! mid -layer level (m)
         zm3d       (k,i,j) = ZLE_N      (i,j,flip(k))! edge-layer level (m)
         dm3d       (k,i,j) = MASS_N     (i,j,flip(k))
         khloc      (k,i,j) = KH         (i,j,flip(k))
         curr_rvap  (k,i,j) = Q1         (i,j,flip(k)) ! current rvap (dyn+phys)
-
-        if (ENTRVERSION==0) then
-          ! eq 6 of https://doi.org/10.1029/2021JD034881
-          ec3d(k,i,j) = 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.1,BYNCY(i,j,flip(k)))**(-0.36)
-        else
-          ec3d(k,i,j) = 1.0
-        endif
-        entr3d(i,j,flip(k)) = ec3d(k,i,j) 
 
         mp_ice(lsmp,k,i,j) = QICE       (i,j,flip(k))
         mp_liq(lsmp,k,i,j) = QLIQ       (i,j,flip(k))
@@ -685,7 +669,6 @@ CONTAINS
                      ,up          &
                      ,vp          &
                      ,wp          &
-                     ,ec3d        &
                      ,temp        &
                      ,press       &
                      ,rvap        &
@@ -747,7 +730,7 @@ CONTAINS
                      ,conv_cld_fr5d&
                      !-- for debug/diagnostic
                      ,sgs_vvel_5d  &
-                     ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC)
+                     ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD)
 
 
  IF(FEED_3DMODEL)THEN
@@ -771,22 +754,6 @@ CONTAINS
         ENDDO
       ENDDO
 !-----
-      IF(USE_MOMENTUM_TRANSP > 0) THEN
-        DO j=1,myp
-          DO i=1,mxp
-            IF(do_this_column(i,j) == 0) CYCLE
-          ENDDO
-        ENDDO
-      ENDIF
-
-
-      IF(APPLY_SUB_MP == 1) THEN
-        DO j=1,myp
-          DO i=1,mxp
-            IF(do_this_column(i,j) == 0) CYCLE
-          ENDDO
-        ENDDO
-      ENDIF
 
       IF(USE_TRACER_TRANSP==1) THEN
 
@@ -840,22 +807,22 @@ CONTAINS
 
                 !
                 !-'detraining_mass_flux',UNITS     = 'kg m-2 s-1',
-                CNV_MFD (i,j,k) = CNV_MFD (i,j,k) + up_massdetr5d(i,flip(k),j,IENS)
+                CNV_MFD (i,j,k) = CNV_MFD (i,j,k) + up_massdetr5d(i,flip(k),j,IENS) * xmb4d(i,j,IENS)
 
 
                 !-'cloud_base_mass_flux',    units = 'kg m-2 s-1',
-                CNV_MF0 (i,j,k) = CNV_MF0 (i,j,k) + ( zup5d(i,flip(k),j,IENS) )
+                CNV_MF0 (i,j,k) = CNV_MF0 (i,j,k) + zup5d(i,flip(k),j,IENS) * xmb4d(i,j,IENS)
 
                 !-convective mass flux [kg m^{-2} s^{-1}] - with downdrafts
-           !!!  CNV_MFC (i,j,k) = CNV_MFC (i,j,k) + ( zup5d(i,flip(k),j,IENS) + &
-           !!!                                        zdn5d(i,flip(k),j,IENS)*edt4d(i,j,IENS) )
+                CNV_MFC (i,j,k) = CNV_MFC (i,j,k) + ( zup5d(i,flip(k),j,IENS) + &
+                                                      zdn5d(i,flip(k),j,IENS)*edt4d(i,j,IENS) ) * xmb4d(i,j,IENS)
 
                 !---only updraft
-                CNV_MFC (i,j,k) = CNV_MFC (i,j,k) + ( zup5d(i,flip(k),j,IENS) )
+                !CNV_MFC (i,j,k) = CNV_MFC (i,j,k) + zup5d(i,flip(k),j,IENS) * xmb4d(i,j,IENS)
 
                 ! deep convective total water flux. assumes .033 fractional area.
                 qsatup = MAPL_EQsat(tup5d(i,flip(k),j,IENS),press(flip(k),i,j),dtqw) + clwup5d(i,flip(k),j,IENS)/0.033
-                WQT_DC (i,j,k) = WQT_DC (i,j,k) + zup5d(i,flip(k),j,IENS)*(qsatup - rvap(flip(k),i,j))
+                WQT_DC (i,j,k) = WQT_DC (i,j,k) + xmb4d(i,j,IENS)*zup5d(i,flip(k),j,IENS)*(qsatup - rvap(flip(k),i,j))
 
                 if(zup5d(i,flip(k),j,IENS) > 1.0e-6) then
                    !-'entrainment parameter',  UNITS     ='m-1',
@@ -875,7 +842,7 @@ CONTAINS
                 !-'convective_precipitation_from_GF',UNITS     = 'kg m-2 s-1',
                 !- JAN/17/2017 : the units above are wrong. The correct are kg[precip water]/kg[air]
                 CNV_PRC3(i,j,k) = CNV_PRC3 (i,j,k) +                 (prup5d(i,flip(k),j,IENS) + &
-                                                     edt4d(i,j,IENS)* prdn5d(i,flip(k),j,IENS) ) &
+                                                     edt4d(i,j,IENS)* prdn5d(i,flip(k),j,IENS) ) * xmb4d(i,j,IENS) &
                                                      * DT_moist/(DZ(i,j,k)*AIR_DEN(i,j,k))
 
                 !-'updraft_areal_fraction',
@@ -938,8 +905,8 @@ CONTAINS
             CNV_TOPP_DP(i,j)     = press(ktop4d(i,j,DEEP),i,j)
             MFDP      (i,j)      =   xmb4d(i,j,DEEP)
             SIGMA_DEEP(i,j)      = sigma4d(i,j,DEEP)
-            MUPDP     (i,j,1:mzp)=zup5d(i,flip(1):flip(mzp):-1,j,DEEP)
-            MDNDP     (i,j,1:mzp)=zdn5d(i,flip(1):flip(mzp):-1,j,DEEP) * edt4d(i,j,IENS)
+            MUPDP     (i,j,1:mzp)=zup5d(i,flip(1):flip(mzp):-1,j,DEEP) * xmb4d(i,j,IENS)
+            MDNDP     (i,j,1:mzp)=zdn5d(i,flip(1):flip(mzp):-1,j,DEEP) * edt4d(i,j,IENS) * xmb4d(i,j,IENS)
            ENDDO
          ENDDO
         elseif(icumulus_gf(IENS) == ON .and. IENS== SHAL) then
@@ -948,7 +915,7 @@ CONTAINS
             if(ierr4d(i,j,SHAL) /= 0) cycle
             CNV_TOPP_SH(i,j)=press(ktop4d(i,j,SHAL),i,j)
             MFSH (i,j)      =xmb4d(i,j,SHAL)
-            MUPSH(i,j,1:mzp)=zup5d(i,flip(1):flip(mzp):-1,j,SHAL)
+            MUPSH(i,j,1:mzp)=zup5d(i,flip(1):flip(mzp):-1,j,SHAL) * xmb4d(i,j,IENS)
            ENDDO
          ENDDO
         elseif(icumulus_gf(IENS) == ON .and. IENS== MID) then
@@ -958,7 +925,7 @@ CONTAINS
              CNV_TOPP_MD(i,j)     = press(ktop4d(i,j,MID),i,j)
              MFMD      (i,j)      = xmb4d(i,j,MID)
              SIGMA_MID (i,j)      = sigma4d(i,j,MID )
-             MUPMD     (i,j,1:mzp)=zup5d(i,flip(1):flip(mzp):-1,j,MID)
+             MUPMD     (i,j,1:mzp)=zup5d(i,flip(1):flip(mzp):-1,j,MID) * xmb4d(i,j,IENS)
            ENDDO
          ENDDO
         endif
@@ -1017,8 +984,7 @@ CONTAINS
               ,col_sat               &
               ,u                     &
               ,v                     &
-              ,w                     &
-              ,entr_c                &
+              ,om                    &
               ,temp                  &
               ,press                 &
               ,rvap                  &
@@ -1080,7 +1046,7 @@ CONTAINS
               ,conv_cld_fr5d         &
               !-- for debug/diagnostic
               ,sgs_vvel_5d           &
-              ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC)
+              ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD)
 
    IMPLICIT NONE
   !include "mpif.h"
@@ -1098,8 +1064,7 @@ CONTAINS
                                                           zt,        &
                                                           u,         &
                                                           v,         &
-                                                          w,         &
-                                                          entr_c,    &
+                                                          om,        &
                                                           rvap,      &
                                                           temp,      &
                                                           press,     &
@@ -1185,20 +1150,20 @@ CONTAINS
               ,conv_cld_fr5d
 !--for diagnostics
    REAL   ,DIMENSION(mxp,mzp,myp,maxiens), INTENT(INOUT) :: sgs_vvel_5d
-   REAL   ,DIMENSION(mxp,myp)  ,INTENT(INOUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
+   REAL   ,DIMENSION(mxp,myp)  ,INTENT(INOUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD
 
 !----------------------------------------------------------------------
 ! LOCAL VARS
 
 ! basic environmental input includes
-! omega (omeg), windspeed (us,vs,ws), and a flag (aaeq) to turn off
+! omega (omeg), windspeed (us,vs), and a flag (aaeq) to turn off
 ! convection for this call only and at that particular gridpoint
 !
 
     REAL,   DIMENSION (kts:kte,its:ite,jts:jte)  :: Tpert_h,Tpert_v
 
     REAL,   DIMENSION (its:ite,kts:kte) ::                                      &
-                               zo,temp_old,qv_old,PO,US,VS,WS,rhoi,phil         &
+                               zo,temp_old,qv_old,PO,US,VS,rhoi,phil            &
                               ,temp_new_dp,qv_new_dp,temp_new_sh,qv_new_sh,z2d  &
                               ,tkeg,rcpg,dhdt,temp_new_md,qv_new_md             &
                               ,temp_new_BL,qv_new_BL,dm2d,temp_tendqv,qv_curr   &
@@ -1217,8 +1182,8 @@ CONTAINS
 
     REAL,   DIMENSION (its:ite)   :: ter11, xlandi,pbl,zws,psur &
                                     ,ztexec,zqexec,h_sfc_flux,le_sfc_flux,tsur&
-                                    ,xlons,xlats,fixout_qv,cum_ztexec,cum_zqexec
-
+                                    ,xlons,xlats,fixout_qv,cum_ztexec,cum_zqexec&
+                                    ,tau_
 
     REAL,   DIMENSION (its:ite,kts:kte,1:ens4)      ::  omeg
 
@@ -1350,9 +1315,8 @@ CONTAINS
          !- wind velocities
          us      (i,k)  =  u (kr,i,j)
          vs      (i,k)  =  v (kr,i,j)
-         ws      (i,k)  =  w (kr,i,j)
          dm2d    (i,k)  =  dm(kr,i,j)
-         omeg    (i,k,:)= -g*rhoi(i,k)*w(kr,i,j)
+         omeg    (i,k,:)=  om(kr,i,j)
          !-buoyancy excess
          buoy_exc2d(i,k)= buoy_exc(kr,i,j)
          !- temp/water vapor modified only by advection
@@ -1506,11 +1470,14 @@ CONTAINS
          enddo
        enddo
 
+       TAU_ = 0.0
+
        CALL CUP_gf(its,ite,kts,kte, itf,ktf, mtp, nmp &
                   ,cumulus_type  (plume)            &
                   ,closure_choice(plume)            &
                   ,cum_entr_rate (plume)            &
                   ,cum_use_excess(plume)            &
+                  ,cum_cap_maxs  (plume)            &
                   !- input data
                   ,dx2d          (:,j)              &
                   ,stochastic_sig(:,j)              &
@@ -1544,8 +1511,6 @@ CONTAINS
                   ,psur                             &
                   ,us                               &
                   ,vs                               &
-                  ,ws                               &
-                  ,entr_c(:,:,j)                    &
                   ,dm2d                             &
                   ,se_chem                          &
                   ,zws                              &
@@ -1597,13 +1562,17 @@ CONTAINS
                   ,conv_cld_fr5d      (:,:,j,plume) &
                   !-- for debug/diag
                   ,sgs_vvel_5d        (:,:,j,plume) &
-                  ,AA0(:,j),AA1(:,j),AA2(:,j),AA3(:,j),AA1_BL(:,j),AA1_CIN(:,j),TAU_BL(:,j),TAU_EC(:,j) &
+                  ,AA0(:,j),AA1(:,j),AA2(:,j),AA3(:,j),AA1_BL(:,j),AA1_CIN(:,j),TAU_BL(:,j),TAU_ &
                   !-- for diag
                   ,lightn_dens  (:,j)               &
                   ,revsu_gf_2d                      &
                   ,prfil_gf_2d                      &
                   ,Tpert_2d                         &
                   )
+
+        if( trim(cumulus_type(plume)) == 'deep') TAU_DP(:,j)=TAU_
+        if( trim(cumulus_type(plume)) == 'mid' ) TAU_MD(:,j)=TAU_
+
         !--- accumulate precip for each plume
         DO i=its,itf
            CONPRR(i,j)= CONPRR(i,j)+cprr4d(i,j,plume)
@@ -1764,6 +1733,7 @@ loop1:  do n=1,maxiens
                      ,ichoice           &
                      ,entr_rate_plume   &
                      ,use_excess        &
+                     ,cap_maxs          &
                      !input data
                      ,dx                &
                      ,stochastic_sig    &
@@ -1797,8 +1767,6 @@ loop1:  do n=1,maxiens
                      ,psur              &
                      ,us                &
                      ,vs                &
-                     ,ws                &
-                     ,entr_c            &
                      ,dm2d              &
                      ,se_chem           &
                      ,zws               &
@@ -1867,6 +1835,7 @@ loop1:  do n=1,maxiens
      INTEGER      ,INTENT(IN) :: itf,ktf,its,ite,kts,kte,ichoice,use_excess,mtp, nmp
      INTEGER      ,INTENT(IN),     DIMENSION (its:ite) ::   last_ierr
      INTEGER      ,INTENT(INOUT),  DIMENSION (its:ite) ::   kpbl
+     REAL         ,INTENT(IN) :: cap_maxs
   !
   ! outtem = output temp tendency (per s)
   ! outq   = output q tendency (per s)
@@ -1886,10 +1855,8 @@ loop1:  do n=1,maxiens
   !
      REAL,    DIMENSION (kts:kte,its:ite)       ,INTENT (IN      )    ::   &
         ccn_in
-     REAL,    DIMENSION (kts:kte,its:ite)       ,INTENT (IN      )    ::   &
-        entr_c
      REAL,    DIMENSION (its:ite,kts:kte)       ,INTENT (INOUT   )    ::   &
-        dhdt,rho,t,po,us,vs,ws,tn,dm2d,buoy_exc,tn_bl,tn_adv
+        dhdt,rho,t,po,us,vs,tn,dm2d,buoy_exc,tn_bl,tn_adv
      REAL,    DIMENSION (its:ite,kts:kte,1:ens4),INTENT (INOUT)    ::   &
         omeg
      REAL,    DIMENSION (its:ite,kts:kte)       ,INTENT (INOUT)    ::   &
@@ -2142,17 +2109,33 @@ loop1:  do n=1,maxiens
      sigd = 0.0
      lightn_dens = 0.0
 
-!
-!--- maximum depth (mb) of capping inversion (larger cap = no convection)
-!     The option here is non ZERO_DIFF, MOIST_TRIGGER==0 is consistent with GF2019
+    !===========================================================================
+    ! CIN threshold relaxation strategy
+    !
+    ! MOIST_TRIGGER = 0 (Fixed increments):
+    !   cap_max_inc = Step size for iterative CIN threshold relaxation
+    !   - Each iteration increases allowed CIN by this amount
+    !   - Smaller value = more restrictive (slower relaxation)
+    !   - Larger value = more permissive (faster relaxation)
+    !   - Controls how many levels are tested before giving up
+    !
+    ! MOIST_TRIGGER = 1 (Moisture-based):
+    !   cap_max_inc = Maximum adjustment range based on sub-cloud RH
+    !   - Multiplied by moisture factor (fx: -1 to +1)
+    !   - Larger value = more sensitive to moisture
+    !   - Creates dynamic threshold without iteration
+    !===========================================================================
+    ! The option here is non ZERO_DIFF, MOIST_TRIGGER==0 is consistent with GF2019
       IF(MOIST_TRIGGER==0) THEN
-       if(trim(cumulus) == 'deep'   ) then ; cap_max_inc=20. ; endif ! cap_maxs=50.
-       if(trim(cumulus) == 'mid'    ) then ; cap_max_inc=10. ; endif ! cap_maxs=50.
-       if(trim(cumulus) == 'shallow') then ; cap_max_inc=25. ; endif ! cap_maxs=50.
+       ! Fixed iterative search
+       if(trim(cumulus) == 'deep'   ) cap_max_inc=20.
+       if(trim(cumulus) == 'mid'    ) cap_max_inc=10.
+       if(trim(cumulus) == 'shallow') cap_max_inc=25.
       ELSE
-       if(trim(cumulus) == 'deep'   ) then ; cap_max_inc=90. ; endif !--- test cap_maxs=10.  ; cap_max_inc=50
-       if(trim(cumulus) == 'mid'    ) then ; cap_max_inc=90. ; endif !--- test cap_maxs=10.  ; cap_max_inc=50
-       if(trim(cumulus) == 'shallow') then ; cap_max_inc=10. ; endif !--- test cap_maxs=25.  ; cap_max_inc=50
+       ! Moisture-modulated adjustment
+       if(trim(cumulus) == 'deep'   ) cap_max_inc=90.
+       if(trim(cumulus) == 'mid'    ) cap_max_inc=90.
+       if(trim(cumulus) == 'shallow') cap_max_inc=10.
       ENDIF
 !
 !--- lambda_U parameter for momentum transport
@@ -2242,12 +2225,8 @@ loop1:  do n=1,maxiens
 !--- define entrainment/detrainment profiles for updrafts
 !
       !- initial entrainment/detrainment
-      do i=its,itf
-          do k=kts,ktf
-      entr_rate(i,k) = entr_c(k,i)*entr_rate_plume
-      cd       (i,k) = entr_c(k,i)*entr_rate_plume
-          enddo
-      enddo
+      entr_rate(:,:) = entr_rate_plume
+      cd       (:,:) = entr_rate_plume                       
 !
 !--- max/min allowed value for epsilon (ratio downdraft base mass flux/updraft
 !    base mass flux
@@ -2262,26 +2241,27 @@ loop1:  do n=1,maxiens
 !
 !--- minimum depth (m), clouds must have
 !
-      if(trim(cumulus) == 'deep'                               ) depth_min=1000.
-      if(trim(cumulus) == 'mid'    ) depth_min=1000.
+      if(trim(cumulus) == 'deep'   ) depth_min=1000.
+      if(trim(cumulus) == 'mid'    ) depth_min=500.
       if(trim(cumulus) == 'shallow') depth_min=500.
 !
 !--- max height(m) above ground where updraft air can originate
 !
-      if(trim(cumulus) == 'deep'                               ) zkbmax=4000.
+      if(trim(cumulus) == 'deep'   ) zkbmax=4000.
       if(trim(cumulus) == 'mid'    ) zkbmax=3000.
       if(trim(cumulus) == 'shallow') zkbmax=2000.
 !
 !--- height(m) above which no downdrafts are allowed to originate
 !
-      zcutdown=3000.
+      if(trim(cumulus) == 'deep'   ) zcutdown = 3000.  ! Allow higher for tall clouds
+      if(trim(cumulus) == 'mid'    ) zcutdown = 3000.  ! Keep
+      if(trim(cumulus) == 'shallow') zcutdown = 2000.  ! Lower for shallow
 !
 !--- depth(m) over which downdraft detrains all its mass
 !
-      if(trim(cumulus) == 'deep'   ) z_detr= depth_min*0.5
-      if(trim(cumulus) == 'mid'    ) z_detr= depth_min*0.5
-      if(trim(cumulus) == 'shallow') z_detr= depth_min*0.5
-
+      if(trim(cumulus) == 'deep'   ) z_detr= 1000.
+      if(trim(cumulus) == 'mid'    ) z_detr= 300.
+      if(trim(cumulus) == 'shallow') z_detr= 300.
 !
       !- mbdt ~ xmb * timescale
       do i=its,itf
@@ -2604,14 +2584,11 @@ loop0:       do k=kts,ktf
             else
                entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)
             endif
-            if (ZERO_DIFF_ENTR==1) then
-               cd(i,k)=0.75e-4*(1.6-frh)
-            else
-               entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
-               if(trim(cumulus) == 'deep'   ) cd(i,k)=0.10*entr_rate(i,k)
-               if(trim(cumulus) == 'mid'    ) cd(i,k)=0.50*entr_rate(i,k)
-               if(trim(cumulus) == 'shallow') cd(i,k)=0.75*entr_rate(i,k)
-            endif
+            entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
+            cd(i,k)=0.75e-4*(1.6-frh)
+            !if(trim(cumulus) == 'deep'   ) cd(i,k)=0.10*entr_rate(i,k)
+            !if(trim(cumulus) == 'mid'    ) cd(i,k)=0.50*entr_rate(i,k)
+            !if(trim(cumulus) == 'shallow') cd(i,k)=0.75*entr_rate(i,k)
          enddo
       ENDDO
 !
@@ -2625,12 +2602,12 @@ loop0:       do k=kts,ktf
         CALL cup_cloud_limits(cumulus,ierrc,ierr,cap_max_increment,cap_max,heo_cup,heso_cup,qo_cup   &
                              ,qeso_cup,po,po_cup,zo_cup,heo,hkbo,qo,qeso,entr_rate,hcot,k22,kbmax &
                              ,klcl,kbcon,ktop,depth_neg_buoy,frh_bcon,Tpert,start_level              &
-                             ,use_excess,zqexec,ztexec,x_add_buoy,xland,itf,ktf,its,ite, kts,kte)
+                             ,use_excess,zqexec,ztexec,x_add_buoy,xland,cnvfrc,itf,ktf,its,ite, kts,kte)
 
 !--- define entrainment/detrainment profiles for downdrafts
      do i=its,itf
         do k=kts,ktf
-           mentrd_rate(i,k) = entr_c(k,i)*entr_rate_plume*0.3
+           mentrd_rate(i,k) = entr_rate_plume*0.3
         enddo
      enddo
      cdd = mentrd_rate
@@ -2656,12 +2633,13 @@ loop0:       do k=kts,ktf
                         kstabi,k22,kbcon,its,ite,itf,kts,kte,ktf,zuo,kpbl,klcl,hcot)
 !
       IF(trim(cumulus) == 'deep') THEN
-        !
-        !-- check if ktop is too low for deep convection
-        !
+        !-------------------------------------------------------------------------
+        ! Deep: Must reach at least ~3 km (750 mb)
+        ! This ensures it's truly "deep" convection
+        !-------------------------------------------------------------------------
         do i=its,itf 
            if(ierr(i) /= 0)cycle
-           if(po_cup(i,ktop(i)) > 400) then
+           if(po_cup(i,ktop(i)) > 750) then
                ierr(i)=22
                ierrc(i)='deep convection with cloud top too low'
            endif
@@ -2669,25 +2647,33 @@ loop0:       do k=kts,ktf
       ENDIF
 !
       IF(trim(cumulus) == 'mid') THEN
-        !
-        !-- check if ktop is too high for mid convection
-        !
+        !-------------------------------------------------------------------------
+        ! Mid (Congestus): Capped between ~3 km and ~9 km (700-300 mb)
+        ! Lower bound: Must be taller than shallow
+        ! Upper bound: Should be capped, not reach tropopause
+        !-------------------------------------------------------------------------
         do i=its,itf
            if(ierr(i) /= 0)cycle
-           if(po_cup(i,ktop(i)) < 400) then
+           ! Too high: reaching tropopause (should be deep instead)
+           if(po_cup(i,ktop(i)) < 450.0) then
                ierr(i)=22
                ierrc(i)='mid convection with cloud top too high'
            endif
+!          ! Too low: should be shallow instead
+!          if(po_cup(i,ktop(i)) > 700.0) then  ! Add lower bound
+!              ierr(i)=22
+!              ierrc(i)='mid convection with cloud top too low'
+!          endif
         enddo
       ENDIF
 !
       IF(trim(cumulus) == 'shallow') THEN
-        !
-        !-- check if ktop is too high for shallow convection
-        !
+        !-------------------------------------------------------------------------
+        ! Shallow: Boundary layer convection (< ~3.5 km / 650 mb)
+        !-------------------------------------------------------------------------
         do i=its,itf
            if(ierr(i) /= 0)cycle
-           if(po_cup(i,ktop(i)) < 700) then
+           if(po_cup(i,ktop(i)) < 650) then
                ierr(i)=23
                ierrc(i)='shallow convection with cloud top too high'
            endif
@@ -2706,15 +2692,15 @@ loop0:       do k=kts,ktf
 !
 !-- last checks for ktop
 !
+!     DO i=its,itf
+!       if(ierr(i) /= 0)cycle
+!       if( (z_cup(i,ktop(i))-z_cup(i,kbcon(i))) < depth_min ) then
+!           ierr(i)=5
+!           ierrc(i)='cloud depth too small'
+!       endif
+!     ENDDO
       DO i=its,itf
-        if(ierr(i) /= 0)cycle
-        if( (z_cup(i,ktop(i))-z_cup(i,kbcon(i))) < depth_min ) then
-            ierr(i)=5
-            ierrc(i)='cloud depth too small'
-        endif
-      ENDDO
-      DO i=its,itf
-        if(ktop(i) <= kbcon(i))then
+        if(ktop(i) <= kbcon(i)+5)then
             ierr(i)=5
             ierrc(i)='ktop too small'
         endif
@@ -2766,10 +2752,10 @@ loop0:       do k=kts,ktf
           if(denom > 0.0)then
             hco(i,k)=(hco(i,k-1)*zuo(i,k-1)-.5*up_massdetro(i,k-1)*hco(i,k-1)+ &
                                                up_massentro(i,k-1)*heo(i,k-1))  / denom
-            if(k==start_level(i)+1) then
-               x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
-               hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
-            endif
+   ! WMP    if(k==start_level(i)+1) then
+   ! WMP       x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+   ! WMP       hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
+   ! WMP    endif
            else
             hco(i,k)= hco(i,k-1)
           endif
@@ -2850,11 +2836,11 @@ loop0:       do k=kts,ktf
 
             hco(i,k)=(hco(i,k-1)*zuo(i,k-1)-.5*up_massdetro(i,k-1)*hco(i,k-1)+ &
                                                up_massentro(i,k-1)*heo(i,k-1))/ denom
-            if(k==start_level(i)+1) then
-             x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
-             hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
-             hc (i,k)= hc (i,k) + x_add*up_massentr (i,k-1)/denom
-            endif
+   ! WMP    if(k==start_level(i)+1) then
+   ! WMP     x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+   ! WMP     hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
+   ! WMP     hc (i,k)= hc (i,k) + x_add*up_massentr (i,k-1)/denom
+   ! WMP    endif
                          !assuming zuo=zu,up_massdetro=up_massdetr, ...
                          !(zuo(i,k-1)-.5*up_massdetro(i,k-1)+up_massentro(i,k-1))
 
@@ -2906,7 +2892,7 @@ loop0:       do k=kts,ktf
             do k=kts,ktf
                tempco (i,k) = (1./cp)*(hco (i,k)-g*zo_cup(i,k)-xlv*qco (i,k))
             enddo
-            tempco (i,kte)=tn_cup(i,kte)
+    ! WMP   tempco (i,kte)=tn_cup(i,kte)
           else
             tempco (i,:)  =tn_cup(i,:)
           endif
@@ -2968,7 +2954,7 @@ loop0:       do k=kts,ktf
 !---  calls routine to get lateral mass fluxes associated with downdrafts
 !
        call get_lateral_massflux_down(trim(cumulus),itf,ktf, its,ite, kts,kte &
-                                     ,ierr,jmin,zo_cup,zdo,xzd,zd,cdd,mentrd_rate      &
+                                     ,ierr,jmin,po_cup,zo_cup,zdo,xzd,zd,cdd,mentrd_rate      &
                                      ,dd_massentro,dd_massdetro ,dd_massentr, dd_massdetr &
                                      ,cumulus,dd_massentru,dd_massdetru,lambau_dn)
 
@@ -3046,7 +3032,6 @@ loop0:       do k=kts,ktf
 !
       call cup_dd_moisture(cumulus,ierrc,zdo,hcdo,heso_cup,qcdo,qeso_cup,     &
            pwdo,qo_cup,zo_cup,dd_massentro,dd_massdetro,jmin,ierr,gammao_cup, &
-!--test    pwevo,bu,qrcdo,qo,heo,t_cup,1,t_wetbulb,q_wetbulb,qco,pwavo,       &
            pwevo,bu,qrcdo,qo,heo,tn_cup,1,t_wetbulb,q_wetbulb,qco,pwavo,      &
            itf,ktf,its,ite, kts,kte)
 !
@@ -3109,22 +3094,32 @@ loop0:       do k=kts,ktf
       IF(SGS_W_TIMESCALE == 0) THEN
          DO i=its,itf
             if(ierr(i) /= 0) cycle
-            !- time-scale cape removal
-            if(trim(cumulus)=='deep') tau_ecmwf(i)=tau_deep
-            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=tau_mid
+          ! cloud depth (H)
+            dz = max(zo_cup(i,ktop(i))-zo_cup(i,kbcon(i)),1.e-16)
+          !- time-scale cape removal from Bechtold et al. 2008
+            tau_ecmwf(i)= dz/3.0 ! wmean subgrid vvel approximated at 3.0 m/s
+            if(trim(cumulus)=='deep') tau_ecmwf(i)=max(tau_ecmwf(i),tau_deep)
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=max(tau_ecmwf(i),tau_mid)
+            tau_ecmwf(i)= tau_ecmwf(i) * (1. + 1.66 * (dx(i)/(125*1000.)))! dx must be in meters
          ENDDO
       ELSE
          DO i=its,itf
             if(ierr(i) /= 0) cycle
           ! cloud depth (H)
-            dz = max(z_cup(i,ktop(i))-z_cup(i,kbcon(i)),1.e-16)
+            dz = max(zo_cup(i,ktop(i))-zo_cup(i,kbcon(i)),1.e-16)
           ! time-scale cape removal from Bechtold et al. 2008
-            tau_ecmwf(i) = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)
+            if(trim(cumulus)=='deep') tau_0 = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)*2.0
+            if(trim(cumulus)=='mid' ) tau_0 = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)
+          ! prefered time-scale for convection permitting resolutions
+            tau_1 = tau_deep*(1.0-sig(i))
+          ! Combine
+            tau_ecmwf(i)= tau_0 + tau_1*(1.0-cnvfrc(i))
           ! Upper limit
             if(trim(cumulus)=='deep') tau_ecmwf(i)= min(tau_ecmwf(i),tau_deep)
             if(trim(cumulus)=='mid' ) tau_ecmwf(i)= min(tau_ecmwf(i),tau_mid)
           ! Lower limit
-            tau_ecmwf(i) = max(tau_ecmwf(i), 900., dtime)
+            if(trim(cumulus)=='deep') tau_ecmwf(i) = max(tau_ecmwf(i),5400., dtime)
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i) = max(tau_ecmwf(i),3600., dtime)
          ENDDO
       ENDIF
       DO i=its,itf
@@ -3543,9 +3538,9 @@ IF(VERT_DISCR == 0) THEN
                            zdo(i,k  )*(hcdo(i,k  )-heo_cup(i,k  ) ) )*g/dp*edto(i)
 
             !---meltglac-------------------------------------------------
-            dellah(i,k) = dellah(i,k) - xlf*melting(i,k)*g/dp
-! BUG2025   dellah(i,k) = dellah(i,k) + xlf*((1.-p_liq_ice(i,k))*0.5*(qrco(i,k+1)+qrco(i,k)) &
-! BUG2025                                     - melting(i,k))*g/dp
+! BUG2025   dellah(i,k) = dellah(i,k) - xlf*melting(i,k)*g/dp
+            dellah(i,k) = dellah(i,k) + xlf*((1.-p_liq_ice(i,k))*0.5*(qrco(i,k+1)+qrco(i,k)) &
+                                              - melting(i,k))*g/dp
 ! BUG2025 latent heat of freezing for qrco included in hco already
             !-- for output only
             subten_H(i,k) = -(zuo(i,k+1)*(-heo_cup(i,k+1)) - zuo(i,k)*(-heo_cup(i,k)))*g/dp       &
@@ -3556,31 +3551,14 @@ IF(VERT_DISCR == 0) THEN
 
              !-- take out cloud liquid/ice water for detrainment
             detup=up_massdetro(i,k)
-            if( trim(cumulus) == 'mid'  .or. trim(cumulus) == 'shallow') then
-
+            if(.not. USE_C1D .or. trim(cumulus) == 'mid' .or. trim(cumulus) == 'shallow') then
                dellaqc(i,k) = detup*0.5*(qrco(i,k+1)+qrco(i,k)) *g/dp
-
-            elseif(trim(cumulus) == 'deep') then
-
-               if(.not. USE_C1D) then
-
+            else
+               if(k == ktop(i)) then
                   dellaqc(i,k) = detup*0.5*(qrco(i,k+1)+qrco(i,k)) *g/dp
-
-               elseif(c1>0.0) then
-                  if(k == ktop(i)) then
-                     dellaqc(i,k) = detup*0.5*(qrco(i,k+1)+qrco(i,k)) *g/dp
-                  else
-                     dz=zo_cup(i,k+1)-zo_cup(i,k)
-                     dellaqc(i,k) = zuo(i,k)*c1d(i,k)*qrco(i,k)*dz/dp*g
-                  endif
                else
-                  if(k == ktop(i)) then
-                     dellaqc(i,k) = detup*0.5*(qrco(i,k+1)+qrco(i,k)) *g/dp
-                  else
-                     dz=zo_cup(i,k+1)-zo_cup(i,k)
-                      dellaqc(i,k) = ( zuo(i,k)*c1d(i,k)*qrco(i,k)*dz/dp*g  + &
-                                       detup*0.5*(qrco(i,k+1)+qrco(i,k)) *g/dp )*0.5
-                  endif
+                  dz=zo_cup(i,k+1)-zo_cup(i,k)
+                  dellaqc(i,k) = zuo(i,k)*c1d(i,k)*qrco(i,k)*dz/dp*g
                endif
             endif
             !
@@ -3727,8 +3705,8 @@ ELSEIF(VERT_DISCR == 1) THEN
 
           do k=kts,ktop(i)
                dp=100.*(po_cup(i,k)-po_cup(i,k+1))
-               trcflx_in (1,k) =-(zuo(i,k)  -edto(i)*zdo(i,k))*heo_cup(i,k) !* xmb(i)
-               massflx   (i,k) =-(zuo(i,k)  -edto(i)*zdo(i,k))                    !* xmb(i)
+               trcflx_in (1,k) =-(zuo(i,k)  -edto(i)*zdo(i,k))*heo_cup(i,k)
+               massflx   (i,k) =-(zuo(i,k)  -edto(i)*zdo(i,k))
                dtime_max=min(dtime_max,.5*dp)
           enddo
           call fct1d3 (ktop(i),kte,dtime_max,po_cup(i,:),heo(i,:),massflx(i,:),trcflx_in(1,:),sub_tend(1,:))
@@ -3876,8 +3854,8 @@ ELSEIF(VERT_DISCR == 1) THEN
 
               do k=kts,ktop(i)
                  dp=100.*(po_cup(i,k)-po_cup(i,k+1))
-                 trcflx_in (1,k) =-(zuo(i,k)  -edto(i)*zdo(i,k))*qo_cup(i,k) !* xmb(i)
-                 massflx   (i,k) =-(zuo(i,k)  -edto(i)*zdo(i,k))             !* xmb(i)
+                 trcflx_in (1,k) =-(zuo(i,k)  -edto(i)*zdo(i,k))*qo_cup(i,k)
+                 massflx   (i,k) =-(zuo(i,k)  -edto(i)*zdo(i,k))
                  dtime_max=min(dtime_max,.5*dp)
               enddo
               call fct1d3 (ktop(i),kte,dtime_max,po_cup(i,:),qo(i,:),massflx(i,:),trcflx_in(1,:),sub_tend(1,:))
@@ -4094,10 +4072,10 @@ ENDIF ! vertical discretization formulation
          else
            xhc(i,k)=(xhc(i,k-1)*xzu(i,k-1)-.5*up_massdetro(i,k-1)*xhc(i,k-1)+ &
                                               up_massentro(i,k-1)*xhe(i,k-1)) / denom
-          if(k==start_level(i)+1)  then
-             x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
-             xhc(i,k)= xhc(i,k) + x_add*up_massentro(i,k-1)/denom
-          endif
+  ! WMP   if(k==start_level(i)+1)  then
+  ! WMP      x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+  ! WMP      xhc(i,k)= xhc(i,k) + x_add*up_massentro(i,k-1)/denom
+  ! WMP   endif
          endif
 !
 !- include glaciation effects on XHC
@@ -4241,7 +4219,7 @@ ENDIF ! vertical discretization formulation
 !
 !--- includes effects of the remained cloud dissipation into the enviroment
 !
-       if(use_cloud_dissipation >= 0.)                                             &
+       if(use_cloud_dissipation > 0.)                                              &
        call cloud_dissipation(cumulus,itf,ktf, its,ite, kts,kte,ierr,kbcon,ktop    &
                              ,dtime,xmb,xland,qo_cup,qeso_cup,po_cup,outt,outq     &
                              ,outqc,zuo,vvel2d,rho_hydr,qrco,sig,tempco,qco,tn_cup &
@@ -4276,27 +4254,11 @@ ENDIF ! vertical discretization formulation
        do i=its,itf
           if(ierr(i) /= 0) cycle
           do k=kts,ktf
-          !tup          (i,k) = (1./cp)*(hco(i,k)-g*zo_cup(i,k)-xlv*qco(i,k))!in-updraft temp
-           tup          (i,k) = tempco(i,k) !in-updraft temp
+           tup          (i,k) = (1./cp)*(hco(i,k)-g*zo_cup(i,k)-xlv*qco(i,k))!in-updraft temp
+   ! WMP   tup          (i,k) = tempco(i,k) !in-updraft temp
           enddo
-          tup           (i,kte) = t_cup(i,kte)
+   ! WMP  tup           (i,kte) = t_cup(i,kte)
        enddo
-
-!--- convert mass fluxes, etc...
-   do i=its,itf
-        if(ierr(i) /= 0) cycle
-        pwavo       (i)   = xmb(i)*pwavo       (i)
-        pwevo       (i)   = xmb(i)*pwevo       (i)
-        zuo         (i,:) = xmb(i)*zuo         (i,:)
-        zdo         (i,:) = xmb(i)*zdo         (i,:)
-        pwo         (i,:) = xmb(i)*pwo         (i,:)
-        pwdo        (i,:) = xmb(i)*pwdo        (i,:)
-        up_massentro(i,:) = xmb(i)*up_massentro(i,:)
-        up_massdetro(i,:) = xmb(i)*up_massdetro(i,:)
-        dd_massentro(i,:) = xmb(i)*dd_massentro(i,:)
-        dd_massdetro(i,:) = xmb(i)*dd_massdetro(i,:)
-        zenv        (i,:) = xmb(i)*zenv        (i,:)
-   enddo
 
 !--for output only.
    do i=its,itf
@@ -4338,6 +4300,22 @@ ENDIF ! vertical discretization formulation
 !- section for atmospheric composition
 !--------------------------------------------------------------------------------------------!
 IF(USE_TRACER_TRANSP==1)  THEN
+
+!--- convert mass fluxes, etc...
+   do i=its,itf
+        if(ierr(i) /= 0) cycle
+        pwavo       (i)   = xmb(i)*pwavo       (i)
+        pwevo       (i)   = xmb(i)*pwevo       (i)
+        zuo         (i,:) = xmb(i)*zuo         (i,:)
+        zdo         (i,:) = xmb(i)*zdo         (i,:)
+        pwo         (i,:) = xmb(i)*pwo         (i,:)
+        pwdo        (i,:) = xmb(i)*pwdo        (i,:)
+        up_massentro(i,:) = xmb(i)*up_massentro(i,:)
+        up_massdetro(i,:) = xmb(i)*up_massdetro(i,:)
+        dd_massentro(i,:) = xmb(i)*dd_massentro(i,:)
+        dd_massdetro(i,:) = xmb(i)*dd_massdetro(i,:)
+        zenv        (i,:) = xmb(i)*zenv        (i,:)
+   enddo
 
 !-1) get mass mixing ratios at the cloud levels
 
@@ -4570,6 +4548,22 @@ IF(USE_TRACER_TRANSP==1)  THEN
 
 
    enddo ! loop 'i'
+
+!--- convert mass fluxes, etc...
+   do i=its,itf
+        if(ierr(i) /= 0) cycle
+        pwavo       (i)   = pwavo       (i  ) / (xmb(i) + 1.e-16)
+        pwevo       (i)   = pwevo       (i  ) / (xmb(i) + 1.e-16)
+        zuo         (i,:) = zuo         (i,:) / (xmb(i) + 1.e-16)
+        zdo         (i,:) = zdo         (i,:) / (xmb(i) + 1.e-16)
+        pwo         (i,:) = pwo         (i,:) / (xmb(i) + 1.e-16)
+        pwdo        (i,:) = pwdo        (i,:) / (xmb(i) + 1.e-16)
+        up_massentro(i,:) = up_massentro(i,:) / (xmb(i) + 1.e-16)
+        up_massdetro(i,:) = up_massdetro(i,:) / (xmb(i) + 1.e-16)
+        dd_massentro(i,:) = dd_massentro(i,:) / (xmb(i) + 1.e-16)
+        dd_massdetro(i,:) = dd_massdetro(i,:) / (xmb(i) + 1.e-16)
+        zenv        (i,:) = zenv        (i,:) / (xmb(i) + 1.e-16)
+   enddo
 
 !--------------------------------------------------------------------------------------------!
 ENDIF !- end of section for atmospheric composition
@@ -6254,7 +6248,7 @@ ENDIF !- end of section for atmospheric composition
      integer, intent(in)   , dimension(its:ite)            :: ierr,ktop,kbcon,k22,kpbl
      real,    intent(in)   , dimension(its:ite), OPTIONAL  :: lambau
      real,    intent(in)   , dimension(its:ite,kts:kte) :: zo_cup,zuo,po_cup
-     real,    intent(in)   , dimension(its:ite,kts:kte) :: entr_rate
+     real,    intent(inout), dimension(its:ite,kts:kte) :: entr_rate
      real,    intent(inout), dimension(its:ite,kts:kte) :: cd
      real,    intent(  out), dimension(its:ite,kts:kte) :: up_massentro, up_massdetro&
                                                           ,up_massentr,  up_massdetr
@@ -6279,9 +6273,13 @@ ENDIF !- end of section for atmospheric composition
          if(ierr(i)/= 0)cycle
 
          k_ent=maxloc(zuo(i,:),1)
-         !-will not allow detrainment below cloud base or in the PBL
-         if(draft=='shallow') then
-              cd(i,1:max(kbcon(i),kpbl(i))+1)=0.0
+
+        !!-will not allow detrainment below cloud base or in the PBL
+        !if(draft=='shallow' .or. draft == 'mid') then
+        !     cd(i,1:max(kbcon(i),kpbl(i))+1)=0.0
+         !-will not allow detrainment below the location of the maximum zu
+         if (draft=='shallow' .or. draft == 'mid') then
+              cd(i,1:maxloc(zuo(i,:),1)-2)=0.0
          else
               cd(i,1:k_ent+1)=0.0
          endif
@@ -6299,6 +6297,11 @@ ENDIF !- end of section for atmospheric composition
 
            !-- check dd_massdetro in case of dd_massentro has been changed above
            up_massdetro(i,k)=-zuo(i,k+1)+zuo(i,k)+up_massentro(i,k)
+
+           if(zuo(i,k).gt.0.) then
+                    cd(i,k)=up_massdetro(i,k)/(dz*zuo(i,k))
+             entr_rate(i,k)=up_massentro(i,k)/(dz*zuo(i,k))
+           endif
          enddo
 
          do k=k_ent,ktop(i)
@@ -6311,6 +6314,11 @@ ENDIF !- end of section for atmospheric composition
            up_massdetro(i,k)=max(up_massdetro(i,k),0.0)
            !-- check up_massentro in case of dd_up_massdetro has been changed above
            up_massentro(i,k)=-zuo(i,k)+up_massdetro(i,k)+zuo(i,k+1)
+
+           if(zuo(i,k-1).gt.0.) then
+                    cd(i,k)=up_massdetro(i,k)/(dz*zuo(i,k))
+             entr_rate(i,k)=up_massentro(i,k)/(dz*zuo(i,k))
+           endif
          enddo
 
          do k=kts,kte
@@ -6339,6 +6347,11 @@ ENDIF !- end of section for atmospheric composition
            endif
          ENDIF
 
+         do k=ktop(i)+1,kte
+                  cd(i,k)=0.
+           entr_rate(i,k)=0.
+         enddo
+
     ENDDO
    !!---- check mass conservation
    !DO i=its,itf
@@ -6356,7 +6369,7 @@ ENDIF !- end of section for atmospheric composition
 
 !------------------------------------------------------------------------------------
  SUBROUTINE get_lateral_massflux_down(cumulus,itf,ktf, its,ite, kts,kte                    &
-                                ,ierr,jmin,zo_cup,zdo,xzd,zd,cdd,mentrd_rate         &
+                                ,ierr,jmin,po_cup,zo_cup,zdo,xzd,zd,cdd,mentrd_rate         &
                                 ,dd_massentro,dd_massdetro ,dd_massentr, dd_massdetr &
                                 ,draft,dd_massentru,dd_massdetru,lambau)
 
@@ -6366,6 +6379,7 @@ ENDIF !- end of section for atmospheric composition
      integer, intent(in)   , dimension(its:ite)         :: ierr,jmin
      real,    intent(in)   , dimension(its:ite        ) :: lambau
      real,    intent(in)   , dimension(its:ite,kts:kte) :: zo_cup,zdo
+     real,    intent(in)   , dimension(its:ite,kts:kte) :: po_cup
      real,    intent(inout), dimension(its:ite,kts:kte) :: cdd,mentrd_rate,xzd,zd
      real,    intent(  out), dimension(its:ite,kts:kte) :: dd_massentro, dd_massdetro&
                                                           ,dd_massentr,  dd_massdetr
@@ -6388,7 +6402,7 @@ ENDIF !- end of section for atmospheric composition
      do i=its,itf
         if(ierr(i) /= 0) cycle
 
-        cdd           (i,1:jmin(i)-1) =mentrd_rate(i,1:jmin(i)-1)
+        cdd        (i,1:jmin(i)-1) =mentrd_rate(i,1:jmin(i)-1)
         mentrd_rate(i,1)=0.
 
         do ki=jmin(i)   ,maxloc(zdo(i,:),1),-1
@@ -6396,22 +6410,14 @@ ENDIF !- end of section for atmospheric composition
           !=> from jmin to maximum value zd -> change entrainment
           dzo=zo_cup(i,ki+1)-zo_cup(i,ki)
           dd_massdetro(i,ki)=cdd(i,ki)*dzo*zdo(i,ki+1)
-!XXX
+
           dd_massentro(i,ki)= zdo(i,ki)-zdo(i,ki+1)+dd_massdetro(i,ki)
           dd_massentro(i,ki)= MAX(0.,dd_massentro(i,ki))
           !-- check dd_massdetro in case of dd_massentro has been changed above
           dd_massdetro(i,ki)= dd_massentro(i,ki)-zdo(i,ki)+zdo(i,ki+1)
 
-          !~ if(dd_massentro(i,ki).lt.0.)then
-             !~ dd_massentro(i,ki)=0.
-             !~ dd_massdetro(i,ki)=zdo(i,ki+1)-zdo(i,ki)
-             !~ if(zdo(i,ki+1) > 0.0)&
-               !~ cdd(i,ki)=dd_massdetro(i,ki)/(dzo*zdo(i,ki+1))
-          !~ endif
-          !~ if(zdo(i,ki+1) > 0.0)&
-            !~ mentrd_rate(i,ki)=dd_massentro(i,ki)/(dzo*zdo(i,ki+1))
         enddo
-
+!XXX
         do ki=maxloc(zdo(i,:),1)-1,kts,-1
           !=> from maximum value zd to surface -> change detrainment
           dzo=zo_cup(i,ki+1)-zo_cup(i,ki)
@@ -6600,7 +6606,7 @@ ENDIF !- end of section for atmospheric composition
   integer:: itest                   ! 5=gamma+beta, 4=gamma, 1=beta
 
   integer:: minzu,maxzul,maxzuh,kstart
-  logical :: do_smooth
+  logical, parameter :: do_smooth = .TRUE.
 
   !-------- gama pdf
   real, parameter :: beta_deep=1.25,g_beta_deep=0.8974707
@@ -6624,7 +6630,6 @@ ENDIF !- end of section for atmospheric composition
                   0.9565111,0.9619183,0.9619183,0.9619183,0.9619183,&
                 0.9619183/
   !-------- gama pdf
-  DO_SMOOTH = .FALSE.
 
   !-- fill zu with zeros
   itest=-999
@@ -6632,9 +6637,9 @@ ENDIF !- end of section for atmospheric composition
   zuh=0.0
   zul=0.0
   IF(ZERO_DIFF_LAND==1) then
-   if(draft == "deep_up" .and. xland >  0.90) itest=20 !ocean
+   if(draft == "deep_up" .and. xland >  0.90) itest=11 !ocean
    if(draft == "deep_up" .and. xland <= 0.90) itest=12 !land
-   if(draft == "mid_up"                     ) itest=20
+   if(draft == "mid_up"                     ) itest=5
   ELSE
    if(draft == "deep_up"                    ) itest=20  !ocean/land
    if(draft == "mid_up"                     ) itest=20
@@ -8159,8 +8164,8 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
 !------------------------------------------------------------------------------------
   SUBROUTINE cup_cloud_limits(name,ierrc,ierr,cap_inc,cap_max_in                                   &
                              ,heo_cup,heso_cup,qo_cup,qeso_cup,po,po_cup,z_cup,heo,hkbo,qo,qeso    &
-                             ,entr_rate,hcot,k22,kbmax,klcl,kbcon,ktop,depth_neg_buoy,frh,Tpert &
-                             ,start_level_,use_excess,zqexec,ztexec, x_add_buoy,xland              &
+                             ,entr_rate,hcot,k22,kbmax,klcl,kbcon,ktop,depth_neg_buoy,frh,Tpert    &
+                             ,start_level_,use_excess,zqexec,ztexec,x_add_buoy,xland,cnvfrc        &
                              ,itf,ktf,its,ite, kts,kte)
 
      IMPLICIT NONE
@@ -8172,7 +8177,7 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
      real,    dimension (its:ite,kts:kte)  ,intent (in   )     ::    &
         heo_cup,heso_cup,po_cup,z_cup,heo,qo_cup,qeso_cup,po,qo,qeso,Tpert
      real,    dimension (its:ite)          ,intent (in   )     ::    &
-        cap_max_in,cap_inc,xland
+        cap_max_in,cap_inc,xland,cnvfrc
      real,    dimension (its:ite)          ,intent (in   )     ::    &
         zqexec,ztexec,x_add_buoy
      integer, dimension (its:ite)          ,intent (in   )     ::    &
@@ -8186,16 +8191,17 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
 
 !  local variables in this routine
 
-     real, parameter              :: frh_crit_O=0.7
-     real, parameter              :: frh_crit_L=0.7  !--- test 0.5
+     real, parameter              :: frh_crit_O=0.7                        
+     real, parameter              :: frh_crit_L=0.7  !--- test 0.5         
      real                         :: delz_oversh !--- height of cloud overshoot is 10% higher than the LNB.
                                                        !--- Typically it can 2 - 2.5km higher, but it depends on
                                                        !--- the severity of the thunderstorm.
 
      real,    dimension (its:ite) ::   cap_max
      integer                      ::   i,k,k1,k2,kfinalzu
-     real                         ::   plus,hetest,dz,dbythresh,denom &
-                                      ,dzh,del_cap_max,fx,x_add,Z_overshoot,frh_crit
+     real                         ::   plus,hetest,dz,dbythresh,denom, &
+                                       dzh,del_cap_max,fx,x_add,Z_overshoot
+     real                         ::   frh_crit
      real   , dimension (kts:kte) ::   dby
      integer, dimension (its:ite) ::   start_level
 
@@ -8260,32 +8266,25 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
                    dz     = z_cup(i,k)-z_cup(i,max(k-1,kts))
                    frh(i) = frh(i) + dz*(qo(i,k)/qeso(i,k))
                    dzh    = dzh + dz
-                   !print*,"frh=", k,dz,qo(i,k)/qeso(i,k)
                 enddo
                 frh(i) = frh(i)/(dzh+1.e-16)
                 frh_crit =frh_crit_O*xland(i) + frh_crit_L*(1.-xland(i))
 
-               !fx     = 2.*(frh(i) - frh_crit) !- linear
-               !fx     = 4.*(frh(i) - frh_crit)* abs(frh(i) - frh_crit) !-quadratic
-                fx     = ((2./0.78)*exp(-(frh(i) - frh_crit)**2)*(frh(i) - frh_crit)) !- exponential
+               !- linear formulation
+               !fx     = 2.*(frh(i) - frh_crit)
+               !- quadratic formulation
+               !fx     = 4.*(frh(i) - frh_crit) * abs(frh(i) - frh_crit)
+               !- exponential formulation
+                fx     = ((2./0.78)*exp(-(frh(i) - frh_crit)**2)*(frh(i) - frh_crit))
+               !- limits
                 fx     = max(-1.,min(1.,fx))
 
                 del_cap_max = fx* cap_inc(i)
                 cap_max(i)  = min(max(cap_max_in(i) + del_cap_max, 10.),150.)
-               !print*,"frh=", frh(i),kbcon(i),del_cap_max, cap_max(i),  cap_max_in(i)
             ENDIF
 
             !- test if the air parcel has enough energy to reach the positive buoyant region
             if(cap_max(i) > depth_neg_buoy(i)) cycle loop0
-
-
-!--- use this for just one search (original k22)
-!            if(cap_max(i) < depth_neg_buoy(i)) then
-!                    ierr(i)=3
-!                    ierrc(i)="could not find reasonable kbcon in cup_cloud_limits"
-!            endif
-!            cycle loop0
-!---
 
             !- if am here -> kbcon not found for air parcels from k22 level
             k22(i)=k22(i)+1
@@ -8307,9 +8306,6 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
         endif
      ENDDO loop0
 
-!
-!      if(NAME /= 'shallow') return
-!
 !--- DETERMINE THE LEVEL OF NEUTRAL BUOYANCY - KTOP
 !
      DO i=its,itf
@@ -11054,96 +11050,6 @@ REAL FUNCTION fract_liq_f(temp2,cnvfrc,srftype) ! temp2 in Kelvin, fraction betw
  enddo
 
  END SUBROUTINE cloud_dissipation
-!------------------------------------------------------------------------------------
- subroutine GF_convpar_init (mynum)
-    implicit none
-    integer,intent(in) :: mynum
-    integer :: nlunit = 4
-    character (len = 64) :: fn_nml = 'GF_ConvPar_nml'
-    logical :: exists
-    namelist /GF_NML/ icumulus_gf, closure_choice,use_scale_dep,dicycle                                  &
-                 ,use_tracer_transp, use_tracer_scaven,use_flux_form, use_tracer_evap,downdraft,use_fct  &
-                 ,use_rebcb, vert_discr, satur_calc, clev_grid,apply_sub_mp, alp1         &
-                 ,sgs_w_timescale, lightning_diag,autoconv, bc_meth,overshoot,use_wetbulb &
-                 ,c1,c0_deep, qrc_crit,lambau_deep,lambau_shdn,c0_mid                     &
-                 ,cum_max_edt_land  ,cum_max_edt_ocean, cum_hei_down_land                 &
-                 ,cum_hei_down_ocean,cum_hei_updf_land, cum_hei_updf_ocean                &
-                 ,cum_entr_rate ,tau_deep,tau_mid                                         &
-                 ,zero_diff_land,zero_diff_vvel,zero_diff_entr                            &
-                 ,use_momentum_transp ,moist_trigger,frac_modis                &
-                 ,cum_use_excess,cum_ave_layer,adv_trigger, evap_fix      &
-                 ,use_cloud_dissipation,use_smooth_tend,use_gustiness, use_random_num     &
-                 ,dcape_threshold,beta_sh,c0_shal,use_linear_subcl_mf
-
-    inquire (file = trim (fn_nml), exist = exists)
-    if (.not. exists) then
-        write (6, *) 'GF_convpar_nml :: namelist file: ', trim (fn_nml), ' does not exist'
-        stop 31415
-    else
-        open (nlunit,file=fn_nml,status='old',form='formatted')
-        read (nlunit,nml=GF_NML)
-        close(nlunit)
-    endif
-    if(mynum==1) then
-      !- print the namelist
-      print*,"           "
-      print*,"------------- GF ConvPar namelist -------------"
-      print*, 'icumulus_gf        ' , icumulus_gf
-      print*, 'closure_choice     ' , closure_choice
-      print*, 'clev_grid          ' , clev_grid
-      print*, 'use_rebcb          ' , use_rebcb
-      print*, 'vert_discr         ' , vert_discr
-      print*, 'satur_calc         ' , satur_calc
-      print*, 'autoconv           ' , autoconv
-      print*, 'bc_meth            ' , bc_meth
-      print*, 'overshoot          ' , real(overshoot          ,4)
-      print*, 'use_wetbulb        ' , use_wetbulb
-      print*, 'hei_down_land      ' , real(cum_hei_down_land  ,4)
-      print*, 'hei_down_ocean     ' , real(cum_hei_down_ocean ,4)
-      print*, 'hei_updf_land      ' , real(cum_hei_updf_land  ,4)
-      print*, 'hei_updf_ocean     ' , real(cum_hei_updf_ocean ,4)
-      print*, 'max_edt_land       ' , real(cum_max_edt_land   ,4)
-      print*, 'max_edt_ocean      ' , real(cum_max_edt_ocean  ,4)
-      print*, 'cum_use_excess     ' , cum_use_excess
-      print*, 'c0_deep            ' , real(c0_deep            ,4)
-      print*, 'c0_mid             ' , real(c0_mid             ,4)
-      print*, 'c0_shal            ' , real(c0_shal            ,4)
-      print*, 'c1                 ' , real(c1                 ,4)
-      print*, 'qrc_crit           ' , real(qrc_crit           ,4)
-      print*, 'lambau_deep        ' , real(lambau_deep        ,4)
-      print*, 'lambau_shdn        ' , real(lambau_shdn        ,4)
-      print*, 'use_tracer_transp  ' , use_tracer_transp
-      print*, 'use_tracer_scaven  ' , use_tracer_scaven
-      print*, 'use_flux_form      ' , use_flux_form
-      print*, 'use_fct            ' , use_fct
-      print*, 'use_tracer_evap    ' , use_tracer_evap
-      print*, 'use_momentum_trans ' , use_momentum_transp
-      print*, 'downdraft          ' , downdraft
-      print*, 'sgs_w_timescale    ' , sgs_w_timescale
-      print*, 'apply_sub_mp       ' , apply_sub_mp
-      print*, 'alp1               ' , real(alp1               ,4)
-      print*, 'lightning_diag     ' , lightning_diag
-      print*, 'use_scale_dep      ' , use_scale_dep
-      print*, 'dicycle            ' , dicycle
-      print*, 'zero_diff_land     ' , zero_diff_land
-      print*, 'zero_diff_vvel     ' , zero_diff_vvel
-      print*, 'zero_diff_entr     ' , zero_diff_entr
-      print*, 'cum_entr           ' , real(cum_entr_rate      ,4)
-      print*, 'frac_modis         ' , frac_modis
-      print*, 'moist_trigger      ' , moist_trigger
-      print*, 'adv_trigger        ' , adv_trigger
-      print*, 'dcape_threshold    ' , real(dcape_threshold    ,4)
-      print*, 'tau_deep,tau_mid   ' , real(tau_deep,4),real(tau_mid,4)
-      print*, 'evap_fix           ' , evap_fix
-      print*, 'use_cloud_dissipat ' , real(use_cloud_dissipation,4)
-      print*, 'use_gustiness      ' , use_gustiness
-      print*, 'use_random_num     ' , use_random_num
-      print*, 'beta_sh            ' , real(beta_sh            , 4)
-      print*, 'use_linear_subcl_mf' , use_linear_subcl_mf
-      print*,"==============================================="
-      call flush(6)
-    endif
- end subroutine GF_convpar_init
 !------------------------------------------------------------------------------------
  subroutine get_liq_ice_number_conc(itf,ktf,its,ite, kts,kte,ierr,ktop&
                                   ,cnvfrc,srftype,dtime,rho,outqc,tempco,outnliq,outnice)

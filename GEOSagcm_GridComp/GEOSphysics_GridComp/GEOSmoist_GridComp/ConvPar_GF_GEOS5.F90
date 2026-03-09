@@ -100,7 +100,7 @@ CONTAINS
                                ,DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF                   &
                                ,MUPDP,MUPSH,MUPMD                                 &
                                ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
-                               ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
+                               ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD &
                                ,DTDTDYN,DQVDTDYN                                  &
                                ,REVSU, PRFIL)
 
@@ -129,7 +129,7 @@ CONTAINS
     !-for debug purposes
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: MUPDP,MUPSH,MUPMD
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
-    REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD
 
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(IN)   :: FRLAND ,AREA &
                                                      ,T2M ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS  &
@@ -259,7 +259,8 @@ CONTAINS
    AA1_BL = 0.0
    AA1_CIN = 0.0
    TAU_BL = 0.0
-   TAU_EC = 0.0
+   TAU_DP = 0.0
+   TAU_MD = 0.0
 
 !-initialization
     do_this_column =0
@@ -528,7 +529,7 @@ CONTAINS
                      ,tup5d        &
                      ,conv_cld_fr5d&
                      !-- for debug/diagnostic
-                     ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC &
+                     ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD &
                      )
   !
 
@@ -820,7 +821,7 @@ ENDIF
               ,tup5d                 &
               ,conv_cld_fr5d         &
               !-- for debug/diagnostic
-              ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC &
+              ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD &
               )
 
    IMPLICIT NONE
@@ -906,7 +907,7 @@ ENDIF
               ,tup5d                     &
               ,conv_cld_fr5d
 !--for debug
-   REAL   ,DIMENSION(mxp,myp)  ,INTENT(INOUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
+   REAL   ,DIMENSION(mxp,myp)  ,INTENT(INOUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD
 
 !----------------------------------------------------------------------
 ! LOCAL VARS
@@ -1257,7 +1258,7 @@ ENDIF
                   ,psur                              &
                   ,us                                &
                   ,vs                                &
-		  ,dm2d                              &
+                  ,dm2d                              &
                   ,se_chem                           &
                   ,zws                               &
                   ,dhdt                              &
@@ -1296,7 +1297,7 @@ ENDIF
                   ,tup5d              (:,j,:,deep)   &
                   ,conv_cld_fr5d      (:,j,:,deep)   &
                   !-- for debug/diag
-                  ,AA0(:,j),AA1(:,j),AA2(:,j),AA3(:,j),AA1_BL(:,j),AA1_CIN(:,j),TAU_BL(:,j),TAU_EC(:,j) &
+                  ,AA0(:,j),AA1(:,j),AA2(:,j),AA3(:,j),AA1_BL(:,j),AA1_CIN(:,j),TAU_BL(:,j),TAU_DP(:,j) &
                   ,revsu_gf_2d                      &
                   ,prfil_gf_2d                      &
                   )
@@ -1366,7 +1367,7 @@ ENDIF
                   ,psur                             &
                   ,us                               &
                   ,vs                               &
-		  ,dm2d                             &
+                  ,dm2d                             &
                   ,se_chem                          &
                   ,zws                              &
                   ,dhdt                             &
@@ -1407,7 +1408,7 @@ ENDIF
                   ,tup5d              (:,j,:,mid)   &
                   ,conv_cld_fr5d      (:,j,:,mid)   &
                   !-- for debug/diag
-                  ,AA0(:,j),AA1(:,j),AA2(:,j),AA3(:,j),AA1_BL(:,j),AA1_CIN(:,j),TAU_BL(:,j),TAU_EC(:,j) &
+                  ,AA0(:,j),AA1(:,j),AA2(:,j),AA3(:,j),AA1_BL(:,j),AA1_CIN(:,j),TAU_BL(:,j),TAU_MD(:,j) &
                   ,revsu_gf_2d                      &
                   ,prfil_gf_2d                      &
                   )
@@ -3781,9 +3782,12 @@ ENDIF !- end of section for atmospheric composition
          aa1_bl_ (i)  = aa1_bl(i)
          aa1_cin_(i)  = cin1(i)
          tau_bl_ (i)  = tau_bl   (i)
-         tau_ec_ (i)  = tau_ecmwf(i)
       ENDDO
     endif
+    do i=its,itf
+       !if(ierr(i) /= 0) cycle
+       tau_ec_ (i)  = tau_ecmwf(i)
+    ENDDO
 !
 !- begin: for GATE soundings-------------------------------------------
    if(wrtgrads) then

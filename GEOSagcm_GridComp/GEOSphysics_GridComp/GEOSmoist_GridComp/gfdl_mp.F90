@@ -415,7 +415,7 @@ module gfdl_mp_mod
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
 
-    real :: rthreshu =  7.0e-6 ! unstable critical cloud drop radius (micro m)
+    real :: rthreshu = 15.0e-6 ! unstable critical cloud drop radius (micro m)
     real :: rthreshs = 10.0e-6 !   stable critical cloud drop radius (micro m)
 
     logical :: in_cloud_liq = .true. ! use in-cloud liquid

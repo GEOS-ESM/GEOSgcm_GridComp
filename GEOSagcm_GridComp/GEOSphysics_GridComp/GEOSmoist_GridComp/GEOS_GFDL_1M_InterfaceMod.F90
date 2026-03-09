@@ -231,7 +231,6 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     CHARACTER(len=ESMF_MAXSTR) :: errmsg
 
-    real                     :: cf_min, cf_max
     real                     :: DBZ_DT
     type(ESMF_Calendar)      :: calendar
     type(ESMF_Alarm)         :: DBZ_RunAlarm
@@ -320,15 +319,8 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
                                  CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
-                        cf_min =   500.0
-    if (DT_R8 <= 150.0) cf_min = -9999.0 ! force MoistGC to use EIS for cnv_frc
-    ! variations on max CAPE for convective fraction as timestep changes with resolution
-    cf_max = 100.0 * NINT( (1500.0+2500.0*(1-(DT_R8-30.0)/(900.0-30.0))**2) /100.0 )
-    if (cf_max < 1500.0) cf_max = 1500.0
-    if (cf_max > 4000.0) cf_max = 4000.0
-    if (DT_R8 <= 150.0) cf_max = -9999.0 ! force MoistGC to use EIS for cnv_frc
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT= cf_min, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= cf_max, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, GFDL_MP_KLID    , 'GFDL_MP_KLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
 

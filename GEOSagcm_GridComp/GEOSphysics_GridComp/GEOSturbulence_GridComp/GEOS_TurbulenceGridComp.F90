@@ -3155,7 +3155,7 @@ end if
      real, dimension(:,:,:), pointer     :: S
      integer :: NTR, K, LTOP, LMAX
      real :: maxaero
-
+     real :: eis_stable, kh_thresh
 
 #ifdef _CUDA
      type(dim3) :: Grid, Block
@@ -3235,9 +3235,9 @@ end if
        call MAPL_GetResource (MAPL, LOUIS_D_KM,   trim(COMP_NAME)//"_LOUIS_D_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=1500.0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=4500.0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=160.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=3000.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,    RC=STATUS); VERIFY_(STATUS)
@@ -3252,7 +3252,7 @@ end if
        call MAPL_GetResource (MAPL, LOUIS_B_KM,   trim(COMP_NAME)//"_LOUIS_B_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOUIS_C_KM,   trim(COMP_NAME)//"_LOUIS_C_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOUIS_D_KM,   trim(COMP_NAME)//"_LOUIS_D_KM:",   default=5.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.3,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=150.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
@@ -3286,7 +3286,7 @@ end if
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.3,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.5,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.30,   RC=STATUS); VERIFY_(STATUS)
@@ -4934,8 +4934,23 @@ end if
               temparray(1:LM+1) = KH(I,J,0:LM)
             endif
             maxkh = maxval(temparray)
+
+            if (USE_EIS) then
+               if (EIS(I,J) >= 12.0) then       
+                  eis_stable = 1.0
+               elseif (EIS(I,J) <= 0.0) then
+                  eis_stable = 0.0
+               else
+                  eis_stable = (EIS(I,J) / 12.0)**1.5
+               endif
+               ! Adaptive threshold: 10-30% based on EIS
+               kh_thresh = 0.10 + eis_stable * 0.20
+            else
+               kh_thresh = 0.1
+            endif
+            
             do L=LM-1,2,-1
-              if ( (temparray(L) < 0.1*maxkh) .and. (temparray(L+1) >= 0.1*maxkh)  &
+              if ( (temparray(L) < kh_thresh*maxkh) .and. (temparray(L+1) >= kh_thresh*maxkh)  &
               .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
                  KPBL_SC(I,J) = float(L)
               end if
