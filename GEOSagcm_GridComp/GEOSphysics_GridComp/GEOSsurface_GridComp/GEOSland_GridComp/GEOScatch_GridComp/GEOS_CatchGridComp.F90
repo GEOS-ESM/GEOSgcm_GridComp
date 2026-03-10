@@ -3116,7 +3116,7 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(real_global)
 
     allocate(urban%height(nt_local),real_global(nt_global))
-    open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_GloUCP_h_aw.txt",status="old",action="read");read(77,*)real_global;close(77)
+    open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_GloUCP_h_aw_adj.txt",status="old",action="read");read(77,*)real_global;close(77)
     urban%height=real_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local)
     where(urban%height<1.e-4) urban%height=1.e-4 
     deallocate(real_global)

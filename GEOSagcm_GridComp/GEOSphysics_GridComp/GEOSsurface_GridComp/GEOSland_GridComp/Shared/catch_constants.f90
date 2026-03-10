@@ -72,14 +72,14 @@ module catch_constants
        /) 
   ! constants for urban
 
-  REAL,    PARAMETER, PUBLIC :: CATCH_CBLD_URBAN    = 30000.
-  REAL,    PARAMETER, PUBLIC :: CATCH_tkBLD_URBAN   = 0.04   
+  REAL,    PARAMETER, PUBLIC :: CATCH_CBLD_URBAN    = 15000.
+  REAL,    PARAMETER, PUBLIC :: CATCH_tkBLD_URBAN   = 0.02   
 
-  REAL,    PARAMETER, PUBLIC :: CATCH_CBASE_URBAN   = 70000.  ! J/K - heat capacity associated w/ urban  
+  REAL,    PARAMETER, PUBLIC :: CATCH_CBASE_URBAN   = 5000.  ! J/K - heat capacity associated w/ urban  
   REAL,    PARAMETER, PUBLIC :: CATCH_tkBASE_URBAN  = 0.226   ! w m-2 k-1 
 
   REAL,    PARAMETER, PUBLIC :: CATCH_ALB_URBAN     = 0.15 
-  REAL,    PARAMETER, PUBLIC :: CATCH_EMIS_URBAN    = 0.90
+  REAL,    PARAMETER, PUBLIC :: CATCH_EMIS_URBAN    = 0.95
   REAL,    PARAMETER, PUBLIC :: factor_impervious_URBAN = 1.0   
   !REAL,    PARAMETER, PUBLIC :: CATCH_tkdry_URBAN   = 1.8
   !REAL,    PARAMETER, PUBLIC :: CATCH_CH_URBAN      = 0.018    ! kg/m^2/s

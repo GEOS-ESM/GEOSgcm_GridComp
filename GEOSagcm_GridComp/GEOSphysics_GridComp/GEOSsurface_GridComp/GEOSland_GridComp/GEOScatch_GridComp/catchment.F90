@@ -1201,7 +1201,7 @@
         TSOIL_NA=AR1(N)*TC1(N)+AR2(N)*TC2(N)+AR4(N)*TC4(N)
         TC_NA(N) = TSOIL_NA
         UHI(N) = TC_UR(N)-TC_NA(N)
-        if(MSK_UR(N)==0.) UHI(N)=0.
+        if(MSK_UR(N)==0..or.H_UR<=1.e-4) UHI(N)=0.
         TSOIL=( TSOIL_NA*(1.-AR_UR(N))*CSOIL(N) + TC_UR(N)*AR_UR(N)*CSOIL_UR(N) )/( (1.-AR_UR(N))*CSOIL(N) + AR_UR(N)*CSOIL_UR(N) )
         TSURF(N)=(1.-ASNOW0(N))*TSOIL+ASNOW0(N)*TPSN1(N)
 
