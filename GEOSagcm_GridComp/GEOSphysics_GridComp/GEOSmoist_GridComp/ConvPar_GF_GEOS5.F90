@@ -715,7 +715,7 @@ ENDIF
          DO j=1,myp
            DO i=1,mxp
              if(ierr4d(i,j,MID) /= 0) cycle
-             MFMD (i,j)      = cprr4d(i,j,MID) ! xmb4d(i,j,MID)temporary saving for mid precip
+             MFMD (i,j)      =xmb4d(i,j,MID)
              MUPMD(i,j,1:mzp)=xmb4d(i,j,MID)*zup5d(i,j,flip(1):flip(mzp):-1,MID)
              SIGMA_MID (i,j) =sigma4d(i,j,MID)
            ENDDO
