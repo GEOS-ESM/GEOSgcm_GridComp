@@ -802,7 +802,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   if(associated(ICETHICK))     deallocate(ICETHICK)
   if(associated(ICEVEL))       deallocate(ICEVEL) 
   if(associated(ICESMB_TILE))  deallocate(ICESMB_TILE)
-  if(associated(ICESURF_TILE))  deallocate(ICESMB_TILE)
+  if(associated(ICESURF_TILE)) deallocate(ICESURF_TILE)
   if(associated(ICESMB_GRID))  deallocate(ICESMB_GRID)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
