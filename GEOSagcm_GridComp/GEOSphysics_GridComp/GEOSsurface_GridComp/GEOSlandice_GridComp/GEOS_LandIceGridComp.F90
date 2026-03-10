@@ -44,7 +44,9 @@ module GEOS_LandiceGridCompMod
   use GEOS_UtilsMod
   use DragCoefficientsMod
   use GEOS_IssmGridCompMod,   only : IssmSetServices  => SetServices
-  
+  use GEOS_IssmGridCompMod,   only : T_ISSM_EXPORT_STATE
+  use GEOS_IssmGridCompMod,   only : ISSM_EXPORT_WRAP
+
   implicit none
   private
 
@@ -1702,9 +1704,14 @@ module GEOS_LandiceGridCompMod
        type (MAPL_LocStream       )            :: LOCSTREAM
        type (ESMF_Config          )            :: CF
        type (ESMF_GridComp        ), pointer   :: GCS(:)
+       character(len=ESMF_MAXSTR),   pointer   :: gcnames(:)
      
        integer                                 :: I
    
+       type(T_ISSM_EXPORT_STATE), pointer :: issm_exports_state
+       type(ISSM_EXPORT_WRAP) :: issm_exports_wrap
+       integer :: nt_local
+
    !=============================================================================
    
    ! Begin... 
@@ -1728,17 +1735,25 @@ module GEOS_LandiceGridCompMod
    ! Get the landice tilegrid and the child components
    !----------------------------------------------- 
    
-       call MAPL_Get (MAPL, LOCSTREAM=LOCSTREAM, GCS=GCS, RC=STATUS )
+       call MAPL_Get (MAPL, LOCSTREAM=LOCSTREAM, GCS=GCS, GCNAMES=gcnames, RC=STATUS )
        VERIFY_(STATUS)
-   
+       call MAPL_LocStreamGet(locstream, NT_LOCAL=nt_local, rc=status)
+       VERIFY_(status)
    ! Place the land tilegrid in the generic state of each child component
    !---------------------------------------------------------------------
-   
+
        do I = 1, SIZE(GCS)
           call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
           VERIFY_(STATUS)
           call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
           VERIFY_(STATUS)
+          if (index(gcnames(I), 'ISSM') /=0 ) then
+             allocate(issm_exports_state)
+             allocate(issm_exports_state%issm_whatever(nt_local))
+             issm_exports_wrap%ptr => issm_exports_state
+             call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_EXPORTS', issm_exports_wrap, status)
+             VERIFY_(STATUS)
+          endif
        end do
    
        call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
@@ -2260,7 +2275,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Locals
 
-  type (MAPL_MetaComp), pointer   :: MAPL
+  type (MAPL_MetaComp), pointer       :: MAPL
   type (ESMF_State       )            :: INTERNAL
   type (ESMF_Alarm       )            :: ALARM
   type (ESMF_Config      )            :: CF
@@ -2271,7 +2286,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(MAPL_SunOrbit)                 :: ORBIT
 
   integer                             :: LANDICE_OFFLINE
-  integer         :: DO_ISSM              ! ISSM flag
+  integer                             :: DO_ISSM              ! ISSM flag
+
+  type (ESMF_GridComp  ), pointer     :: GCS(:)
+  character(len=ESMF_MAXSTR), pointer :: gcnames(:)
+      
+  type(T_ISSM_EXPORT_STATE), pointer  :: issm_exports_state
+  type(ISSM_EXPORT_WRAP)              :: issm_exports_wrap
+
 !=============================================================================
 
 ! Begin... 
@@ -3520,6 +3542,15 @@ contains
     if (DO_ISSM==1) then
       call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
       VERIFY_(STATUS)
+      call MAPL_Get (MAPL, GCS=GCS, GCNAMES=gcnames, RC=STATUS )
+      do n=1, size(GCS)
+         if (index(gcnames(N), 'ISSM') /=0 ) then
+             call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_EXPORTS', issm_exports_wrap, status)
+             VERIFY_(STATUS)
+             issm_exports_state =>issm_exports_wrap%ptr
+            ! if (associated(issm_whatever)) issm_whatever = issm_exports_state%issm_whatever
+          endif
+      enddo
     end if 
 
     if(allocated (MLT)) deallocate(MLT , STAT=STATUS); VERIFY_(STATUS)              
