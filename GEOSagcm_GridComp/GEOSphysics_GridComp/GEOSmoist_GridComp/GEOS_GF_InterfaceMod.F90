@@ -151,7 +151,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, USE_MEMORY                , 'USE_MEMORY:'            ,default=-1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, TAU_OCEA_CP               , 'TAU_OCEA_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, TAU_LAND_CP               , 'TAU_LAND_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, DOWNDRAFT                 , 'DOWNDRAFT:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, DOWNDRAFT                 , 'DOWNDRAFT:'             ,default= .TRUE., RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_FLUX_FORM             , 'USE_FLUX_FORM:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_TRACER_EVAP           , 'USE_TRACER_EVAP:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, APPLY_SUB_MP              , 'APPLY_SUB_MP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
@@ -614,8 +614,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, (CLCN+CLLS)    &
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
-                                 ,FRLAND, TMP2D, T2M           &
-                                 ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
+                                 ,FRLAND, TMP2D, T2M, Q2M                           &
+                                 ,TA ,QA ,SH ,EVAP ,PHIS                            &
                                  ,KPBL ,CNV_FRC, SRF_TYPE                           &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
                                  ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
