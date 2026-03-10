@@ -22,7 +22,23 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggress
 endif ()
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES GNU AND CMAKE_BUILD_TYPE MATCHES Release)
-   string (REPLACE "${FOPT3}" "${FOPT2}" CMAKE_Fortran_FLAGS_RELEASE ${CMAKE_Fortran_FLAGS_RELEASE})
+  string (REPLACE "${FOPT3}" "${FOPT2}" CMAKE_Fortran_FLAGS_RELEASE ${CMAKE_Fortran_FLAGS_RELEASE})
+
+  # GCC 15+ workaround for some moist sources
+  # There is some odd interaction between GCC 15 and some moist code. FPEs
+  # that do not occur with GCC 14 or earlier. For now, we compile some
+  # codes with -O1 which seems to avoid the bad instruction. Tests show
+  # not much of a speed difference with GCC 14
+  if (CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL 15)
+    message(STATUS "[GCC15+] Setting GF Code to use -O1 for GCC 15")
+    set(degrade_o1_sources
+      ConvPar_GF2020.F90
+      ConvPar_GF_GEOS5.F90
+      aer_actv_single_moment.F90
+    )
+    set_source_files_properties(${degrade_o1_sources}
+      PROPERTIES COMPILE_OPTIONS "${FOPT1}")
+  endif()
 endif ()
 
 # Note For unknown reasons, BACM_1M_Interface takes 20 minutes to compile at O3
