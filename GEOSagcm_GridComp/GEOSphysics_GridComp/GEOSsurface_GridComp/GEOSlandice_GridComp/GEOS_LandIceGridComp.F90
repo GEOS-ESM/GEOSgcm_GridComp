@@ -212,6 +212,15 @@ module GEOS_LandiceGridCompMod
         RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddExportSpec(GC,                   &
+        SHORT_NAME = 'ICESURF',                    &
+        LONG_NAME  = 'ice_surface_elevation',      &
+        UNITS      = 'm',                          &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'EMIS',                              &
         LONG_NAME          = 'surface_emissivity',                &
@@ -1745,11 +1754,11 @@ module GEOS_LandiceGridCompMod
        do I = 1, SIZE(GCS)
           call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
           VERIFY_(STATUS)
-          call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
+          call MAPL_Set(CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
           VERIFY_(STATUS)
           if (index(gcnames(I), 'ISSM') /=0 ) then
              allocate(issm_exports_state)
-             allocate(issm_exports_state%issm_whatever(nt_local))
+             allocate(issm_exports_state%ICESURF_TILE(nt_local))
              issm_exports_wrap%ptr => issm_exports_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_EXPORTS', issm_exports_wrap, status)
              VERIFY_(STATUS)
@@ -2380,6 +2389,7 @@ contains
 
 ! pointers to export
    real, pointer, dimension(:  )  :: ICESMB
+   real, pointer, dimension(:  )  :: ICESURF
    real, pointer, dimension(:  )  :: EMISS
    real, pointer, dimension(:  )  :: ALBVF 
    real, pointer, dimension(:  )  :: ALBVR 
@@ -2692,7 +2702,8 @@ contains
 
 ! Pointers to outputs
 !--------------------
-   call MAPL_GetPointer(EXPORT,ICESMB  , 'ICESMB'   ,alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ICESMB  , 'ICESMB',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,EMISS  , 'EMIS'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBVF  , 'ALBVF'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBVR  , 'ALBVR'  , RC=STATUS); VERIFY_(STATUS)
@@ -3398,7 +3409,7 @@ contains
     ! Calculate surface mass balance (SMB) for ISSM
     if(associated(ICESMB)) ICESMB    = ACCUM - RUNOFF
 
-    ! Set child (ISSM) SMB import pointer to landice export values
+    ! Set child (ISSM) SMB import pointer 
     if (DO_ISSM == 1) then
       call MAPL_GetPointer(GIM(ISSM), ICESMB_ISSM, 'ICESMB'  , RC=STATUS)
     end if 
@@ -3548,7 +3559,7 @@ contains
              call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_EXPORTS', issm_exports_wrap, status)
              VERIFY_(STATUS)
              issm_exports_state =>issm_exports_wrap%ptr
-            ! if (associated(issm_whatever)) issm_whatever = issm_exports_state%issm_whatever
+            if (associated(ICESURF)) ICESURF = issm_exports_state%ICESURF_TILE
           endif
       enddo
     end if 
