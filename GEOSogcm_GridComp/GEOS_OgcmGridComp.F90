@@ -1659,6 +1659,7 @@ contains
 ! Verify that the saltwater ice variables are friendly to seaice
 !---------------------------------------------------------------
 
+#ifdef FRIENDLY
     if (.not. seaIceT_extData) then
       call ESMF_StateGet (IMPORT, 'TI', FIELD, _RC)
       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, _RC)
@@ -1718,6 +1719,7 @@ contains
        VERIFY_(STATUS)
        _ASSERT(FRIENDLY,'needs informative message')
     end if
+#endif
     
 ! Children's Imports
 !-------------------

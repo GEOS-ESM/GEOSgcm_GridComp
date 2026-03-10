@@ -96,7 +96,12 @@ contains
 
     end do
     deallocate(itemNameList, _STAT)
-    
+
+    if (MAPL_AM_I_Root()) then
+       print *, "DEBUG: Averaging the following ",K," vars:"
+       call MAPL_VarSpecPrint(sspec, _RC)
+    end if
+
 !         CCSetServ
     call ESMF_CplCompSetServices (this%CCS, &
          GenericCplSetServices, _RC )
@@ -145,22 +150,33 @@ contains
     type (ESMF_Field) :: field
 !    type (ESMF_TypeKind_flag) :: tk
     type (ESMF_State) :: StateIn
+    character (len=ESMF_MAXSTR), allocatable  :: itemNameListIn(:)
+    character (len=ESMF_MAXSTR), allocatable  :: itemNameListOut(:)
 
     stateIn = this%stateIn
     if (this%average) stateIn = this%stateTmp
 
     !??? VM barrier???
 
+    call ESMF_StateGet(this%stateOut, ITEMCOUNT=N, _RC)
+    allocate(itemNameListOut(N), _STAT)
+    call ESMF_StateGet(this%stateOut, ITEMNAMELIST=itemNamelistOut, _RC)
+
+    call ESMF_StateGet(this%stateIn, ITEMCOUNT=N, _RC)
+    allocate(itemNameListIn(N), _STAT)
+    call ESMF_StateGet(this%stateIn, ITEMNAMELIST=itemNamelistIn, _RC)
+
     do n=1,size(this%vars)
        ! we might need to check the field is in the state. If not, it might be Ok
-       call ESMF_StateGet(stateIn, itemName=this%vars(n)%vIn, field=field, _RC)
-       !!      call ESMF_StateGet(g2g%stateIn, g2g%vars(n)%vIn, field, _RC)
+       if (.not. any(itemNameListIn==this%vars(n)%vIn)) cycle
+       if (.not. any(itemNameListOut==this%vars(n)%vOut)) cycle
+       call ESMF_StateGet(this%stateIn, this%vars(n)%vIn, field, _RC)
        ! get rank,typekind to use the appropriate overload
        call ESMF_FieldGet(field, rank=rank, _RC)
        select case (rank)
           case (1)
-             call MAPL_GetPointer(this%STATEout, ptr1out, this%vars(n)%Vout, notFoundOK=.true., _RC)
-             call MAPL_GetPointer(this%STATEin, ptr1in, this%vars(n)%Vin, notFoundOK=.true., _RC)
+             call MAPL_GetPointer(this%stateOut, ptr1out, this%vars(n)%Vout, notFoundOK=.true., _RC)
+             call MAPL_GetPointer(this%stateIn, ptr1in, this%vars(n)%Vin, notFoundOK=.true., _RC)
 
              if (associated(ptr1Out) .and. associated(ptr1In)) then
                 call MAPL_LocStreamTransform( ptr1Out, &
@@ -192,6 +208,7 @@ contains
           _FAIL("Unsupported rank")
        end select
     end do
+    deallocate(itemNameListIn, itemNameListOut)
     _RETURN(ESMF_SUCCESS)
 
   end subroutine regrid
@@ -210,7 +227,7 @@ contains
     allocate(TMP(I+1),_STAT)
 
     TMP(1:I) = this%vars
-    deallocate(this%vars)
+    if(I>0) deallocate(this%vars)
 
     allocate(TMP(I+1),stat=STATUS)
 

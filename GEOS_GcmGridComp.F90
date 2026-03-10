@@ -807,7 +807,9 @@ contains
 !---------------------------------------------
         call o2a_state%set('TS_FOUND', 'TS_FOUND' , _RC)
         call o2a_state%set('SS_FOUND', 'SS_FOUND' , _RC)
-        call o2a_state%set('FRZMLT', 'FRZMLT', _RC)
+        if (DO_CICE_THERMO == 1) then
+           call o2a_state%set('FRZMLT', 'FRZMLT', _RC)
+        end if
 
 !>>>>> END OF CONNECT section    
 
@@ -1618,9 +1620,8 @@ contains
    !===================================
    end if
 
-   call ESMF_ClockGetAlarm(clock, alarmname=trim(GCNAMES(OGCM)) // '_Alarm', &
-                           alarm=GCM_INTERNAL_STATE%alarmOcn, _RC)
-
+   call MAPL_GetObjectFromGC ( GCS(OGCM), CMAPL, _RC)
+   call MAPL_Get(CMAPL, runAlarm=GCM_INTERNAL_STATE%alarmOcn, _RC)
 
    !NEW CODE
 
@@ -1637,20 +1638,6 @@ contains
      call gcm_internal_state%o2a_state%set(DT=COUPLE_DT, COUPLE_DT=COUPLE_DT, _RC)
    end block
 
-   call gcm_internal_state%a2o_state%set( &
-        stateIn=GCM_INTERNAL_STATE%SURF_EXP, stateOut=GIM(OGCM), &
-        name="A2O", _RC)
-
-   call gcm_internal_state%a2o_state%set( &
-        xform=GCM_INTERNAL_STATE%xform_a2o, _RC)
-
-      call gcm_internal_state%a2o_state%set( &
-        stateIn=GEX(OGCM), stateOut=GCM_INTERNAL_STATE%impSKIN, &
-        name="A2O", _RC)
-
-   call gcm_internal_state%a2o_state%set( &
-        xform=GCM_INTERNAL_STATE%xform_o2a, _RC)
-   
    !loop over cpld vars (say A2O)
 
 ! This part has some explicit hierarchy built in...
@@ -1664,6 +1651,20 @@ contains
                               GCM_INTERNAL_STATE%impSKIN, rc=status )
    VERIFY_(STATUS)
 
+   call gcm_internal_state%a2o_state%set( &
+        stateIn=GCM_INTERNAL_STATE%expSkin, stateOut=GIM(OGCM), &
+        name="A2O", _RC)
+
+   call gcm_internal_state%a2o_state%set( &
+        xform=GCM_INTERNAL_STATE%xform_a2o, _RC)
+
+   call gcm_internal_state%o2a_state%set( &
+        stateIn=GEX(OGCM), stateOut=GCM_INTERNAL_STATE%impSKIN, &
+        name="O2A", _RC)
+
+   call gcm_internal_state%o2a_state%set( &
+        xform=GCM_INTERNAL_STATE%xform_o2a, _RC)
+   
    call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
         [ character(len=8) :: &
         'TAUXO    ', 'TAUYO    ','TAUXI    ', 'TAUYI    ', &
