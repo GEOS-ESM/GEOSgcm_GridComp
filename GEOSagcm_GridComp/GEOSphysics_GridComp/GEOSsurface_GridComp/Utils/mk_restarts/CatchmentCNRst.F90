@@ -958,7 +958,7 @@ contains
                  iv = nv                                     ! same type fraction (primary of secondary)
               else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! not same fraction
-              else if(iclass(ityp_new)==iclass(nint(ityp_offl(offl_cell,nv))) .and. fveg_offl (offl_cell,nv)> fmin) then
+              else if(iclass(ityp_new)==iclass(int(ityp_offl(offl_cell,nv))) .and. fveg_offl (offl_cell,nv)> fmin) then
                  iv = nv                                     ! primary, other type (same class)
               else if(fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! secondary, other type (same class)

@@ -1388,7 +1388,7 @@ contains
            do nz = 1,nzone
               STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNCOL'), (/1,i/), (/NTILES_CN,1 /),VAR_DUM2)
               do k = 1, NTILES_CN
-                 var_off_col(nint(TILE_ID(K)), nz,nv) = VAR_DUM2(K)
+                 var_off_col(int(TILE_ID(K)), nz,nv) = VAR_DUM2(K)
               end do
               i = i + 1
            end do
@@ -1400,7 +1400,7 @@ contains
               do nz = 1,nzone
                  STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNPFT'), (/1,i/), (/NTILES_CN,1 /),VAR_DUM2)
                  do k = 1, NTILES_CN
-                    var_off_pft(nint(TILE_ID(K)), nz,nv,iv) = VAR_DUM2(K)
+                    var_off_pft(int(TILE_ID(K)), nz,nv,iv) = VAR_DUM2(K)
                  end do
                  i = i + 1
               end do
@@ -1442,7 +1442,7 @@ contains
                     iv = nv                                     ! same type fraction (primary of secondary)
                  else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
                     iv = nx                                     ! not same fraction
-                 else if(iclass(ityp_new)==iclass(nint(ityp_offl(offl_cell,nv))) .and. fveg_offl (offl_cell,nv)> fmin) then
+                 else if(iclass(ityp_new)==iclass(int(ityp_offl(offl_cell,nv))) .and. fveg_offl (offl_cell,nv)> fmin) then
                     iv = nv                                     ! primary, other type (same class)
                  else if(fveg_offl (offl_cell,nx)> fmin) then
                     iv = nx                                     ! secondary, other type (same class)

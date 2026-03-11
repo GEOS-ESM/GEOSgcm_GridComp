@@ -4942,7 +4942,7 @@ end if
       if (associated(KPBL_SC) .and. associated(ZPBL_SC)) then
         do I = 1, IM
           do J = 1, JM
-             ZPBL_SC(I,J) = Z(I,J,nint(KPBL_SC(I,J)))
+             ZPBL_SC(I,J) = Z(I,J,int(KPBL_SC(I,J)))
           end do
         end do
       endif

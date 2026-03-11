@@ -377,15 +377,15 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 
   ! Source wind speed and direction.
   do i=1,ncol
-   uconv(i) = u(i,nint(desc%k(i)))
-   vconv(i) = v(i,nint(desc%k(i)))
+   uconv(i) = u(i,int(desc%k(i)))
+   vconv(i) = v(i,int(desc%k(i)))
   enddo
 
   ! Get the unit vector components and magnitude at the source level.
   ubi1d = 0.0
   call get_unit_vector(uconv, vconv, xv, yv, ubi1d)
   do i=1,ncol
-   ubi(i,nint(desc%k(i))+1) = ubi1d(i)
+   ubi(i,int(desc%k(i))+1) = ubi1d(i)
   enddo
 
   ! Project the local wind at midpoints onto the source wind.
@@ -408,12 +408,12 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           uh(i) = uh(i)/(boti(i)-topi(i)+1)
          ! Find the cell speed where the storm speed is > 10 m/s.
          ! Storm speed is taken to be the source wind speed.
-          CS(i) = sign(max(abs(ubm(i,nint(desc%k(i))))-10.0, 0.0), ubm(i,nint(desc%k(i))))
+          CS(i) = sign(max(abs(ubm(i,int(desc%k(i))))-10.0, 0.0), ubm(i,int(desc%k(i))))
           uh(i) = uh(i) - CS(i)
      else
          ! For shallow convection, wind is relative to ground, and "heating
          ! region" wind is just the source level wind.
-          uh(i) = ubm(i,nint(desc%k(i)))
+          uh(i) = ubm(i,int(desc%k(i)))
      endif
   enddo
 
@@ -478,7 +478,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! Set the phase speeds and wave numbers in the direction of the source wind.
           ! Set the source stress magnitude (positive only, note that the sign of the
           ! stress is the same as (c-u).
-           tau(i,:,nint(desc%k(i))+1) = desc%taubck(i,:)
+           tau(i,:,int(desc%k(i))+1) = desc%taubck(i,:)
            topi(i) = desc%k(i)
         else
           ! Find largest condensate change level, for frontal detection
@@ -493,7 +493,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! Set the phase speeds and wave numbers in the direction of the source wind.
           ! Set the source stress magnitude (positive only, note that the sign of the
           ! stress is the same as (c-u).
-           tau(i,:,nint(desc%k(i))+1) = desc%taubck(i,:) * MIN(10.0,MAX(1.0,abs(q0(i)/1.e-9)))
+           tau(i,:,int(desc%k(i))+1) = desc%taubck(i,:) * MIN(10.0,MAX(1.0,abs(q0(i)/1.e-9)))
            topi(i) = desc%k(i)
         endif
 
