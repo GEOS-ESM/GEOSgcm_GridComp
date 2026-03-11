@@ -716,6 +716,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! get pointer to SMB on mesh
     call ESMF_FieldGet(dstField,farrayPtr=ICESMB_MESH,RC=STATUS); VERIFY_(STATUS)
 
+    ! destroy regridding fields so they can be reused
+    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
+
     ! save ICESMB on mesh elements 
     call MAPL_GetPointer(EXPORT  , ICESMB_EX , 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
     if(associated(ICESMB_EX)) ICESMB_EX = ICESMB_MESH
@@ -757,10 +761,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
     ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
     ! *************************************************************************** !
-
-    ! destroy regridding fields so they can be reused
-    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
-    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
     ! transform from mesh to tiles
     call mesh_to_tile(ICESURF_MESH,ICESURF_TILE); VERIFY_(STATUS)
